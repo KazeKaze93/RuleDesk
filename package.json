@@ -8,9 +8,10 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "db:migrate": "drizzle-kit migrate",
-    "db:generate": "drizzle-kit generate",
-    "db:studio": "drizzle-kit studio"
+    "db:migrate": "ts-node src/main/db/migrate.ts",
+    "db:generate": "drizzle-kit generate:sqlite",
+    "db:studio": "drizzle-kit studio",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "electron",
@@ -29,6 +30,7 @@
     "autoprefixer": "^10.4.16",
     "drizzle-kit": "^0.20.6",
     "electron": "^28.0.0",
+    "electron-builder": "^24.6.4",
     "electron-vite": "^2.0.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
@@ -42,10 +44,42 @@
     "better-sqlite3": "^9.2.2",
     "clsx": "^2.0.0",
     "drizzle-orm": "^0.29.3",
+    "electron-log": "^5.4.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tailwind-merge": "^2.2.0",
     "zustand": "^4.4.7"
+  },
+  "build": {
+    "appId": "com.yourcompany.boorudesktopclient",
+    "productName": "BooruClient",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "!**/.env",
+      "data/*.db",
+      "package.json",
+      "!**/settings.json",
+      "!**/*.log",
+      "!**/*.map",
+      "!**/scripts/**",
+      "!**/.github/**"
+    ],
+    "extraFiles": [],
+    "extraResources": [
+      {
+        "from": "drizzle",
+        "to": "drizzle"
+      }
+    ],
+    "asar": true,
+    "publish": null,
+    "afterPack": "./scripts/afterPack.js",
+    "win": {},
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**"
+    ]
   }
 }
-
