@@ -44,7 +44,7 @@ export class DbService {
         });
       }
     } catch (error) {
-      console.error("DbService: Ошибка при добавлении автора:", error);
+      logger.error("DbService: Ошибка при добавлении автора:", error);
       throw new Error(`Не удалось добавить автора: ${artistData.username}`);
     }
     return undefined;

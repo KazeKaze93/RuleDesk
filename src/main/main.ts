@@ -40,7 +40,7 @@ const createWindow = () => {
       // 2. Node Integration: НИКОГДА не должно быть true в Renderer.
       nodeIntegration: false,
       // 3. Preload Script: Указываем путь к нашему безопасному мосту
-      preload: path.join(__dirname, "../preload/bridge.mjs"),
+      preload: path.join(__dirname, "../preload/bridge.cjs"),
       sandbox: true,
     },
   });

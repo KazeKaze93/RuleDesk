@@ -16,6 +16,12 @@ export default defineConfig({
     build: {
       lib: {
         entry: "src/main/bridge.ts",
+        formats: ["cjs"],
+      },
+      rollupOptions: {
+        output: {
+          entryFileNames: "[name].cjs",
+        },
       },
     },
   },
