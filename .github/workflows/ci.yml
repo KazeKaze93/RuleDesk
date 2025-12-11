@@ -26,8 +26,8 @@ jobs:
       # --- Проверки ---
       
       - name: Type Check (TypeScript)
-        run: npm run typecheck  # Убедись, что этот скрипт есть в package.json ("typecheck": "tsc --noEmit")
-
+        run: npm run typecheck 
+        
       # Если настроен ESLint
       # - name: Lint
       #   run: npm run lint
