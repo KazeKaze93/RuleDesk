@@ -13,6 +13,7 @@ npm-debug.log
 # Выходные директории Electron-Vite
 /out
 /dist
+/dist-electron
 
 # Логи и кэш
 .electron-builder
@@ -41,4 +42,4 @@ Thumbs.db
 # --- Локальная Конфигурация и Секреты ---
 .env               # Основной файл секретов
 .env.local         # Локальные/девелоперские переменные
-.env.*.local       # Расширенные локальные файлы
+.env.*

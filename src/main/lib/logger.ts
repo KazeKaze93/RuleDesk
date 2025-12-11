@@ -1,4 +1,4 @@
-import log from "electron-log/main";
+import log from "electron-log";
 import path from "path";
 import { app } from "electron";
 

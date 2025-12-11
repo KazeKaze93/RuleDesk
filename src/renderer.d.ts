@@ -1,6 +1,8 @@
+import type { Artist } from "./main/db/schema";
+
 export interface IpcApi {
   getAppVersion: () => Promise<string>;
-  getTrackedArtists: () => Promise<any[]>;
+  getTrackedArtists: () => Promise<Artist[]>;
 }
 
 declare global {

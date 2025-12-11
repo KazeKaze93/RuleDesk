@@ -40,7 +40,8 @@ const createWindow = () => {
       // 2. Node Integration: НИКОГДА не должно быть true в Renderer.
       nodeIntegration: false,
       // 3. Preload Script: Указываем путь к нашему безопасному мосту
-      preload: path.join(__dirname, "../preload/bridge.js"),
+      preload: path.join(__dirname, "../preload/bridge.mjs"),
+      sandbox: true,
     },
   });
 
@@ -57,12 +58,12 @@ const createWindow = () => {
   }
 
   // Загрузка UI (Renderer)
-  if (MAIN_WINDOW_VITE_DEV_URL) {
-    // Режим разработки (Vite Dev Server)
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_URL);
+  if (process.env["ELECTRON_RENDERER_URL"]) {
+    // Режим разработки (HMR)
+    mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
-    // Production-режим (Собранный файл)
-    mainWindow.loadFile(path.join(__dirname, `../renderer/index.html`));
+    // Production (Собранный файл)
+    mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 
   // Открываем DevTools только в режиме разработки

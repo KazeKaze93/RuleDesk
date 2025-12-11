@@ -5,6 +5,7 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 import { Button } from "./components/ui/button";
+import type { Artist } from "../main/db/schema";
 
 const queryClient = new QueryClient();
 
@@ -63,7 +64,7 @@ const AppContent: React.FC = () => {
                 </div>
               ) : (
                 <div className="grid gap-2">
-                  {artists?.map((artist: any) => (
+                  {artists?.map((artist: Artist) => (
                     <div
                       key={artist.id}
                       className="p-3 rounded border bg-slate-900 border-slate-800"

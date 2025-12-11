@@ -7,6 +7,7 @@ import * as schema from "./schema";
 import { Artist, NewArtist } from "./schema";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { asc } from "drizzle-orm";
 
 // --- Тип для нашего Drizzle инстанса ---
 export type DbType = BetterSQLite3Database<typeof schema>;
@@ -25,7 +26,9 @@ export class DbService {
   // --- 1. Artist Management ---
 
   async getTrackedArtists(): Promise<Artist[]> {
-    return this.db.query.artists.findMany();
+    return this.db.query.artists.findMany({
+      orderBy: [asc(schema.artists.username)], // Сортировка по имени
+    });
   }
 
   async addArtist(artistData: NewArtist): Promise<Artist | undefined> {

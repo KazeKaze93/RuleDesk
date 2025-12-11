@@ -1,8 +1,9 @@
 {
   "name": "nsfw-booru-desktop-client",
+  "productName": "NSFW Booru Client",
   "version": "1.0.0",
   "description": "A modern, secure desktop companion for browsing booru-style imageboard content",
-  "main": "dist-electron/main/main.js",
+  "main": "out/main/main.js",
   "type": "module",
   "scripts": {
     "dev": "electron-vite dev",
@@ -11,7 +12,8 @@
     "db:migrate": "ts-node src/main/db/migrate.ts",
     "db:generate": "drizzle-kit generate:sqlite",
     "db:studio": "drizzle-kit studio",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [
     "electron",
@@ -55,10 +57,10 @@
     "appId": "com.yourcompany.boorudesktopclient",
     "productName": "BooruClient",
     "directories": {
-      "output": "release"
+      "output": "dist"
     },
     "files": [
-      "dist/**/*",
+      "out/**/*",
       "!**/.env",
       "data/*.db",
       "package.json",
@@ -66,7 +68,17 @@
       "!**/*.log",
       "!**/*.map",
       "!**/scripts/**",
-      "!**/.github/**"
+      "!**/.github/**",
+      "!**/*.ts",
+      "!**/*.tsx",
+      "!vite.config.ts",
+      "!electron.vite.config.ts",
+      "!tailwind.config.js",
+      "!postcss.config.js",
+      "!drizzle.config.ts",
+      "!**/tsconfig.json",
+      "!**/.eslintrc*",
+      "!**/.vscode"
     ],
     "extraFiles": [],
     "extraResources": [
@@ -77,7 +89,6 @@
     ],
     "asar": true,
     "publish": null,
-    "afterPack": "./scripts/afterPack.js",
     "win": {},
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**"

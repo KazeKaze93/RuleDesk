@@ -16,7 +16,7 @@ CREATE TABLE `posts` (
 	`is_viewed` integer DEFAULT false NOT NULL,
 	`published_at` integer NOT NULL,
 	`created_at` integer DEFAULT (unixepoch('now')),
-	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE TABLE `subscriptions` (
