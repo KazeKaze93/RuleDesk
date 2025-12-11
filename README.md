@@ -93,29 +93,35 @@ Do not endorse, moderate, or curate any content accessed through this software.
 
 Are not responsible for how you use this software or which content you access with it.
 
-Compliance with Laws & ToS:
+**Compliance with Laws & ToS:**
 You are solely responsible for:
 
-Complying with the laws and regulations applicable in your country/region.
+- Complying with the laws and regulations applicable in your country/region.
+- Complying with the target website's Terms of Service, API rules, and any usage limitations (including rate limits and content policies).
 
-Complying with the target website’s Terms of Service, API rules, and any usage limitations (including rate limits and content policies).
+The software is provided "as is", without warranty of any kind, express or implied. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
 
-The software is provided “as is”, without warranty of any kind, express or implied. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
+---
 
-Configuration & API Access
-API Key (If Required): Store your API key (if any) in a protected location (e.g., local configuration file/Electron secure storage). NEVER commit secrets to the repository.
+## ⚙️ Configuration & API Access
 
-Drizzle ORM Schema: If you modify the database schema, run:
+- **API Key (If Required):** Store your API key (if any) in a protected location (e.g., local configuration file/Electron secure storage). **NEVER** commit secrets to the repository.
 
-Bash
+- **Drizzle ORM Schema:** If you modify the database schema, run:
 
+```bash
 npm run db:migrate
-🛡️ Adherence to Code Quality Standards
-Architecture: Strict adherence to SOLID, DRY, KISS, YAGNI principles.
+```
 
-Backend/Scripting: Type Hinting (TypeScript/Drizzle) is mandatory across the entire codebase. Proper error handling must be implemented; bare try-except/catch (e) is forbidden.
+---
 
-Frontend: No use of any, as casting, inline styles, or magic numbers/strings. Accessibility (a11y) is a mandatory design consideration for all UI components.
+## 🛡️ Adherence to Code Quality Standards
+
+- **Architecture:** Strict adherence to SOLID, DRY, KISS, YAGNI principles.
+
+- **Backend/Scripting:** Type Hinting (TypeScript/Drizzle) is mandatory across the entire codebase. Proper error handling must be implemented; bare `try-except`/`catch (e)` is forbidden.
+
+- **Frontend:** No use of `any`, `as` casting, inline styles, or magic numbers/strings. Accessibility (a11y) is a mandatory design consideration for all UI components.
 
 ### Prerequisites
 
