@@ -1,47 +1,88 @@
-import { app, BrowserWindow } from 'electron';
-import { join } from 'path';
-import { registerIpcHandlers } from './ipc';
+// src/main/main.ts
 
-let mainWindow: BrowserWindow | null = null;
+import { app, BrowserWindow } from "electron";
+import * as path from "path";
+import { registerIpcHandlers } from "./ipc";
+import Database from "better-sqlite3";
+import { DbService } from "./db/db-service";
+import { logger } from "./lib/logger";
+import { runMigrations } from "./db/migrate";
 
-function createWindow(): void {
-  mainWindow = new BrowserWindow({
+logger.info("🚀 Application starting...");
+
+// --- ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ И СЕРВИСОВ ---
+const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
+// Используем app.getPath('userData') для надежного хранения файла БД
+const dbInstance = new Database(DB_PATH);
+const dbService = new DbService(dbInstance);
+
+// --- КРИТИЧЕСКИЙ ШАГ: Регистрация всех IPC хендлеров ---
+registerIpcHandlers(dbService);
+
+// --- Запуск миграций ---
+try {
+  runMigrations(dbService.db);
+} catch (e) {
+  logger.error("Failed to run migrations. App will quit.", e);
+  app.quit();
+}
+
+const createWindow = () => {
+  const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 800,
+    minHeight: 600,
     webPreferences: {
-      preload: join(__dirname, '../preload/preload.js'),
+      // --- SECURITY ENFORCEMENT ---
+      // 1. Context Isolation: ОБЯЗАТЕЛЬНО для безопасности.
       contextIsolation: true,
+      // 2. Node Integration: НИКОГДА не должно быть true в Renderer.
       nodeIntegration: false,
-      sandbox: false,
+      // 3. Preload Script: Указываем путь к нашему безопасному мосту
+      preload: path.join(__dirname, "../preload/bridge.cjs"),
+      sandbox: true,
     },
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+  mainWindow.webContents.on("did-finish-load", () => {
+    logger.info("Renderer loaded");
+  });
+
+  // ... обработка ошибок БД ...
+  try {
+    // db init
+  } catch (e) {
+    logger.error("Database init failed:", e);
+    app.quit();
   }
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-}
+  // Загрузка UI (Renderer)
+  if (process.env["ELECTRON_RENDERER_URL"]) {
+    // Режим разработки (HMR)
+    mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
+  } else {
+    // Production (Собранный файл)
+    mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
+  }
 
-app.whenReady().then(() => {
-  registerIpcHandlers();
-  createWindow();
+  // Открываем DevTools только в режиме разработки
+  if (process.env.NODE_ENV === "development") {
+    mainWindow.webContents.openDevTools();
+  }
+};
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
-});
+// --- Жизненный цикл Electron ---
+app.on("ready", createWindow);
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
