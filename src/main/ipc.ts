@@ -39,7 +39,7 @@ export const registerIpcHandlers = (dbService: DbService) => {
 
     try {
       new URL(artistData.apiEndpoint);
-    } catch (e) {
+    } catch {
       logger.warn(`IPC: Невалидный URL: ${artistData.apiEndpoint}`);
       throw new Error("Invalid API Endpoint URL");
     }

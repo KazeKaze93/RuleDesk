@@ -5,16 +5,11 @@ import {
 import Database from "better-sqlite3";
 import * as schema from "./schema";
 import { Artist, NewArtist } from "./schema";
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { asc } from "drizzle-orm";
 
-// --- Тип для нашего Drizzle инстанса ---
 export type DbType = BetterSQLite3Database<typeof schema>;
 
-/**
- * Класс, инкапсулирующий логику доступа к базе данных.
- */
 export class DbService {
   public readonly db: DbType;
 
@@ -23,31 +18,38 @@ export class DbService {
     logger.info("DbService: Drizzle ORM инициализирован.");
   }
 
-  // --- 1. Artist Management ---
-
   async getTrackedArtists(): Promise<Artist[]> {
     return this.db.query.artists.findMany({
-      orderBy: [asc(schema.artists.username)], // Сортировка по имени
+      orderBy: [asc(schema.artists.username)],
     });
   }
 
-  async addArtist(artistData: NewArtist): Promise<Artist | undefined> {
+  // ИСПРАВЛЕНО: Возвращаем Promise<Artist>, убрали undefined
+  async addArtist(artistData: NewArtist): Promise<Artist> {
     try {
       const result = await this.db
         .insert(schema.artists)
         .values(artistData)
         .returning({ id: schema.artists.id });
 
-      if (result.length > 0) {
-        return this.db.query.artists.findFirst({
-          where: eq(schema.artists.id, result[0].id),
-        });
+      if (!result || result.length === 0) {
+        throw new Error("Insert operation failed");
       }
+
+      const savedArtist = await this.db.query.artists.findFirst({
+        where: eq(schema.artists.id, result[0].id),
+      });
+
+      if (!savedArtist) {
+        throw new Error("Artist inserted but could not be retrieved");
+      }
+
+      return savedArtist;
     } catch (error) {
+      // ИСПРАВЛЕНО: Используем logger вместо console
       logger.error("DbService: Ошибка при добавлении автора:", error);
-      throw new Error(`Не удалось добавить автора: ${artistData.username}`);
+      throw error; // Пробрасываем ошибку для UI
     }
-    return undefined;
   }
 
   async updateArtistPostStatus(
