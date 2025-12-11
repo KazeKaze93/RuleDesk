@@ -1,4 +1,3 @@
-
 import {
   drizzle,
   type BetterSQLite3Database,
@@ -7,6 +6,7 @@ import Database from "better-sqlite3";
 import * as schema from "./schema";
 import { Artist, NewArtist } from "./schema";
 import { eq } from "drizzle-orm";
+import { logger } from "../lib/logger";
 
 // --- Тип для нашего Drizzle инстанса ---
 export type DbType = BetterSQLite3Database<typeof schema>;
@@ -15,11 +15,11 @@ export type DbType = BetterSQLite3Database<typeof schema>;
  * Класс, инкапсулирующий логику доступа к базе данных.
  */
 export class DbService {
-  private db: DbType;
+  public readonly db: DbType;
 
   constructor(sqliteDbInstance: InstanceType<typeof Database>) {
     this.db = drizzle(sqliteDbInstance, { schema });
-    console.log("DbService: Drizzle ORM инициализирован.");
+    logger.info("DbService: Drizzle ORM инициализирован.");
   }
 
   // --- 1. Artist Management ---

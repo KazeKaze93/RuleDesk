@@ -1,12 +1,5 @@
-// src/main/db/schema.ts
-
 import { sql } from "drizzle-orm";
-import {
-  sqliteTable,
-  integer,
-  text,
-  primaryKey,
-} from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text } from "drizzle-orm/sqlite-core";
 
 // --- 1. Таблица отслеживаемых авторов (Tracked Artists) ---
 export const artists = sqliteTable("artists", {
@@ -41,7 +34,7 @@ export const posts = sqliteTable("posts", {
 
   // Внешний ID автора, FK к таблице artists
   artistId: integer("artist_id", { mode: "number" })
-    .references(() => artists.id)
+    .references(() => artists.id, { onDelete: "cascade" })
     .notNull(),
 
   // Основные метаданные (можно сохранить как JSON, но для SQL лучше отдельные поля)

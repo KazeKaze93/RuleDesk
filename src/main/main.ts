@@ -6,6 +6,7 @@ import { registerIpcHandlers } from "./ipc";
 import Database from "better-sqlite3";
 import { DbService } from "./db/db-service";
 import { logger } from "./lib/logger";
+import { runMigrations } from "./db/migrate";
 
 logger.info("🚀 Application starting...");
 
@@ -17,6 +18,14 @@ const dbService = new DbService(dbInstance);
 
 // --- КРИТИЧЕСКИЙ ШАГ: Регистрация всех IPC хендлеров ---
 registerIpcHandlers(dbService);
+
+// --- Запуск миграций ---
+try {
+  runMigrations(dbService.db);
+} catch (e) {
+  logger.error("Failed to run migrations. App will quit.", e);
+  app.quit();
+}
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
