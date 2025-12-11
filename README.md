@@ -1,6 +1,5 @@
 # NSFW-Booru-Desctop-Client-Unofficial-
 
-
 # 💻 NSFW Booru Desktop Client (Unofficial)
 
 > A modern, secure desktop companion built on Electron and React/TypeScript for browsing and organizing booru-style imageboard content via its public API. Designed for performance and maintainability.
@@ -19,14 +18,14 @@ This project is **unofficial** and **not affiliated** with any external website 
 
 ## ✨ Production-Grade Features
 
-| Feature | Architectural Note (Separation of Concerns) |
-| :--- | :--- |
-| **🔔 New Post Notifier** | Handled by the **Main Process** (Background Polling Worker) using a scheduled, low-resource polling loop. Data persistence via SQLite. |
-| **🔀 Randomizer & Advanced Filters** | API calls and complex filtering logic reside in the **Main Process** for security and performance. The UI (Renderer) sends clean commands via IPC. |
-| **💾 Local Metadata Database** | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Database file access is strictly limited to the **Main Process** to enforce thread-safety and security. |
-| **🧩 DOM Enhancements** | Implemented as an isolated **Content Script** (`site-injector.ts`) within a dedicated `BrowserView`/`Webview`. Communicates with the Main Process only via a dedicated, secure IPC channel. **This module is inherently fragile.** |
-| **⬇️ One-Click Download** | The Renderer triggers a download request via **IPC**. The actual file download (I/O operation) is executed safely by the **Main Process** (Node.js). |
-| **🏷 Tag Explorer / Stats** | Metadata fetched from the API is stored locally (SQLite), enabling rich client-side data analysis and charting. |
+| Feature                              | Architectural Note (Separation of Concerns)                                                                                                                                                                                        |
+| :----------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **🔔 New Post Notifier**             | Handled by the **Main Process** (Background Polling Worker) using a scheduled, low-resource polling loop. Data persistence via SQLite.                                                                                             |
+| **🔀 Randomizer & Advanced Filters** | API calls and complex filtering logic reside in the **Main Process** for security and performance. The UI (Renderer) sends clean commands via IPC.                                                                                 |
+| **💾 Local Metadata Database**       | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Database file access is strictly limited to the **Main Process** to enforce thread-safety and security.                                                                |
+| **🧩 DOM Enhancements**              | Implemented as an isolated **Content Script** (`site-injector.ts`) within a dedicated `BrowserView`/`Webview`. Communicates with the Main Process only via a dedicated, secure IPC channel. **This module is inherently fragile.** |
+| **⬇️ One-Click Download**            | The Renderer triggers a download request via **IPC**. The actual file download (I/O operation) is executed safely by the **Main Process** (Node.js).                                                                               |
+| **🏷 Tag Explorer / Stats**           | Metadata fetched from the API is stored locally (SQLite), enabling rich client-side data analysis and charting.                                                                                                                    |
 
 ---
 
@@ -60,6 +59,18 @@ This is the sandboxed browser environment. It handles presentation.
 
 ---
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](./docs/) directory:
+
+- **[API Documentation](./docs/api.md)** - IPC API reference and usage examples
+- **[Architecture Documentation](./docs/architecture.md)** - System architecture and design patterns
+- **[Contributing Guide](./docs/contributing.md)** - Guidelines for contributors
+- **[Database Documentation](./docs/database.md)** - Database schema and operations
+- **[Development Guide](./docs/development.md)** - Development setup and workflows
+
+---
+
 ## ⚙️ Development Setup
 
 This project uses **Vite** as the build tool for both the Electron Main and Renderer processes, ensuring optimal build performance.
@@ -71,7 +82,7 @@ This project is licensed under the MIT License.
 You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software, subject to the conditions of the MIT License.
 
 The full license text is available in the LICENSE
- file in this repository.
+file in this repository.
 
 🧾 Legal Disclaimer
 
@@ -141,3 +152,4 @@ npm install
 # Start the application in development mode
 # This runs the Vite dev server for the Renderer and starts the Electron Main process.
 npm run dev
+```
