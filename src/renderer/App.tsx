@@ -4,8 +4,8 @@ import {
   QueryClientProvider,
   useQuery,
 } from "@tanstack/react-query";
-import { Button } from "./components/ui/button";
 import type { Artist } from "../main/db/schema";
+import { AddArtistModal } from "./components/AddArtistModal";
 
 const queryClient = new QueryClient();
 
@@ -78,9 +78,9 @@ const AppContent: React.FC = () => {
           )}
         </div>
 
-        <Button onClick={() => alert("Пока не реализовано")} variant="outline">
-          Add Test Artist
-        </Button>
+        <div className="mt-8">
+          <AddArtistModal />
+        </div>
       </div>
     </div>
   );

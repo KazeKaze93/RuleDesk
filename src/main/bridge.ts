@@ -6,6 +6,7 @@ import { Artist } from "./db/schema";
 export interface IpcBridge {
   getAppVersion: () => Promise<string>;
   getTrackedArtists: () => Promise<Artist[]>;
+  addArtist: (artist: any) => Promise<any>;
 }
 
 // --- 2. Реализация ---
@@ -13,6 +14,7 @@ export interface IpcBridge {
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
   getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),
+  addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
 };
 
 // --- 3. Экспозиция ---
