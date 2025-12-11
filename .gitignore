@@ -1,0 +1,45 @@
+# .gitignore
+
+# --- Node ---
+/node_modules
+/dist
+npm-debug.log
+.npm/
+.yarn/
+.pnp.js
+.pnp.cjs
+
+# --- Build/Vite/Electron ---
+# Выходные директории Electron-Vite
+/out
+/dist
+/dist-electron
+
+# Логи и кэш
+.electron-builder
+.electron-vite
+
+# --- TypeScript ---
+# Файлы деклараций, если они генерируются
+/temp
+
+# --- Drizzle ORM / SQLite ---
+# База данных разработки и миграции
+/data/*.db # Например, data/metadata.db
+/drizzle # Папка для миграций
+/drizzle/meta/           # Исключает временные метаданные (папка)
+/drizzle/migrations.json # Исключает файл, который Drizzle использует локально
+
+# --- IDEs / OS ---
+.vscode
+.idea
+*.log
+.DS_Store
+Thumbs.db
+
+/settings.json
+
+# --- Локальная Конфигурация и Секреты ---
+.env               # Основной файл секретов
+.env.local         # Локальные/девелоперские переменные
+.env.*
