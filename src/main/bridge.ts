@@ -1,12 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { Artist } from "./db/schema";
+import { Artist, NewArtist } from "./db/schema";
 
 // --- 1. Интерфейс Моста ---
 // ЕДИНСТВЕННОЕ определение интерфейса
 export interface IpcBridge {
   getAppVersion: () => Promise<string>;
   getTrackedArtists: () => Promise<Artist[]>;
-  addArtist: (artist: any) => Promise<any>;
+  addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
 }
 
 // --- 2. Реализация ---

@@ -1,10 +1,11 @@
 CREATE TABLE `artists` (
-	`id` integer PRIMARY KEY NOT NULL,
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`username` text NOT NULL,
 	`api_endpoint` text NOT NULL,
 	`last_post_id` integer DEFAULT 0 NOT NULL,
 	`new_posts_count` integer DEFAULT 0 NOT NULL,
-	`last_checked` integer DEFAULT (unixepoch('now'))
+	`last_checked` integer,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `posts` (

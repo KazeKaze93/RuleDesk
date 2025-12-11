@@ -3,8 +3,9 @@ import { sqliteTable, integer, text } from "drizzle-orm/sqlite-core";
 
 // --- 1. Таблица отслеживаемых авторов (Tracked Artists) ---
 export const artists = sqliteTable("artists", {
-  // Уникальный ID, который мы получаем от внешнего API (e.g., ArtStation user_id)
-  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: false }),
+  // ID здесь не AutoIncrement, так как мы планируем использовать
+  // реальные ID авторов с Danbooru/Gelbooru для синхронизации.
+  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
 
   // Псевдоним автора (для удобства отображения в UI)
   username: text("username").notNull(),
@@ -13,17 +14,17 @@ export const artists = sqliteTable("artists", {
   apiEndpoint: text("api_endpoint").notNull(),
 
   // ID последнего поста, который мы видели. Ключевое поле для обнаружения обновлений.
-  lastPostId: integer("last_post_id", { mode: "number" }).notNull().default(0),
+  lastPostId: integer("last_post_id").notNull().default(0),
 
   // Счетчик новых, непросмотренных постов (для бейджа UI)
-  newPostsCount: integer("new_posts_count", { mode: "number" })
-    .notNull()
-    .default(0),
+  newPostsCount: integer("new_posts_count").notNull().default(0),
 
   // Временная метка последнего успешного API-опроса
-  lastChecked: integer("last_checked", { mode: "number" }).default(
-    sql`(unixepoch('now'))`
-  ),
+  lastChecked: integer("last_checked", { mode: "number" }),
+
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .default(sql`(unixepoch())`)
+    .notNull(),
 });
 
 // --- 2. Таблица кэша постов (Cache of Post Metadata) ---

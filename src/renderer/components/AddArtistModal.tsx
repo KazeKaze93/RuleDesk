@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
+import type { NewArtist } from "../../main/db/schema";
 
 // 1. Схема валидации
 const artistSchema = z.object({
@@ -29,21 +30,20 @@ export const AddArtistModal: React.FC = () => {
     resolver: zodResolver(artistSchema),
     defaultValues: {
       username: "",
-      apiEndpoint: "https://danbooru.donmai.us", // Дефолт здесь
+      apiEndpoint: "https://danbooru.donmai.us",
     },
   });
 
   // 3. Мутация
   const mutation = useMutation({
     mutationFn: async (data: ArtistFormValues) => {
-      const newArtist = {
-        ...data,
+      const newArtist: NewArtist = {
+        username: data.username,
+        apiEndpoint: data.apiEndpoint,
         lastPostId: 0,
         newPostsCount: 0,
-        lastChecked: null, // Drizzle примет null для integer? Если нет, ставь 0 или undefined
       };
 
-      // @ts-ignore: Временный игнор, пока типы Renderer не идеальны
       return window.api.addArtist(newArtist);
     },
     onSuccess: () => {
