@@ -37,6 +37,13 @@ export const registerIpcHandlers = (dbService: DbService) => {
       throw new Error("Username is required");
     }
 
+    try {
+      new URL(artistData.apiEndpoint);
+    } catch (e) {
+      logger.warn(`IPC: Невалидный URL: ${artistData.apiEndpoint}`);
+      throw new Error("Invalid API Endpoint URL");
+    }
+
     return dbService.addArtist(artistData);
   });
 

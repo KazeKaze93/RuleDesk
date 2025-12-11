@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,20 +7,20 @@ import { Plus, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import type { NewArtist } from "../../main/db/schema";
 
-// 1. Схема валидации
+// --- ДОБАВЛЕНО: Схема валидации и Типы ---
 const artistSchema = z.object({
   username: z.string().min(1, "Имя обязательно"),
   apiEndpoint: z.string().url("Некорректный URL"),
 });
 
-// Выводим тип TypeScript из схемы Zod
 type ArtistFormValues = z.infer<typeof artistSchema>;
+// -----------------------------------------
 
 export const AddArtistModal: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // 2. Хук формы
+  // Хук формы
   const {
     register,
     handleSubmit,
@@ -34,16 +34,17 @@ export const AddArtistModal: React.FC = () => {
     },
   });
 
-  // 3. Мутация
   const mutation = useMutation({
     mutationFn: async (data: ArtistFormValues) => {
+      // Создаем объект строго по типу NewArtist
+      // lastPostId и newPostsCount инициализируем нулями
+      // lastChecked и createdAt база заполнит сама (или null)
       const newArtist: NewArtist = {
         username: data.username,
         apiEndpoint: data.apiEndpoint,
         lastPostId: 0,
         newPostsCount: 0,
       };
-
       return window.api.addArtist(newArtist);
     },
     onSuccess: () => {
@@ -51,14 +52,23 @@ export const AddArtistModal: React.FC = () => {
       setIsOpen(false);
       reset();
     },
-    onError: (error) => {
-      alert(`Ошибка: ${error.message}`);
-    },
+    // Ошибки обрабатываем через mutation.isError в рендере
   });
 
   const onSubmit = (data: ArtistFormValues) => {
     mutation.mutate(data);
   };
+
+  // Закрытие по Esc
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   return (
     <>
@@ -67,11 +77,25 @@ export const AddArtistModal: React.FC = () => {
       </Button>
 
       {isOpen && (
-        <div className="flex fixed inset-0 z-50 justify-center items-center backdrop-blur-sm bg-black/80">
-          <div className="p-6 w-full max-w-md rounded-lg border shadow-xl bg-slate-900 border-slate-700">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="flex fixed inset-0 z-50 justify-center items-center backdrop-blur-sm bg-black/80"
+        >
+          {/* Добавляем onClick на фон для закрытия (UX) */}
+          <div className="absolute inset-0" onClick={() => setIsOpen(false)} />
+
+          <div className="relative z-10 p-6 w-full max-w-md rounded-lg border shadow-xl bg-slate-900 border-slate-700">
             <h2 className="mb-4 text-xl font-bold text-white">
               Отслеживать нового автора
             </h2>
+
+            {/* Отображение ошибки API внутри формы */}
+            {mutation.isError && (
+              <div className="p-3 mb-4 text-sm text-red-200 rounded border border-red-800 bg-red-900/50">
+                Ошибка сервера: {mutation.error.message}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
@@ -80,6 +104,7 @@ export const AddArtistModal: React.FC = () => {
                 </label>
                 <input
                   {...register("username")}
+                  autoFocus
                   className="px-3 py-2 w-full text-white rounded border bg-slate-950 border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. wlop"
                 />
