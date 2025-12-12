@@ -3,6 +3,8 @@ name: Build & Release
 on:
   push:
     branches: [main, master]
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
   pull_request:
     branches: [main, master]
 
@@ -31,10 +33,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
-  build-apps:
-    name: 📦 Build Electron App
+  build:
+    name: 📦 Build Artifacts
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads')
     needs: quality
-    # Строим на разных ОС, если нужно, или только на Windows
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
@@ -42,8 +44,37 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build / Package
+        run: npm run build
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: BooruClient-${{ matrix.os }}
+          path: release/
+          retention-days: 5
+
+  release:
+    name: 🚀 GitHub Release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    needs: quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -51,19 +82,7 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Сборка Electron (использует electron-builder под капотом npm run build)
-      - name: Build / Package
-        run: npm run build
+      - name: Build and Publish Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Загрузка артефактов (exe, AppImage и т.д.)
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: BooruClient-${{ matrix.os }}
-          path: |
-            dist/*.exe
-            dist/*.AppImage
-            dist/*.dmg
-          retention-days: 5
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist

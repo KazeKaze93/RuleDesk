@@ -1,7 +1,7 @@
 {
   "name": "nsfw-booru-desktop-client",
   "productName": "NSFW Booru Client",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A modern, secure desktop companion for browsing booru-style imageboard content",
   "main": "out/main/main.js",
   "type": "module",
@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "electron-builder install-app-deps",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "validate": "npm run typecheck && npm run lint"
+    "validate": "npm run typecheck && npm run lint",
+    "dist": "npm run build && electron-builder --publish always"
   },
   "keywords": [
     "electron",
@@ -36,7 +37,7 @@
     "autoprefixer": "^10.4.16",
     "drizzle-kit": "^0.20.6",
     "electron": "^28.0.0",
-    "electron-builder": "^24.6.4",
+    "electron-builder": "^24.13.3",
     "electron-vite": "^2.0.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -69,10 +70,10 @@
     "zustand": "^4.4.7"
   },
   "build": {
-    "appId": "com.yourcompany.boorudesktopclient",
-    "productName": "BooruClient",
+    "appId": "com.kaze.nsfw-booru-desktop-client",
+    "productName": "NSFW Booru Client",
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "files": [
       "out/**/*",
@@ -103,8 +104,19 @@
       }
     ],
     "asar": true,
-    "publish": null,
-    "win": {},
+    "publish": {
+      "provider": "github",
+      "releaseType": "draft"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**"
     ]
