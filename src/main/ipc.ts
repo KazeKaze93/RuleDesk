@@ -104,7 +104,7 @@ export const registerIpcHandlers = (dbService: DbService) => {
 
     const { artistId, page } = validation.data;
 
-    const limit = 1000;
+    const limit = 50;
     const offset = (page - 1) * limit;
     return dbService.getPostsByArtist(artistId, limit, offset);
   });

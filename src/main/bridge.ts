@@ -29,8 +29,7 @@ const ipcBridge: IpcBridge = {
 
   getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),
   addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
-  getArtistPosts: (id, page) =>
-    ipcRenderer.invoke("db:get-posts", { artistId: id, page }),
+  getArtistPosts: (params) => ipcRenderer.invoke("db:get-posts", params),
   deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
