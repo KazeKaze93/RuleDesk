@@ -35,16 +35,16 @@ This project is **unofficial** and **not affiliated** with any external website 
 
 ---
 
-## ✨ Production-Grade Features
+## ✨ Features
 
-| Feature                              | Architectural Note (Separation of Concerns)                                                                                                                                                                                        |
-| :----------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **🔔 New Post Notifier**             | Handled by the **Main Process** (Background Polling Worker) using a scheduled, low-resource polling loop. Data persistence via SQLite.                                                                                             |
-| **🔀 Randomizer & Advanced Filters** | API calls and complex filtering logic reside in the **Main Process** for security and performance. The UI (Renderer) sends clean commands via IPC.                                                                                 |
-| **💾 Local Metadata Database**       | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Database file access is strictly limited to the **Main Process** to enforce thread-safety and security.                                                                |
-| **🧩 DOM Enhancements**              | Implemented as an isolated **Content Script** (`site-injector.ts`) within a dedicated `BrowserView`/`Webview`. Communicates with the Main Process only via a dedicated, secure IPC channel. **This module is inherently fragile.** |
-| **⬇️ One-Click Download**            | The Renderer triggers a download request via **IPC**. The actual file download (I/O operation) is executed safely by the **Main Process** (Node.js).                                                                               |
-| **🏷 Tag Explorer / Stats**           | Metadata fetched from the API is stored locally (SQLite), enabling rich client-side data analysis and charting.                                                                                                                    |
+| Feature                           | Description                                                                                                                                                                                                                             |
+| :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials stored in SQLite database, accessible only from Main Process.                                                                                  |
+| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports both tag-based and uploader-based tracking.                                                                                                 |
+| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling.                                                       |
+| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Stores artists, posts metadata (tags, ratings, URLs), and settings. Database file access is strictly limited to the **Main Process** to enforce thread-safety and security. |
+| **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx.                                                                          |
+| **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                   |
 
 ---
 
@@ -78,21 +78,32 @@ This is the sandboxed browser environment. It handles presentation.
 
 ---
 
-## ⌨️ Keymap
+## 🚀 Quick Start
 
-Common keyboard shortcuts for navigating and interacting with the application:
+### First Launch
 
-| Action             | Shortcut                                  | Description                                   |
-| :----------------- | :---------------------------------------- | :-------------------------------------------- |
-| **Next Image**     | `→` or `D`                                | Navigate to the next image in the gallery     |
-| **Previous Image** | `←` or `A`                                | Navigate to the previous image in the gallery |
-| **Download**       | `Ctrl+D` (Windows/Linux)<br>`Cmd+D` (Mac) | Download the current image                    |
-| **Toggle Sidebar** | `Ctrl+B` (Windows/Linux)<br>`Cmd+B` (Mac) | Show/hide the sidebar panel                   |
-| **Fullscreen**     | `F11` or `F`                              | Toggle fullscreen mode                        |
-| **Search**         | `Ctrl+F` (Windows/Linux)<br>`Cmd+F` (Mac) | Focus the search input                        |
-| **Close Modal**    | `Esc`                                     | Close any open modal or dialog                |
+1. **Get API Credentials:**
 
-_Note: [TODO: Check actual hotkeys] - These shortcuts are placeholders and should be verified against the actual implementation._
+   - Visit https://rule34.xxx/index.php?page=account&s=options
+   - Copy your **User ID** and **API Key** from the API Access section
+
+2. **Onboarding:**
+
+   - Launch the application
+   - Enter your User ID and API Key in the onboarding screen
+   - Click "Сохранить и Войти" (Save and Login)
+
+3. **Add Artists:**
+
+   - Click "Add Artist" button
+   - Enter artist name and tag
+   - Select type (tag or uploader)
+   - Click "Add"
+
+4. **Sync Posts:**
+   - Click "Sync All" to fetch posts from Rule34.xxx
+   - Wait for synchronization to complete
+   - Click on an artist to view their gallery
 
 ---
 
@@ -132,24 +143,13 @@ npm install
 npm run dev
 ```
 
-### Environment Variables
+### Configuration
 
-Create a `.env` file in the root directory to configure environment-specific settings:
+The application stores configuration in SQLite database:
 
-```env
-# API Configuration
-# API_KEY=your_api_key_here
-# API_BASE_URL=https://api.example.com
-
-# Database Configuration
-# DB_PATH=./data/database.sqlite
-
-# Development Settings
-# NODE_ENV=development
-# DEBUG=false
-```
-
-**Note:** Never commit `.env` files to version control. The `.env.example` file (if present) should be used as a template.
+- **API Credentials:** Stored securely in the `settings` table (User ID and API Key)
+- **Database Location:** Electron user data directory (automatically managed)
+- **No Environment Variables Required:** All configuration is handled through the UI
 
 ### Building the Binary
 
@@ -159,10 +159,8 @@ To package the application for distribution:
 # Build for current platform
 npm run build
 
-# Build for specific platforms (if configured)
-npm run build:win    # Windows
-npm run build:linux  # Linux
-npm run build:mac    # macOS
+# Package with electron-builder (after build)
+npx electron-builder
 ```
 
 The built binaries will be available in the `dist/` directory. The exact output location may vary depending on your Electron builder configuration.
@@ -172,14 +170,14 @@ The built binaries will be available in the `dist/` directory. The exact output 
 Run the following commands to ensure code quality:
 
 ```bash
+# Type checking
+npm run typecheck
+
 # Run linter to check code style and potential issues
 npm run lint
 
-# Run tests (if test suite is configured)
-npm test
-
-# Run linter with auto-fix
-npm run lint:fix
+# Run both (validation)
+npm run validate
 ```
 
 📜 License
@@ -221,22 +219,36 @@ The software is provided "as is", without warranty of any kind, express or impli
 
 ---
 
-## ⚙️ Configuration & API Access
+## ⚙️ Database Management
 
-- **API Key (If Required):** Store your API key (if any) in a protected location (e.g., local configuration file/Electron secure storage). **NEVER** commit secrets to the repository.
+### Migrations
 
-- **Drizzle ORM Schema:** If you modify the database schema, run:
+If you modify the database schema (`src/main/db/schema.ts`):
 
 ```bash
+# Generate migration from schema changes
+npm run db:generate
+
+# Run migrations
 npm run db:migrate
+
+# Open Drizzle Studio to inspect database
+npm run db:studio
 ```
+
+**Note:** Migrations run automatically on application startup.
 
 ---
 
-## 🛡️ Adherence to Code Quality Standards
+## 🛡️ Code Quality Standards
 
-- **Architecture:** Strict adherence to SOLID, DRY, KISS, YAGNI principles.
+This project adheres to strict development principles:
 
-- **Backend/Scripting:** Type Hinting (TypeScript/Drizzle) is mandatory across the entire codebase. Proper error handling must be implemented; bare `try-except`/`catch (e)` is forbidden.
+- **Architecture:** SOLID, DRY, KISS, YAGNI principles
+- **TypeScript:** Strict typing, no `any` or unsafe casts
+- **Error Handling:** Proper error handling with descriptive messages
+- **Security:** Context Isolation, no direct Node.js access from Renderer
+- **Database:** Type-safe queries via Drizzle ORM, no raw SQL
+- **UI:** Tailwind CSS only, no inline styles, accessibility considerations
 
-- **Frontend:** No use of `any`, `as` casting, inline styles, or magic numbers/strings. Accessibility (a11y) is a mandatory design consideration for all UI components.
+See [Contributing Guide](./docs/contributing.md) for detailed guidelines.

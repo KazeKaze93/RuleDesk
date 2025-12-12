@@ -163,7 +163,7 @@ interface ArtistCardProps {
 }
 
 export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onDelete }) => {
-  return <div className="p-4">{artist.username}</div>;
+  return <div className="p-4">{artist.name}</div>;
 };
 ```
 
@@ -171,7 +171,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onDelete }) => {
 
 ```typescript
 export const ArtistCard = ({ artist, onDelete }: any) => {
-  return <div style={{ padding: "16px" }}>{artist.username}</div>;
+  return <div style={{ padding: "16px" }}>{artist.name}</div>;
 };
 ```
 
