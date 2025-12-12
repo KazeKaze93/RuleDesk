@@ -1,7 +1,12 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import { Artist, NewArtist, Settings, Post } from "./db/schema";
+import type { Artist, NewArtist, Post, Settings } from "./db/schema";
 
-export type UpdateStatusData = { status: string; message?: string };
+export type UpdateStatusData = {
+  status: string;
+  message?: string;
+  version?: string;
+};
+
 export type UpdateStatusCallback = (data: UpdateStatusData) => void;
 export type UpdateProgressCallback = (percent: number) => void;
 
@@ -16,19 +21,22 @@ export interface IpcBridge {
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
   addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
-  getArtistPosts: (artistId: number, page?: number) => Promise<Post[]>;
   deleteArtist: (id: number) => Promise<void>;
 
+  // Posts
+  getArtistPosts: (artistId: number, page?: number) => Promise<Post[]>;
+
+  // External
   openExternal: (url: string) => Promise<void>;
 
   // Sync
   syncAll: () => Promise<boolean>;
 
-  // --- UPDATER ---
+  // Updater
   checkForUpdates: () => Promise<void>;
   quitAndInstall: () => Promise<void>;
+  startDownload: () => Promise<void>;
 
-  // Подписки на события (возвращают функцию отписки для useEffect cleanup)
   onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
   onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
 }
@@ -41,16 +49,19 @@ const ipcBridge: IpcBridge = {
 
   getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),
   addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
-  getArtistPosts: (params) => ipcRenderer.invoke("db:get-posts", params),
   deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
+
+  getArtistPosts: (id, page) =>
+    ipcRenderer.invoke("db:get-posts", { artistId: id, page }),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
   syncAll: () => ipcRenderer.invoke("db:sync-all"),
 
-  // --- UPDATER IMPLEMENTATION ---
+  // Updater Implementation
   checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
   quitAndInstall: () => ipcRenderer.invoke("app:quit-and-install"),
+  startDownload: () => ipcRenderer.invoke("app:start-download"),
 
   onUpdateStatus: (callback) => {
     const subscription = (_: IpcRendererEvent, data: UpdateStatusData) =>
