@@ -30,7 +30,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 
   return (
     <div className="p-6 space-y-6 duration-300 animate-in fade-in slide-in-from-bottom-4">
-      {/* Шапка галереи */}
       <div className="flex sticky top-0 z-10 justify-between items-center py-4 border-b backdrop-blur bg-slate-950/80 border-slate-800">
         <div className="flex gap-4 items-center">
           <Button
