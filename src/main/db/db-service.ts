@@ -123,7 +123,6 @@ export class DbService {
   }
 
   async deleteArtist(id: number): Promise<void> {
-    await this.db.delete(schema.posts).where(eq(schema.posts.artistId, id));
     await this.db.delete(schema.artists).where(eq(schema.artists.id, id));
     logger.info(`DbService: Автор ID ${id} и его посты удалены.`);
   }

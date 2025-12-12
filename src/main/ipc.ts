@@ -28,7 +28,12 @@ export const registerIpcHandlers = (dbService: DbService) => {
   });
 
   ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
-    if (!userId || !apiKey) throw new Error("Данные обязательны");
+    if (!userId || !apiKey) {
+      logger.warn(
+        "IPC: [app:save-settings] Ошибка валидации: нет userId или apiKey"
+      );
+      throw new Error("Данные обязательны");
+    }
     return dbService.saveSettings(userId, apiKey);
   });
 
