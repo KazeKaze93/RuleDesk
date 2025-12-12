@@ -1,19 +1,22 @@
-name: Build & Release
+name: CI/CD & Release
 
 on:
   push:
     branches: [main, master]
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+    tags: ["v*"]
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: write
+
 jobs:
+  # 1. Проверка качества
   quality:
     name: 🧪 Quality Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -22,46 +25,20 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
-
-      # --- Проверки ---
-
-      - name: Type Check (TypeScript)
+      - name: Type Check
         run: npm run typecheck
 
       - name: Lint
         run: npm run lint
 
-  build:
-    name: 📦 Build Artifacts
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads')
-    needs: quality
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build / Package
-        run: npm run build
-
+  # 2. Сборка и Релиз (ТОЛЬКО при пуше тега v*)
   release:
-    name: 🚀 GitHub Release
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    name: 🚀 Build & Release
+    if: startsWith(github.ref, 'refs/tags/')
     needs: quality
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
+    runs-on: windows-latest
 
     steps:
       - name: Checkout Code
@@ -73,12 +50,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
+          cache: "npm" # <--- Строго npm
 
       - name: Install Dependencies
         run: npm ci
 
-      - name: Build and Publish Release
+      # ШАГ А: Создаем релиз
+      - name: Create Release Entry
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ШАГ Б: Собираем .exe и заливаем файлы
+      - name: Build and Upload Artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist
