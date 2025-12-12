@@ -24,25 +24,31 @@ const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
 
 Stores information about tracked artists/users.
 
-| Column            | Type                          | Description                     |
-| ----------------- | ----------------------------- | ------------------------------- |
-| `id`              | INTEGER (PK, AutoIncrement)   | Primary key                     |
-| `username`        | TEXT (NOT NULL)               | Artist username/alias           |
-| `api_endpoint`    | TEXT (NOT NULL)               | Base API endpoint URL           |
-| `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0) | ID of the last seen post        |
-| `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0) | Count of new, unviewed posts    |
-| `last_checked`    | INTEGER (NULL)                | Timestamp of last API poll      |
-| `created_at`      | INTEGER (NOT NULL)            | Creation timestamp (Unix epoch) |
+| Column            | Type                           | Description                     |
+| ----------------- | ------------------------------ | ------------------------------- |
+| `id`              | INTEGER (PK, AutoIncrement)    | Primary key                     |
+| `name`            | TEXT (NOT NULL)                | Artist display name             |
+| `tag`             | TEXT (NOT NULL, UNIQUE)        | Tag or username for tracking    |
+| `type`            | TEXT (NOT NULL, DEFAULT 'tag') | Type: "tag" or "uploader"       |
+| `api_endpoint`    | TEXT (NOT NULL)                | Base API endpoint URL           |
+| `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)  | ID of the last seen post        |
+| `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)  | Count of new, unviewed posts    |
+| `last_checked`    | INTEGER (NULL)                 | Timestamp of last API poll      |
+| `created_at`      | INTEGER (NOT NULL)             | Creation timestamp (Unix epoch) |
 
 **Schema Definition:**
 
 ```typescript
 export const artists = sqliteTable("artists", {
   id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
-  username: text("username").notNull(),
+  name: text("name").notNull(),
+  tag: text("tag").notNull().unique(),
+  type: text("type", { enum: ["tag", "uploader"] })
+    .default("tag")
+    .notNull(),
   apiEndpoint: text("api_endpoint").notNull(),
-  lastPostId: integer("last_post_id").notNull().default(0),
-  newPostsCount: integer("new_posts_count").notNull().default(0),
+  lastPostId: integer("last_post_id").default(0).notNull(),
+  newPostsCount: integer("new_posts_count").default(0).notNull(),
   lastChecked: integer("last_checked", { mode: "number" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .default(sql`(unixepoch())`)
@@ -156,13 +162,80 @@ Adds a new artist to track.
 
 ```typescript
 const newArtist: NewArtist = {
-  username: "example_artist",
-  apiEndpoint: "https://danbooru.donmai.us",
+  name: "Example Artist",
+  tag: "tag_name",
+  type: "tag",
+  apiEndpoint: "https://api.rule34.xxx",
   lastPostId: 0,
   newPostsCount: 0,
 };
 
 const savedArtist = await dbService.addArtist(newArtist);
+```
+
+#### `deleteArtist(id: number): Promise<void>`
+
+Deletes an artist and all associated posts (cascade delete).
+
+**Example:**
+
+```typescript
+await dbService.deleteArtist(123);
+```
+
+#### `getPostsByArtist(artistId: number, limit?: number, offset?: number): Promise<Post[]>`
+
+Retrieves posts for a specific artist with pagination.
+
+**Example:**
+
+```typescript
+const posts = await dbService.getPostsByArtist(123, 1000, 0);
+```
+
+#### `savePostsForArtist(artistId: number, posts: NewPost[]): Promise<void>`
+
+Saves posts for an artist. Updates artist's `lastPostId` and increments `newPostsCount`.
+
+**Example:**
+
+```typescript
+const newPosts: NewPost[] = [
+  {
+    id: 12345,
+    artistId: 1,
+    fileUrl: "https://...",
+    previewUrl: "https://...",
+    rating: "s",
+    tags: "tag1 tag2 tag3",
+    publishedAt: 1234567890,
+  },
+];
+
+await dbService.savePostsForArtist(1, newPosts);
+```
+
+#### `getSettings(): Promise<Settings | undefined>`
+
+Retrieves stored API credentials.
+
+**Example:**
+
+```typescript
+const settings = await dbService.getSettings();
+if (settings) {
+  console.log(settings.userId);
+}
+```
+
+#### `saveSettings(userId: string, apiKey: string): Promise<void>`
+
+Saves or updates API credentials (always uses id=1).
+
+**Example:**
+
+```typescript
+await dbService.saveSettings("123456", "your-api-key");
 ```
 
 #### `updateArtistPostStatus(artistId: number, newPostId: number, count: number): Promise<void>`

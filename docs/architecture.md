@@ -52,24 +52,33 @@ This application follows a strict **Separation of Concerns (SoC)** architecture,
    - Manages all database operations
    - Uses Drizzle ORM for type-safe queries
    - Thread-safe SQLite access
+   - Methods: getTrackedArtists, addArtist, deleteArtist, getPostsByArtist, savePostsForArtist, getSettings, saveSettings
 
-2. **IPC Handlers** (`src/main/ipc.ts`)
+2. **Sync Service** (`src/main/services/sync-service.ts`)
+
+   - Handles Rule34.xxx API synchronization
+   - Implements rate limiting and pagination
+   - Maps API responses to database schema
+   - Updates artist post counts
+
+3. **IPC Handlers** (`src/main/ipc.ts`)
 
    - Registers all IPC communication channels
-   - Validates input from Renderer
+   - Validates input from Renderer using Zod schemas
    - Delegates to appropriate services
+   - Security validation (e.g., openExternal URL whitelist)
 
-3. **Bridge** (`src/main/bridge.ts`)
+4. **Bridge** (`src/main/bridge.ts`)
 
    - Defines the IPC interface
    - Exposed via preload script
    - Type-safe communication contract
 
-4. **Main Entry** (`src/main/main.ts`)
+5. **Main Entry** (`src/main/main.ts`)
    - Application initialization
    - Window creation
    - Security configuration
-   - Database initialization
+   - Database initialization and migrations
 
 ### Renderer Process (The Face)
 
@@ -86,19 +95,23 @@ This application follows a strict **Separation of Concerns (SoC)** architecture,
 
 1. **React Application** (`src/renderer/App.tsx`)
 
-   - Main UI component
+   - Main UI component with routing logic
+   - Onboarding screen for API credentials
+   - Dashboard with artist list
    - Uses TanStack Query for data fetching
-   - Zustand for state management
+   - State management via React hooks
 
 2. **Components** (`src/renderer/components/`)
 
-   - Reusable UI components
-   - Form handling (React Hook Form)
-   - Modal dialogs
+   - **Onboarding.tsx** - API credentials input form
+   - **AddArtistModal.tsx** - Modal for adding new artists
+   - **ArtistGallery.tsx** - Grid view of posts for an artist
+   - **ui/** - shadcn/ui components (Button, Dialog)
 
 3. **IPC Client** (`window.api`)
    - Typed interface to Main process
    - All communication goes through this bridge
+   - Methods: getSettings, saveSettings, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, syncAll, openExternal
 
 ## Security Architecture
 
@@ -186,9 +199,10 @@ UI Refresh
 
 The database uses SQLite with the following tables:
 
-1. **artists** - Tracked artists/users
-2. **posts** - Cached post metadata
-3. **subscriptions** - Tag subscriptions
+1. **artists** - Tracked artists/users (by tag or uploader)
+2. **posts** - Cached post metadata with tags, ratings, and URLs
+3. **settings** - API credentials (User ID and API Key)
+4. **subscriptions** - Tag subscriptions (schema defined, not yet implemented)
 
 See [Database Documentation](./database.md) for detailed schema information.
 
@@ -205,31 +219,42 @@ See [Database Documentation](./database.md) for detailed schema information.
 
 ### API Client Design
 
-External API calls are handled in the Main process with:
+External API calls are handled in the Main process via `SyncService` (`src/main/services/sync-service.ts`) with:
 
-1. **Rate Limiting:** Prevents API abuse
-2. **Exponential Backoff:** Handles rate limit errors gracefully
-3. **Retry Logic:** Automatic retry on transient failures
-4. **Error Handling:** Proper error propagation
+1. **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
+2. **Pagination:** Handles Rule34.xxx pagination (up to 1000 posts per page)
+3. **Incremental Sync:** Only fetches posts newer than `lastPostId`
+4. **Error Handling:** Graceful handling of API errors and network failures
+5. **Authentication:** Uses User ID and API Key from settings table
 
-### Polling Architecture
+### Sync Architecture
 
-Background polling for new posts:
+Background synchronization for new posts:
 
 ```
-Main Process: Polling Worker
+Renderer: User clicks "Sync All"
+    ↓
+IPC: db:sync-all
+    ↓
+Main Process: SyncService.syncAllArtists()
     ↓
 For each tracked artist:
     ↓
-API Request (with backoff)
+    Get settings (userId, apiKey)
     ↓
-Compare with lastPostId
+    Build Rule34.xxx API query with tag and lastPostId filter
     ↓
-Update newPostsCount
+    Paginate through results (1000 posts per page)
     ↓
-Store in SQLite
+    Map API response to NewPost[]
     ↓
-Notify Renderer (if needed)
+    Save to database (onConflictDoNothing)
+    ↓
+    Update artist.lastPostId and increment newPostsCount
+    ↓
+    Rate limit: 1.5s between artists, 0.5s between pages
+    ↓
+Renderer: Query invalidation triggers UI refresh
 ```
 
 ## Build Architecture
@@ -315,12 +340,20 @@ src/
 
 ## Future Architecture Considerations
 
+### Implemented Features
+
+1. ✅ **Sync Service:** Dedicated service for Rule34.xxx API synchronization
+2. ✅ **Settings Management:** Secure storage of API credentials
+3. ✅ **Artist Tracking:** Support for tag-based and uploader-based tracking
+4. ✅ **Post Gallery:** Grid view of cached posts with preview images
+
 ### Planned Features
 
-1. **Background Polling Service:** Dedicated service for API polling
-2. **Download Manager:** Queue-based download system
+1. **Download Manager:** Queue-based download system for posts
+2. **Tag Subscriptions:** Subscribe to tag combinations (schema ready)
 3. **Content Script Injection:** DOM enhancements for external sites
-4. **Plugin System:** Extensible architecture for custom integrations
+4. **Post Filtering:** Filter posts by rating, tags, date
+5. **Statistics Dashboard:** Analytics on tracked artists and posts
 
 ### Scalability
 
