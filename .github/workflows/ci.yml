@@ -11,36 +11,29 @@ permissions:
   contents: write
 
 jobs:
-  # 1. Проверка качества
   quality:
     name: 🧪 Quality Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-
       - name: Install dependencies
         run: npm ci
       - name: Type Check
         run: npm run typecheck
-
       - name: Lint
         run: npm run lint
 
-  # 2. Сборка и Релиз (ТОЛЬКО при пуше тега v*)
   release:
     name: 🚀 Build & Release
     if: startsWith(github.ref, 'refs/tags/')
     needs: quality
     runs-on: windows-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout Code
@@ -57,15 +50,24 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # ШАГ 1: Просто собираем .exe (БЕЗ попытки публикации билдером)
+      # ШАГ 1: Сборка
       - name: Build Application
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm run build
-          npx electron-builder --publish=never
+          npx electron-builder --publish never
 
-      # ШАГ 2: Создаем релиз и ЯВНО загружаем туда файлы
+      # ШАГ 2: ОТЛАДКА
+      - name: 🔍 DEBUG - List Files
+        run: |
+          echo "Checking dist folder..."
+          ls -R dist || echo "No dist folder"
+          echo "Checking release folder..."
+          ls -R release || echo "No release folder"
+        continue-on-error: true
+
+      # ШАГ 3: Загрузка
       - name: Create Release & Upload Assets
         uses: softprops/action-gh-release@v2
         with:
@@ -73,8 +75,11 @@ jobs:
           draft: true
           make_latest: true
           files: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
             release/*.exe
-            release/latest.yml
             release/*.blockmap
+            release/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
