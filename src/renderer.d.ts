@@ -1,6 +1,11 @@
 import type { Artist, NewArtist, Settings, Post } from "./main/db/schema";
+import {
+  IpcBridge,
+  UpdateStatusCallback,
+  UpdateProgressCallback,
+} from "./main/bridge";
 
-export interface IpcApi {
+export interface IpcApi extends IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
 
@@ -22,6 +27,12 @@ export interface IpcApi {
 
   // Sync
   syncAll: () => Promise<boolean>;
+
+  // UPDATER
+  checkForUpdates: () => Promise<void>;
+  quitAndInstall: () => Promise<void>;
+  onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
+  onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
 }
 
 declare global {

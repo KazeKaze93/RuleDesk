@@ -1,5 +1,9 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import { Artist, NewArtist, Settings, Post } from "./db/schema";
+
+export type UpdateStatusData = { status: string; message?: string };
+export type UpdateStatusCallback = (data: UpdateStatusData) => void;
+export type UpdateProgressCallback = (percent: number) => void;
 
 export interface IpcBridge {
   // App
@@ -19,6 +23,14 @@ export interface IpcBridge {
 
   // Sync
   syncAll: () => Promise<boolean>;
+
+  // --- UPDATER ---
+  checkForUpdates: () => Promise<void>;
+  quitAndInstall: () => Promise<void>;
+
+  // Подписки на события (возвращают функцию отписки для useEffect cleanup)
+  onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
+  onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
 }
 
 const ipcBridge: IpcBridge = {
@@ -35,6 +47,28 @@ const ipcBridge: IpcBridge = {
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
   syncAll: () => ipcRenderer.invoke("db:sync-all"),
+
+  // --- UPDATER IMPLEMENTATION ---
+  checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
+  quitAndInstall: () => ipcRenderer.invoke("app:quit-and-install"),
+
+  onUpdateStatus: (callback) => {
+    const subscription = (_: IpcRendererEvent, data: UpdateStatusData) =>
+      callback(data);
+    ipcRenderer.on("updater:status", subscription);
+    return () => {
+      ipcRenderer.removeListener("updater:status", subscription);
+    };
+  },
+
+  onUpdateProgress: (callback) => {
+    const subscription = (_: IpcRendererEvent, percent: number) =>
+      callback(percent);
+    ipcRenderer.on("updater:progress", subscription);
+    return () => {
+      ipcRenderer.removeListener("updater:progress", subscription);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);

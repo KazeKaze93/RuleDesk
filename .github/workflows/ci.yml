@@ -58,16 +58,7 @@ jobs:
           npm run build
           npx electron-builder --publish never
 
-      # ШАГ 2: ОТЛАДКА
-      - name: 🔍 DEBUG - List Files
-        run: |
-          echo "Checking dist folder..."
-          ls -R dist || echo "No dist folder"
-          echo "Checking release folder..."
-          ls -R release || echo "No release folder"
-        continue-on-error: true
-
-      # ШАГ 3: Загрузка
+      # ШАГ 2: Загрузка
       - name: Create Release & Upload Assets
         uses: softprops/action-gh-release@v2
         with:

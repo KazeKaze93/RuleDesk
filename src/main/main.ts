@@ -1,30 +1,41 @@
-// src/main/main.ts
-
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog } from "electron";
 import * as path from "path";
 import { registerIpcHandlers } from "./ipc";
 import Database from "better-sqlite3";
 import { DbService } from "./db/db-service";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./db/migrate";
+import { updaterService } from "./services/updater-service";
 
 logger.info("🚀 Application starting...");
 
-// --- ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ И СЕРВИСОВ ---
-const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
-// Используем app.getPath('userData') для надежного хранения файла БД
-const dbInstance = new Database(DB_PATH);
-const dbService = new DbService(dbInstance);
+let dbService: DbService;
 
-// --- КРИТИЧЕСКИЙ ШАГ: Регистрация всех IPC хендлеров ---
-registerIpcHandlers(dbService);
-
-// --- Запуск миграций ---
+// --- ИНИЦИАЛИЗАЦИЯ (CRITICAL SECTION) ---
 try {
+  // 1. Подключение к БД
+  const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
+  const dbInstance = new Database(DB_PATH, {});
+  dbService = new DbService(dbInstance);
+
+  // 2. Регистрация IPC (API)
+  registerIpcHandlers(dbService);
+
+  // 3. Накатывание миграций
   runMigrations(dbService.db);
 } catch (e) {
-  logger.error("Failed to run migrations. App will quit.", e);
+  // 🛑 FATAL ERROR HANDLING
+  logger.error("FATAL: Failed to initialize database or services.", e);
+
+  dialog.showErrorBox(
+    "Application Startup Error",
+    `Failed to initialize database or services.\nThe application will now quit.\n\nError: ${
+      e instanceof Error ? e.message : String(e)
+    }`
+  );
+
   app.quit();
+  process.exit(1);
 }
 
 const createWindow = () => {
@@ -33,42 +44,39 @@ const createWindow = () => {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    show: false,
     webPreferences: {
       // --- SECURITY ENFORCEMENT ---
-      // 1. Context Isolation: ОБЯЗАТЕЛЬНО для безопасности.
       contextIsolation: true,
-      // 2. Node Integration: НИКОГДА не должно быть true в Renderer.
       nodeIntegration: false,
-      // 3. Preload Script: Указываем путь к нашему безопасному мосту
       preload: path.join(__dirname, "../preload/bridge.cjs"),
       sandbox: true,
     },
   });
 
+  // --- UPDATER INTEGRATION ---
+  updaterService.setWindow(mainWindow);
+
   mainWindow.webContents.on("did-finish-load", () => {
     logger.info("Renderer loaded");
   });
 
-  // ... обработка ошибок БД ...
-  try {
-    // db init
-  } catch (e) {
-    logger.error("Database init failed:", e);
-    app.quit();
-  }
-
-  // Загрузка UI (Renderer)
+  // Загрузка контента
   if (process.env["ELECTRON_RENDERER_URL"]) {
-    // Режим разработки (HMR)
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
-    // Production (Собранный файл)
     mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 
   if (process.env.NODE_ENV === "development") {
     mainWindow.webContents.openDevTools();
   }
+
+  // --- SHOW WINDOW & CHECK UPDATES ---
+  mainWindow.once("ready-to-show", () => {
+    mainWindow.show();
+    updaterService.checkForUpdates();
+  });
 };
 
 // --- Жизненный цикл Electron ---
