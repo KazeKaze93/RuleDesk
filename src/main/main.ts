@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog } from "electron";
 import * as path from "path";
 import { registerIpcHandlers } from "./ipc";
 import Database from "better-sqlite3";
@@ -9,20 +9,33 @@ import { updaterService } from "./services/updater-service";
 
 logger.info("🚀 Application starting...");
 
-// --- ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ И СЕРВИСОВ ---
-const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
-const dbInstance = new Database(DB_PATH);
-const dbService = new DbService(dbInstance);
+let dbService: DbService;
 
-// --- Регистрация всех IPC хендлеров ---
-registerIpcHandlers(dbService);
-
-// --- Запуск миграций ---
+// --- ИНИЦИАЛИЗАЦИЯ (CRITICAL SECTION) ---
 try {
+  // 1. Подключение к БД
+  const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
+  const dbInstance = new Database(DB_PATH, {});
+  dbService = new DbService(dbInstance);
+
+  // 2. Регистрация IPC (API)
+  registerIpcHandlers(dbService);
+
+  // 3. Накатывание миграций
   runMigrations(dbService.db);
 } catch (e) {
-  logger.error("Failed to run migrations. App will quit.", e);
+  // 🛑 FATAL ERROR HANDLING
+  logger.error("FATAL: Failed to initialize database or services.", e);
+
+  dialog.showErrorBox(
+    "Application Startup Error",
+    `Failed to initialize database or services.\nThe application will now quit.\n\nError: ${
+      e instanceof Error ? e.message : String(e)
+    }`
+  );
+
   app.quit();
+  process.exit(1);
 }
 
 const createWindow = () => {
@@ -34,30 +47,24 @@ const createWindow = () => {
     show: false,
     webPreferences: {
       // --- SECURITY ENFORCEMENT ---
-      // 1. Context Isolation: ОБЯЗАТЕЛЬНО для безопасности.
       contextIsolation: true,
-      // 2. Node Integration: НИКОГДА не должно быть true в Renderer.
       nodeIntegration: false,
-      // 3. Preload Script: Указываем путь к нашему безопасному мосту
       preload: path.join(__dirname, "../preload/bridge.cjs"),
       sandbox: true,
     },
   });
 
   // --- UPDATER INTEGRATION ---
-  // Передаем экземпляр окна в сервис обновлений, чтобы он мог слать события (Events)
   updaterService.setWindow(mainWindow);
 
   mainWindow.webContents.on("did-finish-load", () => {
     logger.info("Renderer loaded");
   });
 
-  // Загрузка UI (Renderer)
+  // Загрузка контента
   if (process.env["ELECTRON_RENDERER_URL"]) {
-    // Режим разработки (HMR)
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
-    // Production (Собранный файл)
     mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 
@@ -66,10 +73,8 @@ const createWindow = () => {
   }
 
   // --- SHOW WINDOW & CHECK UPDATES ---
-  // Показываем окно только когда оно полностью готово к отрисовке
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
-    // Запускаем проверку обновлений
     updaterService.checkForUpdates();
   });
 };

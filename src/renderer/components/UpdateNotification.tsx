@@ -19,8 +19,6 @@ export const UpdateNotification: React.FC = () => {
 
   useEffect(() => {
     const removeStatusListener = window.api.onUpdateStatus((data) => {
-      console.log("[Updater]", data);
-
       if (data.status === "checking" || data.status === "not-available") {
         return;
       }
@@ -54,32 +52,32 @@ export const UpdateNotification: React.FC = () => {
   return (
     <div
       className={cn(
-        "fixed bottom-4 right-4 z-50 w-80 bg-background border border-border rounded-lg shadow-lg p-4 animate-in slide-in-from-bottom-5"
+        "fixed right-4 bottom-4 z-50 p-4 w-80 rounded-lg border shadow-lg bg-background border-border animate-in slide-in-from-bottom-5"
       )}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex justify-between items-start">
+        <div className="flex gap-3 items-center">
           {status === "downloading" && (
-            <RefreshCw className="h-5 w-5 animate-spin text-blue-500" />
+            <RefreshCw className="w-5 h-5 text-blue-500 animate-spin" />
           )}
           {status === "available" && (
-            <Download className="h-5 w-5 text-yellow-500" />
+            <Download className="w-5 h-5 text-yellow-500" />
           )}
           {status === "downloaded" && (
-            <CheckCircle className="h-5 w-5 text-green-500" />
+            <CheckCircle className="w-5 h-5 text-green-500" />
           )}
           {status === "error" && (
-            <AlertCircle className="h-5 w-5 text-red-500" />
+            <AlertCircle className="w-5 h-5 text-red-500" />
           )}
 
           <div>
-            <h4 className="font-semibold text-sm">
+            <h4 className="text-sm font-semibold">
               {status === "available" && "New version found!"}
               {status === "downloading" && "Downloading update..."}
               {status === "downloaded" && "Update ready"}
               {status === "error" && "Update failed"}
             </h4>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="mt-1 text-xs text-muted-foreground">
               {status === "downloading" && `${progress}% completed`}
               {status === "downloaded" && "Restart to install new features"}
               {status === "error" && message}
@@ -90,14 +88,14 @@ export const UpdateNotification: React.FC = () => {
           onClick={handleClose}
           className="text-muted-foreground hover:text-foreground"
         >
-          <X className="h-4 w-4" />
+          <X className="w-4 h-4" />
         </button>
       </div>
 
       {status === "downloading" && (
-        <div className="w-full bg-secondary h-2 rounded-full mt-3 overflow-hidden">
+        <div className="overflow-hidden mt-3 w-full h-2 rounded-full bg-secondary">
           <div
-            className="bg-primary h-full transition-all duration-300 ease-out"
+            className="h-full transition-all duration-300 ease-out bg-primary"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -106,7 +104,7 @@ export const UpdateNotification: React.FC = () => {
       {status === "downloaded" && (
         <button
           onClick={handleInstall}
-          className="mt-3 w-full bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded text-sm font-medium transition-colors"
+          className="px-4 py-2 mt-3 w-full text-sm font-medium rounded transition-colors bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Restart & Install
         </button>
