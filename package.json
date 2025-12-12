@@ -5,6 +5,10 @@
   "description": "A modern, secure desktop companion for browsing booru-style imageboard content",
   "main": "out/main/main.js",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KazeKaze93/NSFW-Booru-Desctop-Client-Unofficial-.git"
+  },
   "scripts": {
     "dev": "chcp 65001 && electron-vite dev",
     "build": "electron-vite build",
