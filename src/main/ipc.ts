@@ -87,8 +87,10 @@ export const registerIpcHandlers = (dbService: DbService) => {
 
   // --- DB: SYNC ---
   ipcMain.handle("db:sync-all", async () => {
-    logger.info("IPC: [db:sync-all] Запуск синхронизации...");
-    await syncService.syncAllArtists();
+    logger.info("IPC: [db:sync-all] Инициирование фоновой синхронизации...");
+    syncService.syncAllArtists().catch((error) => {
+      logger.error("IPC: Критическая ошибка в фоновой синхронизации:", error);
+    });
     return true;
   });
 
