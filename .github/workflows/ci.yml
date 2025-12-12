@@ -63,7 +63,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm run build
-          npx electron-builder --config.publish=never
+          npx electron-builder --publish=never
 
       # ШАГ 2: Создаем релиз и ЯВНО загружаем туда файлы
       - name: Create Release & Upload Assets
