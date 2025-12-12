@@ -116,7 +116,8 @@
       "releaseType": "draft"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "artifactName": "NSFW-Booru-Client-Setup-${version}.${ext}"
     },
     "mac": {
       "target": "dmg"
