@@ -15,45 +15,41 @@ export class UpdaterService {
   }
 
   private initListeners() {
-    // 1. Подключаем логгер
     autoUpdater.logger = logger;
 
-    // 2. Настройки для обновлений
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = true;
+    // 👇 Вежливый режим: не качаем сами
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = false;
 
-    // ⚠️ ОТКЛЮЧАЕМ ПРОВЕРКУ ПОДПИСИ (для GitHub Releases без сертификата)
-    // @ts-expect-error: свойство может отсутствовать в типах, но работает в runtime
+    // @ts-expect-error: signature validation disabled
     autoUpdater.verifyUpdateCodeSignature = false;
 
-    // 3. Слушаем события
     autoUpdater.on("checking-for-update", () => {
-      logger.info("UPDATER: Checking for update...");
+      logger.info("UPDATER: Checking...");
       this.sendStatus("checking");
     });
 
     autoUpdater.on("update-available", (info) => {
       logger.info(`UPDATER: Update available: ${info.version}`);
-      this.sendStatus("available");
+      // Отправляем версию UI, но не качаем
+      this.sendPayload("updater:status", {
+        status: "available",
+        version: info.version,
+      });
     });
 
     autoUpdater.on("update-not-available", (info) => {
-      logger.info(`UPDATER: No update available. Current: ${info.version}`);
+      logger.info(`UPDATER: No update. Current: ${info.version}`);
       this.sendStatus("not-available");
     });
 
     autoUpdater.on("error", (err) => {
-      logger.error("UPDATER: Error in auto-updater:", err);
+      logger.error("UPDATER: Error:", err);
       this.sendStatus("error", err.message);
     });
 
     autoUpdater.on("download-progress", (progressObj) => {
-      if (Math.floor(progressObj.percent) % 10 === 0) {
-        logger.info(
-          `UPDATER: Download progress: ${Math.floor(progressObj.percent)}%`
-        );
-      }
-      this.sendProgress(progressObj.percent);
+      this.sendPayload("updater:progress", progressObj.percent);
     });
 
     autoUpdater.on("update-downloaded", (info) => {
@@ -61,36 +57,40 @@ export class UpdaterService {
       this.sendStatus("downloaded");
     });
 
-    // IPC
+    // IPC Handler: Проверка
     ipcMain.handle("app:check-for-updates", async () => {
-      logger.info("UPDATER: Manual check triggered via IPC");
       return this.checkForUpdates();
     });
 
+    // IPC Handler: Старт скачивания (по кнопке)
+    ipcMain.handle("app:start-download", () => {
+      logger.info("UPDATER: User requested download starting...");
+      autoUpdater.downloadUpdate();
+    });
+
+    // IPC Handler: Перезагрузка
     ipcMain.handle("app:quit-and-install", () => {
-      logger.info("UPDATER: Quitting and installing...");
       autoUpdater.quitAndInstall();
     });
   }
 
-  private sendStatus(status: string, message?: string) {
+  // Универсальный отправитель
+  private sendPayload(channel: string, data: unknown) {
     if (this.window && !this.window.isDestroyed()) {
-      this.window.webContents.send("updater:status", { status, message });
+      this.window.webContents.send(channel, data);
     }
   }
 
-  private sendProgress(percent: number) {
-    if (this.window && !this.window.isDestroyed()) {
-      this.window.webContents.send("updater:progress", percent);
-    }
+  // Обертка для статусов (для обратной совместимости внутри класса)
+  private sendStatus(status: string, message?: string) {
+    this.sendPayload("updater:status", { status, message });
   }
 
   public async checkForUpdates() {
-    logger.info("UPDATER: Check triggered from main process");
     try {
       await autoUpdater.checkForUpdates();
     } catch (e) {
-      logger.error("UPDATER: Failed to check for updates", e);
+      logger.error("UPDATER: Check failed", e);
     }
   }
 }

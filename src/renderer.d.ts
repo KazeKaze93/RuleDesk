@@ -31,6 +31,11 @@ export interface IpcApi extends IpcBridge {
   // UPDATER
   checkForUpdates: () => Promise<void>;
   quitAndInstall: () => Promise<void>;
+
+  // Start download
+  startDownload: () => Promise<void>;
+
+  // Update status
   onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
   onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
 }
