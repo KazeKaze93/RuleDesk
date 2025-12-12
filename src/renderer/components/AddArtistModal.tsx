@@ -93,6 +93,7 @@ export const AddArtistModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setValue("type", "tag")}
+                  aria-pressed={selectedType === "tag"}
                   className={`flex items-center justify-center py-2 text-sm rounded transition-colors ${
                     selectedType === "tag"
                       ? "bg-blue-600 text-white"
@@ -104,6 +105,7 @@ export const AddArtistModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setValue("type", "uploader")}
+                  aria-pressed={selectedType === "uploader"}
                   className={`flex items-center justify-center py-2 text-sm rounded transition-colors ${
                     selectedType === "uploader"
                       ? "bg-purple-600 text-white"

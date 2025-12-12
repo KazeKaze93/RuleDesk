@@ -106,7 +106,7 @@ export class SyncService {
           headers: {
             "User-Agent": "Mozilla/5.0 (compatible; NSFWBooruClient/1.0)",
           },
-          timeout: 20000,
+          timeout: 8000,
         });
 
         const apiPosts = response.data;
