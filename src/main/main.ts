@@ -9,44 +9,64 @@ import { updaterService } from "./services/updater-service";
 
 logger.info("🚀 Application starting...");
 
+// Глобальные ссылки для сохранения контекста
 let dbService: DbService;
+let mainWindow: BrowserWindow | null = null;
 
-// --- ИНИЦИАЛИЗАЦИЯ (CRITICAL SECTION) ---
-try {
-  // 1. Подключение к БД
-  const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
-  const dbInstance = new Database(DB_PATH, {});
-  dbService = new DbService(dbInstance);
+// --- SINGLE INSTANCE LOCK ---
+const gotTheLock = app.requestSingleInstanceLock();
 
-  // 2. Регистрация IPC (API)
-  registerIpcHandlers(dbService);
-
-  // 3. Накатывание миграций
-  runMigrations(dbService.db);
-} catch (e) {
-  // 🛑 FATAL ERROR HANDLING
-  logger.error("FATAL: Failed to initialize database or services.", e);
-
-  dialog.showErrorBox(
-    "Application Startup Error",
-    `Failed to initialize database or services.\nThe application will now quit.\n\nError: ${
-      e instanceof Error ? e.message : String(e)
-    }`
-  );
-
+if (!gotTheLock) {
+  logger.warn("Another instance is already running. Quitting...");
   app.quit();
-  process.exit(1);
+} else {
+  // Обработка запуска второй копии: разворачиваем и фокусируем первую
+  app.on("second-instance", () => {
+    logger.info("Second instance detected. Focusing main window...");
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
+  initializeAppAndReady();
 }
 
-const createWindow = () => {
-  const mainWindow = new BrowserWindow({
+function initializeAppAndReady() {
+  try {
+    const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
+    // Инициализация базы с опциями (можно добавить verbose: console.log для отладки SQL)
+    const dbInstance = new Database(DB_PATH, {});
+    dbService = new DbService(dbInstance);
+
+    registerIpcHandlers(dbService);
+    runMigrations(dbService.db);
+  } catch (e) {
+    logger.error("FATAL: Failed to initialize database.", e);
+
+    dialog.showErrorBox(
+      "Fatal Error: Application Initialization Failed",
+      `The application could not start due to a critical error.\n\nError Details:\n${
+        e instanceof Error ? e.message : String(e)
+      }`
+    );
+
+    // Жесткий выход с кодом ошибки, так как работать дальше невозможно
+    app.exit(1);
+  }
+
+  // Ждем готовности Electron API
+  app.on("ready", createWindow);
+}
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    show: false,
+    show: false, // Окно скрыто до ready-to-show во избежание "белого экрана"
     webPreferences: {
-      // --- SECURITY ENFORCEMENT ---
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(__dirname, "../preload/bridge.cjs"),
@@ -54,14 +74,14 @@ const createWindow = () => {
     },
   });
 
-  // --- UPDATER INTEGRATION ---
+  // Подключаем окно к сервису обновлений
   updaterService.setWindow(mainWindow);
 
   mainWindow.webContents.on("did-finish-load", () => {
     logger.info("Renderer loaded");
   });
 
-  // Загрузка контента
+  // Роутинг загрузки (Dev vs Prod)
   if (process.env["ELECTRON_RENDERER_URL"]) {
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
@@ -72,16 +92,19 @@ const createWindow = () => {
     mainWindow.webContents.openDevTools();
   }
 
-  // --- SHOW WINDOW & CHECK UPDATES ---
+  // Показываем окно и проверяем обновления ТОЛЬКО когда UI готов
   mainWindow.once("ready-to-show", () => {
-    mainWindow.show();
+    if (mainWindow) mainWindow.show();
     updaterService.checkForUpdates();
   });
-};
 
-// --- Жизненный цикл Electron ---
-app.on("ready", createWindow);
+  // Очистка ссылки при закрытии окна
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+}
 
+// Стандартное поведение закрытия (кроме macOS)
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
