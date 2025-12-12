@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { Button } from "./ui/button";
 import type { Artist, Post } from "../../main/db/schema";
+
+const POSTS_PER_PAGE = 50;
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -13,13 +15,22 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   artist,
   onBack,
 }) => {
+  // 1. Состояние страницы
+  const [page, setPage] = useState(1);
+
+  // 2. Запрос с зависимостью от страницы
   const { data: posts, isLoading } = useQuery({
-    queryKey: ["posts", artist.id],
-    queryFn: () => window.api.getArtistPosts(artist.id, 1),
+    queryKey: ["posts", artist.id, page],
+    queryFn: () =>
+      window.api.getArtistPosts({
+        artistId: artist.id,
+        page: page,
+      }),
   });
 
   return (
-    <div className="space-y-6 duration-300 animate-in fade-in slide-in-from-bottom-4">
+    <div className="p-6 space-y-6 duration-300 animate-in fade-in slide-in-from-bottom-4">
+      {/* Шапка галереи */}
       <div className="flex sticky top-0 z-10 justify-between items-center py-4 border-b backdrop-blur bg-slate-950/80 border-slate-800">
         <div className="flex gap-4 items-center">
           <Button
@@ -37,7 +48,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
                 {artist.tag}
               </span>
               <span>•</span>
-              <span>{posts ? posts.length : 0} загружено</span>
+              <span>
+                {posts ? posts.length : 0} постов на стр. {page}
+              </span>
             </div>
           </div>
         </div>
@@ -56,6 +69,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         </Button>
       </div>
 
+      {/* Контент галереи */}
       {isLoading ? (
         <div className="py-20 text-center text-slate-500">
           Загрузка постов...
@@ -69,7 +83,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             >
               <img
                 src={post.previewUrl || post.fileUrl}
-                alt={post.tags || ""}
+                alt={`Image by ${artist.name} with tags ${post.tags}`} // Улучшенный alt для A11y
                 className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
                 loading="lazy"
               />
@@ -87,9 +101,34 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         </div>
       ) : (
         <div className="py-20 text-center rounded-lg border border-dashed border-slate-800">
-          <p className="text-slate-400">Нет постов в базе.</p>
+          <p className="text-slate-400">Нет постов на этой странице.</p>
         </div>
       )}
+
+      {/* Пагинация */}
+      <div className="flex gap-4 justify-center pb-6 mt-6">
+        <Button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1 || isLoading}
+          variant="outline"
+          aria-label="Предыдущая страница"
+        >
+          <ArrowLeft className="mr-2 w-4 h-4" /> Назад
+        </Button>
+
+        <span className="flex items-center font-mono text-slate-400">
+          Страница {page}
+        </span>
+
+        <Button
+          onClick={() => setPage((p) => p + 1)}
+          disabled={isLoading || (posts && posts.length < POSTS_PER_PAGE)}
+          variant="outline"
+          aria-label="Следующая страница"
+        >
+          Вперед <ArrowRight className="ml-2 w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 };

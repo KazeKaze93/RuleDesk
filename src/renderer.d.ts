@@ -15,7 +15,10 @@ export interface IpcApi {
   deleteArtist: (id: number) => Promise<void>;
 
   // Posts
-  getArtistPosts: (artistId: number, page?: number) => Promise<Post[]>;
+  getArtistPosts: (params: {
+    artistId: number;
+    page: number;
+  }) => Promise<Post[]>;
 
   // Sync
   syncAll: () => Promise<boolean>;
