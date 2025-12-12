@@ -28,10 +28,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const onSubmit = async (data: CredsFormValues) => {
     try {
       await window.api.saveSettings(data);
-      onComplete(); // Переключаем экран
+      onComplete();
     } catch (e) {
-      console.error(e);
-      // Здесь можно добавить toast с ошибкой
+      const message =
+        e instanceof Error ? e.message : "Неизвестная ошибка сохранения.";
+      alert(`Ошибка авторизации: ${message}`);
     }
   };
 
@@ -72,12 +73,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block mb-1 text-sm font-medium text-slate-400">
+            <label
+              htmlFor="user-id-input"
+              className="block mb-1 text-sm font-medium text-slate-400"
+            >
               User ID
             </label>
             <div className="relative">
               <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
               <input
+                id="user-id-input"
                 {...register("userId")}
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
                 placeholder="Например: 123456"
@@ -91,12 +96,16 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium text-slate-400">
+            <label
+              htmlFor="api-key-input"
+              className="block mb-1 text-sm font-medium text-slate-400"
+            >
               API Key
             </label>
             <div className="relative">
               <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
               <input
+                id="api-key-input"
                 {...register("apiKey")}
                 type="password"
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
