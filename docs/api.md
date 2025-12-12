@@ -69,7 +69,7 @@ Retrieves all tracked artists from the local database.
 ```typescript
 const artists = await window.api.getTrackedArtists();
 artists.forEach((artist) => {
-  console.log(artist.username, artist.apiEndpoint);
+  console.log(artist.name, artist.tag, artist.apiEndpoint);
 });
 ```
 
@@ -269,7 +269,7 @@ console.log(`Found ${posts.length} posts`);
 
 **IPC Channel:** `db:get-posts`
 
-**Note:** Each page returns up to 1000 posts (limit).
+**Note:** Each page returns up to 50 posts (limit). Use pagination to retrieve more posts.
 
 ---
 
@@ -373,7 +373,9 @@ export const registerIpcHandlers = (dbService: DbService) => {
     return dbService.deleteArtist(id);
   });
   ipcMain.handle("db:get-posts", async (_event, { artistId, page }) => {
-    return dbService.getPostsByArtist(artistId, 1000, (page - 1) * 1000);
+    const limit = 50;
+    const offset = (page - 1) * limit;
+    return dbService.getPostsByArtist(artistId, limit, offset);
   });
   ipcMain.handle("db:sync-all", async () => {
     // Initiates background sync

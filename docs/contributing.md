@@ -44,7 +44,7 @@ This project adheres to strict development principles. Please review these befor
 1. **Fork and Clone**
 
    ```bash
-   git clone https://github.com/your-username/NSFW-Booru-Desctop-Client-Unofficial-.git
+   git clone https://github.com/<your-username>/NSFW-Booru-Desctop-Client-Unofficial-.git
    cd NSFW-Booru-Desctop-Client-Unofficial-
    ```
 

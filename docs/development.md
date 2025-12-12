@@ -13,7 +13,7 @@ This guide covers the development setup, build process, and common development t
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/NSFW-Booru-Desctop-Client-Unofficial-.git
+git clone https://github.com/<your-username>/NSFW-Booru-Desctop-Client-Unofficial-.git
 cd NSFW-Booru-Desctop-Client-Unofficial-
 ```
 

@@ -83,17 +83,19 @@ Caches post metadata for filtering, statistics, and download management.
 ```typescript
 export const posts = sqliteTable("posts", {
   id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: false }),
-  artistId: integer("artist_id", { mode: "number" })
+  artistId: integer("artist_id")
     .references(() => artists.id, { onDelete: "cascade" })
     .notNull(),
-  title: text("title").notNull(),
   fileUrl: text("file_url").notNull(),
-  tagHash: text("tag_hash"),
-  isViewed: integer("is_viewed", { mode: "boolean" }).notNull().default(false),
+  previewUrl: text("preview_url"),
+  title: text("title").default(""),
+  rating: text("rating"),
+  tags: text("tags"),
   publishedAt: integer("published_at", { mode: "number" }).notNull(),
-  createdAt: integer("created_at", { mode: "number" }).default(
-    sql`(unixepoch('now'))`
-  ),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .default(sql`(unixepoch())`)
+    .notNull(),
+  isViewed: integer("is_viewed", { mode: "boolean" }).default(false).notNull(),
 });
 ```
 
@@ -187,11 +189,23 @@ await dbService.deleteArtist(123);
 
 Retrieves posts for a specific artist with pagination.
 
+**Parameters:**
+
+- `artistId: number` - Artist ID
+- `limit?: number` - Number of posts to retrieve (default: 1000)
+- `offset?: number` - Number of posts to skip (default: 0)
+
 **Example:**
 
 ```typescript
-const posts = await dbService.getPostsByArtist(123, 1000, 0);
+// Get first 50 posts
+const posts = await dbService.getPostsByArtist(123, 50, 0);
+
+// Get next 50 posts (page 2)
+const nextPosts = await dbService.getPostsByArtist(123, 50, 50);
 ```
+
+**Note:** The IPC method `getArtistPosts` uses a limit of 50 posts per page for better performance.
 
 #### `savePostsForArtist(artistId: number, posts: NewPost[]): Promise<void>`
 

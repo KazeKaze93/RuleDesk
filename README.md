@@ -6,23 +6,6 @@
 
 ---
 
-## 📸 Gallery
-
-### Dashboard
-
-![Dashboard Screenshot](./docs/screenshots/dashboard.png)
-_Main application interface showing the dashboard with navigation and content overview._
-
-### Search Interface
-
-![Search Interface Screenshot](./docs/screenshots/search.png)
-_Advanced search and filtering interface for discovering content._
-
-### Image Viewer
-
-![Image Viewer Screenshot](./docs/screenshots/image-viewer.png)
-_Full-screen image viewer with metadata and navigation controls._
-
 ---
 
 ## ⚠️ Disclaimer & Risk Assessment
