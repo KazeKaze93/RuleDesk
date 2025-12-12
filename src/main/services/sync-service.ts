@@ -26,7 +26,6 @@ export class SyncService {
       const settings = await this.dbService.getSettings();
 
       if (!settings) {
-        // ИСПРАВЛЕНО: Вместо throw используем warn и return, чтобы не крашить IPC.
         logger.warn(
           "SyncService: Ключи (userId/apiKey) не найдены. Синхронизация пропущена."
         );
@@ -40,10 +39,8 @@ export class SyncService {
 
       for (const artist of artists) {
         try {
-          // Передаем ключи в метод синхронизации
           await this.syncArtist(artist, settings.userId, settings.apiKey);
         } catch (error) {
-          // Логируем ошибку, но НЕ прерываем цикл для остальных авторов
           logger.error(
             `SyncService: Ошибка при обновлении ${artist.name}: ${
               error instanceof Error ? error.message : String(error)
@@ -51,17 +48,16 @@ export class SyncService {
           );
         }
 
-        // Пауза 1.5 сек (Rule34 Rate Limit)
-        // ВАЖНО: Пауза выполняется всегда, чтобы сохранить ритм запросов.
+        // Пауза 1.5 сек (Rule34 Rate Limit) - Асинхронная, не блокирует Event Loop.
         await new Promise((resolve) => setTimeout(resolve, 1500));
       }
 
       logger.info("SyncService: Полный цикл синхронизации завершен.");
     } catch (criticalError) {
-      // Глобальный catch для ошибок уровня БД (если getTrackedArtists или getSettings упадут)
       logger.error(
         `SyncService: Критическая ошибка в syncAllArtists: ${criticalError}`
       );
+      throw criticalError;
     }
   }
 
@@ -154,7 +150,6 @@ export class SyncService {
             artist.name
           }: ${e instanceof Error ? e.message : String(e)}`
         );
-        throw e;
       }
     }
 
