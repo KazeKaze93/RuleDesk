@@ -11,7 +11,8 @@ import { AddArtistModal } from "./components/AddArtistModal";
 import { Onboarding } from "./components/Onboarding";
 import { Button } from "./components/ui/button";
 import { ArtistGallery } from "./components/ArtistGallery";
-import { UpdateNotification } from "./components/UpdateNotification"; // ✅ Теперь используется
+import { UpdateNotification } from "./components/UpdateNotification";
+import { cn } from "./lib/utils";
 
 const queryClient = new QueryClient();
 
@@ -41,7 +42,7 @@ const ArtistListView: React.FC<{
               disabled={isSyncing}
             >
               <RefreshCw
-                className={`mr-2 h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+                className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")}
               />
               {isSyncing ? "Syncing..." : "Sync All"}
             </Button>
@@ -74,10 +75,11 @@ const ArtistListView: React.FC<{
               ) : (
                 <div className="grid gap-2">
                   {artists?.map((artist) => (
-                    <div
+                    <button
                       key={artist.id}
                       onClick={() => onSelect(artist)}
-                      className="flex justify-between items-center p-3 rounded border transition-colors cursor-pointer bg-slate-900 border-slate-800 hover:bg-slate-800 group"
+                      className="flex justify-between items-center p-3 w-full text-left rounded border transition-all cursor-pointer bg-slate-900 border-slate-800 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 group"
+                      type="button"
                     >
                       <div className="flex-1">
                         <span className="font-medium text-blue-400 transition-colors group-hover:text-blue-300">
@@ -88,7 +90,7 @@ const ArtistListView: React.FC<{
                           {artist.newPostsCount}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -124,7 +126,6 @@ const MainScreen: React.FC<{ version?: string }> = ({ version }) => {
     },
   });
 
-  // Если выбран артист — показываем Галерею
   if (selectedArtist) {
     return (
       <div className="p-8 min-h-screen bg-slate-950 text-slate-50">
@@ -138,12 +139,11 @@ const MainScreen: React.FC<{ version?: string }> = ({ version }) => {
     );
   }
 
-  // Иначе — показываем Список
   return (
     <ArtistListView
       artists={artists}
       isLoading={isLoading}
-      error={error}
+      error={error as Error | null}
       version={version}
       onSelect={setSelectedArtist}
       onSync={() => syncMutation.mutate()}
