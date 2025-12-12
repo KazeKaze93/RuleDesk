@@ -6,7 +6,7 @@ export const artists = sqliteTable("artists", {
   id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
 
   name: text("name").notNull(),
-  tag: text("tag").notNull(),
+  tag: text("tag").notNull().unique(),
 
   type: text("type", { enum: ["tag", "uploader"] })
     .default("tag")
