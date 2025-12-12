@@ -29,7 +29,7 @@ export default defineConfig({
     root: "src/renderer",
     resolve: {
       alias: {
-        "@": resolve("src"),
+        "@": resolve(__dirname, "src/renderer"),
       },
     },
     build: {

@@ -2,7 +2,8 @@ import { app, ipcMain, shell, IpcMainInvokeEvent } from "electron";
 import { DbService } from "./db/db-service";
 import { NewArtist } from "./db/schema";
 import { logger } from "./lib/logger";
-import { SyncService } from "./services/sync-service"; // <--- 1. ИМПОРТ
+import { SyncService } from "./services/sync-service";
+import { URL } from "url";
 
 // --- 1. Отдельные функции-обработчики ---
 
@@ -37,10 +38,22 @@ export const registerIpcHandlers = (dbService: DbService) => {
     return dbService.saveSettings(userId, apiKey);
   });
 
-  // Добавим на всякий случай, если захочешь открывать ссылки
-  ipcMain.handle("app:open-external", async (_event, url: string) => {
-    if (url.startsWith("https://rule34.xxx")) {
-      await shell.openExternal(url);
+  ipcMain.handle("app:open-external", async (_event, urlString: string) => {
+    try {
+      const parsedUrl = new URL(urlString);
+      if (
+        parsedUrl.protocol === "https:" &&
+        (parsedUrl.hostname === "rule34.xxx" ||
+          parsedUrl.hostname === "www.rule34.xxx")
+      ) {
+        await shell.openExternal(urlString);
+      } else {
+        logger.warn(
+          `IPC: Blocked attempt to open unauthorized URL: ${urlString}`
+        );
+      }
+    } catch (_e) {
+      logger.error(`IPC: Invalid URL passed to open-external: ${urlString}`);
     }
   });
 

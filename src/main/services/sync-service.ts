@@ -19,33 +19,50 @@ export class SyncService {
   constructor(private dbService: DbService) {}
 
   async syncAllArtists(): Promise<void> {
-    logger.info("SyncService: Начало синхронизации Rule34...");
+    logger.info("SyncService: Начало полного цикла синхронизации Rule34...");
 
-    // 1. Получаем ключи (БЕЗ НИХ НЕ РАБОТАЕМ)
-    const settings = await this.dbService.getSettings();
-    if (!settings) {
-      logger.error("SyncService: Нет ключей! Синхронизация отменена.");
-      throw new Error("Authorization required");
-    }
+    try {
+      // 1. Получаем ключи
+      const settings = await this.dbService.getSettings();
 
-    const artists = await this.dbService.getTrackedArtists();
+      if (!settings) {
+        // ИСПРАВЛЕНО: Вместо throw используем warn и return, чтобы не крашить IPC.
+        logger.warn(
+          "SyncService: Ключи (userId/apiKey) не найдены. Синхронизация пропущена."
+        );
+        return;
+      }
 
-    for (const artist of artists) {
-      try {
-        // Передаем ключи в метод синхронизации
-        await this.syncArtist(artist, settings.userId, settings.apiKey);
+      const artists = await this.dbService.getTrackedArtists();
+      logger.info(
+        `SyncService: Найдено авторов для обновления: ${artists.length}`
+      );
+
+      for (const artist of artists) {
+        try {
+          // Передаем ключи в метод синхронизации
+          await this.syncArtist(artist, settings.userId, settings.apiKey);
+        } catch (error) {
+          // Логируем ошибку, но НЕ прерываем цикл для остальных авторов
+          logger.error(
+            `SyncService: Ошибка при обновлении ${artist.name}: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        }
 
         // Пауза 1.5 сек (Rule34 Rate Limit)
+        // ВАЖНО: Пауза выполняется всегда, чтобы сохранить ритм запросов.
         await new Promise((resolve) => setTimeout(resolve, 1500));
-      } catch (error) {
-        logger.error(
-          `SyncService: Ошибка при обновлении ${artist.name}:`,
-          error
-        );
       }
-    }
 
-    logger.info("SyncService: Синхронизация завершена.");
+      logger.info("SyncService: Полный цикл синхронизации завершен.");
+    } catch (criticalError) {
+      // Глобальный catch для ошибок уровня БД (если getTrackedArtists или getSettings упадут)
+      logger.error(
+        `SyncService: Критическая ошибка в syncAllArtists: ${criticalError}`
+      );
+    }
   }
 
   private async syncArtist(
@@ -77,7 +94,7 @@ export class SyncService {
         tags: tagsQuery,
         user_id: userId,
         api_key: apiKey,
-        pid: page.toString(), // <--- ПАГИНАЦИЯ
+        pid: page.toString(),
       });
 
       // Чистим URL
@@ -123,6 +140,7 @@ export class SyncService {
           hasMore = false;
         } else {
           page++;
+          // Пауза 0.5 сек между страницами пагинации
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       } catch (e) {
@@ -130,10 +148,11 @@ export class SyncService {
           hasMore = false;
           break;
         }
+
         logger.error(
-          `SyncService: Ошибка при обработке страницы ${page}: ${
-            e instanceof Error ? e.message : String(e)
-          }`
+          `SyncService: Ошибка при обработке страницы ${page} для ${
+            artist.name
+          }: ${e instanceof Error ? e.message : String(e)}`
         );
         throw e;
       }
@@ -145,10 +164,6 @@ export class SyncService {
     } else {
       logger.info(
         `SyncService: Всего загружено ${totalSynced} постов для ${artist.name}`
-      );
-
-      logger.info(
-        `SyncService: Синхронизация завершена. Всего постов: ${totalSynced}`
       );
     }
   }
