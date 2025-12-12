@@ -70,5 +70,8 @@ jobs:
             dist/*.exe
             dist/*.blockmap
             dist/latest.yml
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
