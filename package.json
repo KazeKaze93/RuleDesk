@@ -14,7 +14,8 @@
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
     "postinstall": "electron-builder install-app-deps",
-    "lint": "eslint ."
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "validate": "npm run typecheck && npm run lint"
   },
   "keywords": [
     "electron",
@@ -51,7 +52,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.17.0",
-    "axios": "^1.6.2",
+    "axios": "^1.13.2",
     "better-sqlite3": "^9.2.2",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.29.3",

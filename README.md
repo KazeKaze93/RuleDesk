@@ -6,6 +6,25 @@
 
 ---
 
+## 📸 Gallery
+
+### Dashboard
+
+![Dashboard Screenshot](./docs/screenshots/dashboard.png)
+_Main application interface showing the dashboard with navigation and content overview._
+
+### Search Interface
+
+![Search Interface Screenshot](./docs/screenshots/search.png)
+_Advanced search and filtering interface for discovering content._
+
+### Image Viewer
+
+![Image Viewer Screenshot](./docs/screenshots/image-viewer.png)
+_Full-screen image viewer with metadata and navigation controls._
+
+---
+
 ## ⚠️ Disclaimer & Risk Assessment
 
 This project is **unofficial** and **not affiliated** with any external website or company.
@@ -59,6 +78,24 @@ This is the sandboxed browser environment. It handles presentation.
 
 ---
 
+## ⌨️ Keymap
+
+Common keyboard shortcuts for navigating and interacting with the application:
+
+| Action             | Shortcut                                  | Description                                   |
+| :----------------- | :---------------------------------------- | :-------------------------------------------- |
+| **Next Image**     | `→` or `D`                                | Navigate to the next image in the gallery     |
+| **Previous Image** | `←` or `A`                                | Navigate to the previous image in the gallery |
+| **Download**       | `Ctrl+D` (Windows/Linux)<br>`Cmd+D` (Mac) | Download the current image                    |
+| **Toggle Sidebar** | `Ctrl+B` (Windows/Linux)<br>`Cmd+B` (Mac) | Show/hide the sidebar panel                   |
+| **Fullscreen**     | `F11` or `F`                              | Toggle fullscreen mode                        |
+| **Search**         | `Ctrl+F` (Windows/Linux)<br>`Cmd+F` (Mac) | Focus the search input                        |
+| **Close Modal**    | `Esc`                                     | Close any open modal or dialog                |
+
+_Note: [TODO: Check actual hotkeys] - These shortcuts are placeholders and should be verified against the actual implementation._
+
+---
+
 ## 📚 Documentation
 
 Comprehensive documentation is available in the [`docs/`](./docs/) directory:
@@ -74,6 +111,76 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 ## ⚙️ Development Setup
 
 This project uses **Vite** as the build tool for both the Electron Main and Renderer processes, ensuring optimal build performance.
+
+### Prerequisites
+
+- Node.js (v18+)
+- npm or yarn
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/<your-username>/booru-desktop-client.git
+cd booru-desktop-client
+
+# Install dependencies
+npm install
+
+# Start the application in development mode
+# This runs the Vite dev server for the Renderer and starts the Electron Main process.
+npm run dev
+```
+
+### Environment Variables
+
+Create a `.env` file in the root directory to configure environment-specific settings:
+
+```env
+# API Configuration
+# API_KEY=your_api_key_here
+# API_BASE_URL=https://api.example.com
+
+# Database Configuration
+# DB_PATH=./data/database.sqlite
+
+# Development Settings
+# NODE_ENV=development
+# DEBUG=false
+```
+
+**Note:** Never commit `.env` files to version control. The `.env.example` file (if present) should be used as a template.
+
+### Building the Binary
+
+To package the application for distribution:
+
+```bash
+# Build for current platform
+npm run build
+
+# Build for specific platforms (if configured)
+npm run build:win    # Windows
+npm run build:linux  # Linux
+npm run build:mac    # macOS
+```
+
+The built binaries will be available in the `dist/` directory. The exact output location may vary depending on your Electron builder configuration.
+
+### Quality Checks
+
+Run the following commands to ensure code quality:
+
+```bash
+# Run linter to check code style and potential issues
+npm run lint
+
+# Run tests (if test suite is configured)
+npm test
+
+# Run linter with auto-fix
+npm run lint:fix
+```
 
 📜 License
 
@@ -133,23 +240,3 @@ npm run db:migrate
 - **Backend/Scripting:** Type Hinting (TypeScript/Drizzle) is mandatory across the entire codebase. Proper error handling must be implemented; bare `try-except`/`catch (e)` is forbidden.
 
 - **Frontend:** No use of `any`, `as` casting, inline styles, or magic numbers/strings. Accessibility (a11y) is a mandatory design consideration for all UI components.
-
-### Prerequisites
-
-- Node.js (v18+)
-- npm or yarn
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/<your-username>/booru-desktop-client.git
-cd booru-desktop-client
-
-# Install dependencies
-npm install
-
-# Start the application in development mode
-# This runs the Vite dev server for the Renderer and starts the Electron Main process.
-npm run dev
-```
