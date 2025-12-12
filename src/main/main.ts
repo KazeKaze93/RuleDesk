@@ -9,7 +9,7 @@ import { updaterService } from "./services/updater-service";
 
 logger.info("🚀 Application starting...");
 
-// Глобальные ссылки
+// Глобальные ссылки для сохранения контекста
 let dbService: DbService;
 let mainWindow: BrowserWindow | null = null;
 
@@ -20,8 +20,8 @@ if (!gotTheLock) {
   logger.warn("Another instance is already running. Quitting...");
   app.quit();
 } else {
-  // Если мы - первый экземпляр, вешаем обработчик на попытку запуска второго
-  app.on("second-instance", (_event, _commandLine, _workingDirectory) => {
+  // Обработка запуска второй копии: разворачиваем и фокусируем первую
+  app.on("second-instance", () => {
     logger.info("Second instance detected. Focusing main window...");
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
@@ -29,13 +29,13 @@ if (!gotTheLock) {
     }
   });
 
-  // Инициализация БД и старт
   initializeAppAndReady();
 }
 
 function initializeAppAndReady() {
   try {
     const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
+    // Инициализация базы с опциями (можно добавить verbose: console.log для отладки SQL)
     const dbInstance = new Database(DB_PATH, {});
     dbService = new DbService(dbInstance);
 
@@ -43,15 +43,19 @@ function initializeAppAndReady() {
     runMigrations(dbService.db);
   } catch (e) {
     logger.error("FATAL: Failed to initialize database.", e);
+
     dialog.showErrorBox(
-      "Startup Error",
-      `Failed to initialize.\n\n${e instanceof Error ? e.message : String(e)}`
+      "Fatal Error: Application Initialization Failed",
+      `The application could not start due to a critical error.\n\nError Details:\n${
+        e instanceof Error ? e.message : String(e)
+      }`
     );
-    app.quit();
-    process.exit(1);
+
+    // Жесткий выход с кодом ошибки, так как работать дальше невозможно
+    app.exit(1);
   }
 
-  // Запуск окна только когда Electron готов
+  // Ждем готовности Electron API
   app.on("ready", createWindow);
 }
 
@@ -61,7 +65,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    show: false,
+    show: false, // Окно скрыто до ready-to-show во избежание "белого экрана"
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -70,12 +74,14 @@ function createWindow() {
     },
   });
 
+  // Подключаем окно к сервису обновлений
   updaterService.setWindow(mainWindow);
 
   mainWindow.webContents.on("did-finish-load", () => {
     logger.info("Renderer loaded");
   });
 
+  // Роутинг загрузки (Dev vs Prod)
   if (process.env["ELECTRON_RENDERER_URL"]) {
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
@@ -86,19 +92,19 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
+  // Показываем окно и проверяем обновления ТОЛЬКО когда UI готов
   mainWindow.once("ready-to-show", () => {
     if (mainWindow) mainWindow.show();
-    // Проверка обновлений
     updaterService.checkForUpdates();
   });
 
-  // Очистка ссылки при закрытии
+  // Очистка ссылки при закрытии окна
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 }
 
-// Стандартные обработчики закрытия
+// Стандартное поведение закрытия (кроме macOS)
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
