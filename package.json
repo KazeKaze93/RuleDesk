@@ -1,7 +1,7 @@
 {
   "name": "nsfw-booru-desktop-client",
   "productName": "NSFW Booru Client",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "A modern, secure desktop companion for browsing booru-style imageboard content",
   "main": "out/main/main.js",
   "type": "module",
