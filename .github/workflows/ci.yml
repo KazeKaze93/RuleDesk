@@ -58,19 +58,17 @@ jobs:
           npm run build
           npx electron-builder --publish never
 
-      # ШАГ 2: Загрузка
+      # ШАГ 2: Загрузка (Publishing)
       - name: Create Release & Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          draft: true
+          draft: false
+          prerelease: false
           make_latest: true
           files: |
             dist/*.exe
             dist/*.blockmap
             dist/latest.yml
-            release/*.exe
-            release/*.blockmap
-            release/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
