@@ -34,7 +34,7 @@ export const registerIpcHandlers = (dbService: DbService) => {
 
   // Добавим на всякий случай, если захочешь открывать ссылки
   ipcMain.handle("app:open-external", async (_event, url: string) => {
-    if (url.startsWith("https://rule34.xxx") || url.startsWith("http")) {
+    if (url.startsWith("https://rule34.xxx")) {
       await shell.openExternal(url);
     }
   });
