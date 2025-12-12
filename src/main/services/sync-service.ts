@@ -130,6 +130,11 @@ export class SyncService {
           hasMore = false;
           break;
         }
+        logger.error(
+          `SyncService: Ошибка при обработке страницы ${page}: ${
+            e instanceof Error ? e.message : String(e)
+          }`
+        );
         throw e;
       }
     }
