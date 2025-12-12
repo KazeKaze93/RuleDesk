@@ -4,6 +4,16 @@ import { NewArtist } from "./db/schema";
 import { logger } from "./lib/logger";
 import { SyncService } from "./services/sync-service";
 import { URL } from "url";
+import { z } from "zod";
+
+// Схема для db:get-posts
+const GetPostsSchema = z.object({
+  artistId: z.number().int().positive(),
+  page: z.number().int().min(1).default(1),
+});
+
+// Схема для db:delete-artist
+const DeleteArtistSchema = z.number().int().positive();
 
 // --- 1. Отдельные функции-обработчики ---
 
@@ -75,23 +85,41 @@ export const registerIpcHandlers = (dbService: DbService) => {
     return dbService.addArtist(artistData);
   });
 
-  // --- DB: SYNC (ВОТ ЧЕГО НЕ ХВАТАЛО) ---
+  // --- DB: SYNC ---
   ipcMain.handle("db:sync-all", async () => {
     logger.info("IPC: [db:sync-all] Запуск синхронизации...");
     await syncService.syncAllArtists();
     return true;
   });
 
-  // --- DB: POSTS (Для галереи пригодится) ---
-  ipcMain.handle("db:get-posts", async (_event, { artistId, page = 1 }) => {
+  // --- DB: POSTS ---
+  ipcMain.handle("db:get-posts", async (_event, data: unknown) => {
+    const validation = GetPostsSchema.safeParse(data);
+    if (!validation.success) {
+      logger.error("IPC: [db:get-posts] Validation failed:", validation.error);
+      throw new Error("Invalid input for db:get-posts");
+    }
+
+    const { artistId, page } = validation.data;
+
     const limit = 1000;
     const offset = (page - 1) * limit;
     return dbService.getPostsByArtist(artistId, limit, offset);
   });
 
   // --- DB: DELETE ARTIST ---
-  ipcMain.handle("db:delete-artist", async (_event, id: number) => {
-    return dbService.deleteArtist(id);
+  ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
+    const validation = DeleteArtistSchema.safeParse(id);
+    if (!validation.success) {
+      logger.error(
+        "IPC: [db:delete-artist] Validation failed:",
+        validation.error
+      );
+      throw new Error("Invalid input for db:delete-artist");
+    }
+
+    const validatedId = validation.data;
+    return dbService.deleteArtist(validatedId);
   });
 
   logger.info("IPC: Все обработчики успешно зарегистрированы.");

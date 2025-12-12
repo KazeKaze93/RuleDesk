@@ -2,7 +2,7 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Button } from "./ui/button";
-import type { Artist, Post } from "../../main/db/schema"; // Используем Post
+import type { Artist, Post } from "../../main/db/schema";
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -22,7 +22,12 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     <div className="space-y-6 duration-300 animate-in fade-in slide-in-from-bottom-4">
       <div className="flex sticky top-0 z-10 justify-between items-center py-4 border-b backdrop-blur bg-slate-950/80 border-slate-800">
         <div className="flex gap-4 items-center">
-          <Button variant="ghost" size="sm" onClick={onBack}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            aria-label="Вернуться к списку авторов"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -57,7 +62,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         </div>
       ) : posts && posts.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {/* ИСПРАВЛЕНИЕ: Типизируем post как Post, а не any */}
           {posts.map((post: Post) => (
             <div
               key={post.id}
