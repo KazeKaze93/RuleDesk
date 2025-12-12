@@ -66,7 +66,6 @@ const createWindow = () => {
     mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 
-  // Открываем DevTools только в режиме разработки
   if (process.env.NODE_ENV === "development") {
     mainWindow.webContents.openDevTools();
   }

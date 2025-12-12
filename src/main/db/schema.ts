@@ -3,60 +3,56 @@ import { sqliteTable, integer, text } from "drizzle-orm/sqlite-core";
 
 // --- 1. Таблица отслеживаемых авторов (Tracked Artists) ---
 export const artists = sqliteTable("artists", {
-  // ID здесь не AutoIncrement, так как мы планируем использовать
-  // реальные ID авторов с Danbooru/Gelbooru для синхронизации.
   id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
 
-  // Псевдоним автора (для удобства отображения в UI)
-  username: text("username").notNull(),
+  name: text("name").notNull(),
+  tag: text("tag").notNull().unique(),
 
-  // Полный или базовый API-эндпоинт для этого автора
+  type: text("type", { enum: ["tag", "uploader"] })
+    .default("tag")
+    .notNull(),
+
   apiEndpoint: text("api_endpoint").notNull(),
-
-  // ID последнего поста, который мы видели. Ключевое поле для обнаружения обновлений.
-  lastPostId: integer("last_post_id").notNull().default(0),
-
-  // Счетчик новых, непросмотренных постов (для бейджа UI)
-  newPostsCount: integer("new_posts_count").notNull().default(0),
-
-  // Временная метка последнего успешного API-опроса
+  lastPostId: integer("last_post_id").default(0).notNull(),
+  newPostsCount: integer("new_posts_count").default(0).notNull(),
   lastChecked: integer("last_checked", { mode: "number" }),
-
   createdAt: integer("created_at", { mode: "timestamp" })
     .default(sql`(unixepoch())`)
     .notNull(),
 });
 
+export const settings = sqliteTable("settings", {
+  id: integer("id").primaryKey(),
+  userId: text("userId").notNull(),
+  apiKey: text("apiKey").notNull(),
+});
+
 // --- 2. Таблица кэша постов (Cache of Post Metadata) ---
 // Хранит метаданные (теги, рейтинг) для фильтрации и статистики (Tag Explorer).
 export const posts = sqliteTable("posts", {
-  // Уникальный ID поста от внешнего API
+  // ID с Rule34 (не автоинкремент, так как мы берем их ID)
   id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: false }),
 
-  // Внешний ID автора, FK к таблице artists
-  artistId: integer("artist_id", { mode: "number" })
+  artistId: integer("artist_id")
     .references(() => artists.id, { onDelete: "cascade" })
     .notNull(),
 
-  // Основные метаданные (можно сохранить как JSON, но для SQL лучше отдельные поля)
-  title: text("title").notNull(),
-
-  // Прямой URL к медиа (для One-Click Download)
   fileUrl: text("file_url").notNull(),
 
-  // Хеш тегов (или JSON тегов), для быстрого поиска и статистики
-  tagHash: text("tag_hash"),
+  // ДОБАВЛЕНЫ НОВЫЕ ПОЛЯ:
+  previewUrl: text("preview_url"), // Превью
+  rating: text("rating"), // Рейтинг (s, q, e)
+  tags: text("tags"), // Теги одной строкой
 
-  // Статус: был ли просмотрен (для DOM Enhancements)
-  isViewed: integer("is_viewed", { mode: "boolean" }).notNull().default(false),
+  title: text("title").default(""),
 
-  // Дата публикации
-  publishedAt: integer("published_at", { mode: "number" }).notNull(),
+  // Даты
+  publishedAt: integer("published_at", { mode: "number" }).notNull(), // Дата с Booru
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .default(sql`(unixepoch())`)
+    .notNull(),
 
-  // Когда пост был добавлен в нашу локальную базу
-  createdAt: integer("created_at", { mode: "number" }).default(
-    sql`(unixepoch('now'))`
-  ),
+  isViewed: integer("is_viewed", { mode: "boolean" }).default(false).notNull(),
 });
 
 // --- 3. Таблица подписок (Subscriptions / Watched Tags) ---
@@ -84,3 +80,6 @@ export type NewArtist = typeof artists.$inferInsert; // Тип для INSERT (з
 
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
+
+export type Settings = typeof settings.$inferSelect;
+export type NewSettings = typeof settings.$inferInsert;
