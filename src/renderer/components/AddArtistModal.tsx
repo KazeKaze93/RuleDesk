@@ -134,6 +134,7 @@ export const AddArtistModal: React.FC = () => {
                 : "Тег автора"}
             </label>
             <input
+              id="artist-name-input"
               {...register("name")}
               autoFocus
               className="px-3 py-2 w-full text-white rounded border bg-slate-950 border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
