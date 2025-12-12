@@ -61,6 +61,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.29.3",
     "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2",
     "lucide-react": "^0.560.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -106,6 +107,8 @@
     "asar": true,
     "publish": {
       "provider": "github",
+      "owner": "KazeKaze93",
+      "repo": "NSFW-Booru-Desctop-Client-Unofficial-",
       "releaseType": "draft"
     },
     "win": {

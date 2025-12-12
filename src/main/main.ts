@@ -1,5 +1,3 @@
-// src/main/main.ts
-
 import { app, BrowserWindow } from "electron";
 import * as path from "path";
 import { registerIpcHandlers } from "./ipc";
@@ -7,16 +5,16 @@ import Database from "better-sqlite3";
 import { DbService } from "./db/db-service";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./db/migrate";
+import { updaterService } from "./services/updater-service";
 
 logger.info("🚀 Application starting...");
 
 // --- ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ И СЕРВИСОВ ---
 const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
-// Используем app.getPath('userData') для надежного хранения файла БД
 const dbInstance = new Database(DB_PATH);
 const dbService = new DbService(dbInstance);
 
-// --- КРИТИЧЕСКИЙ ШАГ: Регистрация всех IPC хендлеров ---
+// --- Регистрация всех IPC хендлеров ---
 registerIpcHandlers(dbService);
 
 // --- Запуск миграций ---
@@ -33,6 +31,7 @@ const createWindow = () => {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    show: false,
     webPreferences: {
       // --- SECURITY ENFORCEMENT ---
       // 1. Context Isolation: ОБЯЗАТЕЛЬНО для безопасности.
@@ -45,17 +44,13 @@ const createWindow = () => {
     },
   });
 
+  // --- UPDATER INTEGRATION ---
+  // Передаем экземпляр окна в сервис обновлений, чтобы он мог слать события (Events)
+  updaterService.setWindow(mainWindow);
+
   mainWindow.webContents.on("did-finish-load", () => {
     logger.info("Renderer loaded");
   });
-
-  // ... обработка ошибок БД ...
-  try {
-    // db init
-  } catch (e) {
-    logger.error("Database init failed:", e);
-    app.quit();
-  }
 
   // Загрузка UI (Renderer)
   if (process.env["ELECTRON_RENDERER_URL"]) {
@@ -69,6 +64,14 @@ const createWindow = () => {
   if (process.env.NODE_ENV === "development") {
     mainWindow.webContents.openDevTools();
   }
+
+  // --- SHOW WINDOW & CHECK UPDATES ---
+  // Показываем окно только когда оно полностью готово к отрисовке
+  mainWindow.once("ready-to-show", () => {
+    mainWindow.show();
+    // Запускаем проверку обновлений
+    updaterService.checkForUpdates();
+  });
 };
 
 // --- Жизненный цикл Electron ---
