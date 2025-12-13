@@ -4,6 +4,19 @@
 
 This application follows a strict **Separation of Concerns (SoC)** architecture, dividing responsibilities between the Electron Main Process (secure Node.js environment) and the Renderer Process (sandboxed browser environment).
 
+## Architecture Concept
+
+### 1. Dual-Module Interface
+
+- **Library Mode:** Работает с локальной SQLite базой. Максимальная производительность, виртуализация.
+- **Browser Mode:** Изолированный `<webview>` процесс. Позволяет пользователю серфить источник (Source) нативно. "Бридж" между сайтом и приложением осуществляется через инъекцию скриптов (DOM scraping + IPC triggers).
+
+### 2. Provider Abstraction (Future Proofing)
+
+- В будущем `SyncService` перестанет быть жестко связанным с Rule34.
+- Вводится интерфейс `BooruProvider` (methods: `getPosts`, `getArtistInfo`, `search`).
+- Текущая реализация станет `Rule34Provider`. Это позволит подключать новые источники без переписывания ядра БД.
+
 ## High-Level Architecture
 
 ```
@@ -354,12 +367,15 @@ src/
 3. **Content Script Injection:** DOM enhancements for external sites
 4. **Post Filtering:** Filter posts by rating, tags, date
 5. **Statistics Dashboard:** Analytics on tracked artists and posts
+6. **Dual-Module System:** Library mode (local database) and Browser mode (embedded webview)
+7. **Multi-Booru Support:** Provider pattern abstraction for multiple booru sources
 
 ### Scalability
 
 - Database can handle thousands of artists and posts
 - Polling can be optimized with batching
 - UI can be virtualized for large lists
+- Provider abstraction allows adding new booru sources without core changes
 
 ## Performance Considerations
 

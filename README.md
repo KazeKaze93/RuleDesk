@@ -28,6 +28,8 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Stores artists, posts metadata (tags, ratings, URLs), and settings. Database file access is strictly limited to the **Main Process** to enforce thread-safety and security. |
 | **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx.                                                                          |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                   |
+| **🌐 Clean English UI**           | Fully localized English interface. All UI components and logs use English language for consistency and maintainability.                                                                                                                 |
+| **🔌 Multi-Source Ready**         | Architecture designed for future multi-booru support. Provider pattern abstraction allows adding new sources (Danbooru, Gelbooru, etc.) without core database changes.                                                                  |
 
 ---
 
@@ -96,6 +98,7 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
 - **[API Documentation](./docs/api.md)** - IPC API reference and usage examples
 - **[Architecture Documentation](./docs/architecture.md)** - System architecture and design patterns
+- **[Roadmap](./docs/roadmap.md)** - Development roadmap and planned features
 - **[Contributing Guide](./docs/contributing.md)** - Guidelines for contributors
 - **[Database Documentation](./docs/database.md)** - Database schema and operations
 - **[Development Guide](./docs/development.md)** - Development setup and workflows
