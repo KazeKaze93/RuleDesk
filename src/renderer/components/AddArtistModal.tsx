@@ -8,6 +8,7 @@ import { Plus, Loader2, User, Tag } from "lucide-react";
 import { Button } from "./ui/button";
 import type { NewArtist } from "../../main/db/schema";
 import { getArtistTag } from "../lib/artist-utils";
+import { artistBaseSchema, ArtistFormValues } from "../schemas/form-schemas";
 
 import {
   Dialog,
@@ -17,24 +18,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-const createArtistSchema = (t: (key: string) => string) =>
-  z.object({
-    name: z.string().min(1, t("addArtistModal.nameRequired")),
-    type: z.enum(["tag", "uploader"]),
-    apiEndpoint: z.string().url(),
-  });
-
 export const AddArtistModal: React.FC = () => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
-
-  const artistSchema = createArtistSchema(t);
-  type ArtistFormValues = {
-    name: string;
-    type: "tag" | "uploader";
-    apiEndpoint: string;
-  };
 
   const {
     register,
@@ -44,7 +31,25 @@ export const AddArtistModal: React.FC = () => {
     setValue,
     formState: { errors },
   } = useForm<ArtistFormValues>({
-    resolver: zodResolver(artistSchema),
+    resolver: zodResolver(artistBaseSchema, {
+      path: [],
+      async: false,
+      errorMap: (issue, ctx) => {
+        if (
+          issue.code === z.ZodIssueCode.too_small &&
+          issue.path[0] === "name"
+        ) {
+          return { message: t("validation.nameRequired") };
+        }
+        if (
+          issue.code === z.ZodIssueCode.invalid_string &&
+          issue.validation === "url"
+        ) {
+          return { message: t("validation.invalidUrl") };
+        }
+        return { message: ctx.defaultError };
+      },
+    }),
     defaultValues: {
       name: "",
       type: "tag",
@@ -87,7 +92,7 @@ export const AddArtistModal: React.FC = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button aria-label={t("addArtistModal.addArtist")}>
           <Plus className="mr-2 w-4 h-4" /> {t("addArtistModal.addArtist")}
         </Button>
       </DialogTrigger>
@@ -177,7 +182,11 @@ export const AddArtistModal: React.FC = () => {
             >
               {t("addArtistModal.cancel")}
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button
+              type="submit"
+              disabled={mutation.isPending}
+              aria-label={t("addArtistModal.add")}
+            >
               {mutation.isPending ? (
                 <Loader2 className="animate-spin" />
               ) : (

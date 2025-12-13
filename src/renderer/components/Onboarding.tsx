@@ -1,16 +1,11 @@
 import React from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { z, ZodIssueOptionalMessage, ErrorMapCtx } from "zod"; // ИМПОРТ ТИПОВ
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { KeyRound, User } from "lucide-react";
-
-const createCredsSchema = (t: (key: string) => string) =>
-  z.object({
-    userId: z.string().min(1, t("onboarding.userIdRequired")),
-    apiKey: z.string().min(5, t("onboarding.apiKeyTooShort")),
-  });
+import { credsBaseSchema, CredsFormValues } from "../schemas/form-schemas";
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -18,18 +13,27 @@ interface OnboardingProps {
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const { t } = useTranslation();
-  const credsSchema = createCredsSchema(t);
-  type CredsFormValues = {
-    userId: string;
-    apiKey: string;
-  };
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<CredsFormValues>({
-    resolver: zodResolver(credsSchema),
+    resolver: zodResolver(credsBaseSchema, {
+      path: [],
+      async: false,
+      errorMap: (issue: ZodIssueOptionalMessage, ctx: ErrorMapCtx) => {
+        if (issue.code === z.ZodIssueCode.too_small) {
+          if (issue.path[0] === "userId") {
+            return { message: t("validation.userIdRequired") };
+          }
+          if (issue.path[0] === "apiKey") {
+            return { message: t("validation.apiKeyRequired") };
+          }
+        }
+        return { message: ctx.defaultError };
+      },
+    }),
   });
 
   const onSubmit = async (data: CredsFormValues) => {
@@ -121,7 +125,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting}
+            aria-label={t("onboarding.saveAndLogin")}
+          >
             {isSubmitting
               ? t("onboarding.saving")
               : t("onboarding.saveAndLogin")}
