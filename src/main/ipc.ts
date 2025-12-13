@@ -196,6 +196,11 @@ export const registerIpcHandlers = (
 
   // --- DB: DELETE ARTIST ---
   ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
+    if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) {
+      console.warn(`[Security] Invalid artist ID received for deletion: ${id}`);
+      throw new Error("Invalid ID provided");
+    }
+
     const validation = DeleteArtistSchema.safeParse(id);
     if (!validation.success) {
       logger.error(

@@ -1,7 +1,7 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, AlertCircle } from "lucide-react"; // Добавил иконку
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -35,16 +35,18 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
       queryClient.invalidateQueries({ queryKey: ["artists"] });
       onOpenChange(false);
     },
-    onError: (error) => {
-      console.error("Failed to delete artist:", error);
-    },
   });
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!mutation.isPending) onOpenChange(open);
+      }}
+    >
       <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700 text-slate-100">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-red-500">
+          <DialogTitle className="flex gap-2 items-center text-red-500">
             <Trash2 className="w-5 h-5" />
             {t("deleteArtist.title", "Delete Artist")}
           </DialogTitle>
@@ -57,10 +59,21 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-3 bg-slate-950 border border-slate-800 rounded mb-4">
+        <div className="p-3 mb-2 rounded border bg-slate-950 border-slate-800">
           <span className="font-bold text-white">{artist.name}</span>
-          <div className="text-xs text-slate-500">{artist.tag}</div>
+          <div className="mt-1 text-xs text-slate-500">Tag: {artist.tag}</div>
         </div>
+
+        {mutation.isError && (
+          <div className="flex gap-2 items-center p-3 mb-2 text-sm text-red-200 rounded border border-red-800 bg-red-900/50">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>
+              {mutation.error instanceof Error
+                ? mutation.error.message
+                : t("common.unknownError", "Unknown error occurred")}
+            </span>
+          </div>
+        )}
 
         <DialogFooter>
           <Button
@@ -75,10 +88,10 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
             variant="destructive"
             onClick={() => mutation.mutate(artist.id)}
             disabled={mutation.isPending}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="text-white bg-red-600 hover:bg-red-700"
           >
             {mutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 w-4 h-4 animate-spin" />
             ) : (
               t("common.delete", "Delete")
             )}

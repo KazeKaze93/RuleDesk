@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import type { Artist } from "../../main/db/schema";
 import { DeleteArtistDialog } from "./DeleteArtistDialog";
+import { cn } from "../lib/utils";
 
 interface ArtistCardProps {
   artist: Artist;
@@ -14,42 +15,59 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
   const { t } = useTranslation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Чтобы клик не открывал галерею
+  const handleDeleteClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleCardClick = () => {
+    onSelect(artist);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect(artist);
+    }
   };
 
   return (
     <>
       <div
-        onClick={() => onSelect(artist)}
-        className="group flex justify-between items-center p-3 w-full text-left rounded border transition-all cursor-pointer bg-slate-900 border-slate-800 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onClick={handleCardClick}
+        onKeyDown={handleKeyDown}
+        className={cn(
+          "group relative flex items-center justify-between p-4 mb-2 rounded-lg border transition-all cursor-pointer",
+          "bg-slate-900/50 border-slate-800",
+          "hover:bg-slate-900 hover:border-blue-500/50 hover:shadow-md",
+          "focus:outline-none focus:ring-2 focus:ring-blue-500" // Визуальный фокус
+        )}
         role="button"
         tabIndex={0}
       >
-        <div className="flex-1">
-          <span className="font-medium text-blue-400 transition-colors group-hover:text-blue-300">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-bold text-blue-500 truncate transition-colors group-hover:text-blue-400">
             {artist.name}
-          </span>
-          <div className="text-xs text-slate-500">
-            [{artist.tag}] {t("app.lastId")}: {artist.lastPostId} |{" "}
-            {t("app.new")}:{" "}
+          </h3>
+          <p className="mt-1 font-mono text-xs truncate text-slate-500">
+            [{artist.tag}] {t("app.lastId", "Last ID")}: {artist.lastPostId} |{" "}
+            {t("app.new", "New")}:{" "}
             <span className={artist.newPostsCount > 0 ? "text-green-400" : ""}>
               {artist.newPostsCount}
             </span>
-          </div>
+          </p>
         </div>
 
-        {/* Кнопка удаления: видна только при наведении на строку (group-hover) */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+        <div className="pl-4 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-500 hover:text-red-500 hover:bg-red-950/20"
+            className="w-8 h-8 text-slate-500 hover:text-red-500 hover:bg-red-950/20"
             onClick={handleDeleteClick}
-            title={t("common.delete", "Delete")}
+            title={t("common.delete", "Delete Artist")}
+            onKeyDown={(e) => e.stopPropagation()}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </div>
