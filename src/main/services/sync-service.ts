@@ -8,11 +8,26 @@ import { URLSearchParams } from "url";
 interface R34Post {
   id: number;
   file_url: string;
+  sample_url: string;
   preview_url: string;
   tags: string;
   rating: string;
   change: number;
 }
+
+// 1. ЧИСТЫЙ КОСТЫЛЬ: Гарантируем, что превью — это не видео
+const isVideo = (url?: string) => !!url && /\.(webm|mp4|mov)(\?|$)/i.test(url);
+
+const pickPreviewUrl = (p: R34Post) => {
+  // 1. sample_url (среднее качество)
+  if (p.sample_url && !isVideo(p.sample_url)) return p.sample_url;
+  // 2. preview_url (мыльное, но точно превью-картинка)
+  if (p.preview_url && !isVideo(p.preview_url)) return p.preview_url;
+  // 3. file_url (оригинал), только если не видео (крайний случай)
+  if (p.file_url && !isVideo(p.file_url)) return p.file_url;
+
+  return "";
+};
 
 export class SyncService {
   private dbService: DbService | null = null;
@@ -29,7 +44,6 @@ export class SyncService {
     this.dbService = dbService;
   }
 
-  // FIX: Сделано public для отправки ошибок из ipc.ts
   public sendEvent(channel: string, data?: unknown) {
     if (this.window && !this.window.isDestroyed()) {
       this.window.webContents.send(channel, data);
@@ -66,6 +80,7 @@ export class SyncService {
       for (const artist of artists) {
         this.sendEvent("sync:progress", `Checking ${artist.name}...`);
 
+        // Вызываем syncArtist без maxPages, чтобы синхронизировать новые
         await this.syncArtist(artist, settings);
 
         await this.dbService.updateArtistLastChecked(artist.id);
@@ -86,7 +101,66 @@ export class SyncService {
     }
   }
 
-  private async syncArtist(artist: Artist, settings: Settings) {
+  // 2. НОВЫЙ МЕТОД: Ремонтная синхронизация (публичный API)
+  public async repairArtistPosts(artistId: number) {
+    if (this.isSyncing) {
+      logger.warn("SyncService: Синхронизация уже идет.");
+      return;
+    }
+    if (!this.dbService) {
+      logger.error("SyncService: DB Service не инициализирован");
+      return;
+    }
+
+    this.isSyncing = true;
+
+    try {
+      const artist = await this.dbService.getArtistById(artistId);
+      if (!artist) {
+        throw new Error(`Artist ID ${artistId} not found.`);
+      }
+
+      const repairArtist = { ...artist, lastPostId: 0 };
+
+      logger.info(
+        `SyncService: Начало ремонтной синхронизации для ${artist.name}...`
+      );
+      this.sendEvent("sync:repair:start", artist.name);
+
+      const settings = await this.dbService.getSettings();
+      if (!settings || !settings.userId) {
+        throw new Error("API credentials not found. Please check settings.");
+      }
+
+      const maxPages = 3;
+
+      await this.syncArtist(repairArtist, settings, maxPages);
+
+      await this.dbService.updateArtistLastChecked(artist.id);
+
+      logger.info(
+        `SyncService: Ремонтная синхронизация для ${artist.name} завершена.`
+      );
+    } catch (error) {
+      logger.error(`SyncService: Ошибка ремонта для автора`, error);
+      this.sendEvent(
+        "sync:error",
+        `Repair failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    } finally {
+      this.isSyncing = false;
+      this.sendEvent("sync:repair:end");
+    }
+  }
+
+  // 3. ОБНОВЛЕННЫЙ МЕТОД: Поддержка лимита страниц (maxPages)
+  private async syncArtist(
+    artist: Artist,
+    settings: Settings,
+    maxPages: number = Infinity
+  ) {
     logger.info(`SyncService: Проверка ${artist.name} [${artist.tag}]...`);
 
     let page = 0;
@@ -96,12 +170,14 @@ export class SyncService {
 
     const encodedTag = encodeURIComponent(artist.tag);
 
-    while (hasMore) {
+    while (hasMore && page < maxPages) {
       try {
+        const idFilter =
+          artist.lastPostId > 0 ? ` id:>${artist.lastPostId}` : "";
+
         const tagsQuery = `${
           artist.type === "uploader" ? "user:" : ""
-        }${encodedTag} id:>${artist.lastPostId}`;
-
+        }${encodedTag}${idFilter}`;
         const params: Record<string, string> = {
           page: "dapi",
           s: "post",
@@ -136,7 +212,7 @@ export class SyncService {
 
         const newPosts = posts.filter((p) => p.id > artist.lastPostId);
 
-        if (newPosts.length === 0) {
+        if (newPosts.length === 0 && artist.lastPostId > 0) {
           hasMore = false;
           break;
         }
@@ -146,7 +222,7 @@ export class SyncService {
             artistId: artist.id,
             fileUrl: p.file_url,
             postId: p.id,
-            previewUrl: p.preview_url,
+            previewUrl: pickPreviewUrl(p),
             title: "",
             rating: p.rating,
             tags: p.tags,
