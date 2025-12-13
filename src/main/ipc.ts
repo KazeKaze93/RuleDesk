@@ -15,7 +15,13 @@ const GetPostsSchema = z.object({
   limit: z.number().int().min(1).default(50),
 });
 
-const DeleteArtistSchema = z.number().int().positive();
+const DeleteArtistSchema = z
+  .number({
+    required_error: "ID is required",
+    invalid_type_error: "ID must be a number",
+  })
+  .int("ID must be an integer")
+  .positive("ID must be positive");
 
 const SaveSettingsSchema = z.object({
   userId: z.string().min(1, { message: "User ID is required" }),
@@ -196,21 +202,19 @@ export const registerIpcHandlers = (
 
   // --- DB: DELETE ARTIST ---
   ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
-    if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) {
-      console.warn(`[Security] Invalid artist ID received for deletion: ${id}`);
-      throw new Error("Invalid ID provided");
-    }
-
     const validation = DeleteArtistSchema.safeParse(id);
+
     if (!validation.success) {
       logger.error(
-        "IPC: [db:delete-artist] Validation failed:",
-        validation.error
+        `[IPC Validation] Invalid schema for db:delete-artist: ${JSON.stringify(
+          validation.error
+        )}`
       );
-      throw new Error("Invalid input for db:delete-artist");
+      throw new Error("Invalid input format received.");
     }
 
     const validatedId = validation.data;
+
     try {
       return await dbService.deleteArtist(validatedId);
     } catch (e) {
