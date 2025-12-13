@@ -8,6 +8,13 @@
       "when": 1765599939164,
       "tag": "0000_clammy_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1765600812959,
+      "tag": "0001_curly_timeslip",
+      "breakpoints": true
     }
   ]
 }
