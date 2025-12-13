@@ -166,4 +166,11 @@ export class DbService {
     await this.db.delete(schema.artists).where(eq(schema.artists.id, id));
     logger.info(`DbService: Автор ID ${id} и его посты удалены.`);
   }
+
+  async markPostAsViewed(postId: number): Promise<void> {
+    await this.db
+      .update(schema.posts)
+      .set({ isViewed: true })
+      .where(eq(schema.posts.id, postId));
+  }
 }

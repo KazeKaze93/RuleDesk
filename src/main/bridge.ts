@@ -50,6 +50,8 @@ export interface IpcBridge {
   onSyncEnd: (callback: () => void) => () => void;
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
+
+  markPostAsViewed: (postId: number) => Promise<boolean>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -68,6 +70,9 @@ const ipcBridge: IpcBridge = {
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
   syncAll: () => ipcRenderer.invoke("db:sync-all"),
+
+  markPostAsViewed: (postId) =>
+    ipcRenderer.invoke("db:mark-post-viewed", postId),
 
   repairArtist: (artistId) =>
     ipcRenderer.invoke("sync:repair-artist", artistId),

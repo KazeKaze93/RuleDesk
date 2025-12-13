@@ -45,6 +45,8 @@ export interface IpcApi extends IpcBridge {
   onSyncEnd: (callback: () => void) => () => void;
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
+
+  markPostAsViewed: (postId: number) => Promise<boolean>;
 }
 
 declare global {
