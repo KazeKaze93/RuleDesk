@@ -41,7 +41,7 @@ function initializeAppAndReady() {
 
     syncService.setDbService(dbService);
 
-    registerIpcHandlers(dbService);
+    registerIpcHandlers(dbService, syncService);
     runMigrations(dbService.db);
   } catch (e) {
     logger.error("FATAL: Failed to initialize database.", e);

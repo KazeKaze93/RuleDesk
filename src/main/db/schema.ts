@@ -16,7 +16,7 @@ export const artists = sqliteTable("artists", {
   apiEndpoint: text("api_endpoint"),
   lastPostId: integer("last_post_id").default(0).notNull(),
   newPostsCount: integer("new_posts_count").default(0).notNull(),
-  lastChecked: integer("last_checked", { mode: "timestamp" }),
+  lastChecked: integer("last_checked"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
