@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Download, RefreshCw, X, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "../lib/utils";
-import { Button } from "./ui/button"; // Используем твой компонент кнопки
+import { Button } from "./ui/button";
 
 type UpdateStatus =
   | "idle"
@@ -44,7 +44,7 @@ export const UpdateNotification: React.FC = () => {
   }, []);
 
   const handleClose = () => setVisible(false);
-  const handleDownload = () => window.api.startDownload(); // 👈 Вызов скачивания
+  const handleDownload = () => window.api.startDownload();
   const handleInstall = () => window.api.quitAndInstall();
 
   if (!visible) return null;
@@ -86,6 +86,7 @@ export const UpdateNotification: React.FC = () => {
         <button
           onClick={handleClose}
           className="text-slate-500 hover:text-slate-300"
+          aria-label="Close notification"
         >
           <X className="w-4 h-4" />
         </button>
@@ -100,7 +101,7 @@ export const UpdateNotification: React.FC = () => {
         </div>
       )}
 
-      {/* Кнопки действий */}
+      {/* Action Buttons */}
       <div className="flex gap-2 mt-3">
         {status === "available" && (
           <>

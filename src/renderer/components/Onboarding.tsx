@@ -6,8 +6,8 @@ import { Button } from "./ui/button";
 import { KeyRound, User } from "lucide-react";
 
 const credsSchema = z.object({
-  userId: z.string().min(1, "User ID обязателен"),
-  apiKey: z.string().min(5, "API Key слишком короткий"),
+  userId: z.string().min(1, "User ID is required"),
+  apiKey: z.string().min(5, "API Key is too short"),
 });
 
 type CredsFormValues = z.infer<typeof credsSchema>;
@@ -30,9 +30,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       await window.api.saveSettings(data);
       onComplete();
     } catch (e) {
-      const message =
-        e instanceof Error ? e.message : "Неизвестная ошибка сохранения.";
-      alert(`Ошибка авторизации: ${message}`);
+      const message = e instanceof Error ? e.message : "Unknown save error.";
+      console.error(`Authorization error: ${message}`);
     }
   };
 
@@ -41,29 +40,29 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       <div className="p-8 space-y-6 w-full max-w-md rounded-lg border shadow-xl bg-slate-900 border-slate-800">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-blue-500">
-            Авторизация Rule34
+            Rule34 Authorization
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            Для работы парсера необходимы API ключи.
+            API keys are required for the parser to work.
           </p>
         </div>
 
         <div className="p-4 space-y-2 text-sm rounded border bg-slate-950 border-slate-800">
-          <p className="font-semibold text-slate-300">Как получить ключи:</p>
+          <p className="font-semibold text-slate-300">How to get keys:</p>
           <ol className="space-y-1 list-decimal list-inside text-slate-400">
             <li>
-              Зайдите в свой аккаунт на <b>rule34.xxx</b>
+              Log into your account on <b>rule34.xxx</b>
             </li>
             <li>
-              Перейдите в <b>My Account &rarr; Options</b>
+              Go to <b>My Account &rarr; Options</b>
             </li>
             <li>
-              Найдите секцию <b>API Access</b>
+              Find the <b>API Access</b> section
             </li>
           </ol>
           <div className="pt-2 mt-2 border-t border-slate-800">
             <span className="text-xs text-slate-500">
-              Адрес страницы настроек (скопируйте):
+              Settings page address (copy):
             </span>
             <code className="block p-2 mt-1 text-xs break-all rounded cursor-text select-all bg-slate-900">
               https://rule34.xxx/index.php?page=account&s=options
@@ -85,7 +84,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 id="user-id-input"
                 {...register("userId")}
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
-                placeholder="Например: 123456"
+                placeholder="For example: 123456"
               />
             </div>
             {errors.userId && (
@@ -109,7 +108,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 {...register("apiKey")}
                 type="password"
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
-                placeholder="Ваш секретный ключ"
+                placeholder="Your secret key"
               />
             </div>
             {errors.apiKey && (
@@ -120,7 +119,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Сохранение..." : "Сохранить и Войти"}
+            {isSubmitting ? "Saving..." : "Save and Login"}
           </Button>
         </form>
       </div>
