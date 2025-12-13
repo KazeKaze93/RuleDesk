@@ -14,6 +14,7 @@ import { ArtistGallery } from "./components/ArtistGallery";
 import { UpdateNotification } from "./components/UpdateNotification";
 import { cn } from "./lib/utils";
 import i18n from "./i18n";
+import { ArtistCard } from "./components/ArtistCard.tsx";
 
 const queryClient = new QueryClient();
 
@@ -92,23 +93,13 @@ const ArtistListView: React.FC<{
                 </div>
               ) : (
                 <div className="grid gap-2">
+                  {/* ВОТ ЗДЕСЬ МЫ ЗАМЕНИЛИ КУСОК КОДА */}
                   {artists?.map((artist) => (
-                    <button
+                    <ArtistCard
                       key={artist.id}
-                      onClick={() => onSelect(artist)}
-                      className="flex justify-between items-center p-3 w-full text-left rounded border transition-all cursor-pointer bg-slate-900 border-slate-800 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 group"
-                      type="button"
-                    >
-                      <div className="flex-1">
-                        <span className="font-medium text-blue-400 transition-colors group-hover:text-blue-300">
-                          {artist.name}
-                        </span>
-                        <div className="text-xs text-slate-500">
-                          [{artist.tag}] {t("app.lastId")}: {artist.lastPostId}{" "}
-                          | {t("app.new")}: {artist.newPostsCount}
-                        </div>
-                      </div>
-                    </button>
+                      artist={artist}
+                      onSelect={onSelect}
+                    />
                   ))}
                 </div>
               )}
