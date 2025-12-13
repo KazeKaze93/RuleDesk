@@ -9,6 +9,7 @@ export type UpdateStatusData = {
 
 export type UpdateStatusCallback = (data: UpdateStatusData) => void;
 export type UpdateProgressCallback = (percent: number) => void;
+export type SyncErrorCallback = (message: string) => void;
 
 export interface IpcBridge {
   // App
@@ -39,6 +40,11 @@ export interface IpcBridge {
 
   onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
   onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
+
+  onSyncStart: (callback: () => void) => () => void;
+  onSyncEnd: (callback: () => void) => () => void;
+  onSyncProgress: (callback: (message: string) => void) => () => void;
+  onSyncError: (callback: SyncErrorCallback) => () => void;
 }
 
 const ipcBridge: IpcBridge = {
@@ -79,6 +85,32 @@ const ipcBridge: IpcBridge = {
     return () => {
       ipcRenderer.removeListener("updater:progress", subscription);
     };
+  },
+
+  onSyncStart: (callback) => {
+    const sub = () => callback();
+    ipcRenderer.on("sync:start", sub);
+    return () => ipcRenderer.removeListener("sync:start", sub);
+  },
+
+  onSyncEnd: (callback) => {
+    const sub = () => callback();
+    ipcRenderer.on("sync:end", sub);
+    return () => ipcRenderer.removeListener("sync:end", sub);
+  },
+
+  onSyncError: (callback) => {
+    const subscription = (_: IpcRendererEvent, msg: string) => callback(msg);
+    ipcRenderer.on("sync:error", subscription);
+    return () => {
+      ipcRenderer.removeListener("sync:error", subscription);
+    };
+  },
+
+  onSyncProgress: (callback) => {
+    const sub = (_: IpcRendererEvent, msg: string) => callback(msg);
+    ipcRenderer.on("sync:progress", sub);
+    return () => ipcRenderer.removeListener("sync:progress", sub);
   },
 };
 

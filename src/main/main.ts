@@ -6,6 +6,7 @@ import { DbService } from "./db/db-service";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./db/migrate";
 import { updaterService } from "./services/updater-service";
+import { syncService } from "./services/sync-service";
 
 logger.info("🚀 Application starting...");
 
@@ -35,11 +36,12 @@ if (!gotTheLock) {
 function initializeAppAndReady() {
   try {
     const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
-    // Инициализация базы с опциями (можно добавить verbose: console.log для отладки SQL)
-    const dbInstance = new Database(DB_PATH, {});
+    const dbInstance = new Database(DB_PATH, { verbose: console.log });
     dbService = new DbService(dbInstance);
 
-    registerIpcHandlers(dbService);
+    syncService.setDbService(dbService);
+
+    registerIpcHandlers(dbService, syncService);
     runMigrations(dbService.db);
   } catch (e) {
     logger.error("FATAL: Failed to initialize database.", e);
@@ -51,11 +53,9 @@ function initializeAppAndReady() {
       }`
     );
 
-    // Жесткий выход с кодом ошибки, так как работать дальше невозможно
     app.exit(1);
   }
 
-  // Ждем готовности Electron API
   app.on("ready", createWindow);
 }
 
@@ -65,7 +65,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    show: false, // Окно скрыто до ready-to-show во избежание "белого экрана"
+    show: false,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -74,14 +74,14 @@ function createWindow() {
     },
   });
 
-  // Подключаем окно к сервису обновлений
   updaterService.setWindow(mainWindow);
+
+  syncService.setWindow(mainWindow);
 
   mainWindow.webContents.on("did-finish-load", () => {
     logger.info("Renderer loaded");
   });
 
-  // Роутинг загрузки (Dev vs Prod)
   if (process.env["ELECTRON_RENDERER_URL"]) {
     mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
@@ -92,19 +92,16 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Показываем окно и проверяем обновления ТОЛЬКО когда UI готов
   mainWindow.once("ready-to-show", () => {
     if (mainWindow) mainWindow.show();
     updaterService.checkForUpdates();
   });
 
-  // Очистка ссылки при закрытии окна
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 }
 
-// Стандартное поведение закрытия (кроме macOS)
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();

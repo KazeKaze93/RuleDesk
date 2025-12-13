@@ -50,20 +50,23 @@ export const AddArtistModal: React.FC = () => {
       const finalTag = getArtistTag(data.name, data.type);
 
       const newArtist: NewArtist = {
-        name: data.name,
-        tag: finalTag,
+        name: data.name.trim(),
+        tag: finalTag.trim(),
         type: data.type,
-        apiEndpoint: data.apiEndpoint,
-        lastPostId: 0,
-        newPostsCount: 0,
+        apiEndpoint: data.apiEndpoint.trim(),
       };
 
       return window.api.addArtist(newArtist);
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["artists"] });
       setIsOpen(false);
       reset();
+    },
+
+    onError: (error) => {
+      console.error("Mutation failed:", error);
     },
   });
 
