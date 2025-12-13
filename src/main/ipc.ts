@@ -25,11 +25,11 @@ const handleGetAppVersion = async (
 
 // --- 2. Функция Регистрации ---
 
-export const registerIpcHandlers = (dbService: DbService) => {
+export const registerIpcHandlers = (
+  dbService: DbService,
+  syncService: SyncService
+) => {
   logger.info("IPC: Инициализация обработчиков...");
-
-  // <--- 2. СОЗДАЕМ ЭКЗЕМПЛЯР СЕРВИСА
-  const syncService = new SyncService(dbService);
 
   // --- APP ---
   ipcMain.handle("app:get-version", handleGetAppVersion);
@@ -73,16 +73,38 @@ export const registerIpcHandlers = (dbService: DbService) => {
   });
 
   ipcMain.handle("db:add-artist", async (_event, artistData: NewArtist) => {
-    // Валидация
     if (!artistData.name || artistData.name.trim() === "") {
-      throw new Error("Username is required");
+      logger.warn(
+        "IPC: [db:add-artist] Отклонено: Имя автора не может быть пустым."
+      );
+      throw new Error("Artist name cannot be empty or just whitespace.");
     }
+
+    logger.info(`IPC: [db:add-artist] Попытка добавить: ${artistData.name}`);
+
+    if (!artistData.apiEndpoint) {
+      logger.warn(
+        `IPC: [db:add-artist] Отсутствует apiEndpoint для ${artistData.name}.`
+      );
+      throw new Error("API Endpoint URL is required.");
+    }
+
     try {
       new URL(artistData.apiEndpoint);
-    } catch {
-      throw new Error("Invalid API Endpoint URL");
+    } catch (e) {
+      logger.error("IPC: [db:add-artist] Невалидный URL:", e);
+      throw new Error("Invalid API Endpoint URL format.");
     }
-    return dbService.addArtist(artistData);
+
+    try {
+      return await dbService.addArtist(artistData);
+    } catch (e) {
+      logger.error("IPC: [db:add-artist] Ошибка добавления в БД:", e);
+
+      const errorMessage =
+        e instanceof Error ? e.message : "Unknown database error.";
+      throw new Error(`Database error adding artist: ${errorMessage}`);
+    }
   });
 
   // --- DB: SYNC ---
@@ -91,7 +113,7 @@ export const registerIpcHandlers = (dbService: DbService) => {
     syncService.syncAllArtists().catch((error) => {
       logger.error("IPC: Критическая ошибка в фоновой синхронизации:", error);
     });
-    return true;
+    return;
   });
 
   // --- DB: POSTS ---
