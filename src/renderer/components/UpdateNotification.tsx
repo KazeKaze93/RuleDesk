@@ -86,6 +86,7 @@ export const UpdateNotification: React.FC = () => {
         <button
           onClick={handleClose}
           className="text-slate-500 hover:text-slate-300"
+          aria-label="Close notification"
         >
           <X className="w-4 h-4" />
         </button>

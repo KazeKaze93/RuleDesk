@@ -31,7 +31,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       onComplete();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown save error.";
-      alert(`Authorization error: ${message}`);
+      console.error(`Authorization error: ${message}`);
     }
   };
 
