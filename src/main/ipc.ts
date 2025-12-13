@@ -3,7 +3,7 @@ import { DbService } from "./db/db-service";
 import { NewArtist } from "./db/schema";
 import { logger } from "./lib/logger";
 import { SyncService } from "./services/sync-service";
-import { URL } from "url";
+import { URL } from "url"; // FIX: Удален URLSearchParams, если он не используется
 import { z } from "zod";
 
 // Схема для db:get-posts
@@ -25,11 +25,11 @@ const handleGetAppVersion = async (
 
 // --- 2. Функция Регистрации ---
 
-export const registerIpcHandlers = (dbService: DbService) => {
+export const registerIpcHandlers = (
+  dbService: DbService,
+  syncService: SyncService
+) => {
   logger.info("IPC: Инициализация обработчиков...");
-
-  // <--- 2. СОЗДАЕМ ЭКЗЕМПЛЯР СЕРВИСА
-  const syncService = new SyncService(dbService);
 
   // --- APP ---
   ipcMain.handle("app:get-version", handleGetAppVersion);
@@ -43,14 +43,18 @@ export const registerIpcHandlers = (dbService: DbService) => {
       logger.warn(
         "IPC: [app:save-settings] Ошибка валидации: нет userId или apiKey"
       );
-      throw new Error("Данные обязательны");
+      throw new Error("API User ID and Key are required.");
     }
-    return dbService.saveSettings(userId, apiKey);
+    return dbService.saveSettings(userId.trim(), apiKey.trim());
   });
 
   ipcMain.handle("app:open-external", async (_event, urlString: string) => {
     try {
-      const parsedUrl = new URL(urlString);
+      if (!urlString || urlString.trim() === "") {
+        throw new Error("URL string is empty.");
+      }
+
+      const parsedUrl = new URL(urlString.trim());
       if (
         parsedUrl.protocol === "https:" &&
         (parsedUrl.hostname === "rule34.xxx" ||
@@ -62,36 +66,78 @@ export const registerIpcHandlers = (dbService: DbService) => {
           `IPC: Blocked attempt to open unauthorized URL: ${urlString}`
         );
       }
-    } catch (_e) {
-      logger.error(`IPC: Invalid URL passed to open-external: ${urlString}`);
+    } catch (e) {
+      logger.error(`IPC: Error opening external URL (${urlString}):`, e);
     }
   });
 
   // --- DB: ARTISTS ---
   ipcMain.handle("db:get-artists", async () => {
-    return dbService.getTrackedArtists();
+    try {
+      return await dbService.getTrackedArtists();
+    } catch (e) {
+      logger.error("IPC: [db:get-artists] Database error:", e);
+      throw new Error("Failed to fetch artists from database.");
+    }
   });
 
   ipcMain.handle("db:add-artist", async (_event, artistData: NewArtist) => {
-    // Валидация
-    if (!artistData.name || artistData.name.trim() === "") {
-      throw new Error("Username is required");
+    // 1. САНИТАЙЗИНГ И ВАЛИДАЦИЯ ИМЕНИ (name)
+    const name = artistData.name?.trim();
+    if (!name || name === "") {
+      logger.warn(
+        "IPC: [db:add-artist] Отклонено: Имя автора не может быть пустым."
+      );
+      throw new Error("Artist name cannot be empty or just whitespace.");
     }
+
+    // 2. САНИТАЙЗИНГ И ВАЛИДАЦИЯ API ENDPOINT
+    const endpoint = artistData.apiEndpoint?.trim();
+    if (!endpoint || endpoint === "") {
+      logger.warn(`IPC: [db:add-artist] Отсутствует apiEndpoint для ${name}.`);
+      throw new Error("API Endpoint URL is required.");
+    }
+
+    logger.info(`IPC: [db:add-artist] Попытка добавить: ${name}`);
+
+    // 3. ВАЛИДАЦИЯ ФОРМАТА URL
     try {
-      new URL(artistData.apiEndpoint);
-    } catch {
-      throw new Error("Invalid API Endpoint URL");
+      new URL(endpoint);
+    } catch (e) {
+      logger.error("IPC: [db:add-artist] Invalid URL format:", e);
+      throw new Error("Invalid API Endpoint URL format.");
     }
-    return dbService.addArtist(artistData);
+
+    // 4. ОБРАБОТКА ОШИБОК БД
+    try {
+      const dataToSave: NewArtist = {
+        ...artistData,
+        name: name,
+        apiEndpoint: endpoint,
+      };
+      return await dbService.addArtist(dataToSave);
+    } catch (e) {
+      logger.error("IPC: [db:add-artist] Database error:", e);
+
+      const errorMessage =
+        e instanceof Error ? e.message : "Unknown database error.";
+      throw new Error(`Database error adding artist: ${errorMessage}`);
+    }
   });
 
   // --- DB: SYNC ---
   ipcMain.handle("db:sync-all", async () => {
     logger.info("IPC: [db:sync-all] Инициирование фоновой синхронизации...");
+
     syncService.syncAllArtists().catch((error) => {
-      logger.error("IPC: Критическая ошибка в фоновой синхронизации:", error);
+      logger.error("IPC: Critical background sync error:", error);
+
+      syncService.sendEvent(
+        "sync:error",
+        error instanceof Error ? error.message : "Sync failed."
+      );
     });
-    return true;
+    return;
   });
 
   // --- DB: POSTS ---
@@ -104,9 +150,17 @@ export const registerIpcHandlers = (dbService: DbService) => {
 
     const { artistId, page } = validation.data;
 
-    const limit = 50;
-    const offset = (page - 1) * limit;
-    return dbService.getPostsByArtist(artistId, limit, offset);
+    try {
+      const limit = 50;
+      const offset = (page - 1) * limit;
+      return await dbService.getPostsByArtist(artistId, limit, offset);
+    } catch (e) {
+      logger.error(
+        `IPC: [db:get-posts] Database error for artist ${artistId}:`,
+        e
+      );
+      throw new Error("Failed to fetch posts from database.");
+    }
   });
 
   // --- DB: DELETE ARTIST ---
@@ -121,7 +175,15 @@ export const registerIpcHandlers = (dbService: DbService) => {
     }
 
     const validatedId = validation.data;
-    return dbService.deleteArtist(validatedId);
+    try {
+      return await dbService.deleteArtist(validatedId);
+    } catch (e) {
+      logger.error(
+        `IPC: [db:delete-artist] Database error for ID ${validatedId}:`,
+        e
+      );
+      throw new Error("Failed to delete artist from database.");
+    }
   });
 
   logger.info("IPC: Все обработчики успешно зарегистрированы.");
