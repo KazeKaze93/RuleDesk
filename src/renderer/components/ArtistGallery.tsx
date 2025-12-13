@@ -41,7 +41,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
 
     try {
-      await window.api.repairArtistPosts(artist.id);
+      await window.api.repairArtist(artist.id);
 
       queryClient.invalidateQueries({ queryKey: ["artists"] });
 

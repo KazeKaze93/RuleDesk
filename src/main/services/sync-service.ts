@@ -102,7 +102,7 @@ export class SyncService {
   }
 
   // 2. НОВЫЙ МЕТОД: Ремонтная синхронизация (публичный API)
-  public async repairArtistPosts(artistId: number) {
+  public async repairArtist(artistId: number) {
     if (this.isSyncing) {
       logger.warn("SyncService: Синхронизация уже идет.");
       return;

@@ -36,7 +36,7 @@ export interface IpcBridge {
   // Sync
   syncAll: () => Promise<boolean>;
 
-  repairArtistPosts: (artistId: number) => Promise<boolean>;
+  repairArtist: (artistId: number) => Promise<boolean>;
 
   // Updater
   checkForUpdates: () => Promise<void>;
@@ -69,7 +69,7 @@ const ipcBridge: IpcBridge = {
 
   syncAll: () => ipcRenderer.invoke("db:sync-all"),
 
-  repairArtistPosts: (artistId) =>
+  repairArtist: (artistId) =>
     ipcRenderer.invoke("sync:repair-artist", artistId),
 
   // Updater Implementation
