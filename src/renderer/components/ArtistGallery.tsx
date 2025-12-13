@@ -49,9 +49,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 
       queryClient.invalidateQueries({ queryKey: ["artists"] });
 
-      alert(`Repair sync for ${artist.name} completed.`);
+      console.log(`Repair sync for ${artist.name} completed.`);
     } catch (e) {
-      alert(
+      console.error(
         `Repair Error: ${e instanceof Error ? e.message : "Unknown error"}`
       );
     }

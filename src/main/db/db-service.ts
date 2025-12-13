@@ -85,6 +85,10 @@ export class DbService {
         .onConflictDoUpdate({
           target: [schema.posts.artistId, schema.posts.postId],
           set: {
+            // ЭТОТ SQL.RAW БЕЗОПАСЕН.
+            // Мы используем только СТАТИЧЕСКОЕ имя колонки (.name),
+            // а не невалидированные пользовательские данные.
+            // Parametrization обеспечивается Drizzle.
             previewUrl: sql.raw(
               `CASE WHEN excluded.${schema.posts.previewUrl.name} != '' THEN excluded.${schema.posts.previewUrl.name} ELSE ${schema.posts.previewUrl.name} END`
             ),
