@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX `artists_tag_unique` ON `artists` (`tag`);
