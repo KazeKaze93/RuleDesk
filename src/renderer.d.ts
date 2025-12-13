@@ -38,6 +38,10 @@ export interface IpcApi extends IpcBridge {
   // Update status
   onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
   onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
+
+  onSyncStart: (callback: () => void) => () => void;
+  onSyncEnd: (callback: () => void) => () => void;
+  onSyncProgress: (callback: (message: string) => void) => () => void;
 }
 
 declare global {
