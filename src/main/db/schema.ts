@@ -1,5 +1,4 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm";
 
 // --- 1. SETTINGS TABLE ---
 export const settings = sqliteTable("settings", {
@@ -21,7 +20,7 @@ export const artists = sqliteTable("artists", {
   lastChecked: integer("last_checked"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
-    .default(sql.raw("unixepoch")),
+    .$defaultFn(() => new Date()),
 });
 
 // --- 3. POSTS TABLE ---
@@ -36,9 +35,11 @@ export const posts = sqliteTable("posts", {
   rating: text("rating"),
   tags: text("tags"),
   publishedAt: integer("published_at").notNull(),
+
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
-    .default(sql.raw("unixepoch")),
+    .$defaultFn(() => new Date()),
+
   isViewed: integer("is_viewed", { mode: "boolean" }).default(false).notNull(),
 });
 

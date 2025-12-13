@@ -9,6 +9,7 @@ import { eq, asc, desc, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 export type DbType = BetterSQLite3Database<typeof schema>;
+type ArtistInsertSchema = typeof schema.artists.$inferInsert;
 
 export class DbService {
   public readonly db: DbType;
@@ -27,10 +28,17 @@ export class DbService {
   }
 
   async addArtist(artistData: NewArtist): Promise<Artist> {
+    const dataToInsert: ArtistInsertSchema = {
+      name: artistData.name,
+      tag: artistData.tag,
+      type: artistData.type,
+      apiEndpoint: artistData.apiEndpoint,
+    };
+
     try {
       const result = await this.db
         .insert(schema.artists)
-        .values(artistData)
+        .values(dataToInsert)
         .returning({ id: schema.artists.id });
 
       if (!result || result.length === 0) {
