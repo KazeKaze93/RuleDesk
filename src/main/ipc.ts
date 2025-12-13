@@ -207,7 +207,7 @@ export const registerIpcHandlers = (
     if (!validation.success) {
       logger.error(
         `[IPC Validation] Invalid schema for db:delete-artist: ${JSON.stringify(
-          validation.error
+          validation.error.flatten()
         )}`
       );
       throw new Error("Invalid input format received.");
