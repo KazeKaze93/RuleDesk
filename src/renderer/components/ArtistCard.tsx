@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Trash2 } from "lucide-react";
+import { Trash2, User, Hash, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import type { Artist } from "../../main/db/schema";
 import { DeleteArtistDialog } from "./DeleteArtistDialog";
@@ -18,6 +18,17 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDeleteDialogOpen(true);
+  };
+
+  const getIcon = () => {
+    switch (artist.type) {
+      case "uploader":
+        return <User className="w-4 h-4 text-purple-400" />;
+      case "query":
+        return <Search className="w-4 h-4 text-emerald-400" />;
+      default:
+        return <Hash className="w-4 h-4 text-blue-400" />;
+    }
   };
 
   const handleCardClick = () => onSelect(artist);
@@ -40,9 +51,14 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
           )}
           aria-label={t("artistCard.selectArtist", { name: artist.name })}
         >
-          <h3 className="text-lg font-bold text-blue-500 truncate transition-colors group-hover:text-blue-400">
-            {artist.name}
-          </h3>
+          <div className="flex gap-2 items-center mb-1">
+            {/* Отображаем иконку типа */}
+            {getIcon()}
+            <h3 className="text-lg font-bold truncate transition-colors text-slate-200 group-hover:text-white">
+              {artist.name}
+            </h3>
+          </div>
+
           <p className="mt-1 font-mono text-xs truncate text-slate-500">
             [{artist.tag}] {t("app.lastId", "Last ID")}: {artist.lastPostId} |{" "}
             {t("app.new", "New")}:{" "}

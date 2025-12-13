@@ -218,3 +218,4 @@ https://api.rule34.xxx/autocomplete.php?q=char
 - Use JSON format (`json=1`) for easier parsing in modern applications
 - Document your API usage patterns for troubleshooting
 
+

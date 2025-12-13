@@ -6,7 +6,7 @@ import {
   unique,
 } from "drizzle-orm/sqlite-core";
 
-// --- 1. SETTINGS TABLE ---
+// --- 1. SETTINGS / SUBSCRIPTIONS TABLE ---
 export const settings = sqliteTable("settings", {
   id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
   userId: text("user_id"),
@@ -14,7 +14,7 @@ export const settings = sqliteTable("settings", {
 });
 
 // --- 2. ARTISTS TABLE ---
-const artistType = ["tag", "uploader"] as const;
+const artistType = ["tag", "uploader", "query"] as const;
 export const artists = sqliteTable(
   "artists",
   {

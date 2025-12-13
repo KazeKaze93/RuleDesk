@@ -476,3 +476,4 @@ npx electron-builder --linux
 2. Review similar code in the codebase
 3. Check GitHub issues
 4. Open a new issue with details
+

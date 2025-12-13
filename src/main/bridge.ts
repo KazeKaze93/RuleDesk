@@ -24,6 +24,9 @@ export interface IpcBridge {
   addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
+  // --- NEW: SEARCH ---
+  searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
+
   // Posts
   getArtistPosts: (params: {
     artistId: number;
@@ -35,7 +38,6 @@ export interface IpcBridge {
 
   // Sync
   syncAll: () => Promise<boolean>;
-
   repairArtist: (artistId: number) => Promise<boolean>;
 
   // Updater
@@ -52,10 +54,15 @@ export interface IpcBridge {
   onSyncError: (callback: SyncErrorCallback) => () => void;
 
   markPostAsViewed: (postId: number) => Promise<boolean>;
+
+  searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
 }
 
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
+
+  searchRemoteTags: (query) =>
+    ipcRenderer.invoke("api:search-remote-tags", query),
 
   getSettings: () => ipcRenderer.invoke("app:get-settings"),
   saveSettings: (creds) => ipcRenderer.invoke("app:save-settings", creds),
@@ -63,6 +70,9 @@ const ipcBridge: IpcBridge = {
   getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),
   addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
   deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
+
+  // --- NEW: Implementation ---
+  searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
 
   getArtistPosts: ({ artistId, page }) =>
     ipcRenderer.invoke("db:get-posts", { artistId, page }),
