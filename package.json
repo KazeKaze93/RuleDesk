@@ -20,7 +20,8 @@
     "postinstall": "electron-builder install-app-deps",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "validate": "npm run typecheck && npm run lint",
-    "dist": "npm run build && electron-builder --publish always"
+    "dist": "npm run build && electron-builder --publish always",
+    "release:patch": "npm version patch && git push --follow-tags"
   },
   "keywords": [
     "electron",
