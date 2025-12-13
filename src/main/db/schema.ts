@@ -21,7 +21,7 @@ export const artists = sqliteTable("artists", {
   lastChecked: integer("last_checked"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
-    .default(sql`unixepoch`),
+    .default(sql.raw("unixepoch")),
 });
 
 // --- 3. POSTS TABLE ---
@@ -35,13 +35,10 @@ export const posts = sqliteTable("posts", {
   title: text("title"),
   rating: text("rating"),
   tags: text("tags"),
-
   publishedAt: integer("published_at").notNull(),
-
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
-    .default(sql`unixepoch`),
-
+    .default(sql.raw("unixepoch")),
   isViewed: integer("is_viewed", { mode: "boolean" }).default(false).notNull(),
 });
 
