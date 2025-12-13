@@ -140,19 +140,30 @@ export const registerIpcHandlers = (
     return;
   });
 
-  // --- DB: POSTS ---
-  ipcMain.handle("db:get-posts", async (_event, data: unknown) => {
-    const validation = GetPostsSchema.safeParse(data);
+  // --- GET POSTS ---
+  ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
+    const GetPostsSchema = z.object({
+      artistId: z.number({ required_error: "artistId is required" }),
+      page: z.number().optional().default(1),
+      limit: z.number().optional().default(50),
+    });
+
+    const validation = GetPostsSchema.safeParse(payload);
+
     if (!validation.success) {
       logger.error("IPC: [db:get-posts] Validation failed:", validation.error);
-      throw new Error("Invalid input for db:get-posts");
+      throw new Error(`Validation Error: ${validation.error.message}`);
     }
 
-    const { artistId, page } = validation.data;
+    const { artistId, page, limit } = validation.data;
 
     try {
-      const limit = 50;
       const offset = (page - 1) * limit;
+
+      logger.info(
+        `IPC: [db:get-posts] Fetching artist ${artistId}, page ${page}`
+      );
+
       return await dbService.getPostsByArtist(artistId, limit, offset);
     } catch (e) {
       logger.error(

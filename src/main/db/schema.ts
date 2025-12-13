@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
 // --- 1. SETTINGS TABLE ---
 export const settings = sqliteTable("settings", {
@@ -9,39 +9,55 @@ export const settings = sqliteTable("settings", {
 
 // --- 2. ARTISTS TABLE ---
 const artistType = ["tag", "uploader"] as const;
-export const artists = sqliteTable("artists", {
-  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  tag: text("tag").notNull(),
-  type: text("type", { enum: artistType }).notNull(),
-  apiEndpoint: text("api_endpoint").notNull(),
-  lastPostId: integer("last_post_id").default(0).notNull(),
-  newPostsCount: integer("new_posts_count").default(0).notNull(),
-  lastChecked: integer("last_checked"),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const artists = sqliteTable(
+  "artists",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    tag: text("tag").notNull(),
+    type: text("type", { enum: artistType }).notNull(),
+    apiEndpoint: text("api_endpoint").notNull(),
+    lastPostId: integer("last_post_id").default(0).notNull(),
+    newPostsCount: integer("new_posts_count").default(0).notNull(),
+    lastChecked: integer("last_checked"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    nameIdx: index("name_idx").on(table.name),
+  })
+);
 
 // --- 3. POSTS TABLE ---
-export const posts = sqliteTable("posts", {
-  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
-  artistId: integer("artist_id")
-    .notNull()
-    .references(() => artists.id, { onDelete: "cascade" }),
-  fileUrl: text("file_url").notNull(),
-  previewUrl: text("preview_url").notNull(),
-  title: text("title"),
-  rating: text("rating"),
-  tags: text("tags"),
-  publishedAt: integer("published_at").notNull(),
+export const posts = sqliteTable(
+  "posts",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    artistId: integer("artist_id")
+      .notNull()
+      .references(() => artists.id, { onDelete: "cascade" }),
+    fileUrl: text("file_url").notNull(),
+    previewUrl: text("preview_url").notNull(),
+    title: text("title"),
+    rating: text("rating"),
+    tags: text("tags"),
+    publishedAt: integer("published_at").notNull(),
 
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
 
-  isViewed: integer("is_viewed", { mode: "boolean" }).default(false).notNull(),
-});
+    isViewed: integer("is_viewed", { mode: "boolean" })
+      .default(false)
+      .notNull(),
+  },
+  (table) => ({
+    artistIdIdx: index("artist_id_idx").on(table.artistId),
+    publishedAtIdx: index("published_at_idx").on(table.publishedAt),
+    isViewedIdx: index("is_viewed_idx").on(table.isViewed),
+  })
+);
 
 // --- 4. TYPE EXPORTS ---
 export type Settings = typeof settings.$inferSelect;

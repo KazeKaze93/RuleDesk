@@ -7,7 +7,7 @@ CREATE TABLE `artists` (
 	`last_post_id` integer DEFAULT 0 NOT NULL,
 	`new_posts_count` integer DEFAULT 0 NOT NULL,
 	`last_checked` integer,
-	`created_at` integer DEFAULT unixepoch NOT NULL
+	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `posts` (
@@ -19,7 +19,7 @@ CREATE TABLE `posts` (
 	`rating` text,
 	`tags` text,
 	`published_at` integer NOT NULL,
-	`created_at` integer DEFAULT unixepoch NOT NULL,
+	`created_at` integer NOT NULL,
 	`is_viewed` integer DEFAULT false NOT NULL,
 	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE cascade
 );
