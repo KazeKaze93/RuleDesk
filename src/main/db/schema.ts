@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm"; // 🚨 FIX: Правильный импорт SQL функции
+import { sql } from "drizzle-orm";
 
 // --- 1. SETTINGS TABLE ---
 export const settings = sqliteTable("settings", {
@@ -15,13 +15,10 @@ export const artists = sqliteTable("artists", {
   name: text("name").notNull(),
   tag: text("tag").notNull(),
   type: text("type", { enum: artistType }).notNull(),
-
   apiEndpoint: text("api_endpoint").notNull(),
-
   lastPostId: integer("last_post_id").default(0).notNull(),
   newPostsCount: integer("new_posts_count").default(0).notNull(),
   lastChecked: integer("last_checked"),
-
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`unixepoch`),
