@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, RefreshCw, X, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
@@ -13,6 +14,7 @@ type UpdateStatus =
   | "error";
 
 export const UpdateNotification: React.FC = () => {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<UpdateStatus>("idle");
   const [progress, setProgress] = useState(0);
   const [version, setVersion] = useState("");
@@ -72,21 +74,26 @@ export const UpdateNotification: React.FC = () => {
 
           <div>
             <h4 className="text-sm font-semibold">
-              {status === "available" && `Update v${version} available`}
-              {status === "downloading" && "Downloading update..."}
-              {status === "downloaded" && "Ready to install"}
-              {status === "error" && "Update failed"}
+              {status === "available" &&
+                t("updateNotification.updateAvailable", { version })}
+              {status === "downloading" &&
+                t("updateNotification.downloadingUpdate")}
+              {status === "downloaded" &&
+                t("updateNotification.readyToInstall")}
+              {status === "error" && t("updateNotification.updateFailed")}
             </h4>
             <p className="text-xs text-slate-400 mt-0.5">
-              {status === "downloading" && `${progress}% completed`}
-              {status === "downloaded" && "Restart required"}
+              {status === "downloading" &&
+                t("updateNotification.percentCompleted", { progress })}
+              {status === "downloaded" &&
+                t("updateNotification.restartRequired")}
             </p>
           </div>
         </div>
         <button
           onClick={handleClose}
           className="text-slate-500 hover:text-slate-300"
-          aria-label="Close notification"
+          aria-label={t("updateNotification.closeNotification")}
         >
           <X className="w-4 h-4" />
         </button>
@@ -110,7 +117,7 @@ export const UpdateNotification: React.FC = () => {
               onClick={handleDownload}
               className="w-full bg-blue-600 hover:bg-blue-500"
             >
-              Download
+              {t("updateNotification.download")}
             </Button>
             <Button
               size="sm"
@@ -118,7 +125,7 @@ export const UpdateNotification: React.FC = () => {
               onClick={handleClose}
               className="w-full border-slate-700 hover:bg-slate-800"
             >
-              Later
+              {t("updateNotification.later")}
             </Button>
           </>
         )}
@@ -129,7 +136,7 @@ export const UpdateNotification: React.FC = () => {
             onClick={handleInstall}
             className="w-full bg-green-600 hover:bg-green-500"
           >
-            Restart & Install
+            {t("updateNotification.restartAndInstall")}
           </Button>
         )}
       </div>

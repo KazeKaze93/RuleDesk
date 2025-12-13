@@ -1,0 +1,81 @@
+{
+  "artistGallery": {
+    "backToArtists": "Back to artists list",
+    "postsOnPage": "posts on page",
+    "repairTitle": "Resynchronize first pages to update low-quality previews",
+    "repair": "Repair",
+    "openInBrowser": "Open in browser",
+    "web": "Web",
+    "loadingPosts": "Loading posts...",
+    "imageAlt": "Image by {{artistName}} with tags {{tags}}",
+    "noPreview": "No Preview",
+    "noPostsFound": "No posts found on this page.",
+    "previousPage": "Previous page",
+    "back": "Back",
+    "page": "Page",
+    "nextPage": "Next page",
+    "next": "Next",
+    "repairConfirm": "Are you sure you want to run a repair sync for {{artistName}}? This may take time and update old entries."
+  },
+  "addArtistModal": {
+    "addArtist": "Add Artist",
+    "newArtist": "New Artist",
+    "error": "Error: {{message}}",
+    "artistTag": "Artist Tag",
+    "uploader": "Uploader",
+    "usernameUploader": "Username (Uploader)",
+    "artistTagLabel": "Artist Tag",
+    "placeholderUploader": "Lesdias",
+    "placeholderTag": "wlop",
+    "nameRequired": "Name is required",
+    "willBeSent": "Will be sent:",
+    "cancel": "Cancel",
+    "add": "Add"
+  },
+  "onboarding": {
+    "title": "Rule34 Authorization",
+    "description": "API keys are required for the parser to work.",
+    "howToGetKeys": "How to get keys:",
+    "step1": "Log into your account on rule34.xxx",
+    "step2": "Go to My Account → Options",
+    "step3": "Find the API Access section",
+    "settingsPageAddress": "Settings page address (copy):",
+    "userId": "User ID",
+    "userIdPlaceholder": "For example: 123456",
+    "userIdRequired": "User ID is required",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "Your secret key",
+    "apiKeyTooShort": "API Key is too short",
+    "saving": "Saving...",
+    "saveAndLogin": "Save and Login"
+  },
+  "updateNotification": {
+    "closeNotification": "Close notification",
+    "updateAvailable": "Update v{{version}} available",
+    "downloadingUpdate": "Downloading update...",
+    "readyToInstall": "Ready to install",
+    "updateFailed": "Update failed",
+    "percentCompleted": "{{progress}}% completed",
+    "restartRequired": "Restart required",
+    "download": "Download",
+    "later": "Later",
+    "restartAndInstall": "Restart & Install"
+  },
+  "app": {
+    "appTitle": "NSFW Booru Client",
+    "syncAll": "Sync All",
+    "syncing": "Syncing...",
+    "startSynchronization": "Start synchronization",
+    "syncingInProgress": "Syncing in progress: {{message}}",
+    "trackedArtists": "Tracked Artists",
+    "loadingFromSqlite": "Loading from SQLite...",
+    "dbError": "🛑 DB Error: {{message}}",
+    "trackingListEmpty": "Tracking list is empty.",
+    "lastId": "Last ID",
+    "new": "New",
+    "loading": "Loading..."
+  },
+  "dialog": {
+    "close": "Close"
+  }
+}
