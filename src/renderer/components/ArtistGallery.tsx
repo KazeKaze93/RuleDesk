@@ -1,5 +1,3 @@
-// src/renderer/components/ArtistGallery.tsx
-
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, ExternalLink, Wrench } from "lucide-react";
@@ -122,7 +120,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             >
               {post.previewUrl ? (
                 <img
-                  key={`${post.postId}:${post.previewUrl}`}
                   src={post.previewUrl}
                   alt={`Image by ${artist.name} with tags ${post.tags}`}
                   className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
