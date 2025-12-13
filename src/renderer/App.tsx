@@ -4,6 +4,7 @@ import {
   QueryClientProvider,
   useQuery,
 } from "@tanstack/react-query";
+import { I18nextProvider, useTranslation } from "react-i18next";
 import { RefreshCw } from "lucide-react";
 import type { Artist } from "../main/db/schema";
 import { AddArtistModal } from "./components/AddArtistModal";
@@ -12,6 +13,7 @@ import { Button } from "./components/ui/button";
 import { ArtistGallery } from "./components/ArtistGallery";
 import { UpdateNotification } from "./components/UpdateNotification";
 import { cn } from "./lib/utils";
+import i18n from "./i18n";
 
 const queryClient = new QueryClient();
 
@@ -35,13 +37,14 @@ const ArtistListView: React.FC<{
   syncMessage,
   version,
 }) => {
+  const { t } = useTranslation();
   return (
     <div className="p-8 min-h-screen bg-slate-950 text-slate-50">
       <div className="mx-auto space-y-6 max-w-4xl">
         {/* Header */}
         <div className="flex justify-between items-center pb-4 border-b border-slate-800">
           <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
-            NSFW Booru Client
+            {t("app.appTitle")}
           </h1>
           <div className="flex gap-4 items-center">
             <Button
@@ -52,14 +55,14 @@ const ArtistListView: React.FC<{
               aria-live="polite"
               aria-label={
                 isSyncing
-                  ? `Syncing in progress: ${syncMessage}`
-                  : "Start synchronization"
+                  ? t("app.syncingInProgress", { message: syncMessage })
+                  : t("app.startSynchronization")
               }
             >
               <RefreshCw
                 className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")}
               />
-              {isSyncing ? syncMessage || "Syncing..." : "Sync All"}
+              {isSyncing ? syncMessage || t("app.syncing") : t("app.syncAll")}
             </Button>
             <span className="font-mono text-xs text-slate-500">
               v{version || "..."}
@@ -69,15 +72,15 @@ const ArtistListView: React.FC<{
 
         {/* Content State Handling */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Tracked Artists</h2>
+          <h2 className="text-xl font-semibold">{t("app.trackedArtists")}</h2>
 
           {isLoading && (
-            <div className="text-yellow-400">Loading from SQLite...</div>
+            <div className="text-yellow-400">{t("app.loadingFromSqlite")}</div>
           )}
 
           {error && (
             <div className="p-4 text-red-200 rounded border border-red-800 bg-red-900/50">
-              🛑 DB Error: {error.message}
+              {t("app.dbError", { message: error.message })}
             </div>
           )}
 
@@ -85,7 +88,7 @@ const ArtistListView: React.FC<{
             <div className="grid gap-4">
               {artists && artists.length === 0 ? (
                 <div className="p-8 text-center rounded-lg border border-dashed border-slate-700 text-slate-400">
-                  Список отслеживания пуст.
+                  {t("app.trackingListEmpty")}
                 </div>
               ) : (
                 <div className="grid gap-2">
@@ -101,8 +104,8 @@ const ArtistListView: React.FC<{
                           {artist.name}
                         </span>
                         <div className="text-xs text-slate-500">
-                          [{artist.tag}] Last ID: {artist.lastPostId} | New:{" "}
-                          {artist.newPostsCount}
+                          [{artist.tag}] {t("app.lastId")}: {artist.lastPostId}{" "}
+                          | {t("app.new")}: {artist.newPostsCount}
                         </div>
                       </div>
                     </button>
@@ -214,10 +217,11 @@ const Root: React.FC = () => {
     });
   }, []);
 
+  const { t } = useTranslation();
   if (hasAuth === null) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-950 text-slate-500">
-        Загрузка...
+        {t("app.loading")}
       </div>
     );
   }
@@ -232,9 +236,11 @@ const Root: React.FC = () => {
 // --- 4. App Entry: Провайдеры и глобальные компоненты ---
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Root />
-      <UpdateNotification />
-    </QueryClientProvider>
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <Root />
+        <UpdateNotification />
+      </QueryClientProvider>
+    </I18nextProvider>
   );
 }
