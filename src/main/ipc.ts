@@ -17,6 +17,11 @@ const GetPostsSchema = z.object({
 
 const DeleteArtistSchema = z.number().int().positive();
 
+const SaveSettingsSchema = z.object({
+  userId: z.string().min(1, { message: "User ID is required" }),
+  apiKey: z.string().min(5, { message: "API Key is too short" }),
+});
+
 // --- 1. Отдельные функции-обработчики ---
 
 const handleGetAppVersion = async (
@@ -45,7 +50,6 @@ export const registerIpcHandlers = (
       `IPC: [sync:repair-artist] Запрос ремонта для автора ${artistId}`
     );
     try {
-      // Предполагается, что syncService уже инициализирован
       await syncService.repairArtistPosts(artistId);
       return { success: true };
     } catch (error) {
@@ -54,13 +58,26 @@ export const registerIpcHandlers = (
     }
   });
 
-  ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
+  ipcMain.handle("app:save-settings", async (_event, data: unknown) => {
+    const validation = SaveSettingsSchema.safeParse(data);
+
+    if (!validation.success) {
+      logger.warn(
+        "IPC: [app:save-settings] Validation failed (Renderer data):",
+        validation.error
+      );
+      throw new Error(`Validation Error: ${validation.error.message}`);
+    }
+
+    const { userId, apiKey } = validation.data;
+
     if (!userId || !apiKey) {
       logger.warn(
-        "IPC: [app:save-settings] Ошибка валидации: нет userId или apiKey"
+        "IPC: [app:save-settings] Отклонено: нет userId или apiKey (После валидации Zod)"
       );
       throw new Error("API User ID and Key are required.");
     }
+
     return dbService.saveSettings(userId.trim(), apiKey.trim());
   });
 
