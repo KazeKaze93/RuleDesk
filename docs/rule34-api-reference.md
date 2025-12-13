@@ -217,3 +217,4 @@ https://api.rule34.xxx/autocomplete.php?q=char
 - Implement retry logic with exponential backoff
 - Use JSON format (`json=1`) for easier parsing in modern applications
 - Document your API usage patterns for troubleshooting
+
