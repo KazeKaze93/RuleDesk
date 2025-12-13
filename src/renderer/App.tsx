@@ -49,6 +49,12 @@ const ArtistListView: React.FC<{
               size="sm"
               onClick={onSync}
               disabled={isSyncing}
+              aria-live="polite"
+              aria-label={
+                isSyncing
+                  ? `Syncing in progress: ${syncMessage}`
+                  : "Start synchronization"
+              }
             >
               <RefreshCw
                 className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")}
