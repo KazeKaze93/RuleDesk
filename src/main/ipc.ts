@@ -50,7 +50,7 @@ export const registerIpcHandlers = (
       `IPC: [sync:repair-artist] Запрос ремонта для автора ${artistId}`
     );
     try {
-      await syncService.repairArtistPosts(artistId);
+      await syncService.repairArtist(artistId);
       return { success: true };
     } catch (error) {
       logger.error(`IPC: Ошибка ремонта автора ${artistId}`, error);
@@ -70,13 +70,6 @@ export const registerIpcHandlers = (
     }
 
     const { userId, apiKey } = validation.data;
-
-    if (!userId || !apiKey) {
-      logger.warn(
-        "IPC: [app:save-settings] Отклонено: нет userId или apiKey (После валидации Zod)"
-      );
-      throw new Error("API User ID and Key are required.");
-    }
 
     return dbService.saveSettings(userId.trim(), apiKey.trim());
   });
