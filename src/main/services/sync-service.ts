@@ -2,7 +2,8 @@ import { BrowserWindow } from "electron";
 import { logger } from "../lib/logger";
 import { DbService } from "../db/db-service";
 import axios from "axios";
-import type { Artist } from "../db/schema";
+import type { Artist, Settings } from "../db/schema";
+import { URLSearchParams } from "url";
 
 interface R34Post {
   id: number;
@@ -28,6 +29,7 @@ export class SyncService {
     this.dbService = dbService;
   }
 
+  // FIX: Сделано public для отправки ошибок из ipc.ts
   public sendEvent(channel: string, data?: unknown) {
     if (this.window && !this.window.isDestroyed()) {
       this.window.webContents.send(channel, data);
@@ -46,19 +48,28 @@ export class SyncService {
     }
 
     this.isSyncing = true;
-    logger.info("SyncService: Начало полного цикла синхронизации...");
-
+    logger.info("SyncService: Начало полного цикла синхронизации Rule34...");
     this.sendEvent("sync:start");
 
     try {
       const artists = await this.dbService.getTrackedArtists();
+
+      const settings = await this.dbService.getSettings();
+      if (!settings || !settings.userId) {
+        throw new Error("API credentials not found. Please check settings.");
+      }
+
       logger.info(
         `SyncService: Найдено авторов для обновления: ${artists.length}`
       );
 
       for (const artist of artists) {
         this.sendEvent("sync:progress", `Checking ${artist.name}...`);
-        await this.syncArtist(artist);
+
+        await this.syncArtist(artist, settings);
+
+        await this.dbService.updateArtistLastChecked(artist.id);
+
         await new Promise((resolve) => setTimeout(resolve, 1500));
       }
 
@@ -67,7 +78,7 @@ export class SyncService {
       logger.error("SyncService: Ошибка глобальной синхронизации", error);
       this.sendEvent(
         "sync:error",
-        error instanceof Error ? error.message : "Unknown error"
+        error instanceof Error ? error.message : "Unknown error during sync"
       );
     } finally {
       this.isSyncing = false;
@@ -75,31 +86,47 @@ export class SyncService {
     }
   }
 
-  private async syncArtist(artist: Artist) {
+  private async syncArtist(artist: Artist, settings: Settings) {
     logger.info(`SyncService: Проверка ${artist.name} [${artist.tag}]...`);
 
     let page = 0;
     let hasMore = true;
     let newPostsCount = 0;
+    const limit = 100;
 
-    const settings = await this.dbService?.getSettings();
-    if (!settings || !settings.userId) {
-      logger.warn("SyncService: Нет настроек API, пропускаем.");
-      return;
-    }
+    const encodedTag = encodeURIComponent(artist.tag);
 
     while (hasMore) {
       try {
-        const limit = 1000; // Rule34 limit
-        const url = `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&limit=${limit}&pid=${page}&tags=${
+        const tagsQuery = `${
           artist.type === "uploader" ? "user:" : ""
-        }${artist.tag}&json=1`;
+        }${encodedTag} id:>${artist.lastPostId}`;
 
-        const authUrl = settings.apiKey
-          ? `${url}&user_id=${settings.userId}&api_key=${settings.apiKey}`
-          : url;
+        const params: Record<string, string> = {
+          page: "dapi",
+          s: "post",
+          q: "index",
+          limit: limit.toString(),
+          pid: page.toString(),
+          tags: tagsQuery,
+          json: "1",
+        };
 
-        const response = await axios.get<R34Post[]>(authUrl);
+        if (settings.apiKey && settings.userId) {
+          params.user_id = settings.userId;
+          params.api_key = settings.apiKey;
+        }
+
+        const urlParams = new URLSearchParams(params);
+
+        const authUrl = `https://api.rule34.xxx/index.php?${urlParams.toString()}`;
+        const response = await axios.get<R34Post[]>(authUrl, {
+          timeout: 15000,
+          headers: {
+            "User-Agent": "NSFW-Booru-Client/1.0.0 (Github: KazeKaze93)",
+          },
+        });
+
         const posts = response.data;
 
         if (!Array.isArray(posts) || posts.length === 0) {
@@ -123,7 +150,7 @@ export class SyncService {
             title: "",
             rating: p.rating,
             tags: p.tags,
-            publishedAt: Math.floor(p.change), // change field is unix timestamp
+            publishedAt: p.change,
             isViewed: false,
           }));
 
@@ -142,7 +169,16 @@ export class SyncService {
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       } catch (e) {
-        logger.error(`SyncService: Ошибка при обработке ${artist.name}`, e);
+        logger.error(
+          `SyncService: Ошибка при обработке ${artist.name} (page ${page})`,
+          e
+        );
+        this.sendEvent(
+          "sync:error",
+          `Sync failed for ${artist.name}: ${
+            e instanceof Error ? e.message : "Network error"
+          }`
+        );
         hasMore = false;
       }
     }
