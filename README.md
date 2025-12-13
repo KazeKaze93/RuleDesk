@@ -24,11 +24,13 @@ This project is **unofficial** and **not affiliated** with any external website 
 | :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials stored in SQLite database, accessible only from Main Process.                                                                                  |
 | **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports both tag-based and uploader-based tracking.                                                                                                 |
-| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling.                                                       |
+| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling. Real-time sync progress updates via IPC events.       |
 | **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Stores artists, posts metadata (tags, ratings, URLs), and settings. Database file access is strictly limited to the **Main Process** to enforce thread-safety and security. |
-| **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx.                                                                          |
+| **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality.              |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                   |
-| **🌐 Clean English UI**           | Fully localized English interface. All UI components and logs use English language for consistency and maintainability.                                                                                                                 |
+| **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                    |
+| **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                           |
+| **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                   |
 | **🔌 Multi-Source Ready**         | Architecture designed for future multi-booru support. Provider pattern abstraction allows adding new sources (Danbooru, Gelbooru, etc.) without core database changes.                                                                  |
 
 ---
@@ -76,7 +78,7 @@ This is the sandboxed browser environment. It handles presentation.
 
    - Launch the application
    - Enter your User ID and API Key in the onboarding screen
-   - Click "Сохранить и Войти" (Save and Login)
+   - Click "Save and Login"
 
 3. **Add Artists:**
 
@@ -87,8 +89,9 @@ This is the sandboxed browser environment. It handles presentation.
 
 4. **Sync Posts:**
    - Click "Sync All" to fetch posts from Rule34.xxx
-   - Wait for synchronization to complete
+   - Wait for synchronization to complete (progress updates shown in real-time)
    - Click on an artist to view their gallery
+   - Use "Repair" button in gallery to resync and update preview quality if needed
 
 ---
 

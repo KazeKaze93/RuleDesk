@@ -36,6 +36,20 @@ interface IpcBridge {
 
   // Sync
   syncAll: () => Promise<boolean>;
+  repairArtist: (artistId: number) => Promise<boolean>;
+
+  // Updater
+  checkForUpdates: () => Promise<void>;
+  quitAndInstall: () => Promise<void>;
+  startDownload: () => Promise<void>;
+
+  // Event Listeners
+  onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
+  onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
+  onSyncStart: (callback: () => void) => () => void;
+  onSyncEnd: (callback: () => void) => () => void;
+  onSyncProgress: (callback: (message: string) => void) => () => void;
+  onSyncError: (callback: SyncErrorCallback) => () => void;
 }
 ```
 
@@ -249,21 +263,21 @@ try {
 
 ---
 
-### `getArtistPosts(artistId: number, page?: number)`
+### `getArtistPosts(params: { artistId: number; page?: number })`
 
 Retrieves posts for a specific artist with pagination.
 
 **Parameters:**
 
-- `artistId: number` - Artist ID
-- `page?: number` - Page number (defaults to 1)
+- `params.artistId: number` - Artist ID
+- `params.page?: number` - Page number (defaults to 1)
 
 **Returns:** `Promise<Post[]>`
 
 **Example:**
 
 ```typescript
-const posts = await window.api.getArtistPosts(123, 1);
+const posts = await window.api.getArtistPosts({ artistId: 123, page: 1 });
 console.log(`Found ${posts.length} posts`);
 ```
 
@@ -314,7 +328,234 @@ if (success) {
 
 **IPC Channel:** `db:sync-all`
 
-**Note:** This is an asynchronous operation. The method returns immediately, and synchronization runs in the background. Check artist `newPostsCount` to see results.
+**Note:** This is an asynchronous operation. The method returns immediately, and synchronization runs in the background. Use event listeners (`onSyncStart`, `onSyncEnd`, `onSyncProgress`, `onSyncError`) to track progress. Check artist `newPostsCount` to see results.
+
+---
+
+### `repairArtist(artistId: number)`
+
+Repairs/resynchronizes an artist by resetting their `lastPostId` to 0 and re-fetching initial pages. Useful for updating low-quality previews or fixing synchronization issues.
+
+**Parameters:**
+
+- `artistId: number` - Artist ID to repair
+
+**Returns:** `Promise<boolean>`
+
+**Example:**
+
+```typescript
+try {
+  const success = await window.api.repairArtist(123);
+  if (success) {
+    console.log("Artist repair completed");
+  }
+} catch (error) {
+  console.error("Failed to repair artist:", error);
+}
+```
+
+**IPC Channel:** `sync:repair-artist`
+
+**Note:** This operation may take time depending on the number of pages to sync. The artist's `lastPostId` is reset to 0, and initial pages are re-fetched.
+
+---
+
+### `checkForUpdates()`
+
+Checks for available application updates from the GitHub releases.
+
+**Returns:** `Promise<void>`
+
+**Example:**
+
+```typescript
+await window.api.checkForUpdates();
+```
+
+**IPC Channel:** `app:check-for-updates`
+
+**Note:** Use `onUpdateStatus` event listener to receive update status notifications.
+
+---
+
+### `startDownload()`
+
+Starts downloading an available update. Must be called after `checkForUpdates()` indicates an update is available.
+
+**Returns:** `Promise<void>`
+
+**Example:**
+
+```typescript
+await window.api.startDownload();
+```
+
+**IPC Channel:** `app:start-download`
+
+**Note:** Use `onUpdateProgress` event listener to track download progress.
+
+---
+
+### `quitAndInstall()`
+
+Quits the application and installs the downloaded update. Should only be called after the update has been fully downloaded.
+
+**Returns:** `Promise<void>`
+
+**Example:**
+
+```typescript
+await window.api.quitAndInstall();
+```
+
+**IPC Channel:** `app:quit-and-install`
+
+**Warning:** This will immediately quit the application. Ensure all user data is saved before calling.
+
+---
+
+### Event Listeners
+
+The IPC bridge provides several event listeners for real-time updates:
+
+#### `onUpdateStatus(callback: UpdateStatusCallback)`
+
+Listens for update status changes.
+
+**Callback Type:**
+
+```typescript
+type UpdateStatusCallback = (data: UpdateStatusData) => void;
+
+type UpdateStatusData = {
+  status: string; // "checking" | "available" | "not-available" | "downloaded" | "error"
+  message?: string;
+  version?: string; // Available when status is "available"
+};
+```
+
+**Returns:** `() => void` - Unsubscribe function
+
+**Example:**
+
+```typescript
+const unsubscribe = window.api.onUpdateStatus((data) => {
+  if (data.status === "available") {
+    console.log(`Update ${data.version} is available!`);
+  }
+});
+
+// Later, to unsubscribe:
+unsubscribe();
+```
+
+**IPC Channel:** `updater:status`
+
+---
+
+#### `onUpdateProgress(callback: UpdateProgressCallback)`
+
+Listens for download progress updates.
+
+**Callback Type:**
+
+```typescript
+type UpdateProgressCallback = (percent: number) => void;
+```
+
+**Returns:** `() => void` - Unsubscribe function
+
+**Example:**
+
+```typescript
+const unsubscribe = window.api.onUpdateProgress((percent) => {
+  console.log(`Download progress: ${percent}%`);
+});
+
+// Later, to unsubscribe:
+unsubscribe();
+```
+
+**IPC Channel:** `updater:progress`
+
+---
+
+#### `onSyncStart(callback: () => void)`
+
+Listens for sync start events.
+
+**Returns:** `() => void` - Unsubscribe function
+
+**Example:**
+
+```typescript
+const unsubscribe = window.api.onSyncStart(() => {
+  console.log("Sync started");
+});
+```
+
+**IPC Channel:** `sync:start`
+
+---
+
+#### `onSyncEnd(callback: () => void)`
+
+Listens for sync completion events.
+
+**Returns:** `() => void` - Unsubscribe function
+
+**Example:**
+
+```typescript
+const unsubscribe = window.api.onSyncEnd(() => {
+  console.log("Sync completed");
+});
+```
+
+**IPC Channel:** `sync:end`
+
+---
+
+#### `onSyncProgress(callback: (message: string) => void)`
+
+Listens for sync progress messages.
+
+**Returns:** `() => void` - Unsubscribe function
+
+**Example:**
+
+```typescript
+const unsubscribe = window.api.onSyncProgress((message) => {
+  console.log(`Sync: ${message}`);
+});
+```
+
+**IPC Channel:** `sync:progress`
+
+---
+
+#### `onSyncError(callback: SyncErrorCallback)`
+
+Listens for sync error events.
+
+**Callback Type:**
+
+```typescript
+type SyncErrorCallback = (message: string) => void;
+```
+
+**Returns:** `() => void` - Unsubscribe function
+
+**Example:**
+
+```typescript
+const unsubscribe = window.api.onSyncError((message) => {
+  console.error(`Sync error: ${message}`);
+});
+```
+
+**IPC Channel:** `sync:error`
 
 ## Error Handling
 
@@ -348,17 +589,32 @@ try {
 IPC handlers are registered in `src/main/ipc.ts`:
 
 ```typescript
-export const registerIpcHandlers = (dbService: DbService) => {
+export const registerIpcHandlers = (
+  dbService: DbService,
+  syncService: SyncService
+) => {
   // App handlers
   ipcMain.handle("app:get-version", handleGetAppVersion);
   ipcMain.handle("app:get-settings", async () => {
     return dbService.getSettings();
   });
-  ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
+  ipcMain.handle("app:save-settings", async (_event, data: unknown) => {
+    // Validation with Zod schema
     return dbService.saveSettings(userId, apiKey);
   });
   ipcMain.handle("app:open-external", async (_event, urlString: string) => {
     // Security validation and shell.openExternal
+  });
+
+  // Updater handlers (registered in UpdaterService)
+  ipcMain.handle("app:check-for-updates", async () => {
+    return updaterService.checkForUpdates();
+  });
+  ipcMain.handle("app:start-download", () => {
+    // Starts update download
+  });
+  ipcMain.handle("app:quit-and-install", () => {
+    // Quits and installs update
   });
 
   // Database handlers
@@ -372,15 +628,21 @@ export const registerIpcHandlers = (dbService: DbService) => {
   ipcMain.handle("db:delete-artist", async (_event, id: number) => {
     return dbService.deleteArtist(id);
   });
-  ipcMain.handle("db:get-posts", async (_event, { artistId, page }) => {
-    const limit = 50;
+  ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
+    // Validation with Zod schema
+    const { artistId, page, limit } = validatedPayload;
     const offset = (page - 1) * limit;
     return dbService.getPostsByArtist(artistId, limit, offset);
   });
   ipcMain.handle("db:sync-all", async () => {
     // Initiates background sync
     syncService.syncAllArtists();
-    return true;
+  });
+
+  // Sync handlers
+  ipcMain.handle("sync:repair-artist", async (_event, artistId: number) => {
+    await syncService.repairArtist(artistId);
+    return { success: true };
   });
 };
 ```
@@ -400,12 +662,53 @@ const ipcBridge: IpcBridge = {
   addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
   deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
 
-  getArtistPosts: (id, page) =>
-    ipcRenderer.invoke("db:get-posts", { artistId: id, page }),
+  getArtistPosts: ({ artistId, page }) =>
+    ipcRenderer.invoke("db:get-posts", { artistId, page }),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
   syncAll: () => ipcRenderer.invoke("db:sync-all"),
+  repairArtist: (artistId) =>
+    ipcRenderer.invoke("sync:repair-artist", artistId),
+
+  // Updater methods
+  checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
+  quitAndInstall: () => ipcRenderer.invoke("app:quit-and-install"),
+  startDownload: () => ipcRenderer.invoke("app:start-download"),
+
+  // Event listeners
+  onUpdateStatus: (callback) => {
+    const subscription = (_: IpcRendererEvent, data: UpdateStatusData) =>
+      callback(data);
+    ipcRenderer.on("updater:status", subscription);
+    return () => ipcRenderer.removeListener("updater:status", subscription);
+  },
+  onUpdateProgress: (callback) => {
+    const subscription = (_: IpcRendererEvent, percent: number) =>
+      callback(percent);
+    ipcRenderer.on("updater:progress", subscription);
+    return () => ipcRenderer.removeListener("updater:progress", subscription);
+  },
+  onSyncStart: (callback) => {
+    const sub = () => callback();
+    ipcRenderer.on("sync:start", sub);
+    return () => ipcRenderer.removeListener("sync:start", sub);
+  },
+  onSyncEnd: (callback) => {
+    const sub = () => callback();
+    ipcRenderer.on("sync:end", sub);
+    return () => ipcRenderer.removeListener("sync:end", sub);
+  },
+  onSyncProgress: (callback) => {
+    const sub = (_: IpcRendererEvent, msg: string) => callback(msg);
+    ipcRenderer.on("sync:progress", sub);
+    return () => ipcRenderer.removeListener("sync:progress", sub);
+  },
+  onSyncError: (callback) => {
+    const subscription = (_: IpcRendererEvent, msg: string) => callback(msg);
+    ipcRenderer.on("sync:error", subscription);
+    return () => ipcRenderer.removeListener("sync:error", subscription);
+  },
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);
@@ -436,4 +739,3 @@ The application integrates with **Rule34.xxx API**. Integration is handled in th
 **API Endpoint:** `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index`
 
 See [Rule34 API Reference](./rule34-api-reference.md) for detailed API documentation.
-

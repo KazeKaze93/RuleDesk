@@ -73,6 +73,8 @@ This application follows a strict **Separation of Concerns (SoC)** architecture,
    - Implements rate limiting and pagination
    - Maps API responses to database schema
    - Updates artist post counts
+   - Provides repair/resync functionality for artists
+   - Emits IPC events for sync progress tracking
 
 3. **IPC Handlers** (`src/main/ipc.ts`)
 
@@ -80,14 +82,23 @@ This application follows a strict **Separation of Concerns (SoC)** architecture,
    - Validates input from Renderer using Zod schemas
    - Delegates to appropriate services
    - Security validation (e.g., openExternal URL whitelist)
+   - Handles updater and sync event subscriptions
 
-4. **Bridge** (`src/main/bridge.ts`)
+4. **Updater Service** (`src/main/services/updater-service.ts`)
+
+   - Manages automatic update checking via `electron-updater`
+   - Handles update download and installation
+   - Emits IPC events for update status and progress
+   - User-controlled download (manual download trigger)
+
+5. **Bridge** (`src/main/bridge.ts`)
 
    - Defines the IPC interface
    - Exposed via preload script
    - Type-safe communication contract
+   - Event listener management for real-time updates
 
-5. **Main Entry** (`src/main/main.ts`)
+6. **Main Entry** (`src/main/main.ts`)
    - Application initialization
    - Window creation
    - Security configuration
@@ -355,10 +366,13 @@ src/
 
 ### Implemented Features
 
-1. ✅ **Sync Service:** Dedicated service for Rule34.xxx API synchronization
+1. ✅ **Sync Service:** Dedicated service for Rule34.xxx API synchronization with progress tracking
 2. ✅ **Settings Management:** Secure storage of API credentials
 3. ✅ **Artist Tracking:** Support for tag-based and uploader-based tracking
-4. ✅ **Post Gallery:** Grid view of cached posts with preview images
+4. ✅ **Post Gallery:** Grid view of cached posts with preview images and pagination
+5. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
+6. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
+7. ✅ **Event System:** Real-time IPC events for sync progress and update status
 
 ### Planned Features
 
@@ -390,4 +404,3 @@ src/
 2. **Descriptive Errors:** Clear error messages
 3. **Error Logging:** All errors logged via `electron-log`
 4. **User Feedback:** Errors surfaced to UI appropriately
-

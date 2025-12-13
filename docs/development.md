@@ -152,6 +152,9 @@ Opens web interface at `http://localhost:4983` (default port).
 │   │   │   └── migrate.ts   # Migration runner
 │   │   ├── lib/             # Utilities
 │   │   │   └── logger.ts    # Logging utility
+│   │   ├── services/        # Background services
+│   │   │   ├── sync-service.ts    # API synchronization service
+│   │   │   └── updater-service.ts # Auto-updater service
 │   │   ├── bridge.ts        # IPC bridge interface
 │   │   ├── ipc.ts           # IPC handlers
 │   │   └── main.ts          # Main process entry point
@@ -473,4 +476,3 @@ npx electron-builder --linux
 2. Review similar code in the codebase
 3. Check GitHub issues
 4. Open a new issue with details
-
