@@ -40,9 +40,11 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
   const getErrorMessage = (error: typeof mutation.error): string => {
     if (!error) return t("common.unknownError", "Unknown error occurred");
 
-    return error instanceof Error && error.message
-      ? error.message
-      : t("common.unknownError", "Unknown error occurred");
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return t("common.unknownError", "Unknown error occurred");
   };
 
   return (
