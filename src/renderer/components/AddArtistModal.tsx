@@ -25,7 +25,6 @@ const artistSchema = z.object({
 type ArtistFormValues = z.infer<typeof artistSchema>;
 
 export const AddArtistModal: React.FC = () => {
-  // useState остаётся для управления состоянием Dialog
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
