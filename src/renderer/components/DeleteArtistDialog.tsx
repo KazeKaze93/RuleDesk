@@ -1,7 +1,7 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Trash2, AlertCircle } from "lucide-react"; // Добавил иконку
+import { Loader2, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -37,6 +37,14 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
     },
   });
 
+  const getErrorMessage = (error: typeof mutation.error): string => {
+    if (!error) return t("common.unknownError", "Unknown error occurred");
+
+    return error instanceof Error && error.message
+      ? error.message
+      : t("common.unknownError", "Unknown error occurred");
+  };
+
   return (
     <Dialog
       open={isOpen}
@@ -65,13 +73,12 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
         </div>
 
         {mutation.isError && (
-          <div className="flex gap-2 items-center p-3 mb-2 text-sm text-red-200 rounded border border-red-800 bg-red-900/50">
+          <div
+            className="flex gap-2 items-center p-3 mb-2 text-sm text-red-200 rounded border border-red-800 bg-red-900/50"
+            role="alert"
+          >
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>
-              {mutation.error instanceof Error
-                ? mutation.error.message
-                : t("common.unknownError", "Unknown error occurred")}
-            </span>
+            <span>{getErrorMessage(mutation.error)}</span>
           </div>
         )}
 
