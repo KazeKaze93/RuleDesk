@@ -1,4 +1,10 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  text,
+  integer,
+  index,
+  unique,
+} from "drizzle-orm/sqlite-core";
 
 // --- 1. SETTINGS TABLE ---
 export const settings = sqliteTable("settings", {
@@ -34,6 +40,8 @@ export const posts = sqliteTable(
   "posts",
   {
     id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+
+    postId: integer("post_id").notNull(),
     artistId: integer("artist_id")
       .notNull()
       .references(() => artists.id, { onDelete: "cascade" }),
@@ -56,6 +64,7 @@ export const posts = sqliteTable(
     artistIdIdx: index("artist_id_idx").on(table.artistId),
     publishedAtIdx: index("published_at_idx").on(table.publishedAt),
     isViewedIdx: index("is_viewed_idx").on(table.isViewed),
+    uniquePostPerArtist: unique().on(table.artistId, table.postId),
   })
 );
 

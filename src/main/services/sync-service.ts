@@ -143,9 +143,9 @@ export class SyncService {
 
         if (this.dbService) {
           const postsToSave = newPosts.map((p) => ({
-            id: p.id,
             artistId: artist.id,
             fileUrl: p.file_url,
+            postId: p.id,
             previewUrl: p.preview_url,
             title: "",
             rating: p.rating,

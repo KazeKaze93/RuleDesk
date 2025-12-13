@@ -12,6 +12,7 @@ CREATE TABLE `artists` (
 --> statement-breakpoint
 CREATE TABLE `posts` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`post_id` integer NOT NULL,
 	`artist_id` integer NOT NULL,
 	`file_url` text NOT NULL,
 	`preview_url` text NOT NULL,
@@ -29,3 +30,9 @@ CREATE TABLE `settings` (
 	`user_id` text,
 	`api_key` text
 );
+--> statement-breakpoint
+CREATE INDEX `name_idx` ON `artists` (`name`);--> statement-breakpoint
+CREATE INDEX `artist_id_idx` ON `posts` (`artist_id`);--> statement-breakpoint
+CREATE INDEX `published_at_idx` ON `posts` (`published_at`);--> statement-breakpoint
+CREATE INDEX `is_viewed_idx` ON `posts` (`is_viewed`);--> statement-breakpoint
+CREATE UNIQUE INDEX `posts_artist_id_post_id_unique` ON `posts` (`artist_id`,`post_id`);

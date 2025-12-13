@@ -75,28 +75,35 @@ export class DbService {
       return;
     }
 
-    // Сортируем: новые в начале, чтобы найти самый большой ID
-    const sortedPosts = posts.sort((a, b) => (b.id || 0) - (a.id || 0));
-    const newestPostId = sortedPosts[0].id || 0;
-    const count = posts.length;
+    const sortedPosts = posts.sort((a, b) => (b.postId || 0) - (a.postId || 0));
+    const newestPostId = sortedPosts[0].postId || 0;
 
     await this.db.transaction(async (tx) => {
-      // Игнорируем дубликаты (onConflictDoNothing)
-      await tx.insert(schema.posts).values(posts).onConflictDoNothing();
+      const insertedRows = await tx
+        .insert(schema.posts)
+        .values(posts)
+        .onConflictDoNothing()
+        .returning({ id: schema.posts.id }); //
+
+      const realAddedCount = insertedRows.length;
 
       await tx
         .update(schema.artists)
         .set({
           lastPostId: newestPostId,
-          newPostsCount: sql`${schema.artists.newPostsCount} + ${count}`,
+          newPostsCount: sql`${schema.artists.newPostsCount} + ${realAddedCount}`,
           lastChecked: Math.floor(Date.now() / 1000),
         })
         .where(eq(schema.artists.id, artistId));
-    });
 
-    logger.info(
-      `DbService: Сохранено ${count} постов для автора ID ${artistId}`
-    );
+      if (realAddedCount > 0) {
+        logger.info(
+          `DbService: Автор ${artistId} -> Добавлено ${realAddedCount} новых постов (Дубликатов пропущено: ${
+            posts.length - realAddedCount
+          })`
+        );
+      }
+    });
   }
 
   async getPostsByArtist(
@@ -106,7 +113,7 @@ export class DbService {
   ): Promise<Post[]> {
     return this.db.query.posts.findMany({
       where: eq(schema.posts.artistId, artistId),
-      orderBy: [desc(schema.posts.id)], // Сначала новые
+      orderBy: [desc(schema.posts.postId)], // Сначала посты с самым большим ID (новые)
       limit: limit,
       offset: offset,
     });

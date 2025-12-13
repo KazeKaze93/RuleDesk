@@ -3,16 +3,18 @@ import { DbService } from "./db/db-service";
 import { NewArtist } from "./db/schema";
 import { logger } from "./lib/logger";
 import { SyncService } from "./services/sync-service";
-import { URL } from "url"; // FIX: Удален URLSearchParams, если он не используется
+import { URL } from "url";
 import { z } from "zod";
 
-// Схема для db:get-posts
 const GetPostsSchema = z.object({
-  artistId: z.number().int().positive(),
+  artistId: z
+    .number({ required_error: "artistId is required" })
+    .int()
+    .positive(),
   page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).default(50),
 });
 
-// Схема для db:delete-artist
 const DeleteArtistSchema = z.number().int().positive();
 
 // --- 1. Отдельные функции-обработчики ---
@@ -142,12 +144,6 @@ export const registerIpcHandlers = (
 
   // --- GET POSTS ---
   ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
-    const GetPostsSchema = z.object({
-      artistId: z.number({ required_error: "artistId is required" }),
-      page: z.number().optional().default(1),
-      limit: z.number().optional().default(50),
-    });
-
     const validation = GetPostsSchema.safeParse(payload);
 
     if (!validation.success) {

@@ -25,7 +25,10 @@ export interface IpcBridge {
   deleteArtist: (id: number) => Promise<void>;
 
   // Posts
-  getArtistPosts: (artistId: number, page?: number) => Promise<Post[]>;
+  getArtistPosts: (params: {
+    artistId: number;
+    page?: number;
+  }) => Promise<Post[]>;
 
   // External
   openExternal: (url: string) => Promise<void>;
@@ -57,8 +60,8 @@ const ipcBridge: IpcBridge = {
   addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
   deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
 
-  getArtistPosts: (id, page) =>
-    ipcRenderer.invoke("db:get-posts", { artistId: id, page }),
+  getArtistPosts: ({ artistId, page }) =>
+    ipcRenderer.invoke("db:get-posts", { artistId, page }),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
