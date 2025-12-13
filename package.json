@@ -99,7 +99,8 @@
       "!drizzle.config.ts",
       "!**/tsconfig.json",
       "!**/.eslintrc*",
-      "!**/.vscode"
+      "!**/.vscode",
+      "!**/.gitattributes"
     ],
     "extraFiles": [],
     "extraResources": [

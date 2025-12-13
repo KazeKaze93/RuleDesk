@@ -390,3 +390,4 @@ src/
 2. **Descriptive Errors:** Clear error messages
 3. **Error Logging:** All errors logged via `electron-log`
 4. **User Feedback:** Errors surfaced to UI appropriately
+

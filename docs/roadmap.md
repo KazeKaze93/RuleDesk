@@ -25,3 +25,4 @@
 - [ ] **Multi-Booru Support**: Рефакторинг `SyncService` в паттерн "Адаптер" (Provider Pattern).
   - Абстракция логики скачивания.
   - Поддержка других API (Danbooru, Gelbooru и т.д.) в будущем.
+

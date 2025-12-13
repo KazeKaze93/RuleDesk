@@ -82,8 +82,25 @@ export class DbService {
       const insertedRows = await tx
         .insert(schema.posts)
         .values(posts)
-        .onConflictDoNothing()
-        .returning({ id: schema.posts.id }); //
+        .onConflictDoUpdate({
+          target: [schema.posts.artistId, schema.posts.postId],
+          set: {
+            // ЭТОТ SQL.RAW БЕЗОПАСЕН.
+            // Мы используем только СТАТИЧЕСКОЕ имя колонки (.name),
+            // а не невалидированные пользовательские данные.
+            // Parametrization обеспечивается Drizzle.
+            previewUrl: sql.raw(
+              `CASE WHEN excluded.${schema.posts.previewUrl.name} != '' THEN excluded.${schema.posts.previewUrl.name} ELSE ${schema.posts.previewUrl.name} END`
+            ),
+            fileUrl: sql.raw(
+              `CASE WHEN excluded.${schema.posts.fileUrl.name} != '' THEN excluded.${schema.posts.fileUrl.name} ELSE ${schema.posts.fileUrl.name} END`
+            ),
+            tags: sql.raw(`excluded.${schema.posts.tags.name}`),
+            rating: sql.raw(`excluded.${schema.posts.rating.name}`),
+            publishedAt: sql.raw(`excluded.${schema.posts.publishedAt.name}`),
+          },
+        })
+        .returning({ id: schema.posts.id });
 
       const realAddedCount = insertedRows.length;
 
@@ -98,12 +115,14 @@ export class DbService {
 
       if (realAddedCount > 0) {
         logger.info(
-          `DbService: Автор ${artistId} -> Добавлено ${realAddedCount} новых постов (Дубликатов пропущено: ${
+          `DbService: Автор ${artistId} -> Добавлено ${realAddedCount} новых постов (Обновлено: ${
             posts.length - realAddedCount
           })`
         );
       }
     });
+
+    // ...
   }
 
   async getPostsByArtist(
@@ -113,9 +132,15 @@ export class DbService {
   ): Promise<Post[]> {
     return this.db.query.posts.findMany({
       where: eq(schema.posts.artistId, artistId),
-      orderBy: [desc(schema.posts.postId)], // Сначала посты с самым большим ID (новые)
+      orderBy: [desc(schema.posts.postId)],
       limit: limit,
       offset: offset,
+    });
+  }
+
+  async getArtistById(artistId: number): Promise<Artist | undefined> {
+    return this.db.query.artists.findFirst({
+      where: eq(schema.artists.id, artistId),
     });
   }
 

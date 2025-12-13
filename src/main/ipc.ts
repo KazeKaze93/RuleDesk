@@ -40,6 +40,20 @@ export const registerIpcHandlers = (
     return dbService.getSettings();
   });
 
+  ipcMain.handle("sync:repair-artist", async (_, artistId: number) => {
+    logger.info(
+      `IPC: [sync:repair-artist] Запрос ремонта для автора ${artistId}`
+    );
+    try {
+      // Предполагается, что syncService уже инициализирован
+      await syncService.repairArtistPosts(artistId);
+      return { success: true };
+    } catch (error) {
+      logger.error(`IPC: Ошибка ремонта автора ${artistId}`, error);
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
   ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
     if (!userId || !apiKey) {
       logger.warn(
