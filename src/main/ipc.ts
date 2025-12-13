@@ -172,6 +172,25 @@ export const registerIpcHandlers = (
     return;
   });
 
+  ipcMain.handle("db:mark-post-viewed", async (_event, postId: unknown) => {
+    // Валидация ID
+    const idSchema = z.number().int().positive();
+    const result = idSchema.safeParse(postId);
+
+    if (!result.success) {
+      logger.error(`[IPC] Invalid postId for mark-viewed: ${postId}`);
+      return false;
+    }
+
+    try {
+      await dbService.markPostAsViewed(result.data);
+      return true;
+    } catch (e) {
+      logger.error(`[IPC] Failed to mark post ${result.data} as viewed`, e);
+      return false;
+    }
+  });
+
   // --- GET POSTS ---
   ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
     const validation = GetPostsSchema.safeParse(payload);
