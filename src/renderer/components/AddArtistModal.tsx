@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 
 const artistSchema = z.object({
-  name: z.string().min(1, "Имя обязательно"),
+  name: z.string().min(1, "Name is required"),
   type: z.enum(["tag", "uploader"]),
   apiEndpoint: z.string().url(),
 });
@@ -25,7 +25,6 @@ const artistSchema = z.object({
 type ArtistFormValues = z.infer<typeof artistSchema>;
 
 export const AddArtistModal: React.FC = () => {
-  // useState остаётся для управления состоянием Dialog
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -81,18 +80,18 @@ export const AddArtistModal: React.FC = () => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="mr-2 w-4 h-4" /> Добавить Автора
+          <Plus className="mr-2 w-4 h-4" /> Add Artist
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700 text-slate-100">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Новый автор</DialogTitle>
+          <DialogTitle className="text-xl font-bold">New Artist</DialogTitle>
         </DialogHeader>
 
         {mutation.isError && (
           <div className="p-3 mb-4 text-sm text-red-200 rounded border border-red-800 bg-red-900/50">
-            Ошибка: {mutation.error.message}
+            Error: {mutation.error.message}
           </div>
         )}
 
@@ -130,8 +129,8 @@ export const AddArtistModal: React.FC = () => {
               className="block mb-1 text-sm font-medium text-slate-400"
             >
               {selectedType === "uploader"
-                ? "Имя пользователя (Uploader)"
-                : "Тег автора"}
+                ? "Username (Uploader)"
+                : "Artist Tag"}
             </label>
             <input
               id="artist-name-input"
@@ -148,7 +147,7 @@ export const AddArtistModal: React.FC = () => {
 
             {watchedName && (
               <p className="mt-1 font-mono text-xs text-slate-500">
-                Будет отправлено:{" "}
+                Will be sent:{" "}
                 <span className="text-blue-400">
                   {getArtistTag(watchedName, selectedType)}{" "}
                 </span>
@@ -162,13 +161,13 @@ export const AddArtistModal: React.FC = () => {
               type="button"
               onClick={() => setIsOpen(false)}
             >
-              Отмена
+              Cancel
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? (
                 <Loader2 className="animate-spin" />
               ) : (
-                "Добавить"
+                "Add"
               )}
             </Button>
           </div>
