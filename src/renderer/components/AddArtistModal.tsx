@@ -3,10 +3,12 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Plus, Loader2, User, Tag } from "lucide-react";
 import { Button } from "./ui/button";
 import type { NewArtist } from "../../main/db/schema";
 import { getArtistTag } from "../lib/artist-utils";
+import { artistBaseSchema, ArtistFormValues } from "../schemas/form-schemas";
 
 import {
   Dialog,
@@ -16,15 +18,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-const artistSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  type: z.enum(["tag", "uploader"]),
-  apiEndpoint: z.string().url(),
-});
-
-type ArtistFormValues = z.infer<typeof artistSchema>;
-
 export const AddArtistModal: React.FC = () => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -36,7 +31,25 @@ export const AddArtistModal: React.FC = () => {
     setValue,
     formState: { errors },
   } = useForm<ArtistFormValues>({
-    resolver: zodResolver(artistSchema),
+    resolver: zodResolver(artistBaseSchema, {
+      path: [],
+      async: false,
+      errorMap: (issue, ctx) => {
+        if (
+          issue.code === z.ZodIssueCode.too_small &&
+          issue.path[0] === "name"
+        ) {
+          return { message: t("validation.nameRequired") };
+        }
+        if (
+          issue.code === z.ZodIssueCode.invalid_string &&
+          issue.validation === "url"
+        ) {
+          return { message: t("validation.invalidUrl") };
+        }
+        return { message: ctx.defaultError };
+      },
+    }),
     defaultValues: {
       name: "",
       type: "tag",
@@ -79,19 +92,21 @@ export const AddArtistModal: React.FC = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 w-4 h-4" /> Add Artist
+        <Button aria-label={t("addArtistModal.addArtist")}>
+          <Plus className="mr-2 w-4 h-4" /> {t("addArtistModal.addArtist")}
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700 text-slate-100">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">New Artist</DialogTitle>
+          <DialogTitle className="text-xl font-bold">
+            {t("addArtistModal.newArtist")}
+          </DialogTitle>
         </DialogHeader>
 
         {mutation.isError && (
           <div className="p-3 mb-4 text-sm text-red-200 rounded border border-red-800 bg-red-900/50">
-            Error: {mutation.error.message}
+            {t("addArtistModal.error", { message: mutation.error.message })}
           </div>
         )}
 
@@ -107,7 +122,7 @@ export const AddArtistModal: React.FC = () => {
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              <Tag className="mr-2 w-4 h-4" /> Artist Tag
+              <Tag className="mr-2 w-4 h-4" /> {t("addArtistModal.artistTag")}
             </button>
             <button
               type="button"
@@ -119,7 +134,7 @@ export const AddArtistModal: React.FC = () => {
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              <User className="mr-2 w-4 h-4" /> Uploader
+              <User className="mr-2 w-4 h-4" /> {t("addArtistModal.uploader")}
             </button>
           </div>
 
@@ -129,15 +144,19 @@ export const AddArtistModal: React.FC = () => {
               className="block mb-1 text-sm font-medium text-slate-400"
             >
               {selectedType === "uploader"
-                ? "Username (Uploader)"
-                : "Artist Tag"}
+                ? t("addArtistModal.usernameUploader")
+                : t("addArtistModal.artistTagLabel")}
             </label>
             <input
               id="artist-name-input"
               {...register("name")}
               autoFocus
               className="px-3 py-2 w-full text-white rounded border bg-slate-950 border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={selectedType === "uploader" ? "Lesdias" : "wlop"}
+              placeholder={
+                selectedType === "uploader"
+                  ? t("addArtistModal.placeholderUploader")
+                  : t("addArtistModal.placeholderTag")
+              }
             />
             {errors.name && (
               <span className="text-xs text-red-500">
@@ -147,7 +166,7 @@ export const AddArtistModal: React.FC = () => {
 
             {watchedName && (
               <p className="mt-1 font-mono text-xs text-slate-500">
-                Will be sent:{" "}
+                {t("addArtistModal.willBeSent")}{" "}
                 <span className="text-blue-400">
                   {getArtistTag(watchedName, selectedType)}{" "}
                 </span>
@@ -161,13 +180,17 @@ export const AddArtistModal: React.FC = () => {
               type="button"
               onClick={() => setIsOpen(false)}
             >
-              Cancel
+              {t("addArtistModal.cancel")}
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button
+              type="submit"
+              disabled={mutation.isPending}
+              aria-label={t("addArtistModal.add")}
+            >
               {mutation.isPending ? (
                 <Loader2 className="animate-spin" />
               ) : (
-                "Add"
+                t("addArtistModal.add")
               )}
             </Button>
           </div>

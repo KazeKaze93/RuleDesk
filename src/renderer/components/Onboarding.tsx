@@ -1,28 +1,39 @@
 import React from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { z, ZodIssueOptionalMessage, ErrorMapCtx } from "zod"; // ИМПОРТ ТИПОВ
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { KeyRound, User } from "lucide-react";
-
-const credsSchema = z.object({
-  userId: z.string().min(1, "User ID is required"),
-  apiKey: z.string().min(5, "API Key is too short"),
-});
-
-type CredsFormValues = z.infer<typeof credsSchema>;
+import { credsBaseSchema, CredsFormValues } from "../schemas/form-schemas";
 
 interface OnboardingProps {
   onComplete: () => void;
 }
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
+  const { t } = useTranslation();
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<CredsFormValues>({
-    resolver: zodResolver(credsSchema),
+    resolver: zodResolver(credsBaseSchema, {
+      path: [],
+      async: false,
+      errorMap: (issue: ZodIssueOptionalMessage, ctx: ErrorMapCtx) => {
+        if (issue.code === z.ZodIssueCode.too_small) {
+          if (issue.path[0] === "userId") {
+            return { message: t("validation.userIdRequired") };
+          }
+          if (issue.path[0] === "apiKey") {
+            return { message: t("validation.apiKeyRequired") };
+          }
+        }
+        return { message: ctx.defaultError };
+      },
+    }),
   });
 
   const onSubmit = async (data: CredsFormValues) => {
@@ -40,29 +51,25 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       <div className="p-8 space-y-6 w-full max-w-md rounded-lg border shadow-xl bg-slate-900 border-slate-800">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-blue-500">
-            Rule34 Authorization
+            {t("onboarding.title")}
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            API keys are required for the parser to work.
+            {t("onboarding.description")}
           </p>
         </div>
 
         <div className="p-4 space-y-2 text-sm rounded border bg-slate-950 border-slate-800">
-          <p className="font-semibold text-slate-300">How to get keys:</p>
+          <p className="font-semibold text-slate-300">
+            {t("onboarding.howToGetKeys")}
+          </p>
           <ol className="space-y-1 list-decimal list-inside text-slate-400">
-            <li>
-              Log into your account on <b>rule34.xxx</b>
-            </li>
-            <li>
-              Go to <b>My Account &rarr; Options</b>
-            </li>
-            <li>
-              Find the <b>API Access</b> section
-            </li>
+            <li>{t("onboarding.step1")}</li>
+            <li>{t("onboarding.step2")}</li>
+            <li>{t("onboarding.step3")}</li>
           </ol>
           <div className="pt-2 mt-2 border-t border-slate-800">
             <span className="text-xs text-slate-500">
-              Settings page address (copy):
+              {t("onboarding.settingsPageAddress")}
             </span>
             <code className="block p-2 mt-1 text-xs break-all rounded cursor-text select-all bg-slate-900">
               https://rule34.xxx/index.php?page=account&s=options
@@ -76,7 +83,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               htmlFor="user-id-input"
               className="block mb-1 text-sm font-medium text-slate-400"
             >
-              User ID
+              {t("onboarding.userId")}
             </label>
             <div className="relative">
               <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
@@ -84,7 +91,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 id="user-id-input"
                 {...register("userId")}
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
-                placeholder="For example: 123456"
+                placeholder={t("onboarding.userIdPlaceholder")}
               />
             </div>
             {errors.userId && (
@@ -99,7 +106,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               htmlFor="api-key-input"
               className="block mb-1 text-sm font-medium text-slate-400"
             >
-              API Key
+              {t("onboarding.apiKey")}
             </label>
             <div className="relative">
               <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
@@ -108,7 +115,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 {...register("apiKey")}
                 type="password"
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
-                placeholder="Your secret key"
+                placeholder={t("onboarding.apiKeyPlaceholder")}
               />
             </div>
             {errors.apiKey && (
@@ -118,8 +125,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save and Login"}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting}
+            aria-label={t("onboarding.saveAndLogin")}
+          >
+            {isSubmitting
+              ? t("onboarding.saving")
+              : t("onboarding.saveAndLogin")}
           </Button>
         </form>
       </div>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, ExternalLink, Wrench } from "lucide-react";
 import { Button } from "./ui/button";
 import type { Artist } from "../../main/db/schema";
@@ -15,6 +16,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   artist,
   onBack,
 }) => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
 
@@ -31,9 +33,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     if (isLoading) return;
 
     if (
-      !confirm(
-        `Are you sure you want to run a repair sync for ${artist.name}? This may take time and update old entries.`
-      )
+      !confirm(t("artistGallery.repairConfirm", { artistName: artist.name }))
     ) {
       return;
     }
@@ -61,7 +61,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             variant="ghost"
             size="sm"
             onClick={onBack}
-            aria-label="Back to artists list"
+            aria-label={t("artistGallery.backToArtists")}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -73,7 +73,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               </span>
               <span>•</span>
               <span>
-                {posts ? posts.length : 0} posts on page {page}
+                {posts ? posts.length : 0} {t("artistGallery.postsOnPage")}{" "}
+                {page}
               </span>
             </div>
           </div>
@@ -86,10 +87,10 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             size="sm"
             onClick={handleRepairSync}
             disabled={isLoading}
-            title="Resynchronize first pages to update low-quality previews"
+            title={t("artistGallery.repairTitle")}
           >
             <Wrench className="mr-2 w-4 h-4" />
-            Repair
+            {t("artistGallery.repair")}
           </Button>
 
           <Button
@@ -100,17 +101,19 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
                 `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
               )
             }
-            aria-label="Open in browser"
+            aria-label={t("artistGallery.openInBrowser")}
           >
             <ExternalLink className="mr-2 w-4 h-4" />
-            Web
+            {t("artistGallery.web")}
           </Button>
         </div>
       </div>
 
       {/* Content Gallery */}
       {isLoading ? (
-        <div className="py-20 text-center text-slate-500">Loading posts...</div>
+        <div className="py-20 text-center text-slate-500">
+          {t("artistGallery.loadingPosts")}
+        </div>
       ) : posts && posts.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {posts.map((post) => (
@@ -121,13 +124,16 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               {post.previewUrl ? (
                 <img
                   src={post.previewUrl}
-                  alt={`Image by ${artist.name} with tags ${post.tags}`}
+                  alt={t("artistGallery.imageAlt", {
+                    artistName: artist.name,
+                    tags: post.tags,
+                  })}
                   className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
                   loading="lazy"
                 />
               ) : (
                 <div className="flex justify-center items-center w-full h-full text-slate-500">
-                  <p className="text-sm">No Preview</p>
+                  <p className="text-sm">{t("artistGallery.noPreview")}</p>
                 </div>
               )}
               <div className="flex absolute inset-0 flex-col justify-end p-2 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity from-black/80 group-hover:opacity-100">
@@ -144,7 +150,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         </div>
       ) : (
         <div className="py-20 text-center rounded-lg border border-dashed border-slate-800">
-          <p className="text-slate-400">No posts found on this page.</p>
+          <p className="text-slate-400">{t("artistGallery.noPostsFound")}</p>
         </div>
       )}
 
@@ -154,22 +160,22 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           onClick={() => setPage((p) => Math.max(1, p - 1))}
           disabled={page === 1 || isLoading}
           variant="outline"
-          aria-label="Previous page"
+          aria-label={t("artistGallery.previousPage")}
         >
-          <ArrowLeft className="mr-2 w-4 h-4" /> Back
+          <ArrowLeft className="mr-2 w-4 h-4" /> {t("artistGallery.back")}
         </Button>
 
         <span className="flex items-center font-mono text-slate-400">
-          Page {page}
+          {t("artistGallery.page")} {page}
         </span>
 
         <Button
           onClick={() => setPage((p) => p + 1)}
           disabled={isLoading || (posts && posts.length < POSTS_PER_PAGE)}
           variant="outline"
-          aria-label="Next page"
+          aria-label={t("artistGallery.nextPage")}
         >
-          Next <ArrowRight className="ml-2 w-4 h-4" />
+          {t("artistGallery.next")} <ArrowRight className="ml-2 w-4 h-4" />
         </Button>
       </div>
     </div>
