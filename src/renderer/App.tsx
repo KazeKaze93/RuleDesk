@@ -3,7 +3,6 @@ import {
   QueryClient,
   QueryClientProvider,
   useQuery,
-  useMutation,
 } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import type { Artist } from "../main/db/schema";
@@ -24,8 +23,18 @@ const ArtistListView: React.FC<{
   onSelect: (artist: Artist) => void;
   onSync: () => void;
   isSyncing: boolean;
+  syncMessage: string;
   version?: string;
-}> = ({ artists, isLoading, error, onSelect, onSync, isSyncing, version }) => {
+}> = ({
+  artists,
+  isLoading,
+  error,
+  onSelect,
+  onSync,
+  isSyncing,
+  syncMessage,
+  version,
+}) => {
   return (
     <div className="p-8 min-h-screen bg-slate-950 text-slate-50">
       <div className="mx-auto space-y-6 max-w-4xl">
@@ -44,7 +53,7 @@ const ArtistListView: React.FC<{
               <RefreshCw
                 className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")}
               />
-              {isSyncing ? "Syncing..." : "Sync All"}
+              {isSyncing ? syncMessage || "Syncing..." : "Sync All"}
             </Button>
             <span className="font-mono text-xs text-slate-500">
               v{version || "..."}
@@ -109,22 +118,46 @@ const ArtistListView: React.FC<{
 // --- 2. Controller: Логика переключения экранов (List <-> Gallery) ---
 const MainScreen: React.FC<{ version?: string }> = ({ version }) => {
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
 
   const {
     data: artists,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["artists"],
     queryFn: () => window.api.getTrackedArtists(),
   });
 
-  const syncMutation = useMutation({
-    mutationFn: () => window.api.syncAll(),
-    onSuccess: () => {
+  useEffect(() => {
+    const unsubStart = window.api.onSyncStart(() => {
+      setIsSyncing(true);
+      setSyncMessage("Starting...");
+    });
+
+    const unsubProgress = window.api.onSyncProgress((msg) => {
+      setSyncMessage(msg);
+    });
+
+    const unsubEnd = window.api.onSyncEnd(() => {
+      setIsSyncing(false);
+      setSyncMessage("");
       queryClient.invalidateQueries({ queryKey: ["artists"] });
-    },
-  });
+      refetch();
+    });
+
+    return () => {
+      unsubStart();
+      unsubProgress();
+      unsubEnd();
+    };
+  }, [refetch]);
+
+  const handleSync = () => {
+    window.api.syncAll();
+  };
 
   if (selectedArtist) {
     return (
@@ -146,8 +179,9 @@ const MainScreen: React.FC<{ version?: string }> = ({ version }) => {
       error={error as Error | null}
       version={version}
       onSelect={setSelectedArtist}
-      onSync={() => syncMutation.mutate()}
-      isSyncing={syncMutation.isPending}
+      onSync={handleSync}
+      isSyncing={isSyncing}
+      syncMessage={syncMessage}
     />
   );
 };

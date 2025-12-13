@@ -1,165 +1,161 @@
-import axios from "axios";
-import { DbService } from "../db/db-service";
+import { BrowserWindow } from "electron";
 import { logger } from "../lib/logger";
-import { NewPost, Artist } from "../db/schema";
+import { DbService } from "../db/db-service";
+import axios from "axios";
+import type { Artist } from "../db/schema";
 
-// Типизация ответа Rule34 (JSON)
-interface Rule34Post {
+interface R34Post {
   id: number;
   file_url: string;
   preview_url: string;
   tags: string;
   rating: string;
-  change: number; // timestamp
-  height: number;
-  width: number;
+  change: number;
 }
 
 export class SyncService {
-  constructor(private dbService: DbService) {}
+  private dbService: DbService | null = null;
+  private window: BrowserWindow | null = null;
+  private isSyncing = false;
 
-  async syncAllArtists(): Promise<void> {
-    logger.info("SyncService: Начало полного цикла синхронизации Rule34...");
+  constructor() {}
+
+  public setWindow(window: BrowserWindow) {
+    this.window = window;
+  }
+
+  public setDbService(dbService: DbService) {
+    this.dbService = dbService;
+  }
+
+  // Вспомогательный метод отправки событий
+  private sendEvent(channel: string, data?: unknown) {
+    if (this.window && !this.window.isDestroyed()) {
+      this.window.webContents.send(channel, data);
+    }
+  }
+
+  public async syncAllArtists() {
+    if (this.isSyncing) {
+      logger.warn("SyncService: Синхронизация уже идет.");
+      return;
+    }
+
+    if (!this.dbService) {
+      logger.error("SyncService: DB Service не инициализирован");
+      return;
+    }
+
+    this.isSyncing = true;
+    logger.info("SyncService: Начало полного цикла синхронизации...");
+
+    this.sendEvent("sync:start");
 
     try {
-      // 1. Получаем ключи
-      const settings = await this.dbService.getSettings();
-
-      if (!settings) {
-        logger.warn(
-          "SyncService: Ключи (userId/apiKey) не найдены. Синхронизация пропущена."
-        );
-        return;
-      }
-
       const artists = await this.dbService.getTrackedArtists();
       logger.info(
         `SyncService: Найдено авторов для обновления: ${artists.length}`
       );
 
       for (const artist of artists) {
-        try {
-          await this.syncArtist(artist, settings.userId, settings.apiKey);
-        } catch (error) {
-          logger.error(
-            `SyncService: Ошибка при обновлении ${artist.name}: ${
-              error instanceof Error ? error.message : String(error)
-            }`
-          );
-        }
-
-        // Пауза 1.5 сек (Rule34 Rate Limit) - Асинхронная, не блокирует Event Loop.
+        this.sendEvent("sync:progress", `Checking ${artist.name}...`);
+        await this.syncArtist(artist);
         await new Promise((resolve) => setTimeout(resolve, 1500));
       }
 
       logger.info("SyncService: Полный цикл синхронизации завершен.");
-    } catch (criticalError) {
-      logger.error(
-        `SyncService: Критическая ошибка в syncAllArtists: ${criticalError}`
+    } catch (error) {
+      logger.error("SyncService: Ошибка глобальной синхронизации", error);
+      this.sendEvent(
+        "sync:error",
+        error instanceof Error ? error.message : "Unknown error"
       );
-      throw criticalError;
+    } finally {
+      this.isSyncing = false;
+      this.sendEvent("sync:end");
     }
   }
 
-  private async syncArtist(
-    artist: Artist,
-    userId: string,
-    apiKey: string
-  ): Promise<void> {
+  private async syncArtist(artist: Artist) {
     logger.info(`SyncService: Проверка ${artist.name} [${artist.tag}]...`);
 
-    const limit = 1000; // Максимум Rule34
-    let page = 0; // pid начинается с 0
-    let hasMore = true; // Флаг для цикла
-    let totalSynced = 0;
+    let page = 0;
+    let hasMore = true;
+    let newPostsCount = 0;
 
-    // 1. Цикл пагинации
+    const settings = await this.dbService?.getSettings();
+    if (!settings || !settings.userId) {
+      logger.warn("SyncService: Нет настроек API, пропускаем.");
+      return;
+    }
+
     while (hasMore) {
-      let tagsQuery = artist.tag;
-      if (artist.lastPostId > 0) {
-        tagsQuery += ` id:>${artist.lastPostId}`;
-      }
-
-      // 2. Параметры запроса Rule34
-      const params = new URLSearchParams({
-        page: "dapi",
-        s: "post",
-        q: "index",
-        json: "1",
-        limit: limit.toString(),
-        tags: tagsQuery,
-        user_id: userId,
-        api_key: apiKey,
-        pid: page.toString(),
-      });
-
-      // Чистим URL
-      const baseUrl = artist.apiEndpoint.split("?")[0];
-
       try {
-        const response = await axios.get<Rule34Post[]>(baseUrl, {
-          params,
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; NSFWBooruClient/1.0)",
-          },
-          timeout: 8000,
-        });
+        const limit = 1000; // Rule34 limit
+        const url = `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&limit=${limit}&pid=${page}&tags=${
+          artist.type === "uploader" ? "user:" : ""
+        }${artist.tag}&json=1`;
 
-        const apiPosts = response.data;
+        const authUrl = settings.apiKey
+          ? `${url}&user_id=${settings.userId}&api_key=${settings.apiKey}`
+          : url;
 
-        if (!Array.isArray(apiPosts) || apiPosts.length === 0) {
+        const response = await axios.get<R34Post[]>(authUrl);
+        const posts = response.data;
+
+        if (!Array.isArray(posts) || posts.length === 0) {
           hasMore = false;
           break;
         }
 
-        // 3. Маппинг
-        const newPosts: NewPost[] = apiPosts.map((p) => ({
-          id: p.id,
-          artistId: artist.id,
-          fileUrl: p.file_url,
-          previewUrl: p.preview_url || p.file_url,
-          title: "",
-          rating: p.rating,
-          tags: p.tags,
-          publishedAt: p.change,
-        }));
+        const newPosts = posts.filter((p) => p.id > artist.lastPostId);
 
-        // 4. Сохранение
-        await this.dbService.savePostsForArtist(artist.id, newPosts);
+        if (newPosts.length === 0) {
+          hasMore = false;
+          break;
+        }
 
-        totalSynced += newPosts.length;
-        logger.info(
-          `SyncService: ${artist.name} -> Страница ${page} загружена (${newPosts.length} постов)`
-        );
+        if (this.dbService) {
+          const postsToSave = newPosts.map((p) => ({
+            id: p.id,
+            artistId: artist.id,
+            fileUrl: p.file_url,
+            previewUrl: p.preview_url,
+            title: "",
+            rating: p.rating,
+            tags: p.tags,
+            publishedAt: Math.floor(p.change), // change field is unix timestamp
+            isViewed: false,
+          }));
 
-        if (apiPosts.length < limit) {
+          await this.dbService.savePostsForArtist(artist.id, postsToSave);
+          logger.info(
+            `DbService: Сохранено ${postsToSave.length} постов для автора ID ${artist.id}`
+          );
+        }
+
+        newPostsCount += newPosts.length;
+
+        if (posts.length < limit) {
           hasMore = false;
         } else {
           page++;
-          // Пауза 0.5 сек между страницами пагинации
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       } catch (e) {
-        if (axios.isAxiosError(e) && e.response?.data === "") {
-          hasMore = false;
-          break;
-        }
-
-        logger.error(
-          `SyncService: Ошибка при обработке страницы ${page} для ${
-            artist.name
-          }: ${e instanceof Error ? e.message : String(e)}`
-        );
+        logger.error(`SyncService: Ошибка при обработке ${artist.name}`, e);
+        hasMore = false;
       }
     }
 
-    if (totalSynced === 0) {
-      await this.dbService.updateArtistLastChecked(artist.id);
+    if (newPostsCount === 0) {
       logger.info(`SyncService: Нет новых постов для ${artist.name}`);
     } else {
       logger.info(
-        `SyncService: Всего загружено ${totalSynced} постов для ${artist.name}`
+        `SyncService: Всего загружено ${newPostsCount} постов для ${artist.name}`
       );
     }
   }
 }
+
+export const syncService = new SyncService();

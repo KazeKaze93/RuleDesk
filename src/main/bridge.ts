@@ -39,6 +39,10 @@ export interface IpcBridge {
 
   onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
   onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
+
+  onSyncStart: (callback: () => void) => () => void;
+  onSyncEnd: (callback: () => void) => () => void;
+  onSyncProgress: (callback: (message: string) => void) => () => void;
 }
 
 const ipcBridge: IpcBridge = {
@@ -79,6 +83,24 @@ const ipcBridge: IpcBridge = {
     return () => {
       ipcRenderer.removeListener("updater:progress", subscription);
     };
+  },
+
+  onSyncStart: (callback) => {
+    const sub = () => callback();
+    ipcRenderer.on("sync:start", sub);
+    return () => ipcRenderer.removeListener("sync:start", sub);
+  },
+
+  onSyncEnd: (callback) => {
+    const sub = () => callback();
+    ipcRenderer.on("sync:end", sub);
+    return () => ipcRenderer.removeListener("sync:end", sub);
+  },
+
+  onSyncProgress: (callback) => {
+    const sub = (_: IpcRendererEvent, msg: string) => callback(msg);
+    ipcRenderer.on("sync:progress", sub);
+    return () => ipcRenderer.removeListener("sync:progress", sub);
   },
 };
 
