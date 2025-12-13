@@ -5,6 +5,8 @@ import {
   UpdateProgressCallback,
 } from "./main/bridge";
 
+export type SyncErrorCallback = (message: string) => void;
+
 export interface IpcApi extends IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
@@ -42,6 +44,7 @@ export interface IpcApi extends IpcBridge {
   onSyncStart: (callback: () => void) => () => void;
   onSyncEnd: (callback: () => void) => () => void;
   onSyncProgress: (callback: (message: string) => void) => () => void;
+  onSyncError: (callback: SyncErrorCallback) => () => void;
 }
 
 declare global {
