@@ -5,6 +5,7 @@ import { logger } from "./lib/logger";
 import { SyncService } from "./services/sync-service";
 import { URL } from "url";
 import { z } from "zod";
+import axios from "axios";
 
 const GetPostsSchema = z.object({
   artistId: z
@@ -27,6 +28,12 @@ const SaveSettingsSchema = z.object({
   userId: z.string().min(1, { message: "User ID is required" }),
   apiKey: z.string().min(5, { message: "API Key is too short" }),
 });
+
+interface Rule34AutocompleteItem {
+  label: string; // Название тега (например, "elf")
+  value: string; // Значение (обычно совпадает с label)
+  type?: string; // Тип тега (иногда API его возвращает, но не всегда)
+}
 
 // --- 1. Отдельные функции-обработчики ---
 
@@ -242,6 +249,44 @@ export const registerIpcHandlers = (
         e
       );
       throw new Error("Failed to delete artist from database.");
+    }
+  });
+
+  // --- DB: SEARCH LOCAL (Локальный поиск для фильтров) ---
+  ipcMain.handle("db:search-tags", async (_, query: string) => {
+    try {
+      return await dbService.searchArtists(query);
+    } catch (e) {
+      logger.error("IPC: [db:search-tags] Error:", e);
+      return [];
+    }
+  });
+
+  // --- REMOTE: SEARCH TAGS (Rule34 API - Поиск в интернете) ---
+  ipcMain.handle("api:search-remote-tags", async (_, query: string) => {
+    if (!query || query.length < 2) return [];
+
+    try {
+      // Rule34 autocomplete API
+      const url = `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
+        query
+      )}`;
+
+      const { data } = await axios.get<Rule34AutocompleteItem[]>(url);
+
+      if (Array.isArray(data)) {
+        return data.map((item) => ({
+          id: item.value,
+          label: item.label,
+        }));
+      }
+      return [];
+    } catch (e) {
+      logger.error(
+        `IPC: [api:search-remote-tags] Error searching for ${query}:`,
+        e
+      );
+      return [];
     }
   });
 

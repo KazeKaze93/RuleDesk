@@ -5,7 +5,7 @@ import {
 import Database from "better-sqlite3";
 import * as schema from "./schema";
 import { Artist, NewArtist, NewPost, Post, Settings } from "./schema";
-import { eq, asc, desc, sql } from "drizzle-orm";
+import { eq, asc, desc, sql, like, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 export type DbType = BetterSQLite3Database<typeof schema>;
@@ -142,6 +142,28 @@ export class DbService {
     return this.db.query.artists.findFirst({
       where: eq(schema.artists.id, artistId),
     });
+  }
+
+  async searchArtists(query: string): Promise<{ id: number; label: string }[]> {
+    if (!query || query.length < 2) return [];
+
+    const results = await this.db.query.artists.findMany({
+      where: or(
+        like(schema.artists.name, `%${query}%`),
+        like(schema.artists.tag, `%${query}%`)
+      ),
+      limit: 20,
+      columns: {
+        id: true,
+        name: true,
+        type: true,
+      },
+    });
+
+    return results.map((artist) => ({
+      id: artist.id,
+      label: artist.name,
+    }));
   }
 
   // --- 3. Settings Management ---

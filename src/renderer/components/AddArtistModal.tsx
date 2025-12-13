@@ -4,11 +4,16 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Plus, Loader2, User, Tag } from "lucide-react";
+import { Plus, Loader2, User, Tag, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import type { NewArtist } from "../../main/db/schema";
 import { getArtistTag } from "../lib/artist-utils";
 import { artistBaseSchema, ArtistFormValues } from "../schemas/form-schemas";
+import { cn } from "../lib/utils";
+import {
+  AsyncAutocomplete,
+  type AutocompleteOption,
+} from "./inputs/AsyncAutocomplete";
 
 import {
   Dialog,
@@ -21,10 +26,10 @@ import {
 export const AddArtistModal: React.FC = () => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const {
-    register,
     handleSubmit,
     control,
     reset,
@@ -57,6 +62,9 @@ export const AddArtistModal: React.FC = () => {
     },
   });
 
+  const selectedType = useWatch({ control, name: "type" });
+  const watchedName = useWatch({ control, name: "name" });
+
   const mutation = useMutation({
     mutationFn: async (data: ArtistFormValues) => {
       const finalTag = getArtistTag(data.name, data.type);
@@ -75,6 +83,7 @@ export const AddArtistModal: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["artists"] });
       setIsOpen(false);
       reset();
+      setDuplicateWarning(null);
     },
 
     onError: (error) => {
@@ -82,15 +91,43 @@ export const AddArtistModal: React.FC = () => {
     },
   });
 
+  const getPlaceholder = () => {
+    switch (selectedType) {
+      case "uploader":
+        return t("addArtistModal.placeholderUploader");
+      case "query":
+        return "elf blonde_hair rating:explicit";
+      default:
+        return t("addArtistModal.placeholderTag");
+    }
+  };
+
+  const getLabel = () => {
+    switch (selectedType) {
+      case "uploader":
+        return t("addArtistModal.usernameUploader");
+      case "query":
+        return "Search Query (Tags)";
+      default:
+        return t("addArtistModal.artistTagLabel");
+    }
+  };
+
   const onSubmit = (data: ArtistFormValues) => {
     mutation.mutate(data);
   };
 
-  const selectedType = useWatch({ control, name: "type" });
-  const watchedName = useWatch({ control, name: "name" });
-
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (!open) {
+          setDuplicateWarning(null);
+          reset();
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button aria-label={t("addArtistModal.addArtist")}>
           <Plus className="mr-2 w-4 h-4" /> {t("addArtistModal.addArtist")}
@@ -111,57 +148,78 @@ export const AddArtistModal: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-2 p-1 rounded border bg-slate-950 border-slate-800">
+          <div className="grid grid-cols-3 gap-2 p-1 rounded border bg-slate-950 border-slate-800">
             <button
               type="button"
               onClick={() => setValue("type", "tag")}
-              aria-pressed={selectedType === "tag"}
-              className={`flex items-center justify-center py-2 text-sm rounded transition-colors ${
+              className={cn(
+                "flex items-center justify-center py-2 text-sm rounded transition-colors",
                 selectedType === "tag"
                   ? "bg-blue-600 text-white"
                   : "text-slate-400 hover:text-white"
-              }`}
+              )}
             >
               <Tag className="mr-2 w-4 h-4" /> {t("addArtistModal.artistTag")}
             </button>
             <button
               type="button"
               onClick={() => setValue("type", "uploader")}
-              aria-pressed={selectedType === "uploader"}
-              className={`flex items-center justify-center py-2 text-sm rounded transition-colors ${
+              className={cn(
+                "flex items-center justify-center py-2 text-sm rounded transition-colors",
                 selectedType === "uploader"
                   ? "bg-purple-600 text-white"
                   : "text-slate-400 hover:text-white"
-              }`}
+              )}
             >
               <User className="mr-2 w-4 h-4" /> {t("addArtistModal.uploader")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setValue("type", "query")}
+              className={cn(
+                "flex items-center justify-center py-2 text-sm rounded transition-colors",
+                selectedType === "query"
+                  ? "bg-emerald-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              )}
+            >
+              <Search className="mr-2 w-4 h-4" /> Subs
             </button>
           </div>
 
           <div>
-            <label
-              htmlFor="artist-name-input"
-              className="block mb-1 text-sm font-medium text-slate-400"
-            >
-              {selectedType === "uploader"
-                ? t("addArtistModal.usernameUploader")
-                : t("addArtistModal.artistTagLabel")}
-            </label>
-            <input
-              id="artist-name-input"
-              {...register("name")}
-              autoFocus
-              className="px-3 py-2 w-full text-white rounded border bg-slate-950 border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={
-                selectedType === "uploader"
-                  ? t("addArtistModal.placeholderUploader")
-                  : t("addArtistModal.placeholderTag")
-              }
+            <AsyncAutocomplete
+              label={getLabel()}
+              fetchOptions={window.api.searchRemoteTags}
+              placeholder={getPlaceholder()}
+              value={watchedName}
+              onSelect={(option: AutocompleteOption | null) => {
+                if (option) {
+                  setValue("name", option.label, { shouldValidate: true });
+                  setDuplicateWarning(
+                    t("addArtistModal.duplicateWarning", {
+                      name: option.label,
+                      defaultValue: `Warning: "${option.label}" already exists.`,
+                    })
+                  );
+                } else {
+                  setDuplicateWarning(null);
+                }
+              }}
+              onQueryChange={(query: string) => {
+                setValue("name", query, { shouldValidate: true });
+                setDuplicateWarning(null);
+              }}
             />
             {errors.name && (
               <span className="text-xs text-red-500">
                 {errors.name.message}
               </span>
+            )}
+
+            {duplicateWarning && (
+              <p className="mt-1 text-xs text-yellow-400">{duplicateWarning}</p>
             )}
 
             {watchedName && (

@@ -1,6 +1,10 @@
 // Логика формирования финального тега/юзернейма для API
-export function getArtistTag(name: string, type: "tag" | "uploader"): string {
+export function getArtistTag(
+  name: string,
+  type: "tag" | "uploader" | "query"
+): string {
   const trimmedName = name.trim();
+
   if (type === "uploader") {
     // Для Uploader: 'user:username'
     return `user:${trimmedName}`;
