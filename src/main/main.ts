@@ -36,7 +36,7 @@ if (!gotTheLock) {
 function initializeAppAndReady() {
   try {
     const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
-    const dbInstance = new Database(DB_PATH, {});
+    const dbInstance = new Database(DB_PATH, { verbose: console.log });
     dbService = new DbService(dbInstance);
 
     syncService.setDbService(dbService);

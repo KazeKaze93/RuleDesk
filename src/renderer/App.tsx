@@ -154,10 +154,17 @@ const MainScreen: React.FC<{ version?: string }> = ({ version }) => {
       refetch();
     });
 
+    const unsubError = window.api.onSyncError((message) => {
+      setIsSyncing(false);
+      setSyncMessage(`Error: ${message}`);
+      // Тут можно показать тостер или модалку
+    });
+
     return () => {
       unsubStart();
       unsubProgress();
       unsubEnd();
+      unsubError();
     };
   }, [refetch]);
 
