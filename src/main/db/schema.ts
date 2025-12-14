@@ -34,7 +34,7 @@ export const posts = sqliteTable(
     title: text("title").default(""),
     rating: text("rating").default(""),
     tags: text("tags").notNull(),
-    publishedAt: integer("published_at", { mode: "timestamp" }),
+    publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),

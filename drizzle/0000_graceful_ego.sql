@@ -20,7 +20,7 @@ CREATE TABLE `posts` (
 	`title` text DEFAULT '',
 	`rating` text DEFAULT '',
 	`tags` text NOT NULL,
-	`published_at` integer,
+	`published_at` integer NOT NULL,
 	`created_at` integer NOT NULL,
 	`is_viewed` integer DEFAULT false NOT NULL,
 	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE cascade

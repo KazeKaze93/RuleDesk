@@ -1,4 +1,4 @@
-import React, { forwardRef, useState, useEffect } from "react";
+import React, { forwardRef, useState, useEffect, useMemo } from "react";
 import {
   useMutation,
   useInfiniteQuery,
@@ -77,7 +77,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       initialPageParam: 1,
     });
 
-  const allPosts: Post[] = data ? data.pages.flatMap((page) => page) : [];
+  const allPosts = useMemo(() => {
+    return data?.pages.flatMap((page) => page) || [];
+  }, [data]);
 
   // --- MUTATION: Mark as Viewed ---
   const viewMutation = useMutation({
@@ -104,14 +106,13 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   });
 
   useEffect(() => {
-    if (selectedIndex >= 0 && allPosts[selectedIndex]) {
-      const currentPost = allPosts[selectedIndex];
-      if (!currentPost.isViewed) {
-        viewMutation.mutate(currentPost.id);
+    if (selectedIndex !== null && allPosts[selectedIndex]) {
+      const post = allPosts[selectedIndex];
+      if (!post.isViewed) {
+        viewMutation.mutate(post.id);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIndex]);
+  }, [selectedIndex, allPosts, viewMutation]);
 
   const handlePostClick = (index: number) => {
     setSelectedIndex(index);

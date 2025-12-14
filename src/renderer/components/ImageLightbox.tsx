@@ -47,8 +47,8 @@ const LightboxContent: React.FC<{ post: Post }> = ({ post }) => {
     <div className="flex relative justify-center items-center w-full h-full select-none">
       {/* 1. LOADING INDICATOR (Visible until at least Sample is loaded) */}
       {!sampleLoaded && !fullLoaded && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin drop-shadow-lg" />
+        <div className="flex absolute inset-0 z-50 flex-col justify-center items-center pointer-events-none">
+          <Loader2 className="w-12 h-12 text-blue-500 drop-shadow-lg animate-spin" />
         </div>
       )}
 
@@ -58,7 +58,7 @@ const LightboxContent: React.FC<{ post: Post }> = ({ post }) => {
       <img
         src={post.previewUrl}
         alt="preview"
-        className="absolute inset-0 w-full h-full object-contain blur-xl opacity-50 z-0 scale-95"
+        className="object-contain absolute inset-0 z-0 w-full h-full opacity-50 blur-xl scale-95"
       />
 
       {/* 3. SAMPLE LAYER (Middle)
@@ -70,7 +70,7 @@ const LightboxContent: React.FC<{ post: Post }> = ({ post }) => {
           src={post.sampleUrl}
           alt="sample"
           className={cn(
-            "absolute z-10 object-contain max-w-full max-h-full shadow-xl transition-opacity duration-300",
+            "object-contain absolute z-10 max-w-full max-h-full shadow-xl transition-opacity duration-300",
             sampleLoaded ? "opacity-100" : "opacity-0"
           )}
           onLoad={() => setSampleLoaded(true)}
@@ -82,9 +82,9 @@ const LightboxContent: React.FC<{ post: Post }> = ({ post }) => {
       */}
       <img
         src={post.fileUrl}
-        alt="full"
+        alt={`Post ${post.id} - ${post.tags}`}
         className={cn(
-          "relative z-20 object-contain max-w-full max-h-full shadow-2xl transition-opacity duration-500",
+          "object-contain relative z-20 max-w-full max-h-full shadow-2xl transition-opacity duration-500",
           fullLoaded ? "opacity-100" : "opacity-0"
         )}
         onLoad={() => {
@@ -94,7 +94,7 @@ const LightboxContent: React.FC<{ post: Post }> = ({ post }) => {
       />
 
       {/* Quality Badge (Optional debugging aid) */}
-      <div className="absolute bottom-4 left-4 z-50 px-2 py-1 text-xs font-mono text-white bg-black/50 rounded pointer-events-none border border-white/10">
+      <div className="absolute bottom-4 left-4 z-50 px-2 py-1 font-mono text-xs text-white rounded border pointer-events-none bg-black/50 border-white/10">
         {fullLoaded ? "ORIGINAL" : sampleLoaded ? "SAMPLE" : "PREVIEW"}
       </div>
     </div>
@@ -128,7 +128,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="flex fixed inset-0 z-50 justify-center items-center duration-200 backdrop-blur-md bg-black/95 animate-in fade-in">
+    <div className="flex fixed inset-0 z-50 justify-center items-center backdrop-blur-md duration-200 bg-black/95 animate-in fade-in">
       {/* Toolbar */}
       <div className="flex absolute top-0 right-0 left-0 z-50 justify-between items-center p-4 bg-gradient-to-b to-transparent from-black/80">
         <div className="font-mono text-sm text-white/80">ID: {post.postId}</div>

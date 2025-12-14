@@ -39,15 +39,25 @@ async function initializeAppAndReady() {
     const dbInstance = new Database(DB_PATH, { verbose: console.log });
     dbService = new DbService(dbInstance);
 
+    // >>> ADD THIS BLOCK:
+    dbService
+      .fixDatabaseSchema()
+      .then(() => logger.info("Main: Database schema fixed/verified."))
+      .catch((err) => logger.error("Main: Database fix failed", err));
+    // <<< END ADD BLOCK
+
     syncService.setDbService(dbService);
 
     // 1. Запуск миграций (создание/обновление таблиц)
-    await runMigrations(dbService.db);
+    runMigrations(dbService.db);
 
-    // 2. АВТОМАТИЧЕСКИЙ РЕМОНТ ТЕГОВ (Fix для старых кривых записей)
+    // 2. 🛠️ КРИТИЧЕСКИЙ РЕМОНТ: Удаление дубликатов и создание уникального индекса
+    await dbService.fixDatabaseSchema();
+
+    // 3. АВТОМАТИЧЕСКИЙ РЕМОНТ ТЕГОВ (Fix для старых кривых записей)
     await dbService.repairArtistTags();
 
-    // 3. Инициализация IPC-обработчиков
+    // 4. Инициализация IPC-обработчиков
     registerIpcHandlers(dbService, syncService);
   } catch (e) {
     logger.error("FATAL: Failed to initialize database.", e);
