@@ -10,7 +10,7 @@ import { syncService } from "./services/sync-service";
 
 logger.info("🚀 Application starting...");
 
-// Глобальные ссылки для сохранения контекста
+// Global references to prevent garbage collection
 let dbService: DbService;
 let mainWindow: BrowserWindow | null = null;
 
@@ -21,7 +21,7 @@ if (!gotTheLock) {
   logger.warn("Another instance is already running. Quitting...");
   app.quit();
 } else {
-  // Обработка запуска второй копии: разворачиваем и фокусируем первую
+  // Handle second instance launch
   app.on("second-instance", () => {
     logger.info("Second instance detected. Focusing main window...");
     if (mainWindow) {
@@ -39,25 +39,26 @@ async function initializeAppAndReady() {
     const dbInstance = new Database(DB_PATH, { verbose: console.log });
     dbService = new DbService(dbInstance);
 
-    // >>> ADD THIS BLOCK:
-    dbService
-      .fixDatabaseSchema()
-      .then(() => logger.info("Main: Database schema fixed/verified."))
-      .catch((err) => logger.error("Main: Database fix failed", err));
-    // <<< END ADD BLOCK
-
     syncService.setDbService(dbService);
 
-    // 1. Запуск миграций (создание/обновление таблиц)
+    // 1. Run Migrations (Critical - must block start)
     runMigrations(dbService.db);
 
-    // 2. 🛠️ КРИТИЧЕСКИЙ РЕМОНТ: Удаление дубликатов и создание уникального индекса
-    await dbService.fixDatabaseSchema();
+    // 2. ⚡ BACKGROUND MAINTENANCE (Fire & Forget)
+    // We do NOT await here. The window will open while this runs in the background.
+    logger.info("Main: Starting background DB maintenance...");
+    Promise.all([
+      dbService.fixDatabaseSchema(), // Remove duplicates / Add Index
+      dbService.repairArtistTags(), // Normalize tags
+    ])
+      .then(() => {
+        logger.info("✅ Main: Background DB maintenance complete.");
+      })
+      .catch((err) => {
+        logger.error("❌ Main: Background DB maintenance failed", err);
+      });
 
-    // 3. АВТОМАТИЧЕСКИЙ РЕМОНТ ТЕГОВ (Fix для старых кривых записей)
-    await dbService.repairArtistTags();
-
-    // 4. Инициализация IPC-обработчиков
+    // 3. Init IPC
     registerIpcHandlers(dbService, syncService);
   } catch (e) {
     logger.error("FATAL: Failed to initialize database.", e);
@@ -81,7 +82,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    show: false,
+    show: false, // Wait for 'ready-to-show' to prevent flickering
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -91,7 +92,6 @@ function createWindow() {
   });
 
   updaterService.setWindow(mainWindow);
-
   syncService.setWindow(mainWindow);
 
   mainWindow.webContents.on("did-finish-load", () => {

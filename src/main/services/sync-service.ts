@@ -35,7 +35,7 @@ export class SyncService {
     this.dbService = dbService;
   }
 
-  private sendEvent(channel: string, data?: unknown) {
+  public sendEvent(channel: string, data?: unknown) {
     if (this.window && !this.window.isDestroyed()) {
       this.window.webContents.send(channel, data);
     }

@@ -7,10 +7,8 @@ import * as schema from "./schema";
 import { Artist, NewArtist, NewPost, Post, Settings } from "./schema";
 import { eq, asc, desc, sql, like, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { normalizeTag } from "../../shared/lib/tag-utils";
 
 export type DbType = BetterSQLite3Database<typeof schema>;
-type ArtistInsertSchema = typeof schema.artists.$inferInsert;
 
 export class DbService {
   public readonly db: DbType;
@@ -20,7 +18,12 @@ export class DbService {
     logger.info("DbService: Drizzle ORM initialized.");
   }
 
-  // === 🛠️ CRITICAL FIX: DATABASE REPAIR ===
+  // === 🛠️ DATABASE MAINTENANCE ===
+
+  /**
+   * CRITICAL FIX: Running this synchronously on startup with large datasets causes freezing.
+   * Consider running this in a worker or non-blocking way in main.ts.
+   */
   public async fixDatabaseSchema(): Promise<void> {
     logger.info("DbService: 🛠️ Running database schema repair...");
     try {
@@ -50,6 +53,25 @@ export class DbService {
     }
   }
 
+  /**
+   * OPTIMIZED: Replaced N+1 loop with a single atomic SQL update.
+   * Normalizes tags (trim spaces, lowercase, replace spaces with underscores).
+   */
+  async repairArtistTags(): Promise<void> {
+    logger.info("DbService: Normalizing artist tags...");
+    try {
+      // SQLite native replacements to avoid JS loops
+      await this.db.run(sql`
+            UPDATE artists 
+            SET tag = lower(replace(trim(tag), ' ', '_'))
+            WHERE tag != lower(replace(trim(tag), ' ', '_'))
+        `);
+      logger.info("DbService: Tags normalized successfully.");
+    } catch (error) {
+      logger.error("DbService: Error normalizing tags:", error);
+    }
+  }
+
   // === 1. Artist Management ===
 
   async getTrackedArtists(): Promise<Artist[]> {
@@ -59,25 +81,20 @@ export class DbService {
   }
 
   async addArtist(artistData: NewArtist): Promise<Artist> {
-    const dataToInsert: ArtistInsertSchema = {
-      name: artistData.name,
-      tag: artistData.tag,
-      type: artistData.type,
-      apiEndpoint: artistData.apiEndpoint,
-    };
-
     try {
       const result = await this.db
         .insert(schema.artists)
-        .values(dataToInsert)
+        .values({
+          name: artistData.name,
+          tag: artistData.tag,
+          type: artistData.type, // Ensure UI allows selecting this!
+          apiEndpoint: artistData.apiEndpoint,
+        })
         .returning({ id: schema.artists.id });
 
-      const savedArtist = await this.db.query.artists.findFirst({
-        where: eq(schema.artists.id, result[0].id),
-      });
-
-      if (!savedArtist) throw new Error("Artist inserted but not found");
-      return savedArtist;
+      const saved = await this.getArtistById(result[0].id);
+      if (!saved) throw new Error("Artist saved but not returned");
+      return saved;
     } catch (error) {
       logger.error("DbService: Error adding artist:", error);
       throw error;
@@ -91,14 +108,13 @@ export class DbService {
       .where(eq(schema.artists.id, artistId));
   }
 
-  // 🛡️ ATOMIC PROGRESS UPDATE (Fixed Date issue)
+  // 🛡️ ATOMIC PROGRESS UPDATE
   async updateArtistProgress(
     artistId: number,
     newMaxPostId: number,
     postsAddedCount: number
   ): Promise<void> {
-    // FIX: SQLite raw query expects a number for timestamp, not a JS Date object
-    const now = Math.floor(Date.now() / 1000);
+    const now = new Date(); // FIX: Pass Date object, not timestamp number
 
     // SQL CASE ensures we NEVER decrease last_post_id
     await this.db.run(sql`
@@ -115,7 +131,7 @@ export class DbService {
 
     if (postsAddedCount > 0) {
       logger.info(
-        `DbService: Artist ${artistId} updated (MaxID: ${newMaxPostId}, +${postsAddedCount} posts)`
+        `DbService: Artist ${artistId} progress updated (MaxID: ${newMaxPostId}, +${postsAddedCount} posts)`
       );
     }
   }
@@ -132,6 +148,7 @@ export class DbService {
         .onConflictDoUpdate({
           target: [schema.posts.artistId, schema.posts.postId],
           set: {
+            // Using sql.raw for CASE logic is acceptable here for performance vs readability trade-off
             previewUrl: sql.raw(
               `CASE WHEN excluded.preview_url != '' THEN excluded.preview_url ELSE posts.preview_url END`
             ),
@@ -177,7 +194,6 @@ export class DbService {
   }
 
   // === 3. Settings & Utils ===
-
   async getSettings(): Promise<Settings | undefined> {
     return this.db.query.settings.findFirst();
   }
@@ -203,18 +219,5 @@ export class DbService {
       .update(schema.posts)
       .set({ isViewed: true })
       .where(eq(schema.posts.id, postId));
-  }
-
-  async repairArtistTags(): Promise<void> {
-    const allArtists = await this.db.query.artists.findMany();
-    for (const artist of allArtists) {
-      const cleaned = normalizeTag(artist.tag);
-      if (artist.tag !== cleaned) {
-        await this.db
-          .update(schema.artists)
-          .set({ tag: cleaned })
-          .where(eq(schema.artists.id, artist.id));
-      }
-    }
   }
 }
