@@ -63,7 +63,7 @@ export class DbService {
   async updateArtistLastChecked(artistId: number): Promise<void> {
     await this.db
       .update(schema.artists)
-      .set({ lastChecked: Math.floor(Date.now() / 1000) })
+      .set({ lastChecked: new Date() })
       .where(eq(schema.artists.id, artistId));
   }
 
@@ -109,7 +109,7 @@ export class DbService {
         .set({
           lastPostId: newestPostId,
           newPostsCount: sql`${schema.artists.newPostsCount} + ${realAddedCount}`,
-          lastChecked: Math.floor(Date.now() / 1000),
+          lastChecked: new Date(),
         })
         .where(eq(schema.artists.id, artistId));
 

@@ -223,10 +223,11 @@ export class SyncService {
             fileUrl: p.file_url,
             postId: p.id,
             previewUrl: pickPreviewUrl(p),
+            sampleUrl: p.sample_url || p.file_url,
             title: "",
             rating: p.rating,
             tags: p.tags,
-            publishedAt: p.change,
+            publishedAt: String(p.change || ""),
             isViewed: false,
           }));
 

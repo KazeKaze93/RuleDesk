@@ -1,4 +1,4 @@
-import React, { forwardRef, useState } from "react";
+import React, { forwardRef, useState, useEffect } from "react";
 import {
   useMutation,
   useInfiniteQuery,
@@ -42,16 +42,11 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-// Контейнер элемента (ячейка сетки)
 const ItemContainer = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("w-full aspect-[2/3]", className)} // Фиксируем пропорции ячейки, чтобы не прыгало
-    {...props}
-  />
+  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
 ));
 ItemContainer.displayName = "ItemContainer";
 
@@ -67,7 +62,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const queryClient = useQueryClient();
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
-  // 1. Используем useInfiniteQuery для подгрузки страниц
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["posts", artist.id],
@@ -109,12 +103,18 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  const handlePostClick = (index: number, post: Post) => {
-    setSelectedIndex(index);
-    // Если пост еще не просмотрен, помечаем его
-    if (!post.isViewed) {
-      viewMutation.mutate(post.id);
+  useEffect(() => {
+    if (selectedIndex >= 0 && allPosts[selectedIndex]) {
+      const currentPost = allPosts[selectedIndex];
+      if (!currentPost.isViewed) {
+        viewMutation.mutate(currentPost.id);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIndex]);
+
+  const handlePostClick = (index: number) => {
+    setSelectedIndex(index);
   };
 
   const handleRepairSync = async () => {
@@ -136,7 +136,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 
   return (
     <div className="flex flex-col h-screen bg-slate-950">
-      {/* 2. Фиксированный Хедер */}
       <div className="flex z-10 justify-between items-center px-6 py-4 border-b backdrop-blur shrink-0 bg-slate-950/90 border-slate-800">
         <div className="flex gap-4 items-center">
           <Button
@@ -186,7 +185,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         </div>
       </div>
 
-      {/* 3. Виртуализированная сетка */}
       <div className="flex-1 min-h-0">
         {isLoading && allPosts.length === 0 ? (
           <div className="flex justify-center items-center h-full text-slate-500">
@@ -216,7 +214,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               const isVid = isVideo(post.fileUrl);
               return (
                 <div
-                  onClick={() => handlePostClick(index, post)}
+                  onClick={() => handlePostClick(index)}
                   className={cn(
                     "overflow-hidden relative w-full h-full rounded-lg border transition-colors group bg-slate-900 border-slate-800 cursor-zoom-in",
                     "hover:border-blue-500"
@@ -238,20 +236,18 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
                     </div>
                   )}
 
-                  {/* VIDEO ICON OVERLAY */}
                   {isVid && (
                     <div className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full backdrop-blur-[2px]">
                       <Play className="w-3 h-3 text-white fill-white" />
                     </div>
                   )}
 
-                  {/* VIEWED INDICATOR (CHECKMARK) */}
                   {post.isViewed && (
                     <div className="absolute top-2 left-2 z-10 p-1 rounded-full shadow-md bg-blue-600/90">
                       <Check className="w-3 h-3 text-white stroke-[3]" />
                     </div>
                   )}
-                  {/* Rating Overlay */}
+
                   <div className="flex absolute inset-0 flex-col justify-end p-2 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity from-black/80 group-hover:opacity-100">
                     <span
                       className={cn(
@@ -269,7 +265,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         )}
       </div>
 
-      {/* --- LIGHTBOX INTEGRATION --- */}
+      {/* --- LIGHTBOX --- */}
       {selectedIndex >= 0 && allPosts[selectedIndex] && (
         <ImageLightbox
           post={allPosts[selectedIndex]}
