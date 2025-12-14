@@ -18,15 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-// --- ЛОГИКА НОРМАЛИЗАЦИИ (Твой код) ---
-function normalizeTag(input: string) {
-  return input
-    .trim()
-    .replace(/^#\s*/g, "")
-    .replace(/^user:/i, "")
-    .replace(/\s*\(\d+\)\s*$/g, "");
-}
+import { normalizeTag } from "../../shared/lib/tag-utils";
 
 export const AddArtistModal: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -52,25 +44,28 @@ export const AddArtistModal: React.FC = () => {
 
   const mutation = useMutation({
     mutationFn: async (data: ArtistFormValues) => {
-      // 1. Нормализуем входную строку
-      const cleanTag = normalizeTag(data.name);
+      // 1. Нормализуем входную строку (удаляем скобки, пробелы -> подчеркивания)
+      const rawInput = data.name;
+      const canonicalTag = normalizeTag(rawInput);
 
       // 2. Формируем объект для БД
       const newArtist: NewArtist = {
-        name: cleanTag,
-        tag: cleanTag,
+        name: rawInput.trim(),
+        tag: canonicalTag,
         type: "tag",
         apiEndpoint: data.apiEndpoint.trim(),
       };
 
       console.log(
-        `[UI] Adding artist. Raw: "${data.name}" -> Normalized: "${cleanTag}"`
+        `[UI] Adding artist. Raw: "${data.name}" -> Normalized: "${canonicalTag}"`
       );
 
+      // 3. Отправляем в Main Process
       return window.api.addArtist(newArtist);
     },
 
     onSuccess: () => {
+      // При успехе сбрасываем форму и закрываем модалку
       queryClient.invalidateQueries({ queryKey: ["artists"] });
       setIsOpen(false);
       reset();
@@ -79,10 +74,30 @@ export const AddArtistModal: React.FC = () => {
 
     onError: (error) => {
       console.error("Mutation failed:", error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      const isDuplicateError =
+        errorMessage.includes("UNIQUE constraint") ||
+        errorMessage.includes("SQLITE_CONSTRAINT") ||
+        errorMessage.includes("artists.tag") ||
+        errorMessage.includes("already exists");
+
+      if (isDuplicateError) {
+        const cleanTag = normalizeTag(watchedName || "");
+        setDuplicateWarning(
+          `This tag "${cleanTag}" is already being tracked. Each tag can only be added once.`
+        );
+      } else {
+        setDuplicateWarning(null);
+      }
     },
   });
 
   const onSubmit = (data: ArtistFormValues) => {
+    // Сбрасываем старые ошибки перед новой попыткой
+    setDuplicateWarning(null);
     mutation.mutate(data);
   };
 
@@ -92,6 +107,7 @@ export const AddArtistModal: React.FC = () => {
       onOpenChange={(open) => {
         setIsOpen(open);
         if (!open) {
+          // Очистка при закрытии
           setDuplicateWarning(null);
           reset();
         }
@@ -110,9 +126,13 @@ export const AddArtistModal: React.FC = () => {
           </DialogTitle>
         </DialogHeader>
 
-        {mutation.isError && (
+        {/* Блок ошибки (общий) */}
+        {mutation.isError && !duplicateWarning && (
           <div className="p-3 mb-4 text-sm text-red-200 rounded border border-red-800 bg-red-900/50">
-            Error: {mutation.error.message}
+            Error:{" "}
+            {mutation.error instanceof Error
+              ? mutation.error.message
+              : "Failed to add artist"}
           </div>
         )}
 
@@ -131,7 +151,7 @@ export const AddArtistModal: React.FC = () => {
               }}
               onQueryChange={(query: string) => {
                 setValue("name", query, { shouldValidate: true });
-                setDuplicateWarning(null);
+                setDuplicateWarning(null); // Скрываем ошибку при редактировании
               }}
             />
 
@@ -141,8 +161,11 @@ export const AddArtistModal: React.FC = () => {
               </span>
             )}
 
+            {/* Блок предупреждения о дубликате (Желтый) */}
             {duplicateWarning && (
-              <p className="mt-1 text-xs text-yellow-400">{duplicateWarning}</p>
+              <div className="p-3 mt-2 text-sm text-yellow-200 rounded border border-yellow-800 bg-yellow-900/50">
+                ⚠️ {duplicateWarning}
+              </div>
             )}
           </div>
 
@@ -156,7 +179,10 @@ export const AddArtistModal: React.FC = () => {
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? (
-                <Loader2 className="animate-spin" />
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Saving...
+                </>
               ) : (
                 "Track"
               )}

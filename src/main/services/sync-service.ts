@@ -15,7 +15,6 @@ interface R34Post {
   change: number;
 }
 
-// 1. ЧИСТЫЙ КОСТЫЛЬ: Гарантируем, что превью — это не видео
 const isVideo = (url?: string) => !!url && /\.(webm|mp4|mov)(\?|$)/i.test(url);
 
 const pickPreviewUrl = (p: R34Post) => {
@@ -227,7 +226,7 @@ export class SyncService {
             title: "",
             rating: p.rating,
             tags: p.tags,
-            publishedAt: String(p.change || ""),
+            ublishedAt: new Date(p.change * 1000),
             isViewed: false,
           }));
 

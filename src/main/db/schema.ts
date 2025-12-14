@@ -1,18 +1,23 @@
-import { sqliteTable, text, integer, unique } from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm";
+import {
+  sqliteTable,
+  text,
+  integer,
+  unique,
+  index,
+} from "drizzle-orm/sqlite-core";
 
 export const artists = sqliteTable("artists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  tag: text("tag").notNull(),
-  type: text("type").notNull(), // 'artist', 'tag', 'character'
+  tag: text("tag").notNull().unique(),
+  type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
   apiEndpoint: text("api_endpoint").notNull(),
   lastPostId: integer("last_post_id").notNull().default(0),
   newPostsCount: integer("new_posts_count").notNull().default(0),
   lastChecked: integer("last_checked", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
-    .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`),
+    .$defaultFn(() => new Date()),
 });
 
 export const posts = sqliteTable(
@@ -29,16 +34,19 @@ export const posts = sqliteTable(
     title: text("title").default(""),
     rating: text("rating").default(""),
     tags: text("tags").notNull(),
-    publishedAt: text("published_at"),
+    publishedAt: integer("published_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`),
+      .$defaultFn(() => new Date()),
     isViewed: integer("is_viewed", { mode: "boolean" })
       .notNull()
       .default(false),
   },
   (t) => ({
     uniquePost: unique().on(t.artistId, t.postId),
+    artistIdIdx: index("artistIdIdx").on(t.artistId),
+    isViewedIdx: index("isViewedIdx").on(t.isViewed),
+    publishedAtIdx: index("publishedAtIdx").on(t.publishedAt),
   })
 );
 

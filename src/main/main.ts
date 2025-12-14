@@ -42,7 +42,7 @@ async function initializeAppAndReady() {
     syncService.setDbService(dbService);
 
     // 1. Запуск миграций (создание/обновление таблиц)
-    runMigrations(dbService.db);
+    await runMigrations(dbService.db);
 
     // 2. АВТОМАТИЧЕСКИЙ РЕМОНТ ТЕГОВ (Fix для старых кривых записей)
     await dbService.repairArtistTags();

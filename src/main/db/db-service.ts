@@ -7,7 +7,7 @@ import * as schema from "./schema";
 import { Artist, NewArtist, NewPost, Post, Settings } from "./schema";
 import { eq, asc, desc, sql, like, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { normalizeTag } from "../utils/tag-normalizer";
+import { normalizeTag } from "../../shared/lib/tag-utils";
 
 export type DbType = BetterSQLite3Database<typeof schema>;
 type ArtistInsertSchema = typeof schema.artists.$inferInsert;
