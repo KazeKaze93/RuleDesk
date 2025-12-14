@@ -367,21 +367,25 @@ src/
 ### ✅ Completed Stabilization
 
 **Infrastructure & Build:**
+
 - Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
 - App runs successfully via `npm run dev` and communicates with SQLite database
 
 **Database & Schema:**
+
 - Replaced incompatible `unixepoch` and JS-dates with raw SQL timestamps (ms)
 - Added proper `UNIQUE` constraints to the `posts` table (`artistId` + `postId`) to enable correct UPSERT operations
 - Added `sampleUrl` column for progressive image loading
 - Migrations system (`drizzle-kit`) is fully functional
 
 **Data Integrity & Sync:**
+
 - Implemented Tag Normalization in `AddArtistModal`: Inputs like "tag (123)" are now stripped to "tag" before saving/syncing
 - SyncService correctly handles `ON CONFLICT` and populates the gallery
 - Fixed timestamp handling: `lastChecked` now uses `new Date()` with proper Drizzle timestamp mode
 
 **UI/UX:**
+
 - Fixed "Soapy/Blurred" Previews: Image rendering quality for previews has been corrected
 - Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
 - Basic Gallery grid is functional
@@ -400,29 +404,49 @@ src/
 
 ## Active Roadmap (Priority Tasks)
 
-### A. Filters (Advanced Search)
+### A. Filters (Advanced Search) ⏳ Not Started
+
 **Goal:** Allow users to refine the gallery view.
+
 - Filter by **Rating** (Safe, Questionable, Explicit)
 - Filter by **Media Type** (Image vs Video)
 - Filter by **Tags** (Local search within downloaded posts)
 - Sort by: Date Added (New/Old), Posted Date
 
-### B. Download Manager
+**Status:** No filtering UI or logic implemented. `ArtistGallery` component currently displays all posts without filtering options.
+
+### B. Download Manager ⏳ Not Started
+
 **Goal:** Allow saving full-resolution files to the local file system.
+
 - "Download Original" button on post view
 - "Download All" for current filter/artist
 - **Queue System:** Handle downloads in the background/main process
 - **Settings:** Allow choosing a default download directory
 
-### C. Playlists / Collections
+**Status:** No download functionality for posts. Only auto-updater download exists.
+
+### C. Playlists / Collections ⏳ Not Started
+
 **Goal:** Create curated collections of posts independent of Artists/Trackers.
 
 **Phase 1: MVP**
+
 - New table `playlists` (`id`, `name`, `created_at`)
 - New table `playlist_posts` (`playlist_id`, `post_id`, `added_at`)
 - "⭐ Add to playlist" button on Post Card
 - New Page/Tab: "Playlists"
 - View Playlist: Grid view with filtering and sorting
+
+**Status:** No playlist tables in schema, no playlist-related code implemented.
+
+### 🛡️ Security & Reliability (Hardening)
+
+See [Roadmap](./roadmap.md#-security--reliability-hardening) for detailed security improvements:
+
+- **DB Worker Thread Migration** - Move SQLite access to dedicated worker thread
+- **Encrypt / Secure Storage for API Credentials** - Use OS keychain, stop exposing raw API key
+- **Database Backup / Restore System** - Manual and automatic backups with integrity checks
 
 ### Future Considerations
 
@@ -452,4 +476,3 @@ src/
 2. **Descriptive Errors:** Clear error messages
 3. **Error Logging:** All errors logged via `electron-log`
 4. **User Feedback:** Errors surfaced to UI appropriately
-

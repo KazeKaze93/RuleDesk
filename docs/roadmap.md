@@ -5,21 +5,25 @@
 We have successfully stabilized the application core. The following issues are RESOLVED:
 
 ### Infrastructure & Build
+
 - ✅ Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
 - ✅ App runs successfully via `npm run dev` and communicates with the SQLite database
 
 ### Database & Schema
+
 - ✅ Replaced incompatible `unixepoch` and JS-dates with raw SQL timestamps (ms)
 - ✅ Added proper `UNIQUE` constraints to the `posts` table (`artistId` + `postId`) to enable correct UPSERT operations
 - ✅ Added `sampleUrl` column for progressive image loading
 - ✅ Migrations system (`drizzle-kit`) is fully functional
 
 ### Data Integrity & Sync
+
 - ✅ Implemented Tag Normalization in `AddArtistModal`: Inputs like "tag (123)" are now stripped to "tag" before saving/syncing
 - ✅ SyncService correctly handles `ON CONFLICT` and populates the gallery
 - ✅ Fixed timestamp handling: `lastChecked` now uses `new Date()` with proper Drizzle timestamp mode
 
 ### UI/UX
+
 - ✅ Fixed "Soapy/Blurred" Previews: Image rendering quality for previews has been corrected
 - ✅ Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
 - ✅ Basic Gallery grid is functional
@@ -31,71 +35,86 @@ We have successfully stabilized the application core. The following issues are R
 
 We are moving to Feature Development. Implement the following modules:
 
-### A. Filters (Advanced Search) [Priority: High]
+### A. Filters (Advanced Search) [Priority: High] ⏳ Not Started
 
 **Goal:** Allow users to refine the gallery view.
 
 **UI:**
-- Sidebar or Top Bar filter menu
+
+- [ ] Sidebar or Top Bar filter menu
 
 **Functionality:**
-- Filter by **Rating** (Safe, Questionable, Explicit)
-- Filter by **Media Type** (Image vs Video)
-- Filter by **Tags** (Local search within downloaded posts)
-- Sort by: Date Added (New/Old), Posted Date
+
+- [ ] Filter by **Rating** (Safe, Questionable, Explicit)
+- [ ] Filter by **Media Type** (Image vs Video)
+- [ ] Filter by **Tags** (Local search within downloaded posts)
+- [ ] Sort by: Date Added (New/Old), Posted Date
 
 **Implementation Notes:**
+
 - Use Drizzle ORM queries with proper filtering
 - Maintain type safety with Zod/TypeScript
 - Update UI state via React Query invalidation
 
+**Status:** No filtering UI or logic implemented. `ArtistGallery` component currently displays all posts without filtering options.
+
 ---
 
-### B. Download Manager [Priority: High]
+### B. Download Manager [Priority: High] ⏳ Not Started
 
 **Goal:** Allow saving full-resolution files to the local file system (outside the app's internal DB cache).
 
 **Features:**
-- "Download Original" button on post view
-- "Download All" for current filter/artist
-- **Queue System:** Handle downloads in the background/main process to avoid freezing UI
-- **Settings:** Allow choosing a default download directory
+
+- [ ] "Download Original" button on post view
+- [ ] "Download All" for current filter/artist
+- [ ] **Queue System:** Handle downloads in the background/main process to avoid freezing UI
+- [ ] **Settings:** Allow choosing a default download directory
 
 **Implementation Notes:**
+
 - Downloads must run in Main Process (file I/O)
 - Use IPC events for download progress updates
 - Implement queue management to prevent overwhelming the system
 - Store download preferences in settings table
 
+**Status:** No download functionality for posts. Only auto-updater download exists.
+
 ---
 
-### C. Playlists / Collections [Priority: Medium]
+### C. Playlists / Collections [Priority: Medium] ⏳ Not Started
 
 **Goal:** Create curated collections of posts independent of Artists/Trackers.
 
 #### Phase 1: MVP
 
 1. **Database:**
-   - New table `playlists` (`id`, `name`, `created_at`)
-   - New table `playlist_posts` (`playlist_id`, `post_id`, `added_at`)
+
+   - [ ] New table `playlists` (`id`, `name`, `created_at`)
+   - [ ] New table `playlist_posts` (`playlist_id`, `post_id`, `added_at`)
 
 2. **UI Interactions:**
-   - "⭐ Add to playlist" button on Post Card (opens Popover: List of playlists + "Create New")
-   - New Page/Tab: "Playlists"
-   - View Playlist: Grid view of posts inside a playlist
+
+   - [ ] "⭐ Add to playlist" button on Post Card (opens Popover: List of playlists + "Create New")
+   - [ ] New Page/Tab: "Playlists"
+   - [ ] View Playlist: Grid view of posts inside a playlist
 
 3. **Logic:**
-   - Filter inside playlist (Search tags by `LIKE`)
-   - Sort by `addedAt`
-   - Remove post from playlist
-   - Delete/Rename playlist
+   - [ ] Filter inside playlist (Search tags by `LIKE`)
+   - [ ] Sort by `addedAt`
+   - [ ] Remove post from playlist
+   - [ ] Delete/Rename playlist
 
 **Implementation Notes:**
+
 - Follow existing database patterns (Drizzle ORM, type safety)
 - Use IPC for all database operations
 - Maintain separation of concerns (Renderer ↔ Main)
 
+**Status:** No playlist tables in schema, no playlist-related code implemented.
+
 #### Phase 2: Future Improvements (Not for now)
+
 - Drag & Drop sorting
 - Smart/Dynamic Playlists (Auto-fill based on tags)
 - JSON Export/Import
@@ -105,6 +124,7 @@ We are moving to Feature Development. Implement the following modules:
 ## 🏗️ Architecture Considerations
 
 ### Design Principles
+
 - **KISS & YAGNI:** Keep It Simple, Stupid. You Aren't Gonna Need It.
 - **SOLID:** Single Responsibility, Open/Closed, Dependency Inversion
 - **DRY:** Don't Repeat Yourself
@@ -112,6 +132,7 @@ We are moving to Feature Development. Implement the following modules:
 - **Separation of Concerns:** Renderer (UI) ↔ Main Process (I/O, DB, API)
 
 ### Implementation Guidelines
+
 - Maintain current schema patterns (no regression)
 - Strict type safety (Zod/TypeScript)
 - Separation of Concerns (Renderer vs Main process)
@@ -124,20 +145,93 @@ We are moving to Feature Development. Implement the following modules:
 ## 🔮 Long-Term Goals (Future Considerations)
 
 ### Multi-Booru Support
+
 - Refactor `SyncService` into Provider Pattern
 - Abstract booru-specific logic
 - Support for Danbooru, Gelbooru, etc.
 
 ### Dual-Module System
+
 - **Module 1: Library** - Local database, favorites, gallery
 - **Module 2: Browser** - Embedded Webview for native site navigation
   - JS injection (`preload`) for site integration
   - Floating Action Button (FAB) "Track Artist" overlay
 
 ### Statistics Dashboard
+
 - Analytics on tracked artists and posts
 - Sync history and statistics
 - Content analysis
+
+---
+
+## 🛡️ Security & Reliability (Hardening)
+
+### DB Worker Thread Migration (better-sqlite3) ⏳ Not Started
+
+**Goal:** Move ALL SQLite access out of Main into a dedicated Worker Thread (single DB actor).
+
+**Tasks:**
+
+- [ ] Create dedicated Worker Thread for database operations
+- [ ] Replace direct `DbService` calls with worker RPC (request/response with correlationId + timeouts)
+- [ ] Run startup maintenance (schema fix / repair tags / migrations) inside worker (non-blocking UI)
+- [ ] Add basic progress events for long operations (maintenance/sync/repair)
+
+**Implementation Notes:**
+
+- Use Node.js `worker_threads` module
+- Implement RPC pattern with correlation IDs for request/response matching
+- Add timeout handling for worker requests
+- Maintain type safety across worker boundary
+
+**Status:** `DbService` currently runs directly in Main Process. All database operations block the main thread.
+
+---
+
+### Encrypt / Secure Storage for API Credentials ⏳ Not Started
+
+**Goal:** Stop exposing raw API key to Renderer and encrypt credentials at rest.
+
+**Tasks:**
+
+- [ ] Stop exposing raw API key to Renderer (only "hasApiKey" / status flags)
+- [ ] Store API key encrypted at rest (preferred: OS keychain; fallback: AES-GCM + protected master key)
+- [ ] Update settings flow: DB keeps non-secret metadata (userId), secret stored separately
+- [ ] Threat model: stolen `metadata.db` must not reveal API key in plaintext
+
+**Implementation Notes:**
+
+- Use `electron-store` with encryption or OS keychain (`keytar` package)
+- Windows: Credential Manager API
+- macOS: Keychain Services
+- Linux: libsecret
+- Update IPC bridge to only expose `hasApiKey` boolean, not the key itself
+
+**Status:** API key currently stored in plaintext in `settings` table. Renderer can access full API key via IPC.
+
+---
+
+### Database Backup / Restore System ⏳ Not Started
+
+**Goal:** Add backup and restore functionality to protect user data.
+
+**Tasks:**
+
+- [ ] Add manual "Backup now" action (create timestamped DB dump)
+- [ ] Add automatic pre-maintenance backup (before migrations/repair)
+- [ ] Add Restore flow (switch DB file atomically, re-run schema fix)
+- [ ] Add integrity check command (`PRAGMA integrity_check`) + recovery suggestion
+- [ ] Retention policy for backups (keep last N, cleanup old)
+
+**Implementation Notes:**
+
+- Backup location: User data directory + `/backups/`
+- Use SQLite `.backup` command or file copy with atomic rename
+- Store backup metadata (timestamp, size, integrity status)
+- UI: Settings page with backup/restore controls
+
+**Status:** No backup/restore functionality exists. Database corruption could result in data loss.
 
 ---
 
