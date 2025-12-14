@@ -33,8 +33,8 @@ Stores information about tracked artists/users.
 | `api_endpoint`    | TEXT (NOT NULL)                | Base API endpoint URL           |
 | `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)  | ID of the last seen post        |
 | `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)  | Count of new, unviewed posts    |
-| `last_checked`    | INTEGER (NULL)                 | Timestamp of last API poll      |
-| `created_at`      | INTEGER (NOT NULL)             | Creation timestamp (Unix epoch) |
+| `last_checked`    | INTEGER (NULL)                 | Timestamp of last API poll (timestamp mode)    |
+| `created_at`      | INTEGER (NOT NULL)             | Creation timestamp (timestamp mode, ms)        |
 
 **Schema Definition:**
 
@@ -42,17 +42,15 @@ Stores information about tracked artists/users.
 export const artists = sqliteTable("artists", {
   id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  tag: text("tag").notNull().unique(),
-  type: text("type", { enum: ["tag", "uploader"] })
-    .default("tag")
-    .notNull(),
+  tag: text("tag").notNull(),
+  type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
   apiEndpoint: text("api_endpoint").notNull(),
   lastPostId: integer("last_post_id").default(0).notNull(),
   newPostsCount: integer("new_posts_count").default(0).notNull(),
-  lastChecked: integer("last_checked", { mode: "number" }),
+  lastChecked: integer("last_checked", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" })
-    .default(sql`(unixepoch())`)
-    .notNull(),
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 ```
 
@@ -65,38 +63,54 @@ export type NewArtist = typeof artists.$inferInsert;
 
 ### Table: `posts`
 
-Caches post metadata for filtering, statistics, and download management.
+Caches post metadata for filtering, statistics, and download management. Supports progressive image loading with preview, sample, and full-resolution URLs.
 
 | Column         | Type                                   | Description                                    |
 | -------------- | -------------------------------------- | ---------------------------------------------- |
-| `id`           | INTEGER (PK)                           | Post ID from external API (not auto-increment) |
+| `id`           | INTEGER (PK, AutoIncrement)            | Internal post ID                                |
+| `post_id`      | INTEGER (NOT NULL)                     | Post ID from external API                       |
 | `artist_id`    | INTEGER (FK → artists.id)              | Reference to artist                            |
-| `title`        | TEXT (NOT NULL)                        | Post title                                     |
-| `file_url`     | TEXT (NOT NULL)                        | Direct URL to media file                       |
-| `tag_hash`     | TEXT (NULL)                            | Hash or JSON of tags                           |
+| `file_url`     | TEXT (NOT NULL)                        | Direct URL to full-resolution media file       |
+| `preview_url`  | TEXT (NOT NULL)                        | URL to low-resolution preview (blurred)        |
+| `sample_url`   | TEXT (NOT NULL, DEFAULT '')            | URL to medium-resolution sample                |
+| `title`        | TEXT                                   | Post title                                     |
+| `rating`       | TEXT                                   | Content rating (safe, questionable, explicit)  |
+| `tags`         | TEXT                                   | Space-separated tags                           |
+| `published_at` | TEXT                                   | Publication timestamp (as string)              |
+| `created_at`   | INTEGER (NOT NULL)                     | When added to local database (timestamp ms)     |
 | `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been viewed                   |
-| `published_at` | INTEGER (NOT NULL)                     | Publication timestamp (Unix epoch)             |
-| `created_at`   | INTEGER                                | When added to local database (Unix epoch)      |
+
+**Unique Constraint:** `(artist_id, post_id)` - Prevents duplicate posts per artist.
 
 **Schema Definition:**
 
 ```typescript
-export const posts = sqliteTable("posts", {
-  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: false }),
-  artistId: integer("artist_id")
-    .references(() => artists.id, { onDelete: "cascade" })
-    .notNull(),
-  fileUrl: text("file_url").notNull(),
-  previewUrl: text("preview_url"),
-  title: text("title").default(""),
-  rating: text("rating"),
-  tags: text("tags"),
-  publishedAt: integer("published_at", { mode: "number" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .default(sql`(unixepoch())`)
-    .notNull(),
-  isViewed: integer("is_viewed", { mode: "boolean" }).default(false).notNull(),
-});
+export const posts = sqliteTable(
+  "posts",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    postId: integer("post_id").notNull(),
+    artistId: integer("artist_id")
+      .notNull()
+      .references(() => artists.id, { onDelete: "cascade" }),
+    fileUrl: text("file_url").notNull(),
+    previewUrl: text("preview_url").notNull(),
+    sampleUrl: text("sample_url").notNull().default(""),
+    title: text("title").default(""),
+    rating: text("rating").default(""),
+    tags: text("tags").notNull(),
+    publishedAt: text("published_at"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    isViewed: integer("is_viewed", { mode: "boolean" })
+      .default(false)
+      .notNull(),
+  },
+  (table) => ({
+    uniquePostPerArtist: unique().on(table.artistId, table.postId),
+  })
+);
 ```
 
 **TypeScript Types:**
@@ -358,7 +372,7 @@ await db
   .set({
     lastPostId: newPostId,
     newPostsCount: count,
-    lastChecked: Math.floor(Date.now() / 1000),
+    lastChecked: new Date(), // Uses timestamp mode
   })
   .where(eq(schema.artists.id, artistId));
 ```

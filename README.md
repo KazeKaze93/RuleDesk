@@ -23,11 +23,12 @@ This project is **unofficial** and **not affiliated** with any external website 
 | Feature                           | Description                                                                                                                                                                                                                             |
 | :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials stored in SQLite database, accessible only from Main Process.                                                                                  |
-| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports both tag-based and uploader-based tracking.                                                                                                 |
+| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports tag-based tracking with autocomplete search. Tag normalization automatically strips metadata like "(123)" from tag names.                    |
 | **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling. Real-time sync progress updates via IPC events.       |
-| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Stores artists, posts metadata (tags, ratings, URLs), and settings. Database file access is strictly limited to the **Main Process** to enforce thread-safety and security. |
+| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. Database file access is strictly limited to the **Main Process** to enforce thread-safety and security. |
 | **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality.              |
-| **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                   |
+| **🎨 Progressive Image Loading**  | 3-layer progressive image loading system: Preview (blurred/low-res) → Sample (medium-res) → Original (high-res). Provides instant visual feedback with smooth quality enhancement.                                                          |
+| **📊 Post Metadata**           | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                      |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                    |
 | **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                           |
 | **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                   |
@@ -45,7 +46,7 @@ This is the secure Node.js environment. It handles all I/O, persistence, and sec
 
 - **Desktop Runtime:** **Electron** (chosen for `BrowserView`/`Webview` control to support DOM injection).
 - **Database:** **SQLite** (via `better-sqlite3` driver).
-- **Data Layer:** **Drizzle ORM** (TypeScript type-safety for queries).
+- **Data Layer:** **Drizzle ORM** (TypeScript type-safety for queries, raw SQL timestamps in milliseconds).
 - **API:** Custom wrapper based on `fetch`/`axios` with retry and backoff logic.
 - **Background Jobs:** Node.js timers and asynchronous workers.
 
@@ -62,6 +63,31 @@ This is the sandboxed browser environment. It handles presentation.
 
 - **IPC Bridge:** Strictly typed TypeScript interface (`bridge.ts`) used by the Renderer to communicate with the Main Process.
 - **Security:** **Context Isolation** enforced globally; no direct Node.js access from the Renderer.
+
+## ✅ Recent Fixes & Current Status
+
+The application core has been successfully stabilized:
+
+### Infrastructure & Build
+- ✅ Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
+- ✅ App runs successfully via `npm run dev` and communicates with SQLite database
+
+### Database & Schema
+- ✅ Replaced incompatible `unixepoch` and JS-dates with raw SQL timestamps (ms)
+- ✅ Added proper `UNIQUE` constraints to the `posts` table (`artistId` + `postId`) to enable correct UPSERT operations
+- ✅ Added `sampleUrl` column for progressive image loading
+- ✅ Migrations system (`drizzle-kit`) is fully functional
+
+### Data Integrity & Sync
+- ✅ Implemented Tag Normalization in `AddArtistModal`: Inputs like "tag (123)" are now stripped to "tag" before saving/syncing
+- ✅ SyncService correctly handles `ON CONFLICT` and populates the gallery
+- ✅ Fixed timestamp handling: `lastChecked` now uses `new Date()` with proper Drizzle timestamp mode
+
+### UI/UX
+- ✅ Fixed "Soapy/Blurred" Previews: Image rendering quality for previews has been corrected
+- ✅ Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
+- ✅ Basic Gallery grid is functional
+- ✅ AsyncAutocomplete component for artist/tag search with free-text input support
 
 ---
 
@@ -105,6 +131,34 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 - **[Contributing Guide](./docs/contributing.md)** - Guidelines for contributors
 - **[Database Documentation](./docs/database.md)** - Database schema and operations
 - **[Development Guide](./docs/development.md)** - Development setup and workflows
+
+## 🚀 Active Roadmap
+
+We are moving to Feature Development. Priority tasks:
+
+### A. Filters (Advanced Search)
+**Goal:** Allow users to refine the gallery view.
+- Filter by **Rating** (Safe, Questionable, Explicit)
+- Filter by **Media Type** (Image vs Video)
+- Filter by **Tags** (Local search within downloaded posts)
+- Sort by: Date Added (New/Old), Posted Date
+
+### B. Download Manager
+**Goal:** Allow saving full-resolution files to the local file system.
+- "Download Original" button on post view
+- "Download All" for current filter/artist
+- **Queue System:** Handle downloads in the background/main process
+- **Settings:** Allow choosing a default download directory
+
+### C. Playlists / Collections
+**Goal:** Create curated collections of posts independent of Artists/Trackers.
+
+**Phase 1: MVP**
+- New table `playlists` (`id`, `name`, `created_at`)
+- New table `playlist_posts` (`playlist_id`, `post_id`, `added_at`)
+- "⭐ Add to playlist" button on Post Card
+- New Page/Tab: "Playlists"
+- View Playlist: Grid view with filtering and sorting
 
 ---
 

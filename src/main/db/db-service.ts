@@ -7,6 +7,7 @@ import * as schema from "./schema";
 import { Artist, NewArtist, NewPost, Post, Settings } from "./schema";
 import { eq, asc, desc, sql, like, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { normalizeTag } from "../utils/tag-normalizer";
 
 export type DbType = BetterSQLite3Database<typeof schema>;
 type ArtistInsertSchema = typeof schema.artists.$inferInsert;
@@ -194,5 +195,37 @@ export class DbService {
       .update(schema.posts)
       .set({ isViewed: true })
       .where(eq(schema.posts.id, postId));
+  }
+
+  /**
+   * Проходит по всем существующим записям artists и нормализует поле 'tag'.
+   * Используется для ремонта старых, некорректно сохраненных записей.
+   */
+  async repairArtistTags(): Promise<void> {
+    logger.info("DbService: Запуск ремонта тегов авторов...");
+    try {
+      const allArtists = await this.db.query.artists.findMany();
+
+      const repairPromises = allArtists.map(async (artist) => {
+        const originalTag = artist.tag;
+        const cleanedTag = normalizeTag(originalTag);
+
+        if (originalTag !== cleanedTag) {
+          await this.db
+            .update(schema.artists)
+            .set({ tag: cleanedTag })
+            .where(eq(schema.artists.id, artist.id));
+          logger.info(
+            `DbService: Очищен тег для ID ${artist.id}: "${originalTag}" -> "${cleanedTag}"`
+          );
+        }
+      });
+
+      await Promise.all(repairPromises);
+      logger.info("DbService: Ремонт тегов завершен.");
+    } catch (error) {
+      logger.error("DbService: Ошибка при ремонте тегов:", error);
+      throw error;
+    }
   }
 }
