@@ -4,9 +4,10 @@ import {
 } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import * as schema from "./schema";
-import { Artist, NewArtist, NewPost, Post, Settings } from "./schema";
+import { Artist, NewArtist, NewPost, Post } from "./schema";
 import { eq, asc, desc, sql, like, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { safeStorage } from "electron";
 
 export type DbType = BetterSQLite3Database<typeof schema>;
 
@@ -194,19 +195,54 @@ export class DbService {
   }
 
   // === 3. Settings & Utils ===
-  async getSettings(): Promise<Settings | undefined> {
-    return this.db.query.settings.findFirst();
-  }
 
-  async saveSettings(userId: string, apiKey: string): Promise<void> {
-    await this.db
-      .insert(schema.settings)
-      .values({ id: 1, userId, apiKey })
-      .onConflictDoUpdate({
-        target: schema.settings.id,
-        set: { userId, apiKey },
-      });
-    logger.info("DbService: Settings updated");
+  public async saveSettings(userId: string, apiKey: string): Promise<void> {
+    if (!userId || !apiKey) {
+      throw new Error("User ID and API Key are required.");
+    }
+
+    let encryptedKey: string | null = null;
+    let encryptionAvailable = safeStorage.isEncryptionAvailable();
+
+    if (!encryptionAvailable) {
+      logger.warn(
+        "Encryption is unavailable. API Key will be stored as plaintext (CRITICAL TEMPORARY FALLBACK)."
+      );
+      encryptedKey = apiKey;
+    } else {
+      try {
+        const encryptedBuffer = safeStorage.encryptString(apiKey);
+        encryptedKey = encryptedBuffer.toString("base64");
+      } catch (error) {
+        logger.error(
+          "Failed to encrypt API Key. Storing as plaintext (CRITICAL SECURITY ISSUE).",
+          error
+        );
+        encryptedKey = apiKey;
+        encryptionAvailable = false;
+      }
+    }
+
+    try {
+      await this.db
+        .insert(schema.settings)
+        .values({
+          id: 1,
+          userId: userId,
+          encryptedApiKey: encryptedKey,
+        })
+        .onConflictDoUpdate({
+          target: schema.settings.id,
+          set: {
+            userId: userId,
+            // Используем новое поле
+            encryptedApiKey: encryptedKey,
+          },
+        });
+    } catch (error) {
+      logger.error("Database error while saving settings:", error);
+      throw new Error("Failed to save credentials to database.");
+    }
   }
 
   async deleteArtist(id: number): Promise<void> {
@@ -219,5 +255,65 @@ export class DbService {
       .update(schema.posts)
       .set({ isViewed: true })
       .where(eq(schema.posts.id, postId));
+  }
+
+  /**
+   * Retrieves the settings status without exposing the API key.
+   * Used by the IPC handler app:get-settings.
+   */
+  public async getSettingsStatus(): Promise<
+    { hasApiKey: boolean; userId: string | null } | undefined
+  > {
+    const settings = await this.db.query.settings.findFirst({
+      where: eq(schema.settings.id, 1),
+    });
+
+    if (!settings) {
+      return undefined;
+    }
+
+    return {
+      userId: settings.userId,
+      // Проверяем, существует ли зашифрованный ключ
+      hasApiKey: !!settings.encryptedApiKey,
+    };
+  }
+
+  /**
+   * Retrieves the decrypted API key for internal Main/Worker services (SyncService).
+   * This method is NEVER exposed to the Renderer Process via IPC.
+   */
+  public async getApiKeyDecrypted(): Promise<
+    { userId: string; apiKey: string } | undefined
+  > {
+    const settings = await this.db.query.settings.findFirst({
+      where: eq(schema.settings.id, 1),
+    });
+
+    if (!settings || !settings.userId || !settings.encryptedApiKey) {
+      return undefined;
+    }
+
+    let decryptedKey = settings.encryptedApiKey;
+
+    // Логика дешифрования, которую ты уже реализовал
+    if (safeStorage.isEncryptionAvailable()) {
+      try {
+        const encryptedBuffer = Buffer.from(settings.encryptedApiKey, "base64");
+        decryptedKey = safeStorage.decryptString(encryptedBuffer);
+      } catch (error) {
+        logger.error(
+          "Failed to decrypt API Key. Using raw stored value.",
+          error
+        );
+        decryptedKey = settings.encryptedApiKey;
+      }
+    }
+
+    // Возвращаем дешифрованный ключ (или сырой fallback)
+    return {
+      userId: settings.userId,
+      apiKey: decryptedKey,
+    };
   }
 }
