@@ -134,7 +134,7 @@ const ArtistListView: React.FC<{
 
         <div className="mt-8">
           <Button onClick={() => setIsAddModalOpen(true)} variant="default">
-            {t("app.addArtist") || "Add Artist"}
+            Add Tag
           </Button>
           <AddArtistModal
             isOpen={isAddModalOpen}
