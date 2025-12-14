@@ -6,8 +6,16 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     build: {
-      lib: {
-        entry: "src/main/main.ts",
+      rollupOptions: {
+        input: {
+          main: resolve(__dirname, "src/main/main.ts"),
+          "db-worker": resolve(__dirname, "src/main/db/db-worker.ts"),
+        },
+        output: {
+          dir: "out/main",
+          format: "cjs",
+          entryFileNames: "[name].cjs",
+        },
       },
     },
   },

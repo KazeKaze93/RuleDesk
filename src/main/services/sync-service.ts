@@ -1,9 +1,14 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, safeStorage } from "electron";
 import { logger } from "../lib/logger";
-import { DbService } from "../db/db-service";
+import { DbWorkerClient } from "../db/db-worker-client";
 import axios from "axios";
-import type { Artist, Settings } from "../db/schema";
+import type { Artist } from "../db/schema";
 import { URLSearchParams } from "url";
+
+interface InternalDecryptedSettings {
+  userId: string;
+  apiKey: string;
+}
 
 interface R34Post {
   id: number;
@@ -24,15 +29,15 @@ const pickPreviewUrl = (p: R34Post) => {
 };
 
 export class SyncService {
-  private dbService: DbService | null = null;
+  private dbWorkerClient: DbWorkerClient | null = null;
   private window: BrowserWindow | null = null;
   private isSyncing = false;
 
   public setWindow(window: BrowserWindow) {
     this.window = window;
   }
-  public setDbService(dbService: DbService) {
-    this.dbService = dbService;
+  public setDbWorkerClient(dbWorkerClient: DbWorkerClient) {
+    this.dbWorkerClient = dbWorkerClient;
   }
 
   public sendEvent(channel: string, data?: unknown) {
@@ -41,17 +46,47 @@ export class SyncService {
     }
   }
 
+  private async getDecryptedSettings() {
+    if (!this.dbWorkerClient) return null;
+
+    // Запрашиваем "getApiKeyDecrypted", но воркер вернет зашифрованное (потому что мы его отучили дешифровать)
+    const settings = await this.dbWorkerClient.call<{
+      userId: string;
+      apiKey: string;
+    }>("getApiKeyDecrypted");
+
+    if (!settings) return null;
+
+    let realApiKey = settings.apiKey;
+
+    // Дешифруем прямо тут
+    if (realApiKey && safeStorage.isEncryptionAvailable()) {
+      try {
+        const buff = Buffer.from(realApiKey, "base64");
+        realApiKey = safeStorage.decryptString(buff);
+      } catch {
+        // Если ошибка, оставляем как есть (вдруг он не зашифрован)
+      }
+    }
+
+    return { ...settings, apiKey: realApiKey };
+  }
+
   public async syncAllArtists() {
     if (this.isSyncing) return;
-    if (!this.dbService) return;
+    if (!this.dbWorkerClient) return;
 
     this.isSyncing = true;
     logger.info("SyncService: Start Full Sync");
     this.sendEvent("sync:start");
 
     try {
-      const artists = await this.dbService.getTrackedArtists();
-      const settings = await this.dbService.getSettings();
+      const artists = await this.dbWorkerClient.call<Artist[]>(
+        "getTrackedArtists"
+      );
+
+      const settings = await this.getDecryptedSettings();
+
       if (!settings?.userId) throw new Error("No API credentials");
 
       for (const artist of artists) {
@@ -72,11 +107,16 @@ export class SyncService {
   }
 
   public async repairArtist(artistId: number) {
-    if (this.isSyncing || !this.dbService) return;
+    if (this.isSyncing || !this.dbWorkerClient) return;
     this.isSyncing = true;
     try {
-      const artist = await this.dbService.getArtistById(artistId);
-      const settings = await this.dbService.getSettings();
+      const artist = await this.dbWorkerClient.call<Artist | undefined>(
+        "getArtistById",
+        { artistId }
+      );
+
+      const settings = await this.getDecryptedSettings();
+
       if (artist && settings) {
         this.sendEvent("sync:repair:start", artist.name);
         // Force download by using lastPostId: 0
@@ -92,10 +132,10 @@ export class SyncService {
 
   private async syncArtist(
     artist: Artist,
-    settings: Settings,
+    settings: InternalDecryptedSettings, // 🛑 ФИКС: Используем новый тип
     maxPages = Infinity
   ) {
-    if (!this.dbService) return;
+    if (!this.dbWorkerClient) return;
 
     let page = 0;
     let hasMore = true;
@@ -161,13 +201,16 @@ export class SyncService {
         }));
 
         if (postsToSave.length > 0) {
-          await this.dbService.savePostsForArtist(artist.id, postsToSave);
+          await this.dbWorkerClient.call("savePostsForArtist", {
+            artistId: artist.id,
+            posts: postsToSave,
+          });
           // 2. Atomic Update of Progress
-          await this.dbService.updateArtistProgress(
-            artist.id,
-            highestPostId,
-            postsToSave.length
-          );
+          await this.dbWorkerClient.call("updateArtistProgress", {
+            artistId: artist.id,
+            newMaxPostId: highestPostId,
+            postsAddedCount: postsToSave.length,
+          });
         }
 
         newPostsCount += postsToSave.length;
@@ -183,7 +226,11 @@ export class SyncService {
 
     // Final check to update timestamps even if no new posts
     if (newPostsCount === 0) {
-      await this.dbService.updateArtistProgress(artist.id, highestPostId, 0);
+      await this.dbWorkerClient.call("updateArtistProgress", {
+        artistId: artist.id,
+        newMaxPostId: highestPostId,
+        postsAddedCount: 0,
+      });
     }
     logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
   }
