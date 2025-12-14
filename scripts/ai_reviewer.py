@@ -221,7 +221,7 @@ def main() -> None:
         
         if review_comment and successful_model:
             logger.info("Posting comment to GitHub...")
-            final_comment = f"## 🛡️ Ревью Архитектора BuildHub\n\n{review_comment}\n\n*Движок: {successful_model}*"
+            final_comment = f"## 🛡️ Ревью Архитектора \n\n{review_comment}\n\n*Движок: {successful_model}*"
             pr.create_issue_comment(final_comment)
             logger.info("Done.")
         else:

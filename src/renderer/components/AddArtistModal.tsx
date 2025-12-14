@@ -1,201 +1,115 @@
-import React, { useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { Plus, Loader2, User, Tag } from "lucide-react";
-import { Button } from "./ui/button";
-import type { NewArtist } from "../../main/db/schema";
-import { getArtistTag } from "../lib/artist-utils";
-import { artistBaseSchema, ArtistFormValues } from "../schemas/form-schemas";
+import { useState } from "react";
+import { X } from "lucide-react";
+import { normalizeTag } from "../../shared/lib/tag-utils";
+import { AsyncAutocomplete } from "./inputs/AsyncAutocomplete";
+import type { AutocompleteOption } from "./inputs/AsyncAutocomplete";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+interface AddArtistModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  // Keep signature compatible with parent, but we always use "tag" internally
+  onAdd: (
+    name: string,
+    tag: string,
+    type: "tag" | "uploader" | "query"
+  ) => void;
+}
 
-export const AddArtistModal: React.FC = () => {
-  const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-  const queryClient = useQueryClient();
+export function AddArtistModal({
+  isOpen,
+  onClose,
+  onAdd,
+}: AddArtistModalProps) {
+  const [inputTag, setInputTag] = useState("");
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<ArtistFormValues>({
-    resolver: zodResolver(artistBaseSchema, {
-      path: [],
-      async: false,
-      errorMap: (issue, ctx) => {
-        if (
-          issue.code === z.ZodIssueCode.too_small &&
-          issue.path[0] === "name"
-        ) {
-          return { message: t("validation.nameRequired") };
-        }
-        if (
-          issue.code === z.ZodIssueCode.invalid_string &&
-          issue.validation === "url"
-        ) {
-          return { message: t("validation.invalidUrl") };
-        }
-        return { message: ctx.defaultError };
-      },
-    }),
-    defaultValues: {
-      name: "",
-      type: "tag",
-      apiEndpoint: "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index",
-    },
-  });
+  // We hardcode type to "tag" since the user only wants simple tag tracking.
+  const type = "tag" as const;
 
-  const mutation = useMutation({
-    mutationFn: async (data: ArtistFormValues) => {
-      const finalTag = getArtistTag(data.name, data.type);
-
-      const newArtist: NewArtist = {
-        name: data.name.trim(),
-        tag: finalTag.trim(),
-        type: data.type,
-        apiEndpoint: data.apiEndpoint.trim(),
-      };
-
-      return window.api.addArtist(newArtist);
-    },
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
-      setIsOpen(false);
-      reset();
-    },
-
-    onError: (error) => {
-      console.error("Mutation failed:", error);
-    },
-  });
-
-  const onSubmit = (data: ArtistFormValues) => {
-    mutation.mutate(data);
+  // Reset state on close
+  const handleClose = () => {
+    setInputTag("");
+    onClose();
   };
 
-  const selectedType = useWatch({ control, name: "type" });
-  const watchedName = useWatch({ control, name: "name" });
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputTag) {
+      // 1. Normalize the input tag (strip counts like '(1543)')
+      const finalTag = normalizeTag(inputTag);
+
+      // 2. Display Name is always the normalized tag (KISS Principle)
+      const finalDisplayName = finalTag;
+
+      onAdd(finalDisplayName, finalTag, type);
+      handleClose();
+    }
+  };
+
+  const handleTagSelect = (option: AutocompleteOption | null) => {
+    const selectedTag = option?.label || "";
+    setInputTag(selectedTag);
+  };
+
+  const handleTagChange = (query: string) => {
+    setInputTag(query);
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button aria-label={t("addArtistModal.addArtist")}>
-          <Plus className="mr-2 w-4 h-4" /> {t("addArtistModal.addArtist")}
-        </Button>
-      </DialogTrigger>
-
-      <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700 text-slate-100">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
-            {t("addArtistModal.newArtist")}
-          </DialogTitle>
-        </DialogHeader>
-
-        {mutation.isError && (
-          <div className="p-3 mb-4 text-sm text-red-200 rounded border border-red-800 bg-red-900/50">
-            {t("addArtistModal.error", { message: mutation.error.message })}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-2 p-1 rounded border bg-slate-950 border-slate-800">
-            <button
-              type="button"
-              onClick={() => setValue("type", "tag")}
-              aria-pressed={selectedType === "tag"}
-              className={`flex items-center justify-center py-2 text-sm rounded transition-colors ${
-                selectedType === "tag"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Tag className="mr-2 w-4 h-4" /> {t("addArtistModal.artistTag")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setValue("type", "uploader")}
-              aria-pressed={selectedType === "uploader"}
-              className={`flex items-center justify-center py-2 text-sm rounded transition-colors ${
-                selectedType === "uploader"
-                  ? "bg-purple-600 text-white"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <User className="mr-2 w-4 h-4" /> {t("addArtistModal.uploader")}
-            </button>
-          </div>
-
-          <div>
-            <label
-              htmlFor="artist-name-input"
-              className="block mb-1 text-sm font-medium text-slate-400"
-            >
-              {selectedType === "uploader"
-                ? t("addArtistModal.usernameUploader")
-                : t("addArtistModal.artistTagLabel")}
+    <div className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm duration-200 bg-black/60 animate-in fade-in">
+      <div className="flex flex-col w-full max-w-md rounded-xl border shadow-2xl bg-zinc-900 border-zinc-800">
+        {" "}
+        {/* Header */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
+          <h2 className="text-lg font-bold text-white">Track New Tag</h2>
+          <button
+            onClick={handleClose}
+            className="p-1 rounded-full transition-colors hover:bg-zinc-800 text-zinc-400"
+            title="Close"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Tag Input (with Autocomplete) */}
+          <div className="space-y-1.5">
+            <label className="ml-1 text-xs font-medium text-zinc-400">
+              Booru Tag to Track
             </label>
-            <input
-              id="artist-name-input"
-              {...register("name")}
-              autoFocus
-              className="px-3 py-2 w-full text-white rounded border bg-slate-950 border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={
-                selectedType === "uploader"
-                  ? t("addArtistModal.placeholderUploader")
-                  : t("addArtistModal.placeholderTag")
-              }
-            />
-            {errors.name && (
-              <span className="text-xs text-red-500">
-                {errors.name.message}
-              </span>
-            )}
-
-            {watchedName && (
-              <p className="mt-1 font-mono text-xs text-slate-500">
-                {t("addArtistModal.willBeSent")}{" "}
-                <span className="text-blue-400">
-                  {getArtistTag(watchedName, selectedType)}{" "}
-                </span>
-              </p>
-            )}
+            <div className="relative z-20">
+              <AsyncAutocomplete
+                label=""
+                value={inputTag}
+                onQueryChange={handleTagChange}
+                onSelect={handleTagSelect}
+                placeholder="Search tag (e.g. blue_eyes)"
+                fetchOptions={async (query: string) => {
+                  try {
+                    return await window.api.searchRemoteTags(query);
+                  } catch (error) {
+                    console.error("Failed to search tags:", error);
+                    return [];
+                  }
+                }}
+              />
+            </div>
+            <p className="text-[10px] text-zinc-500 ml-1">
+              Type the full tag. Post counts like '(123)' will be removed on
+              submit.
+            </p>
           </div>
 
-          <div className="flex gap-2 justify-end mt-6">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => setIsOpen(false)}
-            >
-              {t("addArtistModal.cancel")}
-            </Button>
-            <Button
-              type="submit"
-              disabled={mutation.isPending}
-              aria-label={t("addArtistModal.add")}
-            >
-              {mutation.isPending ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                t("addArtistModal.add")
-              )}
-            </Button>
-          </div>
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={!inputTag}
+            className="px-4 py-3 mt-2 w-full text-sm font-bold text-white bg-blue-600 rounded-lg shadow-lg transition-all hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-blue-500/20"
+          >
+            Start Tracking
+          </button>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
-};
+}

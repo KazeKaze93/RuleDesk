@@ -15,17 +15,11 @@ interface R34Post {
   change: number;
 }
 
-// 1. ЧИСТЫЙ КОСТЫЛЬ: Гарантируем, что превью — это не видео
 const isVideo = (url?: string) => !!url && /\.(webm|mp4|mov)(\?|$)/i.test(url);
-
 const pickPreviewUrl = (p: R34Post) => {
-  // 1. sample_url (среднее качество)
   if (p.sample_url && !isVideo(p.sample_url)) return p.sample_url;
-  // 2. preview_url (мыльное, но точно превью-картинка)
   if (p.preview_url && !isVideo(p.preview_url)) return p.preview_url;
-  // 3. file_url (оригинал), только если не видео (крайний случай)
   if (p.file_url && !isVideo(p.file_url)) return p.file_url;
-
   return "";
 };
 
@@ -34,12 +28,9 @@ export class SyncService {
   private window: BrowserWindow | null = null;
   private isSyncing = false;
 
-  constructor() {}
-
   public setWindow(window: BrowserWindow) {
     this.window = window;
   }
-
   public setDbService(dbService: DbService) {
     this.dbService = dbService;
   }
@@ -51,49 +42,28 @@ export class SyncService {
   }
 
   public async syncAllArtists() {
-    if (this.isSyncing) {
-      logger.warn("SyncService: Синхронизация уже идет.");
-      return;
-    }
-
-    if (!this.dbService) {
-      logger.error("SyncService: DB Service не инициализирован");
-      return;
-    }
+    if (this.isSyncing) return;
+    if (!this.dbService) return;
 
     this.isSyncing = true;
-    logger.info("SyncService: Начало полного цикла синхронизации Rule34...");
+    logger.info("SyncService: Start Full Sync");
     this.sendEvent("sync:start");
 
     try {
       const artists = await this.dbService.getTrackedArtists();
-
       const settings = await this.dbService.getSettings();
-      if (!settings || !settings.userId) {
-        throw new Error("API credentials not found. Please check settings.");
-      }
-
-      logger.info(
-        `SyncService: Найдено авторов для обновления: ${artists.length}`
-      );
+      if (!settings?.userId) throw new Error("No API credentials");
 
       for (const artist of artists) {
         this.sendEvent("sync:progress", `Checking ${artist.name}...`);
-
-        // Вызываем syncArtist без maxPages, чтобы синхронизировать новые
         await this.syncArtist(artist, settings);
-
-        await this.dbService.updateArtistLastChecked(artist.id);
-
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((r) => setTimeout(r, 1500));
       }
-
-      logger.info("SyncService: Полный цикл синхронизации завершен.");
     } catch (error) {
-      logger.error("SyncService: Ошибка глобальной синхронизации", error);
+      logger.error("Sync error", error);
       this.sendEvent(
         "sync:error",
-        error instanceof Error ? error.message : "Unknown error during sync"
+        error instanceof Error ? error.message : "Error"
       );
     } finally {
       this.isSyncing = false;
@@ -101,114 +71,73 @@ export class SyncService {
     }
   }
 
-  // 2. НОВЫЙ МЕТОД: Ремонтная синхронизация (публичный API)
   public async repairArtist(artistId: number) {
-    if (this.isSyncing) {
-      logger.warn("SyncService: Синхронизация уже идет.");
-      return;
-    }
-    if (!this.dbService) {
-      logger.error("SyncService: DB Service не инициализирован");
-      return;
-    }
-
+    if (this.isSyncing || !this.dbService) return;
     this.isSyncing = true;
-
     try {
       const artist = await this.dbService.getArtistById(artistId);
-      if (!artist) {
-        throw new Error(`Artist ID ${artistId} not found.`);
-      }
-
-      const repairArtist = { ...artist, lastPostId: 0 };
-
-      logger.info(
-        `SyncService: Начало ремонтной синхронизации для ${artist.name}...`
-      );
-      this.sendEvent("sync:repair:start", artist.name);
-
       const settings = await this.dbService.getSettings();
-      if (!settings || !settings.userId) {
-        throw new Error("API credentials not found. Please check settings.");
+      if (artist && settings) {
+        this.sendEvent("sync:repair:start", artist.name);
+        // Force download by using lastPostId: 0
+        await this.syncArtist({ ...artist, lastPostId: 0 }, settings, 3);
       }
-
-      const maxPages = 3;
-
-      await this.syncArtist(repairArtist, settings, maxPages);
-
-      await this.dbService.updateArtistLastChecked(artist.id);
-
-      logger.info(
-        `SyncService: Ремонтная синхронизация для ${artist.name} завершена.`
-      );
-    } catch (error) {
-      logger.error(`SyncService: Ошибка ремонта для автора`, error);
-      this.sendEvent(
-        "sync:error",
-        `Repair failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+    } catch (e) {
+      logger.error("Repair error", e);
     } finally {
       this.isSyncing = false;
       this.sendEvent("sync:repair:end");
     }
   }
 
-  // 3. ОБНОВЛЕННЫЙ МЕТОД: Поддержка лимита страниц (maxPages)
   private async syncArtist(
     artist: Artist,
     settings: Settings,
-    maxPages: number = Infinity
+    maxPages = Infinity
   ) {
-    logger.info(`SyncService: Проверка ${artist.name} [${artist.tag}]...`);
+    if (!this.dbService) return;
 
     let page = 0;
     let hasMore = true;
     let newPostsCount = 0;
-    const limit = 100;
-
-    const encodedTag = encodeURIComponent(artist.tag);
+    // Track highest ID in this session to prevent ID regression
+    let highestPostId = artist.lastPostId;
 
     while (hasMore && page < maxPages) {
       try {
         const idFilter =
           artist.lastPostId > 0 ? ` id:>${artist.lastPostId}` : "";
-
         const tagsQuery = `${
           artist.type === "uploader" ? "user:" : ""
-        }${encodedTag}${idFilter}`;
-        const params: Record<string, string> = {
+        }${encodeURIComponent(artist.tag)}${idFilter}`;
+
+        const params = new URLSearchParams({
           page: "dapi",
           s: "post",
           q: "index",
-          limit: limit.toString(),
+          limit: "100",
           pid: page.toString(),
           tags: tagsQuery,
           json: "1",
-        };
-
+        });
         if (settings.apiKey && settings.userId) {
-          params.user_id = settings.userId;
-          params.api_key = settings.apiKey;
+          params.append("user_id", settings.userId);
+          params.append("api_key", settings.apiKey);
         }
 
-        const urlParams = new URLSearchParams(params);
-
-        const authUrl = `https://api.rule34.xxx/index.php?${urlParams.toString()}`;
-        const response = await axios.get<R34Post[]>(authUrl, {
-          timeout: 15000,
-          headers: {
-            "User-Agent": "NSFW-Booru-Client/1.0.0 (Github: KazeKaze93)",
-          },
-        });
-
-        const posts = response.data;
+        const { data: posts } = await axios.get<R34Post[]>(
+          `https://api.rule34.xxx/index.php?${params}`,
+          { timeout: 15000 }
+        );
 
         if (!Array.isArray(posts) || posts.length === 0) {
           hasMore = false;
           break;
         }
+
+        // Calculate max ID in this batch
+        const batchMaxId = Math.max(...posts.map((p) => Number(p.id)));
+        if (batchMaxId > highestPostId) highestPostId = batchMaxId;
 
         const newPosts = posts.filter((p) => p.id > artist.lastPostId);
 
@@ -217,55 +146,46 @@ export class SyncService {
           break;
         }
 
-        if (this.dbService) {
-          const postsToSave = newPosts.map((p) => ({
-            artistId: artist.id,
-            fileUrl: p.file_url,
-            postId: p.id,
-            previewUrl: pickPreviewUrl(p),
-            title: "",
-            rating: p.rating,
-            tags: p.tags,
-            publishedAt: p.change,
-            isViewed: false,
-          }));
+        const postsToSave = newPosts.map((p) => ({
+          artistId: artist.id,
+          fileUrl: p.file_url,
+          postId: p.id,
+          previewUrl: pickPreviewUrl(p),
+          sampleUrl: p.sample_url || p.file_url,
+          title: "",
+          rating: p.rating,
+          tags: p.tags,
+          // Fix: API returns seconds, JS Date needs milliseconds
+          publishedAt: new Date((p.change || 0) * 1000),
+          isViewed: false,
+        }));
 
+        if (postsToSave.length > 0) {
           await this.dbService.savePostsForArtist(artist.id, postsToSave);
-          logger.info(
-            `DbService: Сохранено ${postsToSave.length} постов для автора ID ${artist.id}`
+          // 2. Atomic Update of Progress
+          await this.dbService.updateArtistProgress(
+            artist.id,
+            highestPostId,
+            postsToSave.length
           );
         }
 
-        newPostsCount += newPosts.length;
+        newPostsCount += postsToSave.length;
+        if (posts.length < 100) hasMore = false;
+        else page++;
 
-        if (posts.length < limit) {
-          hasMore = false;
-        } else {
-          page++;
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
+        await new Promise((r) => setTimeout(r, 500));
       } catch (e) {
-        logger.error(
-          `SyncService: Ошибка при обработке ${artist.name} (page ${page})`,
-          e
-        );
-        this.sendEvent(
-          "sync:error",
-          `Sync failed for ${artist.name}: ${
-            e instanceof Error ? e.message : "Network error"
-          }`
-        );
+        logger.error(`Sync error for ${artist.name}`, e);
         hasMore = false;
       }
     }
 
+    // Final check to update timestamps even if no new posts
     if (newPostsCount === 0) {
-      logger.info(`SyncService: Нет новых постов для ${artist.name}`);
-    } else {
-      logger.info(
-        `SyncService: Всего загружено ${newPostsCount} постов для ${artist.name}`
-      );
+      await this.dbService.updateArtistProgress(artist.id, highestPostId, 0);
     }
+    logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
   }
 }
 

@@ -5,21 +5,74 @@ import {
 import Database from "better-sqlite3";
 import * as schema from "./schema";
 import { Artist, NewArtist, NewPost, Post, Settings } from "./schema";
-import { eq, asc, desc, sql } from "drizzle-orm";
+import { eq, asc, desc, sql, like, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 export type DbType = BetterSQLite3Database<typeof schema>;
-type ArtistInsertSchema = typeof schema.artists.$inferInsert;
 
 export class DbService {
   public readonly db: DbType;
 
   constructor(sqliteDbInstance: InstanceType<typeof Database>) {
     this.db = drizzle(sqliteDbInstance, { schema });
-    logger.info("DbService: Drizzle ORM инициализирован.");
+    logger.info("DbService: Drizzle ORM initialized.");
   }
 
-  // --- 1. Artist Management ---
+  // === 🛠️ DATABASE MAINTENANCE ===
+
+  /**
+   * CRITICAL FIX: Running this synchronously on startup with large datasets causes freezing.
+   * Consider running this in a worker or non-blocking way in main.ts.
+   */
+  public async fixDatabaseSchema(): Promise<void> {
+    logger.info("DbService: 🛠️ Running database schema repair...");
+    try {
+      // 1. Delete duplicates (keep only the one with smallest internal ID)
+      await this.db.run(
+        sql.raw(`
+        DELETE FROM posts 
+        WHERE id NOT IN (
+          SELECT MIN(id) 
+          FROM posts 
+          GROUP BY artist_id, post_id
+        )
+      `)
+      );
+
+      // 2. Create Unique Index (Prevents future duplicates)
+      await this.db.run(
+        sql.raw(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_artist_post_unique 
+        ON posts (artist_id, post_id)
+      `)
+      );
+
+      logger.info("DbService: ✅ Database repaired and unique index secured.");
+    } catch (error) {
+      logger.error("DbService: Schema repair error (non-fatal)", error);
+    }
+  }
+
+  /**
+   * OPTIMIZED: Replaced N+1 loop with a single atomic SQL update.
+   * Normalizes tags (trim spaces, lowercase, replace spaces with underscores).
+   */
+  async repairArtistTags(): Promise<void> {
+    logger.info("DbService: Normalizing artist tags...");
+    try {
+      // SQLite native replacements to avoid JS loops
+      await this.db.run(sql`
+            UPDATE artists 
+            SET tag = lower(replace(trim(tag), ' ', '_'))
+            WHERE tag != lower(replace(trim(tag), ' ', '_'))
+        `);
+      logger.info("DbService: Tags normalized successfully.");
+    } catch (error) {
+      logger.error("DbService: Error normalizing tags:", error);
+    }
+  }
+
+  // === 1. Artist Management ===
 
   async getTrackedArtists(): Promise<Artist[]> {
     return this.db.query.artists.findMany({
@@ -28,34 +81,22 @@ export class DbService {
   }
 
   async addArtist(artistData: NewArtist): Promise<Artist> {
-    const dataToInsert: ArtistInsertSchema = {
-      name: artistData.name,
-      tag: artistData.tag,
-      type: artistData.type,
-      apiEndpoint: artistData.apiEndpoint,
-    };
-
     try {
       const result = await this.db
         .insert(schema.artists)
-        .values(dataToInsert)
+        .values({
+          name: artistData.name,
+          tag: artistData.tag,
+          type: artistData.type, // Ensure UI allows selecting this!
+          apiEndpoint: artistData.apiEndpoint,
+        })
         .returning({ id: schema.artists.id });
 
-      if (!result || result.length === 0) {
-        throw new Error("Insert operation failed");
-      }
-
-      const savedArtist = await this.db.query.artists.findFirst({
-        where: eq(schema.artists.id, result[0].id),
-      });
-
-      if (!savedArtist) {
-        throw new Error("Artist inserted but could not be retrieved");
-      }
-
-      return savedArtist;
+      const saved = await this.getArtistById(result[0].id);
+      if (!saved) throw new Error("Artist saved but not returned");
+      return saved;
     } catch (error) {
-      logger.error("DbService: Ошибка при добавлении автора:", error);
+      logger.error("DbService: Error adding artist:", error);
       throw error;
     }
   }
@@ -63,66 +104,62 @@ export class DbService {
   async updateArtistLastChecked(artistId: number): Promise<void> {
     await this.db
       .update(schema.artists)
-      .set({ lastChecked: Math.floor(Date.now() / 1000) })
+      .set({ lastChecked: new Date() })
       .where(eq(schema.artists.id, artistId));
   }
 
-  // --- 2. Post Management ---
+  // 🛡️ ATOMIC PROGRESS UPDATE
+  async updateArtistProgress(
+    artistId: number,
+    newMaxPostId: number,
+    postsAddedCount: number
+  ): Promise<void> {
+    const now = Date.now(); // FIX: Pass Date object, not timestamp number
 
-  async savePostsForArtist(artistId: number, posts: NewPost[]): Promise<void> {
-    if (posts.length === 0) {
-      await this.updateArtistLastChecked(artistId);
-      return;
+    // SQL CASE ensures we NEVER decrease last_post_id
+    await this.db.run(sql`
+        UPDATE ${schema.artists}
+        SET 
+            last_post_id = CASE 
+                WHEN ${newMaxPostId} > last_post_id THEN ${newMaxPostId} 
+                ELSE last_post_id 
+            END,
+            new_posts_count = new_posts_count + ${postsAddedCount},
+            last_checked = ${now}
+        WHERE ${schema.artists.id} = ${artistId}
+    `);
+
+    if (postsAddedCount > 0) {
+      logger.info(
+        `DbService: Artist ${artistId} progress updated (MaxID: ${newMaxPostId}, +${postsAddedCount} posts)`
+      );
     }
+  }
 
-    const sortedPosts = posts.sort((a, b) => (b.postId || 0) - (a.postId || 0));
-    const newestPostId = sortedPosts[0].postId || 0;
+  // === 2. Post Management ===
+
+  async savePostsForArtist(_artistId: number, posts: NewPost[]): Promise<void> {
+    if (posts.length === 0) return;
 
     await this.db.transaction(async (tx) => {
-      const insertedRows = await tx
+      await tx
         .insert(schema.posts)
         .values(posts)
         .onConflictDoUpdate({
           target: [schema.posts.artistId, schema.posts.postId],
           set: {
-            // ЭТОТ SQL.RAW БЕЗОПАСЕН.
-            // Мы используем только СТАТИЧЕСКОЕ имя колонки (.name),
-            // а не невалидированные пользовательские данные.
-            // Parametrization обеспечивается Drizzle.
+            // Using sql.raw for CASE logic is acceptable here for performance vs readability trade-off
             previewUrl: sql.raw(
-              `CASE WHEN excluded.${schema.posts.previewUrl.name} != '' THEN excluded.${schema.posts.previewUrl.name} ELSE ${schema.posts.previewUrl.name} END`
+              `CASE WHEN excluded.preview_url != '' THEN excluded.preview_url ELSE posts.preview_url END`
             ),
             fileUrl: sql.raw(
-              `CASE WHEN excluded.${schema.posts.fileUrl.name} != '' THEN excluded.${schema.posts.fileUrl.name} ELSE ${schema.posts.fileUrl.name} END`
+              `CASE WHEN excluded.file_url != '' THEN excluded.file_url ELSE posts.file_url END`
             ),
-            tags: sql.raw(`excluded.${schema.posts.tags.name}`),
-            rating: sql.raw(`excluded.${schema.posts.rating.name}`),
-            publishedAt: sql.raw(`excluded.${schema.posts.publishedAt.name}`),
+            tags: sql.raw(`excluded.tags`),
+            rating: sql.raw(`excluded.rating`),
           },
-        })
-        .returning({ id: schema.posts.id });
-
-      const realAddedCount = insertedRows.length;
-
-      await tx
-        .update(schema.artists)
-        .set({
-          lastPostId: newestPostId,
-          newPostsCount: sql`${schema.artists.newPostsCount} + ${realAddedCount}`,
-          lastChecked: Math.floor(Date.now() / 1000),
-        })
-        .where(eq(schema.artists.id, artistId));
-
-      if (realAddedCount > 0) {
-        logger.info(
-          `DbService: Автор ${artistId} -> Добавлено ${realAddedCount} новых постов (Обновлено: ${
-            posts.length - realAddedCount
-          })`
-        );
-      }
+        });
     });
-
-    // ...
   }
 
   async getPostsByArtist(
@@ -144,13 +181,24 @@ export class DbService {
     });
   }
 
-  // --- 3. Settings Management ---
+  async searchArtists(query: string): Promise<{ id: number; label: string }[]> {
+    if (!query || query.length < 2) return [];
+    const results = await this.db.query.artists.findMany({
+      where: or(
+        like(schema.artists.name, `%${query}%`),
+        like(schema.artists.tag, `%${query}%`)
+      ),
+      limit: 20,
+    });
+    return results.map((artist) => ({ id: artist.id, label: artist.name }));
+  }
+
+  // === 3. Settings & Utils ===
   async getSettings(): Promise<Settings | undefined> {
     return this.db.query.settings.findFirst();
   }
 
   async saveSettings(userId: string, apiKey: string): Promise<void> {
-    // ID всегда 1, чтобы перезаписывать старые настройки
     await this.db
       .insert(schema.settings)
       .values({ id: 1, userId, apiKey })
@@ -158,12 +206,18 @@ export class DbService {
         target: schema.settings.id,
         set: { userId, apiKey },
       });
-
-    logger.info("DbService: Настройки API обновлены");
+    logger.info("DbService: Settings updated");
   }
 
   async deleteArtist(id: number): Promise<void> {
     await this.db.delete(schema.artists).where(eq(schema.artists.id, id));
-    logger.info(`DbService: Автор ID ${id} и его посты удалены.`);
+    logger.info(`DbService: Artist ${id} deleted.`);
+  }
+
+  async markPostAsViewed(postId: number): Promise<void> {
+    await this.db
+      .update(schema.posts)
+      .set({ isViewed: true })
+      .where(eq(schema.posts.id, postId));
   }
 }

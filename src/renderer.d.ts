@@ -21,6 +21,9 @@ export interface IpcApi extends IpcBridge {
   addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
+  // NEW: Search
+  searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
+
   // Posts
   getArtistPosts: (params: {
     artistId: number;
@@ -45,6 +48,10 @@ export interface IpcApi extends IpcBridge {
   onSyncEnd: (callback: () => void) => () => void;
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
+
+  markPostAsViewed: (postId: number) => Promise<boolean>;
+
+  searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
 }
 
 declare global {

@@ -30,6 +30,7 @@ export default defineConfig({
     resolve: {
       alias: {
         "@": resolve(__dirname, "src/renderer"),
+        "@shared": resolve("src/shared"),
       },
     },
     build: {

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const artistBaseSchema = z.object({
   name: z.string().min(1),
-  type: z.enum(["tag", "uploader"]),
+  type: z.enum(["tag", "uploader", "query"]),
   apiEndpoint: z.string().url(),
 });
 
