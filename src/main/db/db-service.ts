@@ -114,7 +114,7 @@ export class DbService {
     newMaxPostId: number,
     postsAddedCount: number
   ): Promise<void> {
-    const now = new Date(); // FIX: Pass Date object, not timestamp number
+    const now = Date.now(); // FIX: Pass Date object, not timestamp number
 
     // SQL CASE ensures we NEVER decrease last_post_id
     await this.db.run(sql`

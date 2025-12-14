@@ -270,10 +270,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       {selectedIndex >= 0 && allPosts[selectedIndex] && (
         <ImageLightbox
           post={allPosts[selectedIndex]}
-          isOpen={selectedIndex >= 0}
           onClose={() => setSelectedIndex(-1)}
-          hasNext={selectedIndex < allPosts.length - 1}
-          hasPrev={selectedIndex > 0}
           onNext={() => {
             if (selectedIndex < allPosts.length - 1) {
               setSelectedIndex(selectedIndex + 1);

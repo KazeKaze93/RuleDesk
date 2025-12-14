@@ -1,195 +1,117 @@
-import React, { useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Loader2 } from "lucide-react";
-import { Button } from "./ui/button";
-import type { NewArtist } from "../../main/db/schema";
-import { artistBaseSchema, ArtistFormValues } from "../schemas/form-schemas";
-import {
-  AsyncAutocomplete,
-  type AutocompleteOption,
-} from "./inputs/AsyncAutocomplete";
+import { useState } from "react";
+import { X } from "lucide-react";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { normalizeTag } from "../../shared/lib/tag-utils";
+interface AddArtistModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (
+    name: string,
+    tag: string,
+    type: "tag" | "uploader" | "query"
+  ) => void;
+}
 
-export const AddArtistModal: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
-  const queryClient = useQueryClient();
+export function AddArtistModal({
+  isOpen,
+  onClose,
+  onAdd,
+}: AddArtistModalProps) {
+  const [name, setName] = useState("");
+  const [tag, setTag] = useState("");
+  const [type, setType] = useState<"tag" | "uploader" | "query">("tag");
 
-  const {
-    handleSubmit,
-    control,
-    reset,
-    setValue,
-    formState: { errors },
-  } = useForm<ArtistFormValues>({
-    resolver: zodResolver(artistBaseSchema),
-    defaultValues: {
-      name: "",
-      type: "tag",
-      apiEndpoint: "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index",
-    },
-  });
+  if (!isOpen) return null;
 
-  const watchedName = useWatch({ control, name: "name" });
-
-  const mutation = useMutation({
-    mutationFn: async (data: ArtistFormValues) => {
-      // 1. Нормализуем входную строку (удаляем скобки, пробелы -> подчеркивания)
-      const rawInput = data.name;
-      const canonicalTag = normalizeTag(rawInput);
-
-      // 2. Формируем объект для БД
-      const newArtist: NewArtist = {
-        name: rawInput.trim(),
-        tag: canonicalTag,
-        type: "tag",
-        apiEndpoint: data.apiEndpoint.trim(),
-      };
-
-      console.log(
-        `[UI] Adding artist. Raw: "${data.name}" -> Normalized: "${canonicalTag}"`
-      );
-
-      // 3. Отправляем в Main Process
-      return window.api.addArtist(newArtist);
-    },
-
-    onSuccess: () => {
-      // При успехе сбрасываем форму и закрываем модалку
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
-      setIsOpen(false);
-      reset();
-      setDuplicateWarning(null);
-    },
-
-    onError: (error) => {
-      console.error("Mutation failed:", error);
-
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      const isDuplicateError =
-        errorMessage.includes("UNIQUE constraint") ||
-        errorMessage.includes("SQLITE_CONSTRAINT") ||
-        errorMessage.includes("artists.tag") ||
-        errorMessage.includes("already exists");
-
-      if (isDuplicateError) {
-        const cleanTag = normalizeTag(watchedName || "");
-        setDuplicateWarning(
-          `This tag "${cleanTag}" is already being tracked. Each tag can only be added once.`
-        );
-      } else {
-        setDuplicateWarning(null);
-      }
-    },
-  });
-
-  const onSubmit = (data: ArtistFormValues) => {
-    // Сбрасываем старые ошибки перед новой попыткой
-    setDuplicateWarning(null);
-    mutation.mutate(data);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (name && tag) {
+      onAdd(name, tag, type);
+      setName("");
+      setTag("");
+      setType("tag");
+      onClose();
+    }
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) {
-          // Очистка при закрытии
-          setDuplicateWarning(null);
-          reset();
-        }
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button aria-label="Add Tracker">
-          <Plus className="mr-2 w-4 h-4" /> Track New
-        </Button>
-      </DialogTrigger>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-xl bg-zinc-900 border border-zinc-800 shadow-2xl p-6 relative animate-in fade-in zoom-in duration-200">
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 p-1 rounded-full hover:bg-zinc-800 text-zinc-400 transition-colors"
+        >
+          <X size={20} />
+        </button>
 
-      <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700 text-slate-100">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">
-            Add New Tracker
-          </DialogTitle>
-        </DialogHeader>
+        <h2 className="text-xl font-bold text-white mb-6">Track New Artist</h2>
 
-        {/* Блок ошибки (общий) */}
-        {mutation.isError && !duplicateWarning && (
-          <div className="p-3 mb-4 text-sm text-red-200 rounded border border-red-800 bg-red-900/50">
-            Error:{" "}
-            {mutation.error instanceof Error
-              ? mutation.error.message
-              : "Failed to add artist"}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <AsyncAutocomplete
-              label="Search Tag / Artist"
-              fetchOptions={window.api.searchRemoteTags}
-              placeholder="e.g. elf, wlop, 2b_(nier)..."
-              value={watchedName}
-              onSelect={(option: AutocompleteOption | null) => {
-                if (option) {
-                  const valueToSet = String(option.id || option.label);
-                  setValue("name", valueToSet, { shouldValidate: true });
-                }
-              }}
-              onQueryChange={(query: string) => {
-                setValue("name", query, { shouldValidate: true });
-                setDuplicateWarning(null); // Скрываем ошибку при редактировании
-              }}
+            <label className="block text-sm font-medium text-zinc-400 mb-1.5">
+              Display Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. 0zmann"
+              className="w-full rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-zinc-600 transition-all"
+              autoFocus
             />
-
-            {errors.name && (
-              <span className="text-xs text-red-500">
-                {errors.name.message}
-              </span>
-            )}
-
-            {/* Блок предупреждения о дубликате (Желтый) */}
-            {duplicateWarning && (
-              <div className="p-3 mt-2 text-sm text-yellow-200 rounded border border-yellow-800 bg-yellow-900/50">
-                ⚠️ {duplicateWarning}
-              </div>
-            )}
           </div>
 
-          <div className="flex gap-2 justify-end mt-6">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => setIsOpen(false)}
+          <div>
+            <label className="block text-sm font-medium text-zinc-400 mb-1.5">
+              Booru Tag / Query
+            </label>
+            <input
+              type="text"
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              placeholder="e.g. 0zmann (exact tag)"
+              className="w-full rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-zinc-600 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-400 mb-2">
+              Tracker Type
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(["tag", "uploader", "query"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setType(t)}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all capitalize ${
+                    type === t
+                      ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20"
+                      : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-zinc-500 mt-2">
+              {type === "tag" && "Tracks posts with a specific tag."}
+              {type === "uploader" &&
+                "Tracks posts uploaded by a specific user."}
+              {type === "query" && "Advanced search query string."}
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={!name || !tag}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/20"
             >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Track"
-              )}
-            </Button>
+              Start Tracking
+            </button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
-};
+}

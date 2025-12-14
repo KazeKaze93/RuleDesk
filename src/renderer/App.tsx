@@ -28,6 +28,7 @@ const ArtistListView: React.FC<{
   isSyncing: boolean;
   syncMessage: string;
   version?: string;
+  onRefresh: () => void;
 }> = ({
   artists,
   isLoading,
@@ -37,8 +38,32 @@ const ArtistListView: React.FC<{
   isSyncing,
   syncMessage,
   version,
+  onRefresh,
 }) => {
   const { t } = useTranslation();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const handleAddArtist = async (
+    name: string,
+    tag: string,
+    type: "tag" | "uploader" | "query"
+  ) => {
+    try {
+      await window.api.addArtist({
+        name,
+        tag,
+        type,
+        apiEndpoint:
+          "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index",
+      });
+      onRefresh();
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error("Failed to add artist:", error);
+      // Error handling could be improved with a toast notification
+    }
+  };
+
   return (
     <div className="p-8 min-h-screen bg-slate-950 text-slate-50">
       <div className="mx-auto space-y-6 max-w-4xl">
@@ -108,7 +133,14 @@ const ArtistListView: React.FC<{
         </div>
 
         <div className="mt-8">
-          <AddArtistModal />
+          <Button onClick={() => setIsAddModalOpen(true)} variant="default">
+            {t("app.addArtist") || "Add Artist"}
+          </Button>
+          <AddArtistModal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            onAdd={handleAddArtist}
+          />
         </div>
       </div>
     </div>
@@ -189,6 +221,7 @@ const MainScreen: React.FC<{ version?: string }> = ({ version }) => {
       onSync={handleSync}
       isSyncing={isSyncing}
       syncMessage={syncMessage}
+      onRefresh={refetch}
     />
   );
 };

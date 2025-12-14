@@ -10,18 +10,15 @@ import { syncService } from "./services/sync-service";
 
 logger.info("🚀 Application starting...");
 
-// Global references to prevent garbage collection
 let dbService: DbService;
 let mainWindow: BrowserWindow | null = null;
 
-// --- SINGLE INSTANCE LOCK ---
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   logger.warn("Another instance is already running. Quitting...");
   app.quit();
 } else {
-  // Handle second instance launch
   app.on("second-instance", () => {
     logger.info("Second instance detected. Focusing main window...");
     if (mainWindow) {
@@ -36,40 +33,27 @@ if (!gotTheLock) {
 async function initializeAppAndReady() {
   try {
     const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
-    const dbInstance = new Database(DB_PATH, { verbose: console.log });
+    // Verbose logging disabled for performance in prod
+    const dbInstance = new Database(DB_PATH, {
+      verbose: process.env.NODE_ENV === "development" ? console.log : undefined,
+    });
     dbService = new DbService(dbInstance);
 
     syncService.setDbService(dbService);
 
-    // 1. Run Migrations (Critical - must block start)
+    // 1. Run Migrations (Must be sync/blocking to ensure integrity)
     runMigrations(dbService.db);
 
-    // 2. ⚡ BACKGROUND MAINTENANCE (Fire & Forget)
-    // We do NOT await here. The window will open while this runs in the background.
-    logger.info("Main: Starting background DB maintenance...");
-    Promise.all([
-      dbService.fixDatabaseSchema(), // Remove duplicates / Add Index
-      dbService.repairArtistTags(), // Normalize tags
-    ])
-      .then(() => {
-        logger.info("✅ Main: Background DB maintenance complete.");
-      })
-      .catch((err) => {
-        logger.error("❌ Main: Background DB maintenance failed", err);
-      });
-
-    // 3. Init IPC
+    // 2. Init IPC
     registerIpcHandlers(dbService, syncService);
   } catch (e) {
     logger.error("FATAL: Failed to initialize database.", e);
-
     dialog.showErrorBox(
-      "Fatal Error: Application Initialization Failed",
-      `The application could not start due to a critical error.\n\nError Details:\n${
+      "Fatal Error",
+      `App initialization failed:\n${
         e instanceof Error ? e.message : String(e)
       }`
     );
-
     app.exit(1);
   }
 
@@ -82,7 +66,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    show: false, // Wait for 'ready-to-show' to prevent flickering
+    show: false,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -111,6 +95,21 @@ function createWindow() {
   mainWindow.once("ready-to-show", () => {
     if (mainWindow) mainWindow.show();
     updaterService.checkForUpdates();
+
+    // ⚡ DEFERRED DATABASE MAINTENANCE
+    // We delay this by 3 seconds to allow the UI to fully paint and become interactive.
+    // This mitigates the impact of better-sqlite3 being synchronous on the main thread.
+    // Ideally, this should move to a Worker Thread in v1.1.
+    setTimeout(() => {
+      logger.info("Main: Starting deferred background DB maintenance...");
+      Promise.all([dbService.fixDatabaseSchema(), dbService.repairArtistTags()])
+        .then(() => {
+          logger.info("✅ Main: DB maintenance complete.");
+        })
+        .catch((err) => {
+          logger.error("❌ Main: DB maintenance failed", err);
+        });
+    }, 3000);
   });
 
   mainWindow.on("closed", () => {
