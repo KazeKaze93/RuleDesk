@@ -33,7 +33,7 @@ if (!gotTheLock) {
   initializeAppAndReady();
 }
 
-function initializeAppAndReady() {
+async function initializeAppAndReady() {
   try {
     const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
     const dbInstance = new Database(DB_PATH, { verbose: console.log });
@@ -41,8 +41,14 @@ function initializeAppAndReady() {
 
     syncService.setDbService(dbService);
 
-    registerIpcHandlers(dbService, syncService);
+    // 1. Запуск миграций (создание/обновление таблиц)
     runMigrations(dbService.db);
+
+    // 2. АВТОМАТИЧЕСКИЙ РЕМОНТ ТЕГОВ (Fix для старых кривых записей)
+    await dbService.repairArtistTags();
+
+    // 3. Инициализация IPC-обработчиков
+    registerIpcHandlers(dbService, syncService);
   } catch (e) {
     logger.error("FATAL: Failed to initialize database.", e);
 

@@ -362,27 +362,75 @@ src/
 - Reusable components and utilities
 - No code duplication
 
-## Future Architecture Considerations
+## Recent Fixes & Current Status
 
-### Implemented Features
+### ✅ Completed Stabilization
+
+**Infrastructure & Build:**
+- Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
+- App runs successfully via `npm run dev` and communicates with SQLite database
+
+**Database & Schema:**
+- Replaced incompatible `unixepoch` and JS-dates with raw SQL timestamps (ms)
+- Added proper `UNIQUE` constraints to the `posts` table (`artistId` + `postId`) to enable correct UPSERT operations
+- Added `sampleUrl` column for progressive image loading
+- Migrations system (`drizzle-kit`) is fully functional
+
+**Data Integrity & Sync:**
+- Implemented Tag Normalization in `AddArtistModal`: Inputs like "tag (123)" are now stripped to "tag" before saving/syncing
+- SyncService correctly handles `ON CONFLICT` and populates the gallery
+- Fixed timestamp handling: `lastChecked` now uses `new Date()` with proper Drizzle timestamp mode
+
+**UI/UX:**
+- Fixed "Soapy/Blurred" Previews: Image rendering quality for previews has been corrected
+- Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
+- Basic Gallery grid is functional
+- AsyncAutocomplete component for artist/tag search with free-text input support
+
+## Implemented Features
 
 1. ✅ **Sync Service:** Dedicated service for Rule34.xxx API synchronization with progress tracking
 2. ✅ **Settings Management:** Secure storage of API credentials
-3. ✅ **Artist Tracking:** Support for tag-based and uploader-based tracking
+3. ✅ **Artist Tracking:** Support for tag-based tracking with autocomplete search and tag normalization
 4. ✅ **Post Gallery:** Grid view of cached posts with preview images and pagination
-5. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
-6. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
-7. ✅ **Event System:** Real-time IPC events for sync progress and update status
+5. ✅ **Progressive Image Loading:** 3-layer loading system (Preview → Sample → Original) for instant viewing
+6. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
+7. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
+8. ✅ **Event System:** Real-time IPC events for sync progress and update status
 
-### Planned Features
+## Active Roadmap (Priority Tasks)
 
-1. **Download Manager:** Queue-based download system for posts
-2. **Tag Subscriptions:** Subscribe to tag combinations (schema ready)
-3. **Content Script Injection:** DOM enhancements for external sites
-4. **Post Filtering:** Filter posts by rating, tags, date
-5. **Statistics Dashboard:** Analytics on tracked artists and posts
-6. **Dual-Module System:** Library mode (local database) and Browser mode (embedded webview)
-7. **Multi-Booru Support:** Provider pattern abstraction for multiple booru sources
+### A. Filters (Advanced Search)
+**Goal:** Allow users to refine the gallery view.
+- Filter by **Rating** (Safe, Questionable, Explicit)
+- Filter by **Media Type** (Image vs Video)
+- Filter by **Tags** (Local search within downloaded posts)
+- Sort by: Date Added (New/Old), Posted Date
+
+### B. Download Manager
+**Goal:** Allow saving full-resolution files to the local file system.
+- "Download Original" button on post view
+- "Download All" for current filter/artist
+- **Queue System:** Handle downloads in the background/main process
+- **Settings:** Allow choosing a default download directory
+
+### C. Playlists / Collections
+**Goal:** Create curated collections of posts independent of Artists/Trackers.
+
+**Phase 1: MVP**
+- New table `playlists` (`id`, `name`, `created_at`)
+- New table `playlist_posts` (`playlist_id`, `post_id`, `added_at`)
+- "⭐ Add to playlist" button on Post Card
+- New Page/Tab: "Playlists"
+- View Playlist: Grid view with filtering and sorting
+
+### Future Considerations
+
+1. **Tag Subscriptions:** Subscribe to tag combinations (schema ready)
+2. **Content Script Injection:** DOM enhancements for external sites
+3. **Statistics Dashboard:** Analytics on tracked artists and posts
+4. **Dual-Module System:** Library mode (local database) and Browser mode (embedded webview)
+5. **Multi-Booru Support:** Provider pattern abstraction for multiple booru sources
 
 ### Scalability
 
