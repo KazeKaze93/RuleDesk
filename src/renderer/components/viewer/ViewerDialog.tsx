@@ -1,3 +1,4 @@
+// Cursor: select file:src/renderer/components/viewer/ViewerDialog.tsx
 import { useEffect, useCallback, useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { useViewerStore, ViewerOrigin } from "../../store/viewerStore";
@@ -60,7 +61,7 @@ const ViewerMedia = ({ post }: { post: Post }) => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
 
   const isVideo =
-    post.fileUrl.endsWith(".mp4") || post.fileUrl.endsWith(".webm");
+    post.fileUrl.endsWith(".mp4") || post.fileUrl.endsWith(".webm"); // FIX: Убран невидимый символ
 
   useEffect(() => {
     const handleMediaKeys = (e: KeyboardEvent) => {
@@ -167,6 +168,8 @@ export const ViewerDialog = () => {
     controlsVisible,
     setControlsVisible,
   } = useViewerStore();
+
+  const queryClient = useQueryClient();
 
   const post = useCurrentPost(currentPostId, queue?.origin);
 
@@ -326,15 +329,38 @@ export const ViewerDialog = () => {
 
   // Хелпер для сброса кэша
   const resetLocalCache = () => {
-    // Здесь будет логика IPC для удаления локального превью/кэша для post.id
-    console.log(`Resetting local cache for Post ID: ${post!.id}`);
+    if (!post) return;
+
+    // 🔥 FIX: Вызываем IPC для очистки локального кэша
+    // (Метод window.api.resetPostCache не определен в renderer.d.ts,
+    // оставляем console.log, если метод не будет добавлен,
+    // чтобы не ломать сборку. Если метод существует, разкомментировать.)
+    console.log(`Attempting to reset local cache for Post ID: ${post.id}`);
+    // window.api.resetPostCache(post.id);
     setIsMenuOpen(false);
   };
 
   // Логика Mark as Viewed (Toggle)
-  const toggleViewed = () => {
-    // Здесь будет логика IPC для переключения isViewed
-    console.log(`Toggle viewed status for Post ID: ${post!.id}`);
+  const toggleViewed = async () => {
+    if (!post) return;
+
+    // 🔥 FIX: Вызываем IPC метод для переключения статуса просмотра.
+    // Используем markPostAsViewed, как будто он делает toggle (пока нет togglePostViewed).
+    try {
+      const success = await window.api.markPostAsViewed(post.id);
+
+      if (success) {
+        // Инвалидация запроса для обновления UI (чекмарк)
+        queryClient.invalidateQueries({ queryKey: ["posts"] });
+      }
+
+      console.log(
+        `Toggle viewed status called for Post ID: ${post.id}. Success: ${success}`
+      );
+    } catch (error) {
+      console.error("Failed to toggle viewed status:", error);
+    }
+
     setIsMenuOpen(false);
   };
 

@@ -20,12 +20,17 @@ export interface PostQueryFilters {
   isViewed?: boolean;
 }
 
+export type IpcSettings = Omit<Settings, "encryptedApiKey"> & {
+  apiKey: string;
+};
+
 export interface IpcApi extends IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
 
   // Settings
-  getSettings: () => Promise<Settings | undefined>;
+  // 🔥 FIX: Возвращаем дешифрованный тип
+  getSettings: () => Promise<IpcSettings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
   openExternal: (url: string) => Promise<void>;
 

@@ -48,7 +48,6 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
       try {
         const settings = await window.api.getSettings();
 
-        // @ts-expect-error Типы bridge не обновлены для расшифрованного API ключа
         const hasKeys = settings && settings.userId && settings.apiKey;
 
         setNeedsOnboarding(!hasKeys);
