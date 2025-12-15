@@ -99,7 +99,6 @@ export const resetPostCache = async (postId: number): Promise<boolean> => {
   console.warn(
     `[DEV ACTION] Placeholder: Resetting local cache for Post ID: ${postId}. Actual cache clearing logic (deleting file, clearing fields) should be implemented here.`
   );
-  // Тут должна быть реальная логика сброса кэша (удаление файла, очистка полей в БД)
   return true;
 };
 
@@ -349,8 +348,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         if (!fs.existsSync(backupDir))
           fs.mkdirSync(backupDir, { recursive: true });
 
-        const escapedPath = backupPath.replace(/'/g, "''");
-        dbInstance.exec(`VACUUM INTO '${escapedPath}'`);
+        dbInstance.prepare("VACUUM INTO ?").run(backupPath);
 
         sendSuccess(request.id, { backupPath });
         break;
@@ -429,7 +427,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
       case "togglePostViewed": {
         const { postId } = request.payload as { postId: number };
-        // Вызываем функцию, которая определена вверху файла
         const result = await togglePostViewed(postId);
         sendSuccess(request.id, result);
         break;

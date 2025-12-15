@@ -90,8 +90,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   }, [data]);
 
   const viewMutation = useMutation({
-    mutationFn: async (_postId: number) => {
-      // Логика просмотра перенесена в ViewerDialog (togglePostViewed)
+    mutationFn: async (postId: number) => {
+      await window.api.markPostAsViewed(postId);
     },
     onSuccess: (_, postId) => {
       queryClient.setQueryData<InfiniteData<Post[]>>(

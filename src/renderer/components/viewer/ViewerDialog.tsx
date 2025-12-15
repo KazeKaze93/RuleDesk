@@ -170,6 +170,25 @@ const ViewerDialogPostScope = ({
   // Предполагаем, что режим разработчика включен
   const isDeveloperMode = true;
 
+  // --- ЭФФЕКТ ДЛЯ АВТОМАТИЧЕСКОЙ ПОМЕТКИ "ПРОСМОТРЕНО" ---
+  useEffect(() => {
+    if (post.isViewed) return;
+
+    window.api.markPostAsViewed(post.id);
+
+    const queryKey = ["posts", post.artistId];
+
+    queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page) =>
+          page.map((p) => (p.id === post.id ? { ...p, isViewed: true } : p))
+        ),
+      };
+    });
+  }, [post.id, post.isViewed, post.artistId, queryClient]);
+
   // --- ЭФФЕКТ ДЛЯ ПОДПИСКИ НА ПРОГРЕСС ЗАГРУЗКИ ---
   useEffect(() => {
     const filenameId = `${post.artistId}_${post.postId}.${
