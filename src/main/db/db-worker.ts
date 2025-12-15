@@ -8,7 +8,7 @@ import {
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import * as schema from "./schema";
 import { NewArtist } from "./schema";
-import { eq, asc, desc, sql, like, or } from "drizzle-orm";
+import { eq, asc, desc, sql, like, or, count } from "drizzle-orm";
 import type { WorkerRequest, WorkerResponse } from "./worker-types";
 import * as path from "path";
 import * as fs from "fs";
@@ -41,6 +41,10 @@ const PostsPayloadSchema = z.object({
   artistId: z.number(),
   limit: z.number().default(1000),
   offset: z.number().default(0),
+});
+
+const PostsCountPayloadSchema = z.object({
+  artistId: z.number().optional(),
 });
 
 const SearchPayloadSchema = z.object({
@@ -295,6 +299,26 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
             offset,
           })
         );
+        break;
+      }
+
+      case "getPostsCountByArtist": {
+        const { artistId } = PostsCountPayloadSchema.parse(request.payload);
+        try {
+          let result;
+          if (artistId !== undefined) {
+            result = await db
+              .select({ value: count() })
+              .from(schema.posts)
+              .where(eq(schema.posts.artistId, artistId));
+          } else {
+            result = await db.select({ value: count() }).from(schema.posts);
+          }
+          sendSuccess(request.id, result[0]?.value ?? 0);
+        } catch (error) {
+          console.error("Failed to get posts count:", error);
+          sendSuccess(request.id, 0);
+        }
         break;
       }
 

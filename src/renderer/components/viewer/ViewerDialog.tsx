@@ -1,12 +1,16 @@
 // Cursor: select file:src/renderer/components/viewer/ViewerDialog.tsx
 import { useEffect, useCallback, useState, useMemo } from "react";
-import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "../ui/dialog";
 import { useViewerStore, ViewerOrigin } from "../../store/viewerStore";
 import { Button } from "../ui/button";
 import {
   X,
   Heart,
-  Check,
   Download,
   ExternalLink,
   MoreHorizontal,
@@ -14,12 +18,10 @@ import {
   ChevronRight,
   Folder,
   Copy,
-  Eye,
-  EyeOff,
   RefreshCw,
   Bug,
   FileText,
-  Tags, // 🔥 FIX: Вернул импорт иконки Tags
+  Tags,
 } from "lucide-react";
 
 import {
@@ -140,14 +142,18 @@ const ViewerMedia = ({ post }: { post: Post }) => {
 
 const ViewerDialogPostScope = ({
   post,
-  queue,
+  queue: _queue,
   close,
   next,
   prev,
   controlsVisible,
 }: {
   post: Post;
-  queue: { ids: number[]; origin: ViewerOrigin | undefined } | null;
+  queue: {
+    ids: number[];
+    origin: ViewerOrigin | undefined;
+    totalGlobalCount?: number;
+  } | null;
   close: () => void;
   next: () => void;
   prev: () => void;
@@ -276,33 +282,14 @@ const ViewerDialogPostScope = ({
   };
 
   const resetLocalCache = () => {
+    if (!post) return;
+
+    // FIX: Вызываем IPC для очистки локального кэша
     console.log(`Attempting to reset local cache for Post ID: ${post.id}`);
     window.api.resetPostCache(post.id);
   };
 
-  // Optimistic Update для Viewed Status
-  const toggleViewed = async () => {
-    const queryKey = ["posts", post.artistId];
-
-    queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        pages: old.pages.map((page) =>
-          page.map((p) =>
-            p.id === post.id ? { ...p, isViewed: !p.isViewed } : p
-          )
-        ),
-      };
-    });
-
-    try {
-      await window.api.togglePostViewed(post.id);
-    } catch (error) {
-      console.error("Failed to toggle viewed status:", error);
-      queryClient.invalidateQueries({ queryKey });
-    }
-  };
+  // 🔥 УДАЛЕН НЕИСПОЛЬЗУЕМЫЙ ХЕНДЛЕР toggleViewed
 
   const isCurrentlyDownloading =
     isDownloading && downloadProgress > 0 && downloadProgress < 100;
@@ -331,29 +318,10 @@ const ViewerDialogPostScope = ({
           >
             <X className="w-6 h-6" />
           </Button>
-          <div className="flex flex-col text-white">
-            <span className="text-sm font-bold opacity-90">
-              Post #{post.postId}
-            </span>
-            <span className="text-xs opacity-60">
-              {queue
-                ? `${queue.ids.indexOf(post.id) + 1} / ${queue.ids.length}`
-                : ""}
-            </span>
-          </div>
         </div>
 
         <div className="flex gap-2 items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-white rounded-full hover:bg-white/10"
-            title="Viewed Status"
-          >
-            <Check
-              className={cn("w-5 h-5", post.isViewed && "text-green-500")}
-            />
-          </Button>
+          {/* УДАЛЕНО: Кнопка View Status (Check icon) */}
 
           <Button
             variant="ghost"
@@ -370,6 +338,7 @@ const ViewerDialogPostScope = ({
             />
           </Button>
 
+          {/* --- КНОПКА СКАЧАТЬ (с индикатором прогресса) --- */}
           <Button
             variant="ghost"
             size="icon"
@@ -382,6 +351,7 @@ const ViewerDialogPostScope = ({
                 : "Download Original"
             }
           >
+            {/* Прогресс-бар поверх кнопки */}
             {isCurrentlyDownloading && (
               <div
                 className="absolute inset-0 transition-all duration-100 bg-green-500/50"
@@ -398,7 +368,7 @@ const ViewerDialogPostScope = ({
             )}
           </Button>
 
-          {/* --- МЕНЮ ТРОЕТОЧИЯ --- */}
+          {/* --- МЕНЮ ТРОЕТОЧИЯ (DropdownMenu FIX A11y) --- */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -415,6 +385,7 @@ const ViewerDialogPostScope = ({
               sideOffset={8}
               align="end"
             >
+              {/* --- COPY GROUP (SubMenu) --- */}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Copy className="mr-2 w-4 h-4" />
@@ -457,6 +428,7 @@ const ViewerDialogPostScope = ({
 
               <DropdownMenuSeparator />
 
+              {/* --- OPEN GROUP --- */}
               <DropdownMenuLabel>Open</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => handleOpenExternal(postPageUrl)}>
                 <ExternalLink className="mr-2 w-4 h-4" />
@@ -472,16 +444,9 @@ const ViewerDialogPostScope = ({
 
               <DropdownMenuSeparator />
 
+              {/* --- ACTIONS GROUP --- */}
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={toggleViewed}>
-                {post.isViewed ? (
-                  <EyeOff className="mr-2 w-4 h-4" />
-                ) : (
-                  <Eye className="mr-2 w-4 h-4" />
-                )}
-                Mark as {post.isViewed ? "unviewed" : "viewed"}
-              </DropdownMenuItem>
-
+              {/* УДАЛЕНО: Toggle Viewed, как ты и просил */}
               <DropdownMenuItem onClick={downloadImage}>
                 <Download className="mr-2 w-4 h-4" />
                 Re-download original
@@ -489,6 +454,7 @@ const ViewerDialogPostScope = ({
 
               <DropdownMenuSeparator />
 
+              {/* DEVELOPER */}
               {isDeveloperMode && (
                 <>
                   <DropdownMenuLabel>Developer</DropdownMenuLabel>
@@ -542,7 +508,6 @@ const ViewerDialogPostScope = ({
         </div>
 
         <div className="flex gap-3 items-center">
-          {/* 🔥 FIX: Вернул кнопку Tags, удалил только Original */}
           <Button
             variant="outline"
             size="sm"
@@ -551,6 +516,15 @@ const ViewerDialogPostScope = ({
           >
             <Tags className="w-4 h-4" />
             Tags
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-white bg-white/5 border-white/10 hover:bg-white/10"
+            onClick={() => handleOpenExternal(postPageUrl)}
+          >
+            <ExternalLink className="w-4 h-4" />
+            Original
           </Button>
         </div>
       </div>
@@ -593,13 +567,80 @@ export const ViewerDialog = () => {
     close,
     currentPostId,
     queue,
+    currentIndex,
     next,
     prev,
     controlsVisible,
     setControlsVisible,
+    appendQueueIds,
   } = useViewerStore();
 
   const post = useCurrentPost(currentPostId, queue?.origin);
+  const queryClient = useQueryClient();
+
+  // Infinite loading: detect when near end and load more posts
+  useEffect(() => {
+    if (!isOpen || !queue || !queue.origin) return;
+
+    const loadedCount = queue.ids.length;
+    const threshold = 5; // Load more when 5 posts from the end
+
+    // Check if we're near the end and haven't reached the total limit
+    const isNearEnd = currentIndex >= loadedCount - threshold;
+    const hasReachedLimit =
+      (queue.totalGlobalCount && loadedCount >= queue.totalGlobalCount) ||
+      !queue.hasNextPage;
+
+    if (isNearEnd && !hasReachedLimit) {
+      // Prefer callback if provided (better UX - parent controls loading)
+      if (queue.onLoadMore) {
+        console.log(
+          `[Viewer] Triggering onLoadMore callback at index ${currentIndex}. Loaded: ${loadedCount}`
+        );
+        queue.onLoadMore();
+        return;
+      }
+    }
+  }, [isOpen, queue, currentIndex]);
+
+  // Monitor React Query cache for new posts when onLoadMore callback is used
+  // This effect runs when the query data changes (after onLoadMore fetches new data)
+  const artistId =
+    queue?.origin?.kind === "artist" ? queue.origin.artistId : null;
+  const queueIdsLength = queue?.ids.length ?? 0;
+  const hasOnLoadMore = !!queue?.onLoadMore;
+
+  useEffect(() => {
+    if (!isOpen || !queue || !queue.origin || queue.origin.kind !== "artist")
+      return;
+
+    // Only monitor if onLoadMore callback is provided (parent-controlled loading)
+    if (!queue.onLoadMore) return;
+
+    const queryKey = ["posts", queue.origin.artistId];
+    const infiniteData =
+      queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
+
+    if (infiniteData) {
+      const allLoadedPosts = infiniteData.pages.flatMap((page) => page);
+      const loadedPostIds = new Set(queue.ids);
+      const newPosts = allLoadedPosts.filter((p) => !loadedPostIds.has(p.id));
+
+      if (newPosts.length > 0) {
+        // Append new post IDs to the queue
+        const newPostIds = newPosts.map((p) => p.id);
+        appendQueueIds(newPostIds);
+      }
+    }
+  }, [
+    isOpen,
+    queue,
+    queueIdsLength,
+    artistId,
+    hasOnLoadMore,
+    queryClient,
+    appendQueueIds,
+  ]);
 
   // Клавиатура (перенесена на ViewerDialog)
   const handleNavigationKeys = useCallback(
@@ -666,13 +707,18 @@ export const ViewerDialog = () => {
           [&>button]:hidden
         "
       >
+        {/* Accessibility: Title and Description must be direct children of DialogContent */}
+        <DialogTitle className="sr-only">Image Viewer</DialogTitle>
+        <DialogDescription className="sr-only">
+          View and navigate through posts. Use arrow keys to navigate, Escape to
+          close.
+        </DialogDescription>
+
         {/* Слой 1: Блюр-фон (pointer-events-none, чтобы UI был кликабелен) */}
         <div className="absolute inset-0 backdrop-blur-md pointer-events-none bg-black/60" />
 
         {/* Слой 2: UI Контент (резкий) */}
         <div className="flex relative z-10 flex-col justify-center items-center w-full h-full">
-          <DialogTitle className="sr-only">Viewer</DialogTitle>
-
           <ViewerDialogPostScope
             key={post.id}
             post={post}

@@ -10,6 +10,7 @@ export type DbMethod =
   | "updateArtistProgress"
   | "savePostsForArtist"
   | "getPostsByArtist"
+  | "getPostsCountByArtist"
   | "getArtistById"
   | "searchArtists"
   | "deleteArtist"
