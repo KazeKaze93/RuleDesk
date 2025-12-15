@@ -3,7 +3,7 @@
   "productName": "NSFW Booru Client",
   "version": "1.1.0",
   "description": "A modern, secure desktop companion for browsing booru-style imageboard content",
-  "main": "out/main/main.js",
+  "main": "out/main/main.cjs",
   "type": "module",
   "repository": {
     "type": "git",

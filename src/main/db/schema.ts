@@ -53,7 +53,7 @@ export const posts = sqliteTable(
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id").default(""),
-  apiKey: text("api_key").default(""),
+  encryptedApiKey: text("encrypted_api_key").default(""),
 });
 
 // Types

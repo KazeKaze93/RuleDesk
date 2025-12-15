@@ -15,6 +15,7 @@ import { UpdateNotification } from "./components/UpdateNotification";
 import { cn } from "./lib/utils";
 import i18n from "./i18n";
 import { ArtistCard } from "./components/ArtistCard.tsx";
+import { BackupControls } from "./components/BackupControls";
 
 const queryClient = new QueryClient();
 
@@ -141,6 +142,9 @@ const ArtistListView: React.FC<{
             onClose={() => setIsAddModalOpen(false)}
             onAdd={handleAddArtist}
           />
+        </div>
+        <div className="pt-6 mt-8 border-t border-slate-800">
+          <BackupControls />
         </div>
       </div>
     </div>
