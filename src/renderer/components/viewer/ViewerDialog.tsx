@@ -12,7 +12,6 @@ import {
   X,
   Heart,
   Download,
-  ExternalLink,
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
@@ -22,6 +21,7 @@ import {
   Bug,
   FileText,
   Tags,
+  ExternalLink, // 🔥 FIX: Вернул импорт
 } from "lucide-react";
 
 import {
@@ -165,7 +165,7 @@ const ViewerDialogPostScope = ({
   const [isFavorited, setIsFavorited] = useState(post.isFavorited);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  const [downloadPath, setDownloadPath] = useState<string | null>(null);
+  // downloadPath полностью удален, так как мы вычисляем путь динамически
 
   // Предполагаем, что режим разработчика включен
   const isDeveloperMode = true;
@@ -240,7 +240,7 @@ const ViewerDialogPostScope = ({
       const result = await window.api.downloadFile(post.fileUrl, filename);
 
       if (result && result.success && result.path) {
-        setDownloadPath(result.path);
+        // 🔥 FIX: Убрали setDownloadPath, так как стейт удален
       } else if (result && result.canceled) {
         // Отмена
       } else {
@@ -256,8 +256,9 @@ const ViewerDialogPostScope = ({
   };
 
   const openFolder = async () => {
-    const path = downloadPath || "";
-    await window.api.openFileInFolder(path);
+    const ext = post.fileUrl.split(".").pop() || "jpg";
+    const filename = `${post.artistId}_${post.postId}.${ext}`;
+    await window.api.openFileInFolder(filename);
   };
 
   const tagsToQuery = (t: string | null | undefined) => {
@@ -283,20 +284,47 @@ const ViewerDialogPostScope = ({
 
   const resetLocalCache = () => {
     if (!post) return;
-
-    // FIX: Вызываем IPC для очистки локального кэша
     console.log(`Attempting to reset local cache for Post ID: ${post.id}`);
     window.api.resetPostCache(post.id);
   };
 
-  // 🔥 УДАЛЕН НЕИСПОЛЬЗУЕМЫЙ ХЕНДЛЕР toggleViewed
+  const handleCopyMetadata = async () => {
+    const metadata = JSON.stringify(post, null, 2);
+    try {
+      await window.api.writeToClipboard(metadata);
+      console.log("Metadata copied to clipboard:", post);
+      // Можно добавить тост, но пока хватит лога
+      alert("Metadata copied to clipboard!");
+    } catch (e) {
+      console.error("Failed to copy metadata", e);
+      alert("Failed to copy metadata. Check console.");
+    }
+  };
+
+  // 🔥 FIX: Используем IPC для копирования, чтобы избежать ошибки фокуса
+  const handleCopyDebugInfo = async () => {
+    const debugInfo = {
+      appVersion: "1.2.0",
+      post: post,
+      queueLength: _queue?.ids.length,
+      origin: _queue?.origin,
+    };
+
+    try {
+      await window.api.writeToClipboard(JSON.stringify(debugInfo, null, 2));
+      console.log("Debug info copied via IPC");
+    } catch (e) {
+      console.error("Failed to copy debug info", e);
+      alert("Failed to copy debug info");
+    }
+  };
 
   const isCurrentlyDownloading =
     isDownloading && downloadProgress > 0 && downloadProgress < 100;
 
   const postPageUrl = `https://rule34.xxx/index.php?page=post&s=view&id=${post.postId}`;
   const tagQuery = tagsToQuery(post.tags);
-  const hasDownloadedFile = !!downloadPath;
+  // 🔥 FIX: Удалили hasDownloadedFile
 
   return (
     <>
@@ -321,8 +349,6 @@ const ViewerDialogPostScope = ({
         </div>
 
         <div className="flex gap-2 items-center">
-          {/* УДАЛЕНО: Кнопка View Status (Check icon) */}
-
           <Button
             variant="ghost"
             size="icon"
@@ -434,10 +460,7 @@ const ViewerDialogPostScope = ({
                 <ExternalLink className="mr-2 w-4 h-4" />
                 Open post page
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={openFolder}
-                disabled={!hasDownloadedFile}
-              >
+              <DropdownMenuItem onClick={openFolder}>
                 <Folder className="mr-2 w-4 h-4" />
                 Reveal in folder
               </DropdownMenuItem>
@@ -446,7 +469,6 @@ const ViewerDialogPostScope = ({
 
               {/* --- ACTIONS GROUP --- */}
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              {/* УДАЛЕНО: Toggle Viewed, как ты и просил */}
               <DropdownMenuItem onClick={downloadImage}>
                 <Download className="mr-2 w-4 h-4" />
                 Re-download original
@@ -462,15 +484,11 @@ const ViewerDialogPostScope = ({
                     <RefreshCw className="mr-2 w-4 h-4" />
                     Reset local cache
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => console.log("Show Metadata")}
-                  >
+                  <DropdownMenuItem onClick={handleCopyMetadata}>
                     <FileText className="mr-2 w-4 h-4" />
                     Show metadata
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => console.log("Copy Debug Info")}
-                  >
+                  <DropdownMenuItem onClick={handleCopyDebugInfo}>
                     <Bug className="mr-2 w-4 h-4" />
                     Copy debug info
                   </DropdownMenuItem>
@@ -516,15 +534,6 @@ const ViewerDialogPostScope = ({
           >
             <Tags className="w-4 h-4" />
             Tags
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 text-white bg-white/5 border-white/10 hover:bg-white/10"
-            onClick={() => handleOpenExternal(postPageUrl)}
-          >
-            <ExternalLink className="w-4 h-4" />
-            Original
           </Button>
         </div>
       </div>

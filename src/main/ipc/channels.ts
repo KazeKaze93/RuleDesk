@@ -3,6 +3,7 @@ export const IPC_CHANNELS = {
     GET_VERSION: "app:get-version",
     OPEN_EXTERNAL: "app:open-external",
     DOWNLOAD_FILE: "app:download-file",
+    WRITE_CLIPBOARD: "app:write-to-clipboard",
   },
   SETTINGS: {
     GET: "app:get-settings",

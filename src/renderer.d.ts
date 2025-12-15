@@ -78,6 +78,7 @@ export interface IpcApi extends IpcBridge {
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
+  writeToClipboard: (text: string) => Promise<boolean>;
 }
 
 declare global {

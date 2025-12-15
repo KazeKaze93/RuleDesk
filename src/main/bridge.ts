@@ -40,6 +40,9 @@ export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
 
+  // 🔥 FIX: Добавлен метод для работы с буфером обмена (System)
+  writeToClipboard: (text: string) => Promise<boolean>;
+
   // Settings
   getSettings: () => Promise<Settings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
@@ -110,6 +113,10 @@ export interface IpcBridge {
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
 
+  // 🔥 FIX: Реализация метода writeToClipboard
+  writeToClipboard: (text) =>
+    ipcRenderer.invoke("app:write-to-clipboard", text),
+
   searchRemoteTags: (query) =>
     ipcRenderer.invoke("api:search-remote-tags", query),
 
@@ -141,12 +148,12 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke("db:toggle-post-viewed", postId),
 
   resetPostCache: (postId) => ipcRenderer.invoke("db:reset-post-cache", postId),
-  // END FIX
 
   downloadFile: (url: string, filename: string) => {
-    console.log("Bridge: Sending download request...", url);
+    // console.log("Bridge: Sending download request...", url); // Можно убрать лог
     return ipcRenderer.invoke("files:download", url, filename);
   },
+
   openFileInFolder: (path: string) =>
     ipcRenderer.invoke("files:open-folder", path),
 

@@ -1,3 +1,4 @@
+// Cursor: select file:src/renderer/components/pages/Settings.tsx
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -10,10 +11,7 @@ import {
 } from "../ui/card";
 import { Loader2, Save } from "lucide-react";
 
-interface SettingsResponse {
-  userId: string;
-  apiKey: string;
-}
+// 🔥 FIX: Removed redundant interface. We use the global Window.api types.
 
 export const Settings = () => {
   const [userId, setUserId] = useState("");
@@ -26,9 +24,10 @@ export const Settings = () => {
       try {
         const settings = await window.api.getSettings();
         if (settings) {
-          const s = settings as unknown as SettingsResponse;
-          setUserId(s.userId || "");
-          setApiKey(s.apiKey || "");
+          // 🔥 FIX: Direct access without casting.
+          // 'settings' is inferred as 'IpcSettings' from renderer.d.ts
+          setUserId(settings.userId || "");
+          setApiKey(settings.apiKey || "");
         }
       } catch (error) {
         console.error("Failed to load settings:", error);

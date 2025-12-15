@@ -14,10 +14,6 @@ const getMainWindow = (): BrowserWindow | undefined => {
   return windows.find((w) => w.isVisible() && !w.isDestroyed()) || windows[0];
 };
 
-const FilePathSchema = z
-  .string()
-  .min(1, "File path must be a non-empty string.");
-
 const DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 
 export const registerFileHandlers = (repo: PostsRepository) => {
@@ -108,25 +104,24 @@ export const registerFileHandlers = (repo: PostsRepository) => {
     }
   );
 
-  // Хендлер открытия папки (отрефакторен для лучшей логики)
+  // Хендлер открытия папки
   ipcMain.handle(
     IPC_CHANNELS.FILES.OPEN_FOLDER,
-    async (_, filePath: string) => {
-      const validation = FilePathSchema.safeParse(filePath);
-      if (!validation.success) {
-        logger.warn(
-          `IPC: OPEN_FOLDER failed validation: ${validation.error.message}`
-        );
-        return false;
-      }
-      const validatedPath = validation.data;
+    async (_, filePathOrName: string) => {
+      if (!filePathOrName || typeof filePathOrName !== "string") return false;
 
       try {
-        const normalizedPath = path.normalize(validatedPath);
+        let fullPath = filePathOrName;
+
+        if (!path.isAbsolute(filePathOrName)) {
+          fullPath = path.join(DOWNLOAD_ROOT, filePathOrName);
+        }
+
+        const normalizedPath = path.normalize(fullPath);
 
         if (!normalizedPath.startsWith(DOWNLOAD_ROOT)) {
           logger.error(
-            `SECURITY VIOLATION: Attempt to open external path outside safe directory: ${normalizedPath}`
+            `SECURITY VIOLATION: Attempt to open path outside safe directory: ${normalizedPath}`
           );
           shell.openPath(DOWNLOAD_ROOT);
           return false;
@@ -142,7 +137,6 @@ export const registerFileHandlers = (repo: PostsRepository) => {
           return true;
         }
 
-        logger.error(`Failed to open path or folder: ${normalizedPath}`);
         return false;
       } catch (error) {
         logger.error("Failed to open folder:", error);

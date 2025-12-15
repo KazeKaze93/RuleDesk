@@ -1,4 +1,5 @@
-import { BrowserWindow, ipcMain, shell, dialog } from "electron";
+// Cursor: select file:src/main/ipc/index.ts
+import { BrowserWindow, ipcMain, shell, dialog, clipboard } from "electron";
 import { DbWorkerClient } from "../db/db-worker-client";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
@@ -19,6 +20,7 @@ import { registerFileHandlers } from "./handlers/files";
 
 const DeleteArtistSchema = z.number().int().positive(); // Для repair
 
+// --- Helper для Sync & Maintenance ---
 const registerSyncAndMaintenanceHandlers = (
   db: DbWorkerClient,
   syncService: SyncService,
@@ -53,11 +55,11 @@ const registerSyncAndMaintenanceHandlers = (
     }
   });
 
-  // Backup/Restore (Вынесены из старого IPC)
+  // Backup
   ipcMain.handle(IPC_CHANNELS.BACKUP.CREATE, async () => {
     try {
       const result = await db.call<{ backupPath: string }>("backup");
-      shell.showItemInFolder(result.backupPath); // <--- shell теперь доступен
+      shell.showItemInFolder(result.backupPath);
       return { success: true, path: result.backupPath };
     } catch (error) {
       return {
@@ -67,9 +69,9 @@ const registerSyncAndMaintenanceHandlers = (
     }
   });
 
+  // Restore
   ipcMain.handle(IPC_CHANNELS.BACKUP.RESTORE, async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-      // <--- dialog теперь доступен
       title: "Select backup file",
       filters: [{ name: "SQLite DB", extensions: ["db", "sqlite"] }],
       properties: ["openFile"],
@@ -90,6 +92,7 @@ const registerSyncAndMaintenanceHandlers = (
   });
 };
 
+// --- Main Registration Function ---
 export const registerAllHandlers = (
   db: DbWorkerClient,
   syncService: SyncService,
@@ -98,6 +101,22 @@ export const registerAllHandlers = (
 ) => {
   logger.info("IPC: Registering modular handlers...");
 
+  // 0. System Handlers (Inline)
+  // -------------------------------------------------------------
+
+  // Запись в буфер обмена (для копирования метаданных и дебага)
+  ipcMain.handle(IPC_CHANNELS.APP.WRITE_CLIPBOARD, async (_, text: string) => {
+    clipboard.writeText(text);
+    return true;
+  });
+
+  // 🔥 FIX: Удален дубликат OPEN_EXTERNAL. Он уже регистрируется внутри registerViewerHandlers.
+  // ipcMain.handle(IPC_CHANNELS.APP.OPEN_EXTERNAL, async (_, url: string) => {
+  //   await shell.openExternal(url);
+  // });
+
+  // -------------------------------------------------------------
+
   // 1. Init Repos
   const postsRepo = new PostsRepository(db);
   const artistsRepo = new ArtistsRepository(db);
@@ -105,10 +124,10 @@ export const registerAllHandlers = (
   // 2. Register Domain Handlers
   registerPostHandlers(postsRepo);
   registerArtistHandlers(artistsRepo);
-  registerViewerHandlers();
+  registerViewerHandlers(); // <--- Здесь внутри уже есть OPEN_EXTERNAL
 
   // 3. Register Settings
-  registerSettingsHandlers(db);
+  registerSettingsHandlers(db); // <--- Теперь программа дойдет сюда и зарегистрирует get-settings
 
   // 4. Register Sync and Maintenance
   registerSyncAndMaintenanceHandlers(db, syncService, mainWindow);

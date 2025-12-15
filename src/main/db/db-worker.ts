@@ -427,6 +427,21 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         break;
       }
 
+      case "togglePostViewed": {
+        const { postId } = request.payload as { postId: number };
+        // Вызываем функцию, которая определена вверху файла
+        const result = await togglePostViewed(postId);
+        sendSuccess(request.id, result);
+        break;
+      }
+
+      case "resetPostCache": {
+        const { postId } = request.payload as { postId: number };
+        const result = await resetPostCache(postId);
+        sendSuccess(request.id, result);
+        break;
+      }
+
       default:
         sendError(
           request.id,
