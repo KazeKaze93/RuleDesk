@@ -11,6 +11,12 @@ export type UpdateStatusCallback = (data: UpdateStatusData) => void;
 export type UpdateProgressCallback = (percent: number) => void;
 export type SyncErrorCallback = (message: string) => void;
 
+export type BackupResponse = {
+  success: boolean;
+  path?: string;
+  error?: string;
+};
+
 export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
@@ -56,6 +62,9 @@ export interface IpcBridge {
   markPostAsViewed: (postId: number) => Promise<boolean>;
 
   searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
+
+  createBackup: () => Promise<BackupResponse>;
+  restoreBackup: () => Promise<BackupResponse>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -135,6 +144,9 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.on("sync:progress", sub);
     return () => ipcRenderer.removeListener("sync:progress", sub);
   },
+
+  createBackup: () => ipcRenderer.invoke("db:create-backup"),
+  restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);

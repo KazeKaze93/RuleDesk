@@ -1,41 +1,47 @@
-import { app, ipcMain, shell, IpcMainInvokeEvent } from "electron";
-import { DbService } from "./db/db-service";
+import {
+  app,
+  ipcMain,
+  shell,
+  IpcMainInvokeEvent,
+  BrowserWindow,
+  dialog,
+} from "electron";
+import { DbWorkerClient } from "./db/db-worker-client";
 import { NewArtist } from "./db/schema";
 import { logger } from "./lib/logger";
 import { SyncService } from "./services/sync-service";
+import { SecureStorage } from "./services/secure-storage"; // 👈 IMPORT
 import { URL } from "url";
 import { z } from "zod";
 import axios from "axios";
+import { UpdaterService } from "./services/updater-service";
+
+// === ZOD SCHEMAS (Centralized) ===
 
 const GetPostsSchema = z.object({
-  artistId: z
-    .number({ required_error: "artistId is required" })
-    .int()
-    .positive(),
+  artistId: z.number().int().positive(),
   page: z.number().int().min(1).default(1),
   limit: z.number().int().min(1).default(50),
 });
 
-const DeleteArtistSchema = z
-  .number({
-    required_error: "ID is required",
-    invalid_type_error: "ID must be a number",
-  })
-  .int("ID must be an integer")
-  .positive("ID must be positive");
+const DeleteArtistSchema = z.number().int().positive();
 
-const SaveSettingsSchema = z.object({
-  userId: z.string().min(1, { message: "User ID is required" }),
-  apiKey: z.string().min(5, { message: "API Key is too short" }),
+const AddArtistSchema = z.object({
+  name: z.string().trim().min(1),
+  tag: z.string().trim().min(1),
+  type: z.enum(["tag", "uploader", "query"]),
+  apiEndpoint: z.string().url().trim(),
 });
 
-interface Rule34AutocompleteItem {
-  label: string; // Название тега (например, "elf")
-  value: string; // Значение (обычно совпадает с label)
-  type?: string; // Тип тега (иногда API его возвращает, но не всегда)
-}
+const MarkViewedSchema = z.number().int().positive();
 
-// --- 1. Отдельные функции-обработчики ---
+const SearchTagsSchema = z.string().trim();
+
+interface Rule34AutocompleteItem {
+  label: string;
+  value: string;
+  type?: string;
+}
 
 const handleGetAppVersion = async (
   _event: IpcMainInvokeEvent
@@ -43,57 +49,48 @@ const handleGetAppVersion = async (
   return app.getVersion();
 };
 
-// --- 2. Функция Регистрации ---
-
 export const registerIpcHandlers = (
-  dbService: DbService,
-  syncService: SyncService
+  dbWorkerClient: DbWorkerClient,
+  syncService: SyncService,
+  _updaterService: UpdaterService,
+  _mainWindow: BrowserWindow
 ) => {
-  logger.info("IPC: Инициализация обработчиков...");
+  logger.info("IPC: Initializing handlers...");
 
   // --- APP ---
   ipcMain.handle("app:get-version", handleGetAppVersion);
 
+  // === SETTINGS (SECURE) ===
   ipcMain.handle("app:get-settings", async () => {
-    return dbService.getSettings();
+    const settings = await dbWorkerClient.call<{
+      userId: string;
+      apiKey: string;
+    }>("getApiKeyDecrypted");
+    let decryptedKey = "";
+    if (settings && settings.apiKey) {
+      const decrypted = SecureStorage.decrypt(settings.apiKey);
+      decryptedKey = decrypted || "";
+    }
+    return { userId: settings?.userId || "", apiKey: decryptedKey };
   });
 
-  ipcMain.handle("sync:repair-artist", async (_, artistId: number) => {
-    logger.info(
-      `IPC: [sync:repair-artist] Запрос ремонта для автора ${artistId}`
-    );
-    try {
-      await syncService.repairArtist(artistId);
-      return { success: true };
-    } catch (error) {
-      logger.error(`IPC: Ошибка ремонта автора ${artistId}`, error);
-      return { success: false, error: (error as Error).message };
+  ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
+    let encryptedKey = "";
+    if (apiKey) {
+      try {
+        encryptedKey = SecureStorage.encrypt(apiKey);
+      } catch (error) {
+        logger.error("IPC: Aborting save due to encryption failure", error);
+        throw new Error("Cannot save settings: Encryption unavailable.");
+      }
     }
-  });
-
-  ipcMain.handle("app:save-settings", async (_event, data: unknown) => {
-    const validation = SaveSettingsSchema.safeParse(data);
-
-    if (!validation.success) {
-      logger.warn(
-        "IPC: [app:save-settings] Validation failed (Renderer data):",
-        validation.error
-      );
-      throw new Error(`Validation Error: ${validation.error.message}`);
-    }
-
-    const { userId, apiKey } = validation.data;
-
-    return dbService.saveSettings(userId.trim(), apiKey.trim());
+    await dbWorkerClient.call("saveSettings", { userId, apiKey: encryptedKey });
+    return { success: true };
   });
 
   ipcMain.handle("app:open-external", async (_event, urlString: string) => {
     try {
-      if (!urlString || urlString.trim() === "") {
-        throw new Error("URL string is empty.");
-      }
-
-      const parsedUrl = new URL(urlString.trim());
+      const parsedUrl = new URL(urlString);
       if (
         parsedUrl.protocol === "https:" &&
         (parsedUrl.hostname === "rule34.xxx" ||
@@ -101,76 +98,96 @@ export const registerIpcHandlers = (
       ) {
         await shell.openExternal(urlString);
       } else {
-        logger.warn(
-          `IPC: Blocked attempt to open unauthorized URL: ${urlString}`
-        );
+        logger.warn(`IPC: Blocked unauthorized URL: ${urlString}`);
       }
-    } catch (e) {
-      logger.error(`IPC: Error opening external URL (${urlString}):`, e);
+    } catch (error) {
+      logger.error(`IPC: Invalid URL passed to open-external`, error);
     }
   });
 
-  // --- DB: ARTISTS ---
+  // --- DB Operations ---
+
   ipcMain.handle("db:get-artists", async () => {
     try {
-      return await dbService.getTrackedArtists();
-    } catch (e) {
-      logger.error("IPC: [db:get-artists] Database error:", e);
-      throw new Error("Failed to fetch artists from database.");
+      return await dbWorkerClient.call("getTrackedArtists");
+    } catch (error) {
+      logger.error("IPC: [db:get-artists] error:", error);
+      throw new Error("Failed to fetch artists.");
     }
   });
 
-  ipcMain.handle("db:add-artist", async (_event, artistData: NewArtist) => {
-    // 1. САНИТАЙЗИНГ И ВАЛИДАЦИЯ ИМЕНИ (name)
-    const name = artistData.name?.trim();
-    if (!name || name === "") {
-      logger.warn(
-        "IPC: [db:add-artist] Отклонено: Имя автора не может быть пустым."
-      );
-      throw new Error("Artist name cannot be empty or just whitespace.");
+  ipcMain.handle("db:add-artist", async (_event, payload: unknown) => {
+    // 🛡️ STRICT ZOD VALIDATION
+    const validation = AddArtistSchema.safeParse(payload);
+    if (!validation.success) {
+      logger.error("IPC: Invalid artist data", validation.error);
+      throw new Error(`Validation failed: ${validation.error.message}`);
     }
 
-    // 2. САНИТАЙЗИНГ И ВАЛИДАЦИЯ API ENDPOINT
-    const endpoint = artistData.apiEndpoint?.trim();
-    if (!endpoint || endpoint === "") {
-      logger.warn(`IPC: [db:add-artist] Отсутствует apiEndpoint для ${name}.`);
-      throw new Error("API Endpoint URL is required.");
-    }
+    const artistData = validation.data;
+    logger.info(`IPC: [db:add-artist] Adding: ${artistData.name}`);
 
-    logger.info(`IPC: [db:add-artist] Попытка добавить: ${name}`);
-
-    // 3. ВАЛИДАЦИЯ ФОРМАТА URL
     try {
-      new URL(endpoint);
-    } catch (e) {
-      logger.error("IPC: [db:add-artist] Invalid URL format:", e);
-      throw new Error("Invalid API Endpoint URL format.");
-    }
-
-    // 4. ОБРАБОТКА ОШИБОК БД
-    try {
-      const dataToSave: NewArtist = {
-        ...artistData,
-        name: name,
-        apiEndpoint: endpoint,
-      };
-      return await dbService.addArtist(dataToSave);
-    } catch (e) {
-      logger.error("IPC: [db:add-artist] Database error:", e);
-
-      const errorMessage =
-        e instanceof Error ? e.message : "Unknown database error.";
-      throw new Error(`Database error adding artist: ${errorMessage}`);
+      return await dbWorkerClient.call("addArtist", artistData as NewArtist);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("IPC: [db:add-artist] error:", error);
+      throw new Error(`Database error: ${msg}`);
     }
   });
 
-  // --- DB: SYNC ---
+  ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
+    // 🛡️ STRICT ZOD VALIDATION
+    const validation = DeleteArtistSchema.safeParse(id);
+    if (!validation.success) throw new Error("Invalid ID.");
+    try {
+      return await dbWorkerClient.call("deleteArtist", { id: validation.data });
+    } catch (error) {
+      logger.error(`IPC: [db:delete-artist] error:`, error);
+      throw new Error("Failed to delete artist.");
+    }
+  });
+
+  ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
+    // 🛡️ STRICT ZOD VALIDATION
+    const validation = GetPostsSchema.safeParse(payload);
+    if (!validation.success)
+      throw new Error(`Validation Error: ${validation.error.message}`);
+
+    const { artistId, page, limit } = validation.data;
+    const offset = (page - 1) * limit;
+
+    try {
+      return await dbWorkerClient.call("getPostsByArtist", {
+        artistId,
+        limit,
+        offset,
+      });
+    } catch (error) {
+      logger.error(`IPC: [db:get-posts] error:`, error);
+      throw new Error("Failed to fetch posts.");
+    }
+  });
+
+  ipcMain.handle("db:mark-post-viewed", async (_event, postId: unknown) => {
+    // 🛡️ STRICT ZOD VALIDATION
+    const result = MarkViewedSchema.safeParse(postId);
+    if (!result.success) return false;
+
+    try {
+      await dbWorkerClient.call("markPostAsViewed", { postId: result.data });
+      return true;
+    } catch (error) {
+      logger.error(`[IPC] Failed to mark post viewed`, error);
+      return false;
+    }
+  });
+
+  // --- SYNC & REPAIR ---
   ipcMain.handle("db:sync-all", async () => {
-    logger.info("IPC: [db:sync-all] Инициирование фоновой синхронизации...");
-
+    logger.info("IPC: [db:sync-all] Start background sync...");
     syncService.syncAllArtists().catch((error) => {
       logger.error("IPC: Critical background sync error:", error);
-
       syncService.sendEvent(
         "sync:error",
         error instanceof Error ? error.message : "Sync failed."
@@ -179,116 +196,90 @@ export const registerIpcHandlers = (
     return;
   });
 
-  ipcMain.handle("db:mark-post-viewed", async (_event, postId: unknown) => {
-    // Валидация ID
-    const idSchema = z.number().int().positive();
-    const result = idSchema.safeParse(postId);
+  ipcMain.handle("sync:repair-artist", async (_, artistId: unknown) => {
+    const validId = DeleteArtistSchema.safeParse(artistId); // Re-use simple number schema
+    if (!validId.success) return { success: false, error: "Invalid ID" };
 
-    if (!result.success) {
-      logger.error(`[IPC] Invalid postId for mark-viewed: ${postId}`);
-      return false;
-    }
-
+    logger.info(`IPC: [sync:repair-artist] Artist ${validId.data}`);
     try {
-      await dbService.markPostAsViewed(result.data);
-      return true;
-    } catch (e) {
-      logger.error(`[IPC] Failed to mark post ${result.data} as viewed`, e);
-      return false;
+      await syncService.repairArtist(validId.data);
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   });
 
-  // --- GET POSTS ---
-  ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
-    const validation = GetPostsSchema.safeParse(payload);
-
-    if (!validation.success) {
-      logger.error("IPC: [db:get-posts] Validation failed:", validation.error);
-      throw new Error(`Validation Error: ${validation.error.message}`);
-    }
-
-    const { artistId, page, limit } = validation.data;
-
+  // --- BACKUP ---
+  ipcMain.handle("db:create-backup", async () => {
     try {
-      const offset = (page - 1) * limit;
-
-      logger.info(
-        `IPC: [db:get-posts] Fetching artist ${artistId}, page ${page}`
+      const result = await dbWorkerClient.call<{ backupPath: string }>(
+        "backup"
       );
-
-      return await dbService.getPostsByArtist(artistId, limit, offset);
-    } catch (e) {
-      logger.error(
-        `IPC: [db:get-posts] Database error for artist ${artistId}:`,
-        e
-      );
-      throw new Error("Failed to fetch posts from database.");
+      shell.showItemInFolder(result.backupPath);
+      return { success: true, path: result.backupPath };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   });
 
-  // --- DB: DELETE ARTIST ---
-  ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
-    const validation = DeleteArtistSchema.safeParse(id);
+  ipcMain.handle("db:restore-backup", async () => {
+    if (!_mainWindow) return { success: false, error: "No window" };
+    const { canceled, filePaths } = await dialog.showOpenDialog(_mainWindow, {
+      title: "Select backup file",
+      filters: [{ name: "SQLite DB", extensions: ["db", "sqlite"] }],
+      properties: ["openFile"],
+    });
+    if (canceled || !filePaths.length)
+      return { success: false, error: "Canceled by user" };
 
-    if (!validation.success) {
-      logger.error(
-        `[IPC Validation] Invalid schema for db:delete-artist: ${JSON.stringify(
-          validation.error.flatten()
+    try {
+      await dbWorkerClient.restore(filePaths[0]);
+      _mainWindow.reload();
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  // --- SEARCH ---
+  ipcMain.handle("db:search-tags", async (_, query: unknown) => {
+    const validQuery = SearchTagsSchema.safeParse(query);
+    if (!validQuery.success) return [];
+    try {
+      return await dbWorkerClient.call("searchArtists", {
+        query: validQuery.data,
+      });
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle("api:search-remote-tags", async (_, query: unknown) => {
+    const validQuery = SearchTagsSchema.safeParse(query);
+    if (!validQuery.success || validQuery.data.length < 2) return [];
+
+    try {
+      const { data } = await axios.get<Rule34AutocompleteItem[]>(
+        `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
+          validQuery.data
         )}`
       );
-      throw new Error("Invalid input format received.");
-    }
-
-    const validatedId = validation.data;
-
-    try {
-      return await dbService.deleteArtist(validatedId);
-    } catch (e) {
-      logger.error(
-        `IPC: [db:delete-artist] Database error for ID ${validatedId}:`,
-        e
-      );
-      throw new Error("Failed to delete artist from database.");
-    }
-  });
-
-  // --- DB: SEARCH LOCAL (Локальный поиск для фильтров) ---
-  ipcMain.handle("db:search-tags", async (_, query: string) => {
-    try {
-      return await dbService.searchArtists(query);
-    } catch (e) {
-      logger.error("IPC: [db:search-tags] Error:", e);
+      return Array.isArray(data)
+        ? data.map((item) => ({ id: item.value, label: item.label }))
+        : [];
+    } catch {
       return [];
     }
   });
 
-  // --- REMOTE: SEARCH TAGS (Rule34 API - Поиск в интернете) ---
-  ipcMain.handle("api:search-remote-tags", async (_, query: string) => {
-    if (!query || query.length < 2) return [];
-
-    try {
-      // Rule34 autocomplete API
-      const url = `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
-        query
-      )}`;
-
-      const { data } = await axios.get<Rule34AutocompleteItem[]>(url);
-
-      if (Array.isArray(data)) {
-        return data.map((item) => ({
-          id: item.value,
-          label: item.label,
-        }));
-      }
-      return [];
-    } catch (e) {
-      logger.error(
-        `IPC: [api:search-remote-tags] Error searching for ${query}:`,
-        e
-      );
-      return [];
-    }
-  });
-
-  logger.info("IPC: Все обработчики успешно зарегистрированы.");
+  logger.info("IPC: Handlers registered.");
 };
