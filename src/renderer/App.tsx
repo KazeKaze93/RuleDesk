@@ -1,61 +1,113 @@
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { I18nextProvider } from "react-i18next";
-import i18n from "./i18n";
+import {
+  HashRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
+import { useEffect, useState } from "react";
 
-// Layouts
-import { AppLayout } from "./components/layout/AppLayout";
-import { UpdateNotification } from "./components/dialogs/UpdateNotification";
-import { Onboarding } from "./components/dialogs/Onboarding";
-
-// Pages
-import { Updates } from "./components/pages/Updates";
-import { Browse } from "./components/pages/Browse";
-import { Favorites } from "./components/pages/Favorites";
-import { Tracked } from "./components/pages/Tracked";
+// --- ИМПОРТЫ КОМПОНЕНТОВ ---
+import { AppLayout as Layout } from "./components/layout/AppLayout";
 import { Settings } from "./components/pages/Settings";
+import { Onboarding } from "./components/dialogs/Onboarding";
+import { Tracked } from "./components/pages/Tracked"; // Твой список авторов
+
+// 🔥 ИМПОРТ СТРАНИЦЫ АВТОРА (Твой файл)
+// Убедись, что путь правильный. Судя по названию, он может лежать в pages или gallery.
+// Если файл лежит в components/gallery/ArtistDetails.tsx, исправь путь ниже:
 import { ArtistDetails } from "./components/pages/ArtistDetails";
 
-// Создаем клиент один раз
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+// Заглушки (пока нет файлов)
+const Browse = () => (
+  <div className="p-8">
+    <h1 className="text-2xl font-bold">Browse</h1>
+    <p>Search here.</p>
+  </div>
+);
+const Updates = () => (
+  <div className="p-8">
+    <h1 className="text-2xl font-bold">Updates</h1>
+    <p>Feed here.</p>
+  </div>
+);
+const Favorites = () => (
+  <div className="p-8">
+    <h1 className="text-2xl font-bold">Favorites</h1>
+    <p>Likes here.</p>
+  </div>
+);
 
-export default function App() {
-  const isAuthorized = true;
+// --- AUTH GUARD ---
+const AuthGuard = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const [isChecking, setIsChecking] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
-  return (
-    <I18nextProvider i18n={i18n}>
-      <QueryClientProvider client={queryClient}>
-        {/* Глобальные уведомления об обновлениях */}
-        <UpdateNotification />
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const settings = await window.api.getSettings();
 
-        {!isAuthorized ? (
-          // Заглушка для онбординга, чтобы TS не ругался на пустой проп
+        // @ts-expect-error Типы bridge не обновлены для расшифрованного API ключа
+        const hasKeys = settings && settings.userId && settings.apiKey;
+
+        setNeedsOnboarding(!hasKeys);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    checkAuth();
+  }, [location]);
+
+  if (isChecking)
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
+
+  if (needsOnboarding) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-background">
+        <div className="p-6 w-full max-w-md">
           <Onboarding onComplete={() => window.location.reload()} />
-        ) : (
-          <HashRouter>
-            <Routes>
-              <Route element={<AppLayout />}>
-                {/* Редирект с корня на Updates */}
-                <Route path="/" element={<Navigate to="/updates" replace />} />
+        </div>
+      </div>
+    );
+  }
+  return <>{children}</>;
+};
 
-                <Route path="/updates" element={<Updates />} />
-                <Route path="/browse" element={<Browse />} />
-                <Route path="/favorites" element={<Favorites />} />
-                <Route path="/tracked" element={<Tracked />} />
-                <Route path="/artist/:id" element={<ArtistDetails />} />
-                <Route path="/settings" element={<Settings />} />
-              </Route>
-            </Routes>
-          </HashRouter>
-        )}
-      </QueryClientProvider>
-    </I18nextProvider>
+function App() {
+  return (
+    <Router>
+      <AuthGuard>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Tracked />} />
+
+            <Route path="tracked" element={<Tracked />} />
+
+            {/* 🔥 МАРШРУТ ДЛЯ ТВОЕГО ФАЙЛА 🔥 */}
+            {/* :id позволяет вытащить ID автора из URL */}
+            <Route path="artist/:id" element={<ArtistDetails />} />
+
+            <Route path="browse" element={<Browse />} />
+            <Route path="updates" element={<Updates />} />
+            <Route path="favorites" element={<Favorites />} />
+            <Route path="settings" element={<Settings />} />
+
+            <Route
+              path="*"
+              element={<div className="p-10">Page Not Found (Check URL)</div>}
+            />
+          </Route>
+        </Routes>
+      </AuthGuard>
+    </Router>
   );
 }
+
+export default App;

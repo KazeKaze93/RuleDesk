@@ -32,8 +32,6 @@ let dbInstance: Database.Database | null = null;
 let dbPath: string | null = null;
 
 // === WORKER VALIDATION SCHEMAS ===
-// Эти схемы дублируют или дополняют IPC схемы, обеспечивая безопасность внутри потока
-
 const SettingsPayloadSchema = z.object({
   userId: z.string(),
   apiKey: z.string(),
@@ -152,7 +150,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "saveSettings": {
-        // 🛡️ VALIDATION
         const { userId, apiKey } = SettingsPayloadSchema.parse(request.payload);
 
         const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
@@ -194,7 +191,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         break;
 
       case "addArtist": {
-        // Cast is checked by Zod in IPC, but for safety in worker context:
         const ad = request.payload as NewArtist;
         const res = await db
           .insert(schema.artists)
@@ -210,7 +206,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "updateArtistProgress": {
-        // 🛡️ VALIDATION
         const { artistId, newMaxPostId, postsAddedCount } =
           UpdateProgressSchema.parse(request.payload);
         const now = Date.now();
@@ -227,7 +222,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "savePostsForArtist": {
-        // 🛡️ VALIDATION
         const { posts } = SavePostsSchema.parse(request.payload);
         if (posts.length > 0) {
           await db.transaction(async (tx) => {
@@ -254,7 +248,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "getPostsByArtist": {
-        // 🛡️ VALIDATION
         const { artistId, limit, offset } = PostsPayloadSchema.parse(
           request.payload
         );
@@ -297,7 +290,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         if (!fs.existsSync(backupDir))
           fs.mkdirSync(backupDir, { recursive: true });
 
-        // Escape check manually as Drizzle doesn't support parameterized VACUUM
         const escapedPath = backupPath.replace(/'/g, "''");
         dbInstance.exec(`VACUUM INTO '${escapedPath}'`);
 
@@ -306,7 +298,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "searchArtists": {
-        // 🛡️ VALIDATION
         const { query } = SearchPayloadSchema.parse(request.payload);
         if (query.length < 2) {
           sendSuccess(request.id, []);
@@ -341,6 +332,30 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
           .set({ isViewed: true })
           .where(eq(schema.posts.id, postId));
         sendSuccess(request.id);
+        break;
+      }
+
+      case "togglePostFavorite": {
+        const { postId } = request.payload as { postId: number };
+
+        const currentPost = await db.query.posts.findFirst({
+          where: eq(schema.posts.id, postId),
+          columns: { isFavorited: true },
+        });
+
+        if (!currentPost) {
+          sendSuccess(request.id, false);
+          break;
+        }
+
+        const newState = !currentPost.isFavorited;
+
+        await db
+          .update(schema.posts)
+          .set({ isFavorited: newState })
+          .where(eq(schema.posts.id, postId));
+
+        sendSuccess(request.id, newState);
         break;
       }
 

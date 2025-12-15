@@ -13,18 +13,16 @@ export type DbType = BetterSQLite3Database<typeof schema>;
 
 export class DbService {
   public readonly db: DbType;
+  private readonly nativeDb: InstanceType<typeof Database>;
 
   constructor(sqliteDbInstance: InstanceType<typeof Database>) {
+    this.nativeDb = sqliteDbInstance;
     this.db = drizzle(sqliteDbInstance, { schema });
     logger.info("DbService: Drizzle ORM initialized.");
   }
 
   // === 🛠️ DATABASE MAINTENANCE ===
 
-  /**
-   * CRITICAL FIX: Running this synchronously on startup with large datasets causes freezing.
-   * Consider running this in a worker or non-blocking way in main.ts.
-   */
   public async fixDatabaseSchema(): Promise<void> {
     logger.info("DbService: 🛠️ Running database schema repair...");
     try {
@@ -315,5 +313,25 @@ export class DbService {
       userId: settings.userId,
       apiKey: decryptedKey,
     };
+  }
+
+  togglePostFavorite({ postId }: { postId: number }): boolean {
+    // 1. Переключаем состояние (NOT is_favorited)
+    this.nativeDb // ИСПОЛЬЗУЕМ nativeDb
+      .prepare(
+        `
+    UPDATE posts
+    SET is_favorited = NOT is_favorited
+    WHERE id = ?;
+  `
+      )
+      .run(postId);
+
+    // 2. Получаем новое состояние
+    const result = this.nativeDb
+      .prepare("SELECT is_favorited FROM posts WHERE id = ?")
+      .get(postId) as { is_favorited: number };
+
+    return result.is_favorited === 1;
   }
 }

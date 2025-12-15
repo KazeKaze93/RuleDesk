@@ -17,6 +17,12 @@ export type BackupResponse = {
   error?: string;
 };
 
+export type DownloadProgressData = {
+  id: string;
+  percent: number;
+};
+export type DownloadProgressCallback = (data: DownloadProgressData) => void;
+
 export interface PostQueryFilters {
   rating?: "s" | "q" | "e";
   tags?: string;
@@ -74,6 +80,22 @@ export interface IpcBridge {
 
   markPostAsViewed: (postId: number) => Promise<boolean>;
 
+  togglePostFavorite: (postId: number) => Promise<boolean>;
+
+  // Downloads
+  downloadFile: (
+    url: string,
+    filename: string
+  ) => Promise<{
+    success: boolean;
+    path?: string;
+    error?: string;
+    canceled?: boolean;
+  }>; // Добавил canceled
+  openFileInFolder: (path: string) => Promise<boolean>;
+
+  onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
+
   searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
 
   createBackup: () => Promise<BackupResponse>;
@@ -93,7 +115,6 @@ const ipcBridge: IpcBridge = {
   addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
   deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
 
-  // --- NEW: Implementation ---
   searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
 
   getArtistPosts: (params: GetPostsParams) =>
@@ -105,6 +126,27 @@ const ipcBridge: IpcBridge = {
 
   markPostAsViewed: (postId) =>
     ipcRenderer.invoke("db:mark-post-viewed", postId),
+
+  togglePostFavorite: (postId) =>
+    ipcRenderer.invoke("db:toggle-post-favorite", postId),
+
+  downloadFile: (url: string, filename: string) => {
+    console.log("Bridge: Sending download request...", url);
+    return ipcRenderer.invoke("files:download", url, filename);
+  },
+  openFileInFolder: (path: string) =>
+    ipcRenderer.invoke("files:open-folder", path),
+
+  onDownloadProgress: (callback) => {
+    const channel = "files:download-progress"; // Соответствует IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS
+    const subscription = (_: IpcRendererEvent, data: DownloadProgressData) =>
+      callback(data);
+
+    ipcRenderer.on(channel, subscription);
+    return () => {
+      ipcRenderer.removeListener(channel, subscription);
+    };
+  },
 
   repairArtist: (artistId) =>
     ipcRenderer.invoke("sync:repair-artist", artistId),
