@@ -8,14 +8,14 @@ This application follows a strict **Separation of Concerns (SoC)** architecture,
 
 ### 1. Dual-Module Interface
 
-- **Library Mode:** Работает с локальной SQLite базой. Максимальная производительность, виртуализация.
-- **Browser Mode:** Изолированный `<webview>` процесс. Позволяет пользователю серфить источник (Source) нативно. "Бридж" между сайтом и приложением осуществляется через инъекцию скриптов (DOM scraping + IPC triggers).
+- **Library Mode:** Works with local SQLite database. Maximum performance, virtualization.
+- **Browser Mode:** Isolated `<webview>` process. Allows users to browse the source (Source) natively. "Bridge" between the site and application is implemented through script injection (DOM scraping + IPC triggers).
 
 ### 2. Provider Abstraction (Future Proofing)
 
-- В будущем `SyncService` перестанет быть жестко связанным с Rule34.
-- Вводится интерфейс `BooruProvider` (methods: `getPosts`, `getArtistInfo`, `search`).
-- Текущая реализация станет `Rule34Provider`. Это позволит подключать новые источники без переписывания ядра БД.
+- In the future, `SyncService` will no longer be tightly coupled to Rule34.
+- Introduces `BooruProvider` interface (methods: `getPosts`, `getArtistInfo`, `search`).
+- Current implementation will become `Rule34Provider`. This allows adding new sources without rewriting the core database.
 
 ## High-Level Architecture
 

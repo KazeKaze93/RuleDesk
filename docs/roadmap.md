@@ -35,13 +35,166 @@ We have successfully stabilized the application core. The following issues are R
 
 We are moving to Feature Development. Implement the following modules:
 
+## 🧭 Navigation & UX Revamp
+
+### Sidebar Navigation
+
+Implement a persistent sidebar with main navigation sections:
+
+- **Updates** - Subscriptions feed (new posts from tracked sources)
+- **Browse** - All posts view with advanced filtering
+- **Favorites** - Account favorites synced from booru
+- **Tracked** - Artists and tags management
+- **Settings** - Application configuration
+
+### Global Top Bar
+
+Unified top bar on all content pages:
+
+- **Search Bar** - Quick search across posts, tags, artists
+- **Filters Panel** - Rating, media type, tags, date range filters
+- **Sort Controls** - Sort by date added, posted date, rating
+- **View Toggle** - Grid, list, masonry layout options
+- **Sync Status** - Real-time sync indicator with last sync timestamp
+
+### Viewer Polish
+
+Enhanced full-screen viewer experience:
+
+- **Auto-hide Bars** - Top and bottom bars hide after inactivity
+- **Tags Sheet** - Right-side slide-over drawer with clickable tags
+  - Click tag to add filter (`+tag`)
+  - Right-click or modifier key to exclude (`-tag`)
+  - Visual indicators for active filters
+- **Tooltips** - Keyboard shortcuts and action hints
+- **Keyboard Shortcuts:**
+  - `Esc` - Close viewer
+  - `←/→` - Navigate between posts
+  - `F` - Toggle favorite
+  - `V` - Mark as viewed
+  - `T` - Toggle tags drawer
+
+### Gallery Card Overlays
+
+Post cards with informative overlays:
+
+- **Viewed Badge** - Indicator for viewed posts
+- **Favorite Badge** - Star icon for favorited posts
+- **Rating Badge** - Visual indicator (Safe/Questionable/Explicit)
+- **Media Type Badge** - Icon for image/video content
+
+### Progressive Image Loading
+
+Optimized loading strategy:
+
+- **Preview URL** - Low-res blurred preview (instant display in gallery)
+- **Sample URL** - Medium-res sample (loaded in gallery)
+- **File URL** - Full-res original (loaded only in viewer)
+
+## 📰 Subscriptions / Updates
+
+### Feed Tab
+
+Unified feed showing all new posts:
+
+- **All New Posts** - Combined feed from all tracked sources
+- **Filters** - Apply tags, rating, media type filters
+- **Infinite Scroll** - Progressive loading as user scrolls
+- **Mark as Read** - Batch mark posts as viewed
+
+### Creators Tab
+
+List/tile view of creators with new post counts:
+
+- **Creator List** - Grid or list view of tracked artists
+- **New Count Badge** - Display number of unviewed posts per creator
+- **Quick Actions** - Sync, repair, view gallery per creator
+- **Filters** - Filter creators by type (tag/uploader)
+
+### Filters
+
+Advanced filtering within Updates section:
+
+- **Tag Filters** - Include/exclude specific tags
+- **Rating Filter** - Safe, Questionable, Explicit
+- **Media Type Filter** - Images, Videos, or both
+- **Date Range** - Filter by publication date
+
+## 🛡️ Security & Reliability (Hardening)
+
+### API Key Security
+
+Enhanced security for API credentials:
+
+- **Renderer Isolation** - Renderer process never receives raw API key
+- **Safe Storage** - Use Electron's `safeStorage` API (Windows Credential Manager, macOS Keychain, Linux libsecret)
+- **AES-GCM Policy** - Encrypt API keys at rest with AES-GCM encryption
+- **Threat Model** - Stolen database file does not reveal API key in plaintext
+
+**Status:** ✅ **COMPLETED:** API keys encrypted at rest, decryption only in Main Process.
+
+### Database Backups & Integrity
+
+Comprehensive database protection:
+
+- **Backup System** - Manual and automatic pre-maintenance backups
+- **Restore Flow** - Restore from backup with automatic restart
+- **Integrity Check** - Run `PRAGMA integrity_check` and display results
+- **Retention Policy** - Keep last N backups, auto-cleanup old backups
+
+**Status:** ✅ **Phase 1 COMPLETED:** Manual backup/restore implemented. Future: Auto-backups, integrity check UI, retention policy.
+
+### Auto Maintenance
+
+Non-blocking database maintenance:
+
+- **Worker Thread** - All heavy operations run in database worker thread
+- **Non-blocking** - Maintenance operations don't freeze UI
+- **Progress Events** - Real-time progress updates for long operations
+- **Scheduled Runs** - Automatic maintenance on startup or periodic intervals
+
+**Status:** ✅ **COMPLETED:** Database operations run in worker thread. Future: Scheduled maintenance runs.
+
+## 📋 Milestones
+
+### MVP (Minimum Viable Product)
+
+Core features for initial release:
+
+- ✅ **Navigation & Sidebar** - Basic sidebar with main sections
+- ⏳ **Global Top Bar** - Search, filters, sort, view toggle, sync status
+- ⏳ **Viewer Polish** - Auto-hide bars, tags sheet, keyboard shortcuts
+- ✅ **Progressive Loading** - Preview → Sample → Original (implemented)
+- ⏳ **Auto-sync Startup** - Toggle for automatic sync on app launch
+- ✅ **Worker Threads** - Database operations in worker thread (completed)
+
+### Next Phase
+
+Enhanced features after MVP:
+
+- ⏳ **Favorites Sync** - Sync account favorites from booru
+- ⏳ **Tag Autocomplete** - Enhanced tag search with suggestions
+- ⏳ **Playlists Groundwork** - Basic playlist tables and UI structure
+- ⏳ **Periodic Sync** - Configurable interval sync while app running
+- ⏳ **Card Overlays** - Viewed, favorite, rating, media type badges
+
+### Later Phase
+
+Advanced features for future releases:
+
+- ⏳ **Smart Playlists** - Auto-fill playlists based on tag rules
+- ⏳ **Normalized Tag Index** - Full-text search on tags
+- ⏳ **Advanced Caching** - Intelligent cache management with size limits
+- ⏳ **Proxy Support** - Optional proxy configuration for API requests
+- ⏳ **Multi-Booru** - Provider pattern for multiple booru sources
+
 ### A. Filters (Advanced Search) [Priority: High] ⏳ Not Started
 
 **Goal:** Allow users to refine the gallery view.
 
 **UI:**
 
-- [ ] Sidebar or Top Bar filter menu
+- [ ] Top Bar filter panel (part of Global Top Bar)
 
 **Functionality:**
 
@@ -96,7 +249,7 @@ We are moving to Feature Development. Implement the following modules:
 2. **UI Interactions:**
 
    - [ ] "⭐ Add to playlist" button on Post Card (opens Popover: List of playlists + "Create New")
-   - [ ] New Page/Tab: "Playlists"
+   - [ ] New Page/Tab: "Playlists" (in Sidebar)
    - [ ] View Playlist: Grid view of posts inside a playlist
 
 3. **Logic:**
@@ -164,77 +317,6 @@ We are moving to Feature Development. Implement the following modules:
 - Content analysis
 
 ---
-
-## 🛡️ Security & Reliability (Hardening)
-
-### DB Worker Thread Migration (better-sqlite3) ✅ COMPLETED
-
-**Goal:** Move ALL SQLite access out of Main into a dedicated Worker Thread (single DB actor).
-
-**Tasks:**
-
-- [x] Create dedicated Worker Thread for database operations
-- [x] Replace direct `DbService` calls with worker RPC (request/response with correlationId + timeouts)
-- [x] Run startup maintenance (schema fix / repair tags / migrations) inside worker (non-blocking UI)
-- [x] Add basic progress events for long operations (maintenance/sync/repair)
-
-**Implementation Notes:**
-
-- Uses Node.js `worker_threads` module
-- RPC pattern with correlation IDs for request/response matching implemented
-- Timeout handling for worker requests implemented
-- Type safety maintained across worker boundary via `WorkerRequest` and `WorkerResponse` types
-
-**Status:** ✅ **COMPLETED:** All database operations now run in a dedicated worker thread (`src/main/db/db-worker.ts`). Main process communicates via `DbWorkerClient` (`src/main/db/db-worker-client.ts`).
-
----
-
-### Encrypt / Secure Storage for API Credentials ✅ COMPLETED
-
-**Goal:** Stop exposing raw API key to Renderer and encrypt credentials at rest.
-
-**Tasks:**
-
-- [x] Stop exposing raw API key to Renderer (decryption only in Main Process)
-- [x] Store API key encrypted at rest using Electron's `safeStorage` API
-- [x] Update settings flow: DB stores encrypted API key, decryption only when needed
-- [x] Threat model: stolen `metadata.db` does not reveal API key in plaintext
-
-**Implementation Notes:**
-
-- Uses Electron's built-in `safeStorage` API (`electron.safeStorage`)
-- Windows: Uses Windows Credential Manager (via Electron)
-- macOS: Uses Keychain Services (via Electron)
-- Linux: Uses libsecret (via Electron)
-- `SecureStorage` class (`src/main/services/secure-storage.ts`) handles encryption/decryption
-- API key is encrypted before saving to database, decrypted only in Main Process when needed for API calls
-
-**Status:** ✅ **COMPLETED:** API keys are encrypted at rest using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
-
----
-
-### Database Backup / Restore System ✅ COMPLETED (Phase 1)
-
-**Goal:** Add backup and restore functionality to protect user data.
-
-**Tasks:**
-
-- [x] Add manual "Backup now" action (create timestamped DB dump)
-- [ ] Add automatic pre-maintenance backup (before migrations/repair) - **Future enhancement**
-- [x] Add Restore flow (switch DB file atomically, re-run schema fix)
-- [ ] Add integrity check command (`PRAGMA integrity_check`) + recovery suggestion - **Future enhancement**
-- [ ] Retention policy for backups (keep last N, cleanup old) - **Future enhancement**
-
-**Implementation Notes:**
-
-- Backup location: User data directory with timestamped filenames
-- Uses file copy with atomic operations
-- Backup metadata includes timestamp in filename
-- UI: `BackupControls` component (`src/renderer/components/BackupControls.tsx`) with backup/restore buttons
-- IPC methods: `db:create-backup` and `db:restore-backup`
-- Application automatically restarts after restore to ensure proper reinitialization
-
-**Status:** ✅ **COMPLETED (Phase 1):** Manual backup and restore functionality implemented. Future enhancements include automatic backups, integrity checks, and retention policies.
 
 ---
 

@@ -176,7 +176,7 @@ Saves API credentials to the database.
 
 **Throws:**
 
-- `Error("Данные обязательны")` - If userId or apiKey is missing
+- `Error("Data is required")` - If userId or apiKey is missing
 
 **Example:**
 

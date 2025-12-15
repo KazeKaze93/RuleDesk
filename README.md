@@ -69,6 +69,113 @@ This is the sandboxed browser environment. It handles presentation.
 - **Encryption:** API credentials encrypted using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
 - **Worker Thread Isolation:** Database operations run in a separate worker thread, providing additional isolation and preventing main process blocking.
 
+## 📐 Product Structure
+
+The application is organized into the following main sections accessible via the Sidebar:
+
+- **Updates (Subscriptions)** - View new posts from tracked artists and tag subscriptions
+- **Browse (All posts)** - Browse all cached posts with advanced filtering and search
+- **Favorites (Account favorites)** - Access your account favorites synced from the booru
+- **Tracked (Artists/Tags management)** - Manage tracked artists, tags, and subscriptions
+- **Settings** - Configure sync behavior, storage limits, security, and database maintenance
+
+## 🎨 Core UX Principles
+
+### Global Top Bar
+
+A unified Top Bar appears on all content pages providing:
+
+- **Search** - Quick search across posts, tags, and artists
+- **Filters** - Rating, media type, tags, date range
+- **Sort** - Sort by date added, posted date, rating, etc.
+- **View Toggle** - Switch between grid, list, and masonry layouts
+- **Sync Status** - Real-time sync progress indicator with last sync timestamp
+
+### Viewer Experience
+
+The full-screen viewer provides a polished media viewing experience:
+
+- **Full-screen Mode** - Immersive viewing with auto-hide controls
+- **Navigation** - Arrow keys (←/→) for previous/next post
+- **Hotkeys:**
+  - `Esc` - Close viewer
+  - `←/→` - Navigate between posts
+  - `F` - Toggle favorite
+  - `V` - Mark as viewed
+  - `T` - Toggle tags drawer
+- **Auto-hide Bars** - Top and bottom bars automatically hide after inactivity
+- **Tags Drawer** - Right-side sheet (Slide-over) with clickable tags:
+  - Click tag to add filter (`+tag`)
+  - Right-click or modifier key to exclude (`-tag`)
+  - Visual indicators for active filters
+
+### Progressive Image Loading
+
+Optimized image loading strategy for performance:
+
+- **Preview URL** - Low-resolution blurred preview (instant display)
+- **Sample URL** - Medium-resolution sample (loaded in gallery)
+- **File URL** - Full-resolution original (loaded only in viewer)
+
+This ensures fast initial page loads while maintaining high-quality viewing experience.
+
+### Gallery Cards
+
+Post cards in gallery views include informative overlays:
+
+- **Viewed Badge** - Indicator for already viewed posts
+- **Favorite Badge** - Star icon for favorited posts
+- **Rating Badge** - Visual indicator (Safe/Questionable/Explicit)
+- **Media Type Badge** - Icon indicating image or video content
+
+## 🔄 Sync & Background
+
+### Auto-sync on Startup
+
+Automatic synchronization when the application starts:
+
+- **Toggle Setting** - Enable/disable auto-sync in Settings
+- **Background Execution** - Sync runs in background without blocking UI
+- **Progress Indicators** - Real-time sync status in Top Bar
+
+### Periodic Sync
+
+Continuous synchronization while the application is running:
+
+- **Configurable Interval** - Set sync frequency in Settings (e.g., every 30 minutes)
+- **Smart Rate Limiting** - Prevents API spam with intelligent backoff
+- **Last Sync Status** - Display last successful sync timestamp
+- **Respectful Polling** - Implements exponential backoff and respects API limits
+
+## ⚙️ Settings
+
+### Sync Settings
+
+- **Auto-sync on Startup** - Toggle automatic sync when app launches
+- **Periodic Sync Interval** - Configure how often to check for new posts
+- **Rate Limiting** - Adjust delays between API requests
+
+### Storage & Cache
+
+- **Cache Limit** - Set maximum cache size (preview/sample images)
+- **Clear Cache** - Manual cache cleanup option
+- **Storage Usage** - Display current cache size and database size
+
+### Security
+
+- **API Key Storage** - Secure storage using Electron's `safeStorage` API
+  - API keys are **never** sent to Renderer process
+  - Encrypted at rest using platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
+  - Decryption only occurs in Main Process when needed for API calls
+- **Threat Model** - Stolen database file does not reveal API key in plaintext
+
+### Database Management
+
+- **Backup & Restore** - Create timestamped backups and restore from backup files
+- **Integrity Check** - Run database integrity verification (`PRAGMA integrity_check`)
+- **Vacuum/Compact** - Optimize database file size and performance
+- **Maintenance** - Automatic maintenance runs in worker thread (non-blocking)
+
 ## ✅ Recent Fixes & Current Status
 
 The application core has been successfully stabilized and enhanced with security improvements:
@@ -188,9 +295,9 @@ We are moving to Feature Development. Priority tasks:
 
 ### 🛡️ Security & Reliability (Hardening)
 
-- ✅ **DB Worker Thread Migration** - ✅ **COMPLETED:** SQLite access moved to dedicated worker thread
-- ✅ **Encrypt / Secure Storage for API Credentials** - ✅ **COMPLETED:** Using Electron's `safeStorage` API for encryption
-- ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented
+- ✅ **DB Worker Thread Migration** - ✅ **COMPLETED:** All SQLite operations run in dedicated worker thread with RPC pattern. Database worker provides non-blocking operations and thread-safe access.
+- ✅ **Encrypt / Secure Storage for API Credentials** - ✅ **COMPLETED:** Using Electron's `safeStorage` API for encryption. API keys encrypted at rest, never exposed to Renderer process.
+- ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented with timestamped backups.
 
 See [Roadmap](./docs/roadmap.md) for detailed implementation status and requirements.
 
