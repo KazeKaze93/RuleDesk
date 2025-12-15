@@ -7,6 +7,12 @@ import {
 
 export type SyncErrorCallback = (message: string) => void;
 
+export interface BackupResponse {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
 export interface IpcApi extends IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
@@ -21,7 +27,7 @@ export interface IpcApi extends IpcBridge {
   addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
-  // NEW: Search
+  // Search
   searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 
   // Posts
@@ -52,6 +58,9 @@ export interface IpcApi extends IpcBridge {
   markPostAsViewed: (postId: number) => Promise<boolean>;
 
   searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
+
+  createBackup: () => Promise<BackupResponse>;
+  restoreBackup: () => Promise<BackupResponse>;
 }
 
 declare global {
