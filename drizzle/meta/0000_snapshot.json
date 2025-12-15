@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "af25417e-2581-4436-9f7b-a7aa62964dda",
+  "id": "4fbb74ee-af72-4a3e-8cbc-d29810828188",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "artists": {
@@ -176,6 +176,14 @@
           "notNull": true,
           "autoincrement": false,
           "default": false
+        },
+        "is_favorited": {
+          "name": "is_favorited",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
         }
       },
       "indexes": {
@@ -197,6 +205,13 @@
           "name": "publishedAtIdx",
           "columns": [
             "published_at"
+          ],
+          "isUnique": false
+        },
+        "isFavoritedIdx": {
+          "name": "isFavoritedIdx",
+          "columns": [
+            "is_favorited"
           ],
           "isUnique": false
         },
@@ -245,8 +260,8 @@
           "autoincrement": false,
           "default": "''"
         },
-        "api_key": {
-          "name": "api_key",
+        "encrypted_api_key": {
+          "name": "encrypted_api_key",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

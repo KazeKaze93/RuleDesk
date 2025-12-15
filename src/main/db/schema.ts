@@ -41,12 +41,16 @@ export const posts = sqliteTable(
     isViewed: integer("is_viewed", { mode: "boolean" })
       .notNull()
       .default(false),
+    isFavorited: integer("is_favorited", { mode: "boolean" }) // Добавили поле
+      .notNull()
+      .default(false),
   },
   (t) => ({
     uniquePost: unique().on(t.artistId, t.postId),
     artistIdIdx: index("artistIdIdx").on(t.artistId),
     isViewedIdx: index("isViewedIdx").on(t.isViewed),
     publishedAtIdx: index("publishedAtIdx").on(t.publishedAt),
+    isFavoritedIdx: index("isFavoritedIdx").on(t.isFavorited),
   })
 );
 
@@ -59,7 +63,9 @@ export const settings = sqliteTable("settings", {
 // Types
 export type Artist = typeof artists.$inferSelect;
 export type NewArtist = typeof artists.$inferInsert;
-export type Post = typeof posts.$inferSelect;
+export type Post = typeof posts.$inferSelect & {
+  isFavorited: boolean;
+};
 export type NewPost = typeof posts.$inferInsert;
 export type Settings = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Activity,
@@ -14,13 +15,32 @@ const navItems = [
   { to: "/updates", icon: Zap, label: "Updates" },
   { to: "/browse", icon: LayoutGrid, label: "Browse" },
   { to: "/favorites", icon: Heart, label: "Favorites" },
-  { to: "/tracked", icon: Users, label: "Sources" }, // Бывшая "Главная"
+  { to: "/tracked", icon: Users, label: "Sources" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
 export const Sidebar = () => {
-  const isSyncing = false;
-  const lastSyncTime = "12:30";
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState("12:30");
+
+  const handleSync = async () => {
+    if (isSyncing) return;
+
+    setIsSyncing(true);
+    try {
+      console.log("Triggering Sync...");
+      await window.api.syncAll();
+
+      const now = new Date();
+      setLastSyncTime(
+        `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`
+      );
+    } catch (error) {
+      console.error("Sync failed:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   return (
     <aside className="flex sticky top-0 flex-col w-64 h-screen border-r bg-background">
@@ -53,14 +73,24 @@ export const Sidebar = () => {
 
       {/* Sync Status Footer */}
       <div className="p-4 border-t bg-muted/20">
-        <div className="flex gap-3 items-center">
+        <button
+          onClick={handleSync}
+          disabled={isSyncing}
+          className={cn(
+            "flex gap-3 items-center p-1 -ml-1 w-full text-left rounded-md transition-all hover:bg-background/50",
+            isSyncing
+              ? "opacity-70 cursor-wait"
+              : "cursor-pointer hover:opacity-100"
+          )}
+          title="Click to sync all sources"
+        >
           <div
             className={cn(
-              "p-2 rounded-full bg-background border",
-              isSyncing && "animate-spin"
+              "p-2 rounded-full bg-background border shadow-sm",
+              isSyncing && "animate-spin text-primary border-primary"
             )}
           >
-            <RefreshCw className="w-4 h-4 text-muted-foreground" />
+            <RefreshCw className="w-4 h-4" />
           </div>
           <div className="flex flex-col">
             <span className="text-xs font-medium">Sync Status</span>
@@ -68,7 +98,7 @@ export const Sidebar = () => {
               {isSyncing ? "Syncing..." : `Last: ${lastSyncTime}`}
             </span>
           </div>
-        </div>
+        </button>
       </div>
     </aside>
   );

@@ -21,6 +21,7 @@ export type DbMethod =
   | "searchArtists"
   | "deleteArtist"
   | "markPostAsViewed"
+  | "togglePostFavorite"
   // Settings & Security
   | "getSettings"
   | "saveSettings"
