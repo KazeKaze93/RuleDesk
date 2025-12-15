@@ -1,9 +1,8 @@
-// src/main/ipc.ts
-
 import {
   app,
   ipcMain,
   shell,
+  dialog,
   IpcMainInvokeEvent,
   BrowserWindow,
   safeStorage,
@@ -317,6 +316,69 @@ export const registerIpcHandlers = (
         error
       );
       return [];
+    }
+  });
+
+  // === BACKUP & RESTORE ===
+
+  ipcMain.handle("db:create-backup", async () => {
+    try {
+      logger.info("IPC: Запрос на создание бэкапа...");
+      // Вызываем метод backup в воркере (VACUUM INTO)
+      const result = await dbWorkerClient.call<{ backupPath: string }>(
+        "backup"
+      );
+
+      logger.info(`IPC: Бэкап создан: ${result.backupPath}`);
+
+      // Показываем файл в папке пользователю
+      shell.showItemInFolder(result.backupPath);
+
+      return { success: true, path: result.backupPath };
+    } catch (error: unknown) {
+      logger.error("IPC: Ошибка создания бэкапа", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcMain.handle("db:restore-backup", async () => {
+    // 1. Открываем диалог выбора файла
+    const { canceled, filePaths } = await dialog.showOpenDialog(_mainWindow, {
+      title: "Выберите файл бэкапа (metadata.db)",
+      filters: [{ name: "SQLite Database", extensions: ["db", "sqlite"] }],
+      properties: ["openFile"],
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return { success: false, error: "Отменено пользователем" };
+    }
+
+    const backupPath = filePaths[0];
+
+    try {
+      logger.info(`IPC: Начало восстановления из ${backupPath}...`);
+
+      // 2. Вызываем клиентский метод restore
+      // Он сам остановит воркер, скопирует файл и перезапустит воркер.
+      await dbWorkerClient.restore(backupPath);
+
+      logger.info(
+        "IPC: База успешно восстановлена. Перезагрузка интерфейса..."
+      );
+
+      // 3. Перезагружаем окно, чтобы подтянуть новые данные во фронтенд
+      _mainWindow.reload();
+
+      return { success: true };
+    } catch (error: unknown) {
+      logger.error("IPC: Критическая ошибка восстановления", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   });
 
