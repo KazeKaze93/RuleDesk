@@ -10,7 +10,7 @@ import { DbWorkerClient } from "./db/db-worker-client";
 import { NewArtist } from "./db/schema";
 import { logger } from "./lib/logger";
 import { SyncService } from "./services/sync-service";
-import { SecureStorage } from "./services/secure-storage"; // 👈 IMPORT
+import { SecureStorage } from "./services/secure-storage";
 import { URL } from "url";
 import { z } from "zod";
 import axios from "axios";
@@ -19,9 +19,17 @@ import { UpdaterService } from "./services/updater-service";
 // === ZOD SCHEMAS (Centralized) ===
 
 const GetPostsSchema = z.object({
-  artistId: z.number().int().positive(),
-  page: z.number().int().min(1).default(1),
+  artistId: z.number(),
+  page: z.number().default(1),
   limit: z.number().int().min(1).default(50),
+  filters: z
+    .object({
+      rating: z.enum(["s", "q", "e"]).optional(),
+      tags: z.string().optional(),
+      sortBy: z.enum(["date", "id", "rating"]).optional(),
+      isViewed: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 const DeleteArtistSchema = z.number().int().positive();

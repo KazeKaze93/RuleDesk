@@ -17,6 +17,19 @@ export type BackupResponse = {
   error?: string;
 };
 
+export interface PostQueryFilters {
+  rating?: "s" | "q" | "e";
+  tags?: string;
+  sortBy?: "date" | "id" | "rating";
+  isViewed?: boolean;
+}
+
+export interface GetPostsParams {
+  artistId: number;
+  page?: number;
+  filters?: PostQueryFilters;
+}
+
 export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
@@ -83,8 +96,8 @@ const ipcBridge: IpcBridge = {
   // --- NEW: Implementation ---
   searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
 
-  getArtistPosts: ({ artistId, page }) =>
-    ipcRenderer.invoke("db:get-posts", { artistId, page }),
+  getArtistPosts: (params: GetPostsParams) =>
+    ipcRenderer.invoke("db:get-posts", params),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 

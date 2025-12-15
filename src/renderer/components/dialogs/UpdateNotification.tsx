@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, RefreshCw, X, CheckCircle, AlertCircle } from "lucide-react";
-import { cn } from "../lib/utils";
-import { Button } from "./ui/button";
+import { cn } from "../../lib/utils";
+import { Button } from "../ui/button";
 
 type UpdateStatus =
   | "idle"
