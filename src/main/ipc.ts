@@ -2,39 +2,28 @@ import {
   app,
   ipcMain,
   shell,
-  dialog,
   IpcMainInvokeEvent,
   BrowserWindow,
-  safeStorage,
+  dialog,
 } from "electron";
 import { DbWorkerClient } from "./db/db-worker-client";
 import { NewArtist } from "./db/schema";
 import { logger } from "./lib/logger";
 import { SyncService } from "./services/sync-service";
+import { SecureStorage } from "./services/secure-storage"; // 👈 IMPORT
 import { URL } from "url";
 import { z } from "zod";
 import axios from "axios";
 import { UpdaterService } from "./services/updater-service";
 
-// === СХЕМЫ ZOD ===
+// ... (Zod схемы остаются те же) ...
 const GetPostsSchema = z.object({
-  artistId: z
-    .number({ required_error: "artistId is required" })
-    .int()
-    .positive(),
+  artistId: z.number().int().positive(),
   page: z.number().int().min(1).default(1),
   limit: z.number().int().min(1).default(50),
 });
 
-const DeleteArtistSchema = z
-  .number({
-    required_error: "ID is required",
-    invalid_type_error: "ID must be a number",
-  })
-  .int("ID must be an integer")
-  .positive("ID must be positive");
-
-// 🛑 FIX: Removed unused SaveSettingsSchema to satisfy linter
+const DeleteArtistSchema = z.number().int().positive();
 
 interface Rule34AutocompleteItem {
   label: string;
@@ -42,19 +31,15 @@ interface Rule34AutocompleteItem {
   type?: string;
 }
 
-// --- 1. Отдельные функции-обработчики ---
-
 const handleGetAppVersion = async (
   _event: IpcMainInvokeEvent
 ): Promise<string> => {
   return app.getVersion();
 };
 
-// --- 2. Функция Регистрации ---
-
 export const registerIpcHandlers = (
   dbWorkerClient: DbWorkerClient,
-  syncService: SyncService, // 🛑 FIX: Используем правильное имя аргумента
+  syncService: SyncService,
   _updaterService: UpdaterService,
   _mainWindow: BrowserWindow
 ) => {
@@ -63,8 +48,8 @@ export const registerIpcHandlers = (
   // --- APP ---
   ipcMain.handle("app:get-version", handleGetAppVersion);
 
+  // === SETTINGS (SECURE) ===
   ipcMain.handle("app:get-settings", async () => {
-    // 1. Получаем СЫРЫЕ (зашифрованные) данные от Worker'а
     const settings = await dbWorkerClient.call<{
       userId: string;
       apiKey: string;
@@ -72,19 +57,9 @@ export const registerIpcHandlers = (
 
     let decryptedKey = "";
 
-    // 2. Дешифруем здесь, в Main Process
     if (settings && settings.apiKey) {
-      if (safeStorage.isEncryptionAvailable()) {
-        try {
-          const buffer = Buffer.from(settings.apiKey, "base64");
-          decryptedKey = safeStorage.decryptString(buffer);
-        } catch (e) {
-          console.error("IPC: Failed to decrypt key", e);
-          decryptedKey = settings.apiKey;
-        }
-      } else {
-        decryptedKey = settings.apiKey;
-      }
+      const decrypted = SecureStorage.decrypt(settings.apiKey);
+      decryptedKey = decrypted || "";
     }
 
     return {
@@ -94,14 +69,14 @@ export const registerIpcHandlers = (
   });
 
   ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
-    let encryptedKey = apiKey;
+    let encryptedKey = "";
 
-    // 1. Шифруем здесь, в Main Process
-    if (apiKey && safeStorage.isEncryptionAvailable()) {
+    if (apiKey) {
       try {
-        encryptedKey = safeStorage.encryptString(apiKey).toString("base64");
-      } catch (e) {
-        console.error("IPC: Encryption failed", e);
+        encryptedKey = SecureStorage.encrypt(apiKey);
+      } catch (error) {
+        logger.error("IPC: Aborting save due to encryption failure", error);
+        throw new Error("Cannot save settings: Encryption unavailable.");
       }
     }
 
@@ -110,19 +85,13 @@ export const registerIpcHandlers = (
       apiKey: encryptedKey,
     });
 
-    // 🛑 FIX: Убрали блок if (_syncService), так как он был пустой и с ошибкой имени
-
     return { success: true };
   });
 
   ipcMain.handle("app:open-external", async (_event, urlString: string) => {
     try {
-      if (!urlString || urlString.trim() === "") {
-        throw new Error("URL string is empty.");
-      }
-
+      if (!urlString?.trim()) throw new Error("URL is empty");
       const parsedUrl = new URL(urlString.trim());
-      // Security check
       if (
         parsedUrl.protocol === "https:" &&
         (parsedUrl.hostname === "rule34.xxx" ||
@@ -130,22 +99,21 @@ export const registerIpcHandlers = (
       ) {
         await shell.openExternal(urlString);
       } else {
-        logger.warn(
-          `IPC: Blocked attempt to open unauthorized URL: ${urlString}`
-        );
+        logger.warn(`IPC: Blocked unauthorized URL: ${urlString}`);
       }
-    } catch (error: unknown) {
-      logger.error(`IPC: Error opening external URL (${urlString}):`, error);
+    } catch (error) {
+      logger.error(`IPC: Error opening external URL`, error);
     }
   });
 
-  // --- DB: ARTISTS (Через RPC) ---
+  // --- DB Operations ---
+
   ipcMain.handle("db:get-artists", async () => {
     try {
       return await dbWorkerClient.call("getTrackedArtists");
-    } catch (error: unknown) {
-      logger.error("IPC: [db:get-artists] Database error:", error);
-      throw new Error("Failed to fetch artists from database.");
+    } catch (error) {
+      logger.error("IPC: [db:get-artists] error:", error);
+      throw new Error("Failed to fetch artists.");
     }
   });
 
@@ -153,113 +121,72 @@ export const registerIpcHandlers = (
     const name = artistData.name?.trim();
     const endpoint = artistData.apiEndpoint?.trim();
 
-    if (!name || name === "") {
-      throw new Error("Artist name cannot be empty or just whitespace.");
-    }
-    if (!endpoint || endpoint === "") {
-      throw new Error("API Endpoint URL is required.");
-    }
+    if (!name || !endpoint) throw new Error("Invalid artist data.");
     try {
       new URL(endpoint);
-    } catch (_error: unknown) {
-      throw new Error("Invalid API Endpoint URL format.");
+    } catch {
+      throw new Error("Invalid API URL.");
     }
 
-    logger.info(`IPC: [db:add-artist] Попытка добавить: ${name}`);
-
+    logger.info(`IPC: [db:add-artist] Adding: ${name}`);
     try {
-      const dataToSave: NewArtist = {
+      return await dbWorkerClient.call("addArtist", {
         ...artistData,
-        name: name,
+        name,
         apiEndpoint: endpoint,
-      };
-      return await dbWorkerClient.call("addArtist", dataToSave);
-    } catch (error: unknown) {
-      logger.error("IPC: [db:add-artist] Database error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown database error.";
-      throw new Error(`Database error adding artist: ${errorMessage}`);
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("IPC: [db:add-artist] error:", error);
+      throw new Error(`Database error: ${msg}`);
     }
   });
 
   ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
     const validation = DeleteArtistSchema.safeParse(id);
-
-    if (!validation.success) {
-      logger.error(
-        `[IPC Validation] Invalid schema for db:delete-artist: ${JSON.stringify(
-          validation.error.flatten()
-        )}`
-      );
-      throw new Error("Invalid input format received.");
-    }
-
-    const validatedId = validation.data;
-
+    if (!validation.success) throw new Error("Invalid ID.");
     try {
-      return await dbWorkerClient.call("deleteArtist", { id: validatedId });
-    } catch (error: unknown) {
-      logger.error(
-        `IPC: [db:delete-artist] Database error for ID ${validatedId}:`,
-        error
-      );
-      throw new Error("Failed to delete artist from database.");
+      return await dbWorkerClient.call("deleteArtist", { id: validation.data });
+    } catch (error) {
+      logger.error(`IPC: [db:delete-artist] error:`, error);
+      throw new Error("Failed to delete artist.");
     }
   });
 
-  // --- DB: POSTS (Через RPC) ---
   ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
     const validation = GetPostsSchema.safeParse(payload);
-
-    if (!validation.success) {
-      logger.error("IPC: [db:get-posts] Validation failed:", validation.error);
+    if (!validation.success)
       throw new Error(`Validation Error: ${validation.error.message}`);
-    }
-
     const { artistId, page, limit } = validation.data;
     const offset = (page - 1) * limit;
 
     try {
-      logger.info(
-        `IPC: [db:get-posts] Fetching artist ${artistId}, page ${page}`
-      );
-
+      logger.info(`IPC: [db:get-posts] Artist ${artistId}, page ${page}`);
       return await dbWorkerClient.call("getPostsByArtist", {
         artistId,
         limit,
         offset,
       });
-    } catch (error: unknown) {
-      logger.error(
-        `IPC: [db:get-posts] Database error for artist ${artistId}:`,
-        error
-      );
-      throw new Error("Failed to fetch posts from database.");
+    } catch (error) {
+      logger.error(`IPC: [db:get-posts] error:`, error);
+      throw new Error("Failed to fetch posts.");
     }
   });
 
   ipcMain.handle("db:mark-post-viewed", async (_event, postId: unknown) => {
-    const idSchema = z.number().int().positive();
-    const result = idSchema.safeParse(postId);
-
-    if (!result.success) {
-      logger.error(`[IPC] Invalid postId for mark-viewed: ${postId}`);
-      return false;
-    }
-
+    if (typeof postId !== "number") return false;
     try {
-      await dbWorkerClient.call("markPostAsViewed", { postId: result.data });
+      await dbWorkerClient.call("markPostAsViewed", { postId });
       return true;
-    } catch (error: unknown) {
-      logger.error(`[IPC] Failed to mark post ${result.data} as viewed`, error);
+    } catch (error) {
+      logger.error(`[IPC] Failed to mark post viewed`, error);
       return false;
     }
   });
 
   // --- SYNC & REPAIR ---
   ipcMain.handle("db:sync-all", async () => {
-    logger.info("IPC: [db:sync-all] Инициирование фоновой синхронизации...");
-
+    logger.info("IPC: [db:sync-all] Start background sync...");
     syncService.syncAllArtists().catch((error) => {
       logger.error("IPC: Critical background sync error:", error);
       syncService.sendEvent(
@@ -271,72 +198,27 @@ export const registerIpcHandlers = (
   });
 
   ipcMain.handle("sync:repair-artist", async (_, artistId: number) => {
-    logger.info(
-      `IPC: [sync:repair-artist] Запрос ремонта для автора ${artistId}`
-    );
+    logger.info(`IPC: [sync:repair-artist] Artist ${artistId}`);
     try {
       await syncService.repairArtist(artistId);
       return { success: true };
     } catch (error) {
-      logger.error(`IPC: Ошибка ремонта автора ${artistId}`, error);
-      return { success: false, error: (error as Error).message };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   });
 
-  // --- SEARCH ---
-  ipcMain.handle("db:search-tags", async (_, query: string) => {
-    try {
-      return await dbWorkerClient.call("searchArtists", { query });
-    } catch (error: unknown) {
-      logger.error("IPC: [db:search-tags] Error:", error);
-      return [];
-    }
-  });
-
-  ipcMain.handle("api:search-remote-tags", async (_, query: string) => {
-    if (!query || query.length < 2) return [];
-
-    try {
-      const url = `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
-        query
-      )}`;
-
-      const { data } = await axios.get<Rule34AutocompleteItem[]>(url);
-
-      if (Array.isArray(data)) {
-        return data.map((item) => ({
-          id: item.value,
-          label: item.label,
-        }));
-      }
-      return [];
-    } catch (error: unknown) {
-      logger.error(
-        `IPC: [api:search-remote-tags] Error searching for ${query}:`,
-        error
-      );
-      return [];
-    }
-  });
-
-  // === BACKUP & RESTORE ===
-
+  // --- BACKUP ---
   ipcMain.handle("db:create-backup", async () => {
     try {
-      logger.info("IPC: Запрос на создание бэкапа...");
-      // Вызываем метод backup в воркере (VACUUM INTO)
       const result = await dbWorkerClient.call<{ backupPath: string }>(
         "backup"
       );
-
-      logger.info(`IPC: Бэкап создан: ${result.backupPath}`);
-
-      // Показываем файл в папке пользователю
       shell.showItemInFolder(result.backupPath);
-
       return { success: true, path: result.backupPath };
-    } catch (error: unknown) {
-      logger.error("IPC: Ошибка создания бэкапа", error);
+    } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -345,36 +227,20 @@ export const registerIpcHandlers = (
   });
 
   ipcMain.handle("db:restore-backup", async () => {
-    // 1. Открываем диалог выбора файла
+    if (!_mainWindow) return { success: false, error: "No window" };
     const { canceled, filePaths } = await dialog.showOpenDialog(_mainWindow, {
-      title: "Выберите файл бэкапа (metadata.db)",
-      filters: [{ name: "SQLite Database", extensions: ["db", "sqlite"] }],
+      title: "Select backup file",
+      filters: [{ name: "SQLite DB", extensions: ["db", "sqlite"] }],
       properties: ["openFile"],
     });
-
-    if (canceled || filePaths.length === 0) {
-      return { success: false, error: "Отменено пользователем" };
-    }
-
-    const backupPath = filePaths[0];
+    if (canceled || !filePaths.length)
+      return { success: false, error: "Canceled by user" };
 
     try {
-      logger.info(`IPC: Начало восстановления из ${backupPath}...`);
-
-      // 2. Вызываем клиентский метод restore
-      // Он сам остановит воркер, скопирует файл и перезапустит воркер.
-      await dbWorkerClient.restore(backupPath);
-
-      logger.info(
-        "IPC: База успешно восстановлена. Перезагрузка интерфейса..."
-      );
-
-      // 3. Перезагружаем окно, чтобы подтянуть новые данные во фронтенд
+      await dbWorkerClient.restore(filePaths[0]);
       _mainWindow.reload();
-
       return { success: true };
-    } catch (error: unknown) {
-      logger.error("IPC: Критическая ошибка восстановления", error);
+    } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -382,5 +248,28 @@ export const registerIpcHandlers = (
     }
   });
 
-  logger.info("IPC: Все обработчики успешно зарегистрированы.");
+  // --- SEARCH ---
+  ipcMain.handle("db:search-tags", async (_, query: string) => {
+    try {
+      return await dbWorkerClient.call("searchArtists", { query });
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle("api:search-remote-tags", async (_, query: string) => {
+    if (!query || query.length < 2) return [];
+    try {
+      const { data } = await axios.get<Rule34AutocompleteItem[]>(
+        `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(query)}`
+      );
+      return Array.isArray(data)
+        ? data.map((item) => ({ id: item.value, label: item.label }))
+        : [];
+    } catch {
+      return [];
+    }
+  });
+
+  logger.info("IPC: Handlers registered.");
 };

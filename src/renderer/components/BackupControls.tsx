@@ -57,6 +57,7 @@ export function BackupControls() {
         <button
           onClick={handleBackup}
           disabled={isLoading}
+          aria-label="Create a full backup of the database"
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
             isLoading
               ? "cursor-not-allowed bg-slate-700 text-slate-400"

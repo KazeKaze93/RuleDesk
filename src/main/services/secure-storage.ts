@@ -1,55 +1,47 @@
 import { safeStorage } from "electron";
 import { logger } from "../lib/logger";
 
-/**
- * Encrypts a string using Electron's safeStorage API.
- * @param text - The plaintext string to encrypt
- * @returns A Buffer containing the encrypted data
- * @throws Error if encryption is not available
- */
-export function encryptString(text: string): Buffer {
-  if (!safeStorage.isEncryptionAvailable()) {
-    const error = new Error(
-      "Encryption is not available. This may occur on Linux systems without a keyring service."
-    );
-    logger.error("SecureStorage: Encryption not available", error);
-    throw error;
+export class SecureStorage {
+  /**
+   * Encrypts a string using Electron's safeStorage.
+   * @throws Error if encryption is unavailable or fails.
+   */
+  public static encrypt(plainText: string): string {
+    if (!plainText) return "";
+
+    if (!safeStorage.isEncryptionAvailable()) {
+      const error = "CRITICAL: Encryption is not available on this system.";
+      logger.error(`[SecureStorage] ${error}`);
+      throw new Error(error);
+    }
+
+    try {
+      const buffer = safeStorage.encryptString(plainText);
+      return buffer.toString("base64");
+    } catch (error) {
+      logger.error("[SecureStorage] Encryption failed:", error);
+      throw new Error("Failed to encrypt data.");
+    }
   }
 
-  try {
-    const encrypted = safeStorage.encryptString(text);
-    logger.debug("SecureStorage: String encrypted successfully");
-    return encrypted;
-  } catch (error) {
-    logger.error("SecureStorage: Encryption failed", error);
-    throw error;
-  }
-}
+  /**
+   * Decrypts a base64 encoded string.
+   * Returns the original string or null if decryption fails.
+   */
+  public static decrypt(encryptedBase64: string): string | null {
+    if (!encryptedBase64) return null;
 
-/**
- * Decrypts a Buffer that was encrypted using encryptString.
- * @param encrypted - The encrypted Buffer to decrypt
- * @returns The decrypted plaintext string
- * @throws Error if decryption fails
- */
-export function decryptString(encrypted: Buffer): string {
-  if (!safeStorage.isEncryptionAvailable()) {
-    const error = new Error(
-      "Encryption is not available. Cannot decrypt data."
-    );
-    logger.error(
-      "SecureStorage: Encryption not available for decryption",
-      error
-    );
-    throw error;
-  }
+    if (!safeStorage.isEncryptionAvailable()) {
+      logger.error("[SecureStorage] Cannot decrypt: Encryption unavailable.");
+      return null;
+    }
 
-  try {
-    const decrypted = safeStorage.decryptString(encrypted);
-    logger.debug("SecureStorage: String decrypted successfully");
-    return decrypted;
-  } catch (error) {
-    logger.error("SecureStorage: Decryption failed", error);
-    throw error;
+    try {
+      const buffer = Buffer.from(encryptedBase64, "base64");
+      return safeStorage.decryptString(buffer);
+    } catch (error) {
+      logger.error("[SecureStorage] Decryption failed:", error);
+      return null; // Fail safe: return null, never return raw garbage
+    }
   }
 }

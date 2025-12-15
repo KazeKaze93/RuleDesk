@@ -19,10 +19,8 @@ import type { WorkerRequest, WorkerResponse } from "./worker-types";
 import * as path from "path";
 import * as fs from "fs";
 import { logger } from "../lib/logger";
-import { app } from "electron";
 
-// 🛑 FIX: Отключаем файловый логгер в Worker'е (чтобы не было ошибки getPath)
-if (!app && logger?.transports?.file) {
+if (logger && logger.transports && logger.transports.file) {
   logger.transports.file.level = false;
 }
 
@@ -32,13 +30,19 @@ let db: DbType | null = null;
 let dbInstance: Database.Database | null = null;
 let dbPath: string | null = null;
 
+interface RawSettingsRow {
+  user_id: string;
+  api_key?: string;
+  encrypted_api_key?: string;
+}
+
 // --- Helpers ---
 function sendResponse(response: WorkerResponse): void {
   if (parentPort) parentPort.postMessage(response);
 }
 function sendError(id: string, error: unknown): void {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  sendResponse({ id, success: false, error: errorMessage });
+  const msg = error instanceof Error ? error.message : String(error);
+  sendResponse({ id, success: false, error: msg });
 }
 function sendSuccess(id: string, data?: unknown): void {
   sendResponse({ id, success: true, data });
@@ -53,25 +57,28 @@ function initializeDatabase(initialDbPath: string): void {
     dbPath = initialDbPath;
 
     const migrationsPath = path.join(process.cwd(), "drizzle");
-    logger.info(`Migrations: Путь: ${migrationsPath}`);
+    logger.info(`Migrations: Path: ${migrationsPath}`);
     migrate(db, { migrationsFolder: migrationsPath });
-    logger.info("Migrations: Успешно применены.");
+    logger.info("Migrations: Success.");
 
-    // 🛑 FIX: Авто-ремонт названия колонки
+    // Schema Auto-fix
     try {
-      const tableInfo = dbInstance.pragma("table_info(settings)") as any[];
+      const tableInfo = dbInstance.pragma("table_info(settings)") as Array<{
+        name: string;
+      }>;
       const hasApiKey = tableInfo.some((c) => c.name === "api_key");
       const hasEncryptedKey = tableInfo.some(
         (c) => c.name === "encrypted_api_key"
       );
+
       if (hasApiKey && !hasEncryptedKey) {
         dbInstance.exec(
           "ALTER TABLE settings RENAME COLUMN api_key TO encrypted_api_key"
         );
-        logger.info("DbService: Renamed api_key to encrypted_api_key");
+        logger.info("DbService: Migrated column api_key -> encrypted_api_key");
       }
-    } catch (_e) {
-      /* ignore */
+    } catch (e) {
+      logger.warn("DbService: Schema auto-fix skipped", e);
     }
   } catch (error) {
     logger.error("Migrations: FATAL ERROR", error);
@@ -79,17 +86,17 @@ function initializeDatabase(initialDbPath: string): void {
   }
 }
 
-// 🛑 FIX: Raw SQL для получения настроек
 function getSettingsRaw(db: Database.Database) {
   try {
-    const row = db.prepare("SELECT * FROM settings LIMIT 1").get() as any;
+    const row = db.prepare("SELECT * FROM settings LIMIT 1").get() as
+      | RawSettingsRow
+      | undefined;
     if (!row) return null;
     return {
       userId: row.user_id,
-      // Берем что есть: или encrypted_api_key, или api_key
       encryptedApiKey: row.encrypted_api_key || row.api_key,
     };
-  } catch (_e) {
+  } catch {
     return null;
   }
 }
@@ -139,8 +146,9 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
           userId: string;
           apiKey: string;
         };
-
-        const tableInfo = dbInstance!.pragma("table_info(settings)") as any[];
+        const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
+          name: string;
+        }>;
         const colName = tableInfo.some((c) => c.name === "encrypted_api_key")
           ? "encrypted_api_key"
           : "api_key";
@@ -163,11 +171,12 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
               .run(userId, apiKey);
           }
         })();
-
         sendSuccess(request.id);
         break;
       }
 
+      // ... Остальные методы (getTrackedArtists и т.д.) оставляем как были
+      // (Я их сократил для чтения, но в реальном файле они должны быть)
       case "getTrackedArtists":
         sendSuccess(
           request.id,
@@ -181,12 +190,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         const ad = request.payload as NewArtist;
         const res = await db
           .insert(schema.artists)
-          .values({
-            name: ad.name,
-            tag: ad.tag,
-            type: ad.type,
-            apiEndpoint: ad.apiEndpoint,
-          })
+          .values(ad)
           .returning({ id: schema.artists.id });
         sendSuccess(
           request.id,
@@ -201,9 +205,14 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         const { artistId, newMaxPostId, postsAddedCount } =
           request.payload as any;
         const now = Date.now();
-        await db.run(
-          sql`UPDATE ${schema.artists} SET last_post_id = CASE WHEN ${newMaxPostId} > last_post_id THEN ${newMaxPostId} ELSE last_post_id END, new_posts_count = new_posts_count + ${postsAddedCount}, last_checked = ${now} WHERE ${schema.artists.id} = ${artistId}`
-        );
+        await db.run(sql`
+            UPDATE ${schema.artists} 
+            SET 
+                last_post_id = CASE WHEN ${newMaxPostId} > last_post_id THEN ${newMaxPostId} ELSE last_post_id END, 
+                new_posts_count = new_posts_count + ${postsAddedCount}, 
+                last_checked = ${now} 
+            WHERE ${schema.artists.id} = ${artistId}
+        `);
         sendSuccess(request.id);
         break;
       }
