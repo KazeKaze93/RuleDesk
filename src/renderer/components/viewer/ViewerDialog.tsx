@@ -7,18 +7,18 @@ import {
   Heart,
   Check,
   Download,
-  ExternalLink, // Используется
-  MoreHorizontal, // Используется
-  Tags, // Используется
-  ChevronLeft, // Используется
-  ChevronRight, // Используется
-  Folder, // Используется
+  ExternalLink,
+  MoreHorizontal,
+  Tags,
+  ChevronLeft,
+  ChevronRight,
+  Folder,
 } from "lucide-react";
 import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import type { Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
 
-// --- Хелперы (useCurrentPost остается прежним) ---
+// --- Хелперы  ---
 
 const useCurrentPost = (
   currentPostId: number | null,
@@ -47,7 +47,7 @@ const useCurrentPost = (
   }, [currentPostId, origin, queryClient]);
 };
 
-// --- Под-компонент для Медиа (оставлен без изменений) ---
+// --- Под-компонент для Медиа ---
 const ViewerMedia = ({ post }: { post: Post }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
@@ -196,7 +196,7 @@ export const ViewerDialog = () => {
   const downloadImage = async () => {
     if (!post || isDownloading) return;
 
-    setDownloadProgress(1); // Начинаем с 1%, чтобы лоадер появился сразу
+    setDownloadProgress(1);
 
     try {
       const ext = post.fileUrl.split(".").pop() || "jpg";
@@ -205,7 +205,7 @@ export const ViewerDialog = () => {
       const result = await window.api.downloadFile(post.fileUrl, filename);
 
       if (result && result.success && result.path) {
-        setDownloadPath(result.path); // Сохраняем путь для кнопки "Открыть папку"
+        setDownloadPath(result.path);
       } else if (result && result.canceled) {
         // Отмена
       } else {
@@ -216,18 +216,17 @@ export const ViewerDialog = () => {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       alert(`Download failed: ${errorMessage}`);
-      setDownloadProgress(0); // Сброс лоадера при критической ошибке IPC
+      setDownloadProgress(0);
     }
   };
 
   // Логика Открытия папки
   const openFolder = async () => {
-    // Если путь есть, открываем его, иначе открываем папку по умолчанию (BooruClient)
     const path = downloadPath || "";
     await window.api.openFileInFolder(path);
   };
 
-  // Управление видимостью контролов (без изменений)
+  // Управление видимостью контролов
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     const handleMouseMove = () => {
@@ -364,7 +363,6 @@ export const ViewerDialog = () => {
               )}
 
               {isCurrentlyDownloading ? (
-                // 🔥 ФИКС: Вместо Loader2 показываем процент
                 <div className="flex relative z-10 items-center text-xs text-white/90">
                   {downloadProgress}%
                 </div>
