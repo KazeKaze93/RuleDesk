@@ -167,71 +167,74 @@ We are moving to Feature Development. Implement the following modules:
 
 ## 🛡️ Security & Reliability (Hardening)
 
-### DB Worker Thread Migration (better-sqlite3) ⏳ Not Started
+### DB Worker Thread Migration (better-sqlite3) ✅ COMPLETED
 
 **Goal:** Move ALL SQLite access out of Main into a dedicated Worker Thread (single DB actor).
 
 **Tasks:**
 
-- [ ] Create dedicated Worker Thread for database operations
-- [ ] Replace direct `DbService` calls with worker RPC (request/response with correlationId + timeouts)
-- [ ] Run startup maintenance (schema fix / repair tags / migrations) inside worker (non-blocking UI)
-- [ ] Add basic progress events for long operations (maintenance/sync/repair)
+- [x] Create dedicated Worker Thread for database operations
+- [x] Replace direct `DbService` calls with worker RPC (request/response with correlationId + timeouts)
+- [x] Run startup maintenance (schema fix / repair tags / migrations) inside worker (non-blocking UI)
+- [x] Add basic progress events for long operations (maintenance/sync/repair)
 
 **Implementation Notes:**
 
-- Use Node.js `worker_threads` module
-- Implement RPC pattern with correlation IDs for request/response matching
-- Add timeout handling for worker requests
-- Maintain type safety across worker boundary
+- Uses Node.js `worker_threads` module
+- RPC pattern with correlation IDs for request/response matching implemented
+- Timeout handling for worker requests implemented
+- Type safety maintained across worker boundary via `WorkerRequest` and `WorkerResponse` types
 
-**Status:** `DbService` currently runs directly in Main Process. All database operations block the main thread.
+**Status:** ✅ **COMPLETED:** All database operations now run in a dedicated worker thread (`src/main/db/db-worker.ts`). Main process communicates via `DbWorkerClient` (`src/main/db/db-worker-client.ts`).
 
 ---
 
-### Encrypt / Secure Storage for API Credentials ⏳ Not Started
+### Encrypt / Secure Storage for API Credentials ✅ COMPLETED
 
 **Goal:** Stop exposing raw API key to Renderer and encrypt credentials at rest.
 
 **Tasks:**
 
-- [ ] Stop exposing raw API key to Renderer (only "hasApiKey" / status flags)
-- [ ] Store API key encrypted at rest (preferred: OS keychain; fallback: AES-GCM + protected master key)
-- [ ] Update settings flow: DB keeps non-secret metadata (userId), secret stored separately
-- [ ] Threat model: stolen `metadata.db` must not reveal API key in plaintext
+- [x] Stop exposing raw API key to Renderer (decryption only in Main Process)
+- [x] Store API key encrypted at rest using Electron's `safeStorage` API
+- [x] Update settings flow: DB stores encrypted API key, decryption only when needed
+- [x] Threat model: stolen `metadata.db` does not reveal API key in plaintext
 
 **Implementation Notes:**
 
-- Use `electron-store` with encryption or OS keychain (`keytar` package)
-- Windows: Credential Manager API
-- macOS: Keychain Services
-- Linux: libsecret
-- Update IPC bridge to only expose `hasApiKey` boolean, not the key itself
+- Uses Electron's built-in `safeStorage` API (`electron.safeStorage`)
+- Windows: Uses Windows Credential Manager (via Electron)
+- macOS: Uses Keychain Services (via Electron)
+- Linux: Uses libsecret (via Electron)
+- `SecureStorage` class (`src/main/services/secure-storage.ts`) handles encryption/decryption
+- API key is encrypted before saving to database, decrypted only in Main Process when needed for API calls
 
-**Status:** API key currently stored in plaintext in `settings` table. Renderer can access full API key via IPC.
+**Status:** ✅ **COMPLETED:** API keys are encrypted at rest using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
 
 ---
 
-### Database Backup / Restore System ⏳ Not Started
+### Database Backup / Restore System ✅ COMPLETED (Phase 1)
 
 **Goal:** Add backup and restore functionality to protect user data.
 
 **Tasks:**
 
-- [ ] Add manual "Backup now" action (create timestamped DB dump)
-- [ ] Add automatic pre-maintenance backup (before migrations/repair)
-- [ ] Add Restore flow (switch DB file atomically, re-run schema fix)
-- [ ] Add integrity check command (`PRAGMA integrity_check`) + recovery suggestion
-- [ ] Retention policy for backups (keep last N, cleanup old)
+- [x] Add manual "Backup now" action (create timestamped DB dump)
+- [ ] Add automatic pre-maintenance backup (before migrations/repair) - **Future enhancement**
+- [x] Add Restore flow (switch DB file atomically, re-run schema fix)
+- [ ] Add integrity check command (`PRAGMA integrity_check`) + recovery suggestion - **Future enhancement**
+- [ ] Retention policy for backups (keep last N, cleanup old) - **Future enhancement**
 
 **Implementation Notes:**
 
-- Backup location: User data directory + `/backups/`
-- Use SQLite `.backup` command or file copy with atomic rename
-- Store backup metadata (timestamp, size, integrity status)
-- UI: Settings page with backup/restore controls
+- Backup location: User data directory with timestamped filenames
+- Uses file copy with atomic operations
+- Backup metadata includes timestamp in filename
+- UI: `BackupControls` component (`src/renderer/components/BackupControls.tsx`) with backup/restore buttons
+- IPC methods: `db:create-backup` and `db:restore-backup`
+- Application automatically restarts after restore to ensure proper reinitialization
 
-**Status:** No backup/restore functionality exists. Database corruption could result in data loss.
+**Status:** ✅ **COMPLETED (Phase 1):** Manual backup and restore functionality implemented. Future enhancements include automatic backups, integrity checks, and retention policies.
 
 ---
 

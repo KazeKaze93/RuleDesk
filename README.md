@@ -20,19 +20,21 @@ This project is **unofficial** and **not affiliated** with any external website 
 
 ## ✨ Features
 
-| Feature                           | Description                                                                                                                                                                                                                                          |
-| :-------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials stored in SQLite database, accessible only from Main Process.                                                                                               |
-| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports tag-based tracking with autocomplete search. Tag normalization automatically strips metadata like "(123)" from tag names.                                |
-| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling. Real-time sync progress updates via IPC events.                    |
-| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. Database file access is strictly limited to the **Main Process** to enforce thread-safety and security. |
-| **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality.                           |
-| **🎨 Progressive Image Loading**  | 3-layer progressive image loading system: Preview (blurred/low-res) → Sample (medium-res) → Original (high-res). Provides instant visual feedback with smooth quality enhancement.                                                                   |
-| **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                   |
-| **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                 |
-| **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                        |
-| **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                |
-| **🔌 Multi-Source Ready**         | Architecture designed for future multi-booru support. Provider pattern abstraction allows adding new sources (Danbooru, Gelbooru, etc.) without core database changes.                                                                               |
+| Feature                           | Description                                                                                                                                                                                                                                                                                  |
+| :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials encrypted using Electron's `safeStorage` API and stored securely. Decryption only happens in Main Process when needed for API calls.                                                                |
+| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports tag-based tracking with autocomplete search (local and remote Rule34.xxx API). Tag normalization automatically strips metadata like "(123)" from tag names.                                      |
+| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling. Real-time sync progress updates via IPC events.                                                            |
+| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Database operations run in a dedicated **Worker Thread** to prevent blocking the main process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. Thread-safe architecture ensures data integrity. |
+| **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization.                     |
+| **🎨 Progressive Image Loading**  | 3-layer progressive image loading system: Preview (blurred/low-res) → Sample (medium-res) → Original (high-res). Provides instant visual feedback with smooth quality enhancement.                                                                                                           |
+| **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                           |
+| **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                         |
+| **💾 Backup & Restore**           | Manual database backup and restore functionality. Create timestamped backups to protect your data. Restore from backup files with automatic application restart. Backup files are stored in the user data directory.                                                                         |
+| **🔍 Search Functionality**       | Search for artists locally and search for tags remotely via Rule34.xxx autocomplete API. Supports both local database search and remote tag suggestions.                                                                                                                                     |
+| **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                                                |
+| **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                                        |
+| **🔌 Multi-Source Ready**         | Architecture designed for future multi-booru support. Provider pattern abstraction allows adding new sources (Danbooru, Gelbooru, etc.) without core database changes.                                                                                                                       |
 
 ---
 
@@ -45,8 +47,9 @@ The application adheres to a strict **Separation of Concerns (SoC)** model:
 This is the secure Node.js environment. It handles all I/O, persistence, and secrets.
 
 - **Desktop Runtime:** **Electron** (chosen for `BrowserView`/`Webview` control to support DOM injection).
-- **Database:** **SQLite** (via `better-sqlite3` driver).
+- **Database:** **SQLite** (via `better-sqlite3` driver) running in a **dedicated Worker Thread** for non-blocking operations.
 - **Data Layer:** **Drizzle ORM** (TypeScript type-safety for queries, raw SQL timestamps in milliseconds).
+- **Security:** **Secure Storage** using Electron's `safeStorage` API for encrypting API credentials at rest.
 - **API:** Custom wrapper based on `fetch`/`axios` with retry and backoff logic.
 - **Background Jobs:** Node.js timers and asynchronous workers.
 
@@ -63,15 +66,18 @@ This is the sandboxed browser environment. It handles presentation.
 
 - **IPC Bridge:** Strictly typed TypeScript interface (`bridge.ts`) used by the Renderer to communicate with the Main Process.
 - **Security:** **Context Isolation** enforced globally; no direct Node.js access from the Renderer.
+- **Encryption:** API credentials encrypted using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
+- **Worker Thread Isolation:** Database operations run in a separate worker thread, providing additional isolation and preventing main process blocking.
 
 ## ✅ Recent Fixes & Current Status
 
-The application core has been successfully stabilized:
+The application core has been successfully stabilized and enhanced with security improvements:
 
 ### Infrastructure & Build
 
 - ✅ Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
 - ✅ App runs successfully via `npm run dev` and communicates with SQLite database
+- ✅ **Database Worker Thread:** All database operations moved to a dedicated worker thread for non-blocking main process
 
 ### Database & Schema
 
@@ -79,6 +85,13 @@ The application core has been successfully stabilized:
 - ✅ Added proper `UNIQUE` constraints to the `posts` table (`artistId` + `postId`) to enable correct UPSERT operations
 - ✅ Added `sampleUrl` column for progressive image loading
 - ✅ Migrations system (`drizzle-kit`) is fully functional
+- ✅ **Worker Thread Architecture:** Database operations isolated in worker thread with RPC pattern
+
+### Security & Reliability
+
+- ✅ **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API. Credentials encrypted at rest, decryption only in Main Process
+- ✅ **Database Backup/Restore:** Manual backup and restore functionality implemented. Create timestamped backups and restore from files
+- ✅ **Thread Safety:** Database operations run in dedicated worker thread, preventing main process blocking
 
 ### Data Integrity & Sync
 
@@ -92,6 +105,9 @@ The application core has been successfully stabilized:
 - ✅ Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
 - ✅ Basic Gallery grid is functional
 - ✅ AsyncAutocomplete component for artist/tag search with free-text input support
+- ✅ **Search Functionality:** Local artist search and remote tag search via Rule34.xxx autocomplete API
+- ✅ **Backup Controls:** UI component for creating and restoring database backups
+- ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
 
 ---
 
@@ -172,9 +188,9 @@ We are moving to Feature Development. Priority tasks:
 
 ### 🛡️ Security & Reliability (Hardening)
 
-- **DB Worker Thread Migration** - Move SQLite access to dedicated worker thread
-- **Encrypt / Secure Storage for API Credentials** - Use OS keychain, stop exposing raw API key
-- **Database Backup / Restore System** - Manual and automatic backups with integrity checks
+- ✅ **DB Worker Thread Migration** - ✅ **COMPLETED:** SQLite access moved to dedicated worker thread
+- ✅ **Encrypt / Secure Storage for API Credentials** - ✅ **COMPLETED:** Using Electron's `safeStorage` API for encryption
+- ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented
 
 See [Roadmap](./docs/roadmap.md) for detailed implementation status and requirements.
 
@@ -208,8 +224,9 @@ npm run dev
 
 The application stores configuration in SQLite database:
 
-- **API Credentials:** Stored securely in the `settings` table (User ID and API Key)
+- **API Credentials:** Stored securely with encryption using Electron's `safeStorage` API. API keys are encrypted at rest and only decrypted in Main Process when needed for API calls.
 - **Database Location:** Electron user data directory (automatically managed)
+- **Database Architecture:** All database operations run in a dedicated worker thread for non-blocking performance
 - **No Environment Variables Required:** All configuration is handled through the UI
 
 ### Building the Binary

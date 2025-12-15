@@ -27,16 +27,26 @@ interface IpcBridge {
   getTrackedArtists: () => Promise<Artist[]>;
   addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
+  searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 
   // Posts
-  getArtistPosts: (artistId: number, page?: number) => Promise<Post[]>;
+  getArtistPosts: (params: {
+    artistId: number;
+    page?: number;
+  }) => Promise<Post[]>;
+  markPostAsViewed: (postId: number) => Promise<boolean>;
 
   // External
   openExternal: (url: string) => Promise<void>;
+  searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
 
   // Sync
   syncAll: () => Promise<boolean>;
   repairArtist: (artistId: number) => Promise<boolean>;
+
+  // Backup
+  createBackup: () => Promise<BackupResponse>;
+  restoreBackup: () => Promise<BackupResponse>;
 
   // Updater
   checkForUpdates: () => Promise<void>;
@@ -415,6 +425,134 @@ await window.api.quitAndInstall();
 
 ---
 
+### `markPostAsViewed(postId: number)`
+
+Marks a post as viewed in the database.
+
+**Parameters:**
+
+- `postId: number` - Post ID to mark as viewed
+
+**Returns:** `Promise<boolean>`
+
+**Example:**
+
+```typescript
+const success = await window.api.markPostAsViewed(123);
+if (success) {
+  console.log("Post marked as viewed");
+}
+```
+
+**IPC Channel:** `db:mark-post-viewed`
+
+---
+
+### `searchArtists(query: string)`
+
+Searches for artists in the local database by name or tag.
+
+**Parameters:**
+
+- `query: string` - Search query string
+
+**Returns:** `Promise<{ id: number; label: string }[]>`
+
+**Example:**
+
+```typescript
+const results = await window.api.searchArtists("artist");
+results.forEach((result) => {
+  console.log(result.id, result.label);
+});
+```
+
+**IPC Channel:** `db:search-tags`
+
+---
+
+### `searchRemoteTags(query: string)`
+
+Searches for tags using Rule34.xxx autocomplete API.
+
+**Parameters:**
+
+- `query: string` - Search query string (minimum 2 characters)
+
+**Returns:** `Promise<{ id: string; label: string }[]>`
+
+**Example:**
+
+```typescript
+const results = await window.api.searchRemoteTags("tag");
+results.forEach((result) => {
+  console.log(result.id, result.label);
+});
+```
+
+**IPC Channel:** `api:search-remote-tags`
+
+**Note:** Requires at least 2 characters. Returns empty array if query is too short or API call fails.
+
+---
+
+### `createBackup()`
+
+Creates a timestamped backup of the database.
+
+**Returns:** `Promise<BackupResponse>`
+
+**BackupResponse Type:**
+
+```typescript
+type BackupResponse = {
+  success: boolean;
+  path?: string;
+  error?: string;
+};
+```
+
+**Example:**
+
+```typescript
+const result = await window.api.createBackup();
+if (result.success) {
+  console.log(`Backup created at: ${result.path}`);
+} else {
+  console.error(`Backup failed: ${result.error}`);
+}
+```
+
+**IPC Channel:** `db:create-backup`
+
+**Note:** The backup file is created in the user data directory. The file explorer will open to show the backup location.
+
+---
+
+### `restoreBackup()`
+
+Restores the database from a backup file. Opens a file dialog to select the backup file.
+
+**Returns:** `Promise<BackupResponse>`
+
+**Example:**
+
+```typescript
+const result = await window.api.restoreBackup();
+if (result.success) {
+  console.log("Backup restored successfully");
+  // Application will restart automatically
+} else if (result.error !== "Canceled by user") {
+  console.error(`Restore failed: ${result.error}`);
+}
+```
+
+**IPC Channel:** `db:restore-backup`
+
+**Warning:** This will overwrite the current database. The application will restart automatically after restore. User confirmation is required before restore.
+
+---
+
 ### Event Listeners
 
 The IPC bridge provides several event listeners for real-time updates:
@@ -578,9 +716,13 @@ try {
 
 2. **Type Safety:** All IPC communication is strictly typed. The bridge interface ensures type safety at compile time.
 
-3. **Input Validation:** All inputs are validated in the Main process before processing.
+3. **Input Validation:** All inputs are validated in the Main process using Zod schemas before processing.
 
 4. **Error Propagation:** Errors are properly propagated from Main to Renderer, but sensitive information is not exposed.
+
+5. **Secure Credentials:** API keys are encrypted at rest using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
+
+6. **Worker Thread Isolation:** Database operations run in a dedicated worker thread, providing additional isolation.
 
 ## Implementation Details
 
@@ -590,60 +732,89 @@ IPC handlers are registered in `src/main/ipc.ts`:
 
 ```typescript
 export const registerIpcHandlers = (
-  dbService: DbService,
-  syncService: SyncService
+  dbWorkerClient: DbWorkerClient,
+  syncService: SyncService,
+  updaterService: UpdaterService,
+  mainWindow: BrowserWindow
 ) => {
   // App handlers
   ipcMain.handle("app:get-version", handleGetAppVersion);
   ipcMain.handle("app:get-settings", async () => {
-    return dbService.getSettings();
+    // Decrypts API key using SecureStorage
+    const settings = await dbWorkerClient.call("getApiKeyDecrypted");
+    // ... decryption logic
   });
-  ipcMain.handle("app:save-settings", async (_event, data: unknown) => {
-    // Validation with Zod schema
-    return dbService.saveSettings(userId, apiKey);
+  ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
+    // Encrypts API key using SecureStorage before saving
+    const encryptedKey = SecureStorage.encrypt(apiKey);
+    await dbWorkerClient.call("saveSettings", { userId, apiKey: encryptedKey });
   });
   ipcMain.handle("app:open-external", async (_event, urlString: string) => {
     // Security validation and shell.openExternal
   });
 
-  // Updater handlers (registered in UpdaterService)
-  ipcMain.handle("app:check-for-updates", async () => {
-    return updaterService.checkForUpdates();
-  });
-  ipcMain.handle("app:start-download", () => {
-    // Starts update download
-  });
-  ipcMain.handle("app:quit-and-install", () => {
-    // Quits and installs update
-  });
-
-  // Database handlers
+  // Database handlers (via worker thread)
   ipcMain.handle("db:get-artists", async () => {
-    return dbService.getTrackedArtists();
+    return dbWorkerClient.call("getTrackedArtists");
   });
-  ipcMain.handle("db:add-artist", async (_event, artistData: NewArtist) => {
-    // Validation and processing
-    return dbService.addArtist(artistData);
+  ipcMain.handle("db:add-artist", async (_event, payload: unknown) => {
+    // Zod validation
+    const artistData = AddArtistSchema.parse(payload);
+    return dbWorkerClient.call("addArtist", artistData);
   });
-  ipcMain.handle("db:delete-artist", async (_event, id: number) => {
-    return dbService.deleteArtist(id);
+  ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
+    const validId = DeleteArtistSchema.parse(id);
+    return dbWorkerClient.call("deleteArtist", { id: validId });
   });
   ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
-    // Validation with Zod schema
-    const { artistId, page, limit } = validatedPayload;
+    // Zod validation
+    const { artistId, page, limit } = GetPostsSchema.parse(payload);
     const offset = (page - 1) * limit;
-    return dbService.getPostsByArtist(artistId, limit, offset);
+    return dbWorkerClient.call("getPostsByArtist", { artistId, limit, offset });
   });
-  ipcMain.handle("db:sync-all", async () => {
-    // Initiates background sync
-    syncService.syncAllArtists();
+  ipcMain.handle("db:mark-post-viewed", async (_event, postId: unknown) => {
+    const validId = MarkViewedSchema.parse(postId);
+    return dbWorkerClient.call("markPostAsViewed", { postId: validId });
+  });
+  ipcMain.handle("db:search-tags", async (_event, query: unknown) => {
+    const validQuery = SearchTagsSchema.parse(query);
+    return dbWorkerClient.call("searchArtists", { query: validQuery });
+  });
+
+  // Backup handlers
+  ipcMain.handle("db:create-backup", async () => {
+    const result = await dbWorkerClient.call("backup");
+    shell.showItemInFolder(result.backupPath);
+    return { success: true, path: result.backupPath };
+  });
+  ipcMain.handle("db:restore-backup", async () => {
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+      filters: [{ name: "SQLite DB", extensions: ["db", "sqlite"] }],
+    });
+    await dbWorkerClient.restore(filePaths[0]);
+    mainWindow.reload();
+    return { success: true };
+  });
+
+  // Remote search
+  ipcMain.handle("api:search-remote-tags", async (_event, query: unknown) => {
+    // Calls Rule34.xxx autocomplete API
   });
 
   // Sync handlers
+  ipcMain.handle("db:sync-all", async () => {
+    syncService.syncAllArtists();
+  });
   ipcMain.handle("sync:repair-artist", async (_event, artistId: number) => {
     await syncService.repairArtist(artistId);
     return { success: true };
   });
+
+  // Updater handlers
+  ipcMain.handle("app:check-for-updates", () => {
+    updaterService.checkForUpdates();
+  });
+  // ... other updater handlers
 };
 ```
 
@@ -661,15 +832,23 @@ const ipcBridge: IpcBridge = {
   getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),
   addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
   deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
+  searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
 
   getArtistPosts: ({ artistId, page }) =>
     ipcRenderer.invoke("db:get-posts", { artistId, page }),
+  markPostAsViewed: (postId) =>
+    ipcRenderer.invoke("db:mark-post-viewed", postId),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
+  searchRemoteTags: (query) =>
+    ipcRenderer.invoke("api:search-remote-tags", query),
 
   syncAll: () => ipcRenderer.invoke("db:sync-all"),
   repairArtist: (artistId) =>
     ipcRenderer.invoke("sync:repair-artist", artistId),
+
+  createBackup: () => ipcRenderer.invoke("db:create-backup"),
+  restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
 
   // Updater methods
   checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
@@ -723,6 +902,8 @@ Planned API methods (not yet implemented):
 - `getSubscriptions()` - Get tag subscriptions
 - `addSubscription(tagString: string)` - Subscribe to a tag combination
 - `deleteSubscription(id: number)` - Remove a subscription
+- `getBackupList()` - List available backup files
+- `deleteBackup(backupPath: string)` - Delete a backup file
 
 ## External API Integration
 
@@ -739,4 +920,3 @@ The application integrates with **Rule34.xxx API**. Integration is handled in th
 **API Endpoint:** `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index`
 
 See [Rule34 API Reference](./rule34-api-reference.md) for detailed API documentation.
-

@@ -24,17 +24,17 @@ const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
 
 Stores information about tracked artists/users.
 
-| Column            | Type                           | Description                     |
-| ----------------- | ------------------------------ | ------------------------------- |
-| `id`              | INTEGER (PK, AutoIncrement)    | Primary key                     |
-| `name`            | TEXT (NOT NULL)                | Artist display name             |
-| `tag`             | TEXT (NOT NULL, UNIQUE)        | Tag or username for tracking    |
-| `type`            | TEXT (NOT NULL, DEFAULT 'tag') | Type: "tag" or "uploader"       |
-| `api_endpoint`    | TEXT (NOT NULL)                | Base API endpoint URL           |
-| `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)  | ID of the last seen post        |
-| `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)  | Count of new, unviewed posts    |
-| `last_checked`    | INTEGER (NULL)                 | Timestamp of last API poll (timestamp mode)    |
-| `created_at`      | INTEGER (NOT NULL)             | Creation timestamp (timestamp mode, ms)        |
+| Column            | Type                           | Description                                 |
+| ----------------- | ------------------------------ | ------------------------------------------- |
+| `id`              | INTEGER (PK, AutoIncrement)    | Primary key                                 |
+| `name`            | TEXT (NOT NULL)                | Artist display name                         |
+| `tag`             | TEXT (NOT NULL, UNIQUE)        | Tag or username for tracking                |
+| `type`            | TEXT (NOT NULL, DEFAULT 'tag') | Type: "tag" or "uploader"                   |
+| `api_endpoint`    | TEXT (NOT NULL)                | Base API endpoint URL                       |
+| `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)  | ID of the last seen post                    |
+| `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)  | Count of new, unviewed posts                |
+| `last_checked`    | INTEGER (NULL)                 | Timestamp of last API poll (timestamp mode) |
+| `created_at`      | INTEGER (NOT NULL)             | Creation timestamp (timestamp mode, ms)     |
 
 **Schema Definition:**
 
@@ -65,20 +65,20 @@ export type NewArtist = typeof artists.$inferInsert;
 
 Caches post metadata for filtering, statistics, and download management. Supports progressive image loading with preview, sample, and full-resolution URLs.
 
-| Column         | Type                                   | Description                                    |
-| -------------- | -------------------------------------- | ---------------------------------------------- |
-| `id`           | INTEGER (PK, AutoIncrement)            | Internal post ID                                |
-| `post_id`      | INTEGER (NOT NULL)                     | Post ID from external API                       |
-| `artist_id`    | INTEGER (FK → artists.id)              | Reference to artist                            |
-| `file_url`     | TEXT (NOT NULL)                        | Direct URL to full-resolution media file       |
-| `preview_url`  | TEXT (NOT NULL)                        | URL to low-resolution preview (blurred)        |
-| `sample_url`   | TEXT (NOT NULL, DEFAULT '')            | URL to medium-resolution sample                |
-| `title`        | TEXT                                   | Post title                                     |
-| `rating`       | TEXT                                   | Content rating (safe, questionable, explicit)  |
-| `tags`         | TEXT                                   | Space-separated tags                           |
-| `published_at` | TEXT                                   | Publication timestamp (as string)              |
-| `created_at`   | INTEGER (NOT NULL)                     | When added to local database (timestamp ms)     |
-| `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been viewed                   |
+| Column         | Type                                   | Description                                   |
+| -------------- | -------------------------------------- | --------------------------------------------- |
+| `id`           | INTEGER (PK, AutoIncrement)            | Internal post ID                              |
+| `post_id`      | INTEGER (NOT NULL)                     | Post ID from external API                     |
+| `artist_id`    | INTEGER (FK → artists.id)              | Reference to artist                           |
+| `file_url`     | TEXT (NOT NULL)                        | Direct URL to full-resolution media file      |
+| `preview_url`  | TEXT (NOT NULL)                        | URL to low-resolution preview (blurred)       |
+| `sample_url`   | TEXT (NOT NULL, DEFAULT '')            | URL to medium-resolution sample               |
+| `title`        | TEXT                                   | Post title                                    |
+| `rating`       | TEXT                                   | Content rating (safe, questionable, explicit) |
+| `tags`         | TEXT                                   | Space-separated tags                          |
+| `published_at` | TEXT                                   | Publication timestamp (as string)             |
+| `created_at`   | INTEGER (NOT NULL)                     | When added to local database (timestamp ms)   |
+| `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been viewed                  |
 
 **Unique Constraint:** `(artist_id, post_id)` - Prevents duplicate posts per artist.
 
@@ -144,21 +144,40 @@ export const subscriptions = sqliteTable("subscriptions", {
 });
 ```
 
-## Database Service
+## Database Architecture
 
-All database operations are performed through the `DbService` class (`src/main/db/db-service.ts`).
+All database operations are performed through a **dedicated Worker Thread** to prevent blocking the main Electron process. The architecture uses an RPC (Remote Procedure Call) pattern with correlation IDs for request/response matching.
+
+### Worker Thread Architecture
+
+**Database Worker** (`src/main/db/db-worker.ts`):
+
+- Runs in a separate Node.js worker thread
+- Handles all SQLite operations using Drizzle ORM
+- Executes migrations on initialization
+- Provides thread-safe database access
+
+**Database Worker Client** (`src/main/db/db-worker-client.ts`):
+
+- Client interface for communicating with the worker thread
+- Manages worker lifecycle (initialization, termination)
+- Provides async/await interface over worker RPC calls
+- Handles backup and restore operations
 
 ### Initialization
 
 ```typescript
-import Database from "better-sqlite3";
-import { DbService } from "./db/db-service";
+import { DbWorkerClient } from "./db/db-worker-client";
 
-const dbInstance = new Database(DB_PATH);
-const dbService = new DbService(dbInstance);
+const dbWorkerClient = new DbWorkerClient(DB_PATH);
+await dbWorkerClient.initialize();
 ```
 
-### Available Methods
+**Note:** The worker thread is automatically initialized when `DbWorkerClient` is created. Migrations run automatically on worker initialization.
+
+### Available Methods (via Worker Client)
+
+All database operations are accessed through `DbWorkerClient.call()` method, which communicates with the worker thread via RPC.
 
 #### `getTrackedArtists(): Promise<Artist[]>`
 
@@ -167,7 +186,7 @@ Retrieves all tracked artists, ordered by username.
 **Example:**
 
 ```typescript
-const artists = await dbService.getTrackedArtists();
+const artists = await dbWorkerClient.call("getTrackedArtists");
 ```
 
 #### `addArtist(artistData: NewArtist): Promise<Artist>`
@@ -186,7 +205,7 @@ const newArtist: NewArtist = {
   newPostsCount: 0,
 };
 
-const savedArtist = await dbService.addArtist(newArtist);
+const savedArtist = await dbWorkerClient.call("addArtist", newArtist);
 ```
 
 #### `deleteArtist(id: number): Promise<void>`
@@ -196,32 +215,40 @@ Deletes an artist and all associated posts (cascade delete).
 **Example:**
 
 ```typescript
-await dbService.deleteArtist(123);
+await dbWorkerClient.call("deleteArtist", { id: 123 });
 ```
 
-#### `getPostsByArtist(artistId: number, limit?: number, offset?: number): Promise<Post[]>`
+#### `getPostsByArtist(params: { artistId: number; limit?: number; offset?: number }): Promise<Post[]>`
 
 Retrieves posts for a specific artist with pagination.
 
 **Parameters:**
 
-- `artistId: number` - Artist ID
-- `limit?: number` - Number of posts to retrieve (default: 1000)
-- `offset?: number` - Number of posts to skip (default: 0)
+- `params.artistId: number` - Artist ID
+- `params.limit?: number` - Number of posts to retrieve (default: 1000)
+- `params.offset?: number` - Number of posts to skip (default: 0)
 
 **Example:**
 
 ```typescript
 // Get first 50 posts
-const posts = await dbService.getPostsByArtist(123, 50, 0);
+const posts = await dbWorkerClient.call("getPostsByArtist", {
+  artistId: 123,
+  limit: 50,
+  offset: 0,
+});
 
 // Get next 50 posts (page 2)
-const nextPosts = await dbService.getPostsByArtist(123, 50, 50);
+const nextPosts = await dbWorkerClient.call("getPostsByArtist", {
+  artistId: 123,
+  limit: 50,
+  offset: 50,
+});
 ```
 
 **Note:** The IPC method `getArtistPosts` uses a limit of 50 posts per page for better performance.
 
-#### `savePostsForArtist(artistId: number, posts: NewPost[]): Promise<void>`
+#### `savePostsForArtist(params: { artistId: number; posts: NewPost[] }): Promise<void>`
 
 Saves posts for an artist. Updates artist's `lastPostId` and increments `newPostsCount`.
 
@@ -230,50 +257,91 @@ Saves posts for an artist. Updates artist's `lastPostId` and increments `newPost
 ```typescript
 const newPosts: NewPost[] = [
   {
-    id: 12345,
+    postId: 12345,
     artistId: 1,
     fileUrl: "https://...",
     previewUrl: "https://...",
     rating: "s",
     tags: "tag1 tag2 tag3",
-    publishedAt: 1234567890,
+    publishedAt: "1234567890",
   },
 ];
 
-await dbService.savePostsForArtist(1, newPosts);
+await dbWorkerClient.call("savePostsForArtist", {
+  artistId: 1,
+  posts: newPosts,
+});
 ```
 
-#### `getSettings(): Promise<Settings | undefined>`
+#### `getSettings(): Promise<{ userId: string; apiKey: string } | undefined>`
 
-Retrieves stored API credentials.
+Retrieves stored API credentials. Returns encrypted API key (needs decryption in Main Process).
 
 **Example:**
 
 ```typescript
-const settings = await dbService.getSettings();
+const settings = await dbWorkerClient.call("getApiKeyDecrypted");
 if (settings) {
-  console.log(settings.userId);
+  // API key is encrypted, decrypt using SecureStorage
+  const decryptedKey = SecureStorage.decrypt(settings.apiKey);
 }
 ```
 
-#### `saveSettings(userId: string, apiKey: string): Promise<void>`
+#### `saveSettings(params: { userId: string; apiKey: string }): Promise<void>`
 
-Saves or updates API credentials (always uses id=1).
+Saves or updates API credentials. API key should be encrypted before saving.
 
 **Example:**
 
 ```typescript
-await dbService.saveSettings("123456", "your-api-key");
+const encryptedKey = SecureStorage.encrypt("your-api-key");
+await dbWorkerClient.call("saveSettings", {
+  userId: "123456",
+  apiKey: encryptedKey,
+});
 ```
 
-#### `updateArtistPostStatus(artistId: number, newPostId: number, count: number): Promise<void>`
+#### `markPostAsViewed(params: { postId: number }): Promise<void>`
 
-Updates the last seen post ID and new posts count for an artist.
+Marks a post as viewed in the database.
 
 **Example:**
 
 ```typescript
-await dbService.updateArtistPostStatus(123, 45678, 5);
+await dbWorkerClient.call("markPostAsViewed", { postId: 123 });
+```
+
+#### `searchArtists(params: { query: string }): Promise<{ id: number; label: string }[]>`
+
+Searches for artists in the local database by name or tag.
+
+**Example:**
+
+```typescript
+const results = await dbWorkerClient.call("searchArtists", {
+  query: "artist",
+});
+```
+
+#### `backup(): Promise<{ backupPath: string }>`
+
+Creates a timestamped backup of the database.
+
+**Example:**
+
+```typescript
+const result = await dbWorkerClient.call("backup");
+console.log(`Backup created at: ${result.backupPath}`);
+```
+
+#### `restore(backupPath: string): Promise<void>`
+
+Restores the database from a backup file. Worker thread is terminated and reinitialized after restore.
+
+**Example:**
+
+```typescript
+await dbWorkerClient.restore("/path/to/backup.db");
 ```
 
 ## Migrations
@@ -447,23 +515,48 @@ export const artists = sqliteTable(
 
 ### Backup
 
-The database file can be backed up by copying `metadata.db` from the user data directory.
+The application provides built-in backup functionality:
+
+1. **Manual Backup:** Use `window.api.createBackup()` or the Backup Controls UI component
+2. **Backup Location:** Backups are stored in the user data directory with timestamped filenames
+3. **Backup Format:** Full SQLite database copy
+
+**Example:**
+
+```typescript
+const result = await window.api.createBackup();
+if (result.success) {
+  console.log(`Backup created at: ${result.path}`);
+}
+```
 
 ### Recovery
 
-If the database becomes corrupted:
+**Using the Application:**
+
+1. Use `window.api.restoreBackup()` or the Backup Controls UI component
+2. Select a backup file from the file dialog
+3. Application will automatically restart after restore
+
+**Manual Recovery:**
+
+If the database becomes corrupted and you need to restore manually:
 
 1. Stop the application
-2. Delete or rename `metadata.db`
-3. Restart the application (migrations will recreate the schema)
-4. Re-add artists and data
+2. Locate the backup file (in user data directory)
+3. Copy the backup file to replace `metadata.db`
+4. Restart the application (migrations will run automatically)
+
+**Note:** The application will automatically reload after restore to ensure all components are reinitialized with the restored data.
 
 ## Performance Considerations
 
-1. **Indexes:** Add indexes on frequently queried columns
-2. **Batch Operations:** Use transactions for multiple inserts
-3. **Query Optimization:** Use Drizzle's query builder efficiently
-4. **Connection Pooling:** SQLite uses a single connection (better-sqlite3)
+1. **Worker Thread Isolation:** Database operations run in a separate thread, preventing main process blocking
+2. **Indexes:** Add indexes on frequently queried columns
+3. **Batch Operations:** Use transactions for multiple inserts
+4. **Query Optimization:** Use Drizzle's query builder efficiently
+5. **Connection Pooling:** SQLite uses a single connection in the worker thread (better-sqlite3)
+6. **RPC Pattern:** Worker communication uses correlation IDs for efficient request/response matching
 
 ## Future Enhancements
 
@@ -474,5 +567,3 @@ Planned database improvements:
 - Statistics tables for analytics
 - Export/import functionality
 - Database compaction utilities
-
-
