@@ -5,6 +5,7 @@ import axios, { AxiosProgressEvent } from "axios";
 import { pipeline } from "stream/promises";
 import { logger } from "../../lib/logger";
 import { IPC_CHANNELS } from "../channels";
+import { z } from "zod";
 
 // Вспомогательная функция для получения главного окна Electron
 // Требуется для отправки асинхронных событий (прогресса) в рендерер
@@ -12,6 +13,12 @@ const getMainWindow = (): BrowserWindow | undefined => {
   const windows = BrowserWindow.getAllWindows();
   return windows.find((w) => w.isVisible() && !w.isDestroyed()) || windows[0];
 };
+
+const FilePathSchema = z
+  .string()
+  .min(1, "File path must be a non-empty string.");
+
+const DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 
 export const registerFileHandlers = () => {
   let totalBytes = 0;
@@ -28,7 +35,7 @@ export const registerFileHandlers = () => {
 
       try {
         // Инициализация пути
-        const defaultDir = path.join(app.getPath("downloads"), "BooruClient");
+        const defaultDir = DOWNLOAD_ROOT;
         if (!fs.existsSync(defaultDir)) {
           fs.mkdirSync(defaultDir, { recursive: true });
         }
@@ -112,24 +119,46 @@ export const registerFileHandlers = () => {
   ipcMain.handle(
     IPC_CHANNELS.FILES.OPEN_FOLDER,
     async (_, filePath: string) => {
+      // 1. Валидация входных данных
+      const validation = FilePathSchema.safeParse(filePath);
+      if (!validation.success) {
+        logger.warn(
+          `IPC: OPEN_FOLDER failed validation: ${validation.error.message}`
+        );
+        return false;
+      }
+      const validatedPath = validation.data;
+
       try {
-        if (filePath && fs.existsSync(filePath)) {
+        // 2. 🔥 ПРОВЕРКА RCE (CRITICAL SECURITY FIX)
+        // Нормализуем путь для защиты от '..' и убеждаемся, что он находится
+        // внутри контролируемой папки загрузок.
+        const normalizedPath = path.normalize(validatedPath);
+
+        // Убеждаемся, что путь начинается с DOWNLOAD_ROOT
+        if (!normalizedPath.startsWith(DOWNLOAD_ROOT)) {
+          logger.error(
+            `SECURITY VIOLATION: Attempt to open external path outside safe directory: ${normalizedPath}`
+          );
+          // Открываем только корневую папку, если путь невалиден
+          shell.openPath(DOWNLOAD_ROOT);
+          return false;
+        }
+
+        // 3. Безопасное выполнение
+        if (fs.existsSync(normalizedPath)) {
           // Открываем и выделяем конкретный файл
-          shell.showItemInFolder(filePath);
+          shell.showItemInFolder(normalizedPath);
           return true;
         }
 
-        // Если путь файла недействителен, пытаемся открыть папку по умолчанию
-        const dir = filePath
-          ? path.dirname(filePath)
-          : path.join(app.getPath("downloads"), "BooruClient");
-
-        if (fs.existsSync(dir)) {
-          await shell.openPath(dir);
+        // 4. Если файл не найден, открываем папку по умолчанию
+        if (fs.existsSync(DOWNLOAD_ROOT)) {
+          await shell.openPath(DOWNLOAD_ROOT);
           return true;
         }
 
-        logger.error(`Failed to open path or folder: ${filePath}`);
+        logger.error(`Failed to open path or folder: ${normalizedPath}`);
         return false;
       } catch (error) {
         logger.error("Failed to open folder:", error);

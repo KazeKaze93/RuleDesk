@@ -4,11 +4,19 @@ import { IPC_CHANNELS } from "../channels";
 import { PostsRepository } from "../../db/repositories/posts.repo";
 import { logger } from "../../lib/logger";
 
+const PostFilterSchema = z
+  .object({
+    tags: z.string().optional(),
+    rating: z.enum(["s", "q", "e"]).optional(),
+    isFavorited: z.boolean().optional(),
+  })
+  .partial();
+
 const GetPostsSchema = z.object({
   artistId: z.number(),
   page: z.number().default(1),
   limit: z.number().int().min(1).default(50),
-  filters: z.any().optional(),
+  filters: PostFilterSchema.optional(),
 });
 
 export const registerPostHandlers = (repo: PostsRepository) => {
