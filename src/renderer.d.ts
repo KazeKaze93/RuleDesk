@@ -1,4 +1,4 @@
-import type { Artist, NewArtist, Settings, Post } from "./main/db/schema";
+import type { Artist, NewArtist, Post } from "./main/db/schema";
 import {
   IpcBridge,
   UpdateStatusCallback,
@@ -20,9 +20,10 @@ export interface PostQueryFilters {
   isViewed?: boolean;
 }
 
-export type IpcSettings = Omit<Settings, "encryptedApiKey"> & {
-  apiKey: string;
-};
+export interface IpcSettings {
+  userId: string;
+  hasApiKey: boolean;
+}
 
 export interface IpcApi extends IpcBridge {
   // App
@@ -31,6 +32,7 @@ export interface IpcApi extends IpcBridge {
   // Settings
   getSettings: () => Promise<IpcSettings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  logout: () => Promise<void>;
   openExternal: (url: string) => Promise<void>;
 
   // Artists
@@ -79,6 +81,8 @@ export interface IpcApi extends IpcBridge {
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
   writeToClipboard: (text: string) => Promise<boolean>;
+
+  verifyCredentials: () => Promise<boolean>;
 }
 
 declare global {

@@ -46,6 +46,7 @@ export interface IpcBridge {
   // Settings
   getSettings: () => Promise<Settings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  logout: () => Promise<void>;
 
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
@@ -108,6 +109,8 @@ export interface IpcBridge {
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
+
+  verifyCredentials: () => Promise<boolean>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -120,8 +123,11 @@ const ipcBridge: IpcBridge = {
   searchRemoteTags: (query) =>
     ipcRenderer.invoke("api:search-remote-tags", query),
 
+  verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
+
   getSettings: () => ipcRenderer.invoke("app:get-settings"),
   saveSettings: (creds) => ipcRenderer.invoke("app:save-settings", creds),
+  logout: () => ipcRenderer.invoke("app:logout"),
 
   getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),
   addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),

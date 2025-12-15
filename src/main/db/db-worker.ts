@@ -56,6 +56,10 @@ const SavePostsSchema = z.object({
   posts: z.array(z.any()),
 });
 
+const PostActionPayloadSchema = z.object({
+  postId: z.number().int().positive(),
+});
+
 interface RawSettingsRow {
   user_id: string;
   api_key?: string;
@@ -137,7 +141,9 @@ function getSettingsRaw(db: Database.Database) {
     const row = db.prepare("SELECT * FROM settings LIMIT 1").get() as
       | RawSettingsRow
       | undefined;
+
     if (!row) return null;
+
     return {
       userId: row.user_id,
       encryptedApiKey: row.encrypted_api_key || row.api_key,
@@ -177,12 +183,20 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
   try {
     switch (request.type) {
-      case "getApiKeyDecrypted":
+      case "getApiKeyDecrypted": {
+        const settings = getSettingsRaw(dbInstance);
+
+        sendSuccess(request.id, {
+          userId: settings?.userId || "",
+          apiKey: settings?.encryptedApiKey || "", // Передаем именно encryptedApiKey как apiKey
+        });
+        break;
+      }
       case "getSettings": {
         const settings = getSettingsRaw(dbInstance);
         sendSuccess(request.id, {
           userId: settings?.userId || "",
-          apiKey: settings?.encryptedApiKey || "",
+          hasApiKey: !!settings?.encryptedApiKey,
         });
         break;
       }
@@ -383,7 +397,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "markPostAsViewed": {
-        const { postId } = request.payload as { postId: number };
+        const { postId } = PostActionPayloadSchema.parse(request.payload);
         await db
           .update(schema.posts)
           .set({ isViewed: true })
@@ -393,8 +407,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "togglePostFavorite": {
-        const { postId } = request.payload as { postId: number };
-
+        const { postId } = PostActionPayloadSchema.parse(request.payload);
         const currentPost = await db.query.posts.findFirst({
           where: eq(schema.posts.id, postId),
           columns: { isFavorited: true },
@@ -426,16 +439,33 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "togglePostViewed": {
-        const { postId } = request.payload as { postId: number };
+        const { postId } = PostActionPayloadSchema.parse(request.payload);
         const result = await togglePostViewed(postId);
         sendSuccess(request.id, result);
         break;
       }
 
       case "resetPostCache": {
-        const { postId } = request.payload as { postId: number };
+        const { postId } = PostActionPayloadSchema.parse(request.payload);
         const result = await resetPostCache(postId);
         sendSuccess(request.id, result);
+        break;
+      }
+
+      case "logout": {
+        const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
+          name: string;
+        }>;
+
+        const colName = tableInfo.some((c) => c.name === "encrypted_api_key")
+          ? "encrypted_api_key"
+          : "api_key";
+
+        dbInstance!
+          .prepare(`UPDATE settings SET ${colName} = NULL WHERE id = 1`)
+          .run();
+
+        sendSuccess(request.id);
         break;
       }
 

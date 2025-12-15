@@ -8,6 +8,7 @@ import {
   Settings,
   RefreshCw,
   Zap,
+  LogOut,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -42,6 +43,21 @@ export const Sidebar = () => {
     }
   };
 
+  const handleLogout = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to log out? You will need to enter your API credentials again."
+    );
+    if (!confirmed) return;
+
+    try {
+      await window.api.logout();
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to logout:", error);
+      alert("Failed to log out. Please try again.");
+    }
+  };
+
   return (
     <aside className="flex sticky top-0 flex-col w-64 h-screen border-r bg-background">
       {/* Logo Area */}
@@ -72,7 +88,7 @@ export const Sidebar = () => {
       </nav>
 
       {/* Sync Status Footer */}
-      <div className="p-4 border-t bg-muted/20">
+      <div className="p-4 space-y-2 border-t bg-muted/20">
         <button
           onClick={handleSync}
           disabled={isSyncing}
@@ -98,6 +114,16 @@ export const Sidebar = () => {
               {isSyncing ? "Syncing..." : `Last: ${lastSyncTime}`}
             </span>
           </div>
+        </button>
+
+        {/* Log Out Button */}
+        <button
+          onClick={handleLogout}
+          className="flex gap-3 items-center p-2 -ml-1 w-full text-left rounded-md transition-all text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          title="Log out"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="text-sm font-medium">Log Out</span>
         </button>
       </div>
     </aside>

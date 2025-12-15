@@ -1,4 +1,3 @@
-// Cursor: select file:src/main/ipc/index.ts
 import { BrowserWindow, ipcMain, shell, dialog, clipboard } from "electron";
 import { DbWorkerClient } from "../db/db-worker-client";
 import { SyncService } from "../services/sync-service";
@@ -18,7 +17,7 @@ import { registerViewerHandlers } from "./handlers/viewer";
 import { registerSettingsHandlers } from "./handlers/settings";
 import { registerFileHandlers } from "./handlers/files";
 
-const DeleteArtistSchema = z.number().int().positive(); // Для repair
+const DeleteArtistSchema = z.number().int().positive();
 
 // --- Helper для Sync & Maintenance ---
 const registerSyncAndMaintenanceHandlers = (
@@ -110,12 +109,16 @@ export const registerAllHandlers = (
     return true;
   });
 
-  // 🔥 FIX: Удален дубликат OPEN_EXTERNAL. Он уже регистрируется внутри registerViewerHandlers.
-  // ipcMain.handle(IPC_CHANNELS.APP.OPEN_EXTERNAL, async (_, url: string) => {
-  //   await shell.openExternal(url);
-  // });
+  // Обработчик проверки кредов
+  ipcMain.handle(IPC_CHANNELS.APP.VERIFY_CREDS, async () => {
+    return await syncService.checkCredentials();
+  });
 
-  // -------------------------------------------------------------
+  // Logout
+  ipcMain.handle(IPC_CHANNELS.APP.LOGOUT, async () => {
+    await db.call("logout");
+    return true;
+  });
 
   // 1. Init Repos
   const postsRepo = new PostsRepository(db);
@@ -124,10 +127,10 @@ export const registerAllHandlers = (
   // 2. Register Domain Handlers
   registerPostHandlers(postsRepo);
   registerArtistHandlers(artistsRepo);
-  registerViewerHandlers(); // <--- Здесь внутри уже есть OPEN_EXTERNAL
+  registerViewerHandlers();
 
   // 3. Register Settings
-  registerSettingsHandlers(db); // <--- Теперь программа дойдет сюда и зарегистрирует get-settings
+  registerSettingsHandlers(db);
 
   // 4. Register Sync and Maintenance
   registerSyncAndMaintenanceHandlers(db, syncService, mainWindow);

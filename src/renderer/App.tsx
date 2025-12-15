@@ -1,20 +1,11 @@
-import {
-  HashRouter as Router,
-  Routes,
-  Route,
-  useLocation,
-} from "react-router-dom";
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 // --- ИМПОРТЫ КОМПОНЕНТОВ ---
 import { AppLayout as Layout } from "./components/layout/AppLayout";
 import { Settings } from "./components/pages/Settings";
-import { Onboarding } from "./components/dialogs/Onboarding";
-import { Tracked } from "./components/pages/Tracked"; // Твой список авторов
-
-// 🔥 ИМПОРТ СТРАНИЦЫ АВТОРА (Твой файл)
-// Убедись, что путь правильный. Судя по названию, он может лежать в pages или gallery.
-// Если файл лежит в components/gallery/ArtistDetails.tsx, исправь путь ниже:
+import { Onboarding } from "./components/pages/Onboarding";
+import { Tracked } from "./components/pages/Tracked";
 import { ArtistDetails } from "./components/pages/ArtistDetails";
 
 // Заглушки (пока нет файлов)
@@ -37,74 +28,54 @@ const Favorites = () => (
   </div>
 );
 
-// --- AUTH GUARD ---
-const AuthGuard = ({ children }: { children: React.ReactNode }) => {
-  const location = useLocation();
-  const [isChecking, setIsChecking] = useState(true);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const settings = await window.api.getSettings();
-
-        const hasKeys = settings && settings.userId && settings.apiKey;
-
-        setNeedsOnboarding(!hasKeys);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsChecking(false);
+        setIsAuthenticated(settings?.hasApiKey ?? false);
+      } catch (error) {
+        console.error("Failed to check authentication:", error);
+        setIsAuthenticated(false);
       }
     };
     checkAuth();
-  }, [location]);
+  }, []);
 
-  if (isChecking)
+  // Show loader while checking authentication
+  if (isAuthenticated === null) {
     return (
       <div className="flex justify-center items-center h-screen">
-        Loading...
-      </div>
-    );
-
-  if (needsOnboarding) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-background">
-        <div className="p-6 w-full max-w-md">
-          <Onboarding onComplete={() => window.location.reload()} />
-        </div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
-  return <>{children}</>;
-};
 
-function App() {
+  // Show onboarding if not authenticated
+  if (isAuthenticated === false) {
+    return <Onboarding onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
+
+  // Show main app if authenticated
   return (
     <Router>
-      <AuthGuard>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Tracked />} />
-
-            <Route path="tracked" element={<Tracked />} />
-
-            {/* 🔥 МАРШРУТ ДЛЯ ТВОЕГО ФАЙЛА 🔥 */}
-            {/* :id позволяет вытащить ID автора из URL */}
-            <Route path="artist/:id" element={<ArtistDetails />} />
-
-            <Route path="browse" element={<Browse />} />
-            <Route path="updates" element={<Updates />} />
-            <Route path="favorites" element={<Favorites />} />
-            <Route path="settings" element={<Settings />} />
-
-            <Route
-              path="*"
-              element={<div className="p-10">Page Not Found (Check URL)</div>}
-            />
-          </Route>
-        </Routes>
-      </AuthGuard>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Tracked />} />
+          <Route path="tracked" element={<Tracked />} />
+          <Route path="artist/:id" element={<ArtistDetails />} />
+          <Route path="browse" element={<Browse />} />
+          <Route path="updates" element={<Updates />} />
+          <Route path="favorites" element={<Favorites />} />
+          <Route path="settings" element={<Settings />} />
+          <Route
+            path="*"
+            element={<div className="p-10">Page Not Found (Check URL)</div>}
+          />
+        </Route>
+      </Routes>
     </Router>
   );
 }

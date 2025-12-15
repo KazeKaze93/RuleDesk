@@ -1,7 +1,5 @@
-// Cursor: select file:src/renderer/components/pages/Settings.tsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 import {
   Card,
   CardContent,
@@ -9,46 +7,59 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import { Loader2, Save } from "lucide-react";
-
-// 🔥 FIX: Removed redundant interface. We use the global Window.api types.
+import { Loader2, Database, Upload } from "lucide-react";
 
 export const Settings = () => {
-  const [userId, setUserId] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+  const [restoreStatus, setRestoreStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
 
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const settings = await window.api.getSettings();
-        if (settings) {
-          // 🔥 FIX: Direct access without casting.
-          // 'settings' is inferred as 'IpcSettings' from renderer.d.ts
-          setUserId(settings.userId || "");
-          setApiKey(settings.apiKey || "");
-        }
-      } catch (error) {
-        console.error("Failed to load settings:", error);
-      }
-    };
-    loadSettings();
-  }, []);
-
-  const handleSave = async () => {
-    setIsLoading(true);
-    setStatus("idle");
+  const handleBackup = async () => {
+    setIsBackingUp(true);
+    setBackupStatus("idle");
 
     try {
-      await window.api.saveSettings({ userId, apiKey });
-      setStatus("success");
-      setTimeout(() => setStatus("idle"), 2000);
+      const result = await window.api.createBackup();
+      if (result.success) {
+        setBackupStatus("success");
+        setTimeout(() => setBackupStatus("idle"), 3000);
+      } else {
+        setBackupStatus("error");
+        setTimeout(() => setBackupStatus("idle"), 3000);
+      }
     } catch (error) {
-      console.error("Failed to save settings:", error);
-      setStatus("error");
+      console.error("Failed to create backup:", error);
+      setBackupStatus("error");
+      setTimeout(() => setBackupStatus("idle"), 3000);
     } finally {
-      setIsLoading(false);
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setIsRestoring(true);
+    setRestoreStatus("idle");
+
+    try {
+      const result = await window.api.restoreBackup();
+      if (result.success) {
+        setRestoreStatus("success");
+        setTimeout(() => setRestoreStatus("idle"), 3000);
+      } else {
+        setRestoreStatus("error");
+        setTimeout(() => setRestoreStatus("idle"), 3000);
+      }
+    } catch (error) {
+      console.error("Failed to restore backup:", error);
+      setRestoreStatus("error");
+      setTimeout(() => setRestoreStatus("idle"), 3000);
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -57,68 +68,94 @@ export const Settings = () => {
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
         <p className="text-muted-foreground">
-          Manage your API credentials and application preferences.
+          Manage your database backups and application preferences.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Rule34 API Configuration</CardTitle>
+          <CardTitle>Database Management</CardTitle>
           <CardDescription>
-            Required for syncing posts. To get api_key and user_id, go to My
-            Account &gt; Options. In the "API Access Credentials" field,
-            generate a new key. (the "Generate New Key" checkbox))
+            Create backups of your database or restore from a previous backup.
+            Backups include all your tracked artists, posts, and settings.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium leading-none">User ID</label>
-            <Input
-              placeholder="e.g. 123456"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-            />
-            <p className="text-[0.8rem] text-muted-foreground">
-              Your numeric user ID found in the URL of your profile page or in
-              the "My Account" &gt; "API Access Credentials" field.
-            </p>
-          </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center p-4 rounded-lg border">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Backup Database</h3>
+                <p className="text-sm text-muted-foreground">
+                  Create a backup file of your current database. The backup will
+                  be saved and the folder will open automatically.
+                </p>
+              </div>
+              <Button
+                onClick={handleBackup}
+                disabled={isBackingUp}
+                variant="outline"
+              >
+                {isBackingUp ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Database className="mr-2 w-4 h-4" />
+                    Backup Database
+                  </>
+                )}
+              </Button>
+            </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium leading-none">API Key</label>
-            <Input
-              type="password"
-              placeholder="Paste your API key here"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-            <p className="text-[0.8rem] text-muted-foreground">
-              Generated in "My Account" &gt; "API Access Credentials".
-            </p>
-          </div>
-
-          <div className="flex gap-4 items-center pt-4">
-            <Button onClick={handleSave} disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 w-4 h-4" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-
-            {status === "success" && (
-              <span className="text-sm font-medium text-green-500">Saved!</span>
+            {backupStatus === "success" && (
+              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
+                Backup created successfully!
+              </div>
             )}
-            {status === "error" && (
-              <span className="text-sm font-medium text-red-500">
-                Error saving.
-              </span>
+            {backupStatus === "error" && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
+                Failed to create backup. Please try again.
+              </div>
+            )}
+
+            <div className="flex justify-between items-center p-4 rounded-lg border">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Restore Database</h3>
+                <p className="text-sm text-muted-foreground">
+                  Restore your database from a previous backup file. This will
+                  replace your current database.
+                </p>
+              </div>
+              <Button
+                onClick={handleRestore}
+                disabled={isRestoring}
+                variant="outline"
+              >
+                {isRestoring ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 w-4 h-4" />
+                    Restore Database
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {restoreStatus === "success" && (
+              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
+                Database restored successfully! The page will reload.
+              </div>
+            )}
+            {restoreStatus === "error" && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
+                Failed to restore backup. Please try again.
+              </div>
             )}
           </div>
         </CardContent>

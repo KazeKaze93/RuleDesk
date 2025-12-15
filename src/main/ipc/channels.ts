@@ -4,6 +4,8 @@ export const IPC_CHANNELS = {
     OPEN_EXTERNAL: "app:open-external",
     DOWNLOAD_FILE: "app:download-file",
     WRITE_CLIPBOARD: "app:write-to-clipboard",
+    LOGOUT: "app:logout",
+    VERIFY_CREDS: "app:verify-creds",
   },
   SETTINGS: {
     GET: "app:get-settings",

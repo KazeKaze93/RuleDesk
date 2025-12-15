@@ -23,6 +23,7 @@ export type DbMethod =
   | "saveSettings"
   | "getSettingsStatus"
   | "getApiKeyDecrypted"
+  | "logout"
   // Backup
   | "backup";
 
