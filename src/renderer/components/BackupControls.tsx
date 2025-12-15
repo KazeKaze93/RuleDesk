@@ -70,6 +70,7 @@ export function BackupControls() {
         <button
           onClick={handleRestore}
           disabled={isLoading}
+          aria-label="Restore database from a backup file"
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
             isLoading
               ? "cursor-not-allowed bg-slate-700 text-slate-400"
