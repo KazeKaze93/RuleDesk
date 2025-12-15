@@ -18,4 +18,12 @@ export class PostsRepository {
   async toggleFavorite(postId: number) {
     return this.db.call("togglePostFavorite", { postId });
   }
+
+  async togglePostViewed(postId: number): Promise<boolean> {
+    return this.db.call("togglePostViewed", { postId });
+  }
+
+  async resetPostCache(postId: number): Promise<boolean> {
+    return this.db.call("resetPostCache", { postId });
+  }
 }

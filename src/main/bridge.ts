@@ -58,6 +58,10 @@ export interface IpcBridge {
     page?: number;
   }) => Promise<Post[]>;
 
+  togglePostViewed: (postId: number) => Promise<boolean>;
+
+  resetPostCache: (postId: number) => Promise<boolean>;
+
   // External
   openExternal: (url: string) => Promise<void>;
 
@@ -91,7 +95,7 @@ export interface IpcBridge {
     path?: string;
     error?: string;
     canceled?: boolean;
-  }>; // Добавил canceled
+  }>;
   openFileInFolder: (path: string) => Promise<boolean>;
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
@@ -130,6 +134,12 @@ const ipcBridge: IpcBridge = {
   togglePostFavorite: (postId) =>
     ipcRenderer.invoke("db:toggle-post-favorite", postId),
 
+  togglePostViewed: (postId) =>
+    ipcRenderer.invoke("db:toggle-post-viewed", postId),
+
+  resetPostCache: (postId) => ipcRenderer.invoke("db:reset-post-cache", postId),
+  // END FIX
+
   downloadFile: (url: string, filename: string) => {
     console.log("Bridge: Sending download request...", url);
     return ipcRenderer.invoke("files:download", url, filename);
@@ -138,7 +148,7 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke("files:open-folder", path),
 
   onDownloadProgress: (callback) => {
-    const channel = "files:download-progress"; // Соответствует IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS
+    const channel = "files:download-progress";
     const subscription = (_: IpcRendererEvent, data: DownloadProgressData) =>
       callback(data);
 

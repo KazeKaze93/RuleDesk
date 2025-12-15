@@ -114,7 +114,7 @@ export const registerAllHandlers = (
   registerSyncAndMaintenanceHandlers(db, syncService, mainWindow);
 
   // 5. Register Files (Downloads)
-  registerFileHandlers();
+  registerFileHandlers(postsRepo);
 
   logger.info("IPC: All modular handlers registered.");
 };

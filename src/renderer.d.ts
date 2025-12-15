@@ -29,7 +29,6 @@ export interface IpcApi extends IpcBridge {
   getAppVersion: () => Promise<string>;
 
   // Settings
-  // 🔥 FIX: Возвращаем дешифрованный тип
   getSettings: () => Promise<IpcSettings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
   openExternal: (url: string) => Promise<void>;
@@ -48,6 +47,10 @@ export interface IpcApi extends IpcBridge {
     page?: number;
     filters?: PostQueryFilters;
   }) => Promise<Post[]>;
+
+  togglePostViewed: (postId: number) => Promise<boolean>;
+
+  resetPostCache: (postId: number) => Promise<boolean>;
 
   // Sync
   syncAll: () => Promise<boolean>;

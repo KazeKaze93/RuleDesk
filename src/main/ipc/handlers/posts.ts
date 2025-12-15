@@ -68,4 +68,24 @@ export const registerPostHandlers = (repo: PostsRepository) => {
       }
     }
   );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DB.TOGGLE_POST_VIEWED,
+    async (_, postId: unknown) => {
+      const result = z.number().int().positive().safeParse(postId);
+      if (!result.success) {
+        logger.warn(
+          `Validation failed for togglePostViewed: ${result.error.message}`
+        );
+        return false;
+      }
+
+      try {
+        return await repo.togglePostViewed(result.data);
+      } catch (error) {
+        logger.error(`[IPC] Failed to toggle post viewed`, error);
+        return false;
+      }
+    }
+  );
 };

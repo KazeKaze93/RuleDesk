@@ -6,9 +6,9 @@ import { pipeline } from "stream/promises";
 import { logger } from "../../lib/logger";
 import { IPC_CHANNELS } from "../channels";
 import { z } from "zod";
+import { PostsRepository } from "../../db/repositories/posts.repo";
 
 // Вспомогательная функция для получения главного окна Electron
-// Требуется для отправки асинхронных событий (прогресса) в рендерер
 const getMainWindow = (): BrowserWindow | undefined => {
   const windows = BrowserWindow.getAllWindows();
   return windows.find((w) => w.isVisible() && !w.isDestroyed()) || windows[0];
@@ -20,7 +20,7 @@ const FilePathSchema = z
 
 const DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 
-export const registerFileHandlers = () => {
+export const registerFileHandlers = (repo: PostsRepository) => {
   let totalBytes = 0;
 
   // Хендлер скачивания с диалогом "Сохранить как"
@@ -34,14 +34,12 @@ export const registerFileHandlers = () => {
       }
 
       try {
-        // Инициализация пути
         const defaultDir = DOWNLOAD_ROOT;
         if (!fs.existsSync(defaultDir)) {
           fs.mkdirSync(defaultDir, { recursive: true });
         }
         const defaultPath = path.join(defaultDir, filename);
 
-        // 1. Диалог "Сохранить как"
         const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
           title: "Скачать файл",
           defaultPath: defaultPath,
@@ -62,7 +60,6 @@ export const registerFileHandlers = () => {
 
         logger.info(`IPC: Downloading: ${url} -> ${filePath}`);
 
-        // 2. HTTP-запрос с отслеживанием прогресса
         const response = await axios({
           method: "GET",
           url: url,
@@ -79,7 +76,6 @@ export const registerFileHandlers = () => {
               (progressEvent.loaded * 100) / totalBytes
             );
 
-            // Отправляем прогресс на фронтенд
             mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
               id: filename,
               percent: percent,
@@ -87,11 +83,9 @@ export const registerFileHandlers = () => {
           },
         });
 
-        // 3. Запись файла
         const writer = fs.createWriteStream(filePath);
         await pipeline(response.data, writer);
 
-        // 4. Финальный прогресс и успех
         mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
           id: filename,
           percent: 100,
@@ -99,7 +93,6 @@ export const registerFileHandlers = () => {
         logger.info(`IPC: Download success -> ${filePath}`);
         return { success: true, path: filePath };
       } catch (error) {
-        // В случае ошибки сбрасываем прогресс
         if (mainWindow) {
           mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
             id: filename,
@@ -119,7 +112,6 @@ export const registerFileHandlers = () => {
   ipcMain.handle(
     IPC_CHANNELS.FILES.OPEN_FOLDER,
     async (_, filePath: string) => {
-      // 1. Валидация входных данных
       const validation = FilePathSchema.safeParse(filePath);
       if (!validation.success) {
         logger.warn(
@@ -130,29 +122,21 @@ export const registerFileHandlers = () => {
       const validatedPath = validation.data;
 
       try {
-        // 2. 🔥 ПРОВЕРКА RCE (CRITICAL SECURITY FIX)
-        // Нормализуем путь для защиты от '..' и убеждаемся, что он находится
-        // внутри контролируемой папки загрузок.
         const normalizedPath = path.normalize(validatedPath);
 
-        // Убеждаемся, что путь начинается с DOWNLOAD_ROOT
         if (!normalizedPath.startsWith(DOWNLOAD_ROOT)) {
           logger.error(
             `SECURITY VIOLATION: Attempt to open external path outside safe directory: ${normalizedPath}`
           );
-          // Открываем только корневую папку, если путь невалиден
           shell.openPath(DOWNLOAD_ROOT);
           return false;
         }
 
-        // 3. Безопасное выполнение
         if (fs.existsSync(normalizedPath)) {
-          // Открываем и выделяем конкретный файл
           shell.showItemInFolder(normalizedPath);
           return true;
         }
 
-        // 4. Если файл не найден, открываем папку по умолчанию
         if (fs.existsSync(DOWNLOAD_ROOT)) {
           await shell.openPath(DOWNLOAD_ROOT);
           return true;
@@ -162,6 +146,27 @@ export const registerFileHandlers = () => {
         return false;
       } catch (error) {
         logger.error("Failed to open folder:", error);
+        return false;
+      }
+    }
+  );
+
+  // Обработчик для Reset Post Cache
+  ipcMain.handle(
+    IPC_CHANNELS.DB.RESET_POST_CACHE,
+    async (_, postId: unknown) => {
+      const result = z.number().int().positive().safeParse(postId);
+      if (!result.success) {
+        logger.warn(
+          `Validation failed for resetPostCache: ${result.error.message}`
+        );
+        return false;
+      }
+
+      try {
+        return await repo.resetPostCache(result.data);
+      } catch (error) {
+        logger.error(`[IPC] Failed to reset post cache`, error);
         return false;
       }
     }

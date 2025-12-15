@@ -17,6 +17,8 @@ export const IPC_CHANNELS = {
     MARK_VIEWED: "db:mark-post-viewed",
     TOGGLE_FAVORITE: "db:toggle-post-favorite",
     SYNC_ALL: "db:sync-all",
+    TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,
+    RESET_POST_CACHE: "db:reset-post-cache" as const,
   },
   API: {
     SEARCH_REMOTE: "api:search-remote-tags",

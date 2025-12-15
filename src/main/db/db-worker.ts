@@ -1,10 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-/**
- * Database Worker Thread
- * Handles all database operations in a separate thread
- */
-
 import { parentPort } from "worker_threads";
 import Database from "better-sqlite3";
 import {
@@ -63,6 +57,47 @@ interface RawSettingsRow {
   api_key?: string;
   encrypted_api_key?: string;
 }
+
+export const togglePostViewed = async (postId: number): Promise<boolean> => {
+  if (!db) {
+    console.error(`DB Worker: togglePostViewed called before initialization.`);
+    return false;
+  }
+
+  try {
+    const post = await db.query.posts.findFirst({
+      where: eq(schema.posts.id, postId),
+      columns: { isViewed: true },
+    });
+
+    if (!post) {
+      console.warn(
+        `Post with ID ${postId} not found for toggling viewed status.`
+      );
+      return false;
+    }
+
+    const newIsViewed = !post.isViewed;
+
+    await db
+      .update(schema.posts)
+      .set({ isViewed: newIsViewed })
+      .where(eq(schema.posts.id, postId));
+
+    return true;
+  } catch (error) {
+    console.error(`Error toggling viewed status for post ${postId}:`, error);
+    return false;
+  }
+};
+
+export const resetPostCache = async (postId: number): Promise<boolean> => {
+  console.warn(
+    `[DEV ACTION] Placeholder: Resetting local cache for Post ID: ${postId}. Actual cache clearing logic (deleting file, clearing fields) should be implemented here.`
+  );
+  // Тут должна быть реальная логика сброса кэша (удаление файла, очистка полей в БД)
+  return true;
+};
 
 // --- Helpers ---
 function sendResponse(response: WorkerResponse): void {
