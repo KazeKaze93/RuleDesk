@@ -61,7 +61,7 @@
     /* Tabular nums prevent jitter in tables/counters */
     font-variant-numeric: tabular-nums;
     /* Better text rendering on monitors */
-    text-rendering: geometricPrecision;
+    text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
 }
