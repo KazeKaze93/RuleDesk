@@ -16,7 +16,8 @@ import { z } from "zod";
 import axios from "axios";
 import { UpdaterService } from "./services/updater-service";
 
-// ... (Zod схемы остаются те же) ...
+// === ZOD SCHEMAS (Centralized) ===
+
 const GetPostsSchema = z.object({
   artistId: z.number().int().positive(),
   page: z.number().int().min(1).default(1),
@@ -24,6 +25,17 @@ const GetPostsSchema = z.object({
 });
 
 const DeleteArtistSchema = z.number().int().positive();
+
+const AddArtistSchema = z.object({
+  name: z.string().trim().min(1),
+  tag: z.string().trim().min(1),
+  type: z.enum(["tag", "uploader", "query"]),
+  apiEndpoint: z.string().url().trim(),
+});
+
+const MarkViewedSchema = z.number().int().positive();
+
+const SearchTagsSchema = z.string().trim();
 
 interface Rule34AutocompleteItem {
   label: string;
@@ -43,7 +55,7 @@ export const registerIpcHandlers = (
   _updaterService: UpdaterService,
   _mainWindow: BrowserWindow
 ) => {
-  logger.info("IPC: Инициализация обработчиков...");
+  logger.info("IPC: Initializing handlers...");
 
   // --- APP ---
   ipcMain.handle("app:get-version", handleGetAppVersion);
@@ -54,23 +66,16 @@ export const registerIpcHandlers = (
       userId: string;
       apiKey: string;
     }>("getApiKeyDecrypted");
-
     let decryptedKey = "";
-
     if (settings && settings.apiKey) {
       const decrypted = SecureStorage.decrypt(settings.apiKey);
       decryptedKey = decrypted || "";
     }
-
-    return {
-      userId: settings?.userId || "",
-      apiKey: decryptedKey,
-    };
+    return { userId: settings?.userId || "", apiKey: decryptedKey };
   });
 
   ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
     let encryptedKey = "";
-
     if (apiKey) {
       try {
         encryptedKey = SecureStorage.encrypt(apiKey);
@@ -79,19 +84,13 @@ export const registerIpcHandlers = (
         throw new Error("Cannot save settings: Encryption unavailable.");
       }
     }
-
-    await dbWorkerClient.call("saveSettings", {
-      userId,
-      apiKey: encryptedKey,
-    });
-
+    await dbWorkerClient.call("saveSettings", { userId, apiKey: encryptedKey });
     return { success: true };
   });
 
   ipcMain.handle("app:open-external", async (_event, urlString: string) => {
     try {
-      if (!urlString?.trim()) throw new Error("URL is empty");
-      const parsedUrl = new URL(urlString.trim());
+      const parsedUrl = new URL(urlString);
       if (
         parsedUrl.protocol === "https:" &&
         (parsedUrl.hostname === "rule34.xxx" ||
@@ -102,7 +101,7 @@ export const registerIpcHandlers = (
         logger.warn(`IPC: Blocked unauthorized URL: ${urlString}`);
       }
     } catch (error) {
-      logger.error(`IPC: Error opening external URL`, error);
+      logger.error(`IPC: Invalid URL passed to open-external`, error);
     }
   });
 
@@ -117,24 +116,19 @@ export const registerIpcHandlers = (
     }
   });
 
-  ipcMain.handle("db:add-artist", async (_event, artistData: NewArtist) => {
-    const name = artistData.name?.trim();
-    const endpoint = artistData.apiEndpoint?.trim();
-
-    if (!name || !endpoint) throw new Error("Invalid artist data.");
-    try {
-      new URL(endpoint);
-    } catch {
-      throw new Error("Invalid API URL.");
+  ipcMain.handle("db:add-artist", async (_event, payload: unknown) => {
+    // 🛡️ STRICT ZOD VALIDATION
+    const validation = AddArtistSchema.safeParse(payload);
+    if (!validation.success) {
+      logger.error("IPC: Invalid artist data", validation.error);
+      throw new Error(`Validation failed: ${validation.error.message}`);
     }
 
-    logger.info(`IPC: [db:add-artist] Adding: ${name}`);
+    const artistData = validation.data;
+    logger.info(`IPC: [db:add-artist] Adding: ${artistData.name}`);
+
     try {
-      return await dbWorkerClient.call("addArtist", {
-        ...artistData,
-        name,
-        apiEndpoint: endpoint,
-      });
+      return await dbWorkerClient.call("addArtist", artistData as NewArtist);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       logger.error("IPC: [db:add-artist] error:", error);
@@ -143,6 +137,7 @@ export const registerIpcHandlers = (
   });
 
   ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
+    // 🛡️ STRICT ZOD VALIDATION
     const validation = DeleteArtistSchema.safeParse(id);
     if (!validation.success) throw new Error("Invalid ID.");
     try {
@@ -154,14 +149,15 @@ export const registerIpcHandlers = (
   });
 
   ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
+    // 🛡️ STRICT ZOD VALIDATION
     const validation = GetPostsSchema.safeParse(payload);
     if (!validation.success)
       throw new Error(`Validation Error: ${validation.error.message}`);
+
     const { artistId, page, limit } = validation.data;
     const offset = (page - 1) * limit;
 
     try {
-      logger.info(`IPC: [db:get-posts] Artist ${artistId}, page ${page}`);
       return await dbWorkerClient.call("getPostsByArtist", {
         artistId,
         limit,
@@ -174,9 +170,12 @@ export const registerIpcHandlers = (
   });
 
   ipcMain.handle("db:mark-post-viewed", async (_event, postId: unknown) => {
-    if (typeof postId !== "number") return false;
+    // 🛡️ STRICT ZOD VALIDATION
+    const result = MarkViewedSchema.safeParse(postId);
+    if (!result.success) return false;
+
     try {
-      await dbWorkerClient.call("markPostAsViewed", { postId });
+      await dbWorkerClient.call("markPostAsViewed", { postId: result.data });
       return true;
     } catch (error) {
       logger.error(`[IPC] Failed to mark post viewed`, error);
@@ -197,10 +196,13 @@ export const registerIpcHandlers = (
     return;
   });
 
-  ipcMain.handle("sync:repair-artist", async (_, artistId: number) => {
-    logger.info(`IPC: [sync:repair-artist] Artist ${artistId}`);
+  ipcMain.handle("sync:repair-artist", async (_, artistId: unknown) => {
+    const validId = DeleteArtistSchema.safeParse(artistId); // Re-use simple number schema
+    if (!validId.success) return { success: false, error: "Invalid ID" };
+
+    logger.info(`IPC: [sync:repair-artist] Artist ${validId.data}`);
     try {
-      await syncService.repairArtist(artistId);
+      await syncService.repairArtist(validId.data);
       return { success: true };
     } catch (error) {
       return {
@@ -249,19 +251,27 @@ export const registerIpcHandlers = (
   });
 
   // --- SEARCH ---
-  ipcMain.handle("db:search-tags", async (_, query: string) => {
+  ipcMain.handle("db:search-tags", async (_, query: unknown) => {
+    const validQuery = SearchTagsSchema.safeParse(query);
+    if (!validQuery.success) return [];
     try {
-      return await dbWorkerClient.call("searchArtists", { query });
+      return await dbWorkerClient.call("searchArtists", {
+        query: validQuery.data,
+      });
     } catch {
       return [];
     }
   });
 
-  ipcMain.handle("api:search-remote-tags", async (_, query: string) => {
-    if (!query || query.length < 2) return [];
+  ipcMain.handle("api:search-remote-tags", async (_, query: unknown) => {
+    const validQuery = SearchTagsSchema.safeParse(query);
+    if (!validQuery.success || validQuery.data.length < 2) return [];
+
     try {
       const { data } = await axios.get<Rule34AutocompleteItem[]>(
-        `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(query)}`
+        `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
+          validQuery.data
+        )}`
       );
       return Array.isArray(data)
         ? data.map((item) => ({ id: item.value, label: item.label }))

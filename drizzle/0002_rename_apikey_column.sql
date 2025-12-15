@@ -1,0 +1,1 @@
+ALTER TABLE `settings` RENAME COLUMN `api_key` TO `encrypted_api_key`;

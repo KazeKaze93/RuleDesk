@@ -19,6 +19,7 @@ import type { WorkerRequest, WorkerResponse } from "./worker-types";
 import * as path from "path";
 import * as fs from "fs";
 import { logger } from "../lib/logger";
+import { z } from "zod";
 
 if (logger && logger.transports && logger.transports.file) {
   logger.transports.file.level = false;
@@ -29,6 +30,35 @@ type DbType = BetterSQLite3Database<typeof schema>;
 let db: DbType | null = null;
 let dbInstance: Database.Database | null = null;
 let dbPath: string | null = null;
+
+// === WORKER VALIDATION SCHEMAS ===
+// Эти схемы дублируют или дополняют IPC схемы, обеспечивая безопасность внутри потока
+
+const SettingsPayloadSchema = z.object({
+  userId: z.string(),
+  apiKey: z.string(),
+});
+
+const UpdateProgressSchema = z.object({
+  artistId: z.number(),
+  newMaxPostId: z.number(),
+  postsAddedCount: z.number(),
+});
+
+const PostsPayloadSchema = z.object({
+  artistId: z.number(),
+  limit: z.number().default(1000),
+  offset: z.number().default(0),
+});
+
+const SearchPayloadSchema = z.object({
+  query: z.string(),
+});
+
+const SavePostsSchema = z.object({
+  artistId: z.number(),
+  posts: z.array(z.any()),
+});
 
 interface RawSettingsRow {
   user_id: string;
@@ -60,26 +90,6 @@ function initializeDatabase(initialDbPath: string): void {
     logger.info(`Migrations: Path: ${migrationsPath}`);
     migrate(db, { migrationsFolder: migrationsPath });
     logger.info("Migrations: Success.");
-
-    // Schema Auto-fix
-    try {
-      const tableInfo = dbInstance.pragma("table_info(settings)") as Array<{
-        name: string;
-      }>;
-      const hasApiKey = tableInfo.some((c) => c.name === "api_key");
-      const hasEncryptedKey = tableInfo.some(
-        (c) => c.name === "encrypted_api_key"
-      );
-
-      if (hasApiKey && !hasEncryptedKey) {
-        dbInstance.exec(
-          "ALTER TABLE settings RENAME COLUMN api_key TO encrypted_api_key"
-        );
-        logger.info("DbService: Migrated column api_key -> encrypted_api_key");
-      }
-    } catch (e) {
-      logger.warn("DbService: Schema auto-fix skipped", e);
-    }
   } catch (error) {
     logger.error("Migrations: FATAL ERROR", error);
     throw new Error(`Failed to run migrations: ${error}`);
@@ -142,10 +152,9 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "saveSettings": {
-        const { userId, apiKey } = request.payload as {
-          userId: string;
-          apiKey: string;
-        };
+        // 🛡️ VALIDATION
+        const { userId, apiKey } = SettingsPayloadSchema.parse(request.payload);
+
         const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
           name: string;
         }>;
@@ -175,8 +184,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         break;
       }
 
-      // ... Остальные методы (getTrackedArtists и т.д.) оставляем как были
-      // (Я их сократил для чтения, но в реальном файле они должны быть)
       case "getTrackedArtists":
         sendSuccess(
           request.id,
@@ -187,6 +194,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         break;
 
       case "addArtist": {
+        // Cast is checked by Zod in IPC, but for safety in worker context:
         const ad = request.payload as NewArtist;
         const res = await db
           .insert(schema.artists)
@@ -202,8 +210,9 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "updateArtistProgress": {
+        // 🛡️ VALIDATION
         const { artistId, newMaxPostId, postsAddedCount } =
-          request.payload as any;
+          UpdateProgressSchema.parse(request.payload);
         const now = Date.now();
         await db.run(sql`
             UPDATE ${schema.artists} 
@@ -218,7 +227,8 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "savePostsForArtist": {
-        const { posts } = request.payload as any;
+        // 🛡️ VALIDATION
+        const { posts } = SavePostsSchema.parse(request.payload);
         if (posts.length > 0) {
           await db.transaction(async (tx) => {
             await tx
@@ -244,15 +254,14 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "getPostsByArtist": {
-        const {
-          artistId: aId,
-          limit = 1000,
-          offset = 0,
-        } = request.payload as any;
+        // 🛡️ VALIDATION
+        const { artistId, limit, offset } = PostsPayloadSchema.parse(
+          request.payload
+        );
         sendSuccess(
           request.id,
           await db.query.posts.findMany({
-            where: eq(schema.posts.artistId, aId),
+            where: eq(schema.posts.artistId, artistId),
             orderBy: [desc(schema.posts.postId)],
             limit,
             offset,
@@ -262,7 +271,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "getArtistById": {
-        const { artistId } = request.payload as any;
+        const { artistId } = request.payload as { artistId: number };
         const artist = await db.query.artists.findFirst({
           where: eq(schema.artists.id, artistId),
         });
@@ -284,20 +293,26 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         const backupDir = path.dirname(dbPath);
         const backupFilename = `metadata-backup-${dateStr}.db`;
         const backupPath = path.join(backupDir, backupFilename);
+
         if (!fs.existsSync(backupDir))
           fs.mkdirSync(backupDir, { recursive: true });
+
+        // Escape check manually as Drizzle doesn't support parameterized VACUUM
         const escapedPath = backupPath.replace(/'/g, "''");
         dbInstance.exec(`VACUUM INTO '${escapedPath}'`);
+
         sendSuccess(request.id, { backupPath });
         break;
       }
 
       case "searchArtists": {
-        const { query } = request.payload as any;
-        if (!query || query.length < 2) {
+        // 🛡️ VALIDATION
+        const { query } = SearchPayloadSchema.parse(request.payload);
+        if (query.length < 2) {
           sendSuccess(request.id, []);
           break;
         }
+
         const r = await db.query.artists.findMany({
           where: or(
             like(schema.artists.name, `%${query}%`),
