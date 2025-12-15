@@ -13,6 +13,13 @@ export interface BackupResponse {
   error?: string;
 }
 
+export interface PostQueryFilters {
+  rating?: "s" | "q" | "e";
+  tags?: string;
+  sortBy?: "date" | "id" | "rating";
+  isViewed?: boolean;
+}
+
 export interface IpcApi extends IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
@@ -33,7 +40,8 @@ export interface IpcApi extends IpcBridge {
   // Posts
   getArtistPosts: (params: {
     artistId: number;
-    page: number;
+    page?: number;
+    filters?: PostQueryFilters;
   }) => Promise<Post[]>;
 
   // Sync

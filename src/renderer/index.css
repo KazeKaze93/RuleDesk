@@ -1,38 +1,47 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
+    /* Base - Deep Navy/Black */
+    --background: 222 47% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    /* Surfaces - Layered hierarchy */
+    --card: 222 40% 9%; /* Slightly lighter than bg */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 38% 11%; /* Distinct elevation */
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Brand / Primary - Vivid Violet/Purple */
+    --primary: 262 83% 62%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    /* Secondary / Muted - Cool Greys */
+    --secondary: 222 28% 16%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 222 24% 14%;
+    --muted-foreground: 215 20% 70%;
 
-    --accent: 217.2 32.6% 17.5%;
+    /* Accent - Interactive elements */
+    --accent: 262 40% 20%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    /* Danger - Red */
+    --destructive: 0 70% 45%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Lines / Focus */
+    --border: 222 18% 22%;
+    --input: 222 18% 22%;
+    --ring: 262 83% 62%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 }
 
@@ -40,7 +49,19 @@
   * {
     @apply border-border;
   }
+
+  html {
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+      sans-serif;
+  }
+
   body {
     @apply bg-background text-foreground;
+    /* Tabular nums prevent jitter in tables/counters */
+    font-variant-numeric: tabular-nums;
+    /* Better text rendering on monitors */
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
   }
 }
