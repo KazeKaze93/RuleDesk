@@ -53,7 +53,15 @@ export const registerPostHandlers = (repo: PostsRepository) => {
     IPC_CHANNELS.DB.TOGGLE_FAVORITE,
     async (_, postId: unknown) => {
       try {
-        return await repo.toggleFavorite(Number(postId));
+        const result = z.number().int().positive().safeParse(postId);
+        if (!result.success) {
+          logger.warn(
+            `[IPC] TOGGLE_FAVORITE failed validation for postId: ${postId}`
+          );
+          return false;
+        }
+
+        return await repo.toggleFavorite(result.data);
       } catch (error) {
         logger.error(`[IPC] Failed to toggle post favorite`, error);
         return false;
