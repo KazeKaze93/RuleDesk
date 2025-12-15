@@ -14,6 +14,7 @@ export const IPC_CHANNELS = {
     DELETE_ARTIST: "db:delete-artist",
     SEARCH_TAGS: "db:search-tags",
     GET_POSTS: "db:get-posts",
+    GET_POSTS_COUNT: "db:get-posts-count",
     MARK_VIEWED: "db:mark-post-viewed",
     TOGGLE_FAVORITE: "db:toggle-post-favorite",
     SYNC_ALL: "db:sync-all",

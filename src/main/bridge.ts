@@ -57,6 +57,7 @@ export interface IpcBridge {
     artistId: number;
     page?: number;
   }) => Promise<Post[]>;
+  getArtistPostsCount: (artistId?: number) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
 
@@ -123,6 +124,8 @@ const ipcBridge: IpcBridge = {
 
   getArtistPosts: (params: GetPostsParams) =>
     ipcRenderer.invoke("db:get-posts", params),
+  getArtistPostsCount: (artistId?: number) =>
+    ipcRenderer.invoke("db:get-posts-count", artistId),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 

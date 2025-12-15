@@ -1,6 +1,8 @@
+// Cursor: select file:src/renderer/components/gallery/ArtistGallery.tsx
 import React, { forwardRef, useMemo } from "react";
 import {
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
   useMutation,
   InfiniteData,
@@ -27,7 +29,6 @@ const GridContainer = forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    // Обновил паддинги и gap для лучшего вида
     className={cn(
       "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
       className
@@ -54,8 +55,20 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  // Подключаем глобальный стор
-  const openViewer = useViewerStore((state) => state.open);
+  // 🔥 FIX: Достаем appendQueueIds из стора, чтобы обновлять очередь вьювера
+  const { open: openViewer, appendQueueIds } = useViewerStore((state) => ({
+    open: state.open,
+    appendQueueIds: state.appendQueueIds,
+  }));
+
+  // Fetch total posts count
+  const { data: totalPosts = 0 } = useQuery({
+    queryKey: ["posts-count", artist.id],
+    queryFn: async () => {
+      const count = await window.api.getArtistPostsCount(artist.id);
+      return count;
+    },
+  });
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
@@ -64,7 +77,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         return await window.api.getArtistPosts({
           artistId: artist.id,
           page: pageParam,
-          // Фильтры пока пустые, но готовы к внедрению
         });
       },
       getNextPageParam: (lastPage, allPages) => {
@@ -77,12 +89,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
 
-  // Этот Mutation нам пригодится, но вызывать мы его будем теперь не здесь,
-  // а внутри Viewer'а (или оставим логику тут, если клик считается просмотром).
-  // Пока оставим, чтобы не ломать логику галочек.
   const viewMutation = useMutation({
-    mutationFn: async (postId: number) => {
-      await window.api.markPostAsViewed(postId);
+    mutationFn: async (_postId: number) => {
+      // Логика просмотра перенесена в ViewerDialog (togglePostViewed)
     },
     onSuccess: (_, postId) => {
       queryClient.setQueryData<InfiniteData<Post[]>>(
@@ -102,11 +111,35 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  // Обработчик клика теперь открывает глобальный Viewer
+  // 🔥 FIX: Handler теперь не просто грузит данные в кэш, но и обновляет стор Вьювера!
+  const handleLoadMore = async () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      console.log("[Gallery] Viewer requested more posts. Fetching...");
+
+      // Ждем завершения загрузки и получаем результат
+      const result = await fetchNextPage();
+
+      // Если загрузка прошла успешно и есть данные
+      if (result.data) {
+        // Берем последнюю страницу (новую)
+        const newPage = result.data.pages[result.data.pages.length - 1];
+
+        if (newPage && newPage.length > 0) {
+          const newIds = newPage.map((p) => p.id);
+          console.log(
+            `[Gallery] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
+          );
+
+          // ЯВНО обновляем очередь вьювера
+          appendQueueIds(newIds);
+        }
+      }
+    }
+  };
+
   const handlePostClick = (index: number) => {
     const postIds = allPosts.map((p) => p.id);
 
-    // Помечаем как просмотренный сразу при клике (опционально)
     const post = allPosts[index];
     if (post && !post.isViewed) {
       viewMutation.mutate(post.id);
@@ -117,6 +150,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       ids: postIds,
       initialIndex: index,
       listKey: `artist-${artist.id}`,
+      totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
+      hasNextPage: hasNextPage && allPosts.length < (totalPosts || Infinity),
+      onLoadMore: handleLoadMore, // Передаем обновленный хендлер
     });
   };
 
@@ -132,13 +168,13 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       await window.api.repairArtist(artist.id);
       queryClient.invalidateQueries({ queryKey: ["artists"] });
       queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
+      queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
     } catch (e) {
       console.error(e);
     }
   };
 
   return (
-    // Заменил bg-slate-950 на bg-background (семантический цвет)
     <div className="flex flex-col h-full bg-background text-foreground">
       {/* Header */}
       <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
@@ -154,11 +190,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           <div>
             <h2 className="text-xl font-bold">{artist.name}</h2>
             <div className="flex gap-2 text-xs text-muted-foreground">
-              <span className="px-1 font-mono rounded bg-muted text-muted-foreground">
-                {artist.tag}
-              </span>
-              <span>•</span>
-              <span>{allPosts.length} posts loaded</span>
+              {totalPosts > 0 && (
+                <span className="text-sm font-medium text-muted-foreground">
+                  Total: {totalPosts}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -226,8 +262,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           />
         )}
       </div>
-
-      {/* Лайтбокс удален, теперь все делает глобальный ViewerDialog в AppLayout */}
     </div>
   );
 };

@@ -11,6 +11,10 @@ export class PostsRepository {
     return this.db.call("getPostsByArtist", params);
   }
 
+  async getCountByArtist(artistId?: number): Promise<number> {
+    return this.db.call("getPostsCountByArtist", { artistId });
+  }
+
   async markAsViewed(postId: number) {
     return this.db.call("markPostAsViewed", { postId });
   }

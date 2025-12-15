@@ -13,6 +13,9 @@ export interface ViewerQueue {
   ids: number[];
   initialIndex: number; // Важное поле: с чего начинать
   listKey: string;
+  totalGlobalCount?: number; // Optional: total count from DB (e.g., 183) vs loaded array length
+  hasNextPage?: boolean; // Optional: whether more pages can be loaded
+  onLoadMore?: () => void | Promise<void>; // Optional: callback to load more posts
 }
 
 interface ViewerState {
@@ -33,6 +36,7 @@ interface ViewerState {
   toggleTagsDrawer: () => void;
   setControlsVisible: (visible: boolean) => void;
   updateQueueIds: (ids: number[]) => void;
+  appendQueueIds: (newIds: number[]) => void; // Append new IDs to existing queue
 }
 
 export const useViewerStore = create<ViewerState>((set, get) => ({
@@ -104,6 +108,20 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
       if (!state.queue) return {};
       return {
         queue: { ...state.queue, ids: newIds },
+      };
+    }),
+
+  appendQueueIds: (newIds) =>
+    set((state) => {
+      if (!state.queue) return {};
+      // Append new IDs, avoiding duplicates
+      const existingIds = new Set(state.queue.ids);
+      const uniqueNewIds = newIds.filter((id) => !existingIds.has(id));
+      return {
+        queue: {
+          ...state.queue,
+          ids: [...state.queue.ids, ...uniqueNewIds],
+        },
       };
     }),
 }));

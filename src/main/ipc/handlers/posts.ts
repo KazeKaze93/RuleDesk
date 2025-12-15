@@ -36,6 +36,35 @@ export const registerPostHandlers = (repo: PostsRepository) => {
     }
   });
 
+  ipcMain.handle(
+    IPC_CHANNELS.DB.GET_POSTS_COUNT,
+    async (_, payload: unknown) => {
+      try {
+        // Schema should allow optional number, null, or undefined
+        const countSchema = z.number().int().positive().optional().nullable();
+
+        // Parse payload, but allow it to be undefined
+        const artistId =
+          payload !== undefined && payload !== null
+            ? countSchema.parse(payload) ?? undefined
+            : undefined;
+
+        // Call the repo with optional ID
+        const total = await repo.getCountByArtist(artistId);
+
+        console.log(
+          `[IPC] Count requested. Filter: ${
+            artistId || "ALL"
+          }. Result: ${total}`
+        );
+        return total;
+      } catch (err) {
+        console.error("Failed to get posts count:", err);
+        return 0;
+      }
+    }
+  );
+
   ipcMain.handle(IPC_CHANNELS.DB.MARK_VIEWED, async (_, postId: unknown) => {
     const result = z.number().int().positive().safeParse(postId);
     if (!result.success) return false;
