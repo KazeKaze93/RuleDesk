@@ -377,42 +377,37 @@ npm run lint
 npm run validate
 ```
 
-📜 License
+## 📜 License
 
-This project is licensed under the MIT License.
+This project is licensed under the **Apache License 2.0**.
 
-You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software, subject to the conditions of the MIT License.
+You may use, reproduce, modify, distribute, and sublicense the software under the terms of the Apache License 2.0. The license also includes an express patent grant and requires preservation of copyright and license notices.
 
-The full license text is available in the LICENSE
-file in this repository.
+The full license text is available in the `LICENSE` file in this repository.
 
-🧾 Legal Disclaimer
+---
+
+## 🧾 Legal Disclaimer
 
 By using this software, you acknowledge and agree to the following:
 
-18+ Only:
-This application is intended exclusively for adults (18+) in jurisdictions where viewing NSFW content is legal.
+**18+ Only:** This application is intended exclusively for adults (18+) in jurisdictions where viewing NSFW content is legal.
 
-No Content Hosting:
-The application does not host, store, mirror, or redistribute any media content.
-All media is requested directly from the original website’s API/CDN at the user’s initiative.
+**No Content Hosting:** The application does not host, store, mirror, or redistribute any media content. All media is requested directly from the original website’s API/CDN at the user’s initiative.
 
-Use at Your Own Risk:
-The authors and contributors of this project:
+**Use at Your Own Risk:** The authors and contributors of this project:
 
-Do not control the content provided by third-party services.
+* Do not control the content provided by third-party services.
+* Do not endorse, moderate, or curate any content accessed through this software.
+* Are not responsible for how you use this software or which content you access with it.
 
-Do not endorse, moderate, or curate any content accessed through this software.
+**Compliance with Laws & ToS:** You are solely responsible for:
 
-Are not responsible for how you use this software or which content you access with it.
+* Complying with the laws and regulations applicable in your country/region.
+* Complying with the target website's Terms of Service, API rules, and any usage limitations (including rate limits and content policies).
 
-**Compliance with Laws & ToS:**
-You are solely responsible for:
+**No Warranty / Limitation of Liability:** This software is provided “AS IS”, without warranties or conditions of any kind, either express or implied. To the fullest extent permitted by applicable law, in no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
 
-- Complying with the laws and regulations applicable in your country/region.
-- Complying with the target website's Terms of Service, API rules, and any usage limitations (including rate limits and content policies).
-
-The software is provided "as is", without warranty of any kind, express or implied. In no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
 
 ---
 
