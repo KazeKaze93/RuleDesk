@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { normalizeTag } from "../../shared/lib/tag-utils";
-import { AsyncAutocomplete } from "./inputs/AsyncAutocomplete";
-import type { AutocompleteOption } from "./inputs/AsyncAutocomplete";
+import { normalizeTag } from "../../lib/tag-utils";
+import { AsyncAutocomplete } from "../inputs/AsyncAutocomplete";
+import type { AutocompleteOption } from "../inputs/AsyncAutocomplete";
 
 interface AddArtistModalProps {
   isOpen: boolean;

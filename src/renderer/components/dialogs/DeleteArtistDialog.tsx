@@ -2,7 +2,7 @@ import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Loader2, Trash2, AlertCircle } from "lucide-react";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "./ui/dialog";
-import type { Artist } from "../../main/db/schema";
+} from "../ui/dialog";
+import type { Artist } from "../../../main/db/schema";
 
 interface DeleteArtistDialogProps {
   artist: Artist;

@@ -1,12 +1,14 @@
 import { app, BrowserWindow, dialog } from "electron";
-import * as path from "path";
-import { registerIpcHandlers } from "./ipc";
+import path from "path";
+import { registerAllHandlers } from "./ipc/index";
 import { DbWorkerClient } from "./db/db-worker-client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 
 logger.info("🚀 Application starting...");
+
+process.env.USER_DATA_PATH = app.getPath("userData");
 
 let dbWorkerClient: DbWorkerClient | null = null; // Делаем null, пока не инициализируем
 let mainWindow: BrowserWindow | null = null;
@@ -90,7 +92,7 @@ async function initializeAppAndWindow() {
         window.show();
         updaterService.checkForUpdates();
 
-        registerIpcHandlers(workerClient, syncService, updaterService, window);
+        registerAllHandlers(workerClient, syncService, updaterService, window);
 
         // ⚡ DEFERRED DATABASE MAINTENANCE
         setTimeout(() => {

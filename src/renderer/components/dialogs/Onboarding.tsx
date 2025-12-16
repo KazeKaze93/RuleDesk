@@ -3,9 +3,9 @@ import { useForm } from "react-hook-form";
 import { z, ZodIssueOptionalMessage, ErrorMapCtx } from "zod"; // ИМПОРТ ТИПОВ
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import { KeyRound, User } from "lucide-react";
-import { credsBaseSchema, CredsFormValues } from "../schemas/form-schemas";
+import { credsBaseSchema, CredsFormValues } from "../../schemas/form-schemas";
 
 interface OnboardingProps {
   onComplete: () => void;

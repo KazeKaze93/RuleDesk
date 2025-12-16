@@ -1,10 +1,3 @@
-/**
- * Type definitions for communication between Main process and DB Worker
- */
-
-/**
- * All available database service methods
- */
 export type DbMethod =
   // Database Maintenance
   | "fixDatabaseSchema"
@@ -17,15 +10,20 @@ export type DbMethod =
   | "updateArtistProgress"
   | "savePostsForArtist"
   | "getPostsByArtist"
+  | "getPostsCountByArtist"
   | "getArtistById"
   | "searchArtists"
   | "deleteArtist"
   | "markPostAsViewed"
+  | "togglePostFavorite"
+  | "togglePostViewed"
+  | "resetPostCache"
   // Settings & Security
   | "getSettings"
   | "saveSettings"
   | "getSettingsStatus"
   | "getApiKeyDecrypted"
+  | "logout"
   // Backup
   | "backup";
 
