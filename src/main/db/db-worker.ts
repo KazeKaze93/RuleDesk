@@ -134,7 +134,10 @@ function sendSuccess(id: string, data?: unknown): void {
   sendResponse({ id, success: true, data });
 }
 
-function initializeDatabase(initialDbPath: string): void {
+function initializeDatabase(
+  initialDbPath: string,
+  migrationsPath: string
+): void {
   try {
     dbInstance = new Database(initialDbPath, {
       verbose: process.env.NODE_ENV === "development" ? console.log : undefined,
@@ -142,7 +145,6 @@ function initializeDatabase(initialDbPath: string): void {
     db = drizzle(dbInstance, { schema });
     dbPath = initialDbPath;
 
-    const migrationsPath = path.join(process.cwd(), "drizzle");
     logger.info(`Migrations: Path: ${migrationsPath}`);
     migrate(db, { migrationsFolder: migrationsPath });
     logger.info("Migrations: Success.");
@@ -538,7 +540,7 @@ if (parentPort) {
       setTimeout(() => process.exit(0), 100);
     } else if (msg.type === "init") {
       try {
-        initializeDatabase(msg.dbPath);
+        initializeDatabase(msg.dbPath, msg.migrationsPath);
         sendSuccess(msg.id);
       } catch (e) {
         sendError(msg.id, e);
