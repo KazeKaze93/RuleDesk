@@ -1,7 +1,7 @@
 {
   "name": "ruledesk",
   "productName": "RuleDesk",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "A modern desktop client for Rule34 imageboard content",
   "main": "out/main/main.cjs",
   "type": "module",
