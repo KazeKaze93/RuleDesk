@@ -32,6 +32,10 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                         |
 | **💾 Backup & Restore**           | Manual database backup and restore functionality. Create timestamped backups to protect your data. Restore from backup files with automatic application restart. Backup files are stored in the user data directory.                                                                         |
 | **🔍 Search Functionality**       | Search for artists locally and search for tags remotely via Rule34.xxx autocomplete API. Supports both local database search and remote tag suggestions.                                                                                                                                     |
+| **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                 |
+| **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                                       |
+| **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                |
+| **🧭 Navigation & Layout**        | Sidebar navigation with dedicated pages: Updates, Browse, Favorites, Tracked, and Settings. Global Top Bar with search, filters, sort controls, and view toggles. Responsive layout with modern UI components.                                                                               |
 | **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                                                |
 | **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                                        |
 | **🔌 Multi-Source Ready**         | Architecture designed for future multi-booru support. Provider pattern abstraction allows adding new sources (Danbooru, Gelbooru, etc.) without core database changes.                                                                                                                       |
@@ -215,6 +219,12 @@ The application core has been successfully stabilized and enhanced with security
 - ✅ **Search Functionality:** Local artist search and remote tag search via Rule34.xxx autocomplete API
 - ✅ **Backup Controls:** UI component for creating and restoring database backups
 - ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
+- ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
+- ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles
+- ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
+- ✅ **Download Manager:** Download full-resolution files with progress tracking and queue management
+- ✅ **Favorites System:** Mark and manage favorite posts with keyboard shortcuts and UI controls
+- ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 
 ---
 
@@ -263,23 +273,25 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
 We are moving to Feature Development. Priority tasks:
 
-### A. Filters (Advanced Search) ⏳ Not Started
+### A. Filters (Advanced Search) 🚧 In Progress
 
 **Goal:** Allow users to refine the gallery view.
 
-- Filter by **Rating** (Safe, Questionable, Explicit)
-- Filter by **Media Type** (Image vs Video)
-- Filter by **Tags** (Local search within downloaded posts)
-- Sort by: Date Added (New/Old), Posted Date
+- ✅ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle implemented
+- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - UI ready, backend filtering pending
+- ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
+- ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
+- ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
 
-### B. Download Manager ⏳ Not Started
+### B. Download Manager ✅ Implemented
 
 **Goal:** Allow saving full-resolution files to the local file system.
 
-- "Download Original" button on post view
-- "Download All" for current filter/artist
-- **Queue System:** Handle downloads in the background/main process
-- **Settings:** Allow choosing a default download directory
+- ✅ "Download Original" button on post view (implemented in ViewerDialog)
+- ✅ **Queue System:** Handle downloads in the background/main process with progress tracking
+- ✅ **Progress Events:** Real-time download progress via IPC events
+- ⏳ "Download All" for current filter/artist (planned)
+- ⏳ **Settings:** Allow choosing a default download directory (planned)
 
 ### C. Playlists / Collections ⏳ Not Started
 

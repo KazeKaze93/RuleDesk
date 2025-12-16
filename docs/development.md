@@ -145,49 +145,85 @@ Opens web interface at `http://localhost:4983` (default port).
 ```
 .
 ├── src/
-│   ├── main/                 # Electron Main Process
-│   │   ├── db/              # Database layer
-│   │   │   ├── schema.ts    # Drizzle schema definitions
-│   │   │   ├── db-service.ts # Database service class
-│   │   │   └── migrate.ts   # Migration runner
-│   │   ├── lib/             # Utilities
-│   │   │   └── logger.ts    # Logging utility
-│   │   ├── services/        # Background services
-│   │   │   ├── sync-service.ts    # API synchronization service
-│   │   │   └── updater-service.ts # Auto-updater service
-│   │   ├── bridge.ts        # IPC bridge interface
-│   │   ├── ipc.ts           # IPC handlers
-│   │   └── main.ts          # Main process entry point
+│   ├── main/                          # Electron Main Process
+│   │   ├── db/                        # Database layer
+│   │   │   ├── repositories/          # Repository pattern
+│   │   │   │   ├── artists.repo.ts
+│   │   │   │   └── posts.repo.ts
+│   │   │   ├── db-worker.ts          # Worker thread implementation
+│   │   │   ├── db-worker-client.ts   # Worker client interface
+│   │   │   ├── migrate.ts             # Migration runner
+│   │   │   ├── schema.ts              # Drizzle schema definitions
+│   │   │   └── worker-types.ts        # Worker type definitions
+│   │   ├── ipc/                       # IPC handlers
+│   │   │   ├── handlers/              # Modular handlers
+│   │   │   │   ├── artists.ts
+│   │   │   │   ├── files.ts
+│   │   │   │   ├── posts.ts
+│   │   │   │   ├── settings.ts
+│   │   │   │   └── viewer.ts
+│   │   │   ├── channels.ts            # IPC channel constants
+│   │   │   └── index.ts               # Handler registration
+│   │   ├── services/                  # Background services
+│   │   │   ├── secure-storage.ts      # Secure storage for credentials
+│   │   │   ├── sync-service.ts        # API synchronization
+│   │   │   └── updater-service.ts     # Auto-updater
+│   │   ├── lib/                        # Utilities
+│   │   │   └── logger.ts              # Logging utility
+│   │   ├── bridge.ts                  # IPC bridge interface
+│   │   ├── main.d.ts                  # Type definitions
+│   │   └── main.ts                    # Main process entry point
 │   │
-│   └── renderer/            # Electron Renderer Process
-│       ├── components/       # React components
-│       │   └── ui/          # UI components (shadcn/ui)
-│       ├── lib/             # Utilities
-│       │   └── utils.ts     # Helper functions
-│       ├── App.tsx          # Main React component
-│       ├── main.tsx         # Renderer entry point
-│       └── index.html       # HTML template
+│   └── renderer/                      # Electron Renderer Process
+│       ├── components/                 # React components
+│       │   ├── dialogs/               # Dialog components
+│       │   ├── gallery/               # Gallery components
+│       │   ├── inputs/                # Input components
+│       │   ├── layout/                # Layout components
+│       │   ├── pages/                 # Page components
+│       │   ├── settings/              # Settings components
+│       │   ├── ui/                    # shadcn/ui components
+│       │   └── viewer/                # Viewer components
+│       ├── i18n/                      # Internationalization
+│       ├── lib/                       # Utilities
+│       │   ├── hooks/                 # Custom React hooks
+│       │   ├── artist-utils.ts
+│       │   ├── tag-utils.ts
+│       │   └── utils.ts
+│       ├── locales/                   # Translation files
+│       ├── schemas/                    # Form validation schemas
+│       ├── store/                      # Zustand stores
+│       ├── App.tsx                     # Main React component
+│       ├── main.tsx                    # Renderer entry point
+│       └── index.html                  # HTML template
 │
-├── drizzle/                  # Database migrations
-│   ├── meta/                # Migration metadata
-│   └── *.sql                # SQL migration files
+├── drizzle/                            # Database migrations
+│   ├── meta/                          # Migration metadata
+│   └── *.sql                          # SQL migration files
 │
-├── docs/                     # Documentation
+├── docs/                               # Documentation
 │   ├── api.md
 │   ├── architecture.md
 │   ├── contributing.md
 │   ├── database.md
-│   └── development.md
+│   ├── development.md
+│   ├── roadmap.md
+│   └── rule34-api-reference.md
 │
-├── scripts/                  # Build and utility scripts
-│   ├── ai_reviewer.py       # AI code review script
-│   └── system_prompt.md     # AI reviewer prompt
+├── scripts/                            # Build and utility scripts
+│   ├── ai_reviewer.py
+│   └── system_prompt.md
 │
-├── electron.vite.config.ts  # Electron-Vite configuration
-├── drizzle.config.ts        # Drizzle ORM configuration
-├── tailwind.config.js       # Tailwind CSS configuration
-├── tsconfig.json            # TypeScript configuration
-└── package.json             # Project dependencies and scripts
+├── .github/                            # GitHub workflows
+│   └── workflows/
+│       ├── ai-review.yml
+│       └── ci.yml
+│
+├── electron.vite.config.ts             # Electron-Vite configuration
+├── drizzle.config.ts                   # Drizzle ORM configuration
+├── tailwind.config.js                  # Tailwind CSS configuration
+├── tsconfig.json                       # TypeScript configuration
+└── package.json                        # Project dependencies and scripts
 ```
 
 ## Development Workflow
@@ -226,7 +262,7 @@ Opens web interface at `http://localhost:4983` (default port).
    };
    ```
 
-3. Add handler in `src/main/ipc.ts`:
+3. Add handler in `src/main/ipc/handlers/` (create new file or add to existing):
 
    ```typescript
    ipcMain.handle("channel:name", async () => {
@@ -362,7 +398,7 @@ npm run typecheck
 **Solution:**
 
 1. Verify bridge is exposed: Check `src/main/bridge.ts`
-2. Verify handler is registered: Check `src/main/ipc.ts`
+2. Verify handler is registered: Check `src/main/ipc/index.ts`
 3. Check types match: Verify `src/renderer.d.ts`
 
 ### Issue: Build Fails
@@ -476,4 +512,3 @@ npx electron-builder --linux
 2. Review similar code in the codebase
 3. Check GitHub issues
 4. Open a new issue with details
-

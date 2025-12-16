@@ -18,6 +18,9 @@ The IPC bridge is exposed to the Renderer process via `window.api`. All methods 
 interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
+  writeToClipboard: (text: string) => Promise<boolean>;
+  verifyCredentials: () => Promise<boolean>;
+  logout: () => Promise<void>;
 
   // Settings
   getSettings: () => Promise<Settings | undefined>;
@@ -34,7 +37,11 @@ interface IpcBridge {
     artistId: number;
     page?: number;
   }) => Promise<Post[]>;
+  getArtistPostsCount: (artistId?: number) => Promise<number>;
   markPostAsViewed: (postId: number) => Promise<boolean>;
+  togglePostViewed: (postId: number) => Promise<boolean>;
+  togglePostFavorite: (postId: number) => Promise<boolean>;
+  resetPostCache: (postId: number) => Promise<boolean>;
 
   // External
   openExternal: (url: string) => Promise<void>;
@@ -43,6 +50,19 @@ interface IpcBridge {
   // Sync
   syncAll: () => Promise<boolean>;
   repairArtist: (artistId: number) => Promise<boolean>;
+
+  // Downloads
+  downloadFile: (
+    url: string,
+    filename: string
+  ) => Promise<{
+    success: boolean;
+    path?: string;
+    error?: string;
+    canceled?: boolean;
+  }>;
+  openFileInFolder: (path: string) => Promise<boolean>;
+  onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
 
   // Backup
   createBackup: () => Promise<BackupResponse>;
@@ -553,6 +573,201 @@ if (result.success) {
 
 ---
 
+### `writeToClipboard(text: string)`
+
+Writes text to the system clipboard.
+
+**Parameters:**
+
+- `text: string` - Text to copy to clipboard
+
+**Returns:** `Promise<boolean>`
+
+**Example:**
+
+```typescript
+await window.api.writeToClipboard("Copied text");
+```
+
+**IPC Channel:** `app:write-to-clipboard`
+
+---
+
+### `verifyCredentials()`
+
+Verifies API credentials by making a test API call.
+
+**Returns:** `Promise<boolean>`
+
+**Example:**
+
+```typescript
+const isValid = await window.api.verifyCredentials();
+if (isValid) {
+  console.log("Credentials are valid");
+} else {
+  console.log("Credentials are invalid or expired");
+}
+```
+
+**IPC Channel:** `app:verify-creds`
+
+---
+
+### `logout()`
+
+Clears stored API credentials from the database.
+
+**Returns:** `Promise<void>`
+
+**Example:**
+
+```typescript
+await window.api.logout();
+// User will be redirected to onboarding screen
+```
+
+**IPC Channel:** `app:logout`
+
+---
+
+### `getArtistPostsCount(artistId?: number)`
+
+Gets the total count of posts for an artist or all posts if no artistId is provided.
+
+**Parameters:**
+
+- `artistId?: number` - Optional artist ID. If omitted, returns count of all posts.
+
+**Returns:** `Promise<number>`
+
+**Example:**
+
+```typescript
+const count = await window.api.getArtistPostsCount(123);
+console.log(`Artist has ${count} posts`);
+```
+
+**IPC Channel:** `db:get-posts-count`
+
+---
+
+### `togglePostViewed(postId: number)`
+
+Toggles the viewed status of a post.
+
+**Parameters:**
+
+- `postId: number` - Post ID to toggle
+
+**Returns:** `Promise<boolean>`
+
+**Example:**
+
+```typescript
+const success = await window.api.togglePostViewed(123);
+```
+
+**IPC Channel:** `db:toggle-post-viewed`
+
+---
+
+### `togglePostFavorite(postId: number)`
+
+Toggles the favorite status of a post.
+
+**Parameters:**
+
+- `postId: number` - Post ID to toggle
+
+**Returns:** `Promise<boolean>`
+
+**Example:**
+
+```typescript
+const success = await window.api.togglePostFavorite(123);
+if (success) {
+  console.log("Post favorite status toggled");
+}
+```
+
+**IPC Channel:** `db:toggle-post-favorite`
+
+---
+
+### `resetPostCache(postId: number)`
+
+Resets the cache for a specific post (clears viewed/favorite status).
+
+**Parameters:**
+
+- `postId: number` - Post ID to reset
+
+**Returns:** `Promise<boolean>`
+
+**Example:**
+
+```typescript
+const success = await window.api.resetPostCache(123);
+```
+
+**IPC Channel:** `db:reset-post-cache`
+
+---
+
+### `downloadFile(url: string, filename: string)`
+
+Downloads a file from a URL to the local file system. Opens a save dialog for the user to choose the download location.
+
+**Parameters:**
+
+- `url: string` - URL of the file to download
+- `filename: string` - Suggested filename for the download
+
+**Returns:** `Promise<{ success: boolean; path?: string; error?: string; canceled?: boolean }>`
+
+**Example:**
+
+```typescript
+const result = await window.api.downloadFile(
+  "https://example.com/image.jpg",
+  "image.jpg"
+);
+if (result.success && result.path) {
+  console.log(`File downloaded to: ${result.path}`);
+} else if (result.canceled) {
+  console.log("Download canceled by user");
+} else {
+  console.error(`Download failed: ${result.error}`);
+}
+```
+
+**IPC Channel:** `files:download`
+
+**Note:** Downloads run in the Main Process with progress tracking via `onDownloadProgress` event.
+
+---
+
+### `openFileInFolder(path: string)`
+
+Opens the file system folder containing the specified file and highlights the file.
+
+**Parameters:**
+
+- `path: string` - Full path to the file
+
+**Returns:** `Promise<boolean>`
+
+**Example:**
+
+```typescript
+const success = await window.api.openFileInFolder("/path/to/file.jpg");
+```
+
+**IPC Channel:** `files:open-folder`
+
+---
+
 ### Event Listeners
 
 The IPC bridge provides several event listeners for real-time updates:
@@ -695,6 +910,40 @@ const unsubscribe = window.api.onSyncError((message) => {
 
 **IPC Channel:** `sync:error`
 
+---
+
+#### `onDownloadProgress(callback: DownloadProgressCallback)`
+
+Listens for file download progress updates.
+
+**Callback Type:**
+
+```typescript
+type DownloadProgressCallback = (data: DownloadProgressData) => void;
+
+type DownloadProgressData = {
+  id: string;
+  percent: number;
+};
+```
+
+**Returns:** `() => void` - Unsubscribe function
+
+**Example:**
+
+```typescript
+const unsubscribe = window.api.onDownloadProgress((data) => {
+  console.log(`Download ${data.id}: ${data.percent}%`);
+});
+
+// Later, to unsubscribe:
+unsubscribe();
+```
+
+**IPC Channel:** `files:download-progress`
+
+---
+
 ## Error Handling
 
 All IPC methods can throw errors. Always wrap calls in try-catch blocks:
@@ -728,7 +977,7 @@ try {
 
 ### Main Process (IPC Handlers)
 
-IPC handlers are registered in `src/main/ipc.ts`:
+IPC handlers are registered in `src/main/ipc/index.ts`:
 
 ```typescript
 export const registerIpcHandlers = (
