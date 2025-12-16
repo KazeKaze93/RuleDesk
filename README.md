@@ -1,5 +1,3 @@
-# ruledesk
-
 # 💻 RuleDesk
 
 > A modern, secure desktop companion built on Electron and React/TypeScript for browsing and organizing booru-style imageboard content via its public API. Designed for performance and maintainability.
