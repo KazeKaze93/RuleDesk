@@ -9,7 +9,6 @@ import { syncService } from "./services/sync-service";
 
 logger.info("🚀 Application starting...");
 
-// Data migration: migrate from old app name to new app name
 async function migrateUserData() {
   try {
     const oldUserDataPath = path.join(
@@ -18,7 +17,6 @@ async function migrateUserData() {
     );
     const newUserDataPath = path.join(app.getPath("appData"), "RuleDesk");
 
-    // Check if old folder exists and new folder doesn't
     try {
       await fs.access(oldUserDataPath);
       const oldFolderExists = true;
@@ -36,7 +34,6 @@ async function migrateUserData() {
         await fs.mkdir(newUserDataPath, { recursive: true });
         logger.info(`Created new user data folder: ${newUserDataPath}`);
 
-        // Copy metadata.db if it exists
         const oldDbPath = path.join(oldUserDataPath, "metadata.db");
         const newDbPath = path.join(newUserDataPath, "metadata.db");
 
@@ -45,19 +42,16 @@ async function migrateUserData() {
           await fs.copyFile(oldDbPath, newDbPath);
           logger.info(`Migrated metadata.db from ${oldDbPath} to ${newDbPath}`);
         } catch (_err) {
-          // metadata.db doesn't exist in old folder, that's okay
           logger.info(
             "No metadata.db found in old user data folder, skipping migration"
           );
         }
       }
     } catch (_err) {
-      // Old folder doesn't exist, no migration needed
       logger.info("Old user data folder not found, skipping migration");
     }
   } catch (err) {
     logger.error("Error during user data migration:", err);
-    // Don't fail the app startup if migration fails
   }
 }
 
@@ -127,7 +121,6 @@ async function initializeAppAndWindow() {
         contextIsolation: true,
         nodeIntegration: false,
         preload: path.join(__dirname, "../preload/bridge.cjs"),
-        // Обязательная мера безопасности
         sandbox: true,
       },
     });
@@ -151,7 +144,6 @@ async function initializeAppAndWindow() {
     }
 
     mainWindow.once("ready-to-show", () => {
-      // 🛑 ФИКС 1: Захватываем инстансы, проверенные на null
       const workerClient = dbWorkerClient;
       const window = mainWindow;
 
@@ -161,12 +153,9 @@ async function initializeAppAndWindow() {
 
         registerAllHandlers(workerClient, syncService, updaterService, window);
 
-        // ⚡ DEFERRED DATABASE MAINTENANCE
         setTimeout(() => {
           logger.info("Main: Starting deferred background DB maintenance...");
 
-          // 🛑 ФИКС: Используем единый RPC-вызов для отложенного обслуживания
-          // workerClient - это локальная переменная, захваченная из замыкания
           workerClient
             .call("runDeferredMaintenance", {})
             .then(() => {
@@ -194,8 +183,6 @@ async function initializeAppAndWindow() {
   }
 }
 
-// 🛑 ФИКС: Удаляем старую createWindow (ее логика теперь в initializeAppAndWindow)
-
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
@@ -204,7 +191,6 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    // В этом случае вызываем initializeAppAndWindow, который создаст окно
     initializeAppAndWindow();
   }
 });
@@ -213,7 +199,6 @@ app.on("activate", () => {
  * Restore database from backup file
  */
 export async function restoreDatabase(backupPath: string): Promise<void> {
-  // 🛑 ФИКС: Теперь dbWorkerClient может быть null, проверяем.
   if (!dbWorkerClient || !mainWindow) {
     throw new Error("DB Worker Client or Main Window is not initialized.");
   }

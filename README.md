@@ -397,17 +397,16 @@ By using this software, you acknowledge and agree to the following:
 
 **Use at Your Own Risk:** The authors and contributors of this project:
 
-* Do not control the content provided by third-party services.
-* Do not endorse, moderate, or curate any content accessed through this software.
-* Are not responsible for how you use this software or which content you access with it.
+- Do not control the content provided by third-party services.
+- Do not endorse, moderate, or curate any content accessed through this software.
+- Are not responsible for how you use this software or which content you access with it.
 
 **Compliance with Laws & ToS:** You are solely responsible for:
 
-* Complying with the laws and regulations applicable in your country/region.
-* Complying with the target website's Terms of Service, API rules, and any usage limitations (including rate limits and content policies).
+- Complying with the laws and regulations applicable in your country/region.
+- Complying with the target website's Terms of Service, API rules, and any usage limitations (including rate limits and content policies).
 
 **No Warranty / Limitation of Liability:** This software is provided “AS IS”, without warranties or conditions of any kind, either express or implied. To the fullest extent permitted by applicable law, in no event shall the authors or copyright holders be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the software or the use or other dealings in the software.
-
 
 ---
 
