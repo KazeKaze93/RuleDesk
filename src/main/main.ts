@@ -10,7 +10,7 @@ logger.info("🚀 Application starting...");
 
 process.env.USER_DATA_PATH = app.getPath("userData");
 
-let dbWorkerClient: DbWorkerClient | null = null; // Делаем null, пока не инициализируем
+let dbWorkerClient: DbWorkerClient | null = null;
 let mainWindow: BrowserWindow | null = null;
 let DB_PATH: string;
 
@@ -28,11 +28,18 @@ if (!gotTheLock) {
     }
   });
 
-  // 🛑 ФИКС: Вызываем initializeAppAndWindow только после того, как Electron готов.
   app.on("ready", initializeAppAndWindow);
 }
 
-// 🛑 УДАЛЕНА: Старая функция initializeAppAndReady (ее логика перенесена ниже)
+function getMigrationsPath(): string {
+  const isDev = process.env.NODE_ENV === "development";
+
+  if (isDev) {
+    return path.join(process.cwd(), "drizzle");
+  }
+
+  return path.join(process.resourcesPath, "drizzle");
+}
 
 /**
  * Асинхронная функция, которая запускается после app.ready.
@@ -42,9 +49,12 @@ async function initializeAppAndWindow() {
   try {
     DB_PATH = path.join(app.getPath("userData"), "metadata.db");
 
+    const MIGRATIONS_PATH = getMigrationsPath();
+    logger.info(`Main: Migrations Path: ${MIGRATIONS_PATH}`);
+
     // === 1. АСИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ DB WORKER ===
     // Блокировка здесь безопасна, так как Electron уже готов.
-    dbWorkerClient = await DbWorkerClient.initialize(DB_PATH);
+    dbWorkerClient = await DbWorkerClient.initialize(DB_PATH, MIGRATIONS_PATH);
     logger.info("✅ Main: DB Worker Client initialized and ready.");
 
     // === 2. Инициализация сервисов и создание окна ===
