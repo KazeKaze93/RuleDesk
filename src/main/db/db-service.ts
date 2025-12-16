@@ -21,10 +21,6 @@ export class DbService {
 
   // === 🛠️ DATABASE MAINTENANCE ===
 
-  /**
-   * CRITICAL FIX: Running this synchronously on startup with large datasets causes freezing.
-   * Consider running this in a worker or non-blocking way in main.ts.
-   */
   public async fixDatabaseSchema(): Promise<void> {
     logger.info("DbService: 🛠️ Running database schema repair...");
     try {

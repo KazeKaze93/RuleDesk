@@ -1,24 +1,20 @@
-import React, { forwardRef, useState, useEffect, useMemo } from "react";
+// Cursor: select file:src/renderer/components/gallery/ArtistGallery.tsx
+import React, { forwardRef, useMemo } from "react";
 import {
-  useMutation,
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
+  useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import {
-  ArrowLeft,
-  ExternalLink,
-  Wrench,
-  Loader2,
-  Play,
-  Check,
-} from "lucide-react";
+import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { Button } from "./ui/button";
-import type { Artist, Post } from "../../main/db/schema";
-import { cn } from "../lib/utils";
-import { ImageLightbox } from "./ImageLightbox";
+import { Button } from "../ui/button";
+import type { Artist, Post } from "../../../main/db/schema";
+import { cn } from "../../lib/utils";
+import { useViewerStore } from "../../store/viewerStore";
+import { PostCard } from "../gallery/PostCard";
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -34,7 +30,7 @@ const GridContainer = forwardRef<
   <div
     ref={ref}
     className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-20 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
       className
     )}
     {...props}
@@ -50,8 +46,6 @@ const ItemContainer = forwardRef<
 ));
 ItemContainer.displayName = "ItemContainer";
 
-const isVideo = (url: string) => url.endsWith(".mp4") || url.endsWith(".webm");
-
 // --- Основной компонент ---
 
 export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
@@ -60,7 +54,21 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+
+  // 🔥 FIX: Достаем appendQueueIds из стора, чтобы обновлять очередь вьювера
+  const { open: openViewer, appendQueueIds } = useViewerStore((state) => ({
+    open: state.open,
+    appendQueueIds: state.appendQueueIds,
+  }));
+
+  // Fetch total posts count
+  const { data: totalPosts = 0 } = useQuery({
+    queryKey: ["posts-count", artist.id],
+    queryFn: async () => {
+      const count = await window.api.getArtistPostsCount(artist.id);
+      return count;
+    },
+  });
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
@@ -81,7 +89,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
 
-  // --- MUTATION: Mark as Viewed ---
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
       await window.api.markPostAsViewed(postId);
@@ -91,7 +98,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         ["posts", artist.id],
         (oldData) => {
           if (!oldData) return oldData;
-
           return {
             ...oldData,
             pages: oldData.pages.map((page) =>
@@ -105,17 +111,49 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  useEffect(() => {
-    if (selectedIndex !== null && allPosts[selectedIndex]) {
-      const post = allPosts[selectedIndex];
-      if (!post.isViewed) {
-        viewMutation.mutate(post.id);
+  // 🔥 FIX: Handler теперь не просто грузит данные в кэш, но и обновляет стор Вьювера!
+  const handleLoadMore = async () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      console.log("[Gallery] Viewer requested more posts. Fetching...");
+
+      // Ждем завершения загрузки и получаем результат
+      const result = await fetchNextPage();
+
+      // Если загрузка прошла успешно и есть данные
+      if (result.data) {
+        // Берем последнюю страницу (новую)
+        const newPage = result.data.pages[result.data.pages.length - 1];
+
+        if (newPage && newPage.length > 0) {
+          const newIds = newPage.map((p) => p.id);
+          console.log(
+            `[Gallery] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
+          );
+
+          // ЯВНО обновляем очередь вьювера
+          appendQueueIds(newIds);
+        }
       }
     }
-  }, [selectedIndex, allPosts, viewMutation]);
+  };
 
   const handlePostClick = (index: number) => {
-    setSelectedIndex(index);
+    const postIds = allPosts.map((p) => p.id);
+
+    const post = allPosts[index];
+    if (post && !post.isViewed) {
+      viewMutation.mutate(post.id);
+    }
+
+    openViewer({
+      origin: { kind: "artist", artistId: artist.id },
+      ids: postIds,
+      initialIndex: index,
+      listKey: `artist-${artist.id}`,
+      totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
+      hasNextPage: hasNextPage && allPosts.length < (totalPosts || Infinity),
+      onLoadMore: handleLoadMore, // Передаем обновленный хендлер
+    });
   };
 
   const handleRepairSync = async () => {
@@ -130,14 +168,16 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       await window.api.repairArtist(artist.id);
       queryClient.invalidateQueries({ queryKey: ["artists"] });
       queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
+      queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
     } catch (e) {
       console.error(e);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950">
-      <div className="flex z-10 justify-between items-center px-6 py-4 border-b backdrop-blur shrink-0 bg-slate-950/90 border-slate-800">
+    <div className="flex flex-col h-full bg-background text-foreground">
+      {/* Header */}
+      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-4 items-center">
           <Button
             variant="ghost"
@@ -148,13 +188,13 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h2 className="text-xl font-bold text-white">{artist.name}</h2>
-            <div className="flex gap-2 text-xs text-slate-400">
-              <span className="px-1 font-mono rounded bg-slate-900 text-slate-500">
-                {artist.tag}
-              </span>
-              <span>•</span>
-              <span>{allPosts.length} posts loaded</span>
+            <h2 className="text-xl font-bold">{artist.name}</h2>
+            <div className="flex gap-2 text-xs text-muted-foreground">
+              {totalPosts > 0 && (
+                <span className="text-sm font-medium text-muted-foreground">
+                  Total: {totalPosts}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -186,9 +226,10 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         </div>
       </div>
 
+      {/* Grid Content */}
       <div className="flex-1 min-h-0">
         {isLoading && allPosts.length === 0 ? (
-          <div className="flex justify-center items-center h-full text-slate-500">
+          <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
         ) : (
@@ -206,88 +247,21 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               Footer: () =>
                 isFetchingNextPage ? (
                   <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
                 ) : null,
             }}
             itemContent={(index) => {
               const post = allPosts[index];
-              const isVid = isVideo(post.fileUrl);
+              if (!post) return null;
+
               return (
-                <div
-                  onClick={() => handlePostClick(index)}
-                  className={cn(
-                    "overflow-hidden relative w-full h-full rounded-lg border transition-colors group bg-slate-900 border-slate-800 cursor-zoom-in",
-                    "hover:border-blue-500"
-                  )}
-                >
-                  {post.previewUrl ? (
-                    <img
-                      src={post.previewUrl}
-                      alt={`Post ${post.id}`}
-                      className={cn(
-                        "object-cover w-full h-full transition-transform duration-300 group-hover:scale-105",
-                        post.isViewed && "opacity-60 grayscale-[0.3]"
-                      )}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex justify-center items-center w-full h-full text-slate-600 bg-slate-900">
-                      No Preview
-                    </div>
-                  )}
-
-                  {isVid && (
-                    <div className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full backdrop-blur-[2px]">
-                      <Play className="w-3 h-3 text-white fill-white" />
-                    </div>
-                  )}
-
-                  {post.isViewed && (
-                    <div className="absolute top-2 left-2 z-10 p-1 rounded-full shadow-md bg-blue-600/90">
-                      <Check className="w-3 h-3 text-white stroke-[3]" />
-                    </div>
-                  )}
-
-                  <div className="flex absolute inset-0 flex-col justify-end p-2 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity from-black/80 group-hover:opacity-100">
-                    <span
-                      className={cn(
-                        "text-xs font-bold uppercase",
-                        post.rating === "e" ? "text-red-400" : "text-green-400"
-                      )}
-                    >
-                      {post.rating || "?"}
-                    </span>
-                  </div>
-                </div>
+                <PostCard post={post} onClick={() => handlePostClick(index)} />
               );
             }}
           />
         )}
       </div>
-
-      {/* --- LIGHTBOX --- */}
-      {selectedIndex >= 0 && allPosts[selectedIndex] && (
-        <ImageLightbox
-          post={allPosts[selectedIndex]}
-          onClose={() => setSelectedIndex(-1)}
-          onNext={() => {
-            if (selectedIndex < allPosts.length - 1) {
-              setSelectedIndex(selectedIndex + 1);
-              if (
-                selectedIndex > allPosts.length - 5 &&
-                hasNextPage &&
-                !isFetchingNextPage
-              ) {
-                fetchNextPage();
-              }
-            }
-          }}
-          onPrev={() => {
-            if (selectedIndex > 0) setSelectedIndex(selectedIndex - 1);
-          }}
-        />
-      )}
     </div>
   );
 };

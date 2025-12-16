@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Combobox, Transition } from "@headlessui/react";
 import { ChevronUpDownIcon, CheckIcon } from "@heroicons/react/20/solid";
-import { useDebounce } from "../../../shared/hooks/useDebounce";
+import { useDebounce } from "../../lib/hooks/useDebounce";
 import { Fragment } from "react";
 
 export interface AutocompleteOption {

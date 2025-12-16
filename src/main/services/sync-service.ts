@@ -1,3 +1,4 @@
+// Cursor: select file:src/main/services/sync-service.ts
 import { BrowserWindow, safeStorage } from "electron";
 import { logger } from "../lib/logger";
 import { DbWorkerClient } from "../db/db-worker-client";
@@ -47,29 +48,103 @@ export class SyncService {
   }
 
   private async getDecryptedSettings() {
-    if (!this.dbWorkerClient) return null;
+    if (!this.dbWorkerClient) {
+      logger.error("SyncService: DbWorkerClient is not initialized!");
+      return null;
+    }
 
-    // Запрашиваем "getApiKeyDecrypted", но воркер вернет зашифрованное (потому что мы его отучили дешифровать)
     const settings = await this.dbWorkerClient.call<{
       userId: string;
       apiKey: string;
     }>("getApiKeyDecrypted");
 
-    if (!settings) return null;
-
     let realApiKey = settings.apiKey;
 
-    // Дешифруем прямо тут
+    // Дешифровка (safeStorage)
     if (realApiKey && safeStorage.isEncryptionAvailable()) {
       try {
         const buff = Buffer.from(realApiKey, "base64");
         realApiKey = safeStorage.decryptString(buff);
-      } catch {
-        // Если ошибка, оставляем как есть (вдруг он не зашифрован)
+        logger.info(
+          `SyncService: Credentials decrypted successfully. Final Key Length: ${realApiKey.length}`
+        );
+      } catch (e) {
+        // Если ошибка дешифровки, возможно это "сырой" ключ (например в dev режиме), оставляем как есть
+        logger.warn(
+          "SyncService: Failed to decrypt API Key. This usually means the app was run by a different user/session or the encryption key was lost.",
+          e
+        );
+        realApiKey = settings.apiKey;
       }
     }
 
     return { ...settings, apiKey: realApiKey };
+  }
+
+  /**
+   * 🔥 Реальная проверка кредов через API Rule34
+   */
+  public async checkCredentials(): Promise<boolean> {
+    try {
+      const settings = await this.getDecryptedSettings();
+
+      if (!settings?.userId || !settings?.apiKey) {
+        logger.warn(
+          "SyncService: Cannot verify credentials - missing ID or Key."
+        );
+        return false;
+      }
+
+      logger.info(
+        `SyncService: Verifying connectivity for User ID: ${settings.userId}...`
+      );
+
+      const params = new URLSearchParams({
+        page: "dapi",
+        s: "post",
+        q: "index",
+        limit: "1",
+        json: "1",
+        user_id: settings.userId,
+        api_key: settings.apiKey,
+      });
+
+      const { data, status } = await axios.get(
+        `https://api.rule34.xxx/index.php?${params}`,
+        {
+          timeout: 10000,
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Accept: "application/json",
+            "Accept-Encoding": "identity",
+          },
+        }
+      );
+
+      if (Array.isArray(data)) {
+        logger.info(
+          `SyncService: Connection verified (Status: ${status}). Downloaded ${data.length} test posts.`
+        );
+        return true;
+      }
+
+      logger.warn(
+        `SyncService: Verification failed. API response was not an array. Data: ${JSON.stringify(
+          data
+        ).substring(0, 100)}`
+      );
+      return false;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        logger.error(
+          `SyncService: Network error. Status: ${error.response?.status}.`
+        );
+      } else {
+        logger.error("SyncService: Verification error", error);
+      }
+      return false;
+    }
   }
 
   public async syncAllArtists() {
@@ -132,7 +207,7 @@ export class SyncService {
 
   private async syncArtist(
     artist: Artist,
-    settings: InternalDecryptedSettings, // 🛑 ФИКС: Используем новый тип
+    settings: InternalDecryptedSettings,
     maxPages = Infinity
   ) {
     if (!this.dbWorkerClient) return;
@@ -140,7 +215,6 @@ export class SyncService {
     let page = 0;
     let hasMore = true;
     let newPostsCount = 0;
-    // Track highest ID in this session to prevent ID regression
     let highestPostId = artist.lastPostId;
 
     while (hasMore && page < maxPages) {
@@ -167,15 +241,16 @@ export class SyncService {
 
         const { data: posts } = await axios.get<R34Post[]>(
           `https://api.rule34.xxx/index.php?${params}`,
-          { timeout: 15000 }
+          {
+            timeout: 15000,
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept-Encoding": "identity",
+            },
+          }
         );
 
-        if (!Array.isArray(posts) || posts.length === 0) {
-          hasMore = false;
-          break;
-        }
-
-        // Calculate max ID in this batch
         const batchMaxId = Math.max(...posts.map((p) => Number(p.id)));
         if (batchMaxId > highestPostId) highestPostId = batchMaxId;
 
@@ -195,7 +270,6 @@ export class SyncService {
           title: "",
           rating: p.rating,
           tags: p.tags,
-          // Fix: API returns seconds, JS Date needs milliseconds
           publishedAt: new Date((p.change || 0) * 1000),
           isViewed: false,
         }));
@@ -205,7 +279,6 @@ export class SyncService {
             artistId: artist.id,
             posts: postsToSave,
           });
-          // 2. Atomic Update of Progress
           await this.dbWorkerClient.call("updateArtistProgress", {
             artistId: artist.id,
             newMaxPostId: highestPostId,
@@ -224,7 +297,6 @@ export class SyncService {
       }
     }
 
-    // Final check to update timestamps even if no new posts
     if (newPostsCount === 0) {
       await this.dbWorkerClient.call("updateArtistProgress", {
         artistId: artist.id,

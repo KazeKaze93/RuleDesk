@@ -1,4 +1,4 @@
-import type { Artist, NewArtist, Settings, Post } from "./main/db/schema";
+import type { Artist, NewArtist, Post } from "./main/db/schema";
 import {
   IpcBridge,
   UpdateStatusCallback,
@@ -13,13 +13,26 @@ export interface BackupResponse {
   error?: string;
 }
 
+export interface PostQueryFilters {
+  rating?: "s" | "q" | "e";
+  tags?: string;
+  sortBy?: "date" | "id" | "rating";
+  isViewed?: boolean;
+}
+
+export interface IpcSettings {
+  userId: string;
+  hasApiKey: boolean;
+}
+
 export interface IpcApi extends IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
 
   // Settings
-  getSettings: () => Promise<Settings | undefined>;
+  getSettings: () => Promise<IpcSettings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  logout: () => Promise<void>;
   openExternal: (url: string) => Promise<void>;
 
   // Artists
@@ -33,8 +46,14 @@ export interface IpcApi extends IpcBridge {
   // Posts
   getArtistPosts: (params: {
     artistId: number;
-    page: number;
+    page?: number;
+    filters?: PostQueryFilters;
   }) => Promise<Post[]>;
+  getArtistPostsCount: (artistId?: number) => Promise<number>;
+
+  togglePostViewed: (postId: number) => Promise<boolean>;
+
+  resetPostCache: (postId: number) => Promise<boolean>;
 
   // Sync
   syncAll: () => Promise<boolean>;
@@ -61,6 +80,9 @@ export interface IpcApi extends IpcBridge {
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
+  writeToClipboard: (text: string) => Promise<boolean>;
+
+  verifyCredentials: () => Promise<boolean>;
 }
 
 declare global {

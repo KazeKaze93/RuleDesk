@@ -3,8 +3,17 @@ module.exports = {
   darkMode: ["class"],
   content: ["./src/renderer/index.html", "./src/renderer/**/*.{js,ts,jsx,tsx}"],
   theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
     extend: {
-      // Цвета, которые требует shadcn/ui
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"], // <-- Добавь это
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

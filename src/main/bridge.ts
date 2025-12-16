@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type { Artist, NewArtist, Post, Settings } from "./db/schema";
+import { IPC_CHANNELS } from "./ipc/channels";
 
 export type UpdateStatusData = {
   status: string;
@@ -17,13 +18,36 @@ export type BackupResponse = {
   error?: string;
 };
 
+export type DownloadProgressData = {
+  id: string;
+  percent: number;
+};
+export type DownloadProgressCallback = (data: DownloadProgressData) => void;
+
+export interface PostQueryFilters {
+  rating?: "s" | "q" | "e";
+  tags?: string;
+  sortBy?: "date" | "id" | "rating";
+  isViewed?: boolean;
+}
+
+export interface GetPostsParams {
+  artistId: number;
+  page?: number;
+  filters?: PostQueryFilters;
+}
+
 export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
 
+  // 🔥 FIX: Добавлен метод для работы с буфером обмена (System)
+  writeToClipboard: (text: string) => Promise<boolean>;
+
   // Settings
   getSettings: () => Promise<Settings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  logout: () => Promise<void>;
 
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
@@ -38,6 +62,11 @@ export interface IpcBridge {
     artistId: number;
     page?: number;
   }) => Promise<Post[]>;
+  getArtistPostsCount: (artistId?: number) => Promise<number>;
+
+  togglePostViewed: (postId: number) => Promise<boolean>;
+
+  resetPostCache: (postId: number) => Promise<boolean>;
 
   // External
   openExternal: (url: string) => Promise<void>;
@@ -61,30 +90,57 @@ export interface IpcBridge {
 
   markPostAsViewed: (postId: number) => Promise<boolean>;
 
+  togglePostFavorite: (postId: number) => Promise<boolean>;
+
+  // Downloads
+  downloadFile: (
+    url: string,
+    filename: string
+  ) => Promise<{
+    success: boolean;
+    path?: string;
+    error?: string;
+    canceled?: boolean;
+  }>;
+  openFileInFolder: (path: string) => Promise<boolean>;
+
+  onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
+
   searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
+
+  verifyCredentials: () => Promise<boolean>;
 }
 
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
 
+  // 🔥 FIX: Реализация метода writeToClipboard
+  writeToClipboard: (text) =>
+    ipcRenderer.invoke("app:write-to-clipboard", text),
+
   searchRemoteTags: (query) =>
     ipcRenderer.invoke("api:search-remote-tags", query),
 
-  getSettings: () => ipcRenderer.invoke("app:get-settings"),
-  saveSettings: (creds) => ipcRenderer.invoke("app:save-settings", creds),
+  verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
+
+  getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.GET),
+  saveSettings: (creds) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE, creds),
+  logout: () => ipcRenderer.invoke("app:logout"),
 
   getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),
   addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
   deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
 
-  // --- NEW: Implementation ---
   searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
 
-  getArtistPosts: ({ artistId, page }) =>
-    ipcRenderer.invoke("db:get-posts", { artistId, page }),
+  getArtistPosts: (params: GetPostsParams) =>
+    ipcRenderer.invoke("db:get-posts", params),
+  getArtistPostsCount: (artistId?: number) =>
+    ipcRenderer.invoke("db:get-posts-count", artistId),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
@@ -92,6 +148,33 @@ const ipcBridge: IpcBridge = {
 
   markPostAsViewed: (postId) =>
     ipcRenderer.invoke("db:mark-post-viewed", postId),
+
+  togglePostFavorite: (postId) =>
+    ipcRenderer.invoke("db:toggle-post-favorite", postId),
+
+  togglePostViewed: (postId) =>
+    ipcRenderer.invoke("db:toggle-post-viewed", postId),
+
+  resetPostCache: (postId) => ipcRenderer.invoke("db:reset-post-cache", postId),
+
+  downloadFile: (url: string, filename: string) => {
+    // console.log("Bridge: Sending download request...", url); // Можно убрать лог
+    return ipcRenderer.invoke("files:download", url, filename);
+  },
+
+  openFileInFolder: (path: string) =>
+    ipcRenderer.invoke("files:open-folder", path),
+
+  onDownloadProgress: (callback) => {
+    const channel = "files:download-progress";
+    const subscription = (_: IpcRendererEvent, data: DownloadProgressData) =>
+      callback(data);
+
+    ipcRenderer.on(channel, subscription);
+    return () => {
+      ipcRenderer.removeListener(channel, subscription);
+    };
+  },
 
   repairArtist: (artistId) =>
     ipcRenderer.invoke("sync:repair-artist", artistId),

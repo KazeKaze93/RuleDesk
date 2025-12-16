@@ -23,17 +23,19 @@ CREATE TABLE `posts` (
 	`published_at` integer NOT NULL,
 	`created_at` integer NOT NULL,
 	`is_viewed` integer DEFAULT false NOT NULL,
+	`is_favorited` integer DEFAULT false NOT NULL,
 	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE TABLE `settings` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`user_id` text DEFAULT '',
-	`api_key` text DEFAULT ''
+	`encrypted_api_key` text DEFAULT ''
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `artists_tag_unique` ON `artists` (`tag`);--> statement-breakpoint
 CREATE INDEX `artistIdIdx` ON `posts` (`artist_id`);--> statement-breakpoint
 CREATE INDEX `isViewedIdx` ON `posts` (`is_viewed`);--> statement-breakpoint
 CREATE INDEX `publishedAtIdx` ON `posts` (`published_at`);--> statement-breakpoint
+CREATE INDEX `isFavoritedIdx` ON `posts` (`is_favorited`);--> statement-breakpoint
 CREATE UNIQUE INDEX `posts_artist_id_post_id_unique` ON `posts` (`artist_id`,`post_id`);
