@@ -161,22 +161,25 @@ Non-blocking database maintenance:
 
 Core features for initial release:
 
-- ✅ **Navigation & Sidebar** - Basic sidebar with main sections
-- ⏳ **Global Top Bar** - Search, filters, sort, view toggle, sync status
-- ⏳ **Viewer Polish** - Auto-hide bars, tags sheet, keyboard shortcuts
+- ✅ **Navigation & Sidebar** - Basic sidebar with main sections (implemented)
+- ✅ **Global Top Bar** - Search, filters, sort, view toggle UI (implemented, backend filtering pending)
+- ✅ **Viewer Polish** - Full-screen viewer with keyboard shortcuts, download, favorites (implemented)
 - ✅ **Progressive Loading** - Preview → Sample → Original (implemented)
-- ⏳ **Auto-sync Startup** - Toggle for automatic sync on app launch
+- ⏳ **Auto-sync Startup** - Toggle for automatic sync on app launch (planned)
 - ✅ **Worker Threads** - Database operations in worker thread (completed)
+- ✅ **Download Manager** - Individual file downloads with progress tracking (implemented)
+- ✅ **Favorites System** - Mark and manage favorite posts (implemented)
 
 ### Next Phase
 
 Enhanced features after MVP:
 
-- ⏳ **Favorites Sync** - Sync account favorites from booru
-- ⏳ **Tag Autocomplete** - Enhanced tag search with suggestions
-- ⏳ **Playlists Groundwork** - Basic playlist tables and UI structure
-- ⏳ **Periodic Sync** - Configurable interval sync while app running
-- ⏳ **Card Overlays** - Viewed, favorite, rating, media type badges
+- ✅ **Favorites System** - Mark and manage favorite posts (implemented)
+- ✅ **Tag Autocomplete** - Local and remote tag search with autocomplete (implemented)
+- ⏳ **Favorites Sync** - Sync account favorites from booru (planned)
+- ⏳ **Playlists Groundwork** - Basic playlist tables and UI structure (planned)
+- ⏳ **Periodic Sync** - Configurable interval sync while app running (planned)
+- ⏳ **Card Overlays** - Viewed, favorite, rating, media type badges (partially implemented - viewed and favorite badges exist)
 
 ### Later Phase
 
@@ -188,20 +191,23 @@ Advanced features for future releases:
 - ⏳ **Proxy Support** - Optional proxy configuration for API requests
 - ⏳ **Multi-Booru** - Provider pattern for multiple booru sources
 
-### A. Filters (Advanced Search) [Priority: High] ⏳ Not Started
+### A. Filters (Advanced Search) [Priority: High] 🚧 In Progress
 
 **Goal:** Allow users to refine the gallery view.
 
 **UI:**
 
-- [ ] Top Bar filter panel (part of Global Top Bar)
+- ✅ Top Bar filter panel (part of Global Top Bar) - UI implemented
+- ✅ Search bar in Global Top Bar
+- ✅ Sort dropdown in Global Top Bar
+- ✅ View toggle (Grid/List) in Global Top Bar
 
 **Functionality:**
 
-- [ ] Filter by **Rating** (Safe, Questionable, Explicit)
-- [ ] Filter by **Media Type** (Image vs Video)
-- [ ] Filter by **Tags** (Local search within downloaded posts)
-- [ ] Sort by: Date Added (New/Old), Posted Date
+- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - UI ready, backend filtering pending
+- ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
+- ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
+- ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
 
 **Implementation Notes:**
 
@@ -209,29 +215,31 @@ Advanced features for future releases:
 - Maintain type safety with Zod/TypeScript
 - Update UI state via React Query invalidation
 
-**Status:** No filtering UI or logic implemented. `ArtistGallery` component currently displays all posts without filtering options.
+**Status:** UI components implemented in `GlobalTopBar.tsx`. Backend filtering and sorting logic needs to be connected to the UI controls.
 
 ---
 
-### B. Download Manager [Priority: High] ⏳ Not Started
+### B. Download Manager [Priority: High] ✅ Implemented (Partial)
 
 **Goal:** Allow saving full-resolution files to the local file system (outside the app's internal DB cache).
 
 **Features:**
 
-- [ ] "Download Original" button on post view
-- [ ] "Download All" for current filter/artist
-- [ ] **Queue System:** Handle downloads in the background/main process to avoid freezing UI
-- [ ] **Settings:** Allow choosing a default download directory
+- ✅ "Download Original" button on post view (implemented in ViewerDialog)
+- ✅ **Queue System:** Handle downloads in the background/main process with progress tracking
+- ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
+- ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
+- ⏳ "Download All" for current filter/artist (planned)
+- ⏳ **Settings:** Allow choosing a default download directory (planned)
 
 **Implementation Notes:**
 
-- Downloads must run in Main Process (file I/O)
-- Use IPC events for download progress updates
-- Implement queue management to prevent overwhelming the system
-- Store download preferences in settings table
+- Downloads run in Main Process (file I/O) via `registerFileHandlers`
+- IPC events provide download progress updates
+- Queue management prevents overwhelming the system
+- Download preferences can be stored in settings table (future enhancement)
 
-**Status:** No download functionality for posts. Only auto-updater download exists.
+**Status:** Core download functionality implemented. Individual file downloads work with progress tracking. Batch download and default directory settings are planned for future releases.
 
 ---
 

@@ -4,6 +4,55 @@
 
 This application follows a strict **Separation of Concerns (SoC)** architecture, dividing responsibilities between the Electron Main Process (secure Node.js environment) and the Renderer Process (sandboxed browser environment).
 
+### Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Renderer Process (Browser)"
+        ReactContext[React Context<br/>Components & State]
+        TanStackQuery[TanStack Query<br/>Data Fetching]
+        Zustand[Zustand Store<br/>UI State]
+    end
+
+    subgraph "IPC Bridge"
+        Preload[preload.ts<br/>Context Bridge]
+        IPCHandlers[IPC Handlers<br/>Validation & Routing]
+    end
+
+    subgraph "Main Process (Node.js)"
+        ServicesLayer[Services Layer<br/>Business Logic]
+        BackendClients[Backend Clients<br/>API Communication]
+    end
+
+    subgraph "Worker Thread"
+        DBWorker[Database Worker<br/>SQLite Operations]
+        DrizzleORM[Drizzle ORM<br/>Type-Safe Queries]
+    end
+
+    subgraph "External"
+        Rule34API[Rule34.xxx API<br/>External Service]
+        SQLiteDB[(SQLite Database<br/>Local Storage)]
+    end
+
+    ReactContext <--> Preload
+    TanStackQuery <--> Preload
+    Zustand --> ReactContext
+    Preload <--> IPCHandlers
+    IPCHandlers --> ServicesLayer
+    ServicesLayer --> BackendClients
+    ServicesLayer <--> DBWorker
+    DBWorker --> DrizzleORM
+    DrizzleORM --> SQLiteDB
+    BackendClients --> Rule34API
+
+    style ReactContext fill:#e1f5ff
+    style Preload fill:#fff4e1
+    style ServicesLayer fill:#ffe1e1
+    style DBWorker fill:#f0e1ff
+    style SQLiteDB fill:#e1ffe1
+    style Rule34API fill:#ffe1f5
+```
+
 ## Architecture Concept
 
 ### 1. Dual-Module Interface
@@ -19,36 +68,103 @@ This application follows a strict **Separation of Concerns (SoC)** architecture,
 
 ## High-Level Architecture
 
+### System Overview
+
+```mermaid
+graph TB
+    subgraph "Electron Application"
+        subgraph "Renderer Process (Browser)"
+            ReactUI[React UI Components]
+            Zustand[Zustand Store]
+            ReactQuery[TanStack Query]
+        end
+
+        subgraph "IPC Bridge"
+            Preload[preload.ts]
+            IPC[IPC Handlers]
+        end
+
+        subgraph "Main Process (Node.js)"
+            Services[Services Layer]
+            BackendClients[Backend Clients]
+        end
+
+        subgraph "Worker Thread"
+            DBWorker[Database Worker]
+            Drizzle[Drizzle ORM]
+        end
+    end
+
+    subgraph "External"
+        Rule34API[Rule34.xxx API]
+        SQLite[(SQLite Database)]
+    end
+
+    ReactUI <--> Preload
+    Preload <--> IPC
+    IPC --> Services
+    Services --> BackendClients
+    Services <--> DBWorker
+    DBWorker --> Drizzle
+    Drizzle --> SQLite
+    BackendClients --> Rule34API
+
+    ReactUI --> Zustand
+    ReactUI --> ReactQuery
+    ReactQuery --> Preload
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Electron Application                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────────────┐      ┌──────────────────────┐    │
-│  │   Main Process       │◄────►│   Renderer Process   │    │
-│  │   (Node.js)          │ IPC  │   (Browser)          │    │
-│  │                      │      │                      │    │
-│  │  • API Clients       │      │  • React UI          │    │
-│  │  • File I/O          │      │  • State Management  │    │
-│  │  • Background Jobs   │      │  • User Interactions │    │
-│  │  • Secure Storage    │      │                      │    │
-│  └──────────┬───────────┘      └──────────────────────┘    │
-│             │ Worker Thread                                  │
-│             │ RPC                                            │
-│  ┌──────────▼───────────┐                                   │
-│  │  Database Worker      │                                   │
-│  │  (Worker Thread)      │                                   │
-│  │  • SQLite (Drizzle)   │                                   │
-│  │  • Migrations         │                                   │
-│  └──────────┬───────────┘                                   │
-│             │                                                │
-└─────────────┼────────────────────────────────────────────────┘
-              │
-              ▼
-      ┌─────────────┐              ┌─────────────┐
-      │   SQLite    │              │  External   │
-      │  Database   │              │  Booru APIs │
-      └─────────────┘              └─────────────┘
+
+### Process Communication Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReactUI as React UI
+    participant Bridge as IPC Bridge
+    participant IPC as IPC Handlers
+    participant Service as Services
+    participant Worker as DB Worker
+    participant DB as SQLite
+    participant API as Rule34 API
+
+    User->>ReactUI: User Action
+    ReactUI->>Bridge: window.api.method()
+    Bridge->>IPC: ipcRenderer.invoke()
+    IPC->>IPC: Validate Input (Zod)
+    IPC->>Service: Call Service Method
+    Service->>Worker: dbWorkerClient.call()
+    Worker->>DB: Execute Query
+    DB-->>Worker: Return Data
+    Worker-->>Service: Return Result
+    Service-->>IPC: Return Response
+    IPC-->>Bridge: IPC Response
+    Bridge-->>ReactUI: Promise Resolve
+    ReactUI->>User: Update UI
+```
+
+### Database Worker Architecture
+
+```mermaid
+graph LR
+    subgraph "Main Process"
+        Main[Main Process]
+        Client[DB Worker Client]
+    end
+
+    subgraph "Worker Thread"
+        Worker[DB Worker]
+        DrizzleORM[Drizzle ORM]
+        SQLiteDB[(SQLite)]
+    end
+
+    Main -->|RPC Call| Client
+    Client -->|PostMessage| Worker
+    Worker -->|Query| DrizzleORM
+    DrizzleORM -->|SQL| SQLiteDB
+    SQLiteDB -->|Result| DrizzleORM
+    DrizzleORM -->|Data| Worker
+    Worker -->|PostMessage| Client
+    Client -->|Promise Resolve| Main
 ```
 
 ## Process Separation
@@ -82,7 +198,28 @@ This application follows a strict **Separation of Concerns (SoC)** architecture,
    - Provides async/await interface over worker RPC calls
    - Manages backup and restore operations
 
-3. **Sync Service** (`src/main/services/sync-service.ts`)
+3. **Repositories** (`src/main/db/repositories/`)
+
+   - **ArtistsRepository** (`artists.repo.ts`) - Abstraction layer for artist operations
+
+     - `getAll()` - Get all tracked artists
+     - `add(artist)` - Add new artist
+     - `delete(id)` - Delete artist
+     - `searchTags(query)` - Search artists by tag/name
+
+   - **PostsRepository** (`posts.repo.ts`) - Abstraction layer for post operations
+
+     - `getByArtist(params)` - Get posts for artist with pagination
+     - `getCountByArtist(artistId)` - Get post count
+     - `markAsViewed(postId)` - Mark post as viewed
+     - `toggleFavorite(postId)` - Toggle favorite status
+     - `togglePostViewed(postId)` - Toggle viewed status
+     - `resetPostCache(postId)` - Reset post cache
+
+   - Repositories provide a clean abstraction over direct worker client calls
+   - Used by IPC handlers for type-safe database operations
+
+4. **Sync Service** (`src/main/services/sync-service.ts`)
 
    - Handles Rule34.xxx API synchronization
    - Implements rate limiting and pagination
@@ -91,36 +228,45 @@ This application follows a strict **Separation of Concerns (SoC)** architecture,
    - Provides repair/resync functionality for artists
    - Emits IPC events for sync progress tracking
 
-4. **IPC Handlers** (`src/main/ipc.ts`)
+5. **IPC Handlers** (`src/main/ipc/index.ts`)
 
    - Registers all IPC communication channels
+   - Modular handler structure in `src/main/ipc/handlers/`
    - Validates input from Renderer using Zod schemas
-   - Delegates to appropriate services
+   - Delegates to appropriate services and repositories
    - Security validation (e.g., openExternal URL whitelist)
    - Handles updater and sync event subscriptions
 
-5. **Updater Service** (`src/main/services/updater-service.ts`)
+   **Handler Modules:**
+
+   - `artists.ts` - Artist-related IPC handlers
+   - `files.ts` - File download handlers
+   - `posts.ts` - Post-related IPC handlers
+   - `settings.ts` - Settings IPC handlers
+   - `viewer.ts` - Viewer-related IPC handlers
+
+6. **Updater Service** (`src/main/services/updater-service.ts`)
 
    - Manages automatic update checking via `electron-updater`
    - Handles update download and installation
    - Emits IPC events for update status and progress
    - User-controlled download (manual download trigger)
 
-6. **Secure Storage** (`src/main/services/secure-storage.ts`)
+7. **Secure Storage** (`src/main/services/secure-storage.ts`)
 
    - Encrypts and decrypts sensitive data using Electron's `safeStorage` API
    - Used for API credentials encryption at rest
    - Decryption only occurs in Main Process when needed
    - Methods: encrypt, decrypt
 
-7. **Bridge** (`src/main/bridge.ts`)
+8. **Bridge** (`src/main/bridge.ts`)
 
    - Defines the IPC interface
    - Exposed via preload script
    - Type-safe communication contract
    - Event listener management for real-time updates
 
-8. **Main Entry** (`src/main/main.ts`)
+9. **Main Entry** (`src/main/main.ts`)
    - Application initialization
    - Window creation
    - Security configuration
@@ -143,23 +289,108 @@ This application follows a strict **Separation of Concerns (SoC)** architecture,
 
    - Main UI component with routing logic
    - Onboarding screen for API credentials
-   - Dashboard with artist list
+   - Sidebar navigation with multiple pages
    - Uses TanStack Query for data fetching
-   - State management via React hooks
+   - State management via React hooks and Zustand
 
 2. **Components** (`src/renderer/components/`)
 
-   - **Onboarding.tsx** - API credentials input form
-   - **AddArtistModal.tsx** - Modal for adding new artists
-   - **ArtistGallery.tsx** - Grid view of posts for an artist
-   - **ui/** - shadcn/ui components (Button, Dialog)
+   - **Pages:**
+
+     - **Updates.tsx** - Subscriptions feed (stub, in development)
+     - **Browse.tsx** - All posts view with filtering (stub, in development)
+     - **Favorites.tsx** - Favorites collection (stub, in development)
+     - **Tracked.tsx** - Artists and tags management
+     - **Settings.tsx** - Application configuration
+     - **ArtistDetails.tsx** - Artist gallery view
+     - **Onboarding.tsx** - API credentials input form
+
+   - **Layout:**
+
+     - **AppLayout.tsx** - Main application layout with sidebar
+     - **Sidebar.tsx** - Persistent sidebar navigation
+     - **GlobalTopBar.tsx** - Unified top bar with search, filters, sort controls
+
+   - **Gallery:**
+
+     - **ArtistCard.tsx** - Artist card component
+     - **ArtistGallery.tsx** - Grid view of posts for an artist
+     - **PostCard.tsx** - Individual post card component
+
+   - **Viewer:**
+
+     - **ViewerDialog.tsx** - Full-screen viewer with download, favorites, keyboard shortcuts
+
+   - **Dialogs:**
+
+     - **AddArtistModal.tsx** - Modal for adding new artists
+     - **DeleteArtistDialog.tsx** - Confirmation dialog for artist deletion
+     - **UpdateNotification.tsx** - Update notification component
+
+   - **Settings:**
+
+     - **BackupControls.tsx** - Database backup and restore controls
+
+   - **Inputs:**
+
+     - **AsyncAutocomplete.tsx** - Autocomplete component with local and remote search
+
+   - **ui/** - shadcn/ui components (Button, Dialog, Select, Input, etc.)
 
 3. **IPC Client** (`window.api`)
    - Typed interface to Main process
    - All communication goes through this bridge
-   - Methods: getSettings, saveSettings, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, syncAll, openExternal, searchArtists, searchRemoteTags, markPostAsViewed, createBackup, restoreBackup
+   - Methods: getSettings, saveSettings, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, getArtistPostsCount, syncAll, openExternal, searchArtists, searchRemoteTags, markPostAsViewed, togglePostViewed, togglePostFavorite, downloadFile, openFileInFolder, createBackup, restoreBackup, writeToClipboard, verifyCredentials, logout, resetPostCache
 
 ## Security Architecture
+
+### Security Layers
+
+```mermaid
+graph TB
+    subgraph "Renderer Process (Sandboxed)"
+        ReactUI[React UI]
+        BridgeAPI[window.api]
+    end
+
+    subgraph "IPC Bridge (Secure)"
+        Preload[preload.ts]
+        ContextIsolation[Context Isolation]
+    end
+
+    subgraph "Main Process (Secure)"
+        IPCHandlers[IPC Handlers]
+        ZodValidation[Zod Validation]
+        Services[Services]
+    end
+
+    subgraph "Secure Storage"
+        SafeStorage[Electron safeStorage]
+        Keychain[Platform Keychain]
+    end
+
+    subgraph "Worker Thread (Isolated)"
+        DBWorker[DB Worker]
+        SQLite[(SQLite)]
+    end
+
+    ReactUI -->|Only via| BridgeAPI
+    BridgeAPI -->|contextBridge| Preload
+    Preload -->|contextIsolation: true| ContextIsolation
+    ContextIsolation -->|Validated| IPCHandlers
+    IPCHandlers -->|Zod Schema| ZodValidation
+    ZodValidation -->|Validated Input| Services
+    Services -->|Encrypted| SafeStorage
+    SafeStorage -->|Platform API| Keychain
+    Services -->|RPC| DBWorker
+    DBWorker -->|Isolated| SQLite
+
+    style ReactUI fill:#e1f5ff
+    style ContextIsolation fill:#fff4e1
+    style ZodValidation fill:#ffe1e1
+    style SafeStorage fill:#e1ffe1
+    style DBWorker fill:#f0e1ff
+```
 
 ### Context Isolation
 
@@ -187,70 +418,169 @@ webPreferences: {
 5. **Secure Credentials:** API keys encrypted at rest, only decrypted in Main Process when needed
 6. **Worker Thread Isolation:** Database operations isolated in worker thread
 
+### Credential Security Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReactUI as React UI
+    participant Bridge as IPC Bridge
+    participant IPC as IPC Handler
+    participant SecureStorage as Secure Storage
+    participant Keychain as Platform Keychain
+    participant DB as Database
+
+    User->>ReactUI: Enter API Credentials
+    ReactUI->>Bridge: window.api.saveSettings({userId, apiKey})
+    Bridge->>IPC: ipcRenderer.invoke('app:save-settings')
+    IPC->>SecureStorage: encrypt(apiKey)
+    SecureStorage->>Keychain: safeStorage.encryptString()
+    Keychain-->>SecureStorage: Encrypted Buffer
+    SecureStorage-->>IPC: Encrypted String
+    IPC->>DB: Save (encrypted)
+    DB-->>IPC: Success
+    IPC-->>Bridge: Promise Resolve
+    Bridge-->>ReactUI: Success
+
+    Note over DB,Keychain: API Key never stored in plaintext
+
+    ReactUI->>Bridge: window.api.getSettings()
+    Bridge->>IPC: ipcRenderer.invoke('app:get-settings')
+    IPC->>DB: Get Settings
+    DB-->>IPC: {userId, encryptedKey}
+    IPC->>SecureStorage: decrypt(encryptedKey)
+    SecureStorage->>Keychain: safeStorage.decryptString()
+    Keychain-->>SecureStorage: Decrypted String
+    SecureStorage-->>IPC: Decrypted Key
+    IPC-->>Bridge: {userId, apiKey}
+    Bridge-->>ReactUI: Settings (decrypted)
+
+    Note over ReactUI,Keychain: Decryption only in Main Process
+```
+
 ## Data Flow
 
-### Reading Data
+### Reading Data Flow
 
-```
-User Action (Renderer)
-    ↓
-window.api.getTrackedArtists()
-    ↓
-IPC: "db:get-artists"
-    ↓
-Main Process: ipcMain.handle()
-    ↓
-DbWorkerClient.call("getTrackedArtists")
-    ↓
-Worker Thread RPC (correlation ID)
-    ↓
-Database Worker: handleRequest()
-    ↓
-Drizzle ORM Query
-    ↓
-SQLite Database (in worker thread)
-    ↓
-Return Artist[] (via worker message)
-    ↓
-DbWorkerClient resolves Promise
-    ↓
-IPC Response
-    ↓
-Renderer: React Query Cache
-    ↓
-UI Update
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReactUI as React UI
+    participant ReactQuery as TanStack Query
+    participant Bridge as IPC Bridge
+    participant IPC as IPC Handler
+    participant Client as DB Worker Client
+    participant Worker as DB Worker
+    participant DB as SQLite
+
+    User->>ReactUI: Click "View Artists"
+    ReactUI->>ReactQuery: useQuery(['artists'])
+    ReactQuery->>Bridge: window.api.getTrackedArtists()
+    Bridge->>IPC: ipcRenderer.invoke('db:get-artists')
+    IPC->>IPC: Validate (Zod)
+    IPC->>Client: dbWorkerClient.call('getTrackedArtists')
+    Client->>Worker: PostMessage (RPC)
+    Worker->>DB: Drizzle Query
+    DB-->>Worker: Artist[]
+    Worker-->>Client: PostMessage (Response)
+    Client-->>IPC: Promise Resolve
+    IPC-->>Bridge: IPC Response
+    Bridge-->>ReactQuery: Promise Resolve
+    ReactQuery->>ReactQuery: Cache Data
+    ReactQuery-->>ReactUI: Update UI
+    ReactUI-->>User: Display Artists
 ```
 
-### Writing Data
+### Writing Data Flow
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReactUI as React UI
+    participant Bridge as IPC Bridge
+    participant IPC as IPC Handler
+    participant Client as DB Worker Client
+    participant Worker as DB Worker
+    participant DB as SQLite
+    participant ReactQuery as TanStack Query
+
+    User->>ReactUI: Submit "Add Artist" Form
+    ReactUI->>Bridge: window.api.addArtist(data)
+    Bridge->>IPC: ipcRenderer.invoke('db:add-artist', data)
+    IPC->>IPC: Zod Validation
+    alt Validation Failed
+        IPC-->>Bridge: Error
+        Bridge-->>ReactUI: Reject Promise
+    else Validation Success
+        IPC->>Client: dbWorkerClient.call('addArtist', data)
+        Client->>Worker: PostMessage (RPC)
+        Worker->>DB: Drizzle Insert
+        DB-->>Worker: New Artist
+        Worker-->>Client: PostMessage (Response)
+        Client-->>IPC: Promise Resolve
+        IPC-->>Bridge: IPC Response
+        Bridge-->>ReactUI: Promise Resolve
+        ReactUI->>ReactQuery: Invalidate Query
+        ReactQuery->>ReactQuery: Refetch Data
+        ReactQuery-->>ReactUI: Update UI
+        ReactUI-->>User: Show Success
+    end
 ```
-User Form Submit (Renderer)
-    ↓
-window.api.addArtist(data)
-    ↓
-IPC: "db:add-artist"
-    ↓
-Main Process: Zod Validation
-    ↓
-DbWorkerClient.call("addArtist", data)
-    ↓
-Worker Thread RPC (correlation ID)
-    ↓
-Database Worker: handleRequest()
-    ↓
-Drizzle ORM Insert
-    ↓
-SQLite Database (in worker thread)
-    ↓
-Return Artist (via worker message)
-    ↓
-DbWorkerClient resolves Promise
-    ↓
-IPC Response
-    ↓
-Renderer: Invalidate Query
-    ↓
-UI Refresh
+
+### Synchronization Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReactUI as React UI
+    participant Bridge as IPC Bridge
+    participant IPC as IPC Handler
+    participant SyncService as Sync Service
+    participant SecureStorage as Secure Storage
+    participant Rule34API as Rule34.xxx API
+    participant Client as DB Worker Client
+    participant Worker as DB Worker
+    participant DB as SQLite
+
+    User->>ReactUI: Click "Sync All"
+    ReactUI->>Bridge: window.api.syncAll()
+    Bridge->>IPC: ipcRenderer.invoke('db:sync-all')
+    IPC->>SyncService: syncService.syncAllArtists()
+    IPC-->>Bridge: Return (async)
+    Bridge-->>ReactUI: Promise Resolve
+
+    par For Each Artist
+        SyncService->>Client: Get Artist List
+        Client->>Worker: getTrackedArtists()
+        Worker->>DB: Query Artists
+        DB-->>Worker: Artist[]
+        Worker-->>Client: Return Artists
+        Client-->>SyncService: Artists
+
+        SyncService->>SecureStorage: Decrypt API Key
+        SecureStorage-->>SyncService: Decrypted Key
+
+        SyncService->>Rule34API: GET /index.php?page=dapi&s=post&q=index
+        Rule34API-->>SyncService: JSON Posts
+
+        SyncService->>SyncService: Map API Response
+        SyncService->>SyncService: Rate Limit (1.5s delay)
+
+        SyncService->>Client: savePostsForArtist()
+        Client->>Worker: PostMessage (RPC)
+        Worker->>DB: INSERT/UPDATE Posts
+        Worker->>DB: UPDATE Artist (lastPostId)
+        DB-->>Worker: Success
+        Worker-->>Client: PostMessage (Response)
+        Client-->>SyncService: Success
+
+        SyncService->>ReactUI: emit('sync:progress', message)
+        ReactUI->>ReactUI: Update Progress UI
+    end
+
+    SyncService->>ReactUI: emit('sync:end')
+    ReactUI->>ReactUI: Show Completion
+    ReactUI->>User: Sync Complete
 ```
 
 ## Database Architecture
@@ -286,6 +616,53 @@ See [Database Documentation](./database.md) for detailed schema information.
 - Type-safe communication via `WorkerRequest` and `WorkerResponse` types
 - Automatic migration execution on worker initialization
 
+## Component Architecture
+
+### React Component Hierarchy
+
+```mermaid
+graph TD
+    App[App.tsx]
+    AppLayout[AppLayout]
+    Sidebar[Sidebar]
+    GlobalTopBar[GlobalTopBar]
+
+    App --> AppLayout
+    AppLayout --> Sidebar
+    AppLayout --> GlobalTopBar
+
+    subgraph "Pages"
+        Updates[Updates]
+        Browse[Browse]
+        Favorites[Favorites]
+        Tracked[Tracked]
+        Settings[Settings]
+        ArtistDetails[ArtistDetails]
+        Onboarding[Onboarding]
+    end
+
+    AppLayout --> Updates
+    AppLayout --> Browse
+    AppLayout --> Favorites
+    AppLayout --> Tracked
+    AppLayout --> Settings
+    AppLayout --> ArtistDetails
+    AppLayout --> Onboarding
+
+    subgraph "Shared Components"
+        ArtistGallery[ArtistGallery]
+        PostCard[PostCard]
+        ViewerDialog[ViewerDialog]
+        AddArtistModal[AddArtistModal]
+    end
+
+    Tracked --> ArtistGallery
+    ArtistDetails --> ArtistGallery
+    ArtistGallery --> PostCard
+    PostCard --> ViewerDialog
+    Tracked --> AddArtistModal
+```
+
 ## External API Integration
 
 ### API Client Design
@@ -298,34 +675,37 @@ External API calls are handled in the Main process via `SyncService` (`src/main/
 4. **Error Handling:** Graceful handling of API errors and network failures
 5. **Authentication:** Uses User ID and API Key from settings table
 
-### Sync Architecture
+### Download Flow
 
-Background synchronization for new posts:
+```mermaid
+sequenceDiagram
+    participant User
+    participant Viewer as ViewerDialog
+    participant Bridge as IPC Bridge
+    participant IPC as IPC Handler
+    participant FileHandler as File Handler
+    participant FileSystem as File System
 
-```
-Renderer: User clicks "Sync All"
-    ↓
-IPC: db:sync-all
-    ↓
-Main Process: SyncService.syncAllArtists()
-    ↓
-For each tracked artist:
-    ↓
-    Get settings (userId, apiKey)
-    ↓
-    Build Rule34.xxx API query with tag and lastPostId filter
-    ↓
-    Paginate through results (1000 posts per page)
-    ↓
-    Map API response to NewPost[]
-    ↓
-    Save to database (onConflictDoNothing)
-    ↓
-    Update artist.lastPostId and increment newPostsCount
-    ↓
-    Rate limit: 1.5s between artists, 0.5s between pages
-    ↓
-Renderer: Query invalidation triggers UI refresh
+    User->>Viewer: Click "Download"
+    Viewer->>Bridge: window.api.downloadFile(url, filename)
+    Bridge->>IPC: ipcRenderer.invoke('files:download', url, filename)
+    IPC->>FileHandler: downloadFile(url, filename)
+    FileHandler->>FileSystem: Show Save Dialog
+    FileSystem-->>FileHandler: User Selected Path
+
+    par Download Process
+        FileHandler->>FileHandler: Fetch File Stream
+        FileHandler->>FileSystem: Write Chunks
+        FileHandler->>Viewer: emit('files:download-progress', {id, percent})
+        Viewer->>Viewer: Update Progress Bar
+    end
+
+    FileHandler->>FileSystem: Complete Write
+    FileSystem-->>FileHandler: Success
+    FileHandler-->>IPC: {success: true, path}
+    IPC-->>Bridge: IPC Response
+    Bridge-->>Viewer: Promise Resolve
+    Viewer->>User: Show Success Notification
 ```
 
 ## Build Architecture
@@ -374,20 +754,125 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 ```
 src/
-├── main/              # Main Process
-│   ├── db/           # Database layer
-│   ├── lib/          # Utilities
-│   ├── bridge.ts     # IPC interface
-│   ├── ipc.ts        # IPC handlers
-│   └── main.ts       # Entry point
+├── main/                          # Electron Main Process
+│   ├── db/                        # Database layer
+│   │   ├── repositories/         # Repository pattern implementations
+│   │   │   ├── artists.repo.ts    # Artists repository
+│   │   │   └── posts.repo.ts       # Posts repository
+│   │   ├── db-service.ts          # Legacy database service (deprecated)
+│   │   ├── db-worker.ts           # Database worker thread implementation
+│   │   ├── db-worker-client.ts    # Worker client interface
+│   │   ├── migrate.ts             # Migration runner
+│   │   ├── schema.ts              # Drizzle ORM schema definitions
+│   │   └── worker-types.ts        # Worker thread type definitions
+│   ├── ipc/                       # IPC (Inter-Process Communication)
+│   │   ├── handlers/              # Modular IPC handlers
+│   │   │   ├── artists.ts         # Artist-related IPC handlers
+│   │   │   ├── files.ts           # File download handlers
+│   │   │   ├── posts.ts           # Post-related IPC handlers
+│   │   │   ├── settings.ts        # Settings IPC handlers
+│   │   │   └── viewer.ts          # Viewer-related IPC handlers
+│   │   ├── channels.ts            # IPC channel constants
+│   │   └── index.ts               # Main IPC registration
+│   ├── services/                  # Background services
+│   │   ├── secure-storage.ts       # Secure storage for API credentials
+│   │   ├── sync-service.ts        # Rule34.xxx API synchronization
+│   │   └── updater-service.ts     # Auto-updater service
+│   ├── lib/                       # Utilities
+│   │   └── logger.ts             # Logging utility
+│   ├── bridge.ts                  # IPC bridge interface definition
+│   ├── main.d.ts                  # Main process type definitions
+│   └── main.ts                    # Main process entry point
 │
-├── renderer/         # Renderer Process
-│   ├── components/   # React components
-│   ├── lib/          # Utilities
-│   ├── App.tsx       # Main component
-│   └── main.tsx      # Entry point
+├── renderer/                      # Electron Renderer Process
+│   ├── components/                # React components
+│   │   ├── dialogs/               # Dialog components
+│   │   │   ├── AddArtistModal.tsx
+│   │   │   ├── DeleteArtistDialog.tsx
+│   │   │   ├── Onboarding.tsx
+│   │   │   └── UpdateNotification.tsx
+│   │   ├── gallery/               # Gallery components
+│   │   │   ├── ArtistCard.tsx
+│   │   │   ├── ArtistGallery.tsx
+│   │   │   └── PostCard.tsx
+│   │   ├── inputs/                # Input components
+│   │   │   └── AsyncAutocomplete.tsx
+│   │   ├── layout/                 # Layout components
+│   │   │   ├── AppLayout.tsx
+│   │   │   ├── GlobalTopBar.tsx
+│   │   │   └── Sidebar.tsx
+│   │   ├── pages/                  # Page components
+│   │   │   ├── ArtistDetails.tsx
+│   │   │   ├── Browse.tsx
+│   │   │   ├── Favorites.tsx
+│   │   │   ├── Onboarding.tsx
+│   │   │   ├── Settings.tsx
+│   │   │   ├── Tracked.tsx
+│   │   │   └── Updates.tsx
+│   │   ├── settings/               # Settings components
+│   │   │   └── BackupControls.tsx
+│   │   ├── ui/                     # shadcn/ui components
+│   │   │   ├── alert.tsx
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── dropdown-menu.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── label.tsx
+│   │   │   ├── select.tsx
+│   │   │   └── separator.tsx
+│   │   └── viewer/                 # Viewer components
+│   │       └── ViewerDialog.tsx
+│   ├── i18n/                       # Internationalization
+│   │   └── index.ts
+│   ├── lib/                        # Utilities
+│   │   ├── hooks/                  # Custom React hooks
+│   │   │   └── useDebounce.ts
+│   │   ├── artist-utils.ts
+│   │   ├── tag-utils.ts
+│   │   └── utils.ts
+│   ├── locales/                    # Translation files
+│   │   └── en/
+│   │       └── translation.json
+│   ├── schemas/                    # Form validation schemas
+│   │   └── form-schemas.ts
+│   ├── store/                       # State management (Zustand)
+│   │   └── viewerStore.ts
+│   ├── App.tsx                     # Main React component
+│   ├── index.css                   # Global styles
+│   ├── index.html                  # HTML template
+│   ├── main.tsx                    # Renderer entry point
+│   └── renderer.d.ts               # Renderer type definitions
 │
-└── preload/          # Preload scripts (generated)
+└── preload/                        # Preload scripts (generated by electron-vite)
+    └── bridge.cjs                  # Compiled preload script
+
+Root:
+├── drizzle/                        # Database migrations
+│   ├── meta/                       # Migration metadata
+│   │   ├── _journal.json
+│   │   └── *_snapshot.json
+│   └── *.sql                       # SQL migration files
+├── docs/                           # Documentation
+│   ├── api.md
+│   ├── architecture.md
+│   ├── contributing.md
+│   ├── database.md
+│   ├── development.md
+│   ├── roadmap.md
+│   └── rule34-api-reference.md
+├── scripts/                        # Build and utility scripts
+│   ├── ai_reviewer.py
+│   └── system_prompt.md
+├── .github/                        # GitHub workflows
+│   └── workflows/
+│       ├── ai-review.yml
+│       └── ci.yml
+├── electron.vite.config.ts         # Electron-Vite configuration
+├── drizzle.config.ts               # Drizzle ORM configuration
+├── tailwind.config.js              # Tailwind CSS configuration
+├── tsconfig.json                   # TypeScript configuration
+└── package.json                    # Project dependencies and scripts
 ```
 
 ## Design Principles
@@ -458,12 +943,20 @@ src/
 5. ✅ **Progressive Image Loading:** 3-layer loading system (Preview → Sample → Original) for instant viewing
 6. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
 7. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
-8. ✅ **Event System:** Real-time IPC events for sync progress and update status
+8. ✅ **Event System:** Real-time IPC events for sync progress, update status, and download progress
 9. ✅ **Database Worker Thread:** All database operations run in dedicated worker thread for non-blocking performance
 10. ✅ **Secure Storage:** API credentials encrypted at rest using Electron's `safeStorage` API
 11. ✅ **Backup/Restore:** Manual database backup and restore functionality with timestamped backups
 12. ✅ **Search Functionality:** Local artist search and remote tag search via Rule34.xxx autocomplete API
 13. ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
+14. ✅ **Favorites System:** Mark and manage favorite posts with toggle functionality
+15. ✅ **Download Manager:** Download full-resolution files with progress tracking and queue management
+16. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
+17. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
+18. ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles
+19. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
+20. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
+21. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
 
 ## Active Roadmap (Priority Tasks)
 

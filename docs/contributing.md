@@ -320,7 +320,7 @@ const artists = db.prepare("SELECT * FROM artists WHERE id = ?").all(artistId);
    };
    ```
 
-3. **Add Handler** (`src/main/ipc.ts`)
+3. **Add Handler** (`src/main/ipc/handlers/` - create new file or add to existing)
 
    ```typescript
    ipcMain.handle("channel:name", async () => {
@@ -340,7 +340,7 @@ const artists = db.prepare("SELECT * FROM artists WHERE id = ?").all(artistId);
 
 1. **Add Schema** (`src/main/db/schema.ts`)
 2. **Generate Migration** (`npm run db:generate`)
-3. **Update Service** (`src/main/db/db-service.ts`)
+3. **Update Repository** (`src/main/db/repositories/` - add new repository or update existing)
 4. **Test Migration** (`npm run db:migrate`)
 
 ## Questions?
@@ -354,5 +354,3 @@ If you have questions about contributing:
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
-
-
