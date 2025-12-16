@@ -285,15 +285,13 @@ const ViewerDialogPostScope = ({
     return t.trim().split(/\s+/g).filter(Boolean).join("+");
   };
 
-  const handleCopyText = (text: string) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        console.log(`Copied: ${text}`);
-      })
-      .catch((err) => {
-        console.error("Failed to copy text: ", err);
-      });
+  const handleCopyText = async (text: string) => {
+    try {
+      await window.api.writeToClipboard(text);
+      console.log(`Copied via IPC: ${text}`);
+    } catch (err) {
+      console.error("Failed to copy text via IPC: ", err);
+    }
   };
 
   const handleOpenExternal = (url: string) => {

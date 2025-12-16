@@ -40,7 +40,6 @@ export const Onboarding = ({
       if (isValid) {
         onLoginSuccess();
       } else {
-        await window.api.logout();
         setError(
           "Connection failed. Please check your User ID and API Key and try again."
         );

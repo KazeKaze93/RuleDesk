@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type { Artist, NewArtist, Post, Settings } from "./db/schema";
+import { IPC_CHANNELS } from "./ipc/channels";
 
 export type UpdateStatusData = {
   status: string;
@@ -125,8 +126,9 @@ const ipcBridge: IpcBridge = {
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 
-  getSettings: () => ipcRenderer.invoke("app:get-settings"),
-  saveSettings: (creds) => ipcRenderer.invoke("app:save-settings", creds),
+  getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.GET),
+  saveSettings: (creds) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE, creds),
   logout: () => ipcRenderer.invoke("app:logout"),
 
   getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),

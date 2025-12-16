@@ -53,35 +53,28 @@ export class SyncService {
       return null;
     }
 
-    // Запрашиваем "getApiKeyDecrypted"
     const settings = await this.dbWorkerClient.call<{
       userId: string;
       apiKey: string;
     }>("getApiKeyDecrypted");
 
-    // ЛОГИ ДЛЯ ОТЛАДКИ
-    logger.info(
-      `SyncService: Raw settings from DB: UserID=${
-        settings?.userId
-      }, APIKeyLength=${settings?.apiKey?.length || 0}`
-    );
-
-    if (!settings) return null;
-
     let realApiKey = settings.apiKey;
 
-    // Дешифруем, если ключ похож на зашифрованный
+    // Дешифровка (safeStorage)
     if (realApiKey && safeStorage.isEncryptionAvailable()) {
       try {
         const buff = Buffer.from(realApiKey, "base64");
         realApiKey = safeStorage.decryptString(buff);
-        logger.info("SyncService: Credentials decrypted successfully.");
+        logger.info(
+          `SyncService: Credentials decrypted successfully. Final Key Length: ${realApiKey.length}`
+        );
       } catch (e) {
         // Если ошибка дешифровки, возможно это "сырой" ключ (например в dev режиме), оставляем как есть
         logger.warn(
-          "SyncService: Failed to decrypt API Key (using raw value).",
+          "SyncService: Failed to decrypt API Key. This usually means the app was run by a different user/session or the encryption key was lost.",
           e
         );
+        realApiKey = settings.apiKey;
       }
     }
 
@@ -248,13 +241,15 @@ export class SyncService {
 
         const { data: posts } = await axios.get<R34Post[]>(
           `https://api.rule34.xxx/index.php?${params}`,
-          { timeout: 15000 }
+          {
+            timeout: 15000,
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept-Encoding": "identity",
+            },
+          }
         );
-
-        if (!Array.isArray(posts) || posts.length === 0) {
-          hasMore = false;
-          break;
-        }
 
         const batchMaxId = Math.max(...posts.map((p) => Number(p.id)));
         if (batchMaxId > highestPostId) highestPostId = batchMaxId;

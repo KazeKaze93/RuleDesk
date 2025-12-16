@@ -28,7 +28,7 @@ let dbPath: string | null = null;
 // === WORKER VALIDATION SCHEMAS ===
 const SettingsPayloadSchema = z.object({
   userId: z.string(),
-  apiKey: z.string(),
+  encryptedApiKey: z.string(),
 });
 
 const UpdateProgressSchema = z.object({
@@ -51,9 +51,25 @@ const SearchPayloadSchema = z.object({
   query: z.string(),
 });
 
+const PostItemSchema = z.object({
+  artistId: z.number().int(),
+  postId: z.number().int(),
+  fileUrl: z.string(),
+  previewUrl: z.string().optional().nullable(),
+  sampleUrl: z.string().optional().nullable(),
+  title: z.string().optional().nullable(),
+  rating: z.string(),
+  tags: z.string().optional().nullable(),
+  // Трансформируем дату из строки/числа/Date в объект Date для Drizzle
+  publishedAt: z
+    .union([z.string(), z.number(), z.date()])
+    .transform((val) => new Date(val)),
+  isViewed: z.boolean().optional().default(false),
+});
+
 const SavePostsSchema = z.object({
   artistId: z.number(),
-  posts: z.array(z.any()),
+  posts: z.array(PostItemSchema), // Используем строгую схему
 });
 
 const PostActionPayloadSchema = z.object({
@@ -142,13 +158,24 @@ function getSettingsRaw(db: Database.Database) {
       | RawSettingsRow
       | undefined;
 
-    if (!row) return null;
+    if (!row) {
+      logger.info("Worker: getSettingsRaw returned no settings row."); // 🔥 LOG
+      return null;
+    }
+
+    const key = row.encrypted_api_key || row.api_key;
+    logger.info(
+      `Worker: Found settings in DB. UserID: ${
+        row.user_id
+      }, Encrypted Key length: ${key?.length || 0}`
+    );
 
     return {
       userId: row.user_id,
-      encryptedApiKey: row.encrypted_api_key || row.api_key,
+      encryptedApiKey: key,
     };
-  } catch {
+  } catch (e) {
+    logger.error("Worker: CRITICAL error in getSettingsRaw:", e); // 🔥 LOG
     return null;
   }
 }
@@ -188,11 +215,11 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
         sendSuccess(request.id, {
           userId: settings?.userId || "",
-          apiKey: settings?.encryptedApiKey || "", // Передаем именно encryptedApiKey как apiKey
+          apiKey: settings?.encryptedApiKey || "",
         });
         break;
       }
-      case "getSettings": {
+      case "getSettingsStatus": {
         const settings = getSettingsRaw(dbInstance);
         sendSuccess(request.id, {
           userId: settings?.userId || "",
@@ -202,8 +229,9 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "saveSettings": {
-        const { userId, apiKey } = SettingsPayloadSchema.parse(request.payload);
-
+        const { userId, encryptedApiKey } = SettingsPayloadSchema.parse(
+          request.payload
+        );
         const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
           name: string;
         }>;
@@ -220,13 +248,13 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
               .prepare(
                 `UPDATE settings SET user_id = ?, ${colName} = ? WHERE id = 1`
               )
-              .run(userId, apiKey);
+              .run(userId, encryptedApiKey);
           } else {
             dbInstance!
               .prepare(
                 `INSERT INTO settings (id, user_id, ${colName}) VALUES (1, ?, ?)`
               )
-              .run(userId, apiKey);
+              .run(userId, encryptedApiKey);
           }
         })();
         sendSuccess(request.id);
@@ -275,24 +303,44 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
       case "savePostsForArtist": {
         const { posts } = SavePostsSchema.parse(request.payload);
+
         if (posts.length > 0) {
           await db.transaction(async (tx) => {
-            await tx
-              .insert(schema.posts)
-              .values(posts)
-              .onConflictDoUpdate({
-                target: [schema.posts.artistId, schema.posts.postId],
-                set: {
-                  previewUrl: sql.raw(
-                    `CASE WHEN excluded.preview_url != '' THEN excluded.preview_url ELSE posts.preview_url END`
-                  ),
-                  fileUrl: sql.raw(
-                    `CASE WHEN excluded.file_url != '' THEN excluded.file_url ELSE posts.file_url END`
-                  ),
-                  tags: sql.raw(`excluded.tags`),
-                  rating: sql.raw(`excluded.rating`),
-                },
-              });
+            // Используем sql.raw, так как Drizzle не поддерживает условные UPDATE/UPSERT
+            // на основе EXCLUDED значений для SQLite. Это безопасно, так как
+            // поля 'excluded.*' берутся из валидированного PostItemSchema.
+            for (const post of posts) {
+              await tx
+                .insert(schema.posts)
+                .values({
+                  artistId: post.artistId,
+                  postId: post.postId,
+                  fileUrl: post.fileUrl,
+                  previewUrl: post.previewUrl || "",
+                  sampleUrl: post.sampleUrl || "",
+                  title: post.title || "",
+                  rating: post.rating,
+                  tags: post.tags || "",
+                  publishedAt: post.publishedAt,
+                  isViewed: post.isViewed || false,
+                })
+                .onConflictDoUpdate({
+                  target: [schema.posts.artistId, schema.posts.postId],
+                  set: {
+                    previewUrl: sql.raw(
+                      `CASE WHEN excluded.preview_url != '' THEN excluded.preview_url ELSE posts.preview_url END`
+                    ),
+                    fileUrl: sql.raw(
+                      `CASE WHEN excluded.file_url != '' THEN excluded.file_url ELSE posts.file_url END`
+                    ),
+                    sampleUrl: sql.raw(
+                      `CASE WHEN excluded.sample_url != '' THEN excluded.sample_url ELSE posts.sample_url END`
+                    ),
+                    tags: sql.raw(`excluded.tags`),
+                    rating: sql.raw(`excluded.rating`),
+                  },
+                });
+            }
           });
         }
         sendSuccess(request.id);
@@ -426,15 +474,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
           .where(eq(schema.posts.id, postId));
 
         sendSuccess(request.id, newState);
-        break;
-      }
-
-      case "getSettingsStatus": {
-        const row = getSettingsRaw(dbInstance);
-        sendSuccess(request.id, {
-          hasApiKey: !!row?.encryptedApiKey,
-          userId: row?.userId || "",
-        });
         break;
       }
 

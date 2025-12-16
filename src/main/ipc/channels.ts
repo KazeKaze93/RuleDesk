@@ -8,7 +8,7 @@ export const IPC_CHANNELS = {
     VERIFY_CREDS: "app:verify-creds",
   },
   SETTINGS: {
-    GET: "app:get-settings",
+    GET: "app:get-settings-status",
     SAVE: "app:save-settings",
   },
   DB: {
@@ -23,6 +23,7 @@ export const IPC_CHANNELS = {
     SYNC_ALL: "db:sync-all",
     TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,
     RESET_POST_CACHE: "db:reset-post-cache" as const,
+    GET_API_KEY_ENCRYPTED: "db:get-api-key-encrypted",
   },
   API: {
     SEARCH_REMOTE: "api:search-remote-tags",
