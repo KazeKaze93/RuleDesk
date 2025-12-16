@@ -1,6 +1,6 @@
-# NSFW-Booru-Desctop-Client-Unofficial-
+# ruledesk
 
-# 💻 NSFW Booru Desktop Client (Unofficial)
+# 💻 RuleDesk
 
 > A modern, secure desktop companion built on Electron and React/TypeScript for browsing and organizing booru-style imageboard content via its public API. Designed for performance and maintainability.
 
@@ -328,8 +328,8 @@ This project uses **Vite** as the build tool for both the Electron Main and Rend
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/booru-desktop-client.git
-cd booru-desktop-client
+git clone https://github.com/KazeKaze93/ruledesk.git
+cd ruledesk
 
 # Install dependencies
 npm install

@@ -1,13 +1,13 @@
 {
-  "name": "nsfw-booru-desktop-client",
-  "productName": "NSFW Booru Client",
+  "name": "ruledesk",
+  "productName": "RuleDesk",
   "version": "1.3.0",
-  "description": "A modern, secure desktop companion for browsing booru-style imageboard content",
+  "description": "A modern desktop client for Rule34 imageboard content",
   "main": "out/main/main.cjs",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/KazeKaze93/NSFW-Booru-Desctop-Client-Unofficial-.git"
+    "url": "https://github.com/KazeKaze93/ruledesk.git"
   },
   "scripts": {
     "dev": "chcp 65001 && electron-vite dev",
@@ -90,8 +90,8 @@
     "zustand": "^4.5.7"
   },
   "build": {
-    "appId": "com.kaze.nsfw-booru-desktop-client",
-    "productName": "NSFW Booru Client",
+    "appId": "com.kaze.ruledesk",
+    "productName": "RuleDesk",
     "directories": {
       "output": "release"
     },
@@ -129,12 +129,12 @@
     "publish": {
       "provider": "github",
       "owner": "KazeKaze93",
-      "repo": "NSFW-Booru-Desctop-Client-Unofficial-",
+      "repo": "ruledesk",
       "releaseType": "draft"
     },
     "win": {
       "target": "nsis",
-      "artifactName": "NSFW-Booru-Client-Setup-${version}.${ext}"
+      "artifactName": "RuleDesk-Setup-${version}.${ext}"
     },
     "mac": {
       "target": "dmg"

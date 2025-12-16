@@ -63,7 +63,7 @@ export const Sidebar = () => {
       {/* Logo Area */}
       <div className="flex items-center px-6 h-14 border-b">
         <Activity className="mr-2 w-6 h-6 text-primary" />
-        <span className="text-lg font-bold tracking-tight">Booru Client</span>
+        <span className="text-lg font-bold tracking-tight">RuleDesk</span>
       </div>
 
       {/* Navigation */}
