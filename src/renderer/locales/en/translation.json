@@ -62,7 +62,7 @@
     "restartAndInstall": "Restart & Install"
   },
   "app": {
-    "appTitle": "NSFW Booru Client",
+    "appTitle": "RuleDesk",
     "syncAll": "Sync All",
     "syncing": "Syncing...",
     "startSynchronization": "Start synchronization",
@@ -79,4 +79,3 @@
     "close": "Close"
   }
 }
-

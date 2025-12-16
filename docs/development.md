@@ -13,8 +13,8 @@ This guide covers the development setup, build process, and common development t
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-username>/NSFW-Booru-Desctop-Client-Unofficial-.git
-cd NSFW-Booru-Desctop-Client-Unofficial-
+git clone https://github.com/KazeKaze93/ruledesk.git
+cd ruledesk
 ```
 
 ### 2. Install Dependencies

@@ -44,8 +44,8 @@ This project adheres to strict development principles. Please review these befor
 1. **Fork and Clone**
 
    ```bash
-   git clone https://github.com/<your-username>/NSFW-Booru-Desctop-Client-Unofficial-.git
-   cd NSFW-Booru-Desctop-Client-Unofficial-
+   git clone https://github.com/KazeKaze93/ruledesk.git
+   cd ruledesk
    ```
 
 2. **Install Dependencies**

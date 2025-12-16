@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog } from "electron";
 import path from "path";
+import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
 import { DbWorkerClient } from "./db/db-worker-client";
 import { logger } from "./lib/logger";
@@ -7,6 +8,61 @@ import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 
 logger.info("🚀 Application starting...");
+
+// Data migration: migrate from old app name to new app name
+async function migrateUserData() {
+  try {
+    const oldUserDataPath = path.join(
+      app.getPath("appData"),
+      "NSFW Booru Client"
+    );
+    const newUserDataPath = path.join(app.getPath("appData"), "RuleDesk");
+
+    // Check if old folder exists and new folder doesn't
+    try {
+      await fs.access(oldUserDataPath);
+      const oldFolderExists = true;
+
+      let newFolderExists = false;
+      try {
+        await fs.access(newUserDataPath);
+        newFolderExists = true;
+      } catch {
+        // New folder doesn't exist, which is what we want
+      }
+
+      if (oldFolderExists && !newFolderExists) {
+        // Create new folder
+        await fs.mkdir(newUserDataPath, { recursive: true });
+        logger.info(`Created new user data folder: ${newUserDataPath}`);
+
+        // Copy metadata.db if it exists
+        const oldDbPath = path.join(oldUserDataPath, "metadata.db");
+        const newDbPath = path.join(newUserDataPath, "metadata.db");
+
+        try {
+          await fs.access(oldDbPath);
+          await fs.copyFile(oldDbPath, newDbPath);
+          logger.info(`Migrated metadata.db from ${oldDbPath} to ${newDbPath}`);
+        } catch (_err) {
+          // metadata.db doesn't exist in old folder, that's okay
+          logger.info(
+            "No metadata.db found in old user data folder, skipping migration"
+          );
+        }
+      }
+    } catch (_err) {
+      // Old folder doesn't exist, no migration needed
+      logger.info("Old user data folder not found, skipping migration");
+    }
+  } catch (err) {
+    logger.error("Error during user data migration:", err);
+    // Don't fail the app startup if migration fails
+  }
+}
+
+// Run migration before app is ready
+migrateUserData();
 
 process.env.USER_DATA_PATH = app.getPath("userData");
 
@@ -66,6 +122,7 @@ async function initializeAppAndWindow() {
       minWidth: 800,
       minHeight: 600,
       show: false,
+      title: "RuleDesk",
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
