@@ -447,8 +447,18 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
       case "resetPostCache": {
         const { postId } = PostActionPayloadSchema.parse(request.payload);
-        const result = await resetPostCache(postId);
-        sendSuccess(request.id, result);
+        const result = db
+          .update(schema.posts)
+          .set({
+            isViewed: false,
+          })
+          .where(eq(schema.posts.id, postId))
+          .run();
+
+        const success =
+          result && "changes" in result ? result.changes > 0 : false;
+
+        sendSuccess(request.id, success);
         break;
       }
 

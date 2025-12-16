@@ -1,4 +1,3 @@
-// Cursor: select file:src/renderer/components/pages/Onboarding.tsx
 import { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -54,14 +53,12 @@ export const Onboarding = ({
     }
   };
 
-  // 🔥 Feature: Умная вставка. Если юзер копирует всю строку с сайта, мы сами достаем данные.
+  // Умная вставка. Если юзер копирует всю строку с сайта, мы сами достаем данные.
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const text = e.clipboardData.getData("text");
     if (text.includes("api_key=") || text.includes("user_id=")) {
       e.preventDefault();
       try {
-        // Превращаем строку типа "&api_key=xyz&user_id=123" в URLSearchParams
-        // Убираем амперсанд в начале, если он есть, чтобы парсер не сбился
         const cleanText = text.startsWith("&") ? text.slice(1) : text;
         const params = new URLSearchParams(cleanText);
 
@@ -146,24 +143,34 @@ export const Onboarding = ({
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">User ID</label>
+              <label htmlFor="user-id-input" className="text-sm font-medium">
+                User ID
+              </label>
               <Input
+                id="user-id-input"
                 placeholder="e.g. 479099"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 onPaste={handlePaste}
                 className="font-mono"
+                aria-label="Rule 34 User ID"
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">API Key</label>
+              <label htmlFor="api-key-input" className="text-sm font-medium">
+                API Key
+              </label>
               <Input
+                id="api-key-input"
                 type="password"
                 placeholder="Paste your API Key"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 onPaste={handlePaste}
                 className="font-mono"
+                aria-label="Rule 34 API Key"
+                autoComplete="off"
               />
             </div>
           </div>

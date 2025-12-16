@@ -16,25 +16,56 @@ const getMainWindow = (): BrowserWindow | undefined => {
 
 const DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 
+const DownloadFileSchema = z.object({
+  url: z
+    .string()
+    .url()
+    .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
+      message: "Only HTTP/HTTPS protocols are allowed for downloads.",
+    }),
+  filename: z
+    .string()
+    .min(1)
+    .regex(/^[\w\-. ]+$/, "Invalid filename characters"),
+});
+
 export const registerFileHandlers = (repo: PostsRepository) => {
   let totalBytes = 0;
 
   // Хендлер скачивания с диалогом "Сохранить как"
   ipcMain.handle(
     IPC_CHANNELS.FILES.DOWNLOAD,
-    async (_, url: string, filename: string) => {
-      const mainWindow = getMainWindow(); // Получаем главное окно
+    async (_event, url: unknown, filename: unknown) => {
+      const mainWindow = getMainWindow();
       if (!mainWindow) {
         logger.error("IPC: Main window not found for download.");
         return { success: false, error: "Main window not available" };
       }
 
+      // 1. Валидация входных данных через Zod
+      const validation = DownloadFileSchema.safeParse({ url, filename });
+
+      if (!validation.success) {
+        logger.error("IPC: Download validation failed", validation.error);
+        return { success: false, error: "Invalid URL or Filename" };
+      }
+
+      const { url: validUrl, filename: validFilename } = validation.data;
+
       try {
         const defaultDir = DOWNLOAD_ROOT;
+
+        // 2. Безопасное создание директории
         if (!fs.existsSync(defaultDir)) {
-          fs.mkdirSync(defaultDir, { recursive: true });
+          try {
+            fs.mkdirSync(defaultDir, { recursive: true });
+          } catch (e) {
+            logger.error("Failed to create download directory", e);
+            // Не падаем, диалог просто откроется в дефолтной папке ОС
+          }
         }
-        const defaultPath = path.join(defaultDir, filename);
+
+        const defaultPath = path.join(defaultDir, validFilename);
 
         const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
           title: "Скачать файл",
@@ -54,11 +85,11 @@ export const registerFileHandlers = (repo: PostsRepository) => {
           return { success: false, canceled: true };
         }
 
-        logger.info(`IPC: Downloading: ${url} -> ${filePath}`);
+        logger.info(`IPC: Downloading: ${validUrl} -> ${filePath}`);
 
         const response = await axios({
           method: "GET",
-          url: url,
+          url: validUrl,
           responseType: "stream",
           headers: {
             "User-Agent":
@@ -73,7 +104,7 @@ export const registerFileHandlers = (repo: PostsRepository) => {
             );
 
             mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
-              id: filename,
+              id: validFilename, // Используем валидированное имя как ID
               percent: percent,
             });
           },
@@ -83,7 +114,7 @@ export const registerFileHandlers = (repo: PostsRepository) => {
         await pipeline(response.data, writer);
 
         mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
-          id: filename,
+          id: validFilename,
           percent: 100,
         });
         logger.info(`IPC: Download success -> ${filePath}`);
@@ -91,7 +122,7 @@ export const registerFileHandlers = (repo: PostsRepository) => {
       } catch (error) {
         if (mainWindow) {
           mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
-            id: filename,
+            id: validFilename,
             percent: 0,
           });
         }
