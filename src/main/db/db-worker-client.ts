@@ -1,3 +1,5 @@
+// Cursor: select file:src/main/db/db-worker-client.ts
+
 /**
  * Database Worker Client
  * Manages communication with the DB Worker thread
@@ -7,7 +9,7 @@ import { Worker } from "worker_threads";
 import { randomUUID } from "crypto";
 import type { DbMethod, WorkerRequest, WorkerResponse } from "./worker-types";
 import { logger } from "../lib/logger";
-import * as fs from "fs/promises"; // Для restore
+import * as fs from "fs/promises";
 import * as path from "path";
 
 interface PendingRequest {
@@ -24,33 +26,39 @@ export class DbWorkerClient {
   private pendingRequests = new Map<string, PendingRequest>();
   private isInitialized = false;
   private initPromise: Promise<void> | null = null;
-  private dbPath: string | null = null;
+  private dbPath: string | null = null; // 🔥 FIX 1: Объявляем приватное поле для хранения пути к миграциям
+  private migrationsPath: string | null = null; // Конструктор публичен для Фабричного метода.
 
-  // Конструктор публичен для Фабричного метода.
   constructor() {}
-
   /**
    * Статический Фабричный метод. Создает инстанс и гарантирует его инициализацию.
    */
-  public static async initialize(dbPath: string): Promise<DbWorkerClient> {
-    const client = new DbWorkerClient();
-    await client._initializeWorker(dbPath);
+
+  public static async initialize(
+    dbPath: string,
+    migrationsPath: string
+  ): Promise<DbWorkerClient> {
+    const client = new DbWorkerClient(); // 🔥 FIX 2: Сохраняем путь в новом приватном поле
+    client.migrationsPath = migrationsPath;
+    await client._initializeWorker(dbPath, migrationsPath);
     return client;
   }
-
   /**
    * Приватный нестатический метод, содержащий логику запуска Worker.
    */
-  private async _initializeWorker(dbPath: string): Promise<void> {
+
+  private async _initializeWorker(
+    dbPath: string,
+    migrationsPath: string
+  ): Promise<void> {
     if (this.isInitialized) {
       return;
     }
 
     if (this.initPromise) {
       return this.initPromise;
-    }
+    } // Устранение ESLint 'no-async-promise-executor'
 
-    // Устранение ESLint 'no-async-promise-executor'
     this.initPromise = new Promise((resolve, reject) => {
       (async () => {
         try {
@@ -84,7 +92,7 @@ export class DbWorkerClient {
           });
 
           const initId = randomUUID();
-          await this.sendInitMessage(initId, dbPath);
+          await this.sendInitMessage(initId, dbPath, migrationsPath);
 
           this.isInitialized = true;
           this.initPromise = null;
@@ -100,11 +108,15 @@ export class DbWorkerClient {
 
     return this.initPromise;
   }
-
   /**
    * Send initialization message to worker
    */
-  private sendInitMessage(id: string, dbPath: string): Promise<void> {
+
+  private sendInitMessage(
+    id: string,
+    dbPath: string,
+    migrationsPath: string
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.worker) {
         reject(new Error("Worker not available"));
@@ -132,14 +144,15 @@ export class DbWorkerClient {
       this.worker.postMessage({
         type: "init",
         dbPath,
+        migrationsPath,
         id,
       });
     });
   }
-
   /**
    * Handle messages from the worker
    */
+
   private handleWorkerMessage(response: WorkerResponse): void {
     const pending = this.pendingRequests.get(response.id);
     if (!pending) {
@@ -158,10 +171,10 @@ export class DbWorkerClient {
       pending.reject(new Error(response.error || "Unknown error"));
     }
   }
-
   /**
    * Reject all pending requests (e.g., on worker error/exit)
    */
+
   private rejectAllPending(reason: string): void {
     for (const [, pending] of this.pendingRequests.entries()) {
       clearTimeout(pending.timer);
@@ -169,10 +182,10 @@ export class DbWorkerClient {
     }
     this.pendingRequests.clear();
   }
-
   /**
    * Call a database method
    */
+
   public async call<T>(method: DbMethod, payload?: unknown): Promise<T> {
     if (!this.isInitialized || !this.worker) {
       throw new Error("Worker not initialized. Call initialize() first.");
@@ -202,16 +215,15 @@ export class DbWorkerClient {
           reject(error);
         },
         timer,
-      });
+      }); // Send request to worker
 
-      // Send request to worker
       this.worker!.postMessage(request);
     });
   }
-
   /**
    * Terminate the worker gracefully (closes DB and exits)
    */
+
   public async terminate(): Promise<void> {
     const worker = this.worker;
     if (!worker) {
@@ -221,8 +233,7 @@ export class DbWorkerClient {
     return new Promise<void>((resolve, reject) => {
       const terminateId = randomUUID();
       const timeout = setTimeout(() => {
-        this.pendingRequests.delete(terminateId);
-        // Force terminate if graceful termination times out
+        this.pendingRequests.delete(terminateId); // Force terminate if graceful termination times out
         worker.terminate();
         this.worker = null;
         this.isInitialized = false;
@@ -245,15 +256,13 @@ export class DbWorkerClient {
           reject(error);
         },
         timer: timeout,
-      });
+      }); // Send terminate message to worker
 
-      // Send terminate message to worker
       worker.postMessage({
         type: "terminate",
         id: terminateId,
-      });
+      }); // Wait for worker to exit
 
-      // Wait for worker to exit
       worker.once("exit", () => {
         const pending = this.pendingRequests.get(terminateId);
         if (pending) {
@@ -268,12 +277,12 @@ export class DbWorkerClient {
       });
     });
   }
-
   /**
    * Restore database from backup file
    */
+
   public async restore(backupPath: string): Promise<void> {
-    if (!this.dbPath) {
+    if (!this.dbPath || !this.migrationsPath) {
       throw new Error("Database path not set. Cannot restore.");
     }
 
@@ -296,7 +305,7 @@ export class DbWorkerClient {
         }`
       );
     }
-    await this._initializeWorker(this.dbPath);
+    await this._initializeWorker(this.dbPath, this.migrationsPath);
     logger.info("DbWorkerClient: Restore completed successfully");
   }
 }
