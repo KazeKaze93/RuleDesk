@@ -186,10 +186,63 @@ Enhanced features after MVP:
 Advanced features for future releases:
 
 - ⏳ **Smart Playlists** - Auto-fill playlists based on tag rules
-- ⏳ **Normalized Tag Index** - Full-text search on tags
+- ⏳ **Normalized Tag Index** - Full-text search on tags (FTS5 virtual tables)
 - ⏳ **Advanced Caching** - Intelligent cache management with size limits
 - ⏳ **Proxy Support** - Optional proxy configuration for API requests
 - ⏳ **Multi-Booru** - Provider pattern for multiple booru sources
+
+## 🔧 Technical Improvements (From Audit)
+
+### Developer Experience
+
+- ⏳ **Main Process HMR:** Implement auto-restart for Main process changes (nodemon/watch mode)
+  - **Current:** Manual restart required
+  - **Target:** Automatic restart on Main process file changes
+
+### Security & Privacy
+
+- ⏳ **Safe Mode / NSFW Filter:** Implement content blur/filtering based on settings
+  - **Current:** No blur logic or `safeMode` flag
+  - **Target:** Add `safeMode` setting in database, blur logic in `PostCard.tsx`
+- ⏳ **Age Gate:** Implement 18+ confirmation overlay
+  - **Current:** Only disclaimer text in README
+  - **Target:** One-time confirmation dialog with localStorage flag
+
+### Portability
+
+- ⏳ **Portable Mode:** Support relative database and asset paths
+  - **Current:** Uses absolute paths via `app.getPath("userData")`
+  - **Target:** Check for `portable` flag/env var, use relative paths
+
+### Code Quality
+
+- ⏳ **Centralized Input Sanitization:** Create shared validation utility
+  - **Current:** Zod validation per handler (decentralized)
+  - **Target:** `src/main/lib/validation.ts` with shared schemas
+
+### Anti-Bot Measures
+
+- ⏳ **Request Randomization:** Implement User-Agent rotation and request jitters
+  - **Current:** Static User-Agent, fixed delays
+  - **Target:** Randomized User-Agents, variable delays with jitter
+
+### Database Optimization
+
+- ⏳ **FTS5 Virtual Tables:** Full-text search for tag searching
+  - **Current:** Standard indexes only (`artistIdIdx`, `isViewedIdx`, etc.)
+  - **Target:** FTS5 virtual table for efficient tag search
+
+### Error Handling
+
+- ⏳ **Standardized IPC Error Responses:** User-friendly error messages
+  - **Current:** Some handlers return raw errors, inconsistent formatting
+  - **Target:** Consistent user-friendly error messages across all IPC handlers
+
+### Video Performance
+
+- ⏳ **Explicit Hardware Acceleration:** Configure webPreferences for optimal video playback
+  - **Current:** Video handling exists, relies on Electron defaults
+  - **Target:** Explicit `enableWebGL` and hardware acceleration flags
 
 ### A. Filters (Advanced Search) [Priority: High] 🚧 In Progress
 

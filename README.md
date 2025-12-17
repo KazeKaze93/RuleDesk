@@ -187,6 +187,7 @@ The application core has been successfully stabilized and enhanced with security
 - ✅ Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
 - ✅ App runs successfully via `npm run dev` and communicates with SQLite database
 - ✅ **Database Worker Thread:** All database operations moved to a dedicated worker thread for non-blocking main process
+- ⚠️ **HMR Status:** Renderer process has full HMR support. Main process requires manual restart (no auto-restart on file changes)
 
 ### Database & Schema
 
@@ -195,24 +196,30 @@ The application core has been successfully stabilized and enhanced with security
 - ✅ Added `sampleUrl` column for progressive image loading
 - ✅ Migrations system (`drizzle-kit`) is fully functional
 - ✅ **Worker Thread Architecture:** Database operations isolated in worker thread with RPC pattern
+- ⏳ **FTS5 Optimization:** Full-text search on tags planned (currently using standard indexes)
 
 ### Security & Reliability
 
 - ✅ **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API. Credentials encrypted at rest, decryption only in Main Process
 - ✅ **Database Backup/Restore:** Manual backup and restore functionality implemented. Create timestamped backups and restore from files
 - ✅ **Thread Safety:** Database operations run in dedicated worker thread, preventing main process blocking
+- ✅ **Input Validation:** Zod validation implemented per IPC handler (decentralized, no centralized utility)
+- ⏳ **Portable Mode:** Not implemented - uses absolute paths via `app.getPath("userData")`
+- ⏳ **Age Gate:** Not implemented - only disclaimer text in README
 
 ### Data Integrity & Sync
 
 - ✅ Implemented Tag Normalization in `AddArtistModal`: Inputs like "tag (123)" are now stripped to "tag" before saving/syncing
 - ✅ SyncService correctly handles `ON CONFLICT` and populates the gallery
 - ✅ Fixed timestamp handling: `lastChecked` now uses `new Date()` with proper Drizzle timestamp mode
+- ⚠️ **Anti-Bot Measures:** Static User-Agent strings used, fixed delays (1.5s/0.5s) but no randomization or rotation
 
 ### UI/UX
 
 - ✅ Fixed "Soapy/Blurred" Previews: Image rendering quality for previews has been corrected
 - ✅ Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
 - ✅ Basic Gallery grid is functional
+- ✅ **Virtualization:** `react-virtuoso` implemented for efficient large list rendering (`ArtistGallery.tsx`)
 - ✅ AsyncAutocomplete component for artist/tag search with free-text input support
 - ✅ **Search Functionality:** Local artist search and remote tag search via Rule34.xxx autocomplete API
 - ✅ **Backup Controls:** UI component for creating and restoring database backups
@@ -220,9 +227,11 @@ The application core has been successfully stabilized and enhanced with security
 - ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
 - ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles
 - ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
+- ✅ **Video Support:** `.mp4` and `.webm` video formats supported with native `<video>` element
 - ✅ **Download Manager:** Download full-resolution files with progress tracking and queue management
 - ✅ **Favorites System:** Mark and manage favorite posts with keyboard shortcuts and UI controls
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
+- ⏳ **Safe Mode/NSFW Filter:** Not implemented - no blur logic or `safeMode` flag in settings
 
 ---
 

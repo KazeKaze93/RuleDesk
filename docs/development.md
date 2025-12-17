@@ -462,12 +462,15 @@ Currently, no environment variables are required. Future additions:
 - ✅ Fully supported
 - React components hot-reload
 - CSS changes apply instantly
+- Vite dev server provides instant updates
 
 **Main Process:**
 
-- ❌ Not supported
-- Requires app restart
-- Use `npm run dev` for auto-restart
+- ⚠️ Partially supported
+- No automatic HMR - changes require manual app restart
+- `electron-vite` watches Main process files but doesn't auto-restart
+- **Workaround:** Use `nodemon` or similar tool for auto-restart during development
+- **Current Status:** Manual restart required after Main process changes
 
 ## Production Build
 

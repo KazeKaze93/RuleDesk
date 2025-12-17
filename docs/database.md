@@ -562,7 +562,10 @@ If the database becomes corrupted and you need to restore manually:
 
 Planned database improvements:
 
-- Full-text search indexes for tags
+- ⏳ **Full-text search indexes for tags (FTS5):** Planned but not implemented
+  - **Current:** Standard indexes only (`artistIdIdx`, `isViewedIdx`, `publishedAtIdx`, `isFavoritedIdx`)
+  - **Target:** FTS5 virtual table for efficient tag searching
+  - **Status:** See [Roadmap](./roadmap.md#-technical-improvements-from-audit) for implementation plan
 - Post deduplication logic
 - Statistics tables for analytics
 - Export/import functionality

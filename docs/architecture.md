@@ -724,9 +724,10 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 ### Development Mode
 
-- Hot Module Replacement (HMR) for Renderer
+- Hot Module Replacement (HMR) for Renderer ✅
 - Fast rebuilds with Vite
 - DevTools enabled in development
+- Main Process: Manual restart required (no auto-restart) ⚠️
 
 ## State Management
 
@@ -1032,3 +1033,32 @@ See [Roadmap](./roadmap.md#-security--reliability-hardening) for detailed securi
 2. **Descriptive Errors:** Clear error messages
 3. **Error Logging:** All errors logged via `electron-log`
 4. **User Feedback:** Errors surfaced to UI appropriately
+
+## Implementation Status (Technical Audit)
+
+Based on a comprehensive technical audit, here's the current implementation status of key features:
+
+### ✅ Fully Implemented
+
+- **Virtualization:** `react-virtuoso` implemented for efficient large list rendering (`ArtistGallery.tsx`)
+- **Video Support:** `.mp4` and `.webm` formats handled with native `<video>` element
+- **Input Validation:** Zod validation implemented per IPC handler
+- **Error Handling:** Try-catch blocks in IPC handlers with error logging
+
+### ⚠️ Partially Implemented
+
+- **Developer HMR:** Renderer process has full HMR support. Main process requires manual restart (no auto-restart on file changes)
+- **Input Sanitization:** Zod validation per handler (decentralized), no centralized utility
+- **Error Handling:** IPC handlers have try-catch blocks, but some return raw errors instead of user-friendly messages
+- **Modern Video:** Video handling exists, but no explicit hardware acceleration configuration in `webPreferences`
+
+### ⏳ Missing / Planned
+
+- **Safe Mode / NSFW Filter:** No blur logic or `safeMode` flag in database/settings
+- **Age Gate:** Only disclaimer text in README, no confirmation overlay or `isAdult` flag
+- **Portable Mode:** Uses absolute paths via `app.getPath("userData")`, no relative path support
+- **Anti-Bot Measures:** Static User-Agent strings, fixed delays (1.5s/0.5s) but no randomization or rotation
+- **DB Optimization (FTS5):** Standard indexes only, no FTS5 virtual tables for tag searching
+- **Centralized Validation:** No shared validation utility (`src/main/lib/validation.ts`)
+
+See [Roadmap](./roadmap.md#-technical-improvements-from-audit) for detailed implementation plans.
