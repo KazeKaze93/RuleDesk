@@ -27,8 +27,10 @@ let dbPath: string | null = null;
 
 // === WORKER VALIDATION SCHEMAS ===
 const SettingsPayloadSchema = z.object({
-  userId: z.string(),
-  encryptedApiKey: z.string(),
+  userId: z.string().optional(),
+  encryptedApiKey: z.string().optional(),
+  isSafeMode: z.boolean().optional(),
+  isAdultConfirmed: z.boolean().optional(),
 });
 
 const UpdateProgressSchema = z.object({
@@ -80,6 +82,8 @@ interface RawSettingsRow {
   user_id: string;
   api_key?: string;
   encrypted_api_key?: string;
+  is_safe_mode?: number;
+  is_adult_confirmed?: number;
 }
 
 export const togglePostViewed = async (postId: number): Promise<boolean> => {
@@ -161,11 +165,17 @@ function getSettingsRaw(db: Database.Database) {
       | undefined;
 
     if (!row) {
-      logger.info("Worker: getSettingsRaw returned no settings row."); // 🔥 LOG
-      return null;
+      logger.info("Worker: getSettingsRaw returned no settings row.");
+      return {
+        userId: "",
+        encryptedApiKey: undefined,
+        isSafeMode: true,
+        isAdultConfirmed: false,
+      };
     }
 
     const key = row.encrypted_api_key || row.api_key;
+
     logger.info(
       `Worker: Found settings in DB. UserID: ${
         row.user_id
@@ -175,9 +185,11 @@ function getSettingsRaw(db: Database.Database) {
     return {
       userId: row.user_id,
       encryptedApiKey: key,
+      isSafeMode: row.is_safe_mode === 1,
+      isAdultConfirmed: row.is_adult_confirmed === 1,
     };
   } catch (e) {
-    logger.error("Worker: CRITICAL error in getSettingsRaw:", e); // 🔥 LOG
+    logger.error("Worker: CRITICAL error in getSettingsRaw:", e);
     return null;
   }
 }
@@ -226,14 +238,23 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         sendSuccess(request.id, {
           userId: settings?.userId || "",
           hasApiKey: !!settings?.encryptedApiKey,
+          isSafeMode: settings?.isSafeMode ?? true,
+          isAdultConfirmed: settings?.isAdultConfirmed ?? false,
         });
         break;
       }
 
       case "saveSettings": {
-        const { userId, encryptedApiKey } = SettingsPayloadSchema.parse(
-          request.payload
-        );
+        const validation = SettingsPayloadSchema.safeParse(request.payload);
+        if (!validation.success) {
+          throw new Error(
+            "Invalid settings payload: " + JSON.stringify(validation.error)
+          );
+        }
+
+        const { userId, encryptedApiKey, isSafeMode, isAdultConfirmed } =
+          validation.data;
+
         const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
           name: string;
         }>;
@@ -243,20 +264,51 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
         dbInstance.transaction(() => {
           const existing = dbInstance!
-            .prepare("SELECT id FROM settings WHERE id = 1")
-            .get();
+            .prepare("SELECT * FROM settings WHERE id = 1")
+            .get() as RawSettingsRow | undefined;
+
           if (existing) {
+            const newUserId = userId !== undefined ? userId : existing.user_id;
+            const newKey =
+              encryptedApiKey !== undefined
+                ? encryptedApiKey
+                : existing.encrypted_api_key || existing.api_key;
+
+            const newSafeMode =
+              isSafeMode !== undefined
+                ? isSafeMode
+                  ? 1
+                  : 0
+                : existing.is_safe_mode;
+            const newAdult =
+              isAdultConfirmed !== undefined
+                ? isAdultConfirmed
+                  ? 1
+                  : 0
+                : existing.is_adult_confirmed;
+
             dbInstance!
               .prepare(
-                `UPDATE settings SET user_id = ?, ${colName} = ? WHERE id = 1`
+                `UPDATE settings SET 
+                 user_id = ?, 
+                 ${colName} = ?, 
+                 is_safe_mode = ?, 
+                 is_adult_confirmed = ? 
+                 WHERE id = 1`
               )
-              .run(userId, encryptedApiKey);
+              .run(newUserId, newKey, newSafeMode, newAdult);
           } else {
             dbInstance!
               .prepare(
-                `INSERT INTO settings (id, user_id, ${colName}) VALUES (1, ?, ?)`
+                `INSERT INTO settings (id, user_id, ${colName}, is_safe_mode, is_adult_confirmed) 
+                 VALUES (1, ?, ?, ?, ?)`
               )
-              .run(userId, encryptedApiKey);
+              .run(
+                userId || "",
+                encryptedApiKey || "",
+                isSafeMode !== undefined ? (isSafeMode ? 1 : 0) : 1,
+                isAdultConfirmed !== undefined ? (isAdultConfirmed ? 1 : 0) : 0
+              );
           }
         })();
         sendSuccess(request.id);
