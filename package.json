@@ -153,8 +153,7 @@
     },
     "portable": {
       "artifactName": "RuleDesk-Portable-${version}.exe",
-      "requestExecutionLevel": "user",
-      "splashImage": "resources/splash.png"
+      "requestExecutionLevel": "user"
     },
     "mac": {
       "target": "dmg"
