@@ -98,10 +98,11 @@
     "files": [
       "out/**/*",
       "!**/.env",
-      "data/*.db",
       "package.json",
       "!**/settings.json",
       "!**/*.log",
+      "!**/*.db",
+      "!**/*.db-journal",
       "!**/*.map",
       "!**/scripts/**",
       "!**/.github/**",
@@ -134,10 +135,21 @@
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
-      "artifactName": "RuleDesk-${target}-${version}.${ext}"
+      "artifactName": "RuleDesk-Setup-${version}.${ext}",
+      "icon": "resources/icon.ico"
     },
     "portable": {
       "artifactName": "RuleDesk-Portable-${version}.exe",
@@ -151,11 +163,12 @@
       "target": "AppImage"
     },
     "nsis": {
-      "oneClick": true,
-      "allowToChangeInstallationDirectory": false,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
       "perMachine": false,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
     },
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**"

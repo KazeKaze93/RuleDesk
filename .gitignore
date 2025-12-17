@@ -44,3 +44,11 @@ Thumbs.db
 .env               # Основной файл секретов
 .env.local         # Локальные/девелоперские переменные
 .env.*
+
+# Portable data folder
+/data
+/dist
+/release
+*.db
+*.db-journal
+*.log
