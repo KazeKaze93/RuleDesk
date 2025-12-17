@@ -108,8 +108,20 @@ export const togglePostViewed = async (postId: number): Promise<boolean> => {
 };
 
 export const resetPostCache = async (postId: number): Promise<boolean> => {
-  // Placeholder for future logic
-  return true;
+  if (!db) return false;
+
+  try {
+    const result = db
+      .update(schema.posts)
+      .set({ isViewed: false })
+      .where(eq(schema.posts.id, postId))
+      .run();
+
+    return result.changes > 0;
+  } catch (error) {
+    logger.error(`Error resetting cache for post ${postId}:`, error);
+    return false;
+  }
 };
 
 // --- Worker Messaging Helpers ---
@@ -520,22 +532,44 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
   }
 }
 
-if (parentPort) {
-  parentPort.on("message", async (msg: any) => {
-    if (msg.type === "terminate") {
-      dbInstance?.close();
-      db = null;
-      sendSuccess(msg.id);
-      setTimeout(() => process.exit(0), 100);
-    } else if (msg.type === "init") {
-      try {
-        initializeDatabase(msg.dbPath, msg.migrationsPath);
-        sendSuccess(msg.id);
-      } catch (e) {
-        sendError(msg.id, e);
-      }
-    } else {
-      await handleRequest(msg as WorkerRequest);
-    }
-  });
+const port = parentPort;
+if (!port) {
+  throw new Error(
+    "DbWorker started without parentPort. This script must be run as a worker thread."
+  );
 }
+
+type SystemMessage =
+  | { type: "terminate"; id: string }
+  | { type: "init"; id: string; dbPath: string; migrationsPath: string };
+
+port.on("message", async (msg: SystemMessage | WorkerRequest) => {
+  try {
+    switch (msg.type) {
+      case "terminate":
+        dbInstance?.close();
+        db = null;
+        sendSuccess(msg.id);
+        setTimeout(() => process.exit(0), 100);
+        break;
+
+      case "init":
+        try {
+          initializeDatabase(msg.dbPath, msg.migrationsPath);
+          sendSuccess(msg.id);
+        } catch (e) {
+          sendError(msg.id, e);
+        }
+        break;
+
+      default:
+        await handleRequest(msg as WorkerRequest);
+        break;
+    }
+  } catch (err) {
+    console.error("Critical error in DB worker message handler:", err);
+    if ("id" in msg) {
+      sendError(msg.id, err);
+    }
+  }
+});
