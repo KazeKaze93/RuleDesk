@@ -1,32 +1,33 @@
 import { app, BrowserWindow, dialog } from "electron";
 import path from "path";
+import { mkdirSync } from "fs";
+
+// === PORTABLE MODE LOGIC ===
+if (app.isPackaged) {
+  const portableDataPath = path.join(path.dirname(process.execPath), "data");
+
+  try {
+    mkdirSync(portableDataPath, { recursive: true });
+
+    app.setPath("userData", portableDataPath);
+
+    console.log(`PORTABLE MODE: Active. Path: ${portableDataPath}`);
+  } catch (e) {
+    console.error(
+      "PORTABLE MODE: Failed to init data folder. Fallback to default.",
+      e
+    );
+  }
+}
+
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
 import { DbWorkerClient } from "./db/db-worker-client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
-import { existsSync, mkdirSync } from "fs";
 
 logger.info("🚀 Application starting...");
-
-// === PORTABLE MODE LOGIC ===
-if (app.isPackaged) {
-  const portableDataPath = path.join(path.dirname(process.execPath), "data");
-
-  if (!existsSync(portableDataPath)) {
-    try {
-      mkdirSync(portableDataPath, { recursive: true });
-    } catch (e) {
-      console.error("PORTABLE: Failed to create data dir. Using default.", e);
-    }
-  }
-
-  if (existsSync(portableDataPath)) {
-    app.setPath("userData", portableDataPath);
-    console.log(`PORTABLE MODE: userData set to ${portableDataPath}`);
-  }
-}
 
 async function migrateUserData() {
   try {
