@@ -78,6 +78,30 @@ const PostActionPayloadSchema = z.object({
   postId: z.number().int().positive(),
 });
 
+const SystemInitSchema = z.object({
+  type: z.literal("init"),
+  id: z.string(),
+  dbPath: z.string(),
+  migrationsPath: z.string(),
+});
+
+const SystemTerminateSchema = z.object({
+  type: z.literal("terminate"),
+  id: z.string(),
+});
+
+const GenericRequestSchema = z.object({
+  type: z.string(),
+  id: z.string(),
+  payload: z.any().optional(),
+});
+
+const IncomingMessageSchema = z.union([
+  SystemInitSchema,
+  SystemTerminateSchema,
+  GenericRequestSchema,
+]);
+
 // --- Logic Helpers ---
 
 export const togglePostViewed = async (postId: number): Promise<boolean> => {
@@ -238,9 +262,12 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       case "saveSettings": {
         const validation = SettingsPayloadSchema.safeParse(request.payload);
         if (!validation.success) {
-          throw new Error(
-            "Invalid settings payload: " + JSON.stringify(validation.error)
+          logger.error(
+            `Validation failed for saveSettings: ${JSON.stringify(
+              validation.error.format()
+            )}`
           );
+          throw new Error("Settings validation failed. Check your input data.");
         }
 
         const { userId, encryptedApiKey, isSafeMode, isAdultConfirmed } =
@@ -539,11 +566,19 @@ if (!port) {
   );
 }
 
-type SystemMessage =
-  | { type: "terminate"; id: string }
-  | { type: "init"; id: string; dbPath: string; migrationsPath: string };
+port.on("message", async (rawMsg: unknown) => {
+  const validation = IncomingMessageSchema.safeParse(rawMsg);
 
-port.on("message", async (msg: SystemMessage | WorkerRequest) => {
+  if (!validation.success) {
+    console.error(
+      "IPC SECURITY: Received malformed message structure:",
+      validation.error
+    );
+    return;
+  }
+
+  const msg = validation.data;
+
   try {
     switch (msg.type) {
       case "terminate":
@@ -553,14 +588,16 @@ port.on("message", async (msg: SystemMessage | WorkerRequest) => {
         setTimeout(() => process.exit(0), 100);
         break;
 
-      case "init":
+      case "init": {
+        const initMsg = msg as z.infer<typeof SystemInitSchema>;
         try {
-          initializeDatabase(msg.dbPath, msg.migrationsPath);
-          sendSuccess(msg.id);
+          initializeDatabase(initMsg.dbPath, initMsg.migrationsPath);
+          sendSuccess(initMsg.id);
         } catch (e) {
-          sendError(msg.id, e);
+          sendError(initMsg.id, e);
         }
         break;
+      }
 
       default:
         await handleRequest(msg as WorkerRequest);
@@ -568,8 +605,6 @@ port.on("message", async (msg: SystemMessage | WorkerRequest) => {
     }
   } catch (err) {
     console.error("Critical error in DB worker message handler:", err);
-    if ("id" in msg) {
-      sendError(msg.id, err);
-    }
+    sendError(msg.id, err);
   }
 });
