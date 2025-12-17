@@ -1,5 +1,25 @@
 import { app, BrowserWindow, dialog } from "electron";
 import path from "path";
+import { mkdirSync } from "fs";
+
+// === PORTABLE MODE LOGIC ===
+if (app.isPackaged) {
+  const portableDataPath = path.join(path.dirname(process.execPath), "data");
+
+  try {
+    mkdirSync(portableDataPath, { recursive: true });
+
+    app.setPath("userData", portableDataPath);
+
+    console.log(`PORTABLE MODE: Active. Path: ${portableDataPath}`);
+  } catch (e) {
+    console.error(
+      "PORTABLE MODE: Failed to init data folder. Fallback to default.",
+      e
+    );
+  }
+}
+
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
 import { DbWorkerClient } from "./db/db-worker-client";
