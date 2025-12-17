@@ -94,12 +94,13 @@ export const togglePostViewed = async (postId: number): Promise<boolean> => {
 
     const newIsViewed = !post.isViewed;
 
-    db.update(schema.posts)
+    const result = db
+      .update(schema.posts)
       .set({ isViewed: newIsViewed })
       .where(eq(schema.posts.id, postId))
       .run();
 
-    return true;
+    return result.changes > 0;
   } catch (error) {
     console.error(`Error toggling viewed status for post ${postId}:`, error);
     return false;
@@ -107,9 +108,7 @@ export const togglePostViewed = async (postId: number): Promise<boolean> => {
 };
 
 export const resetPostCache = async (postId: number): Promise<boolean> => {
-  console.warn(
-    `[DEV ACTION] Placeholder: Resetting local cache for Post ID: ${postId}.`
-  );
+  // Placeholder for future logic
   return true;
 };
 
@@ -235,25 +234,19 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         const { userId, encryptedApiKey, isSafeMode, isAdultConfirmed } =
           validation.data;
 
+        // 1. Получаем текущие настройки для слияния
         const current = db
           .select()
           .from(schema.settings)
           .where(eq(schema.settings.id, 1))
           .get();
 
-        const newUserId = userId !== undefined ? userId : current?.userId ?? "";
-        const newKey =
-          encryptedApiKey !== undefined
-            ? encryptedApiKey
-            : current?.encryptedApiKey ?? "";
-        const newSafeMode =
-          isSafeMode !== undefined ? isSafeMode : current?.isSafeMode ?? true;
-        const newAdult =
-          isAdultConfirmed !== undefined
-            ? isAdultConfirmed
-            : current?.isAdultConfirmed ?? false;
+        const newUserId = userId ?? current?.userId ?? "";
+        const newKey = encryptedApiKey ?? current?.encryptedApiKey ?? "";
+        const newSafeMode = isSafeMode ?? current?.isSafeMode ?? true;
+        const newAdult = isAdultConfirmed ?? current?.isAdultConfirmed ?? false;
 
-        // 2. Upsert (Insert or Update)
+        // 3. Drizzle Upsert
         db.insert(schema.settings)
           .values({
             id: 1,
@@ -276,8 +269,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         sendSuccess(request.id);
         break;
       }
-
-      // ... standard cases ...
 
       case "getTrackedArtists":
         sendSuccess(
@@ -483,12 +474,13 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
         const newState = !currentPost.isFavorited;
 
-        await db
+        const result = await db
           .update(schema.posts)
           .set({ isFavorited: newState })
-          .where(eq(schema.posts.id, postId));
+          .where(eq(schema.posts.id, postId))
+          .run();
 
-        sendSuccess(request.id, newState);
+        sendSuccess(request.id, result.changes > 0 ? newState : false);
         break;
       }
 
@@ -501,16 +493,8 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
       case "resetPostCache": {
         const { postId } = PostActionPayloadSchema.parse(request.payload);
-        const result = db
-          .update(schema.posts)
-          .set({
-            isViewed: false,
-          })
-          .where(eq(schema.posts.id, postId))
-          .run();
-
-        const success = result && result.changes > 0;
-        sendSuccess(request.id, success);
+        const result = await resetPostCache(postId);
+        sendSuccess(request.id, result);
         break;
       }
 
