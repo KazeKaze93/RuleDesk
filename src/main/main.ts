@@ -6,8 +6,27 @@ import { DbWorkerClient } from "./db/db-worker-client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
+import { existsSync, mkdirSync } from "fs";
 
 logger.info("🚀 Application starting...");
+
+// === PORTABLE MODE LOGIC ===
+if (app.isPackaged) {
+  const portableDataPath = path.join(path.dirname(process.execPath), "data");
+
+  if (!existsSync(portableDataPath)) {
+    try {
+      mkdirSync(portableDataPath, { recursive: true });
+    } catch (e) {
+      console.error("PORTABLE: Failed to create data dir. Using default.", e);
+    }
+  }
+
+  if (existsSync(portableDataPath)) {
+    app.setPath("userData", portableDataPath);
+    console.log(`PORTABLE MODE: userData set to ${portableDataPath}`);
+  }
+}
 
 async function migrateUserData() {
   try {

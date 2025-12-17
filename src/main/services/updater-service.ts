@@ -1,7 +1,9 @@
 import pkg from "electron-updater";
 const { autoUpdater } = pkg;
-import { BrowserWindow, ipcMain } from "electron";
 import { logger } from "../lib/logger";
+import { BrowserWindow, ipcMain, shell } from "electron";
+
+const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
 
 export class UpdaterService {
   private window: BrowserWindow | null = null;
@@ -17,7 +19,6 @@ export class UpdaterService {
   private initListeners() {
     autoUpdater.logger = logger;
 
-    // 👇 Вежливый режим: не качаем сами
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = false;
 
@@ -35,6 +36,7 @@ export class UpdaterService {
       this.sendPayload("updater:status", {
         status: "available",
         version: info.version,
+        isPortable: isPortable,
       });
     });
 
@@ -57,31 +59,34 @@ export class UpdaterService {
       this.sendStatus("downloaded");
     });
 
-    // IPC Handler: Проверка
     ipcMain.handle("app:check-for-updates", async () => {
       return this.checkForUpdates();
     });
 
-    // IPC Handler: Старт скачивания (по кнопке)
-    ipcMain.handle("app:start-download", () => {
+    ipcMain.handle("app:start-download", async () => {
+      if (isPortable) {
+        logger.info("UPDATER: Portable detected. Opening GitHub releases.");
+        await shell.openExternal(
+          "https://github.com/KazeKaze93/ruledesk/releases/latest"
+        );
+        return;
+      }
+
       logger.info("UPDATER: User requested download starting...");
       autoUpdater.downloadUpdate();
     });
 
-    // IPC Handler: Перезагрузка
     ipcMain.handle("app:quit-and-install", () => {
       autoUpdater.quitAndInstall();
     });
   }
 
-  // Универсальный отправитель
   private sendPayload(channel: string, data: unknown) {
     if (this.window && !this.window.isDestroyed()) {
       this.window.webContents.send(channel, data);
     }
   }
 
-  // Обертка для статусов (для обратной совместимости внутри класса)
   private sendStatus(status: string, message?: string) {
     this.sendPayload("updater:status", { status, message });
   }
