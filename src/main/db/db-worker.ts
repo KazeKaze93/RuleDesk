@@ -26,6 +26,7 @@ let dbInstance: Database.Database | null = null;
 let dbPath: string | null = null;
 
 // === WORKER VALIDATION SCHEMAS ===
+
 const SettingsPayloadSchema = z.object({
   userId: z.string().optional(),
   encryptedApiKey: z.string().optional(),
@@ -62,7 +63,6 @@ const PostItemSchema = z.object({
   title: z.string().optional().nullable(),
   rating: z.string(),
   tags: z.string().optional().nullable(),
-  // Трансформируем дату из строки/числа/Date в объект Date для Drizzle
   publishedAt: z
     .union([z.string(), z.number(), z.date()])
     .transform((val) => new Date(val)),
@@ -71,46 +71,33 @@ const PostItemSchema = z.object({
 
 const SavePostsSchema = z.object({
   artistId: z.number(),
-  posts: z.array(PostItemSchema), // Используем строгую схему
+  posts: z.array(PostItemSchema),
 });
 
 const PostActionPayloadSchema = z.object({
   postId: z.number().int().positive(),
 });
 
-interface RawSettingsRow {
-  user_id: string;
-  api_key?: string;
-  encrypted_api_key?: string;
-  is_safe_mode?: number;
-  is_adult_confirmed?: number;
-}
+// --- Logic Helpers ---
 
 export const togglePostViewed = async (postId: number): Promise<boolean> => {
-  if (!db) {
-    console.error(`DB Worker: togglePostViewed called before initialization.`);
-    return false;
-  }
+  if (!db) return false;
 
   try {
-    const post = await db.query.posts.findFirst({
-      where: eq(schema.posts.id, postId),
-      columns: { isViewed: true },
-    });
+    const post = db
+      .select({ isViewed: schema.posts.isViewed })
+      .from(schema.posts)
+      .where(eq(schema.posts.id, postId))
+      .get();
 
-    if (!post) {
-      console.warn(
-        `Post with ID ${postId} not found for toggling viewed status.`
-      );
-      return false;
-    }
+    if (!post) return false;
 
     const newIsViewed = !post.isViewed;
 
-    await db
-      .update(schema.posts)
+    db.update(schema.posts)
       .set({ isViewed: newIsViewed })
-      .where(eq(schema.posts.id, postId));
+      .where(eq(schema.posts.id, postId))
+      .run();
 
     return true;
   } catch (error) {
@@ -121,12 +108,12 @@ export const togglePostViewed = async (postId: number): Promise<boolean> => {
 
 export const resetPostCache = async (postId: number): Promise<boolean> => {
   console.warn(
-    `[DEV ACTION] Placeholder: Resetting local cache for Post ID: ${postId}. Actual cache clearing logic (deleting file, clearing fields) should be implemented here.`
+    `[DEV ACTION] Placeholder: Resetting local cache for Post ID: ${postId}.`
   );
   return true;
 };
 
-// --- Helpers ---
+// --- Worker Messaging Helpers ---
 function sendResponse(response: WorkerResponse): void {
   if (parentPort) parentPort.postMessage(response);
 }
@@ -158,14 +145,15 @@ function initializeDatabase(
   }
 }
 
-function getSettingsRaw(db: Database.Database) {
+function getSettingsDrizzle(db: DbType) {
   try {
-    const row = db.prepare("SELECT * FROM settings LIMIT 1").get() as
-      | RawSettingsRow
-      | undefined;
+    const settings = db
+      .select()
+      .from(schema.settings)
+      .where(eq(schema.settings.id, 1))
+      .get();
 
-    if (!row) {
-      logger.info("Worker: getSettingsRaw returned no settings row.");
+    if (!settings) {
       return {
         userId: "",
         encryptedApiKey: undefined,
@@ -174,22 +162,14 @@ function getSettingsRaw(db: Database.Database) {
       };
     }
 
-    const key = row.encrypted_api_key || row.api_key;
-
-    logger.info(
-      `Worker: Found settings in DB. UserID: ${
-        row.user_id
-      }, Encrypted Key length: ${key?.length || 0}`
-    );
-
     return {
-      userId: row.user_id,
-      encryptedApiKey: key,
-      isSafeMode: row.is_safe_mode === 1,
-      isAdultConfirmed: row.is_adult_confirmed === 1,
+      userId: settings.userId || "",
+      encryptedApiKey: settings.encryptedApiKey || undefined,
+      isSafeMode: settings.isSafeMode ?? true,
+      isAdultConfirmed: settings.isAdultConfirmed ?? false,
     };
   } catch (e) {
-    logger.error("Worker: CRITICAL error in getSettingsRaw:", e);
+    logger.error("Worker: CRITICAL error in getSettingsDrizzle:", e);
     return null;
   }
 }
@@ -225,16 +205,16 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
   try {
     switch (request.type) {
       case "getApiKeyDecrypted": {
-        const settings = getSettingsRaw(dbInstance);
-
+        const settings = getSettingsDrizzle(db);
         sendSuccess(request.id, {
           userId: settings?.userId || "",
           apiKey: settings?.encryptedApiKey || "",
         });
         break;
       }
+
       case "getSettingsStatus": {
-        const settings = getSettingsRaw(dbInstance);
+        const settings = getSettingsDrizzle(db);
         sendSuccess(request.id, {
           userId: settings?.userId || "",
           hasApiKey: !!settings?.encryptedApiKey,
@@ -255,65 +235,49 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         const { userId, encryptedApiKey, isSafeMode, isAdultConfirmed } =
           validation.data;
 
-        const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
-          name: string;
-        }>;
-        const colName = tableInfo.some((c) => c.name === "encrypted_api_key")
-          ? "encrypted_api_key"
-          : "api_key";
+        const current = db
+          .select()
+          .from(schema.settings)
+          .where(eq(schema.settings.id, 1))
+          .get();
 
-        dbInstance.transaction(() => {
-          const existing = dbInstance!
-            .prepare("SELECT * FROM settings WHERE id = 1")
-            .get() as RawSettingsRow | undefined;
+        const newUserId = userId !== undefined ? userId : current?.userId ?? "";
+        const newKey =
+          encryptedApiKey !== undefined
+            ? encryptedApiKey
+            : current?.encryptedApiKey ?? "";
+        const newSafeMode =
+          isSafeMode !== undefined ? isSafeMode : current?.isSafeMode ?? true;
+        const newAdult =
+          isAdultConfirmed !== undefined
+            ? isAdultConfirmed
+            : current?.isAdultConfirmed ?? false;
 
-          if (existing) {
-            const newUserId = userId !== undefined ? userId : existing.user_id;
-            const newKey =
-              encryptedApiKey !== undefined
-                ? encryptedApiKey
-                : existing.encrypted_api_key || existing.api_key;
+        // 2. Upsert (Insert or Update)
+        db.insert(schema.settings)
+          .values({
+            id: 1,
+            userId: newUserId,
+            encryptedApiKey: newKey,
+            isSafeMode: newSafeMode,
+            isAdultConfirmed: newAdult,
+          })
+          .onConflictDoUpdate({
+            target: schema.settings.id,
+            set: {
+              userId: newUserId,
+              encryptedApiKey: newKey,
+              isSafeMode: newSafeMode,
+              isAdultConfirmed: newAdult,
+            },
+          })
+          .run();
 
-            const newSafeMode =
-              isSafeMode !== undefined
-                ? isSafeMode
-                  ? 1
-                  : 0
-                : existing.is_safe_mode;
-            const newAdult =
-              isAdultConfirmed !== undefined
-                ? isAdultConfirmed
-                  ? 1
-                  : 0
-                : existing.is_adult_confirmed;
-
-            dbInstance!
-              .prepare(
-                `UPDATE settings SET 
-                 user_id = ?, 
-                 ${colName} = ?, 
-                 is_safe_mode = ?, 
-                 is_adult_confirmed = ? 
-                 WHERE id = 1`
-              )
-              .run(newUserId, newKey, newSafeMode, newAdult);
-          } else {
-            dbInstance!
-              .prepare(
-                `INSERT INTO settings (id, user_id, ${colName}, is_safe_mode, is_adult_confirmed) 
-                 VALUES (1, ?, ?, ?, ?)`
-              )
-              .run(
-                userId || "",
-                encryptedApiKey || "",
-                isSafeMode !== undefined ? (isSafeMode ? 1 : 0) : 1,
-                isAdultConfirmed !== undefined ? (isAdultConfirmed ? 1 : 0) : 0
-              );
-          }
-        })();
         sendSuccess(request.id);
         break;
       }
+
+      // ... standard cases ...
 
       case "getTrackedArtists":
         sendSuccess(
@@ -360,9 +324,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
         if (posts.length > 0) {
           await db.transaction(async (tx) => {
-            // Используем sql.raw, так как Drizzle не поддерживает условные UPDATE/UPSERT
-            // на основе EXCLUDED значений для SQLite. Это безопасно, так как
-            // поля 'excluded.*' берутся из валидированного PostItemSchema.
             for (const post of posts) {
               await tx
                 .insert(schema.posts)
@@ -548,24 +509,16 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
           .where(eq(schema.posts.id, postId))
           .run();
 
-        const success =
-          result && "changes" in result ? result.changes > 0 : false;
-
+        const success = result && result.changes > 0;
         sendSuccess(request.id, success);
         break;
       }
 
       case "logout": {
-        const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
-          name: string;
-        }>;
-
-        const colName = tableInfo.some((c) => c.name === "encrypted_api_key")
-          ? "encrypted_api_key"
-          : "api_key";
-
-        dbInstance!
-          .prepare(`UPDATE settings SET ${colName} = NULL WHERE id = 1`)
+        await db
+          .update(schema.settings)
+          .set({ encryptedApiKey: null })
+          .where(eq(schema.settings.id, 1))
           .run();
 
         sendSuccess(request.id);
