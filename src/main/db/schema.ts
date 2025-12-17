@@ -58,6 +58,10 @@ export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id").default(""),
   encryptedApiKey: text("encrypted_api_key").default(""),
+  isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
+  isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
+    false
+  ),
 });
 
 // Types

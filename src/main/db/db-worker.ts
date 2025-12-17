@@ -26,9 +26,12 @@ let dbInstance: Database.Database | null = null;
 let dbPath: string | null = null;
 
 // === WORKER VALIDATION SCHEMAS ===
+
 const SettingsPayloadSchema = z.object({
-  userId: z.string(),
-  encryptedApiKey: z.string(),
+  userId: z.string().optional(),
+  encryptedApiKey: z.string().optional(),
+  isSafeMode: z.boolean().optional(),
+  isAdultConfirmed: z.boolean().optional(),
 });
 
 const UpdateProgressSchema = z.object({
@@ -60,7 +63,6 @@ const PostItemSchema = z.object({
   title: z.string().optional().nullable(),
   rating: z.string(),
   tags: z.string().optional().nullable(),
-  // Трансформируем дату из строки/числа/Date в объект Date для Drizzle
   publishedAt: z
     .union([z.string(), z.number(), z.date()])
     .transform((val) => new Date(val)),
@@ -69,46 +71,60 @@ const PostItemSchema = z.object({
 
 const SavePostsSchema = z.object({
   artistId: z.number(),
-  posts: z.array(PostItemSchema), // Используем строгую схему
+  posts: z.array(PostItemSchema),
 });
 
 const PostActionPayloadSchema = z.object({
   postId: z.number().int().positive(),
 });
 
-interface RawSettingsRow {
-  user_id: string;
-  api_key?: string;
-  encrypted_api_key?: string;
-}
+const SystemInitSchema = z.object({
+  type: z.literal("init"),
+  id: z.string(),
+  dbPath: z.string(),
+  migrationsPath: z.string(),
+});
+
+const SystemTerminateSchema = z.object({
+  type: z.literal("terminate"),
+  id: z.string(),
+});
+
+const GenericRequestSchema = z.object({
+  type: z.string(),
+  id: z.string(),
+  payload: z.any().optional(),
+});
+
+const IncomingMessageSchema = z.union([
+  SystemInitSchema,
+  SystemTerminateSchema,
+  GenericRequestSchema,
+]);
+
+// --- Logic Helpers ---
 
 export const togglePostViewed = async (postId: number): Promise<boolean> => {
-  if (!db) {
-    console.error(`DB Worker: togglePostViewed called before initialization.`);
-    return false;
-  }
+  if (!db) return false;
 
   try {
-    const post = await db.query.posts.findFirst({
-      where: eq(schema.posts.id, postId),
-      columns: { isViewed: true },
-    });
+    const post = db
+      .select({ isViewed: schema.posts.isViewed })
+      .from(schema.posts)
+      .where(eq(schema.posts.id, postId))
+      .get();
 
-    if (!post) {
-      console.warn(
-        `Post with ID ${postId} not found for toggling viewed status.`
-      );
-      return false;
-    }
+    if (!post) return false;
 
     const newIsViewed = !post.isViewed;
 
-    await db
+    const result = db
       .update(schema.posts)
       .set({ isViewed: newIsViewed })
-      .where(eq(schema.posts.id, postId));
+      .where(eq(schema.posts.id, postId))
+      .run();
 
-    return true;
+    return result.changes > 0;
   } catch (error) {
     console.error(`Error toggling viewed status for post ${postId}:`, error);
     return false;
@@ -116,13 +132,23 @@ export const togglePostViewed = async (postId: number): Promise<boolean> => {
 };
 
 export const resetPostCache = async (postId: number): Promise<boolean> => {
-  console.warn(
-    `[DEV ACTION] Placeholder: Resetting local cache for Post ID: ${postId}. Actual cache clearing logic (deleting file, clearing fields) should be implemented here.`
-  );
-  return true;
+  if (!db) return false;
+
+  try {
+    const result = db
+      .update(schema.posts)
+      .set({ isViewed: false })
+      .where(eq(schema.posts.id, postId))
+      .run();
+
+    return result.changes > 0;
+  } catch (error) {
+    logger.error(`Error resetting cache for post ${postId}:`, error);
+    return false;
+  }
 };
 
-// --- Helpers ---
+// --- Worker Messaging Helpers ---
 function sendResponse(response: WorkerResponse): void {
   if (parentPort) parentPort.postMessage(response);
 }
@@ -154,30 +180,31 @@ function initializeDatabase(
   }
 }
 
-function getSettingsRaw(db: Database.Database) {
+function getSettingsDrizzle(db: DbType) {
   try {
-    const row = db.prepare("SELECT * FROM settings LIMIT 1").get() as
-      | RawSettingsRow
-      | undefined;
+    const settings = db
+      .select()
+      .from(schema.settings)
+      .where(eq(schema.settings.id, 1))
+      .get();
 
-    if (!row) {
-      logger.info("Worker: getSettingsRaw returned no settings row."); // 🔥 LOG
-      return null;
+    if (!settings) {
+      return {
+        userId: "",
+        encryptedApiKey: undefined,
+        isSafeMode: true,
+        isAdultConfirmed: false,
+      };
     }
 
-    const key = row.encrypted_api_key || row.api_key;
-    logger.info(
-      `Worker: Found settings in DB. UserID: ${
-        row.user_id
-      }, Encrypted Key length: ${key?.length || 0}`
-    );
-
     return {
-      userId: row.user_id,
-      encryptedApiKey: key,
+      userId: settings.userId || "",
+      encryptedApiKey: settings.encryptedApiKey || undefined,
+      isSafeMode: settings.isSafeMode ?? true,
+      isAdultConfirmed: settings.isAdultConfirmed ?? false,
     };
   } catch (e) {
-    logger.error("Worker: CRITICAL error in getSettingsRaw:", e); // 🔥 LOG
+    logger.error("Worker: CRITICAL error in getSettingsDrizzle:", e);
     return null;
   }
 }
@@ -213,52 +240,71 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
   try {
     switch (request.type) {
       case "getApiKeyDecrypted": {
-        const settings = getSettingsRaw(dbInstance);
-
+        const settings = getSettingsDrizzle(db);
         sendSuccess(request.id, {
           userId: settings?.userId || "",
           apiKey: settings?.encryptedApiKey || "",
         });
         break;
       }
+
       case "getSettingsStatus": {
-        const settings = getSettingsRaw(dbInstance);
+        const settings = getSettingsDrizzle(db);
         sendSuccess(request.id, {
           userId: settings?.userId || "",
           hasApiKey: !!settings?.encryptedApiKey,
+          isSafeMode: settings?.isSafeMode ?? true,
+          isAdultConfirmed: settings?.isAdultConfirmed ?? false,
         });
         break;
       }
 
       case "saveSettings": {
-        const { userId, encryptedApiKey } = SettingsPayloadSchema.parse(
-          request.payload
-        );
-        const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
-          name: string;
-        }>;
-        const colName = tableInfo.some((c) => c.name === "encrypted_api_key")
-          ? "encrypted_api_key"
-          : "api_key";
+        const validation = SettingsPayloadSchema.safeParse(request.payload);
+        if (!validation.success) {
+          logger.error(
+            `Validation failed for saveSettings: ${JSON.stringify(
+              validation.error.format()
+            )}`
+          );
+          throw new Error("Settings validation failed. Check your input data.");
+        }
 
-        dbInstance.transaction(() => {
-          const existing = dbInstance!
-            .prepare("SELECT id FROM settings WHERE id = 1")
-            .get();
-          if (existing) {
-            dbInstance!
-              .prepare(
-                `UPDATE settings SET user_id = ?, ${colName} = ? WHERE id = 1`
-              )
-              .run(userId, encryptedApiKey);
-          } else {
-            dbInstance!
-              .prepare(
-                `INSERT INTO settings (id, user_id, ${colName}) VALUES (1, ?, ?)`
-              )
-              .run(userId, encryptedApiKey);
-          }
-        })();
+        const { userId, encryptedApiKey, isSafeMode, isAdultConfirmed } =
+          validation.data;
+
+        // 1. Получаем текущие настройки для слияния
+        const current = db
+          .select()
+          .from(schema.settings)
+          .where(eq(schema.settings.id, 1))
+          .get();
+
+        const newUserId = userId ?? current?.userId ?? "";
+        const newKey = encryptedApiKey ?? current?.encryptedApiKey ?? "";
+        const newSafeMode = isSafeMode ?? current?.isSafeMode ?? true;
+        const newAdult = isAdultConfirmed ?? current?.isAdultConfirmed ?? false;
+
+        // 3. Drizzle Upsert
+        db.insert(schema.settings)
+          .values({
+            id: 1,
+            userId: newUserId,
+            encryptedApiKey: newKey,
+            isSafeMode: newSafeMode,
+            isAdultConfirmed: newAdult,
+          })
+          .onConflictDoUpdate({
+            target: schema.settings.id,
+            set: {
+              userId: newUserId,
+              encryptedApiKey: newKey,
+              isSafeMode: newSafeMode,
+              isAdultConfirmed: newAdult,
+            },
+          })
+          .run();
+
         sendSuccess(request.id);
         break;
       }
@@ -308,9 +354,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
         if (posts.length > 0) {
           await db.transaction(async (tx) => {
-            // Используем sql.raw, так как Drizzle не поддерживает условные UPDATE/UPSERT
-            // на основе EXCLUDED значений для SQLite. Это безопасно, так как
-            // поля 'excluded.*' берутся из валидированного PostItemSchema.
             for (const post of posts) {
               await tx
                 .insert(schema.posts)
@@ -470,12 +513,13 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
         const newState = !currentPost.isFavorited;
 
-        await db
+        const result = await db
           .update(schema.posts)
           .set({ isFavorited: newState })
-          .where(eq(schema.posts.id, postId));
+          .where(eq(schema.posts.id, postId))
+          .run();
 
-        sendSuccess(request.id, newState);
+        sendSuccess(request.id, result.changes > 0 ? newState : false);
         break;
       }
 
@@ -488,32 +532,16 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
 
       case "resetPostCache": {
         const { postId } = PostActionPayloadSchema.parse(request.payload);
-        const result = db
-          .update(schema.posts)
-          .set({
-            isViewed: false,
-          })
-          .where(eq(schema.posts.id, postId))
-          .run();
-
-        const success =
-          result && "changes" in result ? result.changes > 0 : false;
-
-        sendSuccess(request.id, success);
+        const result = await resetPostCache(postId);
+        sendSuccess(request.id, result);
         break;
       }
 
       case "logout": {
-        const tableInfo = dbInstance!.pragma("table_info(settings)") as Array<{
-          name: string;
-        }>;
-
-        const colName = tableInfo.some((c) => c.name === "encrypted_api_key")
-          ? "encrypted_api_key"
-          : "api_key";
-
-        dbInstance!
-          .prepare(`UPDATE settings SET ${colName} = NULL WHERE id = 1`)
+        await db
+          .update(schema.settings)
+          .set({ encryptedApiKey: null })
+          .where(eq(schema.settings.id, 1))
           .run();
 
         sendSuccess(request.id);
@@ -531,22 +559,52 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
   }
 }
 
-if (parentPort) {
-  parentPort.on("message", async (msg: any) => {
-    if (msg.type === "terminate") {
-      dbInstance?.close();
-      db = null;
-      sendSuccess(msg.id);
-      setTimeout(() => process.exit(0), 100);
-    } else if (msg.type === "init") {
-      try {
-        initializeDatabase(msg.dbPath, msg.migrationsPath);
-        sendSuccess(msg.id);
-      } catch (e) {
-        sendError(msg.id, e);
-      }
-    } else {
-      await handleRequest(msg as WorkerRequest);
-    }
-  });
+const port = parentPort;
+if (!port) {
+  throw new Error(
+    "DbWorker started without parentPort. This script must be run as a worker thread."
+  );
 }
+
+port.on("message", async (rawMsg: unknown) => {
+  const validation = IncomingMessageSchema.safeParse(rawMsg);
+
+  if (!validation.success) {
+    console.error(
+      "IPC SECURITY: Received malformed message structure:",
+      validation.error
+    );
+    return;
+  }
+
+  const msg = validation.data;
+
+  try {
+    switch (msg.type) {
+      case "terminate":
+        dbInstance?.close();
+        db = null;
+        sendSuccess(msg.id);
+        setTimeout(() => process.exit(0), 100);
+        break;
+
+      case "init": {
+        const initMsg = msg as z.infer<typeof SystemInitSchema>;
+        try {
+          initializeDatabase(initMsg.dbPath, initMsg.migrationsPath);
+          sendSuccess(initMsg.id);
+        } catch (e) {
+          sendError(initMsg.id, e);
+        }
+        break;
+      }
+
+      default:
+        await handleRequest(msg as WorkerRequest);
+        break;
+    }
+  } catch (err) {
+    console.error("Critical error in DB worker message handler:", err);
+    sendError(msg.id, err);
+  }
+});

@@ -1,4 +1,3 @@
-// Cursor: select file:src/main/ipc/handlers/settings.ts
 import { ipcMain, safeStorage } from "electron";
 import { DbWorkerClient } from "../../db/db-worker-client";
 import { IPC_CHANNELS } from "../channels";
@@ -6,55 +5,60 @@ import { z } from "zod";
 import { logger } from "../../lib/logger";
 
 const SettingsPayloadSchema = z.object({
-  userId: z.string(),
-  apiKey: z.string(), // Это сырой ключ из Frontend
+  userId: z.string().optional(),
+  apiKey: z.string().optional(),
+  isSafeMode: z.boolean().optional(),
+  isAdultConfirmed: z.boolean().optional(),
 });
 
-// Новый интерфейс для ответа воркера (Main Process не дешифрует)
 interface SettingsResponse {
   userId: string;
   hasApiKey: boolean;
+  isSafeMode: boolean;
+  isAdultConfirmed: boolean;
 }
 
 export const registerSettingsHandlers = (db: DbWorkerClient) => {
-  // GET Settings (для App.tsx - проверка, авторизован ли пользователь)
+  // GET Settings
   ipcMain.handle(IPC_CHANNELS.SETTINGS.GET, async () => {
-    // Воркер возвращает userId и булево hasApiKey
     return db.call<SettingsResponse>("getSettingsStatus");
   });
 
-  // SAVE Settings (принимает сырой ключ, шифрует его и отправляет в воркер)
-  ipcMain.handle(IPC_CHANNELS.SETTINGS.SAVE, async (_, creds: unknown) => {
-    const validation = SettingsPayloadSchema.safeParse(creds);
+  // SAVE Settings
+  ipcMain.handle(IPC_CHANNELS.SETTINGS.SAVE, async (_, payload: unknown) => {
+    const validation = SettingsPayloadSchema.safeParse(payload);
 
     if (!validation.success) {
       logger.error("Settings validation failed:", validation.error.issues);
       return false;
     }
 
-    const { userId, apiKey } = validation.data;
+    const { userId, apiKey, isSafeMode, isAdultConfirmed } = validation.data;
 
-    // 🔥 FIX 1: Проверка доступности safeStorage
-    if (!safeStorage.isEncryptionAvailable()) {
-      logger.error(
-        "safeStorage is not available. Cannot securely store API key."
-      );
-      return false;
+    let encryptedApiKey: string | undefined;
+
+    if (apiKey) {
+      if (!safeStorage.isEncryptionAvailable()) {
+        logger.error("safeStorage is not available.");
+        return false;
+      }
+      try {
+        encryptedApiKey = safeStorage.encryptString(apiKey).toString("base64");
+      } catch (e) {
+        logger.error("Encryption failed:", e);
+        return false;
+      }
     }
 
     try {
-      // 🔥 FIX 1: Шифруем сырой ключ в Main Process
-      const encryptedApiKey = safeStorage
-        .encryptString(apiKey)
-        .toString("base64");
-
-      // Отправляем в воркер уже зашифрованный ключ
       const result = await db.call("saveSettings", {
         userId,
-        encryptedApiKey: encryptedApiKey,
+        encryptedApiKey,
+        isSafeMode,
+        isAdultConfirmed,
       });
 
-      logger.info("IPC: Settings saved and encrypted.");
+      logger.info("IPC: Settings saved.");
       return result;
     } catch (e) {
       logger.error("IPC: Error saving settings:", e);
@@ -62,5 +66,3 @@ export const registerSettingsHandlers = (db: DbWorkerClient) => {
     }
   });
 };
-
-// Чтобы функция logout из index.ts не дублировалась, предполагаем, что она регистрируется в index.ts

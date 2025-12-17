@@ -1,8 +1,11 @@
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { DbType } from "./db-service";
 import * as path from "path";
 import { app } from "electron";
 import { logger } from "../lib/logger";
+import { type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema";
+
+type DbType = BetterSQLite3Database<typeof schema>;
 
 export function runMigrations(db: DbType) {
   logger.info("Migrations: Инициализация...");
@@ -21,6 +24,6 @@ export function runMigrations(db: DbType) {
     logger.info("Migrations: Успешно применены.");
   } catch (error) {
     logger.error("Migrations: FATAL ERROR", error);
-    throw error; // Пробрасываем ошибку, чтобы остановить загрузку приложения
+    throw error;
   }
 }

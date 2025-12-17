@@ -133,8 +133,16 @@
       "releaseType": "draft"
     },
     "win": {
-      "target": "nsis",
-      "artifactName": "RuleDesk-Setup-${version}.${ext}"
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "artifactName": "RuleDesk-${target}-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "RuleDesk-Portable-${version}.exe",
+      "requestExecutionLevel": "user",
+      "splashImage": "resources/splash.png"
     },
     "mac": {
       "target": "dmg"
