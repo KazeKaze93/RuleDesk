@@ -1,0 +1,127 @@
+Project Structure (Generated: 2025-12-18T17:27:45.078Z)
+
+Root:
+├── .ai
+│   ├── CONTEXT.md
+│   └── RULES.md
+├── docs
+│   ├── api.md
+│   ├── architecture.md
+│   ├── contributing.md
+│   ├── database.md
+│   ├── development.md
+│   ├── roadmap.md
+│   └── rule34-api-reference.md
+├── drizzle
+│   ├── meta
+│   │   ├── _journal.json
+│   │   └── 0000_snapshot.json
+│   └── 0000_shiny_harpoon.sql
+├── scripts
+│   ├── ai_reviewer.py
+│   ├── gen-gemini-prompt.ts
+│   ├── generate-tree.ts
+│   └── system_prompt.md
+├── src
+│   ├── main
+│   │   ├── db
+│   │   │   ├── repositories
+│   │   │   │   ├── artists.repo.ts
+│   │   │   │   ├── posts.repo.ts
+│   │   │   │   └── settings.repo.ts
+│   │   │   ├── db-worker-client.ts
+│   │   │   ├── db-worker.ts
+│   │   │   ├── migrate.ts
+│   │   │   ├── schema.ts
+│   │   │   └── worker-types.ts
+│   │   ├── ipc
+│   │   │   ├── handlers
+│   │   │   │   ├── artists.ts
+│   │   │   │   ├── files.ts
+│   │   │   │   ├── posts.ts
+│   │   │   │   ├── settings.ts
+│   │   │   │   └── viewer.ts
+│   │   │   ├── channels.ts
+│   │   │   └── index.ts
+│   │   ├── lib
+│   │   │   └── logger.ts
+│   │   ├── services
+│   │   │   ├── secure-storage.ts
+│   │   │   ├── sync-service.ts
+│   │   │   └── updater-service.ts
+│   │   ├── bridge.ts
+│   │   ├── main.d.ts
+│   │   └── main.ts
+│   ├── renderer
+│   │   ├── components
+│   │   │   ├── dialogs
+│   │   │   │   ├── AddArtistModal.tsx
+│   │   │   │   ├── DeleteArtistDialog.tsx
+│   │   │   │   ├── Onboarding.tsx
+│   │   │   │   └── UpdateNotification.tsx
+│   │   │   ├── gallery
+│   │   │   │   ├── ArtistCard.tsx
+│   │   │   │   ├── ArtistGallery.tsx
+│   │   │   │   └── PostCard.tsx
+│   │   │   ├── inputs
+│   │   │   │   └── AsyncAutocomplete.tsx
+│   │   │   ├── layout
+│   │   │   │   ├── AppLayout.tsx
+│   │   │   │   ├── GlobalTopBar.tsx
+│   │   │   │   └── Sidebar.tsx
+│   │   │   ├── pages
+│   │   │   │   ├── ArtistDetails.tsx
+│   │   │   │   ├── Browse.tsx
+│   │   │   │   ├── Favorites.tsx
+│   │   │   │   ├── Onboarding.tsx
+│   │   │   │   ├── Settings.tsx
+│   │   │   │   ├── Tracked.tsx
+│   │   │   │   └── Updates.tsx
+│   │   │   ├── settings
+│   │   │   │   ├── BackupControls.tsx
+│   │   │   │   └── UpdateChecker.tsx
+│   │   │   ├── ui
+│   │   │   │   ├── alert.tsx
+│   │   │   │   ├── button.tsx
+│   │   │   │   ├── card.tsx
+│   │   │   │   ├── dialog.tsx
+│   │   │   │   ├── dropdown-menu.tsx
+│   │   │   │   ├── input.tsx
+│   │   │   │   ├── label.tsx
+│   │   │   │   ├── select.tsx
+│   │   │   │   └── separator.tsx
+│   │   │   └── viewer
+│   │   │       └── ViewerDialog.tsx
+│   │   ├── i18n
+│   │   │   └── index.ts
+│   │   ├── lib
+│   │   │   ├── hooks
+│   │   │   │   ├── useAppUpdater.ts
+│   │   │   │   └── useDebounce.ts
+│   │   │   ├── artist-utils.ts
+│   │   │   ├── tag-utils.ts
+│   │   │   └── utils.ts
+│   │   ├── locales
+│   │   │   └── en
+│   │   │       └── translation.json
+│   │   ├── schemas
+│   │   │   └── form-schemas.ts
+│   │   ├── store
+│   │   │   └── viewerStore.ts
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   ├── index.html
+│   │   └── main.tsx
+│   └── renderer.d.ts
+├── components.json
+├── drizzle.config.ts
+├── electron.vite.config.ts
+├── eslint.config.js
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── README.md
+├── repomix.config.json
+├── settings.json
+├── tailwind.config.js
+└── tsconfig.json
