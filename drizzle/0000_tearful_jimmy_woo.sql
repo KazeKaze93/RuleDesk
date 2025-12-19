@@ -30,7 +30,9 @@ CREATE TABLE `posts` (
 CREATE TABLE `settings` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`user_id` text DEFAULT '',
-	`encrypted_api_key` text DEFAULT ''
+	`encrypted_api_key` text DEFAULT '',
+	`is_safe_mode` integer DEFAULT true,
+	`is_adult_confirmed` integer DEFAULT false
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `artists_tag_unique` ON `artists` (`tag`);--> statement-breakpoint

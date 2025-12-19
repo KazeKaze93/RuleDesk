@@ -1,8 +1,16 @@
-import { BrowserWindow, ipcMain, shell, dialog, clipboard } from "electron";
-import { DbWorkerClient } from "../db/db-worker-client";
+import {
+  BrowserWindow,
+  ipcMain,
+  shell,
+  dialog,
+  clipboard,
+  app,
+} from "electron";
+import path from "path";
+import fs from "fs/promises";
+import { getRawDatabase } from "../db";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
-import { SettingsService } from "../services/settings.service";
 import { IPC_CHANNELS } from "./channels";
 import { logger } from "../lib/logger";
 import { z } from "zod";
@@ -10,6 +18,7 @@ import { z } from "zod";
 // Services
 import { PostsService } from "../services/posts.service";
 import { ArtistsService } from "../services/artists.service";
+import { SettingsService } from "../services/settings.service";
 
 // Handlers
 import { registerPostHandlers } from "./handlers/posts";
@@ -20,15 +29,15 @@ import { registerFileHandlers } from "./handlers/files";
 
 const DeleteArtistSchema = z.number().int().positive();
 
-// --- Helper для Sync & Maintenance ---
+// --- Helper для Sync & Maintenance (ТЕПЕРЬ БЕЗ DbWorkerClient) ---
 const registerSyncAndMaintenanceHandlers = (
-  db: DbWorkerClient,
   syncService: SyncService,
   mainWindow: BrowserWindow
 ) => {
   // Sync All
   ipcMain.handle(IPC_CHANNELS.DB.SYNC_ALL, () => {
     logger.info("IPC: [DB.SYNC_ALL] Starting background sync...");
+    // Запускаем и не ждем (fire and forget), прогресс идет через ивенты
     syncService.syncAllArtists().catch((error) => {
       logger.error("IPC: Critical background sync error:", error);
       syncService.sendEvent(
@@ -55,13 +64,28 @@ const registerSyncAndMaintenanceHandlers = (
     }
   });
 
-  // Backup
   ipcMain.handle(IPC_CHANNELS.BACKUP.CREATE, async () => {
     try {
-      const result = await db.call<{ backupPath: string }>("backup");
-      shell.showItemInFolder(result.backupPath);
-      return { success: true, path: result.backupPath };
+      const db = getRawDatabase();
+
+      const userDataPath = app.getPath("userData");
+      const backupsDir = path.join(userDataPath, "backups");
+
+      await fs.mkdir(backupsDir, { recursive: true });
+
+      const fileName = `backup-${new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")}.db`;
+      const backupPath = path.join(backupsDir, fileName);
+
+      logger.info(`IPC: Starting backup to ${backupPath}`);
+
+      await db.backup(backupPath); // Теперь TS не будет ругаться
+
+      shell.showItemInFolder(backupPath);
+      return { success: true, path: backupPath };
     } catch (error) {
+      logger.error("Backup failed", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -69,24 +93,35 @@ const registerSyncAndMaintenanceHandlers = (
     }
   });
 
-  // Restore
+  // --- RESTORE (DIRECT) ---
   ipcMain.handle(IPC_CHANNELS.BACKUP.RESTORE, async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: "Select backup file",
       filters: [{ name: "SQLite DB", extensions: ["db", "sqlite"] }],
       properties: ["openFile"],
     });
+
     if (canceled || !filePaths.length)
       return { success: false, error: "Canceled by user" };
 
+    const sourcePath = filePaths[0];
+
     try {
-      await db.restore(filePaths[0]);
-      mainWindow.reload();
+      logger.info(`IPC: Restoring database from ${sourcePath}`);
+
+      const dbPath = path.join(app.getPath("userData"), "metadata.db");
+      await fs.copyFile(sourcePath, dbPath); // Это может упасть, если файл залочен
+
+      app.relaunch();
+      app.exit(0);
+
       return { success: true };
     } catch (error) {
+      logger.error("Restore failed", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error:
+          "Cannot restore while app is running. Please replace metadata.db manually for now.",
       };
     }
   });
@@ -94,30 +129,27 @@ const registerSyncAndMaintenanceHandlers = (
 
 // --- Main Registration Function ---
 export const registerAllHandlers = (
-  dbWorkerClient: DbWorkerClient,
   syncService: SyncService,
   _updaterService: UpdaterService,
   mainWindow: BrowserWindow
 ) => {
   logger.info("IPC: Registering modular handlers...");
 
-  // 0. System Handlers (Inline)
-  // -------------------------------------------------------------
-
-  // Запись в буфер обмена (для копирования метаданных и дебага)
+  // 0. System Handlers
   ipcMain.handle(IPC_CHANNELS.APP.WRITE_CLIPBOARD, async (_, text: string) => {
     clipboard.writeText(text);
     return true;
   });
 
-  // Обработчик проверки кредов
+  // Verify Creds
   ipcMain.handle(IPC_CHANNELS.APP.VERIFY_CREDS, async () => {
     return await syncService.checkCredentials();
   });
 
-  // Logout
+  // Logout (очистка настроек)
   ipcMain.handle(IPC_CHANNELS.APP.LOGOUT, async () => {
-    await dbWorkerClient.call("logout");
+    const settingsService = new SettingsService();
+    await settingsService.updateSettings({ encryptedApiKey: "", userId: "" });
     return true;
   });
 
@@ -126,6 +158,8 @@ export const registerAllHandlers = (
   const postsService = new PostsService();
   const settingsService = new SettingsService();
 
+  syncService.setServices(settingsService, artistsService);
+
   // 2. Register Domain Handlers
   registerPostHandlers(postsService);
   registerArtistHandlers(artistsService);
@@ -133,14 +167,12 @@ export const registerAllHandlers = (
 
   // 3. Register Settings
   registerSettingsHandlers(settingsService);
-  // 4. Register Sync and Maintenance
-  registerSyncAndMaintenanceHandlers(dbWorkerClient, syncService, mainWindow);
+
+  // 4. Register Sync and Maintenance (без воркера!)
+  registerSyncAndMaintenanceHandlers(syncService, mainWindow);
 
   // 5. Register Files (Downloads)
   registerFileHandlers(postsService);
 
-  registerSettingsHandlers(settingsService);
-
-  syncService.setServices(settingsService, artistsService);
   logger.info("IPC: All modular handlers registered.");
 };

@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "4fbb74ee-af72-4a3e-8cbc-d29810828188",
+  "id": "878805c6-d7ea-4493-b3bc-feb31cf6dcf2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "artists": {
@@ -267,6 +267,22 @@
           "notNull": false,
           "autoincrement": false,
           "default": "''"
+        },
+        "is_safe_mode": {
+          "name": "is_safe_mode",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": true
+        },
+        "is_adult_confirmed": {
+          "name": "is_adult_confirmed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
         }
       },
       "indexes": {},
