@@ -185,7 +185,7 @@ export const registerAllHandlers = (
   // 3. Register Settings
   registerSettingsHandlers(settingsService);
 
-  // 4. Register Sync and Maintenance (без воркера!)
+  // 4. Register Sync and Maintenance
   registerSyncAndMaintenanceHandlers(syncService, mainWindow);
 
   // 5. Register Files (Downloads)
