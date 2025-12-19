@@ -190,16 +190,16 @@ export class SyncService {
   ) {
     let page = 0;
     let hasMore = true;
-    let newPostsCount = 0;
-    let highestPostId = artist.lastPostId;
+    let totalAddedForArtist = 0;
+    let currentHighestId = artist.lastPostId;
 
     while (hasMore && page < maxPages) {
       try {
         const idFilter =
           artist.lastPostId > 0 ? ` id:>${artist.lastPostId}` : "";
-        const tagsQuery = `${
-          artist.type === "uploader" ? "user:" : ""
-        }${encodeURIComponent(artist.tag)}${idFilter}`;
+        const tagsQuery = `${artist.type === "uploader" ? "user:" : ""}${
+          artist.tag
+        }${idFilter}`;
 
         const params = new URLSearchParams({
           page: "dapi",
@@ -217,76 +217,80 @@ export class SyncService {
         }
 
         const { data: postsData } = await axios.get<R34Post[]>(
-          `https://api.rule34.xxx/index.php?${params}`,
+          `https://api.rule34.xxx/index.php?${params.toString()}`,
           { timeout: 15000 }
         );
 
-        if (!Array.isArray(postsData) || postsData.length === 0) {
+        // 🔥 КРИТИЧЕСКИЙ ФИКС: Проверка, что пришел массив
+        if (!postsData || !Array.isArray(postsData) || postsData.length === 0) {
           hasMore = false;
           break;
         }
 
+        // Вычисляем максимальный ID в этой пачке
         const batchMaxId = Math.max(...postsData.map((p) => Number(p.id)));
-        if (batchMaxId > highestPostId) highestPostId = batchMaxId;
+        if (batchMaxId > currentHighestId) currentHighestId = batchMaxId;
 
-        const newPosts = postsData.filter(
+        // Фильтруем только те, которых у нас реально нет
+        const newPostsFromBatch = postsData.filter(
           (p) => Number(p.id) > artist.lastPostId
         );
 
-        if (newPosts.length === 0 && artist.lastPostId > 0) {
-          hasMore = false;
-          break;
-        }
+        if (newPostsFromBatch.length > 0) {
+          const postsToSave: NewPost[] = newPostsFromBatch.map((p) => ({
+            postId: Number(p.id),
+            artistId: artist.id,
+            fileUrl: p.file_url,
+            previewUrl: pickPreviewUrl(p),
+            sampleUrl: p.sample_url || p.file_url,
+            title: "",
+            rating: p.rating,
+            tags: p.tags,
+            publishedAt: new Date(
+              (p.change || Math.floor(Date.now() / 1000)) * 1000
+            ),
+            isViewed: false,
+            isFavorited: false,
+          }));
 
-        // Подготовка данных для вставки
-        const postsToSave: NewPost[] = newPosts.map((p) => ({
-          postId: Number(p.id),
-          artistId: artist.id,
-          fileUrl: p.file_url,
-          previewUrl: pickPreviewUrl(p),
-          sampleUrl: p.sample_url || p.file_url,
-          title: "",
-          rating: p.rating,
-          tags: p.tags,
-          publishedAt: new Date((p.change || 0) * 1000),
-          isViewed: false,
-          isFavorited: false,
-        }));
-
-        if (postsToSave.length > 0) {
           await this.db.transaction(async (tx) => {
             await tx.insert(posts).values(postsToSave).onConflictDoNothing();
 
             await tx
               .update(artists)
               .set({
-                lastPostId: highestPostId,
+                lastPostId: currentHighestId,
                 newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
                 lastChecked: new Date(),
               })
               .where(eq(artists.id, artist.id));
           });
+
+          totalAddedForArtist += postsToSave.length;
         }
 
-        newPostsCount += postsToSave.length;
-        if (postsData.length < 100) hasMore = false;
-        else page++;
-
-        await new Promise((r) => setTimeout(r, 500));
+        if (postsData.length < 100) {
+          hasMore = false;
+        } else {
+          page++;
+          await new Promise((r) => setTimeout(r, 500));
+        }
       } catch (e) {
-        logger.error(`Sync error for ${artist.name}`, e);
+        logger.error(`Sync error for ${artist.name}:`, e);
         hasMore = false;
       }
     }
 
-    if (newPostsCount === 0) {
+    if (totalAddedForArtist === 0) {
       await this.db
         .update(artists)
         .set({ lastChecked: new Date() })
         .where(eq(artists.id, artist.id));
     }
 
-    logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
+    logger.info(
+      `Sync finished for ${artist.name}. Added: ${totalAddedForArtist}`
+    );
   }
 }
 
