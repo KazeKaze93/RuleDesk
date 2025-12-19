@@ -6,9 +6,9 @@ import { IPC_CHANNELS } from "./channels";
 import { logger } from "../lib/logger";
 import { z } from "zod";
 
-// Repos
-import { PostsRepository } from "../db/repositories/posts.repo";
-import { ArtistsRepository } from "../db/repositories/artists.repo";
+// Services
+import { PostsService } from "../services/posts.service";
+import { ArtistsService } from "../services/artists.service";
 
 // Handlers
 import { registerPostHandlers } from "./handlers/posts";
@@ -120,13 +120,13 @@ export const registerAllHandlers = (
     return true;
   });
 
-  // 1. Init Repos
-  const postsRepo = new PostsRepository(db);
-  const artistsRepo = new ArtistsRepository(db);
+  // 1. Init Services
+  const postsService = new PostsService(db);
+  const artistsService = new ArtistsService(db);
 
   // 2. Register Domain Handlers
-  registerPostHandlers(postsRepo);
-  registerArtistHandlers(artistsRepo);
+  registerPostHandlers(postsService);
+  registerArtistHandlers(artistsService);
   registerViewerHandlers();
 
   // 3. Register Settings
@@ -136,7 +136,7 @@ export const registerAllHandlers = (
   registerSyncAndMaintenanceHandlers(db, syncService, mainWindow);
 
   // 5. Register Files (Downloads)
-  registerFileHandlers(postsRepo);
+  registerFileHandlers(postsService);
 
   logger.info("IPC: All modular handlers registered.");
 };

@@ -1,7 +1,7 @@
-import { DbWorkerClient } from "../db-worker-client";
-import { NewArtist } from "../schema";
+import { DbWorkerClient } from "../db/db-worker-client";
+import { NewArtist } from "../db/schema";
 
-export class ArtistsRepository {
+export class ArtistsService {
   constructor(private db: DbWorkerClient) {}
 
   async getAll() {
@@ -20,6 +20,3 @@ export class ArtistsRepository {
     return this.db.call("searchArtists", { query });
   }
 }
-
-
-

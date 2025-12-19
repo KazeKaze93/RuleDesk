@@ -11,6 +11,7 @@ export type DbMethod =
   | "savePostsForArtist"
   | "getPostsByArtist"
   | "getPostsCountByArtist"
+  | "getPostById"
   | "getArtistById"
   | "searchArtists"
   | "deleteArtist"
@@ -18,6 +19,7 @@ export type DbMethod =
   | "togglePostFavorite"
   | "togglePostViewed"
   | "resetPostCache"
+  | "updatePost"
   // Settings & Security
   | "getSettings"
   | "saveSettings"

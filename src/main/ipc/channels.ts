@@ -23,6 +23,7 @@ export const IPC_CHANNELS = {
     SYNC_ALL: "db:sync-all",
     TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,
     RESET_POST_CACHE: "db:reset-post-cache" as const,
+    UPDATE_POST: "db:update-post" as const,
     GET_API_KEY_ENCRYPTED: "db:get-api-key-encrypted",
   },
   API: {

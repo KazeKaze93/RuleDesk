@@ -6,7 +6,7 @@ import { pipeline } from "stream/promises";
 import { logger } from "../../lib/logger";
 import { IPC_CHANNELS } from "../channels";
 import { z } from "zod";
-import { PostsRepository } from "../../db/repositories/posts.repo";
+import { PostsService } from "../../services/posts.service";
 
 // Вспомогательная функция для получения главного окна Electron
 const getMainWindow = (): BrowserWindow | undefined => {
@@ -29,7 +29,7 @@ const DownloadFileSchema = z.object({
     .regex(/^[\w\-. ]+$/, "Invalid filename characters"),
 });
 
-export const registerFileHandlers = (repo: PostsRepository) => {
+export const registerFileHandlers = (service: PostsService) => {
   let totalBytes = 0;
 
   // Хендлер скачивания с диалогом "Сохранить как"
@@ -189,7 +189,7 @@ export const registerFileHandlers = (repo: PostsRepository) => {
       }
 
       try {
-        return await repo.resetPostCache(result.data);
+        return await service.resetPostCache(result.data);
       } catch (error) {
         logger.error(`[IPC] Failed to reset post cache`, error);
         return false;

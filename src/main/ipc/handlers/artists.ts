@@ -2,7 +2,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import axios from "axios";
 import { IPC_CHANNELS } from "../channels";
-import { ArtistsRepository } from "../../db/repositories/artists.repo";
+import { ArtistsService } from "../../services/artists.service";
 import { NewArtist } from "../../db/schema";
 import { logger } from "../../lib/logger";
 
@@ -13,10 +13,10 @@ const AddArtistSchema = z.object({
   apiEndpoint: z.string().url().trim(),
 });
 
-export const registerArtistHandlers = (repo: ArtistsRepository) => {
+export const registerArtistHandlers = (service: ArtistsService) => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_ARTISTS, async () => {
     try {
-      return await repo.getAll();
+      return await service.getAll();
     } catch (error) {
       logger.error("IPC: [db:get-artists] error:", error);
       throw new Error("Failed to fetch artists.");
@@ -34,7 +34,7 @@ export const registerArtistHandlers = (repo: ArtistsRepository) => {
     logger.info(`IPC: [db:add-artist] Adding: ${artistData.name}`);
 
     try {
-      return await repo.add(artistData as NewArtist);
+      return await service.add(artistData as NewArtist);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       logger.error("IPC: [db:add-artist] error:", error);
@@ -46,7 +46,7 @@ export const registerArtistHandlers = (repo: ArtistsRepository) => {
     const validation = z.number().int().positive().safeParse(id);
     if (!validation.success) throw new Error("Invalid ID.");
     try {
-      return await repo.delete(validation.data);
+      return await service.delete(validation.data);
     } catch (error) {
       logger.error(`IPC: [db:delete-artist] error:`, error);
       throw new Error("Failed to delete artist.");
@@ -57,7 +57,7 @@ export const registerArtistHandlers = (repo: ArtistsRepository) => {
     const validQuery = z.string().trim().safeParse(query);
     if (!validQuery.success) return [];
     try {
-      return await repo.searchTags(validQuery.data);
+      return await service.searchTags(validQuery.data);
     } catch {
       return [];
     }
@@ -87,6 +87,3 @@ export const registerArtistHandlers = (repo: ArtistsRepository) => {
     }
   });
 };
-
-
-

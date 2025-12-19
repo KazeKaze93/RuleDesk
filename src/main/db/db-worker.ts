@@ -78,6 +78,22 @@ const PostActionPayloadSchema = z.object({
   postId: z.number().int().positive(),
 });
 
+const UpdatePostPayloadSchema = z.object({
+  postId: z.number().int().positive(),
+  changes: z
+    .object({
+      rating: z.string().optional(),
+      tags: z.string().optional(),
+      title: z.string().optional(),
+      isViewed: z.boolean().optional(),
+      isFavorited: z.boolean().optional(),
+      fileUrl: z.string().optional(),
+      previewUrl: z.string().optional(),
+      sampleUrl: z.string().optional(),
+    })
+    .partial(),
+});
+
 const SystemInitSchema = z.object({
   type: z.literal("init"),
   id: z.string(),
@@ -428,6 +444,15 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         break;
       }
 
+      case "getPostById": {
+        const { postId } = PostActionPayloadSchema.parse(request.payload);
+        const post = await db.query.posts.findFirst({
+          where: eq(schema.posts.id, postId),
+        });
+        sendSuccess(request.id, post);
+        break;
+      }
+
       case "getArtistById": {
         const { artistId } = request.payload as { artistId: number };
         const artist = await db.query.artists.findFirst({
@@ -534,6 +559,41 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         const { postId } = PostActionPayloadSchema.parse(request.payload);
         const result = await resetPostCache(postId);
         sendSuccess(request.id, result);
+        break;
+      }
+
+      case "updatePost": {
+        const { postId, changes } = UpdatePostPayloadSchema.parse(
+          request.payload
+        );
+
+        // Build update object - Drizzle handles boolean conversion automatically
+        const updateData: Partial<typeof schema.posts.$inferInsert> = {};
+        if (changes.rating !== undefined) updateData.rating = changes.rating;
+        if (changes.tags !== undefined) updateData.tags = changes.tags;
+        if (changes.title !== undefined) updateData.title = changes.title;
+        if (changes.fileUrl !== undefined) updateData.fileUrl = changes.fileUrl;
+        if (changes.previewUrl !== undefined)
+          updateData.previewUrl = changes.previewUrl;
+        if (changes.sampleUrl !== undefined)
+          updateData.sampleUrl = changes.sampleUrl;
+        if (changes.isViewed !== undefined)
+          updateData.isViewed = changes.isViewed;
+        if (changes.isFavorited !== undefined)
+          updateData.isFavorited = changes.isFavorited;
+
+        if (Object.keys(updateData).length === 0) {
+          sendSuccess(request.id, false);
+          break;
+        }
+
+        const result = await db
+          .update(schema.posts)
+          .set(updateData)
+          .where(eq(schema.posts.id, postId))
+          .run();
+
+        sendSuccess(request.id, result.changes > 0);
         break;
       }
 

@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC_CHANNELS } from "../channels";
-import { PostsRepository } from "../../db/repositories/posts.repo";
+import { PostsService } from "../../services/posts.service";
 import { logger } from "../../lib/logger";
 
 const PostFilterSchema = z
@@ -19,7 +19,23 @@ const GetPostsSchema = z.object({
   filters: PostFilterSchema.optional(),
 });
 
-export const registerPostHandlers = (repo: PostsRepository) => {
+const UpdatePostSchema = z.object({
+  postId: z.number().int().positive(),
+  changes: z
+    .object({
+      rating: z.string().optional(),
+      tags: z.string().optional(),
+      title: z.string().optional(),
+      isViewed: z.boolean().optional(),
+      isFavorited: z.boolean().optional(),
+      fileUrl: z.string().optional(),
+      previewUrl: z.string().optional(),
+      sampleUrl: z.string().optional(),
+    })
+    .partial(),
+});
+
+export const registerPostHandlers = (service: PostsService) => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_POSTS, async (_, payload: unknown) => {
     const validation = GetPostsSchema.safeParse(payload);
     if (!validation.success)
@@ -29,7 +45,7 @@ export const registerPostHandlers = (repo: PostsRepository) => {
     const offset = (page - 1) * limit;
 
     try {
-      return await repo.getByArtist({ artistId, limit, offset });
+      return await service.getByArtist({ artistId, limit, offset });
     } catch (error) {
       logger.error(`IPC: [db:get-posts] error:`, error);
       throw new Error("Failed to fetch posts.");
@@ -49,8 +65,8 @@ export const registerPostHandlers = (repo: PostsRepository) => {
             ? countSchema.parse(payload) ?? undefined
             : undefined;
 
-        // Call the repo with optional ID
-        const total = await repo.getCountByArtist(artistId);
+        // Call the service with optional ID
+        const total = await service.getCountByArtist(artistId);
 
         console.log(
           `[IPC] Count requested. Filter: ${
@@ -70,7 +86,7 @@ export const registerPostHandlers = (repo: PostsRepository) => {
     if (!result.success) return false;
 
     try {
-      await repo.markAsViewed(result.data);
+      await service.markAsViewed(result.data);
       return true;
     } catch (error) {
       logger.error(`[IPC] Failed to mark post viewed`, error);
@@ -90,7 +106,7 @@ export const registerPostHandlers = (repo: PostsRepository) => {
           return false;
         }
 
-        return await repo.toggleFavorite(result.data);
+        return await service.toggleFavorite(result.data);
       } catch (error) {
         logger.error(`[IPC] Failed to toggle post favorite`, error);
         return false;
@@ -110,11 +126,29 @@ export const registerPostHandlers = (repo: PostsRepository) => {
       }
 
       try {
-        return await repo.togglePostViewed(result.data);
+        return await service.togglePostViewed(result.data);
       } catch (error) {
         logger.error(`[IPC] Failed to toggle post viewed`, error);
         return false;
       }
     }
   );
+
+  ipcMain.handle(IPC_CHANNELS.DB.UPDATE_POST, async (_, payload: unknown) => {
+    const validation = UpdatePostSchema.safeParse(payload);
+    if (!validation.success) {
+      logger.warn(
+        `[IPC] UPDATE_POST failed validation: ${validation.error.message}`
+      );
+      return false;
+    }
+
+    try {
+      const { postId, changes } = validation.data;
+      return await service.updatePost(postId, changes);
+    } catch (error) {
+      logger.error(`[IPC] Failed to update post`, error);
+      return false;
+    }
+  });
 };
