@@ -1,0 +1,16 @@
+{
+  "output": {
+    "filePath": ".ai/full_dump.txt",
+    "style": "xml"
+  },
+  "ignore": {
+    "useGitignore": true,
+    "customPatterns": [
+      "**/*.lock",
+      "release/**",
+      "dist/**",
+      "out/**",
+      "resources/**"
+    ]
+  }
+}

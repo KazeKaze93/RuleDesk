@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, shell, dialog, clipboard } from "electron";
 import { DbWorkerClient } from "../db/db-worker-client";
+import type { DbType } from "../db";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
 import { IPC_CHANNELS } from "./channels";
@@ -93,7 +94,8 @@ const registerSyncAndMaintenanceHandlers = (
 
 // --- Main Registration Function ---
 export const registerAllHandlers = (
-  db: DbWorkerClient,
+  dbWorkerClient: DbWorkerClient,
+  db: DbType,
   syncService: SyncService,
   _updaterService: UpdaterService,
   mainWindow: BrowserWindow
@@ -116,13 +118,13 @@ export const registerAllHandlers = (
 
   // Logout
   ipcMain.handle(IPC_CHANNELS.APP.LOGOUT, async () => {
-    await db.call("logout");
+    await dbWorkerClient.call("logout");
     return true;
   });
 
   // 1. Init Services
   const postsService = new PostsService(db);
-  const artistsService = new ArtistsService(db);
+  const artistsService = new ArtistsService(dbWorkerClient);
 
   // 2. Register Domain Handlers
   registerPostHandlers(postsService);
@@ -130,10 +132,10 @@ export const registerAllHandlers = (
   registerViewerHandlers();
 
   // 3. Register Settings
-  registerSettingsHandlers(db);
+  registerSettingsHandlers(dbWorkerClient);
 
   // 4. Register Sync and Maintenance
-  registerSyncAndMaintenanceHandlers(db, syncService, mainWindow);
+  registerSyncAndMaintenanceHandlers(dbWorkerClient, syncService, mainWindow);
 
   // 5. Register Files (Downloads)
   registerFileHandlers(postsService);

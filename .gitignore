@@ -52,3 +52,10 @@ Thumbs.db
 *.db
 *.db-journal
 *.log
+
+# --- AI & Tools ---
+.ai/*
+!.ai/CONTEXT.md
+repomix-output.xml
+repomix-output.txt
+.repomix/

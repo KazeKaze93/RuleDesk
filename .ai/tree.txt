@@ -1,4 +1,4 @@
-Project Structure (Generated: 2025-12-18T17:27:45.078Z)
+Project Structure (Generated: 2025-12-19T06:05:23.997Z)
 
 Root:
 ├── .ai
@@ -15,8 +15,10 @@ Root:
 ├── drizzle
 │   ├── meta
 │   │   ├── _journal.json
-│   │   └── 0000_snapshot.json
-│   └── 0000_shiny_harpoon.sql
+│   │   ├── 0000_snapshot.json
+│   │   └── 0001_snapshot.json
+│   ├── 0000_flawless_sally_floyd.sql
+│   └── 0001_lying_mauler.sql
 ├── scripts
 │   ├── ai_reviewer.py
 │   ├── gen-gemini-prompt.ts
@@ -25,10 +27,6 @@ Root:
 ├── src
 │   ├── main
 │   │   ├── db
-│   │   │   ├── repositories
-│   │   │   │   ├── artists.repo.ts
-│   │   │   │   ├── posts.repo.ts
-│   │   │   │   └── settings.repo.ts
 │   │   │   ├── db-worker-client.ts
 │   │   │   ├── db-worker.ts
 │   │   │   ├── migrate.ts
@@ -46,6 +44,8 @@ Root:
 │   │   ├── lib
 │   │   │   └── logger.ts
 │   │   ├── services
+│   │   │   ├── artists.service.ts
+│   │   │   ├── posts.service.ts
 │   │   │   ├── secure-storage.ts
 │   │   │   ├── sync-service.ts
 │   │   │   └── updater-service.ts
@@ -78,8 +78,7 @@ Root:
 │   │   │   │   ├── Tracked.tsx
 │   │   │   │   └── Updates.tsx
 │   │   │   ├── settings
-│   │   │   │   ├── BackupControls.tsx
-│   │   │   │   └── UpdateChecker.tsx
+│   │   │   │   └── BackupControls.tsx
 │   │   │   ├── ui
 │   │   │   │   ├── alert.tsx
 │   │   │   │   ├── button.tsx
@@ -96,7 +95,6 @@ Root:
 │   │   │   └── index.ts
 │   │   ├── lib
 │   │   │   ├── hooks
-│   │   │   │   ├── useAppUpdater.ts
 │   │   │   │   └── useDebounce.ts
 │   │   │   ├── artist-utils.ts
 │   │   │   ├── tag-utils.ts

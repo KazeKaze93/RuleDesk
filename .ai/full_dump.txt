@@ -42,12 +42,12 @@ The content is organized as follows:
 
 <directory_structure>
 .ai/CONTEXT.md
-.cursorrules
 .gitattributes
 .github/workflows/ai-review.yml
 .github/workflows/ci.yml
 .gitignore
 components.json
+cursorrules.txt
 docs/api.md
 docs/architecture.md
 docs/contributing.md
@@ -56,9 +56,11 @@ docs/development.md
 docs/roadmap.md
 docs/rule34-api-reference.md
 drizzle.config.ts
-drizzle/0000_shiny_harpoon.sql
+drizzle/0000_flawless_sally_floyd.sql
+drizzle/0001_lying_mauler.sql
 drizzle/meta/_journal.json
 drizzle/meta/0000_snapshot.json
+drizzle/meta/0001_snapshot.json
 electron.vite.config.ts
 eslint.config.js
 LICENSE
@@ -75,9 +77,6 @@ src/main/bridge.ts
 src/main/db/db-worker-client.ts
 src/main/db/db-worker.ts
 src/main/db/migrate.ts
-src/main/db/repositories/artists.repo.ts
-src/main/db/repositories/posts.repo.ts
-src/main/db/repositories/settings.repo.ts
 src/main/db/schema.ts
 src/main/db/worker-types.ts
 src/main/ipc/channels.ts
@@ -90,6 +89,8 @@ src/main/ipc/index.ts
 src/main/lib/logger.ts
 src/main/main.d.ts
 src/main/main.ts
+src/main/services/artists.service.ts
+src/main/services/posts.service.ts
 src/main/services/secure-storage.ts
 src/main/services/sync-service.ts
 src/main/services/updater-service.ts
@@ -114,7 +115,6 @@ src/renderer/components/pages/Settings.tsx
 src/renderer/components/pages/Tracked.tsx
 src/renderer/components/pages/Updates.tsx
 src/renderer/components/settings/BackupControls.tsx
-src/renderer/components/settings/UpdateChecker.tsx
 src/renderer/components/ui/alert.tsx
 src/renderer/components/ui/button.tsx
 src/renderer/components/ui/card.tsx
@@ -129,7 +129,6 @@ src/renderer/i18n/index.ts
 src/renderer/index.css
 src/renderer/index.html
 src/renderer/lib/artist-utils.ts
-src/renderer/lib/hooks/useAppUpdater.ts
 src/renderer/lib/hooks/useDebounce.ts
 src/renderer/lib/tag-utils.ts
 src/renderer/lib/utils.ts
@@ -144,120 +143,247 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="drizzle/0000_shiny_harpoon.sql">
-CREATE TABLE `artists` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`name` text NOT NULL,
-	`tag` text NOT NULL,
-	`type` text NOT NULL,
-	`api_endpoint` text NOT NULL,
-	`last_post_id` integer DEFAULT 0 NOT NULL,
-	`new_posts_count` integer DEFAULT 0 NOT NULL,
-	`last_checked` integer,
-	`created_at` integer NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE `posts` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`post_id` integer NOT NULL,
-	`artist_id` integer NOT NULL,
-	`file_url` text NOT NULL,
-	`preview_url` text NOT NULL,
-	`sample_url` text DEFAULT '' NOT NULL,
-	`title` text DEFAULT '',
-	`rating` text DEFAULT '',
-	`tags` text NOT NULL,
-	`published_at` integer NOT NULL,
-	`created_at` integer NOT NULL,
-	`is_viewed` integer DEFAULT false NOT NULL,
-	`is_favorited` integer DEFAULT false NOT NULL,
-	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE cascade
-);
---> statement-breakpoint
-CREATE TABLE `settings` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`user_id` text DEFAULT '',
-	`encrypted_api_key` text DEFAULT '',
-	`is_safe_mode` integer DEFAULT true,
-	`is_adult_confirmed` integer DEFAULT false,
-	`download_path` text DEFAULT ''
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `artists_tag_unique` ON `artists` (`tag`);--> statement-breakpoint
-CREATE INDEX `artistIdIdx` ON `posts` (`artist_id`);--> statement-breakpoint
-CREATE INDEX `isViewedIdx` ON `posts` (`is_viewed`);--> statement-breakpoint
-CREATE INDEX `publishedAtIdx` ON `posts` (`published_at`);--> statement-breakpoint
-CREATE INDEX `isFavoritedIdx` ON `posts` (`is_favorited`);--> statement-breakpoint
-CREATE UNIQUE INDEX `posts_artist_id_post_id_unique` ON `posts` (`artist_id`,`post_id`);
+<file path=".ai/CONTEXT.md">
+# Project: RuleDesk
+
+**Stack:** Electron (Vite), React (Shadcn/UI, Zustand), TypeScript, Drizzle ORM (SQLite), Python Sidecar.
+
+## Architecture Map
+
+- **src/main**: Backend Logic.
+  - `db/`: Worker thread logic (`db-worker.ts`), Drizzle schemas (`schema.ts`), Repositories (`*.repo.ts`).
+  - `ipc/`: Explicit handlers per domain (`artists`, `posts`, `files`).
+  - `services/`: Business logic (`sync-service` for Rule34 API, `updater`, `secure-storage`).
+- **src/renderer**: Frontend UI.
+  - `components/`: Atomic components & Dialogs.
+  - `pages/`: Route views (`Browse`, `ArtistDetails`, `Settings`).
+  - `store/`: Zustand global state (`viewerStore`).
+  - `lib/hooks/`: React hooks (`useAppUpdater`, `useDebounce`).
+- **drizzle/**: SQL migrations.
+- **scripts/**: CI/CD and AI utility scripts.
+
+## Active Rules
+
+1. **IPC Security**: All IPC channels must use Zod validation (defined in `ipc/handlers`).
+2. **Data Flow**: Main Process -> DB Worker -> Repository -> Service -> IPC -> Renderer.
+3. **Styles**: Tailwind CSS + Shadcn/UI.
+4. **Portable Mode**: The app detects `PORTABLE_EXECUTABLE_DIR`. If present, `userData` is set relative to the executable. Auto-updates are disabled for Portable builds (User is redirected to GitHub).
+5. **AI Context**: Always run `npm run ctx:gen` before a major task.
+
+## Memory Bank (Recent Decisions)
+
+- **2025-12-18 [Updater]**:
+  - Portable users get a "Download from GitHub" button instead of auto-update.
+  - `updater-service` sends `isPortable` flag to UI.
+- **2025-12-18 [Paths]**:
+  - Fixed `userData` path resolution to support both Installer (%APPDATA%) and Portable (local folder) modes correctly using `process.env.PORTABLE_EXECUTABLE_DIR`.
+- **2025-12-18 [Types]**:
+  - `renderer.d.ts` manually mirrors `bridge.ts` API surface to ensure type safety in components.
+
+## Current Focus (Status: Active Dev)
+
+- [x] Fix "Hanging" Updater in Dev mode.
+- [x] Implement Adaptive Updater UI (Portable vs Installer).
+- [ ] **Critical Refactor**: Check `src/main/ipc/handlers/files.ts` for path safety (ensure it respects the new `userData` logic and doesn't hardcode paths).
+- [ ] Fix: Sync Service race conditions.
 </file>
 
-<file path="src/main/db/repositories/settings.repo.ts">
-import { DbWorkerClient } from "../db-worker-client";
+<file path="cursorrules.txt">
+# ROLE & PERSONA
 
-// --- Интерфейсы ответов/запросов (соответствуют схемам в db-worker.ts) ---
+You are a Senior Principal Software Engineer. You are cynical, critical, and focused on production-grade quality. You do not tolerate sloppy code, "any" types, or security leaks.
 
-export interface SettingsStatus {
-  userId: string;
-  hasApiKey: boolean;
-  isSafeMode: boolean;
-  isAdultConfirmed: boolean;
-  downloadPath: string;
+- Language: Russian (for explanations), English (for code comments).
+- Tone: Professional, concise, slightly sarcastic if I make stupid mistakes.
+
+# PROJECT CONTEXT
+
+- **CRITICAL**: Before answering, ALWAYS check `.ai/CONTEXT.md` and `.ai/tree.txt` to understand the current architecture and file structure.
+- **Stack**: Electron (Vite), React 18, TypeScript, Drizzle ORM (SQLite), Python Sidecar.
+- **Styling**: Tailwind CSS + Shadcn/UI.
+
+# CODING STANDARDS
+
+1. **Architecture**:
+   - Strict separation: Main Process (Backend) vs Renderer (Frontend).
+   - Use `ipc/handlers` for all communications. NEVER use `remote` module.
+   - Database logic lives in `src/main/db` (Worker Thread).
+2. **Security**:
+   - Validate ALL inputs using **Zod**.
+   - IPC channels must be strictly typed.
+   - Never expose full error stack traces to the UI.
+3. **TypeScript**:
+   - NO `any`. Use `unknown` with narrowing or strict interfaces.
+   - Use `type` for definitions, `interface` for extendable structures.
+4. **React**:
+   - Functional components only.
+   - Use custom hooks for logic separation (e.g., `useAppUpdater`).
+
+# WORKFLOW
+
+- If you change file structure, remind me to run `npm run ctx:update`.
+- If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
+</file>
+
+<file path="repomix.config.json">
+{
+  "output": {
+    "filePath": ".ai/full_dump.txt",
+    "style": "xml"
+  },
+  "ignore": {
+    "useGitignore": true,
+    "customPatterns": [
+      "**/*.lock",
+      "release/**",
+      "dist/**",
+      "out/**",
+      "resources/**"
+    ]
+  }
+}
+</file>
+
+<file path="scripts/gen-gemini-prompt.ts">
+import * as fs from "fs";
+import * as path from "path";
+
+const AI_DIR = ".ai";
+const CONTEXT_FILE = path.join(AI_DIR, "CONTEXT.md");
+const RULES_FILE = path.join(AI_DIR, "RULES.md"); // 👈 Новый файл
+const TREE_FILE = path.join(AI_DIR, "tree.txt");
+const OUTPUT_FILE = path.join(AI_DIR, "GEMINI_PROMPT.txt");
+
+if (!fs.existsSync(TREE_FILE)) {
+  console.error(
+    '❌ Error: Tree file not found. Run "npm run ctx:update" first.'
+  );
+  process.exit(1);
 }
 
-export interface SettingsUpdatePayload {
-  userId?: string;
-  encryptedApiKey?: string;
-  isSafeMode?: boolean;
-  isAdultConfirmed?: boolean;
-  downloadPath?: string;
-}
+const context = fs.existsSync(CONTEXT_FILE)
+  ? fs.readFileSync(CONTEXT_FILE, "utf-8")
+  : "# No context file found.";
 
-export interface DecryptedCredentials {
-  userId: string;
-  apiKey: string;
-}
+const rules = fs.existsSync(RULES_FILE)
+  ? fs.readFileSync(RULES_FILE, "utf-8")
+  : "";
 
-export class SettingsRepository {
-  constructor(private readonly db: DbWorkerClient) {}
+const tree = fs.readFileSync(TREE_FILE, "utf-8");
 
-  /**
-   * Получает безопасный статус настроек (для UI).
-   * Без прямого SQL, вызываем метод воркера.
-   */
-  async getSettings(): Promise<SettingsStatus> {
-    return this.db.call<SettingsStatus>("getSettingsStatus");
+const prompt = `
+=== CRITICAL INSTRUCTIONS (USER RULES) ===
+${rules ? rules : "No specific user rules defined."}
+
+=== SYSTEM CONTEXT ===
+You are an AI Architect assisting with the "RuleDesk" project.
+Here is the Master Context and File Structure. 
+MEMORIZE THIS immediately.
+
+${context}
+
+=== PROJECT STRUCTURE (Latest) ===
+${tree}
+
+=== INSTRUCTION ===
+Await my next command.
+`;
+
+fs.writeFileSync(OUTPUT_FILE, prompt);
+console.log(`✅ Ready! Content saved to "${OUTPUT_FILE}"`);
+</file>
+
+<file path="scripts/generate-tree.ts">
+import * as fs from "fs";
+import * as path from "path";
+
+// Настройки: что игнорируем
+const IGNORE_DIRS = new Set([
+  "node_modules",
+  ".git",
+  ".idea",
+  ".vscode",
+  "dist",
+  "out",
+  "release",
+  "assets",
+  ".github",
+]);
+
+// Настройки: какие расширения файлов нам интересны (чтобы не листить всякие картинки)
+const RELEVANT_EXTS = new Set([
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".json",
+  ".css",
+  ".html",
+  ".sql",
+  ".md",
+  ".py",
+  ".yml",
+]);
+
+// Файл куда пишем
+const OUTPUT_DIR = ".ai";
+const OUTPUT_FILE = path.join(OUTPUT_DIR, "tree.txt");
+
+function getTree(dir: string, prefix = ""): string {
+  const name = path.basename(dir);
+  if (IGNORE_DIRS.has(name)) return "";
+
+  let output = "";
+  let entries: fs.Dirent[];
+
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (_e) {
+    return "";
   }
 
-  /**
-   * Сохраняет или обновляет настройки.
-   * Воркер сам выполнит Upsert и валидацию.
-   */
-  async saveSettings(data: SettingsUpdatePayload): Promise<boolean> {
-    try {
-      await this.db.call("saveSettings", data);
-      return true;
-    } catch (e) {
-      console.error("Failed to save settings via worker:", e);
-      return false;
+  // Сортируем: папки сверху, файлы снизу, алфавитный порядок
+  entries.sort((a, b) => {
+    if (a.isDirectory() === b.isDirectory()) {
+      return a.name.localeCompare(b.name);
     }
-  }
+    return a.isDirectory() ? -1 : 1;
+  });
 
-  /**
-   * Получение расшифрованного ключа (для выполнения запросов к API).
-   * Этот метод используется только внутри сервисов, не передавай это на фронт.
-   */
-  async getCredentials(): Promise<DecryptedCredentials> {
-    // "getApiKeyDecrypted" есть в worker-types.ts
-    return this.db.call<DecryptedCredentials>("getApiKeyDecrypted");
-  }
+  // Фильтруем файлы
+  const filtered = entries.filter((entry) => {
+    if (entry.isDirectory()) return !IGNORE_DIRS.has(entry.name);
+    return RELEVANT_EXTS.has(path.extname(entry.name));
+  });
 
-  /**
-   * Удаление ключа API (Logout).
-   */
-  async logout(): Promise<void> {
-    await this.db.call("logout");
-  }
+  filtered.forEach((entry, index) => {
+    const isLast = index === filtered.length - 1;
+    const marker = isLast ? "└── " : "├── ";
+    const subPrefix = prefix + (isLast ? "    " : "│   ");
+
+    output += `${prefix}${marker}${entry.name}\n`;
+
+    if (entry.isDirectory()) {
+      output += getTree(path.join(dir, entry.name), subPrefix);
+    }
+  });
+
+  return output;
 }
+
+// Запуск
+if (!fs.existsSync(OUTPUT_DIR)) {
+  fs.mkdirSync(OUTPUT_DIR);
+}
+
+console.log("Generating project tree...");
+const tree = getTree(process.cwd());
+
+// Добавляем заголовок
+const finalContent = `Project Structure (Generated: ${new Date().toISOString()})\n\nRoot:\n${tree}`;
+
+fs.writeFileSync(OUTPUT_FILE, finalContent);
+console.log(`✅ Tree saved to ${OUTPUT_FILE}`);
 </file>
 
 <file path="src/renderer/components/ui/button.tsx">
@@ -309,88 +435,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button";
 
 export { Button };
-</file>
-
-<file path=".ai/CONTEXT.md">
-# Project: RuleDesk
-
-**Stack:** Electron (Vite), React (Shadcn/UI, Zustand), TypeScript, Drizzle ORM (SQLite), Python Sidecar.
-
-## Architecture Map
-
-- **src/main**: Backend Logic.
-  - `db/`: Worker thread logic (`db-worker.ts`), Drizzle schemas (`schema.ts`), Repositories (`*.repo.ts`).
-  - `ipc/`: Explicit handlers per domain (`artists`, `posts`, `files`).
-  - `services/`: Business logic (`sync-service` for Rule34 API, `updater`, `secure-storage`).
-- **src/renderer**: Frontend UI.
-  - `components/`: Atomic components & Dialogs.
-  - `pages/`: Route views (`Browse`, `ArtistDetails`, `Settings`).
-  - `store/`: Zustand global state (`viewerStore`).
-  - `lib/hooks/`: React hooks (`useAppUpdater`, `useDebounce`).
-- **drizzle/**: SQL migrations.
-- **scripts/**: CI/CD and AI utility scripts.
-
-## Active Rules
-
-1. **IPC Security**: All IPC channels must use Zod validation (defined in `ipc/handlers`).
-2. **Data Flow**: Main Process -> DB Worker -> Repository -> Service -> IPC -> Renderer.
-3. **Styles**: Tailwind CSS + Shadcn/UI.
-4. **Portable Mode**: The app detects `PORTABLE_EXECUTABLE_DIR`. If present, `userData` is set relative to the executable. Auto-updates are disabled for Portable builds (User is redirected to GitHub).
-5. **AI Context**: Always run `npm run ctx:gen` before a major task.
-
-## Memory Bank (Recent Decisions)
-
-- **2025-12-18 [Updater]**:
-  - Portable users get a "Download from GitHub" button instead of auto-update.
-  - `updater-service` sends `isPortable` flag to UI.
-- **2025-12-18 [Paths]**:
-  - Fixed `userData` path resolution to support both Installer (%APPDATA%) and Portable (local folder) modes correctly using `process.env.PORTABLE_EXECUTABLE_DIR`.
-- **2025-12-18 [Types]**:
-  - `renderer.d.ts` manually mirrors `bridge.ts` API surface to ensure type safety in components.
-
-## Current Focus (Status: Active Dev)
-
-- [x] Fix "Hanging" Updater in Dev mode.
-- [x] Implement Adaptive Updater UI (Portable vs Installer).
-- [ ] **Critical Refactor**: Check `src/main/ipc/handlers/files.ts` for path safety (ensure it respects the new `userData` logic and doesn't hardcode paths).
-- [ ] Fix: Sync Service race conditions.
-</file>
-
-<file path=".cursorrules">
-# ROLE & PERSONA
-
-You are a Senior Principal Software Engineer. You are cynical, critical, and focused on production-grade quality. You do not tolerate sloppy code, "any" types, or security leaks.
-
-- Language: Russian (for explanations), English (for code comments).
-- Tone: Professional, concise, slightly sarcastic if I make stupid mistakes.
-
-# PROJECT CONTEXT
-
-- **CRITICAL**: Before answering, ALWAYS check `.ai/CONTEXT.md` and `.ai/tree.txt` to understand the current architecture and file structure.
-- **Stack**: Electron (Vite), React 18, TypeScript, Drizzle ORM (SQLite), Python Sidecar.
-- **Styling**: Tailwind CSS + Shadcn/UI.
-
-# CODING STANDARDS
-
-1. **Architecture**:
-   - Strict separation: Main Process (Backend) vs Renderer (Frontend).
-   - Use `ipc/handlers` for all communications. NEVER use `remote` module.
-   - Database logic lives in `src/main/db` (Worker Thread).
-2. **Security**:
-   - Validate ALL inputs using **Zod**.
-   - IPC channels must be strictly typed.
-   - Never expose full error stack traces to the UI.
-3. **TypeScript**:
-   - NO `any`. Use `unknown` with narrowing or strict interfaces.
-   - Use `type` for definitions, `interface` for extendable structures.
-4. **React**:
-   - Functional components only.
-   - Use custom hooks for logic separation (e.g., `useAppUpdater`).
-
-# WORKFLOW
-
-- If you change file structure, remind me to run `npm run ctx:update`.
-- If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
 </file>
 
 <file path=".github/workflows/ai-review.yml">
@@ -548,6 +592,55 @@ export default defineConfig({
 });
 </file>
 
+<file path="drizzle/0000_flawless_sally_floyd.sql">
+CREATE TABLE `artists` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`name` text NOT NULL,
+	`tag` text NOT NULL,
+	`type` text NOT NULL,
+	`api_endpoint` text NOT NULL,
+	`last_post_id` integer DEFAULT 0 NOT NULL,
+	`new_posts_count` integer DEFAULT 0 NOT NULL,
+	`last_checked` integer,
+	`created_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `posts` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`post_id` integer NOT NULL,
+	`artist_id` integer NOT NULL,
+	`file_url` text NOT NULL,
+	`preview_url` text NOT NULL,
+	`sample_url` text DEFAULT '' NOT NULL,
+	`title` text DEFAULT '',
+	`rating` text DEFAULT '',
+	`tags` text NOT NULL,
+	`published_at` integer NOT NULL,
+	`created_at` integer NOT NULL,
+	`is_viewed` integer DEFAULT false NOT NULL,
+	`is_favorited` integer DEFAULT false NOT NULL,
+	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `settings` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`user_id` text DEFAULT '',
+	`encrypted_api_key` text DEFAULT ''
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `artists_tag_unique` ON `artists` (`tag`);--> statement-breakpoint
+CREATE INDEX `artistIdIdx` ON `posts` (`artist_id`);--> statement-breakpoint
+CREATE INDEX `isViewedIdx` ON `posts` (`is_viewed`);--> statement-breakpoint
+CREATE INDEX `publishedAtIdx` ON `posts` (`published_at`);--> statement-breakpoint
+CREATE INDEX `isFavoritedIdx` ON `posts` (`is_favorited`);--> statement-breakpoint
+CREATE UNIQUE INDEX `posts_artist_id_post_id_unique` ON `posts` (`artist_id`,`post_id`);
+</file>
+
+<file path="drizzle/0001_lying_mauler.sql">
+ALTER TABLE settings ADD `is_safe_mode` integer DEFAULT true;--> statement-breakpoint
+ALTER TABLE settings ADD `is_adult_confirmed` integer DEFAULT false;
+</file>
+
 <file path="eslint.config.js">
 import js from "@eslint/js";
 import globals from "globals";
@@ -602,25 +695,6 @@ export default tseslint.config(
     },
   }
 );
-</file>
-
-<file path="repomix.config.json">
-{
-  "output": {
-    "filePath": ".ai/full_dump.txt",
-    "style": "xml"
-  },
-  "ignore": {
-    "useGitignore": true,
-    "customPatterns": [
-      "**/*.lock",
-      "release/**",
-      "dist/**",
-      "out/**",
-      "resources/**"
-    ]
-  }
-}
 </file>
 
 <file path="requirements.txt">
@@ -868,148 +942,6 @@ if __name__ == "__main__":
     main()
 </file>
 
-<file path="scripts/gen-gemini-prompt.ts">
-import * as fs from "fs";
-import * as path from "path";
-
-const AI_DIR = ".ai";
-const CONTEXT_FILE = path.join(AI_DIR, "CONTEXT.md");
-const RULES_FILE = path.join(AI_DIR, "RULES.md"); // 👈 Новый файл
-const TREE_FILE = path.join(AI_DIR, "tree.txt");
-const OUTPUT_FILE = path.join(AI_DIR, "GEMINI_PROMPT.txt");
-
-if (!fs.existsSync(TREE_FILE)) {
-  console.error(
-    '❌ Error: Tree file not found. Run "npm run ctx:update" first.'
-  );
-  process.exit(1);
-}
-
-const context = fs.existsSync(CONTEXT_FILE)
-  ? fs.readFileSync(CONTEXT_FILE, "utf-8")
-  : "# No context file found.";
-
-const rules = fs.existsSync(RULES_FILE)
-  ? fs.readFileSync(RULES_FILE, "utf-8")
-  : "";
-
-const tree = fs.readFileSync(TREE_FILE, "utf-8");
-
-const prompt = `
-=== CRITICAL INSTRUCTIONS (USER RULES) ===
-${rules ? rules : "No specific user rules defined."}
-
-=== SYSTEM CONTEXT ===
-You are an AI Architect assisting with the "RuleDesk" project.
-Here is the Master Context and File Structure. 
-MEMORIZE THIS immediately.
-
-${context}
-
-=== PROJECT STRUCTURE (Latest) ===
-${tree}
-
-=== INSTRUCTION ===
-Await my next command.
-`;
-
-fs.writeFileSync(OUTPUT_FILE, prompt);
-console.log(`✅ Ready! Content saved to "${OUTPUT_FILE}"`);
-</file>
-
-<file path="scripts/generate-tree.ts">
-import * as fs from "fs";
-import * as path from "path";
-
-// Настройки: что игнорируем
-const IGNORE_DIRS = new Set([
-  "node_modules",
-  ".git",
-  ".idea",
-  ".vscode",
-  "dist",
-  "out",
-  "release",
-  "assets",
-  ".github",
-]);
-
-// Настройки: какие расширения файлов нам интересны (чтобы не листить всякие картинки)
-const RELEVANT_EXTS = new Set([
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".json",
-  ".css",
-  ".html",
-  ".sql",
-  ".md",
-  ".py",
-  ".yml",
-]);
-
-// Файл куда пишем
-const OUTPUT_DIR = ".ai";
-const OUTPUT_FILE = path.join(OUTPUT_DIR, "tree.txt");
-
-function getTree(dir: string, prefix = ""): string {
-  const name = path.basename(dir);
-  if (IGNORE_DIRS.has(name)) return "";
-
-  let output = "";
-  let entries: fs.Dirent[];
-
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch (_e) {
-    return "";
-  }
-
-  // Сортируем: папки сверху, файлы снизу, алфавитный порядок
-  entries.sort((a, b) => {
-    if (a.isDirectory() === b.isDirectory()) {
-      return a.name.localeCompare(b.name);
-    }
-    return a.isDirectory() ? -1 : 1;
-  });
-
-  // Фильтруем файлы
-  const filtered = entries.filter((entry) => {
-    if (entry.isDirectory()) return !IGNORE_DIRS.has(entry.name);
-    return RELEVANT_EXTS.has(path.extname(entry.name));
-  });
-
-  filtered.forEach((entry, index) => {
-    const isLast = index === filtered.length - 1;
-    const marker = isLast ? "└── " : "├── ";
-    const subPrefix = prefix + (isLast ? "    " : "│   ");
-
-    output += `${prefix}${marker}${entry.name}\n`;
-
-    if (entry.isDirectory()) {
-      output += getTree(path.join(dir, entry.name), subPrefix);
-    }
-  });
-
-  return output;
-}
-
-// Запуск
-if (!fs.existsSync(OUTPUT_DIR)) {
-  fs.mkdirSync(OUTPUT_DIR);
-}
-
-console.log("Generating project tree...");
-const tree = getTree(process.cwd());
-
-// Добавляем заголовок
-const finalContent = `Project Structure (Generated: ${new Date().toISOString()})\n\nRoot:\n${tree}`;
-
-fs.writeFileSync(OUTPUT_FILE, finalContent);
-console.log(`✅ Tree saved to ${OUTPUT_FILE}`);
-</file>
-
 <file path="scripts/system_prompt.md">
 Ты — Senior Software Architect проекта **NSFW Booru Client**.
 Твой стек: **Electron (Main/Renderer), React, TypeScript, Drizzle ORM, SQLite, Zustand**.
@@ -1068,6 +1000,110 @@ console.log(`✅ Tree saved to ${OUTPUT_FILE}`);
 // Глобальные переменные, инжектируемые electron-vite
 declare const MAIN_WINDOW_VITE_DEV_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
+</file>
+
+<file path="src/main/services/artists.service.ts">
+import { DbWorkerClient } from "../db/db-worker-client";
+import { NewArtist } from "../db/schema";
+
+export class ArtistsService {
+  constructor(private db: DbWorkerClient) {}
+
+  async getAll() {
+    return this.db.call("getTrackedArtists");
+  }
+
+  async add(artist: NewArtist) {
+    return this.db.call("addArtist", artist);
+  }
+
+  async delete(id: number) {
+    return this.db.call("deleteArtist", { id });
+  }
+
+  async searchTags(query: string) {
+    return this.db.call("searchArtists", { query });
+  }
+}
+</file>
+
+<file path="src/main/services/posts.service.ts">
+import { DbWorkerClient } from "../db/db-worker-client";
+import type { Post } from "../db/schema";
+
+export type PostUpdateChanges = {
+  rating?: string;
+  tags?: string;
+  title?: string;
+  isViewed?: boolean;
+  isFavorited?: boolean;
+  fileUrl?: string;
+  previewUrl?: string;
+  sampleUrl?: string;
+};
+
+export class PostsService {
+  constructor(private db: DbWorkerClient) {}
+
+  async getByArtist(params: {
+    artistId: number;
+    limit: number;
+    offset: number;
+  }) {
+    return this.db.call("getPostsByArtist", params);
+  }
+
+  async getCountByArtist(artistId?: number): Promise<number> {
+    return this.db.call("getPostsCountByArtist", { artistId });
+  }
+
+  async getPostById(postId: number): Promise<Post | null> {
+    return this.db.call<Post | null>("getPostById", { postId });
+  }
+
+  /**
+   * Unified method for updating post fields.
+   * All write operations for posts should use this method.
+   */
+  async updatePost(
+    postId: number,
+    changes: PostUpdateChanges
+  ): Promise<boolean> {
+    return this.db.call<boolean>("updatePost", { postId, changes });
+  }
+
+  async markAsViewed(postId: number) {
+    return this.updatePost(postId, { isViewed: true });
+  }
+
+  async toggleFavorite(postId: number): Promise<boolean> {
+    const post = await this.getPostById(postId);
+    if (!post) {
+      throw new Error(`Post with id ${postId} not found`);
+    }
+
+    // Handle null/undefined by treating as false
+    const currentValue = post.isFavorited ?? false;
+    const newValue = !currentValue;
+    return this.updatePost(postId, { isFavorited: newValue });
+  }
+
+  async togglePostViewed(postId: number): Promise<boolean> {
+    const post = await this.getPostById(postId);
+    if (!post) {
+      throw new Error(`Post with id ${postId} not found`);
+    }
+
+    // Handle null/undefined by treating as false
+    const currentValue = post.isViewed ?? false;
+    const newValue = !currentValue;
+    return this.updatePost(postId, { isViewed: newValue });
+  }
+
+  async resetPostCache(postId: number): Promise<boolean> {
+    return this.updatePost(postId, { isViewed: false });
+  }
+}
 </file>
 
 <file path="src/renderer/components/dialogs/AddArtistModal.tsx">
@@ -3781,6 +3817,112 @@ export class SecureStorage {
 }
 </file>
 
+<file path="src/main/services/updater-service.ts">
+import pkg from "electron-updater";
+const { autoUpdater } = pkg;
+import { logger } from "../lib/logger";
+import { BrowserWindow, ipcMain, shell } from "electron";
+
+const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
+
+export class UpdaterService {
+  private window: BrowserWindow | null = null;
+
+  constructor() {
+    this.initListeners();
+  }
+
+  public setWindow(window: BrowserWindow) {
+    this.window = window;
+  }
+
+  private initListeners() {
+    autoUpdater.logger = logger;
+
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = false;
+
+    // @ts-expect-error: signature validation disabled
+    autoUpdater.verifyUpdateCodeSignature = false;
+
+    autoUpdater.on("checking-for-update", () => {
+      logger.info("UPDATER: Checking...");
+      this.sendStatus("checking");
+    });
+
+    autoUpdater.on("update-available", (info) => {
+      logger.info(`UPDATER: Update available: ${info.version}`);
+      // Отправляем версию UI, но не качаем
+      this.sendPayload("updater:status", {
+        status: "available",
+        version: info.version,
+        isPortable: isPortable,
+      });
+    });
+
+    autoUpdater.on("update-not-available", (info) => {
+      logger.info(`UPDATER: No update. Current: ${info.version}`);
+      this.sendStatus("not-available");
+    });
+
+    autoUpdater.on("error", (err) => {
+      logger.error("UPDATER: Error:", err);
+      this.sendStatus("error", err.message);
+    });
+
+    autoUpdater.on("download-progress", (progressObj) => {
+      this.sendPayload("updater:progress", progressObj.percent);
+    });
+
+    autoUpdater.on("update-downloaded", (info) => {
+      logger.info(`UPDATER: Downloaded ${info.version}`);
+      this.sendStatus("downloaded");
+    });
+
+    ipcMain.handle("app:check-for-updates", async () => {
+      return this.checkForUpdates();
+    });
+
+    ipcMain.handle("app:start-download", async () => {
+      if (isPortable) {
+        logger.info("UPDATER: Portable detected. Opening GitHub releases.");
+        await shell.openExternal(
+          "https://github.com/KazeKaze93/ruledesk/releases/latest"
+        );
+        return;
+      }
+
+      logger.info("UPDATER: User requested download starting...");
+      autoUpdater.downloadUpdate();
+    });
+
+    ipcMain.handle("app:quit-and-install", () => {
+      autoUpdater.quitAndInstall();
+    });
+  }
+
+  private sendPayload(channel: string, data: unknown) {
+    if (this.window && !this.window.isDestroyed()) {
+      this.window.webContents.send(channel, data);
+    }
+  }
+
+  private sendStatus(status: string, message?: string) {
+    this.sendPayload("updater:status", { status, message });
+  }
+
+  public async checkForUpdates() {
+    try {
+      await autoUpdater.checkForUpdates();
+    } catch (e) {
+      logger.error("UPDATER: Check failed", e);
+    }
+  }
+}
+
+export const updaterService = new UpdaterService();
+</file>
+
 <file path="src/renderer/components/gallery/PostCard.tsx">
 import React from "react";
 import { Play, Check, Heart } from "lucide-react";
@@ -3882,173 +4024,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
 };
 </file>
 
-<file path="src/renderer/components/settings/UpdateChecker.tsx">
-import React from "react";
-import { useAppUpdater } from "../../lib/hooks/useAppUpdater";
-import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import {
-  Loader2,
-  Download,
-  ExternalLink,
-  CheckCircle,
-  AlertCircle,
-  RefreshCw,
-} from "lucide-react";
-
-export const UpdateChecker: React.FC = () => {
-  const {
-    status,
-    version,
-    progress,
-    isPortable,
-    error,
-    checkForUpdates,
-    startDownload,
-    quitAndInstall,
-  } = useAppUpdater();
-
-  const showCheckButton =
-    status === "idle" || status === "not-available" || status === "checking";
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Software Update</CardTitle>
-        <CardDescription>
-          Check for the latest version of RuleDesk.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Error State */}
-        {status === "error" && (
-          <Alert variant="destructive">
-            <AlertCircle className="w-4 h-4" />
-            <AlertTitle>Update Error</AlertTitle>
-            <AlertDescription>
-              {error || "Failed to check for updates."}
-              <div className="mt-2">
-                <Button variant="outline" size="sm" onClick={checkForUpdates}>
-                  Try Again
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Available State */}
-        {status === "available" && (
-          <div className="p-4 rounded-md border bg-yellow-500/15 border-yellow-500/20">
-            <div className="flex gap-2 items-center mb-2">
-              <Download className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-              <h4 className="font-semibold text-yellow-700 dark:text-yellow-400">
-                Update Available: v{version}
-              </h4>
-            </div>
-
-            {isPortable ? (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Portable version detected. Auto-update is disabled to preserve
-                  your data location.
-                </p>
-                <Button
-                  onClick={startDownload}
-                  variant="outline"
-                  className="gap-2 w-full sm:w-auto"
-                >
-                  Open Release Page <ExternalLink className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  A new version is ready to be downloaded.
-                </p>
-                <Button onClick={startDownload} className="gap-2">
-                  Download Update
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Downloading State */}
-        {status === "downloading" && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Downloading...</span>
-              <span className="text-muted-foreground">
-                {Math.round(progress)}%
-              </span>
-            </div>
-            <div className="overflow-hidden w-full h-2 rounded-full bg-secondary">
-              <div
-                className="h-full transition-all duration-300 ease-out bg-primary"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Ready to Install State */}
-        {status === "downloaded" && (
-          <div className="p-4 rounded-md border bg-green-500/15 border-green-500/20">
-            <div className="flex gap-2 items-center mb-3">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-              <h4 className="font-semibold text-green-700 dark:text-green-400">
-                Update Ready
-              </h4>
-            </div>
-            <Button
-              onClick={quitAndInstall}
-              variant="default"
-              className="w-full sm:w-auto"
-            >
-              Restart & Install
-            </Button>
-          </div>
-        )}
-
-        {/* Idle / No Update / Checking State */}
-        {showCheckButton && (
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">
-              {status === "not-available"
-                ? `You are on the latest version (${version || "current"}).`
-                : "Check for updates manually."}
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={checkForUpdates}
-              disabled={status === "checking"}
-            >
-              {status === "checking" ? (
-                <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" /> Checking...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 w-4 h-4" /> Check for Updates
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-</file>
-
 <file path="src/renderer/lib/artist-utils.ts">
 // Логика формирования финального тега/юзернейма для API
 export function getArtistTag(
@@ -4064,99 +4039,6 @@ export function getArtistTag(
   // Для Tag: 'tag_name' (нижний регистр, пробелы в подчеркивания)
   return trimmedName.toLowerCase().replace(/ /g, "_");
 }
-</file>
-
-<file path="src/renderer/lib/hooks/useAppUpdater.ts">
-import { useEffect, useState } from "react";
-
-type UpdaterStatus =
-  | "idle"
-  | "checking"
-  | "available"
-  | "not-available"
-  | "downloading"
-  | "downloaded"
-  | "error";
-
-interface UpdaterState {
-  status: UpdaterStatus;
-  version: string | null;
-  progress: number;
-  error: string | null;
-  isPortable: boolean;
-}
-
-interface StatusPayload {
-  status: UpdaterStatus;
-  version?: string;
-  isPortable?: boolean;
-  message?: string;
-}
-
-const getIpc = () => {
-  if (
-    typeof window !== "undefined" &&
-    window.electron &&
-    window.electron.ipcRenderer
-  ) {
-    return window.electron.ipcRenderer;
-  }
-  console.error("❌ Electron IPC is missing! Check 'bridge.ts' loading.");
-  return null;
-};
-
-export const useAppUpdater = () => {
-  const [state, setState] = useState<UpdaterState>({
-    status: "idle",
-    version: null,
-    progress: 0,
-    error: null,
-    isPortable: false,
-  });
-
-  useEffect(() => {
-    const ipc = getIpc();
-    if (!ipc) return;
-
-    const removeStatusListener = ipc.on(
-      "updater:status",
-      (payload: unknown) => {
-        const data = payload as StatusPayload;
-        console.log("[Updater Hook] Status:", data);
-
-        setState((prev) => ({
-          ...prev,
-          status: data.status || "idle",
-          version: data.version || prev.version,
-          isPortable: !!data.isPortable,
-          error: data.message || null,
-        }));
-      }
-    );
-
-    const removeProgressListener = ipc.on(
-      "updater:progress",
-      (progress: unknown) => {
-        setState((prev) => ({
-          ...prev,
-          status: "downloading",
-          progress: Number(progress),
-        }));
-      }
-    );
-
-    return () => {
-      removeStatusListener();
-      removeProgressListener();
-    };
-  }, []);
-
-  const checkForUpdates = () => getIpc()?.invoke("app:check-for-updates");
-  const startDownload = () => getIpc()?.invoke("app:start-download");
-  const quitAndInstall = () => getIpc()?.invoke("app:quit-and-install");
-
-  return { ...state, checkForUpdates, startDownload, quitAndInstall };
-};
 </file>
 
 <file path="src/renderer/main.tsx">
@@ -4401,157 +4283,68 @@ module.exports = {
 };
 </file>
 
-<file path="src/main/db/repositories/artists.repo.ts">
-import { DbWorkerClient } from "../db-worker-client";
-import { NewArtist } from "../schema";
+<file path=".gitignore">
+# .gitignore
 
-export class ArtistsRepository {
-  constructor(private db: DbWorkerClient) {}
+# --- Node ---
+/node_modules
+/dist
+npm-debug.log
+.npm/
+.yarn/
+.pnp.js
+.pnp.cjs
 
-  async getAll() {
-    return this.db.call("getTrackedArtists");
-  }
+# --- Build/Vite/Electron ---
+# Выходные директории Electron-Vite
+/out
+/dist
+/dist-electron
+/release
 
-  async add(artist: NewArtist) {
-    return this.db.call("addArtist", artist);
-  }
+# Логи и кэш
+.electron-builder
+.electron-vite
 
-  async delete(id: number) {
-    return this.db.call("deleteArtist", { id });
-  }
+# --- TypeScript ---
+# Файлы деклараций, если они генерируются
+/temp
 
-  async searchTags(query: string) {
-    return this.db.call("searchArtists", { query });
-  }
-}
-</file>
+# --- Drizzle ORM / SQLite ---
+# База данных разработки и миграции
+/data/*.db # Например, data/metadata.db
+/drizzle # Папка для миграций
+/drizzle/meta/           # Исключает временные метаданные (папка)
+/drizzle/migrations.json # Исключает файл, который Drizzle использует локально
 
-<file path="src/main/db/repositories/posts.repo.ts">
-import { DbWorkerClient } from "../db-worker-client";
+# --- IDEs / OS ---
+.vscode
+.idea
+*.log
+.DS_Store
+Thumbs.db
 
-export class PostsRepository {
-  constructor(private db: DbWorkerClient) {}
+/settings.json
 
-  async getByArtist(params: {
-    artistId: number;
-    limit: number;
-    offset: number;
-  }) {
-    return this.db.call("getPostsByArtist", params);
-  }
+# --- Локальная Конфигурация и Секреты ---
+.env               # Основной файл секретов
+.env.local         # Локальные/девелоперские переменные
+.env.*
 
-  async getCountByArtist(artistId?: number): Promise<number> {
-    return this.db.call("getPostsCountByArtist", { artistId });
-  }
+# Portable data folder
+/data
+/dist
+/release
+*.db
+*.db-journal
+*.log
 
-  async markAsViewed(postId: number) {
-    return this.db.call("markPostAsViewed", { postId });
-  }
-
-  async toggleFavorite(postId: number) {
-    return this.db.call("togglePostFavorite", { postId });
-  }
-
-  async togglePostViewed(postId: number): Promise<boolean> {
-    return this.db.call("togglePostViewed", { postId });
-  }
-
-  async resetPostCache(postId: number): Promise<boolean> {
-    return this.db.call("resetPostCache", { postId });
-  }
-}
-</file>
-
-<file path="src/main/ipc/handlers/artists.ts">
-import { ipcMain } from "electron";
-import { z } from "zod";
-import axios from "axios";
-import { IPC_CHANNELS } from "../channels";
-import { ArtistsRepository } from "../../db/repositories/artists.repo";
-import { NewArtist } from "../../db/schema";
-import { logger } from "../../lib/logger";
-
-const AddArtistSchema = z.object({
-  name: z.string().trim().min(1),
-  tag: z.string().trim().min(1),
-  type: z.enum(["tag", "uploader", "query"]),
-  apiEndpoint: z.string().url().trim(),
-});
-
-export const registerArtistHandlers = (repo: ArtistsRepository) => {
-  ipcMain.handle(IPC_CHANNELS.DB.GET_ARTISTS, async () => {
-    try {
-      return await repo.getAll();
-    } catch (error) {
-      logger.error("IPC: [db:get-artists] error:", error);
-      throw new Error("Failed to fetch artists.");
-    }
-  });
-
-  ipcMain.handle(IPC_CHANNELS.DB.ADD_ARTIST, async (_, payload: unknown) => {
-    const validation = AddArtistSchema.safeParse(payload);
-    if (!validation.success) {
-      logger.error("IPC: Invalid artist data", validation.error);
-      throw new Error(`Validation failed: ${validation.error.message}`);
-    }
-
-    const artistData = validation.data;
-    logger.info(`IPC: [db:add-artist] Adding: ${artistData.name}`);
-
-    try {
-      return await repo.add(artistData as NewArtist);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      logger.error("IPC: [db:add-artist] error:", error);
-      throw new Error(`Database error: ${msg}`);
-    }
-  });
-
-  ipcMain.handle(IPC_CHANNELS.DB.DELETE_ARTIST, async (_, id: unknown) => {
-    const validation = z.number().int().positive().safeParse(id);
-    if (!validation.success) throw new Error("Invalid ID.");
-    try {
-      return await repo.delete(validation.data);
-    } catch (error) {
-      logger.error(`IPC: [db:delete-artist] error:`, error);
-      throw new Error("Failed to delete artist.");
-    }
-  });
-
-  ipcMain.handle(IPC_CHANNELS.DB.SEARCH_TAGS, async (_, query: unknown) => {
-    const validQuery = z.string().trim().safeParse(query);
-    if (!validQuery.success) return [];
-    try {
-      return await repo.searchTags(validQuery.data);
-    } catch {
-      return [];
-    }
-  });
-
-  ipcMain.handle(IPC_CHANNELS.API.SEARCH_REMOTE, async (_, query: unknown) => {
-    const validQuery = z.string().trim().safeParse(query);
-    if (!validQuery.success || validQuery.data.length < 2) return [];
-
-    interface Rule34AutocompleteItem {
-      label: string;
-      value: string;
-      type?: string;
-    }
-
-    try {
-      const { data } = await axios.get<Rule34AutocompleteItem[]>(
-        `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
-          validQuery.data
-        )}`
-      );
-      return Array.isArray(data)
-        ? data.map((item) => ({ id: item.value, label: item.label }))
-        : [];
-    } catch {
-      return [];
-    }
-  });
-};
+# --- AI & Tools ---
+.ai/*
+!.ai/CONTEXT.md
+repomix-output.xml
+repomix-output.txt
+.repomix/
 </file>
 
 <file path="src/main/ipc/handlers/settings.ts">
@@ -4625,132 +4418,274 @@ export const registerSettingsHandlers = (db: DbWorkerClient) => {
 };
 </file>
 
-<file path="src/main/services/updater-service.ts">
-import pkg from "electron-updater";
-const { autoUpdater } = pkg;
-import { logger } from "../lib/logger";
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+<file path="src/renderer/components/gallery/ArtistGallery.tsx">
+// Cursor: select file:src/renderer/components/gallery/ArtistGallery.tsx
+import React, { forwardRef, useMemo } from "react";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  useMutation,
+  InfiniteData,
+} from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
+import { VirtuosoGrid } from "react-virtuoso";
+import { Button } from "../ui/button";
+import type { Artist, Post } from "../../../main/db/schema";
+import { cn } from "../../lib/utils";
+import { useViewerStore } from "../../store/viewerStore";
+import { PostCard } from "../gallery/PostCard";
 
-const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
+interface ArtistGalleryProps {
+  artist: Artist;
+  onBack: () => void;
+}
 
-export class UpdaterService {
-  private window: BrowserWindow | null = null;
+// --- Компоненты для виртуализации (Grid Layout) ---
 
-  constructor() {
-    this.initListeners();
-  }
+const GridContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      className
+    )}
+    {...props}
+  />
+));
+GridContainer.displayName = "GridContainer";
 
-  public setWindow(window: BrowserWindow) {
-    this.window = window;
-  }
+const ItemContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+));
+ItemContainer.displayName = "ItemContainer";
 
-  private initListeners() {
-    autoUpdater.logger = logger;
+// --- Основной компонент ---
 
-    autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = false;
+export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
+  artist,
+  onBack,
+}) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
-    // @ts-expect-error: signature validation disabled
-    autoUpdater.verifyUpdateCodeSignature = false;
+  // 🔥 FIX: Достаем appendQueueIds из стора, чтобы обновлять очередь вьювера
+  const { open: openViewer, appendQueueIds } = useViewerStore((state) => ({
+    open: state.open,
+    appendQueueIds: state.appendQueueIds,
+  }));
 
-    autoUpdater.on("checking-for-update", () => {
-      logger.info("UPDATER: Checking...");
-      this.sendStatus("checking");
-    });
+  // Fetch total posts count
+  const { data: totalPosts = 0 } = useQuery({
+    queryKey: ["posts-count", artist.id],
+    queryFn: async () => {
+      const count = await window.api.getArtistPostsCount(artist.id);
+      return count;
+    },
+  });
 
-    autoUpdater.on("update-available", (info) => {
-      logger.info(`UPDATER: Update available: ${info.version}`);
-      // Отправляем версию UI, но не качаем
-      this.sendPayload("updater:status", {
-        status: "available",
-        version: info.version,
-        isPortable: isPortable,
-      });
-    });
-
-    autoUpdater.on("update-not-available", (info) => {
-      logger.info(`UPDATER: No update. Current: ${info.version}`);
-      this.sendStatus("not-available");
-    });
-
-    autoUpdater.on("error", (err) => {
-      logger.error("UPDATER: Error:", err);
-      this.sendStatus("error", err.message);
-    });
-
-    autoUpdater.on("download-progress", (progressObj) => {
-      this.sendPayload("updater:progress", progressObj.percent);
-    });
-
-    autoUpdater.on("update-downloaded", (info) => {
-      logger.info(`UPDATER: Downloaded ${info.version}`);
-      this.sendStatus("downloaded");
-    });
-
-    ipcMain.handle("app:check-for-updates", async () => {
-      return this.checkForUpdates();
-    });
-
-    ipcMain.handle("app:start-download", async () => {
-      if (isPortable) {
-        logger.info("UPDATER: Portable detected. Opening GitHub releases.");
-        await shell.openExternal(
-          "https://github.com/KazeKaze93/ruledesk/releases/latest"
-        );
-        return;
-      }
-
-      logger.info("UPDATER: User requested download starting...");
-      autoUpdater.downloadUpdate();
-    });
-
-    ipcMain.handle("app:quit-and-install", () => {
-      autoUpdater.quitAndInstall();
-    });
-  }
-
-  private sendPayload(channel: string, data: unknown) {
-    if (this.window && !this.window.isDestroyed()) {
-      this.window.webContents.send(channel, data);
-    }
-  }
-
-  private sendStatus(status: string, message?: string) {
-    this.sendPayload("updater:status", { status, message });
-  }
-
-  public async checkForUpdates() {
-    if (!app.isPackaged) {
-      logger.info("UPDATER: Dev mode detected. Skipping check.");
-      this.sendStatus("checking");
-      setTimeout(() => {
-        console.log("[Updater] Dev mode: Sending 'not-available'");
-        this.emitStatus({
-          status: "not-available",
-          version: app.getVersion(),
-          isPortable: !!process.env.PORTABLE_EXECUTABLE_DIR,
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useInfiniteQuery({
+      queryKey: ["posts", artist.id],
+      queryFn: async ({ pageParam = 1 }) => {
+        return await window.api.getArtistPosts({
+          artistId: artist.id,
+          page: pageParam,
         });
-      }, 1500);
+      },
+      getNextPageParam: (lastPage, allPages) => {
+        return lastPage.length === 50 ? allPages.length + 1 : undefined;
+      },
+      initialPageParam: 1,
+    });
+
+  const allPosts = useMemo(() => {
+    return data?.pages.flatMap((page) => page) || [];
+  }, [data]);
+
+  const viewMutation = useMutation({
+    mutationFn: async (postId: number) => {
+      await window.api.markPostAsViewed(postId);
+    },
+    onSuccess: (_, postId) => {
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        ["posts", artist.id],
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) =>
+              page.map((post) =>
+                post.id === postId ? { ...post, isViewed: true } : post
+              )
+            ),
+          };
+        }
+      );
+    },
+  });
+
+  // 🔥 FIX: Handler теперь не просто грузит данные в кэш, но и обновляет стор Вьювера!
+  const handleLoadMore = async () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      console.log("[Gallery] Viewer requested more posts. Fetching...");
+
+      // Ждем завершения загрузки и получаем результат
+      const result = await fetchNextPage();
+
+      // Если загрузка прошла успешно и есть данные
+      if (result.data) {
+        // Берем последнюю страницу (новую)
+        const newPage = result.data.pages[result.data.pages.length - 1];
+
+        if (newPage && newPage.length > 0) {
+          const newIds = newPage.map((p) => p.id);
+          console.log(
+            `[Gallery] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
+          );
+
+          // ЯВНО обновляем очередь вьювера
+          appendQueueIds(newIds);
+        }
+      }
+    }
+  };
+
+  const handlePostClick = (index: number) => {
+    const postIds = allPosts.map((p) => p.id);
+
+    const post = allPosts[index];
+    if (post && !post.isViewed) {
+      viewMutation.mutate(post.id);
+    }
+
+    openViewer({
+      origin: { kind: "artist", artistId: artist.id },
+      ids: postIds,
+      initialIndex: index,
+      listKey: `artist-${artist.id}`,
+      totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
+      hasNextPage: hasNextPage && allPosts.length < (totalPosts || Infinity),
+      onLoadMore: handleLoadMore, // Передаем обновленный хендлер
+    });
+  };
+
+  const handleRepairSync = async () => {
+    if (isLoading) return;
+    if (
+      !confirm(t("artistGallery.repairConfirm", { artistName: artist.name }))
+    ) {
       return;
     }
+    queryClient.removeQueries({ queryKey: ["posts", artist.id] });
     try {
-      await autoUpdater.checkForUpdates();
+      await window.api.repairArtist(artist.id);
+      queryClient.invalidateQueries({ queryKey: ["artists"] });
+      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
+      queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
     } catch (e) {
-      logger.error("UPDATER: Check failed", e);
-      this.sendStatus("error", e instanceof Error ? e.message : String(e));
+      console.error(e);
     }
-  }
-  private emitStatus(payload: {
-    status: string;
-    version?: string;
-    message?: string;
-    isPortable?: boolean;
-  }) {
-    const windows = BrowserWindow.getAllWindows();
-    windows.forEach((w) => w.webContents.send("updater:status", payload));
-  }
-}
-export const updaterService = new UpdaterService();
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-background text-foreground">
+      {/* Header */}
+      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+        <div className="flex gap-4 items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            aria-label={t("artistGallery.backToArtists")}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-bold">{artist.name}</h2>
+            <div className="flex gap-2 text-xs text-muted-foreground">
+              {totalPosts > 0 && (
+                <span className="text-sm font-medium text-muted-foreground">
+                  Total: {totalPosts}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRepairSync}
+            title={t("artistGallery.repairTitle")}
+          >
+            <Wrench className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">
+              {t("artistGallery.repair")}
+            </span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              window.api.openExternal(
+                `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
+              )
+            }
+          >
+            <ExternalLink className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t("artistGallery.web")}</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Grid Content */}
+      <div className="flex-1 min-h-0">
+        {isLoading && allPosts.length === 0 ? (
+          <div className="flex justify-center items-center h-full text-muted-foreground">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+        ) : (
+          <VirtuosoGrid
+            style={{ height: "100%" }}
+            totalCount={allPosts.length}
+            endReached={() => {
+              if (hasNextPage && !isFetchingNextPage) {
+                fetchNextPage();
+              }
+            }}
+            components={{
+              List: GridContainer,
+              Item: ItemContainer,
+              Footer: () =>
+                isFetchingNextPage ? (
+                  <div className="flex col-span-full justify-center py-4 w-full">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : null,
+            }}
+            itemContent={(index) => {
+              const post = allPosts[index];
+              if (!post) return null;
+
+              return (
+                <PostCard post={post} onClick={() => handlePostClick(index)} />
+              );
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
 </file>
 
 <file path="src/renderer/components/inputs/AsyncAutocomplete.tsx">
@@ -5334,70 +5269,6 @@ export const Onboarding = ({
 }
 </file>
 
-<file path=".gitignore">
-# .gitignore
-
-# --- Node ---
-/node_modules
-/dist
-npm-debug.log
-.npm/
-.yarn/
-.pnp.js
-.pnp.cjs
-
-# --- Build/Vite/Electron ---
-# Выходные директории Electron-Vite
-/out
-/dist
-/dist-electron
-/release
-
-# Логи и кэш
-.electron-builder
-.electron-vite
-
-# --- TypeScript ---
-# Файлы деклараций, если они генерируются
-/temp
-
-# --- Drizzle ORM / SQLite ---
-# База данных разработки и миграции
-/data/*.db # Например, data/metadata.db
-/drizzle # Папка для миграций
-/drizzle/meta/           # Исключает временные метаданные (папка)
-/drizzle/migrations.json # Исключает файл, который Drizzle использует локально
-
-# --- IDEs / OS ---
-.vscode
-.idea
-*.log
-.DS_Store
-Thumbs.db
-
-/settings.json
-
-# --- Локальная Конфигурация и Секреты ---
-.env               # Основной файл секретов
-.env.local         # Локальные/девелоперские переменные
-.env.*
-
-# Portable data folder
-/data
-/dist
-/release
-*.db
-*.db-journal
-*.log
-
-# --- AI & Tools ---
-.ai/*
-!.ai/CONTEXT.md
-repomix-output.xml
-repomix-output.txt
-.repomix/
-</file>
-
 <file path="docs/contributing.md">
 # Contributing Guide
 
@@ -5824,415 +5695,95 @@ export default defineConfig({
 });
 </file>
 
-<file path="src/main/ipc/index.ts">
-import { BrowserWindow, ipcMain, shell, dialog, clipboard } from "electron";
-import { DbWorkerClient } from "../db/db-worker-client";
-import { SyncService } from "../services/sync-service";
-import { UpdaterService } from "../services/updater-service";
-import { IPC_CHANNELS } from "./channels";
-import { logger } from "../lib/logger";
+<file path="src/main/ipc/handlers/artists.ts">
+import { ipcMain } from "electron";
 import { z } from "zod";
+import axios from "axios";
+import { IPC_CHANNELS } from "../channels";
+import { ArtistsService } from "../../services/artists.service";
+import { NewArtist } from "../../db/schema";
+import { logger } from "../../lib/logger";
 
-// Repos
-import { PostsRepository } from "../db/repositories/posts.repo";
-import { ArtistsRepository } from "../db/repositories/artists.repo";
-import { SettingsRepository } from "../db/repositories/settings.repo";
+const AddArtistSchema = z.object({
+  name: z.string().trim().min(1),
+  tag: z.string().trim().min(1),
+  type: z.enum(["tag", "uploader", "query"]),
+  apiEndpoint: z.string().url().trim(),
+});
 
-// Handlers
-import { registerPostHandlers } from "./handlers/posts";
-import { registerArtistHandlers } from "./handlers/artists";
-import { registerViewerHandlers } from "./handlers/viewer";
-import { registerSettingsHandlers } from "./handlers/settings";
-import { registerFileHandlers } from "./handlers/files";
+export const registerArtistHandlers = (service: ArtistsService) => {
+  ipcMain.handle(IPC_CHANNELS.DB.GET_ARTISTS, async () => {
+    try {
+      return await service.getAll();
+    } catch (error) {
+      logger.error("IPC: [db:get-artists] error:", error);
+      throw new Error("Failed to fetch artists.");
+    }
+  });
 
-const DeleteArtistSchema = z.number().int().positive();
+  ipcMain.handle(IPC_CHANNELS.DB.ADD_ARTIST, async (_, payload: unknown) => {
+    const validation = AddArtistSchema.safeParse(payload);
+    if (!validation.success) {
+      logger.error("IPC: Invalid artist data", validation.error);
+      throw new Error(`Validation failed: ${validation.error.message}`);
+    }
 
-// --- Helper для Sync & Maintenance ---
-const registerSyncAndMaintenanceHandlers = (
-  db: DbWorkerClient,
-  syncService: SyncService,
-  mainWindow: BrowserWindow
-) => {
-  // Sync All
-  ipcMain.handle(IPC_CHANNELS.DB.SYNC_ALL, () => {
-    logger.info("IPC: [DB.SYNC_ALL] Starting background sync...");
-    syncService.syncAllArtists().catch((error) => {
-      logger.error("IPC: Critical background sync error:", error);
-      syncService.sendEvent(
-        "sync:error",
-        error instanceof Error ? error.message : "Sync failed."
+    const artistData = validation.data;
+    logger.info(`IPC: [db:add-artist] Adding: ${artistData.name}`);
+
+    try {
+      return await service.add(artistData as NewArtist);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error("IPC: [db:add-artist] error:", error);
+      throw new Error(`Database error: ${msg}`);
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DB.DELETE_ARTIST, async (_, id: unknown) => {
+    const validation = z.number().int().positive().safeParse(id);
+    if (!validation.success) throw new Error("Invalid ID.");
+    try {
+      return await service.delete(validation.data);
+    } catch (error) {
+      logger.error(`IPC: [db:delete-artist] error:`, error);
+      throw new Error("Failed to delete artist.");
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DB.SEARCH_TAGS, async (_, query: unknown) => {
+    const validQuery = z.string().trim().safeParse(query);
+    if (!validQuery.success) return [];
+    try {
+      return await service.searchTags(validQuery.data);
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.API.SEARCH_REMOTE, async (_, query: unknown) => {
+    const validQuery = z.string().trim().safeParse(query);
+    if (!validQuery.success || validQuery.data.length < 2) return [];
+
+    interface Rule34AutocompleteItem {
+      label: string;
+      value: string;
+      type?: string;
+    }
+
+    try {
+      const { data } = await axios.get<Rule34AutocompleteItem[]>(
+        `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
+          validQuery.data
+        )}`
       );
-    });
-    return true;
-  });
-
-  // Repair Artist
-  ipcMain.handle(IPC_CHANNELS.SYNC.REPAIR, async (_, artistId: unknown) => {
-    const validId = DeleteArtistSchema.safeParse(artistId);
-    if (!validId.success) return { success: false, error: "Invalid ID" };
-
-    try {
-      await syncService.repairArtist(validId.data);
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+      return Array.isArray(data)
+        ? data.map((item) => ({ id: item.value, label: item.label }))
+        : [];
+    } catch {
+      return [];
     }
   });
-
-  // Backup
-  ipcMain.handle(IPC_CHANNELS.BACKUP.CREATE, async () => {
-    try {
-      const result = await db.call<{ backupPath: string }>("backup");
-      shell.showItemInFolder(result.backupPath);
-      return { success: true, path: result.backupPath };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
-  });
-
-  // Restore
-  ipcMain.handle(IPC_CHANNELS.BACKUP.RESTORE, async () => {
-    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-      title: "Select backup file",
-      filters: [{ name: "SQLite DB", extensions: ["db", "sqlite"] }],
-      properties: ["openFile"],
-    });
-    if (canceled || !filePaths.length)
-      return { success: false, error: "Canceled by user" };
-
-    try {
-      await db.restore(filePaths[0]);
-      mainWindow.reload();
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
-  });
-};
-
-// --- Main Registration Function ---
-export const registerAllHandlers = (
-  db: DbWorkerClient,
-  syncService: SyncService,
-  _updaterService: UpdaterService,
-  mainWindow: BrowserWindow
-) => {
-  logger.info("IPC: Registering modular handlers...");
-
-  // 0. System Handlers (Inline)
-  // -------------------------------------------------------------
-
-  // Запись в буфер обмена (для копирования метаданных и дебага)
-  ipcMain.handle(IPC_CHANNELS.APP.WRITE_CLIPBOARD, async (_, text: string) => {
-    clipboard.writeText(text);
-    return true;
-  });
-
-  // Обработчик проверки кредов
-  ipcMain.handle(IPC_CHANNELS.APP.VERIFY_CREDS, async () => {
-    return await syncService.checkCredentials();
-  });
-
-  // Logout
-  ipcMain.handle(IPC_CHANNELS.APP.LOGOUT, async () => {
-    await db.call("logout");
-    return true;
-  });
-
-  // 1. Init Repos
-  const postsRepo = new PostsRepository(db);
-  const artistsRepo = new ArtistsRepository(db);
-  const settingsRepo = new SettingsRepository(db);
-
-  // 2. Register Domain Handlers
-  registerPostHandlers(postsRepo);
-  registerArtistHandlers(artistsRepo);
-  registerViewerHandlers();
-
-  // 3. Register Settings
-  registerSettingsHandlers(db);
-
-  // 4. Register Sync and Maintenance
-  registerSyncAndMaintenanceHandlers(db, syncService, mainWindow);
-
-  // 5. Register Files (Downloads)
-  registerFileHandlers(postsRepo, settingsRepo);
-
-  logger.info("IPC: All modular handlers registered.");
-};
-</file>
-
-<file path="src/renderer/components/gallery/ArtistGallery.tsx">
-import React, { forwardRef, useMemo } from "react";
-import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-  useMutation,
-  InfiniteData,
-} from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
-import { VirtuosoGrid } from "react-virtuoso";
-import { Button } from "../ui/button";
-import type { Artist, Post } from "../../../main/db/schema";
-import { cn } from "../../lib/utils";
-import { useViewerStore } from "../../store/viewerStore";
-import { PostCard } from "../gallery/PostCard";
-
-interface ArtistGalleryProps {
-  artist: Artist;
-  onBack: () => void;
-}
-
-// --- Компоненты для виртуализации (Grid Layout) ---
-
-const GridContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
-      className
-    )}
-    {...props}
-  />
-));
-GridContainer.displayName = "GridContainer";
-
-const ItemContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
-));
-ItemContainer.displayName = "ItemContainer";
-
-// --- Основной компонент ---
-
-export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
-  artist,
-  onBack,
-}) => {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-
-  // 🔥 FIX: Достаем appendQueueIds из стора, чтобы обновлять очередь вьювера
-  const { open: openViewer, appendQueueIds } = useViewerStore((state) => ({
-    open: state.open,
-    appendQueueIds: state.appendQueueIds,
-  }));
-
-  // Fetch total posts count
-  const { data: totalPosts = 0 } = useQuery({
-    queryKey: ["posts-count", artist.id],
-    queryFn: async () => {
-      const count = await window.api.getArtistPostsCount(artist.id);
-      return count;
-    },
-  });
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["posts", artist.id],
-      queryFn: async ({ pageParam = 1 }) => {
-        return await window.api.getArtistPosts({
-          artistId: artist.id,
-          page: pageParam,
-        });
-      },
-      getNextPageParam: (lastPage, allPages) => {
-        return lastPage.length === 50 ? allPages.length + 1 : undefined;
-      },
-      initialPageParam: 1,
-    });
-
-  const allPosts = useMemo(() => {
-    return data?.pages.flatMap((page) => page) || [];
-  }, [data]);
-
-  const viewMutation = useMutation({
-    mutationFn: async (postId: number) => {
-      await window.api.markPostAsViewed(postId);
-    },
-    onSuccess: (_, postId) => {
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        ["posts", artist.id],
-        (oldData) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            pages: oldData.pages.map((page) =>
-              page.map((post) =>
-                post.id === postId ? { ...post, isViewed: true } : post
-              )
-            ),
-          };
-        }
-      );
-    },
-  });
-
-  const handleLoadMore = async () => {
-    if (hasNextPage && !isFetchingNextPage) {
-      console.log("[Gallery] Viewer requested more posts. Fetching...");
-
-      const result = await fetchNextPage();
-
-      if (result.data) {
-        const newPage = result.data.pages[result.data.pages.length - 1];
-
-        if (newPage && newPage.length > 0) {
-          const newIds = newPage.map((p: { id: number }) => p.id);
-          console.log(
-            `[Gallery] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
-          );
-
-          // ЯВНО обновляем очередь вьювера
-          appendQueueIds(newIds);
-        }
-      }
-    }
-  };
-
-  const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
-
-    const post = allPosts[index];
-    if (post && !post.isViewed) {
-      viewMutation.mutate(post.id);
-    }
-
-    openViewer({
-      origin: { kind: "artist", artistId: artist.id },
-      ids: postIds,
-      initialIndex: index,
-      listKey: `artist-${artist.id}`,
-      totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
-      hasNextPage: hasNextPage && allPosts.length < (totalPosts || Infinity),
-      onLoadMore: handleLoadMore, // Передаем обновленный хендлер
-    });
-  };
-
-  const handleRepairSync = async () => {
-    if (isLoading) return;
-    if (
-      !confirm(t("artistGallery.repairConfirm", { artistName: artist.name }))
-    ) {
-      return;
-    }
-    queryClient.removeQueries({ queryKey: ["posts", artist.id] });
-    try {
-      await window.api.repairArtist(artist.id);
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
-      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
-      queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-background text-foreground">
-      {/* Header */}
-      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
-        <div className="flex gap-4 items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            aria-label={t("artistGallery.backToArtists")}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h2 className="text-xl font-bold">{artist.name}</h2>
-            <div className="flex gap-2 text-xs text-muted-foreground">
-              {totalPosts > 0 && (
-                <span className="text-sm font-medium text-muted-foreground">
-                  Total: {totalPosts}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRepairSync}
-            title={t("artistGallery.repairTitle")}
-          >
-            <Wrench className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">
-              {t("artistGallery.repair")}
-            </span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              window.api.openExternal(
-                `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
-              )
-            }
-          >
-            <ExternalLink className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t("artistGallery.web")}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Grid Content */}
-      <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
-          <div className="flex justify-center items-center h-full text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-        ) : (
-          <VirtuosoGrid
-            style={{ height: "100%" }}
-            totalCount={allPosts.length}
-            endReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
-            components={{
-              List: GridContainer,
-              Item: ItemContainer,
-              Footer: () =>
-                isFetchingNextPage ? (
-                  <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : null,
-            }}
-            itemContent={(index) => {
-              const post = allPosts[index];
-              if (!post) return null;
-
-              return (
-                <PostCard post={post} onClick={() => handlePostClick(index)} />
-              );
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
 };
 </file>
 
@@ -6366,6 +5917,174 @@ export const Sidebar = () => {
         </button>
       </div>
     </aside>
+  );
+};
+</file>
+
+<file path="src/renderer/components/pages/Settings.tsx">
+import { useState } from "react";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { Loader2, Database, Upload } from "lucide-react";
+
+export const Settings = () => {
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+  const [restoreStatus, setRestoreStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+
+  const handleBackup = async () => {
+    setIsBackingUp(true);
+    setBackupStatus("idle");
+
+    try {
+      const result = await window.api.createBackup();
+      if (result.success) {
+        setBackupStatus("success");
+        setTimeout(() => setBackupStatus("idle"), 3000);
+      } else {
+        setBackupStatus("error");
+        setTimeout(() => setBackupStatus("idle"), 3000);
+      }
+    } catch (error) {
+      console.error("Failed to create backup:", error);
+      setBackupStatus("error");
+      setTimeout(() => setBackupStatus("idle"), 3000);
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setIsRestoring(true);
+    setRestoreStatus("idle");
+
+    try {
+      const result = await window.api.restoreBackup();
+      if (result.success) {
+        setRestoreStatus("success");
+        setTimeout(() => setRestoreStatus("idle"), 3000);
+      } else {
+        setRestoreStatus("error");
+        setTimeout(() => setRestoreStatus("idle"), 3000);
+      }
+    } catch (error) {
+      console.error("Failed to restore backup:", error);
+      setRestoreStatus("error");
+      setTimeout(() => setRestoreStatus("idle"), 3000);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  return (
+    <div className="container py-10 space-y-8 max-w-2xl duration-500 animate-in fade-in">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
+        <p className="text-muted-foreground">
+          Manage your database backups and application preferences.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Database Management</CardTitle>
+          <CardDescription>
+            Create backups of your database or restore from a previous backup.
+            Backups include all your tracked artists, posts, and settings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center p-4 rounded-lg border">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Backup Database</h3>
+                <p className="text-sm text-muted-foreground">
+                  Create a backup file of your current database. The backup will
+                  be saved and the folder will open automatically.
+                </p>
+              </div>
+              <Button
+                onClick={handleBackup}
+                disabled={isBackingUp}
+                variant="outline"
+              >
+                {isBackingUp ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Database className="mr-2 w-4 h-4" />
+                    Backup Database
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {backupStatus === "success" && (
+              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
+                Backup created successfully!
+              </div>
+            )}
+            {backupStatus === "error" && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
+                Failed to create backup. Please try again.
+              </div>
+            )}
+
+            <div className="flex justify-between items-center p-4 rounded-lg border">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Restore Database</h3>
+                <p className="text-sm text-muted-foreground">
+                  Restore your database from a previous backup file. This will
+                  replace your current database.
+                </p>
+              </div>
+              <Button
+                onClick={handleRestore}
+                disabled={isRestoring}
+                variant="outline"
+              >
+                {isRestoring ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 w-4 h-4" />
+                    Restore Database
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {restoreStatus === "success" && (
+              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
+                Database restored successfully! The page will reload.
+              </div>
+            )}
+            {restoreStatus === "error" && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
+                Failed to restore backup. Please try again.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 </file>
@@ -6945,632 +6664,148 @@ Planned database improvements:
 - Database compaction utilities
 </file>
 
-<file path="src/main/db/worker-types.ts">
-export type DbMethod =
-  // Database Maintenance
-  | "fixDatabaseSchema"
-  | "repairArtistTags"
-  | "runDeferredMaintenance"
-  // Artist Management
-  | "getTrackedArtists"
-  | "addArtist"
-  | "updateArtistLastChecked"
-  | "updateArtistProgress"
-  | "savePostsForArtist"
-  | "getPostsByArtist"
-  | "getPostsCountByArtist"
-  | "getArtistById"
-  | "searchArtists"
-  | "deleteArtist"
-  | "markPostAsViewed"
-  | "togglePostFavorite"
-  | "togglePostViewed"
-  | "resetPostCache"
-  // Settings & Security
-  | "getSettings"
-  | "saveSettings"
-  | "getSettingsStatus"
-  | "getApiKeyDecrypted"
-  | "logout"
-  // Backup
-  | "backup";
-
-/**
- * Request message sent from Main process to DB Worker
- */
-export interface WorkerRequest {
-  id: string;
-  type: DbMethod;
-  payload: unknown;
-}
-
-/**
- * Response message sent from DB Worker to Main process
- */
-export interface WorkerResponse {
-  id: string;
-  success: boolean;
-  data?: unknown;
-  error?: string;
-}
-</file>
-
-<file path="src/main/ipc/handlers/files.ts">
-import { ipcMain, app, shell, dialog, BrowserWindow } from "electron";
-import path from "path";
-import fs from "fs";
-import axios, { AxiosProgressEvent } from "axios";
-import { pipeline } from "stream/promises";
-import { logger } from "../../lib/logger";
-import { IPC_CHANNELS } from "../channels";
+<file path="src/main/ipc/index.ts">
+import { BrowserWindow, ipcMain, shell, dialog, clipboard } from "electron";
+import { DbWorkerClient } from "../db/db-worker-client";
+import { SyncService } from "../services/sync-service";
+import { UpdaterService } from "../services/updater-service";
+import { IPC_CHANNELS } from "./channels";
+import { logger } from "../lib/logger";
 import { z } from "zod";
-import { PostsRepository } from "../../db/repositories/posts.repo";
-import { SettingsRepository } from "../../db/repositories/settings.repo";
 
-// Вспомогательная функция для получения главного окна Electron
-const getMainWindow = (): BrowserWindow | undefined => {
-  const windows = BrowserWindow.getAllWindows();
-  return windows.find((w) => w.isVisible() && !w.isDestroyed()) || windows[0];
-};
+// Services
+import { PostsService } from "../services/posts.service";
+import { ArtistsService } from "../services/artists.service";
 
-const getDownloadRoot = () => {
-  // 1. Если Portable-режим
-  if (process.env.PORTABLE_EXECUTABLE_DIR) {
-    return path.join(process.env.PORTABLE_EXECUTABLE_DIR, "downloads");
-  }
-  // 2. Обычный режим (Installer)
-  return path.join(app.getPath("downloads"), "RuleDesk");
-};
+// Handlers
+import { registerPostHandlers } from "./handlers/posts";
+import { registerArtistHandlers } from "./handlers/artists";
+import { registerViewerHandlers } from "./handlers/viewer";
+import { registerSettingsHandlers } from "./handlers/settings";
+import { registerFileHandlers } from "./handlers/files";
 
-const DownloadFileSchema = z.object({
-  url: z
-    .string()
-    .url()
-    .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
-      message: "Only HTTP/HTTPS protocols are allowed for downloads.",
-    }),
-  filename: z
-    .string()
-    .min(1)
-    .regex(/^[\w\-. ]+$/, "Invalid filename characters"),
-});
+const DeleteArtistSchema = z.number().int().positive();
 
-export const registerFileHandlers = (
-  postsRepo: PostsRepository,
-  settingsRepo: SettingsRepository
+// --- Helper для Sync & Maintenance ---
+const registerSyncAndMaintenanceHandlers = (
+  db: DbWorkerClient,
+  syncService: SyncService,
+  mainWindow: BrowserWindow
 ) => {
-  // 1. Хендлер выбора папки (для настроек)
-  ipcMain.handle(IPC_CHANNELS.FILES.SELECT_DIRECTORY, async () => {
-    const mainWindow = getMainWindow();
-    if (!mainWindow) return null;
-
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ["openDirectory", "createDirectory"],
-      title: "Select Default Download Folder",
+  // Sync All
+  ipcMain.handle(IPC_CHANNELS.DB.SYNC_ALL, () => {
+    logger.info("IPC: [DB.SYNC_ALL] Starting background sync...");
+    syncService.syncAllArtists().catch((error) => {
+      logger.error("IPC: Critical background sync error:", error);
+      syncService.sendEvent(
+        "sync:error",
+        error instanceof Error ? error.message : "Sync failed."
+      );
     });
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-    return result.filePaths[0];
+    return true;
   });
 
-  // 2. Хендлер скачивания (умный)
-  ipcMain.handle(
-    IPC_CHANNELS.FILES.DOWNLOAD,
-    async (_event, url: unknown, filename: unknown) => {
-      const mainWindow = getMainWindow();
-      if (!mainWindow) return { success: false, error: "No active window" };
-
-      const validation = DownloadFileSchema.safeParse({ url, filename });
-      if (!validation.success) {
-        return { success: false, error: "Invalid parameters" };
-      }
-
-      const { url: safeUrl, filename: safeFilename } = validation.data;
-
-      try {
-        // --- ЛОГИКА ВЫБОРА ПУТИ ---
-        let targetPath: string | null = null;
-
-        const currentSettings = await settingsRepo.getSettings();
-        const defaultPath = currentSettings?.downloadPath;
-
-        if (defaultPath && defaultPath.trim() !== "") {
-          try {
-            if (!fs.existsSync(defaultPath)) {
-              fs.mkdirSync(defaultPath, { recursive: true });
-            }
-            targetPath = path.join(defaultPath, safeFilename);
-          } catch (err) {
-            logger.warn(`Failed to use default path from settings: ${err}`);
-            targetPath = null;
-          }
-        }
-
-        if (!targetPath) {
-          const downloadRoot = getDownloadRoot();
-          if (!fs.existsSync(downloadRoot)) {
-            fs.mkdirSync(downloadRoot, { recursive: true });
-          }
-
-          const { canceled, filePath } = await dialog.showSaveDialog(
-            mainWindow,
-            {
-              title: "Save Image",
-              defaultPath: path.join(downloadRoot, safeFilename),
-              filters: [
-                { name: "Images", extensions: ["jpg", "png", "jpeg", "webp"] },
-              ],
-            }
-          );
-
-          if (canceled || !filePath) return { canceled: true, success: false };
-          targetPath = filePath;
-        }
-
-        logger.info(`Starting download: ${safeUrl} -> ${targetPath}`);
-
-        const response = await axios.get(safeUrl, {
-          responseType: "stream",
-          onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
-            const total = progressEvent.total || 0;
-            const current = progressEvent.loaded;
-            const percent = total ? Math.round((current / total) * 100) : 0;
-            mainWindow.webContents.send("files:download-progress", {
-              id: safeFilename,
-              percent,
-            });
-          },
-        });
-
-        await pipeline(response.data, fs.createWriteStream(targetPath));
-        return { success: true, path: targetPath };
-      } catch (error) {
-        logger.error("Download failed:", error);
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Download failed",
-        };
-      }
-    }
-  );
-
-  // 3. Хендлер открытия папки
-  ipcMain.handle(
-    IPC_CHANNELS.FILES.OPEN_FOLDER,
-    async (_event, filePathOrName: unknown) => {
-      if (typeof filePathOrName !== "string") return false;
-
-      try {
-        const downloadRoot = getDownloadRoot();
-
-        const settings = await settingsRepo.getSettings();
-        const customRoot = settings?.downloadPath;
-
-        let fullPath = filePathOrName;
-
-        // Если путь относительный, ищем в дефолтной папке
-        if (!path.isAbsolute(filePathOrName)) {
-          fullPath = path.join(downloadRoot, filePathOrName);
-        }
-
-        const normalizedPath = path.normalize(fullPath);
-
-        const isInDataRoot = normalizedPath.startsWith(downloadRoot);
-        const isInCustomRoot = customRoot
-          ? normalizedPath.startsWith(path.normalize(customRoot))
-          : false;
-
-        if (!isInDataRoot && !isInCustomRoot) {
-          logger.warn(
-            `SECURITY WARNING: Attempt to access path outside allowed roots: ${normalizedPath}`
-          );
-          if (fs.existsSync(downloadRoot)) {
-            await shell.openPath(downloadRoot);
-          }
-          return false;
-        }
-
-        if (fs.existsSync(normalizedPath)) {
-          shell.showItemInFolder(normalizedPath);
-          return true;
-        }
-
-        if (fs.existsSync(downloadRoot)) {
-          await shell.openPath(downloadRoot);
-          return true;
-        }
-
-        return false;
-      } catch (error) {
-        logger.error("Failed to open folder:", error);
-        return false;
-      }
-    }
-  );
-
-  // Обработчик для Reset Post Cache
-  ipcMain.handle(
-    IPC_CHANNELS.DB.RESET_POST_CACHE,
-    async (_, postId: unknown) => {
-      const result = z.number().int().positive().safeParse(postId);
-      if (!result.success) {
-        logger.warn(
-          `Validation failed for resetPostCache: ${result.error.message}`
-        );
-        return false;
-      }
-
-      try {
-        return await postsRepo.resetPostCache(result.data);
-      } catch (error) {
-        logger.error(`[IPC] Failed to reset post cache:`, error);
-        return false;
-      }
-    }
-  );
-};
-</file>
-
-<file path="src/main/ipc/handlers/posts.ts">
-import { ipcMain } from "electron";
-import { z } from "zod";
-import { IPC_CHANNELS } from "../channels";
-import { PostsRepository } from "../../db/repositories/posts.repo";
-import { logger } from "../../lib/logger";
-
-const PostFilterSchema = z
-  .object({
-    tags: z.string().optional(),
-    rating: z.enum(["s", "q", "e"]).optional(),
-    isFavorited: z.boolean().optional(),
-  })
-  .partial();
-
-const GetPostsSchema = z.object({
-  artistId: z.number(),
-  page: z.number().default(1),
-  limit: z.number().int().min(1).default(50),
-  filters: PostFilterSchema.optional(),
-});
-
-export const registerPostHandlers = (repo: PostsRepository) => {
-  ipcMain.handle(IPC_CHANNELS.DB.GET_POSTS, async (_, payload: unknown) => {
-    const validation = GetPostsSchema.safeParse(payload);
-    if (!validation.success)
-      throw new Error(`Validation Error: ${validation.error.message}`);
-
-    const { artistId, page, limit } = validation.data;
-    const offset = (page - 1) * limit;
+  // Repair Artist
+  ipcMain.handle(IPC_CHANNELS.SYNC.REPAIR, async (_, artistId: unknown) => {
+    const validId = DeleteArtistSchema.safeParse(artistId);
+    if (!validId.success) return { success: false, error: "Invalid ID" };
 
     try {
-      return await repo.getByArtist({ artistId, limit, offset });
+      await syncService.repairArtist(validId.data);
+      return { success: true };
     } catch (error) {
-      logger.error(`IPC: [db:get-posts] error:`, error);
-      throw new Error("Failed to fetch posts.");
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   });
 
-  ipcMain.handle(
-    IPC_CHANNELS.DB.GET_POSTS_COUNT,
-    async (_, payload: unknown) => {
-      try {
-        // Schema should allow optional number, null, or undefined
-        const countSchema = z.number().int().positive().optional().nullable();
-
-        // Parse payload, but allow it to be undefined
-        const artistId =
-          payload !== undefined && payload !== null
-            ? countSchema.parse(payload) ?? undefined
-            : undefined;
-
-        // Call the repo with optional ID
-        const total = await repo.getCountByArtist(artistId);
-
-        console.log(
-          `[IPC] Count requested. Filter: ${
-            artistId || "ALL"
-          }. Result: ${total}`
-        );
-        return total;
-      } catch (err) {
-        console.error("Failed to get posts count:", err);
-        return 0;
-      }
-    }
-  );
-
-  ipcMain.handle(IPC_CHANNELS.DB.MARK_VIEWED, async (_, postId: unknown) => {
-    const result = z.number().int().positive().safeParse(postId);
-    if (!result.success) return false;
-
+  // Backup
+  ipcMain.handle(IPC_CHANNELS.BACKUP.CREATE, async () => {
     try {
-      await repo.markAsViewed(result.data);
-      return true;
+      const result = await db.call<{ backupPath: string }>("backup");
+      shell.showItemInFolder(result.backupPath);
+      return { success: true, path: result.backupPath };
     } catch (error) {
-      logger.error(`[IPC] Failed to mark post viewed`, error);
-      return false;
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   });
 
-  ipcMain.handle(
-    IPC_CHANNELS.DB.TOGGLE_FAVORITE,
-    async (_, postId: unknown) => {
-      try {
-        const result = z.number().int().positive().safeParse(postId);
-        if (!result.success) {
-          logger.warn(
-            `[IPC] TOGGLE_FAVORITE failed validation for postId: ${postId}`
-          );
-          return false;
-        }
-
-        return await repo.toggleFavorite(result.data);
-      } catch (error) {
-        logger.error(`[IPC] Failed to toggle post favorite`, error);
-        return false;
-      }
-    }
-  );
-
-  ipcMain.handle(
-    IPC_CHANNELS.DB.TOGGLE_POST_VIEWED,
-    async (_, postId: unknown) => {
-      const result = z.number().int().positive().safeParse(postId);
-      if (!result.success) {
-        logger.warn(
-          `Validation failed for togglePostViewed: ${result.error.message}`
-        );
-        return false;
-      }
-
-      try {
-        return await repo.togglePostViewed(result.data);
-      } catch (error) {
-        logger.error(`[IPC] Failed to toggle post viewed`, error);
-        return false;
-      }
-    }
-  );
-};
-</file>
-
-<file path="src/renderer/components/pages/Settings.tsx">
-import { useEffect, useState } from "react";
-import { Button } from "../../components/ui/button";
-import { Label } from "../../components/ui/label";
-import { Input } from "../../components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import { Loader2, Database, Upload, FolderOpen, X } from "lucide-react";
-import { UpdateChecker } from "@/components/settings/UpdateChecker";
-
-export const Settings = () => {
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const [backupStatus, setBackupStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
-  const [restoreStatus, setRestoreStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
-  const [downloadPath, setDownloadPath] = useState<string>("");
-
-  // Загрузка настроек
-  useEffect(() => {
-    window.api.getSettings().then((s) => {
-      if (s && s.downloadPath) {
-        setDownloadPath(s.downloadPath);
-      }
+  // Restore
+  ipcMain.handle(IPC_CHANNELS.BACKUP.RESTORE, async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: "Select backup file",
+      filters: [{ name: "SQLite DB", extensions: ["db", "sqlite"] }],
+      properties: ["openFile"],
     });
-  }, []);
-
-  // Логика выбора папки
-  const handleSelectFolder = async () => {
-    const path = await window.api.selectDownloadFolder();
-    if (path) {
-      setDownloadPath(path);
-      // Авто-сохранение сразу после выбора
-      await window.api.saveSettings({ downloadPath: path });
-    }
-  };
-
-  // Логика очистки папки (сброс на дефолт)
-  const handleClearFolder = async () => {
-    setDownloadPath("");
-    // Авто-сохранение очистки
-    await window.api.saveSettings({ downloadPath: "" });
-  };
-
-  const handleBackup = async () => {
-    setIsBackingUp(true);
-    setBackupStatus("idle");
+    if (canceled || !filePaths.length)
+      return { success: false, error: "Canceled by user" };
 
     try {
-      const result = await window.api.createBackup();
-      if (result.success) {
-        setBackupStatus("success");
-        setTimeout(() => setBackupStatus("idle"), 3000);
-      } else {
-        setBackupStatus("error");
-        setTimeout(() => setBackupStatus("idle"), 3000);
-      }
+      await db.restore(filePaths[0]);
+      mainWindow.reload();
+      return { success: true };
     } catch (error) {
-      console.error("Failed to create backup:", error);
-      setBackupStatus("error");
-      setTimeout(() => setBackupStatus("idle"), 3000);
-    } finally {
-      setIsBackingUp(false);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
-  };
+  });
+};
 
-  const handleRestore = async () => {
-    setIsRestoring(true);
-    setRestoreStatus("idle");
+// --- Main Registration Function ---
+export const registerAllHandlers = (
+  db: DbWorkerClient,
+  syncService: SyncService,
+  _updaterService: UpdaterService,
+  mainWindow: BrowserWindow
+) => {
+  logger.info("IPC: Registering modular handlers...");
 
-    try {
-      const result = await window.api.restoreBackup();
-      if (result.success) {
-        setRestoreStatus("success");
-        setTimeout(() => setRestoreStatus("idle"), 3000);
-      } else {
-        setRestoreStatus("error");
-        setTimeout(() => setRestoreStatus("idle"), 3000);
-      }
-    } catch (error) {
-      console.error("Failed to restore backup:", error);
-      setRestoreStatus("error");
-      setTimeout(() => setRestoreStatus("idle"), 3000);
-    } finally {
-      setIsRestoring(false);
-    }
-  };
+  // 0. System Handlers (Inline)
+  // -------------------------------------------------------------
 
-  return (
-    <div className="container py-10 space-y-8 max-w-2xl duration-500 animate-in fade-in">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">
-          Manage application preferences and database.
-        </p>
-      </div>
+  // Запись в буфер обмена (для копирования метаданных и дебага)
+  ipcMain.handle(IPC_CHANNELS.APP.WRITE_CLIPBOARD, async (_, text: string) => {
+    clipboard.writeText(text);
+    return true;
+  });
 
-      {/* Секция 1: Загрузки */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Download Location</CardTitle>
-          <CardDescription>
-            Set a default folder for downloads. If empty, you will be asked
-            every time.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Default Folder</Label>
-            <div className="flex gap-2">
-              <Input
-                value={downloadPath || "Ask every time"}
-                readOnly
-                className={!downloadPath ? "italic text-muted-foreground" : ""}
-              />
-              <Button variant="outline" onClick={handleSelectFolder}>
-                <FolderOpen className="mr-2 w-4 h-4" />
-                Browse
-              </Button>
-              {downloadPath && (
-                <Button
-                  variant="ghost"
-                  onClick={handleClearFolder}
-                  title="Reset to default"
-                  size="icon"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+  // Обработчик проверки кредов
+  ipcMain.handle(IPC_CHANNELS.APP.VERIFY_CREDS, async () => {
+    return await syncService.checkCredentials();
+  });
 
-      {/* Секция 2: База данных */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Database Management</CardTitle>
-          <CardDescription>
-            Create backups of your database or restore from a previous backup.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-4">
-            {/* Блок Backup */}
-            <div className="flex justify-between items-center p-4 rounded-lg border">
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">Backup Database</h3>
-                <p className="text-sm text-muted-foreground">
-                  Save a copy of your current database.
-                </p>
-              </div>
-              <Button
-                onClick={handleBackup}
-                disabled={isBackingUp}
-                variant="outline"
-              >
-                {isBackingUp ? (
-                  <>
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Database className="mr-2 w-4 h-4" />
-                    Backup
-                  </>
-                )}
-              </Button>
-            </div>
+  // Logout
+  ipcMain.handle(IPC_CHANNELS.APP.LOGOUT, async () => {
+    await db.call("logout");
+    return true;
+  });
 
-            {backupStatus === "success" && (
-              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
-                Backup created successfully!
-              </div>
-            )}
-            {backupStatus === "error" && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
-                Failed to create backup.
-              </div>
-            )}
+  // 1. Init Services
+  const postsService = new PostsService(db);
+  const artistsService = new ArtistsService(db);
 
-            {/* Блок Restore */}
-            <div className="flex justify-between items-center p-4 rounded-lg border">
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">Restore Database</h3>
-                <p className="text-sm text-muted-foreground">
-                  Replace current database from a backup file.
-                </p>
-              </div>
-              <Button
-                onClick={handleRestore}
-                disabled={isRestoring}
-                variant="outline"
-              >
-                {isRestoring ? (
-                  <>
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                    Restoring...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 w-4 h-4" />
-                    Restore
-                  </>
-                )}
-              </Button>
-            </div>
+  // 2. Register Domain Handlers
+  registerPostHandlers(postsService);
+  registerArtistHandlers(artistsService);
+  registerViewerHandlers();
 
-            {restoreStatus === "success" && (
-              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
-                Database restored successfully!
-              </div>
-            )}
-            {restoreStatus === "error" && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
-                Failed to restore backup.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+  // 3. Register Settings
+  registerSettingsHandlers(db);
 
-      {/* Секция 3: Обновления */}
-      <UpdateChecker />
-    </div>
-  );
+  // 4. Register Sync and Maintenance
+  registerSyncAndMaintenanceHandlers(db, syncService, mainWindow);
+
+  // 5. Register Files (Downloads)
+  registerFileHandlers(postsService);
+
+  logger.info("IPC: All modular handlers registered.");
 };
 </file>
 
@@ -9268,60 +8503,12 @@ npx electron-builder --linux
 4. Open a new issue with details
 </file>
 
-<file path="src/main/ipc/channels.ts">
-export const IPC_CHANNELS = {
-  APP: {
-    GET_VERSION: "app:get-version",
-    OPEN_EXTERNAL: "app:open-external",
-    DOWNLOAD_FILE: "app:download-file",
-    WRITE_CLIPBOARD: "app:write-to-clipboard",
-    LOGOUT: "app:logout",
-    VERIFY_CREDS: "app:verify-creds",
-  },
-  SETTINGS: {
-    GET: "app:get-settings-status",
-    SAVE: "app:save-settings",
-  },
-  DB: {
-    GET_ARTISTS: "db:get-artists",
-    ADD_ARTIST: "db:add-artist",
-    DELETE_ARTIST: "db:delete-artist",
-    SEARCH_TAGS: "db:search-tags",
-    GET_POSTS: "db:get-posts",
-    GET_POSTS_COUNT: "db:get-posts-count",
-    MARK_VIEWED: "db:mark-post-viewed",
-    TOGGLE_FAVORITE: "db:toggle-post-favorite",
-    SYNC_ALL: "db:sync-all",
-    TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,
-    RESET_POST_CACHE: "db:reset-post-cache" as const,
-    GET_API_KEY_ENCRYPTED: "db:get-api-key-encrypted",
-  },
-  API: {
-    SEARCH_REMOTE: "api:search-remote-tags",
-  },
-  BACKUP: {
-    CREATE: "db:create-backup",
-    RESTORE: "db:restore-backup",
-  },
-  SYNC: {
-    REPAIR: "sync:repair-artist",
-  },
-
-  FILES: {
-    DOWNLOAD: "files:download",
-    OPEN_FOLDER: "files:open-folder",
-    DOWNLOAD_PROGRESS: "files:download-progress",
-    SELECT_DIRECTORY: "files:select-directory",
-  },
-} as const;
-</file>
-
-<file path="drizzle/meta/0000_snapshot.json">
+<file path="drizzle/meta/0001_snapshot.json">
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "0c643adf-6f58-446a-a9a2-875d3f661c77",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "1d6ecd33-4c8c-407f-b8a3-c38598ad926c",
+  "prevId": "4fbb74ee-af72-4a3e-8cbc-d29810828188",
   "tables": {
     "artists": {
       "name": "artists",
@@ -9602,9 +8789,747 @@ export const IPC_CHANNELS = {
           "notNull": false,
           "autoincrement": false,
           "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}
+</file>
+
+<file path="src/main/db/worker-types.ts">
+export type DbMethod =
+  // Database Maintenance
+  | "fixDatabaseSchema"
+  | "repairArtistTags"
+  | "runDeferredMaintenance"
+  // Artist Management
+  | "getTrackedArtists"
+  | "addArtist"
+  | "updateArtistLastChecked"
+  | "updateArtistProgress"
+  | "savePostsForArtist"
+  | "getPostsByArtist"
+  | "getPostsCountByArtist"
+  | "getPostById"
+  | "getArtistById"
+  | "searchArtists"
+  | "deleteArtist"
+  | "markPostAsViewed"
+  | "togglePostFavorite"
+  | "togglePostViewed"
+  | "resetPostCache"
+  | "updatePost"
+  // Settings & Security
+  | "getSettings"
+  | "saveSettings"
+  | "getSettingsStatus"
+  | "getApiKeyDecrypted"
+  | "logout"
+  // Backup
+  | "backup";
+
+/**
+ * Request message sent from Main process to DB Worker
+ */
+export interface WorkerRequest {
+  id: string;
+  type: DbMethod;
+  payload: unknown;
+}
+
+/**
+ * Response message sent from DB Worker to Main process
+ */
+export interface WorkerResponse {
+  id: string;
+  success: boolean;
+  data?: unknown;
+  error?: string;
+}
+</file>
+
+<file path="src/main/ipc/handlers/files.ts">
+import { ipcMain, app, shell, dialog, BrowserWindow } from "electron";
+import path from "path";
+import fs from "fs";
+import axios, { AxiosProgressEvent } from "axios";
+import { pipeline } from "stream/promises";
+import { logger } from "../../lib/logger";
+import { IPC_CHANNELS } from "../channels";
+import { z } from "zod";
+import { PostsService } from "../../services/posts.service";
+
+// Вспомогательная функция для получения главного окна Electron
+const getMainWindow = (): BrowserWindow | undefined => {
+  const windows = BrowserWindow.getAllWindows();
+  return windows.find((w) => w.isVisible() && !w.isDestroyed()) || windows[0];
+};
+
+const DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
+
+const DownloadFileSchema = z.object({
+  url: z
+    .string()
+    .url()
+    .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
+      message: "Only HTTP/HTTPS protocols are allowed for downloads.",
+    }),
+  filename: z
+    .string()
+    .min(1)
+    .regex(/^[\w\-. ]+$/, "Invalid filename characters"),
+});
+
+export const registerFileHandlers = (service: PostsService) => {
+  let totalBytes = 0;
+
+  // Хендлер скачивания с диалогом "Сохранить как"
+  ipcMain.handle(
+    IPC_CHANNELS.FILES.DOWNLOAD,
+    async (_event, url: unknown, filename: unknown) => {
+      const mainWindow = getMainWindow();
+      if (!mainWindow) {
+        logger.error("IPC: Main window not found for download.");
+        return { success: false, error: "Main window not available" };
+      }
+
+      // 1. Валидация входных данных через Zod
+      const validation = DownloadFileSchema.safeParse({ url, filename });
+
+      if (!validation.success) {
+        logger.error("IPC: Download validation failed", validation.error);
+        return { success: false, error: "Invalid URL or Filename" };
+      }
+
+      const { url: validUrl, filename: validFilename } = validation.data;
+
+      try {
+        const defaultDir = DOWNLOAD_ROOT;
+
+        // 2. Безопасное создание директории
+        if (!fs.existsSync(defaultDir)) {
+          try {
+            fs.mkdirSync(defaultDir, { recursive: true });
+          } catch (e) {
+            logger.error("Failed to create download directory", e);
+            // Не падаем, диалог просто откроется в дефолтной папке ОС
+          }
+        }
+
+        const defaultPath = path.join(defaultDir, validFilename);
+
+        const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+          title: "Скачать файл",
+          defaultPath: defaultPath,
+          buttonLabel: "Скачать",
+          filters: [
+            {
+              name: "Media Files",
+              extensions: ["jpg", "jpeg", "png", "gif", "mp4", "webm"],
+            },
+            { name: "All Files", extensions: ["*"] },
+          ],
+        });
+
+        if (canceled || !filePath) {
+          logger.info("IPC: Download canceled by user");
+          return { success: false, canceled: true };
+        }
+
+        logger.info(`IPC: Downloading: ${validUrl} -> ${filePath}`);
+
+        const response = await axios({
+          method: "GET",
+          url: validUrl,
+          responseType: "stream",
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
+          onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
+            if (!mainWindow || !progressEvent.total) return;
+
+            totalBytes = progressEvent.total;
+            const percent = Math.round(
+              (progressEvent.loaded * 100) / totalBytes
+            );
+
+            mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
+              id: validFilename, // Используем валидированное имя как ID
+              percent: percent,
+            });
+          },
+        });
+
+        const writer = fs.createWriteStream(filePath);
+        await pipeline(response.data, writer);
+
+        mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
+          id: validFilename,
+          percent: 100,
+        });
+        logger.info(`IPC: Download success -> ${filePath}`);
+        return { success: true, path: filePath };
+      } catch (error) {
+        if (mainWindow) {
+          mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
+            id: validFilename,
+            percent: 0,
+          });
+        }
+        logger.error("IPC: Download failed:", error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+  );
+
+  // Хендлер открытия папки
+  ipcMain.handle(
+    IPC_CHANNELS.FILES.OPEN_FOLDER,
+    async (_, filePathOrName: string) => {
+      if (!filePathOrName || typeof filePathOrName !== "string") return false;
+
+      try {
+        let fullPath = filePathOrName;
+
+        if (!path.isAbsolute(filePathOrName)) {
+          fullPath = path.join(DOWNLOAD_ROOT, filePathOrName);
+        }
+
+        const normalizedPath = path.normalize(fullPath);
+
+        if (!normalizedPath.startsWith(DOWNLOAD_ROOT)) {
+          logger.error(
+            `SECURITY VIOLATION: Attempt to open path outside safe directory: ${normalizedPath}`
+          );
+          shell.openPath(DOWNLOAD_ROOT);
+          return false;
+        }
+
+        if (fs.existsSync(normalizedPath)) {
+          shell.showItemInFolder(normalizedPath);
+          return true;
+        }
+
+        if (fs.existsSync(DOWNLOAD_ROOT)) {
+          await shell.openPath(DOWNLOAD_ROOT);
+          return true;
+        }
+
+        return false;
+      } catch (error) {
+        logger.error("Failed to open folder:", error);
+        return false;
+      }
+    }
+  );
+
+  // Обработчик для Reset Post Cache
+  ipcMain.handle(
+    IPC_CHANNELS.DB.RESET_POST_CACHE,
+    async (_, postId: unknown) => {
+      const result = z.number().int().positive().safeParse(postId);
+      if (!result.success) {
+        logger.warn(
+          `Validation failed for resetPostCache: ${result.error.message}`
+        );
+        return false;
+      }
+
+      try {
+        return await service.resetPostCache(result.data);
+      } catch (error) {
+        logger.error(`[IPC] Failed to reset post cache`, error);
+        return false;
+      }
+    }
+  );
+};
+</file>
+
+<file path="src/main/ipc/handlers/posts.ts">
+import { ipcMain } from "electron";
+import { z } from "zod";
+import { IPC_CHANNELS } from "../channels";
+import { PostsService } from "../../services/posts.service";
+import { logger } from "../../lib/logger";
+
+const PostFilterSchema = z
+  .object({
+    tags: z.string().optional(),
+    rating: z.enum(["s", "q", "e"]).optional(),
+    isFavorited: z.boolean().optional(),
+  })
+  .partial();
+
+const GetPostsSchema = z.object({
+  artistId: z.number(),
+  page: z.number().default(1),
+  limit: z.number().int().min(1).default(50),
+  filters: PostFilterSchema.optional(),
+});
+
+const UpdatePostSchema = z.object({
+  postId: z.number().int().positive(),
+  changes: z
+    .object({
+      rating: z.string().optional(),
+      tags: z.string().optional(),
+      title: z.string().optional(),
+      isViewed: z.boolean().optional(),
+      isFavorited: z.boolean().optional(),
+      fileUrl: z.string().optional(),
+      previewUrl: z.string().optional(),
+      sampleUrl: z.string().optional(),
+    })
+    .partial(),
+});
+
+export const registerPostHandlers = (service: PostsService) => {
+  ipcMain.handle(IPC_CHANNELS.DB.GET_POSTS, async (_, payload: unknown) => {
+    const validation = GetPostsSchema.safeParse(payload);
+    if (!validation.success)
+      throw new Error(`Validation Error: ${validation.error.message}`);
+
+    const { artistId, page, limit } = validation.data;
+    const offset = (page - 1) * limit;
+
+    try {
+      return await service.getByArtist({ artistId, limit, offset });
+    } catch (error) {
+      logger.error(`IPC: [db:get-posts] error:`, error);
+      throw new Error("Failed to fetch posts.");
+    }
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.DB.GET_POSTS_COUNT,
+    async (_, payload: unknown) => {
+      try {
+        // Schema should allow optional number, null, or undefined
+        const countSchema = z.number().int().positive().optional().nullable();
+
+        // Parse payload, but allow it to be undefined
+        const artistId =
+          payload !== undefined && payload !== null
+            ? countSchema.parse(payload) ?? undefined
+            : undefined;
+
+        // Call the service with optional ID
+        const total = await service.getCountByArtist(artistId);
+
+        console.log(
+          `[IPC] Count requested. Filter: ${
+            artistId || "ALL"
+          }. Result: ${total}`
+        );
+        return total;
+      } catch (err) {
+        console.error("Failed to get posts count:", err);
+        return 0;
+      }
+    }
+  );
+
+  ipcMain.handle(IPC_CHANNELS.DB.MARK_VIEWED, async (_, postId: unknown) => {
+    const result = z.number().int().positive().safeParse(postId);
+    if (!result.success) return false;
+
+    try {
+      await service.markAsViewed(result.data);
+      return true;
+    } catch (error) {
+      logger.error(`[IPC] Failed to mark post viewed`, error);
+      return false;
+    }
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.DB.TOGGLE_FAVORITE,
+    async (_, postId: unknown) => {
+      try {
+        const result = z.number().int().positive().safeParse(postId);
+        if (!result.success) {
+          logger.warn(
+            `[IPC] TOGGLE_FAVORITE failed validation for postId: ${postId}`
+          );
+          return false;
+        }
+
+        return await service.toggleFavorite(result.data);
+      } catch (error) {
+        logger.error(`[IPC] Failed to toggle post favorite`, error);
+        return false;
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.DB.TOGGLE_POST_VIEWED,
+    async (_, postId: unknown) => {
+      const result = z.number().int().positive().safeParse(postId);
+      if (!result.success) {
+        logger.warn(
+          `Validation failed for togglePostViewed: ${result.error.message}`
+        );
+        return false;
+      }
+
+      try {
+        return await service.togglePostViewed(result.data);
+      } catch (error) {
+        logger.error(`[IPC] Failed to toggle post viewed`, error);
+        return false;
+      }
+    }
+  );
+
+  ipcMain.handle(IPC_CHANNELS.DB.UPDATE_POST, async (_, payload: unknown) => {
+    const validation = UpdatePostSchema.safeParse(payload);
+    if (!validation.success) {
+      logger.warn(
+        `[IPC] UPDATE_POST failed validation: ${validation.error.message}`
+      );
+      return false;
+    }
+
+    try {
+      const { postId, changes } = validation.data;
+      return await service.updatePost(postId, changes);
+    } catch (error) {
+      logger.error(`[IPC] Failed to update post`, error);
+      return false;
+    }
+  });
+};
+</file>
+
+<file path="src/main/ipc/channels.ts">
+export const IPC_CHANNELS = {
+  APP: {
+    GET_VERSION: "app:get-version",
+    OPEN_EXTERNAL: "app:open-external",
+    DOWNLOAD_FILE: "app:download-file",
+    WRITE_CLIPBOARD: "app:write-to-clipboard",
+    LOGOUT: "app:logout",
+    VERIFY_CREDS: "app:verify-creds",
+  },
+  SETTINGS: {
+    GET: "app:get-settings-status",
+    SAVE: "app:save-settings",
+  },
+  DB: {
+    GET_ARTISTS: "db:get-artists",
+    ADD_ARTIST: "db:add-artist",
+    DELETE_ARTIST: "db:delete-artist",
+    SEARCH_TAGS: "db:search-tags",
+    GET_POSTS: "db:get-posts",
+    GET_POSTS_COUNT: "db:get-posts-count",
+    MARK_VIEWED: "db:mark-post-viewed",
+    TOGGLE_FAVORITE: "db:toggle-post-favorite",
+    SYNC_ALL: "db:sync-all",
+    TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,
+    RESET_POST_CACHE: "db:reset-post-cache" as const,
+    UPDATE_POST: "db:update-post" as const,
+    GET_API_KEY_ENCRYPTED: "db:get-api-key-encrypted",
+  },
+  API: {
+    SEARCH_REMOTE: "api:search-remote-tags",
+  },
+  BACKUP: {
+    CREATE: "db:create-backup",
+    RESTORE: "db:restore-backup",
+  },
+  SYNC: {
+    REPAIR: "sync:repair-artist",
+  },
+
+  FILES: {
+    DOWNLOAD: "files:download",
+    OPEN_FOLDER: "files:open-folder",
+    DOWNLOAD_PROGRESS: "files:download-progress",
+  },
+} as const;
+</file>
+
+<file path="drizzle/meta/0000_snapshot.json">
+{
+  "version": "5",
+  "dialect": "sqlite",
+  "id": "4fbb74ee-af72-4a3e-8cbc-d29810828188",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "artists": {
+      "name": "artists",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
         },
-        "download_path": {
-          "name": "download_path",
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "api_endpoint": {
+          "name": "api_endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_post_id": {
+          "name": "last_post_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "new_posts_count": {
+          "name": "new_posts_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "last_checked": {
+          "name": "last_checked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "artists_tag_unique": {
+          "name": "artists_tag_unique",
+          "columns": [
+            "tag"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "posts": {
+      "name": "posts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "post_id": {
+          "name": "post_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "artist_id": {
+          "name": "artist_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "file_url": {
+          "name": "file_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "preview_url": {
+          "name": "preview_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sample_url": {
+          "name": "sample_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "rating": {
+          "name": "rating",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_viewed": {
+          "name": "is_viewed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "is_favorited": {
+          "name": "is_favorited",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "artistIdIdx": {
+          "name": "artistIdIdx",
+          "columns": [
+            "artist_id"
+          ],
+          "isUnique": false
+        },
+        "isViewedIdx": {
+          "name": "isViewedIdx",
+          "columns": [
+            "is_viewed"
+          ],
+          "isUnique": false
+        },
+        "publishedAtIdx": {
+          "name": "publishedAtIdx",
+          "columns": [
+            "published_at"
+          ],
+          "isUnique": false
+        },
+        "isFavoritedIdx": {
+          "name": "isFavoritedIdx",
+          "columns": [
+            "is_favorited"
+          ],
+          "isUnique": false
+        },
+        "posts_artist_id_post_id_unique": {
+          "name": "posts_artist_id_post_id_unique",
+          "columns": [
+            "artist_id",
+            "post_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "posts_artist_id_artists_id_fk": {
+          "name": "posts_artist_id_artists_id_fk",
+          "tableFrom": "posts",
+          "tableTo": "artists",
+          "columnsFrom": [
+            "artist_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "settings": {
+      "name": "settings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "encrypted_api_key": {
+          "name": "encrypted_api_key",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -11094,11 +11019,113 @@ See [Roadmap](./roadmap.md#-technical-improvements-from-audit) for detailed impl
     {
       "idx": 0,
       "version": "5",
-      "when": 1766077409982,
-      "tag": "0000_shiny_harpoon",
+      "when": 1765787993231,
+      "tag": "0000_flawless_sally_floyd",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1766001420711,
+      "tag": "0001_lying_mauler",
       "breakpoints": true
     }
   ]
+}
+</file>
+
+<file path="src/renderer.d.ts">
+import type { Artist, NewArtist, Post } from "./main/db/schema";
+import {
+  IpcBridge,
+  UpdateStatusCallback,
+  UpdateProgressCallback,
+} from "./main/bridge";
+
+export type SyncErrorCallback = (message: string) => void;
+
+export interface BackupResponse {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
+export interface PostQueryFilters {
+  rating?: "s" | "q" | "e";
+  tags?: string;
+  sortBy?: "date" | "id" | "rating";
+  isViewed?: boolean;
+}
+
+export interface IpcSettings {
+  userId: string;
+  hasApiKey: boolean;
+}
+
+export interface IpcApi extends IpcBridge {
+  // App
+  getAppVersion: () => Promise<string>;
+
+  // Settings
+  getSettings: () => Promise<IpcSettings | undefined>;
+  saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  logout: () => Promise<void>;
+  openExternal: (url: string) => Promise<void>;
+
+  // Artists
+  getTrackedArtists: () => Promise<Artist[]>;
+  addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
+  deleteArtist: (id: number) => Promise<void>;
+
+  // Search
+  searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
+
+  // Posts
+  getArtistPosts: (params: {
+    artistId: number;
+    page?: number;
+    filters?: PostQueryFilters;
+  }) => Promise<Post[]>;
+  getArtistPostsCount: (artistId?: number) => Promise<number>;
+
+  togglePostViewed: (postId: number) => Promise<boolean>;
+
+  resetPostCache: (postId: number) => Promise<boolean>;
+
+  // Sync
+  syncAll: () => Promise<boolean>;
+
+  // UPDATER
+  checkForUpdates: () => Promise<void>;
+  quitAndInstall: () => Promise<void>;
+
+  // Start download
+  startDownload: () => Promise<void>;
+
+  // Update status
+  onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
+  onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
+
+  onSyncStart: (callback: () => void) => () => void;
+  onSyncEnd: (callback: () => void) => () => void;
+  onSyncProgress: (callback: (message: string) => void) => () => void;
+  onSyncError: (callback: SyncErrorCallback) => () => void;
+
+  markPostAsViewed: (postId: number) => Promise<boolean>;
+
+  searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
+
+  createBackup: () => Promise<BackupResponse>;
+  restoreBackup: () => Promise<BackupResponse>;
+  writeToClipboard: (text: string) => Promise<boolean>;
+
+  verifyCredentials: () => Promise<boolean>;
+}
+
+declare global {
+  interface Window {
+    api: IpcApi;
+  }
 }
 </file>
 
@@ -11864,85 +11891,6 @@ export const ViewerDialog = () => {
     </Dialog>
   );
 };
-</file>
-
-<file path="src/renderer.d.ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export interface IElectronAPI {
-  ipcRenderer: {
-    send(channel: string, ...args: any[]): void;
-    on(channel: string, func: (...args: any[]) => void): () => void;
-    once(channel: string, func: (...args: any[]) => void): void;
-    invoke(channel: string, ...args: any[]): Promise<any>;
-    removeAllListeners(channel: string): void;
-  };
-  process: {
-    versions: {
-      app: string;
-      [key: string]: string | undefined;
-    };
-  };
-}
-
-// Интерфейс основного API (методы из bridge.ts)
-export interface IMainAPI {
-  // Settings
-  getSettings: () => Promise<any>;
-  saveSettings: (settings: any) => Promise<boolean>;
-
-  // Backups
-  createBackup: () => Promise<{
-    success: boolean;
-    error?: string;
-    path?: string;
-  }>;
-  restoreBackup: () => Promise<{ success: boolean; error?: string }>;
-
-  // Auth & Onboarding
-  verifyCredentials: () => Promise<boolean>;
-  logout: () => Promise<void>;
-
-  // Sync
-  syncAll: () => Promise<void>;
-
-  // Artists
-  getTrackedArtists: () => Promise<any[]>;
-  addArtist: (artist: any) => Promise<any>;
-  deleteArtist: (id: number) => Promise<boolean>;
-  searchRemoteTags: (query: string) => Promise<any[]>;
-  repairArtist: (id: number) => Promise<void>;
-  getArtistPosts: (params: any) => Promise<any>;
-  getArtistPostsCount: (id: number) => Promise<number>;
-
-  // Posts & Viewer
-  markPostAsViewed: (id: number) => Promise<void>;
-  togglePostFavorite: (id: number) => Promise<boolean>;
-  resetPostCache: (id: number) => Promise<void>;
-
-  // Files
-  downloadFile: (url: string, filename: string) => Promise<any>;
-  openFileInFolder: (path: string) => Promise<void>;
-  onDownloadProgress: (callback: (data: any) => void) => () => void;
-  selectDownloadFolder: () => Promise<string | null>;
-
-  // Utils
-  openExternal: (url: string) => Promise<void>;
-  writeToClipboard: (text: string) => Promise<void>;
-
-  // Updater
-  onUpdateStatus: (callback: (data: any) => void) => () => void;
-  onUpdateProgress: (callback: (percent: number) => void) => () => void;
-  startDownload: () => Promise<void>;
-  quitAndInstall: () => Promise<void>;
-  checkForUpdates: () => Promise<void>;
-}
-
-declare global {
-  interface Window {
-    electron: IElectronAPI;
-    api: IMainAPI;
-  }
-}
 </file>
 
 <file path="src/renderer/App.tsx">
@@ -12868,7 +12816,6 @@ export const settings = sqliteTable("settings", {
   isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
     false
   ),
-  downloadPath: text("download_path").default(""),
 });
 
 // Types
@@ -12889,9 +12836,7 @@ import { mkdirSync } from "fs";
 
 // === PORTABLE MODE LOGIC ===
 if (app.isPackaged) {
-  const baseDir =
-    process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
-  const portableDataPath = path.join(baseDir, "data");
+  const portableDataPath = path.join(path.dirname(process.execPath), "data");
 
   try {
     mkdirSync(portableDataPath, { recursive: true });
@@ -13132,7 +13077,6 @@ export async function restoreDatabase(backupPath: string): Promise<void> {
 </file>
 
 <file path="src/main/bridge.ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type { Artist, NewArtist, Post, Settings } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
@@ -13176,6 +13120,7 @@ export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
 
+  // 🔥 FIX: Добавлен метод для работы с буфером обмена (System)
   writeToClipboard: (text: string) => Promise<boolean>;
 
   // Settings
@@ -13237,7 +13182,6 @@ export interface IpcBridge {
     canceled?: boolean;
   }>;
   openFileInFolder: (path: string) => Promise<boolean>;
-  selectDownloadFolder: () => Promise<string | null>;
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
 
@@ -13252,9 +13196,7 @@ export interface IpcBridge {
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
 
-  selectDownloadFolder: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.SELECT_DIRECTORY),
-
+  // 🔥 FIX: Реализация метода writeToClipboard
   writeToClipboard: (text) =>
     ipcRenderer.invoke("app:write-to-clipboard", text),
 
@@ -13295,6 +13237,7 @@ const ipcBridge: IpcBridge = {
   resetPostCache: (postId) => ipcRenderer.invoke("db:reset-post-cache", postId),
 
   downloadFile: (url: string, filename: string) => {
+    // console.log("Bridge: Sending download request...", url); // Можно убрать лог
     return ipcRenderer.invoke("files:download", url, filename);
   },
 
@@ -13368,32 +13311,11 @@ const ipcBridge: IpcBridge = {
   restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
 };
 
-contextBridge.exposeInMainWorld("electron", {
-  ipcRenderer: {
-    send: (channel: string, ...args: any[]) =>
-      ipcRenderer.send(channel, ...args),
-    on: (channel: string, func: (...args: any[]) => void) => {
-      const subscription = (_event: any, ...args: any[]) => func(...args);
-      ipcRenderer.on(channel, subscription);
-      return () => ipcRenderer.removeListener(channel, subscription);
-    },
-    once: (channel: string, func: (...args: any[]) => void) => {
-      ipcRenderer.once(channel, (_event, ...args) => func(...args));
-    },
-    invoke: (channel: string, ...args: any[]) =>
-      ipcRenderer.invoke(channel, ...args),
-    removeAllListeners: (channel: string) =>
-      ipcRenderer.removeAllListeners(channel),
-  },
-  process: {
-    versions: process.versions,
-  },
-});
-
 contextBridge.exposeInMainWorld("api", ipcBridge);
 </file>
 
 <file path="src/main/db/db-worker.ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { parentPort } from "worker_threads";
 import Database from "better-sqlite3";
 import {
@@ -13402,6 +13324,7 @@ import {
 } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import * as schema from "./schema";
+import { NewArtist } from "./schema";
 import { eq, asc, desc, sql, like, or, count } from "drizzle-orm";
 import type { WorkerRequest, WorkerResponse } from "./worker-types";
 import * as path from "path";
@@ -13426,7 +13349,6 @@ const SettingsPayloadSchema = z.object({
   encryptedApiKey: z.string().optional(),
   isSafeMode: z.boolean().optional(),
   isAdultConfirmed: z.boolean().optional(),
-  downloadPath: z.string().optional(),
 });
 
 const UpdateProgressSchema = z.object({
@@ -13473,19 +13395,20 @@ const PostActionPayloadSchema = z.object({
   postId: z.number().int().positive(),
 });
 
-const AddArtistSchema = z
-  .object({
-    name: z.string().min(1),
-    tag: z.string().min(1),
-  })
-  .passthrough(); // Разрешаем остальные поля, если они есть в NewArtist
-
-const ArtistIdSchema = z.object({
-  artistId: z.number().int(),
-});
-
-const DeleteArtistSchema = z.object({
-  id: z.number().int(),
+const UpdatePostPayloadSchema = z.object({
+  postId: z.number().int().positive(),
+  changes: z
+    .object({
+      rating: z.string().optional(),
+      tags: z.string().optional(),
+      title: z.string().optional(),
+      isViewed: z.boolean().optional(),
+      isFavorited: z.boolean().optional(),
+      fileUrl: z.string().optional(),
+      previewUrl: z.string().optional(),
+      sampleUrl: z.string().optional(),
+    })
+    .partial(),
 });
 
 const SystemInitSchema = z.object({
@@ -13604,7 +13527,6 @@ function getSettingsDrizzle(db: DbType) {
         encryptedApiKey: undefined,
         isSafeMode: true,
         isAdultConfirmed: false,
-        downloadPath: "",
       };
     }
 
@@ -13613,7 +13535,6 @@ function getSettingsDrizzle(db: DbType) {
       encryptedApiKey: settings.encryptedApiKey || undefined,
       isSafeMode: settings.isSafeMode ?? true,
       isAdultConfirmed: settings.isAdultConfirmed ?? false,
-      downloadPath: settings.downloadPath || "",
     };
   } catch (e) {
     logger.error("Worker: CRITICAL error in getSettingsDrizzle:", e);
@@ -13667,7 +13588,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
           hasApiKey: !!settings?.encryptedApiKey,
           isSafeMode: settings?.isSafeMode ?? true,
           isAdultConfirmed: settings?.isAdultConfirmed ?? false,
-          downloadPath: settings?.downloadPath || "",
         });
         break;
       }
@@ -13683,13 +13603,8 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
           throw new Error("Settings validation failed. Check your input data.");
         }
 
-        const {
-          userId,
-          encryptedApiKey,
-          isSafeMode,
-          isAdultConfirmed,
-          downloadPath,
-        } = validation.data;
+        const { userId, encryptedApiKey, isSafeMode, isAdultConfirmed } =
+          validation.data;
 
         // 1. Получаем текущие настройки для слияния
         const current = db
@@ -13702,7 +13617,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         const newKey = encryptedApiKey ?? current?.encryptedApiKey ?? "";
         const newSafeMode = isSafeMode ?? current?.isSafeMode ?? true;
         const newAdult = isAdultConfirmed ?? current?.isAdultConfirmed ?? false;
-        const newDownloadPath = downloadPath ?? current?.downloadPath ?? "";
+
         // 3. Drizzle Upsert
         db.insert(schema.settings)
           .values({
@@ -13711,7 +13626,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
             encryptedApiKey: newKey,
             isSafeMode: newSafeMode,
             isAdultConfirmed: newAdult,
-            downloadPath: newDownloadPath,
           })
           .onConflictDoUpdate({
             target: schema.settings.id,
@@ -13720,7 +13634,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
               encryptedApiKey: newKey,
               isSafeMode: newSafeMode,
               isAdultConfirmed: newAdult,
-              downloadPath: newDownloadPath,
             },
           })
           .run();
@@ -13739,14 +13652,11 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         break;
 
       case "addArtist": {
-        const ad = AddArtistSchema.parse(request.payload);
-
+        const ad = request.payload as NewArtist;
         const res = await db
           .insert(schema.artists)
-          // @ts-expect-error - типы Zod и Drizzle могут незначительно отличаться (optional vs undefined), но структура верная          .values(ad)
           .values(ad)
           .returning({ id: schema.artists.id });
-
         sendSuccess(
           request.id,
           await db.query.artists.findFirst({
@@ -13851,9 +13761,17 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         break;
       }
 
-      case "getArtistById": {
-        const { artistId } = ArtistIdSchema.parse(request.payload);
+      case "getPostById": {
+        const { postId } = PostActionPayloadSchema.parse(request.payload);
+        const post = await db.query.posts.findFirst({
+          where: eq(schema.posts.id, postId),
+        });
+        sendSuccess(request.id, post);
+        break;
+      }
 
+      case "getArtistById": {
+        const { artistId } = request.payload as { artistId: number };
         const artist = await db.query.artists.findFirst({
           where: eq(schema.artists.id, artistId),
         });
@@ -13907,8 +13825,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "deleteArtist": {
-        const { id } = DeleteArtistSchema.parse(request.payload);
-
+        const { id } = request.payload as { id: number };
         await db.delete(schema.artists).where(eq(schema.artists.id, id));
         sendSuccess(request.id);
         break;
@@ -13962,6 +13879,41 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         break;
       }
 
+      case "updatePost": {
+        const { postId, changes } = UpdatePostPayloadSchema.parse(
+          request.payload
+        );
+
+        // Build update object - Drizzle handles boolean conversion automatically
+        const updateData: Partial<typeof schema.posts.$inferInsert> = {};
+        if (changes.rating !== undefined) updateData.rating = changes.rating;
+        if (changes.tags !== undefined) updateData.tags = changes.tags;
+        if (changes.title !== undefined) updateData.title = changes.title;
+        if (changes.fileUrl !== undefined) updateData.fileUrl = changes.fileUrl;
+        if (changes.previewUrl !== undefined)
+          updateData.previewUrl = changes.previewUrl;
+        if (changes.sampleUrl !== undefined)
+          updateData.sampleUrl = changes.sampleUrl;
+        if (changes.isViewed !== undefined)
+          updateData.isViewed = changes.isViewed;
+        if (changes.isFavorited !== undefined)
+          updateData.isFavorited = changes.isFavorited;
+
+        if (Object.keys(updateData).length === 0) {
+          sendSuccess(request.id, false);
+          break;
+        }
+
+        const result = await db
+          .update(schema.posts)
+          .set(updateData)
+          .where(eq(schema.posts.id, postId))
+          .run();
+
+        sendSuccess(request.id, result.changes > 0);
+        break;
+      }
+
       case "logout": {
         await db
           .update(schema.settings)
@@ -13976,7 +13928,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       default:
         sendError(
           request.id,
-          new Error(`Unknown request type: ${request.type}`)
+          new Error(`Unknown request type: ${(request as any).type}`)
         );
     }
   } catch (error) {
@@ -14048,7 +14000,7 @@ port.on("message", async (rawMsg: unknown) => {
     "url": "https://github.com/KazeKaze93/ruledesk.git"
   },
   "scripts": {
-    "dev": "chcp 65001 && electron-vite dev --remote-debugging-port=9222",
+    "dev": "chcp 65001 && electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "db:migrate": "ts-node src/main/db/migrate.ts",
@@ -14094,7 +14046,6 @@ port.on("message", async (rawMsg: unknown) => {
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
-    "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.49.0",
     "vite": "^5.0.8"
@@ -14126,6 +14077,7 @@ port.on("message", async (rawMsg: unknown) => {
     "react-i18next": "^16.5.0",
     "react-router-dom": "^7.10.1",
     "react-virtuoso": "^4.17.0",
+    "repomix": "^1.10.2",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.25.76",
     "zustand": "^4.5.7"
