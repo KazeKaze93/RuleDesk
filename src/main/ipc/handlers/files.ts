@@ -6,7 +6,6 @@ import { pipeline } from "stream/promises";
 import { logger } from "../../lib/logger";
 import { IPC_CHANNELS } from "../channels";
 import { z } from "zod";
-import { PostsService } from "../../services/posts.service";
 
 // Вспомогательная функция для получения главного окна Electron
 const getMainWindow = (): BrowserWindow | undefined => {
@@ -29,7 +28,7 @@ const DownloadFileSchema = z.object({
     .regex(/^[\w\-. ]+$/, "Invalid filename characters"),
 });
 
-export const registerFileHandlers = (service: PostsService) => {
+export const registerFileHandlers = () => {
   let totalBytes = 0;
 
   // Хендлер скачивания с диалогом "Сохранить как"
@@ -171,27 +170,6 @@ export const registerFileHandlers = (service: PostsService) => {
         return false;
       } catch (error) {
         logger.error("Failed to open folder:", error);
-        return false;
-      }
-    }
-  );
-
-  // Обработчик для Reset Post Cache
-  ipcMain.handle(
-    IPC_CHANNELS.DB.RESET_POST_CACHE,
-    async (_, postId: unknown) => {
-      const result = z.number().int().positive().safeParse(postId);
-      if (!result.success) {
-        logger.warn(
-          `Validation failed for resetPostCache: ${result.error.message}`
-        );
-        return false;
-      }
-
-      try {
-        return await service.resetPostCache(result.data);
-      } catch (error) {
-        logger.error(`[IPC] Failed to reset post cache`, error);
         return false;
       }
     }

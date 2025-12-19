@@ -45,11 +45,22 @@ export interface IpcApi extends IpcBridge {
 
   // Posts
   getArtistPosts: (params: {
-    artistId: number;
+    artistId?: number;
     page?: number;
     filters?: PostQueryFilters;
   }) => Promise<Post[]>;
+
   getArtistPostsCount: (artistId?: number) => Promise<number>;
+
+  updatePost: (
+    postId: number,
+    changes: {
+      isViewed?: boolean;
+      isFavorited?: boolean;
+      rating?: string;
+      tags?: string;
+    }
+  ) => Promise<boolean>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
 

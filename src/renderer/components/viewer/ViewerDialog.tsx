@@ -1,4 +1,3 @@
-// Cursor: select file:src/renderer/components/viewer/ViewerDialog.tsx
 import { useEffect, useCallback, useState, useMemo } from "react";
 import {
   Dialog,
@@ -19,9 +18,9 @@ import {
   Copy,
   RefreshCw,
   Bug,
-  FileText,
   Tags,
-  ExternalLink, // 🔥 FIX: Вернул импорт
+  ExternalLink,
+  Calendar,
 } from "lucide-react";
 
 import {
@@ -53,9 +52,28 @@ const useCurrentPost = (
     if (!currentPostId || !origin) return null;
 
     let queryKey: unknown[] = [];
+
+    // 🔥 FIX: TypeScript ругался на несовместимые типы.
+    // Если origin.kind === 'artist', берем ключ артиста.
     if (origin.kind === "artist") {
       queryKey = ["posts", origin.artistId];
-    } else {
+    }
+    // Если у тебя в ViewerOrigin появятся типы 'search' или 'browse', добавь их сюда явно.
+    // Пока что фоллбек на дефолтный поиск в кэше, если тип не совпал.
+    else {
+      // Пытаемся найти пост в любых закэшированных списках постов
+      const queries = queryClient.getQueriesData<InfiniteData<Post[]>>({
+        queryKey: ["posts"],
+      });
+      for (const [_, qData] of queries) {
+        if (!qData) continue;
+        for (const page of qData.pages) {
+          const post = page.find((p) => p.id === currentPostId);
+          if (post) return post;
+        }
+      }
+      // Если это browse или favorites, можно добавить специфичные ключи:
+      // if (origin.kind === 'favorites') queryKey = ['favorites'];
       return null;
     }
 
@@ -138,7 +156,7 @@ const ViewerMedia = ({ post }: { post: Post }) => {
   );
 };
 
-// --- Новый компонент: Контейнер для логики, зависящей от поста (Post-Scoped) ---
+// --- Container Scope ---
 
 const ViewerDialogPostScope = ({
   post,
@@ -161,22 +179,37 @@ const ViewerDialogPostScope = ({
 }) => {
   const queryClient = useQueryClient();
 
-  // --- ЛОКАЛЬНЫЙ СТЕЙТ ДЛЯ КНОПОК ---
+  // --- LOCAL STATE ---
   const [isFavorited, setIsFavorited] = useState(post.isFavorited);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  // downloadPath полностью удален, так как мы вычисляем путь динамически
 
-  // Предполагаем, что режим разработчика включен
   const isDeveloperMode = true;
 
-  // --- ЭФФЕКТ ДЛЯ АВТОМАТИЧЕСКОЙ ПОМЕТКИ "ПРОСМОТРЕНО" ---
+  const formattedDate = useMemo(() => {
+    const timestamp = post.publishedAt || post.createdAt;
+    if (!timestamp) return "Unknown date";
+
+    const isSeconds = Number(timestamp) < 100000000000;
+    const dateVal = new Date(Number(timestamp) * (isSeconds ? 1000 : 1));
+
+    return dateVal.toLocaleDateString("ru-RU", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }, [post.publishedAt, post.createdAt]);
+
+  // --- MARK VIEWED ---
   useEffect(() => {
     if (post.isViewed) return;
-
     window.api.markPostAsViewed(post.id);
 
-    const queryKey = ["posts", post.artistId];
+    // Optimistic Update
+    const queryKey =
+      _queue?.origin?.kind === "artist"
+        ? ["posts", _queue.origin.artistId]
+        : ["posts"];
 
     queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
       if (!old) return old;
@@ -187,9 +220,9 @@ const ViewerDialogPostScope = ({
         ),
       };
     });
-  }, [post.id, post.isViewed, post.artistId, queryClient]);
+  }, [post.id, post.isViewed, _queue, queryClient]);
 
-  // --- ЭФФЕКТ ДЛЯ ПОДПИСКИ НА ПРОГРЕСС ЗАГРУЗКИ ---
+  // --- DOWNLOAD LISTENER ---
   useEffect(() => {
     const filenameId = `${post.artistId}_${post.postId}.${
       post.fileUrl.split(".").pop() || "jpg"
@@ -201,10 +234,7 @@ const ViewerDialogPostScope = ({
       if (data.percent > 0 && data.percent < 100) {
         setIsDownloading(true);
         setDownloadProgress(data.percent);
-      } else if (data.percent === 100) {
-        setIsDownloading(false);
-        setDownloadProgress(0);
-      } else if (data.percent === 0) {
+      } else {
         setIsDownloading(false);
         setDownloadProgress(0);
       }
@@ -215,18 +245,24 @@ const ViewerDialogPostScope = ({
     };
   }, [post.artistId, post.postId, post.fileUrl]);
 
-  // --- ХЕНДЛЕРЫ ---
+  // --- HANDLERS ---
 
   const toggleFavorite = async () => {
     const previousState = isFavorited;
+    // Optimistic UI update
     setIsFavorited(!previousState);
 
     try {
+      // 🛑 ВАЖНО: Убедись, что db:toggle-post-favorite зарегистрирован в main.ts!
       const newState = await window.api.togglePostFavorite(post.id);
       setIsFavorited(newState);
 
-      // OPTIMISTIC UPDATE FOR FAVORITE
-      const queryKey = ["posts", post.artistId];
+      // Cache Update
+      const queryKey =
+        _queue?.origin?.kind === "artist"
+          ? ["posts", _queue.origin.artistId]
+          : ["posts"];
+
       queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
         if (!old) return old;
         return {
@@ -239,37 +275,25 @@ const ViewerDialogPostScope = ({
         };
       });
     } catch (error) {
+      // Revert on error
       setIsFavorited(previousState);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error("Failed to toggle favorite:", errorMessage);
-      alert(`Error toggling favorite: ${errorMessage}`);
+      console.error("Failed to toggle favorite:", error);
+      alert(
+        "Не удалось лайкнуть. Проверь логи (возможно не работает API/Backend)."
+      );
     }
   };
 
   const downloadImage = async () => {
     if (isDownloading) return;
-
     setDownloadProgress(1);
 
     try {
       const ext = post.fileUrl.split(".").pop() || "jpg";
       const filename = `${post.artistId}_${post.postId}.${ext}`;
-
-      const result = await window.api.downloadFile(post.fileUrl, filename);
-
-      if (result && result.success && result.path) {
-        // 🔥 FIX: Убрали setDownloadPath, так как стейт удален
-      } else if (result && result.canceled) {
-        // Отмена
-      } else {
-        alert(`Download failed: ${result?.error || "Unknown error"}`);
-      }
+      await window.api.downloadFile(post.fileUrl, filename);
     } catch (error) {
-      console.error("Download failed:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      alert(`Download failed: ${errorMessage}`);
+      console.error("Download error", error);
       setDownloadProgress(0);
     }
   };
@@ -288,52 +312,28 @@ const ViewerDialogPostScope = ({
   const handleCopyText = async (text: string) => {
     try {
       await window.api.writeToClipboard(text);
-      console.log(`Copied via IPC: ${text}`);
     } catch (err) {
       console.error("Failed to copy text via IPC: ", err);
     }
   };
 
   const handleOpenExternal = (url: string) => {
-    if (!url) return;
-    window.api.openExternal(url);
+    if (url) window.api.openExternal(url);
   };
 
   const resetLocalCache = () => {
     if (!post) return;
-    console.log(`Attempting to reset local cache for Post ID: ${post.id}`);
     window.api.resetPostCache(post.id);
   };
 
-  const handleCopyMetadata = async () => {
-    const metadata = JSON.stringify(post, null, 2);
-    try {
-      await window.api.writeToClipboard(metadata);
-      console.log("Metadata copied to clipboard:", post);
-      // Можно добавить тост, но пока хватит лога
-      alert("Metadata copied to clipboard!");
-    } catch (e) {
-      console.error("Failed to copy metadata", e);
-      alert("Failed to copy metadata. Check console.");
-    }
-  };
-
-  // 🔥 FIX: Используем IPC для копирования, чтобы избежать ошибки фокуса
   const handleCopyDebugInfo = async () => {
     const debugInfo = {
-      appVersion: "1.2.0",
+      appVersion: "1.4.1",
       post: post,
       queueLength: _queue?.ids.length,
       origin: _queue?.origin,
     };
-
-    try {
-      await window.api.writeToClipboard(JSON.stringify(debugInfo, null, 2));
-      console.log("Debug info copied via IPC");
-    } catch (e) {
-      console.error("Failed to copy debug info", e);
-      alert("Failed to copy debug info");
-    }
+    await handleCopyText(JSON.stringify(debugInfo, null, 2));
   };
 
   const isCurrentlyDownloading =
@@ -341,7 +341,6 @@ const ViewerDialogPostScope = ({
 
   const postPageUrl = `https://rule34.xxx/index.php?page=post&s=view&id=${post.postId}`;
   const tagQuery = tagsToQuery(post.tags);
-  // 🔥 FIX: Удалили hasDownloadedFile
 
   return (
     <>
@@ -381,27 +380,20 @@ const ViewerDialogPostScope = ({
             />
           </Button>
 
-          {/* --- КНОПКА СКАЧАТЬ (с индикатором прогресса) --- */}
+          {/* DOWNLOAD */}
           <Button
             variant="ghost"
             size="icon"
             onClick={downloadImage}
             disabled={isCurrentlyDownloading}
             className="overflow-hidden relative text-white rounded-full hover:bg-white/10 group"
-            title={
-              isCurrentlyDownloading
-                ? `Скачивание ${downloadProgress}%`
-                : "Download Original"
-            }
           >
-            {/* Прогресс-бар поверх кнопки */}
             {isCurrentlyDownloading && (
               <div
                 className="absolute inset-0 transition-all duration-100 bg-green-500/50"
                 style={{ width: `${downloadProgress}%` }}
               />
             )}
-
             {isCurrentlyDownloading ? (
               <div className="flex relative z-10 items-center text-xs text-white/90">
                 {downloadProgress}%
@@ -411,14 +403,13 @@ const ViewerDialogPostScope = ({
             )}
           </Button>
 
-          {/* --- МЕНЮ ТРОЕТОЧИЯ (DropdownMenu FIX A11y) --- */}
+          {/* MENU */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-white rounded-full hover:bg-white/10"
-                title="More options"
               >
                 <MoreHorizontal className="w-5 h-5" />
               </Button>
@@ -428,7 +419,6 @@ const ViewerDialogPostScope = ({
               sideOffset={8}
               align="end"
             >
-              {/* --- COPY GROUP (SubMenu) --- */}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Copy className="mr-2 w-4 h-4" />
@@ -454,13 +444,6 @@ const ViewerDialogPostScope = ({
                       Copy tags (all)
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      disabled={!tagQuery}
-                      onClick={() => handleCopyText(tagQuery)}
-                    >
-                      Copy tags (query)
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
                       onClick={() => handleCopyText(post.fileUrl)}
                     >
                       Copy file URL
@@ -470,8 +453,6 @@ const ViewerDialogPostScope = ({
               </DropdownMenuSub>
 
               <DropdownMenuSeparator />
-
-              {/* --- OPEN GROUP --- */}
               <DropdownMenuLabel>Open</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => handleOpenExternal(postPageUrl)}>
                 <ExternalLink className="mr-2 w-4 h-4" />
@@ -481,29 +462,14 @@ const ViewerDialogPostScope = ({
                 <Folder className="mr-2 w-4 h-4" />
                 Reveal in folder
               </DropdownMenuItem>
-
               <DropdownMenuSeparator />
 
-              {/* --- ACTIONS GROUP --- */}
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={downloadImage}>
-                <Download className="mr-2 w-4 h-4" />
-                Re-download original
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              {/* DEVELOPER */}
               {isDeveloperMode && (
                 <>
                   <DropdownMenuLabel>Developer</DropdownMenuLabel>
                   <DropdownMenuItem onClick={resetLocalCache}>
                     <RefreshCw className="mr-2 w-4 h-4" />
-                    Reset local cache
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCopyMetadata}>
-                    <FileText className="mr-2 w-4 h-4" />
-                    Show metadata
+                    Reset cache
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleCopyDebugInfo}>
                     <Bug className="mr-2 w-4 h-4" />
@@ -539,6 +505,11 @@ const ViewerDialogPostScope = ({
                 ? "Questionable"
                 : "Explicit"}
             </span>
+            {/* DATE DISPLAY */}
+            <span className="flex gap-1 items-center text-xs text-white/60">
+              <Calendar className="w-3 h-3" />
+              {formattedDate}
+            </span>
           </div>
         </div>
 
@@ -547,7 +518,8 @@ const ViewerDialogPostScope = ({
             variant="outline"
             size="sm"
             className="gap-2 text-white bg-white/5 border-white/10 hover:bg-white/10"
-            title="Show tags"
+            // 🔥 FIX: Используем tagQuery
+            onClick={() => handleCopyText(tagQuery)}
           >
             <Tags className="w-4 h-4" />
             Tags
@@ -604,46 +576,36 @@ export const ViewerDialog = () => {
   const post = useCurrentPost(currentPostId, queue?.origin);
   const queryClient = useQueryClient();
 
-  // Infinite loading: detect when near end and load more posts
+  // Infinite loading logic
   useEffect(() => {
     if (!isOpen || !queue || !queue.origin) return;
 
     const loadedCount = queue.ids.length;
-    const threshold = 5; // Load more when 5 posts from the end
-
-    // Check if we're near the end and haven't reached the total limit
+    const threshold = 5;
     const isNearEnd = currentIndex >= loadedCount - threshold;
     const hasReachedLimit =
       (queue.totalGlobalCount && loadedCount >= queue.totalGlobalCount) ||
       !queue.hasNextPage;
 
-    if (isNearEnd && !hasReachedLimit) {
-      // Prefer callback if provided (better UX - parent controls loading)
-      if (queue.onLoadMore) {
-        console.log(
-          `[Viewer] Triggering onLoadMore callback at index ${currentIndex}. Loaded: ${loadedCount}`
-        );
-        queue.onLoadMore();
-        return;
-      }
+    if (isNearEnd && !hasReachedLimit && queue.onLoadMore) {
+      queue.onLoadMore();
     }
   }, [isOpen, queue, currentIndex]);
 
-  // Monitor React Query cache for new posts when onLoadMore callback is used
-  // This effect runs when the query data changes (after onLoadMore fetches new data)
-  const artistId =
-    queue?.origin?.kind === "artist" ? queue.origin.artistId : null;
-  const queueIdsLength = queue?.ids.length ?? 0;
-  const hasOnLoadMore = !!queue?.onLoadMore;
-
+  // Sync new posts
   useEffect(() => {
-    if (!isOpen || !queue || !queue.origin || queue.origin.kind !== "artist")
+    if (!isOpen || !queue || !queue.origin || !queue.onLoadMore) return;
+
+    // 🔥 FIX: Безопасное определение ключа
+    let queryKey: unknown[] = [];
+    if (queue.origin.kind === "artist") {
+      queryKey = ["posts", queue.origin.artistId];
+    } else {
+      // Fallback or specific logic for other types
+      // Если у тебя browse/search используют ключ 'posts-search' или просто 'posts'
       return;
+    }
 
-    // Only monitor if onLoadMore callback is provided (parent-controlled loading)
-    if (!queue.onLoadMore) return;
-
-    const queryKey = ["posts", queue.origin.artistId];
     const infiniteData =
       queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
 
@@ -653,22 +615,12 @@ export const ViewerDialog = () => {
       const newPosts = allLoadedPosts.filter((p) => !loadedPostIds.has(p.id));
 
       if (newPosts.length > 0) {
-        // Append new post IDs to the queue
-        const newPostIds = newPosts.map((p) => p.id);
-        appendQueueIds(newPostIds);
+        appendQueueIds(newPosts.map((p) => p.id));
       }
     }
-  }, [
-    isOpen,
-    queue,
-    queueIdsLength,
-    artistId,
-    hasOnLoadMore,
-    queryClient,
-    appendQueueIds,
-  ]);
+  }, [isOpen, queue, queryClient, appendQueueIds]);
 
-  // Клавиатура (перенесена на ViewerDialog)
+  // Keyboard Nav
   const handleNavigationKeys = useCallback(
     (e: KeyboardEvent) => {
       if (!isOpen) return;
@@ -695,7 +647,7 @@ export const ViewerDialog = () => {
     return () => window.removeEventListener("keydown", handleNavigationKeys);
   }, [handleNavigationKeys]);
 
-  // Управление видимостью контролов (перенесена на ViewerDialog)
+  // Mouse Controls Visibility
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     const handleMouseMove = () => {
@@ -733,17 +685,13 @@ export const ViewerDialog = () => {
           [&>button]:hidden
         "
       >
-        {/* Accessibility: Title and Description must be direct children of DialogContent */}
         <DialogTitle className="sr-only">Image Viewer</DialogTitle>
         <DialogDescription className="sr-only">
-          View and navigate through posts. Use arrow keys to navigate, Escape to
-          close.
+          View and navigate through posts.
         </DialogDescription>
 
-        {/* Слой 1: Блюр-фон (pointer-events-none, чтобы UI был кликабелен) */}
         <div className="absolute inset-0 backdrop-blur-md pointer-events-none bg-black/60" />
 
-        {/* Слой 2: UI Контент (резкий) */}
         <div className="flex relative z-10 flex-col justify-center items-center w-full h-full">
           <ViewerDialogPostScope
             key={post.id}

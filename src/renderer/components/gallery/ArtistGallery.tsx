@@ -1,8 +1,6 @@
-// Cursor: select file:src/renderer/components/gallery/ArtistGallery.tsx
 import React, { forwardRef, useMemo } from "react";
 import {
   useInfiniteQuery,
-  useQuery,
   useQueryClient,
   useMutation,
   InfiniteData,
@@ -20,8 +18,6 @@ interface ArtistGalleryProps {
   artist: Artist;
   onBack: () => void;
 }
-
-// --- Компоненты для виртуализации (Grid Layout) ---
 
 const GridContainer = forwardRef<
   HTMLDivElement,
@@ -46,35 +42,19 @@ const ItemContainer = forwardRef<
 ));
 ItemContainer.displayName = "ItemContainer";
 
-// --- Основной компонент ---
-
 export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   artist,
   onBack,
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-
-  // 🔥 FIX: Достаем appendQueueIds из стора, чтобы обновлять очередь вьювера
-  const { open: openViewer, appendQueueIds } = useViewerStore((state) => ({
-    open: state.open,
-    appendQueueIds: state.appendQueueIds,
-  }));
-
-  // Fetch total posts count
-  const { data: totalPosts = 0 } = useQuery({
-    queryKey: ["posts-count", artist.id],
-    queryFn: async () => {
-      const count = await window.api.getArtistPostsCount(artist.id);
-      return count;
-    },
-  });
+  const openViewer = useViewerStore((state) => state.open);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["posts", artist.id],
       queryFn: async ({ pageParam = 1 }) => {
-        return await window.api.getArtistPosts({
+        return window.api.getArtistPosts({
           artistId: artist.id,
           page: pageParam,
         });
@@ -85,13 +65,14 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       initialPageParam: 1,
     });
 
-  const allPosts = useMemo(() => {
-    return data?.pages.flatMap((page) => page) || [];
-  }, [data]);
+  const allPosts = useMemo(
+    () => data?.pages.flatMap((page) => page) || [],
+    [data]
+  );
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
-      await window.api.markPostAsViewed(postId);
+      await window.api.updatePost(postId, { isViewed: true });
     },
     onSuccess: (_, postId) => {
       queryClient.setQueryData<InfiniteData<Post[]>>(
@@ -111,35 +92,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  // 🔥 FIX: Handler теперь не просто грузит данные в кэш, но и обновляет стор Вьювера!
-  const handleLoadMore = async () => {
-    if (hasNextPage && !isFetchingNextPage) {
-      console.log("[Gallery] Viewer requested more posts. Fetching...");
-
-      // Ждем завершения загрузки и получаем результат
-      const result = await fetchNextPage();
-
-      // Если загрузка прошла успешно и есть данные
-      if (result.data) {
-        // Берем последнюю страницу (новую)
-        const newPage = result.data.pages[result.data.pages.length - 1];
-
-        if (newPage && newPage.length > 0) {
-          const newIds = newPage.map((p) => p.id);
-          console.log(
-            `[Gallery] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
-          );
-
-          // ЯВНО обновляем очередь вьювера
-          appendQueueIds(newIds);
-        }
-      }
-    }
-  };
-
   const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
-
     const post = allPosts[index];
     if (post && !post.isViewed) {
       viewMutation.mutate(post.id);
@@ -147,69 +100,37 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 
     openViewer({
       origin: { kind: "artist", artistId: artist.id },
-      ids: postIds,
+      ids: allPosts.map((p) => p.id),
       initialIndex: index,
       listKey: `artist-${artist.id}`,
-      totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
-      hasNextPage: hasNextPage && allPosts.length < (totalPosts || Infinity),
-      onLoadMore: handleLoadMore, // Передаем обновленный хендлер
     });
   };
 
-  const handleRepairSync = async () => {
-    if (isLoading) return;
-    if (
-      !confirm(t("artistGallery.repairConfirm", { artistName: artist.name }))
-    ) {
-      return;
-    }
-    queryClient.removeQueries({ queryKey: ["posts", artist.id] });
-    try {
-      await window.api.repairArtist(artist.id);
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
-      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
-      queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
-    } catch (e) {
-      console.error(e);
-    }
+  const handleToggleFavorite = async (post: Post) => {
+    const newState = !post.isFavorited;
+    await window.api.updatePost(post.id, { isFavorited: newState });
+    queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
   };
 
   return (
-    <div className="flex flex-col h-full bg-background text-foreground">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+      <div className="flex z-10 shrink-0 justify-between items-center px-6 py-4 bg-background/95 border-b backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex gap-4 items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            aria-label={t("artistGallery.backToArtists")}
-          >
+          <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h2 className="text-xl font-bold">{artist.name}</h2>
-            <div className="flex gap-2 text-xs text-muted-foreground">
-              {totalPosts > 0 && (
-                <span className="text-sm font-medium text-muted-foreground">
-                  Total: {totalPosts}
-                </span>
-              )}
-            </div>
+            <h2 className="text-xl font-bold tracking-tight">{artist.name}</h2>
+            <p className="text-sm text-muted-foreground">
+              {allPosts.length} posts loaded
+            </p>
           </div>
         </div>
-
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRepairSync}
-            title={t("artistGallery.repairTitle")}
-          >
+          <Button variant="outline" size="sm">
             <Wrench className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">
-              {t("artistGallery.repair")}
-            </span>
+            <span className="hidden sm:inline">Edit</span>
           </Button>
           <Button
             variant="outline"
@@ -256,7 +177,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               if (!post) return null;
 
               return (
-                <PostCard post={post} onClick={() => handlePostClick(index)} />
+                <PostCard
+                  post={post}
+                  onClick={() => handlePostClick(index)}
+                  onToggleFavorite={() => handleToggleFavorite(post)}
+                />
               );
             }}
           />

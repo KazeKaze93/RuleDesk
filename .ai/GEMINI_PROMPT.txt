@@ -72,7 +72,7 @@ MEMORIZE THIS immediately.
 
 
 === PROJECT STRUCTURE (Latest) ===
-Project Structure (Generated: 2025-12-19T06:05:23.997Z)
+Project Structure (Generated: 2025-12-19T14:32:41.380Z)
 
 Root:
 ├── .ai
@@ -89,10 +89,8 @@ Root:
 ├── drizzle
 │   ├── meta
 │   │   ├── _journal.json
-│   │   ├── 0000_snapshot.json
-│   │   └── 0001_snapshot.json
-│   ├── 0000_flawless_sally_floyd.sql
-│   └── 0001_lying_mauler.sql
+│   │   └── 0000_snapshot.json
+│   └── 0000_tearful_jimmy_woo.sql
 ├── scripts
 │   ├── ai_reviewer.py
 │   ├── gen-gemini-prompt.ts
@@ -101,8 +99,7 @@ Root:
 ├── src
 │   ├── main
 │   │   ├── db
-│   │   │   ├── db-worker-client.ts
-│   │   │   ├── db-worker.ts
+│   │   │   ├── index.ts
 │   │   │   ├── migrate.ts
 │   │   │   ├── schema.ts
 │   │   │   └── worker-types.ts
@@ -121,6 +118,7 @@ Root:
 │   │   │   ├── artists.service.ts
 │   │   │   ├── posts.service.ts
 │   │   │   ├── secure-storage.ts
+│   │   │   ├── settings.service.ts
 │   │   │   ├── sync-service.ts
 │   │   │   └── updater-service.ts
 │   │   ├── bridge.ts
@@ -161,6 +159,7 @@ Root:
 │   │   │   │   ├── dropdown-menu.tsx
 │   │   │   │   ├── input.tsx
 │   │   │   │   ├── label.tsx
+│   │   │   │   ├── progress.tsx
 │   │   │   │   ├── select.tsx
 │   │   │   │   └── separator.tsx
 │   │   │   └── viewer

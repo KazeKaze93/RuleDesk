@@ -1,4 +1,4 @@
-import { eq, count, desc } from "drizzle-orm";
+import { eq, count, desc, and, like } from "drizzle-orm";
 import { getDatabase } from "../db";
 import { posts } from "../db/schema";
 import type { Post } from "../db/schema";
@@ -14,35 +14,106 @@ export type PostUpdateChanges = {
   sampleUrl?: string;
 };
 
+export type GetPostsParams = {
+  artistId?: number;
+  limit: number;
+  offset: number;
+  filters?: {
+    tags?: string;
+    rating?: "s" | "q" | "e";
+    isFavorited?: boolean;
+    isViewed?: boolean;
+  };
+};
+
 export class PostsService {
   private get db() {
     return getDatabase();
   }
 
-  async getByArtist(params: {
-    artistId: number;
-    limit: number;
-    offset: number;
-  }) {
-    return this.db.query.posts.findMany({
-      where: eq(posts.artistId, params.artistId),
-      orderBy: [desc(posts.postId)],
-      limit: params.limit,
-      offset: params.offset,
-    });
+  async getPosts(params: GetPostsParams) {
+    const conditions = [];
+
+    if (params.artistId) {
+      conditions.push(eq(posts.artistId, params.artistId));
+    }
+
+    if (params.filters) {
+      if (params.filters.tags) {
+        conditions.push(like(posts.tags, `%${params.filters.tags}%`));
+      }
+      if (params.filters.rating) {
+        conditions.push(eq(posts.rating, params.filters.rating));
+      }
+      if (params.filters.isFavorited !== undefined) {
+        conditions.push(eq(posts.isFavorited, params.filters.isFavorited));
+      }
+      if (params.filters.isViewed !== undefined) {
+        conditions.push(eq(posts.isViewed, params.filters.isViewed));
+      }
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    return this.db
+      .select()
+      .from(posts)
+      .where(whereClause)
+      .orderBy(desc(posts.publishedAt))
+      .limit(params.limit)
+      .offset(params.offset);
   }
 
-  async getCountByArtist(artistId?: number): Promise<number> {
+  async toggleFavorite(postId: number): Promise<boolean> {
+    const db = getDatabase();
+
+    // 1. Получаем текущий статус (только нужное поле)
+    const post = await db.query.posts.findFirst({
+      where: eq(posts.id, postId),
+      columns: {
+        isFavorited: true,
+      },
+    });
+
+    if (!post) throw new Error(`Post ${postId} not found`);
+
+    const newState = !post.isFavorited;
+
+    // 2. Обновляем статус
+    await db
+      .update(posts)
+      .set({ isFavorited: newState })
+      .where(eq(posts.id, postId))
+      .run();
+
+    return newState;
+  }
+
+  async getPostsCount(
+    params: Omit<GetPostsParams, "limit" | "offset">
+  ): Promise<number> {
     try {
-      let result;
-      if (artistId !== undefined) {
-        result = await this.db
-          .select({ count: count() })
-          .from(posts)
-          .where(eq(posts.artistId, artistId));
-      } else {
-        result = await this.db.select({ count: count() }).from(posts);
+      const conditions = [];
+
+      if (params.artistId) conditions.push(eq(posts.artistId, params.artistId));
+
+      if (params.filters) {
+        if (params.filters.tags)
+          conditions.push(like(posts.tags, `%${params.filters.tags}%`));
+        if (params.filters.rating)
+          conditions.push(eq(posts.rating, params.filters.rating));
+        if (params.filters.isFavorited !== undefined)
+          conditions.push(eq(posts.isFavorited, params.filters.isFavorited));
       }
+
+      const whereClause =
+        conditions.length > 0 ? and(...conditions) : undefined;
+
+      const result = await this.db
+        .select({ count: count() })
+        .from(posts)
+        .where(whereClause);
+
       return result[0]?.count ?? 0;
     } catch (error) {
       console.error("Failed to get posts count:", error);
@@ -51,21 +122,21 @@ export class PostsService {
   }
 
   async getPostById(postId: number): Promise<Post | null> {
-    const post = await this.db.query.posts.findFirst({
-      where: eq(posts.id, postId),
-    });
-    return (post as Post | undefined) ?? null;
+    const result = await this.db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
+
+    return (result[0] as Post) ?? null;
   }
 
-  /**
-   * Unified method for updating post fields.
-   * All write operations for posts should use this method.
-   */
   async updatePost(
     postId: number,
     changes: PostUpdateChanges
   ): Promise<boolean> {
     const updateData: Partial<typeof posts.$inferInsert> = {};
+
     if (changes.rating !== undefined) updateData.rating = changes.rating;
     if (changes.tags !== undefined) updateData.tags = changes.tags;
     if (changes.title !== undefined) updateData.title = changes.title;
@@ -78,9 +149,7 @@ export class PostsService {
     if (changes.isFavorited !== undefined)
       updateData.isFavorited = changes.isFavorited;
 
-    if (Object.keys(updateData).length === 0) {
-      return false;
-    }
+    if (Object.keys(updateData).length === 0) return false;
 
     const result = await this.db
       .update(posts)
@@ -89,40 +158,6 @@ export class PostsService {
       .run();
 
     return result.changes > 0;
-  }
-
-  async markAsViewed(postId: number) {
-    return this.updatePost(postId, { isViewed: true });
-  }
-
-  async toggleFavorite(postId: number): Promise<boolean> {
-    const post = await this.getPostById(postId);
-    if (!post) {
-      throw new Error(`Post with id ${postId} not found`);
-    }
-
-    const isCurrentlyFavorited = post.isFavorited ?? false;
-    const newValue = !isCurrentlyFavorited;
-
-    console.log(
-      `[PostsService] Toggling favorite for ${postId}: ${isCurrentlyFavorited} -> ${newValue}`
-    );
-
-    await this.updatePost(postId, { isFavorited: newValue });
-    return newValue;
-  }
-
-  async togglePostViewed(postId: number): Promise<boolean> {
-    const post = await this.getPostById(postId);
-    if (!post) {
-      throw new Error(`Post with id ${postId} not found`);
-    }
-
-    const isCurrentlyViewed = post.isViewed ?? false;
-    const newValue = !isCurrentlyViewed;
-
-    await this.updatePost(postId, { isViewed: newValue });
-    return newValue;
   }
 
   async resetPostCache(postId: number): Promise<boolean> {

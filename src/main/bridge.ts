@@ -6,6 +6,7 @@ export type UpdateStatusData = {
   status: string;
   message?: string;
   version?: string;
+  isPortable?: boolean;
 };
 
 export type UpdateStatusCallback = (data: UpdateStatusData) => void;
@@ -32,7 +33,7 @@ export interface PostQueryFilters {
 }
 
 export interface GetPostsParams {
-  artistId: number;
+  artistId?: number;
   page?: number;
   filters?: PostQueryFilters;
 }
@@ -41,7 +42,6 @@ export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
 
-  // 🔥 FIX: Добавлен метод для работы с буфером обмена (System)
   writeToClipboard: (text: string) => Promise<boolean>;
 
   // Settings
@@ -54,14 +54,11 @@ export interface IpcBridge {
   addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
-  // --- NEW: SEARCH ---
+  // --- SEARCH ---
   searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 
   // Posts
-  getArtistPosts: (params: {
-    artistId: number;
-    page?: number;
-  }) => Promise<Post[]>;
+  getArtistPosts: (params: GetPostsParams) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
@@ -112,12 +109,21 @@ export interface IpcBridge {
   restoreBackup: () => Promise<BackupResponse>;
 
   verifyCredentials: () => Promise<boolean>;
+
+  updatePost: (
+    postId: number,
+    changes: {
+      isViewed?: boolean;
+      isFavorited?: boolean;
+      rating?: string;
+      tags?: string;
+    }
+  ) => Promise<boolean>;
 }
 
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
 
-  // 🔥 FIX: Реализация метода writeToClipboard
   writeToClipboard: (text) =>
     ipcRenderer.invoke("app:write-to-clipboard", text),
 
@@ -142,6 +148,9 @@ const ipcBridge: IpcBridge = {
   getArtistPostsCount: (artistId?: number) =>
     ipcRenderer.invoke("db:get-posts-count", artistId),
 
+  updatePost: (postId, changes) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.UPDATE_POST, { postId, changes }),
+
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
   syncAll: () => ipcRenderer.invoke("db:sync-all"),
@@ -158,7 +167,6 @@ const ipcBridge: IpcBridge = {
   resetPostCache: (postId) => ipcRenderer.invoke("db:reset-post-cache", postId),
 
   downloadFile: (url: string, filename: string) => {
-    // console.log("Bridge: Sending download request...", url); // Можно убрать лог
     return ipcRenderer.invoke("files:download", url, filename);
   },
 
@@ -179,7 +187,6 @@ const ipcBridge: IpcBridge = {
   repairArtist: (artistId) =>
     ipcRenderer.invoke("sync:repair-artist", artistId),
 
-  // Updater Implementation
   checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
   quitAndInstall: () => ipcRenderer.invoke("app:quit-and-install"),
   startDownload: () => ipcRenderer.invoke("app:start-download"),

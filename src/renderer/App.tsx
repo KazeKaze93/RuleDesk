@@ -7,14 +7,8 @@ import { Settings } from "./components/pages/Settings";
 import { Onboarding } from "./components/pages/Onboarding";
 import { Tracked } from "./components/pages/Tracked";
 import { ArtistDetails } from "./components/pages/ArtistDetails";
+import { Browse } from "./components/pages/Browse"; // Импорт настоящего компонента
 
-// Заглушки (пока нет файлов)
-const Browse = () => (
-  <div className="p-8">
-    <h1 className="text-2xl font-bold">Browse</h1>
-    <p>Search here.</p>
-  </div>
-);
 const Updates = () => (
   <div className="p-8">
     <h1 className="text-2xl font-bold">Updates</h1>

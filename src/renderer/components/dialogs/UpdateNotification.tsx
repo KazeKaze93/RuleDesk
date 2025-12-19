@@ -1,43 +1,54 @@
-import React, { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Download, RefreshCw, X, CheckCircle, AlertCircle } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../ui/dialog";
 import { Button } from "../ui/button";
+import { Progress } from "../ui/progress";
+import { useTranslation } from "react-i18next";
+import { Loader2, Download, RefreshCw } from "lucide-react";
+import type { UpdateStatusData } from "../../../main/bridge";
 
-type UpdateStatus =
-  | "idle"
-  | "checking"
-  | "available"
-  | "not-available"
-  | "downloading"
-  | "downloaded"
-  | "error";
-
-export const UpdateNotification: React.FC = () => {
+export const UpdateNotification = () => {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<UpdateStatus>("idle");
+  const [isOpen, setIsOpen] = useState(false);
+  const [status, setStatus] = useState<
+    "available" | "downloading" | "downloaded" | "error"
+  >("available");
   const [progress, setProgress] = useState(0);
   const [version, setVersion] = useState("");
-  const [visible, setVisible] = useState(false);
+  const [isPortable, setIsPortable] = useState(false);
 
   useEffect(() => {
-    const removeStatusListener = window.api.onUpdateStatus((data) => {
-      // Игнорируем проверку и отсутствие обновлений (тихий режим)
-      if (data.status === "checking" || data.status === "not-available") {
-        return;
+    const removeStatusListener = window.api.onUpdateStatus(
+      (data: UpdateStatusData) => {
+        console.log("Update status:", data);
+
+        if (data.status === "available") {
+          setVersion(data.version || "");
+          setIsPortable(!!data.isPortable);
+          setIsOpen(true);
+          setStatus("available");
+        } else if (data.status === "downloading") {
+          setStatus("downloading");
+        } else if (data.status === "downloaded") {
+          setStatus("downloaded");
+        } else if (data.status === "error") {
+          setStatus("error");
+          console.error("Update error:", data.message);
+        }
       }
+    );
 
-      setStatus(data.status as UpdateStatus);
-      if (data.version) setVersion(data.version);
-
-      setVisible(true);
-    });
-
-    const removeProgressListener = window.api.onUpdateProgress((percent) => {
-      setStatus("downloading");
-      setProgress(Math.round(percent));
-      setVisible(true);
-    });
+    const removeProgressListener = window.api.onUpdateProgress(
+      (percent: number) => {
+        setProgress(percent);
+      }
+    );
 
     return () => {
       removeStatusListener();
@@ -45,101 +56,86 @@ export const UpdateNotification: React.FC = () => {
     };
   }, []);
 
-  const handleClose = () => setVisible(false);
-  const handleDownload = () => window.api.startDownload();
-  const handleInstall = () => window.api.quitAndInstall();
-
-  if (!visible) return null;
+  const handleAction = () => {
+    if (status === "available") {
+      window.api.startDownload();
+      if (!isPortable) {
+        setStatus("downloading");
+      } else {
+        setIsOpen(false);
+      }
+    } else if (status === "downloaded") {
+      window.api.quitAndInstall();
+    }
+  };
 
   return (
-    <div
-      className={cn(
-        "fixed right-4 bottom-4 z-50 p-4 w-80 rounded-lg border shadow-xl bg-slate-900 border-slate-700 animate-in slide-in-from-bottom-5 text-slate-100"
-      )}
-    >
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex gap-3 items-center">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex gap-2 items-center">
+            <RefreshCw className="w-5 h-5 text-primary" />
+            {t("updates.newVersionTitle", "Update Available")}
+          </DialogTitle>
+          <DialogDescription>
+            {t(
+              "updates.newVersionDesc",
+              "A new version {{version}} is available.",
+              { version }
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="py-4">
           {status === "downloading" && (
-            <RefreshCw className="w-5 h-5 text-blue-400 animate-spin" />
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Downloading...</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </div>
           )}
-          {status === "available" && (
-            <Download className="w-5 h-5 text-yellow-400" />
-          )}
+
           {status === "downloaded" && (
-            <CheckCircle className="w-5 h-5 text-green-400" />
+            <div className="p-3 text-sm text-green-500 rounded-md bg-green-500/10">
+              Update downloaded and ready to install.
+            </div>
           )}
+
           {status === "error" && (
-            <AlertCircle className="w-5 h-5 text-red-400" />
+            <div className="p-3 text-sm text-red-500 rounded-md bg-red-500/10">
+              Failed to download update. Please try again later.
+            </div>
           )}
-
-          <div>
-            <h4 className="text-sm font-semibold">
-              {status === "available" &&
-                t("updateNotification.updateAvailable", { version })}
-              {status === "downloading" &&
-                t("updateNotification.downloadingUpdate")}
-              {status === "downloaded" &&
-                t("updateNotification.readyToInstall")}
-              {status === "error" && t("updateNotification.updateFailed")}
-            </h4>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {status === "downloading" &&
-                t("updateNotification.percentCompleted", { progress })}
-              {status === "downloaded" &&
-                t("updateNotification.restartRequired")}
-            </p>
-          </div>
         </div>
-        <button
-          onClick={handleClose}
-          className="text-slate-500 hover:text-slate-300"
-          aria-label={t("updateNotification.closeNotification")}
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
 
-      {status === "downloading" && (
-        <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-          <div
-            className="h-full bg-blue-500 transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-2 mt-3">
-        {status === "available" && (
-          <>
-            <Button
-              size="sm"
-              onClick={handleDownload}
-              className="w-full bg-blue-600 hover:bg-blue-500"
-            >
-              {t("updateNotification.download")}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleClose}
-              className="w-full border-slate-700 hover:bg-slate-800"
-            >
-              {t("updateNotification.later")}
-            </Button>
-          </>
-        )}
-
-        {status === "downloaded" && (
-          <Button
-            size="sm"
-            onClick={handleInstall}
-            className="w-full bg-green-600 hover:bg-green-500"
-          >
-            {t("updateNotification.restartAndInstall")}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsOpen(false)}>
+            {t("common.cancel", "Cancel")}
           </Button>
-        )}
-      </div>
-    </div>
+
+          <Button onClick={handleAction} disabled={status === "downloading"}>
+            {status === "available" && (
+              <>
+                <Download className="mr-2 w-4 h-4" />
+                {isPortable
+                  ? "Open Download Page"
+                  : t("updates.download", "Download")}
+              </>
+            )}
+            {status === "downloading" && (
+              <>
+                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                Downloading...
+              </>
+            )}
+            {status === "downloaded" &&
+              t("updates.restart", "Restart & Install")}
+            {status === "error" && "Retry"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

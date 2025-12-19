@@ -46,6 +46,7 @@ migrateUserData();
 
 let mainWindow: BrowserWindow | null = null;
 let DB_PATH: string;
+let areHandlersRegistered = false;
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -87,6 +88,14 @@ async function initializeAppAndWindow() {
     updaterService.setWindow(mainWindow);
     syncService.setWindow(mainWindow);
 
+    if (!areHandlersRegistered) {
+      registerAllHandlers(syncService, updaterService, mainWindow);
+      areHandlersRegistered = true;
+      logger.info("IPC: Handlers registered.");
+    } else {
+      logger.info("IPC: Handlers already registered, skipping.");
+    }
+
     if (process.env["ELECTRON_RENDERER_URL"]) {
       mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
     } else {
@@ -101,9 +110,6 @@ async function initializeAppAndWindow() {
       if (mainWindow) {
         mainWindow.show();
         updaterService.checkForUpdates();
-
-        registerAllHandlers(syncService, updaterService, mainWindow);
-
         setTimeout(() => {
           logger.info("Main: App Ready.");
         }, 3000);
