@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 REVIEWABLE_EXTENSIONS = ('.ts', '.tsx', '.js', '.css', '.sql', '.py', '.md', '.json', '.yml', '.toml')
 
 # ПРАВИЛЬНЫЕ ИМЕНА МОДЕЛЕЙ (Stable)
-# Ставим Flash первой, так как у нее выше лимиты (15 RPM) и она реже падает с 429 ошибкой
 MODEL_PRIORITIES = [
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
@@ -31,8 +30,6 @@ MODEL_PRIORITIES = [
     "gemini-2.0-flash-lite",
     "gemini-2.0-pro",
 ]
-# Если ты хочешь использовать experimental 2.0, добавь "gemini-2.0-flash-exp" в начало, 
-# но будь готов к нестабильности.
 
 DEFAULT_MODEL_NAME = "gemini-2.5-pro"
 
@@ -45,7 +42,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 REPO_NAME = os.getenv("REPO_NAME")
 PR_NUMBER_STR = os.getenv("PR_NUMBER")
-# Если переменная MODEL_NAME не задана или кривая, берем дефолт
 MODEL_NAME = os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
 
 def load_prompt() -> str:
@@ -64,6 +60,7 @@ def load_prompt() -> str:
             raise ReviewerError(f"system_prompt.md not found in {script_dir} or current dir!")
     except Exception as e:
         raise ReviewerError(f"Error reading system_prompt.md: {e}")
+
 
 def get_pr_diff() -> Tuple[object, str]:
     "Fetches PR diff from GitHub, filtering for relevant files."
