@@ -29,7 +29,7 @@ import { registerFileHandlers } from "./handlers/files";
 
 const DeleteArtistSchema = z.number().int().positive();
 
-// --- Helper для Sync & Maintenance (ТЕПЕРЬ БЕЗ DbWorkerClient) ---
+// --- Helper для Sync & Maintenance ---
 const registerSyncAndMaintenanceHandlers = (
   syncService: SyncService,
   mainWindow: BrowserWindow
@@ -63,10 +63,10 @@ const registerSyncAndMaintenanceHandlers = (
     }
   });
 
+  // Backup Create
   ipcMain.handle(IPC_CHANNELS.BACKUP.CREATE, async () => {
     try {
       const db = getRawDatabase();
-
       const userDataPath = app.getPath("userData");
       const backupsDir = path.join(userDataPath, "backups");
 
@@ -78,9 +78,7 @@ const registerSyncAndMaintenanceHandlers = (
       const backupPath = path.join(backupsDir, fileName);
 
       logger.info(`IPC: Starting backup to ${backupPath}`);
-
       await db.backup(backupPath);
-
       shell.showItemInFolder(backupPath);
       return { success: true, path: backupPath };
     } catch (error) {
@@ -92,7 +90,7 @@ const registerSyncAndMaintenanceHandlers = (
     }
   });
 
-  // --- RESTORE & RESTART ---
+  // Backup Restore
   ipcMain.handle(IPC_CHANNELS.BACKUP.RESTORE, async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: "Select backup file",
@@ -107,68 +105,67 @@ const registerSyncAndMaintenanceHandlers = (
 
     try {
       logger.info(`IPC: Restoring database from ${sourcePath}`);
-
       try {
         const currentDb = getRawDatabase();
         if (currentDb && typeof currentDb.close === "function") {
           currentDb.close();
-          logger.info("IPC: Database connection closed to allow overwrite.");
         }
       } catch (e) {
-        logger.warn(
-          "IPC: Could not close DB explicitly (might be already closed):",
-          e
-        );
+        logger.warn("IPC: Could not close DB explicitly:", e);
       }
 
       const dbPath = path.join(app.getPath("userData"), "metadata.db");
       await fs.copyFile(sourcePath, dbPath);
 
-      logger.info(
-        "IPC: Restore successful. Relaunching app to apply migrations..."
-      );
-
+      logger.info("IPC: Restore successful. Relaunching app...");
       app.relaunch();
       app.exit(0);
-
       return { success: true };
     } catch (error) {
       logger.error("Restore failed", error);
       return {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Restore failed (File Locked?)",
+        error: error instanceof Error ? error.message : "Restore failed",
       };
     }
   });
 };
+
 // --- Main Registration Function ---
 export const registerAllHandlers = (
   syncService: SyncService,
-  _updaterService: UpdaterService,
+  updaterService: UpdaterService,
   mainWindow: BrowserWindow
 ) => {
   logger.info("IPC: Registering modular handlers...");
 
-  // 0. System Handlers
+  // 0. System Handlers (APP)
   ipcMain.handle(IPC_CHANNELS.APP.WRITE_CLIPBOARD, async (_, text: string) => {
     clipboard.writeText(text);
     return true;
   });
 
-  // Verify Creds
   ipcMain.handle(IPC_CHANNELS.APP.VERIFY_CREDS, async () => {
     return await syncService.checkCredentials();
   });
 
-  // Logout (очистка настроек)
   ipcMain.handle(IPC_CHANNELS.APP.LOGOUT, async () => {
     const settingsService = new SettingsService();
     await settingsService.updateSettings({ encryptedApiKey: "", userId: "" });
     return true;
   });
+
+  ipcMain.handle(IPC_CHANNELS.APP.GET_VERSION, async () => {
+    return app.getVersion();
+  });
+
+  // === UPDATER HANDLERS ===
+  // Теперь методы существуют в сервисе
+  ipcMain.handle("app:check-for-updates", () =>
+    updaterService.checkForUpdates()
+  );
+  ipcMain.handle("app:quit-and-install", () => updaterService.quitAndInstall());
+  ipcMain.handle("app:start-download", () => updaterService.downloadUpdate());
 
   // 1. Init Services
   const artistsService = new ArtistsService();

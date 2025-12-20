@@ -1,7 +1,7 @@
 import pkg from "electron-updater";
 const { autoUpdater } = pkg;
 import { logger } from "../lib/logger";
-import { BrowserWindow, ipcMain, shell } from "electron";
+import { BrowserWindow, shell } from "electron";
 
 const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
 
@@ -58,27 +58,6 @@ export class UpdaterService {
       logger.info(`UPDATER: Downloaded ${info.version}`);
       this.sendStatus("downloaded");
     });
-
-    ipcMain.handle("app:check-for-updates", async () => {
-      return this.checkForUpdates();
-    });
-
-    ipcMain.handle("app:start-download", async () => {
-      if (isPortable) {
-        logger.info("UPDATER: Portable detected. Opening GitHub releases.");
-        await shell.openExternal(
-          "https://github.com/KazeKaze93/ruledesk/releases/latest"
-        );
-        return;
-      }
-
-      logger.info("UPDATER: User requested download starting...");
-      autoUpdater.downloadUpdate();
-    });
-
-    ipcMain.handle("app:quit-and-install", () => {
-      autoUpdater.quitAndInstall();
-    });
   }
 
   private sendPayload(channel: string, data: unknown) {
@@ -91,12 +70,32 @@ export class UpdaterService {
     this.sendPayload("updater:status", { status, message });
   }
 
+  // === PUBLIC API (Вызывается из IPC слоя) ===
+
   public async checkForUpdates() {
     try {
       await autoUpdater.checkForUpdates();
     } catch (e) {
       logger.error("UPDATER: Check failed", e);
     }
+  }
+
+  public async downloadUpdate() {
+    if (isPortable) {
+      logger.info("UPDATER: Portable detected. Opening GitHub releases.");
+      await shell.openExternal(
+        "https://github.com/KazeKaze93/ruledesk/releases/latest"
+      );
+      return;
+    }
+
+    logger.info("UPDATER: User requested download starting...");
+    return autoUpdater.downloadUpdate();
+  }
+
+  public quitAndInstall() {
+    logger.info("UPDATER: Quitting and installing...");
+    autoUpdater.quitAndInstall();
   }
 }
 

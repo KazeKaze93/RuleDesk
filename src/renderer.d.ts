@@ -98,6 +98,6 @@ export interface IpcApi extends IpcBridge {
 
 declare global {
   interface Window {
-    api: IpcApi;
+    api: IpcBridge;
   }
 }

@@ -51,39 +51,33 @@ const useCurrentPost = (
   return useMemo(() => {
     if (!currentPostId || !origin) return null;
 
-    let queryKey: unknown[] = [];
+    // Определяем префикс ключа в зависимости от источника
+    let searchKey: unknown[] = ["posts"];
 
-    // 🔥 FIX: TypeScript ругался на несовместимые типы.
-    // Если origin.kind === 'artist', берем ключ артиста.
     if (origin.kind === "artist") {
-      queryKey = ["posts", origin.artistId];
+      // Если это вкладка Source, ищем в posts-source, иначе в posts
+      const prefix = origin.sourceType === "source" ? "posts-source" : "posts";
+      searchKey = [prefix, origin.artistId];
+    } else if (origin.kind === "browse") {
+      searchKey = ["browse-posts-remote"];
     }
-    // Если у тебя в ViewerOrigin появятся типы 'search' или 'browse', добавь их сюда явно.
-    // Пока что фоллбек на дефолтный поиск в кэше, если тип не совпал.
-    else {
-      // Пытаемся найти пост в любых закэшированных списках постов
-      const queries = queryClient.getQueriesData<InfiniteData<Post[]>>({
-        queryKey: ["posts"],
-      });
-      for (const [_, qData] of queries) {
-        if (!qData) continue;
-        for (const page of qData.pages) {
-          const post = page.find((p) => p.id === currentPostId);
-          if (post) return post;
-        }
+    // Для favorites и updates можно добавить свои ветки if/else,
+    // либо оставить дефолтный ["posts"]
+
+    // Используем getQueriesData для "нечеткого" поиска.
+    // Это найдет данные даже если ключ: ["posts-source", 123, { tags: "search" }]
+    const queries = queryClient.getQueriesData<InfiniteData<Post[]>>({
+      queryKey: searchKey,
+    });
+
+    for (const [_, qData] of queries) {
+      if (!qData) continue;
+      for (const page of qData.pages) {
+        const post = page.find((p) => p.id === currentPostId);
+        if (post) return post;
       }
-      // Если это browse или favorites, можно добавить специфичные ключи:
-      // if (origin.kind === 'favorites') queryKey = ['favorites'];
-      return null;
     }
 
-    const data = queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
-    if (!data) return null;
-
-    for (const page of data.pages) {
-      const post = page.find((p) => p.id === currentPostId);
-      if (post) return post;
-    }
     return null;
   }, [currentPostId, origin, queryClient]);
 };

@@ -4,7 +4,7 @@ export type ViewerOrigin =
   | { kind: "browse"; filters?: string }
   | { kind: "favorites" }
   | { kind: "updates" }
-  | { kind: "artist"; artistId: number };
+  | { kind: "artist"; artistId: number; sourceType?: "tracked" | "source" };
 
 export interface ViewerQueue {
   origin: ViewerOrigin;

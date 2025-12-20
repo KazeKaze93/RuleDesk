@@ -58,9 +58,14 @@ export interface IpcBridge {
   searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 
   // Posts
-  getArtistPosts: (params: GetPostsParams) => Promise<Post[]>;
+  getArtistPosts: (params: {
+    artistId: number;
+    page?: number;
+    filters?: { tags?: string; rating?: string; isFavorited?: boolean };
+  }) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
-
+  updatePost: (id: number, changes: Partial<Post>) => Promise<void>;
+  getRecentPostsRemote: (page: number, tags?: string) => Promise<Post[]>;
   togglePostViewed: (postId: number) => Promise<boolean>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
@@ -109,16 +114,6 @@ export interface IpcBridge {
   restoreBackup: () => Promise<BackupResponse>;
 
   verifyCredentials: () => Promise<boolean>;
-
-  updatePost: (
-    postId: number,
-    changes: {
-      isViewed?: boolean;
-      isFavorited?: boolean;
-      rating?: string;
-      tags?: string;
-    }
-  ) => Promise<boolean>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -143,13 +138,15 @@ const ipcBridge: IpcBridge = {
 
   searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
 
-  getArtistPosts: (params: GetPostsParams) =>
-    ipcRenderer.invoke("db:get-posts", params),
+  getArtistPosts: (params) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS, params),
   getArtistPostsCount: (artistId?: number) =>
     ipcRenderer.invoke("db:get-posts-count", artistId),
+  getRecentPostsRemote: (page, tags) =>
+    ipcRenderer.invoke(IPC_CHANNELS.API.GET_RECENT_POSTS, { page, tags }),
 
-  updatePost: (postId, changes) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.UPDATE_POST, { postId, changes }),
+  updatePost: (id, changes) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.UPDATE_POST, { id, changes }),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 

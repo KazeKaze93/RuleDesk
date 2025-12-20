@@ -27,7 +27,11 @@ export const ArtistDetails = () => {
   }
   return (
     <div className="flex flex-col h-full">
-      <ArtistGallery artist={artist} onBack={() => navigate("/tracked")} />
+      <ArtistGallery
+        artist={artist}
+        activeTab="source"
+        onBack={() => navigate("/tracked")}
+      />
     </div>
   );
 };

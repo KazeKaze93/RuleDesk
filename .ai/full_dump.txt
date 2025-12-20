@@ -123,6 +123,7 @@ src/renderer/components/ui/label.tsx
 src/renderer/components/ui/progress.tsx
 src/renderer/components/ui/select.tsx
 src/renderer/components/ui/separator.tsx
+src/renderer/components/ui/tabs.tsx
 src/renderer/components/viewer/ViewerDialog.tsx
 src/renderer/i18n/index.ts
 src/renderer/index.css
@@ -134,6 +135,7 @@ src/renderer/lib/utils.ts
 src/renderer/locales/en/translation.json
 src/renderer/main.tsx
 src/renderer/schemas/form-schemas.ts
+src/renderer/store/searchStore.ts
 src/renderer/store/viewerStore.ts
 tailwind.config.js
 tsconfig.json
@@ -191,6 +193,76 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button";
 
 export { Button };
+</file>
+
+<file path="src/renderer/components/ui/tabs.tsx">
+import * as React from "react";
+import * as TabsPrimitive from "@radix-ui/react-tabs";
+
+import { cn } from "../../lib/utils";
+
+const Tabs = TabsPrimitive.Root;
+
+const TabsList = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.List
+    ref={ref}
+    className={cn(
+      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+));
+TabsList.displayName = TabsPrimitive.List.displayName;
+
+const TabsTrigger = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+      className
+    )}
+    {...props}
+  />
+));
+TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
+
+const TabsContent = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Content
+    ref={ref}
+    className={cn(
+      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      className
+    )}
+    {...props}
+  />
+));
+TabsContent.displayName = TabsPrimitive.Content.displayName;
+
+export { Tabs, TabsList, TabsTrigger, TabsContent };
+</file>
+
+<file path="src/renderer/store/searchStore.ts">
+import { create } from "zustand";
+
+interface SearchState {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+}
+
+export const useSearchStore = create<SearchState>((set) => ({
+  searchQuery: "",
+  setSearchQuery: (query) => set({ searchQuery: query }),
+}));
 </file>
 
 <file path=".ai/CONTEXT.md">
@@ -1565,77 +1637,30 @@ export const AppLayout = () => {
 </file>
 
 <file path="src/renderer/components/layout/GlobalTopBar.tsx">
-import {
-  Search,
-  Filter,
-  ArrowUpDown,
-  LayoutList,
-  LayoutGrid,
-} from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+import { useSearchStore } from "../../store/searchStore";
 
 export const GlobalTopBar = () => {
+  const { searchQuery, setSearchQuery } = useSearchStore();
+
   return (
     <header className="h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 flex items-center justify-between sticky top-0 z-10">
-      {/* Left: Search */}
       <div className="flex flex-1 gap-2 items-center max-w-md">
-        <div className="relative w-full">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search posts..."
-            className="pl-8 border-none bg-muted/50 focus-visible:bg-background focus-visible:ring-1"
+            placeholder="Search tags..."
+            className="pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
 
       {/* Right: Actions */}
       <div className="flex gap-2 items-center">
-        {/* Sort Dropdown */}
-        <Select defaultValue="date_desc">
-          <SelectTrigger className="w-[140px] h-9 text-xs">
-            <ArrowUpDown className="w-3.5 h-3.5 mr-2 opacity-70" />
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="date_desc">Date Added</SelectItem>
-            <SelectItem value="id_desc">Post ID</SelectItem>
-            <SelectItem value="rating">Rating</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Filters Trigger */}
-        <Button variant="outline" size="sm" className="gap-2 h-9 text-xs">
-          <Filter className="w-3.5 h-3.5" />
-          Filters
-        </Button>
-
-        <div className="mx-1 w-px h-4 bg-border" />
-
-        {/* View Toggle */}
-        <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="w-7 h-7 rounded-sm shadow-sm bg-background"
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="w-7 h-7 rounded-sm hover:bg-background/50"
-          >
-            <LayoutList className="w-4 h-4 text-muted-foreground" />
-          </Button>
-        </div>
+        {/* Placeholder for right actions */}
       </div>
     </header>
   );
@@ -3381,7 +3406,7 @@ export class SecureStorage {
 import pkg from "electron-updater";
 const { autoUpdater } = pkg;
 import { logger } from "../lib/logger";
-import { BrowserWindow, ipcMain, shell } from "electron";
+import { BrowserWindow, shell } from "electron";
 
 const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
 
@@ -3438,27 +3463,6 @@ export class UpdaterService {
       logger.info(`UPDATER: Downloaded ${info.version}`);
       this.sendStatus("downloaded");
     });
-
-    ipcMain.handle("app:check-for-updates", async () => {
-      return this.checkForUpdates();
-    });
-
-    ipcMain.handle("app:start-download", async () => {
-      if (isPortable) {
-        logger.info("UPDATER: Portable detected. Opening GitHub releases.");
-        await shell.openExternal(
-          "https://github.com/KazeKaze93/ruledesk/releases/latest"
-        );
-        return;
-      }
-
-      logger.info("UPDATER: User requested download starting...");
-      autoUpdater.downloadUpdate();
-    });
-
-    ipcMain.handle("app:quit-and-install", () => {
-      autoUpdater.quitAndInstall();
-    });
   }
 
   private sendPayload(channel: string, data: unknown) {
@@ -3471,12 +3475,32 @@ export class UpdaterService {
     this.sendPayload("updater:status", { status, message });
   }
 
+  // === PUBLIC API (Вызывается из IPC слоя) ===
+
   public async checkForUpdates() {
     try {
       await autoUpdater.checkForUpdates();
     } catch (e) {
       logger.error("UPDATER: Check failed", e);
     }
+  }
+
+  public async downloadUpdate() {
+    if (isPortable) {
+      logger.info("UPDATER: Portable detected. Opening GitHub releases.");
+      await shell.openExternal(
+        "https://github.com/KazeKaze93/ruledesk/releases/latest"
+      );
+      return;
+    }
+
+    logger.info("UPDATER: User requested download starting...");
+    return autoUpdater.downloadUpdate();
+  }
+
+  public quitAndInstall() {
+    logger.info("UPDATER: Quitting and installing...");
+    autoUpdater.quitAndInstall();
   }
 }
 
@@ -3627,203 +3651,6 @@ export const UpdateNotification = () => {
 };
 </file>
 
-<file path="src/renderer/components/pages/Browse.tsx">
-import React, { useState, forwardRef, useMemo } from "react";
-import {
-  useInfiniteQuery,
-  useQueryClient,
-  useMutation,
-  InfiniteData,
-} from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { VirtuosoGrid } from "react-virtuoso";
-import { Search, Loader2, FilterX } from "lucide-react";
-
-import { Input } from "../ui/input";
-import { PostCard } from "../gallery/PostCard";
-import { cn } from "../../lib/utils";
-import type { Post } from "../../../main/db/schema";
-import { useViewerStore } from "../../store/viewerStore";
-import { useDebounce } from "../../lib/hooks/useDebounce";
-
-// --- Grid Components (Virtuoso) ---
-
-const GridContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6",
-      className
-    )}
-    {...props}
-  />
-));
-GridContainer.displayName = "GridContainer";
-
-const ItemContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
-));
-ItemContainer.displayName = "ItemContainer";
-
-// --- Main Component ---
-
-export const Browse = () => {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const openViewer = useViewerStore((state) => state.open);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebounce(searchQuery, 500);
-
-  const queryKey = useMemo(
-    () => ["posts", "browse", { tags: debouncedSearch }],
-    [debouncedSearch]
-  );
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["browse-posts"],
-      queryFn: async ({ pageParam = 1 }) => {
-        return window.api.getArtistPosts({
-          page: pageParam,
-          artistId: undefined,
-        });
-      },
-      getNextPageParam: (lastPage, allPages) => {
-        return lastPage.length === 50 ? allPages.length + 1 : undefined;
-      },
-      initialPageParam: 1,
-    });
-
-  const allPosts = useMemo(
-    () => data?.pages.flatMap((page) => page) || [],
-    [data]
-  );
-
-  const viewMutation = useMutation({
-    mutationFn: async (postId: number) => {
-      await window.api.updatePost(postId, { isViewed: true });
-    },
-    onSuccess: (_, postId) => {
-      queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (oldData) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          pages: oldData.pages.map((page) =>
-            page.map((post) =>
-              post.id === postId ? { ...post, isViewed: true } : post
-            )
-          ),
-        };
-      });
-    },
-  });
-
-  const handlePostClick = (index: number) => {
-    const post = allPosts[index];
-    if (post && !post.isViewed) {
-      viewMutation.mutate(post.id);
-    }
-
-    openViewer({
-      origin: { kind: "browse", filters: debouncedSearch },
-      ids: allPosts.map((p) => p.id),
-      initialIndex: index,
-      listKey: `browse-${debouncedSearch}`,
-    });
-  };
-
-  const handleToggleFavorite = async (post: Post) => {
-    const newState = !post.isFavorited;
-    queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (oldData) => {
-      if (!oldData) return oldData;
-      return {
-        ...oldData,
-        pages: oldData.pages.map((page) =>
-          page.map((p) =>
-            p.id === post.id ? { ...p, isFavorited: newState } : p
-          )
-        ),
-      };
-    });
-    await window.api.updatePost(post.id, { isFavorited: newState });
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="flex z-10 items-center px-4 py-3 border-b backdrop-blur shrink-0 bg-background/50">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t(
-              "browse.searchPlaceholder",
-              "Filter tags in library..."
-            )}
-            className="pl-9 h-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="ml-auto text-xs text-muted-foreground">
-          {allPosts.length} items
-        </div>
-      </div>
-
-      <div className="flex-1 min-h-0">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-full text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-        ) : allPosts.length === 0 ? (
-          <div className="flex flex-col gap-2 justify-center items-center h-full text-muted-foreground">
-            <FilterX className="w-12 h-12 opacity-50" />
-            <p>No posts found</p>
-          </div>
-        ) : (
-          <VirtuosoGrid
-            style={{ height: "100%" }}
-            totalCount={allPosts.length}
-            endReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
-            components={{
-              List: GridContainer,
-              Item: ItemContainer,
-              Footer: () =>
-                isFetchingNextPage ? (
-                  <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : null,
-            }}
-            itemContent={(index) => {
-              const post = allPosts[index];
-              if (!post) return null;
-
-              return (
-                <PostCard
-                  post={post}
-                  onClick={() => handlePostClick(index)}
-                  onToggleFavorite={() => handleToggleFavorite(post)}
-                />
-              );
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-};
-</file>
-
 <file path="src/renderer/lib/artist-utils.ts">
 // Логика формирования финального тега/юзернейма для API
 export function getArtistTag(
@@ -3906,140 +3733,6 @@ export const credsBaseSchema = z.object({
 });
 
 export type CredsFormValues = z.infer<typeof credsBaseSchema>;
-</file>
-
-<file path="src/renderer/store/viewerStore.ts">
-import { create } from "zustand";
-
-export type ViewerOrigin =
-  | { kind: "browse"; filters?: string }
-  | { kind: "favorites" }
-  | { kind: "updates" }
-  | { kind: "artist"; artistId: number };
-
-export interface ViewerQueue {
-  origin: ViewerOrigin;
-  ids: number[];
-  initialIndex: number;
-  listKey: string;
-  totalGlobalCount?: number;
-  hasNextPage?: boolean;
-  onLoadMore?: () => void | Promise<void>;
-  fetchNextPage?: () => void;
-}
-
-interface ViewerState {
-  isOpen: boolean;
-  controlsVisible: boolean;
-  isTagsDrawerOpen: boolean;
-
-  queue: ViewerQueue | null;
-  currentIndex: number;
-  currentPostId: number | null;
-
-  open: (queue: ViewerQueue) => void;
-  close: () => void;
-
-  next: () => void;
-  prev: () => void;
-
-  toggleTagsDrawer: () => void;
-  setControlsVisible: (visible: boolean) => void;
-  updateQueueIds: (ids: number[]) => void;
-  appendQueueIds: (newIds: number[]) => void;
-}
-
-export const useViewerStore = create<ViewerState>((set, get) => ({
-  isOpen: false,
-  controlsVisible: true,
-  isTagsDrawerOpen: false,
-  queue: null,
-  currentIndex: 0,
-  currentPostId: null,
-
-  open: (queue) => {
-    const safeIndex = Math.max(
-      0,
-      Math.min(queue.initialIndex, queue.ids.length - 1)
-    );
-
-    set({
-      isOpen: true,
-      queue,
-      currentIndex: safeIndex,
-      currentPostId: queue.ids[safeIndex] || null,
-      controlsVisible: true,
-      isTagsDrawerOpen: false,
-    });
-  },
-
-  close: () =>
-    set({
-      isOpen: false,
-      queue: null,
-      currentPostId: null,
-    }),
-
-  next: () => {
-    const { queue, currentIndex } = get();
-    if (!queue) return;
-
-    if (
-      queue.hasNextPage &&
-      queue.fetchNextPage &&
-      currentIndex >= queue.ids.length - 10
-    ) {
-      queue.fetchNextPage();
-    }
-
-    if (currentIndex < queue.ids.length - 1) {
-      const newIndex = currentIndex + 1;
-      set({
-        currentIndex: newIndex,
-        currentPostId: queue.ids[newIndex],
-      });
-    }
-  },
-
-  prev: () => {
-    const { queue, currentIndex } = get();
-    if (!queue) return;
-
-    if (currentIndex > 0) {
-      const newIndex = currentIndex - 1;
-      set({
-        currentIndex: newIndex,
-        currentPostId: queue.ids[newIndex],
-      });
-    }
-  },
-
-  toggleTagsDrawer: () =>
-    set((state) => ({ isTagsDrawerOpen: !state.isTagsDrawerOpen })),
-
-  setControlsVisible: (visible) => set({ controlsVisible: visible }),
-
-  updateQueueIds: (newIds) =>
-    set((state) => {
-      if (!state.queue) return {};
-      return {
-        queue: { ...state.queue, ids: newIds },
-      };
-    }),
-
-  appendQueueIds: (newIds) =>
-    set((state) => {
-      if (!state.queue) return {};
-      const existingIds = new Set(state.queue.ids);
-      const uniqueNewIds = newIds.filter((id) => !existingIds.has(id));
-      return {
-        queue: {
-          ...state.queue,
-          ids: [...state.queue.ids, ...uniqueNewIds],
-        },
-      };
-    }),
-}));
 </file>
 
 <file path="tailwind.config.js">
@@ -4177,7 +3870,7 @@ import type { Post } from "../../../main/db/schema";
 
 interface PostCardProps {
   post: Post;
-  onClick: () => void;
+  onClick?: (post: Post) => void;
   onToggleFavorite?: (post: Post) => void;
 }
 
@@ -4200,7 +3893,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       {/* Кликабельная область для открытия (картинка) */}
       <button
         type="button"
-        onClick={onClick}
+        onClick={() => onClick?.(post)}
         className="w-full h-full focus:outline-none cursor-zoom-in"
         aria-label={`View post ${post.id}`}
       >
@@ -4476,6 +4169,184 @@ export function AsyncAutocomplete({
     </Combobox>
   );
 }
+</file>
+
+<file path="src/renderer/components/pages/Browse.tsx">
+import React, { forwardRef, useMemo } from "react";
+import {
+  useInfiniteQuery,
+  useQueryClient,
+  useMutation,
+  InfiniteData,
+} from "@tanstack/react-query";
+import { VirtuosoGrid } from "react-virtuoso";
+import { Loader2, FilterX } from "lucide-react";
+
+import { PostCard } from "../gallery/PostCard";
+import { cn } from "../../lib/utils";
+import type { Post } from "../../../main/db/schema";
+import { useViewerStore } from "../../store/viewerStore";
+import { useDebounce } from "../../lib/hooks/useDebounce";
+import { useSearchStore } from "../../store/searchStore";
+
+// --- Grid Components (Virtuoso) ---
+
+const GridContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6",
+      className
+    )}
+    {...props}
+  />
+));
+GridContainer.displayName = "GridContainer";
+
+const ItemContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+));
+ItemContainer.displayName = "ItemContainer";
+
+// --- Main Component ---
+
+export const Browse = () => {
+  const queryClient = useQueryClient();
+  const openViewer = useViewerStore((state) => state.open);
+
+  const { searchQuery } = useSearchStore();
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  const queryKey = useMemo(
+    () => ["browse-posts-remote", { tags: debouncedSearch }],
+    [debouncedSearch]
+  );
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useInfiniteQuery({
+      queryKey: queryKey,
+      queryFn: async ({ pageParam = 1 }) => {
+        // Передаем теги в API для фильтрации
+        return window.api.getRecentPostsRemote(pageParam, debouncedSearch);
+      },
+      getNextPageParam: (lastPage, allPages) => {
+        return lastPage.length === 100 ? allPages.length + 1 : undefined;
+      },
+      initialPageParam: 1,
+    });
+
+  const allPosts = useMemo(
+    () => data?.pages.flatMap((page) => page) || [],
+    [data]
+  );
+
+  const viewMutation = useMutation({
+    mutationFn: async (postId: number) => {
+      await window.api.updatePost(postId, { isViewed: true });
+    },
+    onSuccess: (_, postId) => {
+      queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page) =>
+            page.map((post) =>
+              post.id === postId ? { ...post, isViewed: true } : post
+            )
+          ),
+        };
+      });
+    },
+  });
+
+  const handlePostClick = (index: number) => {
+    const post = allPosts[index];
+    if (post && !post.isViewed) {
+      viewMutation.mutate(post.id);
+    }
+
+    openViewer({
+      origin: { kind: "browse", filters: debouncedSearch },
+      ids: allPosts.map((p) => p.id),
+      initialIndex: index,
+      listKey: `browse-${debouncedSearch}`,
+    });
+  };
+
+  const handleToggleFavorite = async (post: Post) => {
+    const newState = !post.isFavorited;
+
+    // Оптимистичное обновление UI
+    queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (oldData) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        pages: oldData.pages.map((page) =>
+          page.map((p) =>
+            p.id === post.id ? { ...p, isFavorited: newState } : p
+          )
+        ),
+      };
+    });
+
+    await window.api.updatePost(post.id, { isFavorited: newState });
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex-1 min-h-0">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-full text-muted-foreground">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+        ) : allPosts.length === 0 ? (
+          <div className="flex flex-col gap-2 justify-center items-center h-full text-muted-foreground">
+            <FilterX className="w-12 h-12 opacity-50" />
+            <p>No posts found</p>
+          </div>
+        ) : (
+          <VirtuosoGrid
+            style={{ height: "100%" }}
+            totalCount={allPosts.length}
+            endReached={() => {
+              if (hasNextPage && !isFetchingNextPage) {
+                fetchNextPage();
+              }
+            }}
+            components={{
+              List: GridContainer,
+              Item: ItemContainer,
+              Footer: () =>
+                isFetchingNextPage ? (
+                  <div className="flex col-span-full justify-center py-4 w-full">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : null,
+            }}
+            itemContent={(index) => {
+              const post = allPosts[index];
+              if (!post) return null;
+
+              return (
+                <PostCard
+                  post={post}
+                  onClick={() => handlePostClick(index)}
+                  onToggleFavorite={() => handleToggleFavorite(post)}
+                />
+              );
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
 </file>
 
 <file path="src/renderer/components/pages/Onboarding.tsx">
@@ -4849,6 +4720,140 @@ export const Onboarding = ({
     "close": "Close"
   }
 }
+</file>
+
+<file path="src/renderer/store/viewerStore.ts">
+import { create } from "zustand";
+
+export type ViewerOrigin =
+  | { kind: "browse"; filters?: string }
+  | { kind: "favorites" }
+  | { kind: "updates" }
+  | { kind: "artist"; artistId: number };
+
+export interface ViewerQueue {
+  origin: ViewerOrigin;
+  ids: number[];
+  initialIndex: number;
+  listKey: string;
+  totalGlobalCount?: number;
+  hasNextPage?: boolean;
+  onLoadMore?: () => void | Promise<void>;
+  fetchNextPage?: () => void;
+}
+
+interface ViewerState {
+  isOpen: boolean;
+  controlsVisible: boolean;
+  isTagsDrawerOpen: boolean;
+
+  queue: ViewerQueue | null;
+  currentIndex: number;
+  currentPostId: number | null;
+
+  open: (queue: ViewerQueue) => void;
+  close: () => void;
+
+  next: () => void;
+  prev: () => void;
+
+  toggleTagsDrawer: () => void;
+  setControlsVisible: (visible: boolean) => void;
+  updateQueueIds: (ids: number[]) => void;
+  appendQueueIds: (newIds: number[]) => void;
+}
+
+export const useViewerStore = create<ViewerState>((set, get) => ({
+  isOpen: false,
+  controlsVisible: true,
+  isTagsDrawerOpen: false,
+  queue: null,
+  currentIndex: 0,
+  currentPostId: null,
+
+  open: (queue) => {
+    const safeIndex = Math.max(
+      0,
+      Math.min(queue.initialIndex, queue.ids.length - 1)
+    );
+
+    set({
+      isOpen: true,
+      queue,
+      currentIndex: safeIndex,
+      currentPostId: queue.ids[safeIndex] || null,
+      controlsVisible: true,
+      isTagsDrawerOpen: false,
+    });
+  },
+
+  close: () =>
+    set({
+      isOpen: false,
+      queue: null,
+      currentPostId: null,
+    }),
+
+  next: () => {
+    const { queue, currentIndex } = get();
+    if (!queue) return;
+
+    if (
+      queue.hasNextPage &&
+      queue.fetchNextPage &&
+      currentIndex >= queue.ids.length - 10
+    ) {
+      queue.fetchNextPage();
+    }
+
+    if (currentIndex < queue.ids.length - 1) {
+      const newIndex = currentIndex + 1;
+      set({
+        currentIndex: newIndex,
+        currentPostId: queue.ids[newIndex],
+      });
+    }
+  },
+
+  prev: () => {
+    const { queue, currentIndex } = get();
+    if (!queue) return;
+
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1;
+      set({
+        currentIndex: newIndex,
+        currentPostId: queue.ids[newIndex],
+      });
+    }
+  },
+
+  toggleTagsDrawer: () =>
+    set((state) => ({ isTagsDrawerOpen: !state.isTagsDrawerOpen })),
+
+  setControlsVisible: (visible) => set({ controlsVisible: visible }),
+
+  updateQueueIds: (newIds) =>
+    set((state) => {
+      if (!state.queue) return {};
+      return {
+        queue: { ...state.queue, ids: newIds },
+      };
+    }),
+
+  appendQueueIds: (newIds) =>
+    set((state) => {
+      if (!state.queue) return {};
+      const existingIds = new Set(state.queue.ids);
+      const uniqueNewIds = newIds.filter((id) => !existingIds.has(id));
+      return {
+        queue: {
+          ...state.queue,
+          ids: [...state.queue.ids, ...uniqueNewIds],
+        },
+      };
+    }),
+}));
 </file>
 
 <file path="docs/contributing.md">
@@ -6352,6 +6357,309 @@ Planned database improvements:
 - Database compaction utilities
 </file>
 
+<file path="drizzle/meta/0000_snapshot.json">
+{
+  "version": "5",
+  "dialect": "sqlite",
+  "id": "878805c6-d7ea-4493-b3bc-feb31cf6dcf2",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "artists": {
+      "name": "artists",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "api_endpoint": {
+          "name": "api_endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_post_id": {
+          "name": "last_post_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "new_posts_count": {
+          "name": "new_posts_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "last_checked": {
+          "name": "last_checked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "artists_tag_unique": {
+          "name": "artists_tag_unique",
+          "columns": [
+            "tag"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "posts": {
+      "name": "posts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "post_id": {
+          "name": "post_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "artist_id": {
+          "name": "artist_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "file_url": {
+          "name": "file_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "preview_url": {
+          "name": "preview_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sample_url": {
+          "name": "sample_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "rating": {
+          "name": "rating",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_viewed": {
+          "name": "is_viewed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "is_favorited": {
+          "name": "is_favorited",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "artistIdIdx": {
+          "name": "artistIdIdx",
+          "columns": [
+            "artist_id"
+          ],
+          "isUnique": false
+        },
+        "isViewedIdx": {
+          "name": "isViewedIdx",
+          "columns": [
+            "is_viewed"
+          ],
+          "isUnique": false
+        },
+        "publishedAtIdx": {
+          "name": "publishedAtIdx",
+          "columns": [
+            "published_at"
+          ],
+          "isUnique": false
+        },
+        "isFavoritedIdx": {
+          "name": "isFavoritedIdx",
+          "columns": [
+            "is_favorited"
+          ],
+          "isUnique": false
+        },
+        "posts_artist_id_post_id_unique": {
+          "name": "posts_artist_id_post_id_unique",
+          "columns": [
+            "artist_id",
+            "post_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "posts_artist_id_artists_id_fk": {
+          "name": "posts_artist_id_artists_id_fk",
+          "tableFrom": "posts",
+          "tableTo": "artists",
+          "columnsFrom": [
+            "artist_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "settings": {
+      "name": "settings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "encrypted_api_key": {
+          "name": "encrypted_api_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "is_safe_mode": {
+          "name": "is_safe_mode",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": true
+        },
+        "is_adult_confirmed": {
+          "name": "is_adult_confirmed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}
+</file>
+
 <file path="electron.vite.config.ts">
 import { resolve } from "path";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
@@ -6595,237 +6903,6 @@ export class PostsService {
     return this.updatePost(postId, { isViewed: false });
   }
 }
-</file>
-
-<file path="src/renderer/components/gallery/ArtistGallery.tsx">
-import React, { forwardRef, useMemo } from "react";
-import {
-  useInfiniteQuery,
-  useQueryClient,
-  useQuery,
-  useMutation,
-  InfiniteData,
-} from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
-import { VirtuosoGrid } from "react-virtuoso";
-import { Button } from "../ui/button";
-import type { Artist, Post } from "../../../main/db/schema";
-import { cn } from "../../lib/utils";
-import { useViewerStore } from "../../store/viewerStore";
-import { PostCard } from "../gallery/PostCard";
-
-interface ArtistGalleryProps {
-  artist: Artist;
-  onBack: () => void;
-}
-
-const GridContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
-      className
-    )}
-    {...props}
-  />
-));
-GridContainer.displayName = "GridContainer";
-
-const ItemContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
-));
-ItemContainer.displayName = "ItemContainer";
-
-// ... (все импорты остаются)
-
-export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
-  artist,
-  onBack,
-}) => {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-
-  // Zustand Store
-  const openViewer = useViewerStore((state) => state.open);
-  const updateQueueIds = useViewerStore((state) => state.updateQueueIds);
-  const isOpen = useViewerStore((state) => state.isOpen);
-
-  const { data: totalCount = 0 } = useQuery({
-    queryKey: ["posts-count", artist.id],
-    queryFn: () => window.api.getArtistPostsCount(artist.id),
-  });
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["posts", artist.id],
-      queryFn: async ({ pageParam = 1 }) => {
-        return window.api.getArtistPosts({
-          artistId: artist.id,
-          page: pageParam,
-        });
-      },
-      getNextPageParam: (lastPage, allPages) => {
-        return lastPage.length === 50 ? allPages.length + 1 : undefined;
-      },
-      initialPageParam: 1,
-    });
-
-  const allPosts = useMemo(
-    () => data?.pages.flatMap((page) => page) || [],
-    [data]
-  );
-
-  React.useEffect(() => {
-    if (isOpen && allPosts.length > 0) {
-      updateQueueIds(allPosts.map((p) => p.id));
-    }
-  }, [allPosts, isOpen, updateQueueIds]);
-
-  const handleResetCache = async () => {
-    if (!confirm(t("artistGallery.resetConfirm"))) return;
-    try {
-      await window.api.resetPostCache(artist.id);
-      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
-    } catch (error) {
-      console.error("Failed to reset cache:", error);
-    }
-  };
-
-  const viewMutation = useMutation({
-    mutationFn: async (postId: number) => {
-      await window.api.updatePost(postId, { isViewed: true });
-    },
-    onSuccess: (_, postId) => {
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        ["posts", artist.id],
-        (oldData) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            pages: oldData.pages.map((page) =>
-              page.map((post) =>
-                post.id === postId ? { ...post, isViewed: true } : post
-              )
-            ),
-          };
-        }
-      );
-    },
-  });
-
-  const handlePostClick = (index: number) => {
-    const post = allPosts[index];
-    if (!post) return;
-
-    if (!post.isViewed) {
-      viewMutation.mutate(post.id);
-    }
-
-    if (hasNextPage && index > allPosts.length - 10) {
-      fetchNextPage();
-    }
-
-    openViewer({
-      origin: { kind: "artist", artistId: artist.id },
-      ids: allPosts.map((p) => p.id),
-      initialIndex: index,
-      listKey: `artist-${artist.id}`,
-      hasNextPage,
-      fetchNextPage,
-    });
-  };
-
-  const handleToggleFavorite = async (post: Post) => {
-    const newState = !post.isFavorited;
-    await window.api.updatePost(post.id, { isFavorited: newState });
-    queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Header */}
-      <div className="flex z-10 shrink-0 justify-between items-center px-6 py-4 bg-background/95 border-b backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex gap-4 items-center">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h2 className="text-xl font-bold tracking-tight">{artist.name}</h2>
-            <p className="text-sm text-muted-foreground">
-              {totalCount} {t("artistGallery.totalPosts")}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleResetCache}>
-            <Wrench className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Edit</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              window.api.openExternal(
-                `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
-              )
-            }
-          >
-            <ExternalLink className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t("artistGallery.web")}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Grid Content */}
-      <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
-          <div className="flex justify-center items-center h-full text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-        ) : (
-          <VirtuosoGrid
-            style={{ height: "100%" }}
-            totalCount={allPosts.length}
-            endReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
-            components={{
-              List: GridContainer,
-              Item: ItemContainer,
-              Footer: () =>
-                isFetchingNextPage ? (
-                  <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : null,
-            }}
-            itemContent={(index) => {
-              const post = allPosts[index];
-              if (!post) return null;
-
-              return (
-                <PostCard
-                  post={post}
-                  onClick={() => handlePostClick(index)}
-                  onToggleFavorite={() => handleToggleFavorite(post)}
-                />
-              );
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-};
 </file>
 
 <file path="docs/api.md">
@@ -8522,306 +8599,19 @@ npx electron-builder --linux
 4. Open a new issue with details
 </file>
 
-<file path="drizzle/meta/0000_snapshot.json">
+<file path="drizzle/meta/_journal.json">
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "878805c6-d7ea-4493-b3bc-feb31cf6dcf2",
-  "prevId": "00000000-0000-0000-0000-000000000000",
-  "tables": {
-    "artists": {
-      "name": "artists",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "tag": {
-          "name": "tag",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "api_endpoint": {
-          "name": "api_endpoint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "last_post_id": {
-          "name": "last_post_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "new_posts_count": {
-          "name": "new_posts_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "last_checked": {
-          "name": "last_checked",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "artists_tag_unique": {
-          "name": "artists_tag_unique",
-          "columns": [
-            "tag"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "posts": {
-      "name": "posts",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "post_id": {
-          "name": "post_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "artist_id": {
-          "name": "artist_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "file_url": {
-          "name": "file_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "preview_url": {
-          "name": "preview_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "sample_url": {
-          "name": "sample_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "''"
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "''"
-        },
-        "rating": {
-          "name": "rating",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "''"
-        },
-        "tags": {
-          "name": "tags",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "published_at": {
-          "name": "published_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "is_viewed": {
-          "name": "is_viewed",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "is_favorited": {
-          "name": "is_favorited",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        }
-      },
-      "indexes": {
-        "artistIdIdx": {
-          "name": "artistIdIdx",
-          "columns": [
-            "artist_id"
-          ],
-          "isUnique": false
-        },
-        "isViewedIdx": {
-          "name": "isViewedIdx",
-          "columns": [
-            "is_viewed"
-          ],
-          "isUnique": false
-        },
-        "publishedAtIdx": {
-          "name": "publishedAtIdx",
-          "columns": [
-            "published_at"
-          ],
-          "isUnique": false
-        },
-        "isFavoritedIdx": {
-          "name": "isFavoritedIdx",
-          "columns": [
-            "is_favorited"
-          ],
-          "isUnique": false
-        },
-        "posts_artist_id_post_id_unique": {
-          "name": "posts_artist_id_post_id_unique",
-          "columns": [
-            "artist_id",
-            "post_id"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "posts_artist_id_artists_id_fk": {
-          "name": "posts_artist_id_artists_id_fk",
-          "tableFrom": "posts",
-          "tableTo": "artists",
-          "columnsFrom": [
-            "artist_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "settings": {
-      "name": "settings",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "''"
-        },
-        "encrypted_api_key": {
-          "name": "encrypted_api_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "''"
-        },
-        "is_safe_mode": {
-          "name": "is_safe_mode",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": true
-        },
-        "is_adult_confirmed": {
-          "name": "is_adult_confirmed",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1766130825943,
+      "tag": "0000_tearful_jimmy_woo",
+      "breakpoints": true
     }
-  },
-  "enums": {},
-  "_meta": {
-    "schemas": {},
-    "tables": {},
-    "columns": {}
-  }
+  ]
 }
 </file>
 
@@ -8877,20 +8667,333 @@ export interface WorkerResponse {
 }
 </file>
 
-<file path="drizzle/meta/_journal.json">
-{
-  "version": "5",
-  "dialect": "sqlite",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "5",
-      "when": 1766130825943,
-      "tag": "0000_tearful_jimmy_woo",
-      "breakpoints": true
-    }
-  ]
+<file path="src/renderer/components/gallery/ArtistGallery.tsx">
+import React, { forwardRef, useMemo, useEffect, useState } from "react";
+import {
+  useInfiniteQuery,
+  useQueryClient,
+  useQuery,
+  useMutation,
+  InfiniteData,
+} from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
+import { VirtuosoGrid } from "react-virtuoso";
+import { Button } from "../ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
+import type { Artist, Post } from "../../../main/db/schema";
+import { cn } from "../../lib/utils";
+import { useViewerStore } from "../../store/viewerStore";
+import { PostCard } from "../gallery/PostCard";
+import { useDebounce } from "../../lib/hooks/useDebounce";
+import { useSearchStore } from "../../store/searchStore";
+
+interface ArtistGalleryProps {
+  artist: Artist;
+  onBack: () => void;
 }
+
+const GridContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      className
+    )}
+    {...props}
+  />
+));
+GridContainer.displayName = "GridContainer";
+
+const ItemContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+));
+ItemContainer.displayName = "ItemContainer";
+
+export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
+  artist,
+  onBack,
+}) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<"tracked" | "source">("tracked");
+
+  // Global Search State
+  const { searchQuery, setSearchQuery } = useSearchStore();
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  useEffect(() => {
+    setSearchQuery("");
+  }, [artist.id, setSearchQuery]);
+
+  // Zustand Store
+  const openViewer = useViewerStore((state) => state.open);
+  const updateQueueIds = useViewerStore((state) => state.updateQueueIds);
+  const isOpen = useViewerStore((state) => state.isOpen);
+
+  const { data: totalCount = 0 } = useQuery({
+    queryKey: ["posts-count", artist.id],
+    queryFn: () => window.api.getArtistPostsCount(artist.id),
+  });
+
+  // Tracked posts (from DB)
+  const {
+    data: trackedData,
+    fetchNextPage: fetchNextTrackedPage,
+    hasNextPage: hasNextTrackedPage,
+    isFetchingNextPage: isFetchingNextTrackedPage,
+    isLoading: isLoadingTracked,
+  } = useInfiniteQuery({
+    queryKey: ["posts", artist.id, { tags: debouncedSearch }],
+    queryFn: async ({ pageParam = 1 }) => {
+      return window.api.getArtistPosts({
+        artistId: artist.id,
+        page: pageParam,
+        filters: { tags: debouncedSearch },
+      });
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === 50 ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+    enabled: activeTab === "tracked",
+  });
+
+  const trackedPosts = useMemo(
+    () => trackedData?.pages.flatMap((page) => page) || [],
+    [trackedData]
+  );
+
+  // Source posts (from Rule34 API)
+  const {
+    data: sourceData,
+    fetchNextPage: fetchNextSourcePage,
+    hasNextPage: hasNextSourcePage,
+    isFetchingNextPage: isFetchingNextSourcePage,
+    isLoading: isLoadingSource,
+  } = useInfiniteQuery({
+    queryKey: ["posts-source", artist.id, { tags: debouncedSearch }],
+    queryFn: async ({ pageParam = 1 }) => {
+      const tagQuery = `${artist.type === "uploader" ? "user:" : ""}${
+        artist.tag
+      }`;
+      const searchTags = debouncedSearch
+        ? `${tagQuery} ${debouncedSearch}`
+        : tagQuery;
+      return window.api.getRecentPostsRemote(pageParam, searchTags);
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === 100 ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+    enabled: activeTab === "source",
+  });
+
+  const sourcePosts = useMemo(
+    () => sourceData?.pages.flatMap((page) => page) || [],
+    [sourceData]
+  );
+
+  const allPosts = activeTab === "tracked" ? trackedPosts : sourcePosts;
+  const isLoading =
+    activeTab === "tracked" ? isLoadingTracked : isLoadingSource;
+  const hasNextPage =
+    activeTab === "tracked" ? hasNextTrackedPage : hasNextSourcePage;
+  const isFetchingNextPage =
+    activeTab === "tracked"
+      ? isFetchingNextTrackedPage
+      : isFetchingNextSourcePage;
+  const fetchNextPage =
+    activeTab === "tracked" ? fetchNextTrackedPage : fetchNextSourcePage;
+
+  React.useEffect(() => {
+    if (isOpen && allPosts.length > 0) {
+      updateQueueIds(allPosts.map((p) => p.id));
+    }
+  }, [allPosts, isOpen, updateQueueIds]);
+
+  const handleResetCache = async () => {
+    if (!confirm(t("artistGallery.resetConfirm"))) return;
+    try {
+      await window.api.resetPostCache(artist.id);
+      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
+    } catch (error) {
+      console.error("Failed to reset cache:", error);
+    }
+  };
+
+  const viewMutation = useMutation({
+    mutationFn: async (postId: number) => {
+      await window.api.updatePost(postId, { isViewed: true });
+    },
+    onSuccess: (_, postId) => {
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        ["posts", artist.id],
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) =>
+              page.map((post) =>
+                post.id === postId ? { ...post, isViewed: true } : post
+              )
+            ),
+          };
+        }
+      );
+    },
+  });
+
+  const handlePostClick = (post: Post, posts: Post[]) => {
+    const index = posts.findIndex((p) => p.id === post.id);
+    if (index === -1) return;
+
+    // 1. Открываем (UI First)
+    openViewer({
+      origin: { kind: "artist", artistId: artist.id },
+      ids: posts.map((p) => p.id),
+      initialIndex: index,
+      listKey: `artist-${artist.id}-${activeTab}`,
+      hasNextPage,
+      fetchNextPage,
+    });
+
+    // 2. Обновляем статус (Fire and forget) - only for tracked posts
+    if (activeTab === "tracked" && !post.isViewed) {
+      viewMutation.mutate(post.id);
+    }
+  };
+
+  const handleToggleFavorite = async (post: Post) => {
+    const newState = !post.isFavorited;
+    // Only update DB for tracked posts
+    if (activeTab === "tracked") {
+      await window.api.updatePost(post.id, { isFavorited: newState });
+      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
+    }
+  };
+
+  const renderGrid = (posts: Post[]) => {
+    if (isLoading && posts.length === 0) {
+      return (
+        <div className="flex justify-center items-center h-full text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      );
+    }
+
+    if (posts.length === 0) {
+      return (
+        <div className="flex justify-center items-center h-full text-muted-foreground">
+          <p>No posts found</p>
+        </div>
+      );
+    }
+
+    return (
+      <VirtuosoGrid
+        style={{ height: "100%" }}
+        totalCount={posts.length}
+        endReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        components={{
+          List: GridContainer,
+          Item: ItemContainer,
+          Footer: () =>
+            isFetchingNextPage ? (
+              <div className="flex col-span-full justify-center py-4 w-full">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : null,
+        }}
+        itemContent={(index) => {
+          const post = posts[index];
+          if (!post) return null;
+
+          return (
+            <PostCard
+              post={post}
+              onClick={() => handlePostClick(post, allPosts)}
+              onToggleFavorite={() => handleToggleFavorite(post)}
+            />
+          );
+        }}
+      />
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-background">
+      {/* Header */}
+      <div className="flex z-10 shrink-0 justify-between items-center px-6 py-4 bg-background/95 border-b backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex gap-4 items-center">
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight">{artist.name}</h2>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === "tracked" ? `${totalCount} posts` : "Source"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          {activeTab === "tracked" && (
+            <Button variant="outline" size="sm" onClick={handleResetCache}>
+              <Wrench className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Edit</span>
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              window.api.openExternal(
+                `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
+              )
+            }
+          >
+            <ExternalLink className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t("artistGallery.web")}</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "tracked" | "source")}
+        className="flex flex-col flex-1 min-h-0"
+      >
+        <div className="px-6 pt-4">
+          <TabsList>
+            <TabsTrigger value="tracked">Tracked</TabsTrigger>
+            <TabsTrigger value="source">Source</TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Grid Content */}
+        <TabsContent value="tracked" className="flex-1 mt-0 min-h-0">
+          {renderGrid(trackedPosts)}
+        </TabsContent>
+
+        <TabsContent value="source" className="flex-1 mt-0 min-h-0">
+          {renderGrid(sourcePosts)}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
 </file>
 
 <file path="src/main/ipc/channels.ts">
@@ -8914,16 +9017,17 @@ export const IPC_CHANNELS = {
     SEARCH_TAGS: "db:search-tags",
     GET_POSTS: "db:get-posts",
     GET_POSTS_COUNT: "db:get-posts-count",
+    UPDATE_POST: "db:update-post",
     MARK_VIEWED: "db:mark-post-viewed",
     TOGGLE_FAVORITE: "db:toggle-post-favorite",
     SYNC_ALL: "db:sync-all",
     TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,
     RESET_POST_CACHE: "db:reset-post-cache" as const,
-    UPDATE_POST: "db:update-post" as const,
     GET_API_KEY_ENCRYPTED: "db:get-api-key-encrypted",
   },
   API: {
     SEARCH_REMOTE: "api:search-remote-tags",
+    GET_RECENT_POSTS: "api:get-recent-posts",
   },
   BACKUP: {
     CREATE: "db:create-backup",
@@ -9121,197 +9225,278 @@ export const registerFileHandlers = () => {
 };
 </file>
 
+<file path="src/main/db/schema.ts">
+import {
+  sqliteTable,
+  text,
+  integer,
+  unique,
+  index,
+} from "drizzle-orm/sqlite-core";
+
+export const artists = sqliteTable("artists", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  tag: text("tag").notNull().unique(),
+  type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
+  apiEndpoint: text("api_endpoint").notNull(),
+  lastPostId: integer("last_post_id").notNull().default(0),
+  newPostsCount: integer("new_posts_count").notNull().default(0),
+  lastChecked: integer("last_checked", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const posts = sqliteTable(
+  "posts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    postId: integer("post_id").notNull(),
+    artistId: integer("artist_id")
+      .notNull()
+      .references(() => artists.id, { onDelete: "cascade" }),
+    fileUrl: text("file_url").notNull(),
+    previewUrl: text("preview_url").notNull(),
+    sampleUrl: text("sample_url").notNull().default(""),
+    title: text("title").default(""),
+    rating: text("rating").default(""),
+    tags: text("tags").notNull(),
+    publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    isViewed: integer("is_viewed", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isFavorited: integer("is_favorited", { mode: "boolean" }) // Добавили поле
+      .notNull()
+      .default(false),
+  },
+  (t) => ({
+    uniquePost: unique().on(t.artistId, t.postId),
+    artistIdIdx: index("artistIdIdx").on(t.artistId),
+    isViewedIdx: index("isViewedIdx").on(t.isViewed),
+    publishedAtIdx: index("publishedAtIdx").on(t.publishedAt),
+    isFavoritedIdx: index("isFavoritedIdx").on(t.isFavorited),
+  })
+);
+
+export const settings = sqliteTable("settings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").default(""),
+  encryptedApiKey: text("encrypted_api_key").default(""),
+  isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
+  isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
+    false
+  ),
+});
+
+// Types
+export type Artist = typeof artists.$inferSelect;
+export type NewArtist = typeof artists.$inferInsert;
+export type Post = typeof posts.$inferSelect & {
+  isFavorited: boolean;
+};
+export type NewPost = typeof posts.$inferInsert;
+export type Settings = typeof settings.$inferSelect;
+export type NewSettings = typeof settings.$inferInsert;
+</file>
+
 <file path="src/main/ipc/handlers/posts.ts">
-import { ipcMain } from "electron";
+import { ipcMain, safeStorage } from "electron";
 import { z } from "zod";
 import { IPC_CHANNELS } from "../channels";
 import { PostsService } from "../../services/posts.service";
 import { logger } from "../../lib/logger";
+import { SettingsService } from "../../services/settings.service";
 
-// --- Schemas ---
-
-const PostFilterSchema = z
-  .object({
-    tags: z.string().optional(),
-    rating: z.enum(["s", "q", "e"]).optional(),
-    isFavorited: z.boolean().optional(),
-    isViewed: z.boolean().optional(),
-  })
-  .partial();
+// --- Schemas & Interfaces ---
 
 const GetPostsSchema = z.object({
-  artistId: z.number().optional(),
-  page: z.number().default(1),
-  limit: z.number().int().min(1).default(50),
-  filters: PostFilterSchema.optional(),
+  artistId: z.number().int(),
+  page: z.number().int().default(1),
+  filters: z
+    .object({
+      tags: z.string().optional(),
+      rating: z.enum(["s", "q", "e"]).optional(),
+      isFavorited: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 const UpdatePostSchema = z.object({
-  postId: z.number().int().positive(),
-  changes: z
-    .object({
-      rating: z.string().optional(),
-      tags: z.string().optional(),
-      title: z.string().optional(),
-      isViewed: z.boolean().optional(),
-      isFavorited: z.boolean().optional(),
-      fileUrl: z.string().optional(),
-      previewUrl: z.string().optional(),
-      sampleUrl: z.string().optional(),
-    })
-    .partial(),
+  id: z.number(),
+  changes: z.object({
+    isViewed: z.boolean().optional(),
+    isFavorited: z.boolean().optional(),
+  }),
 });
 
-// Reusable schema for simple ID operations
-const PostIdSchema = z.number().int().positive();
-
-const CountSchema = z.object({
-  artistId: z.number().optional(),
-  filters: PostFilterSchema.optional(),
+const GetRecentPostsSchema = z.object({
+  page: z.number().default(1),
+  tags: z.string().optional(),
 });
+
+interface RemotePost {
+  id: number;
+  postId: number;
+  artistId: number;
+  fileUrl: string;
+  previewUrl: string;
+  sampleUrl: string;
+  title: string;
+  rating: string;
+  tags: string;
+  publishedAt: Date;
+  createdAt: Date;
+  isViewed: boolean;
+  isFavorited: boolean;
+}
 
 // --- Handlers ---
 
 export const registerPostHandlers = (service: PostsService) => {
-  // 1. GET POSTS
+  // [DB] Get Posts
   ipcMain.handle(IPC_CHANNELS.DB.GET_POSTS, async (_, payload: unknown) => {
     const validation = GetPostsSchema.safeParse(payload);
-    if (!validation.success) {
-      logger.error(`Validation Error [GET_POSTS]: ${validation.error.message}`);
-      throw new Error(`Validation Error: ${validation.error.message}`);
-    }
-
-    const { artistId, page, limit, filters } = validation.data;
-    const offset = (page - 1) * limit;
-
+    if (!validation.success) return [];
     try {
-      return await service.getPosts({
-        artistId,
-        limit,
-        offset,
-        filters,
-      });
+      const { artistId, page, filters } = validation.data;
+      const limit = 50;
+      const offset = (page - 1) * limit;
+      return await service.getPosts({ artistId, filters, limit, offset });
     } catch (error) {
-      logger.error(`IPC: [db:get-posts] error:`, error);
-      throw new Error("Failed to fetch posts.");
+      logger.error("IPC: [db:get-posts] error:", error);
+      return [];
     }
   });
 
-  // 2. GET COUNT
+  // [DB] Get Posts Count
   ipcMain.handle(
     IPC_CHANNELS.DB.GET_POSTS_COUNT,
-    async (_, payload: unknown) => {
-      // Пытаемся распарсить как объект фильтров
-      const complexValidation = CountSchema.safeParse(payload);
-
-      // Пытаемся распарсить как просто число (легаси вызовы)
-      const numberValidation = PostIdSchema.safeParse(payload);
-
-      let params: {
-        artistId?: number;
-        filters?: z.infer<typeof PostFilterSchema>;
-      } = {};
-
-      if (complexValidation.success) {
-        params = complexValidation.data;
-      } else if (numberValidation.success) {
-        params = { artistId: numberValidation.data };
-      }
-
+    async (_, artistId: number) => {
       try {
-        return await service.getPostsCount(params);
-      } catch (err) {
-        logger.error("Failed to get posts count:", err);
+        return await service.getPostsCount({ artistId });
+      } catch (_error) {
         return 0;
       }
     }
   );
 
-  // 3. UPDATE POST
+  // [DB] Update Post
   ipcMain.handle(IPC_CHANNELS.DB.UPDATE_POST, async (_, payload: unknown) => {
     const validation = UpdatePostSchema.safeParse(payload);
-    if (!validation.success) {
-      logger.warn(
-        `[IPC] UPDATE_POST validation failed: ${validation.error.message}`
-      );
-      return false;
-    }
-
+    if (!validation.success) return false;
     try {
-      const { postId, changes } = validation.data;
-      return await service.updatePost(postId, changes);
-    } catch (error) {
-      logger.error(`[IPC] Failed to update post`, error);
+      const { id, changes } = validation.data;
+      await service.updatePost(id, changes);
+      return true;
+    } catch (_error) {
       return false;
     }
   });
 
-  // 4. TOGGLE FAVORITE
+  // [API] Get Recent Posts (XML FIX - SPLIT METHOD)
   ipcMain.handle(
-    IPC_CHANNELS.DB.TOGGLE_FAVORITE,
+    IPC_CHANNELS.API.GET_RECENT_POSTS,
     async (_, payload: unknown) => {
-      const validation = PostIdSchema.safeParse(payload);
-
-      if (!validation.success) {
-        logger.warn(
-          `[IPC] TOGGLE_FAVORITE invalid ID: ${JSON.stringify(payload)}`
-        );
-        return false;
-      }
+      const validation = GetRecentPostsSchema.safeParse(payload);
+      const { page, tags } = validation.success
+        ? validation.data
+        : { page: 1, tags: "" };
 
       try {
-        // TypeScript теперь проверит наличие метода в интерфейсе PostsService
-        return await service.toggleFavorite(validation.data);
-      } catch (error) {
-        logger.error(
-          `[IPC] Failed to toggle favorite for post ${validation.data}`,
-          error
+        const pid = Math.max(0, page - 1);
+        const limit = 100;
+        const baseUrl = "https://api.rule34.xxx/index.php";
+        const params = new URLSearchParams({
+          page: "dapi",
+          s: "post",
+          q: "index",
+          limit: limit.toString(),
+          pid: pid.toString(),
+        });
+        if (tags) params.append("tags", tags);
+
+        const settingsService = new SettingsService();
+        const settings = await settingsService.getSettings();
+
+        if (settings.userId && settings.encryptedApiKey) {
+          params.append("user_id", settings.userId);
+
+          // Дешифруем API key
+          if (safeStorage.isEncryptionAvailable()) {
+            try {
+              const decrypted = safeStorage.decryptString(
+                Buffer.from(settings.encryptedApiKey, "base64")
+              );
+              params.append("api_key", decrypted);
+            } catch (e) {
+              logger.warn("Failed to decrypt API key for browse", e);
+            }
+          }
+        }
+
+        const url = `${baseUrl}?${params.toString()}`;
+        logger.info(`IPC: Fetching remote posts (XML): ${url}`);
+
+        const response = await fetch(url, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
+        });
+
+        if (!response.ok) return [];
+
+        const xmlText = await response.text();
+        const posts: RemotePost[] = [];
+
+        // [FIX] Парсинг методом split (надежнее чем сложный regex)
+        const rawParts = xmlText.split("<post ");
+
+        for (let i = 1; i < rawParts.length; i++) {
+          const part = rawParts[i];
+
+          // Простая функция извлечения атрибута
+          const getAttr = (name: string) => {
+            // Ищем name="value"
+            const match = part.match(new RegExp(`${name}="([^"]*)"`));
+            return match ? match[1] : "";
+          };
+
+          const id = getAttr("id");
+          const fileUrl = getAttr("file_url");
+
+          if (id && fileUrl) {
+            posts.push({
+              id: Number(id),
+              postId: Number(id),
+              artistId: 0,
+              fileUrl: fileUrl,
+              previewUrl: getAttr("preview_url") || fileUrl,
+              sampleUrl: getAttr("sample_url") || fileUrl,
+              title: "",
+              rating: getAttr("rating") || "q",
+              tags: getAttr("tags"),
+              publishedAt: new Date(
+                Number(getAttr("change") || Date.now() / 1000) * 1000
+              ),
+              createdAt: new Date(),
+              isViewed: false,
+              isFavorited: false,
+            });
+          }
+        }
+
+        logger.info(
+          `IPC: Parsed ${posts.length} posts from XML (Split Method)`
         );
-        return false;
-      }
-    }
-  );
-
-  // 5. MARK VIEWED
-  ipcMain.handle(IPC_CHANNELS.DB.MARK_VIEWED, async (_, payload: unknown) => {
-    const validation = PostIdSchema.safeParse(payload);
-
-    if (!validation.success) {
-      return false;
-    }
-
-    try {
-      // Используем штатный метод updatePost, который гарантированно существует
-      return await service.updatePost(validation.data, { isViewed: true });
-    } catch (error) {
-      logger.error(
-        `[IPC] Failed to mark post as viewed ${validation.data}`,
-        error
-      );
-      return false;
-    }
-  });
-
-  // // 6. RESET CACHE
-  // ipcMain.handle(
-  //   IPC_CHANNELS.DB.RESET_POST_CACHE,
-  //   async (_, payload: unknown) => {
-  //     const validation = PostIdSchema.safeParse(payload);
-  //     if (validation.success) {
-  //       logger.info(`[IPC] Reset cache requested for post ${validation.data}`);
-  //     }
-  //     return true;
-  //   }
-  // );
-
-  ipcMain.handle(
-    IPC_CHANNELS.DB.RESET_POST_CACHE,
-    async (_, artistId: number) => {
-      try {
-        return await service.resetArtistCache(artistId);
+        return posts;
       } catch (error) {
-        logger.error("IPC: Failed to reset post cache", error);
-        return false;
+        logger.error("IPC: [api:get-recent-posts] error:", error);
+        return [];
       }
     }
   );
@@ -9708,84 +9893,6 @@ Advanced features for future releases:
 - Database migrations must be tested thoroughly
 - UI/UX should follow existing design patterns
 - Performance optimization is important for large datasets (6000+ posts)
-</file>
-
-<file path="src/main/db/schema.ts">
-import {
-  sqliteTable,
-  text,
-  integer,
-  unique,
-  index,
-} from "drizzle-orm/sqlite-core";
-
-export const artists = sqliteTable("artists", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  tag: text("tag").notNull().unique(),
-  type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
-  apiEndpoint: text("api_endpoint").notNull(),
-  lastPostId: integer("last_post_id").notNull().default(0),
-  newPostsCount: integer("new_posts_count").notNull().default(0),
-  lastChecked: integer("last_checked", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
-
-export const posts = sqliteTable(
-  "posts",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    postId: integer("post_id").notNull(),
-    artistId: integer("artist_id")
-      .notNull()
-      .references(() => artists.id, { onDelete: "cascade" }),
-    fileUrl: text("file_url").notNull(),
-    previewUrl: text("preview_url").notNull(),
-    sampleUrl: text("sample_url").notNull().default(""),
-    title: text("title").default(""),
-    rating: text("rating").default(""),
-    tags: text("tags").notNull(),
-    publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
-    createdAt: integer("created_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-    isViewed: integer("is_viewed", { mode: "boolean" })
-      .notNull()
-      .default(false),
-    isFavorited: integer("is_favorited", { mode: "boolean" }) // Добавили поле
-      .notNull()
-      .default(false),
-  },
-  (t) => ({
-    uniquePost: unique().on(t.artistId, t.postId),
-    artistIdIdx: index("artistIdIdx").on(t.artistId),
-    isViewedIdx: index("isViewedIdx").on(t.isViewed),
-    publishedAtIdx: index("publishedAtIdx").on(t.publishedAt),
-    isFavoritedIdx: index("isFavoritedIdx").on(t.isFavorited),
-  })
-);
-
-export const settings = sqliteTable("settings", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  userId: text("user_id").default(""),
-  encryptedApiKey: text("encrypted_api_key").default(""),
-  isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
-  isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
-    false
-  ),
-});
-
-// Types
-export type Artist = typeof artists.$inferSelect;
-export type NewArtist = typeof artists.$inferInsert;
-export type Post = typeof posts.$inferSelect & {
-  isFavorited: boolean;
-};
-export type NewPost = typeof posts.$inferInsert;
-export type Settings = typeof settings.$inferSelect;
-export type NewSettings = typeof settings.$inferInsert;
 </file>
 
 <file path="docs/architecture.md">
@@ -10887,7 +10994,7 @@ import { registerFileHandlers } from "./handlers/files";
 
 const DeleteArtistSchema = z.number().int().positive();
 
-// --- Helper для Sync & Maintenance (ТЕПЕРЬ БЕЗ DbWorkerClient) ---
+// --- Helper для Sync & Maintenance ---
 const registerSyncAndMaintenanceHandlers = (
   syncService: SyncService,
   mainWindow: BrowserWindow
@@ -10921,10 +11028,10 @@ const registerSyncAndMaintenanceHandlers = (
     }
   });
 
+  // Backup Create
   ipcMain.handle(IPC_CHANNELS.BACKUP.CREATE, async () => {
     try {
       const db = getRawDatabase();
-
       const userDataPath = app.getPath("userData");
       const backupsDir = path.join(userDataPath, "backups");
 
@@ -10936,9 +11043,7 @@ const registerSyncAndMaintenanceHandlers = (
       const backupPath = path.join(backupsDir, fileName);
 
       logger.info(`IPC: Starting backup to ${backupPath}`);
-
       await db.backup(backupPath);
-
       shell.showItemInFolder(backupPath);
       return { success: true, path: backupPath };
     } catch (error) {
@@ -10950,7 +11055,7 @@ const registerSyncAndMaintenanceHandlers = (
     }
   });
 
-  // --- RESTORE & RESTART ---
+  // Backup Restore
   ipcMain.handle(IPC_CHANNELS.BACKUP.RESTORE, async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: "Select backup file",
@@ -10965,68 +11070,67 @@ const registerSyncAndMaintenanceHandlers = (
 
     try {
       logger.info(`IPC: Restoring database from ${sourcePath}`);
-
       try {
         const currentDb = getRawDatabase();
         if (currentDb && typeof currentDb.close === "function") {
           currentDb.close();
-          logger.info("IPC: Database connection closed to allow overwrite.");
         }
       } catch (e) {
-        logger.warn(
-          "IPC: Could not close DB explicitly (might be already closed):",
-          e
-        );
+        logger.warn("IPC: Could not close DB explicitly:", e);
       }
 
       const dbPath = path.join(app.getPath("userData"), "metadata.db");
       await fs.copyFile(sourcePath, dbPath);
 
-      logger.info(
-        "IPC: Restore successful. Relaunching app to apply migrations..."
-      );
-
+      logger.info("IPC: Restore successful. Relaunching app...");
       app.relaunch();
       app.exit(0);
-
       return { success: true };
     } catch (error) {
       logger.error("Restore failed", error);
       return {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Restore failed (File Locked?)",
+        error: error instanceof Error ? error.message : "Restore failed",
       };
     }
   });
 };
+
 // --- Main Registration Function ---
 export const registerAllHandlers = (
   syncService: SyncService,
-  _updaterService: UpdaterService,
+  updaterService: UpdaterService,
   mainWindow: BrowserWindow
 ) => {
   logger.info("IPC: Registering modular handlers...");
 
-  // 0. System Handlers
+  // 0. System Handlers (APP)
   ipcMain.handle(IPC_CHANNELS.APP.WRITE_CLIPBOARD, async (_, text: string) => {
     clipboard.writeText(text);
     return true;
   });
 
-  // Verify Creds
   ipcMain.handle(IPC_CHANNELS.APP.VERIFY_CREDS, async () => {
     return await syncService.checkCredentials();
   });
 
-  // Logout (очистка настроек)
   ipcMain.handle(IPC_CHANNELS.APP.LOGOUT, async () => {
     const settingsService = new SettingsService();
     await settingsService.updateSettings({ encryptedApiKey: "", userId: "" });
     return true;
   });
+
+  ipcMain.handle(IPC_CHANNELS.APP.GET_VERSION, async () => {
+    return app.getVersion();
+  });
+
+  // === UPDATER HANDLERS ===
+  // Теперь методы существуют в сервисе
+  ipcMain.handle("app:check-for-updates", () =>
+    updaterService.checkForUpdates()
+  );
+  ipcMain.handle("app:quit-and-install", () => updaterService.quitAndInstall());
+  ipcMain.handle("app:start-download", () => updaterService.downloadUpdate());
 
   // 1. Init Services
   const artistsService = new ArtistsService();
@@ -11154,7 +11258,7 @@ export interface IpcApi extends IpcBridge {
 
 declare global {
   interface Window {
-    api: IpcApi;
+    api: IpcBridge;
   }
 }
 </file>
@@ -12327,27 +12431,32 @@ See [Contributing Guide](./docs/contributing.md) for detailed guidelines.
 </file>
 
 <file path="src/renderer/App.tsx">
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  HashRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { useEffect, useState } from "react";
 
 // --- ИМПОРТЫ КОМПОНЕНТОВ ---
-import { AppLayout as Layout } from "./components/layout/AppLayout";
+import { AppLayout } from "./components/layout/AppLayout";
 import { Settings } from "./components/pages/Settings";
 import { Onboarding } from "./components/pages/Onboarding";
 import { Tracked } from "./components/pages/Tracked";
 import { ArtistDetails } from "./components/pages/ArtistDetails";
-import { Browse } from "./components/pages/Browse"; // Импорт настоящего компонента
+import { Browse } from "./components/pages/Browse";
+import { ViewerDialog } from "./components/viewer/ViewerDialog";
 
+// Заглушки
 const Updates = () => (
   <div className="p-8">
     <h1 className="text-2xl font-bold">Updates</h1>
-    <p>Feed here.</p>
   </div>
 );
 const Favorites = () => (
   <div className="p-8">
     <h1 className="text-2xl font-bold">Favorites</h1>
-    <p>Likes here.</p>
   </div>
 );
 
@@ -12358,10 +12467,13 @@ function App() {
     const checkAuth = async () => {
       try {
         const settings = await window.api.getSettings();
-        console.log(
-          `[App] Auth check result: hasApiKey=${settings?.hasApiKey}, userId=${settings?.userId}`
-        );
-        setIsAuthenticated(settings?.hasApiKey ?? false);
+        // [FIX AUTH] Более мягкая проверка.
+        // Если есть userId ИЛИ ключ, считаем что пользователь прошел онбординг.
+        // Это предотвратит постоянный логаут.
+        const isAuth = !!(settings?.userId || settings?.encryptedApiKey);
+
+        console.log(`[App] Auth check: ${isAuth} (ID: ${settings?.userId})`);
+        setIsAuthenticated(isAuth);
       } catch (error) {
         console.error("Failed to check authentication:", error);
         setIsAuthenticated(false);
@@ -12370,38 +12482,35 @@ function App() {
     checkAuth();
   }, []);
 
-  // Show loader while checking authentication
   if (isAuthenticated === null) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="text-muted-foreground">Loading...</div>
+        Loading...
       </div>
     );
   }
 
-  // Show onboarding if not authenticated
-  if (isAuthenticated === false) {
+  if (!isAuthenticated) {
     return <Onboarding onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
 
-  // Show main app if authenticated
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Tracked />} />
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Navigate to="/browse" replace />} />
+          <Route path="browse" element={<Browse />} />
           <Route path="tracked" element={<Tracked />} />
           <Route path="artist/:id" element={<ArtistDetails />} />
-          <Route path="browse" element={<Browse />} />
           <Route path="updates" element={<Updates />} />
           <Route path="favorites" element={<Favorites />} />
           <Route path="settings" element={<Settings />} />
-          <Route
-            path="*"
-            element={<div className="p-10">Page Not Found (Check URL)</div>}
-          />
+          <Route path="*" element={<div className="p-10">404 Not Found</div>} />
         </Route>
       </Routes>
+
+      {/* [FIX CLICKABILITY] Диалог должен быть ВНЕ Routes, но ВНУТРИ Router */}
+      <ViewerDialog />
     </Router>
   );
 }
@@ -12770,9 +12879,14 @@ export interface IpcBridge {
   searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 
   // Posts
-  getArtistPosts: (params: GetPostsParams) => Promise<Post[]>;
+  getArtistPosts: (params: {
+    artistId: number;
+    page?: number;
+    filters?: { tags?: string; rating?: string; isFavorited?: boolean };
+  }) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
-
+  updatePost: (id: number, changes: Partial<Post>) => Promise<void>;
+  getRecentPostsRemote: (page: number, tags?: string) => Promise<Post[]>;
   togglePostViewed: (postId: number) => Promise<boolean>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
@@ -12821,16 +12935,6 @@ export interface IpcBridge {
   restoreBackup: () => Promise<BackupResponse>;
 
   verifyCredentials: () => Promise<boolean>;
-
-  updatePost: (
-    postId: number,
-    changes: {
-      isViewed?: boolean;
-      isFavorited?: boolean;
-      rating?: string;
-      tags?: string;
-    }
-  ) => Promise<boolean>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -12855,13 +12959,15 @@ const ipcBridge: IpcBridge = {
 
   searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
 
-  getArtistPosts: (params: GetPostsParams) =>
-    ipcRenderer.invoke("db:get-posts", params),
+  getArtistPosts: (params) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS, params),
   getArtistPostsCount: (artistId?: number) =>
     ipcRenderer.invoke("db:get-posts-count", artistId),
+  getRecentPostsRemote: (page, tags) =>
+    ipcRenderer.invoke(IPC_CHANNELS.API.GET_RECENT_POSTS, { page, tags }),
 
-  updatePost: (postId, changes) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.UPDATE_POST, { postId, changes }),
+  updatePost: (id, changes) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.UPDATE_POST, { id, changes }),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
@@ -13165,6 +13271,7 @@ app.on("activate", () => {
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@tanstack/react-query": "^5.17.0",
     "axios": "^1.13.2",
     "better-sqlite3": "^9.2.2",

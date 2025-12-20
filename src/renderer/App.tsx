@@ -1,24 +1,29 @@
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  HashRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { useEffect, useState } from "react";
 
 // --- ИМПОРТЫ КОМПОНЕНТОВ ---
-import { AppLayout as Layout } from "./components/layout/AppLayout";
+import { AppLayout } from "./components/layout/AppLayout";
 import { Settings } from "./components/pages/Settings";
 import { Onboarding } from "./components/pages/Onboarding";
 import { Tracked } from "./components/pages/Tracked";
 import { ArtistDetails } from "./components/pages/ArtistDetails";
-import { Browse } from "./components/pages/Browse"; // Импорт настоящего компонента
+import { Browse } from "./components/pages/Browse";
+import { ViewerDialog } from "./components/viewer/ViewerDialog";
 
+// Заглушки
 const Updates = () => (
   <div className="p-8">
     <h1 className="text-2xl font-bold">Updates</h1>
-    <p>Feed here.</p>
   </div>
 );
 const Favorites = () => (
   <div className="p-8">
     <h1 className="text-2xl font-bold">Favorites</h1>
-    <p>Likes here.</p>
   </div>
 );
 
@@ -29,10 +34,13 @@ function App() {
     const checkAuth = async () => {
       try {
         const settings = await window.api.getSettings();
-        console.log(
-          `[App] Auth check result: hasApiKey=${settings?.hasApiKey}, userId=${settings?.userId}`
-        );
-        setIsAuthenticated(settings?.hasApiKey ?? false);
+        // [FIX AUTH] Более мягкая проверка.
+        // Если есть userId ИЛИ ключ, считаем что пользователь прошел онбординг.
+        // Это предотвратит постоянный логаут.
+        const isAuth = !!(settings?.userId || settings?.encryptedApiKey);
+
+        console.log(`[App] Auth check: ${isAuth} (ID: ${settings?.userId})`);
+        setIsAuthenticated(isAuth);
       } catch (error) {
         console.error("Failed to check authentication:", error);
         setIsAuthenticated(false);
@@ -41,38 +49,35 @@ function App() {
     checkAuth();
   }, []);
 
-  // Show loader while checking authentication
   if (isAuthenticated === null) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="text-muted-foreground">Loading...</div>
+        Loading...
       </div>
     );
   }
 
-  // Show onboarding if not authenticated
-  if (isAuthenticated === false) {
+  if (!isAuthenticated) {
     return <Onboarding onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
 
-  // Show main app if authenticated
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Tracked />} />
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Navigate to="/browse" replace />} />
+          <Route path="browse" element={<Browse />} />
           <Route path="tracked" element={<Tracked />} />
           <Route path="artist/:id" element={<ArtistDetails />} />
-          <Route path="browse" element={<Browse />} />
           <Route path="updates" element={<Updates />} />
           <Route path="favorites" element={<Favorites />} />
           <Route path="settings" element={<Settings />} />
-          <Route
-            path="*"
-            element={<div className="p-10">Page Not Found (Check URL)</div>}
-          />
+          <Route path="*" element={<div className="p-10">404 Not Found</div>} />
         </Route>
       </Routes>
+
+      {/* [FIX CLICKABILITY] Диалог должен быть ВНЕ Routes, но ВНУТРИ Router */}
+      <ViewerDialog />
     </Router>
   );
 }

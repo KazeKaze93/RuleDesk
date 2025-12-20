@@ -5,7 +5,7 @@ import type { Post } from "../../../main/db/schema";
 
 interface PostCardProps {
   post: Post;
-  onClick: () => void;
+  onClick?: (post: Post) => void;
   onToggleFavorite?: (post: Post) => void;
 }
 
@@ -28,7 +28,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       {/* Кликабельная область для открытия (картинка) */}
       <button
         type="button"
-        onClick={onClick}
+        onClick={() => onClick?.(post)}
         className="w-full h-full focus:outline-none cursor-zoom-in"
         aria-label={`View post ${post.id}`}
       >

@@ -1,4 +1,4 @@
-Project Structure (Generated: 2025-12-19T18:15:59.666Z)
+Project Structure (Generated: 2025-12-20T02:54:55.423Z)
 
 Root:
 ├── .ai
@@ -87,7 +87,8 @@ Root:
 │   │   │   │   ├── label.tsx
 │   │   │   │   ├── progress.tsx
 │   │   │   │   ├── select.tsx
-│   │   │   │   └── separator.tsx
+│   │   │   │   ├── separator.tsx
+│   │   │   │   └── tabs.tsx
 │   │   │   └── viewer
 │   │   │       └── ViewerDialog.tsx
 │   │   ├── i18n
@@ -104,6 +105,7 @@ Root:
 │   │   ├── schemas
 │   │   │   └── form-schemas.ts
 │   │   ├── store
+│   │   │   ├── searchStore.ts
 │   │   │   └── viewerStore.ts
 │   │   ├── App.tsx
 │   │   ├── index.css

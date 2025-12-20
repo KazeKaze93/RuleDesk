@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo } from "react";
+import React, { forwardRef, useMemo, useEffect, useState } from "react";
 import {
   useInfiniteQuery,
   useQueryClient,
@@ -9,15 +9,21 @@ import {
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
+
 import { Button } from "../ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
+
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { PostCard } from "../gallery/PostCard";
+import { useDebounce } from "../../lib/hooks/useDebounce";
+import { useSearchStore } from "../../store/searchStore";
 
 interface ArtistGalleryProps {
   artist: Artist;
   onBack: () => void;
+  activeTab?: "tracked" | "source";
 }
 
 const GridContainer = forwardRef<
@@ -43,14 +49,30 @@ const ItemContainer = forwardRef<
 ));
 ItemContainer.displayName = "ItemContainer";
 
-// ... (все импорты остаются)
-
 export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   artist,
   onBack,
+  activeTab: propActiveTab,
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  // FIX: Убрали useEffect и дублирование стейта.
+  // internalActiveTab используется только если родитель НЕ передал activeTab.
+  const [internalActiveTab, setInternalActiveTab] = useState<
+    "tracked" | "source"
+  >("tracked");
+
+  // Приоритет: проп от родителя > локальный стейт
+  const activeTab = propActiveTab || internalActiveTab;
+
+  // Global Search State
+  const { searchQuery, setSearchQuery } = useSearchStore();
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  useEffect(() => {
+    setSearchQuery("");
+  }, [artist.id, setSearchQuery]);
 
   // Zustand Store
   const openViewer = useViewerStore((state) => state.open);
@@ -62,25 +84,75 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     queryFn: () => window.api.getArtistPostsCount(artist.id),
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["posts", artist.id],
-      queryFn: async ({ pageParam = 1 }) => {
-        return window.api.getArtistPosts({
-          artistId: artist.id,
-          page: pageParam,
-        });
-      },
-      getNextPageParam: (lastPage, allPages) => {
-        return lastPage.length === 50 ? allPages.length + 1 : undefined;
-      },
-      initialPageParam: 1,
-    });
+  // Tracked posts (from DB)
+  const {
+    data: trackedData,
+    fetchNextPage: fetchNextTrackedPage,
+    hasNextPage: hasNextTrackedPage,
+    isFetchingNextPage: isFetchingNextTrackedPage,
+    isLoading: isLoadingTracked,
+  } = useInfiniteQuery({
+    queryKey: ["posts", artist.id, { tags: debouncedSearch }],
+    queryFn: async ({ pageParam = 1 }) => {
+      return window.api.getArtistPosts({
+        artistId: artist.id,
+        page: pageParam,
+        filters: { tags: debouncedSearch },
+      });
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === 50 ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+    enabled: activeTab === "tracked",
+  });
 
-  const allPosts = useMemo(
-    () => data?.pages.flatMap((page) => page) || [],
-    [data]
+  const trackedPosts = useMemo(
+    () => trackedData?.pages.flatMap((page) => page) || [],
+    [trackedData]
   );
+
+  // Source posts (from Rule34 API)
+  const {
+    data: sourceData,
+    fetchNextPage: fetchNextSourcePage,
+    hasNextPage: hasNextSourcePage,
+    isFetchingNextPage: isFetchingNextSourcePage,
+    isLoading: isLoadingSource,
+  } = useInfiniteQuery({
+    queryKey: ["posts-source", artist.id, { tags: debouncedSearch }],
+    queryFn: async ({ pageParam = 1 }) => {
+      const tagQuery = `${artist.type === "uploader" ? "user:" : ""}${
+        artist.tag
+      }`;
+      const searchTags = debouncedSearch
+        ? `${tagQuery} ${debouncedSearch}`
+        : tagQuery;
+      return window.api.getRecentPostsRemote(pageParam, searchTags);
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === 100 ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+    enabled: activeTab === "source",
+  });
+
+  const sourcePosts = useMemo(
+    () => sourceData?.pages.flatMap((page) => page) || [],
+    [sourceData]
+  );
+
+  const allPosts = activeTab === "tracked" ? trackedPosts : sourcePosts;
+  const isLoading =
+    activeTab === "tracked" ? isLoadingTracked : isLoadingSource;
+  const hasNextPage =
+    activeTab === "tracked" ? hasNextTrackedPage : hasNextSourcePage;
+  const isFetchingNextPage =
+    activeTab === "tracked"
+      ? isFetchingNextTrackedPage
+      : isFetchingNextSourcePage;
+  const fetchNextPage =
+    activeTab === "tracked" ? fetchNextTrackedPage : fetchNextSourcePage;
 
   React.useEffect(() => {
     if (isOpen && allPosts.length > 0) {
@@ -120,32 +192,85 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  const handlePostClick = (index: number) => {
-    const post = allPosts[index];
-    if (!post) return;
-
-    if (!post.isViewed) {
-      viewMutation.mutate(post.id);
-    }
-
-    if (hasNextPage && index > allPosts.length - 10) {
-      fetchNextPage();
-    }
+  const handlePostClick = (post: Post, posts: Post[]) => {
+    const index = posts.findIndex((p) => p.id === post.id);
+    if (index === -1) return;
 
     openViewer({
-      origin: { kind: "artist", artistId: artist.id },
-      ids: allPosts.map((p) => p.id),
+      origin: { kind: "artist", artistId: artist.id, sourceType: activeTab },
+      ids: posts.map((p) => p.id),
       initialIndex: index,
-      listKey: `artist-${artist.id}`,
+      listKey: `artist-${artist.id}-${activeTab}`,
       hasNextPage,
       fetchNextPage,
     });
+
+    if (activeTab === "tracked" && !post.isViewed) {
+      viewMutation.mutate(post.id);
+    }
   };
 
   const handleToggleFavorite = async (post: Post) => {
     const newState = !post.isFavorited;
-    await window.api.updatePost(post.id, { isFavorited: newState });
-    queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
+
+    if (activeTab === "tracked") {
+      await window.api.updatePost(post.id, { isFavorited: newState });
+      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
+    } else {
+      // Optimistic UI for remote could be added here
+    }
+  };
+
+  const renderGrid = (posts: Post[]) => {
+    if (isLoading && posts.length === 0) {
+      return (
+        <div className="flex justify-center items-center h-full text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      );
+    }
+
+    if (posts.length === 0) {
+      return (
+        <div className="flex justify-center items-center h-full text-muted-foreground">
+          <p>No posts found</p>
+        </div>
+      );
+    }
+
+    return (
+      <VirtuosoGrid
+        style={{ height: "100%" }}
+        totalCount={posts.length}
+        endReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        components={{
+          List: GridContainer,
+          Item: ItemContainer,
+          Footer: () =>
+            isFetchingNextPage ? (
+              <div className="flex col-span-full justify-center py-4 w-full">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : null,
+        }}
+        itemContent={(index) => {
+          const post = posts[index];
+          if (!post) return null;
+
+          return (
+            <PostCard
+              post={post}
+              onClick={() => handlePostClick(post, allPosts)}
+              onToggleFavorite={() => handleToggleFavorite(post)}
+            />
+          );
+        }}
+      />
+    );
   };
 
   return (
@@ -159,15 +284,17 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           <div>
             <h2 className="text-xl font-bold tracking-tight">{artist.name}</h2>
             <p className="text-sm text-muted-foreground">
-              {totalCount} {t("artistGallery.totalPosts")}
+              {activeTab === "tracked" ? `${totalCount} posts` : "Source"}
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleResetCache}>
-            <Wrench className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Edit</span>
-          </Button>
+          {activeTab === "tracked" && (
+            <Button variant="outline" size="sm" onClick={handleResetCache}>
+              <Wrench className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Edit</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -183,46 +310,35 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         </div>
       </div>
 
-      {/* Grid Content */}
-      <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
-          <div className="flex justify-center items-center h-full text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin" />
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => {
+          // FIX: Меняем локальный стейт только если родитель не управляет табом
+          if (!propActiveTab) {
+            setInternalActiveTab(v as "tracked" | "source");
+          }
+        }}
+        className="flex flex-col flex-1 min-h-0"
+      >
+        {/* FIX: Скрываем переключатель, если включен режим Source-only */}
+        {!propActiveTab && (
+          <div className="px-6 pt-4">
+            <TabsList>
+              <TabsTrigger value="tracked">Tracked</TabsTrigger>
+              <TabsTrigger value="source">Source</TabsTrigger>
+            </TabsList>
           </div>
-        ) : (
-          <VirtuosoGrid
-            style={{ height: "100%" }}
-            totalCount={allPosts.length}
-            endReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
-            components={{
-              List: GridContainer,
-              Item: ItemContainer,
-              Footer: () =>
-                isFetchingNextPage ? (
-                  <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : null,
-            }}
-            itemContent={(index) => {
-              const post = allPosts[index];
-              if (!post) return null;
-
-              return (
-                <PostCard
-                  post={post}
-                  onClick={() => handlePostClick(index)}
-                  onToggleFavorite={() => handleToggleFavorite(post)}
-                />
-              );
-            }}
-          />
         )}
-      </div>
+
+        {/* Grid Content */}
+        <TabsContent value="tracked" className="flex-1 mt-0 min-h-0">
+          {renderGrid(trackedPosts)}
+        </TabsContent>
+        <TabsContent value="source" className="flex-1 mt-0 min-h-0">
+          {renderGrid(sourcePosts)}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

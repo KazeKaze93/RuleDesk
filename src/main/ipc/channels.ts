@@ -18,16 +18,17 @@ export const IPC_CHANNELS = {
     SEARCH_TAGS: "db:search-tags",
     GET_POSTS: "db:get-posts",
     GET_POSTS_COUNT: "db:get-posts-count",
+    UPDATE_POST: "db:update-post",
     MARK_VIEWED: "db:mark-post-viewed",
     TOGGLE_FAVORITE: "db:toggle-post-favorite",
     SYNC_ALL: "db:sync-all",
     TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,
     RESET_POST_CACHE: "db:reset-post-cache" as const,
-    UPDATE_POST: "db:update-post" as const,
     GET_API_KEY_ENCRYPTED: "db:get-api-key-encrypted",
   },
   API: {
     SEARCH_REMOTE: "api:search-remote-tags",
+    GET_RECENT_POSTS: "api:get-recent-posts",
   },
   BACKUP: {
     CREATE: "db:create-backup",

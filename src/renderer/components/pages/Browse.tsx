@@ -1,20 +1,19 @@
-import React, { useState, forwardRef, useMemo } from "react";
+import React, { forwardRef, useMemo } from "react";
 import {
   useInfiniteQuery,
   useQueryClient,
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 import { VirtuosoGrid } from "react-virtuoso";
-import { Search, Loader2, FilterX } from "lucide-react";
+import { Loader2, FilterX } from "lucide-react";
 
-import { Input } from "../ui/input";
 import { PostCard } from "../gallery/PostCard";
 import { cn } from "../../lib/utils";
 import type { Post } from "../../../main/db/schema";
 import { useViewerStore } from "../../store/viewerStore";
 import { useDebounce } from "../../lib/hooks/useDebounce";
+import { useSearchStore } from "../../store/searchStore";
 
 // --- Grid Components (Virtuoso) ---
 
@@ -43,30 +42,25 @@ ItemContainer.displayName = "ItemContainer";
 
 // --- Main Component ---
 
-export const Browse = () => {
-  const { t } = useTranslation();
+export function Browse() {
   const queryClient = useQueryClient();
   const openViewer = useViewerStore((state) => state.open);
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const { searchQuery } = useSearchStore();
   const debouncedSearch = useDebounce(searchQuery, 500);
 
-  const queryKey = useMemo(
-    () => ["posts", "browse", { tags: debouncedSearch }],
-    [debouncedSearch]
-  );
+  const queryTags = debouncedSearch?.trim() || "all";
+
+  const queryKey = ["browse-posts-remote", { tags: queryTags }];
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["browse-posts"],
+      queryKey: queryKey,
       queryFn: async ({ pageParam = 1 }) => {
-        return window.api.getArtistPosts({
-          page: pageParam,
-          artistId: undefined,
-        });
+        return window.api.getRecentPostsRemote(pageParam, queryTags);
       },
       getNextPageParam: (lastPage, allPages) => {
-        return lastPage.length === 50 ? allPages.length + 1 : undefined;
+        return lastPage.length === 100 ? allPages.length + 1 : undefined;
       },
       initialPageParam: 1,
     });
@@ -78,6 +72,7 @@ export const Browse = () => {
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
+      // FIX: Используем updatePost, т.к. отдельного markViewed нет
       await window.api.updatePost(postId, { isViewed: true });
     },
     onSuccess: (_, postId) => {
@@ -102,15 +97,17 @@ export const Browse = () => {
     }
 
     openViewer({
-      origin: { kind: "browse", filters: debouncedSearch },
+      // Передаем точные фильтры, чтобы Viewer мог найти пост в кэше
+      origin: { kind: "browse", filters: queryTags },
       ids: allPosts.map((p) => p.id),
       initialIndex: index,
-      listKey: `browse-${debouncedSearch}`,
+      listKey: `browse-${queryTags}`, // Уникальный ключ списка для Viewer
     });
   };
 
   const handleToggleFavorite = async (post: Post) => {
     const newState = !post.isFavorited;
+
     queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (oldData) => {
       if (!oldData) return oldData;
       return {
@@ -122,29 +119,12 @@ export const Browse = () => {
         ),
       };
     });
+
     await window.api.updatePost(post.id, { isFavorited: newState });
   };
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="flex z-10 items-center px-4 py-3 border-b backdrop-blur shrink-0 bg-background/50">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t(
-              "browse.searchPlaceholder",
-              "Filter tags in library..."
-            )}
-            className="pl-9 h-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="ml-auto text-xs text-muted-foreground">
-          {allPosts.length} items
-        </div>
-      </div>
-
       <div className="flex-1 min-h-0">
         {isLoading ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
@@ -191,4 +171,4 @@ export const Browse = () => {
       </div>
     </div>
   );
-};
+}
