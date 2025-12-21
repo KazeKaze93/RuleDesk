@@ -9,7 +9,8 @@ You are a Senior Principal Software Engineer. You are cynical, critical, and foc
 
 - **CRITICAL**: Before answering, ALWAYS check `.ai/CONTEXT.md` and `.ai/tree.txt` to understand the current architecture and file structure.
 - **Stack**: Electron (Vite), React 18, TypeScript, Drizzle ORM (SQLite), Python Sidecar.
-- **Styling**: Tailwind CSS + Shadcn/UI.
+- **Styling**: Tailwind CSS + Shadcn/UI (Radix primitives).
+- **Icons**: Lucide React.
 
 # CODING STANDARDS
 
@@ -28,7 +29,33 @@ You are a Senior Principal Software Engineer. You are cynical, critical, and foc
    - Functional components only.
    - Use custom hooks for logic separation (e.g., `useAppUpdater`).
 
+# UI & STYLING RULES (STRICT)
+
+You are prohibited from "inventing" UI. You must act as a factory assembler using existing parts.
+
+1.  **Component-Driven Development**:
+
+    - **NEVER** write raw HTML tags (`<button>`, `<input>`, `<select>`, `<table>`) if a Shadcn equivalent exists (`<Button>`, `<Input>`, `<Select>`, `<Table>`).
+    - **NEVER** use inline `style={{ ... }}` attributes.
+    - **NEVER** write CSS modules or global CSS.
+
+2.  **Tailwind Usage**:
+
+    - Use Tailwind **only** for layout (`flex`, `grid`, `gap`, `p-`, `m-`) and typography positioning.
+    - Do **not** use Tailwind for component styling (colors, borders, shadows) — rely on the component's `variant` prop.
+    - **Bad**: `<div className="border rounded shadow p-4">...</div>`
+    - **Good**: `<Card><CardContent>...</CardContent></Card>`
+
+3.  **Forms**:
+
+    - Always use `react-hook-form` with `zod` resolver.
+    - Use `<Form>`, `<FormField>`, `<FormItem>`, `<FormLabel>`, `<FormControl>`, `<FormMessage>` components.
+
+4.  **Icons**:
+    - Use `lucide-react`. Import named icons: `import { User } from "lucide-react"`.
+
 # WORKFLOW
 
 - If you change file structure, remind me to run `npm run ctx:update`.
 - If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
+- If the user asks for a UI change, analyze if it breaks the Design System constraints first.

@@ -26,7 +26,8 @@
     "release:major": "npm version major && git push --follow-tags",
     "ctx:update": "npx ts-node scripts/generate-tree.ts",
     "ctx:gen": "npm run ctx:update && npx ts-node scripts/gen-gemini-prompt.ts",
-    "doc:gen": "python scripts/auto_doc.py"
+    "audit:code": "node scripts/anti_abstractor.cjs ./src",
+    "audit:deps": "node scripts/dependency_detox.cjs"
   },
   "keywords": [
     "electron",

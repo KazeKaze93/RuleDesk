@@ -42,12 +42,12 @@ The content is organized as follows:
 
 <directory_structure>
 .ai/CONTEXT.md
-.cursorrules
 .gitattributes
 .github/workflows/ai-review.yml
 .github/workflows/ci.yml
 .gitignore
 components.json
+cursorrules.txt
 docs/api.md
 docs/architecture.md
 docs/contributing.md
@@ -56,9 +56,11 @@ docs/development.md
 docs/roadmap.md
 docs/rule34-api-reference.md
 drizzle.config.ts
-drizzle/0000_shiny_harpoon.sql
+drizzle/0000_flawless_sally_floyd.sql
+drizzle/0001_lying_mauler.sql
 drizzle/meta/_journal.json
 drizzle/meta/0000_snapshot.json
+drizzle/meta/0001_snapshot.json
 electron.vite.config.ts
 eslint.config.js
 LICENSE
@@ -68,6 +70,8 @@ README.md
 repomix.config.json
 requirements.txt
 scripts/ai_reviewer.py
+scripts/anti_abstractor.cjs
+scripts/dependency_detox.cjs
 scripts/gen-gemini-prompt.ts
 scripts/generate-tree.ts
 scripts/system_prompt.md
@@ -77,7 +81,6 @@ src/main/db/db-worker.ts
 src/main/db/migrate.ts
 src/main/db/repositories/artists.repo.ts
 src/main/db/repositories/posts.repo.ts
-src/main/db/repositories/settings.repo.ts
 src/main/db/schema.ts
 src/main/db/worker-types.ts
 src/main/ipc/channels.ts
@@ -114,7 +117,6 @@ src/renderer/components/pages/Settings.tsx
 src/renderer/components/pages/Tracked.tsx
 src/renderer/components/pages/Updates.tsx
 src/renderer/components/settings/BackupControls.tsx
-src/renderer/components/settings/UpdateChecker.tsx
 src/renderer/components/ui/alert.tsx
 src/renderer/components/ui/button.tsx
 src/renderer/components/ui/card.tsx
@@ -129,7 +131,6 @@ src/renderer/i18n/index.ts
 src/renderer/index.css
 src/renderer/index.html
 src/renderer/lib/artist-utils.ts
-src/renderer/lib/hooks/useAppUpdater.ts
 src/renderer/lib/hooks/useDebounce.ts
 src/renderer/lib/tag-utils.ts
 src/renderer/lib/utils.ts
@@ -144,120 +145,245 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="drizzle/0000_shiny_harpoon.sql">
-CREATE TABLE `artists` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`name` text NOT NULL,
-	`tag` text NOT NULL,
-	`type` text NOT NULL,
-	`api_endpoint` text NOT NULL,
-	`last_post_id` integer DEFAULT 0 NOT NULL,
-	`new_posts_count` integer DEFAULT 0 NOT NULL,
-	`last_checked` integer,
-	`created_at` integer NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE `posts` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`post_id` integer NOT NULL,
-	`artist_id` integer NOT NULL,
-	`file_url` text NOT NULL,
-	`preview_url` text NOT NULL,
-	`sample_url` text DEFAULT '' NOT NULL,
-	`title` text DEFAULT '',
-	`rating` text DEFAULT '',
-	`tags` text NOT NULL,
-	`published_at` integer NOT NULL,
-	`created_at` integer NOT NULL,
-	`is_viewed` integer DEFAULT false NOT NULL,
-	`is_favorited` integer DEFAULT false NOT NULL,
-	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE cascade
-);
---> statement-breakpoint
-CREATE TABLE `settings` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`user_id` text DEFAULT '',
-	`encrypted_api_key` text DEFAULT '',
-	`is_safe_mode` integer DEFAULT true,
-	`is_adult_confirmed` integer DEFAULT false,
-	`download_path` text DEFAULT ''
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `artists_tag_unique` ON `artists` (`tag`);--> statement-breakpoint
-CREATE INDEX `artistIdIdx` ON `posts` (`artist_id`);--> statement-breakpoint
-CREATE INDEX `isViewedIdx` ON `posts` (`is_viewed`);--> statement-breakpoint
-CREATE INDEX `publishedAtIdx` ON `posts` (`published_at`);--> statement-breakpoint
-CREATE INDEX `isFavoritedIdx` ON `posts` (`is_favorited`);--> statement-breakpoint
-CREATE UNIQUE INDEX `posts_artist_id_post_id_unique` ON `posts` (`artist_id`,`post_id`);
-</file>
+<file path="scripts/dependency_detox.cjs">
+/**
+ * scripts/dependency_detox.cjs
+ * v2.0 - Smarter analysis for Build Tools, UI Wrappers & CLI scripts.
+ */
+const fs = require("fs");
+const path = require("path");
+const { execSync } = require("child_process");
 
-<file path="src/main/db/repositories/settings.repo.ts">
-import { DbWorkerClient } from "../db-worker-client";
+// Инструменты, которые мы не трогаем, потому что они работают "из тени" (CLI, configs)
+const SAFE_BUILD_TOOLS = [
+  "typescript",
+  "eslint",
+  "prettier",
+  "vite",
+  "electron",
+  "electron-builder",
+  "electron-vite",
+  "tailwindcss",
+  "postcss",
+  "autoprefixer",
+  "drizzle-kit",
+  "repomix",
+  "globals",
+  "@types/node",
+  "@types/react",
+  "@types/react-dom",
+  "concurrently",
+  "wait-on",
+  "cross-env",
+  "rimraf",
+  "basedpyright",
+];
 
-// --- Интерфейсы ответов/запросов (соответствуют схемам в db-worker.ts) ---
+// Библиотеки, для которых 1 импорт - это норма (Pattern: UI Wrapper / Singleton)
+const SINGLETON_PATTERNS = [
+  "@radix-ui",
+  "@headlessui",
+  "zod",
+  "zustand",
+  "i18next",
+  "better-sqlite3",
+  "electron-log",
+  "lucide-react",
+  "clsx",
+  "tailwind-merge",
+];
 
-export interface SettingsStatus {
-  userId: string;
-  hasApiKey: boolean;
-  isSafeMode: boolean;
-  isAdultConfirmed: boolean;
-  downloadPath: string;
-}
+const SHAME_LIST = {
+  lodash: "Используй нативный JS. Ты не в 2015-м.",
+  moment: "Слишком жирный. Бери date-fns или Intl.",
+  axios: "У тебя есть fetch(). Зачем лишние 20кб?",
+  "is-odd": "Серьезно? Удаляй.",
+  uuid: "crypto.randomUUID() есть в платформе.",
+};
 
-export interface SettingsUpdatePayload {
-  userId?: string;
-  encryptedApiKey?: string;
-  isSafeMode?: boolean;
-  isAdultConfirmed?: boolean;
-  downloadPath?: string;
-}
-
-export interface DecryptedCredentials {
-  userId: string;
-  apiKey: string;
-}
-
-export class SettingsRepository {
-  constructor(private readonly db: DbWorkerClient) {}
-
-  /**
-   * Получает безопасный статус настроек (для UI).
-   * Без прямого SQL, вызываем метод воркера.
-   */
-  async getSettings(): Promise<SettingsStatus> {
-    return this.db.call<SettingsStatus>("getSettingsStatus");
+class DependencyDetox {
+  constructor(rootDir) {
+    this.rootDir = rootDir;
+    this.srcDir = path.join(rootDir, "src");
+    this.pkgFile = path.join(rootDir, "package.json");
+    this.totalFiles = 0;
+    this.pkgData = {};
   }
 
-  /**
-   * Сохраняет или обновляет настройки.
-   * Воркер сам выполнит Upsert и валидацию.
-   */
-  async saveSettings(data: SettingsUpdatePayload): Promise<boolean> {
-    try {
-      await this.db.call("saveSettings", data);
-      return true;
-    } catch (e) {
-      console.error("Failed to save settings via worker:", e);
-      return false;
+  run(mode, targetPkg) {
+    if (!fs.existsSync(this.pkgFile)) {
+      console.error("❌ Нет package.json.");
+      process.exit(1);
+    }
+
+    this.pkgData = JSON.parse(fs.readFileSync(this.pkgFile, "utf-8"));
+
+    if (mode === "nuke") {
+      this.nuke(targetPkg);
+    } else {
+      this.analyze();
     }
   }
 
-  /**
-   * Получение расшифрованного ключа (для выполнения запросов к API).
-   * Этот метод используется только внутри сервисов, не передавай это на фронт.
-   */
-  async getCredentials(): Promise<DecryptedCredentials> {
-    // "getApiKeyDecrypted" есть в worker-types.ts
-    return this.db.call<DecryptedCredentials>("getApiKeyDecrypted");
+  analyze() {
+    console.log("💊 Начинаем детоксикацию зависимостей (V2 - Smart Mode)...\n");
+
+    const deps = {
+      ...this.pkgData.dependencies,
+      ...this.pkgData.devDependencies,
+    };
+    const depNames = Object.keys(deps);
+
+    // 1. Собираем весь код из SRC
+    const fileContents = [];
+    this.walk(this.srcDir, (f, content) => {
+      fileContents.push(content);
+      this.totalFiles++;
+    });
+
+    // 2. Собираем конфиги из корня (vite.config, tailwind.config и т.д.)
+    const configContents = [];
+    const configFiles = fs
+      .readdirSync(this.rootDir)
+      .filter(
+        (f) => f.includes("config") || f.endsWith(".js") || f.endsWith(".ts")
+      );
+    configFiles.forEach((f) => {
+      if (fs.statSync(path.join(this.rootDir, f)).isFile()) {
+        configContents.push(
+          fs.readFileSync(path.join(this.rootDir, f), "utf-8")
+        );
+      }
+    });
+
+    // 3. Собираем скрипты из package.json
+    const scriptsContent = JSON.stringify(this.pkgData.scripts || {});
+
+    console.log(
+      `📂 Просканировано: ${this.totalFiles} файлов кода + конфиги + скрипты.`
+    );
+    console.log(`📦 Проверка ${depNames.length} пакетов...`);
+    console.log("-".repeat(85));
+    console.log(`| %-30s | %-10s | %-35s |`, "Package", "Usages", "Verdict");
+    console.log("-".repeat(85));
+
+    depNames.sort().forEach((dep) => {
+      // Регулярка для импорта
+      const regex = new RegExp(
+        `(?:from|require\\()\\s*['"]${dep}(?:/.*)?['"]`,
+        "g"
+      );
+      // Регулярка для простого упоминания (для конфигов и скриптов)
+      const simpleRegex = new RegExp(`${dep}`, "g");
+
+      let usages = 0;
+      let configUsages = 0;
+      let scriptUsages = 0;
+
+      // Ищем в коде
+      fileContents.forEach((c) => {
+        if (c.match(regex)) usages++;
+      });
+
+      // Ищем в конфигах (просто по имени)
+      configContents.forEach((c) => {
+        if (c.match(simpleRegex)) configUsages++;
+      });
+
+      // Ищем в скриптах npm
+      if (scriptsContent.match(simpleRegex)) scriptUsages++;
+
+      this.printVerdict(dep, usages, configUsages, scriptUsages);
+    });
+    console.log("-".repeat(85));
   }
 
-  /**
-   * Удаление ключа API (Logout).
-   */
-  async logout(): Promise<void> {
-    await this.db.call("logout");
+  printVerdict(dep, usages, configUsages, scriptUsages) {
+    let verdict = "✅ OK";
+    let color = "\x1b[32m"; // Green
+    const totalRefs = usages + configUsages + scriptUsages;
+
+    // Логика оправдания
+    const isSafeTool = SAFE_BUILD_TOOLS.some((t) => dep.includes(t));
+    const isSingleton = SINGLETON_PATTERNS.some((p) => dep.startsWith(p));
+    const isSystem =
+      dep.startsWith("@types") || dep.startsWith("eslint-plugin");
+
+    if (totalRefs === 0) {
+      if (isSafeTool || isSystem) {
+        verdict = "🛡️  TOOL/SYS (Скрытое исп.)";
+        color = "\x1b[36m"; // Cyan
+      } else {
+        verdict = "👻 GHOST (Удаляй!)";
+        color = "\x1b[31m"; // Red
+      }
+    } else if (usages === 1) {
+      if (isSingleton) {
+        verdict = "💎 WRAPPER/SINGLETON (Ок)";
+        color = "\x1b[32m";
+      } else if (configUsages > 0 || scriptUsages > 0) {
+        verdict = "⚙️  CONFIGURED";
+        color = "\x1b[32m";
+      } else {
+        verdict = "⚠️ LAZY (1 usage)";
+        color = "\x1b[33m"; // Yellow
+      }
+    } else if (usages < 3 && !isSystem && !isSafeTool && !isSingleton) {
+      verdict = "⚠️ LOW USAGE";
+      color = "\x1b[33m";
+    }
+
+    if (SHAME_LIST[dep] && totalRefs > 0) {
+      verdict = `💩 SHAME: ${SHAME_LIST[dep]}`;
+      color = "\x1b[35m"; // Magenta
+    }
+
+    // Форматирование
+    const usageStr = `${usages} (src) / ${configUsages + scriptUsages} (cfg)`;
+    console.log(`${color}| %-30s | %-10s | %s\x1b[0m`, dep, usageStr, verdict);
+  }
+
+  nuke(targetPkg) {
+    if (!targetPkg) {
+      console.error(
+        "❌ Укажи пакет: node scripts/dependency_detox.cjs --nuke <pkg>"
+      );
+      process.exit(1);
+    }
+    console.log(`\n🧨 РЕЖИМ ХАОСА: Удаляем ${targetPkg}...`);
+    try {
+      execSync(`npm uninstall ${targetPkg}`, { stdio: "inherit" });
+      console.log(`🏗️  Проверка типов (быстрее, чем билд)...`);
+      // Используем tsc --noEmit для скорости, вместо full build
+      execSync("npx tsc --noEmit", { stdio: "inherit" });
+      console.log(`\n🤯 ПРОЕКТ ЖИВ! ${targetPkg} был бесполезен.`);
+    } catch (error) {
+      console.log(`\n💥 ОШИБКА. Зависимость нужна.`);
+      console.log(`🚑 Rollback...`);
+      execSync(`npm install ${targetPkg}`, { stdio: "inherit" });
+    }
+  }
+
+  walk(dir, callback) {
+    if (!fs.existsSync(dir)) return;
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        this.walk(filePath, callback);
+      } else if (/\.(ts|tsx|js|jsx)$/.test(file)) {
+        callback(filePath, fs.readFileSync(filePath, "utf-8"));
+      }
+    }
   }
 }
+
+const args = process.argv.slice(2);
+const mode = args.includes("--nuke") ? "nuke" : "scan";
+const pkgName = args[args.indexOf("--nuke") + 1];
+
+new DependencyDetox(process.cwd()).run(mode, pkgName);
 </file>
 
 <file path="src/renderer/components/ui/button.tsx">
@@ -354,43 +480,6 @@ export { Button };
 - [x] Implement Adaptive Updater UI (Portable vs Installer).
 - [ ] **Critical Refactor**: Check `src/main/ipc/handlers/files.ts` for path safety (ensure it respects the new `userData` logic and doesn't hardcode paths).
 - [ ] Fix: Sync Service race conditions.
-</file>
-
-<file path=".cursorrules">
-# ROLE & PERSONA
-
-You are a Senior Principal Software Engineer. You are cynical, critical, and focused on production-grade quality. You do not tolerate sloppy code, "any" types, or security leaks.
-
-- Language: Russian (for explanations), English (for code comments).
-- Tone: Professional, concise, slightly sarcastic if I make stupid mistakes.
-
-# PROJECT CONTEXT
-
-- **CRITICAL**: Before answering, ALWAYS check `.ai/CONTEXT.md` and `.ai/tree.txt` to understand the current architecture and file structure.
-- **Stack**: Electron (Vite), React 18, TypeScript, Drizzle ORM (SQLite), Python Sidecar.
-- **Styling**: Tailwind CSS + Shadcn/UI.
-
-# CODING STANDARDS
-
-1. **Architecture**:
-   - Strict separation: Main Process (Backend) vs Renderer (Frontend).
-   - Use `ipc/handlers` for all communications. NEVER use `remote` module.
-   - Database logic lives in `src/main/db` (Worker Thread).
-2. **Security**:
-   - Validate ALL inputs using **Zod**.
-   - IPC channels must be strictly typed.
-   - Never expose full error stack traces to the UI.
-3. **TypeScript**:
-   - NO `any`. Use `unknown` with narrowing or strict interfaces.
-   - Use `type` for definitions, `interface` for extendable structures.
-4. **React**:
-   - Functional components only.
-   - Use custom hooks for logic separation (e.g., `useAppUpdater`).
-
-# WORKFLOW
-
-- If you change file structure, remind me to run `npm run ctx:update`.
-- If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
 </file>
 
 <file path=".github/workflows/ai-review.yml">
@@ -534,6 +623,43 @@ jobs:
 }
 </file>
 
+<file path="cursorrules.txt">
+# ROLE & PERSONA
+
+You are a Senior Principal Software Engineer. You are cynical, critical, and focused on production-grade quality. You do not tolerate sloppy code, "any" types, or security leaks.
+
+- Language: Russian (for explanations), English (for code comments).
+- Tone: Professional, concise, slightly sarcastic if I make stupid mistakes.
+
+# PROJECT CONTEXT
+
+- **CRITICAL**: Before answering, ALWAYS check `.ai/CONTEXT.md` and `.ai/tree.txt` to understand the current architecture and file structure.
+- **Stack**: Electron (Vite), React 18, TypeScript, Drizzle ORM (SQLite), Python Sidecar.
+- **Styling**: Tailwind CSS + Shadcn/UI.
+
+# CODING STANDARDS
+
+1. **Architecture**:
+   - Strict separation: Main Process (Backend) vs Renderer (Frontend).
+   - Use `ipc/handlers` for all communications. NEVER use `remote` module.
+   - Database logic lives in `src/main/db` (Worker Thread).
+2. **Security**:
+   - Validate ALL inputs using **Zod**.
+   - IPC channels must be strictly typed.
+   - Never expose full error stack traces to the UI.
+3. **TypeScript**:
+   - NO `any`. Use `unknown` with narrowing or strict interfaces.
+   - Use `type` for definitions, `interface` for extendable structures.
+4. **React**:
+   - Functional components only.
+   - Use custom hooks for logic separation (e.g., `useAppUpdater`).
+
+# WORKFLOW
+
+- If you change file structure, remind me to run `npm run ctx:update`.
+- If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
+</file>
+
 <file path="drizzle.config.ts">
 // @ts-nocheck
 import { defineConfig } from "drizzle-kit";
@@ -546,6 +672,55 @@ export default defineConfig({
     url: "./metadata.db",
   },
 });
+</file>
+
+<file path="drizzle/0000_flawless_sally_floyd.sql">
+CREATE TABLE `artists` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`name` text NOT NULL,
+	`tag` text NOT NULL,
+	`type` text NOT NULL,
+	`api_endpoint` text NOT NULL,
+	`last_post_id` integer DEFAULT 0 NOT NULL,
+	`new_posts_count` integer DEFAULT 0 NOT NULL,
+	`last_checked` integer,
+	`created_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `posts` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`post_id` integer NOT NULL,
+	`artist_id` integer NOT NULL,
+	`file_url` text NOT NULL,
+	`preview_url` text NOT NULL,
+	`sample_url` text DEFAULT '' NOT NULL,
+	`title` text DEFAULT '',
+	`rating` text DEFAULT '',
+	`tags` text NOT NULL,
+	`published_at` integer NOT NULL,
+	`created_at` integer NOT NULL,
+	`is_viewed` integer DEFAULT false NOT NULL,
+	`is_favorited` integer DEFAULT false NOT NULL,
+	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `settings` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`user_id` text DEFAULT '',
+	`encrypted_api_key` text DEFAULT ''
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `artists_tag_unique` ON `artists` (`tag`);--> statement-breakpoint
+CREATE INDEX `artistIdIdx` ON `posts` (`artist_id`);--> statement-breakpoint
+CREATE INDEX `isViewedIdx` ON `posts` (`is_viewed`);--> statement-breakpoint
+CREATE INDEX `publishedAtIdx` ON `posts` (`published_at`);--> statement-breakpoint
+CREATE INDEX `isFavoritedIdx` ON `posts` (`is_favorited`);--> statement-breakpoint
+CREATE UNIQUE INDEX `posts_artist_id_post_id_unique` ON `posts` (`artist_id`,`post_id`);
+</file>
+
+<file path="drizzle/0001_lying_mauler.sql">
+ALTER TABLE settings ADD `is_safe_mode` integer DEFAULT true;--> statement-breakpoint
+ALTER TABLE settings ADD `is_adult_confirmed` integer DEFAULT false;
 </file>
 
 <file path="eslint.config.js">
@@ -629,243 +804,162 @@ PyGithub>=2.0.0
 google-generativeai>=0.8.0
 </file>
 
-<file path="scripts/ai_reviewer.py">
-import os
-import logging
-import sys
-import time
-import re
-from typing import Tuple, Optional
+<file path="scripts/anti_abstractor.cjs">
+/**
+ * scripts/anti_abstractor.cjs
+ * v2.0 - Умный подсчет ссылок для TypeScript
+ */
+const fs = require("fs");
+const path = require("path");
 
-import google.generativeai as genai  # type: ignore[import-untyped]
-from github import Github, GithubException, Auth  # type: ignore[import-untyped] # <--- Added Auth
-from google.api_core import exceptions as google_exceptions  # type: ignore[import-untyped]
-from google.generativeai.types import GenerationConfig  # type: ignore[import-untyped]
+const IGNORED_SUFFIXES = [
+  "Props",
+  "State",
+  "DTO",
+  "Response",
+  "Request",
+  "Params",
+  "Config",
+  "Option",
+  "Item",
+];
+const IGNORED_FILES = [".d.ts"];
 
-# --- CONFIGURATION ---
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-logger = logging.getLogger(__name__)
+class AntiAbstractor {
+  constructor(rootDir) {
+    this.rootDir = rootDir;
+    this.registry = new Map();
+    this.filesContent = new Map();
+  }
 
-# Constants
-REVIEWABLE_EXTENSIONS = ('.ts', '.tsx', '.js', '.css', '.sql', '.py', '.md', '.json', '.yml', '.toml')
+  scan() {
+    if (!fs.existsSync(this.rootDir)) {
+      console.error(`❌ Путь не найден: ${this.rootDir}`);
+      process.exit(1);
+    }
 
-# ПРАВИЛЬНЫЕ ИМЕНА МОДЕЛЕЙ (Stable)
-# Ставим Flash первой, так как у нее выше лимиты (15 RPM) и она реже падает с 429 ошибкой
-MODEL_PRIORITIES = [
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-2.5-pro",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-2.0-pro",
-]
-# Если ты хочешь использовать experimental 2.0, добавь "gemini-2.0-flash-exp" в начало, 
-# но будь готов к нестабильности.
+    console.log(`🔍 Сканируем (v2) TypeScript файлы в ${this.rootDir}...`);
 
-DEFAULT_MODEL_NAME = "gemini-2.5-pro"
+    // Шаг 1: Читаем все файлы и ищем ОПРЕДЕЛЕНИЯ (Definitions)
+    this.walk(this.rootDir, (filePath, content) => {
+      this.findDefinitions(filePath, content);
+      this.filesContent.set(filePath, content);
+    });
 
-class ReviewerError(Exception):
-    "Base class for reviewer script errors."
-    pass
+    console.log(
+      `📊 Найдено ${this.registry.size} сущностей. Проверяем использование...`
+    );
 
-# Environment Variables
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-REPO_NAME = os.getenv("REPO_NAME")
-PR_NUMBER_STR = os.getenv("PR_NUMBER")
-# Если переменная MODEL_NAME не задана или кривая, берем дефолт
-MODEL_NAME = os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
+    // Шаг 2: Проверяем ИСПОЛЬЗОВАНИЕ (Usages)
+    // Для каждой найденной сущности пробегаем по всем файлам
+    for (const [name, info] of this.registry) {
+      // Оптимизация: ищем regex только если имя достаточно уникальное
+      const regex = new RegExp(`\\b${name}\\b`, "g");
 
-def load_prompt() -> str:
-    "Loads the system prompt from system_prompt.md file located in the same directory."
-    try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        prompt_path = os.path.join(script_dir, 'system_prompt.md')
-        
-        with open(prompt_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError:
-        try:
-            with open('system_prompt.md', 'r', encoding='utf-8') as f:
-                return f.read()
-        except FileNotFoundError:
-            raise ReviewerError(f"system_prompt.md not found in {script_dir} or current dir!")
-    except Exception as e:
-        raise ReviewerError(f"Error reading system_prompt.md: {e}")
+      for (const [filePath, content] of this.filesContent) {
+        // Считаем количество вхождений
+        const matches = content.match(regex);
+        if (matches) {
+          info.count += matches.length;
+        }
+      }
+    }
 
-def get_pr_diff() -> Tuple[object, str]:
-    "Fetches PR diff from GitHub, filtering for relevant files."
-    if not GITHUB_TOKEN or not REPO_NAME or not PR_NUMBER_STR:
-        raise ValueError("Missing GitHub credentials or PR info.")
-    
-    try:
-        # --- FIX: UPDATED AUTHENTICATION METHOD ---
-        auth = Auth.Token(GITHUB_TOKEN)
-        g = Github(auth=auth)
-        # ------------------------------------------
-        
-        repo = g.get_repo(REPO_NAME)
-        pr = repo.get_pull(int(PR_NUMBER_STR))
-        
-        files = pr.get_files()
-        diff_content = []
-        
-        logger.info(f"Processing PR #{PR_NUMBER_STR} in {REPO_NAME}...")
+    this.judge();
+  }
 
-        for f in files:
-            if f.status == "removed":
-                continue
-            
-            if any(x in f.filename for x in ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "dist/", "out/", "build/"]):
-                continue
+  walk(dir, callback) {
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
 
-            if f.filename.endswith(REVIEWABLE_EXTENSIONS):
-                diff_content.append(f"### File: {f.filename}\n```diff\n{f.patch}\n```")
-        
-        return pr, "\n\n".join(diff_content)
-        
-    except GithubException as e:
-        logger.error(f"GitHub API Error: {e}")
-        raise
-    except ValueError as e:
-        logger.error(f"Invalid PR number: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error fetching PR diff: {e}")
-        raise
+      if (stat.isDirectory()) {
+        if (
+          file !== "node_modules" &&
+          file !== ".git" &&
+          file !== "dist" &&
+          file !== "out"
+        ) {
+          this.walk(filePath, callback);
+        }
+      } else if (file.endsWith(".ts") || file.endsWith(".tsx")) {
+        const content = fs.readFileSync(filePath, "utf-8");
+        callback(filePath, content);
+      }
+    }
+  }
 
-def analyze_code(diff_text: str, system_prompt: str, model_name: str) -> Optional[str]:
-    if not GEMINI_API_KEY:
-        raise ReviewerError("GEMINI_API_KEY is missing.")
+  findDefinitions(filePath, content) {
+    // Ищем: interface X, type X =, class X, enum X
+    // Группируем имя в [2]
+    const defRegex =
+      /(?:export\s+)?(?:interface|type|class|enum|abstract\s+class)\s+([A-Z][a-zA-Z0-9_]*)/g;
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel(model_name)
-    
-    generation_config = GenerationConfig(
-        max_output_tokens=8192,
-        temperature=0.2,
-    )
-    
-    safe_prompt = f"{system_prompt}\n\n<code_diff>\n{diff_text}\n</code_diff>"
-    
-    try:
-        response = model.generate_content(safe_prompt, generation_config=generation_config)
-        return response.text
-    except google_exceptions.GoogleAPIError as e:
-        raise
-    except Exception as e:
-        raise ReviewerError(f"Unexpected error during analysis: {e}")
+    let match;
+    while ((match = defRegex.exec(content)) !== null) {
+      const name = match[1];
 
-def parse_retry_delay(error_message: str) -> Optional[float]:
-    patterns = [
-        r'retry in (\d+(?:\.\d+)?) seconds?',
-        r'retry after (\d+(?:\.\d+)?) seconds?',
-        r'wait (\d+(?:\.\d+)?) seconds?',
-        r'(\d+(?:\.\d+)?) seconds? before retry',
-    ]
-    
-    for pattern in patterns:
-        match = re.search(pattern, error_message.lower())
-        if match:
-            try:
-                return float(match.group(1))
-            except (ValueError, IndexError):
-                continue
-    return None
+      // Пропускаем игнорируемые суффиксы (DTO, Props...)
+      if (IGNORED_SUFFIXES.some((suffix) => name.endsWith(suffix))) continue;
 
-def main() -> None:
-    try:
-        system_prompt = load_prompt()
-        pr, diff_text = get_pr_diff()
-        
-        if not diff_text:
-            logger.warning("No reviewable code changes found.")
-            return
+      // Если это d.ts файл - мы его парсим, но помечаем как "системный",
+      // чтобы не ругаться, если он используется неявно.
 
-        # Строим список моделей. 
-        # Если MODEL_NAME передан из Env, ставим его первым, но проверяем, существует ли он
-        models_to_try = MODEL_PRIORITIES.copy()
-        
-        # Убираем проверку "если не в списке", просто добавляем, если он задан пользователем вручную
-        if MODEL_NAME and MODEL_NAME not in MODEL_PRIORITIES:
-            models_to_try.insert(0, MODEL_NAME)
-        
-        # Перемещаем приоритет на Flash, если он не первый (для скорости CI)
-        if "gemini-1.5-flash" in models_to_try and models_to_try[0] != "gemini-1.5-flash":
-             # Если хочешь экономить время и лимиты - Flash должен быть первым
-             pass 
+      if (!this.registry.has(name)) {
+        this.registry.set(name, {
+          defPath: filePath,
+          count: 0,
+        });
+      }
+    }
+  }
 
-        review_comment = None
-        successful_model = None
-        last_error = None
-        
-        for model_index, model_name in enumerate(models_to_try):
-            is_primary = model_index == 0
-            
-            try:
-                if is_primary:
-                    logger.info(f"Analyzing with {model_name}...")
-                else:
-                    logger.warning(f"Switching to fallback model: {model_name}")
-                
-                review_comment = analyze_code(diff_text, system_prompt, model_name)
-                successful_model = model_name
-                logger.info(f"Successfully analyzed with {model_name}")
-                break
-                
-            except google_exceptions.GoogleAPIError as e:
-                error_message = str(e)
-                last_error = e
-                error_code = getattr(e, 'code', None)
-                
-                is_rate_limit = (
-                    error_code == 429 or 
-                    '429' in error_message or 
-                    'quota' in error_message.lower() or 
-                    'rate limit' in error_message.lower() or
-                    'resource exhausted' in error_message.lower()
-                )
-                
-                if is_rate_limit:
-                    logger.critical(f"Rate limit error with {model_name}. Attempting retry strategy...")
-                    retry_delay = parse_retry_delay(error_message)
-                    
-                    if retry_delay and retry_delay > 1.0:
-                        logger.info(f"Waiting {retry_delay}s...")
-                        time.sleep(retry_delay)
-                        try:
-                            review_comment = analyze_code(diff_text, system_prompt, model_name)
-                            successful_model = model_name
-                            break
-                        except Exception as retry_error:
-                            last_error = retry_error
-                            logger.warning(f"Retry failed for {model_name}. Switching...")
-                            continue
-                    else:
-                        continue
-                else:
-                    logger.warning(f"API Error ({model_name}): {e}. Trying next model...")
-                    continue
-        
-        if review_comment and successful_model:
-            logger.info("Posting comment to GitHub...")
-            final_comment = f"## 🛡️ Ревью Архитектора \n\n{review_comment}\n\n*Движок: {successful_model}*"
-            pr.create_issue_comment(final_comment)
-            logger.info("Done.")
-        else:
-            error_msg = f"All models failed. Last error: {last_error}" if last_error else "Analysis failed."
-            raise ReviewerError(error_msg)
-            
-    except Exception as e:
-        logger.critical(f"Fatal Error: {e}")
-        sys.exit(1)
+  judge() {
+    let foundGuilty = false;
+    console.log("\n--- ОТЧЕТ ИНКВИЗИЦИИ (V2) ---\n");
 
-if __name__ == "__main__":
-    main()
+    for (const [name, info] of this.registry) {
+      // Пропускаем .d.ts из списка "обвиняемых", так как это часто ambient types
+      if (info.defPath.endsWith(".d.ts")) continue;
+
+      // info.count включает само определение.
+      // count == 1 -> Только определен, нигде не упомянут больше.
+      // count == 2 -> Определен + 1 импорт (или использование в том же файле).
+
+      if (info.count <= 1) {
+        console.log(`💀 МЕРТВЫЙ КОД:`);
+        console.log(`   Сущность: ${name}`);
+        console.log(`   Файл: ${info.defPath}`);
+        console.log(`   Статус: 0 использований.`);
+        console.log(`   👉 \x1b[31m«Ты не Google, удали это.»\x1b[0m\n`);
+        foundGuilty = true;
+      } else if (info.count === 2 && name.startsWith("I")) {
+        // Если это интерфейс (начинается на I) и используется ровно 1 раз
+        console.log(`⚠️ ПРЕЖДЕВРЕМЕННАЯ АБСТРАКЦИЯ:`);
+        console.log(`   Интерфейс: ${name}`);
+        console.log(`   Файл: ${info.defPath}`);
+        console.log(`   Статус: Используется всего в 1 месте.`);
+        console.log(
+          `   👉 \x1b[33m«YAGNI. Зачем тебе интерфейс ради одного класса?»\x1b[0m\n`
+        );
+        foundGuilty = true;
+      }
+    }
+
+    if (!foundGuilty) {
+      console.log("✅ Теперь честно. Явного мусора не найдено.");
+    }
+  }
+}
+
+const targetDir = process.argv[2];
+if (!targetDir) {
+  console.log("Usage: node scripts/anti_abstractor.cjs <path_to_src>");
+  process.exit(1);
+}
+
+new AntiAbstractor(targetDir).scan();
 </file>
 
 <file path="scripts/gen-gemini-prompt.ts">
@@ -3324,6 +3418,242 @@ export default {
 };
 </file>
 
+<file path="scripts/ai_reviewer.py">
+import os
+import logging
+import sys
+import time
+import re
+from typing import Tuple, Optional
+
+import google.generativeai as genai  # type: ignore[import-untyped]
+from github import Github, GithubException, Auth  # type: ignore[import-untyped] # <--- Added Auth
+from google.api_core import exceptions as google_exceptions  # type: ignore[import-untyped]
+from google.generativeai.types import GenerationConfig  # type: ignore[import-untyped]
+
+# --- CONFIGURATION ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
+
+# Constants
+REVIEWABLE_EXTENSIONS = ('.ts', '.tsx', '.js', '.css', '.sql', '.py', '.md', '.json', '.yml', '.toml')
+
+# ПРАВИЛЬНЫЕ ИМЕНА МОДЕЛЕЙ (Stable)
+MODEL_PRIORITIES = [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-pro",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.0-pro",
+]
+
+DEFAULT_MODEL_NAME = "gemini-2.5-pro"
+
+class ReviewerError(Exception):
+    "Base class for reviewer script errors."
+    pass
+
+# Environment Variables
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+REPO_NAME = os.getenv("REPO_NAME")
+PR_NUMBER_STR = os.getenv("PR_NUMBER")
+MODEL_NAME = os.getenv("MODEL_NAME", DEFAULT_MODEL_NAME)
+
+def load_prompt() -> str:
+    "Loads the system prompt from system_prompt.md file located in the same directory."
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        prompt_path = os.path.join(script_dir, 'system_prompt.md')
+        
+        with open(prompt_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        try:
+            with open('system_prompt.md', 'r', encoding='utf-8') as f:
+                return f.read()
+        except FileNotFoundError:
+            raise ReviewerError(f"system_prompt.md not found in {script_dir} or current dir!")
+    except Exception as e:
+        raise ReviewerError(f"Error reading system_prompt.md: {e}")
+
+
+def get_pr_diff() -> Tuple[object, str]:
+    "Fetches PR diff from GitHub, filtering for relevant files."
+    if not GITHUB_TOKEN or not REPO_NAME or not PR_NUMBER_STR:
+        raise ValueError("Missing GitHub credentials or PR info.")
+    
+    try:
+        # --- FIX: UPDATED AUTHENTICATION METHOD ---
+        auth = Auth.Token(GITHUB_TOKEN)
+        g = Github(auth=auth)
+        # ------------------------------------------
+        
+        repo = g.get_repo(REPO_NAME)
+        pr = repo.get_pull(int(PR_NUMBER_STR))
+        
+        files = pr.get_files()
+        diff_content = []
+        
+        logger.info(f"Processing PR #{PR_NUMBER_STR} in {REPO_NAME}...")
+
+        for f in files:
+            if f.status == "removed":
+                continue
+            
+            if any(x in f.filename for x in ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "dist/", "out/", "build/"]):
+                continue
+
+            if f.filename.endswith(REVIEWABLE_EXTENSIONS):
+                diff_content.append(f"### File: {f.filename}\n```diff\n{f.patch}\n```")
+        
+        return pr, "\n\n".join(diff_content)
+        
+    except GithubException as e:
+        logger.error(f"GitHub API Error: {e}")
+        raise
+    except ValueError as e:
+        logger.error(f"Invalid PR number: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error fetching PR diff: {e}")
+        raise
+
+def analyze_code(diff_text: str, system_prompt: str, model_name: str) -> Optional[str]:
+    if not GEMINI_API_KEY:
+        raise ReviewerError("GEMINI_API_KEY is missing.")
+
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel(model_name)
+    
+    generation_config = GenerationConfig(
+        max_output_tokens=8192,
+        temperature=0.2,
+    )
+    
+    safe_prompt = f"{system_prompt}\n\n<code_diff>\n{diff_text}\n</code_diff>"
+    
+    try:
+        response = model.generate_content(safe_prompt, generation_config=generation_config)
+        return response.text
+    except google_exceptions.GoogleAPIError as e:
+        raise
+    except Exception as e:
+        raise ReviewerError(f"Unexpected error during analysis: {e}")
+
+def parse_retry_delay(error_message: str) -> Optional[float]:
+    patterns = [
+        r'retry in (\d+(?:\.\d+)?) seconds?',
+        r'retry after (\d+(?:\.\d+)?) seconds?',
+        r'wait (\d+(?:\.\d+)?) seconds?',
+        r'(\d+(?:\.\d+)?) seconds? before retry',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, error_message.lower())
+        if match:
+            try:
+                return float(match.group(1))
+            except (ValueError, IndexError):
+                continue
+    return None
+
+def main() -> None:
+    try:
+        system_prompt = load_prompt()
+        pr, diff_text = get_pr_diff()
+        
+        if not diff_text:
+            logger.warning("No reviewable code changes found.")
+            return
+
+        # Строим список моделей. 
+        # Если MODEL_NAME передан из Env, ставим его первым, но проверяем, существует ли он
+        models_to_try = MODEL_PRIORITIES.copy()
+        
+        # Убираем проверку "если не в списке", просто добавляем, если он задан пользователем вручную
+        if MODEL_NAME and MODEL_NAME not in MODEL_PRIORITIES:
+            models_to_try.insert(0, MODEL_NAME)
+        
+        # Перемещаем приоритет на Flash, если он не первый (для скорости CI)
+        if "gemini-1.5-flash" in models_to_try and models_to_try[0] != "gemini-1.5-flash":
+             # Если хочешь экономить время и лимиты - Flash должен быть первым
+             pass 
+
+        review_comment = None
+        successful_model = None
+        last_error = None
+        
+        for model_index, model_name in enumerate(models_to_try):
+            is_primary = model_index == 0
+            
+            try:
+                if is_primary:
+                    logger.info(f"Analyzing with {model_name}...")
+                else:
+                    logger.warning(f"Switching to fallback model: {model_name}")
+                
+                review_comment = analyze_code(diff_text, system_prompt, model_name)
+                successful_model = model_name
+                logger.info(f"Successfully analyzed with {model_name}")
+                break
+                
+            except google_exceptions.GoogleAPIError as e:
+                error_message = str(e)
+                last_error = e
+                error_code = getattr(e, 'code', None)
+                
+                is_rate_limit = (
+                    error_code == 429 or 
+                    '429' in error_message or 
+                    'quota' in error_message.lower() or 
+                    'rate limit' in error_message.lower() or
+                    'resource exhausted' in error_message.lower()
+                )
+                
+                if is_rate_limit:
+                    logger.critical(f"Rate limit error with {model_name}. Attempting retry strategy...")
+                    retry_delay = parse_retry_delay(error_message)
+                    
+                    if retry_delay and retry_delay > 1.0:
+                        logger.info(f"Waiting {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        try:
+                            review_comment = analyze_code(diff_text, system_prompt, model_name)
+                            successful_model = model_name
+                            break
+                        except Exception as retry_error:
+                            last_error = retry_error
+                            logger.warning(f"Retry failed for {model_name}. Switching...")
+                            continue
+                    else:
+                        continue
+                else:
+                    logger.warning(f"API Error ({model_name}): {e}. Trying next model...")
+                    continue
+        
+        if review_comment and successful_model:
+            logger.info("Posting comment to GitHub...")
+            final_comment = f"## 🛡️ Ревью Архитектора \n\n{review_comment}\n\n*Движок: {successful_model}*"
+            pr.create_issue_comment(final_comment)
+            logger.info("Done.")
+        else:
+            error_msg = f"All models failed. Last error: {last_error}" if last_error else "Analysis failed."
+            raise ReviewerError(error_msg)
+            
+    except Exception as e:
+        logger.critical(f"Fatal Error: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+</file>
+
 <file path="src/main/db/db-worker-client.ts">
 // Cursor: select file:src/main/db/db-worker-client.ts
 
@@ -3781,6 +4111,112 @@ export class SecureStorage {
 }
 </file>
 
+<file path="src/main/services/updater-service.ts">
+import pkg from "electron-updater";
+const { autoUpdater } = pkg;
+import { logger } from "../lib/logger";
+import { BrowserWindow, ipcMain, shell } from "electron";
+
+const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
+
+export class UpdaterService {
+  private window: BrowserWindow | null = null;
+
+  constructor() {
+    this.initListeners();
+  }
+
+  public setWindow(window: BrowserWindow) {
+    this.window = window;
+  }
+
+  private initListeners() {
+    autoUpdater.logger = logger;
+
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = false;
+
+    // @ts-expect-error: signature validation disabled
+    autoUpdater.verifyUpdateCodeSignature = false;
+
+    autoUpdater.on("checking-for-update", () => {
+      logger.info("UPDATER: Checking...");
+      this.sendStatus("checking");
+    });
+
+    autoUpdater.on("update-available", (info) => {
+      logger.info(`UPDATER: Update available: ${info.version}`);
+      // Отправляем версию UI, но не качаем
+      this.sendPayload("updater:status", {
+        status: "available",
+        version: info.version,
+        isPortable: isPortable,
+      });
+    });
+
+    autoUpdater.on("update-not-available", (info) => {
+      logger.info(`UPDATER: No update. Current: ${info.version}`);
+      this.sendStatus("not-available");
+    });
+
+    autoUpdater.on("error", (err) => {
+      logger.error("UPDATER: Error:", err);
+      this.sendStatus("error", err.message);
+    });
+
+    autoUpdater.on("download-progress", (progressObj) => {
+      this.sendPayload("updater:progress", progressObj.percent);
+    });
+
+    autoUpdater.on("update-downloaded", (info) => {
+      logger.info(`UPDATER: Downloaded ${info.version}`);
+      this.sendStatus("downloaded");
+    });
+
+    ipcMain.handle("app:check-for-updates", async () => {
+      return this.checkForUpdates();
+    });
+
+    ipcMain.handle("app:start-download", async () => {
+      if (isPortable) {
+        logger.info("UPDATER: Portable detected. Opening GitHub releases.");
+        await shell.openExternal(
+          "https://github.com/KazeKaze93/ruledesk/releases/latest"
+        );
+        return;
+      }
+
+      logger.info("UPDATER: User requested download starting...");
+      autoUpdater.downloadUpdate();
+    });
+
+    ipcMain.handle("app:quit-and-install", () => {
+      autoUpdater.quitAndInstall();
+    });
+  }
+
+  private sendPayload(channel: string, data: unknown) {
+    if (this.window && !this.window.isDestroyed()) {
+      this.window.webContents.send(channel, data);
+    }
+  }
+
+  private sendStatus(status: string, message?: string) {
+    this.sendPayload("updater:status", { status, message });
+  }
+
+  public async checkForUpdates() {
+    try {
+      await autoUpdater.checkForUpdates();
+    } catch (e) {
+      logger.error("UPDATER: Check failed", e);
+    }
+  }
+}
+
+export const updaterService = new UpdaterService();
+</file>
+
 <file path="src/renderer/components/gallery/PostCard.tsx">
 import React from "react";
 import { Play, Check, Heart } from "lucide-react";
@@ -3882,173 +4318,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
 };
 </file>
 
-<file path="src/renderer/components/settings/UpdateChecker.tsx">
-import React from "react";
-import { useAppUpdater } from "../../lib/hooks/useAppUpdater";
-import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import {
-  Loader2,
-  Download,
-  ExternalLink,
-  CheckCircle,
-  AlertCircle,
-  RefreshCw,
-} from "lucide-react";
-
-export const UpdateChecker: React.FC = () => {
-  const {
-    status,
-    version,
-    progress,
-    isPortable,
-    error,
-    checkForUpdates,
-    startDownload,
-    quitAndInstall,
-  } = useAppUpdater();
-
-  const showCheckButton =
-    status === "idle" || status === "not-available" || status === "checking";
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Software Update</CardTitle>
-        <CardDescription>
-          Check for the latest version of RuleDesk.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Error State */}
-        {status === "error" && (
-          <Alert variant="destructive">
-            <AlertCircle className="w-4 h-4" />
-            <AlertTitle>Update Error</AlertTitle>
-            <AlertDescription>
-              {error || "Failed to check for updates."}
-              <div className="mt-2">
-                <Button variant="outline" size="sm" onClick={checkForUpdates}>
-                  Try Again
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Available State */}
-        {status === "available" && (
-          <div className="p-4 rounded-md border bg-yellow-500/15 border-yellow-500/20">
-            <div className="flex gap-2 items-center mb-2">
-              <Download className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-              <h4 className="font-semibold text-yellow-700 dark:text-yellow-400">
-                Update Available: v{version}
-              </h4>
-            </div>
-
-            {isPortable ? (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Portable version detected. Auto-update is disabled to preserve
-                  your data location.
-                </p>
-                <Button
-                  onClick={startDownload}
-                  variant="outline"
-                  className="gap-2 w-full sm:w-auto"
-                >
-                  Open Release Page <ExternalLink className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  A new version is ready to be downloaded.
-                </p>
-                <Button onClick={startDownload} className="gap-2">
-                  Download Update
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Downloading State */}
-        {status === "downloading" && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Downloading...</span>
-              <span className="text-muted-foreground">
-                {Math.round(progress)}%
-              </span>
-            </div>
-            <div className="overflow-hidden w-full h-2 rounded-full bg-secondary">
-              <div
-                className="h-full transition-all duration-300 ease-out bg-primary"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Ready to Install State */}
-        {status === "downloaded" && (
-          <div className="p-4 rounded-md border bg-green-500/15 border-green-500/20">
-            <div className="flex gap-2 items-center mb-3">
-              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-              <h4 className="font-semibold text-green-700 dark:text-green-400">
-                Update Ready
-              </h4>
-            </div>
-            <Button
-              onClick={quitAndInstall}
-              variant="default"
-              className="w-full sm:w-auto"
-            >
-              Restart & Install
-            </Button>
-          </div>
-        )}
-
-        {/* Idle / No Update / Checking State */}
-        {showCheckButton && (
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">
-              {status === "not-available"
-                ? `You are on the latest version (${version || "current"}).`
-                : "Check for updates manually."}
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={checkForUpdates}
-              disabled={status === "checking"}
-            >
-              {status === "checking" ? (
-                <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" /> Checking...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 w-4 h-4" /> Check for Updates
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-</file>
-
 <file path="src/renderer/lib/artist-utils.ts">
 // Логика формирования финального тега/юзернейма для API
 export function getArtistTag(
@@ -4064,99 +4333,6 @@ export function getArtistTag(
   // Для Tag: 'tag_name' (нижний регистр, пробелы в подчеркивания)
   return trimmedName.toLowerCase().replace(/ /g, "_");
 }
-</file>
-
-<file path="src/renderer/lib/hooks/useAppUpdater.ts">
-import { useEffect, useState } from "react";
-
-type UpdaterStatus =
-  | "idle"
-  | "checking"
-  | "available"
-  | "not-available"
-  | "downloading"
-  | "downloaded"
-  | "error";
-
-interface UpdaterState {
-  status: UpdaterStatus;
-  version: string | null;
-  progress: number;
-  error: string | null;
-  isPortable: boolean;
-}
-
-interface StatusPayload {
-  status: UpdaterStatus;
-  version?: string;
-  isPortable?: boolean;
-  message?: string;
-}
-
-const getIpc = () => {
-  if (
-    typeof window !== "undefined" &&
-    window.electron &&
-    window.electron.ipcRenderer
-  ) {
-    return window.electron.ipcRenderer;
-  }
-  console.error("❌ Electron IPC is missing! Check 'bridge.ts' loading.");
-  return null;
-};
-
-export const useAppUpdater = () => {
-  const [state, setState] = useState<UpdaterState>({
-    status: "idle",
-    version: null,
-    progress: 0,
-    error: null,
-    isPortable: false,
-  });
-
-  useEffect(() => {
-    const ipc = getIpc();
-    if (!ipc) return;
-
-    const removeStatusListener = ipc.on(
-      "updater:status",
-      (payload: unknown) => {
-        const data = payload as StatusPayload;
-        console.log("[Updater Hook] Status:", data);
-
-        setState((prev) => ({
-          ...prev,
-          status: data.status || "idle",
-          version: data.version || prev.version,
-          isPortable: !!data.isPortable,
-          error: data.message || null,
-        }));
-      }
-    );
-
-    const removeProgressListener = ipc.on(
-      "updater:progress",
-      (progress: unknown) => {
-        setState((prev) => ({
-          ...prev,
-          status: "downloading",
-          progress: Number(progress),
-        }));
-      }
-    );
-
-    return () => {
-      removeStatusListener();
-      removeProgressListener();
-    };
-  }, []);
-
-  const checkForUpdates = () => getIpc()?.invoke("app:check-for-updates");
-  const startDownload = () => getIpc()?.invoke("app:start-download");
-  const quitAndInstall = () => getIpc()?.invoke("app:quit-and-install");
-
-  return { ...state, checkForUpdates, startDownload, quitAndInstall };
-};
 </file>
 
 <file path="src/renderer/main.tsx">
@@ -4625,132 +4801,274 @@ export const registerSettingsHandlers = (db: DbWorkerClient) => {
 };
 </file>
 
-<file path="src/main/services/updater-service.ts">
-import pkg from "electron-updater";
-const { autoUpdater } = pkg;
-import { logger } from "../lib/logger";
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+<file path="src/renderer/components/gallery/ArtistGallery.tsx">
+// Cursor: select file:src/renderer/components/gallery/ArtistGallery.tsx
+import React, { forwardRef, useMemo } from "react";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  useMutation,
+  InfiniteData,
+} from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
+import { VirtuosoGrid } from "react-virtuoso";
+import { Button } from "../ui/button";
+import type { Artist, Post } from "../../../main/db/schema";
+import { cn } from "../../lib/utils";
+import { useViewerStore } from "../../store/viewerStore";
+import { PostCard } from "../gallery/PostCard";
 
-const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
+interface ArtistGalleryProps {
+  artist: Artist;
+  onBack: () => void;
+}
 
-export class UpdaterService {
-  private window: BrowserWindow | null = null;
+// --- Компоненты для виртуализации (Grid Layout) ---
 
-  constructor() {
-    this.initListeners();
-  }
+const GridContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      className
+    )}
+    {...props}
+  />
+));
+GridContainer.displayName = "GridContainer";
 
-  public setWindow(window: BrowserWindow) {
-    this.window = window;
-  }
+const ItemContainer = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+));
+ItemContainer.displayName = "ItemContainer";
 
-  private initListeners() {
-    autoUpdater.logger = logger;
+// --- Основной компонент ---
 
-    autoUpdater.autoDownload = false;
-    autoUpdater.autoInstallOnAppQuit = false;
+export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
+  artist,
+  onBack,
+}) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
-    // @ts-expect-error: signature validation disabled
-    autoUpdater.verifyUpdateCodeSignature = false;
+  // 🔥 FIX: Достаем appendQueueIds из стора, чтобы обновлять очередь вьювера
+  const { open: openViewer, appendQueueIds } = useViewerStore((state) => ({
+    open: state.open,
+    appendQueueIds: state.appendQueueIds,
+  }));
 
-    autoUpdater.on("checking-for-update", () => {
-      logger.info("UPDATER: Checking...");
-      this.sendStatus("checking");
-    });
+  // Fetch total posts count
+  const { data: totalPosts = 0 } = useQuery({
+    queryKey: ["posts-count", artist.id],
+    queryFn: async () => {
+      const count = await window.api.getArtistPostsCount(artist.id);
+      return count;
+    },
+  });
 
-    autoUpdater.on("update-available", (info) => {
-      logger.info(`UPDATER: Update available: ${info.version}`);
-      // Отправляем версию UI, но не качаем
-      this.sendPayload("updater:status", {
-        status: "available",
-        version: info.version,
-        isPortable: isPortable,
-      });
-    });
-
-    autoUpdater.on("update-not-available", (info) => {
-      logger.info(`UPDATER: No update. Current: ${info.version}`);
-      this.sendStatus("not-available");
-    });
-
-    autoUpdater.on("error", (err) => {
-      logger.error("UPDATER: Error:", err);
-      this.sendStatus("error", err.message);
-    });
-
-    autoUpdater.on("download-progress", (progressObj) => {
-      this.sendPayload("updater:progress", progressObj.percent);
-    });
-
-    autoUpdater.on("update-downloaded", (info) => {
-      logger.info(`UPDATER: Downloaded ${info.version}`);
-      this.sendStatus("downloaded");
-    });
-
-    ipcMain.handle("app:check-for-updates", async () => {
-      return this.checkForUpdates();
-    });
-
-    ipcMain.handle("app:start-download", async () => {
-      if (isPortable) {
-        logger.info("UPDATER: Portable detected. Opening GitHub releases.");
-        await shell.openExternal(
-          "https://github.com/KazeKaze93/ruledesk/releases/latest"
-        );
-        return;
-      }
-
-      logger.info("UPDATER: User requested download starting...");
-      autoUpdater.downloadUpdate();
-    });
-
-    ipcMain.handle("app:quit-and-install", () => {
-      autoUpdater.quitAndInstall();
-    });
-  }
-
-  private sendPayload(channel: string, data: unknown) {
-    if (this.window && !this.window.isDestroyed()) {
-      this.window.webContents.send(channel, data);
-    }
-  }
-
-  private sendStatus(status: string, message?: string) {
-    this.sendPayload("updater:status", { status, message });
-  }
-
-  public async checkForUpdates() {
-    if (!app.isPackaged) {
-      logger.info("UPDATER: Dev mode detected. Skipping check.");
-      this.sendStatus("checking");
-      setTimeout(() => {
-        console.log("[Updater] Dev mode: Sending 'not-available'");
-        this.emitStatus({
-          status: "not-available",
-          version: app.getVersion(),
-          isPortable: !!process.env.PORTABLE_EXECUTABLE_DIR,
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useInfiniteQuery({
+      queryKey: ["posts", artist.id],
+      queryFn: async ({ pageParam = 1 }) => {
+        return await window.api.getArtistPosts({
+          artistId: artist.id,
+          page: pageParam,
         });
-      }, 1500);
+      },
+      getNextPageParam: (lastPage, allPages) => {
+        return lastPage.length === 50 ? allPages.length + 1 : undefined;
+      },
+      initialPageParam: 1,
+    });
+
+  const allPosts = useMemo(() => {
+    return data?.pages.flatMap((page) => page) || [];
+  }, [data]);
+
+  const viewMutation = useMutation({
+    mutationFn: async (postId: number) => {
+      await window.api.markPostAsViewed(postId);
+    },
+    onSuccess: (_, postId) => {
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        ["posts", artist.id],
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) =>
+              page.map((post) =>
+                post.id === postId ? { ...post, isViewed: true } : post
+              )
+            ),
+          };
+        }
+      );
+    },
+  });
+
+  // 🔥 FIX: Handler теперь не просто грузит данные в кэш, но и обновляет стор Вьювера!
+  const handleLoadMore = async () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      console.log("[Gallery] Viewer requested more posts. Fetching...");
+
+      // Ждем завершения загрузки и получаем результат
+      const result = await fetchNextPage();
+
+      // Если загрузка прошла успешно и есть данные
+      if (result.data) {
+        // Берем последнюю страницу (новую)
+        const newPage = result.data.pages[result.data.pages.length - 1];
+
+        if (newPage && newPage.length > 0) {
+          const newIds = newPage.map((p) => p.id);
+          console.log(
+            `[Gallery] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
+          );
+
+          // ЯВНО обновляем очередь вьювера
+          appendQueueIds(newIds);
+        }
+      }
+    }
+  };
+
+  const handlePostClick = (index: number) => {
+    const postIds = allPosts.map((p) => p.id);
+
+    const post = allPosts[index];
+    if (post && !post.isViewed) {
+      viewMutation.mutate(post.id);
+    }
+
+    openViewer({
+      origin: { kind: "artist", artistId: artist.id },
+      ids: postIds,
+      initialIndex: index,
+      listKey: `artist-${artist.id}`,
+      totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
+      hasNextPage: hasNextPage && allPosts.length < (totalPosts || Infinity),
+      onLoadMore: handleLoadMore, // Передаем обновленный хендлер
+    });
+  };
+
+  const handleRepairSync = async () => {
+    if (isLoading) return;
+    if (
+      !confirm(t("artistGallery.repairConfirm", { artistName: artist.name }))
+    ) {
       return;
     }
+    queryClient.removeQueries({ queryKey: ["posts", artist.id] });
     try {
-      await autoUpdater.checkForUpdates();
+      await window.api.repairArtist(artist.id);
+      queryClient.invalidateQueries({ queryKey: ["artists"] });
+      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
+      queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
     } catch (e) {
-      logger.error("UPDATER: Check failed", e);
-      this.sendStatus("error", e instanceof Error ? e.message : String(e));
+      console.error(e);
     }
-  }
-  private emitStatus(payload: {
-    status: string;
-    version?: string;
-    message?: string;
-    isPortable?: boolean;
-  }) {
-    const windows = BrowserWindow.getAllWindows();
-    windows.forEach((w) => w.webContents.send("updater:status", payload));
-  }
-}
-export const updaterService = new UpdaterService();
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-background text-foreground">
+      {/* Header */}
+      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+        <div className="flex gap-4 items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            aria-label={t("artistGallery.backToArtists")}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-bold">{artist.name}</h2>
+            <div className="flex gap-2 text-xs text-muted-foreground">
+              {totalPosts > 0 && (
+                <span className="text-sm font-medium text-muted-foreground">
+                  Total: {totalPosts}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRepairSync}
+            title={t("artistGallery.repairTitle")}
+          >
+            <Wrench className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">
+              {t("artistGallery.repair")}
+            </span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              window.api.openExternal(
+                `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
+              )
+            }
+          >
+            <ExternalLink className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t("artistGallery.web")}</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Grid Content */}
+      <div className="flex-1 min-h-0">
+        {isLoading && allPosts.length === 0 ? (
+          <div className="flex justify-center items-center h-full text-muted-foreground">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+        ) : (
+          <VirtuosoGrid
+            style={{ height: "100%" }}
+            totalCount={allPosts.length}
+            endReached={() => {
+              if (hasNextPage && !isFetchingNextPage) {
+                fetchNextPage();
+              }
+            }}
+            components={{
+              List: GridContainer,
+              Item: ItemContainer,
+              Footer: () =>
+                isFetchingNextPage ? (
+                  <div className="flex col-span-full justify-center py-4 w-full">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : null,
+            }}
+            itemContent={(index) => {
+              const post = allPosts[index];
+              if (!post) return null;
+
+              return (
+                <PostCard post={post} onClick={() => handlePostClick(index)} />
+              );
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
 </file>
 
 <file path="src/renderer/components/inputs/AsyncAutocomplete.tsx">
@@ -5836,7 +6154,6 @@ import { z } from "zod";
 // Repos
 import { PostsRepository } from "../db/repositories/posts.repo";
 import { ArtistsRepository } from "../db/repositories/artists.repo";
-import { SettingsRepository } from "../db/repositories/settings.repo";
 
 // Handlers
 import { registerPostHandlers } from "./handlers/posts";
@@ -5951,7 +6268,6 @@ export const registerAllHandlers = (
   // 1. Init Repos
   const postsRepo = new PostsRepository(db);
   const artistsRepo = new ArtistsRepository(db);
-  const settingsRepo = new SettingsRepository(db);
 
   // 2. Register Domain Handlers
   registerPostHandlers(postsRepo);
@@ -5965,274 +6281,9 @@ export const registerAllHandlers = (
   registerSyncAndMaintenanceHandlers(db, syncService, mainWindow);
 
   // 5. Register Files (Downloads)
-  registerFileHandlers(postsRepo, settingsRepo);
+  registerFileHandlers(postsRepo);
 
   logger.info("IPC: All modular handlers registered.");
-};
-</file>
-
-<file path="src/renderer/components/gallery/ArtistGallery.tsx">
-import React, { forwardRef, useMemo } from "react";
-import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-  useMutation,
-  InfiniteData,
-} from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
-import { VirtuosoGrid } from "react-virtuoso";
-import { Button } from "../ui/button";
-import type { Artist, Post } from "../../../main/db/schema";
-import { cn } from "../../lib/utils";
-import { useViewerStore } from "../../store/viewerStore";
-import { PostCard } from "../gallery/PostCard";
-
-interface ArtistGalleryProps {
-  artist: Artist;
-  onBack: () => void;
-}
-
-// --- Компоненты для виртуализации (Grid Layout) ---
-
-const GridContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
-      className
-    )}
-    {...props}
-  />
-));
-GridContainer.displayName = "GridContainer";
-
-const ItemContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
-));
-ItemContainer.displayName = "ItemContainer";
-
-// --- Основной компонент ---
-
-export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
-  artist,
-  onBack,
-}) => {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-
-  // 🔥 FIX: Достаем appendQueueIds из стора, чтобы обновлять очередь вьювера
-  const { open: openViewer, appendQueueIds } = useViewerStore((state) => ({
-    open: state.open,
-    appendQueueIds: state.appendQueueIds,
-  }));
-
-  // Fetch total posts count
-  const { data: totalPosts = 0 } = useQuery({
-    queryKey: ["posts-count", artist.id],
-    queryFn: async () => {
-      const count = await window.api.getArtistPostsCount(artist.id);
-      return count;
-    },
-  });
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["posts", artist.id],
-      queryFn: async ({ pageParam = 1 }) => {
-        return await window.api.getArtistPosts({
-          artistId: artist.id,
-          page: pageParam,
-        });
-      },
-      getNextPageParam: (lastPage, allPages) => {
-        return lastPage.length === 50 ? allPages.length + 1 : undefined;
-      },
-      initialPageParam: 1,
-    });
-
-  const allPosts = useMemo(() => {
-    return data?.pages.flatMap((page) => page) || [];
-  }, [data]);
-
-  const viewMutation = useMutation({
-    mutationFn: async (postId: number) => {
-      await window.api.markPostAsViewed(postId);
-    },
-    onSuccess: (_, postId) => {
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        ["posts", artist.id],
-        (oldData) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            pages: oldData.pages.map((page) =>
-              page.map((post) =>
-                post.id === postId ? { ...post, isViewed: true } : post
-              )
-            ),
-          };
-        }
-      );
-    },
-  });
-
-  const handleLoadMore = async () => {
-    if (hasNextPage && !isFetchingNextPage) {
-      console.log("[Gallery] Viewer requested more posts. Fetching...");
-
-      const result = await fetchNextPage();
-
-      if (result.data) {
-        const newPage = result.data.pages[result.data.pages.length - 1];
-
-        if (newPage && newPage.length > 0) {
-          const newIds = newPage.map((p: { id: number }) => p.id);
-          console.log(
-            `[Gallery] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
-          );
-
-          // ЯВНО обновляем очередь вьювера
-          appendQueueIds(newIds);
-        }
-      }
-    }
-  };
-
-  const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
-
-    const post = allPosts[index];
-    if (post && !post.isViewed) {
-      viewMutation.mutate(post.id);
-    }
-
-    openViewer({
-      origin: { kind: "artist", artistId: artist.id },
-      ids: postIds,
-      initialIndex: index,
-      listKey: `artist-${artist.id}`,
-      totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
-      hasNextPage: hasNextPage && allPosts.length < (totalPosts || Infinity),
-      onLoadMore: handleLoadMore, // Передаем обновленный хендлер
-    });
-  };
-
-  const handleRepairSync = async () => {
-    if (isLoading) return;
-    if (
-      !confirm(t("artistGallery.repairConfirm", { artistName: artist.name }))
-    ) {
-      return;
-    }
-    queryClient.removeQueries({ queryKey: ["posts", artist.id] });
-    try {
-      await window.api.repairArtist(artist.id);
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
-      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
-      queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-background text-foreground">
-      {/* Header */}
-      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
-        <div className="flex gap-4 items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            aria-label={t("artistGallery.backToArtists")}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h2 className="text-xl font-bold">{artist.name}</h2>
-            <div className="flex gap-2 text-xs text-muted-foreground">
-              {totalPosts > 0 && (
-                <span className="text-sm font-medium text-muted-foreground">
-                  Total: {totalPosts}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRepairSync}
-            title={t("artistGallery.repairTitle")}
-          >
-            <Wrench className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">
-              {t("artistGallery.repair")}
-            </span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              window.api.openExternal(
-                `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
-              )
-            }
-          >
-            <ExternalLink className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t("artistGallery.web")}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Grid Content */}
-      <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
-          <div className="flex justify-center items-center h-full text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-        ) : (
-          <VirtuosoGrid
-            style={{ height: "100%" }}
-            totalCount={allPosts.length}
-            endReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
-            components={{
-              List: GridContainer,
-              Item: ItemContainer,
-              Footer: () =>
-                isFetchingNextPage ? (
-                  <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : null,
-            }}
-            itemContent={(index) => {
-              const post = allPosts[index];
-              if (!post) return null;
-
-              return (
-                <PostCard post={post} onClick={() => handlePostClick(index)} />
-              );
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
 };
 </file>
 
@@ -6366,6 +6417,174 @@ export const Sidebar = () => {
         </button>
       </div>
     </aside>
+  );
+};
+</file>
+
+<file path="src/renderer/components/pages/Settings.tsx">
+import { useState } from "react";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { Loader2, Database, Upload } from "lucide-react";
+
+export const Settings = () => {
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+  const [restoreStatus, setRestoreStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+
+  const handleBackup = async () => {
+    setIsBackingUp(true);
+    setBackupStatus("idle");
+
+    try {
+      const result = await window.api.createBackup();
+      if (result.success) {
+        setBackupStatus("success");
+        setTimeout(() => setBackupStatus("idle"), 3000);
+      } else {
+        setBackupStatus("error");
+        setTimeout(() => setBackupStatus("idle"), 3000);
+      }
+    } catch (error) {
+      console.error("Failed to create backup:", error);
+      setBackupStatus("error");
+      setTimeout(() => setBackupStatus("idle"), 3000);
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setIsRestoring(true);
+    setRestoreStatus("idle");
+
+    try {
+      const result = await window.api.restoreBackup();
+      if (result.success) {
+        setRestoreStatus("success");
+        setTimeout(() => setRestoreStatus("idle"), 3000);
+      } else {
+        setRestoreStatus("error");
+        setTimeout(() => setRestoreStatus("idle"), 3000);
+      }
+    } catch (error) {
+      console.error("Failed to restore backup:", error);
+      setRestoreStatus("error");
+      setTimeout(() => setRestoreStatus("idle"), 3000);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  return (
+    <div className="container py-10 space-y-8 max-w-2xl duration-500 animate-in fade-in">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
+        <p className="text-muted-foreground">
+          Manage your database backups and application preferences.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Database Management</CardTitle>
+          <CardDescription>
+            Create backups of your database or restore from a previous backup.
+            Backups include all your tracked artists, posts, and settings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center p-4 rounded-lg border">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Backup Database</h3>
+                <p className="text-sm text-muted-foreground">
+                  Create a backup file of your current database. The backup will
+                  be saved and the folder will open automatically.
+                </p>
+              </div>
+              <Button
+                onClick={handleBackup}
+                disabled={isBackingUp}
+                variant="outline"
+              >
+                {isBackingUp ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Database className="mr-2 w-4 h-4" />
+                    Backup Database
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {backupStatus === "success" && (
+              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
+                Backup created successfully!
+              </div>
+            )}
+            {backupStatus === "error" && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
+                Failed to create backup. Please try again.
+              </div>
+            )}
+
+            <div className="flex justify-between items-center p-4 rounded-lg border">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Restore Database</h3>
+                <p className="text-sm text-muted-foreground">
+                  Restore your database from a previous backup file. This will
+                  replace your current database.
+                </p>
+              </div>
+              <Button
+                onClick={handleRestore}
+                disabled={isRestoring}
+                variant="outline"
+              >
+                {isRestoring ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 w-4 h-4" />
+                    Restore Database
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {restoreStatus === "success" && (
+              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
+                Database restored successfully! The page will reload.
+              </div>
+            )}
+            {restoreStatus === "error" && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
+                Failed to restore backup. Please try again.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 </file>
@@ -7005,7 +7224,6 @@ import { logger } from "../../lib/logger";
 import { IPC_CHANNELS } from "../channels";
 import { z } from "zod";
 import { PostsRepository } from "../../db/repositories/posts.repo";
-import { SettingsRepository } from "../../db/repositories/settings.repo";
 
 // Вспомогательная функция для получения главного окна Electron
 const getMainWindow = (): BrowserWindow | undefined => {
@@ -7013,14 +7231,7 @@ const getMainWindow = (): BrowserWindow | undefined => {
   return windows.find((w) => w.isVisible() && !w.isDestroyed()) || windows[0];
 };
 
-const getDownloadRoot = () => {
-  // 1. Если Portable-режим
-  if (process.env.PORTABLE_EXECUTABLE_DIR) {
-    return path.join(process.env.PORTABLE_EXECUTABLE_DIR, "downloads");
-  }
-  // 2. Обычный режим (Installer)
-  return path.join(app.getPath("downloads"), "RuleDesk");
-};
+const DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 
 const DownloadFileSchema = z.object({
   url: z
@@ -7035,140 +7246,132 @@ const DownloadFileSchema = z.object({
     .regex(/^[\w\-. ]+$/, "Invalid filename characters"),
 });
 
-export const registerFileHandlers = (
-  postsRepo: PostsRepository,
-  settingsRepo: SettingsRepository
-) => {
-  // 1. Хендлер выбора папки (для настроек)
-  ipcMain.handle(IPC_CHANNELS.FILES.SELECT_DIRECTORY, async () => {
-    const mainWindow = getMainWindow();
-    if (!mainWindow) return null;
+export const registerFileHandlers = (repo: PostsRepository) => {
+  let totalBytes = 0;
 
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ["openDirectory", "createDirectory"],
-      title: "Select Default Download Folder",
-    });
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-    return result.filePaths[0];
-  });
-
-  // 2. Хендлер скачивания (умный)
+  // Хендлер скачивания с диалогом "Сохранить как"
   ipcMain.handle(
     IPC_CHANNELS.FILES.DOWNLOAD,
     async (_event, url: unknown, filename: unknown) => {
       const mainWindow = getMainWindow();
-      if (!mainWindow) return { success: false, error: "No active window" };
-
-      const validation = DownloadFileSchema.safeParse({ url, filename });
-      if (!validation.success) {
-        return { success: false, error: "Invalid parameters" };
+      if (!mainWindow) {
+        logger.error("IPC: Main window not found for download.");
+        return { success: false, error: "Main window not available" };
       }
 
-      const { url: safeUrl, filename: safeFilename } = validation.data;
+      // 1. Валидация входных данных через Zod
+      const validation = DownloadFileSchema.safeParse({ url, filename });
+
+      if (!validation.success) {
+        logger.error("IPC: Download validation failed", validation.error);
+        return { success: false, error: "Invalid URL or Filename" };
+      }
+
+      const { url: validUrl, filename: validFilename } = validation.data;
 
       try {
-        // --- ЛОГИКА ВЫБОРА ПУТИ ---
-        let targetPath: string | null = null;
+        const defaultDir = DOWNLOAD_ROOT;
 
-        const currentSettings = await settingsRepo.getSettings();
-        const defaultPath = currentSettings?.downloadPath;
-
-        if (defaultPath && defaultPath.trim() !== "") {
+        // 2. Безопасное создание директории
+        if (!fs.existsSync(defaultDir)) {
           try {
-            if (!fs.existsSync(defaultPath)) {
-              fs.mkdirSync(defaultPath, { recursive: true });
-            }
-            targetPath = path.join(defaultPath, safeFilename);
-          } catch (err) {
-            logger.warn(`Failed to use default path from settings: ${err}`);
-            targetPath = null;
+            fs.mkdirSync(defaultDir, { recursive: true });
+          } catch (e) {
+            logger.error("Failed to create download directory", e);
+            // Не падаем, диалог просто откроется в дефолтной папке ОС
           }
         }
 
-        if (!targetPath) {
-          const downloadRoot = getDownloadRoot();
-          if (!fs.existsSync(downloadRoot)) {
-            fs.mkdirSync(downloadRoot, { recursive: true });
-          }
+        const defaultPath = path.join(defaultDir, validFilename);
 
-          const { canceled, filePath } = await dialog.showSaveDialog(
-            mainWindow,
+        const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+          title: "Скачать файл",
+          defaultPath: defaultPath,
+          buttonLabel: "Скачать",
+          filters: [
             {
-              title: "Save Image",
-              defaultPath: path.join(downloadRoot, safeFilename),
-              filters: [
-                { name: "Images", extensions: ["jpg", "png", "jpeg", "webp"] },
-              ],
-            }
-          );
+              name: "Media Files",
+              extensions: ["jpg", "jpeg", "png", "gif", "mp4", "webm"],
+            },
+            { name: "All Files", extensions: ["*"] },
+          ],
+        });
 
-          if (canceled || !filePath) return { canceled: true, success: false };
-          targetPath = filePath;
+        if (canceled || !filePath) {
+          logger.info("IPC: Download canceled by user");
+          return { success: false, canceled: true };
         }
 
-        logger.info(`Starting download: ${safeUrl} -> ${targetPath}`);
+        logger.info(`IPC: Downloading: ${validUrl} -> ${filePath}`);
 
-        const response = await axios.get(safeUrl, {
+        const response = await axios({
+          method: "GET",
+          url: validUrl,
           responseType: "stream",
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
           onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
-            const total = progressEvent.total || 0;
-            const current = progressEvent.loaded;
-            const percent = total ? Math.round((current / total) * 100) : 0;
-            mainWindow.webContents.send("files:download-progress", {
-              id: safeFilename,
-              percent,
+            if (!mainWindow || !progressEvent.total) return;
+
+            totalBytes = progressEvent.total;
+            const percent = Math.round(
+              (progressEvent.loaded * 100) / totalBytes
+            );
+
+            mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
+              id: validFilename, // Используем валидированное имя как ID
+              percent: percent,
             });
           },
         });
 
-        await pipeline(response.data, fs.createWriteStream(targetPath));
-        return { success: true, path: targetPath };
+        const writer = fs.createWriteStream(filePath);
+        await pipeline(response.data, writer);
+
+        mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
+          id: validFilename,
+          percent: 100,
+        });
+        logger.info(`IPC: Download success -> ${filePath}`);
+        return { success: true, path: filePath };
       } catch (error) {
-        logger.error("Download failed:", error);
+        if (mainWindow) {
+          mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
+            id: validFilename,
+            percent: 0,
+          });
+        }
+        logger.error("IPC: Download failed:", error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : "Download failed",
+          error: error instanceof Error ? error.message : String(error),
         };
       }
     }
   );
 
-  // 3. Хендлер открытия папки
+  // Хендлер открытия папки
   ipcMain.handle(
     IPC_CHANNELS.FILES.OPEN_FOLDER,
-    async (_event, filePathOrName: unknown) => {
-      if (typeof filePathOrName !== "string") return false;
+    async (_, filePathOrName: string) => {
+      if (!filePathOrName || typeof filePathOrName !== "string") return false;
 
       try {
-        const downloadRoot = getDownloadRoot();
-
-        const settings = await settingsRepo.getSettings();
-        const customRoot = settings?.downloadPath;
-
         let fullPath = filePathOrName;
 
-        // Если путь относительный, ищем в дефолтной папке
         if (!path.isAbsolute(filePathOrName)) {
-          fullPath = path.join(downloadRoot, filePathOrName);
+          fullPath = path.join(DOWNLOAD_ROOT, filePathOrName);
         }
 
         const normalizedPath = path.normalize(fullPath);
 
-        const isInDataRoot = normalizedPath.startsWith(downloadRoot);
-        const isInCustomRoot = customRoot
-          ? normalizedPath.startsWith(path.normalize(customRoot))
-          : false;
-
-        if (!isInDataRoot && !isInCustomRoot) {
-          logger.warn(
-            `SECURITY WARNING: Attempt to access path outside allowed roots: ${normalizedPath}`
+        if (!normalizedPath.startsWith(DOWNLOAD_ROOT)) {
+          logger.error(
+            `SECURITY VIOLATION: Attempt to open path outside safe directory: ${normalizedPath}`
           );
-          if (fs.existsSync(downloadRoot)) {
-            await shell.openPath(downloadRoot);
-          }
+          shell.openPath(DOWNLOAD_ROOT);
           return false;
         }
 
@@ -7177,8 +7380,8 @@ export const registerFileHandlers = (
           return true;
         }
 
-        if (fs.existsSync(downloadRoot)) {
-          await shell.openPath(downloadRoot);
+        if (fs.existsSync(DOWNLOAD_ROOT)) {
+          await shell.openPath(DOWNLOAD_ROOT);
           return true;
         }
 
@@ -7203,9 +7406,9 @@ export const registerFileHandlers = (
       }
 
       try {
-        return await postsRepo.resetPostCache(result.data);
+        return await repo.resetPostCache(result.data);
       } catch (error) {
-        logger.error(`[IPC] Failed to reset post cache:`, error);
+        logger.error(`[IPC] Failed to reset post cache`, error);
         return false;
       }
     }
@@ -7332,244 +7535,6 @@ export const registerPostHandlers = (repo: PostsRepository) => {
         return false;
       }
     }
-  );
-};
-</file>
-
-<file path="src/renderer/components/pages/Settings.tsx">
-import { useEffect, useState } from "react";
-import { Button } from "../../components/ui/button";
-import { Label } from "../../components/ui/label";
-import { Input } from "../../components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import { Loader2, Database, Upload, FolderOpen, X } from "lucide-react";
-import { UpdateChecker } from "@/components/settings/UpdateChecker";
-
-export const Settings = () => {
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const [backupStatus, setBackupStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
-  const [restoreStatus, setRestoreStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
-  const [downloadPath, setDownloadPath] = useState<string>("");
-
-  // Загрузка настроек
-  useEffect(() => {
-    window.api.getSettings().then((s) => {
-      if (s && s.downloadPath) {
-        setDownloadPath(s.downloadPath);
-      }
-    });
-  }, []);
-
-  // Логика выбора папки
-  const handleSelectFolder = async () => {
-    const path = await window.api.selectDownloadFolder();
-    if (path) {
-      setDownloadPath(path);
-      // Авто-сохранение сразу после выбора
-      await window.api.saveSettings({ downloadPath: path });
-    }
-  };
-
-  // Логика очистки папки (сброс на дефолт)
-  const handleClearFolder = async () => {
-    setDownloadPath("");
-    // Авто-сохранение очистки
-    await window.api.saveSettings({ downloadPath: "" });
-  };
-
-  const handleBackup = async () => {
-    setIsBackingUp(true);
-    setBackupStatus("idle");
-
-    try {
-      const result = await window.api.createBackup();
-      if (result.success) {
-        setBackupStatus("success");
-        setTimeout(() => setBackupStatus("idle"), 3000);
-      } else {
-        setBackupStatus("error");
-        setTimeout(() => setBackupStatus("idle"), 3000);
-      }
-    } catch (error) {
-      console.error("Failed to create backup:", error);
-      setBackupStatus("error");
-      setTimeout(() => setBackupStatus("idle"), 3000);
-    } finally {
-      setIsBackingUp(false);
-    }
-  };
-
-  const handleRestore = async () => {
-    setIsRestoring(true);
-    setRestoreStatus("idle");
-
-    try {
-      const result = await window.api.restoreBackup();
-      if (result.success) {
-        setRestoreStatus("success");
-        setTimeout(() => setRestoreStatus("idle"), 3000);
-      } else {
-        setRestoreStatus("error");
-        setTimeout(() => setRestoreStatus("idle"), 3000);
-      }
-    } catch (error) {
-      console.error("Failed to restore backup:", error);
-      setRestoreStatus("error");
-      setTimeout(() => setRestoreStatus("idle"), 3000);
-    } finally {
-      setIsRestoring(false);
-    }
-  };
-
-  return (
-    <div className="container py-10 space-y-8 max-w-2xl duration-500 animate-in fade-in">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">
-          Manage application preferences and database.
-        </p>
-      </div>
-
-      {/* Секция 1: Загрузки */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Download Location</CardTitle>
-          <CardDescription>
-            Set a default folder for downloads. If empty, you will be asked
-            every time.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Default Folder</Label>
-            <div className="flex gap-2">
-              <Input
-                value={downloadPath || "Ask every time"}
-                readOnly
-                className={!downloadPath ? "italic text-muted-foreground" : ""}
-              />
-              <Button variant="outline" onClick={handleSelectFolder}>
-                <FolderOpen className="mr-2 w-4 h-4" />
-                Browse
-              </Button>
-              {downloadPath && (
-                <Button
-                  variant="ghost"
-                  onClick={handleClearFolder}
-                  title="Reset to default"
-                  size="icon"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Секция 2: База данных */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Database Management</CardTitle>
-          <CardDescription>
-            Create backups of your database or restore from a previous backup.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-4">
-            {/* Блок Backup */}
-            <div className="flex justify-between items-center p-4 rounded-lg border">
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">Backup Database</h3>
-                <p className="text-sm text-muted-foreground">
-                  Save a copy of your current database.
-                </p>
-              </div>
-              <Button
-                onClick={handleBackup}
-                disabled={isBackingUp}
-                variant="outline"
-              >
-                {isBackingUp ? (
-                  <>
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Database className="mr-2 w-4 h-4" />
-                    Backup
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {backupStatus === "success" && (
-              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
-                Backup created successfully!
-              </div>
-            )}
-            {backupStatus === "error" && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
-                Failed to create backup.
-              </div>
-            )}
-
-            {/* Блок Restore */}
-            <div className="flex justify-between items-center p-4 rounded-lg border">
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">Restore Database</h3>
-                <p className="text-sm text-muted-foreground">
-                  Replace current database from a backup file.
-                </p>
-              </div>
-              <Button
-                onClick={handleRestore}
-                disabled={isRestoring}
-                variant="outline"
-              >
-                {isRestoring ? (
-                  <>
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                    Restoring...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 w-4 h-4" />
-                    Restore
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {restoreStatus === "success" && (
-              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
-                Database restored successfully!
-              </div>
-            )}
-            {restoreStatus === "error" && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
-                Failed to restore backup.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Секция 3: Обновления */}
-      <UpdateChecker />
-    </div>
   );
 };
 </file>
@@ -9268,60 +9233,12 @@ npx electron-builder --linux
 4. Open a new issue with details
 </file>
 
-<file path="src/main/ipc/channels.ts">
-export const IPC_CHANNELS = {
-  APP: {
-    GET_VERSION: "app:get-version",
-    OPEN_EXTERNAL: "app:open-external",
-    DOWNLOAD_FILE: "app:download-file",
-    WRITE_CLIPBOARD: "app:write-to-clipboard",
-    LOGOUT: "app:logout",
-    VERIFY_CREDS: "app:verify-creds",
-  },
-  SETTINGS: {
-    GET: "app:get-settings-status",
-    SAVE: "app:save-settings",
-  },
-  DB: {
-    GET_ARTISTS: "db:get-artists",
-    ADD_ARTIST: "db:add-artist",
-    DELETE_ARTIST: "db:delete-artist",
-    SEARCH_TAGS: "db:search-tags",
-    GET_POSTS: "db:get-posts",
-    GET_POSTS_COUNT: "db:get-posts-count",
-    MARK_VIEWED: "db:mark-post-viewed",
-    TOGGLE_FAVORITE: "db:toggle-post-favorite",
-    SYNC_ALL: "db:sync-all",
-    TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,
-    RESET_POST_CACHE: "db:reset-post-cache" as const,
-    GET_API_KEY_ENCRYPTED: "db:get-api-key-encrypted",
-  },
-  API: {
-    SEARCH_REMOTE: "api:search-remote-tags",
-  },
-  BACKUP: {
-    CREATE: "db:create-backup",
-    RESTORE: "db:restore-backup",
-  },
-  SYNC: {
-    REPAIR: "sync:repair-artist",
-  },
-
-  FILES: {
-    DOWNLOAD: "files:download",
-    OPEN_FOLDER: "files:open-folder",
-    DOWNLOAD_PROGRESS: "files:download-progress",
-    SELECT_DIRECTORY: "files:select-directory",
-  },
-} as const;
-</file>
-
-<file path="drizzle/meta/0000_snapshot.json">
+<file path="drizzle/meta/0001_snapshot.json">
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "0c643adf-6f58-446a-a9a2-875d3f661c77",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "1d6ecd33-4c8c-407f-b8a3-c38598ad926c",
+  "prevId": "4fbb74ee-af72-4a3e-8cbc-d29810828188",
   "tables": {
     "artists": {
       "name": "artists",
@@ -9602,9 +9519,335 @@ export const IPC_CHANNELS = {
           "notNull": false,
           "autoincrement": false,
           "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}
+</file>
+
+<file path="src/main/ipc/channels.ts">
+export const IPC_CHANNELS = {
+  APP: {
+    GET_VERSION: "app:get-version",
+    OPEN_EXTERNAL: "app:open-external",
+    DOWNLOAD_FILE: "app:download-file",
+    WRITE_CLIPBOARD: "app:write-to-clipboard",
+    LOGOUT: "app:logout",
+    VERIFY_CREDS: "app:verify-creds",
+  },
+  SETTINGS: {
+    GET: "app:get-settings-status",
+    SAVE: "app:save-settings",
+  },
+  DB: {
+    GET_ARTISTS: "db:get-artists",
+    ADD_ARTIST: "db:add-artist",
+    DELETE_ARTIST: "db:delete-artist",
+    SEARCH_TAGS: "db:search-tags",
+    GET_POSTS: "db:get-posts",
+    GET_POSTS_COUNT: "db:get-posts-count",
+    MARK_VIEWED: "db:mark-post-viewed",
+    TOGGLE_FAVORITE: "db:toggle-post-favorite",
+    SYNC_ALL: "db:sync-all",
+    TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,
+    RESET_POST_CACHE: "db:reset-post-cache" as const,
+    GET_API_KEY_ENCRYPTED: "db:get-api-key-encrypted",
+  },
+  API: {
+    SEARCH_REMOTE: "api:search-remote-tags",
+  },
+  BACKUP: {
+    CREATE: "db:create-backup",
+    RESTORE: "db:restore-backup",
+  },
+  SYNC: {
+    REPAIR: "sync:repair-artist",
+  },
+
+  FILES: {
+    DOWNLOAD: "files:download",
+    OPEN_FOLDER: "files:open-folder",
+    DOWNLOAD_PROGRESS: "files:download-progress",
+  },
+} as const;
+</file>
+
+<file path="drizzle/meta/0000_snapshot.json">
+{
+  "version": "5",
+  "dialect": "sqlite",
+  "id": "4fbb74ee-af72-4a3e-8cbc-d29810828188",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "artists": {
+      "name": "artists",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
         },
-        "download_path": {
-          "name": "download_path",
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "api_endpoint": {
+          "name": "api_endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_post_id": {
+          "name": "last_post_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "new_posts_count": {
+          "name": "new_posts_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "last_checked": {
+          "name": "last_checked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "artists_tag_unique": {
+          "name": "artists_tag_unique",
+          "columns": [
+            "tag"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "posts": {
+      "name": "posts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "post_id": {
+          "name": "post_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "artist_id": {
+          "name": "artist_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "file_url": {
+          "name": "file_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "preview_url": {
+          "name": "preview_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sample_url": {
+          "name": "sample_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "rating": {
+          "name": "rating",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_viewed": {
+          "name": "is_viewed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "is_favorited": {
+          "name": "is_favorited",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "artistIdIdx": {
+          "name": "artistIdIdx",
+          "columns": [
+            "artist_id"
+          ],
+          "isUnique": false
+        },
+        "isViewedIdx": {
+          "name": "isViewedIdx",
+          "columns": [
+            "is_viewed"
+          ],
+          "isUnique": false
+        },
+        "publishedAtIdx": {
+          "name": "publishedAtIdx",
+          "columns": [
+            "published_at"
+          ],
+          "isUnique": false
+        },
+        "isFavoritedIdx": {
+          "name": "isFavoritedIdx",
+          "columns": [
+            "is_favorited"
+          ],
+          "isUnique": false
+        },
+        "posts_artist_id_post_id_unique": {
+          "name": "posts_artist_id_post_id_unique",
+          "columns": [
+            "artist_id",
+            "post_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "posts_artist_id_artists_id_fk": {
+          "name": "posts_artist_id_artists_id_fk",
+          "tableFrom": "posts",
+          "tableTo": "artists",
+          "columnsFrom": [
+            "artist_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "settings": {
+      "name": "settings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "encrypted_api_key": {
+          "name": "encrypted_api_key",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -11094,11 +11337,113 @@ See [Roadmap](./roadmap.md#-technical-improvements-from-audit) for detailed impl
     {
       "idx": 0,
       "version": "5",
-      "when": 1766077409982,
-      "tag": "0000_shiny_harpoon",
+      "when": 1765787993231,
+      "tag": "0000_flawless_sally_floyd",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1766001420711,
+      "tag": "0001_lying_mauler",
       "breakpoints": true
     }
   ]
+}
+</file>
+
+<file path="src/renderer.d.ts">
+import type { Artist, NewArtist, Post } from "./main/db/schema";
+import {
+  IpcBridge,
+  UpdateStatusCallback,
+  UpdateProgressCallback,
+} from "./main/bridge";
+
+export type SyncErrorCallback = (message: string) => void;
+
+export interface BackupResponse {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
+export interface PostQueryFilters {
+  rating?: "s" | "q" | "e";
+  tags?: string;
+  sortBy?: "date" | "id" | "rating";
+  isViewed?: boolean;
+}
+
+export interface IpcSettings {
+  userId: string;
+  hasApiKey: boolean;
+}
+
+export interface IpcApi extends IpcBridge {
+  // App
+  getAppVersion: () => Promise<string>;
+
+  // Settings
+  getSettings: () => Promise<IpcSettings | undefined>;
+  saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  logout: () => Promise<void>;
+  openExternal: (url: string) => Promise<void>;
+
+  // Artists
+  getTrackedArtists: () => Promise<Artist[]>;
+  addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
+  deleteArtist: (id: number) => Promise<void>;
+
+  // Search
+  searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
+
+  // Posts
+  getArtistPosts: (params: {
+    artistId: number;
+    page?: number;
+    filters?: PostQueryFilters;
+  }) => Promise<Post[]>;
+  getArtistPostsCount: (artistId?: number) => Promise<number>;
+
+  togglePostViewed: (postId: number) => Promise<boolean>;
+
+  resetPostCache: (postId: number) => Promise<boolean>;
+
+  // Sync
+  syncAll: () => Promise<boolean>;
+
+  // UPDATER
+  checkForUpdates: () => Promise<void>;
+  quitAndInstall: () => Promise<void>;
+
+  // Start download
+  startDownload: () => Promise<void>;
+
+  // Update status
+  onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
+  onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
+
+  onSyncStart: (callback: () => void) => () => void;
+  onSyncEnd: (callback: () => void) => () => void;
+  onSyncProgress: (callback: (message: string) => void) => () => void;
+  onSyncError: (callback: SyncErrorCallback) => () => void;
+
+  markPostAsViewed: (postId: number) => Promise<boolean>;
+
+  searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
+
+  createBackup: () => Promise<BackupResponse>;
+  restoreBackup: () => Promise<BackupResponse>;
+  writeToClipboard: (text: string) => Promise<boolean>;
+
+  verifyCredentials: () => Promise<boolean>;
+}
+
+declare global {
+  interface Window {
+    api: IpcApi;
+  }
 }
 </file>
 
@@ -11866,83 +12211,318 @@ export const ViewerDialog = () => {
 };
 </file>
 
-<file path="src/renderer.d.ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export interface IElectronAPI {
-  ipcRenderer: {
-    send(channel: string, ...args: any[]): void;
-    on(channel: string, func: (...args: any[]) => void): () => void;
-    once(channel: string, func: (...args: any[]) => void): void;
-    invoke(channel: string, ...args: any[]): Promise<any>;
-    removeAllListeners(channel: string): void;
-  };
-  process: {
-    versions: {
-      app: string;
-      [key: string]: string | undefined;
-    };
-  };
+<file path="src/main/services/sync-service.ts">
+// Cursor: select file:src/main/services/sync-service.ts
+import { BrowserWindow, safeStorage } from "electron";
+import { logger } from "../lib/logger";
+import { DbWorkerClient } from "../db/db-worker-client";
+import axios from "axios";
+import type { Artist } from "../db/schema";
+import { URLSearchParams } from "url";
+
+interface InternalDecryptedSettings {
+  userId: string;
+  apiKey: string;
 }
 
-// Интерфейс основного API (методы из bridge.ts)
-export interface IMainAPI {
-  // Settings
-  getSettings: () => Promise<any>;
-  saveSettings: (settings: any) => Promise<boolean>;
-
-  // Backups
-  createBackup: () => Promise<{
-    success: boolean;
-    error?: string;
-    path?: string;
-  }>;
-  restoreBackup: () => Promise<{ success: boolean; error?: string }>;
-
-  // Auth & Onboarding
-  verifyCredentials: () => Promise<boolean>;
-  logout: () => Promise<void>;
-
-  // Sync
-  syncAll: () => Promise<void>;
-
-  // Artists
-  getTrackedArtists: () => Promise<any[]>;
-  addArtist: (artist: any) => Promise<any>;
-  deleteArtist: (id: number) => Promise<boolean>;
-  searchRemoteTags: (query: string) => Promise<any[]>;
-  repairArtist: (id: number) => Promise<void>;
-  getArtistPosts: (params: any) => Promise<any>;
-  getArtistPostsCount: (id: number) => Promise<number>;
-
-  // Posts & Viewer
-  markPostAsViewed: (id: number) => Promise<void>;
-  togglePostFavorite: (id: number) => Promise<boolean>;
-  resetPostCache: (id: number) => Promise<void>;
-
-  // Files
-  downloadFile: (url: string, filename: string) => Promise<any>;
-  openFileInFolder: (path: string) => Promise<void>;
-  onDownloadProgress: (callback: (data: any) => void) => () => void;
-  selectDownloadFolder: () => Promise<string | null>;
-
-  // Utils
-  openExternal: (url: string) => Promise<void>;
-  writeToClipboard: (text: string) => Promise<void>;
-
-  // Updater
-  onUpdateStatus: (callback: (data: any) => void) => () => void;
-  onUpdateProgress: (callback: (percent: number) => void) => () => void;
-  startDownload: () => Promise<void>;
-  quitAndInstall: () => Promise<void>;
-  checkForUpdates: () => Promise<void>;
+interface R34Post {
+  id: number;
+  file_url: string;
+  sample_url: string;
+  preview_url: string;
+  tags: string;
+  rating: string;
+  change: number;
 }
 
-declare global {
-  interface Window {
-    electron: IElectronAPI;
-    api: IMainAPI;
+const isVideo = (url?: string) => !!url && /\.(webm|mp4|mov)(\?|$)/i.test(url);
+const pickPreviewUrl = (p: R34Post) => {
+  if (p.sample_url && !isVideo(p.sample_url)) return p.sample_url;
+  if (p.preview_url && !isVideo(p.preview_url)) return p.preview_url;
+  if (p.file_url && !isVideo(p.file_url)) return p.file_url;
+  return "";
+};
+
+export class SyncService {
+  private dbWorkerClient: DbWorkerClient | null = null;
+  private window: BrowserWindow | null = null;
+  private isSyncing = false;
+
+  public setWindow(window: BrowserWindow) {
+    this.window = window;
+  }
+  public setDbWorkerClient(dbWorkerClient: DbWorkerClient) {
+    this.dbWorkerClient = dbWorkerClient;
+  }
+
+  public sendEvent(channel: string, data?: unknown) {
+    if (this.window && !this.window.isDestroyed()) {
+      this.window.webContents.send(channel, data);
+    }
+  }
+
+  private async getDecryptedSettings() {
+    if (!this.dbWorkerClient) {
+      logger.error("SyncService: DbWorkerClient is not initialized!");
+      return null;
+    }
+
+    const settings = await this.dbWorkerClient.call<{
+      userId: string;
+      apiKey: string;
+    }>("getApiKeyDecrypted");
+
+    let realApiKey = settings.apiKey;
+
+    // Дешифровка (safeStorage)
+    if (realApiKey && safeStorage.isEncryptionAvailable()) {
+      try {
+        const buff = Buffer.from(realApiKey, "base64");
+        realApiKey = safeStorage.decryptString(buff);
+        logger.info(
+          `SyncService: Credentials decrypted successfully. Final Key Length: ${realApiKey.length}`
+        );
+      } catch (e) {
+        // Если ошибка дешифровки, возможно это "сырой" ключ (например в dev режиме), оставляем как есть
+        logger.warn(
+          "SyncService: Failed to decrypt API Key. This usually means the app was run by a different user/session or the encryption key was lost.",
+          e
+        );
+        realApiKey = settings.apiKey;
+      }
+    }
+
+    return { ...settings, apiKey: realApiKey };
+  }
+
+  /**
+   * 🔥 Реальная проверка кредов через API Rule34
+   */
+  public async checkCredentials(): Promise<boolean> {
+    try {
+      const settings = await this.getDecryptedSettings();
+
+      if (!settings?.userId || !settings?.apiKey) {
+        logger.warn(
+          "SyncService: Cannot verify credentials - missing ID or Key."
+        );
+        return false;
+      }
+
+      logger.info(
+        `SyncService: Verifying connectivity for User ID: ${settings.userId}...`
+      );
+
+      const params = new URLSearchParams({
+        page: "dapi",
+        s: "post",
+        q: "index",
+        limit: "1",
+        json: "1",
+        user_id: settings.userId,
+        api_key: settings.apiKey,
+      });
+
+      const { data, status } = await axios.get(
+        `https://api.rule34.xxx/index.php?${params}`,
+        {
+          timeout: 10000,
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Accept: "application/json",
+            "Accept-Encoding": "identity",
+          },
+        }
+      );
+
+      if (Array.isArray(data)) {
+        logger.info(
+          `SyncService: Connection verified (Status: ${status}). Downloaded ${data.length} test posts.`
+        );
+        return true;
+      }
+
+      logger.warn(
+        `SyncService: Verification failed. API response was not an array. Data: ${JSON.stringify(
+          data
+        ).substring(0, 100)}`
+      );
+      return false;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        logger.error(
+          `SyncService: Network error. Status: ${error.response?.status}.`
+        );
+      } else {
+        logger.error("SyncService: Verification error", error);
+      }
+      return false;
+    }
+  }
+
+  public async syncAllArtists() {
+    if (this.isSyncing) return;
+    if (!this.dbWorkerClient) return;
+
+    this.isSyncing = true;
+    logger.info("SyncService: Start Full Sync");
+    this.sendEvent("sync:start");
+
+    try {
+      const artists = await this.dbWorkerClient.call<Artist[]>(
+        "getTrackedArtists"
+      );
+
+      const settings = await this.getDecryptedSettings();
+
+      if (!settings?.userId) throw new Error("No API credentials");
+
+      for (const artist of artists) {
+        this.sendEvent("sync:progress", `Checking ${artist.name}...`);
+        await this.syncArtist(artist, settings);
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    } catch (error) {
+      logger.error("Sync error", error);
+      this.sendEvent(
+        "sync:error",
+        error instanceof Error ? error.message : "Error"
+      );
+    } finally {
+      this.isSyncing = false;
+      this.sendEvent("sync:end");
+    }
+  }
+
+  public async repairArtist(artistId: number) {
+    if (this.isSyncing || !this.dbWorkerClient) return;
+    this.isSyncing = true;
+    try {
+      const artist = await this.dbWorkerClient.call<Artist | undefined>(
+        "getArtistById",
+        { artistId }
+      );
+
+      const settings = await this.getDecryptedSettings();
+
+      if (artist && settings) {
+        this.sendEvent("sync:repair:start", artist.name);
+        // Force download by using lastPostId: 0
+        await this.syncArtist({ ...artist, lastPostId: 0 }, settings, 3);
+      }
+    } catch (e) {
+      logger.error("Repair error", e);
+    } finally {
+      this.isSyncing = false;
+      this.sendEvent("sync:repair:end");
+    }
+  }
+
+  private async syncArtist(
+    artist: Artist,
+    settings: InternalDecryptedSettings,
+    maxPages = Infinity
+  ) {
+    if (!this.dbWorkerClient) return;
+
+    let page = 0;
+    let hasMore = true;
+    let newPostsCount = 0;
+    let highestPostId = artist.lastPostId;
+
+    while (hasMore && page < maxPages) {
+      try {
+        const idFilter =
+          artist.lastPostId > 0 ? ` id:>${artist.lastPostId}` : "";
+        const tagsQuery = `${
+          artist.type === "uploader" ? "user:" : ""
+        }${encodeURIComponent(artist.tag)}${idFilter}`;
+
+        const params = new URLSearchParams({
+          page: "dapi",
+          s: "post",
+          q: "index",
+          limit: "100",
+          pid: page.toString(),
+          tags: tagsQuery,
+          json: "1",
+        });
+        if (settings.apiKey && settings.userId) {
+          params.append("user_id", settings.userId);
+          params.append("api_key", settings.apiKey);
+        }
+
+        const { data: posts } = await axios.get<R34Post[]>(
+          `https://api.rule34.xxx/index.php?${params}`,
+          {
+            timeout: 15000,
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept-Encoding": "identity",
+            },
+          }
+        );
+
+        const batchMaxId = Math.max(...posts.map((p) => Number(p.id)));
+        if (batchMaxId > highestPostId) highestPostId = batchMaxId;
+
+        const newPosts = posts.filter((p) => p.id > artist.lastPostId);
+
+        if (newPosts.length === 0 && artist.lastPostId > 0) {
+          hasMore = false;
+          break;
+        }
+
+        const postsToSave = newPosts.map((p) => ({
+          artistId: artist.id,
+          fileUrl: p.file_url,
+          postId: p.id,
+          previewUrl: pickPreviewUrl(p),
+          sampleUrl: p.sample_url || p.file_url,
+          title: "",
+          rating: p.rating,
+          tags: p.tags,
+          publishedAt: new Date((p.change || 0) * 1000),
+          isViewed: false,
+        }));
+
+        if (postsToSave.length > 0) {
+          await this.dbWorkerClient.call("savePostsForArtist", {
+            artistId: artist.id,
+            posts: postsToSave,
+          });
+          await this.dbWorkerClient.call("updateArtistProgress", {
+            artistId: artist.id,
+            newMaxPostId: highestPostId,
+            postsAddedCount: postsToSave.length,
+          });
+        }
+
+        newPostsCount += postsToSave.length;
+        if (posts.length < 100) hasMore = false;
+        else page++;
+
+        await new Promise((r) => setTimeout(r, 500));
+      } catch (e) {
+        logger.error(`Sync error for ${artist.name}`, e);
+        hasMore = false;
+      }
+    }
+
+    if (newPostsCount === 0) {
+      await this.dbWorkerClient.call("updateArtistProgress", {
+        artistId: artist.id,
+        newMaxPostId: highestPostId,
+        postsAddedCount: 0,
+      });
+    }
+    logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
   }
 }
+
+export const syncService = new SyncService();
 </file>
 
 <file path="src/renderer/App.tsx">
@@ -12489,320 +13069,6 @@ This project adheres to strict development principles:
 See [Contributing Guide](./docs/contributing.md) for detailed guidelines.
 </file>
 
-<file path="src/main/services/sync-service.ts">
-// Cursor: select file:src/main/services/sync-service.ts
-import { BrowserWindow, safeStorage } from "electron";
-import { logger } from "../lib/logger";
-import { DbWorkerClient } from "../db/db-worker-client";
-import axios from "axios";
-import type { Artist } from "../db/schema";
-import { URLSearchParams } from "url";
-
-interface InternalDecryptedSettings {
-  userId: string;
-  apiKey: string;
-}
-
-interface R34Post {
-  id: number;
-  file_url: string;
-  sample_url: string;
-  preview_url: string;
-  tags: string;
-  rating: string;
-  change: number;
-}
-
-const isVideo = (url?: string) => !!url && /\.(webm|mp4|mov)(\?|$)/i.test(url);
-const pickPreviewUrl = (p: R34Post) => {
-  if (p.sample_url && !isVideo(p.sample_url)) return p.sample_url;
-  if (p.preview_url && !isVideo(p.preview_url)) return p.preview_url;
-  if (p.file_url && !isVideo(p.file_url)) return p.file_url;
-  return "";
-};
-
-export class SyncService {
-  private dbWorkerClient: DbWorkerClient | null = null;
-  private window: BrowserWindow | null = null;
-  private isSyncing = false;
-
-  public setWindow(window: BrowserWindow) {
-    this.window = window;
-  }
-  public setDbWorkerClient(dbWorkerClient: DbWorkerClient) {
-    this.dbWorkerClient = dbWorkerClient;
-  }
-
-  public sendEvent(channel: string, data?: unknown) {
-    if (this.window && !this.window.isDestroyed()) {
-      this.window.webContents.send(channel, data);
-    }
-  }
-
-  private async getDecryptedSettings() {
-    if (!this.dbWorkerClient) {
-      logger.error("SyncService: DbWorkerClient is not initialized!");
-      return null;
-    }
-
-    const settings = await this.dbWorkerClient.call<{
-      userId: string;
-      apiKey: string;
-    }>("getApiKeyDecrypted");
-
-    let realApiKey = settings.apiKey;
-
-    // Дешифровка (safeStorage)
-    if (realApiKey && safeStorage.isEncryptionAvailable()) {
-      try {
-        const buff = Buffer.from(realApiKey, "base64");
-        realApiKey = safeStorage.decryptString(buff);
-        logger.info(
-          `SyncService: Credentials decrypted successfully. Final Key Length: ${realApiKey.length}`
-        );
-      } catch (e) {
-        // Если ошибка дешифровки, возможно это "сырой" ключ (например в dev режиме), оставляем как есть
-        logger.warn(
-          "SyncService: Failed to decrypt API Key. This usually means the app was run by a different user/session or the encryption key was lost.",
-          e
-        );
-        realApiKey = settings.apiKey;
-      }
-    }
-
-    return { ...settings, apiKey: realApiKey };
-  }
-
-  /**
-   * 🔥 Реальная проверка кредов через API Rule34
-   */
-  public async checkCredentials(): Promise<boolean> {
-    try {
-      const settings = await this.getDecryptedSettings();
-
-      if (!settings?.userId || !settings?.apiKey) {
-        logger.warn(
-          "SyncService: Cannot verify credentials - missing ID or Key."
-        );
-        return false;
-      }
-
-      logger.info(
-        `SyncService: Verifying connectivity for User ID: ${settings.userId}...`
-      );
-
-      const params = new URLSearchParams({
-        page: "dapi",
-        s: "post",
-        q: "index",
-        limit: "1",
-        json: "1",
-        user_id: settings.userId,
-        api_key: settings.apiKey,
-      });
-
-      const { data, status } = await axios.get(
-        `https://api.rule34.xxx/index.php?${params}`,
-        {
-          timeout: 10000,
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            Accept: "application/json",
-            "Accept-Encoding": "identity",
-          },
-        }
-      );
-
-      if (Array.isArray(data)) {
-        logger.info(
-          `SyncService: Connection verified (Status: ${status}). Downloaded ${data.length} test posts.`
-        );
-        return true;
-      }
-
-      logger.warn(
-        `SyncService: Verification failed. API response was not an array. Data: ${JSON.stringify(
-          data
-        ).substring(0, 100)}`
-      );
-      return false;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        logger.error(
-          `SyncService: Network error. Status: ${error.response?.status}.`
-        );
-      } else {
-        logger.error("SyncService: Verification error", error);
-      }
-      return false;
-    }
-  }
-
-  public async syncAllArtists() {
-    if (this.isSyncing) return;
-    if (!this.dbWorkerClient) return;
-
-    this.isSyncing = true;
-    logger.info("SyncService: Start Full Sync");
-    this.sendEvent("sync:start");
-
-    try {
-      const artists = await this.dbWorkerClient.call<Artist[]>(
-        "getTrackedArtists"
-      );
-
-      const settings = await this.getDecryptedSettings();
-
-      if (!settings?.userId) throw new Error("No API credentials");
-
-      for (const artist of artists) {
-        this.sendEvent("sync:progress", `Checking ${artist.name}...`);
-        await this.syncArtist(artist, settings);
-        await new Promise((r) => setTimeout(r, 1500));
-      }
-    } catch (error) {
-      logger.error("Sync error", error);
-      this.sendEvent(
-        "sync:error",
-        error instanceof Error ? error.message : "Error"
-      );
-    } finally {
-      this.isSyncing = false;
-      this.sendEvent("sync:end");
-    }
-  }
-
-  public async repairArtist(artistId: number) {
-    if (this.isSyncing || !this.dbWorkerClient) return;
-    this.isSyncing = true;
-    try {
-      const artist = await this.dbWorkerClient.call<Artist | undefined>(
-        "getArtistById",
-        { artistId }
-      );
-
-      const settings = await this.getDecryptedSettings();
-
-      if (artist && settings) {
-        this.sendEvent("sync:repair:start", artist.name);
-        // Force download by using lastPostId: 0
-        await this.syncArtist({ ...artist, lastPostId: 0 }, settings, 3);
-      }
-    } catch (e) {
-      logger.error("Repair error", e);
-    } finally {
-      this.isSyncing = false;
-      this.sendEvent("sync:repair:end");
-    }
-  }
-
-  private async syncArtist(
-    artist: Artist,
-    settings: InternalDecryptedSettings,
-    maxPages = Infinity
-  ) {
-    if (!this.dbWorkerClient) return;
-
-    let page = 0;
-    let hasMore = true;
-    let newPostsCount = 0;
-    let highestPostId = artist.lastPostId;
-
-    while (hasMore && page < maxPages) {
-      try {
-        const idFilter =
-          artist.lastPostId > 0 ? ` id:>${artist.lastPostId}` : "";
-        const tagsQuery = `${
-          artist.type === "uploader" ? "user:" : ""
-        }${encodeURIComponent(artist.tag)}${idFilter}`;
-
-        const params = new URLSearchParams({
-          page: "dapi",
-          s: "post",
-          q: "index",
-          limit: "100",
-          pid: page.toString(),
-          tags: tagsQuery,
-          json: "1",
-        });
-        if (settings.apiKey && settings.userId) {
-          params.append("user_id", settings.userId);
-          params.append("api_key", settings.apiKey);
-        }
-
-        const { data: posts } = await axios.get<R34Post[]>(
-          `https://api.rule34.xxx/index.php?${params}`,
-          {
-            timeout: 15000,
-            headers: {
-              "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-              "Accept-Encoding": "identity",
-            },
-          }
-        );
-
-        const batchMaxId = Math.max(...posts.map((p) => Number(p.id)));
-        if (batchMaxId > highestPostId) highestPostId = batchMaxId;
-
-        const newPosts = posts.filter((p) => p.id > artist.lastPostId);
-
-        if (newPosts.length === 0 && artist.lastPostId > 0) {
-          hasMore = false;
-          break;
-        }
-
-        const postsToSave = newPosts.map((p) => ({
-          artistId: artist.id,
-          fileUrl: p.file_url,
-          postId: p.id,
-          previewUrl: pickPreviewUrl(p),
-          sampleUrl: p.sample_url || p.file_url,
-          title: "",
-          rating: p.rating,
-          tags: p.tags,
-          publishedAt: new Date((p.change || 0) * 1000),
-          isViewed: false,
-        }));
-
-        if (postsToSave.length > 0) {
-          await this.dbWorkerClient.call("savePostsForArtist", {
-            artistId: artist.id,
-            posts: postsToSave,
-          });
-          await this.dbWorkerClient.call("updateArtistProgress", {
-            artistId: artist.id,
-            newMaxPostId: highestPostId,
-            postsAddedCount: postsToSave.length,
-          });
-        }
-
-        newPostsCount += postsToSave.length;
-        if (posts.length < 100) hasMore = false;
-        else page++;
-
-        await new Promise((r) => setTimeout(r, 500));
-      } catch (e) {
-        logger.error(`Sync error for ${artist.name}`, e);
-        hasMore = false;
-      }
-    }
-
-    if (newPostsCount === 0) {
-      await this.dbWorkerClient.call("updateArtistProgress", {
-        artistId: artist.id,
-        newMaxPostId: highestPostId,
-        postsAddedCount: 0,
-      });
-    }
-    logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
-  }
-}
-
-export const syncService = new SyncService();
-</file>
-
 <file path="src/main/db/schema.ts">
 import {
   sqliteTable,
@@ -12868,7 +13134,6 @@ export const settings = sqliteTable("settings", {
   isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
     false
   ),
-  downloadPath: text("download_path").default(""),
 });
 
 // Types
@@ -12889,9 +13154,7 @@ import { mkdirSync } from "fs";
 
 // === PORTABLE MODE LOGIC ===
 if (app.isPackaged) {
-  const baseDir =
-    process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
-  const portableDataPath = path.join(baseDir, "data");
+  const portableDataPath = path.join(path.dirname(process.execPath), "data");
 
   try {
     mkdirSync(portableDataPath, { recursive: true });
@@ -13132,7 +13395,6 @@ export async function restoreDatabase(backupPath: string): Promise<void> {
 </file>
 
 <file path="src/main/bridge.ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type { Artist, NewArtist, Post, Settings } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
@@ -13176,6 +13438,7 @@ export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
 
+  // 🔥 FIX: Добавлен метод для работы с буфером обмена (System)
   writeToClipboard: (text: string) => Promise<boolean>;
 
   // Settings
@@ -13237,7 +13500,6 @@ export interface IpcBridge {
     canceled?: boolean;
   }>;
   openFileInFolder: (path: string) => Promise<boolean>;
-  selectDownloadFolder: () => Promise<string | null>;
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
 
@@ -13252,9 +13514,7 @@ export interface IpcBridge {
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
 
-  selectDownloadFolder: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.SELECT_DIRECTORY),
-
+  // 🔥 FIX: Реализация метода writeToClipboard
   writeToClipboard: (text) =>
     ipcRenderer.invoke("app:write-to-clipboard", text),
 
@@ -13295,6 +13555,7 @@ const ipcBridge: IpcBridge = {
   resetPostCache: (postId) => ipcRenderer.invoke("db:reset-post-cache", postId),
 
   downloadFile: (url: string, filename: string) => {
+    // console.log("Bridge: Sending download request...", url); // Можно убрать лог
     return ipcRenderer.invoke("files:download", url, filename);
   },
 
@@ -13368,32 +13629,11 @@ const ipcBridge: IpcBridge = {
   restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
 };
 
-contextBridge.exposeInMainWorld("electron", {
-  ipcRenderer: {
-    send: (channel: string, ...args: any[]) =>
-      ipcRenderer.send(channel, ...args),
-    on: (channel: string, func: (...args: any[]) => void) => {
-      const subscription = (_event: any, ...args: any[]) => func(...args);
-      ipcRenderer.on(channel, subscription);
-      return () => ipcRenderer.removeListener(channel, subscription);
-    },
-    once: (channel: string, func: (...args: any[]) => void) => {
-      ipcRenderer.once(channel, (_event, ...args) => func(...args));
-    },
-    invoke: (channel: string, ...args: any[]) =>
-      ipcRenderer.invoke(channel, ...args),
-    removeAllListeners: (channel: string) =>
-      ipcRenderer.removeAllListeners(channel),
-  },
-  process: {
-    versions: process.versions,
-  },
-});
-
 contextBridge.exposeInMainWorld("api", ipcBridge);
 </file>
 
 <file path="src/main/db/db-worker.ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { parentPort } from "worker_threads";
 import Database from "better-sqlite3";
 import {
@@ -13402,6 +13642,7 @@ import {
 } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import * as schema from "./schema";
+import { NewArtist } from "./schema";
 import { eq, asc, desc, sql, like, or, count } from "drizzle-orm";
 import type { WorkerRequest, WorkerResponse } from "./worker-types";
 import * as path from "path";
@@ -13426,7 +13667,6 @@ const SettingsPayloadSchema = z.object({
   encryptedApiKey: z.string().optional(),
   isSafeMode: z.boolean().optional(),
   isAdultConfirmed: z.boolean().optional(),
-  downloadPath: z.string().optional(),
 });
 
 const UpdateProgressSchema = z.object({
@@ -13471,21 +13711,6 @@ const SavePostsSchema = z.object({
 
 const PostActionPayloadSchema = z.object({
   postId: z.number().int().positive(),
-});
-
-const AddArtistSchema = z
-  .object({
-    name: z.string().min(1),
-    tag: z.string().min(1),
-  })
-  .passthrough(); // Разрешаем остальные поля, если они есть в NewArtist
-
-const ArtistIdSchema = z.object({
-  artistId: z.number().int(),
-});
-
-const DeleteArtistSchema = z.object({
-  id: z.number().int(),
 });
 
 const SystemInitSchema = z.object({
@@ -13604,7 +13829,6 @@ function getSettingsDrizzle(db: DbType) {
         encryptedApiKey: undefined,
         isSafeMode: true,
         isAdultConfirmed: false,
-        downloadPath: "",
       };
     }
 
@@ -13613,7 +13837,6 @@ function getSettingsDrizzle(db: DbType) {
       encryptedApiKey: settings.encryptedApiKey || undefined,
       isSafeMode: settings.isSafeMode ?? true,
       isAdultConfirmed: settings.isAdultConfirmed ?? false,
-      downloadPath: settings.downloadPath || "",
     };
   } catch (e) {
     logger.error("Worker: CRITICAL error in getSettingsDrizzle:", e);
@@ -13667,7 +13890,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
           hasApiKey: !!settings?.encryptedApiKey,
           isSafeMode: settings?.isSafeMode ?? true,
           isAdultConfirmed: settings?.isAdultConfirmed ?? false,
-          downloadPath: settings?.downloadPath || "",
         });
         break;
       }
@@ -13683,13 +13905,8 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
           throw new Error("Settings validation failed. Check your input data.");
         }
 
-        const {
-          userId,
-          encryptedApiKey,
-          isSafeMode,
-          isAdultConfirmed,
-          downloadPath,
-        } = validation.data;
+        const { userId, encryptedApiKey, isSafeMode, isAdultConfirmed } =
+          validation.data;
 
         // 1. Получаем текущие настройки для слияния
         const current = db
@@ -13702,7 +13919,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         const newKey = encryptedApiKey ?? current?.encryptedApiKey ?? "";
         const newSafeMode = isSafeMode ?? current?.isSafeMode ?? true;
         const newAdult = isAdultConfirmed ?? current?.isAdultConfirmed ?? false;
-        const newDownloadPath = downloadPath ?? current?.downloadPath ?? "";
+
         // 3. Drizzle Upsert
         db.insert(schema.settings)
           .values({
@@ -13711,7 +13928,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
             encryptedApiKey: newKey,
             isSafeMode: newSafeMode,
             isAdultConfirmed: newAdult,
-            downloadPath: newDownloadPath,
           })
           .onConflictDoUpdate({
             target: schema.settings.id,
@@ -13720,7 +13936,6 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
               encryptedApiKey: newKey,
               isSafeMode: newSafeMode,
               isAdultConfirmed: newAdult,
-              downloadPath: newDownloadPath,
             },
           })
           .run();
@@ -13739,14 +13954,11 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
         break;
 
       case "addArtist": {
-        const ad = AddArtistSchema.parse(request.payload);
-
+        const ad = request.payload as NewArtist;
         const res = await db
           .insert(schema.artists)
-          // @ts-expect-error - типы Zod и Drizzle могут незначительно отличаться (optional vs undefined), но структура верная          .values(ad)
           .values(ad)
           .returning({ id: schema.artists.id });
-
         sendSuccess(
           request.id,
           await db.query.artists.findFirst({
@@ -13852,8 +14064,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "getArtistById": {
-        const { artistId } = ArtistIdSchema.parse(request.payload);
-
+        const { artistId } = request.payload as { artistId: number };
         const artist = await db.query.artists.findFirst({
           where: eq(schema.artists.id, artistId),
         });
@@ -13907,8 +14118,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       }
 
       case "deleteArtist": {
-        const { id } = DeleteArtistSchema.parse(request.payload);
-
+        const { id } = request.payload as { id: number };
         await db.delete(schema.artists).where(eq(schema.artists.id, id));
         sendSuccess(request.id);
         break;
@@ -13976,7 +14186,7 @@ async function handleRequest(request: WorkerRequest): Promise<void> {
       default:
         sendError(
           request.id,
-          new Error(`Unknown request type: ${request.type}`)
+          new Error(`Unknown request type: ${(request as any).type}`)
         );
     }
   } catch (error) {
@@ -14048,7 +14258,7 @@ port.on("message", async (rawMsg: unknown) => {
     "url": "https://github.com/KazeKaze93/ruledesk.git"
   },
   "scripts": {
-    "dev": "chcp 65001 && electron-vite dev --remote-debugging-port=9222",
+    "dev": "chcp 65001 && electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "db:migrate": "ts-node src/main/db/migrate.ts",
@@ -14063,7 +14273,9 @@ port.on("message", async (rawMsg: unknown) => {
     "release:patch": "npm version patch && git push --follow-tags",
     "release:major": "npm version major && git push --follow-tags",
     "ctx:update": "npx ts-node scripts/generate-tree.ts",
-    "ctx:gen": "npm run ctx:update && npx ts-node scripts/gen-gemini-prompt.ts"
+    "ctx:gen": "npm run ctx:update && npx ts-node scripts/gen-gemini-prompt.ts",
+    "audit:code": "node scripts/anti_abstractor.cjs ./src",
+    "audit:deps": "node scripts/dependency_detox.cjs"
   },
   "keywords": [
     "electron",
@@ -14094,7 +14306,6 @@ port.on("message", async (rawMsg: unknown) => {
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
-    "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.49.0",
     "vite": "^5.0.8"
@@ -14107,8 +14318,10 @@ port.on("message", async (rawMsg: unknown) => {
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-icons": "^1.3.2",
     "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@tanstack/react-query": "^5.17.0",
     "axios": "^1.13.2",
     "better-sqlite3": "^9.2.2",
@@ -14126,6 +14339,7 @@ port.on("message", async (rawMsg: unknown) => {
     "react-i18next": "^16.5.0",
     "react-router-dom": "^7.10.1",
     "react-virtuoso": "^4.17.0",
+    "repomix": "^1.10.2",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.25.76",
     "zustand": "^4.5.7"
