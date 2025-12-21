@@ -3,7 +3,7 @@ import * as path from "path";
 
 const AI_DIR = ".ai";
 const CONTEXT_FILE = path.join(AI_DIR, "CONTEXT.md");
-const RULES_FILE = path.join(AI_DIR, "RULES.md"); // 👈 Новый файл
+const RULES_FILE = path.join(AI_DIR, "RULES.md");
 const TREE_FILE = path.join(AI_DIR, "tree.txt");
 const OUTPUT_FILE = path.join(AI_DIR, "GEMINI_PROMPT.txt");
 
