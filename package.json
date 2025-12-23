@@ -24,7 +24,6 @@
     "release:minor": "npm version minor && git push --follow-tags",
     "release:patch": "npm version patch && git push --follow-tags",
     "release:major": "npm version major && git push --follow-tags",
-    "ctx:update": "npx ts-node scripts/generate-tree.ts",
     "ctx:gen": "tsx scripts/context-packer.ts",
     "audit:code": "node scripts/anti_abstractor.cjs ./src",
     "audit:deps": "node scripts/dependency_detox.cjs"
