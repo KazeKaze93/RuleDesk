@@ -23,6 +23,7 @@ REVIEWABLE_EXTENSIONS = ('.ts', '.tsx', '.js', '.css', '.sql', '.py', '.md', '.j
 
 # ПРАВИЛЬНЫЕ ИМЕНА МОДЕЛЕЙ (Stable)
 MODEL_PRIORITIES = [
+    "gemini-3-flash-preview",
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
     "gemini-2.5-pro",
