@@ -17,17 +17,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
+
+      - name: Setup Python for Inquisitor
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install dependencies
         run: npm ci
+
       - name: Type Check
         run: npm run typecheck
+
       - name: Lint
         run: npm run lint
+
+      - name: 👮 Architecture Police
+        run: npm run arch:police
 
   release:
     name: 🚀 Build & Release
@@ -50,7 +62,6 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # ШАГ 1: Сборка
       - name: Build Application
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -58,7 +69,6 @@ jobs:
           npm run build
           npx electron-builder --publish never
 
-      # ШАГ 2: Загрузка (Publishing)
       - name: Create Release & Upload Assets
         uses: softprops/action-gh-release@v2
         with:
@@ -68,10 +78,6 @@ jobs:
           make_latest: true
           files: |
             dist/*.exe
-            dist/*.blockmap
             dist/latest.yml
-            release/*.exe
-            release/*.blockmap
-            release/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
