@@ -13,26 +13,35 @@ jobs:
   review:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 1. Node.js нужен, чтобы установить библиотеку
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # 2. Python нужен, так как библиотека создает venv
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
 
+      # 3. Установка зависимостей (включая @kazekaze93/repo-inquisitor)
+      # Это запустит postinstall скрипт библиотеки, который создаст venv
       - name: Install dependencies
-        run: |
-          pip install google-generativeai PyGithub google-api-python-client
+        run: npm ci
 
+      # 4. Запуск через новый CLI
       - name: Run AI Architect
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO_NAME: ${{ github.repository }}
-          MODEL_NAME: "gemini-2.5-pro" # Используем стабильную версию
-        run: python scripts/ai_reviewer.py
+          MODEL_NAME: "gemini-2.5-pro"
+        run: npm run arch:review
