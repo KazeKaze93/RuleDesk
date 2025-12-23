@@ -27,7 +27,8 @@
     "ctx:gen": "tsx scripts/context-packer.ts",
     "audit:code": "node scripts/anti_abstractor.cjs ./src",
     "audit:deps": "node scripts/dependency_detox.cjs",
-    "viz": "node scripts/viz/server.cjs"
+    "viz": "node scripts/viz/server.cjs",
+    "audit:repo": "inquisitor analyze ."
   },
   "keywords": [
     "electron",
