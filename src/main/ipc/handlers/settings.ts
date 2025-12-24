@@ -1,5 +1,4 @@
 import { ipcMain } from "electron";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { IPC_CHANNELS } from "../channels";
 import { getDb } from "../../db/client";
