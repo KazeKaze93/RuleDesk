@@ -115,31 +115,88 @@ const registerSyncAndMaintenanceHandlers = (
       const walPath = `${dbPath}-wal`;
       const shmPath = `${dbPath}-shm`;
 
-      // Delete existing DB and WAL/SHM files if they exist
-      const filesToDelete = [dbPath, walPath, shmPath];
-      for (const filePath of filesToDelete) {
+      // Safety rollback: Rename existing files to .bak instead of deleting
+      const bakPaths = {
+        db: `${dbPath}.bak`,
+        wal: `${walPath}.bak`,
+        shm: `${shmPath}.bak`,
+      };
+
+      const renameToBak = async (source: string, target: string) => {
         try {
-          await fs.promises.rm(filePath, { force: true });
+          if (fs.existsSync(source)) {
+            await fs.promises.rename(source, target);
+          }
         } catch (error) {
-          // Ignore errors if file doesn't exist
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-            logger.warn(`IPC: Failed to delete ${filePath}:`, error);
+            throw error;
           }
         }
-      }
-
-      // Copy backup file to DB path
-      await fs.promises.copyFile(backupPath, dbPath);
-
-      // Reinitialize database connection
-      initializeDatabase();
-
-      logger.info(`IPC: Database restored from ${backupPath}`);
-
-      return {
-        success: true,
-        message: "Database restored successfully.",
       };
+
+      // Step 1: Rename current files to .bak
+      await renameToBak(dbPath, bakPaths.db);
+      await renameToBak(walPath, bakPaths.wal);
+      await renameToBak(shmPath, bakPaths.shm);
+
+      try {
+        // Step 2: Copy backup file to DB path
+        await fs.promises.copyFile(backupPath, dbPath);
+
+        // Step 3: If copy succeeds, delete .bak files and reinitialize
+        const deleteBak = async (bakPath: string) => {
+          try {
+            if (fs.existsSync(bakPath)) {
+              await fs.promises.rm(bakPath, { force: true });
+            }
+          } catch (error) {
+            logger.warn(`IPC: Failed to delete backup file ${bakPath}:`, error);
+          }
+        };
+
+        await deleteBak(bakPaths.db);
+        await deleteBak(bakPaths.wal);
+        await deleteBak(bakPaths.shm);
+
+        // Reinitialize database connection
+        initializeDatabase();
+
+        logger.info(`IPC: Database restored from ${backupPath}`);
+        return {
+          success: true,
+          message: "Database restored successfully.",
+        };
+      } catch (copyError) {
+        // Step 4: If copy fails, restore .bak files back to original names
+        logger.error("IPC: Restore copy failed, rolling back:", copyError);
+
+        const restoreFromBak = async (bakPath: string, originalPath: string) => {
+          try {
+            if (fs.existsSync(bakPath)) {
+              await fs.promises.rename(bakPath, originalPath);
+            }
+          } catch (error) {
+            logger.error(`IPC: Failed to restore ${originalPath} from backup:`, error);
+          }
+        };
+
+        await restoreFromBak(bakPaths.db, dbPath);
+        await restoreFromBak(bakPaths.wal, walPath);
+        await restoreFromBak(bakPaths.shm, shmPath);
+
+        // Attempt to reinitialize database with restored files
+        try {
+          initializeDatabase();
+        } catch (initError) {
+          logger.error("IPC: Failed to reinitialize database after rollback:", initError);
+        }
+
+        logger.error("IPC: Restore failed, rolled back");
+        return {
+          success: false,
+          error: "Restore failed, rolled back to previous state.",
+        };
+      }
     } catch (error) {
       logger.error("IPC: Restore failed:", error);
       // Attempt to reinitialize database even if restore failed

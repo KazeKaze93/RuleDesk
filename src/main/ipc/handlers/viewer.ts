@@ -6,8 +6,6 @@ import { IPC_CHANNELS } from "../channels";
 const ALLOWED_HOSTS = new Set([
   "rule34.xxx",
   "www.rule34.xxx",
-  "github.com",
-  "raw.githubusercontent.com",
 ]);
 
 export const registerViewerHandlers = () => {

@@ -215,7 +215,20 @@ export class SyncService {
     let hasMore = true;
     let newPostsCount = 0;
     let highestPostId = artist.lastPostId;
+    const allPostsToSave: Array<{
+      artistId: number;
+      fileUrl: string;
+      postId: number;
+      previewUrl: string;
+      sampleUrl: string;
+      title: string;
+      rating: string;
+      tags: string;
+      publishedAt: Date;
+      isViewed: boolean;
+    }> = [];
 
+    // Fetch all posts first (network operations outside transaction)
     while (hasMore && page < maxPages) {
       try {
         const idFilter =
@@ -273,37 +286,9 @@ export class SyncService {
           isViewed: false,
         }));
 
-        if (postsToSave.length > 0) {
-          // ✅ Bulk insert and artist update in single transaction (optimized)
-          await db.transaction(async (tx) => {
-            await tx
-              .insert(posts)
-              .values(postsToSave)
-              .onConflictDoUpdate({
-                target: [posts.artistId, posts.postId],
-                set: {
-                  fileUrl: sql`excluded.file_url`,
-                  sampleUrl: sql`excluded.sample_url`,
-                  previewUrl: sql`excluded.preview_url`,
-                  tags: sql`excluded.tags`,
-                  rating: sql`excluded.rating`,
-                  publishedAt: sql`excluded.published_at`,
-                },
-              });
-
-            // Update artist stats atomically within transaction
-            await tx
-              .update(artists)
-              .set({
-                lastPostId: sql`CASE WHEN ${artists.lastPostId} > ${highestPostId} THEN ${artists.lastPostId} ELSE ${highestPostId} END`,
-                newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
-                lastChecked: new Date(),
-              })
-              .where(eq(artists.id, artist.id));
-          });
-        }
-
+        allPostsToSave.push(...postsToSave);
         newPostsCount += postsToSave.length;
+
         if (postsData.length < 100) hasMore = false;
         else page++;
 
@@ -314,16 +299,37 @@ export class SyncService {
       }
     }
 
-    if (newPostsCount === 0) {
-      // Update lastChecked even if no new posts
-      await db
+    // Single transaction for all database operations
+    await db.transaction(async (tx) => {
+      if (allPostsToSave.length > 0) {
+        // Bulk insert all posts
+        await tx
+          .insert(posts)
+          .values(allPostsToSave)
+          .onConflictDoUpdate({
+            target: [posts.artistId, posts.postId],
+            set: {
+              fileUrl: sql`excluded.file_url`,
+              sampleUrl: sql`excluded.sample_url`,
+              previewUrl: sql`excluded.preview_url`,
+              tags: sql`excluded.tags`,
+              rating: sql`excluded.rating`,
+              publishedAt: sql`excluded.published_at`,
+            },
+          });
+      }
+
+      // Update artist stats atomically
+      await tx
         .update(artists)
         .set({
           lastPostId: sql`CASE WHEN ${artists.lastPostId} > ${highestPostId} THEN ${artists.lastPostId} ELSE ${highestPostId} END`,
+          newPostsCount: sql`${artists.newPostsCount} + ${newPostsCount}`,
           lastChecked: new Date(),
         })
         .where(eq(artists.id, artist.id));
-    }
+    });
+
     logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
   }
 }
