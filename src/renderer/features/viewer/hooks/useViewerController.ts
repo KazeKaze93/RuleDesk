@@ -127,7 +127,6 @@ export function useViewerController({
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       console.error("Failed to toggle favorite:", errorMessage);
-      alert(`Error toggling favorite: ${errorMessage}`);
     }
   };
 
@@ -147,13 +146,10 @@ export function useViewerController({
       } else if (result && result.canceled) {
         // User canceled
       } else {
-        alert(`Download failed: ${result?.error || "Unknown error"}`);
+        console.error("Download failed:", result?.error || "Unknown error");
       }
     } catch (error) {
       console.error("Download failed:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      alert(`Download failed: ${errorMessage}`);
       setDownloadProgress(0);
     }
   };
@@ -189,10 +185,8 @@ export function useViewerController({
     try {
       await window.api.writeToClipboard(metadata);
       console.log("Metadata copied to clipboard:", post);
-      alert("Metadata copied to clipboard!");
     } catch (e) {
       console.error("Failed to copy metadata", e);
-      alert("Failed to copy metadata. Check console.");
     }
   };
 
@@ -209,7 +203,6 @@ export function useViewerController({
       console.log("Debug info copied via IPC");
     } catch (e) {
       console.error("Failed to copy debug info", e);
-      alert("Failed to copy debug info");
     }
   };
 

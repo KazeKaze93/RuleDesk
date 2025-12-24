@@ -86,29 +86,22 @@ export const registerSettingsHandlers = () => {
     try {
       const db = getDb();
       
-      // Get existing settings to merge with new values
-      const existing = await db.query.settings.findFirst({
-        where: eq(settings.id, 1),
-      });
-
       const updateData: Partial<typeof settings.$inferInsert> = {};
       if (userId !== undefined) updateData.userId = userId;
       if (encryptedApiKey !== undefined) updateData.encryptedApiKey = encryptedApiKey;
       if (isSafeMode !== undefined) updateData.isSafeMode = isSafeMode;
       if (isAdultConfirmed !== undefined) updateData.isAdultConfirmed = isAdultConfirmed;
 
-      // Merge with existing values to preserve fields not being updated
-      const finalData = {
-        id: 1,
-        userId: updateData.userId ?? existing?.userId ?? "",
-        encryptedApiKey: updateData.encryptedApiKey ?? existing?.encryptedApiKey ?? "",
-        isSafeMode: updateData.isSafeMode ?? existing?.isSafeMode ?? true,
-        isAdultConfirmed: updateData.isAdultConfirmed ?? existing?.isAdultConfirmed ?? false,
-      };
-
+      // Upsert: Insert default values if not exists, or update provided fields if exists
       await db
         .insert(settings)
-        .values(finalData)
+        .values({
+          id: 1,
+          userId: userId ?? "",
+          encryptedApiKey: encryptedApiKey ?? "",
+          isSafeMode: isSafeMode ?? true,
+          isAdultConfirmed: isAdultConfirmed ?? false,
+        })
         .onConflictDoUpdate({
           target: settings.id,
           set: updateData,

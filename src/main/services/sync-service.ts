@@ -250,7 +250,7 @@ export class SyncService {
           }
         );
 
-        const batchMaxId = Math.max(...postsData.map((p) => Number(p.id)));
+        const batchMaxId = postsData.length > 0 ? Math.max(...postsData.map((p) => Number(p.id))) : 0;
         if (batchMaxId > highestPostId) highestPostId = batchMaxId;
 
         const newPosts = postsData.filter((p) => p.id > artist.lastPostId);

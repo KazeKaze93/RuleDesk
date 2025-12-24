@@ -4,7 +4,7 @@ import axios from "axios";
 import { eq, like, or, asc } from "drizzle-orm";
 import { IPC_CHANNELS } from "../channels";
 import { getDb } from "../../db/client";
-import { artists, type NewArtist } from "../../db/schema";
+import { artists } from "../../db/schema";
 import { logger } from "../../lib/logger";
 
 const AddArtistSchema = z.object({
@@ -41,7 +41,7 @@ export const registerArtistHandlers = () => {
       const db = getDb();
       const result = await db
         .insert(artists)
-        .values(artistData as NewArtist)
+        .values(artistData)
         .returning();
       return result[0];
     } catch (error) {

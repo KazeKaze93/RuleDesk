@@ -112,7 +112,7 @@ const registerSyncAndMaintenanceHandlers = (
         "metadata-restore.db"
       );
 
-      fs.copyFileSync(backupPath, tempRestorePath);
+      await fs.promises.copyFile(backupPath, tempRestorePath);
 
       logger.info(
         `IPC: Backup file prepared for restore. User must restart application.`
