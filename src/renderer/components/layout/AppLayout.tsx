@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { GlobalTopBar } from "./GlobalTopBar";
 import { useViewerStore } from "../../store/viewerStore";
-import { ViewerDialog } from "../viewer/ViewerDialog";
+import { ViewerDialog } from "@/features/viewer/ViewerDialog";
 
 export const AppLayout = () => {
   const isViewerOpen = useViewerStore((state) => state.isOpen);

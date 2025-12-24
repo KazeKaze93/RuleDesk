@@ -28,7 +28,6 @@ export function AsyncAutocomplete({
   value,
   onBlur,
 }: AsyncAutocompleteProps) {
-  // Controlled vs Uncontrolled state logic
   const isControlled = value !== undefined;
   const [internalQuery, setInternalQuery] = useState(value || "");
   const query = isControlled ? value : internalQuery;
@@ -45,7 +44,6 @@ export function AsyncAutocomplete({
     fetchOptionsRef.current = fetchOptions;
   }, [fetchOptions]);
 
-  // Эффект поиска
   useEffect(() => {
     const currentQuery = debouncedQuery || "";
     const trimmedQuery = currentQuery.trim();

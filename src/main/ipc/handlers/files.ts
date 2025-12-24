@@ -3,10 +3,12 @@ import path from "path";
 import fs from "fs";
 import axios, { AxiosProgressEvent } from "axios";
 import { pipeline } from "stream/promises";
+import { eq } from "drizzle-orm";
 import { logger } from "../../lib/logger";
 import { IPC_CHANNELS } from "../channels";
+import { getDb } from "../../db/client";
+import { posts } from "../../db/schema";
 import { z } from "zod";
-import { PostsRepository } from "../../db/repositories/posts.repo";
 
 // Вспомогательная функция для получения главного окна Electron
 const getMainWindow = (): BrowserWindow | undefined => {
@@ -29,7 +31,7 @@ const DownloadFileSchema = z.object({
     .regex(/^[\w\-. ]+$/, "Invalid filename characters"),
 });
 
-export const registerFileHandlers = (repo: PostsRepository) => {
+export const registerFileHandlers = () => {
   let totalBytes = 0;
 
   // Хендлер скачивания с диалогом "Сохранить как"
@@ -189,7 +191,12 @@ export const registerFileHandlers = (repo: PostsRepository) => {
       }
 
       try {
-        return await repo.resetPostCache(result.data);
+        const db = getDb();
+        await db
+          .update(posts)
+          .set({ isViewed: false })
+          .where(eq(posts.id, result.data));
+        return true;
       } catch (error) {
         logger.error(`[IPC] Failed to reset post cache`, error);
         return false;

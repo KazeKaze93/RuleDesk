@@ -7,7 +7,6 @@ import type { AutocompleteOption } from "../inputs/AsyncAutocomplete";
 interface AddArtistModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // Keep signature compatible with parent, but we always use "tag" internally
   onAdd: (
     name: string,
     tag: string,
@@ -22,10 +21,8 @@ export function AddArtistModal({
 }: AddArtistModalProps) {
   const [inputTag, setInputTag] = useState("");
 
-  // We hardcode type to "tag" since the user only wants simple tag tracking.
   const type = "tag" as const;
 
-  // Reset state on close
   const handleClose = () => {
     setInputTag("");
     onClose();
@@ -36,10 +33,7 @@ export function AddArtistModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputTag) {
-      // 1. Normalize the input tag (strip counts like '(1543)')
       const finalTag = normalizeTag(inputTag);
-
-      // 2. Display Name is always the normalized tag (KISS Principle)
       const finalDisplayName = finalTag;
 
       onAdd(finalDisplayName, finalTag, type);

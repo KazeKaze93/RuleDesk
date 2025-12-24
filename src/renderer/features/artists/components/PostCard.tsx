@@ -1,7 +1,7 @@
 import React from "react";
 import { Play, Check, Heart } from "lucide-react";
-import { cn } from "../../lib/utils";
-import type { Post } from "../../../main/db/schema";
+import { cn } from "@/lib/utils";
+import type { Post } from "../../../../main/db/schema";
 
 interface PostCardProps {
   post: Post;
