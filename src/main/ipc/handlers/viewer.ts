@@ -9,14 +9,12 @@ export const registerViewerHandlers = () => {
     async (_, urlString: string) => {
       try {
         const parsedUrl = new URL(urlString);
-        if (
-          parsedUrl.protocol === "https:" &&
-          (parsedUrl.hostname === "rule34.xxx" ||
-            parsedUrl.hostname === "www.rule34.xxx")
-        ) {
+        const isSafeProtocol = ['http:', 'https:'].includes(parsedUrl.protocol);
+
+        if (isSafeProtocol) {
           await shell.openExternal(urlString);
         } else {
-          logger.warn(`IPC: Blocked unauthorized URL: ${urlString}`);
+          logger.warn(`IPC: Blocked unsafe protocol: ${urlString}`);
         }
       } catch (error) {
         logger.error(`IPC: Invalid URL passed to open-external`, error);

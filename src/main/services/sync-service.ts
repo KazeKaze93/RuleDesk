@@ -2,7 +2,7 @@ import { BrowserWindow, safeStorage } from "electron";
 import { logger } from "../lib/logger";
 import { getDb } from "../db/client";
 import { posts, artists, settings } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import axios from "axios";
 import type { Artist } from "../db/schema";
 import { URLSearchParams } from "url";
@@ -274,24 +274,22 @@ export class SyncService {
         }));
 
         if (postsToSave.length > 0) {
-          // ✅ Одна транзакция на всю пачку (быстро)
+          // ✅ Bulk insert in single transaction (optimized)
           await db.transaction(async (tx) => {
-            for (const post of postsToSave) {
-              await tx
-                .insert(posts)
-                .values(post)
-                .onConflictDoUpdate({
-                  target: [posts.artistId, posts.postId],
-                  set: {
-                    fileUrl: post.fileUrl,
-                    sampleUrl: post.sampleUrl,
-                    previewUrl: post.previewUrl,
-                    tags: post.tags,
-                    rating: post.rating,
-                    publishedAt: post.publishedAt,
-                  },
-                });
-            }
+            await tx
+              .insert(posts)
+              .values(postsToSave)
+              .onConflictDoUpdate({
+                target: [posts.artistId, posts.postId],
+                set: {
+                  fileUrl: sql`excluded.file_url`,
+                  sampleUrl: sql`excluded.sample_url`,
+                  previewUrl: sql`excluded.preview_url`,
+                  tags: sql`excluded.tags`,
+                  rating: sql`excluded.rating`,
+                  publishedAt: sql`excluded.published_at`,
+                },
+              });
           });
 
           // Get current artist values for atomic update

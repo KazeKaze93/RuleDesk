@@ -54,10 +54,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  const { open: openViewer, appendQueueIds } = useViewerStore((state) => ({
-    open: state.open,
-    appendQueueIds: state.appendQueueIds,
-  }));
+  const openViewer = useViewerStore((state) => state.open);
+  const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
 
   const { data: totalPosts = 0 } = useQuery({
     queryKey: ["posts-count", artist.id],

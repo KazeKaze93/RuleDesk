@@ -63,9 +63,16 @@ const registerSyncAndMaintenanceHandlers = (
         fs.mkdirSync(backupDir, { recursive: true });
       }
 
-      const escapedPath = backupPath.replace(/'/g, "''");
+      // Validate path is absolute and within user data directory
+      const normalizedBackupPath = path.resolve(backupPath);
+      const normalizedBackupDir = path.resolve(backupDir);
+      if (!normalizedBackupPath.startsWith(normalizedBackupDir)) {
+        throw new Error("Backup path validation failed: path outside user data directory");
+      }
+
       const sqlite = getSqliteInstance();
-      sqlite.exec(`VACUUM INTO '${escapedPath}'`);
+      const stmt = sqlite.prepare('VACUUM INTO ?');
+      stmt.run(backupPath);
 
       logger.info(`IPC: Backup created at ${backupPath}`);
       return {
