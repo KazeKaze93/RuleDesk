@@ -21,6 +21,10 @@ const GetPostsSchema = z.object({
   filters: PostFilterSchema.optional(),
 });
 
+// Export types for use in bridge.ts
+export type GetPostsParams = z.infer<typeof GetPostsSchema>;
+export type PostFilterParams = z.infer<typeof PostFilterSchema>;
+
 export const registerPostHandlers = () => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_POSTS, async (_, payload: unknown) => {
     const validation = GetPostsSchema.safeParse(payload);
@@ -114,7 +118,10 @@ export const registerPostHandlers = () => {
           .where(eq(posts.id, result.data))
           .returning({ isFavorited: posts.isFavorited });
 
-        return updateResult[0]?.isFavorited ?? false;
+        // Drizzle automatically maps SQLite integer (0/1) to boolean via schema mode: "boolean"
+        // The returned value is already a JS boolean, no manual conversion needed
+        const isFavorited = updateResult[0]?.isFavorited ?? false;
+        return Boolean(isFavorited); // Explicit conversion for type safety
       } catch (error) {
         logger.error(`[IPC] Failed to toggle post favorite`, error);
         return false;
@@ -141,7 +148,10 @@ export const registerPostHandlers = () => {
           .where(eq(posts.id, result.data))
           .returning({ isViewed: posts.isViewed });
 
-        return updateResult[0]?.isViewed ?? false;
+        // Drizzle automatically maps SQLite integer (0/1) to boolean via schema mode: "boolean"
+        // The returned value is already a JS boolean, no manual conversion needed
+        const isViewed = updateResult[0]?.isViewed ?? false;
+        return Boolean(isViewed); // Explicit conversion for type safety
       } catch (error) {
         logger.error(`[IPC] Failed to toggle post viewed`, error);
         return false;

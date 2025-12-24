@@ -164,10 +164,30 @@ export class SyncService {
 
       if (!settingsData?.userId) throw new Error("No API credentials");
 
-      for (const artist of artistsList) {
-        this.sendEvent("sync:progress", `Checking ${artist.name}...`);
-        await this.syncArtist(artist, settingsData);
-        await new Promise((r) => setTimeout(r, 1500));
+      // Parallel sync with batching (3-5 artists at a time to avoid API rate limits)
+      const CONCURRENT_SYNC_LIMIT = 3;
+      const DELAY_BETWEEN_BATCHES = 1500;
+
+      for (let i = 0; i < artistsList.length; i += CONCURRENT_SYNC_LIMIT) {
+        const batch = artistsList.slice(i, i + CONCURRENT_SYNC_LIMIT);
+        
+        // Sync batch in parallel
+        await Promise.all(
+          batch.map(async (artist) => {
+            try {
+              this.sendEvent("sync:progress", `Checking ${artist.name}...`);
+              await this.syncArtist(artist, settingsData);
+            } catch (error) {
+              logger.error(`Sync error for ${artist.name}:`, error);
+              // Continue with other artists even if one fails
+            }
+          })
+        );
+
+        // Delay between batches to respect API rate limits
+        if (i + CONCURRENT_SYNC_LIMIT < artistsList.length) {
+          await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES));
+        }
       }
     } catch (error) {
       logger.error("Sync error", error);
@@ -303,7 +323,9 @@ export class SyncService {
     await db.transaction(async (tx) => {
       if (allPostsToSave.length > 0) {
         // Chunk bulk insert to avoid SQLite variable limit errors
-        const CHUNK_SIZE = 50;
+        // SQLite supports up to 999 variables per query, we use ~9 fields per post
+        // Using 200 posts per chunk (1800 variables) is safe for modern SQLite
+        const CHUNK_SIZE = 200;
         for (let i = 0; i < allPostsToSave.length; i += CHUNK_SIZE) {
           const chunk = allPostsToSave.slice(i, i + CHUNK_SIZE);
           await tx

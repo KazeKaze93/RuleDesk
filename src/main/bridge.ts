@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import type { Artist, NewArtist, Post, Settings } from "./db/schema";
+import type { Artist, Post, Settings } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
+import type { GetPostsParams as GetPostsParamsFromHandler } from "./ipc/handlers/posts";
+import type { AddArtistParams } from "./ipc/handlers/artists";
 
 export type UpdateStatusData = {
   status: string;
@@ -24,17 +26,16 @@ export type DownloadProgressData = {
 };
 export type DownloadProgressCallback = (data: DownloadProgressData) => void;
 
+// Use z.infer types from handlers to ensure type safety
+export type GetPostsParams = GetPostsParamsFromHandler;
+export type AddArtistPayload = AddArtistParams;
+
+// Legacy interface for backward compatibility (can be removed if not used)
 export interface PostQueryFilters {
   rating?: "s" | "q" | "e";
   tags?: string;
   sortBy?: "date" | "id" | "rating";
   isViewed?: boolean;
-}
-
-export interface GetPostsParams {
-  artistId: number;
-  page?: number;
-  filters?: PostQueryFilters;
 }
 
 export interface IpcBridge {
@@ -50,17 +51,14 @@ export interface IpcBridge {
 
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
-  addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
+  addArtist: (artist: AddArtistPayload) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
   // --- NEW: SEARCH ---
   searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 
   // Posts
-  getArtistPosts: (params: {
-    artistId: number;
-    page?: number;
-  }) => Promise<Post[]>;
+  getArtistPosts: (params: GetPostsParams) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
