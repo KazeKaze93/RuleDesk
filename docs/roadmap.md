@@ -202,11 +202,11 @@ Advanced features for future releases:
 ### Security & Privacy
 
 - ⏳ **Safe Mode / NSFW Filter:** Implement content blur/filtering based on settings
-  - **Current:** No blur logic or `safeMode` flag
-  - **Target:** Add `safeMode` setting in database, blur logic in `PostCard.tsx`
+  - **Current:** Database schema includes `isSafeMode` field in settings table, but blur logic not yet implemented in UI components
+  - **Target:** Implement blur logic in `PostCard.tsx` and viewer components based on `isSafeMode` setting
 - ⏳ **Age Gate:** Implement 18+ confirmation overlay
-  - **Current:** Only disclaimer text in README
-  - **Target:** One-time confirmation dialog with localStorage flag
+  - **Current:** Database schema includes `isAdultConfirmed` field, but confirmation overlay not yet implemented
+  - **Target:** One-time confirmation dialog that sets `isAdultConfirmed` flag in database
 
 ### Portability
 
@@ -292,7 +292,7 @@ Advanced features for future releases:
 - Queue management prevents overwhelming the system
 - Download preferences can be stored in settings table (future enhancement)
 
-**Status:** Core download functionality implemented. Individual file downloads work with progress tracking. Batch download and default directory settings are planned for future releases.
+**Status:** ✅ Core download functionality implemented. Individual file downloads work with progress tracking. Batch download and default directory settings are planned for future releases.
 
 ---
 
