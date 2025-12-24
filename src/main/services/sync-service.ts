@@ -274,7 +274,7 @@ export class SyncService {
         }));
 
         if (postsToSave.length > 0) {
-          // Save posts in transaction with conflict handling
+          // ✅ Одна транзакция на всю пачку (быстро)
           await db.transaction(async (tx) => {
             for (const post of postsToSave) {
               await tx
