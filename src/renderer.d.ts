@@ -21,7 +21,6 @@ export interface PostQueryFilters {
 }
 
 export interface IpcSettings {
-  id: number;
   userId: string;
   hasApiKey: boolean;
   isSafeMode: boolean;

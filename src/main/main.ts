@@ -109,16 +109,98 @@ function getMigrationsPath(): string {
 }
 
 /**
+ * Создает простое окно загрузки для отображения во время миграций БД
+ */
+function createLoadingWindow(): BrowserWindow {
+  const loadingWindow = new BrowserWindow({
+    width: 400,
+    height: 200,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  loadingWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body {
+          margin: 0;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+          color: white;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .container {
+          text-align: center;
+        }
+        .spinner {
+          border: 3px solid rgba(255,255,255,0.1);
+          border-top: 3px solid #3b82f6;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 20px;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .text {
+          font-size: 14px;
+          opacity: 0.9;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="spinner"></div>
+        <div class="text">Initializing database...</div>
+      </div>
+    </body>
+    </html>
+  `)}`);
+
+  loadingWindow.center();
+  return loadingWindow;
+}
+
+/**
  * Асинхронная функция, которая запускается после app.ready.
  * Отвечает за инициализацию Worker и создание главного окна.
  */
 async function initializeAppAndWindow() {
+  let loadingWindow: BrowserWindow | null = null;
+
   try {
     const MIGRATIONS_PATH = getMigrationsPath();
     logger.info(`Main: Migrations Path: ${MIGRATIONS_PATH}`);
 
-    initializeDatabase();
+    // Show loading window during database initialization
+    loadingWindow = createLoadingWindow();
+    loadingWindow.show();
+
+    // Initialize database asynchronously (migrations may take time)
+    await initializeDatabase();
     logger.info("✅ Main: Database initialized and ready.");
+
+    // Close loading window
+    if (loadingWindow && !loadingWindow.isDestroyed()) {
+      loadingWindow.close();
+      loadingWindow = null;
+    }
 
     mainWindow = new BrowserWindow({
       width: 1200,
@@ -171,6 +253,11 @@ async function initializeAppAndWindow() {
       mainWindow = null;
     });
   } catch (e) {
+    // Close loading window if it's still open
+    if (loadingWindow && !loadingWindow.isDestroyed()) {
+      loadingWindow.close();
+    }
+
     logger.error("FATAL: Failed to initialize application or database.", e);
     dialog.showErrorBox(
       "Fatal Error",

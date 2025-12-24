@@ -80,6 +80,11 @@ const registerSyncAndMaintenanceHandlers = (
           loading: true,
           message: "Creating backup...",
         });
+        // Notify OS that app is busy (prevents "app not responding" warnings)
+        if (mainWindow.isVisible()) {
+          mainWindow.flashFrame(true);
+        }
+        app.focus({ steal: false });
       }
 
       const sqlite = getSqliteInstance();
@@ -89,6 +94,7 @@ const registerSyncAndMaintenanceHandlers = (
       // Send loading complete event
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("APP:LOADING", { loading: false });
+        mainWindow.flashFrame(false);
       }
 
       logger.info(`IPC: Backup created at ${backupPath}`);

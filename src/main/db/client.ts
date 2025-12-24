@@ -12,7 +12,7 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
 let dbInstance: AppDatabase | null = null;
 let sqliteInstance: InstanceType<typeof Database> | null = null;
 
-export function initializeDatabase() {
+export async function initializeDatabase(): Promise<AppDatabase> {
   if (dbInstance) return dbInstance;
 
   const dbPath = path.join(app.getPath("userData"), "metadata.db");
@@ -38,7 +38,22 @@ export function initializeDatabase() {
 
   try {
     logger.info("[DB] Running migrations...");
-    migrate(dbInstance, { migrationsFolder });
+    // Run migrations asynchronously to avoid blocking the event loop
+    // Use setImmediate to yield control and allow UI to update
+    await new Promise<void>((resolve, reject) => {
+      setImmediate(() => {
+        try {
+          // dbInstance is guaranteed to be non-null here (created above)
+          if (!dbInstance) {
+            throw new Error("Database instance is null");
+          }
+          migrate(dbInstance, { migrationsFolder });
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
     logger.info("[DB] Migrations complete.");
   } catch (e) {
     logger.error("[DB] Migration failed:", e);

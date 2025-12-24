@@ -5,6 +5,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../../components/ui/dialog";
+import { useShallow } from "zustand/react/shallow";
 import { useViewerStore, ViewerOrigin } from "../../store/viewerStore";
 import { Button } from "../../components/ui/button";
 import {
@@ -406,18 +407,41 @@ const ViewerContent = ({
 };
 
 export const ViewerDialog = () => {
-  const {
-    isOpen,
-    close,
-    currentPostId,
-    queue,
-    currentIndex,
-    next,
-    prev,
-    controlsVisible,
-    setControlsVisible,
-    appendQueueIds,
-  } = useViewerStore();
+  // Split Zustand selectors into logical groups to minimize re-renders
+  const { isOpen, close } = useViewerStore(
+    useShallow((state) => ({
+      isOpen: state.isOpen,
+      close: state.close,
+    }))
+  );
+
+  const { currentPostId, queue } = useViewerStore(
+    useShallow((state) => ({
+      currentPostId: state.currentPostId,
+      queue: state.queue,
+    }))
+  );
+
+  const { currentIndex, next, prev } = useViewerStore(
+    useShallow((state) => ({
+      currentIndex: state.currentIndex,
+      next: state.next,
+      prev: state.prev,
+    }))
+  );
+
+  const { controlsVisible, setControlsVisible } = useViewerStore(
+    useShallow((state) => ({
+      controlsVisible: state.controlsVisible,
+      setControlsVisible: state.setControlsVisible,
+    }))
+  );
+
+  const { appendQueueIds } = useViewerStore(
+    useShallow((state) => ({
+      appendQueueIds: state.appendQueueIds,
+    }))
+  );
 
   const post = useCurrentPost(currentPostId, queue?.origin);
   const queryClient = useQueryClient();

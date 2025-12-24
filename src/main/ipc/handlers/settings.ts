@@ -25,7 +25,6 @@ export function registerSettingsHandlers() {
       if (!currentSettings) {
         // Return default values if no settings found (triggers Onboarding)
         return {
-          id: 1,
           userId: "",
           hasApiKey: false,
           isSafeMode: true,
@@ -35,9 +34,9 @@ export function registerSettingsHandlers() {
 
       // Security: Do NOT return encryptedApiKey to renderer
       // Map it to boolean hasApiKey instead
+      // Do NOT expose internal DB id to frontend (implementation detail)
       // Ensure all values are non-null to match IpcSettings interface
       return {
-        id: currentSettings.id,
         userId: currentSettings.userId ?? "",
         hasApiKey: !!currentSettings.encryptedApiKey,
         isSafeMode: currentSettings.isSafeMode ?? true,

@@ -2,11 +2,7 @@ import { ipcMain, shell } from "electron";
 import { URL } from "url";
 import { logger } from "../../lib/logger";
 import { IPC_CHANNELS } from "../channels";
-
-const ALLOWED_HOSTS = new Set([
-  "rule34.xxx",
-  "www.rule34.xxx",
-]);
+import { ALLOWED_HOSTS_SET } from "../../config/allowed-hosts";
 
 // Dangerous protocols that should never be allowed
 const DANGEROUS_PROTOCOLS = [
@@ -57,7 +53,7 @@ function validateAndSanitizeUrl(urlString: string): string | null {
 
   // Step 4: Verify hostname is in whitelist (exact match, no subdomains)
   const hostname = parsedUrl.hostname.toLowerCase();
-  if (!ALLOWED_HOSTS.has(hostname)) {
+  if (!ALLOWED_HOSTS_SET.has(hostname)) {
     logger.warn(`IPC: Blocked request to unauthorized hostname: ${hostname} (URL: ${urlString})`);
     return null;
   }
