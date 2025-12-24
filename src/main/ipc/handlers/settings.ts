@@ -2,7 +2,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import { IPC_CHANNELS } from "../channels";
 import { getDb } from "../../db/client";
-import { settings, type Settings } from "../../db/schema";
+import { settings } from "../../db/schema";
 import { encrypt } from "../../lib/crypto";
 import { logger } from "../../lib/logger";
 
@@ -27,13 +27,22 @@ export function registerSettingsHandlers() {
         return {
           id: 1,
           userId: "",
-          encryptedApiKey: "",
+          hasApiKey: false,
           isSafeMode: true,
           isAdultConfirmed: false,
-        } satisfies Settings;
+        };
       }
 
-      return currentSettings;
+      // Security: Do NOT return encryptedApiKey to renderer
+      // Map it to boolean hasApiKey instead
+      // Ensure all values are non-null to match IpcSettings interface
+      return {
+        id: currentSettings.id,
+        userId: currentSettings.userId ?? "",
+        hasApiKey: !!currentSettings.encryptedApiKey,
+        isSafeMode: currentSettings.isSafeMode ?? true,
+        isAdultConfirmed: currentSettings.isAdultConfirmed ?? false,
+      };
     } catch (error) {
       logger.error("IPC: Failed to get settings", error);
       throw error;
@@ -62,7 +71,9 @@ export function registerSettingsHandlers() {
           encryptedKey = encrypt(apiKey);
         } catch (e) {
           logger.error("IPC: Failed to encrypt API key", e);
-          throw new Error("Failed to encrypt API key. Encryption is not available on this system.");
+          throw new Error(
+            "Failed to encrypt API key. Encryption is not available on this system."
+          );
         }
       }
 
@@ -75,7 +86,8 @@ export function registerSettingsHandlers() {
       if (userId !== undefined) updateData.userId = userId;
       if (encryptedKey !== undefined) updateData.encryptedApiKey = encryptedKey;
       if (isSafeMode !== undefined) updateData.isSafeMode = isSafeMode;
-      if (isAdultConfirmed !== undefined) updateData.isAdultConfirmed = isAdultConfirmed;
+      if (isAdultConfirmed !== undefined)
+        updateData.isAdultConfirmed = isAdultConfirmed;
 
       // 3. Upsert
       await db
@@ -83,7 +95,7 @@ export function registerSettingsHandlers() {
         .values({
           id: targetId,
           userId: userId ?? "",
-          encryptedApiKey: encryptedKey ?? (existing?.encryptedApiKey ?? ""),
+          encryptedApiKey: encryptedKey ?? existing?.encryptedApiKey ?? "",
           isSafeMode: isSafeMode ?? true,
           isAdultConfirmed: isAdultConfirmed ?? false,
         })
@@ -94,7 +106,6 @@ export function registerSettingsHandlers() {
 
       logger.info("IPC: Settings saved successfully.");
       return true;
-
     } catch (error) {
       logger.error("IPC: Failed to save settings", error);
       throw error;

@@ -302,21 +302,25 @@ export class SyncService {
     // Single transaction for all database operations
     await db.transaction(async (tx) => {
       if (allPostsToSave.length > 0) {
-        // Bulk insert all posts
-        await tx
-          .insert(posts)
-          .values(allPostsToSave)
-          .onConflictDoUpdate({
-            target: [posts.artistId, posts.postId],
-            set: {
-              fileUrl: sql`excluded.file_url`,
-              sampleUrl: sql`excluded.sample_url`,
-              previewUrl: sql`excluded.preview_url`,
-              tags: sql`excluded.tags`,
-              rating: sql`excluded.rating`,
-              publishedAt: sql`excluded.published_at`,
-            },
-          });
+        // Chunk bulk insert to avoid SQLite variable limit errors
+        const CHUNK_SIZE = 50;
+        for (let i = 0; i < allPostsToSave.length; i += CHUNK_SIZE) {
+          const chunk = allPostsToSave.slice(i, i + CHUNK_SIZE);
+          await tx
+            .insert(posts)
+            .values(chunk)
+            .onConflictDoUpdate({
+              target: [posts.artistId, posts.postId],
+              set: {
+                fileUrl: sql`excluded.file_url`,
+                sampleUrl: sql`excluded.sample_url`,
+                previewUrl: sql`excluded.preview_url`,
+                tags: sql`excluded.tags`,
+                rating: sql`excluded.rating`,
+                publishedAt: sql`excluded.published_at`,
+              },
+            });
+        }
       }
 
       // Update artist stats atomically

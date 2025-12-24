@@ -22,10 +22,10 @@ export interface PostQueryFilters {
 
 export interface IpcSettings {
   id: number;
-  userId: string | null;
-  encryptedApiKey: string | null;
-  isSafeMode: boolean | null;
-  isAdultConfirmed: boolean | null;
+  userId: string;
+  hasApiKey: boolean;
+  isSafeMode: boolean;
+  isAdultConfirmed: boolean;
 }
 
 export interface IpcApi extends IpcBridge {

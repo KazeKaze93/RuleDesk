@@ -33,7 +33,8 @@ function App() {
     const checkAuth = async () => {
       try {
         const settings = await window.api.getSettings();
-        const hasApiKey = !!settings?.encryptedApiKey;
+        // hasApiKey is always boolean (non-nullable) per IpcSettings interface
+        const hasApiKey = settings?.hasApiKey ?? false;
         console.log(
           `[App] Auth check result: hasApiKey=${hasApiKey}, userId=${settings?.userId}`
         );
