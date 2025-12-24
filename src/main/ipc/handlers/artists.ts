@@ -39,10 +39,7 @@ export const registerArtistHandlers = () => {
 
     try {
       const db = getDb();
-      const result = await db
-        .insert(artists)
-        .values(artistData)
-        .returning();
+      const result = await db.insert(artists).values(artistData).returning();
       return result[0];
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -106,6 +103,3 @@ export const registerArtistHandlers = () => {
     }
   });
 };
-
-
-

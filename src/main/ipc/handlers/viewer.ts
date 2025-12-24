@@ -9,7 +9,7 @@ export const registerViewerHandlers = () => {
     async (_, urlString: string) => {
       try {
         const parsedUrl = new URL(urlString);
-        const isSafeProtocol = ['http:', 'https:'].includes(parsedUrl.protocol);
+        const isSafeProtocol = parsedUrl.protocol === 'https:';
 
         if (isSafeProtocol) {
           await shell.openExternal(urlString);

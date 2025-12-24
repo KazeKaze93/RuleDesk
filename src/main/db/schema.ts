@@ -70,4 +70,6 @@ export type NewArtist = typeof artists.$inferInsert;
 export type Post = typeof posts.$inferSelect & {
   isFavorited: boolean;
 };
+export type NewPost = typeof posts.$inferInsert;
 export type Settings = typeof settings.$inferSelect;
+export type NewSettings = typeof settings.$inferInsert;
