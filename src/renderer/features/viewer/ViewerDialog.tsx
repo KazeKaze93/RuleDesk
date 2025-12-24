@@ -173,6 +173,8 @@ const ViewerContent = ({
             size="icon"
             onClick={close}
             className="text-white rounded-full hover:bg-white/10"
+            aria-label="Close viewer"
+            title="Close viewer (Escape)"
           >
             <X className="w-6 h-6" />
           </Button>
@@ -184,6 +186,7 @@ const ViewerContent = ({
             size="icon"
             onClick={ctrl.toggleFavorite}
             className="text-white rounded-full hover:bg-white/10"
+            aria-label={ctrl.isFavorited ? "Remove from favorites" : "Add to favorites"}
             title="Toggle Favorite"
           >
             <Heart
@@ -200,6 +203,11 @@ const ViewerContent = ({
             onClick={ctrl.downloadImage}
             disabled={ctrl.isCurrentlyDownloading}
             className="overflow-hidden relative text-white rounded-full hover:bg-white/10 group"
+            aria-label={
+              ctrl.isCurrentlyDownloading
+                ? `Downloading: ${ctrl.downloadProgress}%`
+                : "Download original image"
+            }
             title={
               ctrl.isCurrentlyDownloading
                 ? `Скачивание ${ctrl.downloadProgress}%`
@@ -228,6 +236,7 @@ const ViewerContent = ({
                 variant="ghost"
                 size="icon"
                 className="text-white rounded-full hover:bg-white/10"
+                aria-label="More options"
                 title="More options"
               >
                 <MoreHorizontal className="w-5 h-5" />
@@ -354,6 +363,7 @@ const ViewerContent = ({
             variant="outline"
             size="sm"
             className="gap-2 text-white bg-white/5 border-white/10 hover:bg-white/10"
+            aria-label="Show tags"
             title="Show tags"
           >
             <Tags className="w-4 h-4" />
@@ -371,6 +381,8 @@ const ViewerContent = ({
           e.stopPropagation();
           prev();
         }}
+        aria-label="Previous post"
+        title="Previous post (Left Arrow)"
       >
         <ChevronLeft className="w-10 h-10 drop-shadow-md" />
       </button>
@@ -384,6 +396,8 @@ const ViewerContent = ({
           e.stopPropagation();
           next();
         }}
+        aria-label="Next post"
+        title="Next post (Right Arrow)"
       >
         <ChevronRight className="w-10 h-10 drop-shadow-md" />
       </button>

@@ -1,4 +1,4 @@
-import { app } from "electron";
+import { app, dialog } from "electron";
 import path from "path";
 import fs from "fs";
 import Database from "better-sqlite3";
@@ -42,6 +42,17 @@ export function initializeDatabase() {
     logger.info("[DB] Migrations complete.");
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
+    
+    // Show error dialog to user in production (critical error)
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    const errorDetails = `Database migration failed. The application cannot start.\n\nError: ${errorMessage}\n\nPlease check the logs for more details.`;
+    
+    // Use showErrorBox for synchronous display (works even if app is crashing)
+    dialog.showErrorBox(
+      "Database Migration Error",
+      errorDetails
+    );
+    
     throw e;
   }
 

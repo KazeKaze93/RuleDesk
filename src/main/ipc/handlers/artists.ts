@@ -14,6 +14,9 @@ const AddArtistSchema = z.object({
   apiEndpoint: z.string().url().trim(),
 });
 
+// Export types for use in bridge.ts
+export type AddArtistParams = z.infer<typeof AddArtistSchema>;
+
 export const registerArtistHandlers = () => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_ARTISTS, async () => {
     try {

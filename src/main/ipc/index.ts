@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain, dialog, clipboard, app } from "electron";
 import path from "path";
 import fs from "fs";
+import Database from "better-sqlite3";
 import { eq } from "drizzle-orm";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
@@ -145,6 +146,7 @@ const registerSyncAndMaintenanceHandlers = (
       const dbPath = path.join(app.getPath("userData"), "metadata.db");
       const walPath = `${dbPath}-wal`;
       const shmPath = `${dbPath}-shm`;
+      const tempDbPath = `${dbPath}.tmp`;
 
       // Safety rollback: Rename existing files to .bak instead of deleting
       const bakPaths = {
@@ -164,16 +166,52 @@ const registerSyncAndMaintenanceHandlers = (
         }
       };
 
-      // Step 1: Rename current files to .bak
+      // Step 1: Rename current files to .bak (preserve original state)
       await renameToBak(dbPath, bakPaths.db);
       await renameToBak(walPath, bakPaths.wal);
       await renameToBak(shmPath, bakPaths.shm);
 
       try {
-        // Step 2: Copy backup file to DB path
-        await fs.promises.copyFile(backupPath, dbPath);
+        // Step 2: Copy backup file to temporary path (atomic operation)
+        await fs.promises.copyFile(backupPath, tempDbPath);
 
-        // Step 3: If copy succeeds, delete .bak files and reinitialize
+        // Step 3: Verify integrity of temporary database before replacing main DB
+        let tempDb: InstanceType<typeof Database> | null = null;
+        try {
+          tempDb = new Database(tempDbPath, {
+            readonly: true,
+          });
+
+          // Run integrity check
+          const integrityResult = tempDb.pragma("integrity_check", {
+            simple: false,
+          }) as string | string[];
+
+          // integrity_check returns "ok" if database is valid, or an array of error messages
+          const isValid =
+            integrityResult === "ok" ||
+            (Array.isArray(integrityResult) &&
+              integrityResult.length === 1 &&
+              integrityResult[0] === "ok");
+
+          if (!isValid) {
+            const errorMsg = Array.isArray(integrityResult)
+              ? integrityResult.join("; ")
+              : String(integrityResult);
+            throw new Error(`Database integrity check failed: ${errorMsg}`);
+          }
+
+          logger.info("IPC: Backup file integrity check passed");
+        } finally {
+          if (tempDb) {
+            tempDb.close();
+          }
+        }
+
+        // Step 4: Integrity check passed - atomically replace main DB with temp file
+        await fs.promises.rename(tempDbPath, dbPath);
+
+        // Step 5: Clean up .bak files (restore was successful)
         const deleteBak = async (bakPath: string) => {
           try {
             await fs.promises.access(bakPath);
@@ -189,7 +227,7 @@ const registerSyncAndMaintenanceHandlers = (
         await deleteBak(bakPaths.wal);
         await deleteBak(bakPaths.shm);
 
-        // Reinitialize database connection
+        // Step 6: Reinitialize database connection
         initializeDatabase();
 
         // Send loading complete event
@@ -202,9 +240,17 @@ const registerSyncAndMaintenanceHandlers = (
           success: true,
           message: "Database restored successfully.",
         };
-      } catch (copyError) {
-        // Step 4: If copy fails, restore .bak files back to original names
-        logger.error("IPC: Restore copy failed, rolling back:", copyError);
+      } catch (restoreError) {
+        // Rollback: Restore .bak files back to original names
+        logger.error("IPC: Restore failed, rolling back:", restoreError);
+
+        // Clean up temporary file if it exists
+        try {
+          await fs.promises.access(tempDbPath);
+          await fs.promises.rm(tempDbPath, { force: true });
+        } catch {
+          // Ignore errors when cleaning up temp file
+        }
 
         const restoreFromBak = async (bakPath: string, originalPath: string) => {
           try {
@@ -231,10 +277,14 @@ const registerSyncAndMaintenanceHandlers = (
           mainWindow.webContents.send("APP:LOADING", { loading: false });
         }
 
-        logger.error("IPC: Restore failed, rolled back");
+        const errorMessage =
+          restoreError instanceof Error
+            ? restoreError.message
+            : "Restore failed, rolled back to previous state.";
+        logger.error(`IPC: Restore failed, rolled back. Error: ${errorMessage}`);
         return {
           success: false,
-          error: "Restore failed, rolled back to previous state.",
+          error: errorMessage,
         };
       }
     } catch (error) {
