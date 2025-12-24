@@ -57,7 +57,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   });
 
   // Handle paste event for auto-fill
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>, fieldName: "userId" | "apiKey") => {
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const pastedText = e.clipboardData.getData("text");
     const credentials = parseCredentialsFromText(pastedText);
     
@@ -127,7 +127,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <input
                 id="user-id-input"
                 {...register("userId")}
-                onPaste={(e) => handlePaste(e, "userId")}
+                onPaste={handlePaste}
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
                 placeholder={t("onboarding.userIdPlaceholder")}
               />
@@ -152,7 +152,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 id="api-key-input"
                 {...register("apiKey")}
                 type="password"
-                onPaste={(e) => handlePaste(e, "apiKey")}
+                onPaste={handlePaste}
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
                 placeholder={t("onboarding.apiKeyPlaceholder")}
               />
