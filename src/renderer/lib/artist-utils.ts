@@ -1,4 +1,3 @@
-// Логика формирования финального тега/юзернейма для API
 export function getArtistTag(
   name: string,
   type: "tag" | "uploader" | "query"

@@ -1,4 +1,3 @@
-// Cursor: select file:src/renderer/components/gallery/ArtistGallery.tsx
 import React, { forwardRef, useMemo } from "react";
 import {
   useInfiniteQuery,
@@ -10,11 +9,12 @@ import {
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { Button } from "../ui/button";
+import { useShallow } from "zustand/react/shallow";
+import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
-import { PostCard } from "../gallery/PostCard";
+import { PostCard } from "./components/PostCard";
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -55,13 +55,13 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  // 🔥 FIX: Достаем appendQueueIds из стора, чтобы обновлять очередь вьювера
-  const { open: openViewer, appendQueueIds } = useViewerStore((state) => ({
-    open: state.open,
-    appendQueueIds: state.appendQueueIds,
-  }));
+  const { open: openViewer, appendQueueIds } = useViewerStore(
+    useShallow((state) => ({
+      open: state.open,
+      appendQueueIds: state.appendQueueIds,
+    }))
+  );
 
-  // Fetch total posts count
   const { data: totalPosts = 0 } = useQuery({
     queryKey: ["posts-count", artist.id],
     queryFn: async () => {
@@ -111,7 +111,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  // 🔥 FIX: Handler теперь не просто грузит данные в кэш, но и обновляет стор Вьювера!
   const handleLoadMore = async () => {
     if (hasNextPage && !isFetchingNextPage) {
       console.log("[Gallery] Viewer requested more posts. Fetching...");

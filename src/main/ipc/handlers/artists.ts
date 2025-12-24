@@ -1,9 +1,10 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
 import axios from "axios";
+import { eq, like, or, asc } from "drizzle-orm";
 import { IPC_CHANNELS } from "../channels";
-import { ArtistsRepository } from "../../db/repositories/artists.repo";
-import { NewArtist } from "../../db/schema";
+import { getDb } from "../../db/client";
+import { artists } from "../../db/schema";
 import { logger } from "../../lib/logger";
 
 const AddArtistSchema = z.object({
@@ -13,10 +14,16 @@ const AddArtistSchema = z.object({
   apiEndpoint: z.string().url().trim(),
 });
 
-export const registerArtistHandlers = (repo: ArtistsRepository) => {
+// Export types for use in bridge.ts
+export type AddArtistParams = z.infer<typeof AddArtistSchema>;
+
+export const registerArtistHandlers = () => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_ARTISTS, async () => {
     try {
-      return await repo.getAll();
+      const db = getDb();
+      return await db.query.artists.findMany({
+        orderBy: [asc(artists.name)],
+      });
     } catch (error) {
       logger.error("IPC: [db:get-artists] error:", error);
       throw new Error("Failed to fetch artists.");
@@ -34,7 +41,9 @@ export const registerArtistHandlers = (repo: ArtistsRepository) => {
     logger.info(`IPC: [db:add-artist] Adding: ${artistData.name}`);
 
     try {
-      return await repo.add(artistData as NewArtist);
+      const db = getDb();
+      const result = await db.insert(artists).values(artistData).returning();
+      return result[0];
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       logger.error("IPC: [db:add-artist] error:", error);
@@ -46,7 +55,9 @@ export const registerArtistHandlers = (repo: ArtistsRepository) => {
     const validation = z.number().int().positive().safeParse(id);
     if (!validation.success) throw new Error("Invalid ID.");
     try {
-      return await repo.delete(validation.data);
+      const db = getDb();
+      await db.delete(artists).where(eq(artists.id, validation.data));
+      return true;
     } catch (error) {
       logger.error(`IPC: [db:delete-artist] error:`, error);
       throw new Error("Failed to delete artist.");
@@ -57,7 +68,15 @@ export const registerArtistHandlers = (repo: ArtistsRepository) => {
     const validQuery = z.string().trim().safeParse(query);
     if (!validQuery.success) return [];
     try {
-      return await repo.searchTags(validQuery.data);
+      const db = getDb();
+      const searchPattern = `%${validQuery.data}%`;
+      return await db.query.artists.findMany({
+        where: or(
+          like(artists.tag, searchPattern),
+          like(artists.name, searchPattern)
+        ),
+        limit: 20,
+      });
     } catch {
       return [];
     }
@@ -87,6 +106,3 @@ export const registerArtistHandlers = (repo: ArtistsRepository) => {
     }
   });
 };
-
-
-

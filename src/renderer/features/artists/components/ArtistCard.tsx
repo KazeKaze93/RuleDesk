@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Trash2, User, Hash, Search } from "lucide-react";
-import { Button } from "../ui/button";
-import type { Artist } from "../../../main/db/schema";
-import { DeleteArtistDialog } from "../dialogs/DeleteArtistDialog";
-import { cn } from "../../lib/utils";
+import { Button } from "../../../components/ui/button";
+import type { Artist } from "../../../../main/db/schema";
+import { DeleteArtistDialog } from "../../../components/dialogs/DeleteArtistDialog";
+import { cn } from "../../../lib/utils";
 
 interface ArtistCardProps {
   artist: Artist;

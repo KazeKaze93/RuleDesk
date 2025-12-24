@@ -1,14 +1,12 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 
-// --- ИМПОРТЫ КОМПОНЕНТОВ ---
 import { AppLayout as Layout } from "./components/layout/AppLayout";
-import { Settings } from "./components/pages/Settings";
-import { Onboarding } from "./components/pages/Onboarding";
-import { Tracked } from "./components/pages/Tracked";
-import { ArtistDetails } from "./components/pages/ArtistDetails";
+import { Settings } from "./features/settings/Settings";
+import { Onboarding } from "@/features/onboarding/Onboarding";
+import { Tracked } from "./features/artists/Tracked";
+import { ArtistDetails } from "./features/artists/ArtistDetails";
 
-// Заглушки (пока нет файлов)
 const Browse = () => (
   <div className="p-8">
     <h1 className="text-2xl font-bold">Browse</h1>
@@ -35,10 +33,12 @@ function App() {
     const checkAuth = async () => {
       try {
         const settings = await window.api.getSettings();
+        // hasApiKey is always boolean (non-nullable) per IpcSettings interface
+        const hasApiKey = settings?.hasApiKey ?? false;
         console.log(
-          `[App] Auth check result: hasApiKey=${settings?.hasApiKey}, userId=${settings?.userId}`
+          `[App] Auth check result: hasApiKey=${hasApiKey}, userId=${settings?.userId}`
         );
-        setIsAuthenticated(settings?.hasApiKey ?? false);
+        setIsAuthenticated(hasApiKey);
       } catch (error) {
         console.error("Failed to check authentication:", error);
         setIsAuthenticated(false);
@@ -47,7 +47,6 @@ function App() {
     checkAuth();
   }, []);
 
-  // Show loader while checking authentication
   if (isAuthenticated === null) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -56,12 +55,10 @@ function App() {
     );
   }
 
-  // Show onboarding if not authenticated
   if (isAuthenticated === false) {
-    return <Onboarding onLoginSuccess={() => setIsAuthenticated(true)} />;
+    return <Onboarding onComplete={() => setIsAuthenticated(true)} />;
   }
 
-  // Show main app if authenticated
   return (
     <Router>
       <Routes>

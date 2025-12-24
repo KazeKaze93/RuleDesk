@@ -15,7 +15,6 @@ export default defineConfig({
       rollupOptions: {
         input: {
           main: resolve(__dirname, "src/main/main.ts"),
-          "db-worker": resolve(__dirname, "src/main/db/db-worker.ts"),
         },
         output: {
           dir: "out/main",

@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { ArtistCard } from "../gallery/ArtistCard";
-import { AddArtistModal } from "../dialogs/AddArtistModal";
-import { Button } from "../ui/button";
+import { ArtistCard } from "./components/ArtistCard";
+import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
+import { Button } from "../../components/ui/button";
 import type { Artist } from "../../../main/db/schema";
 
 export const Tracked = () => {

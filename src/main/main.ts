@@ -22,7 +22,7 @@ if (app.isPackaged) {
 
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
-import { DbWorkerClient } from "./db/db-worker-client";
+import { initializeDatabase } from "./db/client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
@@ -75,14 +75,11 @@ async function migrateUserData() {
   }
 }
 
-// Run migration before app is ready
 migrateUserData();
 
 process.env.USER_DATA_PATH = app.getPath("userData");
 
-let dbWorkerClient: DbWorkerClient | null = null;
 let mainWindow: BrowserWindow | null = null;
-let DB_PATH: string;
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -112,23 +109,98 @@ function getMigrationsPath(): string {
 }
 
 /**
+ * Создает простое окно загрузки для отображения во время миграций БД
+ */
+function createLoadingWindow(): BrowserWindow {
+  const loadingWindow = new BrowserWindow({
+    width: 400,
+    height: 200,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  loadingWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body {
+          margin: 0;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+          color: white;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .container {
+          text-align: center;
+        }
+        .spinner {
+          border: 3px solid rgba(255,255,255,0.1);
+          border-top: 3px solid #3b82f6;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 20px;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .text {
+          font-size: 14px;
+          opacity: 0.9;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="spinner"></div>
+        <div class="text">Initializing database...</div>
+      </div>
+    </body>
+    </html>
+  `)}`);
+
+  loadingWindow.center();
+  return loadingWindow;
+}
+
+/**
  * Асинхронная функция, которая запускается после app.ready.
  * Отвечает за инициализацию Worker и создание главного окна.
  */
 async function initializeAppAndWindow() {
-  try {
-    DB_PATH = path.join(app.getPath("userData"), "metadata.db");
+  let loadingWindow: BrowserWindow | null = null;
 
+  try {
     const MIGRATIONS_PATH = getMigrationsPath();
     logger.info(`Main: Migrations Path: ${MIGRATIONS_PATH}`);
 
-    // === 1. АСИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ DB WORKER ===
-    // Блокировка здесь безопасна, так как Electron уже готов.
-    dbWorkerClient = await DbWorkerClient.initialize(DB_PATH, MIGRATIONS_PATH);
-    logger.info("✅ Main: DB Worker Client initialized and ready.");
+    // Show loading window during database initialization
+    loadingWindow = createLoadingWindow();
+    loadingWindow.show();
 
-    // === 2. Инициализация сервисов и создание окна ===
-    syncService.setDbWorkerClient(dbWorkerClient);
+    // Initialize database asynchronously (migrations may take time)
+    await initializeDatabase();
+    logger.info("✅ Main: Database initialized and ready.");
+
+    // Close loading window
+    if (loadingWindow && !loadingWindow.isDestroyed()) {
+      loadingWindow.close();
+      loadingWindow = null;
+    }
 
     mainWindow = new BrowserWindow({
       width: 1200,
@@ -145,7 +217,6 @@ async function initializeAppAndWindow() {
       },
     });
 
-    // Устанавливаем окно для синглтонов
     updaterService.setWindow(mainWindow);
     syncService.setWindow(mainWindow);
 
@@ -164,26 +235,16 @@ async function initializeAppAndWindow() {
     }
 
     mainWindow.once("ready-to-show", () => {
-      const workerClient = dbWorkerClient;
       const window = mainWindow;
 
-      if (window && workerClient) {
+      if (window) {
         window.show();
         updaterService.checkForUpdates();
 
-        registerAllHandlers(workerClient, syncService, updaterService, window);
+        registerAllHandlers(syncService, updaterService, window);
 
         setTimeout(() => {
-          logger.info("Main: Starting deferred background DB maintenance...");
-
-          workerClient
-            .call("runDeferredMaintenance", {})
-            .then(() => {
-              logger.info("✅ Main: DB maintenance complete.");
-            })
-            .catch((err) => {
-              logger.error("❌ Main: DB maintenance failed", err);
-            });
+          logger.info("Main: DB maintenance skipped for now (direct DB mode)");
         }, 3000);
       }
     });
@@ -192,6 +253,11 @@ async function initializeAppAndWindow() {
       mainWindow = null;
     });
   } catch (e) {
+    // Close loading window if it's still open
+    if (loadingWindow && !loadingWindow.isDestroyed()) {
+      loadingWindow.close();
+    }
+
     logger.error("FATAL: Failed to initialize application or database.", e);
     dialog.showErrorBox(
       "Fatal Error",
@@ -215,30 +281,3 @@ app.on("activate", () => {
   }
 });
 
-/**
- * Restore database from backup file
- */
-export async function restoreDatabase(backupPath: string): Promise<void> {
-  if (!dbWorkerClient || !mainWindow) {
-    throw new Error("DB Worker Client or Main Window is not initialized.");
-  }
-
-  try {
-    logger.info(`Main: Starting database restore from ${backupPath}`);
-    await dbWorkerClient.restore(backupPath);
-    logger.info("Main: Database restore completed successfully");
-
-    if (mainWindow) {
-      mainWindow.webContents.send("db:restored-success");
-    }
-  } catch (error: unknown) {
-    logger.error("Main: Database restore failed", error);
-
-    if (mainWindow) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      mainWindow.webContents.send("db:restored-error", errorMessage);
-    }
-    throw error;
-  }
-}
