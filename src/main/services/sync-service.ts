@@ -7,11 +7,6 @@ import axios from "axios";
 import type { Artist } from "../db/schema";
 import { URLSearchParams } from "url";
 
-interface InternalDecryptedSettings {
-  userId: string;
-  apiKey: string;
-}
-
 interface R34Post {
   id: number;
   file_url: string;
@@ -212,7 +207,7 @@ export class SyncService {
 
   private async syncArtist(
     artist: Artist,
-    settings: InternalDecryptedSettings,
+    settings: { userId: string; apiKey: string },
     maxPages = Infinity
   ) {
     const db = getDb();
