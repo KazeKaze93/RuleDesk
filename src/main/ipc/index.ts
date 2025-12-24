@@ -59,8 +59,11 @@ const registerSyncAndMaintenanceHandlers = (
         `metadata-backup-${timestamp}.db`
       );
 
-      if (!fs.existsSync(backupDir)) {
-        fs.mkdirSync(backupDir, { recursive: true });
+      // Ensure backup directory exists
+      try {
+        await fs.promises.access(backupDir);
+      } catch {
+        await fs.promises.mkdir(backupDir, { recursive: true });
       }
 
       // Validate path is absolute and within user data directory
@@ -70,9 +73,22 @@ const registerSyncAndMaintenanceHandlers = (
         throw new Error("Backup path validation failed: path outside user data directory");
       }
 
+      // Send loading event before VACUUM (which freezes the UI)
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("APP:LOADING", {
+          loading: true,
+          message: "Creating backup...",
+        });
+      }
+
       const sqlite = getSqliteInstance();
-      const stmt = sqlite.prepare('VACUUM INTO ?');
+      const stmt = sqlite.prepare("VACUUM INTO ?");
       stmt.run(backupPath);
+
+      // Send loading complete event
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("APP:LOADING", { loading: false });
+      }
 
       logger.info(`IPC: Backup created at ${backupPath}`);
       return {
@@ -80,6 +96,10 @@ const registerSyncAndMaintenanceHandlers = (
         path: backupPath,
       };
     } catch (error) {
+      // Ensure loading state is cleared on error
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("APP:LOADING", { loading: false });
+      }
       logger.error("IPC: Backup failed:", error);
       return {
         success: false,
@@ -100,11 +120,22 @@ const registerSyncAndMaintenanceHandlers = (
     try {
       const backupPath = filePaths[0];
 
-      if (!fs.existsSync(backupPath)) {
+      // Check if backup file exists using promises
+      try {
+        await fs.promises.access(backupPath);
+      } catch {
         return {
           success: false,
           error: "Backup file not found",
         };
+      }
+
+      // Send loading event before restore operation
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("APP:LOADING", {
+          loading: true,
+          message: "Restoring database...",
+        });
       }
 
       // Close database to release file locks
@@ -124,9 +155,8 @@ const registerSyncAndMaintenanceHandlers = (
 
       const renameToBak = async (source: string, target: string) => {
         try {
-          if (fs.existsSync(source)) {
-            await fs.promises.rename(source, target);
-          }
+          await fs.promises.access(source);
+          await fs.promises.rename(source, target);
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
             throw error;
@@ -146,11 +176,12 @@ const registerSyncAndMaintenanceHandlers = (
         // Step 3: If copy succeeds, delete .bak files and reinitialize
         const deleteBak = async (bakPath: string) => {
           try {
-            if (fs.existsSync(bakPath)) {
-              await fs.promises.rm(bakPath, { force: true });
-            }
+            await fs.promises.access(bakPath);
+            await fs.promises.rm(bakPath, { force: true });
           } catch (error) {
-            logger.warn(`IPC: Failed to delete backup file ${bakPath}:`, error);
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+              logger.warn(`IPC: Failed to delete backup file ${bakPath}:`, error);
+            }
           }
         };
 
@@ -160,6 +191,11 @@ const registerSyncAndMaintenanceHandlers = (
 
         // Reinitialize database connection
         initializeDatabase();
+
+        // Send loading complete event
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("APP:LOADING", { loading: false });
+        }
 
         logger.info(`IPC: Database restored from ${backupPath}`);
         return {
@@ -172,9 +208,8 @@ const registerSyncAndMaintenanceHandlers = (
 
         const restoreFromBak = async (bakPath: string, originalPath: string) => {
           try {
-            if (fs.existsSync(bakPath)) {
-              await fs.promises.rename(bakPath, originalPath);
-            }
+            await fs.promises.access(bakPath);
+            await fs.promises.rename(bakPath, originalPath);
           } catch (error) {
             logger.error(`IPC: Failed to restore ${originalPath} from backup:`, error);
           }
@@ -191,6 +226,11 @@ const registerSyncAndMaintenanceHandlers = (
           logger.error("IPC: Failed to reinitialize database after rollback:", initError);
         }
 
+        // Ensure loading state is cleared on error
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("APP:LOADING", { loading: false });
+        }
+
         logger.error("IPC: Restore failed, rolled back");
         return {
           success: false,
@@ -198,6 +238,10 @@ const registerSyncAndMaintenanceHandlers = (
         };
       }
     } catch (error) {
+      // Ensure loading state is cleared on error
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("APP:LOADING", { loading: false });
+      }
       logger.error("IPC: Restore failed:", error);
       // Attempt to reinitialize database even if restore failed
       try {
