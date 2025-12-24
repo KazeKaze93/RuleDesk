@@ -1,7 +1,8 @@
-// Cursor: select file:src/main/services/sync-service.ts
 import { BrowserWindow, safeStorage } from "electron";
 import { logger } from "../lib/logger";
-import { DbWorkerClient } from "../db/db-worker-client";
+import { getDb } from "../db/client";
+import { posts, artists, settings } from "../db/schema";
+import { eq } from "drizzle-orm";
 import axios from "axios";
 import type { Artist } from "../db/schema";
 import { URLSearchParams } from "url";
@@ -30,15 +31,11 @@ const pickPreviewUrl = (p: R34Post) => {
 };
 
 export class SyncService {
-  private dbWorkerClient: DbWorkerClient | null = null;
   private window: BrowserWindow | null = null;
   private isSyncing = false;
 
   public setWindow(window: BrowserWindow) {
     this.window = window;
-  }
-  public setDbWorkerClient(dbWorkerClient: DbWorkerClient) {
-    this.dbWorkerClient = dbWorkerClient;
   }
 
   public sendEvent(channel: string, data?: unknown) {
@@ -48,37 +45,45 @@ export class SyncService {
   }
 
   private async getDecryptedSettings() {
-    if (!this.dbWorkerClient) {
-      logger.error("SyncService: DbWorkerClient is not initialized!");
+    try {
+      const db = getDb();
+      const settingsRecord = await db.query.settings.findFirst({
+        where: eq(settings.id, 1),
+      });
+
+      if (!settingsRecord) {
+        logger.warn("SyncService: No settings found in database");
+        return null;
+      }
+
+      let realApiKey = settingsRecord.encryptedApiKey || "";
+
+      // Дешифровка (safeStorage)
+      if (realApiKey && safeStorage.isEncryptionAvailable()) {
+        try {
+          const buff = Buffer.from(realApiKey, "base64");
+          realApiKey = safeStorage.decryptString(buff);
+          logger.info(
+            `SyncService: Credentials decrypted successfully. Final Key Length: ${realApiKey.length}`
+          );
+        } catch (e) {
+          // Если ошибка дешифровки, возможно это "сырой" ключ (например в dev режиме), оставляем как есть
+          logger.warn(
+            "SyncService: Failed to decrypt API Key. This usually means the app was run by a different user/session or the encryption key was lost.",
+            e
+          );
+          realApiKey = settingsRecord.encryptedApiKey || "";
+        }
+      }
+
+      return {
+        userId: settingsRecord.userId || "",
+        apiKey: realApiKey,
+      };
+    } catch (error) {
+      logger.error("SyncService: Error fetching settings:", error);
       return null;
     }
-
-    const settings = await this.dbWorkerClient.call<{
-      userId: string;
-      apiKey: string;
-    }>("getApiKeyDecrypted");
-
-    let realApiKey = settings.apiKey;
-
-    // Дешифровка (safeStorage)
-    if (realApiKey && safeStorage.isEncryptionAvailable()) {
-      try {
-        const buff = Buffer.from(realApiKey, "base64");
-        realApiKey = safeStorage.decryptString(buff);
-        logger.info(
-          `SyncService: Credentials decrypted successfully. Final Key Length: ${realApiKey.length}`
-        );
-      } catch (e) {
-        // Если ошибка дешифровки, возможно это "сырой" ключ (например в dev режиме), оставляем как есть
-        logger.warn(
-          "SyncService: Failed to decrypt API Key. This usually means the app was run by a different user/session or the encryption key was lost.",
-          e
-        );
-        realApiKey = settings.apiKey;
-      }
-    }
-
-    return { ...settings, apiKey: realApiKey };
   }
 
   /**
@@ -149,24 +154,24 @@ export class SyncService {
 
   public async syncAllArtists() {
     if (this.isSyncing) return;
-    if (!this.dbWorkerClient) return;
 
     this.isSyncing = true;
     logger.info("SyncService: Start Full Sync");
     this.sendEvent("sync:start");
 
     try {
-      const artists = await this.dbWorkerClient.call<Artist[]>(
-        "getTrackedArtists"
-      );
+      const db = getDb();
+      const artistsList = await db.query.artists.findMany({
+        orderBy: [artists.name],
+      });
 
-      const settings = await this.getDecryptedSettings();
+      const settingsData = await this.getDecryptedSettings();
 
-      if (!settings?.userId) throw new Error("No API credentials");
+      if (!settingsData?.userId) throw new Error("No API credentials");
 
-      for (const artist of artists) {
+      for (const artist of artistsList) {
         this.sendEvent("sync:progress", `Checking ${artist.name}...`);
-        await this.syncArtist(artist, settings);
+        await this.syncArtist(artist, settingsData);
         await new Promise((r) => setTimeout(r, 1500));
       }
     } catch (error) {
@@ -182,20 +187,20 @@ export class SyncService {
   }
 
   public async repairArtist(artistId: number) {
-    if (this.isSyncing || !this.dbWorkerClient) return;
+    if (this.isSyncing) return;
     this.isSyncing = true;
     try {
-      const artist = await this.dbWorkerClient.call<Artist | undefined>(
-        "getArtistById",
-        { artistId }
-      );
+      const db = getDb();
+      const artist = await db.query.artists.findFirst({
+        where: eq(artists.id, artistId),
+      });
 
-      const settings = await this.getDecryptedSettings();
+      const settingsData = await this.getDecryptedSettings();
 
-      if (artist && settings) {
+      if (artist && settingsData) {
         this.sendEvent("sync:repair:start", artist.name);
         // Force download by using lastPostId: 0
-        await this.syncArtist({ ...artist, lastPostId: 0 }, settings, 3);
+        await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, 3);
       }
     } catch (e) {
       logger.error("Repair error", e);
@@ -210,8 +215,7 @@ export class SyncService {
     settings: InternalDecryptedSettings,
     maxPages = Infinity
   ) {
-    if (!this.dbWorkerClient) return;
-
+    const db = getDb();
     let page = 0;
     let hasMore = true;
     let newPostsCount = 0;
@@ -239,7 +243,7 @@ export class SyncService {
           params.append("api_key", settings.apiKey);
         }
 
-        const { data: posts } = await axios.get<R34Post[]>(
+        const { data: postsData } = await axios.get<R34Post[]>(
           `https://api.rule34.xxx/index.php?${params}`,
           {
             timeout: 15000,
@@ -251,10 +255,10 @@ export class SyncService {
           }
         );
 
-        const batchMaxId = Math.max(...posts.map((p) => Number(p.id)));
+        const batchMaxId = Math.max(...postsData.map((p) => Number(p.id)));
         if (batchMaxId > highestPostId) highestPostId = batchMaxId;
 
-        const newPosts = posts.filter((p) => p.id > artist.lastPostId);
+        const newPosts = postsData.filter((p) => p.id > artist.lastPostId);
 
         if (newPosts.length === 0 && artist.lastPostId > 0) {
           hasMore = false;
@@ -275,19 +279,46 @@ export class SyncService {
         }));
 
         if (postsToSave.length > 0) {
-          await this.dbWorkerClient.call("savePostsForArtist", {
-            artistId: artist.id,
-            posts: postsToSave,
+          // Save posts in transaction with conflict handling
+          await db.transaction(async (tx) => {
+            for (const post of postsToSave) {
+              await tx
+                .insert(posts)
+                .values(post)
+                .onConflictDoUpdate({
+                  target: [posts.artistId, posts.postId],
+                  set: {
+                    fileUrl: post.fileUrl,
+                    sampleUrl: post.sampleUrl,
+                    previewUrl: post.previewUrl,
+                    tags: post.tags,
+                    rating: post.rating,
+                    publishedAt: post.publishedAt,
+                  },
+                });
+            }
           });
-          await this.dbWorkerClient.call("updateArtistProgress", {
-            artistId: artist.id,
-            newMaxPostId: highestPostId,
-            postsAddedCount: postsToSave.length,
+
+          // Get current artist values for atomic update
+          const currentArtist = await db.query.artists.findFirst({
+            where: eq(artists.id, artist.id),
           });
+
+          if (currentArtist) {
+            // Update artist stats with computed values
+            await db
+              .update(artists)
+              .set({
+                lastPostId: Math.max(currentArtist.lastPostId, highestPostId),
+                newPostsCount: currentArtist.newPostsCount + postsToSave.length,
+                lastChecked: new Date(),
+              })
+              .where(eq(artists.id, artist.id));
+          }
         }
 
         newPostsCount += postsToSave.length;
-        if (posts.length < 100) hasMore = false;
+        if (postsData.length < 100) hasMore = false;
         else page++;
 
         await new Promise((r) => setTimeout(r, 500));
@@ -298,11 +329,20 @@ export class SyncService {
     }
 
     if (newPostsCount === 0) {
-      await this.dbWorkerClient.call("updateArtistProgress", {
-        artistId: artist.id,
-        newMaxPostId: highestPostId,
-        postsAddedCount: 0,
+      // Update lastChecked even if no new posts
+      const currentArtist = await db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
       });
+
+      if (currentArtist) {
+        await db
+          .update(artists)
+          .set({
+            lastPostId: Math.max(currentArtist.lastPostId, highestPostId),
+            lastChecked: new Date(),
+          })
+          .where(eq(artists.id, artist.id));
+      }
     }
     logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
   }

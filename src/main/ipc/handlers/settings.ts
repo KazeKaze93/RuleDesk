@@ -1,6 +1,8 @@
 import { ipcMain, safeStorage } from "electron";
-import { DbWorkerClient } from "../../db/db-worker-client";
+import { eq } from "drizzle-orm";
 import { IPC_CHANNELS } from "../channels";
+import { getDb } from "../../db/client";
+import { settings } from "../../db/schema";
 import { z } from "zod";
 import { logger } from "../../lib/logger";
 
@@ -18,10 +20,41 @@ interface SettingsResponse {
   isAdultConfirmed: boolean;
 }
 
-export const registerSettingsHandlers = (db: DbWorkerClient) => {
+export const registerSettingsHandlers = () => {
   // GET Settings
   ipcMain.handle(IPC_CHANNELS.SETTINGS.GET, async () => {
-    return db.call<SettingsResponse>("getSettingsStatus");
+    try {
+      const db = getDb();
+      const result = await db.query.settings.findFirst({
+        where: eq(settings.id, 1),
+      });
+
+      if (!result) {
+        // Return default settings if none exist
+        return {
+          userId: "",
+          hasApiKey: false,
+          isSafeMode: true,
+          isAdultConfirmed: false,
+        } as SettingsResponse;
+      }
+
+      return {
+        userId: result.userId || "",
+        hasApiKey: !!result.encryptedApiKey,
+        isSafeMode: result.isSafeMode ?? true,
+        isAdultConfirmed: result.isAdultConfirmed ?? false,
+      } as SettingsResponse;
+    } catch (error) {
+      logger.error("IPC: Error fetching settings:", error);
+      // Return defaults on error
+      return {
+        userId: "",
+        hasApiKey: false,
+        isSafeMode: true,
+        isAdultConfirmed: false,
+      } as SettingsResponse;
+    }
   });
 
   // SAVE Settings
@@ -51,15 +84,38 @@ export const registerSettingsHandlers = (db: DbWorkerClient) => {
     }
 
     try {
-      const result = await db.call("saveSettings", {
-        userId,
-        encryptedApiKey,
-        isSafeMode,
-        isAdultConfirmed,
+      const db = getDb();
+      
+      // Get existing settings to merge with new values
+      const existing = await db.query.settings.findFirst({
+        where: eq(settings.id, 1),
       });
 
+      const updateData: Partial<typeof settings.$inferInsert> = {};
+      if (userId !== undefined) updateData.userId = userId;
+      if (encryptedApiKey !== undefined) updateData.encryptedApiKey = encryptedApiKey;
+      if (isSafeMode !== undefined) updateData.isSafeMode = isSafeMode;
+      if (isAdultConfirmed !== undefined) updateData.isAdultConfirmed = isAdultConfirmed;
+
+      // Merge with existing values to preserve fields not being updated
+      const finalData = {
+        id: 1,
+        userId: updateData.userId ?? existing?.userId ?? "",
+        encryptedApiKey: updateData.encryptedApiKey ?? existing?.encryptedApiKey ?? "",
+        isSafeMode: updateData.isSafeMode ?? existing?.isSafeMode ?? true,
+        isAdultConfirmed: updateData.isAdultConfirmed ?? existing?.isAdultConfirmed ?? false,
+      };
+
+      await db
+        .insert(settings)
+        .values(finalData)
+        .onConflictDoUpdate({
+          target: settings.id,
+          set: updateData,
+        });
+
       logger.info("IPC: Settings saved.");
-      return result;
+      return true;
     } catch (e) {
       logger.error("IPC: Error saving settings:", e);
       return false;

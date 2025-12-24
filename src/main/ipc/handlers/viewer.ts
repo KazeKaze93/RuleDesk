@@ -4,7 +4,6 @@ import { logger } from "../../lib/logger";
 import { IPC_CHANNELS } from "../channels";
 
 export const registerViewerHandlers = () => {
-  // Open External
   ipcMain.handle(
     IPC_CHANNELS.APP.OPEN_EXTERNAL,
     async (_, urlString: string) => {

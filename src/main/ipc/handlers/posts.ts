@@ -1,7 +1,9 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
+import { eq, desc, count } from "drizzle-orm";
 import { IPC_CHANNELS } from "../channels";
-import { PostsRepository } from "../../db/repositories/posts.repo";
+import { getDb } from "../../db/client";
+import { posts } from "../../db/schema";
 import { logger } from "../../lib/logger";
 
 const PostFilterSchema = z
@@ -19,7 +21,7 @@ const GetPostsSchema = z.object({
   filters: PostFilterSchema.optional(),
 });
 
-export const registerPostHandlers = (repo: PostsRepository) => {
+export const registerPostHandlers = () => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_POSTS, async (_, payload: unknown) => {
     const validation = GetPostsSchema.safeParse(payload);
     if (!validation.success)
@@ -29,7 +31,13 @@ export const registerPostHandlers = (repo: PostsRepository) => {
     const offset = (page - 1) * limit;
 
     try {
-      return await repo.getByArtist({ artistId, limit, offset });
+      const db = getDb();
+      return await db.query.posts.findMany({
+        where: eq(posts.artistId, artistId),
+        orderBy: [desc(posts.postId)],
+        limit,
+        offset,
+      });
     } catch (error) {
       logger.error(`IPC: [db:get-posts] error:`, error);
       throw new Error("Failed to fetch posts.");
@@ -49,8 +57,13 @@ export const registerPostHandlers = (repo: PostsRepository) => {
             ? countSchema.parse(payload) ?? undefined
             : undefined;
 
-        // Call the repo with optional ID
-        const total = await repo.getCountByArtist(artistId);
+        const db = getDb();
+        const whereClause = artistId ? eq(posts.artistId, artistId) : undefined;
+        const result = await db
+          .select({ value: count() })
+          .from(posts)
+          .where(whereClause);
+        const total = result[0]?.value ?? 0;
 
         console.log(
           `[IPC] Count requested. Filter: ${
@@ -70,7 +83,11 @@ export const registerPostHandlers = (repo: PostsRepository) => {
     if (!result.success) return false;
 
     try {
-      await repo.markAsViewed(result.data);
+      const db = getDb();
+      await db
+        .update(posts)
+        .set({ isViewed: true })
+        .where(eq(posts.id, result.data));
       return true;
     } catch (error) {
       logger.error(`[IPC] Failed to mark post viewed`, error);
@@ -90,7 +107,19 @@ export const registerPostHandlers = (repo: PostsRepository) => {
           return false;
         }
 
-        return await repo.toggleFavorite(result.data);
+        const db = getDb();
+        // First get current state
+        const post = await db.query.posts.findFirst({
+          where: eq(posts.id, result.data),
+        });
+        if (!post) return false;
+
+        const newFavoriteState = !post.isFavorited;
+        await db
+          .update(posts)
+          .set({ isFavorited: newFavoriteState })
+          .where(eq(posts.id, result.data));
+        return newFavoriteState;
       } catch (error) {
         logger.error(`[IPC] Failed to toggle post favorite`, error);
         return false;
@@ -110,7 +139,19 @@ export const registerPostHandlers = (repo: PostsRepository) => {
       }
 
       try {
-        return await repo.togglePostViewed(result.data);
+        const db = getDb();
+        // First get current state
+        const post = await db.query.posts.findFirst({
+          where: eq(posts.id, result.data),
+        });
+        if (!post) return false;
+
+        const newViewedState = !post.isViewed;
+        await db
+          .update(posts)
+          .set({ isViewed: newViewedState })
+          .where(eq(posts.id, result.data));
+        return newViewedState;
       } catch (error) {
         logger.error(`[IPC] Failed to toggle post viewed`, error);
         return false;

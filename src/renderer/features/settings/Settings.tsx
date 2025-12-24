@@ -6,7 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../ui/card";
+} from "../../components/ui/card";
 import { Loader2, Database, Upload } from "lucide-react";
 
 export const Settings = () => {

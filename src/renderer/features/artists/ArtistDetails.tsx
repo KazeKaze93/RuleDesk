@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArtistGallery } from "../gallery/ArtistGallery";
-import { Button } from "../ui/button";
+import { ArtistGallery } from "./ArtistGallery";
+import { Button } from "../../components/ui/button";
 
 export const ArtistDetails = () => {
   const { id } = useParams();

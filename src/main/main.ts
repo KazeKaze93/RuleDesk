@@ -22,7 +22,7 @@ if (app.isPackaged) {
 
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
-import { DbWorkerClient } from "./db/db-worker-client";
+import { initializeDatabase } from "./db/client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
@@ -75,14 +75,11 @@ async function migrateUserData() {
   }
 }
 
-// Run migration before app is ready
 migrateUserData();
 
 process.env.USER_DATA_PATH = app.getPath("userData");
 
-let dbWorkerClient: DbWorkerClient | null = null;
 let mainWindow: BrowserWindow | null = null;
-let DB_PATH: string;
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -117,18 +114,11 @@ function getMigrationsPath(): string {
  */
 async function initializeAppAndWindow() {
   try {
-    DB_PATH = path.join(app.getPath("userData"), "metadata.db");
-
     const MIGRATIONS_PATH = getMigrationsPath();
     logger.info(`Main: Migrations Path: ${MIGRATIONS_PATH}`);
 
-    // === 1. АСИНХРОННАЯ ИНИЦИАЛИЗАЦИЯ DB WORKER ===
-    // Блокировка здесь безопасна, так как Electron уже готов.
-    dbWorkerClient = await DbWorkerClient.initialize(DB_PATH, MIGRATIONS_PATH);
-    logger.info("✅ Main: DB Worker Client initialized and ready.");
-
-    // === 2. Инициализация сервисов и создание окна ===
-    syncService.setDbWorkerClient(dbWorkerClient);
+    initializeDatabase();
+    logger.info("✅ Main: Database initialized and ready.");
 
     mainWindow = new BrowserWindow({
       width: 1200,
@@ -145,7 +135,6 @@ async function initializeAppAndWindow() {
       },
     });
 
-    // Устанавливаем окно для синглтонов
     updaterService.setWindow(mainWindow);
     syncService.setWindow(mainWindow);
 
@@ -164,26 +153,16 @@ async function initializeAppAndWindow() {
     }
 
     mainWindow.once("ready-to-show", () => {
-      const workerClient = dbWorkerClient;
       const window = mainWindow;
 
-      if (window && workerClient) {
+      if (window) {
         window.show();
         updaterService.checkForUpdates();
 
-        registerAllHandlers(workerClient, syncService, updaterService, window);
+        registerAllHandlers(syncService, updaterService, window);
 
         setTimeout(() => {
-          logger.info("Main: Starting deferred background DB maintenance...");
-
-          workerClient
-            .call("runDeferredMaintenance", {})
-            .then(() => {
-              logger.info("✅ Main: DB maintenance complete.");
-            })
-            .catch((err) => {
-              logger.error("❌ Main: DB maintenance failed", err);
-            });
+          logger.info("Main: DB maintenance skipped for now (direct DB mode)");
         }, 3000);
       }
     });
@@ -215,30 +194,3 @@ app.on("activate", () => {
   }
 });
 
-/**
- * Restore database from backup file
- */
-export async function restoreDatabase(backupPath: string): Promise<void> {
-  if (!dbWorkerClient || !mainWindow) {
-    throw new Error("DB Worker Client or Main Window is not initialized.");
-  }
-
-  try {
-    logger.info(`Main: Starting database restore from ${backupPath}`);
-    await dbWorkerClient.restore(backupPath);
-    logger.info("Main: Database restore completed successfully");
-
-    if (mainWindow) {
-      mainWindow.webContents.send("db:restored-success");
-    }
-  } catch (error: unknown) {
-    logger.error("Main: Database restore failed", error);
-
-    if (mainWindow) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      mainWindow.webContents.send("db:restored-error", errorMessage);
-    }
-    throw error;
-  }
-}

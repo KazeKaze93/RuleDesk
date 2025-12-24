@@ -1,11 +1,11 @@
 import React from "react";
 import { useForm } from "react-hook-form";
-import { z, ZodIssueOptionalMessage, ErrorMapCtx } from "zod"; // ИМПОРТ ТИПОВ
+import { z, ZodIssueOptionalMessage, ErrorMapCtx } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { KeyRound, User } from "lucide-react";
-import { credsBaseSchema, CredsFormValues } from "../../schemas/form-schemas";
+import { credsBaseSchema, CredsFormValues } from "@/schemas/form-schemas";
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -140,3 +140,4 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     </div>
   );
 };
+
