@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
-import { eq, desc, count } from "drizzle-orm";
+import { eq, desc, count, sql } from "drizzle-orm";
 import { IPC_CHANNELS } from "../channels";
 import { getDb } from "../../db/client";
 import { posts } from "../../db/schema";
@@ -108,18 +108,13 @@ export const registerPostHandlers = () => {
         }
 
         const db = getDb();
-        // First get current state
-        const post = await db.query.posts.findFirst({
-          where: eq(posts.id, result.data),
-        });
-        if (!post) return false;
-
-        const newFavoriteState = !post.isFavorited;
-        await db
+        const updateResult = await db
           .update(posts)
-          .set({ isFavorited: newFavoriteState })
-          .where(eq(posts.id, result.data));
-        return newFavoriteState;
+          .set({ isFavorited: sql`NOT ${posts.isFavorited}` })
+          .where(eq(posts.id, result.data))
+          .returning({ isFavorited: posts.isFavorited });
+
+        return updateResult[0]?.isFavorited ?? false;
       } catch (error) {
         logger.error(`[IPC] Failed to toggle post favorite`, error);
         return false;
@@ -140,18 +135,13 @@ export const registerPostHandlers = () => {
 
       try {
         const db = getDb();
-        // First get current state
-        const post = await db.query.posts.findFirst({
-          where: eq(posts.id, result.data),
-        });
-        if (!post) return false;
-
-        const newViewedState = !post.isViewed;
-        await db
+        const updateResult = await db
           .update(posts)
-          .set({ isViewed: newViewedState })
-          .where(eq(posts.id, result.data));
-        return newViewedState;
+          .set({ isViewed: sql`NOT ${posts.isViewed}` })
+          .where(eq(posts.id, result.data))
+          .returning({ isViewed: posts.isViewed });
+
+        return updateResult[0]?.isViewed ?? false;
       } catch (error) {
         logger.error(`[IPC] Failed to toggle post viewed`, error);
         return false;
