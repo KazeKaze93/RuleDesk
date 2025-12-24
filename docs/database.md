@@ -76,9 +76,10 @@ Caches post metadata for filtering, statistics, and download management. Support
 | `title`        | TEXT                                   | Post title                                    |
 | `rating`       | TEXT                                   | Content rating (safe, questionable, explicit) |
 | `tags`         | TEXT                                   | Space-separated tags                          |
-| `published_at` | TEXT                                   | Publication timestamp (as string)             |
+| `published_at` | INTEGER (NOT NULL)                     | Publication timestamp (timestamp mode, ms)    |
 | `created_at`   | INTEGER (NOT NULL)                     | When added to local database (timestamp ms)   |
 | `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been viewed                  |
+| `is_favorited` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been favorited               |
 
 **Unique Constraint:** `(artist_id, post_id)` - Prevents duplicate posts per artist.
 
@@ -99,11 +100,14 @@ export const posts = sqliteTable(
     title: text("title").default(""),
     rating: text("rating").default(""),
     tags: text("tags").notNull(),
-    publishedAt: text("published_at"),
+    publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
     isViewed: integer("is_viewed", { mode: "boolean" })
+      .default(false)
+      .notNull(),
+    isFavorited: integer("is_favorited", { mode: "boolean" })
       .default(false)
       .notNull(),
   },
@@ -309,6 +313,16 @@ Marks a post as viewed in the database.
 
 ```typescript
 await dbWorkerClient.call("markPostAsViewed", { postId: 123 });
+```
+
+#### `togglePostFavorite(params: { postId: number }): Promise<void>`
+
+Toggles the favorite status of a post in the database.
+
+**Example:**
+
+```typescript
+await dbWorkerClient.call("togglePostFavorite", { postId: 123 });
 ```
 
 #### `searchArtists(params: { query: string }): Promise<{ id: number; label: string }[]>`
@@ -566,6 +580,7 @@ Planned database improvements:
   - **Current:** Standard indexes only (`artistIdIdx`, `isViewedIdx`, `publishedAtIdx`, `isFavoritedIdx`)
   - **Target:** FTS5 virtual table for efficient tag searching
   - **Status:** See [Roadmap](./roadmap.md#-technical-improvements-from-audit) for implementation plan
+- ✅ **Favorites System:** Implemented with `isFavorited` field and index
 - Post deduplication logic
 - Statistics tables for analytics
 - Export/import functionality

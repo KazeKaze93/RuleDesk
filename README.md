@@ -229,9 +229,9 @@ The application core has been successfully stabilized and enhanced with security
 - ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
 - ✅ **Video Support:** `.mp4` and `.webm` video formats supported with native `<video>` element
 - ✅ **Download Manager:** Download full-resolution files with progress tracking and queue management
-- ✅ **Favorites System:** Mark and manage favorite posts with keyboard shortcuts and UI controls
+- ✅ **Favorites System:** Mark and manage favorite posts with keyboard shortcuts and UI controls. Complete implementation with `isFavorited` database field and toggle functionality.
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
-- ⏳ **Safe Mode/NSFW Filter:** Not implemented - no blur logic or `safeMode` flag in settings
+- ⏳ **Safe Mode/NSFW Filter:** Database schema includes `isSafeMode` field, but blur logic not yet implemented in UI components
 
 ---
 
@@ -290,13 +290,16 @@ We are moving to Feature Development. Priority tasks:
 - ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
 - ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
 
-### B. Download Manager ✅ Implemented
+**Note:** Backend filtering and sorting logic needs to be connected to the UI controls in `GlobalTopBar.tsx`.
+
+### B. Download Manager ✅ Implemented (Core Features)
 
 **Goal:** Allow saving full-resolution files to the local file system.
 
 - ✅ "Download Original" button on post view (implemented in ViewerDialog)
 - ✅ **Queue System:** Handle downloads in the background/main process with progress tracking
-- ✅ **Progress Events:** Real-time download progress via IPC events
+- ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
+- ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
 - ⏳ "Download All" for current filter/artist (planned)
 - ⏳ **Settings:** Allow choosing a default download directory (planned)
 
