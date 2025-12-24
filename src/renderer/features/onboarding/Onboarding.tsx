@@ -11,12 +11,32 @@ interface OnboardingProps {
   onComplete: () => void;
 }
 
+// Parse URL parameters from pasted text
+const parseCredentialsFromText = (text: string): { userId?: string; apiKey?: string } => {
+  const result: { userId?: string; apiKey?: string } = {};
+  
+  // Try to match user_id parameter (supports both user_id and user_id)
+  const userIdMatch = text.match(/[?&]user_id=([^&\s]+)/i);
+  if (userIdMatch) {
+    result.userId = decodeURIComponent(userIdMatch[1]);
+  }
+  
+  // Try to match api_key parameter (supports both api_key and api_key)
+  const apiKeyMatch = text.match(/[?&]api_key=([^&\s]+)/i);
+  if (apiKeyMatch) {
+    result.apiKey = decodeURIComponent(apiKeyMatch[1]);
+  }
+  
+  return result;
+};
+
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const { t } = useTranslation();
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CredsFormValues>({
     resolver: zodResolver(credsBaseSchema, {
@@ -35,6 +55,23 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       },
     }),
   });
+
+  // Handle paste event for auto-fill
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>, fieldName: "userId" | "apiKey") => {
+    const pastedText = e.clipboardData.getData("text");
+    const credentials = parseCredentialsFromText(pastedText);
+    
+    if (credentials.userId || credentials.apiKey) {
+      e.preventDefault();
+      
+      if (credentials.userId) {
+        setValue("userId", credentials.userId, { shouldValidate: true });
+      }
+      if (credentials.apiKey) {
+        setValue("apiKey", credentials.apiKey, { shouldValidate: true });
+      }
+    }
+  };
 
   const onSubmit = async (data: CredsFormValues) => {
     try {
@@ -90,6 +127,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <input
                 id="user-id-input"
                 {...register("userId")}
+                onPaste={(e) => handlePaste(e, "userId")}
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
                 placeholder={t("onboarding.userIdPlaceholder")}
               />
@@ -114,6 +152,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 id="api-key-input"
                 {...register("apiKey")}
                 type="password"
+                onPaste={(e) => handlePaste(e, "apiKey")}
                 className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
                 placeholder={t("onboarding.apiKeyPlaceholder")}
               />

@@ -274,7 +274,7 @@ export class SyncService {
         }));
 
         if (postsToSave.length > 0) {
-          // ✅ Bulk insert in single transaction (optimized)
+          // ✅ Bulk insert and artist update in single transaction (optimized)
           await db.transaction(async (tx) => {
             await tx
               .insert(posts)
@@ -290,24 +290,17 @@ export class SyncService {
                   publishedAt: sql`excluded.published_at`,
                 },
               });
-          });
 
-          // Get current artist values for atomic update
-          const currentArtist = await db.query.artists.findFirst({
-            where: eq(artists.id, artist.id),
-          });
-
-          if (currentArtist) {
-            // Update artist stats with computed values
-            await db
+            // Update artist stats atomically within transaction
+            await tx
               .update(artists)
               .set({
-                lastPostId: Math.max(currentArtist.lastPostId, highestPostId),
-                newPostsCount: currentArtist.newPostsCount + postsToSave.length,
+                lastPostId: sql`CASE WHEN ${artists.lastPostId} > ${highestPostId} THEN ${artists.lastPostId} ELSE ${highestPostId} END`,
+                newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
                 lastChecked: new Date(),
               })
               .where(eq(artists.id, artist.id));
-          }
+          });
         }
 
         newPostsCount += postsToSave.length;
@@ -323,19 +316,13 @@ export class SyncService {
 
     if (newPostsCount === 0) {
       // Update lastChecked even if no new posts
-      const currentArtist = await db.query.artists.findFirst({
-        where: eq(artists.id, artist.id),
-      });
-
-      if (currentArtist) {
-        await db
-          .update(artists)
-          .set({
-            lastPostId: Math.max(currentArtist.lastPostId, highestPostId),
-            lastChecked: new Date(),
-          })
-          .where(eq(artists.id, artist.id));
-      }
+      await db
+        .update(artists)
+        .set({
+          lastPostId: sql`CASE WHEN ${artists.lastPostId} > ${highestPostId} THEN ${artists.lastPostId} ELSE ${highestPostId} END`,
+          lastChecked: new Date(),
+        })
+        .where(eq(artists.id, artist.id));
     }
     logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
   }

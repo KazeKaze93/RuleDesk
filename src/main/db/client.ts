@@ -65,3 +65,12 @@ export function getSqliteInstance(): InstanceType<typeof Database> {
   }
   return sqliteInstance;
 }
+
+export function closeDatabase(): void {
+  if (sqliteInstance) {
+    sqliteInstance.close();
+    sqliteInstance = null;
+    dbInstance = null;
+    logger.info("[DB] Database closed.");
+  }
+}
