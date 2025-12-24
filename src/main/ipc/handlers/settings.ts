@@ -1,104 +1,90 @@
-import { ipcMain, safeStorage } from "electron";
+import { ipcMain } from "electron";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { IPC_CHANNELS } from "../channels";
 import { getDb } from "../../db/client";
-import { settings } from "../../db/schema";
-import { z } from "zod";
+import { settings, type Settings } from "../../db/schema";
+import { encrypt } from "../../lib/crypto";
 import { logger } from "../../lib/logger";
 
-const SettingsPayloadSchema = z.object({
+// Schema for validation
+const settingsSchema = z.object({
   userId: z.string().optional(),
   apiKey: z.string().optional(),
   isSafeMode: z.boolean().optional(),
   isAdultConfirmed: z.boolean().optional(),
 });
 
-interface SettingsResponse {
-  userId: string;
-  hasApiKey: boolean;
-  isSafeMode: boolean;
-  isAdultConfirmed: boolean;
-}
-
-export const registerSettingsHandlers = () => {
-  // GET Settings
+export function registerSettingsHandlers() {
+  // --- GET SETTINGS ---
   ipcMain.handle(IPC_CHANNELS.SETTINGS.GET, async () => {
     try {
       const db = getDb();
-      const result = await db.query.settings.findFirst({
-        where: eq(settings.id, 1),
-      });
+      // FIX: Use findFirst to get ANY existing settings, regardless of ID
+      const currentSettings = await db.query.settings.findFirst();
 
-      if (!result) {
-        // Return default settings if none exist
+      if (!currentSettings) {
+        // Return default values if no settings found (triggers Onboarding)
         return {
+          id: 1,
           userId: "",
-          hasApiKey: false,
+          encryptedApiKey: "",
           isSafeMode: true,
           isAdultConfirmed: false,
-        } as SettingsResponse;
+        } satisfies Settings;
       }
 
-      return {
-        userId: result.userId || "",
-        hasApiKey: !!result.encryptedApiKey,
-        isSafeMode: result.isSafeMode ?? true,
-        isAdultConfirmed: result.isAdultConfirmed ?? false,
-      } as SettingsResponse;
+      return currentSettings;
     } catch (error) {
-      logger.error("IPC: Error fetching settings:", error);
-      // Return defaults on error
-      return {
-        userId: "",
-        hasApiKey: false,
-        isSafeMode: true,
-        isAdultConfirmed: false,
-      } as SettingsResponse;
+      logger.error("IPC: Failed to get settings", error);
+      throw error;
     }
   });
 
-  // SAVE Settings
-  ipcMain.handle(IPC_CHANNELS.SETTINGS.SAVE, async (_, payload: unknown) => {
-    const validation = SettingsPayloadSchema.safeParse(payload);
-
-    if (!validation.success) {
-      logger.error("Settings validation failed:", validation.error.issues);
-      return false;
-    }
-
-    const { userId, apiKey, isSafeMode, isAdultConfirmed } = validation.data;
-
-    let encryptedApiKey: string | undefined;
-
-    if (apiKey) {
-      if (!safeStorage.isEncryptionAvailable()) {
-        logger.error("safeStorage is not available.");
-        return false;
-      }
-      try {
-        encryptedApiKey = safeStorage.encryptString(apiKey).toString("base64");
-      } catch (e) {
-        logger.error("Encryption failed:", e);
-        return false;
-      }
-    }
-
+  // --- SAVE SETTINGS ---
+  ipcMain.handle(IPC_CHANNELS.SETTINGS.SAVE, async (_, params) => {
     try {
+      // Validate input
+      const validation = settingsSchema.safeParse(params);
+      if (!validation.success) {
+        logger.error("IPC: Invalid settings data", validation.error);
+        throw new Error("Invalid settings data");
+      }
+
+      const { userId, apiKey, isSafeMode, isAdultConfirmed } = validation.data;
       const db = getDb();
-      
+
+      // FIX: Handle Encryption
+      // If a new 'apiKey' comes from frontend, encrypt it.
+      // If not provided, we keep the old encrypted one.
+      let encryptedKey: string | undefined;
+      if (apiKey) {
+        try {
+          encryptedKey = encrypt(apiKey);
+        } catch (e) {
+          logger.error("IPC: Failed to encrypt API key", e);
+          throw new Error("Failed to encrypt API key. Encryption is not available on this system.");
+        }
+      }
+
+      // 1. Find existing settings to get the correct ID (don't assume ID=1)
+      const existing = await db.query.settings.findFirst();
+      const targetId = existing?.id ?? 1;
+
+      // 2. Prepare update object for onConflictDoUpdate
       const updateData: Partial<typeof settings.$inferInsert> = {};
       if (userId !== undefined) updateData.userId = userId;
-      if (encryptedApiKey !== undefined) updateData.encryptedApiKey = encryptedApiKey;
+      if (encryptedKey !== undefined) updateData.encryptedApiKey = encryptedKey;
       if (isSafeMode !== undefined) updateData.isSafeMode = isSafeMode;
       if (isAdultConfirmed !== undefined) updateData.isAdultConfirmed = isAdultConfirmed;
 
-      // Upsert: Insert default values if not exists, or update provided fields if exists
+      // 3. Upsert
       await db
         .insert(settings)
         .values({
-          id: 1,
+          id: targetId,
           userId: userId ?? "",
-          encryptedApiKey: encryptedApiKey ?? "",
+          encryptedApiKey: encryptedKey ?? (existing?.encryptedApiKey ?? ""),
           isSafeMode: isSafeMode ?? true,
           isAdultConfirmed: isAdultConfirmed ?? false,
         })
@@ -107,11 +93,12 @@ export const registerSettingsHandlers = () => {
           set: updateData,
         });
 
-      logger.info("IPC: Settings saved.");
+      logger.info("IPC: Settings saved successfully.");
       return true;
-    } catch (e) {
-      logger.error("IPC: Error saving settings:", e);
-      return false;
+
+    } catch (error) {
+      logger.error("IPC: Failed to save settings", error);
+      throw error;
     }
   });
-};
+}

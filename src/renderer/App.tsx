@@ -33,10 +33,11 @@ function App() {
     const checkAuth = async () => {
       try {
         const settings = await window.api.getSettings();
+        const hasApiKey = !!settings?.encryptedApiKey;
         console.log(
-          `[App] Auth check result: hasApiKey=${settings?.hasApiKey}, userId=${settings?.userId}`
+          `[App] Auth check result: hasApiKey=${hasApiKey}, userId=${settings?.userId}`
         );
-        setIsAuthenticated(settings?.hasApiKey ?? false);
+        setIsAuthenticated(hasApiKey);
       } catch (error) {
         console.error("Failed to check authentication:", error);
         setIsAuthenticated(false);

@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
 import { IPC_CHANNELS } from "./channels";
-import { getDb, getSqliteInstance } from "../db/client";
+import { getDb, getSqliteInstance, closeDatabase, initializeDatabase } from "../db/client";
 import { settings } from "../db/schema";
 import { logger } from "../lib/logger";
 import { z } from "zod";
@@ -107,31 +107,47 @@ const registerSyncAndMaintenanceHandlers = (
         };
       }
 
-      const tempRestorePath = path.join(
-        app.getPath("userData"),
-        "metadata-restore.db"
-      );
+      // Close database to release file locks
+      closeDatabase();
 
-      await fs.promises.copyFile(backupPath, tempRestorePath);
+      // Define paths for DB and WAL/SHM files
+      const dbPath = path.join(app.getPath("userData"), "metadata.db");
+      const walPath = `${dbPath}-wal`;
+      const shmPath = `${dbPath}-shm`;
 
-      logger.info(
-        `IPC: Backup file prepared for restore. User must restart application.`
-      );
+      // Delete existing DB and WAL/SHM files if they exist
+      const filesToDelete = [dbPath, walPath, shmPath];
+      for (const filePath of filesToDelete) {
+        try {
+          await fs.promises.rm(filePath, { force: true });
+        } catch (error) {
+          // Ignore errors if file doesn't exist
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            logger.warn(`IPC: Failed to delete ${filePath}:`, error);
+          }
+        }
+      }
 
-      await dialog.showMessageBox(mainWindow, {
-        type: "info",
-        title: "Restore Scheduled",
-        message:
-          "Database restore has been scheduled. Please restart the application for the restore to take effect.",
-        buttons: ["OK"],
-      });
+      // Copy backup file to DB path
+      await fs.promises.copyFile(backupPath, dbPath);
+
+      // Reinitialize database connection
+      initializeDatabase();
+
+      logger.info(`IPC: Database restored from ${backupPath}`);
 
       return {
         success: true,
-        message: "Restore scheduled. Please restart the application.",
+        message: "Database restored successfully.",
       };
     } catch (error) {
       logger.error("IPC: Restore failed:", error);
+      // Attempt to reinitialize database even if restore failed
+      try {
+        initializeDatabase();
+      } catch (initError) {
+        logger.error("IPC: Failed to reinitialize database after restore error:", initError);
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
