@@ -9,6 +9,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
+import { useShallow } from "zustand/react/shallow";
 import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
@@ -54,8 +55,12 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  const openViewer = useViewerStore((state) => state.open);
-  const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
+  const { open: openViewer, appendQueueIds } = useViewerStore(
+    useShallow((state) => ({
+      open: state.open,
+      appendQueueIds: state.appendQueueIds,
+    }))
+  );
 
   const { data: totalPosts = 0 } = useQuery({
     queryKey: ["posts-count", artist.id],

@@ -41,7 +41,7 @@ export function registerSettingsHandlers() {
   });
 
   // --- SAVE SETTINGS ---
-  ipcMain.handle(IPC_CHANNELS.SETTINGS.SAVE, async (_, params) => {
+  ipcMain.handle(IPC_CHANNELS.SETTINGS.SAVE, async (_, params: unknown) => {
     try {
       // Validate input
       const validation = settingsSchema.safeParse(params);
