@@ -1,6 +1,7 @@
 import axios from "axios";
 import { logger } from "../lib/logger";
 import { selectBestPreview } from "../lib/media-utils";
+import { USER_AGENT, REQUEST_TIMEOUT, AUTOCOMPLETE_TIMEOUT } from "../config/constants";
 import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
 import type { ArtistType } from "../db/schema";
 
@@ -54,9 +55,9 @@ export class Rule34Provider implements IBooruProvider {
       });
 
       const { data, status } = await axios.get(`${this.baseUrl}?${params}`, {
-        timeout: 10000,
+        timeout: AUTOCOMPLETE_TIMEOUT,
         headers: { 
-          "User-Agent": "RuleDesk/1.5.0",
+          "User-Agent": USER_AGENT,
           "Accept-Encoding": "identity" 
         }
       });
@@ -110,9 +111,9 @@ export class Rule34Provider implements IBooruProvider {
     }
 
     const { data } = await axios.get<R34RawPost[]>(`${this.baseUrl}?${params}`, {
-      timeout: 15000,
+      timeout: REQUEST_TIMEOUT,
       headers: { 
-        "User-Agent": "RuleDesk/1.5.0",
+        "User-Agent": USER_AGENT,
         "Accept-Encoding": "identity"
       }
     });
@@ -140,6 +141,17 @@ export class Rule34Provider implements IBooruProvider {
       file: raw.file_url,
     });
 
+    // Date parsing with validation (Rule34 uses Unix timestamp in 'change' field)
+    let createdAt = new Date();
+    if (raw.change && typeof raw.change === "number" && raw.change > 0) {
+      const parsedDate = new Date(raw.change * 1000);
+      if (!isNaN(parsedDate.getTime())) {
+        createdAt = parsedDate;
+      } else {
+        logger.warn(`[Rule34Provider] Invalid timestamp for post ${raw.id}: ${raw.change}`);
+      }
+    }
+
     return {
       id: Number(raw.id),
       fileUrl: raw.file_url.trim(),
@@ -151,7 +163,7 @@ export class Rule34Provider implements IBooruProvider {
       source: raw.source,
       width: raw.width,
       height: raw.height,
-      createdAt: new Date((raw.change || 0) * 1000),
+      createdAt: createdAt,
     };
   }
 }

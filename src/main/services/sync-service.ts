@@ -1,16 +1,18 @@
 import { BrowserWindow, safeStorage } from "electron";
 import { logger } from "../lib/logger";
 import { getDb } from "../db/client";
-import { artists, settings, posts, type NewPost } from "../db/schema";
+import { artists, settings, posts } from "../db/schema";
 import { eq, sql } from "drizzle-orm";
 import axios from "axios";
-import type { Artist } from "../db/schema";
+import type { Artist, NewPost } from "../db/schema";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
 import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
 import type { BooruPost } from "../providers/types";
 
-const CHUNK_SIZE = 200;
+// SQLite supports up to 999 variables in older versions, much more in newer
+// Each post has ~10 fields, so 500 posts = ~5000 variables (well within limits)
+const CHUNK_SIZE = 500;
 
 async function bulkUpsertPosts(
   postsToSave: NewPost[],
@@ -265,7 +267,6 @@ export class SyncService {
     let page = 0;
     let hasMore = true;
     let newPostsCount = 0;
-    let highestPostId = artist.lastPostId;
 
     while (hasMore && page < maxPages) {
       try {
@@ -284,9 +285,6 @@ export class SyncService {
           2000,
           artist.name
         );
-
-        const batchMaxId = postsData.length > 0 ? Math.max(...postsData.map((p) => p.id)) : 0;
-        if (batchMaxId > highestPostId) highestPostId = batchMaxId;
 
         const newPosts = postsData.filter((p) => p.id > artist.lastPostId);
 
@@ -311,29 +309,27 @@ export class SyncService {
 
         // Save posts and update artist metadata atomically after each page
         if (postsToSave.length > 0) {
+          // Calculate max post ID from this batch BEFORE transaction
+          const batchHighestPostId = Math.max(...postsToSave.map(p => p.postId));
+          
           await db.transaction(async (tx) => {
             await bulkUpsertPosts(postsToSave, tx);
             
-            // Fetch current values to avoid race conditions
-            const current = await tx.query.artists.findFirst({
-              where: eq(artists.id, artist.id),
-              columns: { lastPostId: true, newPostsCount: true }
-            });
-            
-            if (!current) {
-              throw new Error(`Artist ${artist.id} not found during sync`);
-            }
-            
-            // Update artist's lastPostId immediately to ensure atomicity
+            // Update lastPostId ONLY with posts that were actually saved in this transaction
+            // SQLite with WAL mode + single writer = no race condition, use local artist object
             await tx
               .update(artists)
               .set({
-                lastPostId: Math.max(current.lastPostId, highestPostId),
-                newPostsCount: current.newPostsCount + postsToSave.length,
+                lastPostId: Math.max(artist.lastPostId, batchHighestPostId),
+                newPostsCount: artist.newPostsCount + postsToSave.length,
                 lastChecked: new Date(),
               })
               .where(eq(artists.id, artist.id));
           });
+          
+          // Update local artist object to reflect DB state for next iteration
+          artist.lastPostId = Math.max(artist.lastPostId, batchHighestPostId);
+          artist.newPostsCount += postsToSave.length;
           newPostsCount += postsToSave.length;
         }
 

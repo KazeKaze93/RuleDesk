@@ -1,6 +1,7 @@
 import axios from "axios";
 import { logger } from "../lib/logger";
 import { selectBestPreview } from "../lib/media-utils";
+import { USER_AGENT, REQUEST_TIMEOUT } from "../config/constants";
 import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
 import type { ArtistType } from "../db/schema";
 
@@ -50,8 +51,8 @@ export class GelbooruProvider implements IBooruProvider {
       });
 
       const { status, data } = await axios.get(`${this.baseUrl}?${params}`, {
-        timeout: 10000,
-        headers: { "User-Agent": "RuleDesk/1.5.0" }
+        timeout: REQUEST_TIMEOUT,
+        headers: { "User-Agent": USER_AGENT }
       });
 
       // Gelbooru sometimes returns empty array or object with post array
@@ -116,8 +117,8 @@ export class GelbooruProvider implements IBooruProvider {
 
     try {
       const response = await axios.get(`${this.baseUrl}?${params}`, {
-        timeout: 15000,
-        headers: { "User-Agent": "RuleDesk/1.5.0" },
+        timeout: REQUEST_TIMEOUT,
+        headers: { "User-Agent": USER_AGENT },
         validateStatus: (status) => status === 200,
       });
 
@@ -179,8 +180,17 @@ export class GelbooruProvider implements IBooruProvider {
       file: raw.file_url,
     });
     
-    // Date parsing
-    const date = raw.created_at ? new Date(raw.created_at) : new Date();
+    // Date parsing with validation
+    let date = new Date();
+    if (raw.created_at) {
+      const parsedDate = new Date(raw.created_at);
+      // Check if date is valid (Invalid Date returns NaN for getTime())
+      if (!isNaN(parsedDate.getTime())) {
+        date = parsedDate;
+      } else {
+        logger.warn(`[GelbooruProvider] Invalid date for post ${id}: ${raw.created_at}`);
+      }
+    }
 
     // Validate rating - Gelbooru uses "safe", "questionable", "explicit" or "s", "q", "e"
     let rating: "s" | "q" | "e" = "q";
