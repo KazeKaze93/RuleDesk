@@ -217,17 +217,25 @@ export abstract class BaseController {
           return arg.map((item) => this.sanitizeArgs([item])[0]);
         }
         
-        // Check for sensitive keys in objects
-        const sensitiveKeys = /(password|token|key|secret|api[_-]?key|auth|credential|path|file|dir)/i;
+        // Comprehensive list of sensitive keys to mask
+        // Includes variations: apiKey, api_key, api-key, encryptedApiKey, etc.
+        const sensitiveKeyPattern = /^(password|token|key|secret|api[_-]?key|encrypted[_-]?api[_-]?key|auth|credential|access[_-]?token|refresh[_-]?token|bearer|authorization)$/i;
+        
         const sanitized: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(arg)) {
-          if (sensitiveKeys.test(key)) {
+          // Check if key matches sensitive patterns
+          if (sensitiveKeyPattern.test(key)) {
+            // Always mask sensitive keys, regardless of value type
             sanitized[key] = '<masked>';
-          } else if (typeof value === 'string') {
-            // Recursively sanitize string values
+          } else if (typeof value === 'string' && value.length > 0) {
+            // Recursively sanitize string values (may contain nested sensitive data)
             const sanitizedValue = this.sanitizeArgs([value])[0];
             sanitized[key] = sanitizedValue;
+          } else if (typeof value === 'object' && value !== null) {
+            // Recursively sanitize nested objects and arrays
+            sanitized[key] = this.sanitizeArgs([value])[0];
           } else {
+            // Pass through primitives and null
             sanitized[key] = value;
           }
         }

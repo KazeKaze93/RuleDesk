@@ -3,7 +3,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_KEYS } from "../../core/di/Container";
+import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -21,11 +21,11 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  */
 export class AuthController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve<AppDatabase>(DI_KEYS.DB);
+    return container.resolve(DI_TOKENS.DB);
   }
 
   private getSyncService(): SyncService {
-    return container.resolve<SyncService>(DI_KEYS.SYNC_SERVICE);
+    return container.resolve(DI_TOKENS.SYNC_SERVICE);
   }
 
   /**

@@ -3,7 +3,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq, like, or, desc, sql } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_KEYS } from "../../core/di/Container";
+import { container, DI_TOKENS } from "../../core/di/Container";
 import { artists, ARTIST_TYPES } from "../../db/schema";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { PROVIDER_IDS } from "../../providers";
@@ -59,11 +59,11 @@ type AddArtistParams = AddArtistRequest;
  */
 export class ArtistsController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve<AppDatabase>(DI_KEYS.DB);
+    return container.resolve(DI_TOKENS.DB);
   }
 
   private getProviderFactory(): ProviderFactory {
-    return container.resolve<ProviderFactory>(DI_KEYS.PROVIDER_FACTORY);
+    return container.resolve(DI_TOKENS.PROVIDER_FACTORY);
   }
 
 
@@ -109,6 +109,29 @@ export class ArtistsController extends BaseController {
   private async getArtists(_event: IpcMainInvokeEvent): Promise<Artist[]> {
     const db = this.getDb();
     try {
+      // In DEBUG mode, log EXPLAIN QUERY PLAN to verify index usage
+      if (process.env.DEBUG === "true" || process.env.DEBUG_SQLITE === "true") {
+        const { getSqliteInstance } = await import("../../db/client");
+        const sqlite = getSqliteInstance();
+        const explainQuery = sqlite.prepare(`
+          EXPLAIN QUERY PLAN
+          SELECT * FROM artists
+          ORDER BY COALESCE(last_checked, created_at) DESC
+        `);
+        const plan = explainQuery.all() as Array<{ detail?: string; [key: string]: unknown }>;
+        log.debug("[ArtistsController] EXPLAIN QUERY PLAN:", JSON.stringify(plan, null, 2));
+        
+        // Verify that artists_sort_idx is being used
+        const usesIndex = plan.some(
+          (row) => row.detail?.includes("artists_sort_idx")
+        );
+        if (!usesIndex) {
+          log.warn("[ArtistsController] ⚠️ Index artists_sort_idx not detected in query plan! Performance may be degraded.");
+        } else {
+          log.debug("[ArtistsController] ✓ Index artists_sort_idx is being used");
+        }
+      }
+
       const result = await db.query.artists.findMany({
         orderBy: [
           desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`),

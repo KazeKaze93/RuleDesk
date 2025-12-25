@@ -3,7 +3,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq, desc, count, and, like } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_KEYS } from "../../core/di/Container";
+import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, type Post } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -66,7 +66,7 @@ type GetPostsParams = z.infer<typeof GetPostsSchema>;
  */
 export class PostsController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve<AppDatabase>(DI_KEYS.DB);
+    return container.resolve(DI_TOKENS.DB);
   }
 
   /**
@@ -87,6 +87,11 @@ export class PostsController extends BaseController {
       IPC_CHANNELS.DB.MARK_VIEWED,
       z.tuple([z.number().int().positive()]),
       this.markViewed.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+    );
+    this.handle(
+      IPC_CHANNELS.DB.RESET_POST_CACHE,
+      z.tuple([z.number().int().positive()]),
+      this.resetPostCache.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     log.info("[PostsController] All handlers registered");
@@ -209,6 +214,33 @@ export class PostsController extends BaseController {
       return true;
     } catch (error) {
       log.error("[PostsController] Failed to mark post as viewed:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Reset post cache (mark post as not viewed)
+   *
+   * @param _event - IPC event (unused)
+   * @param postId - Post ID
+   * @returns true if update succeeded
+   * @throws {Error} If update fails
+   */
+  private async resetPostCache(
+    _event: IpcMainInvokeEvent,
+    postId: number
+  ): Promise<boolean> {
+    try {
+      const db = this.getDb();
+      await db
+        .update(posts)
+        .set({ isViewed: false })
+        .where(eq(posts.id, postId));
+
+      log.info(`[PostsController] Post ${postId} cache reset (marked as not viewed)`);
+      return true;
+    } catch (error) {
+      log.error("[PostsController] Failed to reset post cache:", error);
       return false;
     }
   }

@@ -2,7 +2,7 @@ import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_KEYS } from "../../core/di/Container";
+import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings } from "../../db/schema";
 import { encrypt } from "../../lib/crypto";
 import { IPC_CHANNELS } from "../channels";
@@ -26,7 +26,7 @@ const SaveSettingsSchema = z.object({
  */
 export class SettingsController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve<AppDatabase>(DI_KEYS.DB);
+    return container.resolve(DI_TOKENS.DB);
   }
 
   /**
