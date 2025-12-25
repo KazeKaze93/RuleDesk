@@ -127,35 +127,26 @@ export class SettingsController extends BaseController {
         }
       }
 
-      // Atomic upsert: Use fixed ID=1 for settings (single profile design)
-      // If we need multi-profile support in the future, this will need refactoring
-      // For now, this eliminates race condition between findFirst and insert
-      const existing = await db.query.settings.findFirst();
-      
-      // Prepare update data: merge new values with existing ones
-      const updateData: Partial<typeof settings.$inferInsert> = {
-        userId,
-        ...(encryptedKey !== undefined && { encryptedApiKey: encryptedKey }),
-        // Preserve existing values for optional fields if not provided
-        ...(existing && {
-          isSafeMode: existing.isSafeMode,
-          isAdultConfirmed: existing.isAdultConfirmed,
-        }),
-      };
-
-      // Single atomic operation: upsert with fixed ID
+      // Atomic upsert: Single query eliminates race condition
+      // Fixed ID=1 for single profile design (refactor if multi-profile needed)
+      // Only update fields that are explicitly provided (userId and apiKey are required in schema)
       await db
         .insert(settings)
         .values({
           id: 1,
           userId,
-          encryptedApiKey: encryptedKey ?? existing?.encryptedApiKey ?? "",
-          isSafeMode: existing?.isSafeMode ?? true,
-          isAdultConfirmed: existing?.isAdultConfirmed ?? false,
+          encryptedApiKey: encryptedKey ?? "",
+          isSafeMode: true,
+          isAdultConfirmed: false,
         })
         .onConflictDoUpdate({
           target: settings.id,
-          set: updateData,
+          set: {
+            userId,
+            ...(encryptedKey !== undefined && { encryptedApiKey: encryptedKey }),
+            // Note: isSafeMode and isAdultConfirmed are not updated here
+            // They should be updated via separate endpoint if needed
+          },
         });
 
       log.info("[SettingsController] Settings saved successfully");

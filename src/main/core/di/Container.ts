@@ -7,7 +7,7 @@ import log from "electron-log";
  */
 export const DI_KEYS = {
   DB: "Database",
-  R34_PROVIDER: "Rule34Provider",
+  PROVIDER_FACTORY: "ProviderFactory",
 } as const;
 
 /**

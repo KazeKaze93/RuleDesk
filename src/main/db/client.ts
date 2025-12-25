@@ -36,7 +36,11 @@ export async function initializeDatabase(): Promise<AppDatabase> {
       : undefined,
   });
 
+  // Configure SQLite for optimal performance
   sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("synchronous = NORMAL"); // Balance between safety and performance
+  sqlite.pragma("temp_store = MEMORY"); // Use memory for temp tables (faster)
+  sqlite.pragma("mmap_size = 268435456"); // 256MB memory-mapped I/O for faster reads
 
   sqliteInstance = sqlite;
   dbInstance = drizzle(sqlite, { schema }) as AppDatabase;

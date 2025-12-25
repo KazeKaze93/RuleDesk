@@ -3,6 +3,7 @@ import type { Artist, Post, Settings } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
 import type { GetPostsParams, AddArtistParams } from "./types/ipc";
 import type { TagResult } from "./services/providers/IBooruProvider";
+import type { ProviderId } from "./providers";
 
 export type UpdateStatusData = {
   status: string;
@@ -103,7 +104,7 @@ export interface IpcBridge {
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
 
-  searchRemoteTags: (query: string) => Promise<TagResult[]>;
+  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<TagResult[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
@@ -117,9 +118,9 @@ const ipcBridge: IpcBridge = {
   writeToClipboard: (text) =>
     ipcRenderer.invoke("app:write-to-clipboard", text),
 
-  // Search remote tags (currently only Rule34 supported)
-  searchRemoteTags: (query) =>
-    ipcRenderer.invoke("api:search-remote-tags", query),
+  // Search remote tags via specified provider (defaults to rule34)
+  searchRemoteTags: (query, provider = "rule34") =>
+    ipcRenderer.invoke("api:search-remote-tags", query, provider),
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 
