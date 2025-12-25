@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Combobox, Transition } from "@headlessui/react";
 import { ChevronUpDownIcon, CheckIcon } from "@heroicons/react/20/solid";
 import log from "electron-log/renderer";
@@ -46,7 +46,10 @@ export function AsyncAutocomplete({
     fetchOptionsRef.current = fetchOptions;
   }, [fetchOptions]);
 
-  useEffect(() => {
+  // Synchronize UI state with query validation using useLayoutEffect
+  // This prevents flickering when query becomes invalid
+  // Note: useLayoutEffect is designed for synchronous DOM synchronization, so setState is valid here
+  useLayoutEffect(() => {
     const currentQuery = debouncedQuery || "";
     const trimmedQuery = currentQuery.trim();
 
@@ -58,14 +61,20 @@ export function AsyncAutocomplete({
         abortControllerRef.current = null;
       }
       
-      // Reset state - this is necessary to clear UI when query becomes invalid
-      // Using setTimeout to defer state update and avoid synchronous setState warning
-      const timeoutId = setTimeout(() => {
-        setOptions([]);
-        setIsLoading(false);
-      }, 0);
-      
-      return () => clearTimeout(timeoutId);
+      // Clear state synchronously - useLayoutEffect is designed for DOM synchronization
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- useLayoutEffect is designed for synchronous DOM updates
+      setOptions([]);
+      setIsLoading(false);
+    }
+  }, [debouncedQuery]);
+
+  useEffect(() => {
+    const currentQuery = debouncedQuery || "";
+    const trimmedQuery = currentQuery.trim();
+
+    // Skip if query is invalid (handled by useLayoutEffect above)
+    if (!trimmedQuery || trimmedQuery.length < 2) {
+      return;
     }
 
     // Cancel previous request if still pending
@@ -77,12 +86,9 @@ export function AsyncAutocomplete({
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    // Set loading state asynchronously
-    const loadingTimeoutId = setTimeout(() => {
-      if (!abortController.signal.aborted && abortControllerRef.current === abortController) {
-        setIsLoading(true);
-      }
-    }, 0);
+    // Set loading state - this is part of effect's purpose: synchronizing with async operation
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: synchronizing loading state with async fetch operation
+    setIsLoading(true);
 
     fetchOptionsRef
       .current(trimmedQuery)
@@ -107,7 +113,6 @@ export function AsyncAutocomplete({
       });
 
     return () => {
-      clearTimeout(loadingTimeoutId);
       // Abort request on cleanup
       abortController.abort();
       if (abortControllerRef.current === abortController) {

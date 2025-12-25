@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type { Artist, Post, Settings } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
-import type { GetPostsParams, AddArtistParams } from "./types/ipc";
+import type { GetPostsRequest, AddArtistRequest } from "./types/ipc";
 import type { TagResult } from "./services/providers/IBooruProvider";
 import type { ProviderId } from "./providers";
 
@@ -27,9 +27,8 @@ export type DownloadProgressData = {
 };
 export type DownloadProgressCallback = (data: DownloadProgressData) => void;
 
-// Re-export types from controllers for use in renderer
-export type { GetPostsParams } from "./ipc/controllers/PostsController";
-export type AddArtistPayload = AddArtistParams;
+// Re-export IPC DTOs for use in renderer
+export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "./types/ipc";
 
 // Legacy interface for backward compatibility (can be removed if not used)
 export interface PostQueryFilters {
@@ -52,14 +51,14 @@ export interface IpcBridge {
 
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
-  addArtist: (artist: AddArtistPayload) => Promise<Artist | undefined>;
+  addArtist: (artist: AddArtistRequest) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
   // --- NEW: SEARCH ---
   searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 
   // Posts
-  getArtistPosts: (params: GetPostsParams) => Promise<Post[]>;
+  getArtistPosts: (params: GetPostsRequest) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
@@ -135,7 +134,7 @@ const ipcBridge: IpcBridge = {
 
   searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
 
-  getArtistPosts: (params: GetPostsParams) =>
+  getArtistPosts: (params: GetPostsRequest) =>
     ipcRenderer.invoke("db:get-posts", params),
   getArtistPostsCount: (artistId?: number) =>
     ipcRenderer.invoke("db:get-posts-count", artistId),

@@ -43,7 +43,7 @@ export class SettingsController extends BaseController {
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE,
       z.tuple([SaveSettingsSchema]),
-      this.saveSettings.bind(this)
+      this.saveSettings.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     log.info("[SettingsController] All handlers registered");
@@ -112,42 +112,47 @@ export class SettingsController extends BaseController {
     try {
       const db = this.getDb();
 
-      // Handle Encryption
-      // If a new 'apiKey' comes from frontend, encrypt it.
-      // If not provided, we keep the old encrypted one.
-      let encryptedKey: string | undefined;
-      if (apiKey) {
-        try {
-          encryptedKey = encrypt(apiKey);
-        } catch (error) {
-          log.error("[SettingsController] Failed to encrypt API key:", error);
-          throw new Error(
-            "Failed to encrypt API key. Encryption is not available on this system."
-          );
+      // Use transaction to ensure atomicity when updating sensitive data
+      // This prevents partial updates if encryption or database operation fails
+      await db.transaction(async (tx) => {
+        // Handle Encryption within transaction
+        // If a new 'apiKey' comes from frontend, encrypt it.
+        // If not provided, we keep the old encrypted one.
+        let encryptedKey: string | undefined;
+        if (apiKey) {
+          try {
+            encryptedKey = encrypt(apiKey);
+          } catch (error) {
+            log.error("[SettingsController] Failed to encrypt API key:", error);
+            throw new Error(
+              "Failed to encrypt API key. Encryption is not available on this system."
+            );
+          }
         }
-      }
 
-      // Atomic upsert: Single query eliminates race condition
-      // Fixed ID=1 for single profile design (refactor if multi-profile needed)
-      // Only update fields that are explicitly provided (userId and apiKey are required in schema)
-      await db
-        .insert(settings)
-        .values({
-          id: 1,
-          userId,
-          encryptedApiKey: encryptedKey ?? "",
-          isSafeMode: true,
-          isAdultConfirmed: false,
-        })
-        .onConflictDoUpdate({
-          target: settings.id,
-          set: {
+        // Get existing settings to preserve optional fields
+        const existing = await tx.query.settings.findFirst();
+
+        // Atomic upsert: Single query eliminates race condition
+        // Fixed ID=1 for single profile design (refactor if multi-profile needed)
+        await tx
+          .insert(settings)
+          .values({
+            id: 1,
             userId,
-            ...(encryptedKey !== undefined && { encryptedApiKey: encryptedKey }),
-            // Note: isSafeMode and isAdultConfirmed are not updated here
-            // They should be updated via separate endpoint if needed
-          },
-        });
+            encryptedApiKey: encryptedKey ?? existing?.encryptedApiKey ?? "",
+            isSafeMode: existing?.isSafeMode ?? true,
+            isAdultConfirmed: existing?.isAdultConfirmed ?? false,
+          })
+          .onConflictDoUpdate({
+            target: settings.id,
+            set: {
+              userId,
+              ...(encryptedKey !== undefined && { encryptedApiKey: encryptedKey }),
+              // Preserve existing optional fields if not explicitly updated
+            },
+          });
+      });
 
       log.info("[SettingsController] Settings saved successfully");
       return true;
