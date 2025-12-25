@@ -6,6 +6,7 @@ import { ArtistCard } from "./components/ArtistCard";
 import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
 import { Button } from "../../components/ui/button";
 import type { Artist } from "../../../main/db/schema";
+import type { ProviderId } from "../../../main/providers";
 
 export const Tracked = () => {
   const navigate = useNavigate();
@@ -26,16 +27,17 @@ export const Tracked = () => {
   const handleAddArtist = async (
     name: string,
     tag: string,
-    type: "tag" | "uploader" | "query"
+    type: "tag" | "uploader" | "query",
+    provider: ProviderId
   ) => {
     try {
       await window.api.addArtist({
         name,
         tag,
         type,
-        apiEndpoint:
-          "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index",
+        provider,
       });
+
       // Invalidate cache to refresh list
       queryClient.invalidateQueries({ queryKey: ["artists"] });
       setIsAddModalOpen(false);
@@ -51,13 +53,14 @@ export const Tracked = () => {
 
   if (isLoading)
     return <div className="p-8 text-muted-foreground">Loading artists...</div>;
+
   if (error)
     return <div className="p-8 text-red-500">Error loading artists</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Tracked Sources</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Tracked Artists</h1>
         <Button onClick={() => setIsAddModalOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" />
           Add Source
@@ -66,7 +69,7 @@ export const Tracked = () => {
 
       {!artists || artists.length === 0 ? (
         <div className="flex flex-col justify-center items-center h-64 rounded-lg border-2 border-dashed bg-muted/10 text-muted-foreground">
-          <p>No tracked artists yet.</p>
+          <p>No tracked sources yet.</p>
           <Button variant="link" onClick={() => setIsAddModalOpen(true)}>
             Add your first one
           </Button>

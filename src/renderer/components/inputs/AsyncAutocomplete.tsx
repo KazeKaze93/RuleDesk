@@ -109,9 +109,11 @@ export function AsyncAutocomplete({
   return (
     <Combobox value={selectedOption} onChange={handleSelect} nullable>
       <div className="relative">
-        <Combobox.Label className="block mb-1 text-sm font-medium text-slate-400">
-          {label}
-        </Combobox.Label>
+        {label && (
+          <Combobox.Label className="block ml-1 mb-1.5 text-xs font-medium text-zinc-400">
+            {label}
+          </Combobox.Label>
+        )}
         <div className="relative">
           <Combobox.Input
             className="px-3 py-2 pr-10 w-full text-white rounded border bg-slate-950 border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-600"

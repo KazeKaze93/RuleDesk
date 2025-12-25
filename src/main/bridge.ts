@@ -3,6 +3,8 @@ import type { Artist, Post, Settings } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
 import type { GetPostsParams as GetPostsParamsFromHandler } from "./ipc/handlers/posts";
 import type { AddArtistParams } from "./ipc/handlers/artists";
+import type { SearchResults } from "./providers/types";
+import type { ProviderId } from "./providers";
 
 export type UpdateStatusData = {
   status: string;
@@ -28,6 +30,7 @@ export type DownloadProgressCallback = (data: DownloadProgressData) => void;
 
 // Use z.infer types from handlers to ensure type safety
 export type GetPostsParams = GetPostsParamsFromHandler;
+// Use z.infer directly from schema - no manual type manipulation
 export type AddArtistPayload = AddArtistParams;
 
 // Legacy interface for backward compatibility (can be removed if not used)
@@ -103,7 +106,7 @@ export interface IpcBridge {
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
 
-  searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
+  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
@@ -117,8 +120,9 @@ const ipcBridge: IpcBridge = {
   writeToClipboard: (text) =>
     ipcRenderer.invoke("app:write-to-clipboard", text),
 
-  searchRemoteTags: (query) =>
-    ipcRenderer.invoke("api:search-remote-tags", query),
+  // Pass object to IPC
+  searchRemoteTags: (query, provider = "rule34") =>
+    ipcRenderer.invoke("api:search-remote-tags", { query, provider }),
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 

@@ -16,7 +16,7 @@ const navItems = [
   { to: "/updates", icon: Zap, label: "Updates" },
   { to: "/browse", icon: LayoutGrid, label: "Browse" },
   { to: "/favorites", icon: Heart, label: "Favorites" },
-  { to: "/tracked", icon: Users, label: "Sources" },
+  { to: "/tracked", icon: Users, label: "Artists" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
@@ -98,7 +98,7 @@ export const Sidebar = () => {
               ? "opacity-70 cursor-wait"
               : "cursor-pointer hover:opacity-100"
           )}
-          title="Click to sync all sources"
+          title="Click to sync all artists"
         >
           <div
             className={cn(

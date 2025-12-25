@@ -6,11 +6,20 @@ import {
   index,
 } from "drizzle-orm/sqlite-core";
 
+// Artist type constants for type safety
+export const ARTIST_TYPES = ["tag", "uploader", "query"] as const;
+export type ArtistType = typeof ARTIST_TYPES[number];
+
+// Provider constants (must match providers/index.ts)
+export const PROVIDER_IDS_SCHEMA = ["rule34", "gelbooru"] as const;
+
 export const artists = sqliteTable("artists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   tag: text("tag").notNull().unique(),
-  type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
+  // Provider ID with enum constraint
+  provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
+  type: text("type", { enum: ARTIST_TYPES }).notNull(),
   apiEndpoint: text("api_endpoint").notNull(),
   lastPostId: integer("last_post_id").notNull().default(0),
   newPostsCount: integer("new_posts_count").notNull().default(0),

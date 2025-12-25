@@ -1,9 +1,12 @@
-import type { Artist, NewArtist, Post } from "./main/db/schema";
+import type { Artist, Post } from "./main/db/schema";
 import {
   IpcBridge,
   UpdateStatusCallback,
   UpdateProgressCallback,
+  AddArtistPayload,
 } from "./main/bridge";
+import type { SearchResults } from "./main/providers/types";
+import type { ProviderId } from "./main/providers";
 
 export type SyncErrorCallback = (message: string) => void;
 
@@ -39,7 +42,7 @@ export interface IpcApi extends IpcBridge {
 
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
-  addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
+  addArtist: (artist: AddArtistPayload) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
   // Search
@@ -78,7 +81,7 @@ export interface IpcApi extends IpcBridge {
 
   markPostAsViewed: (postId: number) => Promise<boolean>;
 
-  searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
+  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
