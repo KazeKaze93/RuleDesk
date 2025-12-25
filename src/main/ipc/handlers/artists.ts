@@ -118,6 +118,7 @@ export const registerArtistHandlers = () => {
     }
 
     // Use webContents.id as unique identifier for each window
+    // webContents.id is stable for the lifetime of the webContents and unique per instance
     const windowId = event.sender.id;
 
     // Rate limiting check
@@ -154,6 +155,8 @@ export const registerArtistHandlers = () => {
     }
 
     // Cancel previous search request for this specific window
+    // Note: Map stores only ONE controller per windowId, so no memory leak
+    // even if modal is opened/closed 1000 times - old controller is replaced
     const existingController = searchAbortControllers.get(windowId);
     if (existingController) {
       existingController.abort();

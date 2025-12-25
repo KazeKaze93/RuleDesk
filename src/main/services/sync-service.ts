@@ -10,9 +10,11 @@ import * as schema from "../db/schema";
 import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
 import type { BooruPost } from "../providers/types";
 
-// SQLite supports up to 999 variables in older versions, much more in newer
-// Each post has ~10 fields, so 500 posts = ~5000 variables (well within limits)
-const CHUNK_SIZE = 500;
+// SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
+// Each post has 12 fields for INSERT + ~6 for UPDATE in onConflictDoUpdate
+// Safe calculation: 999 / 18 ≈ 55, use 50 for safety margin
+// Modern SQLite can be recompiled with higher limits, but we target default builds
+const CHUNK_SIZE = 50;
 
 async function bulkUpsertPosts(
   postsToSave: NewPost[],
@@ -267,10 +269,12 @@ export class SyncService {
     let page = 0;
     let hasMore = true;
     let newPostsCount = 0;
+    // Track current lastPostId separately to avoid mutating artist object
+    let currentLastPostId = artist.lastPostId;
 
     while (hasMore && page < maxPages) {
       try {
-        const idFilter = artist.lastPostId > 0 ? ` id:>${artist.lastPostId}` : "";
+        const idFilter = currentLastPostId > 0 ? ` id:>${currentLastPostId}` : "";
         
         // Use provider to format tag (handles 'user:' prefix logic)
         const baseTag = provider.formatTag(artist.tag, artist.type);
@@ -286,9 +290,9 @@ export class SyncService {
           artist.name
         );
 
-        const newPosts = postsData.filter((p) => p.id > artist.lastPostId);
+        const newPosts = postsData.filter((p) => p.id > currentLastPostId);
 
-        if (newPosts.length === 0 && artist.lastPostId > 0) {
+        if (newPosts.length === 0 && currentLastPostId > 0) {
           hasMore = false;
           break;
         }
@@ -316,20 +320,19 @@ export class SyncService {
             await bulkUpsertPosts(postsToSave, tx);
             
             // Update lastPostId ONLY with posts that were actually saved in this transaction
-            // SQLite with WAL mode + single writer = no race condition, use local artist object
+            // Use currentLastPostId (not artist.lastPostId) to avoid race conditions
             await tx
               .update(artists)
               .set({
-                lastPostId: Math.max(artist.lastPostId, batchHighestPostId),
-                newPostsCount: artist.newPostsCount + postsToSave.length,
+                lastPostId: Math.max(currentLastPostId, batchHighestPostId),
+                newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
                 lastChecked: new Date(),
               })
               .where(eq(artists.id, artist.id));
           });
           
-          // Update local artist object to reflect DB state for next iteration
-          artist.lastPostId = Math.max(artist.lastPostId, batchHighestPostId);
-          artist.newPostsCount += postsToSave.length;
+          // Update local tracking variable for next iteration
+          currentLastPostId = Math.max(currentLastPostId, batchHighestPostId);
           newPostsCount += postsToSave.length;
         }
 

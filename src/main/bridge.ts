@@ -30,8 +30,8 @@ export type DownloadProgressCallback = (data: DownloadProgressData) => void;
 
 // Use z.infer types from handlers to ensure type safety
 export type GetPostsParams = GetPostsParamsFromHandler;
-// Make apiEndpoint optional in the public API (backend handles default)
-export type AddArtistPayload = Omit<AddArtistParams, "apiEndpoint"> & { apiEndpoint?: string };
+// Use z.infer directly from schema - no manual type manipulation
+export type AddArtistPayload = AddArtistParams;
 
 // Legacy interface for backward compatibility (can be removed if not used)
 export interface PostQueryFilters {
