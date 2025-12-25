@@ -147,14 +147,8 @@ Opens web interface at `http://localhost:4983` (default port).
 ├── src/
 │   ├── main/                          # Electron Main Process
 │   │   ├── db/                        # Database layer
-│   │   │   ├── repositories/          # Repository pattern
-│   │   │   │   ├── artists.repo.ts
-│   │   │   │   └── posts.repo.ts
-│   │   │   ├── db-worker.ts          # Worker thread implementation
-│   │   │   ├── db-worker-client.ts   # Worker client interface
-│   │   │   ├── migrate.ts             # Migration runner
+│   │   │   ├── client.ts              # Database client (initialization, getDb)
 │   │   │   ├── schema.ts              # Drizzle schema definitions
-│   │   │   └── worker-types.ts        # Worker type definitions
 │   │   ├── ipc/                       # IPC handlers
 │   │   │   ├── handlers/              # Modular handlers
 │   │   │   │   ├── artists.ts
@@ -234,7 +228,8 @@ Opens web interface at `http://localhost:4983` (default port).
 
 - Edit files in `src/main/`
 - Changes require app restart (no HMR for Main process)
-- Check console for errors
+- Check console/terminal for errors
+- Database changes require migration generation (`npm run db:generate`)
 
 **Renderer Changes:**
 

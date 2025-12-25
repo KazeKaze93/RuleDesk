@@ -24,9 +24,9 @@ graph TB
         BackendClients[Backend Clients<br/>API Communication]
     end
 
-    subgraph "Worker Thread"
-        DBWorker[Database Worker<br/>SQLite Operations]
+    subgraph "Main Process Database"
         DrizzleORM[Drizzle ORM<br/>Type-Safe Queries]
+        SQLiteDB[(SQLite Database<br/>WAL Mode)]
     end
 
     subgraph "External"
@@ -40,15 +40,14 @@ graph TB
     Preload <--> IPCHandlers
     IPCHandlers --> ServicesLayer
     ServicesLayer --> BackendClients
-    ServicesLayer <--> DBWorker
-    DBWorker --> DrizzleORM
+    ServicesLayer --> DrizzleORM
     DrizzleORM --> SQLiteDB
     BackendClients --> Rule34API
 
     style ReactContext fill:#e1f5ff
     style Preload fill:#fff4e1
     style ServicesLayer fill:#ffe1e1
-    style DBWorker fill:#f0e1ff
+    style DrizzleORM fill:#f0e1ff
     style SQLiteDB fill:#e1ffe1
     style Rule34API fill:#ffe1f5
 ```
@@ -89,9 +88,9 @@ graph TB
             BackendClients[Backend Clients]
         end
 
-        subgraph "Worker Thread"
-            DBWorker[Database Worker]
+        subgraph "Main Process Database"
             Drizzle[Drizzle ORM]
+            SQLite[(SQLite)]
         end
     end
 
@@ -104,8 +103,7 @@ graph TB
     Preload <--> IPC
     IPC --> Services
     Services --> BackendClients
-    Services <--> DBWorker
-    DBWorker --> Drizzle
+    Services --> Drizzle
     Drizzle --> SQLite
     BackendClients --> Rule34API
 
@@ -123,8 +121,7 @@ sequenceDiagram
     participant Bridge as IPC Bridge
     participant IPC as IPC Handlers
     participant Service as Services
-    participant Worker as DB Worker
-    participant DB as SQLite
+    participant DB as SQLite (Drizzle)
     participant API as Rule34 API
 
     User->>ReactUI: User Action
@@ -132,39 +129,31 @@ sequenceDiagram
     Bridge->>IPC: ipcRenderer.invoke()
     IPC->>IPC: Validate Input (Zod)
     IPC->>Service: Call Service Method
-    Service->>Worker: dbWorkerClient.call()
-    Worker->>DB: Execute Query
-    DB-->>Worker: Return Data
-    Worker-->>Service: Return Result
+    Service->>DB: Execute Query (Drizzle)
+    DB-->>Service: Return Data
     Service-->>IPC: Return Response
     IPC-->>Bridge: IPC Response
     Bridge-->>ReactUI: Promise Resolve
     ReactUI->>User: Update UI
 ```
 
-### Database Worker Architecture
+### Database Architecture
 
 ```mermaid
 graph LR
     subgraph "Main Process"
         Main[Main Process]
-        Client[DB Worker Client]
-    end
-
-    subgraph "Worker Thread"
-        Worker[DB Worker]
+        Services[Services]
         DrizzleORM[Drizzle ORM]
-        SQLiteDB[(SQLite)]
+        SQLiteDB[(SQLite<br/>WAL Mode)]
     end
 
-    Main -->|RPC Call| Client
-    Client -->|PostMessage| Worker
-    Worker -->|Query| DrizzleORM
+    Main -->|Direct Call| Services
+    Services -->|Query| DrizzleORM
     DrizzleORM -->|SQL| SQLiteDB
     SQLiteDB -->|Result| DrizzleORM
-    DrizzleORM -->|Data| Worker
-    Worker -->|PostMessage| Client
-    Client -->|Promise Resolve| Main
+    DrizzleORM -->|Data| Services
+    Services -->|Return| Main
 ```
 
 ## Process Separation
@@ -183,41 +172,20 @@ graph LR
 
 **Key Components:**
 
-1. **Database Worker** (`src/main/db/db-worker.ts`)
+1. **Database Client** (`src/main/db/client.ts`)
 
-   - Runs in a dedicated worker thread for non-blocking database operations
-   - Manages all database operations using Drizzle ORM
-   - Thread-safe SQLite access isolated from main process
-   - RPC pattern with correlation IDs for request/response matching
-   - Methods: getTrackedArtists, addArtist, deleteArtist, getPostsByArtist, savePostsForArtist, getSettings, saveSettings, backup, restore, searchArtists, markPostAsViewed
+   - Direct synchronous access to SQLite via `better-sqlite3`
+   - WAL (Write-Ahead Logging) mode enabled for concurrent reads
+   - Manages database initialization and migrations
+   - Provides `getDb()` and `getSqliteInstance()` functions
+   - Automatic migration execution on startup
 
-2. **Database Worker Client** (`src/main/db/db-worker-client.ts`)
+2. **Database Schema** (`src/main/db/schema.ts`)
 
-   - Client interface for communicating with database worker thread
-   - Handles worker lifecycle (initialization, termination)
-   - Provides async/await interface over worker RPC calls
-   - Manages backup and restore operations
-
-3. **Repositories** (`src/main/db/repositories/`)
-
-   - **ArtistsRepository** (`artists.repo.ts`) - Abstraction layer for artist operations
-
-     - `getAll()` - Get all tracked artists
-     - `add(artist)` - Add new artist
-     - `delete(id)` - Delete artist
-     - `searchTags(query)` - Search artists by tag/name
-
-   - **PostsRepository** (`posts.repo.ts`) - Abstraction layer for post operations
-
-     - `getByArtist(params)` - Get posts for artist with pagination
-     - `getCountByArtist(artistId)` - Get post count
-     - `markAsViewed(postId)` - Mark post as viewed
-     - `toggleFavorite(postId)` - Toggle favorite status
-     - `togglePostViewed(postId)` - Toggle viewed status
-     - `resetPostCache(postId)` - Reset post cache
-
-   - Repositories provide a clean abstraction over direct worker client calls
-   - Used by IPC handlers for type-safe database operations
+   - Drizzle ORM schema definitions for all tables
+   - Type-safe table definitions with proper indexes
+   - Tables: `artists`, `posts`, `settings`
+   - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost`
 
 4. **Sync Service** (`src/main/services/sync-service.ts`)
 
@@ -297,13 +265,13 @@ graph LR
 
    - **Pages:**
 
-     - **Updates.tsx** - Subscriptions feed (stub, in development)
-     - **Browse.tsx** - All posts view with filtering (stub, in development)
-     - **Favorites.tsx** - Favorites collection (stub, in development)
-     - **Tracked.tsx** - Artists and tags management
-     - **Settings.tsx** - Application configuration
-     - **ArtistDetails.tsx** - Artist gallery view
-     - **Onboarding.tsx** - API credentials input form
+     - **Updates.tsx** - Subscriptions feed (stub - placeholder component)
+     - **Browse.tsx** - All posts view with filtering (stub - placeholder component)
+     - **Favorites.tsx** - Favorites collection (stub - placeholder component)
+     - **Tracked.tsx** - Artists and tags management (fully implemented)
+     - **Settings.tsx** - Application configuration (fully implemented)
+     - **ArtistDetails.tsx** - Artist gallery view (fully implemented)
+     - **Onboarding.tsx** - API credentials input form (fully implemented)
 
    - **Layout:**
 
@@ -340,7 +308,7 @@ graph LR
 3. **IPC Client** (`window.api`)
    - Typed interface to Main process
    - All communication goes through this bridge
-   - Methods: getSettings, saveSettings, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, getArtistPostsCount, syncAll, openExternal, searchArtists, searchRemoteTags, markPostAsViewed, togglePostViewed, togglePostFavorite, downloadFile, openFileInFolder, createBackup, restoreBackup, writeToClipboard, verifyCredentials, logout, resetPostCache
+   - Methods: getSettings, saveSettings, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, getArtistPostsCount, syncAll, openExternal, searchArtists, searchRemoteTags, markPostAsViewed, togglePostViewed, togglePostFavorite, downloadFile, openFileInFolder, createBackup, restoreBackup, writeToClipboard, verifyCredentials, logout, resetPostCache, repairArtist, checkForUpdates, quitAndInstall, startDownload
 
 ## Security Architecture
 
@@ -369,9 +337,9 @@ graph TB
         Keychain[Platform Keychain]
     end
 
-    subgraph "Worker Thread (Isolated)"
-        DBWorker[DB Worker]
-        SQLite[(SQLite)]
+    subgraph "Main Process Database"
+        DrizzleORM[Drizzle ORM]
+        SQLite[(SQLite<br/>WAL Mode)]
     end
 
     ReactUI -->|Only via| BridgeAPI
@@ -382,14 +350,14 @@ graph TB
     ZodValidation -->|Validated Input| Services
     Services -->|Encrypted| SafeStorage
     SafeStorage -->|Platform API| Keychain
-    Services -->|RPC| DBWorker
-    DBWorker -->|Isolated| SQLite
+    Services -->|Direct Query| DrizzleORM
+    DrizzleORM -->|SQL| SQLite
 
     style ReactUI fill:#e1f5ff
     style ContextIsolation fill:#fff4e1
     style ZodValidation fill:#ffe1e1
     style SafeStorage fill:#e1ffe1
-    style DBWorker fill:#f0e1ff
+    style DrizzleORM fill:#f0e1ff
 ```
 
 ### Context Isolation
@@ -469,21 +437,15 @@ sequenceDiagram
     participant ReactQuery as TanStack Query
     participant Bridge as IPC Bridge
     participant IPC as IPC Handler
-    participant Client as DB Worker Client
-    participant Worker as DB Worker
-    participant DB as SQLite
+    participant DB as SQLite (Drizzle)
 
     User->>ReactUI: Click "View Artists"
     ReactUI->>ReactQuery: useQuery(['artists'])
     ReactQuery->>Bridge: window.api.getTrackedArtists()
     Bridge->>IPC: ipcRenderer.invoke('db:get-artists')
     IPC->>IPC: Validate (Zod)
-    IPC->>Client: dbWorkerClient.call('getTrackedArtists')
-    Client->>Worker: PostMessage (RPC)
-    Worker->>DB: Drizzle Query
-    DB-->>Worker: Artist[]
-    Worker-->>Client: PostMessage (Response)
-    Client-->>IPC: Promise Resolve
+    IPC->>DB: Drizzle Query
+    DB-->>IPC: Artist[]
     IPC-->>Bridge: IPC Response
     Bridge-->>ReactQuery: Promise Resolve
     ReactQuery->>ReactQuery: Cache Data
@@ -499,9 +461,7 @@ sequenceDiagram
     participant ReactUI as React UI
     participant Bridge as IPC Bridge
     participant IPC as IPC Handler
-    participant Client as DB Worker Client
-    participant Worker as DB Worker
-    participant DB as SQLite
+    participant DB as SQLite (Drizzle)
     participant ReactQuery as TanStack Query
 
     User->>ReactUI: Submit "Add Artist" Form
@@ -512,12 +472,8 @@ sequenceDiagram
         IPC-->>Bridge: Error
         Bridge-->>ReactUI: Reject Promise
     else Validation Success
-        IPC->>Client: dbWorkerClient.call('addArtist', data)
-        Client->>Worker: PostMessage (RPC)
-        Worker->>DB: Drizzle Insert
-        DB-->>Worker: New Artist
-        Worker-->>Client: PostMessage (Response)
-        Client-->>IPC: Promise Resolve
+        IPC->>DB: Drizzle Insert
+        DB-->>IPC: New Artist
         IPC-->>Bridge: IPC Response
         Bridge-->>ReactUI: Promise Resolve
         ReactUI->>ReactQuery: Invalidate Query
@@ -538,9 +494,7 @@ sequenceDiagram
     participant SyncService as Sync Service
     participant SecureStorage as Secure Storage
     participant Rule34API as Rule34.xxx API
-    participant Client as DB Worker Client
-    participant Worker as DB Worker
-    participant DB as SQLite
+    participant DB as SQLite (Drizzle)
 
     User->>ReactUI: Click "Sync All"
     ReactUI->>Bridge: window.api.syncAll()
@@ -550,12 +504,8 @@ sequenceDiagram
     Bridge-->>ReactUI: Promise Resolve
 
     par For Each Artist
-        SyncService->>Client: Get Artist List
-        Client->>Worker: getTrackedArtists()
-        Worker->>DB: Query Artists
-        DB-->>Worker: Artist[]
-        Worker-->>Client: Return Artists
-        Client-->>SyncService: Artists
+        SyncService->>DB: Get Artist List
+        DB-->>SyncService: Artist[]
 
         SyncService->>SecureStorage: Decrypt API Key
         SecureStorage-->>SyncService: Decrypted Key
@@ -566,13 +516,9 @@ sequenceDiagram
         SyncService->>SyncService: Map API Response
         SyncService->>SyncService: Rate Limit (1.5s delay)
 
-        SyncService->>Client: savePostsForArtist()
-        Client->>Worker: PostMessage (RPC)
-        Worker->>DB: INSERT/UPDATE Posts
-        Worker->>DB: UPDATE Artist (lastPostId)
-        DB-->>Worker: Success
-        Worker-->>Client: PostMessage (Response)
-        Client-->>SyncService: Success
+        SyncService->>DB: INSERT/UPDATE Posts (Bulk Upsert)
+        SyncService->>DB: UPDATE Artist (lastPostId)
+        DB-->>SyncService: Success
 
         SyncService->>ReactUI: emit('sync:progress', message)
         ReactUI->>ReactUI: Update Progress UI
@@ -591,8 +537,7 @@ The database uses SQLite with the following tables:
 
 1. **artists** - Tracked artists/users (by tag or uploader)
 2. **posts** - Cached post metadata with tags, ratings, and URLs
-3. **settings** - API credentials (User ID and API Key)
-4. **subscriptions** - Tag subscriptions (schema defined, not yet implemented)
+3. **settings** - API credentials (User ID and encrypted API Key), safe mode, adult confirmation
 
 See [Database Documentation](./database.md) for detailed schema information.
 
@@ -605,16 +550,15 @@ See [Database Documentation](./database.md) for detailed schema information.
 - Type inference
 - SQL generation
 
-### Worker Thread Architecture
+### Database Architecture
 
-**Database Worker Thread** (`src/main/db/db-worker.ts`):
+**Database Client** (`src/main/db/client.ts`):
 
-- All database operations run in a dedicated worker thread
-- Prevents blocking the main Electron process
-- RPC pattern with correlation IDs for request/response matching
-- Timeout handling for worker requests
-- Type-safe communication via `WorkerRequest` and `WorkerResponse` types
-- Automatic migration execution on worker initialization
+- Direct synchronous access to SQLite via `better-sqlite3`
+- WAL (Write-Ahead Logging) mode enabled for concurrent reads
+- Automatic migration execution on initialization
+- Type-safe queries via Drizzle ORM
+- Database connection managed in Main Process
 
 ## Component Architecture
 
@@ -903,7 +847,7 @@ Root:
 
 - Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
 - App runs successfully via `npm run dev` and communicates with SQLite database
-- **Database Worker Thread:** All database operations moved to dedicated worker thread for non-blocking main process
+- **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 
 **Database & Schema:**
 
@@ -911,13 +855,12 @@ Root:
 - Added proper `UNIQUE` constraints to the `posts` table (`artistId` + `postId`) to enable correct UPSERT operations
 - Added `sampleUrl` column for progressive image loading
 - Migrations system (`drizzle-kit`) is fully functional
-- **Worker Thread Architecture:** Database operations isolated in worker thread with RPC pattern
+- **Database Indexes:** Indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited` for optimized queries
 
 **Security & Reliability:**
 
 - **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API. Credentials encrypted at rest, decryption only in Main Process
-- **Database Backup/Restore:** Manual backup and restore functionality implemented. Create timestamped backups and restore from files
-- **Thread Safety:** Database operations run in dedicated worker thread, preventing main process blocking
+- **Database Backup/Restore:** Manual backup and restore functionality implemented with integrity checks. Create timestamped backups and restore from files
 
 **Data Integrity & Sync:**
 
@@ -945,16 +888,16 @@ Root:
 6. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
 7. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
 8. ✅ **Event System:** Real-time IPC events for sync progress, update status, and download progress
-9. ✅ **Database Worker Thread:** All database operations run in dedicated worker thread for non-blocking performance
+9. ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 10. ✅ **Secure Storage:** API credentials encrypted at rest using Electron's `safeStorage` API
-11. ✅ **Backup/Restore:** Manual database backup and restore functionality with timestamped backups
+11. ✅ **Backup/Restore:** Manual database backup and restore functionality with integrity checks and timestamped backups
 12. ✅ **Search Functionality:** Local artist search and remote tag search via Rule34.xxx autocomplete API
 13. ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
 14. ✅ **Favorites System:** Mark and manage favorite posts with toggle functionality
-15. ✅ **Download Manager:** Download full-resolution files with progress tracking and queue management
+15. ✅ **Download Manager:** Download full-resolution files with progress tracking
 16. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
 17. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
-18. ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles
+18. ⏳ **Global Top Bar:** Unified top bar with search, filters, sort controls - planned (not yet implemented)
 19. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 20. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
 21. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
@@ -970,18 +913,20 @@ Root:
 - Filter by **Tags** (Local search within downloaded posts)
 - Sort by: Date Added (New/Old), Posted Date
 
-**Status:** No filtering UI or logic implemented. `ArtistGallery` component currently displays all posts without filtering options.
+**Status:** No filtering UI or logic implemented. `ArtistGallery` component currently displays all posts without filtering options. Global Top Bar component is planned but not yet implemented.
 
-### B. Download Manager ⏳ Not Started
+### B. Download Manager ✅ Implemented (Core Features)
 
 **Goal:** Allow saving full-resolution files to the local file system.
 
-- "Download Original" button on post view
-- "Download All" for current filter/artist
-- **Queue System:** Handle downloads in the background/main process
-- **Settings:** Allow choosing a default download directory
+- ✅ "Download Original" button on post view (implemented in ViewerDialog)
+- ✅ **Download Handler:** Downloads run in Main Process with progress tracking
+- ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
+- ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
+- ⏳ "Download All" for current filter/artist (planned)
+- ⏳ **Settings:** Allow choosing a default download directory (planned)
 
-**Status:** No download functionality for posts. Only auto-updater download exists.
+**Status:** ✅ Core download functionality implemented. Individual file downloads work with progress tracking. Batch download and default directory settings are planned for future releases.
 
 ### C. Playlists / Collections ⏳ Not Started
 
@@ -1001,9 +946,9 @@ Root:
 
 See [Roadmap](./roadmap.md#-security--reliability-hardening) for detailed security improvements:
 
-- ✅ **DB Worker Thread Migration** - ✅ **COMPLETED:** SQLite access moved to dedicated worker thread
+- ✅ **Database Architecture** - ✅ **COMPLETED:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 - ✅ **Encrypt / Secure Storage for API Credentials** - ✅ **COMPLETED:** Using Electron's `safeStorage` API for encryption
-- ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented
+- ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented with integrity checks
 
 ### Future Considerations
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The application uses **SQLite** as the local database for storing metadata, tracked artists, posts, and subscriptions. The database is accessed exclusively through the **Main Process** using **Drizzle ORM** for type-safe queries.
+The application uses **SQLite** as the local database for storing metadata, tracked artists, posts, and settings. The database is accessed directly in the **Main Process** using **Drizzle ORM** for type-safe queries. WAL (Write-Ahead Logging) mode is enabled for concurrent reads.
 
 ## Database Location
 
@@ -124,238 +124,307 @@ export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 ```
 
-### Table: `subscriptions`
+### Table: `settings`
 
-Stores user subscriptions to tag combinations.
+Stores application settings including API credentials and user preferences.
 
-| Column            | Type                          | Description                                      |
-| ----------------- | ----------------------------- | ------------------------------------------------ |
-| `id`              | INTEGER (PK, AutoIncrement)   | Primary key                                      |
-| `tag_string`      | TEXT (NOT NULL, UNIQUE)       | Tag search string (e.g., 'tag_a, tag_b, -tag_c') |
-| `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0) | ID of last seen post for this subscription       |
-| `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0) | Count of new posts matching tags                 |
+| Column                | Type                          | Description                                    |
+| --------------------- | ----------------------------- | ---------------------------------------------- |
+| `id`                  | INTEGER (PK, AutoIncrement)   | Primary key                                    |
+| `user_id`             | TEXT (DEFAULT '')             | Rule34.xxx User ID                             |
+| `encrypted_api_key`   | TEXT (DEFAULT '')             | Encrypted API key (encrypted at rest)          |
+| `is_safe_mode`        | INTEGER (BOOLEAN, DEFAULT 1) | Safe mode flag (blur NSFW content)            |
+| `is_adult_confirmed`  | INTEGER (BOOLEAN, DEFAULT 0) | Adult confirmation flag (18+ confirmation)     |
 
 **Schema Definition:**
 
 ```typescript
-export const subscriptions = sqliteTable("subscriptions", {
-  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
-  tagString: text("tag_string").notNull().unique(),
-  lastPostId: integer("last_post_id", { mode: "number" }).notNull().default(0),
-  newPostsCount: integer("new_posts_count", { mode: "number" })
-    .notNull()
-    .default(0),
+export const settings = sqliteTable("settings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").default(""),
+  encryptedApiKey: text("encrypted_api_key").default(""),
+  isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
+  isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(false),
 });
+```
+
+**TypeScript Types:**
+
+```typescript
+export type Settings = typeof settings.$inferSelect;
+export type NewSettings = typeof settings.$inferInsert;
 ```
 
 ## Database Architecture
 
-All database operations are performed through a **dedicated Worker Thread** to prevent blocking the main Electron process. The architecture uses an RPC (Remote Procedure Call) pattern with correlation IDs for request/response matching.
+All database operations are performed directly in the **Main Process** using synchronous access via `better-sqlite3`. WAL (Write-Ahead Logging) mode is enabled to allow concurrent reads while writes are in progress.
 
-### Worker Thread Architecture
+### Database Client Architecture
 
-**Database Worker** (`src/main/db/db-worker.ts`):
+**Database Client** (`src/main/db/client.ts`):
 
-- Runs in a separate Node.js worker thread
-- Handles all SQLite operations using Drizzle ORM
-- Executes migrations on initialization
-- Provides thread-safe database access
-
-**Database Worker Client** (`src/main/db/db-worker-client.ts`):
-
-- Client interface for communicating with the worker thread
-- Manages worker lifecycle (initialization, termination)
-- Provides async/await interface over worker RPC calls
-- Handles backup and restore operations
+- Direct synchronous access to SQLite via `better-sqlite3`
+- WAL mode enabled for concurrent reads
+- Manages database initialization and migrations
+- Provides `getDb()` and `getSqliteInstance()` functions
+- Automatic migration execution on startup
 
 ### Initialization
 
 ```typescript
-import { DbWorkerClient } from "./db/db-worker-client";
+import { initializeDatabase, getDb } from "./db/client";
 
-const dbWorkerClient = new DbWorkerClient(DB_PATH);
-await dbWorkerClient.initialize();
+// Initialize database (runs migrations automatically)
+await initializeDatabase();
+
+// Get database instance for queries
+const db = getDb();
 ```
 
-**Note:** The worker thread is automatically initialized when `DbWorkerClient` is created. Migrations run automatically on worker initialization.
+**Note:** Migrations run automatically on database initialization. The database connection is managed in the Main Process.
 
-### Available Methods (via Worker Client)
+### Available Methods (via Drizzle ORM)
 
-All database operations are accessed through `DbWorkerClient.call()` method, which communicates with the worker thread via RPC.
+All database operations are accessed through Drizzle ORM using the database instance from `getDb()`.
 
-#### `getTrackedArtists(): Promise<Artist[]>`
+#### Get All Artists
 
-Retrieves all tracked artists, ordered by username.
+Retrieves all tracked artists, ordered by name.
 
 **Example:**
 
 ```typescript
-const artists = await dbWorkerClient.call("getTrackedArtists");
+import { getDb } from "./db/client";
+import { artists } from "./schema";
+import { asc } from "drizzle-orm";
+
+const db = getDb();
+const artistsList = await db.query.artists.findMany({
+  orderBy: [asc(artists.name)],
+});
 ```
 
-#### `addArtist(artistData: NewArtist): Promise<Artist>`
+#### Add Artist
 
 Adds a new artist to track.
 
 **Example:**
 
 ```typescript
-const newArtist: NewArtist = {
+import { getDb } from "./db/client";
+import { artists } from "./schema";
+
+const db = getDb();
+const newArtist = {
   name: "Example Artist",
   tag: "tag_name",
-  type: "tag",
+  type: "tag" as const,
   apiEndpoint: "https://api.rule34.xxx",
   lastPostId: 0,
   newPostsCount: 0,
 };
 
-const savedArtist = await dbWorkerClient.call("addArtist", newArtist);
+const result = await db.insert(artists).values(newArtist).returning();
+const savedArtist = result[0];
 ```
 
-#### `deleteArtist(id: number): Promise<void>`
+#### Delete Artist
 
 Deletes an artist and all associated posts (cascade delete).
 
 **Example:**
 
 ```typescript
-await dbWorkerClient.call("deleteArtist", { id: 123 });
+import { getDb } from "./db/client";
+import { artists } from "./schema";
+import { eq } from "drizzle-orm";
+
+const db = getDb();
+await db.delete(artists).where(eq(artists.id, 123));
 ```
 
-#### `getPostsByArtist(params: { artistId: number; limit?: number; offset?: number }): Promise<Post[]>`
+#### Get Posts by Artist
 
 Retrieves posts for a specific artist with pagination.
-
-**Parameters:**
-
-- `params.artistId: number` - Artist ID
-- `params.limit?: number` - Number of posts to retrieve (default: 1000)
-- `params.offset?: number` - Number of posts to skip (default: 0)
 
 **Example:**
 
 ```typescript
-// Get first 50 posts
-const posts = await dbWorkerClient.call("getPostsByArtist", {
-  artistId: 123,
-  limit: 50,
-  offset: 0,
-});
+import { getDb } from "./db/client";
+import { posts } from "./schema";
+import { eq, desc } from "drizzle-orm";
 
-// Get next 50 posts (page 2)
-const nextPosts = await dbWorkerClient.call("getPostsByArtist", {
-  artistId: 123,
-  limit: 50,
-  offset: 50,
+const db = getDb();
+const limit = 50;
+const offset = 0;
+
+const postsList = await db.query.posts.findMany({
+  where: eq(posts.artistId, 123),
+  orderBy: [desc(posts.postId)],
+  limit,
+  offset,
 });
 ```
 
 **Note:** The IPC method `getArtistPosts` uses a limit of 50 posts per page for better performance.
 
-#### `savePostsForArtist(params: { artistId: number; posts: NewPost[] }): Promise<void>`
+#### Save Posts (Bulk Upsert)
 
-Saves posts for an artist. Updates artist's `lastPostId` and increments `newPostsCount`.
+Saves posts for an artist using bulk upsert. Updates artist's `lastPostId` and increments `newPostsCount`.
 
 **Example:**
 
 ```typescript
+import { getDb } from "./db/client";
+import { posts, artists } from "./schema";
+import { eq } from "drizzle-orm";
+
+const db = getDb();
 const newPosts: NewPost[] = [
   {
     postId: 12345,
     artistId: 1,
     fileUrl: "https://...",
     previewUrl: "https://...",
+    sampleUrl: "https://...",
     rating: "s",
     tags: "tag1 tag2 tag3",
-    publishedAt: "1234567890",
+    publishedAt: new Date(),
   },
 ];
 
-await dbWorkerClient.call("savePostsForArtist", {
-  artistId: 1,
-  posts: newPosts,
-});
+// Bulk upsert with ON CONFLICT handling
+await db
+  .insert(posts)
+  .values(newPosts)
+  .onConflictDoUpdate({
+    target: [posts.artistId, posts.postId],
+    set: {
+      fileUrl: sql`excluded.file_url`,
+      previewUrl: sql`excluded.preview_url`,
+      // ... other fields
+    },
+  });
+
+// Update artist's lastPostId
+await db
+  .update(artists)
+  .set({ lastPostId: Math.max(...newPosts.map((p) => p.postId)) })
+  .where(eq(artists.id, 1));
 ```
 
-#### `getSettings(): Promise<{ userId: string; apiKey: string } | undefined>`
+#### Get Settings
 
-Retrieves stored API credentials. Returns encrypted API key (needs decryption in Main Process).
+Retrieves stored settings. API key is encrypted and should be decrypted in Main Process.
 
 **Example:**
 
 ```typescript
-const settings = await dbWorkerClient.call("getApiKeyDecrypted");
-if (settings) {
-  // API key is encrypted, decrypt using SecureStorage
-  const decryptedKey = SecureStorage.decrypt(settings.apiKey);
+import { getDb } from "./db/client";
+import { settings } from "./schema";
+import { decrypt } from "../lib/crypto";
+
+const db = getDb();
+const settingsRecord = await db.query.settings.findFirst();
+
+if (settingsRecord && settingsRecord.encryptedApiKey) {
+  // Decrypt API key using crypto utility
+  const decryptedKey = decrypt(settingsRecord.encryptedApiKey);
 }
 ```
 
-#### `saveSettings(params: { userId: string; apiKey: string }): Promise<void>`
+#### Save Settings
 
-Saves or updates API credentials. API key should be encrypted before saving.
+Saves or updates settings. API key should be encrypted before saving.
 
 **Example:**
 
 ```typescript
-const encryptedKey = SecureStorage.encrypt("your-api-key");
-await dbWorkerClient.call("saveSettings", {
-  userId: "123456",
-  apiKey: encryptedKey,
-});
+import { getDb } from "./db/client";
+import { settings } from "./schema";
+import { encrypt } from "../lib/crypto";
+
+const db = getDb();
+const encryptedKey = encrypt("your-api-key");
+
+await db
+  .insert(settings)
+  .values({
+    userId: "123456",
+    encryptedApiKey: encryptedKey,
+    isSafeMode: true,
+    isAdultConfirmed: false,
+  })
+  .onConflictDoUpdate({
+    target: settings.id,
+    set: {
+      userId: sql`excluded.user_id`,
+      encryptedApiKey: sql`excluded.encrypted_api_key`,
+    },
+  });
 ```
 
-#### `markPostAsViewed(params: { postId: number }): Promise<void>`
+#### Mark Post as Viewed
 
 Marks a post as viewed in the database.
 
 **Example:**
 
 ```typescript
-await dbWorkerClient.call("markPostAsViewed", { postId: 123 });
+import { getDb } from "./db/client";
+import { posts } from "./schema";
+import { eq } from "drizzle-orm";
+
+const db = getDb();
+await db
+  .update(posts)
+  .set({ isViewed: true })
+  .where(eq(posts.id, 123));
 ```
 
-#### `togglePostFavorite(params: { postId: number }): Promise<void>`
+#### Toggle Post Favorite
 
 Toggles the favorite status of a post in the database.
 
 **Example:**
 
 ```typescript
-await dbWorkerClient.call("togglePostFavorite", { postId: 123 });
+import { getDb } from "./db/client";
+import { posts } from "./schema";
+import { eq } from "drizzle-orm";
+
+const db = getDb();
+const post = await db.query.posts.findFirst({
+  where: eq(posts.id, 123),
+});
+
+if (post) {
+  await db
+    .update(posts)
+    .set({ isFavorited: !post.isFavorited })
+    .where(eq(posts.id, 123));
+}
 ```
 
-#### `searchArtists(params: { query: string }): Promise<{ id: number; label: string }[]>`
+#### Search Artists
 
 Searches for artists in the local database by name or tag.
 
 **Example:**
 
 ```typescript
-const results = await dbWorkerClient.call("searchArtists", {
-  query: "artist",
+import { getDb } from "./db/client";
+import { artists } from "./schema";
+import { or, like } from "drizzle-orm";
+
+const db = getDb();
+const query = "artist";
+const results = await db.query.artists.findMany({
+  where: or(
+    like(artists.name, `%${query}%`),
+    like(artists.tag, `%${query}%`)
+  ),
 });
-```
-
-#### `backup(): Promise<{ backupPath: string }>`
-
-Creates a timestamped backup of the database.
-
-**Example:**
-
-```typescript
-const result = await dbWorkerClient.call("backup");
-console.log(`Backup created at: ${result.backupPath}`);
-```
-
-#### `restore(backupPath: string): Promise<void>`
-
-Restores the database from a backup file. Worker thread is terminated and reinitialized after restore.
-
-**Example:**
-
-```typescript
-await dbWorkerClient.restore("/path/to/backup.db");
 ```
 
 ## Migrations
@@ -550,7 +619,8 @@ if (result.success) {
 
 1. Use `window.api.restoreBackup()` or the Backup Controls UI component
 2. Select a backup file from the file dialog
-3. Application will automatically restart after restore
+3. Database integrity check runs automatically before restore
+4. Application window reloads after successful restore
 
 **Manual Recovery:**
 
@@ -561,16 +631,16 @@ If the database becomes corrupted and you need to restore manually:
 3. Copy the backup file to replace `metadata.db`
 4. Restart the application (migrations will run automatically)
 
-**Note:** The application will automatically reload after restore to ensure all components are reinitialized with the restored data.
+**Note:** The restore process includes automatic integrity checks using `PRAGMA integrity_check` before replacing the database. If integrity check fails, the restore is rolled back and original database is preserved.
 
 ## Performance Considerations
 
-1. **Worker Thread Isolation:** Database operations run in a separate thread, preventing main process blocking
-2. **Indexes:** Add indexes on frequently queried columns
-3. **Batch Operations:** Use transactions for multiple inserts
-4. **Query Optimization:** Use Drizzle's query builder efficiently
-5. **Connection Pooling:** SQLite uses a single connection in the worker thread (better-sqlite3)
-6. **RPC Pattern:** Worker communication uses correlation IDs for efficient request/response matching
+1. **WAL Mode:** Write-Ahead Logging mode enabled for concurrent reads
+2. **Indexes:** Indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited` for optimized queries
+3. **Batch Operations:** Bulk upsert operations process posts in chunks (200 posts per chunk) to avoid SQLite variable limit
+4. **Query Optimization:** Use Drizzle's query builder efficiently with proper indexes
+5. **Synchronous Access:** Direct synchronous access via `better-sqlite3` in Main Process
+6. **Connection Management:** Single database connection managed in Main Process
 
 ## Future Enhancements
 
@@ -581,7 +651,9 @@ Planned database improvements:
   - **Target:** FTS5 virtual table for efficient tag searching
   - **Status:** See [Roadmap](./roadmap.md#-technical-improvements-from-audit) for implementation plan
 - ✅ **Favorites System:** Implemented with `isFavorited` field and index
-- Post deduplication logic
-- Statistics tables for analytics
-- Export/import functionality
-- Database compaction utilities
+- ⏳ **Subscriptions Table:** Tag subscriptions feature planned (schema not yet implemented)
+- ⏳ **Playlists Tables:** Playlists feature planned (schema not yet implemented)
+- ⏳ Post deduplication logic
+- ⏳ Statistics tables for analytics
+- ⏳ Export/import functionality
+- ⏳ Database compaction utilities

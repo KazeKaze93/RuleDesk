@@ -971,7 +971,7 @@ try {
 
 5. **Secure Credentials:** API keys are encrypted at rest using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
 
-6. **Worker Thread Isolation:** Database operations run in a dedicated worker thread, providing additional isolation.
+6. **Direct Database Access:** Database operations run directly in Main Process via `better-sqlite3` with WAL mode for concurrent reads.
 
 ## Implementation Details
 
@@ -989,14 +989,17 @@ export const registerIpcHandlers = (
   // App handlers
   ipcMain.handle("app:get-version", handleGetAppVersion);
   ipcMain.handle("app:get-settings", async () => {
-    // Decrypts API key using SecureStorage
-    const settings = await dbWorkerClient.call("getApiKeyDecrypted");
-    // ... decryption logic
+    // Gets settings and decrypts API key using crypto utility
+    const db = getDb();
+    const settings = await db.query.settings.findFirst();
+    // ... decryption logic using decrypt() from lib/crypto
   });
   ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
-    // Encrypts API key using SecureStorage before saving
-    const encryptedKey = SecureStorage.encrypt(apiKey);
-    await dbWorkerClient.call("saveSettings", { userId, apiKey: encryptedKey });
+    // Encrypts API key using crypto utility before saving
+    const encryptedKey = encrypt(apiKey);
+    const db = getDb();
+    await db.insert(settings).values({ userId, encryptedApiKey: encryptedKey })
+      .onConflictDoUpdate({ target: settings.id, set: { userId, encryptedApiKey: encryptedKey } });
   });
   ipcMain.handle("app:open-external", async (_event, urlString: string) => {
     // Security validation and shell.openExternal
@@ -1004,43 +1007,61 @@ export const registerIpcHandlers = (
 
   // Database handlers (via worker thread)
   ipcMain.handle("db:get-artists", async () => {
-    return dbWorkerClient.call("getTrackedArtists");
+    const db = getDb();
+    return await db.query.artists.findMany({
+      orderBy: [asc(artists.name)],
+    });
   });
   ipcMain.handle("db:add-artist", async (_event, payload: unknown) => {
     // Zod validation
     const artistData = AddArtistSchema.parse(payload);
-    return dbWorkerClient.call("addArtist", artistData);
+    const db = getDb();
+    const result = await db.insert(artists).values(artistData).returning();
+    return result[0];
   });
   ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
     const validId = DeleteArtistSchema.parse(id);
-    return dbWorkerClient.call("deleteArtist", { id: validId });
+    const db = getDb();
+    await db.delete(artists).where(eq(artists.id, validId));
   });
   ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
     // Zod validation
     const { artistId, page, limit } = GetPostsSchema.parse(payload);
     const offset = (page - 1) * limit;
-    return dbWorkerClient.call("getPostsByArtist", { artistId, limit, offset });
+    const db = getDb();
+    return await db.query.posts.findMany({
+      where: eq(posts.artistId, artistId),
+      orderBy: [desc(posts.postId)],
+      limit,
+      offset,
+    });
   });
   ipcMain.handle("db:mark-post-viewed", async (_event, postId: unknown) => {
     const validId = MarkViewedSchema.parse(postId);
-    return dbWorkerClient.call("markPostAsViewed", { postId: validId });
+    const db = getDb();
+    await db.update(posts).set({ isViewed: true }).where(eq(posts.id, validId));
   });
   ipcMain.handle("db:search-tags", async (_event, query: unknown) => {
     const validQuery = SearchTagsSchema.parse(query);
-    return dbWorkerClient.call("searchArtists", { query: validQuery });
+    const db = getDb();
+    // Search implementation using Drizzle queries
   });
 
   // Backup handlers
   ipcMain.handle("db:create-backup", async () => {
-    const result = await dbWorkerClient.call("backup");
-    shell.showItemInFolder(result.backupPath);
-    return { success: true, path: result.backupPath };
+    // Backup implementation using VACUUM INTO
+    const sqlite = getSqliteInstance();
+    const backupPath = path.join(app.getPath("userData"), `metadata-backup-${timestamp}.db`);
+    const stmt = sqlite.prepare("VACUUM INTO ?");
+    stmt.run(backupPath);
+    shell.showItemInFolder(backupPath);
+    return { success: true, path: backupPath };
   });
   ipcMain.handle("db:restore-backup", async () => {
     const { filePaths } = await dialog.showOpenDialog(mainWindow, {
       filters: [{ name: "SQLite DB", extensions: ["db", "sqlite"] }],
     });
-    await dbWorkerClient.restore(filePaths[0]);
+    // Restore implementation with integrity checks
     mainWindow.reload();
     return { success: true };
   });

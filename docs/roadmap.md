@@ -166,7 +166,7 @@ Core features for initial release:
 - ✅ **Viewer Polish** - Full-screen viewer with keyboard shortcuts, download, favorites (implemented)
 - ✅ **Progressive Loading** - Preview → Sample → Original (implemented)
 - ⏳ **Auto-sync Startup** - Toggle for automatic sync on app launch (planned)
-- ✅ **Worker Threads** - Database operations in worker thread (completed)
+- ✅ **Database Architecture** - Direct synchronous access via `better-sqlite3` with WAL mode (completed)
 - ✅ **Download Manager** - Individual file downloads with progress tracking (implemented)
 - ✅ **Favorites System** - Mark and manage favorite posts (implemented)
 

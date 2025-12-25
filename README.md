@@ -23,7 +23,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials encrypted using Electron's `safeStorage` API and stored securely. Decryption only happens in Main Process when needed for API calls.                                                                |
 | **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports tag-based tracking with autocomplete search (local and remote Rule34.xxx API). Tag normalization automatically strips metadata like "(123)" from tag names.                                      |
 | **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling. Real-time sync progress updates via IPC events.                                                            |
-| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Database operations run in a dedicated **Worker Thread** to prevent blocking the main process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. Thread-safe architecture ensures data integrity. |
+| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Direct synchronous access via `better-sqlite3` in Main Process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. WAL mode enabled for concurrent reads. |
 | **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization.                     |
 | **🎨 Progressive Image Loading**  | 3-layer progressive image loading system: Preview (blurred/low-res) → Sample (medium-res) → Original (high-res). Provides instant visual feedback with smooth quality enhancement.                                                                                                           |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                           |
@@ -49,11 +49,11 @@ The application adheres to a strict **Separation of Concerns (SoC)** model:
 This is the secure Node.js environment. It handles all I/O, persistence, and secrets.
 
 - **Desktop Runtime:** **Electron** (chosen for `BrowserView`/`Webview` control to support DOM injection).
-- **Database:** **SQLite** (via `better-sqlite3` driver) running in a **dedicated Worker Thread** for non-blocking operations.
+- **Database:** **SQLite** (via `better-sqlite3` driver) with direct synchronous access in Main Process. WAL mode enabled for concurrent reads.
 - **Data Layer:** **Drizzle ORM** (TypeScript type-safety for queries, raw SQL timestamps in milliseconds).
 - **Security:** **Secure Storage** using Electron's `safeStorage` API for encrypting API credentials at rest.
-- **API:** Custom wrapper based on `fetch`/`axios` with retry and backoff logic.
-- **Background Jobs:** Node.js timers and asynchronous workers.
+- **API:** Custom wrapper based on `axios` with retry and backoff logic.
+- **Background Jobs:** Node.js timers and asynchronous operations.
 
 ### 2. Renderer (The Face - UI Process)
 
@@ -69,7 +69,6 @@ This is the sandboxed browser environment. It handles presentation.
 - **IPC Bridge:** Strictly typed TypeScript interface (`bridge.ts`) used by the Renderer to communicate with the Main Process.
 - **Security:** **Context Isolation** enforced globally; no direct Node.js access from the Renderer.
 - **Encryption:** API credentials encrypted using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
-- **Worker Thread Isolation:** Database operations run in a separate worker thread, providing additional isolation and preventing main process blocking.
 
 ## 📐 Product Structure
 
@@ -186,7 +185,7 @@ The application core has been successfully stabilized and enhanced with security
 
 - ✅ Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
 - ✅ App runs successfully via `npm run dev` and communicates with SQLite database
-- ✅ **Database Worker Thread:** All database operations moved to a dedicated worker thread for non-blocking main process
+- ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
 - ⚠️ **HMR Status:** Renderer process has full HMR support. Main process requires manual restart (no auto-restart on file changes)
 
 ### Database & Schema
@@ -195,17 +194,16 @@ The application core has been successfully stabilized and enhanced with security
 - ✅ Added proper `UNIQUE` constraints to the `posts` table (`artistId` + `postId`) to enable correct UPSERT operations
 - ✅ Added `sampleUrl` column for progressive image loading
 - ✅ Migrations system (`drizzle-kit`) is fully functional
-- ✅ **Worker Thread Architecture:** Database operations isolated in worker thread with RPC pattern
+- ✅ **Database Indexes:** Indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited` for optimized queries
 - ⏳ **FTS5 Optimization:** Full-text search on tags planned (currently using standard indexes)
 
 ### Security & Reliability
 
 - ✅ **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API. Credentials encrypted at rest, decryption only in Main Process
-- ✅ **Database Backup/Restore:** Manual backup and restore functionality implemented. Create timestamped backups and restore from files
-- ✅ **Thread Safety:** Database operations run in dedicated worker thread, preventing main process blocking
+- ✅ **Database Backup/Restore:** Manual backup and restore functionality implemented with integrity checks. Create timestamped backups and restore from files
 - ✅ **Input Validation:** Zod validation implemented per IPC handler (decentralized, no centralized utility)
 - ⏳ **Portable Mode:** Not implemented - uses absolute paths via `app.getPath("userData")`
-- ⏳ **Age Gate:** Not implemented - only disclaimer text in README
+- ⏳ **Age Gate:** Database schema includes `isAdultConfirmed` field, but confirmation overlay not yet implemented
 
 ### Data Integrity & Sync
 
@@ -280,24 +278,24 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
 We are moving to Feature Development. Priority tasks:
 
-### A. Filters (Advanced Search) 🚧 In Progress
+### A. Filters (Advanced Search) ⏳ Not Started
 
 **Goal:** Allow users to refine the gallery view.
 
-- ✅ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle implemented
-- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - UI ready, backend filtering pending
-- ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
-- ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
-- ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
+- ⏳ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle - planned
+- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - not implemented
+- ⏳ Filter by **Media Type** (Image vs Video) - not implemented
+- ⏳ Filter by **Tags** (Local search within downloaded posts) - not implemented
+- ⏳ Sort by: Date Added (New/Old), Posted Date - not implemented
 
-**Note:** Backend filtering and sorting logic needs to be connected to the UI controls in `GlobalTopBar.tsx`.
+**Note:** Filtering and sorting functionality needs to be implemented in both UI and backend.
 
 ### B. Download Manager ✅ Implemented (Core Features)
 
 **Goal:** Allow saving full-resolution files to the local file system.
 
 - ✅ "Download Original" button on post view (implemented in ViewerDialog)
-- ✅ **Queue System:** Handle downloads in the background/main process with progress tracking
+- ✅ **Download Handler:** Downloads run in Main Process with progress tracking
 - ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
 - ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
 - ⏳ "Download All" for current filter/artist (planned)
@@ -317,9 +315,9 @@ We are moving to Feature Development. Priority tasks:
 
 ### 🛡️ Security & Reliability (Hardening)
 
-- ✅ **DB Worker Thread Migration** - ✅ **COMPLETED:** All SQLite operations run in dedicated worker thread with RPC pattern. Database worker provides non-blocking operations and thread-safe access.
+- ✅ **Database Architecture** - ✅ **COMPLETED:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads. All database operations run in Main Process.
 - ✅ **Encrypt / Secure Storage for API Credentials** - ✅ **COMPLETED:** Using Electron's `safeStorage` API for encryption. API keys encrypted at rest, never exposed to Renderer process.
-- ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented with timestamped backups.
+- ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented with integrity checks and timestamped backups.
 
 See [Roadmap](./docs/roadmap.md) for detailed implementation status and requirements.
 
@@ -355,7 +353,7 @@ The application stores configuration in SQLite database:
 
 - **API Credentials:** Stored securely with encryption using Electron's `safeStorage` API. API keys are encrypted at rest and only decrypted in Main Process when needed for API calls.
 - **Database Location:** Electron user data directory (automatically managed)
-- **Database Architecture:** All database operations run in a dedicated worker thread for non-blocking performance
+- **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 - **No Environment Variables Required:** All configuration is handled through the UI
 
 ### Building the Binary
