@@ -11,7 +11,12 @@ import type * as schema from "../../db/schema";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
-const PostFilterSchema = z
+/**
+ * Post Filter Schema
+ * 
+ * Single source of truth for post filtering validation and typing.
+ */
+export const PostFilterSchema = z
   .object({
     tags: z.string().optional(),
     rating: z.enum(["s", "q", "e"]).optional(),
@@ -20,12 +25,32 @@ const PostFilterSchema = z
   })
   .partial();
 
-const GetPostsSchema = z.object({
+/**
+ * Post Filter Request Type
+ * 
+ * Exported directly from schema to ensure single source of truth.
+ */
+export type PostFilterRequest = z.infer<typeof PostFilterSchema>;
+
+/**
+ * Get Posts Schema
+ * 
+ * Single source of truth for GetPosts validation and typing.
+ */
+export const GetPostsSchema = z.object({
   artistId: z.number().int().positive(),
   page: z.number().int().min(1).default(1),
   filters: PostFilterSchema.optional(),
   limit: z.number().int().min(1).max(100).default(50),
 });
+
+/**
+ * Get Posts Request Type
+ * 
+ * Exported directly from schema to ensure single source of truth.
+ * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
+ */
+export type GetPostsRequest = z.infer<typeof GetPostsSchema>;
 
 // Internal types (not exported - use types from src/main/types/ipc.ts instead)
 type GetPostsParams = z.infer<typeof GetPostsSchema>;

@@ -38,7 +38,11 @@ export async function initializeDatabase(): Promise<AppDatabase> {
 
   // Configure SQLite for optimal performance
   sqlite.pragma("journal_mode = WAL");
-  sqlite.pragma("synchronous = NORMAL"); // Balance between safety and performance
+  // ⚠️ WARNING: synchronous = NORMAL is faster but less safe
+  // - Faster writes (good for Booru clients with frequent updates)
+  // - Risk: On sudden power loss, SQLite may corrupt (WAL helps but doesn't eliminate risk)
+  // - If user data is critical, change to FULL (slower but safer)
+  sqlite.pragma("synchronous = NORMAL");
   sqlite.pragma("temp_store = MEMORY"); // Use memory for temp tables (faster)
   
   // Memory-mapped I/O: configurable size (default 64MB, can be overridden via env)

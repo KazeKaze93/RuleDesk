@@ -2,41 +2,14 @@
  * IPC Request/Response Types
  * 
  * Shared types for IPC communication between Main and Renderer processes.
- * These DTOs are owned by the IPC layer and should not leak controller implementation details.
+ * 
+ * Note: Request types are now exported directly from controller schemas
+ * to ensure single source of truth. Re-export them here for convenience.
  */
 
-/**
- * Get Posts Request DTO
- * Owned by IPC layer, not controllers
- */
-export interface GetPostsRequest {
-  artistId: number;
-  page?: number;
-  filters?: PostFilterRequest;
-  limit?: number;
-}
-
-/**
- * Post Filter Request DTO
- */
-export interface PostFilterRequest {
-  tags?: string;
-  rating?: "s" | "q" | "e";
-  isFavorited?: boolean;
-  isViewed?: boolean;
-}
-
-/**
- * Add Artist Request DTO
- * Owned by IPC layer, not controllers
- */
-export interface AddArtistRequest {
-  name: string;
-  tag: string;
-  provider?: "rule34" | "gelbooru";
-  type: "tag" | "uploader" | "query";
-  apiEndpoint?: string;
-}
+// Re-export types from controllers (single source of truth)
+export type { AddArtistRequest } from "../ipc/controllers/ArtistsController";
+export type { GetPostsRequest, PostFilterRequest } from "../ipc/controllers/PostsController";
 
 /**
  * Serializable error structure for IPC communication

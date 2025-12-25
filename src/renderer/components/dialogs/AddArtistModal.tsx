@@ -109,8 +109,10 @@ export function AddArtistModal({
                 onQueryChange={handleTagChange}
                 onSelect={handleTagSelect}
                 placeholder={`Search on ${provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}...`}
-                // Pass the current provider to the search function
                 fetchOptions={async (query: string) => {
+                  // Use custom hook for remote tag search (handles AbortController internally)
+                  // For now, keep inline for backward compatibility, but consider refactoring
+                  // to use useRemoteTags hook directly in component
                   try {
                     return await window.api.searchRemoteTags(query, provider);
                   } catch (error) {

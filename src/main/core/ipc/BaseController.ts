@@ -119,7 +119,7 @@ export abstract class BaseController {
           throw error as ValidationError;
         }
 
-        // Log the full error details for debugging
+        // Log the full error details for debugging (always log full details in Main Process)
         log.error(`[IPC] Error in channel "${channel}":`, {
           message: error instanceof Error ? error.message : 'Unknown error',
           stack: error instanceof Error ? error.stack : undefined,
@@ -127,19 +127,23 @@ export abstract class BaseController {
         });
 
         // Electron IPC quirk: pure Error objects don't serialize well via invoke
-        // Serialize error to plain object to preserve stack trace and message
+        // Serialize error to plain object, but hide sensitive details in production
+        const isProduction = process.env.NODE_ENV === 'production';
+        
         const serializedError: SerializableError = error instanceof Error
           ? {
               message: error.message || 'Unknown IPC error',
-              stack: error.stack,
+              // Hide stack trace in production (potential security leak - file paths, structure)
+              stack: isProduction ? undefined : error.stack,
               name: error.name,
-              originalError: String(error),
+              // Hide originalError in production (may contain system details)
+              originalError: isProduction ? undefined : String(error),
             }
           : {
               message: String(error) || 'Unknown IPC error',
               stack: undefined,
               name: 'Error',
-              originalError: String(error),
+              originalError: isProduction ? undefined : String(error),
             };
         
         throw serializedError;
