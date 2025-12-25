@@ -303,10 +303,20 @@ export class SyncService {
           isFavorited: false
         }));
 
-        // Save posts immediately to avoid memory buildup
+        // Save posts and update artist metadata atomically after each page
         if (postsToSave.length > 0) {
           await db.transaction(async (tx) => {
             await bulkUpsertPosts(postsToSave, tx);
+            
+            // Update artist's lastPostId immediately to ensure atomicity
+            await tx
+              .update(artists)
+              .set({
+                lastPostId: sql`CASE WHEN ${artists.lastPostId} > ${highestPostId} THEN ${artists.lastPostId} ELSE ${highestPostId} END`,
+                newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
+                lastChecked: new Date(),
+              })
+              .where(eq(artists.id, artist.id));
           });
           newPostsCount += postsToSave.length;
         }
@@ -322,17 +332,15 @@ export class SyncService {
       }
     }
 
-    // Update artist metadata after all pages are processed
-    await db.transaction(async (tx) => {
-      await tx
-        .update(artists)
-        .set({
-          lastPostId: sql`CASE WHEN ${artists.lastPostId} > ${highestPostId} THEN ${artists.lastPostId} ELSE ${highestPostId} END`,
-          newPostsCount: sql`${artists.newPostsCount} + ${newPostsCount}`,
-          lastChecked: new Date(),
-        })
-        .where(eq(artists.id, artist.id));
-    });
+    // Final update of lastChecked even if no new posts were found
+    if (newPostsCount === 0) {
+      await db.transaction(async (tx) => {
+        await tx
+          .update(artists)
+          .set({ lastChecked: new Date() })
+          .where(eq(artists.id, artist.id));
+      });
+    }
 
     logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
   }

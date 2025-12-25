@@ -23,8 +23,8 @@ const SearchRemoteSchema = z.object({
 
 export type AddArtistParams = z.infer<typeof AddArtistSchema>;
 
-// AbortController для отмены предыдущих запросов автокомплита
-let searchAbortController: AbortController | null = null;
+// Map для хранения AbortController по webContents.id (для поддержки множественных окон)
+const searchAbortControllers = new Map<number, AbortController>();
 
 export const registerArtistHandlers = () => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_ARTISTS, async () => {
@@ -55,14 +55,18 @@ export const registerArtistHandlers = () => {
     
     try {
       const db = getDb();
-      const result = await db.insert(artists).values({
-        name: data.name,
-        tag: data.tag,
-        type: data.type,
-        provider: data.provider,
-        apiEndpoint: finalApiEndpoint
-      }).returning();
-      return result[0];
+      // Wrap in transaction for atomicity (future-proof for complex logic)
+      const result = await db.transaction(async (tx) => {
+        const inserted = await tx.insert(artists).values({
+          name: data.name,
+          tag: data.tag,
+          type: data.type,
+          provider: data.provider,
+          apiEndpoint: finalApiEndpoint
+        }).returning();
+        return inserted[0];
+      });
+      return result;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       logger.error("IPC: [db:add-artist] error:", error);
@@ -101,24 +105,36 @@ export const registerArtistHandlers = () => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.API.SEARCH_REMOTE, async (_, payload: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.API.SEARCH_REMOTE, async (event, payload: unknown) => {
     const validation = SearchRemoteSchema.safeParse(payload);
     if (!validation.success) {
       logger.warn("IPC: [api:search-remote-tags] Invalid payload", validation.error);
       return [];
     }
 
-    // Cancel previous search request to avoid race conditions
-    if (searchAbortController) {
-      searchAbortController.abort();
+    // Use webContents.id as unique identifier for each window
+    const windowId = event.sender.id;
+
+    // Cancel previous search request for this specific window
+    const existingController = searchAbortControllers.get(windowId);
+    if (existingController) {
+      existingController.abort();
     }
-    searchAbortController = new AbortController();
-    const currentController = searchAbortController;
+
+    const newController = new AbortController();
+    searchAbortControllers.set(windowId, newController);
 
     try {
       const provider = getProvider(validation.data.provider);
-      return await provider.searchTags(validation.data.query, currentController.signal);
+      const results = await provider.searchTags(validation.data.query, newController.signal);
+      
+      // Clean up controller after successful request
+      searchAbortControllers.delete(windowId);
+      return results;
     } catch (e) {
+      // Clean up controller on error
+      searchAbortControllers.delete(windowId);
+      
       // Ignore abort errors (expected when user types quickly)
       if (e instanceof Error && e.name === "AbortError") {
         return [];

@@ -73,9 +73,10 @@ export function AddArtistModal({
         <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
           <h2 className="text-lg font-bold text-white">Track New Artist</h2>
           <button
+            type="button"
             onClick={handleClose}
             className="p-1 rounded-full transition-colors hover:bg-zinc-800 text-zinc-400"
-            title="Close"
+            aria-label="Close modal"
           >
             <X size={20} />
           </button>

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { logger } from "../lib/logger";
+import { selectBestPreview } from "../lib/media-utils";
 import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
 import type { ArtistType } from "../db/schema";
 
@@ -169,8 +170,14 @@ export class GelbooruProvider implements IBooruProvider {
     // Safely extract fields as Gelbooru types are loose
     const id = Number(raw.id);
     const fileUrl = raw.file_url.trim();
-    const previewUrl = raw.preview_url?.trim() || raw.file_url.trim();
     const sampleUrl = raw.sample_url?.trim() || raw.file_url.trim();
+    
+    // Select best preview using shared utility
+    const previewUrl = selectBestPreview({
+      preview: raw.preview_url,
+      sample: raw.sample_url,
+      file: raw.file_url,
+    });
     
     // Date parsing
     const date = raw.created_at ? new Date(raw.created_at) : new Date();

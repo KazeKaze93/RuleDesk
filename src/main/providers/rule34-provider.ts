@@ -1,5 +1,6 @@
 import axios from "axios";
 import { logger } from "../lib/logger";
+import { selectBestPreview } from "../lib/media-utils";
 import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
 import type { ArtistType } from "../db/schema";
 
@@ -133,15 +134,11 @@ export class Rule34Provider implements IBooruProvider {
       return null;
     }
 
-    const isVideo = (url?: string) => !!url && /\.(webm|mp4|mov)(\?|$)/i.test(url);
-    
-    // Logic to pick best preview
-    let preview = raw.preview_url;
-    if (!preview || isVideo(preview)) {
-       if (raw.sample_url && !isVideo(raw.sample_url)) preview = raw.sample_url;
-       else if (raw.file_url && !isVideo(raw.file_url)) preview = raw.file_url;
-       else preview = "";
-    }
+    const preview = selectBestPreview({
+      preview: raw.preview_url,
+      sample: raw.sample_url,
+      file: raw.file_url,
+    });
 
     return {
       id: Number(raw.id),
