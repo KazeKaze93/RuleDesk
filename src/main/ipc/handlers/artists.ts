@@ -26,6 +26,11 @@ export type AddArtistParams = z.infer<typeof AddArtistSchema>;
 // Map для хранения AbortController по webContents.id (для поддержки множественных окон)
 const searchAbortControllers = new Map<number, AbortController>();
 
+// Rate limiting для searchRemoteTags (защита от спама)
+const searchRateLimits = new Map<number, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 1000; // 1 second
+const RATE_LIMIT_MAX_REQUESTS = 10; // max 10 requests per second per window
+
 export const registerArtistHandlers = () => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_ARTISTS, async () => {
     try {
@@ -115,6 +120,25 @@ export const registerArtistHandlers = () => {
     // Use webContents.id as unique identifier for each window
     const windowId = event.sender.id;
 
+    // Rate limiting check
+    const now = Date.now();
+    const rateLimit = searchRateLimits.get(windowId);
+    
+    if (rateLimit) {
+      if (now < rateLimit.resetAt) {
+        if (rateLimit.count >= RATE_LIMIT_MAX_REQUESTS) {
+          logger.warn(`[IPC] Rate limit exceeded for window ${windowId}`);
+          return [];
+        }
+        rateLimit.count++;
+      } else {
+        // Reset window
+        searchRateLimits.set(windowId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+      }
+    } else {
+      searchRateLimits.set(windowId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    }
+
     // Setup cleanup listener for this webContents if not already set
     if (!searchAbortControllers.has(windowId)) {
       event.sender.once("destroyed", () => {
@@ -122,8 +146,10 @@ export const registerArtistHandlers = () => {
         if (controller) {
           controller.abort();
           searchAbortControllers.delete(windowId);
-          logger.debug(`[IPC] Cleaned up AbortController for destroyed window ${windowId}`);
         }
+        // Clean up rate limit data
+        searchRateLimits.delete(windowId);
+        logger.debug(`[IPC] Cleaned up resources for destroyed window ${windowId}`);
       });
     }
 
@@ -140,12 +166,16 @@ export const registerArtistHandlers = () => {
       const provider = getProvider(validation.data.provider);
       const results = await provider.searchTags(validation.data.query, newController.signal);
       
-      // Clean up controller after successful request
-      searchAbortControllers.delete(windowId);
+      // Clean up controller only if it's still the current one (avoid race condition)
+      if (searchAbortControllers.get(windowId) === newController) {
+        searchAbortControllers.delete(windowId);
+      }
       return results;
     } catch (e) {
-      // Clean up controller on error
-      searchAbortControllers.delete(windowId);
+      // Clean up controller only if it's still the current one
+      if (searchAbortControllers.get(windowId) === newController) {
+        searchAbortControllers.delete(windowId);
+      }
       
       // Ignore abort errors (expected when user types quickly)
       if (e instanceof Error && e.name === "AbortError") {

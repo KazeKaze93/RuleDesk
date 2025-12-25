@@ -110,7 +110,7 @@ export function AddArtistModal({
                 value={inputTag}
                 onQueryChange={handleTagChange}
                 onSelect={handleTagSelect}
-                placeholder="Search tag..."
+                placeholder={`Search on ${provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}...`}
                 // Pass the current provider to the search function
                 fetchOptions={async (query: string) => {
                   try {
@@ -123,7 +123,7 @@ export function AddArtistModal({
               />
             </div>
             <p className="text-[10px] text-zinc-500 ml-1">
-              Search results are fetched from the selected provider.
+              Searching on <span className="font-medium text-zinc-400">{provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}</span>
             </p>
           </div>
 
