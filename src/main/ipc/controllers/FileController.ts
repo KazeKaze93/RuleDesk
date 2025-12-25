@@ -42,6 +42,8 @@ const OpenFolderSchema = z.string().min(1);
 export class FileController extends BaseController {
   private mainWindow: BrowserWindowType | null = null;
   private totalBytes = 0;
+  // Track active downloads to cancel them on window close
+  private activeDownloads = new Map<string, AbortController>();
 
   /**
    * Set main window reference (needed for download dialogs and progress events)
@@ -50,6 +52,23 @@ export class FileController extends BaseController {
    */
   public setMainWindow(window: BrowserWindowType): void {
     this.mainWindow = window;
+    
+    // Cleanup active downloads when window is closed
+    window.once("closed", () => {
+      this.cancelAllDownloads();
+    });
+  }
+
+  /**
+   * Cancel all active downloads (called on window close)
+   */
+  private cancelAllDownloads(): void {
+    log.info(`[FileController] Canceling ${this.activeDownloads.size} active downloads`);
+    for (const [filename, controller] of this.activeDownloads.entries()) {
+      controller.abort();
+      log.debug(`[FileController] Canceled download: ${filename}`);
+    }
+    this.activeDownloads.clear();
   }
 
   /**
@@ -151,44 +170,106 @@ export class FileController extends BaseController {
 
       log.info(`[FileController] Downloading: ${validUrl} -> ${filePath}`);
 
-      const response = await axios({
-        method: "GET",
-        url: validUrl,
-        responseType: "stream",
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-        onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
-          if (!mainWindow || !progressEvent.total) return;
+      // Create AbortController for this download
+      const abortController = new AbortController();
+      this.activeDownloads.set(validFilename, abortController);
 
-          this.totalBytes = progressEvent.total;
-          const percent = Math.round((progressEvent.loaded * 100) / this.totalBytes);
-
-          mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
-            id: validFilename, // Use validated filename as ID
-            percent: percent,
-          });
-        },
-      });
-
-      const writer = fs.createWriteStream(filePath);
-      await pipeline(response.data, writer);
-
-      mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
-        id: validFilename,
-        percent: 100,
-      });
-      log.info(`[FileController] Download success -> ${filePath}`);
-      return { success: true, path: filePath };
-    } catch (error) {
-      if (mainWindow) {
-        mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
-          id: validFilename,
-          percent: 0,
-        });
+      // Check if window is still valid before starting download
+      if (mainWindow.isDestroyed()) {
+        abortController.abort();
+        this.activeDownloads.delete(validFilename);
+        return { success: false, error: "Window was closed", canceled: true };
       }
-      log.error("[FileController] Download failed:", error);
+
+      try {
+        const response = await axios({
+          method: "GET",
+          url: validUrl,
+          responseType: "stream",
+          signal: abortController.signal, // Critical: allows cancellation
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
+          onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
+            // Check if window is still valid before sending progress
+            if (mainWindow.isDestroyed() || abortController.signal.aborted) {
+              abortController.abort();
+              return;
+            }
+
+            if (!progressEvent.total) return;
+
+            this.totalBytes = progressEvent.total;
+            const percent = Math.round((progressEvent.loaded * 100) / this.totalBytes);
+
+            mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
+              id: validFilename, // Use validated filename as ID
+              percent: percent,
+            });
+          },
+        });
+
+        const writer = fs.createWriteStream(filePath);
+        
+        // Handle abort: close writer stream to prevent file corruption
+        abortController.signal.addEventListener("abort", () => {
+          if (!writer.destroyed) {
+            writer.destroy();
+          }
+        }, { once: true });
+        
+        // Pipeline with abort signal support (Node.js 20+)
+        // If signal is aborted, pipeline will throw AbortError and writer will be closed
+        await pipeline(response.data, writer, { signal: abortController.signal });
+
+        // Cleanup: remove from active downloads
+        this.activeDownloads.delete(validFilename);
+
+        if (!mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
+            id: validFilename,
+            percent: 100,
+          });
+        }
+        log.info(`[FileController] Download success -> ${filePath}`);
+        return { success: true, path: filePath };
+      } catch (error) {
+        // Cleanup: remove from active downloads
+        this.activeDownloads.delete(validFilename);
+
+        // Check if error is due to abort
+        const isAborted = abortController.signal.aborted || 
+          (error instanceof Error && error.name === "AbortError") ||
+          (axios.isCancel && axios.isCancel(error));
+
+        if (isAborted) {
+          log.info(`[FileController] Download canceled: ${validFilename}`);
+          // Clean up partial file if it exists
+          try {
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          } catch (unlinkError) {
+            log.warn("[FileController] Failed to clean up partial file:", unlinkError);
+          }
+          return { success: false, canceled: true };
+        }
+
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS, {
+            id: validFilename,
+            percent: 0,
+          });
+        }
+        log.error("[FileController] Download failed:", error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    } catch (error) {
+      log.error("[FileController] Download setup failed:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -216,7 +297,7 @@ export class FileController extends BaseController {
 
       const normalizedPath = path.normalize(fullPath);
 
-      // Security check: ensure path is within safe directory
+      // Security check: ensure path is within safe directory (before resolving symlinks)
       if (!normalizedPath.startsWith(DOWNLOAD_ROOT)) {
         log.error(
           `[FileController] SECURITY VIOLATION: Attempt to open path outside safe directory: ${normalizedPath}`
@@ -225,8 +306,34 @@ export class FileController extends BaseController {
         return false;
       }
 
-      if (fs.existsSync(normalizedPath)) {
-        shell.showItemInFolder(normalizedPath);
+      // Critical security: resolve symlinks to get real path on disk
+      // This prevents path traversal via symbolic links
+      let realPath: string;
+      try {
+        // Use realpathSync to resolve all symlinks and get canonical path
+        realPath = fs.realpathSync(normalizedPath);
+      } catch (error) {
+        // Path doesn't exist or is inaccessible, fallback to DOWNLOAD_ROOT
+        log.warn(`[FileController] Failed to resolve real path: ${normalizedPath}`, error);
+        if (fs.existsSync(DOWNLOAD_ROOT)) {
+          await shell.openPath(DOWNLOAD_ROOT);
+          return true;
+        }
+        return false;
+      }
+
+      // Security check: ensure real path (after symlink resolution) is still within safe directory
+      const normalizedRealPath = path.normalize(realPath);
+      if (!normalizedRealPath.startsWith(DOWNLOAD_ROOT)) {
+        log.error(
+          `[FileController] SECURITY VIOLATION: Real path outside safe directory: ${normalizedRealPath} (original: ${normalizedPath})`
+        );
+        shell.openPath(DOWNLOAD_ROOT);
+        return false;
+      }
+
+      if (fs.existsSync(realPath)) {
+        shell.showItemInFolder(realPath);
         return true;
       }
 

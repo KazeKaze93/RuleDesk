@@ -44,6 +44,10 @@ export abstract class BaseController {
    * If handler expects 1 object, schema must be a single object schema (not tuple).
    * If handler expects multiple args, schema must be a tuple.
    * 
+   * ⚠️ SECURITY: Automatically removes existing handler before registration to prevent
+   * "Attempted to register a second handler" errors that would crash the Main process.
+   * This allows safe re-initialization (e.g., hot-reload, error recovery).
+   * 
    * @param channel - IPC channel name (e.g., 'user:get')
    * @param schema - Zod schema for validating handler arguments (tuple or single schema)
    * @param handler - Async handler function with validated, typed arguments
@@ -56,6 +60,16 @@ export abstract class BaseController {
       ...args: unknown[]
     ) => Promise<unknown>
   ): void {
+    // Critical: Remove existing handler to prevent "duplicate handler" crash
+    // This allows safe re-initialization (hot-reload, error recovery, etc.)
+    try {
+      ipcMain.removeHandler(channel);
+      log.debug(`[IPC] Removed existing handler for channel: ${channel}`);
+    } catch {
+      // Handler doesn't exist yet, which is fine
+      log.debug(`[IPC] No existing handler to remove for channel: ${channel}`);
+    }
+
     ipcMain.handle(channel, async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       try {
         // Security: Log only channel name and argument count, not actual arguments
