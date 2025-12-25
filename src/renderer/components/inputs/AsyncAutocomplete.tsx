@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Combobox, Transition } from "@headlessui/react";
 import { ChevronUpDownIcon, CheckIcon } from "@heroicons/react/20/solid";
+import log from "electron-log/renderer";
 import { useDebounce } from "../../lib/hooks/useDebounce";
 import { Fragment } from "react";
 
@@ -39,6 +40,8 @@ export function AsyncAutocomplete({
 
   const debouncedQuery = useDebounce(query, 300);
   const fetchOptionsRef = useRef(fetchOptions);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isValidQueryRef = useRef(false);
 
   useEffect(() => {
     fetchOptionsRef.current = fetchOptions;
@@ -48,29 +51,64 @@ export function AsyncAutocomplete({
     const currentQuery = debouncedQuery || "";
     const trimmedQuery = currentQuery.trim();
 
-    if (!trimmedQuery) {
-      return;
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
 
-    let active = true;
+    // Don't search if query is empty or too short (min 2 chars for remote search)
+    if (!trimmedQuery || trimmedQuery.length < 2) {
+      isValidQueryRef.current = false;
+      // Clear state via cleanup to avoid synchronous setState
+      return () => {
+        setOptions([]);
+        setIsLoading(false);
+      };
+    }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsLoading(true);
+    isValidQueryRef.current = true;
+
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    // Set loading state asynchronously to avoid synchronous setState warning
+    Promise.resolve().then(() => {
+      if (isValidQueryRef.current && abortControllerRef.current === abortController) {
+        setIsLoading(true);
+      }
+    });
 
     fetchOptionsRef
       .current(trimmedQuery)
       .then((results) => {
-        if (active) {
+        // Only update state if request wasn't aborted and query is still valid
+        if (!abortController.signal.aborted && isValidQueryRef.current) {
           setOptions(results);
         }
       })
-      .catch((err) => console.error("Search error:", err))
+      .catch((err) => {
+        // Ignore abort errors
+        if (err.name !== "AbortError" && !abortController.signal.aborted) {
+          log.error("[AsyncAutocomplete] Search error:", err);
+        }
+      })
       .finally(() => {
-        if (active) setIsLoading(false);
+        // Only update loading state if this is still the active request
+        if (!abortController.signal.aborted && abortControllerRef.current === abortController) {
+          setIsLoading(false);
+          abortControllerRef.current = null;
+        }
       });
 
     return () => {
-      active = false;
+      // Cleanup: abort request and clear state if component unmounts or query changes
+      isValidQueryRef.current = false;
+      abortController.abort();
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
     };
   }, [debouncedQuery]);
 

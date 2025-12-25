@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
+import log from "electron-log/renderer";
 import { ArtistCard } from "./components/ArtistCard";
 import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
 import { Button } from "../../components/ui/button";
@@ -42,7 +43,7 @@ export const Tracked = () => {
       queryClient.invalidateQueries({ queryKey: ["artists"] });
       setIsAddModalOpen(false);
     } catch (err) {
-      console.error("Failed to add artist:", err);
+      log.error("[Tracked] Failed to add artist:", err);
     }
   };
 

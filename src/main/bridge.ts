@@ -1,10 +1,8 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import type { Artist, Post, Settings } from "./db/schema";
+import type { Artist, Post } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
-import type { GetPostsParams as GetPostsParamsFromHandler } from "./ipc/handlers/posts";
-import type { AddArtistParams } from "./ipc/handlers/artists";
-import type { SearchResults } from "./providers/types";
-import type { ProviderId } from "./providers";
+import type { GetPostsRequest, AddArtistRequest, IpcSettings } from "./types/ipc";
+import type { ProviderId, SearchResults } from "./providers";
 
 export type UpdateStatusData = {
   status: string;
@@ -28,10 +26,9 @@ export type DownloadProgressData = {
 };
 export type DownloadProgressCallback = (data: DownloadProgressData) => void;
 
-// Use z.infer types from handlers to ensure type safety
-export type GetPostsParams = GetPostsParamsFromHandler;
-// Use z.infer directly from schema - no manual type manipulation
-export type AddArtistPayload = AddArtistParams;
+// Re-export IPC DTOs for use in renderer
+// Re-export types from controllers (single source of truth)
+export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "./types/ipc";
 
 // Legacy interface for backward compatibility (can be removed if not used)
 export interface PostQueryFilters {
@@ -48,20 +45,20 @@ export interface IpcBridge {
   writeToClipboard: (text: string) => Promise<boolean>;
 
   // Settings
-  getSettings: () => Promise<Settings | undefined>;
+  getSettings: () => Promise<IpcSettings | null>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
   logout: () => Promise<void>;
 
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
-  addArtist: (artist: AddArtistPayload) => Promise<Artist | undefined>;
+  addArtist: (artist: AddArtistRequest) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
   // --- NEW: SEARCH ---
   searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 
   // Posts
-  getArtistPosts: (params: GetPostsParams) => Promise<Post[]>;
+  getArtistPosts: (params: GetPostsRequest) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
@@ -73,7 +70,7 @@ export interface IpcBridge {
 
   // Sync
   syncAll: () => Promise<boolean>;
-  repairArtist: (artistId: number) => Promise<boolean>;
+  repairArtist: (artistId: number) => Promise<{ success: boolean; error?: string }>;
 
   // Updater
   checkForUpdates: () => Promise<void>;
@@ -120,9 +117,9 @@ const ipcBridge: IpcBridge = {
   writeToClipboard: (text) =>
     ipcRenderer.invoke("app:write-to-clipboard", text),
 
-  // Pass object to IPC
+  // Search remote tags via specified provider (defaults to rule34)
   searchRemoteTags: (query, provider = "rule34") =>
-    ipcRenderer.invoke("api:search-remote-tags", { query, provider }),
+    ipcRenderer.invoke("api:search-remote-tags", query, provider),
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 
@@ -137,7 +134,7 @@ const ipcBridge: IpcBridge = {
 
   searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
 
-  getArtistPosts: (params: GetPostsParams) =>
+  getArtistPosts: (params: GetPostsRequest) =>
     ipcRenderer.invoke("db:get-posts", params),
   getArtistPostsCount: (artistId?: number) =>
     ipcRenderer.invoke("db:get-posts-count", artistId),

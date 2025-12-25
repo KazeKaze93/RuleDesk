@@ -22,6 +22,13 @@
       "when": 1766002000000,
       "tag": "0002_add_provider_to_artists",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1766003000000,
+      "tag": "0003_add_artists_sort_index",
+      "breakpoints": true
     }
   ]
 }
