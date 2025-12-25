@@ -4,6 +4,7 @@ import {
   UpdateStatusCallback,
   UpdateProgressCallback,
 } from "./main/bridge";
+import type { SearchResults } from "./main/providers/types";
 
 export type SyncErrorCallback = (message: string) => void;
 
@@ -78,7 +79,7 @@ export interface IpcApi extends IpcBridge {
 
   markPostAsViewed: (postId: number) => Promise<boolean>;
 
-  searchRemoteTags: (query: string, provider?: string) => Promise<{ id: string; label: string; value: string; type?: string }[]>;
+  searchRemoteTags: (query: string, provider?: string) => Promise<SearchResults[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;

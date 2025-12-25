@@ -35,6 +35,8 @@ export interface IBooruProvider {
   searchTags(query: string): Promise<SearchResults[]>;
   /** Formats a tag based on artist type (e.g. adding 'user:' prefix) */
   formatTag(tag: string, type: "tag" | "uploader" | "query"): string;
+  /** Returns the default API endpoint for this provider */
+  getDefaultApiEndpoint(): string;
 }
 
 

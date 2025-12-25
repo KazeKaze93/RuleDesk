@@ -38,6 +38,12 @@ export function AddArtistModal({
     onClose();
   };
 
+  // Reset inputTag when provider changes to avoid cross-provider tag confusion
+  const handleProviderChange = (newProvider: string) => {
+    setProvider(newProvider);
+    setInputTag(""); // Clear input when switching providers
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -64,7 +70,7 @@ export function AddArtistModal({
       <div className="flex flex-col w-full max-w-md rounded-xl border shadow-2xl bg-zinc-900 border-zinc-800">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
-          <h2 className="text-lg font-bold text-white">Track New Source</h2>
+          <h2 className="text-lg font-bold text-white">Track New Artist</h2>
           <button
             onClick={handleClose}
             className="p-1 rounded-full transition-colors hover:bg-zinc-800 text-zinc-400"
@@ -78,9 +84,9 @@ export function AddArtistModal({
           {/* Provider Selection */}
           <div className="space-y-1.5">
             <Label className="ml-1 text-xs font-medium text-zinc-400">
-              Source Provider
+              Provider
             </Label>
-            <Select value={provider} onValueChange={setProvider}>
+            <Select value={provider} onValueChange={handleProviderChange}>
               <SelectTrigger className="w-full bg-zinc-950 border-zinc-800 text-white">
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>

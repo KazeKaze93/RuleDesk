@@ -2,17 +2,16 @@ import { Rule34Provider } from "./rule34-provider";
 import { GelbooruProvider } from "./gelbooru-provider";
 import { IBooruProvider } from "./types";
 
-const providers: Record<string, IBooruProvider> = {
+export const PROVIDER_IDS = ["rule34", "gelbooru"] as const;
+export type ProviderId = typeof PROVIDER_IDS[number];
+
+const providers: Record<ProviderId, IBooruProvider> = {
   "rule34": new Rule34Provider(),
   "gelbooru": new GelbooruProvider(),
 };
 
-export function getProvider(id: string = "rule34"): IBooruProvider {
-  const provider = providers[id];
-  if (!provider) {
-    return providers["rule34"];
-  }
-  return provider;
+export function getProvider(id: ProviderId): IBooruProvider {
+  return providers[id];
 }
 
 export type {

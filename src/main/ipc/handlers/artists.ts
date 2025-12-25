@@ -5,12 +5,12 @@ import { IPC_CHANNELS } from "../channels";
 import { getDb } from "../../db/client";
 import { artists } from "../../db/schema";
 import { logger } from "../../lib/logger";
-import { getProvider } from "../../providers";
+import { getProvider, PROVIDER_IDS } from "../../providers";
 
 const AddArtistSchema = z.object({
   name: z.string().trim().min(1),
   tag: z.string().trim().min(1),
-  provider: z.string().default("rule34"),
+  provider: z.enum(PROVIDER_IDS).default("rule34"),
   type: z.enum(["tag", "uploader", "query"]),
   apiEndpoint: z.string().url().trim().optional(),
 });
@@ -18,7 +18,7 @@ const AddArtistSchema = z.object({
 // Validation for search params
 const SearchRemoteSchema = z.object({
   query: z.string().trim().min(2),
-  provider: z.string().default("rule34"),
+  provider: z.enum(PROVIDER_IDS).default("rule34"),
 });
 
 export type AddArtistParams = z.infer<typeof AddArtistSchema>;
@@ -43,7 +43,10 @@ export const registerArtistHandlers = () => {
       throw new Error(`Validation failed: ${validation.error.message}`);
     }
     const data = validation.data;
-    const finalApiEndpoint = data.apiEndpoint || "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index";
+    
+    // Get default endpoint from provider if not explicitly provided
+    const provider = getProvider(data.provider);
+    const finalApiEndpoint = data.apiEndpoint || provider.getDefaultApiEndpoint();
 
     logger.info(`IPC: [db:add-artist] Adding: ${data.name} [${data.provider}]`);
     

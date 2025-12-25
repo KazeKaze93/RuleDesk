@@ -16,10 +16,20 @@ interface R34RawPost {
   height: number;
 }
 
+interface R34AutocompleteItem {
+  label: string;
+  value: string;
+  type: string;
+}
+
 export class Rule34Provider implements IBooruProvider {
   readonly id = "rule34";
   readonly name = "Rule34.xxx";
   private readonly baseUrl = "https://api.rule34.xxx/index.php";
+
+  getDefaultApiEndpoint(): string {
+    return `${this.baseUrl}?page=dapi&s=post&q=index`;
+  }
 
   formatTag(tag: string, type: "tag" | "uploader" | "query"): string {
     const cleanTag = tag.trim().toLowerCase().replace(/ /g, "_");
@@ -59,10 +69,9 @@ export class Rule34Provider implements IBooruProvider {
   async searchTags(query: string): Promise<SearchResults[]> {
     if (query.length < 2) return [];
     try {
-      const { data } = await axios.get(`https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(query)}`);
+      const { data } = await axios.get<R34AutocompleteItem[]>(`https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(query)}`);
       if (Array.isArray(data)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return data.map((item: any) => ({
+        return data.map((item) => ({
           id: item.value,
           label: item.label,
           value: item.value,
@@ -102,10 +111,21 @@ export class Rule34Provider implements IBooruProvider {
 
     if (!Array.isArray(data)) return [];
 
-    return data.map(raw => this.mapToBooruPost(raw));
+    return data.map(raw => this.mapToBooruPost(raw)).filter((post): post is BooruPost => post !== null);
   }
 
-  private mapToBooruPost(raw: R34RawPost): BooruPost {
+  private mapToBooruPost(raw: R34RawPost): BooruPost | null {
+    // Validate critical fields before creating post object
+    if (!raw.file_url || typeof raw.file_url !== "string" || raw.file_url.trim() === "") {
+      logger.warn("[Rule34Provider] Skipping post with missing file_url", { id: raw.id });
+      return null;
+    }
+
+    if (!raw.id || isNaN(Number(raw.id))) {
+      logger.warn("[Rule34Provider] Skipping post with invalid id", { raw });
+      return null;
+    }
+
     const isVideo = (url?: string) => !!url && /\.(webm|mp4|mov)(\?|$)/i.test(url);
     
     // Logic to pick best preview
@@ -118,8 +138,8 @@ export class Rule34Provider implements IBooruProvider {
 
     return {
       id: Number(raw.id),
-      fileUrl: raw.file_url,
-      sampleUrl: raw.sample_url || raw.file_url,
+      fileUrl: raw.file_url.trim(),
+      sampleUrl: (raw.sample_url || raw.file_url).trim(),
       previewUrl: preview,
       tags: raw.tags.split(" ").filter(Boolean),
       rating: raw.rating as "s" | "q" | "e",

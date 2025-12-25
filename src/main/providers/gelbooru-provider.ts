@@ -20,6 +20,10 @@ export class GelbooruProvider implements IBooruProvider {
   readonly name = "Gelbooru";
   private readonly baseUrl = "https://gelbooru.com/index.php";
 
+  getDefaultApiEndpoint(): string {
+    return `${this.baseUrl}?page=dapi&s=post&q=index`;
+  }
+
   formatTag(tag: string, type: "tag" | "uploader" | "query"): string {
     // Gelbooru format is mostly same as R34, usually lowercase with underscores
     const cleanTag = tag.trim().toLowerCase().replace(/ /g, "_");
@@ -126,19 +130,31 @@ export class GelbooruProvider implements IBooruProvider {
         }
       }
 
-      return rawPosts.map(raw => this.mapToBooruPost(raw));
+      return rawPosts.map(raw => this.mapToBooruPost(raw)).filter((post): post is BooruPost => post !== null);
     } catch (error) {
        logger.error(`[Gelbooru] Error fetching page ${page}`, error);
        return [];
     }
   }
 
-  private mapToBooruPost(raw: GelbooruRawPost): BooruPost {
+  private mapToBooruPost(raw: GelbooruRawPost): BooruPost | null {
+    // Gelbooru can return 200 OK with broken data or XML instead of JSON
+    // Validate critical fields before creating post object
+    if (!raw.file_url || typeof raw.file_url !== "string" || raw.file_url.trim() === "") {
+      logger.warn("[GelbooruProvider] Skipping post with missing file_url", { id: raw.id });
+      return null;
+    }
+
+    if (!raw.id || isNaN(Number(raw.id))) {
+      logger.warn("[GelbooruProvider] Skipping post with invalid id", { raw });
+      return null;
+    }
+
     // Safely extract fields as Gelbooru types are loose
     const id = Number(raw.id);
-    const fileUrl = raw.file_url || "";
-    const previewUrl = raw.preview_url || raw.file_url || "";
-    const sampleUrl = raw.sample_url || raw.file_url || "";
+    const fileUrl = raw.file_url.trim();
+    const previewUrl = raw.preview_url?.trim() || raw.file_url.trim();
+    const sampleUrl = raw.sample_url?.trim() || raw.file_url.trim();
     
     // Date parsing
     const date = raw.created_at ? new Date(raw.created_at) : new Date();

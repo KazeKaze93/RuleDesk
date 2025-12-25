@@ -7,7 +7,7 @@ import axios from "axios";
 import type { Artist } from "../db/schema";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
-import { getProvider } from "../providers";
+import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
 import type { BooruPost } from "../providers/types";
 
 const CHUNK_SIZE = 200;
@@ -242,8 +242,16 @@ export class SyncService {
     const db = getDb();
     
     // DYNAMIC PROVIDER SELECTION
-    // Fallback to 'rule34' if provider column is null (safety for migration edge cases)
-    const providerId = artist.provider || "rule34";
+    // Validate provider ID against known providers, fallback to 'rule34' if invalid
+    const rawProviderId = artist.provider || "rule34";
+    const providerId: ProviderId = PROVIDER_IDS.includes(rawProviderId as ProviderId) 
+      ? (rawProviderId as ProviderId) 
+      : "rule34";
+    
+    if (rawProviderId !== providerId) {
+      logger.warn(`SyncService: Invalid provider '${rawProviderId}' for artist ${artist.name}, using 'rule34'`);
+    }
+    
     const provider = getProvider(providerId);
     
     logger.info(`SyncService: Syncing ${artist.name} using provider: ${provider.name}`);
@@ -252,7 +260,6 @@ export class SyncService {
     let hasMore = true;
     let newPostsCount = 0;
     let highestPostId = artist.lastPostId;
-    const allPostsToSave: NewPost[] = [];
 
     while (hasMore && page < maxPages) {
       try {
@@ -296,8 +303,13 @@ export class SyncService {
           isFavorited: false
         }));
 
-        allPostsToSave.push(...postsToSave);
-        newPostsCount += postsToSave.length;
+        // Save posts immediately to avoid memory buildup
+        if (postsToSave.length > 0) {
+          await db.transaction(async (tx) => {
+            await bulkUpsertPosts(postsToSave, tx);
+          });
+          newPostsCount += postsToSave.length;
+        }
 
         if (postsData.length < 100) hasMore = false;
         else page++;
@@ -310,10 +322,8 @@ export class SyncService {
       }
     }
 
+    // Update artist metadata after all pages are processed
     await db.transaction(async (tx) => {
-      if (allPostsToSave.length > 0) {
-        await bulkUpsertPosts(allPostsToSave, tx);
-      }
       await tx
         .update(artists)
         .set({
