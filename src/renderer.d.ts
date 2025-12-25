@@ -5,8 +5,7 @@ import {
   UpdateProgressCallback,
   AddArtistPayload,
 } from "./main/bridge";
-import type { SearchResults } from "./main/providers/types";
-import type { ProviderId } from "./main/providers";
+import type { SearchResults, ProviderId } from "./main/providers";
 
 export type SyncErrorCallback = (message: string) => void;
 

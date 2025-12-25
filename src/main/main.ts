@@ -1,6 +1,10 @@
 import { app, BrowserWindow, dialog } from "electron";
 import path from "path";
 import { mkdirSync } from "fs";
+import log from "electron-log";
+
+// === Initialize electron-log first ===
+log.initialize();
 
 // === PORTABLE MODE LOGIC ===
 if (app.isPackaged) {
@@ -11,10 +15,10 @@ if (app.isPackaged) {
 
     app.setPath("userData", portableDataPath);
 
-    console.log(`PORTABLE MODE: Active. Path: ${portableDataPath}`);
+    log.info(`[PortableMode] Active. Path: ${portableDataPath}`);
   } catch (e) {
-    console.error(
-      "PORTABLE MODE: Failed to init data folder. Fallback to default.",
+    log.error(
+      "[PortableMode] Failed to init data folder. Fallback to default.",
       e
     );
   }
@@ -208,7 +212,7 @@ async function initializeAppAndWindow() {
       minWidth: 800,
       minHeight: 600,
       show: false,
-      title: "RuleDesk",
+      title: `RuleDesk v${app.getVersion()}`,
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
@@ -241,6 +245,8 @@ async function initializeAppAndWindow() {
         window.show();
         updaterService.checkForUpdates();
 
+        // Initialize IPC architecture (controllers + legacy handlers)
+        // setupIpc is called inside registerAllHandlers now
         registerAllHandlers(syncService, updaterService, window);
 
         setTimeout(() => {

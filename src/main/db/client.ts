@@ -4,6 +4,7 @@ import fs from "fs";
 import Database from "better-sqlite3";
 import { drizzle, BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import log from "electron-log";
 import * as schema from "./schema";
 import { logger } from "../lib/logger";
 
@@ -27,11 +28,35 @@ export async function initializeDatabase(): Promise<AppDatabase> {
     fs.mkdirSync(dbDir, { recursive: true });
   }
 
+  // Only enable verbose SQLite logging in DEBUG mode to avoid performance issues
+  // Verbose logging can generate thousands of log entries per query with joins
   const sqlite = new Database(dbPath, {
-    verbose: process.env.NODE_ENV === "development" ? console.log : undefined,
+    verbose: process.env.DEBUG === "true" || process.env.DEBUG_SQLITE === "true"
+      ? (message) => log.debug(`[SQLite] ${message}`)
+      : undefined,
   });
 
+  // Configure SQLite for optimal performance and data safety
   sqlite.pragma("journal_mode = WAL");
+  // Performance: synchronous = NORMAL is safe and optimal for WAL mode
+  // - In WAL mode, NORMAL waits for WAL file write confirmation (safe)
+  // - FULL mode is overkill for WAL: it waits for both WAL AND main DB fsync (slow)
+  // - For mass metadata writes (Sync All), NORMAL provides 2-3x better performance
+  // - WAL mode provides crash recovery: data in WAL is automatically recovered on next startup
+  // - This is metadata storage (not financial data), so NORMAL is the optimal balance
+  sqlite.pragma("synchronous = NORMAL");
+  sqlite.pragma("temp_store = MEMORY"); // Use memory for temp tables (faster)
+  
+  // Memory-mapped I/O: configurable size (default 64MB, can be overridden via env)
+  // Lower default for weaker machines, can be increased via SQLITE_MMAP_SIZE env var
+  const mmapSize = process.env.SQLITE_MMAP_SIZE
+    ? parseInt(process.env.SQLITE_MMAP_SIZE, 10)
+    : 67108864; // 64MB default (more conservative than 256MB)
+  
+  if (mmapSize > 0) {
+    sqlite.pragma(`mmap_size = ${mmapSize}`);
+    logger.info(`[DB] Memory-mapped I/O enabled: ${mmapSize / 1024 / 1024}MB`);
+  }
 
   sqliteInstance = sqlite;
   dbInstance = drizzle(sqlite, { schema }) as AppDatabase;

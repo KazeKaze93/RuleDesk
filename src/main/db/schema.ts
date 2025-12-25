@@ -13,21 +13,32 @@ export type ArtistType = typeof ARTIST_TYPES[number];
 // Provider constants (must match providers/index.ts)
 export const PROVIDER_IDS_SCHEMA = ["rule34", "gelbooru"] as const;
 
-export const artists = sqliteTable("artists", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  tag: text("tag").notNull().unique(),
-  // Provider ID with enum constraint
-  provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
-  type: text("type", { enum: ARTIST_TYPES }).notNull(),
-  apiEndpoint: text("api_endpoint").notNull(),
-  lastPostId: integer("last_post_id").notNull().default(0),
-  newPostsCount: integer("new_posts_count").notNull().default(0),
-  lastChecked: integer("last_checked", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const artists = sqliteTable(
+  "artists",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    tag: text("tag").notNull().unique(),
+    // Provider ID with enum constraint
+    provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
+    type: text("type", { enum: ARTIST_TYPES }).notNull(),
+    apiEndpoint: text("api_endpoint").notNull(),
+    lastPostId: integer("last_post_id").notNull().default(0),
+    newPostsCount: integer("new_posts_count").notNull().default(0),
+    lastChecked: integer("last_checked", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    // Note: Expression index for COALESCE(lastChecked, createdAt) is created via migration
+    // See drizzle/0003_add_artists_sort_index.sql
+    // Drizzle doesn't support expression indexes directly, so we use raw SQL in migration
+    // Individual column indexes are kept for other potential queries
+    lastCheckedIdx: index("artists_lastChecked_idx").on(t.lastChecked),
+    createdAtIdx: index("artists_createdAt_idx").on(t.createdAt),
+  })
+);
 
 export const posts = sqliteTable(
   "posts",

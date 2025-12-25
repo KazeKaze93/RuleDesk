@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient, InfiniteData } from "@tanstack/react-query";
+import log from "electron-log/renderer";
 import type { Post } from "../../../../main/db/schema";
 import type { ViewerOrigin } from "../../../store/viewerStore";
 
@@ -126,7 +127,7 @@ export function useViewerController({
       setIsFavorited(previousState);
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      console.error("Failed to toggle favorite:", errorMessage);
+      log.error("[ViewerController] Failed to toggle favorite:", errorMessage);
     }
   };
 
@@ -146,10 +147,10 @@ export function useViewerController({
       } else if (result && result.canceled) {
         // User canceled
       } else {
-        console.error("Download failed:", result?.error || "Unknown error");
+        log.error("[ViewerController] Download failed:", result?.error || "Unknown error");
       }
     } catch (error) {
-      console.error("Download failed:", error);
+      log.error("[ViewerController] Download failed:", error);
       setDownloadProgress(0);
     }
   };
@@ -163,9 +164,9 @@ export function useViewerController({
   const handleCopyText = async (text: string) => {
     try {
       await window.api.writeToClipboard(text);
-      console.log(`Copied via IPC: ${text}`);
+      log.info(`[ViewerController] Copied via IPC: ${text}`);
     } catch (err) {
-      console.error("Failed to copy text via IPC: ", err);
+      log.error("[ViewerController] Failed to copy text via IPC:", err);
     }
   };
 
@@ -176,7 +177,7 @@ export function useViewerController({
 
   const resetLocalCache = () => {
     if (!post) return;
-    console.log(`Attempting to reset local cache for Post ID: ${post.id}`);
+    log.info(`[ViewerController] Attempting to reset local cache for Post ID: ${post.id}`);
     window.api.resetPostCache(post.id);
   };
 
@@ -184,9 +185,9 @@ export function useViewerController({
     const metadata = JSON.stringify(post, null, 2);
     try {
       await window.api.writeToClipboard(metadata);
-      console.log("Metadata copied to clipboard:", post);
+      log.info("[ViewerController] Metadata copied to clipboard:", post);
     } catch (e) {
-      console.error("Failed to copy metadata", e);
+      log.error("[ViewerController] Failed to copy metadata", e);
     }
   };
 
@@ -200,9 +201,9 @@ export function useViewerController({
 
     try {
       await window.api.writeToClipboard(JSON.stringify(debugInfo, null, 2));
-      console.log("Debug info copied via IPC");
+      log.info("[ViewerController] Debug info copied via IPC");
     } catch (e) {
-      console.error("Failed to copy debug info", e);
+      log.error("[ViewerController] Failed to copy debug info", e);
     }
   };
 

@@ -1,5 +1,6 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
+import log from "electron-log/renderer";
 
 import { AppLayout as Layout } from "./components/layout/AppLayout";
 import { Settings } from "./features/settings/Settings";
@@ -35,12 +36,12 @@ function App() {
         const settings = await window.api.getSettings();
         // hasApiKey is always boolean (non-nullable) per IpcSettings interface
         const hasApiKey = settings?.hasApiKey ?? false;
-        console.log(
+        log.info(
           `[App] Auth check result: hasApiKey=${hasApiKey}, userId=${settings?.userId}`
         );
         setIsAuthenticated(hasApiKey);
       } catch (error) {
-        console.error("Failed to check authentication:", error);
+        log.error("[App] Failed to check authentication:", error);
         setIsAuthenticated(false);
       }
     };
