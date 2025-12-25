@@ -8,6 +8,17 @@ import log from "electron-log";
 export const DI_KEYS = {
   DB: "Database",
   PROVIDER_FACTORY: "ProviderFactory",
+  SYNC_SERVICE: "SyncService",
+} as const;
+
+/**
+ * Type registry for runtime type checking
+ * Maps DI keys to expected types for validation
+ */
+const EXPECTED_TYPES: Record<string, string> = {
+  [DI_KEYS.DB]: "object",
+  [DI_KEYS.PROVIDER_FACTORY]: "object",
+  [DI_KEYS.SYNC_SERVICE]: "object",
 } as const;
 
 /**
@@ -65,7 +76,7 @@ export class Container {
    *
    * @param id - Unique identifier of the service
    * @returns The requested service instance
-   * @throws {Error} If service is not found or circular dependency detected
+   * @throws {Error} If service is not found, circular dependency detected, or type mismatch
    */
   public resolve<T>(id: string): T {
     // Check for circular dependencies
@@ -82,11 +93,19 @@ export class Container {
       throw new Error(error);
     }
 
+    // Runtime type validation (basic check)
+    const service = this.services.get(id);
+    const expectedType = EXPECTED_TYPES[id];
+    if (expectedType && typeof service !== expectedType) {
+      const error = `[Container] Type mismatch for service "${id}": expected ${expectedType}, got ${typeof service}`;
+      log.error(error);
+      throw new Error(error);
+    }
+
     // Track resolution stack for cycle detection
     this.resolutionStack.add(id);
     try {
-      const service = this.services.get(id) as T;
-      return service;
+      return service as T;
     } finally {
       // Remove from stack after resolution (allows same service to be resolved again)
       this.resolutionStack.delete(id);

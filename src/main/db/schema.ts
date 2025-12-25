@@ -13,21 +13,36 @@ export type ArtistType = typeof ARTIST_TYPES[number];
 // Provider constants (must match providers/index.ts)
 export const PROVIDER_IDS_SCHEMA = ["rule34", "gelbooru"] as const;
 
-export const artists = sqliteTable("artists", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  tag: text("tag").notNull().unique(),
-  // Provider ID with enum constraint
-  provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
-  type: text("type", { enum: ARTIST_TYPES }).notNull(),
-  apiEndpoint: text("api_endpoint").notNull(),
-  lastPostId: integer("last_post_id").notNull().default(0),
-  newPostsCount: integer("new_posts_count").notNull().default(0),
-  lastChecked: integer("last_checked", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const artists = sqliteTable(
+  "artists",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    tag: text("tag").notNull().unique(),
+    // Provider ID with enum constraint
+    provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
+    type: text("type", { enum: ARTIST_TYPES }).notNull(),
+    apiEndpoint: text("api_endpoint").notNull(),
+    lastPostId: integer("last_post_id").notNull().default(0),
+    newPostsCount: integer("new_posts_count").notNull().default(0),
+    lastChecked: integer("last_checked", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    // Indexes for COALESCE sorting performance (critical for >1000 artists)
+    // Separate indexes allow SQLite to use index scan instead of full table scan
+    lastCheckedIdx: index("artists_lastChecked_idx").on(t.lastChecked),
+    createdAtIdx: index("artists_createdAt_idx").on(t.createdAt),
+    // Composite index for common query pattern: COALESCE(lastChecked, createdAt) DESC
+    // SQLite can use this for efficient sorting when both columns are indexed
+    lastCheckedCreatedAtIdx: index("artists_lastChecked_createdAt_idx").on(
+      t.lastChecked,
+      t.createdAt
+    ),
+  })
+);
 
 export const posts = sqliteTable(
   "posts",

@@ -27,9 +27,8 @@ const GetPostsSchema = z.object({
   limit: z.number().int().min(1).max(100).default(50),
 });
 
-// Export types for use in bridge.ts
-export type GetPostsParams = z.infer<typeof GetPostsSchema>;
-export type PostFilterParams = z.infer<typeof PostFilterSchema>;
+// Internal types (not exported - use types from src/main/types/ipc.ts instead)
+type GetPostsParams = z.infer<typeof GetPostsSchema>;
 
 
 /**
@@ -52,17 +51,17 @@ export class PostsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS,
       z.tuple([GetPostsSchema]),
-      this.getPosts.bind(this)
+      this.getPosts.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
       z.tuple([z.number().int().positive().optional()]),
-      this.getPostsCount.bind(this)
+      this.getPostsCount.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
       z.tuple([z.number().int().positive()]),
-      this.markViewed.bind(this)
+      this.markViewed.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     log.info("[PostsController] All handlers registered");

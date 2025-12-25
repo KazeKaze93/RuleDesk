@@ -40,7 +40,17 @@ export async function initializeDatabase(): Promise<AppDatabase> {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("synchronous = NORMAL"); // Balance between safety and performance
   sqlite.pragma("temp_store = MEMORY"); // Use memory for temp tables (faster)
-  sqlite.pragma("mmap_size = 268435456"); // 256MB memory-mapped I/O for faster reads
+  
+  // Memory-mapped I/O: configurable size (default 64MB, can be overridden via env)
+  // Lower default for weaker machines, can be increased via SQLITE_MMAP_SIZE env var
+  const mmapSize = process.env.SQLITE_MMAP_SIZE
+    ? parseInt(process.env.SQLITE_MMAP_SIZE, 10)
+    : 67108864; // 64MB default (more conservative than 256MB)
+  
+  if (mmapSize > 0) {
+    sqlite.pragma(`mmap_size = ${mmapSize}`);
+    logger.info(`[DB] Memory-mapped I/O enabled: ${mmapSize / 1024 / 1024}MB`);
+  }
 
   sqliteInstance = sqlite;
   dbInstance = drizzle(sqlite, { schema }) as AppDatabase;

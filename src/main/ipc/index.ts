@@ -2,7 +2,6 @@ import { BrowserWindow, ipcMain, dialog, app } from "electron";
 import path from "path";
 import fs from "fs";
 import Database from "better-sqlite3";
-import { eq } from "drizzle-orm";
 import log from "electron-log";
 import { z } from "zod";
 
@@ -10,12 +9,12 @@ import { SystemController } from "./controllers/SystemController";
 import { ArtistsController } from "./controllers/ArtistsController";
 import { PostsController } from "./controllers/PostsController";
 import { SettingsController } from "./controllers/SettingsController";
+import { AuthController } from "./controllers/AuthController";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
 import { ProviderFactory } from "../services/providers/ProviderFactory";
 import { IPC_CHANNELS } from "./channels";
 import { getDb, getSqliteInstance, closeDatabase, initializeDatabase } from "../db/client";
-import { settings } from "../db/schema";
 import { container, DI_KEYS } from "../core/di/Container";
 
 import { registerViewerHandlers } from "./handlers/viewer";
@@ -57,7 +56,20 @@ export function setupIpc(): void {
   const settingsController = new SettingsController();
   settingsController.setup();
 
+  const authController = new AuthController();
+  authController.setup();
+
   log.info("[IPC] All controllers initialized successfully");
+}
+
+/**
+ * Register services in DI container (called after services are initialized)
+ * 
+ * @param syncService - Sync service instance
+ */
+export function registerServices(syncService: SyncService): void {
+  container.register(DI_KEYS.SYNC_SERVICE, syncService);
+  log.info("[IPC] SyncService registered in DI container");
 }
 
 /**
@@ -367,26 +379,7 @@ export const registerAllHandlers = (
 ) => {
   log.info("[IPC] Registering legacy modular handlers...");
 
-  // ⚠️ TODO: Migrate to AuthController
-  ipcMain.handle(IPC_CHANNELS.APP.VERIFY_CREDS, async () => {
-    return await syncService.checkCredentials();
-  });
-
-  // ⚠️ TODO: Migrate to AuthController
-  ipcMain.handle(IPC_CHANNELS.APP.LOGOUT, async () => {
-    try {
-      const db = getDb();
-      await db
-        .update(settings)
-        .set({ encryptedApiKey: "" })
-        .where(eq(settings.id, 1));
-      log.info("[IPC] User logged out (API key cleared)");
-      return true;
-    } catch (error) {
-      log.error("[IPC] Logout failed:", error);
-      return false;
-    }
-  });
+  // Auth handlers migrated to AuthController - no longer needed here
 
   // ⚠️ TODO: Migrate to controllers
   // registerPostHandlers(); // Migrated to PostsController

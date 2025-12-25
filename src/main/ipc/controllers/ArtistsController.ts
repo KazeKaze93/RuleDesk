@@ -24,8 +24,8 @@ const AddArtistSchema = z.object({
   apiEndpoint: z.string().url().trim().optional(),
 });
 
-// Export types for use in bridge.ts
-export type AddArtistParams = z.infer<typeof AddArtistSchema>;
+// Internal type (not exported - use types from src/main/types/ipc.ts instead)
+type AddArtistParams = z.infer<typeof AddArtistSchema>;
 
 
 /**
@@ -60,22 +60,22 @@ export class ArtistsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.ADD_ARTIST,
       z.tuple([AddArtistSchema]),
-      this.addArtist.bind(this)
+      this.addArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.DELETE_ARTIST,
       z.tuple([z.number().int().positive()]),
-      this.deleteArtist.bind(this)
+      this.deleteArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.SEARCH_TAGS,
       z.tuple([z.string().trim().min(1)]),
-      this.searchArtists.bind(this)
+      this.searchArtists.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.API.SEARCH_REMOTE,
       z.tuple([z.string().trim().min(2), z.enum(["rule34", "gelbooru"]).optional()]),
-      this.searchRemoteTags.bind(this)
+      this.searchRemoteTags.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     log.info("[ArtistsController] All handlers registered");

@@ -36,36 +36,42 @@ export abstract class BaseController {
   /**
    * Protected helper to register IPC handlers with centralized error handling and input validation
    * 
-   * @param channel - IPC channel name (e.g., 'user:get')
-   * @param schema - Zod schema for validating handler arguments (must be a tuple)
-   * @param handler - Async handler function with validated, typed arguments
+   * Accepts either:
+   * - z.tuple([...]) for multiple arguments or empty tuple
+   * - Single Zod schema (object, string, etc.) which will be auto-wrapped in tuple
    * 
-   * Type-safe handler signature: The handler receives validated arguments based on the Zod schema.
-   * TypeScript infers the correct types from the schema, ensuring type safety without using 'any'.
+   * @param channel - IPC channel name (e.g., 'user:get')
+   * @param schema - Zod schema for validating handler arguments (tuple or single schema)
+   * @param handler - Async handler function with validated, typed arguments
    */
-  protected handle<
-    TSchema extends z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], z.ZodTypeAny | null>,
-    TInferred extends z.infer<TSchema>
-  >(
+  protected handle(
     channel: string,
-    schema: TSchema,
+    schema: z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], z.ZodTypeAny | null> | z.ZodTypeAny,
     handler: (
       event: IpcMainInvokeEvent,
-      ...args: TInferred extends readonly [infer First, ...infer Rest]
-        ? [First, ...Rest]
-        : TInferred extends readonly []
-        ? []
-        : never
+      ...args: unknown[]
     ) => Promise<unknown>
   ): void {
+    // Type assertion: Runtime validation via Zod ensures type safety
+    // TypeScript cannot verify this at compile time, but Zod validates at runtime
+    const typedHandler = handler as (
+      event: IpcMainInvokeEvent,
+      ...args: unknown[]
+    ) => Promise<unknown>;
     ipcMain.handle(channel, async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       try {
         log.info(`[IPC] Incoming request: ${channel}`);
 
-        // Validate input arguments using Zod schema
-        let validatedArgs: TInferred;
+        // Normalize schema: if single ZodType (not tuple), wrap in tuple for validation
+        const isTuple = schema instanceof z.ZodTuple;
+        const normalizedSchema = isTuple
+          ? schema
+          : z.tuple([schema as z.ZodTypeAny]);
+
+        // Validate input arguments using normalized schema
+        let validatedArgs: unknown[];
         try {
-          validatedArgs = schema.parse(args) as TInferred;
+          validatedArgs = normalizedSchema.parse(args) as unknown[];
         } catch (validationError) {
           if (validationError instanceof z.ZodError) {
             const errorMessage = `Validation Error: ${validationError.errors.map((e) => e.message).join(', ')}`;
@@ -93,16 +99,12 @@ export abstract class BaseController {
         }
 
         // Call handler with validated arguments
-        // TypeScript limitation: tuple unpacking in rest parameters requires type assertion
-        // Runtime validation via Zod ensures type safety, so this is safe
-        const result = await handler(
-          event,
-          ...(validatedArgs as unknown as TInferred extends readonly [infer First, ...infer Rest]
-            ? [First, ...Rest]
-            : TInferred extends readonly []
-            ? []
-            : never)
-        );
+        // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
+        const handlerArgs = isTuple
+          ? validatedArgs
+          : [validatedArgs[0]];
+        
+        const result = await typedHandler(event, ...handlerArgs);
         log.info(`[IPC] Request completed: ${channel}`);
         return result;
       } catch (error: unknown) {
@@ -169,12 +171,23 @@ export abstract class BaseController {
     return args.map((arg) => {
       // Mask strings that might contain sensitive data
       if (typeof arg === 'string') {
-        // Mask file paths (may contain username, sensitive directories)
+        // Mask file paths (preserve path structure, mask only username)
         if (/^[A-Za-z]:[\\/]|^\/|^~/.test(arg)) {
-          // Extract just filename or last segment, mask full path
-          const segments = arg.split(/[\\/]/);
-          const lastSegment = segments[segments.length - 1];
-          return `<path:${lastSegment || 'root'}>`;
+          // Preserve path for debugging, but mask username
+          // Windows: C:\Users\Username\... -> C:\Users\<user>\...
+          // Unix: /home/username/... -> /home/<user>/...
+          // This allows debugging file operations while protecting user identity
+          const maskedPath = arg
+            // Windows user path: C:\Users\Username\... -> C:\Users\<user>\...
+            .replace(/^([A-Za-z]:[\\/]Users[\\/])([^\\/]+)([\\/])/i, '$1<user>$3')
+            // Unix home path: /home/username/... -> /home/<user>/...
+            .replace(/^(\/home\/)([^/]+)(\/)/, '$1<user>$3')
+            // Tilde expansion: ~username/... -> ~<user>/...
+            .replace(/^(~)([^/\\]+)([/\\])/, '$1<user>$3')
+            // Generic user directory patterns
+            .replace(/\/(Users|home)\/([^/\\]+)([/\\])/gi, '/$1/<user>$3');
+          
+          return maskedPath;
         }
         
         // Mask tokens and keys (any length if they match patterns)

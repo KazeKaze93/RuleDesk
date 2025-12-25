@@ -21,7 +21,7 @@ export class SystemController extends BaseController {
     this.handle(
       "app:write-to-clipboard",
       z.tuple([z.string().min(1)]),
-      this.writeToClipboard.bind(this)
+      this.writeToClipboard.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     log.info("[SystemController] All handlers registered");
