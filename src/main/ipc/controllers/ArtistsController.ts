@@ -6,14 +6,10 @@ import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { artists, ARTIST_TYPES } from "../../db/schema";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { PROVIDER_IDS } from "../../providers";
-import { getProvider } from "../../providers";
+import { PROVIDER_IDS, getProvider, type ProviderId, type SearchResults } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
-import type { TagResult } from "../../services/providers/IBooruProvider";
-import { ProviderFactory } from "../../services/providers/ProviderFactory";
-import type { ProviderId } from "../../providers";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -62,9 +58,6 @@ export class ArtistsController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
-  private getProviderFactory(): ProviderFactory {
-    return container.resolve(DI_TOKENS.PROVIDER_FACTORY);
-  }
 
 
   /**
@@ -280,13 +273,9 @@ export class ArtistsController extends BaseController {
     _event: IpcMainInvokeEvent,
     query: string,
     providerId?: ProviderId
-  ): Promise<TagResult[]> {
+  ): Promise<SearchResults[]> {
     try {
-      const factory = this.getProviderFactory();
-      const provider = providerId
-        ? factory.getProvider(providerId)
-        : factory.getDefaultProvider();
-      
+      const provider = getProvider(providerId || "rule34");
       return await provider.searchTags(query);
     } catch (error) {
       log.error("[ArtistsController] Remote search error:", error);

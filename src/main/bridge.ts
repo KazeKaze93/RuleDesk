@@ -2,8 +2,7 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type { Artist, Post } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
 import type { GetPostsRequest, AddArtistRequest, IpcSettings } from "./types/ipc";
-import type { TagResult } from "./services/providers/IBooruProvider";
-import type { ProviderId } from "./providers";
+import type { ProviderId, SearchResults } from "./providers";
 
 export type UpdateStatusData = {
   status: string;
@@ -104,7 +103,7 @@ export interface IpcBridge {
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
 
-  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<TagResult[]>;
+  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;

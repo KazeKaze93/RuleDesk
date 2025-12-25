@@ -5,8 +5,7 @@ import {
   UpdateProgressCallback,
   AddArtistPayload,
 } from "./main/bridge";
-import type { TagResult } from "./main/services/providers/IBooruProvider";
-import type { ProviderId } from "./main/providers";
+import type { SearchResults, ProviderId } from "./main/providers";
 
 export type SyncErrorCallback = (message: string) => void;
 
@@ -81,7 +80,7 @@ export interface IpcApi extends IpcBridge {
 
   markPostAsViewed: (postId: number) => Promise<boolean>;
 
-  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<TagResult[]>;
+  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;

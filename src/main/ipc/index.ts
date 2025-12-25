@@ -11,7 +11,6 @@ import { ViewerController } from "./controllers/ViewerController";
 import { FileController } from "./controllers/FileController";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
-import { ProviderFactory } from "../services/providers/ProviderFactory";
 import { getDb } from "../db/client";
 import { container, DI_TOKENS } from "../core/di/Container";
 
@@ -30,11 +29,6 @@ export function setupIpc(): { maintenanceController: MaintenanceController; file
   const db = getDb();
   container.register(DI_TOKENS.DB, db);
   log.info("[IPC] Database registered in DI container");
-
-  // Register provider factory
-  const providerFactory = new ProviderFactory();
-  container.register(DI_TOKENS.PROVIDER_FACTORY, providerFactory);
-  log.info("[IPC] ProviderFactory registered in DI container");
 
   // Register core controllers
   const systemController = new SystemController();

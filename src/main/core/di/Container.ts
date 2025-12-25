@@ -2,7 +2,6 @@ import log from "electron-log";
 import { Token } from "./Token";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
-import type { ProviderFactory } from "../../services/providers/ProviderFactory";
 import type { SyncService } from "../../services/sync-service";
 
 // Type aliases for cleaner token definitions
@@ -19,7 +18,6 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  */
 export const DI_TOKENS = {
   DB: new Token<AppDatabase>("Database", "SQLite database instance"),
-  PROVIDER_FACTORY: new Token<ProviderFactory>("ProviderFactory", "Booru provider factory"),
   SYNC_SERVICE: new Token<SyncService>("SyncService", "Artist synchronization service"),
 } as const;
 
@@ -29,7 +27,6 @@ export const DI_TOKENS = {
  */
 export const DI_KEYS = {
   DB: "Database",
-  PROVIDER_FACTORY: "ProviderFactory",
   SYNC_SERVICE: "SyncService",
 } as const;
 

@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import log from "electron-log/renderer";
 import { useDebounce } from "./useDebounce";
-import type { TagResult } from "../../../main/services/providers/IBooruProvider";
-import type { ProviderId } from "../../../main/providers";
+import type { SearchResults, ProviderId } from "../../../main/providers";
 
 interface UseRemoteTagsOptions {
   query: string;
@@ -12,7 +11,7 @@ interface UseRemoteTagsOptions {
 }
 
 interface UseRemoteTagsReturn {
-  results: TagResult[];
+  results: SearchResults[];
   isLoading: boolean;
   error: Error | null;
 }
@@ -35,7 +34,7 @@ export function useRemoteTags({
   debounceMs = 300,
   provider = "rule34",
 }: UseRemoteTagsOptions): UseRemoteTagsReturn {
-  const [results, setResults] = useState<TagResult[]>([]);
+  const [results, setResults] = useState<SearchResults[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
