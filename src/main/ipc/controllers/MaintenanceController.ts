@@ -9,6 +9,7 @@ import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { IPC_CHANNELS } from "../channels";
 import { getSqliteInstance, closeDatabase, initializeDatabase } from "../../db/client";
+import { maintenanceQueue } from "../../db/maintenance-queue";
 import type { SyncService } from "../../services/sync-service";
 
 /**
@@ -121,7 +122,9 @@ export class MaintenanceController extends BaseController {
   private async createBackup(
     _event: IpcMainInvokeEvent
   ): Promise<{ success: boolean; path?: string; error?: string }> {
-    try {
+    // Execute backup operation in maintenance queue to prevent race conditions
+    return maintenanceQueue.execute(async () => {
+      try {
       const backupDir = app.getPath("userData");
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const backupPath = path.join(
@@ -166,22 +169,23 @@ export class MaintenanceController extends BaseController {
         this.mainWindow.flashFrame(false);
       }
 
-      log.info(`[MaintenanceController] Backup created at ${backupPath}`);
-      return {
-        success: true,
-        path: backupPath,
-      };
-    } catch (error) {
-      // Ensure loading state is cleared on error
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.mainWindow.webContents.send("APP:LOADING", { loading: false });
+        log.info(`[MaintenanceController] Backup created at ${backupPath}`);
+        return {
+          success: true,
+          path: backupPath,
+        };
+      } catch (error) {
+        // Ensure loading state is cleared on error
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send("APP:LOADING", { loading: false });
+        }
+        log.error("[MaintenanceController] Backup failed:", error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
-      log.error("[MaintenanceController] Backup failed:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
+    });
   }
 
   /**
@@ -210,8 +214,10 @@ export class MaintenanceController extends BaseController {
       return { success: false, error: "Canceled by user" };
     }
 
-    try {
-      const backupPath = filePaths[0];
+    // Execute restore operation in maintenance queue to prevent race conditions
+    return maintenanceQueue.execute(async () => {
+      try {
+        const backupPath = filePaths[0];
 
       // Check if backup file exists
       try {
@@ -319,8 +325,8 @@ export class MaintenanceController extends BaseController {
         await deleteBak(bakPaths.wal);
         await deleteBak(bakPaths.shm);
 
-        // Step 6: Reinitialize database connection
-        initializeDatabase();
+        // Step 6: Reinitialize database connection (within queue, safe from concurrent access)
+        await initializeDatabase();
 
         // Send loading complete event
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -357,9 +363,9 @@ export class MaintenanceController extends BaseController {
         await restoreFromBak(bakPaths.wal, walPath);
         await restoreFromBak(bakPaths.shm, shmPath);
 
-        // Attempt to reinitialize database with restored files
+        // Attempt to reinitialize database with restored files (within queue, safe from concurrent access)
         try {
-          initializeDatabase();
+          await initializeDatabase();
         } catch (initError) {
           log.error("[MaintenanceController] Failed to reinitialize database after rollback:", initError);
         }
@@ -384,18 +390,19 @@ export class MaintenanceController extends BaseController {
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         this.mainWindow.webContents.send("APP:LOADING", { loading: false });
       }
-      log.error("[MaintenanceController] Restore failed:", error);
-      // Attempt to reinitialize database even if restore failed
-      try {
-        initializeDatabase();
-      } catch (initError) {
-        log.error("[MaintenanceController] Failed to reinitialize database after restore error:", initError);
+        log.error("[MaintenanceController] Restore failed:", error);
+        // Attempt to reinitialize database even if restore failed (within queue, safe from concurrent access)
+        try {
+          await initializeDatabase();
+        } catch (initError) {
+          log.error("[MaintenanceController] Failed to reinitialize database after restore error:", initError);
+        }
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
+    });
   }
 }
 

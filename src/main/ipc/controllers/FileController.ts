@@ -11,6 +11,11 @@ import { IPC_CHANNELS } from "../channels";
 
 const DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 
+// Maximum filename length to prevent filesystem errors
+// Most filesystems (Windows, Linux, macOS) limit filenames to 255 characters
+// We use 200 to account for path length and extensions
+const MAX_FILENAME_LENGTH = 200;
+
 const DownloadFileSchema = z.object({
   url: z
     .string()
@@ -21,6 +26,7 @@ const DownloadFileSchema = z.object({
   filename: z
     .string()
     .min(1)
+    .max(MAX_FILENAME_LENGTH, `Filename must not exceed ${MAX_FILENAME_LENGTH} characters`)
     .regex(/^[\w\-. ]+$/, "Invalid filename characters"),
 });
 
@@ -66,7 +72,10 @@ export class FileController extends BaseController {
   public setup(): void {
     this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD,
-      z.tuple([z.string().url(), z.string().min(1)]), // Multiple arguments: url, filename
+      z.tuple([
+        DownloadFileSchema.shape.url, // URL with HTTP/HTTPS validation
+        DownloadFileSchema.shape.filename, // Filename with length and character validation
+      ]),
       this.downloadFile.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(

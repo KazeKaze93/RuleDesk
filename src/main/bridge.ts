@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import type { Artist, Post, Settings } from "./db/schema";
+import type { Artist, Post } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
-import type { GetPostsRequest, AddArtistRequest } from "./types/ipc";
+import type { GetPostsRequest, AddArtistRequest, IpcSettings } from "./types/ipc";
 import type { TagResult } from "./services/providers/IBooruProvider";
 import type { ProviderId } from "./providers";
 
@@ -46,7 +46,7 @@ export interface IpcBridge {
   writeToClipboard: (text: string) => Promise<boolean>;
 
   // Settings
-  getSettings: () => Promise<Settings | undefined>;
+  getSettings: () => Promise<IpcSettings | null>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
   logout: () => Promise<void>;
 
@@ -71,7 +71,7 @@ export interface IpcBridge {
 
   // Sync
   syncAll: () => Promise<boolean>;
-  repairArtist: (artistId: number) => Promise<boolean>;
+  repairArtist: (artistId: number) => Promise<{ success: boolean; error?: string }>;
 
   // Updater
   checkForUpdates: () => Promise<void>;

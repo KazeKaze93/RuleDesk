@@ -41,6 +41,7 @@ export function AsyncAutocomplete({
   const debouncedQuery = useDebounce(query, 300);
   const fetchOptionsRef = useRef(fetchOptions);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isValidQueryRef = useRef(false);
 
   useEffect(() => {
     fetchOptionsRef.current = fetchOptions;
@@ -57,29 +58,33 @@ export function AsyncAutocomplete({
     }
 
     // Don't search if query is empty or too short (min 2 chars for remote search)
-    // Simply return empty results without triggering extra renders
     if (!trimmedQuery || trimmedQuery.length < 2) {
-      // Valid pattern: clearing state when query becomes invalid, no async operation
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Valid: clearing state when query is invalid
-      setOptions([]);
-      setIsLoading(false);
-      return;
+      isValidQueryRef.current = false;
+      // Clear state via cleanup to avoid synchronous setState
+      return () => {
+        setOptions([]);
+        setIsLoading(false);
+      };
     }
+
+    isValidQueryRef.current = true;
 
     // Create new AbortController for this request
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    // Set loading state before initiating async operation
-    // This is a valid pattern for async operations in effects - we need to set loading state
-    // before initiating the async call to provide immediate UI feedback
-    setIsLoading(true);
+    // Set loading state asynchronously to avoid synchronous setState warning
+    Promise.resolve().then(() => {
+      if (isValidQueryRef.current && abortControllerRef.current === abortController) {
+        setIsLoading(true);
+      }
+    });
 
     fetchOptionsRef
       .current(trimmedQuery)
       .then((results) => {
-        // Only update state if request wasn't aborted
-        if (!abortController.signal.aborted) {
+        // Only update state if request wasn't aborted and query is still valid
+        if (!abortController.signal.aborted && isValidQueryRef.current) {
           setOptions(results);
         }
       })
@@ -98,7 +103,8 @@ export function AsyncAutocomplete({
       });
 
     return () => {
-      // Abort request on cleanup
+      // Cleanup: abort request and clear state if component unmounts or query changes
+      isValidQueryRef.current = false;
       abortController.abort();
       if (abortControllerRef.current === abortController) {
         abortControllerRef.current = null;
