@@ -169,17 +169,28 @@ export abstract class BaseController {
     return args.map((arg) => {
       // Mask strings that might contain sensitive data
       if (typeof arg === 'string') {
+        // Mask file paths (may contain username, sensitive directories)
+        if (/^[A-Za-z]:[\\/]|^\/|^~/.test(arg)) {
+          // Extract just filename or last segment, mask full path
+          const segments = arg.split(/[\\/]/);
+          const lastSegment = segments[segments.length - 1];
+          return `<path:${lastSegment || 'root'}>`;
+        }
+        
+        // Mask tokens and keys (any length if they match patterns)
+        if (
+          /(password|token|key|secret|api[_-]?key|auth|credential)/i.test(arg) ||
+          /^[A-Za-z0-9+/]{32,}={0,2}$/.test(arg) || // Base64-like strings (32+ chars)
+          /^[a-f0-9]{32,}$/i.test(arg) // Hex strings (likely hashes/tokens)
+        ) {
+          return '<masked>';
+        }
+        
         // Mask long strings (likely tokens, keys, etc.)
         if (arg.length > 50) {
           return `<string:${arg.length}chars>`;
         }
-        // Check for common sensitive patterns
-        if (
-          /(password|token|key|secret|api[_-]?key|auth)/i.test(String(arg)) ||
-          /^[A-Za-z0-9+/]{40,}={0,2}$/.test(arg) // Base64-like strings
-        ) {
-          return '<masked>';
-        }
+        
         return arg;
       }
       
@@ -190,13 +201,15 @@ export abstract class BaseController {
         }
         
         // Check for sensitive keys in objects
-        const sensitiveKeys = /(password|token|key|secret|api[_-]?key|auth|credential)/i;
+        const sensitiveKeys = /(password|token|key|secret|api[_-]?key|auth|credential|path|file|dir)/i;
         const sanitized: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(arg)) {
           if (sensitiveKeys.test(key)) {
             sanitized[key] = '<masked>';
-          } else if (typeof value === 'string' && value.length > 50) {
-            sanitized[key] = `<string:${value.length}chars>`;
+          } else if (typeof value === 'string') {
+            // Recursively sanitize string values
+            const sanitizedValue = this.sanitizeArgs([value])[0];
+            sanitized[key] = sanitizedValue;
           } else {
             sanitized[key] = value;
           }

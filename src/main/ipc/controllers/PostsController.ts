@@ -123,7 +123,8 @@ export class PostsController extends BaseController {
       return result;
     } catch (error) {
       log.error("[PostsController] Failed to get posts:", error);
-      throw new Error("Failed to fetch posts");
+      // Re-throw original error to preserve stack trace and context
+      throw error;
     }
   }
 

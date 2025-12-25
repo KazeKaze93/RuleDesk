@@ -58,14 +58,14 @@ export function AsyncAutocomplete({
         abortControllerRef.current = null;
       }
       
-      // Reset state asynchronously to avoid synchronous setState in effect
-      // This is necessary to clear UI state when query becomes invalid
-      Promise.resolve().then(() => {
+      // Reset state - this is necessary to clear UI when query becomes invalid
+      // Using setTimeout to defer state update and avoid synchronous setState warning
+      const timeoutId = setTimeout(() => {
         setOptions([]);
         setIsLoading(false);
-      });
+      }, 0);
       
-      return;
+      return () => clearTimeout(timeoutId);
     }
 
     // Cancel previous request if still pending
@@ -77,13 +77,12 @@ export function AsyncAutocomplete({
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    // Set loading state asynchronously to avoid synchronous setState in effect
-    // This is necessary to show loading indicator when starting a new search
-    Promise.resolve().then(() => {
+    // Set loading state asynchronously
+    const loadingTimeoutId = setTimeout(() => {
       if (!abortController.signal.aborted && abortControllerRef.current === abortController) {
         setIsLoading(true);
       }
-    });
+    }, 0);
 
     fetchOptionsRef
       .current(trimmedQuery)
@@ -108,6 +107,7 @@ export function AsyncAutocomplete({
       });
 
     return () => {
+      clearTimeout(loadingTimeoutId);
       // Abort request on cleanup
       abortController.abort();
       if (abortControllerRef.current === abortController) {

@@ -10,7 +10,9 @@ import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
-import type { TagResult, IBooruProvider } from "../../services/providers/IBooruProvider";
+import type { TagResult } from "../../services/providers/IBooruProvider";
+import { ProviderFactory } from "../../services/providers/ProviderFactory";
+import type { ProviderId } from "../../providers";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -41,9 +43,9 @@ export class ArtistsController extends BaseController {
     return container.resolve<AppDatabase>(DI_KEYS.DB);
   }
 
-  private readonly provider: IBooruProvider = container.resolve<IBooruProvider>(
-    DI_KEYS.R34_PROVIDER
-  );
+  private getProviderFactory(): ProviderFactory {
+    return container.resolve<ProviderFactory>(DI_KEYS.PROVIDER_FACTORY);
+  }
 
 
   /**
@@ -72,7 +74,7 @@ export class ArtistsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.API.SEARCH_REMOTE,
-      z.tuple([z.string().trim().min(2)]),
+      z.tuple([z.string().trim().min(2), z.enum(["rule34", "gelbooru"]).optional()]),
       this.searchRemoteTags.bind(this)
     );
 
@@ -216,19 +218,25 @@ export class ArtistsController extends BaseController {
    *
    * @param _event - IPC event (unused)
    * @param query - Search query string (validated)
+   * @param providerId - Provider identifier (optional, defaults to "rule34")
    * @returns Array of search results
    */
   private async searchRemoteTags(
     _event: IpcMainInvokeEvent,
-    query: string
+    query: string,
+    providerId?: ProviderId
   ): Promise<TagResult[]> {
     try {
-      // Currently only Rule34 provider is implemented
-      // When multi-provider support is added, use DI container to resolve provider dynamically
-      return await this.provider.searchTags(query);
+      const factory = this.getProviderFactory();
+      const provider = providerId
+        ? factory.getProvider(providerId)
+        : factory.getDefaultProvider();
+      
+      return await provider.searchTags(query);
     } catch (error) {
       log.error("[ArtistsController] Remote search error:", error);
-      return [];
+      // Re-throw original error instead of swallowing it
+      throw error;
     }
   }
 }
