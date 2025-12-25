@@ -10,12 +10,15 @@ import {
 export const ARTIST_TYPES = ["tag", "uploader", "query"] as const;
 export type ArtistType = typeof ARTIST_TYPES[number];
 
+// Provider constants (must match providers/index.ts)
+export const PROVIDER_IDS_SCHEMA = ["rule34", "gelbooru"] as const;
+
 export const artists = sqliteTable("artists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   tag: text("tag").notNull().unique(),
-  // Provider ID (e.g., 'rule34', 'gelbooru')
-  provider: text("provider").notNull().default("rule34"),
+  // Provider ID with enum constraint
+  provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
   type: text("type", { enum: ARTIST_TYPES }).notNull(),
   apiEndpoint: text("api_endpoint").notNull(),
   lastPostId: integer("last_post_id").notNull().default(0),

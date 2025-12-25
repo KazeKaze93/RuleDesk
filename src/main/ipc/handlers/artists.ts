@@ -17,7 +17,7 @@ const AddArtistSchema = z.object({
 
 // Validation for search params
 const SearchRemoteSchema = z.object({
-  query: z.string().trim().min(2),
+  query: z.string().trim().min(2).max(200), // Limit query length to prevent DoS
   provider: z.enum(PROVIDER_IDS).default("rule34"),
 });
 
@@ -114,6 +114,18 @@ export const registerArtistHandlers = () => {
 
     // Use webContents.id as unique identifier for each window
     const windowId = event.sender.id;
+
+    // Setup cleanup listener for this webContents if not already set
+    if (!searchAbortControllers.has(windowId)) {
+      event.sender.once("destroyed", () => {
+        const controller = searchAbortControllers.get(windowId);
+        if (controller) {
+          controller.abort();
+          searchAbortControllers.delete(windowId);
+          logger.debug(`[IPC] Cleaned up AbortController for destroyed window ${windowId}`);
+        }
+      });
+    }
 
     // Cancel previous search request for this specific window
     const existingController = searchAbortControllers.get(windowId);

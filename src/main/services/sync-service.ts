@@ -242,17 +242,23 @@ export class SyncService {
     const db = getDb();
     
     // DYNAMIC PROVIDER SELECTION
-    // Validate provider ID against known providers, fallback to 'rule34' if invalid
+    // Validate provider ID against known providers
     const rawProviderId = artist.provider || "rule34";
-    const providerId: ProviderId = PROVIDER_IDS.includes(rawProviderId as ProviderId) 
-      ? (rawProviderId as ProviderId) 
-      : "rule34";
     
-    if (rawProviderId !== providerId) {
-      logger.warn(`SyncService: Invalid provider '${rawProviderId}' for artist ${artist.name}, using 'rule34'`);
+    // Type-safe validation without casting
+    const isValidProvider = (id: string): id is ProviderId => {
+      return PROVIDER_IDS.some(validId => validId === id);
+    };
+    
+    if (!isValidProvider(rawProviderId)) {
+      logger.error(
+        `SyncService: Invalid provider '${rawProviderId}' for artist ${artist.name} (ID: ${artist.id}). ` +
+        `Database integrity compromised. Expected one of: ${PROVIDER_IDS.join(", ")}`
+      );
+      throw new Error(`Invalid provider in database: ${rawProviderId}`);
     }
     
-    const provider = getProvider(providerId);
+    const provider = getProvider(rawProviderId);
     
     logger.info(`SyncService: Syncing ${artist.name} using provider: ${provider.name}`);
     
@@ -308,12 +314,22 @@ export class SyncService {
           await db.transaction(async (tx) => {
             await bulkUpsertPosts(postsToSave, tx);
             
+            // Fetch current values to avoid race conditions
+            const current = await tx.query.artists.findFirst({
+              where: eq(artists.id, artist.id),
+              columns: { lastPostId: true, newPostsCount: true }
+            });
+            
+            if (!current) {
+              throw new Error(`Artist ${artist.id} not found during sync`);
+            }
+            
             // Update artist's lastPostId immediately to ensure atomicity
             await tx
               .update(artists)
               .set({
-                lastPostId: sql`CASE WHEN ${artists.lastPostId} > ${highestPostId} THEN ${artists.lastPostId} ELSE ${highestPostId} END`,
-                newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
+                lastPostId: Math.max(current.lastPostId, highestPostId),
+                newPostsCount: current.newPostsCount + postsToSave.length,
                 lastChecked: new Date(),
               })
               .where(eq(artists.id, artist.id));
@@ -323,8 +339,6 @@ export class SyncService {
 
         if (postsData.length < 100) hasMore = false;
         else page++;
-        
-        await new Promise((r) => setTimeout(r, 500));
       } catch (e) {
         logger.error(`Sync error for ${artist.name}`, e);
         hasMore = false;
