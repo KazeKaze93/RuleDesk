@@ -15,6 +15,20 @@
       "when": 1766001420711,
       "tag": "0001_lying_mauler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1766002000000,
+      "tag": "0002_add_provider_to_artists",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1766659593510,
+      "tag": "0003_stiff_karen_page",
+      "breakpoints": true
     }
   ]
 }

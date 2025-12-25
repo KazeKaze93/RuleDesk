@@ -1,20 +1,26 @@
 import { ipcMain } from "electron";
 import { z } from "zod";
-import axios from "axios";
 import { eq, like, or, asc } from "drizzle-orm";
 import { IPC_CHANNELS } from "../channels";
 import { getDb } from "../../db/client";
 import { artists } from "../../db/schema";
 import { logger } from "../../lib/logger";
+import { getProvider } from "../../providers";
 
 const AddArtistSchema = z.object({
   name: z.string().trim().min(1),
   tag: z.string().trim().min(1),
+  provider: z.string().default("rule34"),
   type: z.enum(["tag", "uploader", "query"]),
-  apiEndpoint: z.string().url().trim(),
+  apiEndpoint: z.string().url().trim().optional(),
 });
 
-// Export types for use in bridge.ts
+// Validation for search params
+const SearchRemoteSchema = z.object({
+  query: z.string().trim().min(2),
+  provider: z.string().default("rule34"),
+});
+
 export type AddArtistParams = z.infer<typeof AddArtistSchema>;
 
 export const registerArtistHandlers = () => {
@@ -36,13 +42,20 @@ export const registerArtistHandlers = () => {
       logger.error("IPC: Invalid artist data", validation.error);
       throw new Error(`Validation failed: ${validation.error.message}`);
     }
+    const data = validation.data;
+    const finalApiEndpoint = data.apiEndpoint || "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index";
 
-    const artistData = validation.data;
-    logger.info(`IPC: [db:add-artist] Adding: ${artistData.name}`);
-
+    logger.info(`IPC: [db:add-artist] Adding: ${data.name} [${data.provider}]`);
+    
     try {
       const db = getDb();
-      const result = await db.insert(artists).values(artistData).returning();
+      const result = await db.insert(artists).values({
+        name: data.name,
+        tag: data.tag,
+        type: data.type,
+        provider: data.provider,
+        apiEndpoint: finalApiEndpoint
+      }).returning();
       return result[0];
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -82,26 +95,28 @@ export const registerArtistHandlers = () => {
     }
   });
 
-  ipcMain.handle(IPC_CHANNELS.API.SEARCH_REMOTE, async (_, query: unknown) => {
-    const validQuery = z.string().trim().safeParse(query);
-    if (!validQuery.success || validQuery.data.length < 2) return [];
+  // UPDATED: Handle object payload for search
+  ipcMain.handle(IPC_CHANNELS.API.SEARCH_REMOTE, async (_, payload: unknown) => {
+    // Support legacy string call or new object call
+    let query = "";
+    let providerId = "rule34";
 
-    interface Rule34AutocompleteItem {
-      label: string;
-      value: string;
-      type?: string;
+    if (typeof payload === "string") {
+      query = payload;
+    } else if (typeof payload === "object" && payload !== null) {
+      const p = payload as { query: string; provider: string };
+      query = p.query;
+      providerId = p.provider || "rule34";
     }
 
+    const validation = SearchRemoteSchema.safeParse({ query, provider: providerId });
+    if (!validation.success) return [];
+
     try {
-      const { data } = await axios.get<Rule34AutocompleteItem[]>(
-        `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
-          validQuery.data
-        )}`
-      );
-      return Array.isArray(data)
-        ? data.map((item) => ({ id: item.value, label: item.label }))
-        : [];
-    } catch {
+      const provider = getProvider(validation.data.provider);
+      return await provider.searchTags(validation.data.query);
+    } catch (e) {
+      logger.error(`IPC: Search remote failed for ${providerId}`, e);
       return [];
     }
   });

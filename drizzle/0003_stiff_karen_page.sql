@@ -1,0 +1,1 @@
+ALTER TABLE artists ADD `provider` text DEFAULT 'rule34' NOT NULL;
