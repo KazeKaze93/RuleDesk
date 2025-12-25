@@ -85,11 +85,11 @@ export function AddArtistModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Provider Selection */}
           <div className="space-y-1.5">
-            <Label className="ml-1 text-xs font-medium text-zinc-400">
+            <Label htmlFor="provider-select" className="ml-1 text-xs font-medium text-zinc-400">
               Provider
             </Label>
             <Select value={provider} onValueChange={handleProviderChange}>
-              <SelectTrigger className="w-full bg-zinc-950 border-zinc-800 text-white">
+              <SelectTrigger id="provider-select" className="w-full bg-zinc-950 border-zinc-800 text-white">
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
@@ -101,12 +101,9 @@ export function AddArtistModal({
 
           {/* Tag Input */}
           <div className="space-y-1.5">
-            <Label className="ml-1 text-xs font-medium text-zinc-400">
-              Tag to Track
-            </Label>
             <div className="relative z-20">
               <AsyncAutocomplete
-                label=""
+                label="Tag to Track"
                 value={inputTag}
                 onQueryChange={handleTagChange}
                 onSelect={handleTagSelect}

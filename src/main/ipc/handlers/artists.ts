@@ -31,6 +31,9 @@ const searchRateLimits = new Map<number, { count: number; resetAt: number }>();
 const RATE_LIMIT_WINDOW = 1000; // 1 second
 const RATE_LIMIT_MAX_REQUESTS = 10; // max 10 requests per second per window
 
+// Track which windows already have cleanup listeners to prevent memory leaks
+const cleanupListenersRegistered = new Set<number>();
+
 export const registerArtistHandlers = () => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_ARTISTS, async () => {
     try {
@@ -140,16 +143,20 @@ export const registerArtistHandlers = () => {
       searchRateLimits.set(windowId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
     }
 
-    // Setup cleanup listener for this webContents if not already set
-    if (!searchAbortControllers.has(windowId)) {
+    // Setup cleanup listener for this webContents if not already registered
+    // Use separate Set to track listeners, not Map (Map can be empty after successful request)
+    if (!cleanupListenersRegistered.has(windowId)) {
+      cleanupListenersRegistered.add(windowId);
+      
       event.sender.once("destroyed", () => {
         const controller = searchAbortControllers.get(windowId);
         if (controller) {
           controller.abort();
           searchAbortControllers.delete(windowId);
         }
-        // Clean up rate limit data
+        // Clean up rate limit data and listener tracking
         searchRateLimits.delete(windowId);
+        cleanupListenersRegistered.delete(windowId);
         logger.debug(`[IPC] Cleaned up resources for destroyed window ${windowId}`);
       });
     }

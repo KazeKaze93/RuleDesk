@@ -20,7 +20,7 @@ export const ArtistDetails = () => {
       <div className="flex flex-col gap-4 p-8">
         <div className="text-destructive">Artist not found (ID: {id})</div>
         <Button variant="outline" onClick={() => navigate("/tracked")}>
-          Back to Sources
+          Back to Artists
         </Button>
       </div>
     );
