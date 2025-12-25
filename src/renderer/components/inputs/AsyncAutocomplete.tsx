@@ -40,6 +40,7 @@ export function AsyncAutocomplete({
 
   const debouncedQuery = useDebounce(query, 300);
   const fetchOptionsRef = useRef(fetchOptions);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     fetchOptionsRef.current = fetchOptions;
@@ -51,30 +52,67 @@ export function AsyncAutocomplete({
 
     // Don't search if query is empty or too short (min 2 chars for remote search)
     if (!trimmedQuery || trimmedQuery.length < 2) {
-      setOptions([]);
-      setIsLoading(false);
+      // Cancel any pending request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      
+      // Reset state asynchronously to avoid synchronous setState in effect
+      // This is necessary to clear UI state when query becomes invalid
+      Promise.resolve().then(() => {
+        setOptions([]);
+        setIsLoading(false);
+      });
+      
       return;
     }
 
-    let active = true;
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsLoading(true);
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    // Set loading state asynchronously to avoid synchronous setState in effect
+    // This is necessary to show loading indicator when starting a new search
+    Promise.resolve().then(() => {
+      if (!abortController.signal.aborted && abortControllerRef.current === abortController) {
+        setIsLoading(true);
+      }
+    });
 
     fetchOptionsRef
       .current(trimmedQuery)
       .then((results) => {
-        if (active) {
+        // Only update state if request wasn't aborted
+        if (!abortController.signal.aborted) {
           setOptions(results);
         }
       })
-      .catch((err) => log.error("[AsyncAutocomplete] Search error:", err))
+      .catch((err) => {
+        // Ignore abort errors
+        if (err.name !== "AbortError") {
+          log.error("[AsyncAutocomplete] Search error:", err);
+        }
+      })
       .finally(() => {
-        if (active) setIsLoading(false);
+        // Only update loading state if this is still the active request
+        if (!abortController.signal.aborted && abortControllerRef.current === abortController) {
+          setIsLoading(false);
+          abortControllerRef.current = null;
+        }
       });
 
     return () => {
-      active = false;
+      // Abort request on cleanup
+      abortController.abort();
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
     };
   }, [debouncedQuery]);
 

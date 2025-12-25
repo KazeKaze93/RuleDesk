@@ -86,30 +86,29 @@ export class PostsController extends BaseController {
     try {
       const db = this.getDb();
 
-      // Build where conditions
-      const conditions = [eq(posts.artistId, artistId)];
+      // Build where conditions: start with base condition
+      const baseCondition = eq(posts.artistId, artistId);
 
-      if (filters) {
-        if (filters.tags !== undefined) {
-          const searchPattern = `%${filters.tags}%`;
-          conditions.push(like(posts.tags, searchPattern));
-        }
-
-        if (filters.rating !== undefined) {
-          conditions.push(eq(posts.rating, filters.rating));
-        }
-
-        if (filters.isFavorited !== undefined) {
-          conditions.push(eq(posts.isFavorited, filters.isFavorited));
-        }
-
-        if (filters.isViewed !== undefined) {
-          conditions.push(eq(posts.isViewed, filters.isViewed));
-        }
+      // Add optional filter conditions
+      const filterConditions: ReturnType<typeof eq | typeof like>[] = [];
+      if (filters?.tags !== undefined) {
+        filterConditions.push(like(posts.tags, `%${filters.tags}%`));
+      }
+      if (filters?.rating !== undefined) {
+        filterConditions.push(eq(posts.rating, filters.rating));
+      }
+      if (filters?.isFavorited !== undefined) {
+        filterConditions.push(eq(posts.isFavorited, filters.isFavorited));
+      }
+      if (filters?.isViewed !== undefined) {
+        filterConditions.push(eq(posts.isViewed, filters.isViewed));
       }
 
+      // Combine conditions: if filters exist, use AND; otherwise just base condition
       const whereClause =
-        conditions.length > 1 ? and(...conditions) : conditions[0];
+        filterConditions.length > 0
+          ? and(baseCondition, ...filterConditions)
+          : baseCondition;
 
       const result = await db.query.posts.findMany({
         where: whereClause,

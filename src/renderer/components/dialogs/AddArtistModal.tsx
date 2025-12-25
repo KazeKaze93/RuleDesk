@@ -112,7 +112,8 @@ export function AddArtistModal({
                 // Pass the current provider to the search function
                 fetchOptions={async (query: string) => {
                   try {
-                    return await window.api.searchRemoteTags(query, provider);
+                    // Currently only Rule34 provider is supported
+                    return await window.api.searchRemoteTags(query);
                   } catch (error) {
                     log.error("[AddArtistModal] Failed to search tags:", error);
                     return [];

@@ -19,6 +19,7 @@ export const DI_KEYS = {
 export class Container {
   private static instance: Container | null = null;
   private readonly services: Map<string, unknown> = new Map();
+  private readonly resolutionStack: Set<string> = new Set();
 
   /**
    * Private constructor to enforce Singleton pattern
@@ -64,16 +65,32 @@ export class Container {
    *
    * @param id - Unique identifier of the service
    * @returns The requested service instance
-   * @throws {Error} If service is not found
+   * @throws {Error} If service is not found or circular dependency detected
    */
   public resolve<T>(id: string): T {
+    // Check for circular dependencies
+    if (this.resolutionStack.has(id)) {
+      const cycle = Array.from(this.resolutionStack).concat(id).join(" -> ");
+      const error = `[Container] Circular dependency detected: ${cycle}`;
+      log.error(error);
+      throw new Error(error);
+    }
+
     if (!this.services.has(id)) {
       const error = `[Container] Service "${id}" not found. Did you forget to register it?`;
       log.error(error);
       throw new Error(error);
     }
 
-    return this.services.get(id) as T;
+    // Track resolution stack for cycle detection
+    this.resolutionStack.add(id);
+    try {
+      const service = this.services.get(id) as T;
+      return service;
+    } finally {
+      // Remove from stack after resolution (allows same service to be resolved again)
+      this.resolutionStack.delete(id);
+    }
   }
 
   /**

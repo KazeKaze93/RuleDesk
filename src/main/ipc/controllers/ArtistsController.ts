@@ -72,7 +72,7 @@ export class ArtistsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.API.SEARCH_REMOTE,
-      z.tuple([z.string().trim().min(2), z.string().optional()]),
+      z.tuple([z.string().trim().min(2)]),
       this.searchRemoteTags.bind(this)
     );
 
@@ -216,23 +216,15 @@ export class ArtistsController extends BaseController {
    *
    * @param _event - IPC event (unused)
    * @param query - Search query string (validated)
-   * @param providerName - Provider name (e.g., "rule34", "gelbooru") - optional, not yet used
    * @returns Array of search results
    */
   private async searchRemoteTags(
     _event: IpcMainInvokeEvent,
-    query: string,
-    providerName?: string
+    query: string
   ): Promise<TagResult[]> {
     try {
-      // TODO: In the future, select provider dynamically based on providerName argument
-      // Currently only Rule34 is implemented, so we use the default provider
-      // Provider name is accepted but not yet used for provider selection
-      if (providerName !== undefined) {
-        log.debug(
-          `[ArtistsController] Provider "${providerName}" requested, but using default Rule34 provider`
-        );
-      }
+      // Currently only Rule34 provider is implemented
+      // When multi-provider support is added, use DI container to resolve provider dynamically
       return await this.provider.searchTags(query);
     } catch (error) {
       log.error("[ArtistsController] Remote search error:", error);

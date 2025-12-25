@@ -1,9 +1,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type { Artist, Post, Settings } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
-import type { GetPostsParams } from "./ipc/controllers/PostsController";
-import type { AddArtistParams } from "./ipc/controllers/ArtistsController";
-import type { ProviderId } from "./providers";
+import type { GetPostsParams, AddArtistParams } from "./types/ipc";
 import type { TagResult } from "./services/providers/IBooruProvider";
 
 export type UpdateStatusData = {
@@ -105,7 +103,7 @@ export interface IpcBridge {
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
 
-  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<TagResult[]>;
+  searchRemoteTags: (query: string) => Promise<TagResult[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
@@ -119,9 +117,9 @@ const ipcBridge: IpcBridge = {
   writeToClipboard: (text) =>
     ipcRenderer.invoke("app:write-to-clipboard", text),
 
-  // Pass query and provider to IPC
-  searchRemoteTags: (query, provider = "rule34") =>
-    ipcRenderer.invoke("api:search-remote-tags", query, provider),
+  // Search remote tags (currently only Rule34 supported)
+  searchRemoteTags: (query) =>
+    ipcRenderer.invoke("api:search-remote-tags", query),
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 

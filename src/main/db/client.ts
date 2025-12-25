@@ -28,8 +28,12 @@ export async function initializeDatabase(): Promise<AppDatabase> {
     fs.mkdirSync(dbDir, { recursive: true });
   }
 
+  // Only enable verbose SQLite logging in DEBUG mode to avoid performance issues
+  // Verbose logging can generate thousands of log entries per query with joins
   const sqlite = new Database(dbPath, {
-    verbose: process.env.NODE_ENV === "development" ? (message) => log.info(`[SQLite] ${message}`) : undefined,
+    verbose: process.env.DEBUG === "true" || process.env.DEBUG_SQLITE === "true"
+      ? (message) => log.debug(`[SQLite] ${message}`)
+      : undefined,
   });
 
   sqlite.pragma("journal_mode = WAL");

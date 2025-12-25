@@ -1,6 +1,7 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import log from 'electron-log';
 import { z } from 'zod';
+import type { SerializableError, ValidationError } from '../../types/ipc';
 
 /**
  * Base Controller for IPC Handlers
@@ -39,26 +40,32 @@ export abstract class BaseController {
    * @param schema - Zod schema for validating handler arguments (must be a tuple)
    * @param handler - Async handler function with validated, typed arguments
    * 
-   * Note: TypeScript has limitations with tuple unpacking in rest parameters.
-   * The handler signature should match the tuple structure, e.g.:
-   * - For `z.tuple([z.object({...})])` use `(event, params: {...}) => ...`
-   * - For `z.tuple([z.number()])` use `(event, id: number) => ...`
+   * Type-safe handler signature: The handler receives validated arguments based on the Zod schema.
+   * TypeScript infers the correct types from the schema, ensuring type safety without using 'any'.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected handle<T extends z.ZodTuple<any, any>>(
+  protected handle<
+    TSchema extends z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], z.ZodTypeAny | null>,
+    TInferred extends z.infer<TSchema>
+  >(
     channel: string,
-    schema: T,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    handler: (event: IpcMainInvokeEvent, ...args: any[]) => Promise<unknown>
+    schema: TSchema,
+    handler: (
+      event: IpcMainInvokeEvent,
+      ...args: TInferred extends readonly [infer First, ...infer Rest]
+        ? [First, ...Rest]
+        : TInferred extends readonly []
+        ? []
+        : never
+    ) => Promise<unknown>
   ): void {
     ipcMain.handle(channel, async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       try {
         log.info(`[IPC] Incoming request: ${channel}`);
 
         // Validate input arguments using Zod schema
-        let validatedArgs: z.infer<T>;
+        let validatedArgs: TInferred;
         try {
-          validatedArgs = schema.parse(args) as z.infer<T>;
+          validatedArgs = schema.parse(args) as TInferred;
         } catch (validationError) {
           if (validationError instanceof z.ZodError) {
             const errorMessage = `Validation Error: ${validationError.errors.map((e) => e.message).join(', ')}`;
@@ -66,24 +73,36 @@ export abstract class BaseController {
               errors: validationError.errors,
               args: this.sanitizeArgs(args),
             });
-            throw {
+            
+            // Create serializable validation error
+            const serializedError: ValidationError = {
               message: errorMessage,
               stack: validationError.stack,
               name: 'ValidationError',
               originalError: String(validationError),
+              errors: validationError.errors.map((e) => ({
+                path: e.path,
+                message: e.message,
+                code: e.code,
+              })),
             };
+            throw serializedError;
           }
           // Re-throw if it's not a ZodError
           throw validationError;
         }
 
         // Call handler with validated arguments
-        // TypeScript limitation: we need to cast here as tuple unpacking is not inferred
-        // Using unknown[] is safer than any, but we still need runtime validation (which Zod provides)
-        const result = await (handler as (
-          event: IpcMainInvokeEvent,
-          ...args: unknown[]
-        ) => Promise<unknown>)(event, ...(validatedArgs as unknown[]));
+        // TypeScript limitation: tuple unpacking in rest parameters requires type assertion
+        // Runtime validation via Zod ensures type safety, so this is safe
+        const result = await handler(
+          event,
+          ...(validatedArgs as unknown as TInferred extends readonly [infer First, ...infer Rest]
+            ? [First, ...Rest]
+            : TInferred extends readonly []
+            ? []
+            : never)
+        );
         log.info(`[IPC] Request completed: ${channel}`);
         return result;
       } catch (error: unknown) {
@@ -94,7 +113,8 @@ export abstract class BaseController {
           'name' in error &&
           error.name === 'ValidationError'
         ) {
-          throw error;
+          // Already serialized, ensure it's properly structured
+          throw error as ValidationError;
         }
 
         // Log the full error details for debugging
@@ -106,22 +126,21 @@ export abstract class BaseController {
 
         // Electron IPC quirk: pure Error objects don't serialize well via invoke
         // Serialize error to plain object to preserve stack trace and message
-        if (error instanceof Error) {
-          throw {
-            message: error.message || 'Unknown IPC error',
-            stack: error.stack,
-            name: error.name,
-            originalError: String(error),
-          };
-        }
-
-        // For non-Error objects, wrap in serializable format
-        throw {
-          message: String(error) || 'Unknown IPC error',
-          stack: undefined,
-          name: 'Error',
-          originalError: error,
-        };
+        const serializedError: SerializableError = error instanceof Error
+          ? {
+              message: error.message || 'Unknown IPC error',
+              stack: error.stack,
+              name: error.name,
+              originalError: String(error),
+            }
+          : {
+              message: String(error) || 'Unknown IPC error',
+              stack: undefined,
+              name: 'Error',
+              originalError: String(error),
+            };
+        
+        throw serializedError;
       }
     });
 
@@ -147,9 +166,46 @@ export abstract class BaseController {
    * @returns Sanitized args safe for logging
    */
   protected sanitizeArgs(args: unknown[]): unknown[] {
-    // Default implementation: just return args
-    // Override in subclasses to mask passwords, tokens, etc.
-    return args;
+    return args.map((arg) => {
+      // Mask strings that might contain sensitive data
+      if (typeof arg === 'string') {
+        // Mask long strings (likely tokens, keys, etc.)
+        if (arg.length > 50) {
+          return `<string:${arg.length}chars>`;
+        }
+        // Check for common sensitive patterns
+        if (
+          /(password|token|key|secret|api[_-]?key|auth)/i.test(String(arg)) ||
+          /^[A-Za-z0-9+/]{40,}={0,2}$/.test(arg) // Base64-like strings
+        ) {
+          return '<masked>';
+        }
+        return arg;
+      }
+      
+      // Mask objects that might contain sensitive data
+      if (typeof arg === 'object' && arg !== null) {
+        if (Array.isArray(arg)) {
+          return arg.map((item) => this.sanitizeArgs([item])[0]);
+        }
+        
+        // Check for sensitive keys in objects
+        const sensitiveKeys = /(password|token|key|secret|api[_-]?key|auth|credential)/i;
+        const sanitized: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(arg)) {
+          if (sensitiveKeys.test(key)) {
+            sanitized[key] = '<masked>';
+          } else if (typeof value === 'string' && value.length > 50) {
+            sanitized[key] = `<string:${value.length}chars>`;
+          } else {
+            sanitized[key] = value;
+          }
+        }
+        return sanitized;
+      }
+      
+      return arg;
+    });
   }
 }
 
