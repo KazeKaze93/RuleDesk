@@ -28,6 +28,7 @@ export type DownloadProgressData = {
 export type DownloadProgressCallback = (data: DownloadProgressData) => void;
 
 // Re-export IPC DTOs for use in renderer
+// Re-export types from controllers (single source of truth)
 export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "./types/ipc";
 
 // Legacy interface for backward compatibility (can be removed if not used)

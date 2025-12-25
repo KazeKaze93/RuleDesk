@@ -4,7 +4,8 @@ import { z } from "zod";
 import { eq, like, or, desc, sql } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_KEYS } from "../../core/di/Container";
-import { artists, type Artist, type NewArtist, ARTIST_TYPES } from "../../db/schema";
+import { artists, ARTIST_TYPES } from "../../db/schema";
+import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { PROVIDER_IDS } from "../../providers";
 import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
@@ -15,8 +16,18 @@ import { ProviderFactory } from "../../services/providers/ProviderFactory";
 import type { ProviderId } from "../../providers";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
+// Use Drizzle's type inference instead of manual imports for type safety
+// This ensures types always match the schema, even if schema changes
+type Artist = InferSelectModel<typeof artists>;
+type NewArtist = InferInsertModel<typeof artists>;
 
-const AddArtistSchema = z.object({
+/**
+ * Add Artist Schema
+ * 
+ * Single source of truth for AddArtist validation and typing.
+ * Type is exported directly from schema to avoid duplication.
+ */
+export const AddArtistSchema = z.object({
   name: z.string().trim().min(1),
   tag: z.string().trim().min(1),
   provider: z.enum(PROVIDER_IDS).default("rule34"),
@@ -24,8 +35,16 @@ const AddArtistSchema = z.object({
   apiEndpoint: z.string().url().trim().optional(),
 });
 
-// Internal type (not exported - use types from src/main/types/ipc.ts instead)
-type AddArtistParams = z.infer<typeof AddArtistSchema>;
+/**
+ * Add Artist Request Type
+ * 
+ * Exported directly from schema to ensure single source of truth.
+ * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
+ */
+export type AddArtistRequest = z.infer<typeof AddArtistSchema>;
+
+// Internal alias for controller methods
+type AddArtistParams = AddArtistRequest;
 
 
 /**

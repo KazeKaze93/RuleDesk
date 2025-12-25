@@ -12,14 +12,14 @@ export const DI_KEYS = {
 } as const;
 
 /**
- * Type registry for runtime type checking
- * Maps DI keys to expected types for validation
+ * Note: Runtime type checking removed
+ * 
+ * typeof check is useless for objects (always returns "object").
+ * For proper DI validation, we would need instanceof checks with constructor references,
+ * but that adds complexity without real benefit since TypeScript already provides compile-time safety.
+ * 
+ * If runtime validation is truly needed, implement proper instanceof checks with constructor injection.
  */
-const EXPECTED_TYPES: Record<string, string> = {
-  [DI_KEYS.DB]: "object",
-  [DI_KEYS.PROVIDER_FACTORY]: "object",
-  [DI_KEYS.SYNC_SERVICE]: "object",
-} as const;
 
 /**
  * Simple Dependency Injection Container (Singleton)
@@ -93,18 +93,10 @@ export class Container {
       throw new Error(error);
     }
 
-    // Runtime type validation (basic check)
-    const service = this.services.get(id);
-    const expectedType = EXPECTED_TYPES[id];
-    if (expectedType && typeof service !== expectedType) {
-      const error = `[Container] Type mismatch for service "${id}": expected ${expectedType}, got ${typeof service}`;
-      log.error(error);
-      throw new Error(error);
-    }
-
     // Track resolution stack for cycle detection
     this.resolutionStack.add(id);
     try {
+      const service = this.services.get(id);
       return service as T;
     } finally {
       // Remove from stack after resolution (allows same service to be resolved again)

@@ -25,7 +25,7 @@ if (app.isPackaged) {
 }
 
 import { promises as fs } from "fs";
-import { registerAllHandlers, setupIpc, registerServices } from "./ipc/index";
+import { registerAllHandlers } from "./ipc/index";
 import { initializeDatabase } from "./db/client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
@@ -245,11 +245,8 @@ async function initializeAppAndWindow() {
         window.show();
         updaterService.checkForUpdates();
 
-        // Initialize modern IPC architecture
-        setupIpc();
-        registerServices(syncService);
-        
-        // Register legacy handlers (TODO: migrate to controllers)
+        // Initialize IPC architecture (controllers + legacy handlers)
+        // setupIpc is called inside registerAllHandlers now
         registerAllHandlers(syncService, updaterService, window);
 
         setTimeout(() => {
