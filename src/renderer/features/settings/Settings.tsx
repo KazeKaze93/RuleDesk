@@ -1,4 +1,5 @@
 import { useState } from "react";
+import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -33,7 +34,7 @@ export const Settings = () => {
         setTimeout(() => setBackupStatus("idle"), 3000);
       }
     } catch (error) {
-      console.error("Failed to create backup:", error);
+      log.error("[Settings] Failed to create backup:", error);
       setBackupStatus("error");
       setTimeout(() => setBackupStatus("idle"), 3000);
     } finally {
@@ -55,7 +56,7 @@ export const Settings = () => {
         setTimeout(() => setRestoreStatus("idle"), 3000);
       }
     } catch (error) {
-      console.error("Failed to restore backup:", error);
+      log.error("[Settings] Failed to restore backup:", error);
       setRestoreStatus("error");
       setTimeout(() => setRestoreStatus("idle"), 3000);
     } finally {

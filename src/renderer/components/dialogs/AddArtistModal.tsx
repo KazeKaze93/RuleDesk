@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import log from "electron-log/renderer";
 import { normalizeTag } from "../../lib/tag-utils";
 import { AsyncAutocomplete } from "../inputs/AsyncAutocomplete";
 import type { AutocompleteOption } from "../inputs/AsyncAutocomplete";
@@ -113,7 +114,7 @@ export function AddArtistModal({
                   try {
                     return await window.api.searchRemoteTags(query, provider);
                   } catch (error) {
-                    console.error("Failed to search tags:", error);
+                    log.error("[AddArtistModal] Failed to search tags:", error);
                     return [];
                   }
                 }}

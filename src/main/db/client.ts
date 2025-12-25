@@ -4,6 +4,7 @@ import fs from "fs";
 import Database from "better-sqlite3";
 import { drizzle, BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import log from "electron-log";
 import * as schema from "./schema";
 import { logger } from "../lib/logger";
 
@@ -28,7 +29,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
   }
 
   const sqlite = new Database(dbPath, {
-    verbose: process.env.NODE_ENV === "development" ? console.log : undefined,
+    verbose: process.env.NODE_ENV === "development" ? (message) => log.info(`[SQLite] ${message}`) : undefined,
   });
 
   sqlite.pragma("journal_mode = WAL");

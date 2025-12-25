@@ -6,6 +6,7 @@ import {
   DialogDescription,
 } from "../../components/ui/dialog";
 import { useShallow } from "zustand/react/shallow";
+import log from "electron-log/renderer";
 import { useViewerStore, ViewerOrigin } from "../../store/viewerStore";
 import { Button } from "../../components/ui/button";
 import {
@@ -459,7 +460,7 @@ export const ViewerDialog = () => {
 
     if (isNearEnd && !hasReachedLimit) {
       if (queue.onLoadMore) {
-        console.log(
+        log.info(
           `[Viewer] Triggering onLoadMore callback at index ${currentIndex}. Loaded: ${loadedCount}`
         );
         queue.onLoadMore();
