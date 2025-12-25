@@ -37,3 +37,4 @@ export interface IBooruProvider {
   formatTag(tag: string, type: "tag" | "uploader" | "query"): string;
 }
 
+
