@@ -9,15 +9,18 @@ import { z } from "zod";
 import { SystemController } from "./controllers/SystemController";
 import { ArtistsController } from "./controllers/ArtistsController";
 import { PostsController } from "./controllers/PostsController";
+import { SettingsController } from "./controllers/SettingsController";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
+import { Rule34Provider } from "../services/providers/Rule34Provider";
 import { IPC_CHANNELS } from "./channels";
 import { getDb, getSqliteInstance, closeDatabase, initializeDatabase } from "../db/client";
 import { settings } from "../db/schema";
-import { container } from "../core/di/Container";
+import { container, DI_KEYS } from "../core/di/Container";
 
 import { registerViewerHandlers } from "./handlers/viewer";
-import { registerSettingsHandlers } from "./handlers/settings";
+// ⚠️ TODO: Migrate to controllers
+// import { registerSettingsHandlers } from "./handlers/settings"; // Migrated to SettingsController
 import { registerFileHandlers } from "./handlers/files";
 
 const DeleteArtistSchema = z.number().int().positive();
@@ -33,8 +36,13 @@ export function setupIpc(): void {
 
   // Register database in DI container
   const db = getDb();
-  container.register("Database", db);
+  container.register(DI_KEYS.DB, db);
   log.info("[IPC] Database registered in DI container");
+
+  // Register providers
+  const rule34Provider = new Rule34Provider();
+  container.register(DI_KEYS.R34_PROVIDER, rule34Provider);
+  log.info("[IPC] Rule34Provider registered in DI container");
 
   // Register core controllers
   const systemController = new SystemController();
@@ -45,6 +53,9 @@ export function setupIpc(): void {
 
   const postsController = new PostsController();
   postsController.setup();
+
+  const settingsController = new SettingsController();
+  settingsController.setup();
 
   log.info("[IPC] All controllers initialized successfully");
 }
@@ -381,7 +392,8 @@ export const registerAllHandlers = (
   // registerPostHandlers(); // Migrated to PostsController
   // registerArtistHandlers(); // Migrated to ArtistsController
   registerViewerHandlers();
-  registerSettingsHandlers();
+  // ⚠️ TODO: Migrate to controllers
+  // registerSettingsHandlers(); // Migrated to SettingsController
   registerFileHandlers();
   registerSyncAndMaintenanceHandlers(syncService, mainWindow);
 

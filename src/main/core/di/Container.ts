@@ -1,6 +1,16 @@
 import log from "electron-log";
 
 /**
+ * Typed DI Container Keys
+ *
+ * Prevents typos and provides type safety for service registration/resolution.
+ */
+export const DI_KEYS = {
+  DB: "Database",
+  R34_PROVIDER: "Rule34Provider",
+} as const;
+
+/**
  * Simple Dependency Injection Container (Singleton)
  *
  * Manages service instances throughout the Main Process lifecycle.

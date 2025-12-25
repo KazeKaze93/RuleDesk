@@ -1,5 +1,6 @@
 import { app, clipboard, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
+import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 
 /**
@@ -15,9 +16,13 @@ export class SystemController extends BaseController {
    * Setup IPC handlers for system operations
    */
   public setup(): void {
-    this.handle("app:get-version", this.getAppVersion.bind(this));
-    this.handle("app:quit", this.quitApp.bind(this));
-    this.handle("app:write-to-clipboard", this.writeToClipboard.bind(this));
+    this.handle("app:get-version", z.tuple([]), this.getAppVersion.bind(this));
+    this.handle("app:quit", z.tuple([]), this.quitApp.bind(this));
+    this.handle(
+      "app:write-to-clipboard",
+      z.tuple([z.string().min(1)]),
+      this.writeToClipboard.bind(this)
+    );
 
     log.info("[SystemController] All handlers registered");
   }
@@ -50,26 +55,13 @@ export class SystemController extends BaseController {
    * Write text to system clipboard
    *
    * @param _event - IPC event (unused)
-   * @param text - Text to write to clipboard
+   * @param text - Text to write to clipboard (validated: min 1 char)
    * @returns true if operation succeeded, false otherwise
-   * @throws {Error} If text is not a string
    */
   private async writeToClipboard(
     _event: IpcMainInvokeEvent,
-    text: unknown
+    text: string
   ): Promise<boolean> {
-    // Validate input
-    if (typeof text !== "string") {
-      throw new Error("Clipboard write requires a string argument");
-    }
-
-    if (text.length === 0) {
-      log.warn(
-        "[SystemController] Attempted to write empty string to clipboard"
-      );
-      return false;
-    }
-
     try {
       clipboard.writeText(text);
       log.info(

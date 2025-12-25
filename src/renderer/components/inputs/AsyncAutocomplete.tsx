@@ -49,7 +49,10 @@ export function AsyncAutocomplete({
     const currentQuery = debouncedQuery || "";
     const trimmedQuery = currentQuery.trim();
 
-    if (!trimmedQuery) {
+    // Don't search if query is empty or too short (min 2 chars for remote search)
+    if (!trimmedQuery || trimmedQuery.length < 2) {
+      setOptions([]);
+      setIsLoading(false);
       return;
     }
 

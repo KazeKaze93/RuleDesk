@@ -1,21 +1,26 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import log from 'electron-log';
+import { z } from 'zod';
 
 /**
  * Base Controller for IPC Handlers
  * 
- * Provides centralized error handling and abstracts direct ipcMain dependency.
+ * Provides centralized error handling, input validation, and abstracts direct ipcMain dependency.
  * All IPC controllers should extend this class.
  * 
  * Usage:
  * ```ts
  * class UserController extends BaseController {
  *   setup() {
- *     this.handle('user:get', this.getUser.bind(this));
+ *     this.handle(
+ *       'user:get',
+ *       z.tuple([z.number().int().positive()]),
+ *       this.getUser.bind(this)
+ *     );
  *   }
  *   
- *   private async getUser(event: IpcMainInvokeEvent, id: string) {
- *     // Business logic here
+ *   private async getUser(event: IpcMainInvokeEvent, id: number) {
+ *     // Business logic here - id is guaranteed to be valid
  *   }
  * }
  * ```
@@ -28,22 +33,70 @@ export abstract class BaseController {
   public abstract setup(): void;
 
   /**
-   * Protected helper to register IPC handlers with centralized error handling
+   * Protected helper to register IPC handlers with centralized error handling and input validation
    * 
    * @param channel - IPC channel name (e.g., 'user:get')
-   * @param handler - Async handler function
+   * @param schema - Zod schema for validating handler arguments (must be a tuple)
+   * @param handler - Async handler function with validated, typed arguments
+   * 
+   * Note: TypeScript has limitations with tuple unpacking in rest parameters.
+   * The handler signature should match the tuple structure, e.g.:
+   * - For `z.tuple([z.object({...})])` use `(event, params: {...}) => ...`
+   * - For `z.tuple([z.number()])` use `(event, id: number) => ...`
    */
-  protected handle(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  protected handle<T extends z.ZodTuple<any, any>>(
     channel: string,
-    handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+    schema: T,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handler: (event: IpcMainInvokeEvent, ...args: any[]) => Promise<unknown>
   ): void {
     ipcMain.handle(channel, async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       try {
         log.info(`[IPC] Incoming request: ${channel}`);
-        const result = await handler(event, ...args);
+
+        // Validate input arguments using Zod schema
+        let validatedArgs: z.infer<T>;
+        try {
+          validatedArgs = schema.parse(args) as z.infer<T>;
+        } catch (validationError) {
+          if (validationError instanceof z.ZodError) {
+            const errorMessage = `Validation Error: ${validationError.errors.map((e) => e.message).join(', ')}`;
+            log.error(`[IPC] Validation failed for channel "${channel}":`, {
+              errors: validationError.errors,
+              args: this.sanitizeArgs(args),
+            });
+            throw {
+              message: errorMessage,
+              stack: validationError.stack,
+              name: 'ValidationError',
+              originalError: String(validationError),
+            };
+          }
+          // Re-throw if it's not a ZodError
+          throw validationError;
+        }
+
+        // Call handler with validated arguments
+        // TypeScript limitation: we need to cast here as tuple unpacking is not inferred
+        // Using unknown[] is safer than any, but we still need runtime validation (which Zod provides)
+        const result = await (handler as (
+          event: IpcMainInvokeEvent,
+          ...args: unknown[]
+        ) => Promise<unknown>)(event, ...(validatedArgs as unknown[]));
         log.info(`[IPC] Request completed: ${channel}`);
         return result;
-      } catch (error) {
+      } catch (error: unknown) {
+        // Skip error handling if it's already a serialized validation error
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'name' in error &&
+          error.name === 'ValidationError'
+        ) {
+          throw error;
+        }
+
         // Log the full error details for debugging
         log.error(`[IPC] Error in channel "${channel}":`, {
           message: error instanceof Error ? error.message : 'Unknown error',
@@ -51,13 +104,28 @@ export abstract class BaseController {
           args: this.sanitizeArgs(args),
         });
 
-        // Re-throw the error so renderer can handle it
-        // Note: Only error.message will be serialized across IPC boundary
-        throw error;
+        // Electron IPC quirk: pure Error objects don't serialize well via invoke
+        // Serialize error to plain object to preserve stack trace and message
+        if (error instanceof Error) {
+          throw {
+            message: error.message || 'Unknown IPC error',
+            stack: error.stack,
+            name: error.name,
+            originalError: String(error),
+          };
+        }
+
+        // For non-Error objects, wrap in serializable format
+        throw {
+          message: String(error) || 'Unknown IPC error',
+          stack: undefined,
+          name: 'Error',
+          originalError: error,
+        };
       }
     });
 
-    log.info(`[IPC] Handler registered: ${channel}`);
+    log.info(`[IPC] Handler registered: ${channel} (with validation)`);
   }
 
   /**

@@ -3,7 +3,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq, desc, count, and, like } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container } from "../../core/di/Container";
+import { container, DI_KEYS } from "../../core/di/Container";
 import { posts, type Post } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -24,6 +24,7 @@ const GetPostsSchema = z.object({
   artistId: z.number().int().positive(),
   page: z.number().int().min(1).default(1),
   filters: PostFilterSchema.optional(),
+  limit: z.number().int().min(1).max(100).default(50),
 });
 
 // Export types for use in bridge.ts
@@ -41,16 +42,28 @@ export type PostFilterParams = z.infer<typeof PostFilterSchema>;
  */
 export class PostsController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve<AppDatabase>("Database");
+    return container.resolve<AppDatabase>(DI_KEYS.DB);
   }
 
   /**
    * Setup IPC handlers for post operations
    */
   public setup(): void {
-    this.handle(IPC_CHANNELS.DB.GET_POSTS, this.getPosts.bind(this));
-    this.handle(IPC_CHANNELS.DB.GET_POSTS_COUNT, this.getPostsCount.bind(this));
-    this.handle(IPC_CHANNELS.DB.MARK_VIEWED, this.markViewed.bind(this));
+    this.handle(
+      IPC_CHANNELS.DB.GET_POSTS,
+      z.tuple([GetPostsSchema]),
+      this.getPosts.bind(this)
+    );
+    this.handle(
+      IPC_CHANNELS.DB.GET_POSTS_COUNT,
+      z.tuple([z.number().int().positive().optional()]),
+      this.getPostsCount.bind(this)
+    );
+    this.handle(
+      IPC_CHANNELS.DB.MARK_VIEWED,
+      z.tuple([z.number().int().positive()]),
+      this.markViewed.bind(this)
+    );
 
     log.info("[PostsController] All handlers registered");
   }
@@ -59,27 +72,15 @@ export class PostsController extends BaseController {
    * Get posts for an artist with pagination and filters
    *
    * @param _event - IPC event (unused)
-   * @param payload - Request parameters: artistId, page, filters
+   * @param params - Request parameters: artistId, page, filters, limit
    * @returns Array of posts
-   * @throws {Error} If validation fails or database operation fails
+   * @throws {Error} If database operation fails
    */
   private async getPosts(
     _event: IpcMainInvokeEvent,
-    payload: unknown
+    params: GetPostsParams
   ): Promise<Post[]> {
-    const validation = GetPostsSchema.safeParse(payload);
-    if (!validation.success) {
-      log.error(
-        "[PostsController] Invalid get posts payload:",
-        validation.error.errors
-      );
-      throw new Error(
-        `Validation failed: ${validation.error.errors.map((e) => e.message).join(", ")}`
-      );
-    }
-
-    const { artistId, page, filters } = validation.data;
-    const limit = 50; // Default page size
+    const { artistId, page, filters, limit } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -131,23 +132,16 @@ export class PostsController extends BaseController {
    * Get posts count for an artist (or all posts if artistId is not provided)
    *
    * @param _event - IPC event (unused)
-   * @param artistId - Artist ID (legacy format: direct number or undefined, not object)
+   * @param artistId - Artist ID (optional)
    * @returns Number of posts
    */
   private async getPostsCount(
     _event: IpcMainInvokeEvent,
-    artistId: unknown
+    artistId: number | undefined
   ): Promise<number> {
-    // Legacy format: artistId is passed directly as number or undefined, not as object
-    const countSchema = z.number().int().positive().optional().nullable();
-    const validArtistId =
-      artistId !== undefined && artistId !== null
-        ? countSchema.parse(artistId) ?? undefined
-        : undefined;
-
     try {
       const db = this.getDb();
-      const whereClause = validArtistId ? eq(posts.artistId, validArtistId) : undefined;
+      const whereClause = artistId ? eq(posts.artistId, artistId) : undefined;
 
       const result = await db
         .select({ value: count() })
@@ -158,7 +152,7 @@ export class PostsController extends BaseController {
 
       log.info(
         `[PostsController] Posts count: ${total} ${
-          validArtistId ? `for artist ${validArtistId}` : "(all artists)"
+          artistId ? `for artist ${artistId}` : "(all artists)"
         }`
       );
       return total;
@@ -172,31 +166,22 @@ export class PostsController extends BaseController {
    * Mark post as viewed
    *
    * @param _event - IPC event (unused)
-   * @param postId - Post ID (legacy format: direct number, not object)
+   * @param postId - Post ID
    * @returns true if update succeeded
-   * @throws {Error} If validation fails or update fails}
+   * @throws {Error} If update fails
    */
   private async markViewed(
     _event: IpcMainInvokeEvent,
-    postId: unknown
+    postId: number
   ): Promise<boolean> {
-    // Legacy format: postId is passed directly as number, not as object
-    const validation = z.number().int().positive().safeParse(postId);
-    if (!validation.success) {
-      log.error("[PostsController] Invalid mark viewed postId:", postId);
-      return false;
-    }
-
     try {
       const db = this.getDb();
       await db
         .update(posts)
         .set({ isViewed: true })
-        .where(eq(posts.id, validation.data));
+        .where(eq(posts.id, postId));
 
-      log.info(
-        `[PostsController] Post ${validation.data} marked as viewed`
-      );
+      log.info(`[PostsController] Post ${postId} marked as viewed`);
       return true;
     } catch (error) {
       log.error("[PostsController] Failed to mark post as viewed:", error);
