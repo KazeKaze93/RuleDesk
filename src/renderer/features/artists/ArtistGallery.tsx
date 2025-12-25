@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { useShallow } from "zustand/react/shallow";
+import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
@@ -113,7 +114,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 
   const handleLoadMore = async () => {
     if (hasNextPage && !isFetchingNextPage) {
-      console.log("[Gallery] Viewer requested more posts. Fetching...");
+      log.info("[Gallery] Viewer requested more posts. Fetching...");
 
       // Ждем завершения загрузки и получаем результат
       const result = await fetchNextPage();
@@ -125,7 +126,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 
         if (newPage && newPage.length > 0) {
           const newIds = newPage.map((p) => p.id);
-          console.log(
+          log.info(
             `[Gallery] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
           );
 
@@ -169,7 +170,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
       queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
     } catch (e) {
-      console.error(e);
+      log.error("[ArtistGallery] Repair sync failed:", e);
     }
   };
 

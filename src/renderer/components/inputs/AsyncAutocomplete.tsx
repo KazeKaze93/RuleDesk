@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Combobox, Transition } from "@headlessui/react";
 import { ChevronUpDownIcon, CheckIcon } from "@heroicons/react/20/solid";
+import log from "electron-log/renderer";
 import { useDebounce } from "../../lib/hooks/useDebounce";
 import { Fragment } from "react";
 
@@ -64,7 +65,7 @@ export function AsyncAutocomplete({
           setOptions(results);
         }
       })
-      .catch((err) => console.error("Search error:", err))
+      .catch((err) => log.error("[AsyncAutocomplete] Search error:", err))
       .finally(() => {
         if (active) setIsLoading(false);
       });

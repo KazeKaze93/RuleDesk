@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { z, ZodIssueOptionalMessage, ErrorMapCtx } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslation } from "react-i18next";
+import log from "electron-log/renderer";
 import { Button } from "@/components/ui/button";
 import { KeyRound, User } from "lucide-react";
 import { credsBaseSchema, CredsFormValues } from "@/schemas/form-schemas";
@@ -79,7 +80,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       onComplete();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown save error.";
-      console.error(`Authorization error: ${message}`);
+      log.error(`[Onboarding] Authorization error: ${message}`);
     }
   };
 

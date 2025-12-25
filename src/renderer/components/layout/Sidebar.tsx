@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Activity,
@@ -10,6 +10,7 @@ import {
   Zap,
   LogOut,
 } from "lucide-react";
+import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 
 const navItems = [
@@ -23,13 +24,28 @@ const navItems = [
 export const Sidebar = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState("12:30");
+  const [appVersion, setAppVersion] = useState<string>("");
+
+  // Fetch app version on mount
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        const version = await window.api.getAppVersion();
+        setAppVersion(version);
+      } catch (error) {
+        log.error("[Sidebar] Failed to fetch app version:", error);
+      }
+    };
+
+    fetchVersion();
+  }, []);
 
   const handleSync = async () => {
     if (isSyncing) return;
 
     setIsSyncing(true);
     try {
-      console.log("Triggering Sync...");
+      log.info("[Sidebar] Triggering Sync...");
       await window.api.syncAll();
 
       const now = new Date();
@@ -37,7 +53,7 @@ export const Sidebar = () => {
         `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`
       );
     } catch (error) {
-      console.error("Sync failed:", error);
+      log.error("[Sidebar] Sync failed:", error);
     } finally {
       setIsSyncing(false);
     }
@@ -53,7 +69,7 @@ export const Sidebar = () => {
       await window.api.logout();
       window.location.reload();
     } catch (error) {
-      console.error("Failed to logout:", error);
+      log.error("[Sidebar] Failed to logout:", error);
       alert("Failed to log out. Please try again.");
     }
   };
@@ -63,7 +79,14 @@ export const Sidebar = () => {
       {/* Logo Area */}
       <div className="flex items-center px-6 h-14 border-b">
         <Activity className="mr-2 w-6 h-6 text-primary" />
-        <span className="text-lg font-bold tracking-tight">RuleDesk</span>
+        <div className="flex flex-col">
+          <span className="text-lg font-bold tracking-tight">RuleDesk</span>
+          {appVersion && (
+            <span className="text-[10px] text-muted-foreground">
+              v{appVersion}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Navigation */}

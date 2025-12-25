@@ -1,4 +1,5 @@
 import { useState } from "react";
+import log from "electron-log/renderer";
 
 export function BackupControls() {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,7 +16,7 @@ export function BackupControls() {
         alert(`❌ IPC call error: ${result.error}`);
       }
     } catch (e) {
-      console.error(e);
+      log.error("[BackupControls] Backup failed:", e);
       alert(
         "Ошибка IPC вызова: " + (e instanceof Error ? e.message : String(e))
       );
@@ -41,7 +42,7 @@ export function BackupControls() {
         alert(`❌ Restore failed: ${result.error}`);
       }
     } catch (e) {
-      console.error(e);
+      log.error("[BackupControls] Restore failed:", e);
       alert("IPC call error: " + (e instanceof Error ? e.message : String(e)));
     } finally {
       setIsLoading(false);

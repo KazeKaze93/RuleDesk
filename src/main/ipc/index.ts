@@ -1,33 +1,68 @@
-import { BrowserWindow, ipcMain, dialog, clipboard, app } from "electron";
+import { BrowserWindow, ipcMain, dialog, app } from "electron";
 import path from "path";
 import fs from "fs";
 import Database from "better-sqlite3";
 import { eq } from "drizzle-orm";
+import log from "electron-log";
+import { z } from "zod";
+
+import { SystemController } from "./controllers/SystemController";
+import { ArtistsController } from "./controllers/ArtistsController";
+import { PostsController } from "./controllers/PostsController";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
 import { IPC_CHANNELS } from "./channels";
 import { getDb, getSqliteInstance, closeDatabase, initializeDatabase } from "../db/client";
 import { settings } from "../db/schema";
-import { logger } from "../lib/logger";
-import { z } from "zod";
+import { container } from "../core/di/Container";
 
-import { registerPostHandlers } from "./handlers/posts";
-import { registerArtistHandlers } from "./handlers/artists";
 import { registerViewerHandlers } from "./handlers/viewer";
 import { registerSettingsHandlers } from "./handlers/settings";
 import { registerFileHandlers } from "./handlers/files";
 
 const DeleteArtistSchema = z.number().int().positive();
 
-// --- Helper для Sync & Maintenance ---
+/**
+ * Setup IPC Handlers
+ * 
+ * Initializes DI Container and registers all IPC controllers.
+ * Called once during application startup.
+ */
+export function setupIpc(): void {
+  log.info("[IPC] Setting up IPC handlers...");
+
+  // Register database in DI container
+  const db = getDb();
+  container.register("Database", db);
+  log.info("[IPC] Database registered in DI container");
+
+  // Register core controllers
+  const systemController = new SystemController();
+  systemController.setup();
+
+  const artistsController = new ArtistsController();
+  artistsController.setup();
+
+  const postsController = new PostsController();
+  postsController.setup();
+
+  log.info("[IPC] All controllers initialized successfully");
+}
+
+/**
+ * Legacy handler registration
+ * 
+ * ⚠️ TODO: Migrate these to proper controllers
+ * This function maintains backward compatibility with old architecture.
+ */
 const registerSyncAndMaintenanceHandlers = (
   syncService: SyncService,
   mainWindow: BrowserWindow
 ) => {
   ipcMain.handle(IPC_CHANNELS.DB.SYNC_ALL, () => {
-    logger.info("IPC: [DB.SYNC_ALL] Starting background sync...");
+    log.info("[IPC] [DB.SYNC_ALL] Starting background sync...");
     syncService.syncAllArtists().catch((error) => {
-      logger.error("IPC: Critical background sync error:", error);
+      log.error("[IPC] Critical background sync error:", error);
       syncService.sendEvent(
         "sync:error",
         error instanceof Error ? error.message : "Sync failed."
@@ -97,7 +132,7 @@ const registerSyncAndMaintenanceHandlers = (
         mainWindow.flashFrame(false);
       }
 
-      logger.info(`IPC: Backup created at ${backupPath}`);
+      log.info(`[IPC] Backup created at ${backupPath}`);
       return {
         success: true,
         path: backupPath,
@@ -107,7 +142,7 @@ const registerSyncAndMaintenanceHandlers = (
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("APP:LOADING", { loading: false });
       }
-      logger.error("IPC: Backup failed:", error);
+      log.error("[IPC] Backup failed:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -207,7 +242,7 @@ const registerSyncAndMaintenanceHandlers = (
             throw new Error(`Database integrity check failed: ${errorMsg}`);
           }
 
-          logger.info("IPC: Backup file integrity check passed");
+          log.info("[IPC] Backup file integrity check passed");
         } finally {
           if (tempDb) {
             tempDb.close();
@@ -224,7 +259,7 @@ const registerSyncAndMaintenanceHandlers = (
             await fs.promises.rm(bakPath, { force: true });
           } catch (error) {
             if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-              logger.warn(`IPC: Failed to delete backup file ${bakPath}:`, error);
+              log.warn(`[IPC] Failed to delete backup file ${bakPath}:`, error);
             }
           }
         };
@@ -241,14 +276,14 @@ const registerSyncAndMaintenanceHandlers = (
           mainWindow.webContents.send("APP:LOADING", { loading: false });
         }
 
-        logger.info(`IPC: Database restored from ${backupPath}`);
+        log.info(`[IPC] Database restored from ${backupPath}`);
         return {
           success: true,
           message: "Database restored successfully.",
         };
       } catch (restoreError) {
         // Rollback: Restore .bak files back to original names
-        logger.error("IPC: Restore failed, rolling back:", restoreError);
+        log.error("[IPC] Restore failed, rolling back:", restoreError);
 
         // Clean up temporary file if it exists
         try {
@@ -263,7 +298,7 @@ const registerSyncAndMaintenanceHandlers = (
             await fs.promises.access(bakPath);
             await fs.promises.rename(bakPath, originalPath);
           } catch (error) {
-            logger.error(`IPC: Failed to restore ${originalPath} from backup:`, error);
+            log.error(`[IPC] Failed to restore ${originalPath} from backup:`, error);
           }
         };
 
@@ -275,7 +310,7 @@ const registerSyncAndMaintenanceHandlers = (
         try {
           initializeDatabase();
         } catch (initError) {
-          logger.error("IPC: Failed to reinitialize database after rollback:", initError);
+          log.error("[IPC] Failed to reinitialize database after rollback:", initError);
         }
 
         // Ensure loading state is cleared on error
@@ -287,7 +322,7 @@ const registerSyncAndMaintenanceHandlers = (
           restoreError instanceof Error
             ? restoreError.message
             : "Restore failed, rolled back to previous state.";
-        logger.error(`IPC: Restore failed, rolled back. Error: ${errorMessage}`);
+        log.error(`[IPC] Restore failed, rolled back. Error: ${errorMessage}`);
         return {
           success: false,
           error: errorMessage,
@@ -298,12 +333,12 @@ const registerSyncAndMaintenanceHandlers = (
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("APP:LOADING", { loading: false });
       }
-      logger.error("IPC: Restore failed:", error);
+      log.error("[IPC] Restore failed:", error);
       // Attempt to reinitialize database even if restore failed
       try {
         initializeDatabase();
       } catch (initError) {
-        logger.error("IPC: Failed to reinitialize database after restore error:", initError);
+        log.error("[IPC] Failed to reinitialize database after restore error:", initError);
       }
       return {
         success: false,
@@ -319,17 +354,14 @@ export const registerAllHandlers = (
   _updaterService: UpdaterService,
   mainWindow: BrowserWindow
 ) => {
-  logger.info("IPC: Registering modular handlers...");
+  log.info("[IPC] Registering legacy modular handlers...");
 
-  ipcMain.handle(IPC_CHANNELS.APP.WRITE_CLIPBOARD, async (_, text: string) => {
-    clipboard.writeText(text);
-    return true;
-  });
-
+  // ⚠️ TODO: Migrate to AuthController
   ipcMain.handle(IPC_CHANNELS.APP.VERIFY_CREDS, async () => {
     return await syncService.checkCredentials();
   });
 
+  // ⚠️ TODO: Migrate to AuthController
   ipcMain.handle(IPC_CHANNELS.APP.LOGOUT, async () => {
     try {
       const db = getDb();
@@ -337,20 +369,21 @@ export const registerAllHandlers = (
         .update(settings)
         .set({ encryptedApiKey: "" })
         .where(eq(settings.id, 1));
-      logger.info("IPC: User logged out (API key cleared)");
+      log.info("[IPC] User logged out (API key cleared)");
       return true;
     } catch (error) {
-      logger.error("IPC: Logout failed:", error);
+      log.error("[IPC] Logout failed:", error);
       return false;
     }
   });
 
-  registerPostHandlers();
-  registerArtistHandlers();
+  // ⚠️ TODO: Migrate to controllers
+  // registerPostHandlers(); // Migrated to PostsController
+  // registerArtistHandlers(); // Migrated to ArtistsController
   registerViewerHandlers();
   registerSettingsHandlers();
   registerFileHandlers();
   registerSyncAndMaintenanceHandlers(syncService, mainWindow);
 
-  logger.info("IPC: All modular handlers registered.");
+  log.info("[IPC] All legacy modular handlers registered.");
 };
