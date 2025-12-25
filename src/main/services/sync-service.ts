@@ -11,10 +11,10 @@ import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
 import type { BooruPost } from "../providers/types";
 
 // SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
-// Each post has 12 fields for INSERT + ~6 for UPDATE in onConflictDoUpdate
-// Safe calculation: 999 / 18 ≈ 55, use 50 for safety margin
-// Modern SQLite can be recompiled with higher limits, but we target default builds
-const CHUNK_SIZE = 50;
+// Each post has ~12 fields for INSERT + ~6 for UPDATE in onConflictDoUpdate
+// Safe calculation: 999 / 18 ≈ 55, use 75 for optimal performance
+// Better-SQLite3 uses modern SQLite (3.40+) with 32766 limit, but we stay conservative
+const CHUNK_SIZE = 75;
 
 async function bulkUpsertPosts(
   postsToSave: NewPost[],
@@ -254,15 +254,21 @@ export class SyncService {
       return PROVIDER_IDS.some(validId => validId === id);
     };
     
+    let providerId: ProviderId;
     if (!isValidProvider(rawProviderId)) {
       logger.error(
         `SyncService: Invalid provider '${rawProviderId}' for artist ${artist.name} (ID: ${artist.id}). ` +
-        `Database integrity compromised. Expected one of: ${PROVIDER_IDS.join(", ")}`
+        `Database integrity compromised. Expected one of: ${PROVIDER_IDS.join(", ")}. ` +
+        `Falling back to 'rule34' to continue sync.`
       );
-      throw new Error(`Invalid provider in database: ${rawProviderId}`);
+      // Fallback to rule34 instead of throwing - don't kill entire sync process
+      providerId = "rule34";
+      this.sendEvent("sync:error", `${artist.name}: Invalid provider, using Rule34 fallback`);
+    } else {
+      providerId = rawProviderId;
     }
     
-    const provider = getProvider(rawProviderId);
+    const provider = getProvider(providerId);
     
     logger.info(`SyncService: Syncing ${artist.name} using provider: ${provider.name}`);
     

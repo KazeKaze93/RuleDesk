@@ -52,15 +52,15 @@ export const Tracked = () => {
   };
 
   if (isLoading)
-    return <div className="p-8 text-muted-foreground">Loading sources...</div>;
+    return <div className="p-8 text-muted-foreground">Loading artists...</div>;
 
   if (error)
-    return <div className="p-8 text-red-500">Error loading sources</div>;
+    return <div className="p-8 text-red-500">Error loading artists</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Tracked Sources</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Tracked Artists</h1>
         <Button onClick={() => setIsAddModalOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" />
           Add Source
