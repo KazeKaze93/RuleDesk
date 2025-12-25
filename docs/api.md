@@ -975,9 +975,55 @@ try {
 
 ## Implementation Details
 
-### Main Process (IPC Handlers)
+### Main Process (IPC Controllers)
 
-IPC handlers are registered in `src/main/ipc/index.ts`:
+IPC handlers are registered via controllers in `src/main/ipc/index.ts`:
+
+**Controller Architecture:**
+
+All IPC operations are handled through domain-specific controllers that extend `BaseController`:
+
+- **BaseController** provides:
+  - Centralized error handling
+  - Automatic input validation using Zod schemas
+  - Type-safe handler registration
+  - Prevents duplicate handler registration errors
+
+**Controller Setup:**
+
+```typescript
+// Example: ArtistsController
+export class ArtistsController extends BaseController {
+  setup() {
+    this.handle(
+      IPC_CHANNELS.DB.ADD_ARTIST,
+      AddArtistSchema,
+      this.addArtist.bind(this)
+    );
+  }
+
+  private async addArtist(
+    _event: IpcMainInvokeEvent,
+    data: AddArtistRequest
+  ) {
+    const db = container.resolve(DI_TOKENS.DB);
+    // Business logic here
+  }
+}
+```
+
+**Dependency Injection:**
+
+Controllers use the DI Container to resolve dependencies:
+
+```typescript
+const db = container.resolve(DI_TOKENS.DB);
+const syncService = container.resolve(DI_TOKENS.SYNC_SERVICE);
+```
+
+**Legacy Handler Registration (Deprecated):**
+
+The old handler-based approach has been migrated to controllers:
 
 ```typescript
 export const registerIpcHandlers = (

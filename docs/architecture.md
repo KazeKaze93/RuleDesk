@@ -119,20 +119,23 @@ sequenceDiagram
     participant User
     participant ReactUI as React UI
     participant Bridge as IPC Bridge
-    participant IPC as IPC Handlers
+    participant Controller as IPC Controller
+    participant DI as DI Container
     participant Service as Services
     participant DB as SQLite (Drizzle)
     participant API as Rule34 API
 
     User->>ReactUI: User Action
     ReactUI->>Bridge: window.api.method()
-    Bridge->>IPC: ipcRenderer.invoke()
-    IPC->>IPC: Validate Input (Zod)
-    IPC->>Service: Call Service Method
+    Bridge->>Controller: ipcRenderer.invoke()
+    Controller->>Controller: Validate Input (Zod)
+    Controller->>DI: Resolve Dependencies
+    DI-->>Controller: Service Instances
+    Controller->>Service: Call Service Method
     Service->>DB: Execute Query (Drizzle)
     DB-->>Service: Return Data
-    Service-->>IPC: Return Response
-    IPC-->>Bridge: IPC Response
+    Service-->>Controller: Return Response
+    Controller-->>Bridge: IPC Response
     Bridge-->>ReactUI: Promise Resolve
     ReactUI->>User: Update UI
 ```
@@ -187,7 +190,7 @@ graph LR
    - Tables: `artists`, `posts`, `settings`
    - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost`
 
-4. **Sync Service** (`src/main/services/sync-service.ts`)
+3. **Sync Service** (`src/main/services/sync-service.ts`)
 
    - Handles Rule34.xxx API synchronization
    - Implements rate limiting and pagination
@@ -196,49 +199,71 @@ graph LR
    - Provides repair/resync functionality for artists
    - Emits IPC events for sync progress tracking
 
-5. **IPC Handlers** (`src/main/ipc/index.ts`)
+4. **IPC Controllers** (`src/main/ipc/controllers/`)
 
-   - Registers all IPC communication channels
-   - Modular handler structure in `src/main/ipc/handlers/`
-   - Validates input from Renderer using Zod schemas
-   - Delegates to appropriate services and repositories
-   - Security validation (e.g., openExternal URL whitelist)
-   - Handles updater and sync event subscriptions
+   - Controller-based architecture with `BaseController` base class
+   - Centralized error handling and input validation via Zod schemas
+   - Type-safe dependency injection using DI Container
+   - Each controller handles a specific domain of IPC operations
 
-   **Handler Modules:**
+   **Controller Modules:**
 
-   - `artists.ts` - Artist-related IPC handlers
-   - `files.ts` - File download handlers
-   - `posts.ts` - Post-related IPC handlers
-   - `settings.ts` - Settings IPC handlers
-   - `viewer.ts` - Viewer-related IPC handlers
+   - `ArtistsController.ts` - Artist management operations
+   - `PostsController.ts` - Post-related operations
+   - `SettingsController.ts` - Settings management
+   - `AuthController.ts` - Authentication and credential verification
+   - `MaintenanceController.ts` - Database backup/restore operations
+   - `ViewerController.ts` - Viewer-related operations
+   - `FileController.ts` - File download and management
+   - `SystemController.ts` - System-level operations (version, clipboard, etc.)
 
-6. **Updater Service** (`src/main/services/updater-service.ts`)
+   **BaseController** (`src/main/core/ipc/BaseController.ts`):
+
+   - Provides centralized error handling
+   - Automatic input validation using Zod schemas
+   - Type-safe handler registration
+   - Prevents duplicate handler registration errors
+
+5. **Dependency Injection Container** (`src/main/core/di/Container.ts`)
+
+   - Type-safe DI container with Token-based registration
+   - Singleton pattern for service management
+   - Circular dependency detection
+   - Services: Database, SyncService
+
+6. **Booru Providers** (`src/main/providers/`)
+
+   - Provider pattern abstraction for multi-booru support
+   - `IBooruProvider` interface for standardized booru operations
+   - Implementations: `Rule34Provider`, `GelbooruProvider`
+   - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
+
+7. **Updater Service** (`src/main/services/updater-service.ts`)
 
    - Manages automatic update checking via `electron-updater`
    - Handles update download and installation
    - Emits IPC events for update status and progress
    - User-controlled download (manual download trigger)
 
-7. **Secure Storage** (`src/main/services/secure-storage.ts`)
+8. **Secure Storage** (`src/main/services/secure-storage.ts`)
 
    - Encrypts and decrypts sensitive data using Electron's `safeStorage` API
    - Used for API credentials encryption at rest
    - Decryption only occurs in Main Process when needed
    - Methods: encrypt, decrypt
 
-8. **Bridge** (`src/main/bridge.ts`)
+9. **Bridge** (`src/main/bridge.ts`)
 
    - Defines the IPC interface
    - Exposed via preload script
    - Type-safe communication contract
    - Event listener management for real-time updates
 
-9. **Main Entry** (`src/main/main.ts`)
-   - Application initialization
-   - Window creation
-   - Security configuration
-   - Database worker thread initialization and migrations
+10. **Main Entry** (`src/main/main.ts`)
+    - Application initialization
+    - Window creation
+    - Security configuration
+    - Database worker thread initialization and migrations
 
 ### Renderer Process (The Face)
 
@@ -609,15 +634,30 @@ graph TD
 
 ## External API Integration
 
-### API Client Design
+### Provider Pattern Architecture
 
-External API calls are handled in the Main process via `SyncService` (`src/main/services/sync-service.ts`) with:
+External API calls are abstracted through the **Provider Pattern** (`src/main/providers/`):
 
-1. **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
-2. **Pagination:** Handles Rule34.xxx pagination (up to 1000 posts per page)
-3. **Incremental Sync:** Only fetches posts newer than `lastPostId`
-4. **Error Handling:** Graceful handling of API errors and network failures
-5. **Authentication:** Uses User ID and API Key from settings table
+1. **IBooruProvider Interface:** Standardized interface for all booru sources
+
+   - `checkAuth()` - Validate credentials
+   - `fetchPosts()` - Fetch posts by tags
+   - `searchTags()` - Tag autocomplete
+   - `formatTag()` - Format tags based on artist type
+   - `getDefaultApiEndpoint()` - Get API endpoint URL
+
+2. **Provider Implementations:**
+
+   - `Rule34Provider` - Rule34.xxx API implementation
+   - `GelbooruProvider` - Gelbooru API implementation
+
+3. **SyncService Integration:**
+   - Uses provider pattern to fetch posts
+   - **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
+   - **Pagination:** Handles booru-specific pagination (up to 1000 posts per page)
+   - **Incremental Sync:** Only fetches posts newer than `lastPostId`
+   - **Error Handling:** Graceful handling of API errors and network failures
+   - **Authentication:** Uses User ID and API Key from settings table
 
 ### Download Flow
 
@@ -711,14 +751,28 @@ src/
 │   │   ├── schema.ts              # Drizzle ORM schema definitions
 │   │   └── worker-types.ts        # Worker thread type definitions
 │   ├── ipc/                       # IPC (Inter-Process Communication)
-│   │   ├── handlers/              # Modular IPC handlers
-│   │   │   ├── artists.ts         # Artist-related IPC handlers
-│   │   │   ├── files.ts           # File download handlers
-│   │   │   ├── posts.ts           # Post-related IPC handlers
-│   │   │   ├── settings.ts        # Settings IPC handlers
-│   │   │   └── viewer.ts          # Viewer-related IPC handlers
+│   │   ├── controllers/           # IPC Controllers (domain-based)
+│   │   │   ├── ArtistsController.ts
+│   │   │   ├── PostsController.ts
+│   │   │   ├── SettingsController.ts
+│   │   │   ├── AuthController.ts
+│   │   │   ├── MaintenanceController.ts
+│   │   │   ├── ViewerController.ts
+│   │   │   ├── FileController.ts
+│   │   │   └── SystemController.ts
 │   │   ├── channels.ts            # IPC channel constants
-│   │   └── index.ts               # Main IPC registration
+│   │   └── index.ts               # IPC setup and registration
+│   ├── core/                      # Core infrastructure
+│   │   ├── di/                    # Dependency Injection
+│   │   │   ├── Container.ts       # DI Container (Singleton)
+│   │   │   └── Token.ts           # Type-safe DI tokens
+│   │   └── ipc/                    # IPC infrastructure
+│   │       └── BaseController.ts   # Base controller with error handling
+│   ├── providers/                 # Booru provider implementations
+│   │   ├── rule34-provider.ts     # Rule34.xxx provider
+│   │   ├── gelbooru-provider.ts   # Gelbooru provider
+│   │   ├── types.ts               # Provider interfaces
+│   │   └── index.ts               # Provider registry
 │   ├── services/                  # Background services
 │   │   ├── secure-storage.ts       # Secure storage for API credentials
 │   │   ├── sync-service.ts        # Rule34.xxx API synchronization

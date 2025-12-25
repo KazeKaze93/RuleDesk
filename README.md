@@ -36,7 +36,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🧭 Navigation & Layout**        | Sidebar navigation with dedicated pages: Updates, Browse, Favorites, Tracked, and Settings. Global Top Bar with search, filters, sort controls, and view toggles. Responsive layout with modern UI components.                                                           |
 | **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                            |
 | **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                    |
-| **🔌 Multi-Source Ready**         | Architecture designed for future multi-booru support. Provider pattern abstraction allows adding new sources (Danbooru, Gelbooru, etc.) without core database changes.                                                                                                   |
+| **🔌 Multi-Source Ready**         | Provider pattern abstraction for multi-booru support. Current implementations: Rule34.xxx, Gelbooru. `IBooruProvider` interface allows adding new sources (Danbooru, etc.) without core database changes.                                                              |
 
 ---
 
@@ -66,9 +66,11 @@ This is the sandboxed browser environment. It handles presentation.
 
 ### 3. Security Boundary (The Gatekeeper)
 
+- **IPC Architecture:** Controller-based IPC handlers with `BaseController` for centralized error handling and validation. Type-safe dependency injection via DI Container.
 - **IPC Bridge:** Strictly typed TypeScript interface (`bridge.ts`) used by the Renderer to communicate with the Main Process.
 - **Security:** **Context Isolation** enforced globally; no direct Node.js access from the Renderer.
 - **Encryption:** API credentials encrypted using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
+- **Provider Pattern:** Multi-booru support via `IBooruProvider` interface. Current implementations: Rule34.xxx, Gelbooru.
 
 ## 📐 Product Structure
 

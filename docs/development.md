@@ -149,15 +149,29 @@ Opens web interface at `http://localhost:4983` (default port).
 │   │   ├── db/                        # Database layer
 │   │   │   ├── client.ts              # Database client (initialization, getDb)
 │   │   │   ├── schema.ts              # Drizzle schema definitions
-│   │   ├── ipc/                       # IPC handlers
-│   │   │   ├── handlers/              # Modular handlers
-│   │   │   │   ├── artists.ts
-│   │   │   │   ├── files.ts
-│   │   │   │   ├── posts.ts
-│   │   │   │   ├── settings.ts
-│   │   │   │   └── viewer.ts
+│   │   ├── ipc/                       # IPC (Inter-Process Communication)
+│   │   │   ├── controllers/           # IPC Controllers (domain-based)
+│   │   │   │   ├── ArtistsController.ts
+│   │   │   │   ├── PostsController.ts
+│   │   │   │   ├── SettingsController.ts
+│   │   │   │   ├── AuthController.ts
+│   │   │   │   ├── MaintenanceController.ts
+│   │   │   │   ├── ViewerController.ts
+│   │   │   │   ├── FileController.ts
+│   │   │   │   └── SystemController.ts
 │   │   │   ├── channels.ts            # IPC channel constants
-│   │   │   └── index.ts               # Handler registration
+│   │   │   └── index.ts               # IPC setup and registration
+│   │   ├── core/                      # Core infrastructure
+│   │   │   ├── di/                    # Dependency Injection
+│   │   │   │   ├── Container.ts       # DI Container (Singleton)
+│   │   │   │   └── Token.ts           # Type-safe DI tokens
+│   │   │   └── ipc/                   # IPC infrastructure
+│   │   │       └── BaseController.ts  # Base controller with error handling
+│   │   ├── providers/                 # Booru provider implementations
+│   │   │   ├── rule34-provider.ts     # Rule34.xxx provider
+│   │   │   ├── gelbooru-provider.ts   # Gelbooru provider
+│   │   │   ├── types.ts               # Provider interfaces
+│   │   │   └── index.ts               # Provider registry
 │   │   ├── services/                  # Background services
 │   │   │   ├── secure-storage.ts      # Secure storage for credentials
 │   │   │   ├── sync-service.ts        # API synchronization
@@ -257,15 +271,36 @@ Opens web interface at `http://localhost:4983` (default port).
    };
    ```
 
-3. Add handler in `src/main/ipc/handlers/` (create new file or add to existing):
+3. Add handler in appropriate controller (`src/main/ipc/controllers/`):
 
    ```typescript
-   ipcMain.handle("channel:name", async () => {
-     // Implementation
-   });
+   export class MyController extends BaseController {
+     setup() {
+       this.handle(
+         "channel:name",
+         MySchema, // Zod schema for validation
+         this.newMethod.bind(this)
+       );
+     }
+
+     private async newMethod(
+       _event: IpcMainInvokeEvent,
+       data: MyRequestType
+     ) {
+       const db = container.resolve(DI_TOKENS.DB);
+       // Implementation
+     }
+   }
    ```
 
-4. Update types in `src/renderer.d.ts`:
+4. Register controller in `src/main/ipc/index.ts`:
+
+   ```typescript
+   const myController = new MyController();
+   myController.setup();
+   ```
+
+5. Update types in `src/renderer.d.ts`:
    ```typescript
    export interface IpcApi {
      newMethod: () => Promise<ReturnType>;
@@ -393,8 +428,10 @@ npm run typecheck
 **Solution:**
 
 1. Verify bridge is exposed: Check `src/main/bridge.ts`
-2. Verify handler is registered: Check `src/main/ipc/index.ts`
-3. Check types match: Verify `src/renderer.d.ts`
+2. Verify controller is registered: Check `src/main/ipc/index.ts` (controller setup)
+3. Verify handler is registered in controller: Check controller's `setup()` method
+4. Check types match: Verify `src/renderer.d.ts`
+5. Check DI container: Ensure dependencies are registered before controller setup
 
 ### Issue: Build Fails
 
