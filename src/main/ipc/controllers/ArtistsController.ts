@@ -110,9 +110,14 @@ export class ArtistsController extends BaseController {
     const db = this.getDb();
     try {
       // In DEBUG mode, log EXPLAIN QUERY PLAN to verify index usage
+      // Critical: Ensure the COALESCE expression matches the index exactly
+      // SQLite requires exact type and expression match for expression indexes
       if (process.env.DEBUG === "true" || process.env.DEBUG_SQLITE === "true") {
         const { getSqliteInstance } = await import("../../db/client");
         const sqlite = getSqliteInstance();
+        
+        // Use the exact same expression as in the query (COALESCE with integer columns)
+        // Both lastChecked and createdAt are integer columns with timestamp mode
         const explainQuery = sqlite.prepare(`
           EXPLAIN QUERY PLAN
           SELECT * FROM artists
@@ -122,16 +127,24 @@ export class ArtistsController extends BaseController {
         log.debug("[ArtistsController] EXPLAIN QUERY PLAN:", JSON.stringify(plan, null, 2));
         
         // Verify that artists_sort_idx is being used
+        // Check both 'detail' field and full plan for index usage
         const usesIndex = plan.some(
-          (row) => row.detail?.includes("artists_sort_idx")
+          (row) => {
+            const detail = String(row.detail || "");
+            const info = String(row.info || "");
+            return detail.includes("artists_sort_idx") || info.includes("artists_sort_idx");
+          }
         );
         if (!usesIndex) {
           log.warn("[ArtistsController] ⚠️ Index artists_sort_idx not detected in query plan! Performance may be degraded.");
+          log.warn("[ArtistsController] Query plan:", plan);
         } else {
           log.debug("[ArtistsController] ✓ Index artists_sort_idx is being used");
         }
       }
 
+      // Use COALESCE with integer columns (both are integer with timestamp mode)
+      // This matches the expression index: COALESCE(last_checked, created_at) DESC
       const result = await db.query.artists.findMany({
         orderBy: [
           desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`),

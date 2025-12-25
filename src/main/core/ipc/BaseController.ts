@@ -40,6 +40,10 @@ export abstract class BaseController {
    * - z.tuple([...]) for multiple arguments or empty tuple
    * - Single Zod schema (object, string, etc.) which will be auto-wrapped in tuple
    * 
+   * ⚠️ IMPORTANT: Schema must match the exact number of arguments expected.
+   * If handler expects 1 object, schema must be a single object schema (not tuple).
+   * If handler expects multiple args, schema must be a tuple.
+   * 
    * @param channel - IPC channel name (e.g., 'user:get')
    * @param schema - Zod schema for validating handler arguments (tuple or single schema)
    * @param handler - Async handler function with validated, typed arguments
@@ -52,18 +56,70 @@ export abstract class BaseController {
       ...args: unknown[]
     ) => Promise<unknown>
   ): void {
-    // Type assertion: Runtime validation via Zod ensures type safety
-    // TypeScript cannot verify this at compile time, but Zod validates at runtime
-    const typedHandler = handler as (
-      event: IpcMainInvokeEvent,
-      ...args: unknown[]
-    ) => Promise<unknown>;
     ipcMain.handle(channel, async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       try {
-        log.info(`[IPC] Incoming request: ${channel}`);
+        // Security: Log only channel name and argument count, not actual arguments
+        // This prevents leaking user data, file paths, or other sensitive information
+        log.info(`[IPC] Incoming request: ${channel} (${args.length} arg${args.length !== 1 ? 's' : ''})`);
+
+        // Determine if schema is a tuple
+        const isTuple = schema instanceof z.ZodTuple;
+        
+        // Strict validation: Check argument count BEFORE parsing
+        // This prevents silent failures when Renderer sends wrong number of arguments
+        if (isTuple) {
+          // Access items length safely - ZodTuple.items is a readonly array
+          // Use type assertion to access items.length (Zod's internal structure)
+          // @ts-expect-error - ZodTuple.items is readonly array, but we need to check length
+          const tupleSchema = schema as z.ZodTuple<readonly z.ZodTypeAny[], z.ZodTypeAny | null>;
+          const expectedCount = (tupleSchema as unknown as { items: readonly z.ZodTypeAny[] }).items.length;
+          if (args.length !== expectedCount) {
+            const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
+            // Security: Log only error details, not sanitized args (may still leak info)
+            log.error(`[IPC] Validation failed for channel "${channel}": ${errorMessage}`, {
+              expected: expectedCount,
+              received: args.length,
+            });
+            
+            const serializedError: ValidationError = {
+              message: errorMessage,
+              stack: undefined,
+              name: 'ValidationError',
+              originalError: undefined,
+              errors: [{
+                path: [],
+                message: errorMessage,
+                code: 'custom',
+              }],
+            };
+            throw serializedError;
+          }
+        } else {
+          // Single schema: must receive exactly 1 argument
+          if (args.length !== 1) {
+            const errorMessage = `Argument count mismatch: expected 1 (single object/primitive), got ${args.length}`;
+            // Security: Log only error details, not sanitized args (may still leak info)
+            log.error(`[IPC] Validation failed for channel "${channel}": ${errorMessage}`, {
+              expected: 1,
+              received: args.length,
+            });
+            
+            const serializedError: ValidationError = {
+              message: errorMessage,
+              stack: undefined,
+              name: 'ValidationError',
+              originalError: undefined,
+              errors: [{
+                path: [],
+                message: errorMessage,
+                code: 'custom',
+              }],
+            };
+            throw serializedError;
+          }
+        }
 
         // Normalize schema: if single ZodType (not tuple), wrap in tuple for validation
-        const isTuple = schema instanceof z.ZodTuple;
         const normalizedSchema = isTuple
           ? schema
           : z.tuple([schema as z.ZodTypeAny]);
@@ -75,9 +131,13 @@ export abstract class BaseController {
         } catch (validationError) {
           if (validationError instanceof z.ZodError) {
             const errorMessage = `Validation Error: ${validationError.errors.map((e) => e.message).join(', ')}`;
+            // Security: Log only validation errors (paths and messages), not actual argument values
             log.error(`[IPC] Validation failed for channel "${channel}":`, {
-              errors: validationError.errors,
-              args: this.sanitizeArgs(args),
+              errors: validationError.errors.map((e) => ({
+                path: e.path,
+                message: e.message,
+                code: e.code,
+              })),
             });
             
             // Create serializable validation error
@@ -104,7 +164,7 @@ export abstract class BaseController {
           ? validatedArgs
           : [validatedArgs[0]];
         
-        const result = await typedHandler(event, ...handlerArgs);
+        const result = await handler(event, ...handlerArgs);
         log.info(`[IPC] Request completed: ${channel}`);
         return result;
       } catch (error: unknown) {
@@ -119,11 +179,11 @@ export abstract class BaseController {
           throw error as ValidationError;
         }
 
-        // Log the full error details for debugging (always log full details in Main Process)
+        // Log error details for debugging (without sensitive argument data)
         log.error(`[IPC] Error in channel "${channel}":`, {
           message: error instanceof Error ? error.message : 'Unknown error',
           stack: error instanceof Error ? error.stack : undefined,
-          args: this.sanitizeArgs(args),
+          // Security: Do not log args - they may contain sensitive data even after sanitization
         });
 
         // Electron IPC quirk: pure Error objects don't serialize well via invoke
