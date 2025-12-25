@@ -26,16 +26,19 @@ export const Tracked = () => {
   const handleAddArtist = async (
     name: string,
     tag: string,
-    type: "tag" | "uploader" | "query"
+    type: "tag" | "uploader" | "query",
+    provider: string // New param
   ) => {
     try {
       await window.api.addArtist({
         name,
         tag,
         type,
-        apiEndpoint:
-          "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index",
+        provider,
+        // Legacy param, can be removed if backend handles it (it does now)
+        apiEndpoint: "", 
       });
+
       // Invalidate cache to refresh list
       queryClient.invalidateQueries({ queryKey: ["artists"] });
       setIsAddModalOpen(false);
@@ -50,9 +53,10 @@ export const Tracked = () => {
   };
 
   if (isLoading)
-    return <div className="p-8 text-muted-foreground">Loading artists...</div>;
+    return <div className="p-8 text-muted-foreground">Loading sources...</div>;
+
   if (error)
-    return <div className="p-8 text-red-500">Error loading artists</div>;
+    return <div className="p-8 text-red-500">Error loading sources</div>;
 
   return (
     <div className="space-y-6">
@@ -66,7 +70,7 @@ export const Tracked = () => {
 
       {!artists || artists.length === 0 ? (
         <div className="flex flex-col justify-center items-center h-64 rounded-lg border-2 border-dashed bg-muted/10 text-muted-foreground">
-          <p>No tracked artists yet.</p>
+          <p>No tracked sources yet.</p>
           <Button variant="link" onClick={() => setIsAddModalOpen(true)}>
             Add your first one
           </Button>

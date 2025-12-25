@@ -78,7 +78,7 @@ export interface IpcApi extends IpcBridge {
 
   markPostAsViewed: (postId: number) => Promise<boolean>;
 
-  searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
+  searchRemoteTags: (query: string, provider?: string) => Promise<{ id: string; label: string; value: string; type?: string }[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;

@@ -3,6 +3,14 @@ import { X } from "lucide-react";
 import { normalizeTag } from "../../lib/tag-utils";
 import { AsyncAutocomplete } from "../inputs/AsyncAutocomplete";
 import type { AutocompleteOption } from "../inputs/AsyncAutocomplete";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { Label } from "../ui/label";
 
 interface AddArtistModalProps {
   isOpen: boolean;
@@ -10,7 +18,8 @@ interface AddArtistModalProps {
   onAdd: (
     name: string,
     tag: string,
-    type: "tag" | "uploader" | "query"
+    type: "tag" | "uploader" | "query",
+    provider: string
   ) => void;
 }
 
@@ -20,11 +29,12 @@ export function AddArtistModal({
   onAdd,
 }: AddArtistModalProps) {
   const [inputTag, setInputTag] = useState("");
-
+  const [provider, setProvider] = useState("rule34");
   const type = "tag" as const;
 
   const handleClose = () => {
     setInputTag("");
+    setProvider("rule34");
     onClose();
   };
 
@@ -35,8 +45,7 @@ export function AddArtistModal({
     if (inputTag) {
       const finalTag = normalizeTag(inputTag);
       const finalDisplayName = finalTag;
-
-      onAdd(finalDisplayName, finalTag, type);
+      onAdd(finalDisplayName, finalTag, type, provider);
       handleClose();
     }
   };
@@ -53,10 +62,9 @@ export function AddArtistModal({
   return (
     <div className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm duration-200 bg-black/60 animate-in fade-in">
       <div className="flex flex-col w-full max-w-md rounded-xl border shadow-2xl bg-zinc-900 border-zinc-800">
-        {" "}
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
-          <h2 className="text-lg font-bold text-white">Track New Tag</h2>
+          <h2 className="text-lg font-bold text-white">Track New Source</h2>
           <button
             onClick={handleClose}
             className="p-1 rounded-full transition-colors hover:bg-zinc-800 text-zinc-400"
@@ -65,22 +73,40 @@ export function AddArtistModal({
             <X size={20} />
           </button>
         </div>
+
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Tag Input (with Autocomplete) */}
+          {/* Provider Selection */}
           <div className="space-y-1.5">
-            <label className="ml-1 text-xs font-medium text-zinc-400">
-              Booru Tag to Track
-            </label>
+            <Label className="ml-1 text-xs font-medium text-zinc-400">
+              Source Provider
+            </Label>
+            <Select value={provider} onValueChange={setProvider}>
+              <SelectTrigger className="w-full bg-zinc-950 border-zinc-800 text-white">
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                <SelectItem value="rule34">Rule34.xxx</SelectItem>
+                <SelectItem value="gelbooru">Gelbooru</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tag Input */}
+          <div className="space-y-1.5">
+            <Label className="ml-1 text-xs font-medium text-zinc-400">
+              Tag to Track
+            </Label>
             <div className="relative z-20">
               <AsyncAutocomplete
                 label=""
                 value={inputTag}
                 onQueryChange={handleTagChange}
                 onSelect={handleTagSelect}
-                placeholder="Search tag (e.g. blue_eyes)"
+                placeholder="Search tag..."
+                // Pass the current provider to the search function
                 fetchOptions={async (query: string) => {
                   try {
-                    return await window.api.searchRemoteTags(query);
+                    return await window.api.searchRemoteTags(query, provider);
                   } catch (error) {
                     console.error("Failed to search tags:", error);
                     return [];
@@ -89,8 +115,7 @@ export function AddArtistModal({
               />
             </div>
             <p className="text-[10px] text-zinc-500 ml-1">
-              Type the full tag. Post counts like '(123)' will be removed on
-              submit.
+              Search results are fetched from the selected provider.
             </p>
           </div>
 

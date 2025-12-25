@@ -10,6 +10,8 @@ export const artists = sqliteTable("artists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   tag: text("tag").notNull().unique(),
+  // Provider ID (e.g., 'rule34', 'gelbooru')
+  provider: text("provider").notNull().default("rule34"),
   type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
   apiEndpoint: text("api_endpoint").notNull(),
   lastPostId: integer("last_post_id").notNull().default(0),
