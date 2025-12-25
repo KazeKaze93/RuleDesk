@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq, like, or, asc } from "drizzle-orm";
 import { IPC_CHANNELS } from "../channels";
 import { getDb } from "../../db/client";
-import { artists } from "../../db/schema";
+import { artists, ARTIST_TYPES } from "../../db/schema";
 import { logger } from "../../lib/logger";
 import { getProvider, PROVIDER_IDS } from "../../providers";
 
@@ -11,7 +11,7 @@ const AddArtistSchema = z.object({
   name: z.string().trim().min(1),
   tag: z.string().trim().min(1),
   provider: z.enum(PROVIDER_IDS).default("rule34"),
-  type: z.enum(["tag", "uploader", "query"]),
+  type: z.enum(ARTIST_TYPES),
   apiEndpoint: z.string().url().trim().optional(),
 });
 
@@ -22,6 +22,9 @@ const SearchRemoteSchema = z.object({
 });
 
 export type AddArtistParams = z.infer<typeof AddArtistSchema>;
+
+// AbortController для отмены предыдущих запросов автокомплита
+let searchAbortController: AbortController | null = null;
 
 export const registerArtistHandlers = () => {
   ipcMain.handle(IPC_CHANNELS.DB.GET_ARTISTS, async () => {
@@ -98,28 +101,29 @@ export const registerArtistHandlers = () => {
     }
   });
 
-  // UPDATED: Handle object payload for search
   ipcMain.handle(IPC_CHANNELS.API.SEARCH_REMOTE, async (_, payload: unknown) => {
-    // Support legacy string call or new object call
-    let query = "";
-    let providerId = "rule34";
-
-    if (typeof payload === "string") {
-      query = payload;
-    } else if (typeof payload === "object" && payload !== null) {
-      const p = payload as { query: string; provider: string };
-      query = p.query;
-      providerId = p.provider || "rule34";
+    const validation = SearchRemoteSchema.safeParse(payload);
+    if (!validation.success) {
+      logger.warn("IPC: [api:search-remote-tags] Invalid payload", validation.error);
+      return [];
     }
 
-    const validation = SearchRemoteSchema.safeParse({ query, provider: providerId });
-    if (!validation.success) return [];
+    // Cancel previous search request to avoid race conditions
+    if (searchAbortController) {
+      searchAbortController.abort();
+    }
+    searchAbortController = new AbortController();
+    const currentController = searchAbortController;
 
     try {
       const provider = getProvider(validation.data.provider);
-      return await provider.searchTags(validation.data.query);
+      return await provider.searchTags(validation.data.query, currentController.signal);
     } catch (e) {
-      logger.error(`IPC: Search remote failed for ${providerId}`, e);
+      // Ignore abort errors (expected when user types quickly)
+      if (e instanceof Error && e.name === "AbortError") {
+        return [];
+      }
+      logger.error(`IPC: Search remote failed for ${validation.data.provider}`, e);
       return [];
     }
   });

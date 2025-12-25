@@ -6,6 +6,7 @@ import { ArtistCard } from "./components/ArtistCard";
 import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
 import { Button } from "../../components/ui/button";
 import type { Artist } from "../../../main/db/schema";
+import type { ProviderId } from "../../../main/providers";
 
 export const Tracked = () => {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export const Tracked = () => {
     name: string,
     tag: string,
     type: "tag" | "uploader" | "query",
-    provider: string // New param
+    provider: ProviderId
   ) => {
     try {
       await window.api.addArtist({
@@ -35,8 +36,6 @@ export const Tracked = () => {
         tag,
         type,
         provider,
-        // Legacy param, can be removed if backend handles it (it does now)
-        apiEndpoint: "", 
       });
 
       // Invalidate cache to refresh list

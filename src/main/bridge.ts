@@ -4,6 +4,7 @@ import { IPC_CHANNELS } from "./ipc/channels";
 import type { GetPostsParams as GetPostsParamsFromHandler } from "./ipc/handlers/posts";
 import type { AddArtistParams } from "./ipc/handlers/artists";
 import type { SearchResults } from "./providers/types";
+import type { ProviderId } from "./providers";
 
 export type UpdateStatusData = {
   status: string;
@@ -29,7 +30,8 @@ export type DownloadProgressCallback = (data: DownloadProgressData) => void;
 
 // Use z.infer types from handlers to ensure type safety
 export type GetPostsParams = GetPostsParamsFromHandler;
-export type AddArtistPayload = AddArtistParams;
+// Make apiEndpoint optional in the public API (backend handles default)
+export type AddArtistPayload = Omit<AddArtistParams, "apiEndpoint"> & { apiEndpoint?: string };
 
 // Legacy interface for backward compatibility (can be removed if not used)
 export interface PostQueryFilters {
@@ -104,8 +106,7 @@ export interface IpcBridge {
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
 
-  // Update signature to allow optional provider
-  searchRemoteTags: (query: string, provider?: string) => Promise<SearchResults[]>;
+  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;

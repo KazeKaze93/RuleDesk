@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Label } from "../ui/label";
+import type { ProviderId } from "../../../main/providers";
 
 interface AddArtistModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ interface AddArtistModalProps {
     name: string,
     tag: string,
     type: "tag" | "uploader" | "query",
-    provider: string
+    provider: ProviderId
   ) => void;
 }
 
@@ -29,7 +30,7 @@ export function AddArtistModal({
   onAdd,
 }: AddArtistModalProps) {
   const [inputTag, setInputTag] = useState("");
-  const [provider, setProvider] = useState("rule34");
+  const [provider, setProvider] = useState<ProviderId>("rule34");
   const type = "tag" as const;
 
   const handleClose = () => {
@@ -39,7 +40,7 @@ export function AddArtistModal({
   };
 
   // Reset inputTag when provider changes to avoid cross-provider tag confusion
-  const handleProviderChange = (newProvider: string) => {
+  const handleProviderChange = (newProvider: ProviderId) => {
     setProvider(newProvider);
     setInputTag(""); // Clear input when switching providers
   };

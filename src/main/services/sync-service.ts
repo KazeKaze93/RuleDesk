@@ -266,7 +266,7 @@ export class SyncService {
         const idFilter = artist.lastPostId > 0 ? ` id:>${artist.lastPostId}` : "";
         
         // Use provider to format tag (handles 'user:' prefix logic)
-        const baseTag = provider.formatTag(artist.tag, artist.type as "tag" | "uploader" | "query");
+        const baseTag = provider.formatTag(artist.tag, artist.type);
         const tagsQuery = `${baseTag}${idFilter}`;
 
         const postsData = await retryWithBackoff(

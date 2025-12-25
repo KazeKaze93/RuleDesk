@@ -1,6 +1,7 @@
 import axios from "axios";
 import { logger } from "../lib/logger";
 import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
+import type { ArtistType } from "../db/schema";
 
 interface R34RawPost {
   id: number;
@@ -31,7 +32,7 @@ export class Rule34Provider implements IBooruProvider {
     return `${this.baseUrl}?page=dapi&s=post&q=index`;
   }
 
-  formatTag(tag: string, type: "tag" | "uploader" | "query"): string {
+  formatTag(tag: string, type: ArtistType): string {
     const cleanTag = tag.trim().toLowerCase().replace(/ /g, "_");
     if (type === "uploader") return `user:${cleanTag}`;
     return cleanTag;
@@ -66,10 +67,13 @@ export class Rule34Provider implements IBooruProvider {
     }
   }
 
-  async searchTags(query: string): Promise<SearchResults[]> {
+  async searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]> {
     if (query.length < 2) return [];
     try {
-      const { data } = await axios.get<R34AutocompleteItem[]>(`https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(query)}`);
+      const { data } = await axios.get<R34AutocompleteItem[]>(
+        `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(query)}`,
+        { signal }
+      );
       if (Array.isArray(data)) {
         return data.map((item) => ({
           id: item.value,
@@ -80,6 +84,9 @@ export class Rule34Provider implements IBooruProvider {
       }
       return [];
     } catch (error) {
+      if (axios.isCancel(error)) {
+        return []; // Request was cancelled, return empty array
+      }
       logger.error("[Rule34Provider] Autocomplete failed", error);
       return [];
     }

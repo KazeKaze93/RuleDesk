@@ -1,6 +1,7 @@
 import axios from "axios";
 import { logger } from "../lib/logger";
 import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
+import type { ArtistType } from "../db/schema";
 
 interface GelbooruRawPost {
   id: number;
@@ -24,7 +25,7 @@ export class GelbooruProvider implements IBooruProvider {
     return `${this.baseUrl}?page=dapi&s=post&q=index`;
   }
 
-  formatTag(tag: string, type: "tag" | "uploader" | "query"): string {
+  formatTag(tag: string, type: ArtistType): string {
     // Gelbooru format is mostly same as R34, usually lowercase with underscores
     const cleanTag = tag.trim().toLowerCase().replace(/ /g, "_");
     if (type === "uploader") return `user:${cleanTag}`; // Gelbooru mostly ignores user search in standard API, but we keep format
@@ -60,11 +61,14 @@ export class GelbooruProvider implements IBooruProvider {
     }
   }
 
-  async searchTags(query: string): Promise<SearchResults[]> {
+  async searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]> {
     if (query.length < 2) return [];
     try {
       // Gelbooru uses specific autocomplete endpoint
-      const { data } = await axios.get(`https://gelbooru.com/index.php?page=autocomplete2&term=${encodeURIComponent(query)}&type=tag_query&limit=20`);
+      const { data } = await axios.get(
+        `https://gelbooru.com/index.php?page=autocomplete2&term=${encodeURIComponent(query)}&type=tag_query&limit=20`,
+        { signal }
+      );
       
       if (Array.isArray(data)) {
         // Gelbooru format: [{"value":"tag_name","label":"tag_name (123)","type":"0"}]
@@ -84,6 +88,9 @@ export class GelbooruProvider implements IBooruProvider {
       }
       return [];
     } catch (error) {
+      if (axios.isCancel(error)) {
+        return []; // Request was cancelled, return empty array
+      }
       logger.error("[GelbooruProvider] Autocomplete failed", error);
       return [];
     }
@@ -107,11 +114,20 @@ export class GelbooruProvider implements IBooruProvider {
     }
 
     try {
-      const { data } = await axios.get(`${this.baseUrl}?${params}`, {
+      const response = await axios.get(`${this.baseUrl}?${params}`, {
         timeout: 15000,
-        headers: { "User-Agent": "RuleDesk/1.5.0" }
+        headers: { "User-Agent": "RuleDesk/1.5.0" },
+        validateStatus: (status) => status === 200,
       });
 
+      // Gelbooru sometimes returns XML instead of JSON when API fails
+      const contentType = response.headers["content-type"] || "";
+      if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
+        logger.warn(`[Gelbooru] Unexpected Content-Type: ${contentType}. Expected JSON.`);
+        return [];
+      }
+
+      const { data } = response;
       let rawPosts: GelbooruRawPost[] = [];
       
       // Gelbooru JSON API is inconsistent. It might return:

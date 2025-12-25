@@ -1,3 +1,5 @@
+import type { ArtistType } from "../db/schema";
+
 export interface BooruPost {
   id: number;
   fileUrl: string;
@@ -31,10 +33,10 @@ export interface IBooruProvider {
   checkAuth(settings: ProviderSettings): Promise<boolean>;
   /** Fetches posts based on tags and page */
   fetchPosts(tags: string, page: number, settings: ProviderSettings): Promise<BooruPost[]>;
-  /** Search for tags (autocomplete) */
-  searchTags(query: string): Promise<SearchResults[]>;
+  /** Search for tags (autocomplete) with optional AbortSignal for cancellation */
+  searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]>;
   /** Formats a tag based on artist type (e.g. adding 'user:' prefix) */
-  formatTag(tag: string, type: "tag" | "uploader" | "query"): string;
+  formatTag(tag: string, type: ArtistType): string;
   /** Returns the default API endpoint for this provider */
   getDefaultApiEndpoint(): string;
 }
