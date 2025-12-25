@@ -275,9 +275,9 @@ graph LR
 
    - **Layout:**
 
-     - **AppLayout.tsx** - Main application layout with sidebar
-     - **Sidebar.tsx** - Persistent sidebar navigation
-     - **GlobalTopBar.tsx** - Unified top bar with search, filters, sort controls
+     - **AppLayout.tsx** - Main application layout with sidebar and global top bar
+     - **Sidebar.tsx** - Persistent sidebar navigation with sync button and logout
+     - **GlobalTopBar.tsx** - Unified top bar with search bar, sort dropdown, filters button, and view toggle (UI implemented, backend filtering pending)
 
    - **Gallery:**
 
@@ -904,16 +904,17 @@ Root:
 
 ## Active Roadmap (Priority Tasks)
 
-### A. Filters (Advanced Search) ⏳ Not Started
+### A. Filters (Advanced Search) 🚧 UI Ready, Backend Pending
 
 **Goal:** Allow users to refine the gallery view.
 
-- Filter by **Rating** (Safe, Questionable, Explicit)
-- Filter by **Media Type** (Image vs Video)
-- Filter by **Tags** (Local search within downloaded posts)
-- Sort by: Date Added (New/Old), Posted Date
+- ✅ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle implemented in `GlobalTopBar.tsx`
+- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - UI ready, backend filtering pending
+- ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
+- ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
+- ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
 
-**Status:** No filtering UI or logic implemented. `ArtistGallery` component currently displays all posts without filtering options. Global Top Bar component is planned but not yet implemented.
+**Status:** Global Top Bar UI is fully implemented. Backend filtering and sorting logic needs to be connected to the UI controls in `GlobalTopBar.tsx` and integrated with `ArtistGallery` component.
 
 ### B. Download Manager ✅ Implemented (Core Features)
 

@@ -161,8 +161,8 @@ Non-blocking database maintenance:
 
 Core features for initial release:
 
-- ✅ **Navigation & Sidebar** - Basic sidebar with main sections (implemented)
-- ✅ **Global Top Bar** - Search, filters, sort, view toggle UI (implemented, backend filtering pending)
+- ✅ **Navigation & Sidebar** - Persistent sidebar with main sections, sync button, logout (implemented)
+- ✅ **Global Top Bar** - Search bar, sort dropdown, filters button, view toggle UI (fully implemented in `GlobalTopBar.tsx`, backend filtering pending)
 - ✅ **Viewer Polish** - Full-screen viewer with keyboard shortcuts, download, favorites (implemented)
 - ✅ **Progressive Loading** - Preview → Sample → Original (implemented)
 - ⏳ **Auto-sync Startup** - Toggle for automatic sync on app launch (planned)
@@ -244,16 +244,17 @@ Advanced features for future releases:
   - **Current:** Video handling exists, relies on Electron defaults
   - **Target:** Explicit `enableWebGL` and hardware acceleration flags
 
-### A. Filters (Advanced Search) [Priority: High] 🚧 In Progress
+### A. Filters (Advanced Search) [Priority: High] 🚧 UI Ready, Backend Pending
 
 **Goal:** Allow users to refine the gallery view.
 
 **UI:**
 
-- ✅ Top Bar filter panel (part of Global Top Bar) - UI implemented
-- ✅ Search bar in Global Top Bar
-- ✅ Sort dropdown in Global Top Bar
-- ✅ View toggle (Grid/List) in Global Top Bar
+- ✅ **Global Top Bar:** Fully implemented in `GlobalTopBar.tsx` and used in `AppLayout.tsx`
+- ✅ Search bar in Global Top Bar (UI ready, search functionality pending)
+- ✅ Sort dropdown in Global Top Bar (UI ready, sorting logic pending)
+- ✅ View toggle (Grid/List) in Global Top Bar (UI ready, view switching pending)
+- ✅ Filters button in Global Top Bar (UI ready, filter panel pending)
 
 **Functionality:**
 
@@ -261,14 +262,16 @@ Advanced features for future releases:
 - ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
 - ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
 - ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
+- ⏳ Search functionality - UI ready, search logic pending
 
 **Implementation Notes:**
 
 - Use Drizzle ORM queries with proper filtering
 - Maintain type safety with Zod/TypeScript
 - Update UI state via React Query invalidation
+- Connect `GlobalTopBar` controls to `ArtistGallery` filtering logic
 
-**Status:** UI components implemented in `GlobalTopBar.tsx`. Backend filtering and sorting logic needs to be connected to the UI controls.
+**Status:** Global Top Bar UI is fully implemented and visible in the application. Backend filtering, sorting, and search logic needs to be connected to the UI controls.
 
 ---
 

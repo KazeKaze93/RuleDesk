@@ -18,25 +18,25 @@ This project is **unofficial** and **not affiliated** with any external website 
 
 ## ✨ Features
 
-| Feature                           | Description                                                                                                                                                                                                                                                                                  |
-| :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials encrypted using Electron's `safeStorage` API and stored securely. Decryption only happens in Main Process when needed for API calls.                                                                |
-| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports tag-based tracking with autocomplete search (local and remote Rule34.xxx API). Tag normalization automatically strips metadata like "(123)" from tag names.                                      |
-| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling. Real-time sync progress updates via IPC events.                                                            |
-| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Direct synchronous access via `better-sqlite3` in Main Process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. WAL mode enabled for concurrent reads. |
-| **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization.                     |
-| **🎨 Progressive Image Loading**  | 3-layer progressive image loading system: Preview (blurred/low-res) → Sample (medium-res) → Original (high-res). Provides instant visual feedback with smooth quality enhancement.                                                                                                           |
-| **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                           |
-| **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                         |
-| **💾 Backup & Restore**           | Manual database backup and restore functionality. Create timestamped backups to protect your data. Restore from backup files with automatic application restart. Backup files are stored in the user data directory.                                                                         |
-| **🔍 Search Functionality**       | Search for artists locally and search for tags remotely via Rule34.xxx autocomplete API. Supports both local database search and remote tag suggestions.                                                                                                                                     |
-| **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                 |
-| **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                                       |
-| **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                |
-| **🧭 Navigation & Layout**        | Sidebar navigation with dedicated pages: Updates, Browse, Favorites, Tracked, and Settings. Global Top Bar with search, filters, sort controls, and view toggles. Responsive layout with modern UI components.                                                                               |
-| **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                                                |
-| **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                                        |
-| **🔌 Multi-Source Ready**         | Architecture designed for future multi-booru support. Provider pattern abstraction allows adding new sources (Danbooru, Gelbooru, etc.) without core database changes.                                                                                                                       |
+| Feature                           | Description                                                                                                                                                                                                                                                              |
+| :-------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials encrypted using Electron's `safeStorage` API and stored securely. Decryption only happens in Main Process when needed for API calls.                                            |
+| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports tag-based tracking with autocomplete search (local and remote Rule34.xxx API). Tag normalization automatically strips metadata like "(123)" from tag names.                  |
+| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling. Real-time sync progress updates via IPC events.                                        |
+| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Direct synchronous access via `better-sqlite3` in Main Process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. WAL mode enabled for concurrent reads.                      |
+| **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization. |
+| **🎨 Progressive Image Loading**  | 3-layer progressive image loading system: Preview (blurred/low-res) → Sample (medium-res) → Original (high-res). Provides instant visual feedback with smooth quality enhancement.                                                                                       |
+| **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                       |
+| **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                     |
+| **💾 Backup & Restore**           | Manual database backup and restore functionality. Create timestamped backups to protect your data. Restore from backup files with automatic application restart. Backup files are stored in the user data directory.                                                     |
+| **🔍 Search Functionality**       | Search for artists locally and search for tags remotely via Rule34.xxx autocomplete API. Supports both local database search and remote tag suggestions.                                                                                                                 |
+| **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                             |
+| **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                   |
+| **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                            |
+| **🧭 Navigation & Layout**        | Sidebar navigation with dedicated pages: Updates, Browse, Favorites, Tracked, and Settings. Global Top Bar with search, filters, sort controls, and view toggles. Responsive layout with modern UI components.                                                           |
+| **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                            |
+| **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                    |
+| **🔌 Multi-Source Ready**         | Architecture designed for future multi-booru support. Provider pattern abstraction allows adding new sources (Danbooru, Gelbooru, etc.) without core database changes.                                                                                                   |
 
 ---
 
@@ -278,17 +278,17 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
 We are moving to Feature Development. Priority tasks:
 
-### A. Filters (Advanced Search) ⏳ Not Started
+### A. Filters (Advanced Search) 🚧 UI Ready, Backend Pending
 
 **Goal:** Allow users to refine the gallery view.
 
-- ⏳ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle - planned
-- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - not implemented
-- ⏳ Filter by **Media Type** (Image vs Video) - not implemented
-- ⏳ Filter by **Tags** (Local search within downloaded posts) - not implemented
-- ⏳ Sort by: Date Added (New/Old), Posted Date - not implemented
+- ✅ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle - implemented
+- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - UI ready, backend filtering pending
+- ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
+- ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
+- ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
 
-**Note:** Filtering and sorting functionality needs to be implemented in both UI and backend.
+**Note:** Global Top Bar UI is implemented in `GlobalTopBar.tsx`. Backend filtering and sorting logic needs to be connected to the UI controls.
 
 ### B. Download Manager ✅ Implemented (Core Features)
 
