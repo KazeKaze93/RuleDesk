@@ -1,6 +1,25 @@
 # Rule34.xxx API Reference
 
+## 📑 Table of Contents
+
+- [API Keys](#api-keys)
+- [API Terms of Service](#api-terms-of-service)
+- [Endpoints](#endpoints)
+  - [Posts](#posts)
+  - [Deleted Images](#deleted-images)
+  - [Comments](#comments)
+  - [Tags](#tags)
+  - [Autocomplete](#autocomplete)
+- [Best Practices and Cautions](#best-practices-and-cautions)
+
+---
+
 This document provides an unofficial technical overview of the public Rule34.xxx API for developers integrating the API into desktop clients or applications.
+
+**📖 Related Documentation:**
+- [API Documentation](./api.md) - RuleDesk IPC API reference
+- [Architecture Documentation](./architecture.md) - External API integration
+- [Glossary](./glossary.md) - Key terms (API Key, Rate Limiting, etc.)
 
 ## API Keys
 
