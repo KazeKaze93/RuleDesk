@@ -15,6 +15,11 @@ import { useViewerStore } from "../../store/viewerStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
 
+// --- Constants ---
+// Should ideally come from a shared constant or backend config
+// This matches the default limit in GetPostsSchema
+const POSTS_PER_PAGE = 50;
+
 // --- Компоненты для виртуализации (Grid Layout) ---
 
 const GridContainer = forwardRef<
@@ -64,7 +69,8 @@ export const Favorites = () => {
         });
       },
       getNextPageParam: (lastPage, allPages) => {
-        return lastPage.length === 50 ? allPages.length + 1 : undefined;
+        // Check if the last page returned the full limit
+        return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
       },
       initialPageParam: 1,
     });
