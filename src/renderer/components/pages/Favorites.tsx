@@ -5,7 +5,6 @@ import {
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 import { Heart, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { useShallow } from "zustand/react/shallow";
@@ -48,7 +47,6 @@ ItemContainer.displayName = "ItemContainer";
 // --- Основной компонент ---
 
 export const Favorites = () => {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { open: openViewer, appendQueueIds } = useViewerStore(

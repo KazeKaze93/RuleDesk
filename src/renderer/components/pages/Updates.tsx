@@ -17,6 +17,26 @@ import type { Post } from "../../../main/db/schema";
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
 
+// --- Helper function for updating InfiniteData cache ---
+/**
+ * Updates a single post in InfiniteData cache by postId
+ * This is a standard approach for InfiniteData updates in React Query
+ */
+const updatePostInInfiniteData = (
+  oldData: InfiniteData<Post[]> | undefined,
+  postId: number,
+  updater: (post: Post) => Post
+): InfiniteData<Post[]> | undefined => {
+  if (!oldData) return oldData;
+  
+  return {
+    ...oldData,
+    pages: oldData.pages.map((page) =>
+      page.map((post) => (post.id === postId ? updater(post) : post))
+    ),
+  };
+};
+
 // --- Компоненты для виртуализации (Grid Layout) ---
 
 const GridContainer = forwardRef<
@@ -58,6 +78,8 @@ export const Updates = () => {
     useInfiniteQuery({
       queryKey: ["posts", "updates"],
       queryFn: async ({ pageParam = 1 }) => {
+        // Global feed: no artistId specified, returns posts from all tracked artists
+        // sinceTracking: true filters to only posts published after artist was added
         return await window.api.getArtistPosts({
           page: pageParam,
           filters: { sinceTracking: true },
@@ -80,19 +102,14 @@ export const Updates = () => {
       await window.api.markPostAsViewed(postId);
     },
     onSuccess: (_, postId) => {
+      // Update cache for updates feed using helper function
       queryClient.setQueryData<InfiniteData<Post[]>>(
         ["posts", "updates"],
-        (oldData) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            pages: oldData.pages.map((page) =>
-              page.map((post) =>
-                post.id === postId ? { ...post, isViewed: true } : post
-              )
-            ),
-          };
-        }
+        (oldData) =>
+          updatePostInInfiniteData(oldData, postId, (post) => ({
+            ...post,
+            isViewed: true,
+          }))
       );
     },
   });
@@ -132,7 +149,8 @@ export const Updates = () => {
       viewMutation.mutate(post.id);
     }
 
-    // Open viewer
+    // Open viewer with updates origin
+    // listKey: "updates" matches queryKey ["posts", "updates"] used in ViewerDialog
     openViewer({
       origin: { kind: "updates" },
       ids: postIds,

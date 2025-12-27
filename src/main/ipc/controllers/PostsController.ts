@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, like, sql, gte, innerJoin } from "drizzle-orm";
+import { eq, desc, count, and, like, sql, gte } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists, type Post } from "../../db/schema";
@@ -153,35 +153,33 @@ export class PostsController extends BaseController {
 
       // If sinceTracking filter is enabled, we need to use join
       if (filters?.sinceTracking === true) {
-        // Build where conditions array
-        const conditions: ReturnType<typeof eq | typeof like | typeof gte>[] = [];
+        // Build where conditions array (excluding the date filter, which goes in join)
+        // Note: artistId is optional - if not provided, returns posts from all tracked artists
+        // This is the expected behavior for global feeds like Updates
+        const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
         
         if (artistId) {
-          conditions.push(eq(posts.artistId, artistId));
+          baseConditions.push(eq(posts.artistId, artistId));
         }
         if (filters?.tags !== undefined) {
-          conditions.push(like(posts.tags, `%${filters.tags}%`));
+          baseConditions.push(like(posts.tags, `%${filters.tags}%`));
         }
         if (filters?.rating !== undefined) {
-          conditions.push(eq(posts.rating, filters.rating));
+          baseConditions.push(eq(posts.rating, filters.rating));
         }
         if (filters?.isFavorited !== undefined) {
-          conditions.push(eq(posts.isFavorited, filters.isFavorited));
+          baseConditions.push(eq(posts.isFavorited, filters.isFavorited));
         }
         if (filters?.isViewed !== undefined) {
-          conditions.push(eq(posts.isViewed, filters.isViewed));
+          baseConditions.push(eq(posts.isViewed, filters.isViewed));
         }
-        
-        // Add join condition: posts.publishedAt >= artists.createdAt
-        // This ensures we only get posts published after the artist was tracked
-        const joinCondition = gte(posts.publishedAt, artists.createdAt);
-        conditions.push(joinCondition);
 
         // Combine all conditions using and()
-        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+        const whereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
         // Use select with innerJoin for sinceTracking filter
-        // Explicitly select posts fields to avoid naming conflicts
+        // The date filter is part of the join condition for efficiency
+        // This ensures filtering happens at the join level, not after
         const result = await db
           .select({
             id: posts.id,
@@ -199,7 +197,13 @@ export class PostsController extends BaseController {
             isFavorited: posts.isFavorited,
           })
           .from(posts)
-          .innerJoin(artists, eq(posts.artistId, artists.id))
+          .innerJoin(
+            artists,
+            and(
+              eq(posts.artistId, artists.id),
+              gte(posts.publishedAt, artists.createdAt)
+            )
+          )
           .where(whereClause)
           .orderBy(desc(posts.publishedAt))
           .limit(limit)
@@ -217,26 +221,26 @@ export class PostsController extends BaseController {
 
       // Standard query path (no sinceTracking filter)
       // Build where conditions array
-      const conditions: ReturnType<typeof eq | typeof like>[] = [];
+      const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
       
       if (artistId) {
-        conditions.push(eq(posts.artistId, artistId));
+        baseConditions.push(eq(posts.artistId, artistId));
       }
       if (filters?.tags !== undefined) {
-        conditions.push(like(posts.tags, `%${filters.tags}%`));
+        baseConditions.push(like(posts.tags, `%${filters.tags}%`));
       }
       if (filters?.rating !== undefined) {
-        conditions.push(eq(posts.rating, filters.rating));
+        baseConditions.push(eq(posts.rating, filters.rating));
       }
       if (filters?.isFavorited !== undefined) {
-        conditions.push(eq(posts.isFavorited, filters.isFavorited));
+        baseConditions.push(eq(posts.isFavorited, filters.isFavorited));
       }
       if (filters?.isViewed !== undefined) {
-        conditions.push(eq(posts.isViewed, filters.isViewed));
+        baseConditions.push(eq(posts.isViewed, filters.isViewed));
       }
 
       // Combine all conditions using and()
-      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
       const result = await db.query.posts.findMany({
         where: whereClause,
