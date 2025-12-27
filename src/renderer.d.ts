@@ -20,6 +20,7 @@ export interface PostQueryFilters {
   tags?: string;
   sortBy?: "date" | "id" | "rating";
   isViewed?: boolean;
+  isFavorited?: boolean;
 }
 
 export interface IpcSettings {
@@ -52,7 +53,7 @@ export interface IpcApi extends IpcBridge {
 
   // Posts
   getArtistPosts: (params: {
-    artistId: number;
+    artistId?: number;
     page?: number;
     filters?: PostQueryFilters;
   }) => Promise<Post[]>;
