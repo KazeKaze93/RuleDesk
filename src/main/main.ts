@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from "electron";
+import { app, BrowserWindow, dialog, session } from "electron";
 import path from "path";
 import { mkdirSync } from "fs";
 import log from "electron-log";
@@ -182,6 +182,34 @@ function createLoadingWindow(): BrowserWindow {
 }
 
 /**
+ * Генерирует Content Security Policy в зависимости от режима работы приложения.
+ * В режиме разработки ослабляет политику для поддержки HMR (Vite).
+ */
+function getCSPPolicy(): string {
+  const isDev = process.env.NODE_ENV === "development";
+
+  const scriptSrc = isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval';" // HMR требует unsafe-inline/eval
+    : "script-src 'self';"; // Строгая политика в продакшене
+
+  const connectSrc = isDev
+    ? "connect-src 'self' https://api.rule34.xxx ws: ws://localhost:* http://localhost:*;" // WebSocket для HMR
+    : "connect-src 'self' https://api.rule34.xxx;"; // Только необходимые источники в продакшене
+
+  return (
+    "default-src 'self'; " +
+    scriptSrc +
+    " " +
+    "style-src 'self' 'unsafe-inline'; " + // Разрешаем инлайн стили (Tailwind/React часто требуют)
+    "img-src 'self' https://*.rule34.xxx data: blob:; " + // Картинки только наши и с R34
+    "media-src 'self' https://*.rule34.xxx; " + // Видео с R34
+    connectSrc +
+    " " +
+    "font-src 'self';"
+  );
+}
+
+/**
  * Асинхронная функция, которая запускается после app.ready.
  * Отвечает за инициализацию Worker и создание главного окна.
  */
@@ -189,6 +217,22 @@ async function initializeAppAndWindow() {
   let loadingWindow: BrowserWindow | null = null;
 
   try {
+    // Setup Content Security Policy
+    const cspPolicy = getCSPPolicy();
+    const isDev = process.env.NODE_ENV === "development";
+    logger.info(
+      `Main: CSP configured for ${isDev ? "development" : "production"} mode`
+    );
+
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": [cspPolicy],
+        },
+      });
+    });
+
     const MIGRATIONS_PATH = getMigrationsPath();
     logger.info(`Main: Migrations Path: ${MIGRATIONS_PATH}`);
 
