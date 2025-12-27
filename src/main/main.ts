@@ -235,13 +235,39 @@ async function initializeAppAndWindow() {
     );
 
     // Register CSP header handler once (policy is cached, no string generation overhead)
+    // CRITICAL: Only apply CSP to our application's requests, not to external resources
+    // This prevents breaking third-party content (WebView, external APIs) while securing our app
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-      callback({
-        responseHeaders: {
-          ...details.responseHeaders,
-          "Content-Security-Policy": [cspPolicy],
-        },
-      });
+      const url = details.url;
+      
+      // Only apply CSP to our application's local content:
+      // - file:// protocol (local HTML/CSS/JS files)
+      // - http://localhost (dev mode with Vite HMR)
+      // Do NOT apply to external resources (rule34.xxx, fonts.googleapis.com, etc.)
+      const isLocalContent = 
+        url.startsWith("file://") || 
+        url.startsWith("http://localhost") ||
+        url.startsWith("http://127.0.0.1");
+
+      if (isLocalContent) {
+        // Preserve existing security headers from server (if any)
+        // Merge our CSP with existing headers (don't overwrite)
+        const existingHeaders = details.responseHeaders || {};
+        const existingCSP = existingHeaders["content-security-policy"] || existingHeaders["Content-Security-Policy"];
+        
+        callback({
+          responseHeaders: {
+            ...existingHeaders,
+            "Content-Security-Policy": existingCSP 
+              ? [`${existingCSP.join(", ")}, ${cspPolicy}`] 
+              : [cspPolicy],
+          },
+        });
+      } else {
+        // For external resources, pass through headers unchanged
+        // This prevents breaking third-party content while maintaining security for our app
+        callback({ responseHeaders: details.responseHeaders });
+      }
     });
 
     const MIGRATIONS_PATH = getMigrationsPath();

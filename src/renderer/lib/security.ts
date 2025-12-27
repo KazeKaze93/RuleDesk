@@ -20,20 +20,36 @@ const PURIFY_CONFIG: Config = {
     "img", // Custom emojis/images
   ],
   // Explicitly forbid dangerous tags
-  FORBID_TAGS: ["script", "iframe", "object", "embed", "form", "input", "button"],
+  FORBID_TAGS: [
+    "script",
+    "iframe",
+    "object",
+    "embed",
+    "form",
+    "input",
+    "button",
+  ],
   // Allow safe attributes: href for links, src/alt for images
   ALLOWED_ATTR: ["href", "src", "alt", "title"],
   // Disable dangerous protocols (javascript:, data:, etc.)
   ALLOW_DATA_ATTR: false,
   ALLOW_UNKNOWN_PROTOCOLS: false,
   // Validate URLs: only allow http, https, and relative URLs
-  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+  ALLOWED_URI_REGEXP:
+    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
   // Return as string (not DOM node)
   RETURN_DOM: false,
   RETURN_DOM_FRAGMENT: false,
   RETURN_TRUSTED_TYPE: false,
   // Forbid dangerous attributes (event handlers, styles)
-  FORBID_ATTR: ["style", "onerror", "onload", "onclick", "onmouseover", "onfocus"],
+  FORBID_ATTR: [
+    "style",
+    "onerror",
+    "onload",
+    "onclick",
+    "onmouseover",
+    "onfocus",
+  ],
 };
 
 /**
@@ -75,4 +91,3 @@ export function sanitizeHtml(dirty: string): string {
   // TypeScript correctly infers the return type based on PURIFY_CONFIG
   return DOMPurify.sanitize(dirty, PURIFY_CONFIG);
 }
-
