@@ -313,12 +313,54 @@ const result = await db
 return result[0];
 ```
 
+**⚠️ CRITICAL: Always Use Limits for SELECT Queries**
+
+**Why limits are mandatory:**
+
+When querying posts or other data that can grow large, **always use `limit`** in your Drizzle queries. Without limits, SQLite may return tens or hundreds of thousands of records, which will:
+
+1. **Overwhelm the Renderer Process** - Trying to serialize and send 100k+ records via IPC will freeze the UI
+2. **Exhaust Memory** - Large arrays consume significant memory in both Main and Renderer processes
+3. **Block IPC Channel** - Large payloads block the IPC channel, preventing other operations
+
+**Example: Querying Posts with Limit**
+
+```typescript
+// ✅ CORRECT: Always use limit
+const posts = await db.query.posts.findMany({
+  where: eq(posts.artistId, artistId),
+  orderBy: [desc(posts.postId)],
+  limit: 50, // ← CRITICAL: Always limit results
+  offset: (page - 1) * 50,
+});
+
+// ❌ WRONG: No limit - will crash with large databases
+const posts = await db.query.posts.findMany({
+  where: eq(posts.artistId, artistId),
+  // Missing limit - dangerous!
+});
+```
+
+**Best Practices:**
+
+- **Default limit:** 50 records per page (used in `getArtistPosts`)
+- **Maximum limit:** Never exceed 1000 records in a single query
+- **Pagination:** Use `offset` and `limit` for pagination
+- **Infinite scroll:** Use `useInfiniteQuery` with page-based pagination
+- **Count queries:** Use separate count queries (`getArtistPostsCount`) instead of `array.length`
+
+**IPC Methods with Built-in Limits:**
+
+- `getArtistPosts()` - Returns max 50 posts per page
+- `getTrackedArtists()` - Should be limited if you expect 1000+ artists (currently no limit, but artists table is typically small)
+
 **Key Points:**
 
 - Database is **never** accessed from Renderer Process (security)
 - All queries are **type-safe** via Drizzle ORM
 - Operations are **synchronous** for performance
 - WAL mode enables **concurrent reads** during writes
+- **Always use `limit`** for SELECT queries to prevent Renderer process overload
 
 ## Process Separation
 
@@ -384,6 +426,51 @@ return result[0];
    - Automatic input validation using Zod schemas
    - Type-safe handler registration
    - Prevents duplicate handler registration errors
+
+   **⚠️ CRITICAL: Always Use Limits in Database Queries**
+
+   When implementing IPC handlers that query the database, **always use `limit`** in your Drizzle queries. Without limits, SQLite may return tens or hundreds of thousands of records, which will:
+   
+   - **Overwhelm the Renderer Process** - Large arrays block IPC and freeze the UI
+   - **Exhaust Memory** - Serializing 100k+ records consumes significant memory
+   - **Block IPC Channel** - Large payloads prevent other operations
+   
+   **Example in Controller:**
+   
+   ```typescript
+   // ✅ CORRECT: Always use limit
+   export class PostsController extends BaseController {
+     setup() {
+       this.handle(
+         IPC_CHANNELS.DB.GET_POSTS,
+         GetPostsSchema,
+         this.getPosts.bind(this)
+       );
+     }
+   
+     private async getPosts(
+       _event: IpcMainInvokeEvent,
+       data: GetPostsRequest
+     ) {
+       const db = container.resolve(DI_TOKENS.DB);
+       const { artistId, page = 1 } = data;
+       const limit = 50; // ← CRITICAL: Always limit results
+       const offset = (page - 1) * limit;
+   
+       return await db.query.posts.findMany({
+         where: eq(posts.artistId, artistId),
+         orderBy: [desc(posts.postId)],
+         limit, // ← Required
+         offset,
+       });
+     }
+   }
+   ```
+   
+   **Default Limits:**
+   - Posts: 50 per page (max 1000)
+   - Artists: No limit (typically small, but consider adding if > 1000 expected)
+   - Settings: Single record (no limit needed)
 
 5. **Dependency Injection Container** (`src/main/core/di/Container.ts`)
 
@@ -1115,6 +1202,127 @@ The project uses **electron-vite** for building both Main and Renderer processes
 - Client-side UI state
 - Minimal boilerplate
 - KISS principle compliance
+
+**⚠️ CRITICAL: Use Selectors to Prevent Unnecessary Re-renders**
+
+Zustand stores can cause performance issues if not used correctly. **Always use selectors** to subscribe only to the specific state you need, not the entire store.
+
+**Why selectors matter:**
+
+When you subscribe to the entire store, the component re-renders on **any** state change, even if it doesn't use that part of the state. This can cause:
+- Unnecessary re-renders of large component trees
+- Performance degradation with complex UIs
+- UI freezing when state updates frequently
+
+**❌ WRONG: Subscribing to entire store**
+
+```typescript
+// ❌ BAD: Component re-renders on ANY state change
+const store = useViewerStore(); // Gets entire store
+const isOpen = store.isOpen; // But only uses isOpen
+
+// If controlsVisible changes, this component still re-renders!
+```
+
+**✅ CORRECT: Using selectors**
+
+```typescript
+// ✅ GOOD: Component only re-renders when isOpen changes
+const isOpen = useViewerStore((state) => state.isOpen);
+
+// Component ignores other state changes (controlsVisible, queue, etc.)
+```
+
+**✅ CORRECT: Using multiple selectors with useShallow**
+
+When you need multiple values, use `useShallow` to prevent re-renders when unrelated state changes:
+
+```typescript
+import { useShallow } from "zustand/react/shallow";
+
+// ✅ GOOD: Only re-renders when isOpen or close function changes
+const { isOpen, close } = useViewerStore(
+  useShallow((state) => ({
+    isOpen: state.isOpen,
+    close: state.close,
+  }))
+);
+
+// ✅ GOOD: Split into logical groups for better performance
+const { currentPostId, queue } = useViewerStore(
+  useShallow((state) => ({
+    currentPostId: state.currentPostId,
+    queue: state.queue,
+  }))
+);
+
+const { currentIndex, next, prev } = useViewerStore(
+  useShallow((state) => ({
+    currentIndex: state.currentIndex,
+    next: state.next,
+    prev: state.prev,
+  }))
+);
+```
+
+**Real-world example from ViewerDialog:**
+
+```typescript
+// In ViewerDialog.tsx - split selectors into logical groups
+export const ViewerDialog = () => {
+  // Group 1: Open/close state
+  const { isOpen, close } = useViewerStore(
+    useShallow((state) => ({
+      isOpen: state.isOpen,
+      close: state.close,
+    }))
+  );
+
+  // Group 2: Current post data
+  const { currentPostId, queue } = useViewerStore(
+    useShallow((state) => ({
+      currentPostId: state.currentPostId,
+      queue: state.queue,
+    }))
+  );
+
+  // Group 3: Navigation
+  const { currentIndex, next, prev } = useViewerStore(
+    useShallow((state) => ({
+      currentIndex: state.currentIndex,
+      next: state.next,
+      prev: state.prev,
+    }))
+  );
+
+  // Each group only re-renders when its specific values change
+  // If controlsVisible changes, none of these groups re-render
+};
+```
+
+**Best Practices:**
+
+1. **Single value:** Use simple selector `useStore((s) => s.value)`
+2. **Multiple values:** Use `useShallow` with object selector
+3. **Split selectors:** Group related values together
+4. **Avoid full store:** Never do `useStore()` without selector
+5. **Memoize selectors:** For complex selectors, use `useMemo` or extract to function
+
+**Performance Impact:**
+
+- **Without selectors:** Component re-renders on every store update (even unrelated)
+- **With selectors:** Component re-renders only when selected values change
+- **With useShallow:** Prevents re-renders when object reference changes but values are the same
+
+**Example: Simple single-value selector**
+
+```typescript
+// In AppLayout.tsx - only needs isOpen
+const isViewerOpen = useViewerStore((state) => state.isOpen);
+
+// Component only re-renders when isOpen changes
+// Ignores changes to controlsVisible, queue, currentIndex, etc.
+```
 
 ### Main Process State
 

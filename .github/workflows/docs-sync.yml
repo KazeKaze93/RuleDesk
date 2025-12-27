@@ -7,6 +7,12 @@ on:
       - "README.md"
       - "docs/**/*.md"
       - ".github/scripts/translate_docs.py"
+  pull_request:
+    branches: ["main", "master"]
+    paths:
+      - "README.md"
+      - "docs/**/*.md"
+      - ".github/scripts/translate_docs.py"
 
 permissions:
   contents: write
@@ -33,6 +39,7 @@ jobs:
         run: python .github/scripts/translate_docs.py
 
       - name: 🚀 Commit Artifacts
+        if: github.event_name == 'push'
         run: |
           git config --global user.name "RuleDesk Bot"
           git config --global user.email "bot@ruledesk.local"
@@ -48,3 +55,9 @@ jobs:
 
           git commit -m "docs: sync ru translations [skip ci]"
           git push
+
+      - name: ✅ Check Translations (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Translation check completed for PR."
+          echo "Translations will be committed when PR is merged to main/master."

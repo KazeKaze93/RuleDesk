@@ -63,6 +63,7 @@ When you first open RuleDesk, you'll see the **Onboarding** screen. This is wher
 ### What are API Credentials?
 
 RuleDesk needs your Rule34.xxx account credentials to fetch posts. These credentials are:
+
 - **User ID** - Your account ID number
 - **API Key** - A special key that allows RuleDesk to access the API
 
@@ -73,6 +74,7 @@ RuleDesk needs your Rule34.xxx account credentials to fetch posts. These credent
 ## Getting Your API Credentials
 
 1. **Open your web browser** and go to:
+
    ```
    https://rule34.xxx/index.php?page=account&s=options
    ```
@@ -82,10 +84,12 @@ RuleDesk needs your Rule34.xxx account credentials to fetch posts. These credent
 3. **Scroll down** to the "API Access" section
 
 4. **Copy your credentials:**
+
    - **User ID** - The number next to "User ID"
    - **API Key** - The long string next to "API Key"
 
 5. **Paste them into RuleDesk:**
+
    - You can paste the entire URL from the account page, and RuleDesk will automatically extract the credentials
    - Or manually enter them in the fields
 
@@ -108,6 +112,7 @@ That's it! You're now ready to use RuleDesk.
 2. Click the **"Add Source"** button (top right, with a + icon)
 
 3. Fill in the form:
+
    - **Name** - A friendly name for this artist (e.g., "My Favorite Artist")
    - **Tag** - The tag or username to track (e.g., "artist_name" or "tag_name")
    - **Type** - Choose:
@@ -131,6 +136,7 @@ The artist will appear in your tracked list!
 1. Click the **"Sync All"** button in the sidebar (top of the sidebar, with a refresh icon)
 
 2. Wait for the sync to complete. You'll see progress messages like:
+
    - "Syncing artist_name..."
    - "Found 15 new posts"
    - "Sync complete!"
@@ -140,10 +146,12 @@ The artist will appear in your tracked list!
 **Automatic Sync:**
 
 You can enable automatic sync in Settings:
+
 - **Auto-sync on startup** - Syncs when you open the app
 - **Periodic sync** - Syncs every X minutes while the app is running
 
 **How to enable:**
+
 1. Go to **Settings** (sidebar)
 2. Scroll to **Sync Settings**
 3. Toggle **"Auto-sync on Startup"** ON
@@ -167,6 +175,7 @@ You can enable automatic sync in Settings:
 **Post information:**
 
 Each post card shows:
+
 - Preview image
 - Rating badge (Safe/Questionable/Explicit)
 - Media type icon (image or video)
@@ -388,6 +397,7 @@ Access Settings by clicking **"Settings"** in the sidebar.
 **Problem:** App says you need to enter API credentials.
 
 **Solution:**
+
 1. Go to Settings
 2. Click "Logout" to clear old credentials
 3. Follow the [Getting Your API Credentials](#getting-your-api-credentials) steps again
@@ -397,6 +407,7 @@ Access Settings by clicking **"Settings"** in the sidebar.
 **Problem:** Sync button doesn't do anything, or sync fails.
 
 **Solutions:**
+
 1. Check your internet connection
 2. Verify your API credentials are correct (Settings > Logout and re-enter)
 3. Check if Rule34.xxx website is accessible
@@ -407,6 +418,7 @@ Access Settings by clicking **"Settings"** in the sidebar.
 **Problem:** You synced but don't see any posts.
 
 **Solutions:**
+
 1. Make sure the artist has posts on the website
 2. Check if you're filtering by rating (maybe posts are filtered out)
 3. Try the "Repair" button on the artist card (resyncs from beginning)
@@ -417,6 +429,7 @@ Access Settings by clicking **"Settings"** in the sidebar.
 **Problem:** App feels sluggish, especially with many posts.
 
 **Solutions:**
+
 1. Clear the cache (Settings > Storage & Cache > Clear Cache)
 2. Reduce the number of tracked artists
 3. Use filters to reduce the number of visible posts
@@ -427,6 +440,7 @@ Access Settings by clicking **"Settings"** in the sidebar.
 **Problem:** Download button doesn't work or files don't save.
 
 **Solutions:**
+
 1. Check if you have write permissions to the download folder
 2. Make sure you have enough disk space
 3. Try choosing a different download location
@@ -437,6 +451,7 @@ Access Settings by clicking **"Settings"** in the sidebar.
 **Problem:** App shows database errors or won't start.
 
 **Solutions:**
+
 1. **Create a backup first** (if app still opens)
 2. Try restoring from a recent backup
 3. If that doesn't work, you may need to delete the database and start fresh:
@@ -446,6 +461,7 @@ Access Settings by clicking **"Settings"** in the sidebar.
    - Re-enter your credentials and re-add artists
 
 **Database locations:**
+
 - **Windows:** `%APPDATA%/RuleDesk/metadata.db`
 - **macOS:** `~/Library/Application Support/RuleDesk/metadata.db`
 - **Linux:** `~/.config/RuleDesk/metadata.db`
@@ -500,4 +516,3 @@ Now that you know the basics, explore:
 - **Multiple sources** - Track artists from different sites (Rule34.xxx, Gelbooru)
 
 **Happy browsing!** 🎨
-

@@ -1,9 +1,10 @@
 import os
 import sys
 import glob
-import time
+import hashlib
 import google.generativeai as genai
 from pathlib import Path
+from typing import Optional, Tuple
 
 # --- CONFIGURATION ---
 MAPPINGS = {
@@ -45,7 +46,7 @@ def setup_gemini():
     genai.configure(api_key=API_KEY)
     return _select_available_model()
 
-def _select_available_model():
+def _select_available_model() -> Tuple[genai.GenerativeModel, int]:
     """Select first available model from priority list with fallback.
     Returns (model, model_index)."""
     for index, model_name in enumerate(MODEL_PRIORITIES):
@@ -55,30 +56,141 @@ def _select_available_model():
             print(f"✅ Selected model: {model_name}")
             return (model, index)
         except Exception as e:
-            error_msg = str(e).lower()
-            # Check for quota/availability errors
-            if any(keyword in error_msg for keyword in ["quota", "rate limit", "unavailable", "not found", "permission"]):
+            error_type = type(e).__name__
+            error_str = str(e).lower()
+            
+            # Check for specific API errors (quota, rate limit, unavailable)
+            is_api_error = (
+                "APIError" in error_type or
+                "GoogleAPIError" in error_type or
+                "quota" in error_str or
+                "rate limit" in error_str or
+                "429" in error_str or
+                "unavailable" in error_str or
+                "not found" in error_str or
+                "permission" in error_str
+            )
+            
+            if is_api_error:
+                # Specific API errors - model unavailable or quota exceeded
                 print(f"   ⚠️ Model {model_name} unavailable: {e}")
                 continue
-            # For other errors, still try the model (might be transient)
+            
+            # Check for configuration errors
+            if isinstance(e, (ValueError, AttributeError)):
+                # Invalid model name or configuration error
+                print(f"   ⚠️ Model {model_name} invalid: {e}")
+                continue
+            
+            # Unexpected errors - log but don't fail immediately
             print(f"   ⚠️ Model {model_name} initialization warning: {e}, will retry on actual translation")
             return (model, index)
     
     print("❌ Error: No available models from priority list.")
     sys.exit(1)
 
+def _get_file_hash(file_path: str) -> str:
+    """Calculate SHA-256 hash of file content."""
+    with open(file_path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
 def _needs_translation(source_path: str, target_path: str) -> bool:
-    """Check if file needs translation by comparing modification times."""
+    """Check if file needs translation by comparing content hashes.
+    
+    Uses SHA-256 hashing instead of mtime because GitHub Actions checkout
+    resets file modification times, making mtime comparison unreliable.
+    """
     if not os.path.exists(target_path):
         return True
     
-    source_mtime = os.path.getmtime(source_path)
-    target_mtime = os.path.getmtime(target_path)
-    
-    return source_mtime > target_mtime
+    try:
+        source_hash = _get_file_hash(source_path)
+        
+        # Check if hash file exists (stores hash of last translated source)
+        hash_file = target_path + ".hash"
+        if os.path.exists(hash_file):
+            with open(hash_file, "r", encoding="utf-8") as f:
+                stored_hash = f.read().strip()
+            return source_hash != stored_hash
+        
+        # No hash file - needs translation
+        return True
+    except (IOError, OSError) as e:
+        print(f"   ⚠️ Error checking hash for {source_path}: {e}")
+        # On error, assume translation is needed
+        return True
 
-def translate_text(model, text, filename, model_name=None):
-    """Translate text using the provided model, with fallback support."""
+def _exponential_backoff_retry(
+    fn, max_retries: int = 3, base_delay: float = 1.0
+) -> Optional[str]:
+    """Execute function with exponential backoff retry logic.
+    
+    Uses exponential backoff (2^attempt * base_delay) for rate limit errors.
+    This is more efficient than fixed delays and respects API rate limits.
+    
+    Args:
+        fn: Function to execute (should return response text or raise exception)
+        max_retries: Maximum number of retry attempts
+        base_delay: Base delay in seconds (will be multiplied by 2^attempt)
+    
+    Returns:
+        Response text on success, None on failure
+    """
+    import time
+    
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
+        except Exception as e:
+            error_type = type(e).__name__
+            error_str = str(e).lower()
+            
+            # Check for API-specific errors
+            is_api_error = (
+                "APIError" in error_type or
+                "GoogleAPIError" in error_type or
+                "quota" in error_str or
+                "rate limit" in error_str or
+                "429" in error_str
+            )
+            
+            is_unavailable = (
+                "unavailable" in error_str or
+                "not found" in error_str or
+                "permission" in error_str
+            )
+            
+            if is_unavailable:
+                # Model unavailable - don't retry, switch model
+                raise RuntimeError(f"Model unavailable: {e}")
+            
+            if is_api_error and attempt < max_retries:
+                # Rate limit or quota error - retry with exponential backoff
+                delay = base_delay * (2 ** attempt)
+                print(f"   ⏳ Rate limit/quota hit, retrying in {delay:.1f}s (attempt {attempt + 1}/{max_retries + 1})")
+                time.sleep(delay)
+                continue
+            
+            # Other API errors or max retries reached
+            if is_api_error:
+                print(f"   ❌ API Error after {attempt + 1} attempts: {e}")
+            else:
+                print(f"   ❌ Unexpected error: {e}")
+            return None
+    
+    return None
+
+def translate_text(model: genai.GenerativeModel, text: str, filename: str) -> Optional[str]:
+    """Translate text using the provided model, with exponential backoff retry.
+    
+    Args:
+        model: Gemini GenerativeModel instance
+        text: Source text to translate
+        filename: Source filename (for logging)
+    
+    Returns:
+        Translated text on success, None on failure
+    """
     print(f"   🤖 Translating {filename}...")
     
     prompt = f"""
@@ -98,19 +210,18 @@ def translate_text(model, text, filename, model_name=None):
     {text}
     """
     
-    try:
+    def _call_api():
         response = model.generate_content(prompt)
         if not response.text or len(response.text) < 10:
-            print(f"   ⚠️ Warning: Empty response for {filename}. Skipping.")
-            return None
+            raise ValueError("Empty or too short response from API")
         return response.text
-    except Exception as e:
-        error_msg = str(e).lower()
-        # Check for quota/availability errors that require model switch
-        if any(keyword in error_msg for keyword in ["quota", "rate limit", "unavailable", "not found", "permission"]):
-            raise RuntimeError(f"Model unavailable: {e}")
-        print(f"   ❌ API Error for {filename}: {e}")
-        return None
+    
+    result = _exponential_backoff_retry(_call_api, max_retries=3, base_delay=2.0)
+    
+    if result is None:
+        print(f"   ⚠️ Warning: Failed to translate {filename} after retries. Skipping.")
+    
+    return result
 
 def process_item(model, source, target_base, current_model_index=0):
     """Process source file or directory with model fallback support."""
@@ -166,8 +277,20 @@ def _translate_file_with_fallback(model, source_path, target_path, current_model
     
     return None
 
-def _translate_file(model, source_path, target_path):
-    """Translate a single file if it has been modified."""
+def _translate_file(model: genai.GenerativeModel, source_path: str, target_path: str) -> bool:
+    """Translate a single file if it has been modified.
+    
+    Args:
+        model: Gemini GenerativeModel instance
+        source_path: Path to source file
+        target_path: Path to target file
+    
+    Returns:
+        True on success, False on failure
+    
+    Raises:
+        RuntimeError: If model is unavailable (triggers model fallback)
+    """
     try:
         with open(source_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -181,18 +304,27 @@ def _translate_file(model, source_path, target_path):
 
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
+        # Write translated content
         with open(target_path, "w", encoding="utf-8") as f:
             f.write(HEADER + translated)
+        
+        # Save source file hash for future comparison
+        source_hash = _get_file_hash(source_path)
+        hash_file = target_path + ".hash"
+        with open(hash_file, "w", encoding="utf-8") as f:
+            f.write(source_hash)
             
         print(f"   ✅ Saved to {target_path}")
-        time.sleep(1)
         return True
 
-    except RuntimeError as e:
+    except RuntimeError:
         # Model unavailable error - needs fallback
         raise
+    except (IOError, OSError) as e:
+        print(f"   ❌ File I/O Error {source_path}: {e}")
+        return False
     except Exception as e:
-        print(f"   ❌ File Error {source_path}: {e}")
+        print(f"   ❌ Unexpected error translating {source_path}: {e}")
         return False
 
 def main():

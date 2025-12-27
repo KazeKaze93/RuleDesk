@@ -48,8 +48,9 @@ The recommended way to use IPC methods in React components is with **TanStack Qu
 
 ```typescript
 import { useQuery } from "@tanstack/react-query";
+import type { Artist } from "../../../main/db/schema";
 
-const { data, isLoading, error } = useQuery({
+const { data, isLoading, error } = useQuery<Artist[]>({
   queryKey: ["artists"],
   queryFn: () => window.api.getTrackedArtists(),
 });
@@ -59,11 +60,12 @@ const { data, isLoading, error } = useQuery({
 
 ```typescript
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Artist, NewArtist } from "../../../main/db/schema";
 
 const queryClient = useQueryClient();
 
-const mutation = useMutation({
-  mutationFn: (artistData) => window.api.addArtist(artistData),
+const mutation = useMutation<Artist | undefined, Error, NewArtist>({
+  mutationFn: (artistData: NewArtist) => window.api.addArtist(artistData),
   onSuccess: () => {
     // Invalidate cache to refresh the list
     queryClient.invalidateQueries({ queryKey: ["artists"] });
@@ -78,16 +80,18 @@ const mutation = useMutation({
 **Scenario:** Component needs to load data when it mounts.
 
 ```typescript
+import type { Artist } from "../../../main/db/schema";
+
 const MyComponent = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ["my-data"],
-    queryFn: () => window.api.getSomeData(),
+  const { data, isLoading } = useQuery<Artist[]>({
+    queryKey: ["artists"],
+    queryFn: () => window.api.getTrackedArtists(),
   });
 
   if (isLoading) return <div>Loading...</div>;
   if (!data) return <div>No data</div>;
 
-  return <div>{/* Render data */}</div>;
+  return <div>{/* Render data with full type safety */}</div>;
 };
 ```
 
@@ -96,16 +100,19 @@ const MyComponent = () => {
 **Scenario:** Load paginated data with infinite scroll.
 
 ```typescript
-const { data, fetchNextPage, hasNextPage } = useInfiniteQuery({
+import { useInfiniteQuery } from "@tanstack/react-query";
+import type { Post } from "../../../main/db/schema";
+
+const { data, fetchNextPage, hasNextPage } = useInfiniteQuery<Post[]>({
   queryKey: ["posts", artistId],
-  queryFn: ({ pageParam = 1 }) => 
+  queryFn: ({ pageParam = 1 }: { pageParam: number }) => 
     window.api.getArtistPosts({ artistId, page: pageParam }),
-  getNextPageParam: (lastPage, allPages) => 
+  getNextPageParam: (lastPage: Post[], allPages: Post[][]) => 
     lastPage.length === 50 ? allPages.length + 1 : undefined,
   initialPageParam: 1,
 });
 
-const allPosts = data?.pages.flatMap(page => page) || [];
+const allPosts: Post[] = data?.pages.flatMap((page: Post[]) => page) || [];
 ```
 
 #### Pattern 3: Event Listeners
@@ -128,14 +135,18 @@ useEffect(() => {
 **Scenario:** Handle errors gracefully with user feedback.
 
 ```typescript
-const mutation = useMutation({
-  mutationFn: (data) => window.api.someMethod(data),
-  onError: (error) => {
+import { useMutation } from "@tanstack/react-query";
+import type { Artist, NewArtist } from "../../../main/db/schema";
+
+const mutation = useMutation<Artist | undefined, Error, NewArtist>({
+  mutationFn: (data: NewArtist) => window.api.addArtist(data),
+  onError: (error: Error) => {
     log.error("Operation failed:", error);
     // Show error toast/notification to user
   },
-  onSuccess: () => {
+  onSuccess: (data: Artist | undefined) => {
     // Show success message
+    // data contains the created artist with full type safety
   },
 });
 ```
@@ -274,7 +285,7 @@ console.log(version); // "1.0.0"
 
 ```typescript
 // In Settings or About component
-const { data: version } = useQuery({
+const { data: version } = useQuery<string>({
   queryKey: ["app-version"],
   queryFn: () => window.api.getAppVersion(),
 });
@@ -311,11 +322,13 @@ artists.forEach((artist) => {
 
 ```typescript
 // In Tracked.tsx component
+import type { Artist } from "../../../main/db/schema";
+
 const {
   data: artists,
   isLoading,
   error,
-} = useQuery({
+} = useQuery<Artist[]>({
   queryKey: ["artists"],
   queryFn: () => window.api.getTrackedArtists(),
 });
@@ -405,7 +418,9 @@ if (settings) {
 
 ```typescript
 // In App.tsx - check if user needs onboarding
-const { data: settings } = useQuery({
+import type { Settings } from "../../../main/db/schema";
+
+const { data: settings } = useQuery<Settings | undefined>({
   queryKey: ["settings"],
   queryFn: () => window.api.getSettings(),
 });
@@ -460,15 +475,17 @@ try {
 
 ```typescript
 // In Onboarding.tsx component
+import type { Settings } from "../../../main/db/schema";
+
 const onSubmit = async (data: CredsFormValues) => {
   try {
-    await window.api.saveSettings({
+    const success: boolean = await window.api.saveSettings({
       userId: data.userId,
       apiKey: data.apiKey,
     });
     // Credentials are now encrypted and stored
     onComplete(); // Navigate to main app
-  } catch (e) {
+  } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown save error.";
     log.error(`[Onboarding] Authorization error: ${message}`);
     // Show error to user
@@ -528,6 +545,9 @@ try {
 
 ```typescript
 // In Tracked.tsx component
+import type { Artist, NewArtist } from "../../../main/db/schema";
+import type { ProviderId } from "../../../main/providers";
+
 const handleAddArtist = async (
   name: string,
   tag: string,
@@ -535,17 +555,22 @@ const handleAddArtist = async (
   provider: ProviderId
 ) => {
   try {
-    await window.api.addArtist({
+    const newArtist: NewArtist = {
       name,
       tag,
       type,
       provider,
-    });
+      apiEndpoint: getDefaultApiEndpoint(provider),
+    };
     
-    // Invalidate cache to refresh the list
-    queryClient.invalidateQueries({ queryKey: ["artists"] });
-    setIsAddModalOpen(false);
-  } catch (err) {
+    const savedArtist: Artist | undefined = await window.api.addArtist(newArtist);
+    
+    if (savedArtist) {
+      // Invalidate cache to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["artists"] });
+      setIsAddModalOpen(false);
+    }
+  } catch (err: unknown) {
     log.error("[Tracked] Failed to add artist:", err);
     // Show error notification to user
   }
@@ -622,25 +647,28 @@ console.log(`Found ${posts.length} posts`);
 
 ```typescript
 // In ArtistGallery.tsx component
+import { useInfiniteQuery } from "@tanstack/react-query";
+import type { Post } from "../../../main/db/schema";
+
 const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-  useInfiniteQuery({
+  useInfiniteQuery<Post[]>({
     queryKey: ["posts", artist.id],
-    queryFn: async ({ pageParam = 1 }) => {
+    queryFn: async ({ pageParam = 1 }: { pageParam: number }): Promise<Post[]> => {
       return await window.api.getArtistPosts({
         artistId: artist.id,
         page: pageParam,
       });
     },
-    getNextPageParam: (lastPage, allPages) => {
+    getNextPageParam: (lastPage: Post[], allPages: Post[][]): number | undefined => {
       // If last page has 50 posts, there might be more
       return lastPage.length === 50 ? allPages.length + 1 : undefined;
     },
     initialPageParam: 1,
   });
 
-// Flatten all pages into single array
-const allPosts = useMemo(() => {
-  return data?.pages.flatMap((page) => page) || [];
+// Flatten all pages into single array with type safety
+const allPosts: Post[] = useMemo(() => {
+  return data?.pages.flatMap((page: Post[]) => page) || [];
 }, [data]);
 
 // Render posts with infinite scroll
