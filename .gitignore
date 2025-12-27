@@ -23,6 +23,7 @@ npm-debug.log
 # --- TypeScript ---
 # Файлы деклараций, если они генерируются
 /temp
+*.tsbuildinfo
 
 # --- Drizzle ORM / SQLite ---
 # База данных разработки и миграции
