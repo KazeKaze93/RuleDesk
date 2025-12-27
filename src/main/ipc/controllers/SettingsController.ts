@@ -181,8 +181,7 @@ export class SettingsController extends BaseController {
    *
    * Updates settings to mark user as adult verified and record ToS acceptance timestamp.
    * Creates settings record if it doesn't exist.
-   * Uses atomic UPSERT to eliminate race conditions.
-   * Returns updated settings to avoid extra IPC round-trip.
+   * Uses atomic UPSERT with RETURNING to get updated data in single query.
    *
    * @param _event - IPC event (unused)
    * @returns Updated settings object
@@ -202,8 +201,8 @@ export class SettingsController extends BaseController {
       const db = this.getDb();
       const now = new Date();
 
-      // Atomic UPSERT: Single query eliminates race condition
-      await db
+      // Atomic UPSERT with RETURNING: Single query eliminates race condition and extra DB round-trip
+      const result = await db
         .insert(settings)
         .values({
           id: SETTINGS_ID,
@@ -221,13 +220,10 @@ export class SettingsController extends BaseController {
             tosAcceptedAt: now,
             // Preserve existing fields (userId, encryptedApiKey, isSafeMode, isAdultConfirmed)
           },
-        });
+        })
+        .returning();
 
-      // Fetch updated settings to return (avoid extra query by reading from DB)
-      const updatedSettings = await db.query.settings.findFirst({
-        where: (settings, { eq }) => eq(settings.id, SETTINGS_ID),
-      });
-
+      const updatedSettings = result[0];
       if (!updatedSettings) {
         throw new Error("Failed to retrieve updated settings after confirmation");
       }

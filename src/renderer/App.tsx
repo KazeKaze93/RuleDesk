@@ -31,41 +31,79 @@ const Favorites = () => (
 type LegalStatus = "loading" | "confirmed" | "unconfirmed";
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
+interface AppState {
+  legalStatus: LegalStatus;
+  authStatus: AuthStatus;
+}
+
 function App() {
-  const [legalStatus, setLegalStatus] = useState<LegalStatus>("loading");
-  const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
+  const [appState, setAppState] = useState<AppState>({
+    legalStatus: "loading",
+    authStatus: "loading",
+  });
 
   useEffect(() => {
     const checkStatus = async () => {
       try {
         const settings = await window.api.getSettings();
         
-        // Check Age Gate & ToS status
-        const legalConfirmed = settings?.isAdultVerified === true && settings?.tosAcceptedAt !== null;
-        setLegalStatus(legalConfirmed ? "confirmed" : "unconfirmed");
+        // Validate settings response
+        if (!settings) {
+          log.warn("[App] getSettings returned null/undefined");
+          setAppState({
+            legalStatus: "unconfirmed",
+            authStatus: "unauthenticated",
+          });
+          return;
+        }
+
+        // Type guard: ensure required fields exist
+        const hasRequiredFields =
+          typeof settings.isAdultVerified === "boolean" &&
+          (settings.tosAcceptedAt === null || settings.tosAcceptedAt instanceof Date) &&
+          typeof settings.hasApiKey === "boolean";
+
+        if (!hasRequiredFields) {
+          log.error("[App] Invalid settings structure received:", settings);
+          setAppState({
+            legalStatus: "unconfirmed",
+            authStatus: "unauthenticated",
+          });
+          return;
+        }
         
-        // Check authentication status (only if legal is confirmed)
+        // Check Age Gate & ToS status
+        const legalConfirmed =
+          settings.isAdultVerified === true && settings.tosAcceptedAt !== null;
+        
+        // Update both states atomically to avoid double render
+        setAppState({
+          legalStatus: legalConfirmed ? "confirmed" : "unconfirmed",
+          authStatus: legalConfirmed
+            ? settings.hasApiKey
+              ? "authenticated"
+              : "unauthenticated"
+            : "loading",
+        });
+
         if (legalConfirmed) {
-          const hasApiKey = settings?.hasApiKey ?? false;
           log.info(
-            `[App] Auth check result: hasApiKey=${hasApiKey}, userId=${settings?.userId}`
+            `[App] Auth check result: hasApiKey=${settings.hasApiKey}, userId=${settings.userId}`
           );
-          setAuthStatus(hasApiKey ? "authenticated" : "unauthenticated");
-        } else {
-          // Don't check auth if legal is not confirmed
-          setAuthStatus("loading");
         }
       } catch (error) {
         log.error("[App] Failed to check status:", error);
-        setLegalStatus("unconfirmed");
-        setAuthStatus("unauthenticated");
+        setAppState({
+          legalStatus: "unconfirmed",
+          authStatus: "unauthenticated",
+        });
       }
     };
     checkStatus();
   }, []);
 
   // Loading state: waiting for settings to load
-  if (legalStatus === "loading") {
+  if (appState.legalStatus === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-muted-foreground">Loading...</div>
@@ -74,21 +112,32 @@ function App() {
   }
 
   // Age Gate: must be confirmed before any content loads
-  if (legalStatus === "unconfirmed") {
+  if (appState.legalStatus === "unconfirmed") {
     return (
       <AgeGate
-        onComplete={async (settings) => {
-          setLegalStatus("confirmed");
-          // Use settings returned from confirmLegal (no extra IPC call)
-          const hasApiKey = settings?.hasApiKey ?? false;
-          setAuthStatus(hasApiKey ? "authenticated" : "unauthenticated");
+        onComplete={(settings) => {
+          // Validate settings before using
+          if (!settings || typeof settings.hasApiKey !== "boolean") {
+            log.error("[App] Invalid settings from confirmLegal:", settings);
+            setAppState({
+              legalStatus: "unconfirmed",
+              authStatus: "unauthenticated",
+            });
+            return;
+          }
+
+          // Update both states atomically to avoid double render
+          setAppState({
+            legalStatus: "confirmed",
+            authStatus: settings.hasApiKey ? "authenticated" : "unauthenticated",
+          });
         }}
       />
     );
   }
 
   // Authentication check: only shown after legal confirmation
-  if (authStatus === "loading") {
+  if (appState.authStatus === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-muted-foreground">Loading...</div>
@@ -96,8 +145,17 @@ function App() {
     );
   }
 
-  if (authStatus === "unauthenticated") {
-    return <Onboarding onComplete={() => setAuthStatus("authenticated")} />;
+  if (appState.authStatus === "unauthenticated") {
+    return (
+      <Onboarding
+        onComplete={() =>
+          setAppState((prev) => ({
+            ...prev,
+            authStatus: "authenticated",
+          }))
+        }
+      />
+    );
   }
 
   return (

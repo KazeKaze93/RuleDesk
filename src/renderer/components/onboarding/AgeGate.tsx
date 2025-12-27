@@ -6,7 +6,11 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import type { IpcSettings } from "@/main/types/ipc";
+
+// Use ReturnType to infer IpcSettings from window.api.confirmLegal()
+// This ensures type safety and avoids importing from main process
+// confirmLegal returns IpcSettings (non-nullable), which matches onComplete signature
+type IpcSettings = Awaited<ReturnType<typeof window.api.confirmLegal>>;
 
 interface AgeGateProps {
   onComplete: (settings: IpcSettings) => void;
@@ -16,6 +20,7 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
   const [isAdultConfirmed, setIsAdultConfirmed] = useState(false);
   const [isTosAccepted, setIsTosAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
     if (!isAdultConfirmed || !isTosAccepted) {
@@ -23,13 +28,16 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
     }
 
     setIsLoading(true);
+    setError(null);
     try {
       const settings = await window.api.confirmLegal();
       onComplete(settings);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       log.error(`[AgeGate] Failed to confirm legal: ${message}`);
-      // TODO: Show error toast/notification to user
+      setError(
+        `Failed to save confirmation. Please try again.\n\nError: ${message}`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -51,6 +59,16 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
               This application contains explicit adult content. You must be at least 18 years old to proceed.
             </AlertDescription>
           </Alert>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription className="whitespace-pre-line">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="space-y-4">
             <div className="flex items-start space-x-3">
