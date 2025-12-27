@@ -1,8 +1,169 @@
 # API Documentation
 
+## 📑 Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [IPC Bridge Interface](#ipc-bridge-interface)
+- [API Methods](#api-methods)
+- [Event Listeners](#event-listeners)
+- [Error Handling](#error-handling)
+- [Security Considerations](#security-considerations)
+- [Implementation Details](#implementation-details)
+- [Future API Extensions](#future-api-extensions)
+- [External API Integration](#external-api-integration)
+
+---
+
 ## Overview
 
 This document describes the IPC (Inter-Process Communication) API between the Electron Main Process and Renderer Process. All communication is strictly typed using TypeScript interfaces and follows security best practices.
+
+**📖 Related Documentation:**
+- [Architecture Documentation](./architecture.md) - System architecture and IPC design
+- [Database Documentation](./database.md) - Database operations and schema
+- [Development Guide](./development.md) - Adding new IPC methods
+- [Glossary](./glossary.md) - Key terms (IPC, Main Process, Renderer Process)
+
+---
+
+## 🚀 How to Use This API
+
+This section provides practical guidance on using the IPC API in real-world scenarios.
+
+### Basic Usage Pattern
+
+All IPC methods are accessed via `window.api` in the Renderer process. They return Promises and should be used with async/await or Promise chains.
+
+```typescript
+// Basic pattern
+const result = await window.api.someMethod(params);
+```
+
+### Integration with React Query
+
+The recommended way to use IPC methods in React components is with **TanStack Query (React Query)**. This provides automatic caching, loading states, error handling, and cache invalidation.
+
+**Example: Fetching data:**
+
+```typescript
+import { useQuery } from "@tanstack/react-query";
+
+const { data, isLoading, error } = useQuery({
+  queryKey: ["artists"],
+  queryFn: () => window.api.getTrackedArtists(),
+});
+```
+
+**Example: Mutations (create/update/delete):**
+
+```typescript
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+const queryClient = useQueryClient();
+
+const mutation = useMutation({
+  mutationFn: (artistData) => window.api.addArtist(artistData),
+  onSuccess: () => {
+    // Invalidate cache to refresh the list
+    queryClient.invalidateQueries({ queryKey: ["artists"] });
+  },
+});
+```
+
+### Common Patterns
+
+#### Pattern 1: Loading Initial Data
+
+**Scenario:** Component needs to load data when it mounts.
+
+```typescript
+const MyComponent = () => {
+  const { data, isLoading } = useQuery({
+    queryKey: ["my-data"],
+    queryFn: () => window.api.getSomeData(),
+  });
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!data) return <div>No data</div>;
+
+  return <div>{/* Render data */}</div>;
+};
+```
+
+#### Pattern 2: Infinite Scroll
+
+**Scenario:** Load paginated data with infinite scroll.
+
+```typescript
+const { data, fetchNextPage, hasNextPage } = useInfiniteQuery({
+  queryKey: ["posts", artistId],
+  queryFn: ({ pageParam = 1 }) => 
+    window.api.getArtistPosts({ artistId, page: pageParam }),
+  getNextPageParam: (lastPage, allPages) => 
+    lastPage.length === 50 ? allPages.length + 1 : undefined,
+  initialPageParam: 1,
+});
+
+const allPosts = data?.pages.flatMap(page => page) || [];
+```
+
+#### Pattern 3: Event Listeners
+
+**Scenario:** Listen to real-time events (sync progress, downloads, etc.).
+
+```typescript
+useEffect(() => {
+  const unsubscribe = window.api.onSyncProgress((message) => {
+    console.log("Sync:", message);
+    // Update UI with progress
+  });
+
+  return () => unsubscribe(); // Cleanup on unmount
+}, []);
+```
+
+#### Pattern 4: Error Handling
+
+**Scenario:** Handle errors gracefully with user feedback.
+
+```typescript
+const mutation = useMutation({
+  mutationFn: (data) => window.api.someMethod(data),
+  onError: (error) => {
+    log.error("Operation failed:", error);
+    // Show error toast/notification to user
+  },
+  onSuccess: () => {
+    // Show success message
+  },
+});
+```
+
+### When to Use Which Method
+
+- **Reading data:** Use `useQuery` with appropriate `queryKey`
+- **Creating/updating/deleting:** Use `useMutation` with cache invalidation
+- **Real-time updates:** Use event listeners (`onSyncProgress`, `onDownloadProgress`, etc.)
+- **One-time operations:** Use direct `await window.api.method()` calls
+
+### Type Safety
+
+All IPC methods are fully typed. TypeScript will provide autocomplete and type checking:
+
+```typescript
+// TypeScript knows the return type
+const artists: Artist[] = await window.api.getTrackedArtists();
+
+// TypeScript validates parameters
+await window.api.addArtist({
+  name: "artist", // ✅ Valid
+  tag: "tag",
+  // ❌ TypeScript error if missing required fields
+});
+```
+
+---
 
 ## Architecture
 
@@ -96,6 +257,10 @@ interface IpcBridge {
 
 Returns the current application version.
 
+**When to use:** Display the app version in About dialog, update notifications, or debug information.
+
+**Typical scenario:** Show version number in Settings page or About dialog.
+
 **Returns:** `Promise<string>`
 
 **Example:**
@@ -103,6 +268,18 @@ Returns the current application version.
 ```typescript
 const version = await window.api.getAppVersion();
 console.log(version); // "1.0.0"
+```
+
+**Real-world usage in React component:**
+
+```typescript
+// In Settings or About component
+const { data: version } = useQuery({
+  queryKey: ["app-version"],
+  queryFn: () => window.api.getAppVersion(),
+});
+
+return <div>Version: {version}</div>;
 ```
 
 **IPC Channel:** `app:get-version`
@@ -113,6 +290,12 @@ console.log(version); // "1.0.0"
 
 Retrieves all tracked artists from the local database.
 
+**When to use:** Load the list of tracked artists for display in the Tracked page, sidebar, or artist selection dropdown.
+
+**Typical scenario:** User opens the Tracked page → component fetches all artists → displays them in a grid/list.
+
+**Why this method:** Provides a complete list of all artists the user is tracking. Use this for initial page load or after adding/removing artists.
+
 **Returns:** `Promise<Artist[]>`
 
 **Example:**
@@ -122,6 +305,31 @@ const artists = await window.api.getTrackedArtists();
 artists.forEach((artist) => {
   console.log(artist.name, artist.tag, artist.apiEndpoint);
 });
+```
+
+**Real-world usage in React component:**
+
+```typescript
+// In Tracked.tsx component
+const {
+  data: artists,
+  isLoading,
+  error,
+} = useQuery({
+  queryKey: ["artists"],
+  queryFn: () => window.api.getTrackedArtists(),
+});
+
+if (isLoading) return <div>Loading artists...</div>;
+if (error) return <div>Error loading artists</div>;
+
+return (
+  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    {artists?.map((artist) => (
+      <ArtistCard key={artist.id} artist={artist} />
+    ))}
+  </div>
+);
 ```
 
 **IPC Channel:** `db:get-artists`
@@ -175,6 +383,12 @@ type Settings = {
 
 Retrieves stored API credentials (User ID and API Key).
 
+**When to use:** Check if user has completed onboarding, display current credentials in Settings page, or verify authentication status.
+
+**Typical scenario:** App starts → check if settings exist → show onboarding if missing, or main app if present.
+
+**Why this method:** The Renderer process never receives the raw API key (security). This method returns decrypted credentials only when needed in Main Process. The returned `apiKey` is decrypted in Main Process before being sent to Renderer.
+
 **Returns:** `Promise<Settings | undefined>`
 
 **Example:**
@@ -183,7 +397,24 @@ Retrieves stored API credentials (User ID and API Key).
 const settings = await window.api.getSettings();
 if (settings) {
   console.log("User ID:", settings.userId);
+  // Note: apiKey is decrypted in Main Process before being sent here
 }
+```
+
+**Real-world usage in React component:**
+
+```typescript
+// In App.tsx - check if user needs onboarding
+const { data: settings } = useQuery({
+  queryKey: ["settings"],
+  queryFn: () => window.api.getSettings(),
+});
+
+if (!settings) {
+  return <Onboarding onComplete={() => queryClient.invalidateQueries(["settings"])} />;
+}
+
+return <MainApp />;
 ```
 
 **IPC Channel:** `app:get-settings`
@@ -192,12 +423,18 @@ if (settings) {
 
 ### `saveSettings(creds: { userId: string; apiKey: string })`
 
-Saves API credentials to the database.
+Saves API credentials to the database. The API key is encrypted at rest using Electron's `safeStorage` API before being stored.
+
+**When to use:** During onboarding flow when user enters their credentials, or when updating credentials in Settings.
+
+**Typical scenario:** User pastes credentials from Rule34.xxx account page → form validates → calls `saveSettings` → credentials encrypted and stored → user proceeds to main app.
+
+**Why this method:** Security is critical. The API key is encrypted in Main Process using platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret) before storage. The encrypted key is never exposed to Renderer process.
 
 **Parameters:**
 
 - `creds.userId: string` - Rule34.xxx User ID
-- `creds.apiKey: string` - Rule34.xxx API Key
+- `creds.apiKey: string` - Rule34.xxx API Key (will be encrypted before storage)
 
 **Returns:** `Promise<boolean>`
 
@@ -219,6 +456,28 @@ try {
 }
 ```
 
+**Real-world usage in React component:**
+
+```typescript
+// In Onboarding.tsx component
+const onSubmit = async (data: CredsFormValues) => {
+  try {
+    await window.api.saveSettings({
+      userId: data.userId,
+      apiKey: data.apiKey,
+    });
+    // Credentials are now encrypted and stored
+    onComplete(); // Navigate to main app
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown save error.";
+    log.error(`[Onboarding] Authorization error: ${message}`);
+    // Show error to user
+  }
+};
+```
+
+**Security Note:** The API key is encrypted using Electron's `safeStorage` API in the Main Process. Even if the database file is stolen, the API key cannot be decrypted without access to the platform keychain.
+
 **IPC Channel:** `app:save-settings`
 
 ---
@@ -226,6 +485,12 @@ try {
 ### `addArtist(artist: NewArtist)`
 
 Adds a new artist to track. Validates the input before insertion.
+
+**When to use:** User wants to start tracking a new artist/tag. Called from the "Add Artist" modal or form.
+
+**Typical scenario:** User clicks "Add Artist" → enters name and tag → selects type (tag/uploader) → clicks "Add" → `addArtist` is called → artist saved to database → UI refreshes to show new artist.
+
+**Why this method:** Validates input (name, tag, API endpoint) before saving. Automatically normalizes tags (strips metadata like "(123)"). Returns the saved artist with generated ID for immediate UI update.
 
 **Parameters:**
 
@@ -244,7 +509,8 @@ Adds a new artist to track. Validates the input before insertion.
 const newArtist: NewArtist = {
   name: "example_artist",
   tag: "tag_name",
-  type: "tag", // or "uploader"
+  type: "tag", // or "uploader" or "query"
+  provider: "rule34", // or "gelbooru"
   apiEndpoint: "https://api.rule34.xxx",
 };
 
@@ -256,6 +522,34 @@ try {
 } catch (error) {
   console.error("Failed to add artist:", error);
 }
+```
+
+**Real-world usage in React component:**
+
+```typescript
+// In Tracked.tsx component
+const handleAddArtist = async (
+  name: string,
+  tag: string,
+  type: "tag" | "uploader" | "query",
+  provider: ProviderId
+) => {
+  try {
+    await window.api.addArtist({
+      name,
+      tag,
+      type,
+      provider,
+    });
+    
+    // Invalidate cache to refresh the list
+    queryClient.invalidateQueries({ queryKey: ["artists"] });
+    setIsAddModalOpen(false);
+  } catch (err) {
+    log.error("[Tracked] Failed to add artist:", err);
+    // Show error notification to user
+  }
+};
 ```
 
 **IPC Channel:** `db:add-artist`
@@ -304,6 +598,12 @@ try {
 
 Retrieves posts for a specific artist with pagination.
 
+**When to use:** Display posts in an artist's gallery view. Supports infinite scroll or traditional pagination.
+
+**Typical scenario:** User clicks on an artist card → navigates to artist gallery → component fetches first page of posts → user scrolls down → fetches next page automatically.
+
+**Why this method:** Efficiently loads posts in chunks (50 per page) to avoid loading thousands of posts at once. Works perfectly with React Query's `useInfiniteQuery` for infinite scroll.
+
 **Parameters:**
 
 - `params.artistId: number` - Artist ID
@@ -318,9 +618,48 @@ const posts = await window.api.getArtistPosts({ artistId: 123, page: 1 });
 console.log(`Found ${posts.length} posts`);
 ```
 
+**Real-world usage in React component with infinite scroll:**
+
+```typescript
+// In ArtistGallery.tsx component
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  useInfiniteQuery({
+    queryKey: ["posts", artist.id],
+    queryFn: async ({ pageParam = 1 }) => {
+      return await window.api.getArtistPosts({
+        artistId: artist.id,
+        page: pageParam,
+      });
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      // If last page has 50 posts, there might be more
+      return lastPage.length === 50 ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+  });
+
+// Flatten all pages into single array
+const allPosts = useMemo(() => {
+  return data?.pages.flatMap((page) => page) || [];
+}, [data]);
+
+// Render posts with infinite scroll
+return (
+  <VirtuosoGrid
+    data={allPosts}
+    endReached={() => {
+      if (hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    }}
+    // ... other props
+  />
+);
+```
+
 **IPC Channel:** `db:get-posts`
 
-**Note:** Each page returns up to 50 posts (limit). Use pagination to retrieve more posts.
+**Note:** Each page returns up to 50 posts (limit). Use pagination to retrieve more posts. Perfect for infinite scroll implementations.
 
 ---
 
