@@ -29,9 +29,11 @@ const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9._-]+$/;
  * Sanitizes a filename to prevent Path Traversal attacks and ensure filesystem safety.
  *
  * Security measures:
- * 1. Normalizes path using Node.js `path.normalize()` for cross-platform compatibility
- *    This properly handles Windows paths (C:\Windows\system32\cmd.exe) and POSIX paths
- * 2. Removes any path components using `path.basename()` to prevent directory traversal
+ * 1. CRITICAL: Forces path separators to POSIX format (replaces \ with /)
+ *    Renderer may send Windows paths even on Linux, and path.basename on POSIX won't understand them
+ *    This prevents Path Traversal when paths come from different OS than the server
+ * 2. Normalizes path using `path.posix.normalize()` for consistent cross-platform behavior
+ * 3. Removes any path components using `path.posix.basename()` to prevent directory traversal
  * 3. Filters out unsafe characters, leaving only alphanumeric, dash, underscore, dot
  * 4. Validates file extension against whitelist (media files only)
  * 5. Truncates filename to 255 characters to prevent filesystem errors
@@ -52,24 +54,29 @@ const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9._-]+$/;
  * ```
  */
 export function sanitizeFileName(fileName: string): string {
-  // Step 1: Normalize path using Node.js built-in function
-  // path.normalize() handles platform-specific separators correctly
-  // This properly handles Windows paths (C:\Windows\system32\cmd.exe) and POSIX paths
-  const normalizedPath = path.normalize(fileName);
+  // Step 1: CRITICAL - Force normalize path separators to POSIX format
+  // Renderer may send Windows paths (\) even on Linux systems
+  // path.basename on POSIX systems won't understand Windows separators and may pass through the entire path
+  // This prevents Path Traversal attacks when paths come from different OS than the server
+  const normalizedSeparators = fileName.replace(/\\/g, "/");
 
-  // Step 2: Remove any path components (prevents path traversal)
-  // Use platform-specific basename to correctly extract filename
-  // Node.js will use the correct separator based on the platform
-  const basename = path.basename(normalizedPath);
+  // Step 2: Normalize path using Node.js built-in function (now with consistent separators)
+  // path.normalize() handles relative paths (../, ./, etc.) correctly
+  const normalizedPath = path.posix.normalize(normalizedSeparators);
+
+  // Step 3: Remove any path components (prevents path traversal)
+  // Use POSIX basename to correctly extract filename regardless of original OS
+  // This ensures consistent behavior: Windows paths from Renderer are handled correctly on Linux
+  const basename = path.posix.basename(normalizedPath);
 
   if (!basename || basename.trim().length === 0) {
     throw new Error("Filename cannot be empty after sanitization");
   }
 
-  // Step 3: Extract extension and name separately
-  // extname and basename work correctly on already-normalized paths
-  const ext = path.extname(basename).toLowerCase();
-  const nameWithoutExt = path.basename(basename, ext);
+  // Step 4: Extract extension and name separately
+  // Use POSIX methods for consistency (paths are already normalized to POSIX format)
+  const ext = path.posix.extname(basename).toLowerCase();
+  const nameWithoutExt = path.posix.basename(basename, ext);
 
   // Step 4: Sanitize name part (remove unsafe characters)
   // Replace any character that is not alphanumeric, dash, underscore, or dot with underscore

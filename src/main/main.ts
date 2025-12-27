@@ -291,15 +291,21 @@ async function initializeAppAndWindow() {
     // CRITICAL: Only apply CSP to our application's requests, not to external resources
     // This prevents breaking third-party content (WebView, external APIs) while securing our app
     // 
+    // ⚠️ IMPORTANT: The filter includes "file://*" which applies CSP to ALL local file:// URLs.
+    // If you plan to use WebView or open external local files in this window, they will also get this CSP.
+    // This may break third-party local content. If needed, restrict the filter to specific paths:
+    // - "file:///path/to/app/*" for app-specific files only
+    // - Or create separate BrowserWindow with different session for external content
+    // 
     // Performance: Use filter to reduce callback invocations for external resources
     // This avoids string operations on every image/script chunk from Booru
     // Electron URL patterns require proper format: protocol://host/path (use * for wildcards)
     mainWindow.webContents.session.webRequest.onHeadersReceived(
       {
         urls: [
-          "file://*", // All local file:// URLs
-          "http://localhost/*", // Localhost with path
-          "http://127.0.0.1/*", // 127.0.0.1 with path
+          "file://*", // All local file:// URLs (applies to this window's local content)
+          "http://localhost/*", // Localhost with path (dev mode with Vite HMR)
+          "http://127.0.0.1/*", // 127.0.0.1 with path (dev mode with Vite HMR)
         ],
       },
       (details, callback) => {
