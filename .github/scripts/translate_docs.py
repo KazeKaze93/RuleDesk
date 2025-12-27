@@ -99,7 +99,13 @@ def _needs_translation(source_path: str, target_path: str) -> bool:
     
     Uses SHA-256 hashing instead of mtime because GitHub Actions checkout
     resets file modification times, making mtime comparison unreliable.
+    
+    Returns True if:
+    - Target file doesn't exist (first run or new file)
+    - Hash file doesn't exist (first translation)
+    - Source file hash differs from stored hash (file was modified)
     """
+    # If target file doesn't exist, definitely needs translation
     if not os.path.exists(target_path):
         return True
     
@@ -108,16 +114,24 @@ def _needs_translation(source_path: str, target_path: str) -> bool:
         
         # Check if hash file exists (stores hash of last translated source)
         hash_file = target_path + ".hash"
-        if os.path.exists(hash_file):
-            with open(hash_file, "r", encoding="utf-8") as f:
-                stored_hash = f.read().strip()
-            return source_hash != stored_hash
+        if not os.path.exists(hash_file):
+            # No hash file means this is first translation or hash was lost
+            # Re-translate to ensure consistency
+            return True
         
-        # No hash file - needs translation
-        return True
+        with open(hash_file, "r", encoding="utf-8") as f:
+            stored_hash = f.read().strip()
+        
+        # Compare hashes - if different, file was modified
+        if source_hash != stored_hash:
+            return True
+        
+        # Hashes match - no translation needed
+        return False
+        
     except (IOError, OSError) as e:
         print(f"   ⚠️ Error checking hash for {source_path}: {e}")
-        # On error, assume translation is needed
+        # On error, assume translation is needed (fail-safe)
         return True
 
 def _exponential_backoff_retry(
@@ -249,9 +263,13 @@ def _translate_file_with_fallback(model, source_path, target_path, current_model
     """Translate file with automatic model fallback on errors.
     Returns (new_model_index, new_model) if model was switched, None otherwise."""
     # Check if translation is needed
+    is_first_run = not os.path.exists(target_path)
     if not _needs_translation(source_path, target_path):
         print(f"   ⏭️ Skipping {source_path} (no changes detected)")
         return None
+    
+    if is_first_run:
+        print(f"   🆕 First-time translation: {source_path}")
     
     model_index = current_model_index
     current_model = model
@@ -329,9 +347,26 @@ def _translate_file(model: genai.GenerativeModel, source_path: str, target_path:
 
 def main():
     print("🚀 Starting Documentation Translator for RuleDesk...")
+    
+    # Create base output directories if they don't exist
+    base_dirs = {os.path.dirname(target) for target in MAPPINGS.values()}
+    for base_dir in base_dirs:
+        if base_dir:
+            os.makedirs(base_dir, exist_ok=True)
+            print(f"📁 Ensured directory exists: {base_dir}")
+    
+    # Verify source files/directories exist
+    for source in MAPPINGS.keys():
+        if not os.path.exists(source):
+            print(f"⚠️ Warning: Source path '{source}' does not exist. Skipping.")
+            continue
+    
     model, model_index = setup_gemini()
     
     for source, target in MAPPINGS.items():
+        if not os.path.exists(source):
+            print(f"⚠️ Skipping {source} (not found)")
+            continue
         process_item(model, source, target, model_index)
         
     print("🏁 Translation complete.")
