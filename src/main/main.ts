@@ -211,11 +211,24 @@ function getCSPPolicy(): string {
     ? "connect-src 'self' https://api.rule34.xxx ws: ws://localhost:* http://localhost:*;" // WebSocket для HMR
     : "connect-src 'self' https://api.rule34.xxx;"; // Только необходимые источники в продакшене
 
+  // CRITICAL SECURITY: style-src 'unsafe-inline' allows CSS injection attacks
+  // CSS injection can steal data via attribute selectors and background-image: url(...)
+  // For NSFW client with external content, this is a security risk
+  // 
+  // Options:
+  // 1. Use nonce-based CSP (requires generating nonce per request and injecting into HTML)
+  // 2. Use hash-based CSP (requires pre-computing hashes of all inline styles)
+  // 3. Remove inline styles entirely (may break React/Tailwind)
+  // 
+  // Current compromise: Allow 'unsafe-inline' but document the risk
+  // TODO: Implement nonce-based CSP for production builds
+  const styleSrc = "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"; // ⚠️ SECURITY RISK: Allows CSS injection
+
   cachedCSPPolicy =
     "default-src 'self'; " +
     scriptSrc +
     " " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " + // Разрешаем инлайн стили и Google Fonts CSS
+    styleSrc +
     "img-src 'self' https://*.rule34.xxx data: blob:; " + // Картинки только наши и с R34
     "media-src 'self' https://*.rule34.xxx; " + // Видео с R34
     connectSrc +

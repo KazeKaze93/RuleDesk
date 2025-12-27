@@ -54,20 +54,34 @@ const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9._-]+$/;
  * ```
  */
 export function sanitizeFileName(fileName: string): string {
-  // Step 1: CRITICAL - Force normalize path separators to POSIX format
-  // Renderer may send Windows paths (\) even on Linux systems
-  // path.basename on POSIX systems won't understand Windows separators and may pass through the entire path
-  // This prevents Path Traversal attacks when paths come from different OS than the server
-  const normalizedSeparators = fileName.replace(/\\/g, "/");
-
-  // Step 2: Normalize path using Node.js built-in function (now with consistent separators)
-  // path.normalize() handles relative paths (../, ./, etc.) correctly
-  const normalizedPath = path.posix.normalize(normalizedSeparators);
-
-  // Step 3: Remove any path components (prevents path traversal)
-  // Use POSIX basename to correctly extract filename regardless of original OS
-  // This ensures consistent behavior: Windows paths from Renderer are handled correctly on Linux
-  const basename = path.posix.basename(normalizedPath);
+  // Step 1: CRITICAL - Handle both Windows and POSIX paths correctly
+  // Renderer may send paths from any OS, and we need to extract filename safely
+  // Never use regex replacements - use platform-aware path methods
+  
+  // First, try Windows path handling (handles C: drive, UNC paths, etc.)
+  // This correctly handles Windows paths like "C:../secrets.txt" or "C:\\Windows\\system32\\cmd.exe"
+  let basename: string;
+  try {
+    // Normalize Windows path first (handles drive letters, UNC paths, etc.)
+    const winNormalized = path.win32.normalize(fileName);
+    basename = path.win32.basename(winNormalized);
+    
+    // If basename still contains path separators or drive letters, it's suspicious
+    // Fall through to POSIX handling
+    if (basename.includes("\\") || basename.includes("/") || /^[A-Za-z]:/.test(basename)) {
+      throw new Error("Windows path extraction failed, trying POSIX");
+    }
+  } catch {
+    // Fallback to POSIX path handling (for Linux/Mac paths or if Windows handling failed)
+    // Normalize POSIX path (handles relative paths, etc.)
+    const posixNormalized = path.posix.normalize(fileName.replace(/\\/g, "/"));
+    basename = path.posix.basename(posixNormalized);
+    
+    // Final safety check: if basename still contains separators, it's corrupted
+    if (basename.includes("\\") || basename.includes("/")) {
+      throw new Error("Filename contains path separators after sanitization");
+    }
+  }
 
   if (!basename || basename.trim().length === 0) {
     throw new Error("Filename cannot be empty after sanitization");
