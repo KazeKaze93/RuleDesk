@@ -38,7 +38,7 @@ export interface IpcApi extends IpcBridge {
   // Settings
   getSettings: () => Promise<IpcSettings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
-  confirmLegal: () => Promise<boolean>;
+  confirmLegal: () => Promise<IpcSettings>;
   logout: () => Promise<void>;
   openExternal: (url: string) => Promise<void>;
 

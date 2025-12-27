@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { settings } from "../../db/schema";
+import { settings, SETTINGS_ID } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
@@ -76,7 +76,7 @@ export class AuthController extends BaseController {
       await db
         .update(settings)
         .set({ encryptedApiKey: "" })
-        .where(eq(settings.id, 1));
+        .where(eq(settings.id, SETTINGS_ID));
       
       log.info("[AuthController] User logged out (API key cleared)");
       return true;

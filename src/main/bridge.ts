@@ -47,7 +47,7 @@ export interface IpcBridge {
   // Settings
   getSettings: () => Promise<IpcSettings | null>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
-  confirmLegal: () => Promise<boolean>;
+  confirmLegal: () => Promise<IpcSettings>;
   logout: () => Promise<void>;
 
   // Artists

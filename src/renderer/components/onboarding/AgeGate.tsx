@@ -3,11 +3,13 @@ import log from "electron-log/renderer";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import type { IpcSettings } from "@/main/types/ipc";
 
 interface AgeGateProps {
-  onComplete: () => void;
+  onComplete: (settings: IpcSettings) => void;
 }
 
 export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
@@ -22,8 +24,8 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
 
     setIsLoading(true);
     try {
-      await window.api.confirmLegal();
-      onComplete();
+      const settings = await window.api.confirmLegal();
+      onComplete(settings);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       log.error(`[AgeGate] Failed to confirm legal: ${message}`);
@@ -52,12 +54,10 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
 
           <div className="space-y-4">
             <div className="flex items-start space-x-3">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="age-confirm"
                 checked={isAdultConfirmed}
-                onChange={(e) => setIsAdultConfirmed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                onCheckedChange={(checked) => setIsAdultConfirmed(checked === true)}
                 aria-label="I confirm that I am at least 18 years old"
               />
               <Label
@@ -69,12 +69,10 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
             </div>
 
             <div className="flex items-start space-x-3">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="tos-accept"
                 checked={isTosAccepted}
-                onChange={(e) => setIsTosAccepted(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                onCheckedChange={(checked) => setIsTosAccepted(checked === true)}
                 aria-label="I accept the Terms of Service and assume full responsibility for the content viewed"
               />
               <Label

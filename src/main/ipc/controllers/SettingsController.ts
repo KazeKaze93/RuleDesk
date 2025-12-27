@@ -1,10 +1,9 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { settings } from "../../db/schema";
+import { settings, SETTINGS_ID } from "../../db/schema";
 import { encrypt } from "../../lib/crypto";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -148,11 +147,10 @@ export class SettingsController extends BaseController {
         const existing = await tx.query.settings.findFirst();
 
         // Atomic upsert: Single query eliminates race condition
-        // Fixed ID=1 for single profile design (refactor if multi-profile needed)
         await tx
           .insert(settings)
           .values({
-            id: 1,
+            id: SETTINGS_ID,
             userId,
             encryptedApiKey: encryptedKey ?? existing?.encryptedApiKey ?? "",
             isSafeMode: existing?.isSafeMode ?? true,
@@ -183,48 +181,70 @@ export class SettingsController extends BaseController {
    *
    * Updates settings to mark user as adult verified and record ToS acceptance timestamp.
    * Creates settings record if it doesn't exist.
+   * Uses atomic UPSERT to eliminate race conditions.
+   * Returns updated settings to avoid extra IPC round-trip.
    *
    * @param _event - IPC event (unused)
-   * @returns true if confirmation succeeded
+   * @returns Updated settings object
    * @throws {Error} If update fails
    */
   private async confirmLegal(
     _event: IpcMainInvokeEvent
-  ): Promise<boolean> {
+  ): Promise<{
+    userId: string;
+    hasApiKey: boolean;
+    isSafeMode: boolean;
+    isAdultConfirmed: boolean;
+    isAdultVerified: boolean;
+    tosAcceptedAt: Date | null;
+  }> {
     try {
       const db = this.getDb();
       const now = new Date();
 
-      // Check if settings record exists
-      const existing = await db.query.settings.findFirst({
-        where: eq(settings.id, 1),
-      });
-
-      if (!existing) {
-        // Create new settings record with legal confirmation
-        await db.insert(settings).values({
-          id: 1,
+      // Atomic UPSERT: Single query eliminates race condition
+      await db
+        .insert(settings)
+        .values({
+          id: SETTINGS_ID,
           userId: "",
           encryptedApiKey: "",
           isSafeMode: true,
           isAdultConfirmed: false,
           isAdultVerified: true,
           tosAcceptedAt: now,
-        });
-        log.info("[SettingsController] Created settings with legal confirmation");
-      } else {
-        // Update existing settings
-        await db
-          .update(settings)
-          .set({
+        })
+        .onConflictDoUpdate({
+          target: settings.id,
+          set: {
             isAdultVerified: true,
             tosAcceptedAt: now,
-          })
-          .where(eq(settings.id, 1));
-        log.info("[SettingsController] Legal confirmation updated");
+            // Preserve existing fields (userId, encryptedApiKey, isSafeMode, isAdultConfirmed)
+          },
+        });
+
+      // Fetch updated settings to return (avoid extra query by reading from DB)
+      const updatedSettings = await db.query.settings.findFirst({
+        where: (settings, { eq }) => eq(settings.id, SETTINGS_ID),
+      });
+
+      if (!updatedSettings) {
+        throw new Error("Failed to retrieve updated settings after confirmation");
       }
 
-      return true;
+      // Security: Do NOT return encryptedApiKey to renderer
+      // Map it to boolean hasApiKey instead
+      return {
+        userId: updatedSettings.userId ?? "",
+        hasApiKey: !!(
+          updatedSettings.encryptedApiKey &&
+          updatedSettings.encryptedApiKey.trim().length > 0
+        ),
+        isSafeMode: updatedSettings.isSafeMode ?? true,
+        isAdultConfirmed: updatedSettings.isAdultConfirmed ?? false,
+        isAdultVerified: updatedSettings.isAdultVerified ?? false,
+        tosAcceptedAt: updatedSettings.tosAcceptedAt ?? null,
+      };
     } catch (error) {
       log.error("[SettingsController] Failed to confirm legal:", error);
       throw error;

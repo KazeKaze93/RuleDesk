@@ -13,6 +13,9 @@ export type ArtistType = (typeof ARTIST_TYPES)[number];
 // Provider constants (must match providers/index.ts)
 export const PROVIDER_IDS_SCHEMA = ["rule34", "gelbooru"] as const;
 
+// Settings ID constant for single profile design
+export const SETTINGS_ID = 1;
+
 export const artists = sqliteTable(
   "artists",
   {
