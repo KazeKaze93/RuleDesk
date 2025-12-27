@@ -7,7 +7,7 @@ import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { encrypt } from "../../lib/crypto";
 import { IPC_CHANNELS } from "../channels";
-import { IpcSettingsSchema, type IpcSettings } from "../../../shared/schemas/settings";
+import type { IpcSettings } from "../../../shared/schemas/settings";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 
@@ -32,8 +32,7 @@ const SaveSettingsSchema = z.object({
 });
 
 /**
- * Default IPC settings used as fallback when validation fails or data is corrupted.
- * This ensures the application remains stable even if database contains invalid data.
+ * Default IPC settings used as fallback when no settings exist in database.
  */
 const DEFAULT_IPC_SETTINGS: IpcSettings = {
   userId: "",
@@ -45,21 +44,22 @@ const DEFAULT_IPC_SETTINGS: IpcSettings = {
 };
 
 /**
- * Maps Drizzle Settings type to safe IPC format and validates it.
+ * Maps Drizzle Settings type to safe IPC format.
  * Uses Drizzle's InferSelectModel for type safety and resilience to schema changes.
  * Explicitly converts SQLite integer booleans (0/1) to JavaScript booleans.
  * 
- * CRITICAL: Uses safeParse to handle corrupted database data gracefully.
- * If validation fails (e.g., after manual DB edit or migration bug), returns defaults
- * instead of crashing the Main process.
+ * Performance: No Zod validation - we trust Drizzle types and TypeScript type system.
+ * Validation is only needed for incoming data from Renderer, not for our own database queries.
  * 
  * @param dbSettings - Settings record from database (typed by Drizzle InferSelectModel)
- * @returns Validated IPC-safe settings object (or defaults if validation fails)
+ * @returns IPC-safe settings object (typed as IpcSettings)
  */
 function mapSettingsToIpc(
   dbSettings: InferSelectModel<typeof settings>
 ): IpcSettings {
-  const ipcSettings = {
+  // Map database representation to IPC format
+  // TypeScript ensures type safety - no runtime validation needed
+  return {
     userId: dbSettings.userId ?? "",
     hasApiKey: !!(
       dbSettings.encryptedApiKey &&
@@ -80,34 +80,6 @@ function mapSettingsToIpc(
       ? new Date(dbSettings.tosAcceptedAt).getTime()
       : null,
   };
-  
-  // CRITICAL: Use safeParse only for error handling (defense in depth)
-  // We trust Drizzle types and our mapping logic, but validate to catch schema mismatches
-  // This is NOT called on every read - only when validation fails (rare case)
-  const validationResult = IpcSettingsSchema.safeParse(ipcSettings);
-  
-  if (!validationResult.success) {
-    log.error(
-      "[SettingsController] IPC settings validation failed - database may contain corrupted data",
-      {
-        error: validationResult.error.format(),
-        rawData: {
-          userId: dbSettings.userId,
-          hasApiKey: !!dbSettings.encryptedApiKey,
-          isSafeMode: dbSettings.isSafeMode,
-          isAdultConfirmed: dbSettings.isAdultConfirmed,
-          isAdultVerified: dbSettings.isAdultVerified,
-          tosAcceptedAt: dbSettings.tosAcceptedAt,
-          tosAcceptedAtType: typeof dbSettings.tosAcceptedAt,
-          tosAcceptedAtIsDate: dbSettings.tosAcceptedAt instanceof Date,
-        },
-      }
-    );
-    return DEFAULT_IPC_SETTINGS;
-  }
-  
-  // Return validated data (safeParse is lightweight, only validates structure)
-  return validationResult.data;
 }
 
 /**
@@ -135,9 +107,12 @@ export class SettingsController extends BaseController {
       this.getSettings.bind(this)
     );
     // app:save-settings - saves settings
+    // CRITICAL: SaveSettingsSchema validates input from Renderer (userId regex, apiKey length, etc.)
+    // BaseController.handle() automatically calls .parse() on incoming arguments before calling saveSettings
+    // This prevents script injection, oversized data, and invalid formats from reaching the database
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE,
-      z.tuple([SaveSettingsSchema]),
+      z.tuple([SaveSettingsSchema]), // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
       this.saveSettings.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     // settings:confirm-legal - confirms Age Gate & ToS acceptance
