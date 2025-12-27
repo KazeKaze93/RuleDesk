@@ -240,11 +240,14 @@ async function initializeAppAndWindow() {
     // 
     // Performance: Use filter to reduce callback invocations for external resources
     // This avoids string operations on every image/script chunk from Booru
-    const localProtocols = ["file://", "http://localhost", "http://127.0.0.1"];
-    
+    // Electron URL patterns require proper format: protocol://host/path (use * for wildcards)
     session.defaultSession.webRequest.onHeadersReceived(
       {
-        urls: localProtocols.map((protocol) => `${protocol}*`),
+        urls: [
+          "file://*", // All local file:// URLs
+          "http://localhost/*", // Localhost with path
+          "http://127.0.0.1/*", // 127.0.0.1 with path
+        ],
       },
       (details, callback) => {
         // Preserve existing security headers from server (if any)
