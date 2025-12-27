@@ -20,6 +20,8 @@ export interface IpcSettings {
   hasApiKey: boolean;
   isSafeMode: boolean;
   isAdultConfirmed: boolean;
+  isAdultVerified: boolean;
+  tosAcceptedAt: Date | null;
 }
 
 /**

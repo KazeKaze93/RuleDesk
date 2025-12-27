@@ -1,6 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings } from "../../db/schema";
@@ -23,6 +24,7 @@ const SaveSettingsSchema = z.object({
  * - Get settings status (check if API key is configured)
  * - Get settings (returns settings object)
  * - Save settings (upsert settings in database)
+ * - Confirm legal (Age Gate & ToS acceptance)
  */
 export class SettingsController extends BaseController {
   private getDb(): AppDatabase {
@@ -45,6 +47,12 @@ export class SettingsController extends BaseController {
       z.tuple([SaveSettingsSchema]),
       this.saveSettings.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
+    // settings:confirm-legal - confirms Age Gate & ToS acceptance
+    this.handle(
+      IPC_CHANNELS.SETTINGS.CONFIRM_LEGAL,
+      z.tuple([]),
+      this.confirmLegal.bind(this)
+    );
 
     log.info("[SettingsController] All handlers registered");
   }
@@ -53,7 +61,7 @@ export class SettingsController extends BaseController {
    * Get settings object
    *
    * @param _event - IPC event (unused)
-   * @returns Settings object or null if not found
+   * @returns Settings object with all fields including Age Gate & ToS status
    */
   private async getSettings(
     _event: IpcMainInvokeEvent
@@ -62,7 +70,9 @@ export class SettingsController extends BaseController {
     hasApiKey: boolean;
     isSafeMode: boolean;
     isAdultConfirmed: boolean;
-  } | null> {
+    isAdultVerified: boolean;
+    tosAcceptedAt: Date | null;
+  }> {
     try {
       const db = this.getDb();
       const currentSettings = await db.query.settings.findFirst();
@@ -74,6 +84,8 @@ export class SettingsController extends BaseController {
           hasApiKey: false,
           isSafeMode: true,
           isAdultConfirmed: false,
+          isAdultVerified: false,
+          tosAcceptedAt: null,
         };
       }
 
@@ -88,6 +100,8 @@ export class SettingsController extends BaseController {
         ),
         isSafeMode: currentSettings.isSafeMode ?? true,
         isAdultConfirmed: currentSettings.isAdultConfirmed ?? false,
+        isAdultVerified: currentSettings.isAdultVerified ?? false,
+        tosAcceptedAt: currentSettings.tosAcceptedAt ?? null,
       };
     } catch (error) {
       log.error("[SettingsController] Failed to get settings:", error);
@@ -143,6 +157,8 @@ export class SettingsController extends BaseController {
             encryptedApiKey: encryptedKey ?? existing?.encryptedApiKey ?? "",
             isSafeMode: existing?.isSafeMode ?? true,
             isAdultConfirmed: existing?.isAdultConfirmed ?? false,
+            isAdultVerified: existing?.isAdultVerified ?? false,
+            tosAcceptedAt: existing?.tosAcceptedAt ?? null,
           })
           .onConflictDoUpdate({
             target: settings.id,
@@ -158,6 +174,59 @@ export class SettingsController extends BaseController {
       return true;
     } catch (error) {
       log.error("[SettingsController] Failed to save settings:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Confirm legal (Age Gate & ToS acceptance)
+   *
+   * Updates settings to mark user as adult verified and record ToS acceptance timestamp.
+   * Creates settings record if it doesn't exist.
+   *
+   * @param _event - IPC event (unused)
+   * @returns true if confirmation succeeded
+   * @throws {Error} If update fails
+   */
+  private async confirmLegal(
+    _event: IpcMainInvokeEvent
+  ): Promise<boolean> {
+    try {
+      const db = this.getDb();
+      const now = new Date();
+
+      // Check if settings record exists
+      const existing = await db.query.settings.findFirst({
+        where: eq(settings.id, 1),
+      });
+
+      if (!existing) {
+        // Create new settings record with legal confirmation
+        await db.insert(settings).values({
+          id: 1,
+          userId: "",
+          encryptedApiKey: "",
+          isSafeMode: true,
+          isAdultConfirmed: false,
+          isAdultVerified: true,
+          tosAcceptedAt: now,
+        });
+        log.info("[SettingsController] Created settings with legal confirmation");
+      } else {
+        // Update existing settings
+        await db
+          .update(settings)
+          .set({
+            isAdultVerified: true,
+            tosAcceptedAt: now,
+          })
+          .where(eq(settings.id, 1));
+        log.info("[SettingsController] Legal confirmation updated");
+      }
+
+      return true;
+    } catch (error) {
+      log.error("[SettingsController] Failed to confirm legal:", error);
       throw error;
     }
   }

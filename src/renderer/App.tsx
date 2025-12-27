@@ -5,6 +5,7 @@ import log from "electron-log/renderer";
 import { AppLayout as Layout } from "./components/layout/AppLayout";
 import { Settings } from "./features/settings/Settings";
 import { Onboarding } from "@/features/onboarding/Onboarding";
+import { AgeGate } from "@/components/onboarding/AgeGate";
 import { Tracked } from "./features/artists/Tracked";
 import { ArtistDetails } from "./features/artists/ArtistDetails";
 
@@ -28,26 +29,64 @@ const Favorites = () => (
 );
 
 function App() {
+  const [isLegalConfirmed, setIsLegalConfirmed] = useState<boolean | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkStatus = async () => {
       try {
         const settings = await window.api.getSettings();
-        // hasApiKey is always boolean (non-nullable) per IpcSettings interface
-        const hasApiKey = settings?.hasApiKey ?? false;
-        log.info(
-          `[App] Auth check result: hasApiKey=${hasApiKey}, userId=${settings?.userId}`
-        );
-        setIsAuthenticated(hasApiKey);
+        
+        // Check Age Gate & ToS status
+        const legalConfirmed = settings?.isAdultVerified === true && settings?.tosAcceptedAt !== null;
+        setIsLegalConfirmed(legalConfirmed);
+        
+        // Check authentication status (only if legal is confirmed)
+        if (legalConfirmed) {
+          const hasApiKey = settings?.hasApiKey ?? false;
+          log.info(
+            `[App] Auth check result: hasApiKey=${hasApiKey}, userId=${settings?.userId}`
+          );
+          setIsAuthenticated(hasApiKey);
+        } else {
+          // Don't check auth if legal is not confirmed
+          setIsAuthenticated(null);
+        }
       } catch (error) {
-        log.error("[App] Failed to check authentication:", error);
+        log.error("[App] Failed to check status:", error);
+        setIsLegalConfirmed(false);
         setIsAuthenticated(false);
       }
     };
-    checkAuth();
+    checkStatus();
   }, []);
 
+  // Loading state: waiting for settings to load
+  if (isLegalConfirmed === null) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Age Gate: must be confirmed before any content loads
+  if (!isLegalConfirmed) {
+    return (
+      <AgeGate
+        onComplete={() => {
+          setIsLegalConfirmed(true);
+          // After legal confirmation, check auth status
+          window.api.getSettings().then((settings) => {
+            const hasApiKey = settings?.hasApiKey ?? false;
+            setIsAuthenticated(hasApiKey);
+          });
+        }}
+      />
+    );
+  }
+
+  // Authentication check: only shown after legal confirmation
   if (isAuthenticated === null) {
     return (
       <div className="flex justify-center items-center h-screen">
