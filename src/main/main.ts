@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, session } from "electron";
+import { app, BrowserWindow, dialog } from "electron";
 import path from "path";
 import { mkdirSync } from "fs";
 import log from "electron-log";
@@ -195,7 +195,13 @@ function getCSPPolicy(): string {
     return cachedCSPPolicy;
   }
 
+  // CRITICAL: Ensure NODE_ENV is properly set in production builds
+  // In production, NODE_ENV should be 'production' (not 'development' or undefined)
   const isDev = process.env.NODE_ENV === "development";
+  
+  // Additional safety check: if NODE_ENV is not explicitly set, assume production for security
+  // This prevents accidental unsafe-eval in production if NODE_ENV is missing
+  const isProduction = !isDev;
 
   const scriptSrc = isDev
     ? "script-src 'self' 'unsafe-inline' 'unsafe-eval';" // HMR требует unsafe-inline/eval
@@ -216,6 +222,20 @@ function getCSPPolicy(): string {
     " " +
     "font-src 'self' https://fonts.gstatic.com;"; // Разрешаем загрузку шрифтов с Google Fonts
 
+  // CRITICAL SECURITY: Assert that unsafe-eval is NOT in production build
+  // This prevents accidental inclusion of unsafe-eval in production CSP
+  // Check both isDev flag and actual CSP content for defense in depth
+  if (isProduction && cachedCSPPolicy.includes("unsafe-eval")) {
+    const errorMessage = "SECURITY VIOLATION: unsafe-eval found in production CSP policy!";
+    logger.error(errorMessage, { 
+      cspPolicy: cachedCSPPolicy,
+      nodeEnv: process.env.NODE_ENV,
+      isDev,
+      isProduction,
+    });
+    throw new Error(errorMessage);
+  }
+
   return cachedCSPPolicy;
 }
 
@@ -232,38 +252,6 @@ async function initializeAppAndWindow() {
     const isDev = process.env.NODE_ENV === "development";
     logger.info(
       `Main: CSP configured for ${isDev ? "development" : "production"} mode`
-    );
-
-    // Register CSP header handler once (policy is cached, no string generation overhead)
-    // CRITICAL: Only apply CSP to our application's requests, not to external resources
-    // This prevents breaking third-party content (WebView, external APIs) while securing our app
-    // 
-    // Performance: Use filter to reduce callback invocations for external resources
-    // This avoids string operations on every image/script chunk from Booru
-    // Electron URL patterns require proper format: protocol://host/path (use * for wildcards)
-    session.defaultSession.webRequest.onHeadersReceived(
-      {
-        urls: [
-          "file://*", // All local file:// URLs
-          "http://localhost/*", // Localhost with path
-          "http://127.0.0.1/*", // 127.0.0.1 with path
-        ],
-      },
-      (details, callback) => {
-        // Preserve existing security headers from server (if any)
-        // Merge our CSP with existing headers (don't overwrite)
-        const existingHeaders = details.responseHeaders || {};
-        const existingCSP = existingHeaders["content-security-policy"] || existingHeaders["Content-Security-Policy"];
-        
-        callback({
-          responseHeaders: {
-            ...existingHeaders,
-            "Content-Security-Policy": existingCSP 
-              ? [`${existingCSP.join(", ")}, ${cspPolicy}`] 
-              : [cspPolicy],
-          },
-        });
-      }
     );
 
     const MIGRATIONS_PATH = getMigrationsPath();
@@ -297,6 +285,39 @@ async function initializeAppAndWindow() {
         sandbox: true,
       },
     });
+
+    // Setup Content Security Policy for this specific window (not global)
+    // This is more efficient than using session.defaultSession, as it only applies to this window's requests
+    // CRITICAL: Only apply CSP to our application's requests, not to external resources
+    // This prevents breaking third-party content (WebView, external APIs) while securing our app
+    // 
+    // Performance: Use filter to reduce callback invocations for external resources
+    // This avoids string operations on every image/script chunk from Booru
+    // Electron URL patterns require proper format: protocol://host/path (use * for wildcards)
+    mainWindow.webContents.session.webRequest.onHeadersReceived(
+      {
+        urls: [
+          "file://*", // All local file:// URLs
+          "http://localhost/*", // Localhost with path
+          "http://127.0.0.1/*", // 127.0.0.1 with path
+        ],
+      },
+      (details, callback) => {
+        // Preserve existing security headers from server (if any)
+        // Merge our CSP with existing headers (don't overwrite)
+        const existingHeaders = details.responseHeaders || {};
+        const existingCSP = existingHeaders["content-security-policy"] || existingHeaders["Content-Security-Policy"];
+        
+        callback({
+          responseHeaders: {
+            ...existingHeaders,
+            "Content-Security-Policy": existingCSP 
+              ? [`${existingCSP.join(", ")}, ${cspPolicy}`] 
+              : [cspPolicy],
+          },
+        });
+      }
+    );
 
     updaterService.setWindow(mainWindow);
     syncService.setWindow(mainWindow);

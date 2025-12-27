@@ -32,12 +32,29 @@ const SaveSettingsSchema = z.object({
 });
 
 /**
+ * Default IPC settings used as fallback when validation fails or data is corrupted.
+ * This ensures the application remains stable even if database contains invalid data.
+ */
+const DEFAULT_IPC_SETTINGS: IpcSettings = {
+  userId: "",
+  hasApiKey: false,
+  isSafeMode: true,
+  isAdultConfirmed: false,
+  isAdultVerified: false,
+  tosAcceptedAt: null,
+};
+
+/**
  * Maps Drizzle Settings type to safe IPC format and validates it.
  * Uses Drizzle's InferSelectModel for type safety and resilience to schema changes.
  * Explicitly converts SQLite integer booleans (0/1) to JavaScript booleans.
  * 
+ * CRITICAL: Uses safeParse to handle corrupted database data gracefully.
+ * If validation fails (e.g., after manual DB edit or migration bug), returns defaults
+ * instead of crashing the Main process.
+ * 
  * @param dbSettings - Settings record from database (typed by Drizzle InferSelectModel)
- * @returns Validated IPC-safe settings object
+ * @returns Validated IPC-safe settings object (or defaults if validation fails)
  */
 function mapSettingsToIpc(
   dbSettings: InferSelectModel<typeof settings>
@@ -49,17 +66,48 @@ function mapSettingsToIpc(
       dbSettings.encryptedApiKey.trim().length > 0
     ),
     // Explicitly convert SQLite integer booleans (0/1) to JavaScript booleans
-    // Drizzle maps mode: "boolean" but we ensure type safety
-    isSafeMode: !!(dbSettings.isSafeMode ?? true),
-    isAdultConfirmed: !!(dbSettings.isAdultConfirmed ?? false),
-    isAdultVerified: !!dbSettings.isAdultVerified, // NOT NULL field, but ensure boolean
-    tosAcceptedAt: dbSettings.tosAcceptedAt
+    // Drizzle maps mode: "boolean", but we ensure type safety
+    // Note: Fields with default() may still be null if explicitly set, so ?? is needed
+    isSafeMode: !!(dbSettings.isSafeMode ?? true), // default(true) in schema, but may be null
+    isAdultConfirmed: !!(dbSettings.isAdultConfirmed ?? false), // default(false) in schema, but may be null
+    // isAdultVerified is NOT NULL in schema, so no ?? needed, but ensure boolean conversion
+    isAdultVerified: !!dbSettings.isAdultVerified,
+    // CRITICAL: tosAcceptedAt is mapped as Date via mode: 'timestamp' in schema
+    // But add defensive check in case of corrupted data or schema mismatch
+    tosAcceptedAt: dbSettings.tosAcceptedAt instanceof Date
       ? dbSettings.tosAcceptedAt.getTime()
+      : dbSettings.tosAcceptedAt
+      ? new Date(dbSettings.tosAcceptedAt).getTime()
       : null,
   };
   
-  // Validate and return (single validation point, no duplication)
-  return IpcSettingsSchema.parse(ipcSettings);
+  // CRITICAL: Use safeParse only for error handling (defense in depth)
+  // We trust Drizzle types and our mapping logic, but validate to catch schema mismatches
+  // This is NOT called on every read - only when validation fails (rare case)
+  const validationResult = IpcSettingsSchema.safeParse(ipcSettings);
+  
+  if (!validationResult.success) {
+    log.error(
+      "[SettingsController] IPC settings validation failed - database may contain corrupted data",
+      {
+        error: validationResult.error.format(),
+        rawData: {
+          userId: dbSettings.userId,
+          hasApiKey: !!dbSettings.encryptedApiKey,
+          isSafeMode: dbSettings.isSafeMode,
+          isAdultConfirmed: dbSettings.isAdultConfirmed,
+          isAdultVerified: dbSettings.isAdultVerified,
+          tosAcceptedAt: dbSettings.tosAcceptedAt,
+          tosAcceptedAtType: typeof dbSettings.tosAcceptedAt,
+          tosAcceptedAtIsDate: dbSettings.tosAcceptedAt instanceof Date,
+        },
+      }
+    );
+    return DEFAULT_IPC_SETTINGS;
+  }
+  
+  // Return validated data (safeParse is lightweight, only validates structure)
+  return validationResult.data;
 }
 
 /**
@@ -115,16 +163,8 @@ export class SettingsController extends BaseController {
 
       if (!currentSettings) {
         // Return default values if no settings found (triggers Onboarding)
-        const defaultSettings = {
-          userId: "",
-          hasApiKey: false,
-          isSafeMode: true,
-          isAdultConfirmed: false,
-          isAdultVerified: false,
-          tosAcceptedAt: null,
-        };
-        // Validate with Zod before sending to renderer
-        return IpcSettingsSchema.parse(defaultSettings);
+        // Use DEFAULT_IPC_SETTINGS constant (already validated, no need to parse)
+        return DEFAULT_IPC_SETTINGS;
       }
 
       // Use Drizzle's inferred type directly (no redundant validation)

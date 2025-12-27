@@ -29,12 +29,16 @@ const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9._-]+$/;
  * Sanitizes a filename to prevent Path Traversal attacks and ensure filesystem safety.
  *
  * Security measures:
- * 1. Normalizes path separators (replaces \ with /) for cross-platform compatibility
- *    This prevents path.posix.basename from failing on Windows paths like 'C:\Windows\system32\cmd.exe'
- * 2. Removes any path components using `path.posix.basename()` to prevent directory traversal
+ * 1. Normalizes path using Node.js `path.normalize()` for cross-platform compatibility
+ *    This properly handles Windows paths (C:\Windows\system32\cmd.exe) and POSIX paths
+ * 2. Removes any path components using `path.basename()` to prevent directory traversal
  * 3. Filters out unsafe characters, leaving only alphanumeric, dash, underscore, dot
  * 4. Validates file extension against whitelist (media files only)
  * 5. Truncates filename to 255 characters to prevent filesystem errors
+ *
+ * ⚠️ PERFORMANCE NOTE: This function is synchronous and performs string operations.
+ * For single file operations (typical use case), this is acceptable.
+ * For bulk processing (1000+ files), consider batching or using Worker threads to avoid blocking Event Loop.
  *
  * @param fileName - Raw filename (potentially unsafe, may contain path traversal from any OS)
  * @returns Sanitized filename safe for filesystem operations
@@ -48,22 +52,24 @@ const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9._-]+$/;
  * ```
  */
 export function sanitizeFileName(fileName: string): string {
-  // Step 1: Normalize path separators for cross-platform compatibility
-  // Replace all backslashes (Windows) with forward slashes (POSIX) to handle paths from any OS
-  // This prevents path.posix.basename from failing on Windows paths like 'C:\Windows\system32\cmd.exe'
-  const normalizedPath = fileName.replace(/\\/g, "/");
+  // Step 1: Normalize path using Node.js built-in function
+  // path.normalize() handles platform-specific separators correctly
+  // This properly handles Windows paths (C:\Windows\system32\cmd.exe) and POSIX paths
+  const normalizedPath = path.normalize(fileName);
 
   // Step 2: Remove any path components (prevents path traversal)
-  // Now path.posix.basename will correctly extract filename regardless of original OS
-  const basename = path.posix.basename(normalizedPath);
+  // Use platform-specific basename to correctly extract filename
+  // Node.js will use the correct separator based on the platform
+  const basename = path.basename(normalizedPath);
 
   if (!basename || basename.trim().length === 0) {
     throw new Error("Filename cannot be empty after sanitization");
   }
 
   // Step 3: Extract extension and name separately
-  const ext = path.posix.extname(basename).toLowerCase();
-  const nameWithoutExt = path.posix.basename(basename, ext);
+  // extname and basename work correctly on already-normalized paths
+  const ext = path.extname(basename).toLowerCase();
+  const nameWithoutExt = path.basename(basename, ext);
 
   // Step 4: Sanitize name part (remove unsafe characters)
   // Replace any character that is not alphanumeric, dash, underscore, or dot with underscore

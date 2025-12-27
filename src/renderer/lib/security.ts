@@ -35,12 +35,13 @@ const PURIFY_CONFIG: Config = {
   ALLOW_DATA_ATTR: false,
   ALLOW_UNKNOWN_PROTOCOLS: false,
   // Validate URLs: only allow http, https, blob, and relative URLs
-  // Note: If you need to support local resources (file://), add "file" to the regex
-  // Current regex allows: http, https, mailto, tel, callto, sms, cid, xmpp, data, blob, and relative URLs
-  // For Booru content, this covers tag links and custom emoji images
+  // CRITICAL SECURITY: data: protocol is FORBIDDEN to prevent XSS via data:image/svg+xml with embedded scripts
+  // For Booru content, we only need external URLs (http/https) and blob: for dynamically generated images
+  // Note: If you need to support local resources (file://), add "file" to the regex (but validate carefully)
+  // Current regex allows: http, https, mailto, tel, callto, sms, cid, xmpp, blob, and relative URLs
   // blob: protocol is allowed for dynamically generated images (e.g., canvas.toBlob())
   ALLOWED_URI_REGEXP:
-    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data|blob):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|blob):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
   // Return as string (not DOM node)
   RETURN_DOM: false,
   RETURN_DOM_FRAGMENT: false,
@@ -69,6 +70,7 @@ const PURIFY_CONFIG: Config = {
  * - Removes all dangerous tags (script, iframe, object, embed, etc.)
  * - Allows safe formatting tags (b, i, u, p, br, strong, em)
  * - Allows links (a) and images (img) with validated URLs (href, src)
+ * - CRITICAL: Blocks data: protocol to prevent XSS via data:image/svg+xml with embedded scripts
  * - Validates URLs to prevent javascript: and data: protocol attacks
  * - Strips event handlers and dangerous attributes
  * - Returns clean, safe HTML string suitable for Booru content (tags, descriptions, comments)
