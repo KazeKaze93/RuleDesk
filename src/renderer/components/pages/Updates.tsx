@@ -60,6 +60,7 @@ export const Updates = () => {
       queryFn: async ({ pageParam = 1 }) => {
         return await window.api.getArtistPosts({
           page: pageParam,
+          filters: { sinceTracking: true },
         });
       },
       getNextPageParam: (lastPage, allPages) => {
