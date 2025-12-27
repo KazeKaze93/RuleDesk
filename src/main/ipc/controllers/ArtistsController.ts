@@ -10,12 +10,28 @@ import { PROVIDER_IDS, getProvider, type ProviderId, type SearchResults } from "
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
+import { toIpcSafe } from "../../utils/ipc-serialization";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
 // This ensures types always match the schema, even if schema changes
 type Artist = InferSelectModel<typeof artists>;
 type NewArtist = InferInsertModel<typeof artists>;
+
+/**
+ * IPC-safe Artist type with Date fields converted to numbers (timestamps in milliseconds).
+ * Required for Electron 39+ IPC serialization compatibility.
+ * 
+ * Uses TypeScript utility types to automatically map Date fields to numbers.
+ * This ensures type safety and eliminates manual field enumeration.
+ */
+type IpcArtist = {
+  [K in keyof Artist]: Artist[K] extends Date
+    ? number
+    : Artist[K] extends Date | null
+    ? number | null
+    : Artist[K];
+};
 
 /**
  * Add Artist Schema
@@ -99,7 +115,7 @@ export class ArtistsController extends BaseController {
    *
    * @returns Array of artists
    */
-  private async getArtists(_event: IpcMainInvokeEvent): Promise<Artist[]> {
+  private async getArtists(_event: IpcMainInvokeEvent): Promise<IpcArtist[]> {
     const db = this.getDb();
     try {
       // In DEBUG mode, log EXPLAIN QUERY PLAN to verify index usage
@@ -144,7 +160,10 @@ export class ArtistsController extends BaseController {
         ],
       });
       log.info(`[ArtistsController] Retrieved ${result.length} artists`);
-      return result;
+      
+      // Convert Date objects to numbers for Electron 39+ IPC serialization
+      // Uses universal toIpcSafe utility to avoid code duplication
+      return toIpcSafe(result) as IpcArtist[];
     } catch (error) {
       log.error("[ArtistsController] Failed to get artists:", error);
       throw new Error("Failed to fetch artists");
@@ -162,7 +181,7 @@ export class ArtistsController extends BaseController {
   private async addArtist(
     _event: IpcMainInvokeEvent,
     data: AddArtistParams
-  ): Promise<Artist> {
+  ): Promise<IpcArtist> {
 
     // Get default endpoint from provider if not explicitly provided
     const provider = getProvider(data.provider);
@@ -199,7 +218,9 @@ export class ArtistsController extends BaseController {
 
       const inserted = result[0];
       log.info(`[ArtistsController] Artist added/updated: ${inserted.name}`);
-      return inserted;
+      
+      // Convert Date objects to numbers for Electron 39+ IPC serialization
+      return toIpcSafe(inserted) as IpcArtist;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       log.error("[ArtistsController] Failed to add artist:", error);
@@ -240,7 +261,7 @@ export class ArtistsController extends BaseController {
   private async searchArtists(
     _event: IpcMainInvokeEvent,
     query: string
-  ): Promise<Artist[]> {
+  ): Promise<IpcArtist[]> {
     try {
       const db = this.getDb();
       const searchPattern = `%${query}%`;
@@ -254,7 +275,9 @@ export class ArtistsController extends BaseController {
       log.info(
         `[ArtistsController] Search "${query}" returned ${result.length} results`
       );
-      return result;
+      
+      // Convert Date objects to numbers for Electron 39+ IPC serialization
+      return toIpcSafe(result) as IpcArtist[];
     } catch (error) {
       log.error("[ArtistsController] Search failed:", error);
       return [];

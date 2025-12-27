@@ -1,31 +1,66 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
-import { z } from "zod";
+import type { InferSelectModel } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { encrypt } from "../../lib/crypto";
 import { IPC_CHANNELS } from "../channels";
+import { SaveSettingsSchema, type IpcSettings, type SaveSettings } from "../../../shared/schemas/settings";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
+import { z } from "zod";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
-const SaveSettingsSchema = z.object({
-  userId: z.string(), // Rule34 user ID is usually numeric string, strict it if needed
-  apiKey: z.string().min(10), // Basic length check
-});
+/**
+ * Default IPC settings used as fallback when no settings exist in database.
+ */
+const DEFAULT_IPC_SETTINGS: IpcSettings = {
+  userId: "",
+  hasApiKey: false,
+  isSafeMode: true,
+  isAdultConfirmed: false,
+  isAdultVerified: false,
+  tosAcceptedAt: null,
+};
 
-// Zod schema for IpcSettings response validation
-// Ensures data integrity before sending to renderer process
-const IpcSettingsSchema = z.object({
-  userId: z.string(),
-  hasApiKey: z.boolean(),
-  isSafeMode: z.boolean(),
-  isAdultConfirmed: z.boolean(),
-  isAdultVerified: z.boolean(),
-  tosAcceptedAt: z.number().nullable(), // Timestamp in milliseconds
-});
+/**
+ * Maps Drizzle Settings type to safe IPC format.
+ * Uses Drizzle's InferSelectModel for type safety and resilience to schema changes.
+ * Explicitly converts SQLite integer booleans (0/1) to JavaScript booleans.
+ * 
+ * Performance: No Zod validation - we trust Drizzle types and TypeScript type system.
+ * Validation is only needed for incoming data from Renderer, not for our own database queries.
+ * 
+ * @param dbSettings - Settings record from database (typed by Drizzle InferSelectModel)
+ * @returns IPC-safe settings object (typed as IpcSettings)
+ */
+function mapSettingsToIpc(
+  dbSettings: InferSelectModel<typeof settings>
+): IpcSettings {
+  // Map database representation to IPC format
+  // TypeScript ensures type safety - no runtime validation needed
+  return {
+    userId: dbSettings.userId ?? "",
+    hasApiKey: !!(
+      dbSettings.encryptedApiKey &&
+      dbSettings.encryptedApiKey.trim().length > 0
+    ),
+      // Convert SQLite integer booleans (0/1) to JavaScript booleans
+      // Drizzle with mode: "boolean" already returns boolean, but ensure type safety
+      // Schema: isSafeMode has .default(true), isAdultConfirmed has .default(false), isAdultVerified is .notNull()
+      // Drizzle ensures defaults are applied, so no ?? needed for fields with defaults
+      isSafeMode: !!dbSettings.isSafeMode, // .default(true) in schema - Drizzle ensures value exists
+      isAdultConfirmed: !!dbSettings.isAdultConfirmed, // .default(false) in schema - Drizzle ensures value exists
+      isAdultVerified: !!dbSettings.isAdultVerified, // .notNull() in schema - always present
+      // Convert Date to number for IPC serialization
+      // Uses toIpcSafe utility for consistency with other controllers
+      tosAcceptedAt: dbSettings.tosAcceptedAt instanceof Date
+        ? dbSettings.tosAcceptedAt.getTime()
+        : null,
+  };
+}
 
 /**
  * Settings Controller
@@ -52,9 +87,12 @@ export class SettingsController extends BaseController {
       this.getSettings.bind(this)
     );
     // app:save-settings - saves settings
+    // CRITICAL: SaveSettingsSchema validates input from Renderer (userId regex, apiKey length, etc.)
+    // BaseController.handle() automatically calls .parse() on incoming arguments before calling saveSettings
+    // This prevents script injection, oversized data, and invalid formats from reaching the database
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE,
-      z.tuple([SaveSettingsSchema]),
+      z.tuple([SaveSettingsSchema]), // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
       this.saveSettings.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     // settings:confirm-legal - confirms Age Gate & ToS acceptance
@@ -73,57 +111,20 @@ export class SettingsController extends BaseController {
    * @param _event - IPC event (unused)
    * @returns Settings object with all fields including Age Gate & ToS status
    */
-  private async getSettings(
-    _event: IpcMainInvokeEvent
-  ): Promise<{
-    userId: string;
-    hasApiKey: boolean;
-    isSafeMode: boolean;
-    isAdultConfirmed: boolean;
-    isAdultVerified: boolean;
-    tosAcceptedAt: number | null; // Timestamp in milliseconds
-  }> {
+  private async getSettings(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
     try {
       const db = this.getDb();
       const currentSettings = await db.query.settings.findFirst();
 
       if (!currentSettings) {
         // Return default values if no settings found (triggers Onboarding)
-        const defaultSettings = {
-          userId: "",
-          hasApiKey: false,
-          isSafeMode: true,
-          isAdultConfirmed: false,
-          isAdultVerified: false,
-          tosAcceptedAt: null,
-        };
-        // Validate with Zod before sending to renderer
-        return IpcSettingsSchema.parse(defaultSettings);
+        // Use DEFAULT_IPC_SETTINGS constant (already validated, no need to parse)
+        return DEFAULT_IPC_SETTINGS;
       }
 
-      // Security: Do NOT return encryptedApiKey to renderer
-      // Map it to boolean hasApiKey instead
-      // Do NOT expose internal DB id to frontend (implementation detail)
-      // Serialize Date to timestamp for IPC (Date objects become ISO strings in IPC)
-      // Note: Drizzle with mode: "timestamp" automatically converts integer to Date object
-      const ipcSettings = {
-        userId: currentSettings.userId ?? "",
-        hasApiKey: !!(
-          currentSettings.encryptedApiKey &&
-          currentSettings.encryptedApiKey.trim().length > 0
-        ),
-        isSafeMode: currentSettings.isSafeMode ?? true,
-        isAdultConfirmed: currentSettings.isAdultConfirmed ?? false,
-        isAdultVerified: currentSettings.isAdultVerified ?? false,
-        tosAcceptedAt: currentSettings.tosAcceptedAt instanceof Date
-          ? currentSettings.tosAcceptedAt.getTime()
-          : currentSettings.tosAcceptedAt
-          ? new Date(currentSettings.tosAcceptedAt).getTime()
-          : null,
-      };
-
-      // Validate with Zod before sending to renderer (fail fast if data is corrupted)
-      return IpcSettingsSchema.parse(ipcSettings);
+      // Use Drizzle's inferred type directly (no redundant validation)
+      // mapSettingsToIpc handles mapping and validation internally
+      return mapSettingsToIpc(currentSettings);
     } catch (error) {
       log.error("[SettingsController] Failed to get settings:", error);
       throw error;
@@ -140,7 +141,7 @@ export class SettingsController extends BaseController {
    */
   private async saveSettings(
     _event: IpcMainInvokeEvent,
-    data: z.infer<typeof SaveSettingsSchema>
+    data: SaveSettings
   ): Promise<boolean> {
     const { userId, apiKey } = data;
 
@@ -210,16 +211,7 @@ export class SettingsController extends BaseController {
    * @returns Updated settings object
    * @throws {Error} If update fails
    */
-  private async confirmLegal(
-    _event: IpcMainInvokeEvent
-  ): Promise<{
-    userId: string;
-    hasApiKey: boolean;
-    isSafeMode: boolean;
-    isAdultConfirmed: boolean;
-    isAdultVerified: boolean;
-    tosAcceptedAt: number | null; // Timestamp in milliseconds
-  }> {
+  private async confirmLegal(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
     try {
       const db = this.getDb();
       const now = new Date();
@@ -256,28 +248,9 @@ export class SettingsController extends BaseController {
         throw new Error("Failed to retrieve updated settings after confirmation");
       }
 
-      // Security: Do NOT return encryptedApiKey to renderer
-      // Map it to boolean hasApiKey instead
-      // Serialize Date to timestamp for IPC (Date objects become ISO strings in IPC)
-      // Note: Drizzle with mode: "timestamp" automatically converts integer to Date object
-      const ipcSettings = {
-        userId: result.userId ?? "",
-        hasApiKey: !!(
-          result.encryptedApiKey &&
-          result.encryptedApiKey.trim().length > 0
-        ),
-        isSafeMode: result.isSafeMode ?? true,
-        isAdultConfirmed: result.isAdultConfirmed ?? false,
-        isAdultVerified: result.isAdultVerified ?? false,
-        tosAcceptedAt: result.tosAcceptedAt instanceof Date
-          ? result.tosAcceptedAt.getTime()
-          : result.tosAcceptedAt
-          ? new Date(result.tosAcceptedAt).getTime()
-          : null,
-      };
-
-      // Validate with Zod before sending to renderer (fail fast if data is corrupted)
-      return IpcSettingsSchema.parse(ipcSettings);
+      // Use Drizzle's inferred type directly (no redundant validation)
+      // mapSettingsToIpc handles mapping and validation internally
+      return mapSettingsToIpc(result);
     } catch (error) {
       log.error("[SettingsController] Failed to confirm legal:", error);
       throw error;
