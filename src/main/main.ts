@@ -237,19 +237,16 @@ async function initializeAppAndWindow() {
     // Register CSP header handler once (policy is cached, no string generation overhead)
     // CRITICAL: Only apply CSP to our application's requests, not to external resources
     // This prevents breaking third-party content (WebView, external APIs) while securing our app
-    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-      const url = details.url;
-      
-      // Only apply CSP to our application's local content:
-      // - file:// protocol (local HTML/CSS/JS files)
-      // - http://localhost (dev mode with Vite HMR)
-      // Do NOT apply to external resources (rule34.xxx, fonts.googleapis.com, etc.)
-      const isLocalContent = 
-        url.startsWith("file://") || 
-        url.startsWith("http://localhost") ||
-        url.startsWith("http://127.0.0.1");
-
-      if (isLocalContent) {
+    // 
+    // Performance: Use filter to reduce callback invocations for external resources
+    // This avoids string operations on every image/script chunk from Booru
+    const localProtocols = ["file://", "http://localhost", "http://127.0.0.1"];
+    
+    session.defaultSession.webRequest.onHeadersReceived(
+      {
+        urls: localProtocols.map((protocol) => `${protocol}*`),
+      },
+      (details, callback) => {
         // Preserve existing security headers from server (if any)
         // Merge our CSP with existing headers (don't overwrite)
         const existingHeaders = details.responseHeaders || {};
@@ -263,12 +260,8 @@ async function initializeAppAndWindow() {
               : [cspPolicy],
           },
         });
-      } else {
-        // For external resources, pass through headers unchanged
-        // This prevents breaking third-party content while maintaining security for our app
-        callback({ responseHeaders: details.responseHeaders });
       }
-    });
+    );
 
     const MIGRATIONS_PATH = getMigrationsPath();
     logger.info(`Main: Migrations Path: ${MIGRATIONS_PATH}`);

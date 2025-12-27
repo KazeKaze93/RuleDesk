@@ -34,9 +34,13 @@ const PURIFY_CONFIG: Config = {
   // Disable dangerous protocols (javascript:, data:, etc.)
   ALLOW_DATA_ATTR: false,
   ALLOW_UNKNOWN_PROTOCOLS: false,
-  // Validate URLs: only allow http, https, and relative URLs
+  // Validate URLs: only allow http, https, blob, and relative URLs
+  // Note: If you need to support local resources (file://), add "file" to the regex
+  // Current regex allows: http, https, mailto, tel, callto, sms, cid, xmpp, data, blob, and relative URLs
+  // For Booru content, this covers tag links and custom emoji images
+  // blob: protocol is allowed for dynamically generated images (e.g., canvas.toBlob())
   ALLOWED_URI_REGEXP:
-    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data|blob):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
   // Return as string (not DOM node)
   RETURN_DOM: false,
   RETURN_DOM_FRAGMENT: false,

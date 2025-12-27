@@ -12,20 +12,12 @@ export type { AddArtistRequest } from "../ipc/controllers/ArtistsController";
 export type { GetPostsRequest, PostFilterRequest } from "../ipc/controllers/PostsController";
 
 /**
- * Settings type for IPC (excluding sensitive data like encryptedApiKey)
- * This is the safe representation of settings that can be sent to Renderer process.
+ * Re-export IpcSettings from shared schema for backward compatibility.
+ * New code should import directly from @shared/schemas/settings.
  * 
- * Note: tosAcceptedAt is serialized as timestamp (number) because Date objects
- * are serialized to ISO strings by Electron IPC, breaking instanceof checks.
+ * @deprecated Use IpcSettings from @shared/schemas/settings instead
  */
-export interface IpcSettings {
-  userId: string;
-  hasApiKey: boolean;
-  isSafeMode: boolean;
-  isAdultConfirmed: boolean;
-  isAdultVerified: boolean;
-  tosAcceptedAt: number | null; // Timestamp in milliseconds (Date.getTime())
-}
+export type { IpcSettings } from "../../shared/schemas/settings";
 
 /**
  * Serializable error structure for IPC communication

@@ -1,5 +1,5 @@
 import path from "path";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 
 /**
  * Whitelist of allowed file extensions for downloads.
@@ -70,11 +70,14 @@ export function sanitizeFileName(fileName: string): string {
   const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9._-]/g, "_");
 
   // Step 5: Validate extension against whitelist
+  // Note: For NSFW Booru client, we only allow media files for security.
+  // Non-media extensions are replaced with .bin to prevent execution of malicious files.
+  // If you need to support other file types (e.g., .txt, .json), add them to ALLOWED_EXTENSIONS.
   const safeExt = ALLOWED_EXTENSIONS.includes(
     ext as (typeof ALLOWED_EXTENSIONS)[number]
   )
     ? ext
-    : ".bin"; // Replace unsafe extensions with .bin
+    : ".bin"; // Replace unsafe extensions with .bin (prevents execution)
 
   // Step 6: Combine name and extension
   let safeFileName = sanitizedName + safeExt;
