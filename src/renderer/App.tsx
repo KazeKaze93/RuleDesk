@@ -8,6 +8,7 @@ import { Onboarding } from "@/features/onboarding/Onboarding";
 import { AgeGate } from "@/components/onboarding/AgeGate";
 import { Tracked } from "./features/artists/Tracked";
 import { ArtistDetails } from "./features/artists/ArtistDetails";
+import { Favorites } from "./components/pages/Favorites";
 
 const Browse = () => (
   <div className="p-8">
@@ -19,12 +20,6 @@ const Updates = () => (
   <div className="p-8">
     <h1 className="text-2xl font-bold">Updates</h1>
     <p>Feed here.</p>
-  </div>
-);
-const Favorites = () => (
-  <div className="p-8">
-    <h1 className="text-2xl font-bold">Favorites</h1>
-    <p>Likes here.</p>
   </div>
 );
 
