@@ -105,7 +105,8 @@ export class SettingsController extends BaseController {
       // Map it to boolean hasApiKey instead
       // Do NOT expose internal DB id to frontend (implementation detail)
       // Serialize Date to timestamp for IPC (Date objects become ISO strings in IPC)
-      return {
+      // Note: Drizzle with mode: "timestamp" automatically converts integer to Date object
+      const ipcSettings = {
         userId: currentSettings.userId ?? "",
         hasApiKey: !!(
           currentSettings.encryptedApiKey &&
@@ -114,10 +115,15 @@ export class SettingsController extends BaseController {
         isSafeMode: currentSettings.isSafeMode ?? true,
         isAdultConfirmed: currentSettings.isAdultConfirmed ?? false,
         isAdultVerified: currentSettings.isAdultVerified ?? false,
-        tosAcceptedAt: currentSettings.tosAcceptedAt
+        tosAcceptedAt: currentSettings.tosAcceptedAt instanceof Date
           ? currentSettings.tosAcceptedAt.getTime()
+          : currentSettings.tosAcceptedAt
+          ? new Date(currentSettings.tosAcceptedAt).getTime()
           : null,
       };
+
+      // Validate with Zod before sending to renderer (fail fast if data is corrupted)
+      return IpcSettingsSchema.parse(ipcSettings);
     } catch (error) {
       log.error("[SettingsController] Failed to get settings:", error);
       throw error;
@@ -197,6 +203,7 @@ export class SettingsController extends BaseController {
    *
    * Updates settings to mark user as adult verified and record ToS acceptance timestamp.
    * Creates settings record if it doesn't exist.
+   * Uses transaction for consistency and atomicity (matches saveSettings pattern).
    * Uses atomic UPSERT with RETURNING to get updated data in single query.
    *
    * @param _event - IPC event (unused)
@@ -217,47 +224,55 @@ export class SettingsController extends BaseController {
       const db = this.getDb();
       const now = new Date();
 
-      // Atomic UPSERT with RETURNING: Single query eliminates race condition and extra DB round-trip
-      const result = await db
-        .insert(settings)
-        .values({
-          id: SETTINGS_ID,
-          userId: "",
-          encryptedApiKey: "",
-          isSafeMode: true,
-          isAdultConfirmed: false,
-          isAdultVerified: true,
-          tosAcceptedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: settings.id,
-          set: {
+      // Use transaction for consistency and atomicity (matches saveSettings pattern)
+      // This ensures data integrity and allows future extensions (e.g., audit logging)
+      const result = await db.transaction(async (tx) => {
+        // Atomic UPSERT with RETURNING: Single query eliminates race condition and extra DB round-trip
+        const upsertResult = await tx
+          .insert(settings)
+          .values({
+            id: SETTINGS_ID,
+            userId: "",
+            encryptedApiKey: "",
+            isSafeMode: true,
+            isAdultConfirmed: false,
             isAdultVerified: true,
             tosAcceptedAt: now,
-            // Preserve existing fields (userId, encryptedApiKey, isSafeMode, isAdultConfirmed)
-          },
-        })
-        .returning();
+          })
+          .onConflictDoUpdate({
+            target: settings.id,
+            set: {
+              isAdultVerified: true,
+              tosAcceptedAt: now,
+              // Preserve existing fields (userId, encryptedApiKey, isSafeMode, isAdultConfirmed)
+            },
+          })
+          .returning();
 
-      const updatedSettings = result[0];
-      if (!updatedSettings) {
+        return upsertResult[0];
+      });
+
+      if (!result) {
         throw new Error("Failed to retrieve updated settings after confirmation");
       }
 
       // Security: Do NOT return encryptedApiKey to renderer
       // Map it to boolean hasApiKey instead
       // Serialize Date to timestamp for IPC (Date objects become ISO strings in IPC)
+      // Note: Drizzle with mode: "timestamp" automatically converts integer to Date object
       const ipcSettings = {
-        userId: updatedSettings.userId ?? "",
+        userId: result.userId ?? "",
         hasApiKey: !!(
-          updatedSettings.encryptedApiKey &&
-          updatedSettings.encryptedApiKey.trim().length > 0
+          result.encryptedApiKey &&
+          result.encryptedApiKey.trim().length > 0
         ),
-        isSafeMode: updatedSettings.isSafeMode ?? true,
-        isAdultConfirmed: updatedSettings.isAdultConfirmed ?? false,
-        isAdultVerified: updatedSettings.isAdultVerified ?? false,
-        tosAcceptedAt: updatedSettings.tosAcceptedAt
-          ? updatedSettings.tosAcceptedAt.getTime()
+        isSafeMode: result.isSafeMode ?? true,
+        isAdultConfirmed: result.isAdultConfirmed ?? false,
+        isAdultVerified: result.isAdultVerified ?? false,
+        tosAcceptedAt: result.tosAcceptedAt instanceof Date
+          ? result.tosAcceptedAt.getTime()
+          : result.tosAcceptedAt
+          ? new Date(result.tosAcceptedAt).getTime()
           : null,
       };
 
