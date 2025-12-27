@@ -8,8 +8,24 @@ import { posts, type Post } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
+import { toIpcSafe } from "../../utils/ipc-serialization";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
+
+/**
+ * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
+ * Required for Electron 39+ IPC serialization compatibility.
+ * 
+ * Uses TypeScript utility types to automatically map Date fields to numbers.
+ * This ensures type safety and eliminates manual field enumeration.
+ */
+type IpcPost = {
+  [K in keyof Post]: Post[K] extends Date
+    ? number
+    : Post[K] extends Date | null
+    ? number | null
+    : Post[K];
+};
 
 /**
  * Post Filter Schema
@@ -108,7 +124,7 @@ export class PostsController extends BaseController {
   private async getPosts(
     _event: IpcMainInvokeEvent,
     params: GetPostsParams
-  ): Promise<Post[]> {
+  ): Promise<IpcPost[]> {
     const { artistId, page, filters, limit } = params;
     const offset = (page - 1) * limit;
 
@@ -149,7 +165,10 @@ export class PostsController extends BaseController {
       log.info(
         `[PostsController] Retrieved ${result.length} posts for artist ${artistId} (page ${page})`
       );
-      return result;
+      
+      // Convert Date objects to numbers for Electron 39+ IPC serialization
+      // Uses universal toIpcSafe utility to avoid code duplication
+      return toIpcSafe(result) as IpcPost[];
     } catch (error) {
       log.error("[PostsController] Failed to get posts:", error);
       // Re-throw original error to preserve stack trace and context
