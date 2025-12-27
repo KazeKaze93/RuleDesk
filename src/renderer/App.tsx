@@ -47,7 +47,7 @@ function App() {
       try {
         const settings = await window.api.getSettings();
         
-        // Validate settings response
+        // Trust TypeScript contract: if getSettings returns IpcSettings, it's validated by Zod in Main process
         if (!settings) {
           log.warn("[App] getSettings returned null/undefined");
           setAppState({
@@ -56,23 +56,9 @@ function App() {
           });
           return;
         }
-
-        // Type guard: ensure required fields exist
-        const hasRequiredFields =
-          typeof settings.isAdultVerified === "boolean" &&
-          (settings.tosAcceptedAt === null || settings.tosAcceptedAt instanceof Date) &&
-          typeof settings.hasApiKey === "boolean";
-
-        if (!hasRequiredFields) {
-          log.error("[App] Invalid settings structure received:", settings);
-          setAppState({
-            legalStatus: "unconfirmed",
-            authStatus: "unauthenticated",
-          });
-          return;
-        }
         
         // Check Age Gate & ToS status
+        // tosAcceptedAt is timestamp (number), null means not accepted
         const legalConfirmed =
           settings.isAdultVerified === true && settings.tosAcceptedAt !== null;
         

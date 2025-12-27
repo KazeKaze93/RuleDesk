@@ -28,7 +28,7 @@ export interface IpcSettings {
   isSafeMode: boolean;
   isAdultConfirmed: boolean;
   isAdultVerified: boolean;
-  tosAcceptedAt: Date | null;
+  tosAcceptedAt: number | null; // Timestamp in milliseconds (Date.getTime())
 }
 
 export interface IpcApi extends IpcBridge {

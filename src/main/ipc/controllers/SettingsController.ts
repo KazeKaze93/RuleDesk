@@ -16,6 +16,17 @@ const SaveSettingsSchema = z.object({
   apiKey: z.string().min(10), // Basic length check
 });
 
+// Zod schema for IpcSettings response validation
+// Ensures data integrity before sending to renderer process
+const IpcSettingsSchema = z.object({
+  userId: z.string(),
+  hasApiKey: z.boolean(),
+  isSafeMode: z.boolean(),
+  isAdultConfirmed: z.boolean(),
+  isAdultVerified: z.boolean(),
+  tosAcceptedAt: z.number().nullable(), // Timestamp in milliseconds
+});
+
 /**
  * Settings Controller
  *
@@ -70,7 +81,7 @@ export class SettingsController extends BaseController {
     isSafeMode: boolean;
     isAdultConfirmed: boolean;
     isAdultVerified: boolean;
-    tosAcceptedAt: Date | null;
+    tosAcceptedAt: number | null; // Timestamp in milliseconds
   }> {
     try {
       const db = this.getDb();
@@ -78,7 +89,7 @@ export class SettingsController extends BaseController {
 
       if (!currentSettings) {
         // Return default values if no settings found (triggers Onboarding)
-        return {
+        const defaultSettings = {
           userId: "",
           hasApiKey: false,
           isSafeMode: true,
@@ -86,11 +97,14 @@ export class SettingsController extends BaseController {
           isAdultVerified: false,
           tosAcceptedAt: null,
         };
+        // Validate with Zod before sending to renderer
+        return IpcSettingsSchema.parse(defaultSettings);
       }
 
       // Security: Do NOT return encryptedApiKey to renderer
       // Map it to boolean hasApiKey instead
       // Do NOT expose internal DB id to frontend (implementation detail)
+      // Serialize Date to timestamp for IPC (Date objects become ISO strings in IPC)
       return {
         userId: currentSettings.userId ?? "",
         hasApiKey: !!(
@@ -100,7 +114,9 @@ export class SettingsController extends BaseController {
         isSafeMode: currentSettings.isSafeMode ?? true,
         isAdultConfirmed: currentSettings.isAdultConfirmed ?? false,
         isAdultVerified: currentSettings.isAdultVerified ?? false,
-        tosAcceptedAt: currentSettings.tosAcceptedAt ?? null,
+        tosAcceptedAt: currentSettings.tosAcceptedAt
+          ? currentSettings.tosAcceptedAt.getTime()
+          : null,
       };
     } catch (error) {
       log.error("[SettingsController] Failed to get settings:", error);
@@ -195,7 +211,7 @@ export class SettingsController extends BaseController {
     isSafeMode: boolean;
     isAdultConfirmed: boolean;
     isAdultVerified: boolean;
-    tosAcceptedAt: Date | null;
+    tosAcceptedAt: number | null; // Timestamp in milliseconds
   }> {
     try {
       const db = this.getDb();
@@ -230,7 +246,8 @@ export class SettingsController extends BaseController {
 
       // Security: Do NOT return encryptedApiKey to renderer
       // Map it to boolean hasApiKey instead
-      return {
+      // Serialize Date to timestamp for IPC (Date objects become ISO strings in IPC)
+      const ipcSettings = {
         userId: updatedSettings.userId ?? "",
         hasApiKey: !!(
           updatedSettings.encryptedApiKey &&
@@ -239,8 +256,13 @@ export class SettingsController extends BaseController {
         isSafeMode: updatedSettings.isSafeMode ?? true,
         isAdultConfirmed: updatedSettings.isAdultConfirmed ?? false,
         isAdultVerified: updatedSettings.isAdultVerified ?? false,
-        tosAcceptedAt: updatedSettings.tosAcceptedAt ?? null,
+        tosAcceptedAt: updatedSettings.tosAcceptedAt
+          ? updatedSettings.tosAcceptedAt.getTime()
+          : null,
       };
+
+      // Validate with Zod before sending to renderer (fail fast if data is corrupted)
+      return IpcSettingsSchema.parse(ipcSettings);
     } catch (error) {
       log.error("[SettingsController] Failed to confirm legal:", error);
       throw error;

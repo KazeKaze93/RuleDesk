@@ -104,6 +104,7 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
         </CardContent>
         <CardFooter>
           <Button
+            type="button"
             onClick={handleConfirm}
             disabled={isButtonDisabled}
             className="w-full"
