@@ -111,30 +111,11 @@ export function useViewerController({
       const newState = await window.api.togglePostFavorite(post.id);
       setIsFavorited(newState);
 
-      // Update all relevant query caches using setQueriesData
-      // This updates all queries with prefix ["posts"] (artist galleries and favorites)
-      queryClient.setQueriesData<InfiniteData<Post[]>>(
-        { queryKey: ["posts"], exact: false },
-        (old, { queryKey }) => {
+      // Update artist gallery cache if post has artistId
+      if (post.artistId) {
+        const artistQueryKey = ["posts", post.artistId];
+        queryClient.setQueryData<InfiniteData<Post[]>>(artistQueryKey, (old) => {
           if (!old) return old;
-
-          // Check if this is the favorites query
-          const isFavoritesQuery = 
-            Array.isArray(queryKey) && 
-            queryKey.length === 2 && 
-            queryKey[1] === "favorites";
-
-          // Special handling for favorites: remove post if unfavorited
-          if (isFavoritesQuery && !newState) {
-            return {
-              ...old,
-              pages: old.pages
-                .map((page) => page.filter((p) => p.id !== post.id))
-                .filter((page) => page.length > 0),
-            };
-          }
-
-          // For all other queries (artist galleries), update the post
           return {
             ...old,
             pages: old.pages.map((page) =>
@@ -143,12 +124,40 @@ export function useViewerController({
               )
             ),
           };
-        }
-      );
+        });
+      }
 
-      // Invalidate favorites query if removing from favorites or post not in cache
+      // Update favorites cache separately
       const favoritesQueryKey = ["posts", "favorites"];
       const oldFavoritesData = queryClient.getQueryData<InfiniteData<Post[]>>(favoritesQueryKey);
+      
+      if (oldFavoritesData) {
+        queryClient.setQueryData<InfiniteData<Post[]>>(favoritesQueryKey, (old) => {
+          if (!old) return old;
+          
+          // If removing from favorites, filter out the post
+          if (!newState) {
+            return {
+              ...old,
+              pages: old.pages
+                .map((page) => page.filter((p) => p.id !== post.id))
+                .filter((page) => page.length > 0),
+            };
+          }
+          
+          // If adding to favorites, update existing post
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((p) =>
+                p.id === post.id ? { ...p, isFavorited: newState } : p
+              )
+            ),
+          };
+        });
+      }
+
+      // Invalidate favorites query if removing from favorites or post not in cache
       const foundInCache = oldFavoritesData?.pages.some((page) =>
         page.some((p) => p.id === post.id)
       );
