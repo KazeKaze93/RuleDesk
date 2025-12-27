@@ -1,7 +1,7 @@
 import { BrowserWindow, safeStorage } from "electron";
 import { logger } from "../lib/logger";
 import { getDb } from "../db/client";
-import { artists, settings, posts } from "../db/schema";
+import { artists, settings, posts, SETTINGS_ID } from "../db/schema";
 import { eq, sql } from "drizzle-orm";
 import axios from "axios";
 import type { Artist, NewPost } from "../db/schema";
@@ -105,7 +105,7 @@ export class SyncService {
     try {
       const db = getDb();
       const settingsRecord = await db.query.settings.findFirst({
-        where: eq(settings.id, 1),
+        where: eq(settings.id, SETTINGS_ID),
       });
 
       if (!settingsRecord) {

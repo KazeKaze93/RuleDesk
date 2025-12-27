@@ -8,10 +8,13 @@ import {
 
 // Artist type constants for type safety
 export const ARTIST_TYPES = ["tag", "uploader", "query"] as const;
-export type ArtistType = typeof ARTIST_TYPES[number];
+export type ArtistType = (typeof ARTIST_TYPES)[number];
 
 // Provider constants (must match providers/index.ts)
 export const PROVIDER_IDS_SCHEMA = ["rule34", "gelbooru"] as const;
+
+// Settings ID constant for single profile design
+export const SETTINGS_ID = 1;
 
 export const artists = sqliteTable(
   "artists",
@@ -20,7 +23,9 @@ export const artists = sqliteTable(
     name: text("name").notNull(),
     tag: text("tag").notNull().unique(),
     // Provider ID with enum constraint
-    provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
+    provider: text("provider", { enum: PROVIDER_IDS_SCHEMA })
+      .notNull()
+      .default("rule34"),
     type: text("type", { enum: ARTIST_TYPES }).notNull(),
     apiEndpoint: text("api_endpoint").notNull(),
     lastPostId: integer("last_post_id").notNull().default(0),
@@ -82,6 +87,10 @@ export const settings = sqliteTable("settings", {
   isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
     false
   ),
+  isAdultVerified: integer("is_adult_verified", { mode: "boolean" })
+    .default(false)
+    .notNull(),
+  tosAcceptedAt: integer("tos_accepted_at", { mode: "timestamp" }),
 });
 
 // Types

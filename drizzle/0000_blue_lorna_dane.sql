@@ -2,6 +2,7 @@ CREATE TABLE `artists` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
 	`tag` text NOT NULL,
+	`provider` text DEFAULT 'rule34' NOT NULL,
 	`type` text NOT NULL,
 	`api_endpoint` text NOT NULL,
 	`last_post_id` integer DEFAULT 0 NOT NULL,
@@ -30,10 +31,16 @@ CREATE TABLE `posts` (
 CREATE TABLE `settings` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`user_id` text DEFAULT '',
-	`encrypted_api_key` text DEFAULT ''
+	`encrypted_api_key` text DEFAULT '',
+	`is_safe_mode` integer DEFAULT true,
+	`is_adult_confirmed` integer DEFAULT false,
+	`is_adult_verified` integer DEFAULT false NOT NULL,
+	`tos_accepted_at` integer
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `artists_tag_unique` ON `artists` (`tag`);--> statement-breakpoint
+CREATE INDEX `artists_lastChecked_idx` ON `artists` (`last_checked`);--> statement-breakpoint
+CREATE INDEX `artists_createdAt_idx` ON `artists` (`created_at`);--> statement-breakpoint
 CREATE INDEX `artistIdIdx` ON `posts` (`artist_id`);--> statement-breakpoint
 CREATE INDEX `isViewedIdx` ON `posts` (`is_viewed`);--> statement-breakpoint
 CREATE INDEX `publishedAtIdx` ON `posts` (`published_at`);--> statement-breakpoint
