@@ -184,8 +184,17 @@ function createLoadingWindow(): BrowserWindow {
 /**
  * Генерирует Content Security Policy в зависимости от режима работы приложения.
  * В режиме разработки ослабляет политику для поддержки HMR (Vite).
+ * 
+ * Кешируется один раз при инициализации для избежания оверхеда на каждый запрос.
  */
+let cachedCSPPolicy: string | null = null;
+
 function getCSPPolicy(): string {
+  // Return cached policy if already generated
+  if (cachedCSPPolicy !== null) {
+    return cachedCSPPolicy;
+  }
+
   const isDev = process.env.NODE_ENV === "development";
 
   const scriptSrc = isDev
@@ -196,17 +205,18 @@ function getCSPPolicy(): string {
     ? "connect-src 'self' https://api.rule34.xxx ws: ws://localhost:* http://localhost:*;" // WebSocket для HMR
     : "connect-src 'self' https://api.rule34.xxx;"; // Только необходимые источники в продакшене
 
-  return (
+  cachedCSPPolicy =
     "default-src 'self'; " +
     scriptSrc +
     " " +
-    "style-src 'self' 'unsafe-inline'; " + // Разрешаем инлайн стили (Tailwind/React часто требуют)
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " + // Разрешаем инлайн стили и Google Fonts CSS
     "img-src 'self' https://*.rule34.xxx data: blob:; " + // Картинки только наши и с R34
     "media-src 'self' https://*.rule34.xxx; " + // Видео с R34
     connectSrc +
     " " +
-    "font-src 'self';"
-  );
+    "font-src 'self' https://fonts.gstatic.com;"; // Разрешаем загрузку шрифтов с Google Fonts
+
+  return cachedCSPPolicy;
 }
 
 /**
@@ -217,13 +227,14 @@ async function initializeAppAndWindow() {
   let loadingWindow: BrowserWindow | null = null;
 
   try {
-    // Setup Content Security Policy
+    // Setup Content Security Policy (cached once at initialization)
     const cspPolicy = getCSPPolicy();
     const isDev = process.env.NODE_ENV === "development";
     logger.info(
       `Main: CSP configured for ${isDev ? "development" : "production"} mode`
     );
 
+    // Register CSP header handler once (policy is cached, no string generation overhead)
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({
         responseHeaders: {
