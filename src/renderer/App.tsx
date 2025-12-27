@@ -9,17 +9,12 @@ import { AgeGate } from "@/components/onboarding/AgeGate";
 import { Tracked } from "./features/artists/Tracked";
 import { ArtistDetails } from "./features/artists/ArtistDetails";
 import { Favorites } from "./components/pages/Favorites";
+import { Updates } from "./components/pages/Updates";
 
 const Browse = () => (
   <div className="p-8">
     <h1 className="text-2xl font-bold">Browse</h1>
     <p>Search here.</p>
-  </div>
-);
-const Updates = () => (
-  <div className="p-8">
-    <h1 className="text-2xl font-bold">Updates</h1>
-    <p>Feed here.</p>
   </div>
 );
 

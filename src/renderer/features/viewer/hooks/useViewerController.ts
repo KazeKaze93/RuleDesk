@@ -65,9 +65,23 @@ export function useViewerController({
 
     window.api.markPostAsViewed(post.id);
 
-    const queryKey = ["posts", post.artistId];
+    // Update artist gallery cache if post has artistId
+    if (post.artistId) {
+      const queryKey = ["posts", post.artistId];
+      queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) =>
+            page.map((p) => (p.id === post.id ? { ...p, isViewed: true } : p))
+          ),
+        };
+      });
+    }
 
-    queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
+    // Update updates feed cache
+    const updatesQueryKey = ["posts", "updates"];
+    queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) => {
       if (!old) return old;
       return {
         ...old,
@@ -126,6 +140,20 @@ export function useViewerController({
           };
         });
       }
+
+      // Update updates feed cache
+      const updatesQueryKey = ["posts", "updates"];
+      queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) =>
+            page.map((p) =>
+              p.id === post.id ? { ...p, isFavorited: newState } : p
+            )
+          ),
+        };
+      });
 
       // Update favorites cache separately
       const favoritesQueryKey = ["posts", "favorites"];
