@@ -44,8 +44,13 @@ jobs:
           git config --global user.name "RuleDesk Bot"
           git config --global user.email "bot@ruledesk.local"
 
-          # Добавляем generated папку
-          git add .docs-i18n/
+          # Добавляем generated папку (если существует)
+          if [ -d ".docs-i18n" ] && [ -n "$(find .docs-i18n -type f)" ]; then
+            git add .docs-i18n/
+          else
+            echo "No translation files to commit."
+            exit 0
+          fi
 
           # Проверяем, есть ли что коммитить
           if git diff --staged --quiet; then
