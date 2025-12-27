@@ -4,6 +4,22 @@
 
 ---
 
+## 📑 Table of Contents
+
+- [Disclaimer & Risk Assessment](#-disclaimer--risk-assessment)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Documentation](#-documentation)
+- [Architecture Overview](#-architecture-overview--tech-stack)
+- [Product Structure](#-product-structure)
+- [Core UX Principles](#-core-ux-principles)
+- [Sync & Background](#-sync--background)
+- [Settings](#-settings)
+- [Current Status](#-current-status)
+- [Active Roadmap](#-active-roadmap)
+- [Development Setup](#-development-setup)
+- [License & Legal](#-license--legal)
+
 ---
 
 ## ⚠️ Disclaimer & Risk Assessment
@@ -71,6 +87,8 @@ This is the sandboxed browser environment. It handles presentation.
 - **Security:** **Context Isolation** enforced globally; no direct Node.js access from the Renderer.
 - **Encryption:** API credentials encrypted using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
 - **Provider Pattern:** Multi-booru support via `IBooruProvider` interface. Current implementations: Rule34.xxx, Gelbooru.
+
+**📖 For detailed architecture information, see [Architecture Documentation](./docs/architecture.md).**
 
 ## 📐 Product Structure
 
@@ -271,12 +289,37 @@ The application is stable and production-ready with the following features imple
 
 Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
-- **[API Documentation](./docs/api.md)** - IPC API reference and usage examples
-- **[Architecture Documentation](./docs/architecture.md)** - System architecture and design patterns
+### 📖 Start Here
+
+- **[User Guide](./docs/user-guide.md)** - **Complete guide for end users** (installation, usage, troubleshooting)
+- **[Documentation Index](./docs/index.md)** - Complete navigation guide to all documentation
+- **[Glossary](./docs/glossary.md)** - Key terms and concepts (booru, tags, sync, cache, etc.)
+
+**💡 New to RuleDesk?** 
+- **End users:** Start with the [User Guide](./docs/user-guide.md) - it covers everything you need to know!
+- **Developers:** Check the [Documentation Index](./docs/index.md) for developer documentation
+
+### 👤 User Guides
+
+- **[Quick Start](#-quick-start)** - First launch and basic setup (this document)
+- **[Features](#-features)** - Complete feature list (this document)
+- **[Settings](#-settings)** - Application configuration (this document)
+- **[Sync & Background](#-sync--background)** - Synchronization guide (this document)
+
+### 👨‍💻 Developer Documentation
+
+- **[Architecture Documentation](./docs/architecture.md)** - System architecture, design patterns, and component structure
+- **[API Documentation](./docs/api.md)** - Complete IPC API reference and usage examples
+- **[Database Documentation](./docs/database.md)** - Database schema, operations, and best practices
+- **[Development Guide](./docs/development.md)** - Development setup, build process, and workflows
+- **[Contributing Guide](./docs/contributing.md)** - Guidelines for contributors and code standards
+
+### 📋 Planning & Reference
+
 - **[Roadmap](./docs/roadmap.md)** - Development roadmap and planned features
-- **[Contributing Guide](./docs/contributing.md)** - Guidelines for contributors
-- **[Database Documentation](./docs/database.md)** - Database schema and operations
-- **[Development Guide](./docs/development.md)** - Development setup and workflows
+- **[Rule34 API Reference](./docs/rule34-api-reference.md)** - Unofficial Rule34.xxx API documentation
+
+**💡 Tip:** If you're new to RuleDesk, start with the [Documentation Index](./docs/index.md) for structured navigation.
 
 ## 🚀 Active Roadmap
 
@@ -325,7 +368,7 @@ We are moving to Feature Development. Priority tasks:
 - ✅ **IPC Architecture** - ✅ **COMPLETED:** Controller-based IPC handlers with `BaseController` for centralized error handling and validation. Type-safe dependency injection via DI Container.
 - ✅ **Portable Mode** - ✅ **COMPLETED:** Automatic detection of portable mode with data folder support.
 
-See [Roadmap](./docs/roadmap.md) for detailed implementation status and requirements.
+**📖 For detailed roadmap information, see [Roadmap Documentation](./docs/roadmap.md).**
 
 ---
 
@@ -405,7 +448,9 @@ npm run lint
 npm run validate
 ```
 
-## 📜 License
+## 📜 License & Legal
+
+### License
 
 This project is licensed under the **Apache License 2.0**.
 
@@ -413,9 +458,7 @@ You may use, reproduce, modify, distribute, and sublicense the software under th
 
 The full license text is available in the `LICENSE` file in this repository.
 
----
-
-## 🧾 Legal Disclaimer
+### Legal Disclaimer
 
 By using this software, you acknowledge and agree to the following:
 
@@ -463,6 +506,8 @@ npm run db:studio
 - **Production (Standard):** Electron user data directory
 - **Production (Portable):** `data/` folder next to executable
 
+**📖 For detailed database information, see [Database Documentation](./docs/database.md).**
+
 ---
 
 ## 🛡️ Code Quality Standards
@@ -478,4 +523,4 @@ This project adheres to strict development principles:
 - **Logging:** `electron-log` for all logging (no `console.log` in production code)
 - **IPC:** Controller-based architecture with dependency injection
 
-See [Contributing Guide](./docs/contributing.md) for detailed guidelines.
+**📖 For detailed guidelines, see [Contributing Guide](./docs/contributing.md).**

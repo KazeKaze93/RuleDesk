@@ -1,5 +1,19 @@
 # 🚀 Roadmap
 
+## 📑 Table of Contents
+
+- [Recent Fixes & Current Status](#-recent-fixes--current-status-completed)
+- [Active Roadmap](#-active-roadmap-priority-tasks)
+- [Navigation & UX Revamp](#-navigation--ux-revamp)
+- [Subscriptions / Updates](#-subscriptions--updates)
+- [Security & Reliability](#-security--reliability-hardening)
+- [Milestones](#-milestones)
+- [Technical Improvements](#-technical-improvements-from-audit)
+- [Architecture Considerations](#-architecture-considerations)
+- [Long-Term Goals](#-long-term-goals-future-considerations)
+
+---
+
 ## ✅ Recent Fixes & Current Status (COMPLETED)
 
 We have successfully stabilized the application core. The following issues are RESOLVED:
