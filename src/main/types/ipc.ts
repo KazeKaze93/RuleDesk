@@ -14,12 +14,17 @@ export type { GetPostsRequest, PostFilterRequest } from "../ipc/controllers/Post
 /**
  * Settings type for IPC (excluding sensitive data like encryptedApiKey)
  * This is the safe representation of settings that can be sent to Renderer process.
+ * 
+ * Note: tosAcceptedAt is serialized as timestamp (number) because Date objects
+ * are serialized to ISO strings by Electron IPC, breaking instanceof checks.
  */
 export interface IpcSettings {
   userId: string;
   hasApiKey: boolean;
   isSafeMode: boolean;
   isAdultConfirmed: boolean;
+  isAdultVerified: boolean;
+  tosAcceptedAt: number | null; // Timestamp in milliseconds (Date.getTime())
 }
 
 /**

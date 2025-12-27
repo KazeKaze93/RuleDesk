@@ -10,6 +10,7 @@ export const IPC_CHANNELS = {
   SETTINGS: {
     GET: "app:get-settings-status",
     SAVE: "app:save-settings",
+    CONFIRM_LEGAL: "settings:confirm-legal",
   },
   DB: {
     GET_ARTISTS: "db:get-artists",

@@ -47,6 +47,7 @@ export interface IpcBridge {
   // Settings
   getSettings: () => Promise<IpcSettings | null>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  confirmLegal: () => Promise<IpcSettings>;
   logout: () => Promise<void>;
 
   // Artists
@@ -126,6 +127,7 @@ const ipcBridge: IpcBridge = {
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.GET),
   saveSettings: (creds) =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE, creds),
+  confirmLegal: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.CONFIRM_LEGAL),
   logout: () => ipcRenderer.invoke("app:logout"),
 
   getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),

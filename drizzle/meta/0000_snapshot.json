@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "4fbb74ee-af72-4a3e-8cbc-d29810828188",
+  "id": "00fc689b-7c1c-4fba-b83e-cf99b00cb607",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "artists": {
@@ -27,6 +27,14 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'rule34'"
         },
         "type": {
           "name": "type",
@@ -80,6 +88,20 @@
             "tag"
           ],
           "isUnique": true
+        },
+        "artists_lastChecked_idx": {
+          "name": "artists_lastChecked_idx",
+          "columns": [
+            "last_checked"
+          ],
+          "isUnique": false
+        },
+        "artists_createdAt_idx": {
+          "name": "artists_createdAt_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -267,6 +289,37 @@
           "notNull": false,
           "autoincrement": false,
           "default": "''"
+        },
+        "is_safe_mode": {
+          "name": "is_safe_mode",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": true
+        },
+        "is_adult_confirmed": {
+          "name": "is_adult_confirmed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "is_adult_verified": {
+          "name": "is_adult_verified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "tos_accepted_at": {
+          "name": "tos_accepted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {},
