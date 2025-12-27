@@ -893,50 +893,56 @@ Root:
 - Reusable components and utilities
 - No code duplication
 
-## Recent Fixes & Current Status
+## Current Status
 
-### ✅ Completed Stabilization
+### ✅ Completed Features
 
 **Infrastructure & Build:**
 
-- Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
-- App runs successfully via `npm run dev` and communicates with SQLite database
+- **Electron Version:** 39.2.7 with latest security features
+- **Build System:** electron-vite for optimal build performance
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
+- **Portable Mode:** Automatic detection and support for portable executables
 
 **Database & Schema:**
 
-- Replaced incompatible `unixepoch` and JS-dates with raw SQL timestamps (ms)
-- Added proper `UNIQUE` constraints to the `posts` table (`artistId` + `postId`) to enable correct UPSERT operations
-- Added `sampleUrl` column for progressive image loading
-- Migrations system (`drizzle-kit`) is fully functional
-- **Database Indexes:** Indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited` for optimized queries
+- **Schema:** Three main tables (`artists`, `posts`, `settings`) with proper relationships and indexes
+- **Migrations:** Fully functional migration system using `drizzle-kit`
+- **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
+- **Provider Support:** Multi-booru support with `provider` field (rule34, gelbooru)
+- **Artist Types:** Support for `tag`, `uploader`, and `query` types
 
 **Security & Reliability:**
 
-- **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API. Credentials encrypted at rest, decryption only in Main Process
-- **Database Backup/Restore:** Manual backup and restore functionality implemented with integrity checks. Create timestamped backups and restore from files
+- **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API (Windows Credential Manager, macOS Keychain, Linux libsecret)
+- **Database Backup/Restore:** Manual backup and restore functionality with integrity checks
+- **Context Isolation:** Enabled globally with sandbox mode
+- **CSP:** Strict Content Security Policy in production, relaxed for development (HMR support)
+- **IPC Architecture:** Controller-based IPC handlers with `BaseController` for centralized error handling
 
 **Data Integrity & Sync:**
 
-- Implemented Tag Normalization in `AddArtistModal`: Inputs like "tag (123)" are now stripped to "tag" before saving/syncing
-- SyncService correctly handles `ON CONFLICT` and populates the gallery
-- Fixed timestamp handling: `lastChecked` now uses `new Date()` with proper Drizzle timestamp mode
+- **Tag Normalization:** Automatic stripping of metadata from tag names (e.g., "tag (123)" → "tag")
+- **Sync Service:** Handles `ON CONFLICT` correctly with proper upsert logic
+- **Provider Pattern:** Multi-booru support via `IBooruProvider` interface
+- **Rate Limiting:** Intelligent rate limiting with configurable delays
 
 **UI/UX:**
 
-- Fixed "Soapy/Blurred" Previews: Image rendering quality for previews has been corrected
-- Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
-- Basic Gallery grid is functional
-- AsyncAutocomplete component for artist/tag search with free-text input support
-- **Search Functionality:** Local artist search and remote tag search via Rule34.xxx autocomplete API
-- **Backup Controls:** UI component for creating and restoring database backups
-- **Mark as Viewed:** Ability to mark posts as viewed for better organization
+- **Progressive Image Loading:** 3-layer system (Preview → Sample → Original)
+- **Virtualization:** `react-virtuoso` for efficient large list rendering
+- **Search Functionality:** Local artist search and remote tag search (multi-provider)
+- **Sidebar Navigation:** Persistent sidebar with main navigation sections
+- **Global Top Bar:** Unified top bar with search, filters, sort controls (UI implemented, backend pending)
+- **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites
+- **Download Manager:** Download full-resolution files with progress tracking
+- **Favorites System:** Complete implementation with database field and toggle functionality
 
 ## Implemented Features
 
-1. ✅ **Sync Service:** Dedicated service for Rule34.xxx API synchronization with progress tracking
+1. ✅ **Sync Service:** Dedicated service for multi-booru API synchronization with progress tracking
 2. ✅ **Settings Management:** Secure storage of API credentials with encryption using Electron's `safeStorage` API
-3. ✅ **Artist Tracking:** Support for tag-based tracking with autocomplete search and tag normalization
+3. ✅ **Artist Tracking:** Support for tag-based tracking with autocomplete search and tag normalization (multi-provider)
 4. ✅ **Post Gallery:** Grid view of cached posts with preview images and pagination
 5. ✅ **Progressive Image Loading:** 3-layer loading system (Preview → Sample → Original) for instant viewing
 6. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
@@ -945,16 +951,19 @@ Root:
 9. ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 10. ✅ **Secure Storage:** API credentials encrypted at rest using Electron's `safeStorage` API
 11. ✅ **Backup/Restore:** Manual database backup and restore functionality with integrity checks and timestamped backups
-12. ✅ **Search Functionality:** Local artist search and remote tag search via Rule34.xxx autocomplete API
+12. ✅ **Search Functionality:** Local artist search and remote tag search via booru autocomplete API (multi-provider)
 13. ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
 14. ✅ **Favorites System:** Mark and manage favorite posts with toggle functionality
 15. ✅ **Download Manager:** Download full-resolution files with progress tracking
 16. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
 17. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
-18. ⏳ **Global Top Bar:** Unified top bar with search, filters, sort controls - planned (not yet implemented)
+18. ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls (UI implemented, backend filtering pending)
 19. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 20. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
 21. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
+22. ✅ **Portable Mode:** Automatic detection and support for portable executables
+23. ✅ **IPC Controllers:** Controller-based architecture with `BaseController` and dependency injection
+24. ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 
 ## Active Roadmap (Priority Tasks)
 
@@ -968,7 +977,7 @@ Root:
 - ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
 - ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
 
-**Status:** Global Top Bar UI is fully implemented. Backend filtering and sorting logic needs to be connected to the UI controls in `GlobalTopBar.tsx` and integrated with `ArtistGallery` component.
+**Status:** Global Top Bar UI is fully implemented and visible in the application. Backend filtering and sorting logic needs to be connected to the UI controls via IPC handlers and integrated with `ArtistGallery` component.
 
 ### B. Download Manager ✅ Implemented (Core Features)
 

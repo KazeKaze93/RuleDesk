@@ -6,16 +6,27 @@ The application uses **SQLite** as the local database for storing metadata, trac
 
 ## Database Location
 
-The database file is stored in the Electron user data directory:
+The database file location depends on the application mode:
 
-- **Windows:** `%APPDATA%/NSFW Booru Client/metadata.db`
-- **macOS:** `~/Library/Application Support/NSFW Booru Client/metadata.db`
-- **Linux:** `~/.config/NSFW Booru Client/metadata.db`
+**Standard Mode (Installed):**
+- **Windows:** `%APPDATA%/RuleDesk/metadata.db`
+- **macOS:** `~/Library/Application Support/RuleDesk/metadata.db`
+- **Linux:** `~/.config/RuleDesk/metadata.db`
+
+**Portable Mode (Portable Executable):**
+- Database is stored in `data/metadata.db` next to the executable
 
 **Implementation:**
 
 ```typescript
-const DB_PATH = path.join(app.getPath("userData"), "metadata.db");
+// Portable mode detection (in main.ts)
+if (app.isPackaged) {
+  const portableDataPath = path.join(path.dirname(process.execPath), "data");
+  app.setPath("userData", portableDataPath);
+}
+
+// Database initialization (in db/client.ts)
+const dbPath = path.join(app.getPath("userData"), "metadata.db");
 ```
 
 ## Schema
@@ -29,7 +40,8 @@ Stores information about tracked artists/users.
 | `id`              | INTEGER (PK, AutoIncrement)    | Primary key                                 |
 | `name`            | TEXT (NOT NULL)                | Artist display name                         |
 | `tag`             | TEXT (NOT NULL, UNIQUE)        | Tag or username for tracking                |
-| `type`            | TEXT (NOT NULL, DEFAULT 'tag') | Type: "tag" or "uploader"                   |
+| `provider`        | TEXT (NOT NULL, DEFAULT 'rule34') | Provider ID: "rule34" or "gelbooru"      |
+| `type`            | TEXT (NOT NULL, DEFAULT 'tag') | Type: "tag", "uploader", or "query"         |
 | `api_endpoint`    | TEXT (NOT NULL)                | Base API endpoint URL                       |
 | `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)  | ID of the last seen post                    |
 | `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)  | Count of new, unviewed posts                |
@@ -42,7 +54,10 @@ Stores information about tracked artists/users.
 export const artists = sqliteTable("artists", {
   id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  tag: text("tag").notNull(),
+  tag: text("tag").notNull().unique(),
+  provider: text("provider", { enum: ["rule34", "gelbooru"] })
+    .notNull()
+    .default("rule34"),
   type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
   apiEndpoint: text("api_endpoint").notNull(),
   lastPostId: integer("last_post_id").default(0).notNull(),
@@ -51,7 +66,10 @@ export const artists = sqliteTable("artists", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),
-});
+}, (t) => ({
+  lastCheckedIdx: index("artists_lastChecked_idx").on(t.lastChecked),
+  createdAtIdx: index("artists_createdAt_idx").on(t.createdAt),
+}));
 ```
 
 **TypeScript Types:**
@@ -131,10 +149,12 @@ Stores application settings including API credentials and user preferences.
 | Column                | Type                          | Description                                    |
 | --------------------- | ----------------------------- | ---------------------------------------------- |
 | `id`                  | INTEGER (PK, AutoIncrement)   | Primary key                                    |
-| `user_id`             | TEXT (DEFAULT '')             | Rule34.xxx User ID                             |
+| `user_id`             | TEXT (DEFAULT '')             | Booru User ID (provider-specific)              |
 | `encrypted_api_key`   | TEXT (DEFAULT '')             | Encrypted API key (encrypted at rest)          |
 | `is_safe_mode`        | INTEGER (BOOLEAN, DEFAULT 1) | Safe mode flag (blur NSFW content)            |
 | `is_adult_confirmed`  | INTEGER (BOOLEAN, DEFAULT 0) | Adult confirmation flag (18+ confirmation)     |
+| `is_adult_verified`   | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Adult verification flag (legal confirmation) |
+| `tos_accepted_at`     | INTEGER (TIMESTAMP, NULL)     | Terms of Service acceptance timestamp          |
 
 **Schema Definition:**
 
@@ -145,6 +165,10 @@ export const settings = sqliteTable("settings", {
   encryptedApiKey: text("encrypted_api_key").default(""),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
   isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(false),
+  isAdultVerified: integer("is_adult_verified", { mode: "boolean" })
+    .default(false)
+    .notNull(),
+  tosAcceptedAt: integer("tos_accepted_at", { mode: "timestamp" }),
 });
 ```
 
@@ -165,9 +189,11 @@ All database operations are performed directly in the **Main Process** using syn
 
 - Direct synchronous access to SQLite via `better-sqlite3`
 - WAL mode enabled for concurrent reads
+- Optimized SQLite pragmas: `synchronous = NORMAL`, `temp_store = MEMORY`, memory-mapped I/O
 - Manages database initialization and migrations
 - Provides `getDb()` and `getSqliteInstance()` functions
 - Automatic migration execution on startup
+- Portable mode support (automatic detection)
 
 ### Initialization
 
@@ -636,11 +662,15 @@ If the database becomes corrupted and you need to restore manually:
 ## Performance Considerations
 
 1. **WAL Mode:** Write-Ahead Logging mode enabled for concurrent reads
-2. **Indexes:** Indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited` for optimized queries
-3. **Batch Operations:** Bulk upsert operations process posts in chunks (200 posts per chunk) to avoid SQLite variable limit
-4. **Query Optimization:** Use Drizzle's query builder efficiently with proper indexes
-5. **Synchronous Access:** Direct synchronous access via `better-sqlite3` in Main Process
-6. **Connection Management:** Single database connection managed in Main Process
+2. **Indexes:** Indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt` for optimized queries
+3. **SQLite Optimization:**
+   - `synchronous = NORMAL` for optimal performance with WAL mode
+   - `temp_store = MEMORY` for faster temporary table operations
+   - Memory-mapped I/O (configurable via `SQLITE_MMAP_SIZE` env var, default 64MB)
+4. **Batch Operations:** Bulk upsert operations process posts in chunks (200 posts per chunk) to avoid SQLite variable limit
+5. **Query Optimization:** Use Drizzle's query builder efficiently with proper indexes
+6. **Synchronous Access:** Direct synchronous access via `better-sqlite3` in Main Process
+7. **Connection Management:** Single database connection managed in Main Process
 
 ## Future Enhancements
 

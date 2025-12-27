@@ -8,6 +8,13 @@ This document describes the IPC (Inter-Process Communication) API between the El
 
 The application uses Electron's IPC (Inter-Process Communication) with Context Isolation enabled. The Renderer process cannot directly access Node.js APIs. Instead, it communicates with the Main process through a secure bridge defined in `src/main/bridge.ts`.
 
+**IPC Architecture:**
+- **Controller-based:** All IPC handlers are organized in controllers that extend `BaseController`
+- **Dependency Injection:** Services are registered in DI Container and resolved via tokens
+- **Type Safety:** All IPC communication is strictly typed using TypeScript interfaces
+- **Input Validation:** All inputs are validated using Zod schemas in `BaseController`
+- **Error Handling:** Centralized error handling via `BaseController`
+
 ## IPC Bridge Interface
 
 The IPC bridge is exposed to the Renderer process via `window.api`. All methods return Promises and are fully typed.
@@ -45,7 +52,7 @@ interface IpcBridge {
 
   // External
   openExternal: (url: string) => Promise<void>;
-  searchRemoteTags: (query: string) => Promise<{ id: string; label: string }[]>;
+  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
   // Sync
   syncAll: () => Promise<boolean>;
@@ -491,20 +498,21 @@ results.forEach((result) => {
 
 ---
 
-### `searchRemoteTags(query: string)`
+### `searchRemoteTags(query: string, provider?: ProviderId)`
 
-Searches for tags using Rule34.xxx autocomplete API.
+Searches for tags using booru autocomplete API (multi-provider support).
 
 **Parameters:**
 
 - `query: string` - Search query string (minimum 2 characters)
+- `provider?: ProviderId` - Provider ID ("rule34" or "gelbooru"), defaults to "rule34"
 
-**Returns:** `Promise<{ id: string; label: string }[]>`
+**Returns:** `Promise<SearchResults[]>`
 
 **Example:**
 
 ```typescript
-const results = await window.api.searchRemoteTags("tag");
+const results = await window.api.searchRemoteTags("tag", "rule34");
 results.forEach((result) => {
   console.log(result.id, result.label);
 });
@@ -512,7 +520,7 @@ results.forEach((result) => {
 
 **IPC Channel:** `api:search-remote-tags`
 
-**Note:** Requires at least 2 characters. Returns empty array if query is too short or API call fails.
+**Note:** Requires at least 2 characters. Returns empty array if query is too short or API call fails. Supports multiple booru providers via provider pattern.
 
 ---
 
@@ -1019,6 +1027,55 @@ Controllers use the DI Container to resolve dependencies:
 ```typescript
 const db = container.resolve(DI_TOKENS.DB);
 const syncService = container.resolve(DI_TOKENS.SYNC_SERVICE);
+```
+
+**Controller Registration:**
+
+Controllers are registered in `setupIpc()` function:
+
+```typescript
+export function setupIpc(): { maintenanceController: MaintenanceController; fileController: FileController } {
+  const systemController = new SystemController();
+  systemController.setup();
+  
+  const artistsController = new ArtistsController();
+  artistsController.setup();
+  
+  // ... other controllers
+  
+  return { maintenanceController, fileController };
+}
+```
+
+**Available Controllers:**
+
+- `SystemController` - System-level operations (version, clipboard, etc.)
+- `ArtistsController` - Artist management operations
+- `PostsController` - Post-related operations
+- `SettingsController` - Settings management
+- `AuthController` - Authentication and credential verification
+- `MaintenanceController` - Database backup/restore operations
+- `ViewerController` - Viewer-related operations
+- `FileController` - File download and management
+
+**Channel Constants:**
+
+All IPC channels are defined in `src/main/ipc/channels.ts`:
+
+```typescript
+export const IPC_CHANNELS = {
+  APP: {
+    GET_VERSION: "app:get-version",
+    OPEN_EXTERNAL: "app:open-external",
+    // ... other channels
+  },
+  DB: {
+    GET_ARTISTS: "db:get-artists",
+    ADD_ARTIST: "db:add-artist",
+    // ... other channels
+  },
+  // ... other channel groups
+} as const;
 ```
 
 **Legacy Handler Registration (Deprecated):**

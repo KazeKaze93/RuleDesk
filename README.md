@@ -36,7 +36,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🧭 Navigation & Layout**        | Sidebar navigation with dedicated pages: Updates, Browse, Favorites, Tracked, and Settings. Global Top Bar with search, filters, sort controls, and view toggles. Responsive layout with modern UI components.                                                           |
 | **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                            |
 | **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                    |
-| **🔌 Multi-Source Ready**         | Provider pattern abstraction for multi-booru support. Current implementations: Rule34.xxx, Gelbooru. `IBooruProvider` interface allows adding new sources (Danbooru, etc.) without core database changes.                                                              |
+| **🔌 Multi-Source Ready**         | Provider pattern abstraction for multi-booru support. Current implementations: Rule34.xxx, Gelbooru. `IBooruProvider` interface allows adding new sources (Danbooru, etc.) without core database changes.                                                                |
 
 ---
 
@@ -179,58 +179,60 @@ Continuous synchronization while the application is running:
 - **Vacuum/Compact** - Optimize database file size and performance
 - **Maintenance** - Automatic maintenance runs in worker thread (non-blocking)
 
-## ✅ Recent Fixes & Current Status
+## ✅ Current Status
 
-The application core has been successfully stabilized and enhanced with security improvements:
+The application is stable and production-ready with the following features implemented:
 
 ### Infrastructure & Build
 
-- ✅ Fixed `better-sqlite3` native build on Windows (resolved `node-gyp`, Python, and ABI version mismatches)
-- ✅ App runs successfully via `npm run dev` and communicates with SQLite database
+- ✅ **Electron Version:** 39.2.7 with latest security features
+- ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
+- ✅ **Portable Mode:** Support for portable executables with data folder next to executable
 - ⚠️ **HMR Status:** Renderer process has full HMR support. Main process requires manual restart (no auto-restart on file changes)
 
 ### Database & Schema
 
-- ✅ Replaced incompatible `unixepoch` and JS-dates with raw SQL timestamps (ms)
-- ✅ Added proper `UNIQUE` constraints to the `posts` table (`artistId` + `postId`) to enable correct UPSERT operations
-- ✅ Added `sampleUrl` column for progressive image loading
-- ✅ Migrations system (`drizzle-kit`) is fully functional
-- ✅ **Database Indexes:** Indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited` for optimized queries
+- ✅ **Schema:** Three main tables (`artists`, `posts`, `settings`) with proper relationships
+- ✅ **Migrations:** Fully functional migration system using `drizzle-kit`
+- ✅ **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
+- ✅ **Provider Support:** Multi-booru support with `provider` field in artists table (rule34, gelbooru)
+- ✅ **Artist Types:** Support for `tag`, `uploader`, and `query` types
 - ⏳ **FTS5 Optimization:** Full-text search on tags planned (currently using standard indexes)
 
 ### Security & Reliability
 
-- ✅ **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API. Credentials encrypted at rest, decryption only in Main Process
+- ✅ **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API (Windows Credential Manager, macOS Keychain, Linux libsecret). Credentials encrypted at rest, decryption only in Main Process
 - ✅ **Database Backup/Restore:** Manual backup and restore functionality implemented with integrity checks. Create timestamped backups and restore from files
-- ✅ **Input Validation:** Zod validation implemented per IPC handler (decentralized, no centralized utility)
-- ⏳ **Portable Mode:** Not implemented - uses absolute paths via `app.getPath("userData")`
-- ⏳ **Age Gate:** Database schema includes `isAdultConfirmed` field, but confirmation overlay not yet implemented
+- ✅ **Input Validation:** Zod validation implemented per IPC handler via `BaseController`
+- ✅ **Context Isolation:** Enabled globally with sandbox mode for maximum security
+- ✅ **CSP (Content Security Policy):** Strict CSP in production, relaxed for development (HMR support)
+- ✅ **Portable Mode:** Fully implemented - automatically detects portable mode and uses `data/` folder
+- ⏳ **Age Gate:** Database schema includes `isAdultConfirmed` and `isAdultVerified` fields, but confirmation overlay not yet implemented
 
 ### Data Integrity & Sync
 
-- ✅ Implemented Tag Normalization in `AddArtistModal`: Inputs like "tag (123)" are now stripped to "tag" before saving/syncing
-- ✅ SyncService correctly handles `ON CONFLICT` and populates the gallery
-- ✅ Fixed timestamp handling: `lastChecked` now uses `new Date()` with proper Drizzle timestamp mode
+- ✅ **Tag Normalization:** Inputs like "tag (123)" are automatically stripped to "tag" before saving/syncing
+- ✅ **Sync Service:** Handles `ON CONFLICT` correctly and populates the gallery with proper upsert logic
+- ✅ **Timestamp Handling:** All timestamps use Drizzle timestamp mode with proper milliseconds precision
+- ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
+- ✅ **Rate Limiting:** Intelligent rate limiting with 1.5s delay between artists, 0.5s between pages
 - ⚠️ **Anti-Bot Measures:** Static User-Agent strings used, fixed delays (1.5s/0.5s) but no randomization or rotation
 
 ### UI/UX
 
-- ✅ Fixed "Soapy/Blurred" Previews: Image rendering quality for previews has been corrected
-- ✅ Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
-- ✅ Basic Gallery grid is functional
-- ✅ **Virtualization:** `react-virtuoso` implemented for efficient large list rendering (`ArtistGallery.tsx`)
-- ✅ AsyncAutocomplete component for artist/tag search with free-text input support
-- ✅ **Search Functionality:** Local artist search and remote tag search via Rule34.xxx autocomplete API
-- ✅ **Backup Controls:** UI component for creating and restoring database backups
-- ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
+- ✅ **Progressive Image Loading:** 3-layer system (Preview → Sample → Original) for instant viewing
+- ✅ **Virtualization:** `react-virtuoso` implemented for efficient large list rendering
+- ✅ **Search Functionality:** Local artist search and remote tag search via booru autocomplete API (multi-provider support)
 - ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
-- ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles
+- ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles (UI implemented, backend filtering pending)
 - ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
 - ✅ **Video Support:** `.mp4` and `.webm` video formats supported with native `<video>` element
 - ✅ **Download Manager:** Download full-resolution files with progress tracking and queue management
-- ✅ **Favorites System:** Mark and manage favorite posts with keyboard shortcuts and UI controls. Complete implementation with `isFavorited` database field and toggle functionality.
+- ✅ **Favorites System:** Complete implementation with `isFavorited` database field, toggle functionality, and keyboard shortcuts
+- ✅ **Backup Controls:** UI component for creating and restoring database backups with integrity checks
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
+- ✅ **Age Gate Component:** UI component exists (`AgeGate.tsx`), integration pending
 - ⏳ **Safe Mode/NSFW Filter:** Database schema includes `isSafeMode` field, but blur logic not yet implemented in UI components
 
 ---
@@ -284,13 +286,13 @@ We are moving to Feature Development. Priority tasks:
 
 **Goal:** Allow users to refine the gallery view.
 
-- ✅ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle - implemented
+- ✅ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle - fully implemented in `GlobalTopBar.tsx`
 - ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - UI ready, backend filtering pending
 - ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
 - ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
 - ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
 
-**Note:** Global Top Bar UI is implemented in `GlobalTopBar.tsx`. Backend filtering and sorting logic needs to be connected to the UI controls.
+**Note:** Global Top Bar UI is fully implemented and visible in the application. Backend filtering and sorting logic needs to be connected to the UI controls via IPC handlers.
 
 ### B. Download Manager ✅ Implemented (Core Features)
 
@@ -320,6 +322,8 @@ We are moving to Feature Development. Priority tasks:
 - ✅ **Database Architecture** - ✅ **COMPLETED:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads. All database operations run in Main Process.
 - ✅ **Encrypt / Secure Storage for API Credentials** - ✅ **COMPLETED:** Using Electron's `safeStorage` API for encryption. API keys encrypted at rest, never exposed to Renderer process.
 - ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented with integrity checks and timestamped backups.
+- ✅ **IPC Architecture** - ✅ **COMPLETED:** Controller-based IPC handlers with `BaseController` for centralized error handling and validation. Type-safe dependency injection via DI Container.
+- ✅ **Portable Mode** - ✅ **COMPLETED:** Automatic detection of portable mode with data folder support.
 
 See [Roadmap](./docs/roadmap.md) for detailed implementation status and requirements.
 
@@ -327,12 +331,13 @@ See [Roadmap](./docs/roadmap.md) for detailed implementation status and requirem
 
 ## ⚙️ Development Setup
 
-This project uses **Vite** as the build tool for both the Electron Main and Renderer processes, ensuring optimal build performance.
+This project uses **electron-vite** as the build tool for both the Electron Main and Renderer processes, ensuring optimal build performance.
 
 ### Prerequisites
 
-- Node.js (v18+)
-- npm or yarn
+- **Node.js:** v18 or higher
+- **npm:** v9 or higher (or yarn)
+- **Git:** For version control
 
 ### Installation
 
@@ -354,7 +359,12 @@ npm run dev
 The application stores configuration in SQLite database:
 
 - **API Credentials:** Stored securely with encryption using Electron's `safeStorage` API. API keys are encrypted at rest and only decrypted in Main Process when needed for API calls.
-- **Database Location:** Electron user data directory (automatically managed)
+- **Database Location:**
+  - **Portable Mode:** If running from a portable executable, database is stored in `data/` folder next to the executable
+  - **Standard Mode:** Electron user data directory (automatically managed)
+    - Windows: `%APPDATA%/RuleDesk/metadata.db`
+    - macOS: `~/Library/Application Support/RuleDesk/metadata.db`
+    - Linux: `~/.config/RuleDesk/metadata.db`
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 - **No Environment Variables Required:** All configuration is handled through the UI
 
@@ -367,10 +377,18 @@ To package the application for distribution:
 npm run build
 
 # Package with electron-builder (after build)
+npm run dist
+# Or use electron-builder directly:
 npx electron-builder
 ```
 
-The built binaries will be available in the `dist/` directory. The exact output location may vary depending on your Electron builder configuration.
+The built binaries will be available in the `release/` directory. The exact output location may vary depending on your Electron builder configuration.
+
+**Build Targets:**
+
+- **Windows:** NSIS installer and portable executable (x64)
+- **macOS:** DMG package
+- **Linux:** AppImage
 
 ### Quality Checks
 
@@ -430,14 +448,20 @@ If you modify the database schema (`src/main/db/schema.ts`):
 # Generate migration from schema changes
 npm run db:generate
 
-# Run migrations
+# Run migrations manually (migrations also run automatically on startup)
 npm run db:migrate
 
 # Open Drizzle Studio to inspect database
 npm run db:studio
 ```
 
-**Note:** Migrations run automatically on application startup.
+**Note:** Migrations run automatically on application startup. The migration path is automatically detected based on whether the app is packaged or in development mode.
+
+### Database Location
+
+- **Development:** Database stored in Electron user data directory
+- **Production (Standard):** Electron user data directory
+- **Production (Portable):** `data/` folder next to executable
 
 ---
 
@@ -447,9 +471,11 @@ This project adheres to strict development principles:
 
 - **Architecture:** SOLID, DRY, KISS, YAGNI principles
 - **TypeScript:** Strict typing, no `any` or unsafe casts
-- **Error Handling:** Proper error handling with descriptive messages
-- **Security:** Context Isolation, no direct Node.js access from Renderer
-- **Database:** Type-safe queries via Drizzle ORM, no raw SQL
-- **UI:** Tailwind CSS only, no inline styles, accessibility considerations
+- **Error Handling:** Proper error handling with descriptive messages via `BaseController`
+- **Security:** Context Isolation enabled, sandbox mode, CSP headers, no direct Node.js access from Renderer
+- **Database:** Type-safe queries via Drizzle ORM, no raw SQL (except migrations)
+- **UI:** Tailwind CSS only, no inline styles, shadcn/ui components, accessibility considerations
+- **Logging:** `electron-log` for all logging (no `console.log` in production code)
+- **IPC:** Controller-based architecture with dependency injection
 
 See [Contributing Guide](./docs/contributing.md) for detailed guidelines.

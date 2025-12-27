@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Thank you for your interest in contributing to NSFW Booru Desktop Client! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to RuleDesk! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -302,7 +302,18 @@ const artists = db.prepare("SELECT * FROM artists WHERE id = ?").all(artistId);
 
 ### Adding a New IPC Method
 
-1. **Define in Bridge** (`src/main/bridge.ts`)
+1. **Add Channel Constant** (`src/main/ipc/channels.ts`)
+
+   ```typescript
+   export const IPC_CHANNELS = {
+     APP: {
+       // ... existing channels
+       NEW_METHOD: "app:new-method",
+     },
+   } as const;
+   ```
+
+2. **Define in Bridge** (`src/main/bridge.ts`)
 
    ```typescript
    export interface IpcBridge {
@@ -311,24 +322,45 @@ const artists = db.prepare("SELECT * FROM artists WHERE id = ?").all(artistId);
    }
    ```
 
-2. **Implement in Bridge**
+3. **Implement in Bridge**
 
    ```typescript
    const ipcBridge: IpcBridge = {
      // ... existing methods
-     newMethod: () => ipcRenderer.invoke("channel:name"),
+     newMethod: () => ipcRenderer.invoke(IPC_CHANNELS.APP.NEW_METHOD),
    };
    ```
 
-3. **Add Handler** (`src/main/ipc/handlers/` - create new file or add to existing)
+4. **Add Handler in Controller** (`src/main/ipc/controllers/` - add to appropriate controller or create new)
 
    ```typescript
-   ipcMain.handle("channel:name", async () => {
-     // Implementation
-   });
+   export class MyController extends BaseController {
+     setup() {
+       this.handle(
+         IPC_CHANNELS.APP.NEW_METHOD,
+         NewMethodSchema, // Zod schema
+         this.newMethod.bind(this)
+       );
+     }
+
+     private async newMethod(
+       _event: IpcMainInvokeEvent,
+       data: NewMethodRequest
+     ) {
+       const db = container.resolve(DI_TOKENS.DB);
+       // Implementation
+     }
+   }
    ```
 
-4. **Update Types** (`src/renderer.d.ts`)
+5. **Register Controller** (`src/main/ipc/index.ts` - in `setupIpc()` function)
+
+   ```typescript
+   const myController = new MyController();
+   myController.setup();
+   ```
+
+6. **Update Types** (`src/renderer.d.ts`)
    ```typescript
    export interface IpcApi {
      // ... existing methods
@@ -340,8 +372,9 @@ const artists = db.prepare("SELECT * FROM artists WHERE id = ?").all(artistId);
 
 1. **Add Schema** (`src/main/db/schema.ts`)
 2. **Generate Migration** (`npm run db:generate`)
-3. **Update Repository** (`src/main/db/repositories/` - add new repository or update existing)
+3. **Review Migration** (check generated SQL in `drizzle/` folder)
 4. **Test Migration** (`npm run db:migrate`)
+5. **Update Documentation** (`docs/database.md` - add table documentation)
 
 ## Questions?
 

@@ -7,6 +7,7 @@ This guide covers the development setup, build process, and common development t
 - **Node.js:** v18 or higher
 - **npm:** v9 or higher (or yarn)
 - **Git:** For version control
+- **Python:** Required for building native modules (better-sqlite3) on Windows
 
 ## Initial Setup
 
@@ -267,17 +268,28 @@ Opens web interface at `http://localhost:4983` (default port).
 
    ```typescript
    const ipcBridge: IpcBridge = {
-     newMethod: () => ipcRenderer.invoke("channel:name"),
+     newMethod: () => ipcRenderer.invoke(IPC_CHANNELS.APP.NEW_METHOD),
    };
    ```
 
-3. Add handler in appropriate controller (`src/main/ipc/controllers/`):
+3. Add channel constant in `src/main/ipc/channels.ts`:
+
+   ```typescript
+   export const IPC_CHANNELS = {
+     APP: {
+       // ... existing channels
+       NEW_METHOD: "app:new-method",
+     },
+   } as const;
+   ```
+
+4. Add handler in appropriate controller (`src/main/ipc/controllers/`):
 
    ```typescript
    export class MyController extends BaseController {
      setup() {
        this.handle(
-         "channel:name",
+         IPC_CHANNELS.APP.NEW_METHOD,
          MySchema, // Zod schema for validation
          this.newMethod.bind(this)
        );
@@ -293,14 +305,14 @@ Opens web interface at `http://localhost:4983` (default port).
    }
    ```
 
-4. Register controller in `src/main/ipc/index.ts`:
+5. Register controller in `src/main/ipc/index.ts` (via `setupIpc()` function):
 
    ```typescript
    const myController = new MyController();
    myController.setup();
    ```
 
-5. Update types in `src/renderer.d.ts`:
+6. Update types in `src/renderer.d.ts`:
    ```typescript
    export interface IpcApi {
      newMethod: () => Promise<ReturnType>;
@@ -428,10 +440,12 @@ npm run typecheck
 **Solution:**
 
 1. Verify bridge is exposed: Check `src/main/bridge.ts`
-2. Verify controller is registered: Check `src/main/ipc/index.ts` (controller setup)
-3. Verify handler is registered in controller: Check controller's `setup()` method
-4. Check types match: Verify `src/renderer.d.ts`
-5. Check DI container: Ensure dependencies are registered before controller setup
+2. Verify channel constant exists: Check `src/main/ipc/channels.ts`
+3. Verify controller is registered: Check `src/main/ipc/index.ts` (via `setupIpc()` function)
+4. Verify handler is registered in controller: Check controller's `setup()` method
+5. Check types match: Verify `src/renderer.d.ts`
+6. Check DI container: Ensure dependencies are registered before controller setup (via `registerServices()`)
+7. Check BaseController: Ensure controller extends `BaseController` and uses `this.handle()` method
 
 ### Issue: Build Fails
 
