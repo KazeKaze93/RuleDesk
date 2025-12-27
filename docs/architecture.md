@@ -1,10 +1,37 @@
 # Architecture Documentation
 
+## 📑 Table of Contents
+
+- [Overview](#overview)
+- [Architecture Concept](#architecture-concept)
+- [High-Level Architecture](#high-level-architecture)
+- [Process Separation](#process-separation)
+- [Security Architecture](#security-architecture)
+- [Data Flow](#data-flow)
+- [Database Architecture](#database-architecture)
+- [Component Architecture](#component-architecture)
+- [External API Integration](#external-api-integration)
+- [Build Architecture](#build-architecture)
+- [State Management](#state-management)
+- [File Structure](#file-structure)
+- [Design Principles](#design-principles)
+- [Current Status](#current-status)
+
+---
+
 ## Overview
 
 This application follows a strict **Separation of Concerns (SoC)** architecture, dividing responsibilities between the Electron Main Process (secure Node.js environment) and the Renderer Process (sandboxed browser environment).
 
+**📖 Related Documentation:**
+- [API Documentation](./api.md) - IPC API reference
+- [Database Documentation](./database.md) - Database architecture details
+- [Development Guide](./development.md) - Development setup and workflows
+- [Glossary](./glossary.md) - Key terms (Main Process, Renderer Process, IPC, etc.)
+
 ### Architecture Diagram
+
+The diagram below shows the high-level architecture. **Read the explanation below the diagram** for a human-readable description.
 
 ```mermaid
 graph TB
@@ -51,6 +78,39 @@ graph TB
     style SQLiteDB fill:#e1ffe1
     style Rule34API fill:#ffe1f5
 ```
+
+**What this diagram means:**
+
+RuleDesk is built on Electron, which runs two separate processes:
+
+1. **Renderer Process (Browser)** - This is where your React UI lives. It's a sandboxed browser environment that can't directly access Node.js APIs or the file system. It uses:
+   - **React Context** for component state and data flow
+   - **TanStack Query** to fetch data from the Main Process via IPC
+   - **Zustand** for lightweight UI state (like which dialog is open)
+
+2. **IPC Bridge** - This is the secure communication layer between Renderer and Main Process:
+   - **Preload script** (`preload.ts`) exposes a safe API (`window.api`) to the Renderer
+   - **IPC Handlers** in Main Process validate and route requests to appropriate services
+
+3. **Main Process (Node.js)** - This is the secure backend that handles:
+   - **Services Layer** - Business logic (sync, updates, file operations)
+   - **Backend Clients** - Communication with external APIs (Rule34.xxx, Gelbooru)
+
+4. **Database** - SQLite database accessed directly in Main Process:
+   - **Drizzle ORM** provides type-safe queries
+   - **SQLite** stores all data locally with WAL mode for performance
+
+**Data Flow Example:**
+
+When you click "Add Artist" in the UI:
+1. React component calls `window.api.addArtist(data)`
+2. Preload script forwards request to Main Process via IPC
+3. IPC Handler validates input using Zod schemas
+4. Service layer saves artist to database via Drizzle ORM
+5. Response flows back through IPC to Renderer
+6. React Query updates the UI with the new artist
+
+This separation ensures security (Renderer can't access sensitive data) and performance (database operations run in Main Process).
 
 ## Architecture Concept
 
@@ -114,6 +174,8 @@ graph TB
 
 ### Process Communication Flow
 
+The diagram below shows how a user action flows through the system. **Read the explanation below** for a step-by-step walkthrough.
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -140,7 +202,48 @@ sequenceDiagram
     ReactUI->>User: Update UI
 ```
 
+**Step-by-step explanation:**
+
+Let's trace what happens when a user clicks "Add Artist":
+
+1. **User Action** - User fills out the form and clicks "Add Artist" button
+
+2. **React UI** - The React component calls `window.api.addArtist(artistData)`. This is a Promise that will resolve when the operation completes.
+
+3. **IPC Bridge** - The preload script (`preload.ts`) receives the call and forwards it to the Main Process using `ipcRenderer.invoke('db:add-artist', artistData)`. This is Electron's secure IPC mechanism.
+
+4. **IPC Controller** - In Main Process, the `ArtistsController` receives the request. Before doing anything, it:
+   - **Validates the input** using a Zod schema (ensures `name` and `tag` are valid strings, `apiEndpoint` is a valid URL)
+   - If validation fails, it throws an error that propagates back to Renderer
+
+5. **Dependency Injection** - The controller needs services (like the database). It asks the DI Container to resolve dependencies. The container provides singleton instances of services.
+
+6. **Service Layer** - The controller calls the appropriate service method (e.g., `dbService.addArtist()`). Services contain the business logic.
+
+7. **Database** - The service uses Drizzle ORM to execute a type-safe query: `db.insert(artists).values(artistData)`. SQLite stores the data.
+
+8. **Response Flow** - The data flows back:
+   - Database returns the inserted artist (with generated ID)
+   - Service returns the artist object
+   - Controller returns it via IPC
+   - Bridge resolves the Promise in Renderer
+   - React Query updates the cache and UI
+
+**Error Handling:**
+
+If any step fails (validation error, database error, network error), the error is caught by `BaseController`, logged, and a user-friendly error message is sent back to Renderer. The UI can then display an error notification.
+
+**Why this architecture?**
+
+- **Security:** Renderer can't directly access database or file system
+- **Type Safety:** TypeScript ensures type correctness at every step
+- **Validation:** Zod schemas catch invalid data before it reaches services
+- **Separation of Concerns:** Each layer has a single responsibility
+- **Testability:** Each layer can be tested independently
+
 ### Database Architecture
+
+The diagram below shows how database operations work. **Read the explanation** for a practical understanding.
 
 ```mermaid
 graph LR
@@ -158,6 +261,64 @@ graph LR
     DrizzleORM -->|Data| Services
     Services -->|Return| Main
 ```
+
+**What this means in practice:**
+
+All database operations happen **directly in the Main Process** using synchronous access. Here's how it works:
+
+1. **Services call Drizzle ORM** - When a service needs to query the database, it uses Drizzle's type-safe query builder:
+   ```typescript
+   const artists = await db.query.artists.findMany({
+     orderBy: [asc(artists.name)],
+   });
+   ```
+
+2. **Drizzle generates SQL** - Drizzle ORM converts the TypeScript query into optimized SQL:
+   ```sql
+   SELECT * FROM artists ORDER BY name ASC;
+   ```
+
+3. **SQLite executes** - The SQLite database (via `better-sqlite3`) executes the query synchronously. This is fast because:
+   - No network overhead (local database)
+   - Synchronous execution (no async/await delays)
+   - WAL mode allows concurrent reads while writes happen
+
+4. **Results flow back** - SQLite returns raw data → Drizzle maps it to TypeScript types → Service returns typed objects
+
+**Why synchronous access?**
+
+- **Performance:** No async overhead for local database operations
+- **Simplicity:** Direct function calls, no Promise chains
+- **Type Safety:** Drizzle ensures TypeScript types match database schema
+- **WAL Mode:** Write-Ahead Logging allows concurrent reads even during writes
+
+**Example: Adding an Artist**
+
+```typescript
+// In ArtistsController
+const db = container.resolve(DI_TOKENS.DB);
+
+// Drizzle query (type-safe)
+const result = await db
+  .insert(artists)
+  .values({
+    name: "artist_name",
+    tag: "tag_name",
+    type: "tag",
+    apiEndpoint: "https://api.rule34.xxx",
+  })
+  .returning();
+
+// result[0] is typed as Artist
+return result[0];
+```
+
+**Key Points:**
+
+- Database is **never** accessed from Renderer Process (security)
+- All queries are **type-safe** via Drizzle ORM
+- Operations are **synchronous** for performance
+- WAL mode enables **concurrent reads** during writes
 
 ## Process Separation
 
@@ -455,6 +616,8 @@ sequenceDiagram
 
 ### Reading Data Flow
 
+The diagram below shows how data is read from the database and displayed in the UI. **Read the explanation** to understand the complete flow.
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -478,7 +641,54 @@ sequenceDiagram
     ReactUI-->>User: Display Artists
 ```
 
+**Real-world scenario: User opens the Tracked page**
+
+1. **User clicks "Tracked"** in the sidebar navigation
+
+2. **React component renders** - The `Tracked.tsx` component mounts and calls:
+   ```typescript
+   const { data: artists } = useQuery({
+     queryKey: ["artists"],
+     queryFn: () => window.api.getTrackedArtists(),
+   });
+   ```
+
+3. **React Query checks cache** - React Query first checks if it has cached data for `["artists"]`. If yes, it returns cached data immediately (no network call).
+
+4. **IPC call** - If cache is empty or stale, React Query calls `window.api.getTrackedArtists()`, which goes through the IPC bridge to Main Process.
+
+5. **Validation** - The IPC handler validates the request (though `getTrackedArtists` has no parameters, validation still runs for consistency).
+
+6. **Database query** - The handler executes a Drizzle query:
+   ```typescript
+   const artists = await db.query.artists.findMany({
+     orderBy: [asc(artists.name)],
+   });
+   ```
+
+7. **Response** - The array of artists flows back:
+   - Database → IPC Handler → IPC Bridge → React Query → Component
+
+8. **Caching** - React Query automatically caches the result. If the user navigates away and comes back, the data is served from cache (instant load).
+
+9. **UI update** - React re-renders with the artists data, displaying them in a grid.
+
+**Why React Query?**
+
+- **Automatic caching** - Data is cached and reused
+- **Loading states** - `isLoading` and `error` states are handled automatically
+- **Background refetching** - Can refetch in background when data might be stale
+- **Optimistic updates** - Can update UI before server confirms (for mutations)
+
+**Performance benefits:**
+
+- First load: ~50-100ms (database query + IPC overhead)
+- Subsequent loads: ~0ms (served from React Query cache)
+- Background refetch: Happens automatically without blocking UI
+
 ### Writing Data Flow
+
+The diagram below shows how data is written to the database. **Read the explanation** for a complete understanding of the flow, including error handling.
 
 ```mermaid
 sequenceDiagram
@@ -508,7 +718,85 @@ sequenceDiagram
     end
 ```
 
+**Real-world scenario: User adds a new artist**
+
+1. **User fills form** - User enters artist name "example_artist", tag "tag_name", selects type "tag", and clicks "Add".
+
+2. **Form submission** - React component calls:
+   ```typescript
+   const handleAddArtist = async (name, tag, type) => {
+     await window.api.addArtist({ name, tag, type, provider: "rule34" });
+   };
+   ```
+
+3. **IPC call** - Request goes through IPC bridge to Main Process.
+
+4. **Validation** - The `ArtistsController` validates input using Zod schema:
+   ```typescript
+   // Zod schema checks:
+   // - name is non-empty string
+   // - tag is non-empty string
+   // - apiEndpoint is valid URL
+   ```
+
+5. **Two paths:**
+
+   **Path A: Validation Fails**
+   - Zod throws validation error
+   - `BaseController` catches it and returns user-friendly error
+   - Promise rejects in Renderer
+   - Component shows error message to user
+   - **No database write happens**
+
+   **Path B: Validation Succeeds**
+   - Controller calls service: `dbService.addArtist(validatedData)`
+   - Service executes Drizzle insert:
+     ```typescript
+     await db.insert(artists).values({
+       name: "example_artist",
+       tag: "tag_name",
+       // ... other fields
+     }).returning();
+     ```
+   - Database returns the new artist with generated ID
+   - Response flows back to Renderer
+
+6. **Cache invalidation** - On success, component invalidates React Query cache:
+   ```typescript
+   queryClient.invalidateQueries({ queryKey: ["artists"] });
+   ```
+
+7. **Automatic refetch** - React Query automatically refetches `["artists"]` because cache was invalidated.
+
+8. **UI updates** - New artist appears in the list automatically (no manual state update needed).
+
+**Why this pattern?**
+
+- **Validation first** - Invalid data never reaches database
+- **Type safety** - TypeScript + Zod ensure data correctness
+- **Automatic UI sync** - Cache invalidation ensures UI always shows latest data
+- **Error handling** - User-friendly errors, not technical stack traces
+
+**Error handling example:**
+
+```typescript
+try {
+  await window.api.addArtist(data);
+  // Success - cache invalidation happens automatically
+} catch (error) {
+  // Error could be:
+  // - Validation error: "Username is required"
+  // - Database error: "Tag already exists"
+  // - Network error: "Failed to connect"
+  
+  log.error("Failed to add artist:", error);
+  // Show error toast to user
+}
+```
+
 ### Synchronization Flow
+
+The diagram below shows how background synchronization works. **Read the explanation** to understand the complete async flow with progress updates.
 
 ```mermaid
 sequenceDiagram
@@ -553,6 +841,105 @@ sequenceDiagram
     ReactUI->>ReactUI: Show Completion
     ReactUI->>User: Sync Complete
 ```
+
+**Real-world scenario: User clicks "Sync All" button**
+
+1. **User action** - User clicks "Sync All" button in the sidebar or Tracked page.
+
+2. **IPC call** - Component calls `window.api.syncAll()`. This method returns **immediately** (doesn't wait for sync to complete) because sync runs in the background.
+
+3. **Sync service starts** - The `SyncService` begins processing artists asynchronously. The UI shows "Syncing..." indicator.
+
+4. **For each artist, the service:**
+
+   a. **Gets artist data** from database:
+      ```typescript
+      const artists = await db.query.artists.findMany();
+      ```
+
+   b. **Decrypts API key** - The encrypted API key is decrypted using Electron's `safeStorage` API. This happens in Main Process only (secure).
+
+   c. **Fetches posts from API** - Makes HTTP request to Rule34.xxx API:
+      ```
+      GET https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=tag_name&limit=1000
+      ```
+
+   d. **Maps API response** - Converts API JSON format to database schema format.
+
+   e. **Rate limiting** - Waits 1.5 seconds before processing next artist (prevents API abuse).
+
+   f. **Bulk upsert** - Saves posts to database using `ON CONFLICT` handling (updates existing, inserts new):
+      ```typescript
+      await db.insert(posts).values(newPosts)
+        .onConflictDoUpdate({
+          target: [posts.artistId, posts.postId],
+          set: { /* update fields */ }
+        });
+      ```
+
+   g. **Updates artist** - Updates artist's `lastPostId` and `newPostsCount`.
+
+   h. **Progress event** - Emits IPC event: `emit('sync:progress', 'Syncing artist_name...')`
+
+5. **UI updates in real-time** - React component listens to progress events:
+   ```typescript
+   useEffect(() => {
+     const unsubscribe = window.api.onSyncProgress((message) => {
+       setSyncMessage(message); // Update progress text
+     });
+     return () => unsubscribe();
+   }, []);
+   ```
+
+6. **Completion** - When all artists are processed, service emits `sync:end` event. UI shows "Sync complete" message.
+
+**Why async with events?**
+
+- **Non-blocking** - UI remains responsive during sync
+- **Progress feedback** - User sees real-time progress
+- **Error handling** - Individual artist failures don't stop entire sync
+- **Resumable** - Can stop and resume sync later
+
+**Example: Handling sync events**
+
+```typescript
+// In component
+const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+useEffect(() => {
+  const unsubscribeStart = window.api.onSyncStart(() => {
+    setSyncMessage("Starting sync...");
+  });
+
+  const unsubscribeProgress = window.api.onSyncProgress((message) => {
+    setSyncMessage(message); // "Syncing artist_name..."
+  });
+
+  const unsubscribeEnd = window.api.onSyncEnd(() => {
+    setSyncMessage("Sync complete!");
+    // Refresh artist list to show new posts count
+    queryClient.invalidateQueries({ queryKey: ["artists"] });
+  });
+
+  const unsubscribeError = window.api.onSyncError((error) => {
+    setSyncMessage(`Sync error: ${error}`);
+  });
+
+  return () => {
+    unsubscribeStart();
+    unsubscribeProgress();
+    unsubscribeEnd();
+    unsubscribeError();
+  };
+}, []);
+```
+
+**Performance considerations:**
+
+- **Rate limiting** - 1.5s delay between artists prevents API bans
+- **Bulk operations** - Posts are inserted in batches (200 per batch) for efficiency
+- **Incremental sync** - Only fetches posts newer than `lastPostId` (not all posts)
+- **Background execution** - Sync doesn't block UI or other operations
 
 ## Database Architecture
 
