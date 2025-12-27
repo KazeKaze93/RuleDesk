@@ -111,18 +111,51 @@ export function useViewerController({
       const newState = await window.api.togglePostFavorite(post.id);
       setIsFavorited(newState);
 
-      const queryKey = ["posts", post.artistId];
-      queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) =>
-            page.map((p) =>
-              p.id === post.id ? { ...p, isFavorited: newState } : p
-            )
-          ),
-        };
-      });
+      // Update all relevant query caches using setQueriesData
+      // This updates all queries with prefix ["posts"] (artist galleries and favorites)
+      queryClient.setQueriesData<InfiniteData<Post[]>>(
+        { queryKey: ["posts"], exact: false },
+        (old, { queryKey }) => {
+          if (!old) return old;
+
+          // Check if this is the favorites query
+          const isFavoritesQuery = 
+            Array.isArray(queryKey) && 
+            queryKey.length === 2 && 
+            queryKey[1] === "favorites";
+
+          // Special handling for favorites: remove post if unfavorited
+          if (isFavoritesQuery && !newState) {
+            return {
+              ...old,
+              pages: old.pages
+                .map((page) => page.filter((p) => p.id !== post.id))
+                .filter((page) => page.length > 0),
+            };
+          }
+
+          // For all other queries (artist galleries), update the post
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((p) =>
+                p.id === post.id ? { ...p, isFavorited: newState } : p
+              )
+            ),
+          };
+        }
+      );
+
+      // Invalidate favorites query if removing from favorites or post not in cache
+      const favoritesQueryKey = ["posts", "favorites"];
+      const oldFavoritesData = queryClient.getQueryData<InfiniteData<Post[]>>(favoritesQueryKey);
+      const foundInCache = oldFavoritesData?.pages.some((page) =>
+        page.some((p) => p.id === post.id)
+      );
+      
+      if (!newState || !foundInCache) {
+        queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
+      }
     } catch (error) {
       setIsFavorited(previousState);
       const errorMessage =
