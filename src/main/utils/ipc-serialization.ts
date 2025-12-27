@@ -7,16 +7,57 @@
  * Performance: This function is synchronous and performs recursive object traversal.
  * For large datasets (1000+ records), consider batching or using Worker threads.
  * However, for typical IPC responses (50-100 records per request), this is acceptable.
+ * 
+ * Security: Uses proper type guards and runtime checks instead of `as any` to prevent
+ * unexpected data types from being serialized through IPC.
  */
 
 /**
+ * Type guard to check if value is a Date object.
+ */
+function isDate(value: unknown): value is Date {
+  return value instanceof Date;
+}
+
+/**
+ * Type guard to check if value is a plain object (not array, not null).
+ */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !isDate(value)
+  );
+}
+
+/**
+ * Type guard to check if value is a serializable primitive.
+ * IPC can only serialize: string, number, boolean, null, undefined.
+ */
+function isSerializablePrimitive(
+  value: unknown
+): value is string | number | boolean | null | undefined {
+  const type = typeof value;
+  return (
+    type === "string" ||
+    type === "number" ||
+    type === "boolean" ||
+    value === null ||
+    value === undefined
+  );
+}
+
+/**
  * Recursively converts Date objects to numbers (timestamps in milliseconds) for IPC serialization.
- * Handles objects, arrays, and nested structures.
+ * Handles objects, arrays, and nested structures with proper type guards and runtime checks.
  * 
- * Type-safe: Uses TypeScript's type system to ensure correct transformation.
+ * Type-safe: Uses TypeScript's type system with proper type guards instead of `as any`.
+ * Runtime-safe: Validates data types at runtime to prevent unexpected values from being serialized.
  * 
  * @param data - Data to convert (object, array, or primitive)
  * @returns IPC-safe data with Date objects converted to numbers
+ * @throws {TypeError} If data contains non-serializable types (functions, symbols, etc.)
  * 
  * @example
  * ```typescript
@@ -43,34 +84,45 @@ export function toIpcSafe<T>(data: T): T extends Date
     }
   : T {
   // Handle Date objects
-  if (data instanceof Date) {
-    return data.getTime() as any;
+  if (isDate(data)) {
+    return data.getTime() as ReturnType<typeof toIpcSafe<T>>;
   }
 
-  // Handle null/undefined
+  // Handle null/undefined (already serializable)
   if (data === null || data === undefined) {
-    return data as any;
+    return data as ReturnType<typeof toIpcSafe<T>>;
   }
 
   // Handle arrays
   if (Array.isArray(data)) {
-    return data.map((item) => toIpcSafe(item)) as any;
+    return data.map((item) => toIpcSafe(item)) as ReturnType<
+      typeof toIpcSafe<T>
+    >;
   }
 
-  // Handle objects
-  if (typeof data === "object") {
-    const result: any = {};
+  // Handle plain objects
+  if (isPlainObject(data)) {
+    const result: Record<string, unknown> = {};
     for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
         const value = data[key];
         // Convert Date to number, or recursively process nested structures
-        result[key] = value instanceof Date ? value.getTime() : toIpcSafe(value);
+        result[key] = isDate(value) ? value.getTime() : toIpcSafe(value);
       }
     }
-    return result as any;
+    return result as ReturnType<typeof toIpcSafe<T>>;
   }
 
-  // Handle primitives (string, number, boolean, etc.)
-  return data as any;
+  // Handle serializable primitives (string, number, boolean)
+  if (isSerializablePrimitive(data)) {
+    return data as ReturnType<typeof toIpcSafe<T>>;
+  }
+
+  // Reject non-serializable types (functions, symbols, BigInt, etc.)
+  // This prevents unexpected data from being sent through IPC
+  throw new TypeError(
+    `Cannot serialize non-serializable type: ${typeof data}. ` +
+      `IPC can only serialize: string, number, boolean, null, undefined, Date, arrays, and plain objects.`
+  );
 }
 
