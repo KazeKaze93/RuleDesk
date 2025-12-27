@@ -11,13 +11,43 @@ import type * as schema from "../../db/schema";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
+/**
+ * Enhanced Zod schema for saving settings with strict validation.
+ * Rule34 user IDs are numeric strings (e.g., "12345").
+ * API keys must meet minimum security requirements.
+ */
 const SaveSettingsSchema = z.object({
-  userId: z.string(), // Rule34 user ID is usually numeric string, strict it if needed
-  apiKey: z.string().min(10), // Basic length check
+  userId: z
+    .string()
+    .regex(/^\d+$/, "User ID must be a numeric string")
+    .min(1, "User ID cannot be empty")
+    .max(20, "User ID is too long"),
+  apiKey: z
+    .string()
+    .min(10, "API key must be at least 10 characters")
+    .max(200, "API key is too long")
+    .refine((val) => val.trim().length > 0, "API key cannot be whitespace only"),
 });
 
-// Zod schema for IpcSettings response validation
-// Ensures data integrity before sending to renderer process
+/**
+ * Zod schema for database settings (internal representation).
+ * Maps database schema to validated TypeScript types.
+ */
+const DbSettingsSchema = z.object({
+  id: z.number(),
+  userId: z.string().nullable(),
+  encryptedApiKey: z.string().nullable(),
+  isSafeMode: z.boolean().nullable(),
+  isAdultConfirmed: z.boolean().nullable(),
+  isAdultVerified: z.boolean(),
+  tosAcceptedAt: z.date().nullable(),
+});
+
+/**
+ * Zod schema for IPC settings response validation.
+ * Ensures data integrity before sending to renderer process.
+ * Maps database representation to safe IPC format (no sensitive data).
+ */
 const IpcSettingsSchema = z.object({
   userId: z.string(),
   hasApiKey: z.boolean(),
@@ -101,28 +131,37 @@ export class SettingsController extends BaseController {
         return IpcSettingsSchema.parse(defaultSettings);
       }
 
+      // Validate database record structure with Zod (fail fast if schema mismatch)
+      const validatedDbSettings = DbSettingsSchema.parse({
+        id: currentSettings.id,
+        userId: currentSettings.userId,
+        encryptedApiKey: currentSettings.encryptedApiKey,
+        isSafeMode: currentSettings.isSafeMode,
+        isAdultConfirmed: currentSettings.isAdultConfirmed,
+        isAdultVerified: currentSettings.isAdultVerified,
+        tosAcceptedAt: currentSettings.tosAcceptedAt,
+      });
+
+      // Map database representation to safe IPC format
       // Security: Do NOT return encryptedApiKey to renderer
       // Map it to boolean hasApiKey instead
       // Do NOT expose internal DB id to frontend (implementation detail)
       // Serialize Date to timestamp for IPC (Date objects become ISO strings in IPC)
-      // Note: Drizzle with mode: "timestamp" automatically converts integer to Date object
       const ipcSettings = {
-        userId: currentSettings.userId ?? "",
+        userId: validatedDbSettings.userId ?? "",
         hasApiKey: !!(
-          currentSettings.encryptedApiKey &&
-          currentSettings.encryptedApiKey.trim().length > 0
+          validatedDbSettings.encryptedApiKey &&
+          validatedDbSettings.encryptedApiKey.trim().length > 0
         ),
-        isSafeMode: currentSettings.isSafeMode ?? true,
-        isAdultConfirmed: currentSettings.isAdultConfirmed ?? false,
-        isAdultVerified: currentSettings.isAdultVerified ?? false,
-        tosAcceptedAt: currentSettings.tosAcceptedAt instanceof Date
-          ? currentSettings.tosAcceptedAt.getTime()
-          : currentSettings.tosAcceptedAt
-          ? new Date(currentSettings.tosAcceptedAt).getTime()
+        isSafeMode: validatedDbSettings.isSafeMode ?? true,
+        isAdultConfirmed: validatedDbSettings.isAdultConfirmed ?? false,
+        isAdultVerified: validatedDbSettings.isAdultVerified,
+        tosAcceptedAt: validatedDbSettings.tosAcceptedAt
+          ? validatedDbSettings.tosAcceptedAt.getTime()
           : null,
       };
 
-      // Validate with Zod before sending to renderer (fail fast if data is corrupted)
+      // Validate IPC format with Zod before sending to renderer (fail fast if data is corrupted)
       return IpcSettingsSchema.parse(ipcSettings);
     } catch (error) {
       log.error("[SettingsController] Failed to get settings:", error);
@@ -256,27 +295,36 @@ export class SettingsController extends BaseController {
         throw new Error("Failed to retrieve updated settings after confirmation");
       }
 
+      // Validate database record structure with Zod (fail fast if schema mismatch)
+      const validatedDbSettings = DbSettingsSchema.parse({
+        id: result.id,
+        userId: result.userId,
+        encryptedApiKey: result.encryptedApiKey,
+        isSafeMode: result.isSafeMode,
+        isAdultConfirmed: result.isAdultConfirmed,
+        isAdultVerified: result.isAdultVerified,
+        tosAcceptedAt: result.tosAcceptedAt,
+      });
+
+      // Map database representation to safe IPC format
       // Security: Do NOT return encryptedApiKey to renderer
       // Map it to boolean hasApiKey instead
       // Serialize Date to timestamp for IPC (Date objects become ISO strings in IPC)
-      // Note: Drizzle with mode: "timestamp" automatically converts integer to Date object
       const ipcSettings = {
-        userId: result.userId ?? "",
+        userId: validatedDbSettings.userId ?? "",
         hasApiKey: !!(
-          result.encryptedApiKey &&
-          result.encryptedApiKey.trim().length > 0
+          validatedDbSettings.encryptedApiKey &&
+          validatedDbSettings.encryptedApiKey.trim().length > 0
         ),
-        isSafeMode: result.isSafeMode ?? true,
-        isAdultConfirmed: result.isAdultConfirmed ?? false,
-        isAdultVerified: result.isAdultVerified ?? false,
-        tosAcceptedAt: result.tosAcceptedAt instanceof Date
-          ? result.tosAcceptedAt.getTime()
-          : result.tosAcceptedAt
-          ? new Date(result.tosAcceptedAt).getTime()
+        isSafeMode: validatedDbSettings.isSafeMode ?? true,
+        isAdultConfirmed: validatedDbSettings.isAdultConfirmed ?? false,
+        isAdultVerified: validatedDbSettings.isAdultVerified,
+        tosAcceptedAt: validatedDbSettings.tosAcceptedAt
+          ? validatedDbSettings.tosAcceptedAt.getTime()
           : null,
       };
 
-      // Validate with Zod before sending to renderer (fail fast if data is corrupted)
+      // Validate IPC format with Zod before sending to renderer (fail fast if data is corrupted)
       return IpcSettingsSchema.parse(ipcSettings);
     } catch (error) {
       log.error("[SettingsController] Failed to confirm legal:", error);
