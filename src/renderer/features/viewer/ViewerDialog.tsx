@@ -483,6 +483,10 @@ export const ViewerDialog = () => {
 
     if (!queue.onLoadMore) return;
 
+    // Query keys are consistent with component query keys:
+    // - Artist gallery: ["posts", artistId]
+    // - Favorites: ["posts", "favorites"]
+    // - Updates: ["posts", "updates"]
     let queryKey: unknown[] = [];
     if (queue.origin.kind === "artist") {
       queryKey = ["posts", queue.origin.artistId];

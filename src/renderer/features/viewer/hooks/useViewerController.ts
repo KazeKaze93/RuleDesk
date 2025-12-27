@@ -80,6 +80,7 @@ export function useViewerController({
     }
 
     // Update updates feed cache
+    // Note: Query key ["posts", "updates"] is consistent with Updates.tsx
     const updatesQueryKey = ["posts", "updates"];
     queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) => {
       if (!old) return old;
