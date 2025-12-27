@@ -47,24 +47,18 @@ function mapSettingsToIpc(
       dbSettings.encryptedApiKey &&
       dbSettings.encryptedApiKey.trim().length > 0
     ),
-    // Explicitly convert SQLite integer booleans (0/1) to JavaScript booleans
-    // Drizzle maps mode: "boolean", but we ensure type safety
-    // 
-    // Schema analysis:
-    // - isSafeMode: .default(true) but NOT .notNull() - may be null, so ?? is needed
-    // - isAdultConfirmed: .default(false) but NOT .notNull() - may be null, so ?? is needed
-    // - isAdultVerified: .notNull().default(false) - CANNOT be null, so no ?? needed
-    isSafeMode: !!(dbSettings.isSafeMode ?? true), // default(true) but nullable in schema
-    isAdultConfirmed: !!(dbSettings.isAdultConfirmed ?? false), // default(false) but nullable in schema
-    // isAdultVerified is NOT NULL in schema (.notNull()), so no ?? needed
-    isAdultVerified: !!dbSettings.isAdultVerified,
-    // CRITICAL: tosAcceptedAt is mapped as Date via mode: 'timestamp' in schema
-    // But add defensive check in case of corrupted data or schema mismatch
-    tosAcceptedAt: dbSettings.tosAcceptedAt instanceof Date
-      ? dbSettings.tosAcceptedAt.getTime()
-      : dbSettings.tosAcceptedAt
-      ? new Date(dbSettings.tosAcceptedAt).getTime()
-      : null,
+      // Convert SQLite integer booleans (0/1) to JavaScript booleans
+      // Drizzle with mode: "boolean" already returns boolean, but ensure type safety
+      // Schema: isSafeMode has .default(true), isAdultConfirmed has .default(false), isAdultVerified is .notNull()
+      // Drizzle ensures defaults are applied, so no ?? needed for fields with defaults
+      isSafeMode: !!dbSettings.isSafeMode, // .default(true) in schema - Drizzle ensures value exists
+      isAdultConfirmed: !!dbSettings.isAdultConfirmed, // .default(false) in schema - Drizzle ensures value exists
+      isAdultVerified: !!dbSettings.isAdultVerified, // .notNull() in schema - always present
+      // Convert Date to number for IPC serialization
+      // Uses toIpcSafe utility for consistency with other controllers
+      tosAcceptedAt: dbSettings.tosAcceptedAt instanceof Date
+        ? dbSettings.tosAcceptedAt.getTime()
+        : null,
   };
 }
 

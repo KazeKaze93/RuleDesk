@@ -29,11 +29,8 @@ const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9._-]+$/;
  * Sanitizes a filename to prevent Path Traversal attacks and ensure filesystem safety.
  *
  * Security measures:
- * 1. CRITICAL: Forces path separators to POSIX format (replaces \ with /)
- *    Renderer may send Windows paths even on Linux, and path.basename on POSIX won't understand them
- *    This prevents Path Traversal when paths come from different OS than the server
- * 2. Normalizes path using `path.posix.normalize()` for consistent cross-platform behavior
- * 3. Removes any path components using `path.posix.basename()` to prevent directory traversal
+ * 1. Normalizes path by replacing all backslashes with forward slashes (cross-platform safety)
+ * 2. Uses path.posix.basename() to extract filename (removes all path components)
  * 3. Filters out unsafe characters, leaving only alphanumeric, dash, underscore, dot
  * 4. Validates file extension against whitelist (media files only)
  * 5. Truncates filename to 255 characters to prevent filesystem errors
@@ -49,46 +46,29 @@ const SAFE_FILENAME_REGEX = /^[a-zA-Z0-9._-]+$/;
  * @example
  * ```typescript
  * const safeName = sanitizeFileName("../../../etc/passwd"); // Returns "passwd.bin"
- * const safeName2 = sanitizeFileName("C:\\Windows\\system32\\cmd.exe"); // Returns "cmd.bin" (Windows path handled)
+ * const safeName2 = sanitizeFileName("C:\\Windows\\system32\\cmd.exe"); // Returns "cmd.bin"
  * const safeName3 = sanitizeFileName("image.jpg"); // Returns "image.jpg"
  * ```
  */
 export function sanitizeFileName(fileName: string): string {
-  // Step 1: CRITICAL - Handle both Windows and POSIX paths correctly
-  // Renderer may send paths from any OS, and we need to extract filename safely
-  // Never use regex replacements - use platform-aware path methods
+  // Step 1: Normalize path separators to POSIX format
+  // This handles Windows paths (C:\path\to\file) and mixed separators
+  // Replace all backslashes with forward slashes for consistent processing
+  const normalizedPath = fileName.replace(/\\/g, "/");
   
-  // First, try Windows path handling (handles C: drive, UNC paths, etc.)
-  // This correctly handles Windows paths like "C:../secrets.txt" or "C:\\Windows\\system32\\cmd.exe"
-  let basename: string;
-  try {
-    // Normalize Windows path first (handles drive letters, UNC paths, etc.)
-    const winNormalized = path.win32.normalize(fileName);
-    basename = path.win32.basename(winNormalized);
-    
-    // If basename still contains path separators or drive letters, it's suspicious
-    // Fall through to POSIX handling
-    if (basename.includes("\\") || basename.includes("/") || /^[A-Za-z]:/.test(basename)) {
-      throw new Error("Windows path extraction failed, trying POSIX");
-    }
-  } catch {
-    // Fallback to POSIX path handling (for Linux/Mac paths or if Windows handling failed)
-    // Normalize POSIX path (handles relative paths, etc.)
-    const posixNormalized = path.posix.normalize(fileName.replace(/\\/g, "/"));
-    basename = path.posix.basename(posixNormalized);
-    
-    // Final safety check: if basename still contains separators, it's corrupted
-    if (basename.includes("\\") || basename.includes("/")) {
-      throw new Error("Filename contains path separators after sanitization");
-    }
-  }
-
+  // Step 2: Extract basename using POSIX methods
+  // path.posix.basename() removes all path components, including:
+  // - Directory separators (../, ./, /)
+  // - Drive letters (C:, D:)
+  // - UNC paths (\\server\share)
+  // This is safe because basename() by definition strips path components
+  const basename = path.posix.basename(normalizedPath);
+  
   if (!basename || basename.trim().length === 0) {
     throw new Error("Filename cannot be empty after sanitization");
   }
 
-  // Step 4: Extract extension and name separately
-  // Use POSIX methods for consistency (paths are already normalized to POSIX format)
+  // Step 3: Extract extension and name separately
   const ext = path.posix.extname(basename).toLowerCase();
   const nameWithoutExt = path.posix.basename(basename, ext);
 

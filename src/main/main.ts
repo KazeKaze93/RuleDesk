@@ -1,7 +1,6 @@
 import { app, BrowserWindow, dialog } from "electron";
 import path from "path";
 import { mkdirSync } from "fs";
-import { randomBytes } from "node:crypto";
 import log from "electron-log";
 
 // === Initialize electron-log first ===
@@ -184,40 +183,8 @@ function createLoadingWindow(): BrowserWindow {
 }
 
 /**
- * CSP nonce generated once per application session.
- * Used to allow inline styles while preventing CSS injection attacks.
- * Nonce is cryptographically secure random value that changes on each app launch.
- */
-let cspNonce: string | null = null;
-
-/**
- * Generates a cryptographically secure nonce for CSP.
- * Nonce is base64-encoded random bytes (16 bytes = 24 base64 characters).
- * 
- * @returns Base64-encoded nonce string
- */
-function generateCSPNonce(): string {
-  return randomBytes(16).toString("base64");
-}
-
-/**
- * Gets or generates CSP nonce for the current session.
- * Nonce is generated once per application launch.
- * 
- * @returns CSP nonce string
- */
-function getCSPNonce(): string {
-  if (cspNonce === null) {
-    cspNonce = generateCSPNonce();
-    logger.info("Main: CSP nonce generated for this session");
-  }
-  return cspNonce;
-}
-
-/**
  * Генерирует Content Security Policy в зависимости от режима работы приложения.
  * В режиме разработки ослабляет политику для поддержки HMR (Vite).
- * В продакшене использует nonce-based CSP для предотвращения CSS injection.
  * 
  * Кешируется один раз при инициализации для избежания оверхеда на каждый запрос.
  */
@@ -245,15 +212,15 @@ function getCSPPolicy(): string {
     ? "connect-src 'self' https://api.rule34.xxx ws: ws://localhost:* http://localhost:*;" // WebSocket для HMR
     : "connect-src 'self' https://api.rule34.xxx;"; // Только необходимые источники в продакшене
 
-  // CRITICAL SECURITY: Use nonce-based CSP in production to prevent CSS injection attacks
-  // CSS injection can steal data via attribute selectors and background-image: url(...)
-  // For NSFW client with external content, this is essential
-  // 
-  // In dev mode, allow 'unsafe-inline' for HMR compatibility
-  // In production, use nonce-based CSP (nonce is injected into HTML via webRequest)
-  const styleSrc = isDev
-    ? "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;" // Dev: HMR compatibility
-    : `style-src 'self' 'nonce-${getCSPNonce()}' https://fonts.googleapis.com;`; // Production: Nonce-based CSP
+  // NOTE: For desktop Electron app, 'unsafe-inline' for styles is acceptable
+  // Nonce-based CSP requires nonce injection at HTML build time, which is complex with Vite
+  // Hash-based CSP is also complex as it requires pre-computing hashes of all inline styles
+  // For desktop app (not web), CSS injection risk is lower than in web applications
+  // If you need stricter CSP, consider:
+  // 1. Moving all styles to external CSS files (no inline styles)
+  // 2. Using webRequest.onBeforeRequest to inject nonce into HTML body (complex)
+  // 3. Modifying Vite build to inject nonce into HTML template
+  const styleSrc = "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;";
 
   cachedCSPPolicy =
     "default-src 'self'; " +
@@ -351,39 +318,6 @@ async function initializeAppAndWindow() {
       "http://localhost/*", // Localhost with path (dev mode with Vite HMR)
       "http://127.0.0.1/*", // 127.0.0.1 with path (dev mode with Vite HMR)
     ];
-    
-    // Inject nonce into HTML <style> tags for nonce-based CSP (production only)
-    if (!isDev) {
-      const nonce = getCSPNonce();
-      mainWindow.webContents.on("did-finish-load", () => {
-        // Inject nonce into all <style> tags for nonce-based CSP
-        mainWindow?.webContents.executeJavaScript(`
-          (function() {
-            const nonce = ${JSON.stringify(nonce)};
-            document.querySelectorAll('style').forEach(function(style) {
-              if (!style.nonce) {
-                style.nonce = nonce;
-              }
-            });
-            // Also handle dynamically added styles
-            const observer = new MutationObserver(function(mutations) {
-              mutations.forEach(function(mutation) {
-                mutation.addedNodes.forEach(function(node) {
-                  if (node.nodeType === 1 && node.tagName === 'STYLE') {
-                    if (!node.nonce) {
-                      node.nonce = nonce;
-                    }
-                  }
-                });
-              });
-            });
-            observer.observe(document.head, { childList: true, subtree: true });
-          })();
-        `).catch((error) => {
-          logger.error("Failed to inject CSP nonce into styles:", error);
-        });
-      });
-    }
     
     // Apply CSP headers to responses
     mainWindow.webContents.session.webRequest.onHeadersReceived(

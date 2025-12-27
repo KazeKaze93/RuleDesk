@@ -10,6 +10,7 @@ import { PROVIDER_IDS, getProvider, type ProviderId, type SearchResults } from "
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
+import { toIpcSafe } from "../../utils/ipc-serialization";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -20,10 +21,16 @@ type NewArtist = InferInsertModel<typeof artists>;
 /**
  * IPC-safe Artist type with Date fields converted to numbers (timestamps in milliseconds).
  * Required for Electron 39+ IPC serialization compatibility.
+ * 
+ * Uses TypeScript utility types to automatically map Date fields to numbers.
+ * This ensures type safety and eliminates manual field enumeration.
  */
-type IpcArtist = Omit<Artist, "lastChecked" | "createdAt"> & {
-  lastChecked: number | null;
-  createdAt: number;
+type IpcArtist = {
+  [K in keyof Artist]: Artist[K] extends Date
+    ? number
+    : Artist[K] extends Date | null
+    ? number | null
+    : Artist[K];
 };
 
 /**
@@ -154,18 +161,9 @@ export class ArtistsController extends BaseController {
       });
       log.info(`[ArtistsController] Retrieved ${result.length} artists`);
       
-      // CRITICAL: Convert Date objects to numbers for Electron 39+ IPC serialization
-      // Electron 30+ uses V8 Structured Clone Algorithm more strictly
-      // Date objects may not serialize correctly, so convert to timestamps (milliseconds)
-      return result.map((artist) => ({
-        ...artist,
-        lastChecked: artist.lastChecked instanceof Date 
-          ? artist.lastChecked.getTime() 
-          : artist.lastChecked ?? null,
-        createdAt: artist.createdAt instanceof Date 
-          ? artist.createdAt.getTime() 
-          : artist.createdAt,
-      }));
+      // Convert Date objects to numbers for Electron 39+ IPC serialization
+      // Uses universal toIpcSafe utility to avoid code duplication
+      return toIpcSafe(result) as IpcArtist[];
     } catch (error) {
       log.error("[ArtistsController] Failed to get artists:", error);
       throw new Error("Failed to fetch artists");
@@ -221,16 +219,8 @@ export class ArtistsController extends BaseController {
       const inserted = result[0];
       log.info(`[ArtistsController] Artist added/updated: ${inserted.name}`);
       
-      // CRITICAL: Convert Date objects to numbers for Electron 39+ IPC serialization
-      return {
-        ...inserted,
-        lastChecked: inserted.lastChecked instanceof Date 
-          ? inserted.lastChecked.getTime() 
-          : inserted.lastChecked ?? null,
-        createdAt: inserted.createdAt instanceof Date 
-          ? inserted.createdAt.getTime() 
-          : inserted.createdAt,
-      };
+      // Convert Date objects to numbers for Electron 39+ IPC serialization
+      return toIpcSafe(inserted) as IpcArtist;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       log.error("[ArtistsController] Failed to add artist:", error);
@@ -286,16 +276,8 @@ export class ArtistsController extends BaseController {
         `[ArtistsController] Search "${query}" returned ${result.length} results`
       );
       
-      // CRITICAL: Convert Date objects to numbers for Electron 39+ IPC serialization
-      return result.map((artist) => ({
-        ...artist,
-        lastChecked: artist.lastChecked instanceof Date 
-          ? artist.lastChecked.getTime() 
-          : artist.lastChecked ?? null,
-        createdAt: artist.createdAt instanceof Date 
-          ? artist.createdAt.getTime() 
-          : artist.createdAt,
-      }));
+      // Convert Date objects to numbers for Electron 39+ IPC serialization
+      return toIpcSafe(result) as IpcArtist[];
     } catch (error) {
       log.error("[ArtistsController] Search failed:", error);
       return [];
