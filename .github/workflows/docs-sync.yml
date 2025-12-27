@@ -1,0 +1,50 @@
+name: 📚 Docs i18n Sync
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "README.md"
+      - "docs/**/*.md"
+      - ".github/scripts/translate_docs.py"
+
+permissions:
+  contents: write
+
+jobs:
+  translate:
+    name: Generate Russian Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛡️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: 📦 Install dependencies
+        run: pip install google-generativeai
+
+      - name: 🤖 Run Translator
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python .github/scripts/translate_docs.py
+
+      - name: 🚀 Commit Artifacts
+        run: |
+          git config --global user.name "RuleDesk Bot"
+          git config --global user.email "bot@ruledesk.local"
+
+          # Добавляем generated папку
+          git add .docs-i18n/
+
+          # Проверяем, есть ли что коммитить
+          if git diff --staged --quiet; then
+            echo "No translation changes detected."
+            exit 0
+          fi
+
+          git commit -m "docs: sync ru translations [skip ci]"
+          git push
