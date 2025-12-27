@@ -2,6 +2,8 @@
 
 > A modern, secure desktop companion built on Electron and React/TypeScript for browsing and organizing booru-style imageboard content via its public API. Designed for performance and maintainability.
 
+**🌐 Languages:** [English](README.md) | [Русский](.docs-i18n/ru/README.md)
+
 ---
 
 ## 📑 Table of Contents
