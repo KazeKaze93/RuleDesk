@@ -5,6 +5,15 @@ import { eq, desc, count, and, like } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, type Post } from "../../db/schema";
+
+/**
+ * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
+ * Required for Electron 39+ IPC serialization compatibility.
+ */
+type IpcPost = Omit<Post, "publishedAt" | "createdAt"> & {
+  publishedAt: number;
+  createdAt: number;
+};
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
@@ -108,7 +117,7 @@ export class PostsController extends BaseController {
   private async getPosts(
     _event: IpcMainInvokeEvent,
     params: GetPostsParams
-  ): Promise<Post[]> {
+  ): Promise<IpcPost[]> {
     const { artistId, page, filters, limit } = params;
     const offset = (page - 1) * limit;
 
@@ -149,7 +158,19 @@ export class PostsController extends BaseController {
       log.info(
         `[PostsController] Retrieved ${result.length} posts for artist ${artistId} (page ${page})`
       );
-      return result;
+      
+      // CRITICAL: Convert Date objects to numbers for Electron 39+ IPC serialization
+      // Electron 30+ uses V8 Structured Clone Algorithm more strictly
+      // Date objects may not serialize correctly, so convert to timestamps (milliseconds)
+      return result.map((post) => ({
+        ...post,
+        publishedAt: post.publishedAt instanceof Date 
+          ? post.publishedAt.getTime() 
+          : post.publishedAt,
+        createdAt: post.createdAt instanceof Date 
+          ? post.createdAt.getTime() 
+          : post.createdAt,
+      }));
     } catch (error) {
       log.error("[PostsController] Failed to get posts:", error);
       // Re-throw original error to preserve stack trace and context

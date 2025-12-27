@@ -1,35 +1,17 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
-import { z } from "zod";
 import type { InferSelectModel } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { encrypt } from "../../lib/crypto";
 import { IPC_CHANNELS } from "../channels";
-import type { IpcSettings } from "../../../shared/schemas/settings";
+import { SaveSettingsSchema, type IpcSettings, type SaveSettings } from "../../../shared/schemas/settings";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
+import { z } from "zod";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
-
-/**
- * Enhanced Zod schema for saving settings with strict validation.
- * Rule34 user IDs are numeric strings (e.g., "12345").
- * API keys must meet minimum security requirements.
- */
-const SaveSettingsSchema = z.object({
-  userId: z
-    .string()
-    .regex(/^\d+$/, "User ID must be a numeric string")
-    .min(1, "User ID cannot be empty")
-    .max(20, "User ID is too long"),
-  apiKey: z
-    .string()
-    .min(10, "API key must be at least 10 characters")
-    .max(200, "API key is too long")
-    .refine((val) => val.trim().length > 0, "API key cannot be whitespace only"),
-});
 
 /**
  * Default IPC settings used as fallback when no settings exist in database.
@@ -67,10 +49,14 @@ function mapSettingsToIpc(
     ),
     // Explicitly convert SQLite integer booleans (0/1) to JavaScript booleans
     // Drizzle maps mode: "boolean", but we ensure type safety
-    // Note: Fields with default() may still be null if explicitly set, so ?? is needed
-    isSafeMode: !!(dbSettings.isSafeMode ?? true), // default(true) in schema, but may be null
-    isAdultConfirmed: !!(dbSettings.isAdultConfirmed ?? false), // default(false) in schema, but may be null
-    // isAdultVerified is NOT NULL in schema, so no ?? needed, but ensure boolean conversion
+    // 
+    // Schema analysis:
+    // - isSafeMode: .default(true) but NOT .notNull() - may be null, so ?? is needed
+    // - isAdultConfirmed: .default(false) but NOT .notNull() - may be null, so ?? is needed
+    // - isAdultVerified: .notNull().default(false) - CANNOT be null, so no ?? needed
+    isSafeMode: !!(dbSettings.isSafeMode ?? true), // default(true) but nullable in schema
+    isAdultConfirmed: !!(dbSettings.isAdultConfirmed ?? false), // default(false) but nullable in schema
+    // isAdultVerified is NOT NULL in schema (.notNull()), so no ?? needed
     isAdultVerified: !!dbSettings.isAdultVerified,
     // CRITICAL: tosAcceptedAt is mapped as Date via mode: 'timestamp' in schema
     // But add defensive check in case of corrupted data or schema mismatch
@@ -161,7 +147,7 @@ export class SettingsController extends BaseController {
    */
   private async saveSettings(
     _event: IpcMainInvokeEvent,
-    data: z.infer<typeof SaveSettingsSchema>
+    data: SaveSettings
   ): Promise<boolean> {
     const { userId, apiKey } = data;
 

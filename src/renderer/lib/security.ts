@@ -34,14 +34,16 @@ const PURIFY_CONFIG: Config = {
   // Disable dangerous protocols (javascript:, data:, etc.)
   ALLOW_DATA_ATTR: false,
   ALLOW_UNKNOWN_PROTOCOLS: false,
-  // Validate URLs: only allow http, https, blob, and relative URLs
-  // CRITICAL SECURITY: data: protocol is FORBIDDEN to prevent XSS via data:image/svg+xml with embedded scripts
-  // For Booru content, we only need external URLs (http/https) and blob: for dynamically generated images
+  // Validate URLs: only allow http, https, and relative URLs
+  // CRITICAL SECURITY: 
+  // - data: protocol is FORBIDDEN to prevent XSS via data:image/svg+xml with embedded scripts
+  // - blob: protocol is FORBIDDEN to prevent malicious blob creation in application context
+  //   If attacker can create malicious blob, they can bypass DOMPurify protection
+  // For Booru content, we only need external URLs (http/https) - no blob: needed
   // Note: If you need to support local resources (file://), add "file" to the regex (but validate carefully)
-  // Current regex allows: http, https, mailto, tel, callto, sms, cid, xmpp, blob, and relative URLs
-  // blob: protocol is allowed for dynamically generated images (e.g., canvas.toBlob())
+  // Current regex allows: http, https, mailto, tel, callto, sms, cid, xmpp, and relative URLs
   ALLOWED_URI_REGEXP:
-    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|blob):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
   // Return as string (not DOM node)
   RETURN_DOM: false,
   RETURN_DOM_FRAGMENT: false,

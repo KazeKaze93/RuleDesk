@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog } from "electron";
 import path from "path";
 import { mkdirSync } from "fs";
+import { randomBytes } from "node:crypto";
 import log from "electron-log";
 
 // === Initialize electron-log first ===
@@ -127,6 +128,7 @@ function createLoadingWindow(): BrowserWindow {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true, // CRITICAL: Enable sandbox for Electron 39+ security
     },
   });
 
@@ -182,8 +184,40 @@ function createLoadingWindow(): BrowserWindow {
 }
 
 /**
+ * CSP nonce generated once per application session.
+ * Used to allow inline styles while preventing CSS injection attacks.
+ * Nonce is cryptographically secure random value that changes on each app launch.
+ */
+let cspNonce: string | null = null;
+
+/**
+ * Generates a cryptographically secure nonce for CSP.
+ * Nonce is base64-encoded random bytes (16 bytes = 24 base64 characters).
+ * 
+ * @returns Base64-encoded nonce string
+ */
+function generateCSPNonce(): string {
+  return randomBytes(16).toString("base64");
+}
+
+/**
+ * Gets or generates CSP nonce for the current session.
+ * Nonce is generated once per application launch.
+ * 
+ * @returns CSP nonce string
+ */
+function getCSPNonce(): string {
+  if (cspNonce === null) {
+    cspNonce = generateCSPNonce();
+    logger.info("Main: CSP nonce generated for this session");
+  }
+  return cspNonce;
+}
+
+/**
  * Генерирует Content Security Policy в зависимости от режима работы приложения.
  * В режиме разработки ослабляет политику для поддержки HMR (Vite).
+ * В продакшене использует nonce-based CSP для предотвращения CSS injection.
  * 
  * Кешируется один раз при инициализации для избежания оверхеда на каждый запрос.
  */
@@ -211,18 +245,15 @@ function getCSPPolicy(): string {
     ? "connect-src 'self' https://api.rule34.xxx ws: ws://localhost:* http://localhost:*;" // WebSocket для HMR
     : "connect-src 'self' https://api.rule34.xxx;"; // Только необходимые источники в продакшене
 
-  // CRITICAL SECURITY: style-src 'unsafe-inline' allows CSS injection attacks
+  // CRITICAL SECURITY: Use nonce-based CSP in production to prevent CSS injection attacks
   // CSS injection can steal data via attribute selectors and background-image: url(...)
-  // For NSFW client with external content, this is a security risk
+  // For NSFW client with external content, this is essential
   // 
-  // Options:
-  // 1. Use nonce-based CSP (requires generating nonce per request and injecting into HTML)
-  // 2. Use hash-based CSP (requires pre-computing hashes of all inline styles)
-  // 3. Remove inline styles entirely (may break React/Tailwind)
-  // 
-  // Current compromise: Allow 'unsafe-inline' but document the risk
-  // TODO: Implement nonce-based CSP for production builds
-  const styleSrc = "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"; // ⚠️ SECURITY RISK: Allows CSS injection
+  // In dev mode, allow 'unsafe-inline' for HMR compatibility
+  // In production, use nonce-based CSP (nonce is injected into HTML via webRequest)
+  const styleSrc = isDev
+    ? "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;" // Dev: HMR compatibility
+    : `style-src 'self' 'nonce-${getCSPNonce()}' https://fonts.googleapis.com;`; // Production: Nonce-based CSP
 
   cachedCSPPolicy =
     "default-src 'self'; " +
@@ -303,23 +334,61 @@ async function initializeAppAndWindow() {
     // This is more efficient than using session.defaultSession, as it only applies to this window's requests
     // CRITICAL: Only apply CSP to our application's requests, not to external resources
     // This prevents breaking third-party content (WebView, external APIs) while securing our app
-    // 
-    // ⚠️ IMPORTANT: The filter includes "file://*" which applies CSP to ALL local file:// URLs.
-    // If you plan to use WebView or open external local files in this window, they will also get this CSP.
-    // This may break third-party local content. If needed, restrict the filter to specific paths:
-    // - "file:///path/to/app/*" for app-specific files only
-    // - Or create separate BrowserWindow with different session for external content
-    // 
-    // Performance: Use filter to reduce callback invocations for external resources
-    // This avoids string operations on every image/script chunk from Booru
-    // Electron URL patterns require proper format: protocol://host/path (use * for wildcards)
+    
+    // Get application path to restrict CSP to app-specific files only
+    // This prevents CSP from affecting other windows, WebView, or external local files
+    const appPath = app.getAppPath();
+    // Normalize path separators for URL pattern (Windows uses \, but URLs use /)
+    const appPathNormalized = appPath.replace(/\\/g, "/");
+    // Escape special characters in path for URL pattern matching
+    const appPathEscaped = appPathNormalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    
+    // CRITICAL: Restrict CSP filter to application-specific paths only
+    // This prevents CSP from affecting other windows, WebView, or external local files
+    // Pattern: file://{appPath}/* for app files, http://localhost for dev server
+    const cspUrlPatterns = [
+      `file://${appPathEscaped}/*`, // Only app-specific local files (not all file:// URLs)
+      "http://localhost/*", // Localhost with path (dev mode with Vite HMR)
+      "http://127.0.0.1/*", // 127.0.0.1 with path (dev mode with Vite HMR)
+    ];
+    
+    // Inject nonce into HTML <style> tags for nonce-based CSP (production only)
+    if (!isDev) {
+      const nonce = getCSPNonce();
+      mainWindow.webContents.on("did-finish-load", () => {
+        // Inject nonce into all <style> tags for nonce-based CSP
+        mainWindow?.webContents.executeJavaScript(`
+          (function() {
+            const nonce = ${JSON.stringify(nonce)};
+            document.querySelectorAll('style').forEach(function(style) {
+              if (!style.nonce) {
+                style.nonce = nonce;
+              }
+            });
+            // Also handle dynamically added styles
+            const observer = new MutationObserver(function(mutations) {
+              mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                  if (node.nodeType === 1 && node.tagName === 'STYLE') {
+                    if (!node.nonce) {
+                      node.nonce = nonce;
+                    }
+                  }
+                });
+              });
+            });
+            observer.observe(document.head, { childList: true, subtree: true });
+          })();
+        `).catch((error) => {
+          logger.error("Failed to inject CSP nonce into styles:", error);
+        });
+      });
+    }
+    
+    // Apply CSP headers to responses
     mainWindow.webContents.session.webRequest.onHeadersReceived(
       {
-        urls: [
-          "file://*", // All local file:// URLs (applies to this window's local content)
-          "http://localhost/*", // Localhost with path (dev mode with Vite HMR)
-          "http://127.0.0.1/*", // 127.0.0.1 with path (dev mode with Vite HMR)
-        ],
+        urls: cspUrlPatterns,
       },
       (details, callback) => {
         // Preserve existing security headers from server (if any)

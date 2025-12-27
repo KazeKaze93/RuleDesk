@@ -18,6 +18,15 @@ type Artist = InferSelectModel<typeof artists>;
 type NewArtist = InferInsertModel<typeof artists>;
 
 /**
+ * IPC-safe Artist type with Date fields converted to numbers (timestamps in milliseconds).
+ * Required for Electron 39+ IPC serialization compatibility.
+ */
+type IpcArtist = Omit<Artist, "lastChecked" | "createdAt"> & {
+  lastChecked: number | null;
+  createdAt: number;
+};
+
+/**
  * Add Artist Schema
  * 
  * Single source of truth for AddArtist validation and typing.
@@ -99,7 +108,7 @@ export class ArtistsController extends BaseController {
    *
    * @returns Array of artists
    */
-  private async getArtists(_event: IpcMainInvokeEvent): Promise<Artist[]> {
+  private async getArtists(_event: IpcMainInvokeEvent): Promise<IpcArtist[]> {
     const db = this.getDb();
     try {
       // In DEBUG mode, log EXPLAIN QUERY PLAN to verify index usage
@@ -144,7 +153,19 @@ export class ArtistsController extends BaseController {
         ],
       });
       log.info(`[ArtistsController] Retrieved ${result.length} artists`);
-      return result;
+      
+      // CRITICAL: Convert Date objects to numbers for Electron 39+ IPC serialization
+      // Electron 30+ uses V8 Structured Clone Algorithm more strictly
+      // Date objects may not serialize correctly, so convert to timestamps (milliseconds)
+      return result.map((artist) => ({
+        ...artist,
+        lastChecked: artist.lastChecked instanceof Date 
+          ? artist.lastChecked.getTime() 
+          : artist.lastChecked ?? null,
+        createdAt: artist.createdAt instanceof Date 
+          ? artist.createdAt.getTime() 
+          : artist.createdAt,
+      }));
     } catch (error) {
       log.error("[ArtistsController] Failed to get artists:", error);
       throw new Error("Failed to fetch artists");
@@ -162,7 +183,7 @@ export class ArtistsController extends BaseController {
   private async addArtist(
     _event: IpcMainInvokeEvent,
     data: AddArtistParams
-  ): Promise<Artist> {
+  ): Promise<IpcArtist> {
 
     // Get default endpoint from provider if not explicitly provided
     const provider = getProvider(data.provider);
@@ -199,7 +220,17 @@ export class ArtistsController extends BaseController {
 
       const inserted = result[0];
       log.info(`[ArtistsController] Artist added/updated: ${inserted.name}`);
-      return inserted;
+      
+      // CRITICAL: Convert Date objects to numbers for Electron 39+ IPC serialization
+      return {
+        ...inserted,
+        lastChecked: inserted.lastChecked instanceof Date 
+          ? inserted.lastChecked.getTime() 
+          : inserted.lastChecked ?? null,
+        createdAt: inserted.createdAt instanceof Date 
+          ? inserted.createdAt.getTime() 
+          : inserted.createdAt,
+      };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       log.error("[ArtistsController] Failed to add artist:", error);
@@ -240,7 +271,7 @@ export class ArtistsController extends BaseController {
   private async searchArtists(
     _event: IpcMainInvokeEvent,
     query: string
-  ): Promise<Artist[]> {
+  ): Promise<IpcArtist[]> {
     try {
       const db = this.getDb();
       const searchPattern = `%${query}%`;
@@ -254,7 +285,17 @@ export class ArtistsController extends BaseController {
       log.info(
         `[ArtistsController] Search "${query}" returned ${result.length} results`
       );
-      return result;
+      
+      // CRITICAL: Convert Date objects to numbers for Electron 39+ IPC serialization
+      return result.map((artist) => ({
+        ...artist,
+        lastChecked: artist.lastChecked instanceof Date 
+          ? artist.lastChecked.getTime() 
+          : artist.lastChecked ?? null,
+        createdAt: artist.createdAt instanceof Date 
+          ? artist.createdAt.getTime() 
+          : artist.createdAt,
+      }));
     } catch (error) {
       log.error("[ArtistsController] Search failed:", error);
       return [];
