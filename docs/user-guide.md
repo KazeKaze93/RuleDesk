@@ -462,10 +462,17 @@ Access Settings by clicking **"Settings"** in the sidebar.
 
 **Database locations:**
 
-- **Windows:** `%APPDATA%/RuleDesk/metadata.db`
+The application uses Electron's `app.getPath("userData")` to determine the database location. This ensures compatibility across different installation methods and operating systems.
+
+**Standard locations (managed by Electron):**
+- **Windows:** `%APPDATA%/RuleDesk/metadata.db` (typically `C:\Users\YourName\AppData\Roaming\RuleDesk\`)
 - **macOS:** `~/Library/Application Support/RuleDesk/metadata.db`
 - **Linux:** `~/.config/RuleDesk/metadata.db`
-- **Portable:** `data/metadata.db` (next to executable)
+
+**Portable mode:**
+- **Portable:** `data/metadata.db` (next to executable, if running from portable executable)
+
+**Note:** The exact path may vary. The application automatically detects the correct location using Electron's built-in path management. You don't need to manually locate the database file unless troubleshooting.
 
 ---
 

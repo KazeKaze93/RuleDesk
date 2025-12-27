@@ -278,19 +278,79 @@ All database operations happen **directly in the Main Process** using synchronou
    SELECT * FROM artists ORDER BY name ASC;
    ```
 
-3. **SQLite executes** - The SQLite database (via `better-sqlite3`) executes the query synchronously. This is fast because:
+3. **SQLite executes** - The SQLite database (via `better-sqlite3`) executes the query **synchronously**. 
+
+   **⚠️ CRITICAL: Synchronous Execution Blocks Main Process**
+   
+   `better-sqlite3` uses **synchronous** database operations. This means:
+   - ✅ **Fast for simple queries** - No async overhead, direct function calls
+   - ⚠️ **Blocks Main Process** - Heavy queries (e.g., full table scan without indexes) will **freeze the entire Electron application**
+   - ⚠️ **UI Freezes** - If a query takes 2 seconds, the UI is frozen for 2 seconds
+   
+   **Why this is fast for typical queries:**
    - No network overhead (local database)
    - Synchronous execution (no async/await delays)
    - WAL mode allows concurrent reads while writes happen
+   - **Proper indexes** make queries fast (milliseconds, not seconds)
+   
+   **⚠️ MANDATORY: Always Use Limits and Indexes**
+   
+   To prevent Main Process blocking:
+   - **Always use `limit`** in SELECT queries (see [Database Limits](#-critical-always-use-limits-for-select-queries))
+   - **Ensure proper indexes** exist for WHERE clauses
+   - **Use pagination** for large datasets
+   - **Avoid full table scans** - Always filter with indexed columns
+   
+   **Example of dangerous query:**
+   
+   ```typescript
+   // ❌ DANGEROUS: No limit, no index on tags column
+   // If database has 100k posts, this will freeze UI for seconds
+   const posts = await db.query.posts.findMany({
+     where: like(posts.tags, "%some_tag%"), // Full table scan!
+     // Missing limit!
+   });
+   ```
+   
+   **Example of safe query:**
+   
+   ```typescript
+   // ✅ SAFE: Uses indexed column and limit
+   const posts = await db.query.posts.findMany({
+     where: eq(posts.artistId, artistId), // Indexed column
+     orderBy: [desc(posts.postId)],
+     limit: 50, // ← Prevents large result sets
+     offset: (page - 1) * 50,
+   });
+   ```
 
 4. **Results flow back** - SQLite returns raw data → Drizzle maps it to TypeScript types → Service returns typed objects
 
 **Why synchronous access?**
 
-- **Performance:** No async overhead for local database operations
+- **Performance:** No async overhead for local database operations (for simple queries)
 - **Simplicity:** Direct function calls, no Promise chains
 - **Type Safety:** Drizzle ensures TypeScript types match database schema
 - **WAL Mode:** Write-Ahead Logging allows concurrent reads even during writes
+
+**⚠️ WAL Mode is Mandatory**
+
+SQLite must run in **WAL (Write-Ahead Logging) mode** to enable:
+- **Concurrent reads** during writes
+- **Better performance** for read-heavy workloads
+- **Non-blocking reads** while writes are in progress
+
+WAL mode is automatically enabled in `src/main/db/client.ts`:
+
+```typescript
+// WAL mode is enabled automatically
+sqlite.pragma("journal_mode = WAL");
+```
+
+**Without WAL mode:**
+- Writes block all reads
+- Database locked errors during concurrent access
+- Poor performance with multiple readers
 
 **Example: Adding an Artist**
 
@@ -468,9 +528,15 @@ const posts = await db.query.posts.findMany({
    ```
    
    **Default Limits:**
-   - Posts: 50 per page (max 1000)
+   - Posts: 50 per page (max 1000 per query)
    - Artists: No limit (typically small, but consider adding if > 1000 expected)
    - Settings: Single record (no limit needed)
+   
+   **Performance Guidelines:**
+   - **Heavy queries** (full table scans, complex WHERE clauses) → Always use pagination
+   - **Indexed queries** (WHERE on indexed columns) → Can handle larger limits (up to 1000)
+   - **Unindexed queries** → Must use strict limits (50-100) to prevent blocking
+   - **WAL mode** → Required for concurrent reads (enabled automatically)
 
 5. **Dependency Injection Container** (`src/main/core/di/Container.ts`)
 
@@ -652,11 +718,23 @@ webPreferences: {
 
 ### IPC Security
 
+**⚠️ CRITICAL: API Key Security Contract**
+
+The IPC layer enforces a strict security contract for API credentials:
+
+- **`saveSettings(creds: { userId: string; apiKey: string })`** - Accepts API key in plaintext (unavoidable during onboarding)
+- **`getSettings()`** - Returns `IpcSettings` with `hasApiKey: boolean`, **NEVER the actual API key**
+- **API Key Lifecycle:**
+  - Entered in Renderer → Sent to Main via IPC → Encrypted in Main → Stored encrypted
+  - **Never decrypted for Renderer** - Only decrypted in Main Process when needed for API calls (e.g., in `SyncService`)
+
+**Why this matters:** If `getSettings()` returned the API key, any compromised Renderer process (XSS, malicious extension, etc.) could steal credentials. The boolean flag `hasApiKey` allows the UI to check if credentials are configured without exposing the actual key.
+
 1. **Type Safety:** All IPC communication is strictly typed
 2. **Input Validation:** All inputs are validated in Main process using Zod schemas
 3. **Error Handling:** Errors are properly handled without exposing sensitive data
 4. **No Direct Node Access:** Renderer cannot access Node.js APIs directly
-5. **Secure Credentials:** API keys encrypted at rest, only decrypted in Main Process when needed
+5. **Secure Credentials:** API keys encrypted at rest, **NEVER returned to Renderer** (only `hasApiKey` boolean flag)
 6. **Worker Thread Isolation:** Database operations isolated in worker thread
 
 ### Credential Security Flow
@@ -688,16 +766,46 @@ sequenceDiagram
     ReactUI->>Bridge: window.api.getSettings()
     Bridge->>IPC: ipcRenderer.invoke('app:get-settings')
     IPC->>DB: Get Settings
-    DB-->>IPC: {userId, encryptedKey}
-    IPC->>SecureStorage: decrypt(encryptedKey)
-    SecureStorage->>Keychain: safeStorage.decryptString()
-    Keychain-->>SecureStorage: Decrypted String
-    SecureStorage-->>IPC: Decrypted Key
-    IPC-->>Bridge: {userId, apiKey}
-    Bridge-->>ReactUI: Settings (decrypted)
+    DB-->>IPC: {userId, encryptedKey, ...}
+    Note over IPC: mapSettingsToIpc() converts to safe format
+    Note over IPC: apiKey is NEVER decrypted for Renderer
+    IPC-->>Bridge: {userId, hasApiKey: boolean, ...}
+    Bridge-->>ReactUI: IpcSettings (NO apiKey field)
 
-    Note over ReactUI,Keychain: Decryption only in Main Process
+    Note over ReactUI,Keychain: ⚠️ SECURITY: API Key NEVER returned to Renderer
 ```
+
+**Human-Readable Explanation:**
+
+1. **Saving Credentials (Onboarding):**
+   - User enters API key in Renderer (plaintext, unavoidable during input)
+   - `saveSettings()` sends credentials via IPC to Main Process
+   - Main Process encrypts API key using Electron's `safeStorage` API (platform keychain)
+   - Encrypted key is stored in database
+   - Renderer receives success confirmation (no sensitive data returned)
+
+2. **Retrieving Settings (Security Contract):**
+   - `getSettings()` is called from Renderer
+   - Main Process retrieves encrypted key from database
+   - **⚠️ CRITICAL SECURITY RULE: API Key is NEVER decrypted for Renderer**
+   - `mapSettingsToIpc()` function converts database record to safe IPC format:
+     - ✅ Returns: `userId` (safe, non-sensitive)
+     - ✅ Returns: `hasApiKey: boolean` (flag indicating if key exists, safe)
+     - ✅ Returns: Other settings flags (safe mode, adult confirmation, etc.)
+     - ❌ **NEVER returns:** `apiKey` (encrypted or decrypted)
+   - Renderer receives `IpcSettings` type which has **no `apiKey` field**
+   - API key is only decrypted in Main Process when needed for API calls (e.g., in `SyncService`)
+
+**Security Contract:**
+
+- **Input (saveSettings):** API key sent from Renderer in plaintext (unavoidable during onboarding)
+- **Storage:** API key encrypted using platform keychain, stored encrypted in database
+- **Output (getSettings):** Renderer receives `IpcSettings` with `hasApiKey: boolean`, **NEVER the actual key**
+- **Internal Use:** API key is only decrypted in Main Process for API calls, never exposed to Renderer
+
+**Why this matters:**
+
+If `getSettings()` returned the API key (even decrypted), any compromised Renderer process (XSS, malicious extension, etc.) could steal credentials. By returning only a boolean flag, the Renderer can check if credentials are configured without ever seeing the actual key.
 
 ## Data Flow
 

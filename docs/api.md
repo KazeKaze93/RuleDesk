@@ -380,37 +380,72 @@ type Post = {
 };
 ```
 
-**Settings Type:**
+**IpcSettings Type (Safe IPC Format):**
 
 ```typescript
-type Settings = {
-  id: number;
+// ⚠️ SECURITY: This is the ONLY format Renderer receives
+// API Key is NEVER included in this type
+type IpcSettings = {
   userId: string;
-  apiKey: string;
+  hasApiKey: boolean; // ← Boolean flag, NOT the actual API key
+  isSafeMode: boolean;
+  isAdultConfirmed: boolean;
+  isAdultVerified: boolean;
+  tosAcceptedAt: number | null; // Timestamp in milliseconds
 };
 ```
+
+**Note:** The actual database `Settings` type contains `encryptedApiKey`, but this is **never** sent to Renderer. The `IpcSettings` type is the safe IPC contract.
 
 ---
 
 ### `getSettings()`
 
-Retrieves stored API credentials (User ID and API Key).
+Retrieves stored settings. **⚠️ SECURITY: API Key is NEVER returned to Renderer process.**
 
-**When to use:** Check if user has completed onboarding, display current credentials in Settings page, or verify authentication status.
+**When to use:** Check if user has completed onboarding, display current user ID in Settings page, or verify authentication status.
 
 **Typical scenario:** App starts → check if settings exist → show onboarding if missing, or main app if present.
 
-**Why this method:** The Renderer process never receives the raw API key (security). This method returns decrypted credentials only when needed in Main Process. The returned `apiKey` is decrypted in Main Process before being sent to Renderer.
+**Why this method:** The Renderer process **NEVER** receives the API key, even in decrypted form. This method returns only safe metadata:
+- `userId` - User ID (safe to expose)
+- `hasApiKey` - Boolean flag indicating if API key is configured (safe to expose)
+- Other settings flags (safe mode, adult confirmation, etc.)
 
-**Returns:** `Promise<Settings | undefined>`
+**Security Contract:**
+
+- ✅ **Renderer receives:** `userId`, `hasApiKey` (boolean), other non-sensitive settings
+- ❌ **Renderer NEVER receives:** `apiKey` (encrypted or decrypted)
+- 🔒 **API Key lifecycle:** 
+  - Entered in Renderer → Sent to Main via `saveSettings()` → Encrypted in Main → Stored encrypted
+  - Never decrypted for Renderer
+  - Only decrypted in Main Process when needed for API calls (in SyncService)
+
+**Returns:** `Promise<IpcSettings | undefined>`
+
+**IpcSettings Type:**
+
+```typescript
+type IpcSettings = {
+  userId: string;
+  hasApiKey: boolean; // ← Boolean flag, NOT the actual key
+  isSafeMode: boolean;
+  isAdultConfirmed: boolean;
+  isAdultVerified: boolean;
+  tosAcceptedAt: number | null;
+};
+```
 
 **Example:**
 
 ```typescript
+import type { IpcSettings } from "../../../shared/schemas/settings";
+
 const settings = await window.api.getSettings();
 if (settings) {
   console.log("User ID:", settings.userId);
-  // Note: apiKey is decrypted in Main Process before being sent here
+  console.log("Has API Key:", settings.hasApiKey); // ← Boolean, not the key itself
+  // ❌ settings.apiKey does NOT exist - API key is never sent to Renderer
 }
 ```
 
@@ -418,17 +453,19 @@ if (settings) {
 
 ```typescript
 // In App.tsx - check if user needs onboarding
-import type { Settings } from "../../../main/db/schema";
+import type { IpcSettings } from "../../../shared/schemas/settings";
 
-const { data: settings } = useQuery<Settings | undefined>({
+const { data: settings } = useQuery<IpcSettings | undefined>({
   queryKey: ["settings"],
   queryFn: () => window.api.getSettings(),
 });
 
-if (!settings) {
+if (!settings || !settings.hasApiKey) {
+  // No settings or no API key configured - show onboarding
   return <Onboarding onComplete={() => queryClient.invalidateQueries(["settings"])} />;
 }
 
+// Settings exist and API key is configured - show main app
 return <MainApp />;
 ```
 
@@ -440,11 +477,26 @@ return <MainApp />;
 
 Saves API credentials to the database. The API key is encrypted at rest using Electron's `safeStorage` API before being stored.
 
+**⚠️ SECURITY CONTRACT:**
+
+- **Input:** API key is sent from Renderer in **plaintext** (unavoidable during onboarding)
+- **Processing:** API key is **immediately encrypted** in Main Process using `safeStorage` API
+- **Storage:** Only **encrypted** key is stored in database
+- **Output:** API key is **NEVER** returned to Renderer (see `getSettings()` which returns `hasApiKey: boolean`)
+
 **When to use:** During onboarding flow when user enters their credentials, or when updating credentials in Settings.
 
 **Typical scenario:** User pastes credentials from Rule34.xxx account page → form validates → calls `saveSettings` → credentials encrypted and stored → user proceeds to main app.
 
 **Why this method:** Security is critical. The API key is encrypted in Main Process using platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret) before storage. The encrypted key is never exposed to Renderer process.
+
+**Security Flow:**
+
+1. User enters API key in Renderer (plaintext, unavoidable)
+2. `saveSettings()` called → API key sent via IPC to Main Process
+3. Main Process encrypts using `safeStorage.encryptString()`
+4. Encrypted key stored in database
+5. **API key is NEVER returned to Renderer** - `getSettings()` only returns `hasApiKey: boolean`
 
 **Parameters:**
 
