@@ -28,9 +28,12 @@ const Favorites = () => (
   </div>
 );
 
+type LegalStatus = "loading" | "confirmed" | "unconfirmed";
+type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+
 function App() {
-  const [isLegalConfirmed, setIsLegalConfirmed] = useState<boolean | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [legalStatus, setLegalStatus] = useState<LegalStatus>("loading");
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -39,7 +42,7 @@ function App() {
         
         // Check Age Gate & ToS status
         const legalConfirmed = settings?.isAdultVerified === true && settings?.tosAcceptedAt !== null;
-        setIsLegalConfirmed(legalConfirmed);
+        setLegalStatus(legalConfirmed ? "confirmed" : "unconfirmed");
         
         // Check authentication status (only if legal is confirmed)
         if (legalConfirmed) {
@@ -47,22 +50,22 @@ function App() {
           log.info(
             `[App] Auth check result: hasApiKey=${hasApiKey}, userId=${settings?.userId}`
           );
-          setIsAuthenticated(hasApiKey);
+          setAuthStatus(hasApiKey ? "authenticated" : "unauthenticated");
         } else {
           // Don't check auth if legal is not confirmed
-          setIsAuthenticated(null);
+          setAuthStatus("loading");
         }
       } catch (error) {
         log.error("[App] Failed to check status:", error);
-        setIsLegalConfirmed(false);
-        setIsAuthenticated(false);
+        setLegalStatus("unconfirmed");
+        setAuthStatus("unauthenticated");
       }
     };
     checkStatus();
   }, []);
 
   // Loading state: waiting for settings to load
-  if (isLegalConfirmed === null) {
+  if (legalStatus === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-muted-foreground">Loading...</div>
@@ -71,23 +74,21 @@ function App() {
   }
 
   // Age Gate: must be confirmed before any content loads
-  if (!isLegalConfirmed) {
+  if (legalStatus === "unconfirmed") {
     return (
       <AgeGate
-        onComplete={() => {
-          setIsLegalConfirmed(true);
-          // After legal confirmation, check auth status
-          window.api.getSettings().then((settings) => {
-            const hasApiKey = settings?.hasApiKey ?? false;
-            setIsAuthenticated(hasApiKey);
-          });
+        onComplete={async (settings) => {
+          setLegalStatus("confirmed");
+          // Use settings returned from confirmLegal (no extra IPC call)
+          const hasApiKey = settings?.hasApiKey ?? false;
+          setAuthStatus(hasApiKey ? "authenticated" : "unauthenticated");
         }}
       />
     );
   }
 
   // Authentication check: only shown after legal confirmation
-  if (isAuthenticated === null) {
+  if (authStatus === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-muted-foreground">Loading...</div>
@@ -95,8 +96,8 @@ function App() {
     );
   }
 
-  if (isAuthenticated === false) {
-    return <Onboarding onComplete={() => setIsAuthenticated(true)} />;
+  if (authStatus === "unauthenticated") {
+    return <Onboarding onComplete={() => setAuthStatus("authenticated")} />;
   }
 
   return (
