@@ -111,18 +111,60 @@ export function useViewerController({
       const newState = await window.api.togglePostFavorite(post.id);
       setIsFavorited(newState);
 
-      const queryKey = ["posts", post.artistId];
-      queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) =>
-            page.map((p) =>
-              p.id === post.id ? { ...p, isFavorited: newState } : p
-            )
-          ),
-        };
-      });
+      // Update artist gallery cache if post has artistId
+      if (post.artistId) {
+        const artistQueryKey = ["posts", post.artistId];
+        queryClient.setQueryData<InfiniteData<Post[]>>(artistQueryKey, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((p) =>
+                p.id === post.id ? { ...p, isFavorited: newState } : p
+              )
+            ),
+          };
+        });
+      }
+
+      // Update favorites cache separately
+      const favoritesQueryKey = ["posts", "favorites"];
+      const oldFavoritesData = queryClient.getQueryData<InfiniteData<Post[]>>(favoritesQueryKey);
+      
+      if (oldFavoritesData) {
+        queryClient.setQueryData<InfiniteData<Post[]>>(favoritesQueryKey, (old) => {
+          if (!old) return old;
+          
+          // If removing from favorites, filter out the post
+          if (!newState) {
+            return {
+              ...old,
+              pages: old.pages
+                .map((page) => page.filter((p) => p.id !== post.id))
+                .filter((page) => page.length > 0),
+            };
+          }
+          
+          // If adding to favorites, update existing post
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((p) =>
+                p.id === post.id ? { ...p, isFavorited: newState } : p
+              )
+            ),
+          };
+        });
+      }
+
+      // Invalidate favorites query if removing from favorites or post not in cache
+      const foundInCache = oldFavoritesData?.pages.some((page) =>
+        page.some((p) => p.id === post.id)
+      );
+      
+      if (!newState || !foundInCache) {
+        queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
+      }
     } catch (error) {
       setIsFavorited(previousState);
       const errorMessage =
