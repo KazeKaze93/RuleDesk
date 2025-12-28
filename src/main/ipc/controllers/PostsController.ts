@@ -175,11 +175,17 @@ export class PostsController extends BaseController {
         }
 
         // Combine all conditions using and()
+        // Note: whereClause can be undefined if no additional filters are provided.
+        // This is safe because the join condition already filters by date (sinceTracking),
+        // so the join itself acts as the primary filter. Additional filters in whereClause
+        // are optional refinements.
         const whereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
         // Use select with innerJoin for sinceTracking filter
         // The date filter is part of the join condition for efficiency
         // This ensures filtering happens at the join level, not after
+        // The join condition (gte(posts.publishedAt, artists.createdAt)) ensures
+        // we only get posts published after the artist was tracked, even if whereClause is undefined
         const result = await db
           .select({
             id: posts.id,
