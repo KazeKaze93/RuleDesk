@@ -20,7 +20,7 @@ const POSTS_PER_PAGE = 50;
 // --- Helper function for updating InfiniteData cache ---
 /**
  * Updates a single post in InfiniteData cache by postId
- * This is a standard approach for InfiniteData updates in React Query
+ * Optimized to only update the page containing the post, not all pages
  */
 const updatePostInInfiniteData = (
   oldData: InfiniteData<Post[]> | undefined,
@@ -29,10 +29,25 @@ const updatePostInInfiniteData = (
 ): InfiniteData<Post[]> | undefined => {
   if (!oldData) return oldData;
   
+  // Find the page index containing the post
+  let pageIndex = -1;
+  for (let i = 0; i < oldData.pages.length; i++) {
+    if (oldData.pages[i].some((post) => post.id === postId)) {
+      pageIndex = i;
+      break;
+    }
+  }
+  
+  // If post not found, return unchanged
+  if (pageIndex === -1) return oldData;
+  
+  // Update only the page containing the post
   return {
     ...oldData,
-    pages: oldData.pages.map((page) =>
-      page.map((post) => (post.id === postId ? updater(post) : post))
+    pages: oldData.pages.map((page, index) =>
+      index === pageIndex
+        ? page.map((post) => (post.id === postId ? updater(post) : post))
+        : page
     ),
   };
 };
@@ -85,9 +100,11 @@ export const Updates = () => {
           filters: { sinceTracking: true },
         });
       },
-      getNextPageParam: (lastPage, allPages) => {
+      getNextPageParam: (lastPage, allPages, lastPageParam) => {
+        // Use lastPageParam + 1 for correct pagination
+        // This ensures we use the actual page number from the last request
         return lastPage.length === POSTS_PER_PAGE
-          ? allPages.length + 1
+          ? (lastPageParam as number) + 1
           : undefined;
       },
       initialPageParam: 1,
@@ -124,12 +141,23 @@ export const Updates = () => {
         const newPage = result.data.pages[result.data.pages.length - 1];
 
         if (newPage && newPage.length > 0) {
-          const newIds = newPage.map((p) => p.id);
-          log.info(
-            `[Updates] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
-          );
+          // Get existing post IDs to avoid duplicates
+          const existingPostIds = new Set(allPosts.map((p) => p.id));
+          
+          // Filter out posts that are already in the list
+          const newIds = newPage
+            .map((p) => p.id)
+            .filter((id) => !existingPostIds.has(id));
 
-          appendQueueIds(newIds);
+          if (newIds.length > 0) {
+            log.info(
+              `[Updates] Fetched ${newIds.length} new posts (${newPage.length - newIds.length} duplicates skipped). Appending to Viewer queue.`
+            );
+
+            appendQueueIds(newIds);
+          } else {
+            log.info("[Updates] All fetched posts were already in the queue.");
+          }
         }
       }
     }
