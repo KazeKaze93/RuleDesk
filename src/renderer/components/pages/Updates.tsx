@@ -100,7 +100,7 @@ export const Updates = () => {
           filters: { sinceTracking: true },
         });
       },
-      getNextPageParam: (lastPage, allPages, lastPageParam) => {
+      getNextPageParam: (lastPage, _allPages, lastPageParam) => {
         // Use lastPageParam + 1 for correct pagination
         // This ensures we use the actual page number from the last request
         return lastPage.length === POSTS_PER_PAGE
