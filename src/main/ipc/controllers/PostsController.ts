@@ -1,10 +1,10 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, like, sql } from "drizzle-orm";
+import { eq, desc, count, and, like, sql, gte } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { posts, type Post } from "../../db/schema";
+import { posts, artists, type Post } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
@@ -38,6 +38,7 @@ export const PostFilterSchema = z
     rating: z.enum(["s", "q", "e"]).optional(),
     isFavorited: z.boolean().optional(),
     isViewed: z.boolean().optional(),
+    sinceTracking: z.boolean().optional(),
   })
   .partial();
 
@@ -150,27 +151,102 @@ export class PostsController extends BaseController {
     try {
       const db = this.getDb();
 
+      // If sinceTracking filter is enabled, we need to use join
+      if (filters?.sinceTracking === true) {
+        // Build where conditions array (excluding the date filter, which goes in join)
+        // Note: artistId is optional - if not provided, returns posts from all tracked artists
+        // This is the expected behavior for global feeds like Updates
+        const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
+        
+        if (artistId) {
+          baseConditions.push(eq(posts.artistId, artistId));
+        }
+        if (filters?.tags !== undefined) {
+          baseConditions.push(like(posts.tags, `%${filters.tags}%`));
+        }
+        if (filters?.rating !== undefined) {
+          baseConditions.push(eq(posts.rating, filters.rating));
+        }
+        if (filters?.isFavorited !== undefined) {
+          baseConditions.push(eq(posts.isFavorited, filters.isFavorited));
+        }
+        if (filters?.isViewed !== undefined) {
+          baseConditions.push(eq(posts.isViewed, filters.isViewed));
+        }
+
+        // Combine all conditions using and()
+        // Note: whereClause can be undefined if no additional filters are provided.
+        // This is safe because the join condition already filters by date (sinceTracking),
+        // so the join itself acts as the primary filter. Additional filters in whereClause
+        // are optional refinements.
+        const whereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined;
+
+        // Use select with innerJoin for sinceTracking filter
+        // The date filter is part of the join condition for efficiency
+        // This ensures filtering happens at the join level, not after
+        // The join condition (gte(posts.publishedAt, artists.createdAt)) ensures
+        // we only get posts published after the artist was tracked, even if whereClause is undefined
+        const result = await db
+          .select({
+            id: posts.id,
+            postId: posts.postId,
+            artistId: posts.artistId,
+            fileUrl: posts.fileUrl,
+            previewUrl: posts.previewUrl,
+            sampleUrl: posts.sampleUrl,
+            title: posts.title,
+            rating: posts.rating,
+            tags: posts.tags,
+            publishedAt: posts.publishedAt,
+            createdAt: posts.createdAt,
+            isViewed: posts.isViewed,
+            isFavorited: posts.isFavorited,
+          })
+          .from(posts)
+          .innerJoin(
+            artists,
+            and(
+              eq(posts.artistId, artists.id),
+              gte(posts.publishedAt, artists.createdAt)
+            )
+          )
+          .where(whereClause)
+          .orderBy(desc(posts.publishedAt))
+          .limit(limit)
+          .offset(offset);
+
+        log.info(
+          `[PostsController] Retrieved ${result.length} posts ${
+            artistId ? `for artist ${artistId}` : "globally"
+          } (page ${page}, sinceTracking: true)`
+        );
+
+        // Convert Date objects to numbers for Electron 39+ IPC serialization
+        return toIpcSafe(result) as IpcPost[];
+      }
+
+      // Standard query path (no sinceTracking filter)
       // Build where conditions array
-      const conditions: ReturnType<typeof eq | typeof like>[] = [];
+      const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
       
       if (artistId) {
-        conditions.push(eq(posts.artistId, artistId));
+        baseConditions.push(eq(posts.artistId, artistId));
       }
       if (filters?.tags !== undefined) {
-        conditions.push(like(posts.tags, `%${filters.tags}%`));
+        baseConditions.push(like(posts.tags, `%${filters.tags}%`));
       }
       if (filters?.rating !== undefined) {
-        conditions.push(eq(posts.rating, filters.rating));
+        baseConditions.push(eq(posts.rating, filters.rating));
       }
       if (filters?.isFavorited !== undefined) {
-        conditions.push(eq(posts.isFavorited, filters.isFavorited));
+        baseConditions.push(eq(posts.isFavorited, filters.isFavorited));
       }
       if (filters?.isViewed !== undefined) {
-        conditions.push(eq(posts.isViewed, filters.isViewed));
+        baseConditions.push(eq(posts.isViewed, filters.isViewed));
       }
 
       // Combine all conditions using and()
-      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
       const result = await db.query.posts.findMany({
         where: whereClause,

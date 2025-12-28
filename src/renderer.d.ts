@@ -21,6 +21,7 @@ export interface PostQueryFilters {
   sortBy?: "date" | "id" | "rating";
   isViewed?: boolean;
   isFavorited?: boolean;
+  sinceTracking?: boolean;
 }
 
 export interface IpcSettings {
