@@ -55,6 +55,10 @@ const useCurrentPost = (
     let queryKey: unknown[] = [];
     if (origin.kind === "artist") {
       queryKey = ["posts", origin.artistId];
+    } else if (origin.kind === "favorites") {
+      queryKey = ["posts", "favorites"];
+    } else if (origin.kind === "updates") {
+      queryKey = ["posts", "updates"];
     } else {
       return null;
     }
@@ -475,12 +479,25 @@ export const ViewerDialog = () => {
   const hasOnLoadMore = !!queue?.onLoadMore;
 
   useEffect(() => {
-    if (!isOpen || !queue || !queue.origin || queue.origin.kind !== "artist")
-      return;
+    if (!isOpen || !queue || !queue.origin) return;
 
     if (!queue.onLoadMore) return;
 
-    const queryKey = ["posts", queue.origin.artistId];
+    // Query keys are consistent with component query keys:
+    // - Artist gallery: ["posts", artistId]
+    // - Favorites: ["posts", "favorites"]
+    // - Updates: ["posts", "updates"]
+    let queryKey: unknown[] = [];
+    if (queue.origin.kind === "artist") {
+      queryKey = ["posts", queue.origin.artistId];
+    } else if (queue.origin.kind === "favorites") {
+      queryKey = ["posts", "favorites"];
+    } else if (queue.origin.kind === "updates") {
+      queryKey = ["posts", "updates"];
+    } else {
+      return;
+    }
+
     const infiniteData =
       queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
 

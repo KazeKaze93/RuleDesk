@@ -16,15 +16,15 @@ import type { BooruPost } from "../providers/types";
 // Better-SQLite3 uses modern SQLite (3.40+) with 32766 limit, but we stay conservative
 const CHUNK_SIZE = 75;
 
-async function bulkUpsertPosts(
+function bulkUpsertPosts(
   postsToSave: NewPost[],
   tx: BetterSQLite3Database<typeof schema>
-): Promise<void> {
+): void {
   if (postsToSave.length === 0) return;
   for (let i = 0; i < postsToSave.length; i += CHUNK_SIZE) {
     const chunk = postsToSave.slice(i, i + CHUNK_SIZE);
-    await tx
-      .insert(posts)
+    // Drizzle operations for better-sqlite3 are synchronous
+    tx.insert(posts)
       .values(chunk)
       .onConflictDoUpdate({
         target: [posts.artistId, posts.postId],
@@ -322,13 +322,14 @@ export class SyncService {
           // Calculate max post ID from this batch BEFORE transaction
           const batchHighestPostId = Math.max(...postsToSave.map(p => p.postId));
           
-          await db.transaction(async (tx) => {
-            await bulkUpsertPosts(postsToSave, tx);
+          // better-sqlite3 transactions are synchronous
+          // Drizzle wraps them but the callback should not be async
+          db.transaction((tx) => {
+            bulkUpsertPosts(postsToSave, tx);
             
             // Update lastPostId ONLY with posts that were actually saved in this transaction
             // Use currentLastPostId (not artist.lastPostId) to avoid race conditions
-            await tx
-              .update(artists)
+            tx.update(artists)
               .set({
                 lastPostId: Math.max(currentLastPostId, batchHighestPostId),
                 newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
@@ -353,9 +354,9 @@ export class SyncService {
 
     // Final update of lastChecked even if no new posts were found
     if (newPostsCount === 0) {
-      await db.transaction(async (tx) => {
-        await tx
-          .update(artists)
+      // better-sqlite3 transactions are synchronous
+      db.transaction((tx) => {
+        tx.update(artists)
           .set({ lastChecked: new Date() })
           .where(eq(artists.id, artist.id));
       });
