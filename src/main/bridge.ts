@@ -107,6 +107,8 @@ export interface IpcBridge {
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
+  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
 
@@ -122,6 +124,9 @@ const ipcBridge: IpcBridge = {
   // Search remote tags via specified provider (defaults to rule34)
   searchRemoteTags: (query, provider = "rule34") =>
     ipcRenderer.invoke("api:search-remote-tags", query, provider),
+
+  searchBooru: (params) =>
+    ipcRenderer.invoke("booru:search", params),
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 

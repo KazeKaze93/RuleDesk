@@ -87,6 +87,8 @@ export interface IpcApi extends IpcBridge {
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
+  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
   writeToClipboard: (text: string) => Promise<boolean>;

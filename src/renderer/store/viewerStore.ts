@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 export type ViewerOrigin =
   | { kind: "browse"; filters?: string }
+  | { kind: "search"; tags: string[] }
   | { kind: "favorites" }
   | { kind: "updates" }
   | { kind: "artist"; artistId: number };
