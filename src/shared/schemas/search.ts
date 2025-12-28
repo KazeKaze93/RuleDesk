@@ -21,3 +21,4 @@ export const SearchPostsSchema = z.object({
  * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
  */
 export type SearchPostsRequest = z.infer<typeof SearchPostsSchema>;
+
