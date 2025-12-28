@@ -59,6 +59,8 @@ const useCurrentPost = (
       queryKey = ["posts", "favorites"];
     } else if (origin.kind === "updates") {
       queryKey = ["posts", "updates"];
+    } else if (origin.kind === "search") {
+      queryKey = ["search", origin.tags];
     } else {
       return null;
     }
@@ -487,6 +489,7 @@ export const ViewerDialog = () => {
     // - Artist gallery: ["posts", artistId]
     // - Favorites: ["posts", "favorites"]
     // - Updates: ["posts", "updates"]
+    // - Search: ["search", tags]
     let queryKey: unknown[] = [];
     if (queue.origin.kind === "artist") {
       queryKey = ["posts", queue.origin.artistId];
@@ -494,6 +497,8 @@ export const ViewerDialog = () => {
       queryKey = ["posts", "favorites"];
     } else if (queue.origin.kind === "updates") {
       queryKey = ["posts", "updates"];
+    } else if (queue.origin.kind === "search") {
+      queryKey = ["search", queue.origin.tags];
     } else {
       return;
     }
