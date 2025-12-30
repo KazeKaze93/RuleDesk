@@ -197,7 +197,7 @@ Continuous synchronization while the application is running:
 - **Backup & Restore** - Create timestamped backups and restore from backup files
 - **Integrity Check** - Run database integrity verification (`PRAGMA integrity_check`)
 - **Vacuum/Compact** - Optimize database file size and performance
-- **Maintenance** - Automatic maintenance runs in worker thread (non-blocking)
+- **Maintenance** - Database maintenance operations use sequential queue to prevent race conditions (non-blocking)
 
 ## ✅ Current Status
 

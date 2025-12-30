@@ -1499,11 +1499,11 @@ export const IPC_CHANNELS = {
 
 **Legacy Handler Registration (Deprecated):**
 
-The old handler-based approach has been migrated to controllers:
+The old handler-based approach has been migrated to controllers. This example shows the deprecated pattern for reference only:
 
 ```typescript
+// ⚠️ DEPRECATED: This code is for reference only. Current implementation uses controllers.
 export const registerIpcHandlers = (
-  dbWorkerClient: DbWorkerClient,
   syncService: SyncService,
   updaterService: UpdaterService,
   mainWindow: BrowserWindow
@@ -1511,14 +1511,14 @@ export const registerIpcHandlers = (
   // App handlers
   ipcMain.handle("app:get-version", handleGetAppVersion);
   ipcMain.handle("app:get-settings", async () => {
-    // Gets settings and decrypts API key using crypto utility
+    // Gets settings and decrypts API key using SecureStorage
     const db = getDb();
     const settings = await db.query.settings.findFirst();
-    // ... decryption logic using decrypt() from lib/crypto
+    // ... decryption logic using SecureStorage.decrypt()
   });
   ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
-    // Encrypts API key using crypto utility before saving
-    const encryptedKey = encrypt(apiKey);
+    // Encrypts API key using SecureStorage before saving
+    const encryptedKey = SecureStorage.encrypt(apiKey);
     const db = getDb();
     await db.insert(settings).values({ userId, encryptedApiKey: encryptedKey })
       .onConflictDoUpdate({ target: settings.id, set: { userId, encryptedApiKey: encryptedKey } });
@@ -1527,7 +1527,7 @@ export const registerIpcHandlers = (
     // Security validation and shell.openExternal
   });
 
-  // Database handlers (via worker thread)
+  // Database handlers (direct access in Main Process)
   ipcMain.handle("db:get-artists", async () => {
     const db = getDb();
     return await db.query.artists.findMany({

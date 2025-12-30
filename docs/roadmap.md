@@ -162,12 +162,12 @@ Comprehensive database protection:
 
 Non-blocking database maintenance:
 
-- **Worker Thread** - All heavy operations run in database worker thread
-- **Non-blocking** - Maintenance operations don't freeze UI
+- **Maintenance Queue** - All maintenance operations run sequentially via Promise-based queue (`maintenance-queue.ts`)
+- **Non-blocking** - Maintenance operations don't freeze UI (operations are async)
 - **Progress Events** - Real-time progress updates for long operations
-- **Scheduled Runs** - Automatic maintenance on startup or periodic intervals
+- **Scheduled Runs** - Automatic maintenance on startup or periodic intervals (planned)
 
-**Status:** ✅ **COMPLETED:** Database operations run in worker thread. Future: Scheduled maintenance runs.
+**Status:** ✅ **COMPLETED:** Database maintenance operations use sequential queue to prevent race conditions. Future: Scheduled maintenance runs.
 
 ## 📋 Milestones
 
@@ -224,9 +224,9 @@ Advanced features for future releases:
 
 ### Portability
 
-- ⏳ **Portable Mode:** Support relative database and asset paths
-  - **Current:** Uses absolute paths via `app.getPath("userData")`
-  - **Target:** Check for `portable` flag/env var, use relative paths
+- ✅ **Portable Mode:** Support relative database and asset paths
+  - **Status:** ✅ **COMPLETED:** Portable mode automatically detected when running from portable executable
+  - **Implementation:** Database stored in `data/` folder next to executable in portable mode
 
 ### Code Quality
 
