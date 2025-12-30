@@ -51,6 +51,32 @@ export function useViewerController({
     return t.trim().split(/\s+/g).filter(Boolean).join("+");
   }
 
+  // Normalize rating: convert full words to single characters
+  // API may return "explicit", "safe", "questionable" or "s", "q", "e"
+  const normalizeRating = (
+    value: string | undefined | null
+  ): "s" | "q" | "e" => {
+    if (!value || (typeof value === "string" && value.trim() === "")) {
+      // Default to "q" if missing or empty
+      return "q";
+    }
+
+    const normalized = value.toLowerCase().trim();
+
+    // Handle full words
+    if (normalized === "explicit") return "e";
+    if (normalized === "safe") return "s";
+    if (normalized === "questionable") return "q";
+
+    // Handle single characters (already correct format)
+    if (normalized === "e" || normalized === "s" || normalized === "q") {
+      return normalized;
+    }
+
+    // Default to "q" for unknown values
+    return "q";
+  };
+
   const [isFavorited, setIsFavorited] = useState(post.isFavorited);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -72,7 +98,8 @@ export function useViewerController({
             fileUrl: post.fileUrl,
             previewUrl: post.previewUrl,
             sampleUrl: post.sampleUrl || "",
-            rating: post.rating as "s" | "q" | "e" | undefined,
+            // Normalize rating to handle "explicit", "safe", "questionable" from API
+            rating: normalizeRating(post.rating),
             tags: post.tags || "",
             publishedAt: post.publishedAt instanceof Date
               ? post.publishedAt.getTime()

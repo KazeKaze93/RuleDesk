@@ -57,6 +57,7 @@ const parseTags = (query: string): string[] => {
 
 export const Browse = () => {
   const [query, setQuery] = useState("");
+  // Initialize with empty array to show all posts by default (empty tags = all posts in Rule34 API)
   const [tags, setTags] = useState<string[]>([]);
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
@@ -67,8 +68,10 @@ export const Browse = () => {
   );
 
   // Parse tags from query when user submits search
+  // If query is empty, use empty array to show all posts (Rule34 API returns all posts when tags parameter is omitted)
   const handleSearch = () => {
     const parsedTags = parseTags(query);
+    // Empty array means show all posts (no tags filter)
     setTags(parsedTags);
   };
 
@@ -83,10 +86,7 @@ export const Browse = () => {
     useInfiniteQuery({
       queryKey: ["search", tags],
       queryFn: async ({ pageParam = 1 }) => {
-        // Only fetch if tags are provided (disable query if empty to save API calls)
-        if (tags.length === 0) {
-          return [];
-        }
+        // Always fetch - empty tags array means show all posts (API omits tags parameter)
         return await window.api.searchBooru({
           tags,
           page: pageParam,
@@ -99,7 +99,7 @@ export const Browse = () => {
           : undefined;
       },
       initialPageParam: 1,
-      enabled: tags.length > 0, // Only run query if tags are provided
+      // Always enabled - empty tags array means show all posts
     });
 
   const allPosts = useMemo(() => {
@@ -189,9 +189,13 @@ export const Browse = () => {
               {allPosts.length} {allPosts.length === 1 ? "post" : "posts"}
               {hasNextPage && " +"}
             </span>
-            {tags.length > 0 && (
+            {tags.length > 0 ? (
               <span className="text-xs text-muted-foreground/70">
                 • Tags: {tags.join(", ")}
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground/70">
+                • Showing all posts
               </span>
             )}
           </div>
@@ -200,20 +204,7 @@ export const Browse = () => {
 
       {/* Grid Content */}
       <div className="flex-1 min-h-0">
-        {tags.length === 0 ? (
-          <div className="flex flex-col gap-4 justify-center items-center h-full text-muted-foreground">
-            <Search className="w-16 h-16 opacity-50" />
-            <div className="text-center">
-              <p className="mb-2 text-lg font-semibold">Search for posts</p>
-              <p className="text-sm">
-                Enter tags to search the external Booru API.
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground/70">
-                Example: blue_hair cyberpunk
-              </p>
-            </div>
-          </div>
-        ) : isLoading && allPosts.length === 0 ? (
+        {isLoading && allPosts.length === 0 ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>

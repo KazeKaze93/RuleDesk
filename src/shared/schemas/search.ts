@@ -7,9 +7,8 @@ import { z } from "zod";
  * Used in Main process (SearchController) and Renderer process (type safety).
  */
 export const SearchPostsSchema = z.object({
-  tags: z
-    .array(z.string().trim().min(1))
-    .min(1, "At least one tag is required"),
+  tags: z.array(z.string().trim().min(1)),
+  // Empty array is allowed - means show all posts (API omits tags parameter)
   page: z.number().int().positive(),
   limit: z.number().int().positive().max(100).optional(),
 });
