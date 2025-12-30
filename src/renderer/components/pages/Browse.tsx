@@ -7,8 +7,8 @@ import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { PostCard } from "../../features/artists/components/PostCard";
-import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
+import { TagAutocomplete } from "../../components/inputs/TagAutocomplete";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -172,13 +172,11 @@ export const Browse = () => {
           </h2>
         </div>
         <div className="flex gap-2 items-center">
-          <Input
-            type="text"
-            placeholder="Search for tags (e.g., 'blue_hair', 'cyberpunk')"
+          <TagAutocomplete
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={setQuery}
             onKeyDown={handleKeyDown}
-            className="flex-1"
+            placeholder="Search for tags (e.g., 'blue_hair', 'cyberpunk')"
           />
           <Button onClick={handleSearch} disabled={!query.trim()}>
             <Search className="mr-2 w-4 h-4" />

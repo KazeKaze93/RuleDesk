@@ -87,9 +87,33 @@ export interface IpcBridge {
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
 
-  markPostAsViewed: (postId: number) => Promise<boolean>;
+  markPostAsViewed: (
+    postId: number,
+    postData?: {
+      postId: number;
+      artistId: number;
+      fileUrl: string;
+      previewUrl: string;
+      sampleUrl?: string;
+      rating?: "s" | "q" | "e";
+      tags?: string;
+      publishedAt?: number;
+    }
+  ) => Promise<boolean>;
 
-  togglePostFavorite: (postId: number) => Promise<boolean>;
+  togglePostFavorite: (
+    postId: number,
+    postData?: {
+      postId: number;
+      artistId: number;
+      fileUrl: string;
+      previewUrl: string;
+      sampleUrl?: string;
+      rating?: "s" | "q" | "e";
+      tags?: string;
+      publishedAt?: number;
+    }
+  ) => Promise<boolean>;
 
   // Downloads
   downloadFile: (
@@ -151,11 +175,11 @@ const ipcBridge: IpcBridge = {
 
   syncAll: () => ipcRenderer.invoke("db:sync-all"),
 
-  markPostAsViewed: (postId) =>
-    ipcRenderer.invoke("db:mark-post-viewed", postId),
+  markPostAsViewed: (postId, postData) =>
+    ipcRenderer.invoke("db:mark-post-viewed", postId, postData),
 
-  togglePostFavorite: (postId) =>
-    ipcRenderer.invoke("db:toggle-post-favorite", postId),
+  togglePostFavorite: (postId, postData) =>
+    ipcRenderer.invoke("db:toggle-post-favorite", postId, postData),
 
   togglePostViewed: (postId) =>
     ipcRenderer.invoke("db:toggle-post-viewed", postId),

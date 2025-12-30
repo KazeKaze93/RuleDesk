@@ -63,7 +63,27 @@ export function useViewerController({
   useEffect(() => {
     if (post.isViewed) return;
 
-    window.api.markPostAsViewed(post.id);
+    // For external posts from Browse (artistId === 0), pass post data to create post in DB
+    const postData =
+      post.artistId === 0
+        ? {
+            postId: post.postId,
+            artistId: post.artistId,
+            fileUrl: post.fileUrl,
+            previewUrl: post.previewUrl,
+            sampleUrl: post.sampleUrl || "",
+            rating: post.rating as "s" | "q" | "e" | undefined,
+            tags: post.tags || "",
+            publishedAt: post.publishedAt instanceof Date
+              ? post.publishedAt.getTime()
+              : typeof post.publishedAt === "number"
+              ? post.publishedAt
+              : undefined,
+          }
+        : undefined;
+
+    // Always pass second argument (even if undefined) to match schema
+    window.api.markPostAsViewed(post.id, postData);
 
     // Update artist gallery cache if post has artistId
     if (post.artistId) {
@@ -91,7 +111,21 @@ export function useViewerController({
         ),
       };
     });
-  }, [post.id, post.isViewed, post.artistId, queryClient]);
+
+    // Update search cache (for Browse page) if post is from search
+    if (queue.origin.kind === "search") {
+      const searchQueryKey = ["search", queue.origin.tags];
+      queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) =>
+            page.map((p) => (p.id === post.id ? { ...p, isViewed: true } : p))
+          ),
+        };
+      });
+    }
+  }, [post.id, post.isViewed, post.artistId, post.postId, post.fileUrl, post.previewUrl, post.sampleUrl, post.rating, post.tags, post.publishedAt, queue.origin, queryClient]);
 
   useEffect(() => {
     const filenameId = `${post.artistId}_${post.postId}.${
@@ -119,11 +153,173 @@ export function useViewerController({
   }, [post.artistId, post.postId, post.fileUrl]);
 
   const toggleFavorite = async () => {
+    if (!post) return;
+
     const previousState = isFavorited;
+
+    // DETECT SOURCE:
+    // Local posts (from DB) usually have camelCase `createdAt` and `fileUrl`.
+    // Network posts (from API) usually have snake_case `file_url` or `preview_url` (raw data).
+    // Also check artistId: network posts from Browse have artistId === 0
+    const raw = post as any;
+    const isNetworkPost =
+      "file_url" in post ||
+      "preview_url" in post ||
+      !("createdAt" in post) ||
+      post.artistId === 0;
+
+    let postData: {
+      postId: number;
+      artistId: number;
+      fileUrl: string;
+      previewUrl: string;
+      sampleUrl?: string;
+      rating?: "s" | "q" | "e";
+      tags?: string;
+      publishedAt?: number;
+    } | undefined = undefined;
+
+    // Only perform heavy mapping for network posts (Browse tab)
+    if (isNetworkPost) {
+      // Map fields with fallbacks for both camelCase (DB) and snake_case (API) formats
+      const fileUrl =
+        post.fileUrl ||
+        raw.file_url ||
+        raw.fileUrl ||
+        "";
+
+      const previewUrl =
+        post.previewUrl ||
+        raw.preview_url ||
+        raw.preview_file_url ||
+        raw.previewUrl ||
+        "";
+
+      const sampleUrl =
+        post.sampleUrl ||
+        raw.sample_url ||
+        raw.sampleUrl ||
+        "";
+
+      // Handle tags: can be Array (from API) or String (from DB)
+      let tagsStr = "";
+      if (Array.isArray(post.tags)) {
+        tagsStr = post.tags.join(" ");
+      } else if (typeof post.tags === "string") {
+        tagsStr = post.tags;
+      } else if (raw.tags) {
+        // Fallback for raw API response
+        tagsStr = Array.isArray(raw.tags)
+          ? raw.tags.join(" ")
+          : String(raw.tags || "");
+      }
+
+      // Normalize rating: convert full words to single characters
+      // API may return "explicit", "safe", "questionable" or "s", "q", "e"
+      const normalizeRating = (
+        value: string | undefined | null
+      ): "s" | "q" | "e" => {
+        if (!value || (typeof value === "string" && value.trim() === "")) {
+          // Default to "q" if missing or empty
+          return "q";
+        }
+
+        const normalized = value.toLowerCase().trim();
+
+        // Handle full words
+        if (normalized === "explicit") return "e";
+        if (normalized === "safe") return "s";
+        if (normalized === "questionable") return "q";
+
+        // Handle single characters (already correct format)
+        if (normalized === "e" || normalized === "s" || normalized === "q") {
+          return normalized;
+        }
+
+        // Default to "q" for unknown values
+        return "q";
+      };
+
+      const rawRating = post.rating || raw.rating;
+      const rating = normalizeRating(
+        typeof rawRating === "string" ? rawRating : rawRating ? String(rawRating) : undefined
+      );
+
+      // Handle publishedAt: can be Date, number (timestamp), or snake_case field
+      let publishedAt: number | undefined;
+      if (post.publishedAt instanceof Date) {
+        publishedAt = post.publishedAt.getTime();
+      } else if (typeof post.publishedAt === "number") {
+        publishedAt = post.publishedAt;
+      } else if (raw.published_at) {
+        publishedAt =
+          typeof raw.published_at === "number"
+            ? raw.published_at
+            : new Date(raw.published_at).getTime();
+      } else if (raw.created_at) {
+        // Fallback to created_at if published_at is missing
+        publishedAt =
+          typeof raw.created_at === "number"
+            ? raw.created_at
+            : new Date(raw.created_at).getTime();
+      } else if (raw.createdAt instanceof Date) {
+        publishedAt = raw.createdAt.getTime();
+      } else if (typeof raw.createdAt === "number") {
+        publishedAt = raw.createdAt;
+      }
+
+      // Sanity check: fileUrl is required (NOT NULL constraint)
+      if (!fileUrl || fileUrl.trim() === "") {
+        log.error(
+          "[ViewerController] Cannot toggle favorite: fileUrl is missing after mapping",
+          {
+            postId: post.id,
+            postPostId: post.postId,
+            hasFileUrl: !!post.fileUrl,
+            hasRawFileUrl: !!raw.file_url,
+            rawKeys: Object.keys(raw || {}),
+          }
+        );
+        // Don't revert optimistic update here - it will be reverted in catch block
+        throw new Error("fileUrl is required for network posts");
+      }
+
+      // Sanity check: previewUrl is required (NOT NULL constraint)
+      if (!previewUrl || previewUrl.trim() === "") {
+        log.error(
+          "[ViewerController] Cannot toggle favorite: previewUrl is missing after mapping",
+          {
+            postId: post.id,
+            postPostId: post.postId,
+            hasPreviewUrl: !!post.previewUrl,
+            hasRawPreviewUrl: !!raw.preview_url,
+            rawKeys: Object.keys(raw || {}),
+          }
+        );
+        // Don't revert optimistic update here - it will be reverted in catch block
+        throw new Error("previewUrl is required for network posts");
+      }
+
+      // Create postData only for network posts
+      postData = {
+        postId: post.postId || raw.id || raw.post_id || 0,
+        artistId: post.artistId || raw.artist_id || raw.artistId || 0,
+        fileUrl: fileUrl.trim(),
+        previewUrl: previewUrl.trim(),
+        sampleUrl: sampleUrl.trim(),
+        rating: rating || undefined,
+        tags: tagsStr,
+        publishedAt,
+      };
+    }
+
+    // OPTIMISTIC UPDATE
     setIsFavorited(!previousState);
 
     try {
-      const newState = await window.api.togglePostFavorite(post.id);
+      // For local posts: postData is undefined (old behavior preserved)
+      // For network posts: postData contains mapped data
+      const newState = await window.api.togglePostFavorite(post.id, postData);
       setIsFavorited(newState);
 
       // Update artist gallery cache if post has artistId
@@ -155,6 +351,22 @@ export function useViewerController({
           ),
         };
       });
+
+      // Update search cache (for Browse page) if post is from search
+      if (queue.origin.kind === "search") {
+        const searchQueryKey = ["search", queue.origin.tags];
+        queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((p) =>
+                p.id === post.id ? { ...p, isFavorited: newState } : p
+              )
+            ),
+          };
+        });
+      }
 
       // Update favorites cache separately
       const favoritesQueryKey = ["posts", "favorites"];

@@ -53,6 +53,20 @@ You do not tolerate sloppy code, "any" types, "as" casting, magic numbers, or pr
 - **Exceptions**: `console.log` is allowed ONLY inside `vite.config.ts` or for temporary local debugging (must be removed before commit).
 - **Cleanup**: Remove unused imports immediately (e.g., if `log` is imported but not used).
 
+## BETTER-SQLITE3 & DRIZZLE STRICT MODE
+
+We use `better-sqlite3` driver which is BLOCKING and SYNCHRONOUS.
+
+1.  **NEVER** use `async` function as a callback for `db.transaction(...)`.
+    - ❌ BAD: `await db.transaction(async (tx) => { ... })`
+    - ✅ GOOD: `db.transaction((tx) => { ... })`
+2.  **NEVER** use `await` inside a transaction block. Drizzle queries (`.findFirst`, `.run`) are synchronous in this context.
+3.  **ALWAYS** use `.run()` at the end of `.insert()`, `.update()`, and `.delete()` chains. Drizzle builds queries lazily; `.run()` executes them.
+4.  **Architectural Pattern:**
+    - Perform all ASYNC operations (API calls, file I/O, heavy calcs) **OUTSIDE** the transaction.
+    - Open transaction -> Write to DB (Sync) -> Close transaction.
+    - Return result wrapped in Promise (since Controller methods are async for IPC).
+
 # UI & STYLING RULES (STRICT)
 
 You are prohibited from "inventing" UI. You must act as a factory assembler using existing parts.

@@ -107,7 +107,21 @@ export class PostsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([
+        z.number().int().positive(),
+        z
+          .object({
+            postId: z.number().int().positive(),
+            artistId: z.number().int().default(0),
+            fileUrl: z.string().min(1),
+            previewUrl: z.string().min(1),
+            sampleUrl: z.string().optional().or(z.literal("")),
+            rating: z.enum(["s", "q", "e"]).optional(),
+            tags: z.string().optional().or(z.literal("")),
+            publishedAt: z.number().optional(),
+          })
+          .optional(),
+      ]),
       this.markViewed.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -123,7 +137,22 @@ export class PostsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([
+        z.number().int().positive(),
+        z
+          .object({
+            postId: z.number().int().positive().optional(),
+            artistId: z.number().int().default(0).optional(),
+            fileUrl: z.string().min(1).optional(),
+            previewUrl: z.string().min(1).optional(),
+            sampleUrl: z.string().optional().or(z.literal("")),
+            rating: z.enum(["s", "q", "e"]).optional(),
+            tags: z.string().optional().or(z.literal("")),
+            publishedAt: z.number().optional(),
+          })
+          .passthrough() // Allow additional properties from API responses (snake_case, etc.)
+          .optional(),
+      ]),
       this.toggleFavorite.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -157,7 +186,7 @@ export class PostsController extends BaseController {
         // Note: artistId is optional - if not provided, returns posts from all tracked artists
         // This is the expected behavior for global feeds like Updates
         const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
-        
+
         if (artistId) {
           baseConditions.push(eq(posts.artistId, artistId));
         }
@@ -179,7 +208,8 @@ export class PostsController extends BaseController {
         // This is safe because the join condition already filters by date (sinceTracking),
         // so the join itself acts as the primary filter. Additional filters in whereClause
         // are optional refinements.
-        const whereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined;
+        const whereClause =
+          baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
         // Use select with innerJoin for sinceTracking filter
         // The date filter is part of the join condition for efficiency
@@ -228,7 +258,7 @@ export class PostsController extends BaseController {
       // Standard query path (no sinceTracking filter)
       // Build where conditions array
       const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
-      
+
       if (artistId) {
         baseConditions.push(eq(posts.artistId, artistId));
       }
@@ -246,7 +276,8 @@ export class PostsController extends BaseController {
       }
 
       // Combine all conditions using and()
-      const whereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined;
+      const whereClause =
+        baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
       const result = await db.query.posts.findMany({
         where: whereClause,
@@ -308,24 +339,110 @@ export class PostsController extends BaseController {
   /**
    * Mark post as viewed
    *
+   * For posts from Browse (external posts), if post is not found in DB,
+   * it will be created with the provided data.
+   *
    * @param _event - IPC event (unused)
-   * @param postId - Post ID
+   * @param postId - Post ID (database ID for existing posts, or external postId for new posts)
+   * @param postData - Optional post data for creating external posts from Browse
    * @returns true if update succeeded
    * @throws {Error} If update fails
    */
   private async markViewed(
     _event: IpcMainInvokeEvent,
-    postId: number
+    postId: number,
+    postData?: {
+      postId: number;
+      artistId: number;
+      fileUrl: string;
+      previewUrl: string;
+      sampleUrl?: string;
+      rating?: "s" | "q" | "e";
+      tags?: string;
+      publishedAt?: number;
+    }
   ): Promise<boolean> {
     try {
       const db = this.getDb();
-      await db
-        .update(posts)
-        .set({ isViewed: true })
-        .where(eq(posts.id, postId));
 
-      log.info(`[PostsController] Post ${postId} marked as viewed`);
-      return true;
+      // First, try to find post by database ID (async query before transaction)
+      let existingPost = await db.query.posts.findFirst({
+        where: eq(posts.id, postId),
+      });
+
+      // If not found and postData is provided, try to find by postId and artistId
+      // This handles external posts from Browse (artistId = 0)
+      if (!existingPost && postData) {
+        existingPost = await db.query.posts.findFirst({
+          where: and(
+            eq(posts.postId, postData.postId),
+            eq(posts.artistId, postData.artistId)
+          ),
+        });
+      }
+
+      // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
+      // Use transaction for atomicity
+      db.transaction((tx) => {
+        // If post exists, update isViewed status
+        if (existingPost) {
+          tx.update(posts)
+            .set({ isViewed: true })
+            .where(eq(posts.id, existingPost.id))
+            .run();
+
+          log.debug(
+            `[PostsController] Post ${existingPost.id} (postId: ${existingPost.postId}) marked as viewed in transaction`
+          );
+        } else if (postData) {
+          // If post doesn't exist and postData is provided, create it with isViewed = true
+          const now = new Date();
+          const publishedAt = postData.publishedAt
+            ? new Date(postData.publishedAt)
+            : now;
+
+          tx.insert(posts)
+            .values({
+              postId: postData.postId,
+              artistId: postData.artistId,
+              fileUrl: postData.fileUrl,
+              previewUrl: postData.previewUrl,
+              sampleUrl: postData.sampleUrl ?? "",
+              title: "",
+              rating: postData.rating ?? "",
+              tags: postData.tags ?? "",
+              publishedAt: publishedAt,
+              createdAt: now,
+              isViewed: true, // Set to true since we're marking as viewed
+              isFavorited: false,
+            })
+            .run();
+
+          log.debug(
+            `[PostsController] Created new post (postId: ${postData.postId}) and marked as viewed in transaction`
+          );
+        }
+      });
+
+      if (existingPost) {
+        log.info(
+          `[PostsController] Post ${existingPost.id} (postId: ${existingPost.postId}) marked as viewed`
+        );
+        return true;
+      }
+
+      if (postData) {
+        log.info(
+          `[PostsController] Created new post (postId: ${postData.postId}) and marked as viewed`
+        );
+        return true;
+      }
+
+      // If post doesn't exist and no postData provided, return false (don't throw error for viewed status)
+      log.warn(
+        `[PostsController] Post with id ${postId} not found. For external posts from Browse, postData must be provided.`
+      );
+      return false;
     } catch (error) {
       log.error("[PostsController] Failed to mark post as viewed:", error);
       return false;
@@ -346,10 +463,14 @@ export class PostsController extends BaseController {
   ): Promise<boolean> {
     try {
       const db = this.getDb();
-      await db
-        .update(posts)
-        .set({ isViewed: false })
-        .where(eq(posts.id, postId));
+
+      // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
+      db.transaction((tx) => {
+        tx.update(posts)
+          .set({ isViewed: false })
+          .where(eq(posts.id, postId))
+          .run();
+      });
 
       log.info(
         `[PostsController] Post ${postId} cache reset (marked as not viewed)`
@@ -364,33 +485,181 @@ export class PostsController extends BaseController {
   /**
    * Toggle favorite status for a post
    *
+   * For posts from Browse (external posts), if post is not found in DB,
+   * it will be created with the provided data.
+   *
    * @param _event - IPC event (unused)
-   * @param postId - Post ID
+   * @param postId - Post ID (database ID for existing posts, or external postId for new posts)
+   * @param postData - Optional post data for creating external posts from Browse
    * @returns New favorite state (true if favorited, false otherwise)
    * @throws {Error} If database operation fails
    */
   private async toggleFavorite(
     _event: IpcMainInvokeEvent,
-    postId: number
+    postId: number,
+    postData?: {
+      postId: number;
+      artistId: number;
+      fileUrl: string;
+      previewUrl: string;
+      sampleUrl?: string;
+      rating?: "s" | "q" | "e";
+      tags?: string;
+      publishedAt?: number;
+    }
   ): Promise<boolean> {
     try {
       const db = this.getDb();
 
-      // Toggle the isFavorited status directly in a single query
-      const result = await db
-        .update(posts)
-        .set({ isFavorited: sql`NOT ${posts.isFavorited}` })
-        .where(eq(posts.id, postId))
-        .returning({ isFavorited: posts.isFavorited });
+      // First, try to find post by database ID (async query before transaction)
+      let existingPost = await db.query.posts.findFirst({
+        where: eq(posts.id, postId),
+      });
 
-      if (result.length === 0) {
-        throw new Error(`Post with id ${postId} not found or not updated`);
+      // If not found and postData is provided, try to find by postId and artistId
+      // This handles external posts from Browse (artistId = 0)
+      if (!existingPost && postData) {
+        existingPost = await db.query.posts.findFirst({
+          where: and(
+            eq(posts.postId, postData.postId),
+            eq(posts.artistId, postData.artistId)
+          ),
+        });
       }
 
-      const newFavoriteState = result[0].isFavorited;
+      // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
+      // NOTE: .returning() doesn't work reliably in synchronous transactions, so we query after
+      db.transaction((tx) => {
+        // If post exists, toggle favorite status
+        if (existingPost) {
+          tx.update(posts)
+            .set({ isFavorited: sql`NOT ${posts.isFavorited}` })
+            .where(eq(posts.id, existingPost.id))
+            .run();
+
+          log.debug(
+            `[PostsController] Post ${existingPost.id} (postId: ${existingPost.postId}) favorite toggled in transaction`
+          );
+        } else {
+          // Post doesn't exist - can only add to favorites (not remove)
+          // For toggle operation, if post doesn't exist, we're adding it to favorites (isFavorite = true)
+          // Validate that postData is provided for network posts (Browse tab)
+          if (!postData) {
+            throw new Error(
+              `Post with id ${postId} not found. For external posts from Browse, postData must be provided when adding to favorites.`
+            );
+          }
+
+          // Validate required fields for NOT NULL constraints
+          // Schema requires: fileUrl (NOT NULL), previewUrl (NOT NULL), tags (NOT NULL)
+          if (!postData.fileUrl || postData.fileUrl.trim() === "") {
+            throw new Error(
+              `Post data validation failed: fileUrl is required and cannot be empty (NOT NULL constraint)`
+            );
+          }
+          if (!postData.previewUrl || postData.previewUrl.trim() === "") {
+            throw new Error(
+              `Post data validation failed: previewUrl is required and cannot be empty (NOT NULL constraint)`
+            );
+          }
+
+          // CRITICAL: Check if artist exists before inserting post (FOREIGN KEY constraint)
+          // For network posts from Browse, artistId may not exist in local DB
+          const targetArtistId = postData.artistId;
+
+          // Use synchronous select query inside transaction
+          // Drizzle with better-sqlite3 executes queries synchronously inside transactions
+          const existingArtist = tx
+            .select()
+            .from(artists)
+            .where(eq(artists.id, targetArtistId))
+            .limit(1)
+            .all()[0]; // Get first result or undefined
+
+          if (!existingArtist) {
+            // Artist doesn't exist - create placeholder artist to satisfy FOREIGN KEY constraint
+            // Use explicit id (SQLite allows this even with autoIncrement by using INSERT with explicit id)
+            const now = new Date();
+            tx.insert(artists)
+              .values({
+                id: targetArtistId, // Explicit ID for placeholder artist
+                name: `Artist ${targetArtistId}`,
+                tag: `external_${targetArtistId}`, // Unique tag for placeholder
+                provider: "rule34", // Default provider
+                type: "tag", // Default type
+                apiEndpoint: "", // Safe default (required field)
+                lastPostId: 0,
+                newPostsCount: 0,
+                createdAt: now,
+              })
+              .run();
+
+            log.debug(
+              `[PostsController] Created placeholder artist ${targetArtistId} for external post in transaction`
+            );
+          }
+
+          // Create post with isFavorited = true (since we're adding to favorites via toggle)
+          const now = new Date();
+          const publishedAt = postData.publishedAt
+            ? new Date(postData.publishedAt)
+            : now;
+
+          tx.insert(posts)
+            .values({
+              postId: postData.postId,
+              artistId: postData.artistId,
+              fileUrl: postData.fileUrl,
+              previewUrl: postData.previewUrl,
+              sampleUrl: postData.sampleUrl ?? "",
+              title: "",
+              rating: postData.rating ?? "",
+              tags: postData.tags ?? "", // NOT NULL constraint - empty string is valid
+              publishedAt: publishedAt,
+              createdAt: now,
+              isViewed: false,
+              isFavorited: true, // Set to true since we're adding to favorites
+            })
+            .run();
+
+          log.debug(
+            `[PostsController] Created new post (postId: ${postData.postId}) and set as favorited in transaction`
+          );
+        }
+      });
+
+      // Get updated post after transaction commits to get new favorite state
+      // This is safe because transaction is already committed
+      let updatedPost: { isFavorited: boolean } | undefined;
+
+      if (existingPost) {
+        updatedPost = await db.query.posts.findFirst({
+          where: eq(posts.id, existingPost.id),
+          columns: { isFavorited: true },
+        });
+      } else if (postData) {
+        // Find the newly created post
+        updatedPost = await db.query.posts.findFirst({
+          where: and(
+            eq(posts.postId, postData.postId),
+            eq(posts.artistId, postData.artistId)
+          ),
+          columns: { isFavorited: true },
+        });
+      }
+
+      if (!updatedPost) {
+        throw new Error(
+          `Post with id ${postId} not found or not updated. For external posts from Browse, postData must be provided.`
+        );
+      }
+
+      const newFavoriteState = updatedPost.isFavorited;
 
       log.info(
-        `[PostsController] Post ${postId} favorite toggled to ${newFavoriteState}`
+        `[PostsController] Post ${existingPost?.id ?? "new"} (postId: ${
+          existingPost?.postId ?? postData?.postId
+        }) favorite toggled to ${newFavoriteState}`
       );
       return newFavoriteState;
     } catch (error) {

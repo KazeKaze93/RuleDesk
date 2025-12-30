@@ -83,7 +83,33 @@ export interface IpcApi extends IpcBridge {
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
 
-  markPostAsViewed: (postId: number) => Promise<boolean>;
+  markPostAsViewed: (
+    postId: number,
+    postData?: {
+      postId: number;
+      artistId: number;
+      fileUrl: string;
+      previewUrl: string;
+      sampleUrl?: string;
+      rating?: "s" | "q" | "e";
+      tags?: string;
+      publishedAt?: number;
+    }
+  ) => Promise<boolean>;
+
+  togglePostFavorite: (
+    postId: number,
+    postData?: {
+      postId: number;
+      artistId: number;
+      fileUrl: string;
+      previewUrl: string;
+      sampleUrl?: string;
+      rating?: "s" | "q" | "e";
+      tags?: string;
+      publishedAt?: number;
+    }
+  ) => Promise<boolean>;
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
