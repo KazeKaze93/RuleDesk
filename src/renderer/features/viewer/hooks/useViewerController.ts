@@ -3,6 +3,9 @@ import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import log from "electron-log/renderer";
 import type { Post } from "../../../../main/db/schema";
 import type { ViewerOrigin } from "../../../store/viewerStore";
+import { normalizePostToPostData } from "../../../../shared/utils/post-normalization";
+import { EXTERNAL_ARTIST_ID } from "../../../../shared/constants";
+import { updatePostInCache } from "../../../utils/react-query-cache";
 
 interface ViewerQueue {
   ids: number[];
@@ -63,35 +66,43 @@ export function useViewerController({
   useEffect(() => {
     if (post.isViewed) return;
 
-    window.api.markPostAsViewed(post.id);
+    // For external posts from Browse (artistId === EXTERNAL_ARTIST_ID), pass post data to create post in DB
+    // All data normalization is handled by normalizePostToPostData utility
+    const postData = post.artistId === EXTERNAL_ARTIST_ID ? normalizePostToPostData(post) : undefined;
 
+    // Always pass second argument (even if undefined) to match schema
+    window.api.markPostAsViewed(post.id, postData);
+
+    // Update all relevant caches using shared utility
     // Update artist gallery cache if post has artistId
     if (post.artistId) {
-      const queryKey = ["posts", post.artistId];
-      queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) =>
-            page.map((p) => (p.id === post.id ? { ...p, isViewed: true } : p))
-          ),
-        };
-      });
+      const artistQueryKey = ["posts", post.artistId];
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        artistQueryKey,
+        (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+      );
     }
 
     // Update updates feed cache
-    // Note: Query key ["posts", "updates"] is consistent with Updates.tsx
     const updatesQueryKey = ["posts", "updates"];
-    queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        pages: old.pages.map((page) =>
-          page.map((p) => (p.id === post.id ? { ...p, isViewed: true } : p))
-        ),
-      };
-    });
-  }, [post.id, post.isViewed, post.artistId, queryClient]);
+    queryClient.setQueryData<InfiniteData<Post[]>>(
+      updatesQueryKey,
+      (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+    );
+
+    // Update search cache (for Browse page) if post is from search
+    if (queue?.origin?.kind === "search") {
+      const searchQueryKey = ["search", queue.origin.tags];
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        searchQueryKey,
+        (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+      );
+    }
+  }, [
+    post,
+    queue?.origin,
+    queryClient,
+  ]);
 
   useEffect(() => {
     const filenameId = `${post.artistId}_${post.postId}.${
@@ -119,78 +130,88 @@ export function useViewerController({
   }, [post.artistId, post.postId, post.fileUrl]);
 
   const toggleFavorite = async () => {
+    if (!post) return;
+
     const previousState = isFavorited;
+
+    // For external posts from Browse (artistId === EXTERNAL_ARTIST_ID), pass post data to create post in DB
+    // All data normalization is handled by normalizePostToPostData utility
+    const postData = post.artistId === EXTERNAL_ARTIST_ID ? normalizePostToPostData(post) : undefined;
+
+    // OPTIMISTIC UPDATE
     setIsFavorited(!previousState);
 
     try {
-      const newState = await window.api.togglePostFavorite(post.id);
+      // For local posts: postData is undefined (old behavior preserved)
+      // For network posts: postData contains normalized data
+      const newState = await window.api.togglePostFavorite(post.id, postData);
       setIsFavorited(newState);
 
+      // Update all relevant caches using shared utility
       // Update artist gallery cache if post has artistId
       if (post.artistId) {
         const artistQueryKey = ["posts", post.artistId];
-        queryClient.setQueryData<InfiniteData<Post[]>>(artistQueryKey, (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            pages: old.pages.map((page) =>
-              page.map((p) =>
-                p.id === post.id ? { ...p, isFavorited: newState } : p
-              )
-            ),
-          };
-        });
+        queryClient.setQueryData<InfiniteData<Post[]>>(
+          artistQueryKey,
+          (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isFavorited: newState }))
+        );
       }
 
       // Update updates feed cache
       const updatesQueryKey = ["posts", "updates"];
-      queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) =>
-            page.map((p) =>
-              p.id === post.id ? { ...p, isFavorited: newState } : p
-            )
-          ),
-        };
-      });
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        updatesQueryKey,
+        (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isFavorited: newState }))
+      );
+
+      // Update search cache (for Browse page) if post is from search
+      if (queue?.origin?.kind === "search") {
+        const searchQueryKey = ["search", queue.origin.tags];
+        queryClient.setQueryData<InfiniteData<Post[]>>(
+          searchQueryKey,
+          (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isFavorited: newState }))
+        );
+      }
 
       // Update favorites cache separately
       const favoritesQueryKey = ["posts", "favorites"];
-      const oldFavoritesData = queryClient.getQueryData<InfiniteData<Post[]>>(favoritesQueryKey);
-      
+      const oldFavoritesData =
+        queryClient.getQueryData<InfiniteData<Post[]>>(favoritesQueryKey);
+
       if (oldFavoritesData) {
-        queryClient.setQueryData<InfiniteData<Post[]>>(favoritesQueryKey, (old) => {
-          if (!old) return old;
-          
-          // If removing from favorites, filter out the post
-          if (!newState) {
+        queryClient.setQueryData<InfiniteData<Post[]>>(
+          favoritesQueryKey,
+          (old) => {
+            if (!old) return old;
+
+            // If removing from favorites, filter out the post
+            if (!newState) {
+              return {
+                ...old,
+                pages: old.pages
+                  .map((page) => page.filter((p) => p.id !== post.id))
+                  .filter((page) => page.length > 0),
+              };
+            }
+
+            // If adding to favorites, update existing post
             return {
               ...old,
-              pages: old.pages
-                .map((page) => page.filter((p) => p.id !== post.id))
-                .filter((page) => page.length > 0),
+              pages: old.pages.map((page) =>
+                page.map((p) =>
+                  p.id === post.id ? { ...p, isFavorited: newState } : p
+                )
+              ),
             };
           }
-          
-          // If adding to favorites, update existing post
-          return {
-            ...old,
-            pages: old.pages.map((page) =>
-              page.map((p) =>
-                p.id === post.id ? { ...p, isFavorited: newState } : p
-              )
-            ),
-          };
-        });
+        );
       }
 
       // Invalidate favorites query if removing from favorites or post not in cache
       const foundInCache = oldFavoritesData?.pages.some((page) =>
         page.some((p) => p.id === post.id)
       );
-      
+
       if (!newState || !foundInCache) {
         queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
       }
@@ -218,7 +239,10 @@ export function useViewerController({
       } else if (result && result.canceled) {
         // User canceled
       } else {
-        log.error("[ViewerController] Download failed:", result?.error || "Unknown error");
+        log.error(
+          "[ViewerController] Download failed:",
+          result?.error || "Unknown error"
+        );
       }
     } catch (error) {
       log.error("[ViewerController] Download failed:", error);
@@ -248,7 +272,9 @@ export function useViewerController({
 
   const resetLocalCache = () => {
     if (!post) return;
-    log.info(`[ViewerController] Attempting to reset local cache for Post ID: ${post.id}`);
+    log.info(
+      `[ViewerController] Attempting to reset local cache for Post ID: ${post.id}`
+    );
     window.api.resetPostCache(post.id);
   };
 

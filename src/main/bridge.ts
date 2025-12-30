@@ -3,6 +3,7 @@ import type { Artist, Post } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
 import type { GetPostsRequest, AddArtistRequest } from "./types/ipc";
 import type { IpcSettings } from "../shared/schemas/settings";
+import type { PostData } from "../shared/schemas/post";
 import type { ProviderId, SearchResults } from "./providers";
 
 export type UpdateStatusData = {
@@ -87,9 +88,9 @@ export interface IpcBridge {
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
 
-  markPostAsViewed: (postId: number) => Promise<boolean>;
+  markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
 
-  togglePostFavorite: (postId: number) => Promise<boolean>;
+  togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
 
   // Downloads
   downloadFile: (
@@ -107,6 +108,8 @@ export interface IpcBridge {
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
+  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
 
@@ -122,6 +125,9 @@ const ipcBridge: IpcBridge = {
   // Search remote tags via specified provider (defaults to rule34)
   searchRemoteTags: (query, provider = "rule34") =>
     ipcRenderer.invoke("api:search-remote-tags", query, provider),
+
+  searchBooru: (params) =>
+    ipcRenderer.invoke("booru:search", params),
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 
@@ -146,11 +152,11 @@ const ipcBridge: IpcBridge = {
 
   syncAll: () => ipcRenderer.invoke("db:sync-all"),
 
-  markPostAsViewed: (postId) =>
-    ipcRenderer.invoke("db:mark-post-viewed", postId),
+  markPostAsViewed: (postId, postData) =>
+    ipcRenderer.invoke("db:mark-post-viewed", postId, postData),
 
-  togglePostFavorite: (postId) =>
-    ipcRenderer.invoke("db:toggle-post-favorite", postId),
+  togglePostFavorite: (postId, postData) =>
+    ipcRenderer.invoke("db:toggle-post-favorite", postId, postData),
 
   togglePostViewed: (postId) =>
     ipcRenderer.invoke("db:toggle-post-viewed", postId),

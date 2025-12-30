@@ -4,19 +4,9 @@ import { selectBestPreview } from "../lib/media-utils";
 import { USER_AGENT, REQUEST_TIMEOUT } from "../config/constants";
 import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
 import type { ArtistType } from "../db/schema";
-
-interface GelbooruRawPost {
-  id: number;
-  file_url: string;
-  sample_url?: string;
-  preview_url?: string;
-  tags: string;
-  rating: string;
-  score: number;
-  width: number;
-  height: number;
-  created_at: string; // Gelbooru returns formatted date string usually
-}
+import { GelbooruRawPostSchema, type GelbooruRawPost } from "../../shared/schemas/booru";
+import { normalizeRating } from "../../shared/utils/post-normalization";
+import { z } from "zod";
 
 export class GelbooruProvider implements IBooruProvider {
   readonly id = "gelbooru";
@@ -76,13 +66,25 @@ export class GelbooruProvider implements IBooruProvider {
         // Gelbooru format: [{"value":"tag_name","label":"tag_name (123)","type":"0"}]
         const results: SearchResults[] = [];
         for (const item of data) {
-          if (typeof item === "object" && item !== null && "value" in item && "label" in item) {
-            const typed = item as { value: string; label: string; category?: string; type?: string };
+          if (
+            typeof item === "object" &&
+            item !== null &&
+            "value" in item &&
+            "label" in item &&
+            typeof (item as { value: unknown }).value === "string" &&
+            typeof (item as { label: unknown }).label === "string"
+          ) {
+            const typed = item as {
+              value: string;
+              label: string;
+              category?: string;
+              type?: string;
+            };
             results.push({
               id: typed.value,
               label: typed.label,
               value: typed.value,
-              type: typed.category || typed.type
+              type: typed.category || typed.type,
             });
           }
         }
@@ -130,7 +132,7 @@ export class GelbooruProvider implements IBooruProvider {
       }
 
       const { data } = response;
-      let rawPosts: GelbooruRawPost[] = [];
+      let rawPosts: unknown[] = [];
       
       // Gelbooru JSON API is inconsistent. It might return:
       // 1. Array of objects directly
@@ -138,17 +140,49 @@ export class GelbooruProvider implements IBooruProvider {
       // 3. Object { post: { ... } } (if single result)
       
       if (Array.isArray(data)) {
-        rawPosts = data as GelbooruRawPost[];
-      } else if (data && typeof data === "object" && "post" in data) {
-        const postData = (data as { post: unknown }).post;
+        rawPosts = data;
+      } else if (data && typeof data === "object" && data !== null && "post" in data) {
+        // Type guard: check if data has 'post' property
+        const dataWithPost = data as { post: unknown };
+        const postData = dataWithPost.post;
         if (Array.isArray(postData)) {
-          rawPosts = postData as GelbooruRawPost[];
+          rawPosts = postData;
         } else if (postData && typeof postData === "object") {
-          rawPosts = [postData as GelbooruRawPost];
+          rawPosts = [postData];
         }
       }
 
-      return rawPosts.map(raw => this.mapToBooruPost(raw)).filter((post): post is BooruPost => post !== null);
+      // Validate posts individually to handle partial failures gracefully
+      // If we use z.array() and one post fails, the entire array fails
+      // Instead, we validate each post and collect valid ones
+      const validatedPosts: GelbooruRawPost[] = [];
+      const validationErrors: z.ZodError[] = [];
+
+      for (const raw of rawPosts) {
+        const result = GelbooruRawPostSchema.safeParse(raw);
+        if (result.success) {
+          validatedPosts.push(result.data);
+        } else {
+          validationErrors.push(result.error);
+        }
+      }
+
+      // Log validation errors if any, but continue with valid posts
+      if (validationErrors.length > 0) {
+        logger.warn(
+          `[GelbooruProvider] ${validationErrors.length} posts failed validation out of ${rawPosts.length} total`,
+          { 
+            totalPosts: rawPosts.length,
+            validPosts: validatedPosts.length,
+            invalidPosts: validationErrors.length,
+            sampleErrors: validationErrors.slice(0, 3).map(e => e.errors)
+          }
+        );
+      }
+
+      return validatedPosts
+        .map((raw) => this.mapToBooruPost(raw))
+        .filter((post): post is BooruPost => post !== null);
     } catch (error) {
        logger.error(`[Gelbooru] Error fetching page ${page}`, error);
        return [];
@@ -156,22 +190,14 @@ export class GelbooruProvider implements IBooruProvider {
   }
 
   private mapToBooruPost(raw: GelbooruRawPost): BooruPost | null {
-    // Gelbooru can return 200 OK with broken data or XML instead of JSON
-    // Validate critical fields before creating post object
-    if (!raw.file_url || typeof raw.file_url !== "string" || raw.file_url.trim() === "") {
-      logger.warn("[GelbooruProvider] Skipping post with missing file_url", { id: raw.id });
-      return null;
-    }
-
-    if (!raw.id || isNaN(Number(raw.id))) {
-      logger.warn("[GelbooruProvider] Skipping post with invalid id", { raw });
-      return null;
-    }
-
-    // Safely extract fields as Gelbooru types are loose
-    const id = Number(raw.id);
+    // Data is already validated through Zod schema, but we still need to handle edge cases
     const fileUrl = raw.file_url.trim();
-    const sampleUrl = raw.sample_url?.trim() || raw.file_url.trim();
+    if (!fileUrl) {
+      logger.warn("[GelbooruProvider] Skipping post with empty file_url", { id: raw.id });
+      return null;
+    }
+
+    const sampleUrl = raw.sample_url?.trim() || fileUrl;
     
     // Select best preview using shared utility
     const previewUrl = selectBestPreview({
@@ -188,32 +214,27 @@ export class GelbooruProvider implements IBooruProvider {
       if (!isNaN(parsedDate.getTime())) {
         date = parsedDate;
       } else {
-        logger.warn(`[GelbooruProvider] Invalid date for post ${id}: ${raw.created_at}`);
+        logger.warn(`[GelbooruProvider] Invalid date for post ${raw.id}: ${raw.created_at}`);
       }
     }
 
-    // Validate rating - Gelbooru uses "safe", "questionable", "explicit" or "s", "q", "e"
-    let rating: "s" | "q" | "e" = "q";
-    if (raw.rating) {
-      const firstChar = raw.rating.charAt(0).toLowerCase();
-      if (firstChar === "s" || firstChar === "q" || firstChar === "e") {
-        rating = firstChar;
-      }
-    }
+    // Normalize rating using shared utility (removes need for manual validation)
+    const rating = normalizeRating(raw.rating);
 
     return {
-      id: id,
+      id: raw.id,
       fileUrl: fileUrl,
       sampleUrl: sampleUrl,
       previewUrl: previewUrl,
       tags: raw.tags ? raw.tags.split(" ").filter(Boolean) : [],
       rating: rating,
-      score: Number(raw.score) || 0,
+      score: raw.score ?? 0,
       source: "Gelbooru",
-      width: Number(raw.width) || 0,
-      height: Number(raw.height) || 0,
+      width: raw.width ?? 0,
+      height: raw.height ?? 0,
       createdAt: date,
     };
   }
 }
+
 

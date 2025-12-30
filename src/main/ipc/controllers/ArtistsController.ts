@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, like, or, desc, sql } from "drizzle-orm";
+import { eq, like, or, desc, sql, and, notLike, not } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { artists, ARTIST_TYPES } from "../../db/schema";
@@ -11,6 +11,7 @@ import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
+import { EXTERNAL_ARTIST_ID, EXTERNAL_ARTIST_TAG_PREFIX } from "../../../shared/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -154,12 +155,18 @@ export class ArtistsController extends BaseController {
 
       // Use COALESCE with integer columns (both are integer with timestamp mode)
       // This matches the expression index: COALESCE(last_checked, created_at) DESC
+      // Filter out placeholder artists created by togglePostFavorite (tag starts with EXTERNAL_ARTIST_TAG_PREFIX)
+      // Also exclude artist with id === EXTERNAL_ARTIST_ID if it exists
       const result = await db.query.artists.findMany({
+        where: and(
+          notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`), // Exclude placeholder artists
+          not(eq(artists.id, EXTERNAL_ARTIST_ID)) // Explicitly exclude EXTERNAL_ARTIST_ID
+        ),
         orderBy: [
           desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`),
         ],
       });
-      log.info(`[ArtistsController] Retrieved ${result.length} artists`);
+      log.info(`[ArtistsController] Retrieved ${result.length} tracked artists (placeholder artists excluded)`);
       
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       // Uses universal toIpcSafe utility to avoid code duplication
@@ -241,13 +248,22 @@ export class ArtistsController extends BaseController {
     id: number
   ): Promise<boolean> {
     try {
+      // SECURITY: Prevent deletion of EXTERNAL_ARTIST_ID (virtual artist for external posts)
+      // This is a sentinel value that should never be deleted
+      if (id === EXTERNAL_ARTIST_ID) {
+        log.warn(
+          `[ArtistsController] Attempted to delete EXTERNAL_ARTIST_ID (${EXTERNAL_ARTIST_ID}). This is not allowed.`
+        );
+        throw new Error("Cannot delete external artist placeholder");
+      }
+
       const db = this.getDb();
       await db.delete(artists).where(eq(artists.id, id));
       log.info(`[ArtistsController] Artist deleted: ID ${id}`);
       return true;
     } catch (error) {
       log.error("[ArtistsController] Failed to delete artist:", error);
-      throw new Error("Failed to delete artist");
+      throw error;
     }
   }
 

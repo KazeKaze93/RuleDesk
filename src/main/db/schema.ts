@@ -72,6 +72,7 @@ export const posts = sqliteTable(
   },
   (t) => ({
     uniquePost: unique().on(t.artistId, t.postId),
+    postIdIdx: index("postIdIdx").on(t.postId),
     artistIdIdx: index("artistIdIdx").on(t.artistId),
     isViewedIdx: index("isViewedIdx").on(t.isViewed),
     publishedAtIdx: index("publishedAtIdx").on(t.publishedAt),
