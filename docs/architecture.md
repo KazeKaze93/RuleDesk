@@ -543,41 +543,49 @@ const posts = await db.query.posts.findMany({
    - Type-safe DI container with Token-based registration
    - Singleton pattern for service management
    - Circular dependency detection
-   - Services: Database, SyncService
+   - Services: Database, SyncService, SecureStorage
 
-6. **Booru Providers** (`src/main/providers/`)
+6. **Maintenance Queue** (`src/main/db/maintenance-queue.ts`)
+
+   - Sequential execution queue for database maintenance operations
+   - Prevents race conditions and "Database is closed" errors
+   - Promise-based queue ensures operations complete before next starts
+   - Used for backup, restore, and database close operations
+
+7. **Booru Providers** (`src/main/providers/`)
 
    - Provider pattern abstraction for multi-booru support
    - `IBooruProvider` interface for standardized booru operations
    - Implementations: `Rule34Provider`, `GelbooruProvider`
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
 
-7. **Updater Service** (`src/main/services/updater-service.ts`)
+8. **Updater Service** (`src/main/services/updater-service.ts`)
 
    - Manages automatic update checking via `electron-updater`
    - Handles update download and installation
    - Emits IPC events for update status and progress
    - User-controlled download (manual download trigger)
 
-8. **Secure Storage** (`src/main/services/secure-storage.ts`)
+9. **Secure Storage** (`src/main/services/secure-storage.ts`)
 
    - Encrypts and decrypts sensitive data using Electron's `safeStorage` API
+   - Static class with `encrypt()` and `decrypt()` methods
    - Used for API credentials encryption at rest
-   - Decryption only occurs in Main Process when needed
-   - Methods: encrypt, decrypt
+   - Decryption only occurs in Main Process when needed for API calls
+   - Uses platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
 
-9. **Bridge** (`src/main/bridge.ts`)
+10. **Bridge** (`src/main/bridge.ts`)
 
    - Defines the IPC interface
    - Exposed via preload script
    - Type-safe communication contract
    - Event listener management for real-time updates
 
-10. **Main Entry** (`src/main/main.ts`)
+11. **Main Entry** (`src/main/main.ts`)
     - Application initialization
     - Window creation
     - Security configuration
-    - Database worker thread initialization and migrations
+    - Database initialization and migrations
 
 ### Renderer Process (The Face)
 
@@ -735,7 +743,7 @@ The IPC layer enforces a strict security contract for API credentials:
 3. **Error Handling:** Errors are properly handled without exposing sensitive data
 4. **No Direct Node Access:** Renderer cannot access Node.js APIs directly
 5. **Secure Credentials:** API keys encrypted at rest, **NEVER returned to Renderer** (only `hasApiKey` boolean flag)
-6. **Worker Thread Isolation:** Database operations isolated in worker thread
+6. **Maintenance Queue:** Database maintenance operations use sequential queue to prevent race conditions
 
 ### Credential Security Flow
 
@@ -1444,15 +1452,9 @@ const isViewerOpen = useViewerStore((state) => state.isOpen);
 src/
 ├── main/                          # Electron Main Process
 │   ├── db/                        # Database layer
-│   │   ├── repositories/         # Repository pattern implementations
-│   │   │   ├── artists.repo.ts    # Artists repository
-│   │   │   └── posts.repo.ts       # Posts repository
-│   │   ├── db-service.ts          # Legacy database service (deprecated)
-│   │   ├── db-worker.ts           # Database worker thread implementation
-│   │   ├── db-worker-client.ts    # Worker client interface
-│   │   ├── migrate.ts             # Migration runner
+│   │   ├── client.ts              # Database client (initialization, getDb, getSqliteInstance)
+│   │   ├── maintenance-queue.ts   # Maintenance operation queue (sequential execution)
 │   │   ├── schema.ts              # Drizzle ORM schema definitions
-│   │   └── worker-types.ts        # Worker thread type definitions
 │   ├── ipc/                       # IPC (Inter-Process Communication)
 │   │   ├── controllers/           # IPC Controllers (domain-based)
 │   │   │   ├── ArtistsController.ts

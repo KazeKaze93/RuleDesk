@@ -371,14 +371,15 @@ Retrieves stored settings. API key is encrypted and should be decrypted in Main 
 ```typescript
 import { getDb } from "./db/client";
 import { settings } from "./schema";
-import { decrypt } from "../lib/crypto";
+import { SecureStorage } from "../services/secure-storage";
 
 const db = getDb();
 const settingsRecord = await db.query.settings.findFirst();
 
 if (settingsRecord && settingsRecord.encryptedApiKey) {
-  // Decrypt API key using crypto utility
-  const decryptedKey = decrypt(settingsRecord.encryptedApiKey);
+  // Decrypt API key using SecureStorage (only in Main Process)
+  const decryptedKey = SecureStorage.decrypt(settingsRecord.encryptedApiKey);
+  // decryptedKey is string | null
 }
 ```
 
@@ -391,10 +392,10 @@ Saves or updates settings. API key should be encrypted before saving.
 ```typescript
 import { getDb } from "./db/client";
 import { settings } from "./schema";
-import { encrypt } from "../lib/crypto";
+import { SecureStorage } from "../services/secure-storage";
 
 const db = getDb();
-const encryptedKey = encrypt("your-api-key");
+const encryptedKey = SecureStorage.encrypt("your-api-key");
 
 await db
   .insert(settings)
