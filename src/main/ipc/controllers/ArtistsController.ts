@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, like, or, desc, sql } from "drizzle-orm";
+import { eq, like, or, desc, sql, and, notLike } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { artists, ARTIST_TYPES } from "../../db/schema";
@@ -154,12 +154,18 @@ export class ArtistsController extends BaseController {
 
       // Use COALESCE with integer columns (both are integer with timestamp mode)
       // This matches the expression index: COALESCE(last_checked, created_at) DESC
+      // Filter out placeholder artists created by togglePostFavorite (tag starts with "external_")
+      // Also exclude artist with id === 0 if it exists
       const result = await db.query.artists.findMany({
+        where: and(
+          notLike(artists.tag, "external_%"), // Exclude placeholder artists
+          sql`${artists.id} != 0` // Explicitly exclude id === 0
+        ),
         orderBy: [
           desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`),
         ],
       });
-      log.info(`[ArtistsController] Retrieved ${result.length} artists`);
+      log.info(`[ArtistsController] Retrieved ${result.length} tracked artists (placeholder artists excluded)`);
       
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       // Uses universal toIpcSafe utility to avoid code duplication
