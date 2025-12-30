@@ -3,6 +3,8 @@ import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import log from "electron-log/renderer";
 import type { Post } from "../../../../main/db/schema";
 import type { ViewerOrigin } from "../../../store/viewerStore";
+import { normalizePostToPostData } from "../../../../shared/utils/post-normalization";
+import { EXTERNAL_ARTIST_ID } from "../../../../shared/constants";
 
 interface ViewerQueue {
   ids: number[];
@@ -51,32 +53,6 @@ export function useViewerController({
     return t.trim().split(/\s+/g).filter(Boolean).join("+");
   }
 
-  // Normalize rating: convert full words to single characters
-  // API may return "explicit", "safe", "questionable" or "s", "q", "e"
-  const normalizeRating = (
-    value: string | undefined | null
-  ): "s" | "q" | "e" => {
-    if (!value || (typeof value === "string" && value.trim() === "")) {
-      // Default to "q" if missing or empty
-      return "q";
-    }
-
-    const normalized = value.toLowerCase().trim();
-
-    // Handle full words
-    if (normalized === "explicit") return "e";
-    if (normalized === "safe") return "s";
-    if (normalized === "questionable") return "q";
-
-    // Handle single characters (already correct format)
-    if (normalized === "e" || normalized === "s" || normalized === "q") {
-      return normalized;
-    }
-
-    // Default to "q" for unknown values
-    return "q";
-  };
-
   const [isFavorited, setIsFavorited] = useState(post.isFavorited);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -89,26 +65,9 @@ export function useViewerController({
   useEffect(() => {
     if (post.isViewed) return;
 
-    // For external posts from Browse (artistId === 0), pass post data to create post in DB
-    const postData =
-      post.artistId === 0
-        ? {
-            postId: post.postId,
-            artistId: post.artistId,
-            fileUrl: post.fileUrl,
-            previewUrl: post.previewUrl,
-            sampleUrl: post.sampleUrl || "",
-            // Normalize rating to handle "explicit", "safe", "questionable" from API
-            rating: normalizeRating(post.rating),
-            tags: post.tags || "",
-            publishedAt:
-              post.publishedAt instanceof Date
-                ? post.publishedAt.getTime()
-                : typeof post.publishedAt === "number"
-                ? post.publishedAt
-                : undefined,
-          }
-        : undefined;
+    // For external posts from Browse (artistId === EXTERNAL_ARTIST_ID), pass post data to create post in DB
+    // All data normalization is handled by normalizePostToPostData utility
+    const postData = post.artistId === EXTERNAL_ARTIST_ID ? normalizePostToPostData(post) : undefined;
 
     // Always pass second argument (even if undefined) to match schema
     window.api.markPostAsViewed(post.id, postData);
@@ -154,16 +113,7 @@ export function useViewerController({
       });
     }
   }, [
-    post.id,
-    post.isViewed,
-    post.artistId,
-    post.postId,
-    post.fileUrl,
-    post.previewUrl,
-    post.sampleUrl,
-    post.rating,
-    post.tags,
-    post.publishedAt,
+    post,
     queue?.origin,
     queryClient,
   ]);
@@ -198,197 +148,16 @@ export function useViewerController({
 
     const previousState = isFavorited;
 
-    // DETECT SOURCE:
-    // Local posts (from DB) usually have camelCase `createdAt` and `fileUrl`.
-    // Network posts (from API) usually have snake_case `file_url` or `preview_url` (raw data).
-    // Also check artistId: network posts from Browse have artistId === 0
-    const raw = post as Post & Record<string, unknown>;
-    const isNetworkPost =
-      "file_url" in post ||
-      "preview_url" in post ||
-      !("createdAt" in post) ||
-      post.artistId === 0;
-
-    let postData:
-      | {
-          postId: number;
-          artistId: number;
-          fileUrl: string;
-          previewUrl: string;
-          sampleUrl?: string;
-          rating?: "s" | "q" | "e";
-          tags?: string;
-          publishedAt?: number;
-        }
-      | undefined = undefined;
-
-    // Only perform heavy mapping for network posts (Browse tab)
-    if (isNetworkPost) {
-      // Map fields with fallbacks for both camelCase (DB) and snake_case (API) formats
-      const fileUrl =
-        post.fileUrl ||
-        (typeof raw.file_url === "string" ? raw.file_url : "") ||
-        (typeof raw.fileUrl === "string" ? raw.fileUrl : "") ||
-        "";
-
-      const previewUrl =
-        post.previewUrl ||
-        (typeof raw.preview_url === "string" ? raw.preview_url : "") ||
-        (typeof raw.preview_file_url === "string"
-          ? raw.preview_file_url
-          : "") ||
-        (typeof raw.previewUrl === "string" ? raw.previewUrl : "") ||
-        "";
-
-      const sampleUrl =
-        post.sampleUrl ||
-        (typeof raw.sample_url === "string" ? raw.sample_url : "") ||
-        (typeof raw.sampleUrl === "string" ? raw.sampleUrl : "") ||
-        "";
-
-      // Handle tags: can be Array (from API) or String (from DB)
-      let tagsStr = "";
-      if (Array.isArray(post.tags)) {
-        tagsStr = post.tags.join(" ");
-      } else if (typeof post.tags === "string") {
-        tagsStr = post.tags;
-      } else if (raw.tags) {
-        // Fallback for raw API response
-        tagsStr = Array.isArray(raw.tags)
-          ? raw.tags.join(" ")
-          : String(raw.tags || "");
-      }
-
-      // Normalize rating: convert full words to single characters
-      // API may return "explicit", "safe", "questionable" or "s", "q", "e"
-      const normalizeRating = (
-        value: string | undefined | null
-      ): "s" | "q" | "e" => {
-        if (!value || (typeof value === "string" && value.trim() === "")) {
-          // Default to "q" if missing or empty
-          return "q";
-        }
-
-        const normalized = value.toLowerCase().trim();
-
-        // Handle full words
-        if (normalized === "explicit") return "e";
-        if (normalized === "safe") return "s";
-        if (normalized === "questionable") return "q";
-
-        // Handle single characters (already correct format)
-        if (normalized === "e" || normalized === "s" || normalized === "q") {
-          return normalized;
-        }
-
-        // Default to "q" for unknown values
-        return "q";
-      };
-
-      const rawRating = post.rating || raw.rating;
-      const rating = normalizeRating(
-        typeof rawRating === "string"
-          ? rawRating
-          : rawRating
-          ? String(rawRating)
-          : undefined
-      );
-
-      // Handle publishedAt: can be Date, number (timestamp), or snake_case field
-      let publishedAt: number | undefined;
-      if (post.publishedAt instanceof Date) {
-        publishedAt = post.publishedAt.getTime();
-      } else if (typeof post.publishedAt === "number") {
-        publishedAt = post.publishedAt;
-      } else if (raw.published_at) {
-        if (typeof raw.published_at === "number") {
-          publishedAt = raw.published_at;
-        } else if (
-          typeof raw.published_at === "string" ||
-          raw.published_at instanceof Date
-        ) {
-          publishedAt = new Date(raw.published_at).getTime();
-        }
-      } else if (raw.created_at) {
-        // Fallback to created_at if published_at is missing
-        if (typeof raw.created_at === "number") {
-          publishedAt = raw.created_at;
-        } else if (
-          typeof raw.created_at === "string" ||
-          raw.created_at instanceof Date
-        ) {
-          publishedAt = new Date(raw.created_at).getTime();
-        }
-      } else if (raw.createdAt instanceof Date) {
-        publishedAt = raw.createdAt.getTime();
-      } else if (typeof raw.createdAt === "number") {
-        publishedAt = raw.createdAt;
-      }
-
-      // Sanity check: fileUrl is required (NOT NULL constraint)
-      if (!fileUrl || fileUrl.trim() === "") {
-        log.error(
-          "[ViewerController] Cannot toggle favorite: fileUrl is missing after mapping",
-          {
-            postId: post.id,
-            postPostId: post.postId,
-            hasFileUrl: !!post.fileUrl,
-            hasRawFileUrl: !!raw.file_url,
-            rawKeys: Object.keys(raw || {}),
-          }
-        );
-        // Don't revert optimistic update here - it will be reverted in catch block
-        throw new Error("fileUrl is required for network posts");
-      }
-
-      // Sanity check: previewUrl is required (NOT NULL constraint)
-      if (!previewUrl || previewUrl.trim() === "") {
-        log.error(
-          "[ViewerController] Cannot toggle favorite: previewUrl is missing after mapping",
-          {
-            postId: post.id,
-            postPostId: post.postId,
-            hasPreviewUrl: !!post.previewUrl,
-            hasRawPreviewUrl: !!raw.preview_url,
-            rawKeys: Object.keys(raw || {}),
-          }
-        );
-        // Don't revert optimistic update here - it will be reverted in catch block
-        throw new Error("previewUrl is required for network posts");
-      }
-
-      // Create postData only for network posts
-      const rawPostId =
-        typeof raw.id === "number"
-          ? raw.id
-          : typeof raw.post_id === "number"
-          ? raw.post_id
-          : undefined;
-      const rawArtistId =
-        typeof raw.artist_id === "number"
-          ? raw.artist_id
-          : typeof raw.artistId === "number"
-          ? raw.artistId
-          : undefined;
-
-      postData = {
-        postId: post.postId || rawPostId || 0,
-        artistId: post.artistId || rawArtistId || 0,
-        fileUrl: typeof fileUrl === "string" ? fileUrl.trim() : "",
-        previewUrl: typeof previewUrl === "string" ? previewUrl.trim() : "",
-        sampleUrl: typeof sampleUrl === "string" ? sampleUrl.trim() : "",
-        rating: rating || undefined,
-        tags: tagsStr,
-        publishedAt,
-      };
-    }
+    // For external posts from Browse (artistId === EXTERNAL_ARTIST_ID), pass post data to create post in DB
+    // All data normalization is handled by normalizePostToPostData utility
+    const postData = post.artistId === EXTERNAL_ARTIST_ID ? normalizePostToPostData(post) : undefined;
 
     // OPTIMISTIC UPDATE
     setIsFavorited(!previousState);
 
     try {
       // For local posts: postData is undefined (old behavior preserved)
-      // For network posts: postData contains mapped data
+      // For network posts: postData contains normalized data
       const newState = await window.api.togglePostFavorite(post.id, postData);
       setIsFavorited(newState);
 

@@ -78,17 +78,19 @@ export function TagAutocomplete({
     }
   };
 
-  // Handle input blur (close dropdown after a delay to allow click on suggestions)
+  // Handle input blur (close dropdown)
+  // Note: onMouseDown on list items fires before onBlur, so clicks work correctly
   const handleBlur = () => {
-    // Delay closing to allow click events on suggestions
-    setTimeout(() => {
-      setIsOpen(false);
-      setSelectedIndex(-1);
-    }, 200);
+    setIsOpen(false);
+    setSelectedIndex(-1);
   };
 
   // Handle tag selection
-  const handleSelectTag = (tagValue: string) => {
+  // Using onMouseDown instead of onClick ensures it fires before onBlur
+  const handleSelectTag = (tagValue: string, e?: React.MouseEvent) => {
+    // Prevent input blur when clicking on list item
+    e?.preventDefault();
+    
     const lastSpace = value.lastIndexOf(" ");
     const lastComma = value.lastIndexOf(",");
     const lastSeparator = Math.max(lastSpace, lastComma);
@@ -105,7 +107,10 @@ export function TagAutocomplete({
     onChange(newValue);
     setIsOpen(false);
     setSelectedIndex(-1);
-    inputRef.current?.focus();
+    // Focus input after selection
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   // Handle keyboard navigation
@@ -174,32 +179,47 @@ export function TagAutocomplete({
         onKeyDown={handleKeyDownInternal}
         className="flex-1"
         autoComplete="off"
+        role="combobox"
+        aria-expanded={shouldShowDropdown}
+        aria-haspopup="listbox"
+        aria-controls="tag-autocomplete-listbox"
+        aria-autocomplete="list"
       />
       
       {shouldShowDropdown && (
-        <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+        <div
+          id="tag-autocomplete-listbox"
+          className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md"
+          role="listbox"
+        >
           {isLoading ? (
-            <div className="flex items-center justify-center px-4 py-2 text-sm text-muted-foreground">
-              <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+            <div
+              className="flex items-center justify-center px-4 py-2 text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="mr-2 w-4 h-4 animate-spin" aria-hidden="true" />
               Loading...
             </div>
           ) : (
-            <ul className="py-1">
+            <ul className="py-1" role="group">
               {results.map((result, index) => (
                 <li
                   key={result.id}
+                  role="option"
+                  aria-selected={index === selectedIndex}
                   className={cn(
                     "relative cursor-pointer select-none px-4 py-2 text-sm",
                     "hover:bg-accent hover:text-accent-foreground",
                     "focus:bg-accent focus:text-accent-foreground",
                     index === selectedIndex && "bg-accent text-accent-foreground"
                   )}
-                  onClick={() => handleSelectTag(result.value)}
+                  onMouseDown={(e) => handleSelectTag(result.value, e)}
                   onMouseEnter={() => setSelectedIndex(index)}
                 >
                   {result.label}
                   {result.type && (
-                    <span className="ml-2 text-xs text-muted-foreground">
+                    <span className="ml-2 text-xs text-muted-foreground" aria-label={`Type: ${result.type}`}>
                       ({result.type})
                     </span>
                   )}

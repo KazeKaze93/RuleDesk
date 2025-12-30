@@ -9,6 +9,7 @@ import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
+import { PostDataSchema, type PostData } from "../../../shared/schemas/post";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -109,19 +110,7 @@ export class PostsController extends BaseController {
       IPC_CHANNELS.DB.MARK_VIEWED,
       z.tuple([
         z.number().int().positive(),
-        z
-          .object({
-            postId: z.number().int().positive().optional(),
-            artistId: z.number().int().default(0).optional(),
-            fileUrl: z.string().min(1).optional(),
-            previewUrl: z.string().min(1).optional(),
-            sampleUrl: z.string().optional().or(z.literal("")),
-            rating: z.enum(["s", "q", "e"]).optional(),
-            tags: z.string().optional().or(z.literal("")),
-            publishedAt: z.number().optional(),
-          })
-          .passthrough() // Allow additional properties from API responses (snake_case, etc.)
-          .optional(),
+        PostDataSchema.optional(),
       ]),
       this.markViewed.bind(this) as (
         event: IpcMainInvokeEvent,
@@ -140,19 +129,7 @@ export class PostsController extends BaseController {
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
       z.tuple([
         z.number().int().positive(),
-        z
-          .object({
-            postId: z.number().int().positive().optional(),
-            artistId: z.number().int().default(0).optional(),
-            fileUrl: z.string().min(1).optional(),
-            previewUrl: z.string().min(1).optional(),
-            sampleUrl: z.string().optional().or(z.literal("")),
-            rating: z.enum(["s", "q", "e"]).optional(),
-            tags: z.string().optional().or(z.literal("")),
-            publishedAt: z.number().optional(),
-          })
-          .passthrough() // Allow additional properties from API responses (snake_case, etc.)
-          .optional(),
+        PostDataSchema.optional(),
       ]),
       this.toggleFavorite.bind(this) as (
         event: IpcMainInvokeEvent,
@@ -352,39 +329,44 @@ export class PostsController extends BaseController {
   private async markViewed(
     _event: IpcMainInvokeEvent,
     postId: number,
-    postData?: {
-      postId: number;
-      artistId: number;
-      fileUrl: string;
-      previewUrl: string;
-      sampleUrl?: string;
-      rating?: "s" | "q" | "e";
-      tags?: string;
-      publishedAt?: number;
-    }
+    postData?: PostData
   ): Promise<boolean> {
     try {
       const db = this.getDb();
 
-      // First, try to find post by database ID (async query before transaction)
-      let existingPost = await db.query.posts.findFirst({
-        where: eq(posts.id, postId),
-      });
-
-      // If not found and postData is provided, try to find by postId and artistId
-      // This handles external posts from Browse (artistId = 0)
-      if (!existingPost && postData) {
-        existingPost = await db.query.posts.findFirst({
-          where: and(
-            eq(posts.postId, postData.postId),
-            eq(posts.artistId, postData.artistId)
-          ),
-        });
-      }
-
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
-      // Use transaction for atomicity
+      // All queries must be inside transaction for atomicity and efficiency
+      type MarkViewedResult =
+        | { success: true; postId: number; postPostId: number }
+        | { success: true; postPostId: number }
+        | { success: false };
+      let result: MarkViewedResult = { success: false };
+
       db.transaction((tx) => {
+        // First, try to find post by database ID (synchronous query inside transaction)
+        let existingPost = tx
+          .select()
+          .from(posts)
+          .where(eq(posts.id, postId))
+          .limit(1)
+          .all()[0];
+
+        // If not found and postData is provided, try to find by postId and artistId
+        // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
+        if (!existingPost && postData) {
+          existingPost = tx
+            .select()
+            .from(posts)
+            .where(
+              and(
+                eq(posts.postId, postData.postId),
+                eq(posts.artistId, postData.artistId)
+              )
+            )
+            .limit(1)
+            .all()[0];
+        }
+
         // If post exists, update isViewed status
         if (existingPost) {
           tx.update(posts)
@@ -395,6 +377,12 @@ export class PostsController extends BaseController {
           log.debug(
             `[PostsController] Post ${existingPost.id} (postId: ${existingPost.postId}) marked as viewed in transaction`
           );
+
+          result = {
+            success: true,
+            postId: existingPost.id,
+            postPostId: existingPost.postId,
+          };
         } else if (postData) {
           // If post doesn't exist and postData is provided, create it with isViewed = true
           const now = new Date();
@@ -422,20 +410,26 @@ export class PostsController extends BaseController {
           log.debug(
             `[PostsController] Created new post (postId: ${postData.postId}) and marked as viewed in transaction`
           );
+
+          result = {
+            success: true,
+            postPostId: postData.postId,
+          };
         }
       });
 
-      if (existingPost) {
-        log.info(
-          `[PostsController] Post ${existingPost.id} (postId: ${existingPost.postId}) marked as viewed`
-        );
-        return true;
-      }
-
-      if (postData) {
-        log.info(
-          `[PostsController] Created new post (postId: ${postData.postId}) and marked as viewed`
-        );
+      if (result.success) {
+        if ("postId" in result) {
+          const r = result as { success: true; postId: number; postPostId: number };
+          log.info(
+            `[PostsController] Post ${r.postId} (postId: ${r.postPostId}) marked as viewed`
+          );
+        } else {
+          const r = result as { success: true; postPostId: number };
+          log.info(
+            `[PostsController] Created new post (postId: ${r.postPostId}) and marked as viewed`
+          );
+        }
         return true;
       }
 
@@ -498,41 +492,56 @@ export class PostsController extends BaseController {
   private async toggleFavorite(
     _event: IpcMainInvokeEvent,
     postId: number,
-    postData?: {
-      postId: number;
-      artistId: number;
-      fileUrl: string;
-      previewUrl: string;
-      sampleUrl?: string;
-      rating?: "s" | "q" | "e";
-      tags?: string;
-      publishedAt?: number;
-    }
+    postData?: PostData
   ): Promise<boolean> {
     try {
       const db = this.getDb();
 
-      // First, try to find post by database ID (async query before transaction)
-      let existingPost = await db.query.posts.findFirst({
-        where: eq(posts.id, postId),
-      });
-
-      // If not found and postData is provided, try to find by postId and artistId
-      // This handles external posts from Browse (artistId = 0)
-      if (!existingPost && postData) {
-        existingPost = await db.query.posts.findFirst({
-          where: and(
-            eq(posts.postId, postData.postId),
-            eq(posts.artistId, postData.artistId)
-          ),
-        });
-      }
-
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
-      // NOTE: .returning() doesn't work reliably in synchronous transactions, so we query after
+      // All queries must be inside transaction for atomicity and efficiency
+      type ToggleFavoriteResult =
+        | {
+            existingPostId: number;
+            existingPostPostId: number;
+            newFavoriteState: boolean;
+          }
+        | {
+            newPostPostId: number;
+            newFavoriteState: boolean;
+          };
+      let result: ToggleFavoriteResult | null = null;
+
       db.transaction((tx) => {
+        // First, try to find post by database ID (synchronous query inside transaction)
+        let existingPost = tx
+          .select()
+          .from(posts)
+          .where(eq(posts.id, postId))
+          .limit(1)
+          .all()[0];
+
+        // If not found and postData is provided, try to find by postId and artistId
+        // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
+        if (!existingPost && postData) {
+          existingPost = tx
+            .select()
+            .from(posts)
+            .where(
+              and(
+                eq(posts.postId, postData.postId),
+                eq(posts.artistId, postData.artistId)
+              )
+            )
+            .limit(1)
+            .all()[0];
+        }
+
         // If post exists, toggle favorite status
         if (existingPost) {
+          // Get current state before toggle
+          const currentState = existingPost.isFavorited;
+          const newState = !currentState;
+
           tx.update(posts)
             .set({ isFavorited: sql`NOT ${posts.isFavorited}` })
             .where(eq(posts.id, existingPost.id))
@@ -541,6 +550,12 @@ export class PostsController extends BaseController {
           log.debug(
             `[PostsController] Post ${existingPost.id} (postId: ${existingPost.postId}) favorite toggled in transaction`
           );
+
+          result = {
+            existingPostId: existingPost.id,
+            existingPostPostId: existingPost.postId,
+            newFavoriteState: newState,
+          };
         } else {
           // Post doesn't exist - can only add to favorites (not remove)
           // For toggle operation, if post doesn't exist, we're adding it to favorites (isFavorite = true)
@@ -626,43 +641,40 @@ export class PostsController extends BaseController {
           log.debug(
             `[PostsController] Created new post (postId: ${postData.postId}) and set as favorited in transaction`
           );
+
+          result = {
+            newPostPostId: postData.postId,
+            newFavoriteState: true, // New posts are always favorited when created via toggle
+          };
         }
       });
 
-      // Get updated post after transaction commits to get new favorite state
-      // This is safe because transaction is already committed
-      let updatedPost: { isFavorited: boolean } | undefined;
-
-      if (existingPost) {
-        updatedPost = await db.query.posts.findFirst({
-          where: eq(posts.id, existingPost.id),
-          columns: { isFavorited: true },
-        });
-      } else if (postData) {
-        // Find the newly created post
-        updatedPost = await db.query.posts.findFirst({
-          where: and(
-            eq(posts.postId, postData.postId),
-            eq(posts.artistId, postData.artistId)
-          ),
-          columns: { isFavorited: true },
-        });
-      }
-
-      if (!updatedPost) {
+      if (!result) {
         throw new Error(
           `Post with id ${postId} not found or not updated. For external posts from Browse, postData must be provided.`
         );
       }
 
-      const newFavoriteState = updatedPost.isFavorited;
-
-      log.info(
-        `[PostsController] Post ${existingPost?.id ?? "new"} (postId: ${
-          existingPost?.postId ?? postData?.postId
-        }) favorite toggled to ${newFavoriteState}`
-      );
-      return newFavoriteState;
+      if ("existingPostId" in result) {
+        const r = result as {
+          existingPostId: number;
+          existingPostPostId: number;
+          newFavoriteState: boolean;
+        };
+        log.info(
+          `[PostsController] Post ${r.existingPostId} (postId: ${r.existingPostPostId}) favorite toggled to ${r.newFavoriteState}`
+        );
+        return r.newFavoriteState;
+      } else {
+        const r = result as {
+          newPostPostId: number;
+          newFavoriteState: boolean;
+        };
+        log.info(
+          `[PostsController] Post new (postId: ${r.newPostPostId}) favorite toggled to ${r.newFavoriteState}`
+        );
+        return r.newFavoriteState;
+      }
     } catch (error) {
       log.error("[PostsController] Failed to toggle favorite:", error);
       // Re-throw original error to preserve stack trace and context

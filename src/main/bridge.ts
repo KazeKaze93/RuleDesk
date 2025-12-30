@@ -3,6 +3,7 @@ import type { Artist, Post } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
 import type { GetPostsRequest, AddArtistRequest } from "./types/ipc";
 import type { IpcSettings } from "../shared/schemas/settings";
+import type { PostData } from "../shared/schemas/post";
 import type { ProviderId, SearchResults } from "./providers";
 
 export type UpdateStatusData = {
@@ -87,33 +88,9 @@ export interface IpcBridge {
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
 
-  markPostAsViewed: (
-    postId: number,
-    postData?: {
-      postId: number;
-      artistId: number;
-      fileUrl: string;
-      previewUrl: string;
-      sampleUrl?: string;
-      rating?: "s" | "q" | "e";
-      tags?: string;
-      publishedAt?: number;
-    }
-  ) => Promise<boolean>;
+  markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
 
-  togglePostFavorite: (
-    postId: number,
-    postData?: {
-      postId: number;
-      artistId: number;
-      fileUrl: string;
-      previewUrl: string;
-      sampleUrl?: string;
-      rating?: "s" | "q" | "e";
-      tags?: string;
-      publishedAt?: number;
-    }
-  ) => Promise<boolean>;
+  togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
 
   // Downloads
   downloadFile: (
