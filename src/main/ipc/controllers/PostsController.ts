@@ -10,6 +10,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { PostDataSchema, type PostData } from "../../../shared/schemas/post";
+import { EXTERNAL_ARTIST_ID, EXTERNAL_ARTIST_TAG_PREFIX } from "../../../shared/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -138,6 +139,50 @@ export class PostsController extends BaseController {
     );
 
     log.info("[PostsController] All handlers registered");
+  }
+
+  /**
+   * Find existing post by database ID or by postId + EXTERNAL_ARTIST_ID
+   * 
+   * This is a shared helper method used by markViewed and toggleFavorite
+   * to avoid code duplication.
+   * 
+   * @param tx - Drizzle transaction object
+   * @param postId - Database post ID (for existing posts)
+   * @param postData - Optional post data for external posts (contains postId for lookup)
+   * @returns Found post or undefined
+   */
+  private findPostInTransaction(
+    tx: Parameters<Parameters<AppDatabase["transaction"]>[0]>[0],
+    postId: number,
+    postData?: PostData
+  ): Post | undefined {
+    // First, try to find post by database ID (synchronous query inside transaction)
+    let existingPost = tx
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1)
+      .all()[0];
+
+    // If not found and postData is provided, try to find by postId and EXTERNAL_ARTIST_ID
+    // SECURITY: Always use EXTERNAL_ARTIST_ID, never trust artistId from Renderer
+    // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
+    if (!existingPost && postData) {
+      existingPost = tx
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.postId, postData.postId),
+            eq(posts.artistId, EXTERNAL_ARTIST_ID)
+          )
+        )
+        .limit(1)
+        .all()[0];
+    }
+
+    return existingPost;
   }
 
   /**
@@ -343,29 +388,8 @@ export class PostsController extends BaseController {
       let result: MarkViewedResult = { success: false };
 
       db.transaction((tx) => {
-        // First, try to find post by database ID (synchronous query inside transaction)
-        let existingPost = tx
-          .select()
-          .from(posts)
-          .where(eq(posts.id, postId))
-          .limit(1)
-          .all()[0];
-
-        // If not found and postData is provided, try to find by postId and artistId
-        // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
-        if (!existingPost && postData) {
-          existingPost = tx
-            .select()
-            .from(posts)
-            .where(
-              and(
-                eq(posts.postId, postData.postId),
-                eq(posts.artistId, postData.artistId)
-              )
-            )
-            .limit(1)
-            .all()[0];
-        }
+        // Use shared helper method to find post
+        const existingPost = this.findPostInTransaction(tx, postId, postData);
 
         // If post exists, update isViewed status
         if (existingPost) {
@@ -393,7 +417,7 @@ export class PostsController extends BaseController {
           tx.insert(posts)
             .values({
               postId: postData.postId,
-              artistId: postData.artistId,
+              artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
               fileUrl: postData.fileUrl,
               previewUrl: postData.previewUrl,
               sampleUrl: postData.sampleUrl ?? "",
@@ -512,29 +536,8 @@ export class PostsController extends BaseController {
       let result: ToggleFavoriteResult | null = null;
 
       db.transaction((tx) => {
-        // First, try to find post by database ID (synchronous query inside transaction)
-        let existingPost = tx
-          .select()
-          .from(posts)
-          .where(eq(posts.id, postId))
-          .limit(1)
-          .all()[0];
-
-        // If not found and postData is provided, try to find by postId and artistId
-        // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
-        if (!existingPost && postData) {
-          existingPost = tx
-            .select()
-            .from(posts)
-            .where(
-              and(
-                eq(posts.postId, postData.postId),
-                eq(posts.artistId, postData.artistId)
-              )
-            )
-            .limit(1)
-            .all()[0];
-        }
+        // Use shared helper method to find post
+        const existingPost = this.findPostInTransaction(tx, postId, postData);
 
         // If post exists, toggle favorite status
         if (existingPost) {
@@ -580,8 +583,9 @@ export class PostsController extends BaseController {
           }
 
           // CRITICAL: Check if artist exists before inserting post (FOREIGN KEY constraint)
-          // For network posts from Browse, artistId may not exist in local DB
-          const targetArtistId = postData.artistId;
+          // SECURITY: For external posts from Browse, always use EXTERNAL_ARTIST_ID
+          // Never trust artistId from Renderer - it could be hijacked to target existing artists
+          const targetArtistId = EXTERNAL_ARTIST_ID;
 
           // Use synchronous select query inside transaction
           // Drizzle with better-sqlite3 executes queries synchronously inside transactions
@@ -600,7 +604,7 @@ export class PostsController extends BaseController {
               .values({
                 id: targetArtistId, // Explicit ID for placeholder artist
                 name: `Artist ${targetArtistId}`,
-                tag: `external_${targetArtistId}`, // Unique tag for placeholder
+                tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${targetArtistId}`, // Unique tag for placeholder
                 provider: "rule34", // Default provider
                 type: "tag", // Default type
                 apiEndpoint: "", // Safe default (required field)
@@ -624,7 +628,7 @@ export class PostsController extends BaseController {
           tx.insert(posts)
             .values({
               postId: postData.postId,
-              artistId: postData.artistId,
+              artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
               fileUrl: postData.fileUrl,
               previewUrl: postData.previewUrl,
               sampleUrl: postData.sampleUrl ?? "",

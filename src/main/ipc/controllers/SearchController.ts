@@ -239,7 +239,8 @@ export class SearchController extends BaseController {
       });
 
       // Convert Date objects to numbers for Electron 39+ IPC serialization
-      return toIpcSafe(enrichedPosts) as IpcPost[];
+      // toIpcSafe correctly infers the return type, no cast needed
+      return toIpcSafe(enrichedPosts);
     } catch (error) {
       log.error("[SearchController] Failed to search posts:", error);
       // Re-throw original error to preserve stack trace and context

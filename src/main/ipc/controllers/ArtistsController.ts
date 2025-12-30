@@ -11,7 +11,7 @@ import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
-import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { EXTERNAL_ARTIST_ID, EXTERNAL_ARTIST_TAG_PREFIX } from "../../../shared/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -155,11 +155,11 @@ export class ArtistsController extends BaseController {
 
       // Use COALESCE with integer columns (both are integer with timestamp mode)
       // This matches the expression index: COALESCE(last_checked, created_at) DESC
-      // Filter out placeholder artists created by togglePostFavorite (tag starts with "external_")
+      // Filter out placeholder artists created by togglePostFavorite (tag starts with EXTERNAL_ARTIST_TAG_PREFIX)
       // Also exclude artist with id === EXTERNAL_ARTIST_ID if it exists
       const result = await db.query.artists.findMany({
         where: and(
-          notLike(artists.tag, "external_%"), // Exclude placeholder artists
+          notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`), // Exclude placeholder artists
           not(eq(artists.id, EXTERNAL_ARTIST_ID)) // Explicitly exclude EXTERNAL_ARTIST_ID
         ),
         orderBy: [

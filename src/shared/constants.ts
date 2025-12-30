@@ -16,3 +16,16 @@
  */
 export const EXTERNAL_ARTIST_ID = 0;
 
+/**
+ * External Artist Tag Prefix
+ *
+ * Prefix used for placeholder artists created for external posts from Browse.
+ * These placeholder artists are created to satisfy FOREIGN KEY constraints when
+ * external posts are saved to the database (e.g., when marked as viewed or favorited).
+ *
+ * Used in:
+ * - PostsController: Creating placeholder artists with tag `external_${artistId}`
+ * - ArtistsController: Filtering out placeholder artists with `notLike(artists.tag, "external_%")`
+ */
+export const EXTERNAL_ARTIST_TAG_PREFIX = "external_";
+
