@@ -111,15 +111,16 @@ export class PostsController extends BaseController {
         z.number().int().positive(),
         z
           .object({
-            postId: z.number().int().positive(),
-            artistId: z.number().int().default(0),
-            fileUrl: z.string().min(1),
-            previewUrl: z.string().min(1),
+            postId: z.number().int().positive().optional(),
+            artistId: z.number().int().default(0).optional(),
+            fileUrl: z.string().min(1).optional(),
+            previewUrl: z.string().min(1).optional(),
             sampleUrl: z.string().optional().or(z.literal("")),
             rating: z.enum(["s", "q", "e"]).optional(),
             tags: z.string().optional().or(z.literal("")),
             publishedAt: z.number().optional(),
           })
+          .passthrough() // Allow additional properties from API responses (snake_case, etc.)
           .optional(),
       ]),
       this.markViewed.bind(this) as (

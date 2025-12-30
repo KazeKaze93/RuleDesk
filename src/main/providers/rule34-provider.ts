@@ -101,9 +101,14 @@ export class Rule34Provider implements IBooruProvider {
       q: "index",
       limit: "100",
       pid: page.toString(),
-      tags: tags,
       json: "1",
     });
+    
+    // Only add tags parameter if provided and not empty
+    // Empty tags or "all" means show all posts (omit tags parameter)
+    if (tags && tags.trim() !== "" && tags.trim().toLowerCase() !== "all") {
+      params.append("tags", tags);
+    }
 
     if (settings.userId && settings.apiKey) {
       params.append("user_id", settings.userId);

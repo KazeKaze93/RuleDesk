@@ -154,13 +154,15 @@ export class SearchController extends BaseController {
       };
 
       // Convert tags array to space-separated string (provider expects string)
-      const tagsString = tags.join(" ");
+      // Empty array means show all posts (provider will omit tags parameter)
+      const tagsString = tags.length > 0 ? tags.join(" ") : "";
 
       log.info(
-        `[SearchController] Searching for tags: "${tagsString}" (page ${page}, limit ${limit})`
+        `[SearchController] Searching for tags: "${tagsString || "all (no filter)"}" (page ${page}, limit ${limit})`
       );
 
       // Fetch posts from external API
+      // Empty tagsString means show all posts (provider omits tags parameter)
       const booruPosts = await provider.fetchPosts(
         tagsString,
         page,
@@ -223,6 +225,15 @@ export class SearchController extends BaseController {
           isFavorited: localState?.isFavorited ?? false,
           isViewed: localState?.isViewed ?? false,
         };
+      });
+
+      // Sort posts by publishedAt descending (newest first) to match Rule34.xxx website order
+      // API may return posts in different order, so we sort them explicitly
+      // publishedAt is a Date object at this point (before toIpcSafe conversion)
+      enrichedPosts.sort((a, b) => {
+        const dateA = a.publishedAt instanceof Date ? a.publishedAt.getTime() : 0;
+        const dateB = b.publishedAt instanceof Date ? b.publishedAt.getTime() : 0;
+        return dateB - dateA; // Descending order (newest first)
       });
 
       // Convert Date objects to numbers for Electron 39+ IPC serialization
