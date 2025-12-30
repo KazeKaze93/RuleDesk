@@ -152,17 +152,33 @@ export class GelbooruProvider implements IBooruProvider {
         }
       }
 
-      // Validate each raw post through Zod schema before mapping
-      const validatedPosts = rawPosts
-        .map((raw) => {
-          try {
-            return GelbooruRawPostSchema.parse(raw);
-          } catch (error) {
-            logger.warn("[GelbooruProvider] Skipping invalid post data", { error, raw });
-            return null;
+      // Validate posts individually to handle partial failures gracefully
+      // If we use z.array() and one post fails, the entire array fails
+      // Instead, we validate each post and collect valid ones
+      const validatedPosts: GelbooruRawPost[] = [];
+      const validationErrors: z.ZodError[] = [];
+
+      for (const raw of rawPosts) {
+        const result = GelbooruRawPostSchema.safeParse(raw);
+        if (result.success) {
+          validatedPosts.push(result.data);
+        } else {
+          validationErrors.push(result.error);
+        }
+      }
+
+      // Log validation errors if any, but continue with valid posts
+      if (validationErrors.length > 0) {
+        logger.warn(
+          `[GelbooruProvider] ${validationErrors.length} posts failed validation out of ${rawPosts.length} total`,
+          { 
+            totalPosts: rawPosts.length,
+            validPosts: validatedPosts.length,
+            invalidPosts: validationErrors.length,
+            sampleErrors: validationErrors.slice(0, 3).map(e => e.errors)
           }
-        })
-        .filter((post): post is z.infer<typeof GelbooruRawPostSchema> => post !== null);
+        );
+      }
 
       return validatedPosts
         .map((raw) => this.mapToBooruPost(raw))

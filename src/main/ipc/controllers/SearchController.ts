@@ -18,20 +18,12 @@ import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
-/**
- * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
- * Required for Electron 39+ IPC serialization compatibility.
- */
-type IpcPost = {
-  [K in keyof Post]: Post[K] extends Date
-    ? number
-    : Post[K] extends Date | null
-    ? number | null
-    : Post[K];
-};
-
 // Internal type alias
 type SearchPostsParams = z.infer<typeof SearchPostsSchema>;
+
+// Use toIpcSafe return type instead of manual type definition
+// This ensures type safety and automatic updates when Post schema changes
+type IpcPost = ReturnType<typeof toIpcSafe<Post>>;
 
 /**
  * Search Controller
@@ -106,7 +98,8 @@ export class SearchController extends BaseController {
    * Convert BooruPost to Post format for frontend compatibility
    *
    * External posts don't have database IDs or artistId, so we use sentinel values:
-   * - id: Uses external postId (unique, won't conflict with DB auto-increment IDs)
+   * - id: Uses negative external postId to avoid conflicts with DB PRIMARY KEY (autoincrement starts from 1)
+   *   This ensures no collision with local posts, as DB IDs are always positive.
    * - artistId: Uses EXTERNAL_ARTIST_ID sentinel value (indicates external post, not in database)
    *
    * @param booruPost - Post from external Booru API
@@ -114,7 +107,7 @@ export class SearchController extends BaseController {
    */
   private mapBooruPostToPost(booruPost: BooruPost): Post {
     return {
-      id: booruPost.id, // Use external postId as id (unique, won't conflict)
+      id: -booruPost.id, // CRITICAL: Use negative ID to avoid collision with DB PRIMARY KEY
       postId: booruPost.id,
       artistId: EXTERNAL_ARTIST_ID, // Sentinel value for external posts (not in database)
       fileUrl: booruPost.fileUrl,

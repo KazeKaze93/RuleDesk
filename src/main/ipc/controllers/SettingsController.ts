@@ -159,10 +159,32 @@ export class SettingsController extends BaseController {
     try {
       const db = this.getDb();
 
+      // PERFORMANCE: Prepare all data BEFORE transaction to minimize I/O wait inside transaction
+      // Encryption and logging are CPU-bound operations that should not block the database
+      
+      // Handle Encryption BEFORE transaction
+      // If a new 'apiKey' comes from frontend, encrypt it.
+      // If not provided, we keep the old encrypted one.
+      let encryptedKey: string | undefined;
+      if (apiKey) {
+        try {
+          encryptedKey = encrypt(apiKey);
+          log.debug(
+            `[SettingsController] API key encrypted successfully, length=${encryptedKey.length}`
+          );
+        } catch (error) {
+          log.error("[SettingsController] Failed to encrypt API key:", error);
+          throw new Error(
+            "Failed to encrypt API key. Encryption is not available on this system."
+          );
+        }
+      }
+
       // Use transaction to ensure atomicity when updating sensitive data
-      // This prevents partial updates if encryption or database operation fails
+      // This prevents partial updates if database operation fails
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
       // SECURITY: Get existing settings INSIDE transaction to avoid race conditions
+      // PERFORMANCE: Minimize logic inside transaction - only DB operations
       let existing: InferSelectModel<typeof settings> | undefined;
       
       db.transaction((tx) => {
@@ -175,31 +197,6 @@ export class SettingsController extends BaseController {
           .limit(1)
           .all()[0];
 
-        log.debug(
-          `[SettingsController] Existing settings: ${
-            existing ? "found" : "not found"
-          }, id=${existing?.id ?? "none"}, userId: ${
-            existing?.userId ?? "none"
-          }, hasApiKey: ${!!existing?.encryptedApiKey}, SETTINGS_ID=${SETTINGS_ID}`
-        );
-        // Handle Encryption within transaction
-        // If a new 'apiKey' comes from frontend, encrypt it.
-        // If not provided, we keep the old encrypted one.
-        let encryptedKey: string | undefined;
-        if (apiKey) {
-          try {
-            encryptedKey = encrypt(apiKey);
-            log.debug(
-              `[SettingsController] API key encrypted successfully, length=${encryptedKey.length}`
-            );
-          } catch (error) {
-            log.error("[SettingsController] Failed to encrypt API key:", error);
-            throw new Error(
-              "Failed to encrypt API key. Encryption is not available on this system."
-            );
-          }
-        }
-
         if (existing) {
           // Update existing record
           // CRITICAL: Only update encryptedApiKey if a new key was provided and encrypted
@@ -210,15 +207,7 @@ export class SettingsController extends BaseController {
               : existing.encryptedApiKey ?? "";
           // CRITICAL: Use existing.id instead of SETTINGS_ID to ensure we update the correct record
           const targetId = existing.id;
-          log.debug(
-            `[SettingsController] Updating existing settings record: targetId=${targetId}, userId=${userId}, encryptedKeyLength=${
-              finalEncryptedKey.length
-            }, newEncryptedKeyLength=${
-              encryptedKey?.length ?? 0
-            }, existingEncryptedKeyLength=${
-              existing.encryptedApiKey?.length ?? 0
-            }`
-          );
+          
           // Execute update using Drizzle update - should work in transaction
           // Using explicit .set() for all fields to ensure they are updated
           tx.update(settings)
@@ -232,11 +221,8 @@ export class SettingsController extends BaseController {
             })
             .where(eq(settings.id, targetId))
             .run();
-
-          log.debug(`[SettingsController] Update query executed via Drizzle`);
         } else {
           // Insert new record
-          log.debug("[SettingsController] Inserting new settings record");
           tx.insert(settings)
             .values({
               id: SETTINGS_ID,
@@ -250,6 +236,13 @@ export class SettingsController extends BaseController {
             .run();
         }
       });
+
+      // Log AFTER transaction to avoid blocking DB operations
+      log.debug(
+        `[SettingsController] Transaction completed: existing=${
+          existing ? "found" : "not found"
+        }, id=${existing?.id ?? "none"}, userId=${userId}, hasApiKey=${!!encryptedKey}`
+      );
 
       // Verify the save worked - use SETTINGS_ID (existing is now set inside transaction)
       const saved = await db.query.settings.findFirst({

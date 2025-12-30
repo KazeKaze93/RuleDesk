@@ -248,13 +248,22 @@ export class ArtistsController extends BaseController {
     id: number
   ): Promise<boolean> {
     try {
+      // SECURITY: Prevent deletion of EXTERNAL_ARTIST_ID (virtual artist for external posts)
+      // This is a sentinel value that should never be deleted
+      if (id === EXTERNAL_ARTIST_ID) {
+        log.warn(
+          `[ArtistsController] Attempted to delete EXTERNAL_ARTIST_ID (${EXTERNAL_ARTIST_ID}). This is not allowed.`
+        );
+        throw new Error("Cannot delete external artist placeholder");
+      }
+
       const db = this.getDb();
       await db.delete(artists).where(eq(artists.id, id));
       log.info(`[ArtistsController] Artist deleted: ID ${id}`);
       return true;
     } catch (error) {
       log.error("[ArtistsController] Failed to delete artist:", error);
-      throw new Error("Failed to delete artist");
+      throw error;
     }
   }
 

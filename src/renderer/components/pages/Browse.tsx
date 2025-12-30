@@ -38,6 +38,22 @@ const ItemContainer = forwardRef<
 ));
 ItemContainer.displayName = "ItemContainer";
 
+// VirtuosoList component - must be stable across renders to preserve Virtuoso optimizations
+// This component is used directly in VirtuosoGrid.components.List
+// Note: VirtuosoGrid passes ref to List component, so we must use forwardRef
+const VirtuosoList = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+  />
+));
+VirtuosoList.displayName = "VirtuosoList";
+
 // --- Helper function to parse tags from query string ---
 /**
  * Parses a space-separated or comma-separated tag string into an array
@@ -105,6 +121,22 @@ export const Browse = () => {
   const allPosts = useMemo(() => {
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
+
+  // Create stable List component with forwardRef and aria-busy
+  // Must be memoized to prevent Virtuoso from remounting on every render
+  const ListComponent = useMemo(() => {
+    const Component = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+      (props, ref) => (
+        <VirtuosoList
+          {...props}
+          ref={ref}
+          aria-busy={isLoading || isFetchingNextPage}
+        />
+      )
+    );
+    Component.displayName = "BrowseList";
+    return Component;
+  }, [isLoading, isFetchingNextPage]);
 
   const handleLoadMore = async () => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -228,19 +260,7 @@ export const Browse = () => {
               }
             }}
             components={{
-              List: (() => {
-                const ListComponent = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-                  (props, ref) => (
-                    <GridContainer
-                      {...props}
-                      ref={ref}
-                      aria-busy={isLoading || isFetchingNextPage}
-                    />
-                  )
-                );
-                ListComponent.displayName = "VirtuosoList";
-                return ListComponent;
-              })(),
+              List: ListComponent,
               Item: ItemContainer,
               Footer: () =>
                 isFetchingNextPage ? (
