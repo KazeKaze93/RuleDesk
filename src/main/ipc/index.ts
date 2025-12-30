@@ -9,6 +9,7 @@ import { AuthController } from "./controllers/AuthController";
 import { MaintenanceController } from "./controllers/MaintenanceController";
 import { ViewerController } from "./controllers/ViewerController";
 import { FileController } from "./controllers/FileController";
+import { SearchController } from "./controllers/SearchController";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
 import { getDb } from "../db/client";
@@ -54,6 +55,9 @@ export function setupIpc(): { maintenanceController: MaintenanceController; file
 
   const fileController = new FileController();
   fileController.setup();
+
+  const searchController = new SearchController();
+  searchController.setup();
 
   log.info("[IPC] All controllers initialized successfully");
   

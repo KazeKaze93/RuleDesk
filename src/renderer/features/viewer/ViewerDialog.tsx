@@ -59,6 +59,8 @@ const useCurrentPost = (
       queryKey = ["posts", "favorites"];
     } else if (origin.kind === "updates") {
       queryKey = ["posts", "updates"];
+    } else if (origin.kind === "search") {
+      queryKey = ["search", origin.tags];
     } else {
       return null;
     }
@@ -361,6 +363,33 @@ const ViewerContent = ({
                 ? "Questionable"
                 : "Explicit"}
             </span>
+            {post.publishedAt && (() => {
+              let date: Date;
+              if (post.publishedAt instanceof Date) {
+                date = post.publishedAt;
+              } else if (typeof post.publishedAt === "number") {
+                date = new Date(post.publishedAt);
+              } else if (typeof post.publishedAt === "string") {
+                date = new Date(post.publishedAt);
+              } else {
+                return null;
+              }
+              
+              // Validate date is not invalid
+              if (isNaN(date.getTime())) {
+                return null;
+              }
+              
+              return (
+                <span className="text-xs text-white/70">
+                  {date.toLocaleDateString("ru-RU", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+              );
+            })()}
           </div>
         </div>
 
@@ -487,6 +516,7 @@ export const ViewerDialog = () => {
     // - Artist gallery: ["posts", artistId]
     // - Favorites: ["posts", "favorites"]
     // - Updates: ["posts", "updates"]
+    // - Search: ["search", tags]
     let queryKey: unknown[] = [];
     if (queue.origin.kind === "artist") {
       queryKey = ["posts", queue.origin.artistId];
@@ -494,6 +524,8 @@ export const ViewerDialog = () => {
       queryKey = ["posts", "favorites"];
     } else if (queue.origin.kind === "updates") {
       queryKey = ["posts", "updates"];
+    } else if (queue.origin.kind === "search") {
+      queryKey = ["search", queue.origin.tags];
     } else {
       return;
     }

@@ -28,6 +28,7 @@ export const IPC_CHANNELS = {
   },
   API: {
     SEARCH_REMOTE: "api:search-remote-tags",
+    SEARCH_POSTS: "booru:search",
   },
   BACKUP: {
     CREATE: "db:create-backup",

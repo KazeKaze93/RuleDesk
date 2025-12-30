@@ -5,6 +5,7 @@ import {
   UpdateProgressCallback,
   AddArtistPayload,
 } from "./main/bridge";
+import type { PostData } from "./shared/schemas/post";
 import type { SearchResults, ProviderId } from "./main/providers";
 
 export type SyncErrorCallback = (message: string) => void;
@@ -83,9 +84,13 @@ export interface IpcApi extends IpcBridge {
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
 
-  markPostAsViewed: (postId: number) => Promise<boolean>;
+  markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
+
+  togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
+
+  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;

@@ -10,13 +10,7 @@ import { Tracked } from "./features/artists/Tracked";
 import { ArtistDetails } from "./features/artists/ArtistDetails";
 import { Favorites } from "./components/pages/Favorites";
 import { Updates } from "./components/pages/Updates";
-
-const Browse = () => (
-  <div className="p-8">
-    <h1 className="text-2xl font-bold">Browse</h1>
-    <p>Search here.</p>
-  </div>
-);
+import { Browse } from "./components/pages/Browse";
 
 type LegalStatus = "loading" | "confirmed" | "unconfirmed";
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
