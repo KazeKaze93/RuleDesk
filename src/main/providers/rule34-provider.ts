@@ -4,20 +4,9 @@ import { selectBestPreview } from "../lib/media-utils";
 import { USER_AGENT, REQUEST_TIMEOUT, AUTOCOMPLETE_TIMEOUT } from "../config/constants";
 import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
 import type { ArtistType } from "../db/schema";
-
-interface R34RawPost {
-  id: number;
-  file_url: string;
-  sample_url: string;
-  preview_url: string;
-  tags: string;
-  rating: string;
-  change: number;
-  score: number;
-  source: string;
-  width: number;
-  height: number;
-}
+import { R34RawPostSchema, type R34RawPost } from "../../shared/schemas/booru";
+import { normalizeRating } from "../../shared/utils/post-normalization";
+import { z } from "zod";
 
 interface R34AutocompleteItem {
   label: string;
@@ -115,7 +104,7 @@ export class Rule34Provider implements IBooruProvider {
       params.append("api_key", settings.apiKey);
     }
 
-    const { data } = await axios.get<R34RawPost[]>(`${this.baseUrl}?${params}`, {
+    const { data } = await axios.get<unknown>(`${this.baseUrl}?${params}`, {
       timeout: REQUEST_TIMEOUT,
       headers: { 
         "User-Agent": USER_AGENT,
@@ -125,18 +114,28 @@ export class Rule34Provider implements IBooruProvider {
 
     if (!Array.isArray(data)) return [];
 
-    return data.map(raw => this.mapToBooruPost(raw)).filter((post): post is BooruPost => post !== null);
+    // Validate each raw post through Zod schema before mapping
+    const validatedPosts = data
+      .map((raw) => {
+        try {
+          return R34RawPostSchema.parse(raw);
+        } catch (error) {
+          logger.warn("[Rule34Provider] Skipping invalid post data", { error, raw });
+          return null;
+        }
+      })
+      .filter((post): post is z.infer<typeof R34RawPostSchema> => post !== null);
+
+    return validatedPosts
+      .map((raw) => this.mapToBooruPost(raw))
+      .filter((post): post is BooruPost => post !== null);
   }
 
   private mapToBooruPost(raw: R34RawPost): BooruPost | null {
-    // Validate critical fields before creating post object
-    if (!raw.file_url || typeof raw.file_url !== "string" || raw.file_url.trim() === "") {
-      logger.warn("[Rule34Provider] Skipping post with missing file_url", { id: raw.id });
-      return null;
-    }
-
-    if (!raw.id || isNaN(Number(raw.id))) {
-      logger.warn("[Rule34Provider] Skipping post with invalid id", { raw });
+    // Data is already validated through Zod schema, but we still need to handle edge cases
+    const fileUrl = raw.file_url.trim();
+    if (!fileUrl) {
+      logger.warn("[Rule34Provider] Skipping post with empty file_url", { id: raw.id });
       return null;
     }
 
@@ -146,9 +145,18 @@ export class Rule34Provider implements IBooruProvider {
       file: raw.file_url,
     });
 
+    // selectBestPreview should always return a valid URL if file_url exists
+    // But we check anyway for safety - if empty, use file_url as fallback
+    const finalPreview = (preview && preview.trim() !== "") ? preview : fileUrl;
+    
+    if (!finalPreview || finalPreview.trim() === "") {
+      logger.warn("[Rule34Provider] Skipping post with empty previewUrl and file_url", { id: raw.id });
+      return null;
+    }
+
     // Date parsing with validation (Rule34 uses Unix timestamp in 'change' field)
     let createdAt = new Date();
-    if (raw.change && typeof raw.change === "number" && raw.change > 0) {
+    if (raw.change && raw.change > 0) {
       const parsedDate = new Date(raw.change * 1000);
       if (!isNaN(parsedDate.getTime())) {
         createdAt = parsedDate;
@@ -157,17 +165,20 @@ export class Rule34Provider implements IBooruProvider {
       }
     }
 
+    // Normalize rating using shared utility (removes need for 'as' casting)
+    const rating = normalizeRating(raw.rating);
+
     return {
-      id: Number(raw.id),
-      fileUrl: raw.file_url.trim(),
+      id: raw.id,
+      fileUrl: fileUrl,
       sampleUrl: (raw.sample_url || raw.file_url).trim(),
-      previewUrl: preview,
+      previewUrl: finalPreview,
       tags: raw.tags.split(" ").filter(Boolean),
-      rating: raw.rating as "s" | "q" | "e",
-      score: raw.score,
-      source: raw.source,
-      width: raw.width,
-      height: raw.height,
+      rating: rating,
+      score: raw.score ?? 0,
+      source: raw.source ?? "",
+      width: raw.width ?? 0,
+      height: raw.height ?? 0,
       createdAt: createdAt,
     };
   }

@@ -178,7 +178,7 @@ export const Browse = () => {
             onKeyDown={handleKeyDown}
             placeholder="Search for tags (e.g., 'blue_hair', 'cyberpunk')"
           />
-          <Button onClick={handleSearch} disabled={!query.trim()}>
+          <Button onClick={handleSearch}>
             <Search className="mr-2 w-4 h-4" />
             Search
           </Button>
@@ -228,7 +228,19 @@ export const Browse = () => {
               }
             }}
             components={{
-              List: GridContainer,
+              List: (() => {
+                const ListComponent = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+                  (props, ref) => (
+                    <GridContainer
+                      {...props}
+                      ref={ref}
+                      aria-busy={isLoading || isFetchingNextPage}
+                    />
+                  )
+                );
+                ListComponent.displayName = "VirtuosoList";
+                return ListComponent;
+              })(),
               Item: ItemContainer,
               Footer: () =>
                 isFetchingNextPage ? (

@@ -14,6 +14,7 @@ import type { BooruPost } from "../../providers/types";
 import type { Post } from "../../db/schema";
 import { SearchPostsSchema } from "../../../shared/schemas/search";
 import { toIpcSafe } from "../../utils/ipc-serialization";
+import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -100,12 +101,13 @@ export class SearchController extends BaseController {
     }
   }
 
+
   /**
    * Convert BooruPost to Post format for frontend compatibility
    *
    * External posts don't have database IDs or artistId, so we use sentinel values:
    * - id: Uses external postId (unique, won't conflict with DB auto-increment IDs)
-   * - artistId: Uses 0 as sentinel value (indicates external post, not in database)
+   * - artistId: Uses EXTERNAL_ARTIST_ID sentinel value (indicates external post, not in database)
    *
    * @param booruPost - Post from external Booru API
    * @returns Post-compatible object
@@ -114,7 +116,7 @@ export class SearchController extends BaseController {
     return {
       id: booruPost.id, // Use external postId as id (unique, won't conflict)
       postId: booruPost.id,
-      artistId: 0, // Sentinel value for external posts (not in database)
+      artistId: EXTERNAL_ARTIST_ID, // Sentinel value for external posts (not in database)
       fileUrl: booruPost.fileUrl,
       previewUrl: booruPost.previewUrl,
       sampleUrl: booruPost.sampleUrl,
@@ -157,7 +159,7 @@ export class SearchController extends BaseController {
       // Empty array means show all posts (provider will omit tags parameter)
       const tagsString = tags.length > 0 ? tags.join(" ") : "";
 
-      log.info(
+      log.debug(
         `[SearchController] Searching for tags: "${tagsString || "all (no filter)"}" (page ${page}, limit ${limit})`
       );
 
@@ -169,7 +171,7 @@ export class SearchController extends BaseController {
         providerSettings
       );
 
-      log.info(
+      log.debug(
         `[SearchController] Retrieved ${booruPosts.length} posts from external API`
       );
 
@@ -177,7 +179,7 @@ export class SearchController extends BaseController {
       const postIds = booruPosts.map((booruPost) => booruPost.id);
 
       // Fetch local DB state (isFavorite, isViewed) for these posts
-      // Search by postId and artistId = 0 (external posts from Browse)
+      // Search by postId and artistId = EXTERNAL_ARTIST_ID (external posts from Browse)
       const db = this.getDb();
       let localPostsState: Map<number, { isFavorited: boolean; isViewed: boolean }> = new Map();
 
@@ -193,7 +195,7 @@ export class SearchController extends BaseController {
           .where(
             and(
               inArray(posts.postId, postIds),
-              eq(posts.artistId, 0) // External posts from Browse have artistId = 0
+              eq(posts.artistId, EXTERNAL_ARTIST_ID) // External posts from Browse have EXTERNAL_ARTIST_ID
             )
           )
           .all();

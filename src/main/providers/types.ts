@@ -1,18 +1,8 @@
 import type { ArtistType } from "../db/schema";
+import type { BooruPost } from "../../shared/schemas/booru";
 
-export interface BooruPost {
-  id: number;
-  fileUrl: string;
-  previewUrl: string;
-  sampleUrl: string;
-  tags: string[];
-  rating: "s" | "q" | "e";
-  score: number;
-  source: string;
-  width: number;
-  height: number;
-  createdAt: Date;
-}
+// Re-export BooruPost from shared schema for backward compatibility
+export type { BooruPost };
 
 export interface SearchResults {
   id: string;
