@@ -101,11 +101,12 @@ export function useViewerController({
             // Normalize rating to handle "explicit", "safe", "questionable" from API
             rating: normalizeRating(post.rating),
             tags: post.tags || "",
-            publishedAt: post.publishedAt instanceof Date
-              ? post.publishedAt.getTime()
-              : typeof post.publishedAt === "number"
-              ? post.publishedAt
-              : undefined,
+            publishedAt:
+              post.publishedAt instanceof Date
+                ? post.publishedAt.getTime()
+                : typeof post.publishedAt === "number"
+                ? post.publishedAt
+                : undefined,
           }
         : undefined;
 
@@ -140,7 +141,7 @@ export function useViewerController({
     });
 
     // Update search cache (for Browse page) if post is from search
-    if (queue.origin.kind === "search") {
+    if (queue?.origin?.kind === "search") {
       const searchQueryKey = ["search", queue.origin.tags];
       queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) => {
         if (!old) return old;
@@ -152,7 +153,20 @@ export function useViewerController({
         };
       });
     }
-  }, [post.id, post.isViewed, post.artistId, post.postId, post.fileUrl, post.previewUrl, post.sampleUrl, post.rating, post.tags, post.publishedAt, queue.origin, queryClient]);
+  }, [
+    post.id,
+    post.isViewed,
+    post.artistId,
+    post.postId,
+    post.fileUrl,
+    post.previewUrl,
+    post.sampleUrl,
+    post.rating,
+    post.tags,
+    post.publishedAt,
+    queue?.origin,
+    queryClient,
+  ]);
 
   useEffect(() => {
     const filenameId = `${post.artistId}_${post.postId}.${
@@ -188,44 +202,48 @@ export function useViewerController({
     // Local posts (from DB) usually have camelCase `createdAt` and `fileUrl`.
     // Network posts (from API) usually have snake_case `file_url` or `preview_url` (raw data).
     // Also check artistId: network posts from Browse have artistId === 0
-    const raw = post as any;
+    const raw = post as Post & Record<string, unknown>;
     const isNetworkPost =
       "file_url" in post ||
       "preview_url" in post ||
       !("createdAt" in post) ||
       post.artistId === 0;
 
-    let postData: {
-      postId: number;
-      artistId: number;
-      fileUrl: string;
-      previewUrl: string;
-      sampleUrl?: string;
-      rating?: "s" | "q" | "e";
-      tags?: string;
-      publishedAt?: number;
-    } | undefined = undefined;
+    let postData:
+      | {
+          postId: number;
+          artistId: number;
+          fileUrl: string;
+          previewUrl: string;
+          sampleUrl?: string;
+          rating?: "s" | "q" | "e";
+          tags?: string;
+          publishedAt?: number;
+        }
+      | undefined = undefined;
 
     // Only perform heavy mapping for network posts (Browse tab)
     if (isNetworkPost) {
       // Map fields with fallbacks for both camelCase (DB) and snake_case (API) formats
       const fileUrl =
         post.fileUrl ||
-        raw.file_url ||
-        raw.fileUrl ||
+        (typeof raw.file_url === "string" ? raw.file_url : "") ||
+        (typeof raw.fileUrl === "string" ? raw.fileUrl : "") ||
         "";
 
       const previewUrl =
         post.previewUrl ||
-        raw.preview_url ||
-        raw.preview_file_url ||
-        raw.previewUrl ||
+        (typeof raw.preview_url === "string" ? raw.preview_url : "") ||
+        (typeof raw.preview_file_url === "string"
+          ? raw.preview_file_url
+          : "") ||
+        (typeof raw.previewUrl === "string" ? raw.previewUrl : "") ||
         "";
 
       const sampleUrl =
         post.sampleUrl ||
-        raw.sample_url ||
-        raw.sampleUrl ||
+        (typeof raw.sample_url === "string" ? raw.sample_url : "") ||
+        (typeof raw.sampleUrl === "string" ? raw.sampleUrl : "") ||
         "";
 
       // Handle tags: can be Array (from API) or String (from DB)
@@ -269,7 +287,11 @@ export function useViewerController({
 
       const rawRating = post.rating || raw.rating;
       const rating = normalizeRating(
-        typeof rawRating === "string" ? rawRating : rawRating ? String(rawRating) : undefined
+        typeof rawRating === "string"
+          ? rawRating
+          : rawRating
+          ? String(rawRating)
+          : undefined
       );
 
       // Handle publishedAt: can be Date, number (timestamp), or snake_case field
@@ -279,16 +301,24 @@ export function useViewerController({
       } else if (typeof post.publishedAt === "number") {
         publishedAt = post.publishedAt;
       } else if (raw.published_at) {
-        publishedAt =
-          typeof raw.published_at === "number"
-            ? raw.published_at
-            : new Date(raw.published_at).getTime();
+        if (typeof raw.published_at === "number") {
+          publishedAt = raw.published_at;
+        } else if (
+          typeof raw.published_at === "string" ||
+          raw.published_at instanceof Date
+        ) {
+          publishedAt = new Date(raw.published_at).getTime();
+        }
       } else if (raw.created_at) {
         // Fallback to created_at if published_at is missing
-        publishedAt =
-          typeof raw.created_at === "number"
-            ? raw.created_at
-            : new Date(raw.created_at).getTime();
+        if (typeof raw.created_at === "number") {
+          publishedAt = raw.created_at;
+        } else if (
+          typeof raw.created_at === "string" ||
+          raw.created_at instanceof Date
+        ) {
+          publishedAt = new Date(raw.created_at).getTime();
+        }
       } else if (raw.createdAt instanceof Date) {
         publishedAt = raw.createdAt.getTime();
       } else if (typeof raw.createdAt === "number") {
@@ -328,12 +358,25 @@ export function useViewerController({
       }
 
       // Create postData only for network posts
+      const rawPostId =
+        typeof raw.id === "number"
+          ? raw.id
+          : typeof raw.post_id === "number"
+          ? raw.post_id
+          : undefined;
+      const rawArtistId =
+        typeof raw.artist_id === "number"
+          ? raw.artist_id
+          : typeof raw.artistId === "number"
+          ? raw.artistId
+          : undefined;
+
       postData = {
-        postId: post.postId || raw.id || raw.post_id || 0,
-        artistId: post.artistId || raw.artist_id || raw.artistId || 0,
-        fileUrl: fileUrl.trim(),
-        previewUrl: previewUrl.trim(),
-        sampleUrl: sampleUrl.trim(),
+        postId: post.postId || rawPostId || 0,
+        artistId: post.artistId || rawArtistId || 0,
+        fileUrl: typeof fileUrl === "string" ? fileUrl.trim() : "",
+        previewUrl: typeof previewUrl === "string" ? previewUrl.trim() : "",
+        sampleUrl: typeof sampleUrl === "string" ? sampleUrl.trim() : "",
         rating: rating || undefined,
         tags: tagsStr,
         publishedAt,
@@ -352,17 +395,20 @@ export function useViewerController({
       // Update artist gallery cache if post has artistId
       if (post.artistId) {
         const artistQueryKey = ["posts", post.artistId];
-        queryClient.setQueryData<InfiniteData<Post[]>>(artistQueryKey, (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            pages: old.pages.map((page) =>
-              page.map((p) =>
-                p.id === post.id ? { ...p, isFavorited: newState } : p
-              )
-            ),
-          };
-        });
+        queryClient.setQueryData<InfiniteData<Post[]>>(
+          artistQueryKey,
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) =>
+                page.map((p) =>
+                  p.id === post.id ? { ...p, isFavorited: newState } : p
+                )
+              ),
+            };
+          }
+        );
       }
 
       // Update updates feed cache
@@ -380,56 +426,63 @@ export function useViewerController({
       });
 
       // Update search cache (for Browse page) if post is from search
-      if (queue.origin.kind === "search") {
+      if (queue?.origin?.kind === "search") {
         const searchQueryKey = ["search", queue.origin.tags];
-        queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            pages: old.pages.map((page) =>
-              page.map((p) =>
-                p.id === post.id ? { ...p, isFavorited: newState } : p
-              )
-            ),
-          };
-        });
+        queryClient.setQueryData<InfiniteData<Post[]>>(
+          searchQueryKey,
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) =>
+                page.map((p) =>
+                  p.id === post.id ? { ...p, isFavorited: newState } : p
+                )
+              ),
+            };
+          }
+        );
       }
 
       // Update favorites cache separately
       const favoritesQueryKey = ["posts", "favorites"];
-      const oldFavoritesData = queryClient.getQueryData<InfiniteData<Post[]>>(favoritesQueryKey);
-      
+      const oldFavoritesData =
+        queryClient.getQueryData<InfiniteData<Post[]>>(favoritesQueryKey);
+
       if (oldFavoritesData) {
-        queryClient.setQueryData<InfiniteData<Post[]>>(favoritesQueryKey, (old) => {
-          if (!old) return old;
-          
-          // If removing from favorites, filter out the post
-          if (!newState) {
+        queryClient.setQueryData<InfiniteData<Post[]>>(
+          favoritesQueryKey,
+          (old) => {
+            if (!old) return old;
+
+            // If removing from favorites, filter out the post
+            if (!newState) {
+              return {
+                ...old,
+                pages: old.pages
+                  .map((page) => page.filter((p) => p.id !== post.id))
+                  .filter((page) => page.length > 0),
+              };
+            }
+
+            // If adding to favorites, update existing post
             return {
               ...old,
-              pages: old.pages
-                .map((page) => page.filter((p) => p.id !== post.id))
-                .filter((page) => page.length > 0),
+              pages: old.pages.map((page) =>
+                page.map((p) =>
+                  p.id === post.id ? { ...p, isFavorited: newState } : p
+                )
+              ),
             };
           }
-          
-          // If adding to favorites, update existing post
-          return {
-            ...old,
-            pages: old.pages.map((page) =>
-              page.map((p) =>
-                p.id === post.id ? { ...p, isFavorited: newState } : p
-              )
-            ),
-          };
-        });
+        );
       }
 
       // Invalidate favorites query if removing from favorites or post not in cache
       const foundInCache = oldFavoritesData?.pages.some((page) =>
         page.some((p) => p.id === post.id)
       );
-      
+
       if (!newState || !foundInCache) {
         queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
       }
@@ -457,7 +510,10 @@ export function useViewerController({
       } else if (result && result.canceled) {
         // User canceled
       } else {
-        log.error("[ViewerController] Download failed:", result?.error || "Unknown error");
+        log.error(
+          "[ViewerController] Download failed:",
+          result?.error || "Unknown error"
+        );
       }
     } catch (error) {
       log.error("[ViewerController] Download failed:", error);
@@ -487,7 +543,9 @@ export function useViewerController({
 
   const resetLocalCache = () => {
     if (!post) return;
-    log.info(`[ViewerController] Attempting to reset local cache for Post ID: ${post.id}`);
+    log.info(
+      `[ViewerController] Attempting to reset local cache for Post ID: ${post.id}`
+    );
     window.api.resetPostCache(post.id);
   };
 
