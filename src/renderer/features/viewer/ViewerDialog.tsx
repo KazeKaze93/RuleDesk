@@ -363,6 +363,21 @@ const ViewerContent = ({
                 ? "Questionable"
                 : "Explicit"}
             </span>
+            {post.publishedAt && (
+              <span className="text-xs text-white/70">
+                {post.publishedAt instanceof Date
+                  ? post.publishedAt.toLocaleDateString("ru-RU", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : new Date(post.publishedAt).toLocaleDateString("ru-RU", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+              </span>
+            )}
           </div>
         </div>
 
