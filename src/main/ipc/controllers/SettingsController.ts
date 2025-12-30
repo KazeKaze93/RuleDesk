@@ -159,25 +159,29 @@ export class SettingsController extends BaseController {
     try {
       const db = this.getDb();
 
-      // Get existing settings BEFORE transaction to avoid async queries inside transaction
-      // better-sqlite3 requires synchronous transaction callbacks
-      // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
-      const existing = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
-
-      log.debug(
-        `[SettingsController] Existing settings: ${
-          existing ? "found" : "not found"
-        }, id=${existing?.id ?? "none"}, userId: ${
-          existing?.userId ?? "none"
-        }, hasApiKey: ${!!existing?.encryptedApiKey}, SETTINGS_ID=${SETTINGS_ID}`
-      );
-
       // Use transaction to ensure atomicity when updating sensitive data
       // This prevents partial updates if encryption or database operation fails
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
+      // SECURITY: Get existing settings INSIDE transaction to avoid race conditions
+      let existing: InferSelectModel<typeof settings> | undefined;
+      
       db.transaction((tx) => {
+        // Get existing settings synchronously inside transaction to avoid race conditions
+        // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
+        existing = tx
+          .select()
+          .from(settings)
+          .where(eq(settings.id, SETTINGS_ID))
+          .limit(1)
+          .all()[0];
+
+        log.debug(
+          `[SettingsController] Existing settings: ${
+            existing ? "found" : "not found"
+          }, id=${existing?.id ?? "none"}, userId: ${
+            existing?.userId ?? "none"
+          }, hasApiKey: ${!!existing?.encryptedApiKey}, SETTINGS_ID=${SETTINGS_ID}`
+        );
         // Handle Encryption within transaction
         // If a new 'apiKey' comes from frontend, encrypt it.
         // If not provided, we keep the old encrypted one.
@@ -247,7 +251,7 @@ export class SettingsController extends BaseController {
         }
       });
 
-      // Verify the save worked - use existing.id if available, otherwise SETTINGS_ID
+      // Verify the save worked - use SETTINGS_ID (existing is now set inside transaction)
       const saved = await db.query.settings.findFirst({
         where: eq(settings.id, existing?.id ?? SETTINGS_ID),
       });

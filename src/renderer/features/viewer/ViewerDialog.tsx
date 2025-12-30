@@ -363,21 +363,33 @@ const ViewerContent = ({
                 ? "Questionable"
                 : "Explicit"}
             </span>
-            {post.publishedAt && (
-              <span className="text-xs text-white/70">
-                {post.publishedAt instanceof Date
-                  ? post.publishedAt.toLocaleDateString("ru-RU", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })
-                  : new Date(post.publishedAt).toLocaleDateString("ru-RU", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-              </span>
-            )}
+            {post.publishedAt && (() => {
+              let date: Date;
+              if (post.publishedAt instanceof Date) {
+                date = post.publishedAt;
+              } else if (typeof post.publishedAt === "number") {
+                date = new Date(post.publishedAt);
+              } else if (typeof post.publishedAt === "string") {
+                date = new Date(post.publishedAt);
+              } else {
+                return null;
+              }
+              
+              // Validate date is not invalid
+              if (isNaN(date.getTime())) {
+                return null;
+              }
+              
+              return (
+                <span className="text-xs text-white/70">
+                  {date.toLocaleDateString("ru-RU", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+              );
+            })()}
           </div>
         </div>
 
