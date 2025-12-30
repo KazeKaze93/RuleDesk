@@ -4,8 +4,8 @@ import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { settings, SETTINGS_ID } from "../../db/schema";
-import { eq } from "drizzle-orm";
+import { settings, SETTINGS_ID, posts } from "../../db/schema";
+import { eq, inArray, and } from "drizzle-orm";
 import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -171,13 +171,62 @@ export class SearchController extends BaseController {
         `[SearchController] Retrieved ${booruPosts.length} posts from external API`
       );
 
-      // Convert BooruPost[] to Post[] format
-      const posts = booruPosts.map((booruPost) =>
-        this.mapBooruPostToPost(booruPost)
-      );
+      // Extract postIds from API results for local DB lookup
+      const postIds = booruPosts.map((booruPost) => booruPost.id);
+
+      // Fetch local DB state (isFavorite, isViewed) for these posts
+      // Search by postId and artistId = 0 (external posts from Browse)
+      const db = this.getDb();
+      let localPostsState: Map<number, { isFavorited: boolean; isViewed: boolean }> = new Map();
+
+      if (postIds.length > 0) {
+        // Use synchronous select query (better-sqlite3 is synchronous)
+        const localPosts = db
+          .select({
+            postId: posts.postId,
+            isFavorited: posts.isFavorited,
+            isViewed: posts.isViewed,
+          })
+          .from(posts)
+          .where(
+            and(
+              inArray(posts.postId, postIds),
+              eq(posts.artistId, 0) // External posts from Browse have artistId = 0
+            )
+          )
+          .all();
+
+        // Create Map for O(1) lookup
+        localPostsState = new Map(
+          localPosts.map((p) => [
+            p.postId,
+            {
+              isFavorited: p.isFavorited ?? false,
+              isViewed: p.isViewed ?? false,
+            },
+          ])
+        );
+
+        log.debug(
+          `[SearchController] Found ${localPosts.length} posts in local DB out of ${postIds.length} from API`
+        );
+      }
+
+      // Convert BooruPost[] to Post[] format and merge with local DB state
+      const enrichedPosts = booruPosts.map((booruPost) => {
+        const mappedPost = this.mapBooruPostToPost(booruPost);
+        const localState = localPostsState.get(booruPost.id);
+
+        // Merge local state if found, otherwise use defaults (false)
+        return {
+          ...mappedPost,
+          isFavorited: localState?.isFavorited ?? false,
+          isViewed: localState?.isViewed ?? false,
+        };
+      });
 
       // Convert Date objects to numbers for Electron 39+ IPC serialization
-      return toIpcSafe(posts) as IpcPost[];
+      return toIpcSafe(enrichedPosts) as IpcPost[];
     } catch (error) {
       log.error("[SearchController] Failed to search posts:", error);
       // Re-throw original error to preserve stack trace and context
