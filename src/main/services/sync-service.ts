@@ -24,6 +24,7 @@ function bulkUpsertPosts(
   for (let i = 0; i < postsToSave.length; i += CHUNK_SIZE) {
     const chunk = postsToSave.slice(i, i + CHUNK_SIZE);
     // Drizzle operations for better-sqlite3 are synchronous
+    // CRITICAL: Must call .run() to execute the query
     tx.insert(posts)
       .values(chunk)
       .onConflictDoUpdate({
@@ -36,7 +37,8 @@ function bulkUpsertPosts(
           rating: sql`excluded.rating`,
           publishedAt: sql`excluded.published_at`,
         },
-      });
+      })
+      .run();
   }
 }
 
@@ -56,30 +58,39 @@ async function retryWithBackoff<T>(
         if (attempt === maxRetries) throw error;
         const delay = baseDelay * Math.pow(2, attempt);
         logger.warn(
-          `SyncService: Retry attempt ${attempt + 1}/${maxRetries} for ${contextName} after ${delay}ms. Error: ${error instanceof Error ? error.message : "Unknown error"}`
+          `SyncService: Retry attempt ${
+            attempt + 1
+          }/${maxRetries} for ${contextName} after ${delay}ms. Error: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
       const status = error.response?.status;
       const isRateLimit = status === 429 || status === 503;
-      const isServerError = status !== undefined && status >= 500 && status < 600;
+      const isServerError =
+        status !== undefined && status >= 500 && status < 600;
       const isNetworkError = !error.response && error.request;
-      
+
       const shouldRetry = isRateLimit || isServerError || isNetworkError;
       if (!shouldRetry || attempt === maxRetries) {
         throw error;
       }
-      
+
       const delay = baseDelay * Math.pow(2, attempt);
       const retryAfterHeader = error.response?.headers["retry-after"];
       const retryAfter = retryAfterHeader
         ? parseInt(retryAfterHeader, 10) * 1000
         : null;
       const waitTime = retryAfter ? Math.max(retryAfter, delay) : delay;
-      
+
       logger.warn(
-        `SyncService: Retry attempt ${attempt + 1}/${maxRetries} for ${contextName} after ${waitTime}ms. Status: ${status || "network error"}`
+        `SyncService: Retry attempt ${
+          attempt + 1
+        }/${maxRetries} for ${contextName} after ${waitTime}ms. Status: ${
+          status || "network error"
+        }`
       );
       await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
@@ -119,10 +130,7 @@ export class SyncService {
           const buff = Buffer.from(realApiKey, "base64");
           realApiKey = safeStorage.decryptString(buff);
         } catch (e) {
-          logger.warn(
-            "SyncService: Failed to decrypt API Key.",
-            e
-          );
+          logger.warn("SyncService: Failed to decrypt API Key.", e);
           realApiKey = settingsRecord.encryptedApiKey || "";
         }
       }
@@ -140,11 +148,15 @@ export class SyncService {
     try {
       const settings = await this.getDecryptedSettings();
       if (!settings?.userId || !settings?.apiKey) {
-        logger.warn("SyncService: Cannot verify credentials - missing ID or Key.");
+        logger.warn(
+          "SyncService: Cannot verify credentials - missing ID or Key."
+        );
         return false;
       }
-      logger.info(`SyncService: Verifying connectivity for User ID: ${settings.userId}...`);
-      
+      logger.info(
+        `SyncService: Verifying connectivity for User ID: ${settings.userId}...`
+      );
+
       const provider = getProvider("rule34");
       const isValid = await provider.checkAuth({
         userId: settings.userId,
@@ -182,7 +194,7 @@ export class SyncService {
 
       for (let i = 0; i < artistsList.length; i += CONCURRENT_SYNC_LIMIT) {
         const batch = artistsList.slice(i, i + CONCURRENT_SYNC_LIMIT);
-        
+
         await Promise.allSettled(
           batch.map(async (artist) => {
             try {
@@ -244,34 +256,41 @@ export class SyncService {
     maxPages = Infinity
   ) {
     const db = getDb();
-    
+
     // DYNAMIC PROVIDER SELECTION
     // Validate provider ID against known providers
     const rawProviderId = artist.provider || "rule34";
-    
+
     // Type-safe validation without casting
     const isValidProvider = (id: string): id is ProviderId => {
-      return PROVIDER_IDS.some(validId => validId === id);
+      return PROVIDER_IDS.some((validId) => validId === id);
     };
-    
+
     let providerId: ProviderId;
     if (!isValidProvider(rawProviderId)) {
       logger.error(
         `SyncService: Invalid provider '${rawProviderId}' for artist ${artist.name} (ID: ${artist.id}). ` +
-        `Database integrity compromised. Expected one of: ${PROVIDER_IDS.join(", ")}. ` +
-        `Falling back to 'rule34' to continue sync.`
+          `Database integrity compromised. Expected one of: ${PROVIDER_IDS.join(
+            ", "
+          )}. ` +
+          `Falling back to 'rule34' to continue sync.`
       );
       // Fallback to rule34 instead of throwing - don't kill entire sync process
       providerId = "rule34";
-      this.sendEvent("sync:error", `${artist.name}: Invalid provider, using Rule34 fallback`);
+      this.sendEvent(
+        "sync:error",
+        `${artist.name}: Invalid provider, using Rule34 fallback`
+      );
     } else {
       providerId = rawProviderId;
     }
-    
+
     const provider = getProvider(providerId);
-    
-    logger.info(`SyncService: Syncing ${artist.name} using provider: ${provider.name}`);
-    
+
+    logger.info(
+      `SyncService: Syncing ${artist.name} using provider: ${provider.name}`
+    );
+
     let page = 0;
     let hasMore = true;
     let newPostsCount = 0;
@@ -280,17 +299,19 @@ export class SyncService {
 
     while (hasMore && page < maxPages) {
       try {
-        const idFilter = currentLastPostId > 0 ? ` id:>${currentLastPostId}` : "";
-        
+        const idFilter =
+          currentLastPostId > 0 ? ` id:>${currentLastPostId}` : "";
+
         // Use provider to format tag (handles 'user:' prefix logic)
         const baseTag = provider.formatTag(artist.tag, artist.type);
         const tagsQuery = `${baseTag}${idFilter}`;
 
         const postsData = await retryWithBackoff(
-          () => provider.fetchPosts(tagsQuery, page, {
-             userId: settings.userId,
-             apiKey: settings.apiKey
-          }),
+          () =>
+            provider.fetchPosts(tagsQuery, page, {
+              userId: settings.userId,
+              apiKey: settings.apiKey,
+            }),
           3,
           2000,
           artist.name
@@ -314,19 +335,22 @@ export class SyncService {
           tags: p.tags.join(" "),
           publishedAt: p.createdAt,
           isViewed: false,
-          isFavorited: false
+          isFavorited: false,
         }));
 
         // Save posts and update artist metadata atomically after each page
         if (postsToSave.length > 0) {
           // Calculate max post ID from this batch BEFORE transaction
-          const batchHighestPostId = Math.max(...postsToSave.map(p => p.postId));
-          
+          const batchHighestPostId = Math.max(
+            ...postsToSave.map((p) => p.postId)
+          );
+
           // better-sqlite3 transactions are synchronous
           // Drizzle wraps them but the callback should not be async
+          // CRITICAL: All operations inside transaction must be synchronous and end with .run()
           db.transaction((tx) => {
             bulkUpsertPosts(postsToSave, tx);
-            
+
             // Update lastPostId ONLY with posts that were actually saved in this transaction
             // Use currentLastPostId (not artist.lastPostId) to avoid race conditions
             tx.update(artists)
@@ -335,9 +359,10 @@ export class SyncService {
                 newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
                 lastChecked: new Date(),
               })
-              .where(eq(artists.id, artist.id));
+              .where(eq(artists.id, artist.id))
+              .run();
           });
-          
+
           // Update local tracking variable for next iteration
           currentLastPostId = Math.max(currentLastPostId, batchHighestPostId);
           newPostsCount += postsToSave.length;
@@ -355,10 +380,12 @@ export class SyncService {
     // Final update of lastChecked even if no new posts were found
     if (newPostsCount === 0) {
       // better-sqlite3 transactions are synchronous
+      // CRITICAL: Must call .run() to execute the query
       db.transaction((tx) => {
         tx.update(artists)
           .set({ lastChecked: new Date() })
-          .where(eq(artists.id, artist.id));
+          .where(eq(artists.id, artist.id))
+          .run();
       });
     }
 
