@@ -110,7 +110,7 @@ export class PostsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
       z.tuple([
-        z.number().int().positive(),
+        z.number().int(), // Allow negative IDs for external posts from Browse
         PostDataSchema.optional(),
       ]),
       this.markViewed.bind(this) as (
@@ -129,7 +129,7 @@ export class PostsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
       z.tuple([
-        z.number().int().positive(),
+        z.number().int(), // Allow negative IDs for external posts from Browse
         PostDataSchema.optional(),
       ]),
       this.toggleFavorite.bind(this) as (
