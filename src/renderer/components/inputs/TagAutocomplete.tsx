@@ -211,11 +211,14 @@ export function TagAutocomplete({
                   className={cn(
                     "relative cursor-pointer select-none px-4 py-2 text-sm",
                     "hover:bg-accent hover:text-accent-foreground",
-                    "focus:bg-accent focus:text-accent-foreground",
                     index === selectedIndex && "bg-accent text-accent-foreground"
                   )}
-                  onMouseDown={(e) => handleSelectTag(result.value, e)}
-                  onMouseEnter={() => setSelectedIndex(index)}
+                  onMouseDown={(e) => {
+                    // Set selected index on mouse down to provide visual feedback
+                    // This doesn't interfere with keyboard navigation as it only sets visual state
+                    setSelectedIndex(index);
+                    handleSelectTag(result.value, e);
+                  }}
                 >
                   {result.label}
                   {result.type && (

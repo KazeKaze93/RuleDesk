@@ -157,15 +157,23 @@ export class PostsController extends BaseController {
     postId: number,
     postData?: PostData
   ): Post | undefined {
-    // First, try to find post by database ID (synchronous query inside transaction)
-    let existingPost = tx
-      .select()
-      .from(posts)
-      .where(eq(posts.id, postId))
-      .limit(1)
-      .all()[0];
+    // CRITICAL: Negative IDs indicate external posts (from Browse) that haven't been saved to DB yet
+    // For negative IDs, skip DB lookup by id and go straight to postId lookup
+    // For positive IDs, try to find by database ID first (existing posts from DB)
+    let existingPost: Post | undefined;
+    
+    if (postId > 0) {
+      // Positive ID - try to find by database ID (existing posts from DB)
+      existingPost = tx
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1)
+        .all()[0];
+    }
 
-    // If not found and postData is provided, try to find by postId and EXTERNAL_ARTIST_ID
+    // If not found (or negative ID for external post) and postData is provided,
+    // try to find by postId and EXTERNAL_ARTIST_ID
     // SECURITY: Always use EXTERNAL_ARTIST_ID, never trust artistId from Renderer
     // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
     if (!existingPost && postData) {
@@ -379,82 +387,69 @@ export class PostsController extends BaseController {
     try {
       const db = this.getDb();
 
-      // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
-      // All queries must be inside transaction for atomicity and efficiency
-      type MarkViewedResult =
-        | { success: true; postId: number; postPostId: number }
-        | { success: true; postPostId: number }
-        | { success: false };
-      let result: MarkViewedResult = { success: false };
+      // CRITICAL: For external posts (negative ID), we need postData to create/update
+      // For existing posts (positive ID), we can use onConflictDoUpdate with postId lookup
+      if (!postData && postId <= 0) {
+        log.warn(
+          `[PostsController] Cannot mark external post as viewed without postData. postId: ${postId}`
+        );
+        return false;
+      }
 
-      db.transaction((tx) => {
-        // Use shared helper method to find post
-        const existingPost = this.findPostInTransaction(tx, postId, postData);
+      // If postData is provided, use onConflictDoUpdate for atomic insert/update
+      // This eliminates the need for separate select + insert/update queries
+      if (postData) {
+        const now = new Date();
+        const publishedAt = postData.publishedAt
+          ? new Date(postData.publishedAt)
+          : now;
 
-        // If post exists, update isViewed status
-        if (existingPost) {
-          tx.update(posts)
-            .set({ isViewed: true })
-            .where(eq(posts.id, existingPost.id))
-            .run();
+        // Use onConflictDoUpdate to atomically insert or update post
+        // Target: unique constraint on (artistId, postId)
+        // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
+        db.insert(posts)
+          .values({
+            postId: postData.postId,
+            artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
+            fileUrl: postData.fileUrl,
+            previewUrl: postData.previewUrl,
+            sampleUrl: postData.sampleUrl ?? "",
+            title: "",
+            rating: postData.rating ?? "",
+            tags: postData.tags ?? "",
+            publishedAt: publishedAt,
+            createdAt: now,
+            isViewed: true, // Set to true since we're marking as viewed
+            isFavorited: false,
+          })
+          .onConflictDoUpdate({
+            target: [posts.artistId, posts.postId],
+            set: {
+              isViewed: sql`1`, // SQLite boolean: 1 = true
+            },
+          })
+          .run();
 
-          log.debug(
-            `[PostsController] Post ${existingPost.id} (postId: ${existingPost.postId}) marked as viewed in transaction`
-          );
-
-          result = {
-            success: true,
-            postId: existingPost.id,
-            postPostId: existingPost.postId,
-          };
-        } else if (postData) {
-          // If post doesn't exist and postData is provided, create it with isViewed = true
-          const now = new Date();
-          const publishedAt = postData.publishedAt
-            ? new Date(postData.publishedAt)
-            : now;
-
-          tx.insert(posts)
-            .values({
-              postId: postData.postId,
-              artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-              fileUrl: postData.fileUrl,
-              previewUrl: postData.previewUrl,
-              sampleUrl: postData.sampleUrl ?? "",
-              title: "",
-              rating: postData.rating ?? "",
-              tags: postData.tags ?? "",
-              publishedAt: publishedAt,
-              createdAt: now,
-              isViewed: true, // Set to true since we're marking as viewed
-              isFavorited: false,
-            })
-            .run();
-
-          log.debug(
-            `[PostsController] Created new post (postId: ${postData.postId}) and marked as viewed in transaction`
-          );
-
-          result = {
-            success: true,
-            postPostId: postData.postId,
-          };
-        }
-      });
-
-      if (result.success) {
-        if ("postId" in result) {
-          const r = result as { success: true; postId: number; postPostId: number };
-          log.info(
-            `[PostsController] Post ${r.postId} (postId: ${r.postPostId}) marked as viewed`
-          );
-        } else {
-          const r = result as { success: true; postPostId: number };
-          log.info(
-            `[PostsController] Created new post (postId: ${r.postPostId}) and marked as viewed`
-          );
-        }
+        log.debug(
+          `[PostsController] Post (postId: ${postData.postId}) marked as viewed using onConflictDoUpdate`
+        );
         return true;
+      }
+
+      // For existing posts (positive ID), update directly
+      if (postId > 0) {
+        const updated = db
+          .update(posts)
+          .set({ isViewed: true })
+          .where(eq(posts.id, postId))
+          .run();
+
+        if (updated.changes > 0) {
+          log.debug(
+            `[PostsController] Post ${postId} marked as viewed`
+          );
+          return true;
+        }
       }
 
       // If post doesn't exist and no postData provided, return false (don't throw error for viewed status)

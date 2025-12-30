@@ -5,6 +5,7 @@ import type { Post } from "../../../../main/db/schema";
 import type { ViewerOrigin } from "../../../store/viewerStore";
 import { normalizePostToPostData } from "../../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../../shared/constants";
+import { updatePostInCache } from "../../../utils/react-query-cache";
 
 interface ViewerQueue {
   ids: number[];
@@ -72,45 +73,30 @@ export function useViewerController({
     // Always pass second argument (even if undefined) to match schema
     window.api.markPostAsViewed(post.id, postData);
 
+    // Update all relevant caches using shared utility
     // Update artist gallery cache if post has artistId
     if (post.artistId) {
-      const queryKey = ["posts", post.artistId];
-      queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) =>
-            page.map((p) => (p.id === post.id ? { ...p, isViewed: true } : p))
-          ),
-        };
-      });
+      const artistQueryKey = ["posts", post.artistId];
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        artistQueryKey,
+        (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+      );
     }
 
     // Update updates feed cache
-    // Note: Query key ["posts", "updates"] is consistent with Updates.tsx
     const updatesQueryKey = ["posts", "updates"];
-    queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        pages: old.pages.map((page) =>
-          page.map((p) => (p.id === post.id ? { ...p, isViewed: true } : p))
-        ),
-      };
-    });
+    queryClient.setQueryData<InfiniteData<Post[]>>(
+      updatesQueryKey,
+      (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+    );
 
     // Update search cache (for Browse page) if post is from search
     if (queue?.origin?.kind === "search") {
       const searchQueryKey = ["search", queue.origin.tags];
-      queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) =>
-            page.map((p) => (p.id === post.id ? { ...p, isViewed: true } : p))
-          ),
-        };
-      });
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        searchQueryKey,
+        (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+      );
     }
   }, [
     post,
@@ -161,55 +147,29 @@ export function useViewerController({
       const newState = await window.api.togglePostFavorite(post.id, postData);
       setIsFavorited(newState);
 
+      // Update all relevant caches using shared utility
       // Update artist gallery cache if post has artistId
       if (post.artistId) {
         const artistQueryKey = ["posts", post.artistId];
         queryClient.setQueryData<InfiniteData<Post[]>>(
           artistQueryKey,
-          (old) => {
-            if (!old) return old;
-            return {
-              ...old,
-              pages: old.pages.map((page) =>
-                page.map((p) =>
-                  p.id === post.id ? { ...p, isFavorited: newState } : p
-                )
-              ),
-            };
-          }
+          (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isFavorited: newState }))
         );
       }
 
       // Update updates feed cache
       const updatesQueryKey = ["posts", "updates"];
-      queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) =>
-            page.map((p) =>
-              p.id === post.id ? { ...p, isFavorited: newState } : p
-            )
-          ),
-        };
-      });
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        updatesQueryKey,
+        (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isFavorited: newState }))
+      );
 
       // Update search cache (for Browse page) if post is from search
       if (queue?.origin?.kind === "search") {
         const searchQueryKey = ["search", queue.origin.tags];
         queryClient.setQueryData<InfiniteData<Post[]>>(
           searchQueryKey,
-          (old) => {
-            if (!old) return old;
-            return {
-              ...old,
-              pages: old.pages.map((page) =>
-                page.map((p) =>
-                  p.id === post.id ? { ...p, isFavorited: newState } : p
-                )
-              ),
-            };
-          }
+          (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isFavorited: newState }))
         );
       }
 
