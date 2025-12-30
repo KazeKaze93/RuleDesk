@@ -1,12 +1,17 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import type { InferSelectModel } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { encrypt } from "../../lib/crypto";
 import { IPC_CHANNELS } from "../channels";
-import { SaveSettingsSchema, type IpcSettings, type SaveSettings } from "../../../shared/schemas/settings";
+import {
+  SaveSettingsSchema,
+  type IpcSettings,
+  type SaveSettings,
+} from "../../../shared/schemas/settings";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { z } from "zod";
@@ -29,10 +34,10 @@ const DEFAULT_IPC_SETTINGS: IpcSettings = {
  * Maps Drizzle Settings type to safe IPC format.
  * Uses Drizzle's InferSelectModel for type safety and resilience to schema changes.
  * Explicitly converts SQLite integer booleans (0/1) to JavaScript booleans.
- * 
+ *
  * Performance: No Zod validation - we trust Drizzle types and TypeScript type system.
  * Validation is only needed for incoming data from Renderer, not for our own database queries.
- * 
+ *
  * @param dbSettings - Settings record from database (typed by Drizzle InferSelectModel)
  * @returns IPC-safe settings object (typed as IpcSettings)
  */
@@ -44,19 +49,19 @@ function mapSettingsToIpc(
   return {
     userId: dbSettings.userId ?? "",
     hasApiKey: !!(
-      dbSettings.encryptedApiKey &&
-      dbSettings.encryptedApiKey.trim().length > 0
+      dbSettings.encryptedApiKey && dbSettings.encryptedApiKey.trim().length > 0
     ),
-      // Convert SQLite integer booleans (0/1) to JavaScript booleans
-      // Drizzle with mode: "boolean" already returns boolean, but ensure type safety
-      // Schema: isSafeMode has .default(true), isAdultConfirmed has .default(false), isAdultVerified is .notNull()
-      // Drizzle ensures defaults are applied, so no ?? needed for fields with defaults
-      isSafeMode: !!dbSettings.isSafeMode, // .default(true) in schema - Drizzle ensures value exists
-      isAdultConfirmed: !!dbSettings.isAdultConfirmed, // .default(false) in schema - Drizzle ensures value exists
-      isAdultVerified: !!dbSettings.isAdultVerified, // .notNull() in schema - always present
-      // Convert Date to number for IPC serialization
-      // Uses toIpcSafe utility for consistency with other controllers
-      tosAcceptedAt: dbSettings.tosAcceptedAt instanceof Date
+    // Convert SQLite integer booleans (0/1) to JavaScript booleans
+    // Drizzle with mode: "boolean" already returns boolean, but ensure type safety
+    // Schema: isSafeMode has .default(true), isAdultConfirmed has .default(false), isAdultVerified is .notNull()
+    // Drizzle ensures defaults are applied, so no ?? needed for fields with defaults
+    isSafeMode: !!dbSettings.isSafeMode, // .default(true) in schema - Drizzle ensures value exists
+    isAdultConfirmed: !!dbSettings.isAdultConfirmed, // .default(false) in schema - Drizzle ensures value exists
+    isAdultVerified: !!dbSettings.isAdultVerified, // .notNull() in schema - always present
+    // Convert Date to number for IPC serialization
+    // Uses toIpcSafe utility for consistency with other controllers
+    tosAcceptedAt:
+      dbSettings.tosAcceptedAt instanceof Date
         ? dbSettings.tosAcceptedAt.getTime()
         : null,
   };
@@ -93,7 +98,10 @@ export class SettingsController extends BaseController {
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE,
       z.tuple([SaveSettingsSchema]), // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
-      this.saveSettings.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.saveSettings.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     // settings:confirm-legal - confirms Age Gate & ToS acceptance
     this.handle(
@@ -114,7 +122,10 @@ export class SettingsController extends BaseController {
   private async getSettings(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
     try {
       const db = this.getDb();
-      const currentSettings = await db.query.settings.findFirst();
+      // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
+      const currentSettings = await db.query.settings.findFirst({
+        where: eq(settings.id, SETTINGS_ID),
+      });
 
       if (!currentSettings) {
         // Return default values if no settings found (triggers Onboarding)
@@ -148,9 +159,25 @@ export class SettingsController extends BaseController {
     try {
       const db = this.getDb();
 
+      // Get existing settings BEFORE transaction to avoid async queries inside transaction
+      // better-sqlite3 requires synchronous transaction callbacks
+      // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
+      const existing = await db.query.settings.findFirst({
+        where: eq(settings.id, SETTINGS_ID),
+      });
+
+      log.debug(
+        `[SettingsController] Existing settings: ${
+          existing ? "found" : "not found"
+        }, id=${existing?.id ?? "none"}, userId: ${
+          existing?.userId ?? "none"
+        }, hasApiKey: ${!!existing?.encryptedApiKey}, SETTINGS_ID=${SETTINGS_ID}`
+      );
+
       // Use transaction to ensure atomicity when updating sensitive data
       // This prevents partial updates if encryption or database operation fails
-      await db.transaction(async (tx) => {
+      // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
+      db.transaction((tx) => {
         // Handle Encryption within transaction
         // If a new 'apiKey' comes from frontend, encrypt it.
         // If not provided, we keep the old encrypted one.
@@ -158,6 +185,9 @@ export class SettingsController extends BaseController {
         if (apiKey) {
           try {
             encryptedKey = encrypt(apiKey);
+            log.debug(
+              `[SettingsController] API key encrypted successfully, length=${encryptedKey.length}`
+            );
           } catch (error) {
             log.error("[SettingsController] Failed to encrypt API key:", error);
             throw new Error(
@@ -166,32 +196,75 @@ export class SettingsController extends BaseController {
           }
         }
 
-        // Get existing settings to preserve optional fields
-        const existing = await tx.query.settings.findFirst();
-
-        // Atomic upsert: Single query eliminates race condition
-        await tx
-          .insert(settings)
-          .values({
-            id: SETTINGS_ID,
-            userId,
-            encryptedApiKey: encryptedKey ?? existing?.encryptedApiKey ?? "",
-            isSafeMode: existing?.isSafeMode ?? true,
-            isAdultConfirmed: existing?.isAdultConfirmed ?? false,
-            isAdultVerified: existing?.isAdultVerified ?? false,
-            tosAcceptedAt: existing?.tosAcceptedAt ?? null,
-          })
-          .onConflictDoUpdate({
-            target: settings.id,
-            set: {
+        if (existing) {
+          // Update existing record
+          // CRITICAL: Only update encryptedApiKey if a new key was provided and encrypted
+          // If encryptedKey is undefined, keep the existing one
+          const finalEncryptedKey =
+            encryptedKey !== undefined && encryptedKey.length > 0
+              ? encryptedKey
+              : existing.encryptedApiKey ?? "";
+          // CRITICAL: Use existing.id instead of SETTINGS_ID to ensure we update the correct record
+          const targetId = existing.id;
+          log.debug(
+            `[SettingsController] Updating existing settings record: targetId=${targetId}, userId=${userId}, encryptedKeyLength=${
+              finalEncryptedKey.length
+            }, newEncryptedKeyLength=${
+              encryptedKey?.length ?? 0
+            }, existingEncryptedKeyLength=${
+              existing.encryptedApiKey?.length ?? 0
+            }`
+          );
+          // Execute update using Drizzle update - should work in transaction
+          // Using explicit .set() for all fields to ensure they are updated
+          tx.update(settings)
+            .set({
               userId,
-              ...(encryptedKey !== undefined && { encryptedApiKey: encryptedKey }),
-              // Preserve existing optional fields if not explicitly updated
-            },
-          });
+              encryptedApiKey: finalEncryptedKey,
+              // CRITICAL: Preserve isAdultVerified and tosAcceptedAt when saving auth data
+              // These fields should only be updated by confirmLegal, not by saveSettings
+              isAdultVerified: existing.isAdultVerified ?? false,
+              tosAcceptedAt: existing.tosAcceptedAt ?? null,
+            })
+            .where(eq(settings.id, targetId))
+            .run();
+
+          log.debug(`[SettingsController] Update query executed via Drizzle`);
+        } else {
+          // Insert new record
+          log.debug("[SettingsController] Inserting new settings record");
+          tx.insert(settings)
+            .values({
+              id: SETTINGS_ID,
+              userId,
+              encryptedApiKey: encryptedKey ?? "",
+              isSafeMode: true,
+              isAdultConfirmed: false,
+              isAdultVerified: false,
+              tosAcceptedAt: null,
+            })
+            .run();
+        }
       });
 
-      log.info("[SettingsController] Settings saved successfully");
+      // Verify the save worked - use existing.id if available, otherwise SETTINGS_ID
+      const saved = await db.query.settings.findFirst({
+        where: eq(settings.id, existing?.id ?? SETTINGS_ID),
+      });
+
+      if (!saved) {
+        throw new Error("Failed to verify settings were saved");
+      }
+
+      log.info(
+        `[SettingsController] Settings saved successfully: userId=${
+          saved.userId
+        }, hasApiKey=${!!saved.encryptedApiKey}, encryptedApiKeyLength=${
+          saved.encryptedApiKey?.length ?? 0
+        }, isAdultVerified=${saved.isAdultVerified}, tosAcceptedAt=${
+          saved.tosAcceptedAt ? "set" : "null"
+        }`
+      );
       return true;
     } catch (error) {
       log.error("[SettingsController] Failed to save settings:", error);
@@ -216,45 +289,79 @@ export class SettingsController extends BaseController {
       const db = this.getDb();
       const now = new Date();
 
-      // Use transaction for consistency and atomicity (matches saveSettings pattern)
-      // This ensures data integrity and allows future extensions (e.g., audit logging)
-      const result = await db.transaction(async (tx) => {
-        // Atomic UPSERT with RETURNING: Single query eliminates race condition and extra DB round-trip
-        const upsertResult = await tx
-          .insert(settings)
-          .values({
-            id: SETTINGS_ID,
-            userId: "",
-            encryptedApiKey: "",
-            isSafeMode: true,
-            isAdultConfirmed: false,
-            isAdultVerified: true,
-            tosAcceptedAt: now,
-          })
-          .onConflictDoUpdate({
-            target: settings.id,
-            set: {
-              isAdultVerified: true,
-              tosAcceptedAt: now,
-              // Preserve existing fields (userId, encryptedApiKey, isSafeMode, isAdultConfirmed)
-            },
-          })
-          .returning();
-
-        return upsertResult[0];
+      // Get existing settings BEFORE transaction to preserve userId and encryptedApiKey
+      // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
+      const existing = await db.query.settings.findFirst({
+        where: eq(settings.id, SETTINGS_ID),
       });
 
-      if (!result) {
-        throw new Error("Failed to retrieve updated settings after confirmation");
+      log.debug(
+        `[SettingsController] confirmLegal: existing=${
+          existing ? "found" : "not found"
+        }`
+      );
+
+      // Use transaction for consistency and atomicity (matches saveSettings pattern)
+      // This ensures data integrity and allows future extensions (e.g., audit logging)
+      // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
+      // NOTE: .returning() doesn't work reliably in synchronous transactions, so we query after
+      db.transaction((tx) => {
+        if (existing) {
+          // Update existing record
+          log.debug(
+            "[SettingsController] Updating existing settings for legal confirmation"
+          );
+          tx.update(settings)
+            .set({
+              isAdultVerified: true,
+              tosAcceptedAt: now,
+              // CRITICAL: Preserve existing fields (userId, encryptedApiKey, isSafeMode, isAdultConfirmed)
+              // These should not be overwritten when confirming legal
+              userId: existing.userId ?? "",
+              encryptedApiKey: existing.encryptedApiKey ?? "",
+              isSafeMode: existing.isSafeMode ?? true,
+              isAdultConfirmed: existing.isAdultConfirmed ?? false,
+            })
+            .where(eq(settings.id, SETTINGS_ID))
+            .run();
+        } else {
+          // Insert new record
+          log.debug(
+            "[SettingsController] Inserting new settings for legal confirmation"
+          );
+          tx.insert(settings)
+            .values({
+              id: SETTINGS_ID,
+              userId: "",
+              encryptedApiKey: "",
+              isSafeMode: true,
+              isAdultConfirmed: false,
+              isAdultVerified: true,
+              tosAcceptedAt: now,
+            })
+            .run();
+        }
+      });
+
+      // Get updated settings after transaction commits
+      // This is safe because transaction is already committed
+      // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
+      const updatedSettings = await db.query.settings.findFirst({
+        where: eq(settings.id, SETTINGS_ID),
+      });
+
+      if (!updatedSettings) {
+        throw new Error(
+          "Failed to retrieve updated settings after confirmation"
+        );
       }
 
       // Use Drizzle's inferred type directly (no redundant validation)
       // mapSettingsToIpc handles mapping and validation internally
-      return mapSettingsToIpc(result);
+      return mapSettingsToIpc(updatedSettings);
     } catch (error) {
       log.error("[SettingsController] Failed to confirm legal:", error);
       throw error;
     }
   }
 }
-
