@@ -5,7 +5,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../../components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription as SheetDesc,
+} from "../../components/ui/sheet";
 import { useShallow } from "zustand/react/shallow";
+import { Virtuoso } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { useViewerStore, ViewerOrigin } from "../../store/viewerStore";
 import { Button } from "../../components/ui/button";
@@ -23,6 +31,7 @@ import {
   FileText,
   Tags,
   ExternalLink,
+  Eye,
 } from "lucide-react";
 
 import {
@@ -38,8 +47,12 @@ import {
   DropdownMenuSubContent,
 } from "../../components/ui/dropdown-menu";
 
-import { useQueryClient, InfiniteData } from "@tanstack/react-query";
+import { useQueryClient, InfiniteData, useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import type { Post } from "../../../main/db/schema";
+import type { Artist } from "../../../main/db/schema";
+import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { useSearchStore } from "../../store/searchStore";
 import { cn } from "../../lib/utils";
 import { useViewerController } from "./hooks/useViewerController";
 
@@ -108,7 +121,7 @@ const ViewerMedia = ({ post }: { post: Post }) => {
 
   return (
     <div
-      className="flex relative justify-center items-center pb-20 w-full h-full cursor-default"
+      className="flex relative justify-center items-center pb-20 w-full h-full cursor-default overflow-auto"
       onClick={handleContainerClick}
     >
       {isVideo ? (
@@ -143,6 +156,163 @@ const ViewerMedia = ({ post }: { post: Post }) => {
   );
 };
 
+const TagsDrawer = ({
+  post,
+  isOpen,
+  onOpenChange,
+}: {
+  post: Post;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
+  const navigate = useNavigate();
+  const { setQuery } = useSearchStore();
+
+  // Get artist information - always fetch when drawer is open
+  const { data: artists } = useQuery<Artist[]>({
+    queryKey: ["artists"],
+    queryFn: () => window.api.getTrackedArtists(),
+    enabled: isOpen, // Always fetch when drawer is open
+  });
+
+  const artist = useMemo(() => {
+    if (!artists || !post.artistId || post.artistId === EXTERNAL_ARTIST_ID) {
+      return null;
+    }
+    const found = artists.find((a) => a.id === post.artistId);
+    // Debug log to see if artist is found
+    if (post.artistId && post.artistId !== EXTERNAL_ARTIST_ID && !found) {
+      log.warn(`[TagsDrawer] Artist not found for post.artistId: ${post.artistId}`);
+    }
+    return found || null;
+  }, [artists, post.artistId]);
+
+  // Get all tags - we'll show artist separately, so we don't need to filter
+  // Artist tag might be in different format (e.g., "user:username" vs "username")
+  // so we just show all tags and artist separately
+  const allTags = post.tags ? post.tags.trim().split(/\s+/).filter(Boolean) : [];
+  const tags = allTags;
+
+  const { close: closeViewer } = useViewerStore(
+    useShallow((state) => ({
+      close: state.close,
+    }))
+  );
+
+  const handleTagClick = (tag: string) => {
+    closeViewer(); // Close viewer first
+    onOpenChange(false); // Close drawer
+    setQuery(tag);
+    navigate("/browse");
+  };
+
+  const handleArtistClick = () => {
+    if (artist?.tag) {
+      closeViewer(); // Close viewer first
+      onOpenChange(false); // Close drawer
+      setQuery(artist.tag);
+      navigate("/browse");
+    }
+  };
+
+  return (
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Post Metadata</SheetTitle>
+          <SheetDesc>Post ID: {post.postId}</SheetDesc>
+        </SheetHeader>
+        <div className="mt-6 space-y-4">
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">Rating</h3>
+            <span
+              className={cn(
+                "inline-block px-2 py-1 rounded text-xs font-bold uppercase",
+                post.rating === "e"
+                  ? "bg-red-500/20 text-red-400"
+                  : post.rating === "q"
+                  ? "bg-yellow-500/20 text-yellow-400"
+                  : "bg-green-500/20 text-green-400"
+              )}
+            >
+              {post.rating === "s"
+                ? "Safe"
+                : post.rating === "q"
+                ? "Questionable"
+                : "Explicit"}
+            </span>
+          </div>
+          {post.publishedAt && (
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">Published</h3>
+              <p className="text-sm text-muted-foreground">
+                {(() => {
+                  let date: Date;
+                  if (post.publishedAt instanceof Date) {
+                    date = post.publishedAt;
+                  } else if (typeof post.publishedAt === "number") {
+                    date = new Date(post.publishedAt);
+                  } else if (typeof post.publishedAt === "string") {
+                    date = new Date(post.publishedAt);
+                  } else {
+                    return "Unknown";
+                  }
+                  if (isNaN(date.getTime())) return "Unknown";
+                  return date.toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                })()}
+              </p>
+            </div>
+          )}
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">
+              Tags ({tags.length + (artist ? 1 : 0)})
+            </h3>
+            <div className="max-h-[400px] overflow-hidden rounded-md border">
+              <Virtuoso
+                style={{ height: "400px" }}
+                data={tags}
+                components={{
+                  Header: artist
+                    ? () => (
+                        <div className="sticky top-0 z-10 px-3 py-2 bg-primary/10 border-b border-primary/20 backdrop-blur-sm">
+                          <button
+                            onClick={handleArtistClick}
+                            className="flex w-full items-center gap-2 text-left hover:bg-primary/20 rounded transition-colors"
+                          >
+                            <span className="text-xs font-semibold text-primary uppercase tracking-wide">
+                              Artist
+                            </span>
+                            <span className="text-sm font-medium text-primary">
+                              {artist.name}
+                            </span>
+                          </button>
+                        </div>
+                      )
+                    : undefined,
+                }}
+                itemContent={(index, tag) => (
+                  <button
+                    onClick={() => handleTagClick(tag)}
+                    className="w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                  >
+                    {tag}
+                  </button>
+                )}
+              />
+            </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
 const ViewerContent = ({
   post,
   queue,
@@ -150,6 +320,8 @@ const ViewerContent = ({
   next,
   prev,
   controlsVisible,
+  toggleTagsDrawer,
+  isTagsDrawerOpen,
 }: {
   post: Post;
   queue: {
@@ -161,9 +333,46 @@ const ViewerContent = ({
   next: () => void;
   prev: () => void;
   controlsVisible: boolean;
+  toggleTagsDrawer: () => void;
+  isTagsDrawerOpen: boolean;
 }) => {
   const ctrl = useViewerController({ post, queue });
   const isDeveloperMode = true;
+
+  const handleToggleFavorite = useCallback(async () => {
+    await ctrl.toggleFavorite();
+  }, [ctrl]);
+
+  const handleMarkViewed = useCallback(async () => {
+    if (post.isViewed) return;
+    await window.api.markPostAsViewed(post.id);
+  }, [post]);
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      switch (e.key) {
+        case "f":
+        case "F":
+          e.preventDefault();
+          handleToggleFavorite();
+          break;
+        case "v":
+        case "V":
+          e.preventDefault();
+          handleMarkViewed();
+          break;
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleToggleFavorite, handleMarkViewed]);
 
   return (
     <>
@@ -192,15 +401,31 @@ const ViewerContent = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={ctrl.toggleFavorite}
+            onClick={handleToggleFavorite}
             className="text-white rounded-full hover:bg-white/10"
             aria-label={ctrl.isFavorited ? "Remove from favorites" : "Add to favorites"}
-            title="Toggle Favorite"
+            title="Toggle Favorite (F)"
           >
             <Heart
               className={cn(
                 "w-5 h-5 transition-colors",
                 ctrl.isFavorited ? "text-red-500 fill-red-500" : "text-white"
+              )}
+            />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleMarkViewed}
+            className="text-white rounded-full hover:bg-white/10"
+            aria-label={post.isViewed ? "Mark as unviewed" : "Mark as viewed"}
+            title="Mark as Viewed (V)"
+          >
+            <Eye
+              className={cn(
+                "w-5 h-5 transition-colors",
+                post.isViewed ? "text-primary fill-primary" : "text-white"
               )}
             />
           </Button>
@@ -397,15 +622,22 @@ const ViewerContent = ({
           <Button
             variant="outline"
             size="sm"
+            onClick={toggleTagsDrawer}
             className="gap-2 text-white bg-white/5 border-white/10 hover:bg-white/10"
             aria-label="Show tags"
-            title="Show tags"
+            title="Show tags (T)"
           >
             <Tags className="w-4 h-4" />
             Tags
           </Button>
         </div>
       </div>
+
+      <TagsDrawer
+        post={post}
+        isOpen={isTagsDrawerOpen}
+        onOpenChange={toggleTagsDrawer}
+      />
 
       <button
         className={cn(
@@ -464,10 +696,12 @@ export const ViewerDialog = () => {
     }))
   );
 
-  const { controlsVisible, setControlsVisible } = useViewerStore(
+  const { controlsVisible, setControlsVisible, isTagsDrawerOpen, toggleTagsDrawer } = useViewerStore(
     useShallow((state) => ({
       controlsVisible: state.controlsVisible,
       setControlsVisible: state.setControlsVisible,
+      isTagsDrawerOpen: state.isTagsDrawerOpen,
+      toggleTagsDrawer: state.toggleTagsDrawer,
     }))
   );
 
@@ -556,6 +790,13 @@ export const ViewerDialog = () => {
   const handleNavigationKeys = useCallback(
     (e: KeyboardEvent) => {
       if (!isOpen) return;
+      // Don't handle shortcuts when user is typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
       switch (e.key) {
         case "ArrowRight":
           e.preventDefault();
@@ -567,11 +808,30 @@ export const ViewerDialog = () => {
           break;
         case "Escape":
           e.preventDefault();
-          close();
+          if (isTagsDrawerOpen) {
+            toggleTagsDrawer();
+          } else {
+            close();
+          }
+          break;
+        case "f":
+        case "F":
+          e.preventDefault();
+          // Favorite toggle will be handled in ViewerContent
+          break;
+        case "v":
+        case "V":
+          e.preventDefault();
+          // Mark viewed will be handled in ViewerContent
+          break;
+        case "t":
+        case "T":
+          e.preventDefault();
+          toggleTagsDrawer();
           break;
       }
     },
-    [isOpen, next, prev, close]
+    [isOpen, next, prev, close, isTagsDrawerOpen, toggleTagsDrawer]
   );
 
   useEffect(() => {
@@ -634,6 +894,8 @@ export const ViewerDialog = () => {
             next={next}
             prev={prev}
             controlsVisible={controlsVisible}
+            toggleTagsDrawer={toggleTagsDrawer}
+            isTagsDrawerOpen={isTagsDrawerOpen}
           />
         </div>
       </DialogContent>

@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo } from "react";
+import React, { forwardRef, useMemo, useEffect } from "react";
 import {
   useInfiniteQuery,
   useQueryClient,
@@ -11,6 +11,7 @@ import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
+import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
 
@@ -73,14 +74,30 @@ const ItemContainer = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  <div 
+    ref={ref} 
+    className={cn("w-full aspect-[2/3]", className)} 
+    {...props}
+    style={{ pointerEvents: "none" }} // Allow clicks to pass through to PostCard
+  />
 ));
 ItemContainer.displayName = "ItemContainer";
 
 // --- Основной компонент ---
 
+// Helper function to parse tags from query string
+const parseTags = (query: string): string[] => {
+  if (!query.trim()) return [];
+  return query
+    .split(/[,\s]+/)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+};
+
 export const Updates = () => {
   const queryClient = useQueryClient();
+  const { query } = useSearchStore();
+  const tags = useMemo(() => parseTags(query), [query]);
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
     useShallow((state) => ({
@@ -89,15 +106,18 @@ export const Updates = () => {
     }))
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } =
     useInfiniteQuery({
-      queryKey: ["posts", "updates"],
+      queryKey: ["posts", "updates", tags],
       queryFn: async ({ pageParam = 1 }) => {
         // Global feed: no artistId specified, returns posts from all tracked artists
         // sinceTracking: true filters to only posts published after artist was added
         return await window.api.getArtistPosts({
           page: pageParam,
-          filters: { sinceTracking: true },
+          filters: {
+            sinceTracking: true,
+            tags: tags.length > 0 ? tags.join(" ") : undefined,
+          },
         });
       },
       getNextPageParam: (lastPage, _allPages, lastPageParam) => {
@@ -113,6 +133,11 @@ export const Updates = () => {
   const allPosts = useMemo(() => {
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
+
+  // Refetch when tags change
+  useEffect(() => {
+    refetch();
+  }, [tags, refetch]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {

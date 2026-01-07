@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, sql, gte, type SQL } from "drizzle-orm";
+import { eq, desc, count, and, sql, gte, not, notLike, like, or, type SQL } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists, type Post } from "../../db/schema";
@@ -85,6 +85,27 @@ type GetPostsParams = z.infer<typeof GetPostsSchema>;
 export class PostsController extends BaseController {
   private getDb(): AppDatabase {
     return container.resolve(DI_TOKENS.DB);
+  }
+
+  /**
+   * Check if posts_fts table exists
+   * @returns true if FTS5 table exists, false otherwise
+   */
+  private checkFtsTableExists(): boolean {
+    try {
+      const db = this.getDb();
+      // Access raw SQLite connection through Drizzle's session
+      // Drizzle BetterSQLite3Database exposes session.client as the raw better-sqlite3 Database instance
+      const sqlite = (db as unknown as { session: { client: { prepare: (query: string) => { get: () => unknown } } } }).session.client;
+      const stmt = sqlite.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
+      );
+      const result = stmt.get() as { name: string } | undefined;
+      return !!result;
+    } catch (error) {
+      log.warn("[PostsController] Failed to check FTS table existence, using LIKE fallback:", error);
+      return false;
+    }
   }
 
   /**
@@ -253,23 +274,60 @@ export class PostsController extends BaseController {
    * - More efficient than IN with virtual tables
    * - Allows better query planning
    *
+   * Falls back to LIKE search if FTS5 table doesn't exist
+   *
    * @param tagFilter - Tag search string (user input from Renderer)
-   * @returns Drizzle SQL condition for tag filtering using FTS5
+   * @returns Drizzle SQL condition for tag filtering using FTS5 or LIKE
    */
   private createTagFilterCondition(tagFilter: string): SQL {
-    // Sanitize FTS5 query to prevent syntax errors from special characters
-    // Wrap in quotes and escape internal quotes so FTS5 treats input as literal
-    const sanitized = this.sanitizeFts5Query(tagFilter);
+    const ftsTableExists = this.checkFtsTableExists();
     
-    // Use EXISTS with FTS5 JOIN pattern for better performance than IN (SELECT ...)
-    // This allows SQLite optimizer to use FTS5 index efficiently
-    // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
-    // Drizzle's sql template automatically parameterizes the value
-    return sql`EXISTS (
-      SELECT 1 FROM posts_fts 
-      WHERE posts_fts.rowid = ${posts.id} 
-        AND posts_fts MATCH ${sanitized}
-    )`;
+    if (ftsTableExists) {
+      // Use FTS5 for fast full-text search
+      // Sanitize FTS5 query to prevent syntax errors from special characters
+      // Wrap in quotes and escape internal quotes so FTS5 treats input as literal
+      const sanitized = this.sanitizeFts5Query(tagFilter);
+      
+      // Use EXISTS with FTS5 JOIN pattern for better performance than IN (SELECT ...)
+      // This allows SQLite optimizer to use FTS5 index efficiently
+      // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
+      // Drizzle's sql template automatically parameterizes the value
+      return sql`EXISTS (
+        SELECT 1 FROM posts_fts 
+        WHERE posts_fts.rowid = ${posts.id} 
+          AND posts_fts MATCH ${sanitized}
+      )`;
+    } else {
+      // Fallback to LIKE search if FTS5 table doesn't exist
+      // Split tags by space and search for each tag
+      const tagParts = tagFilter.trim().split(/\s+/).filter(Boolean);
+      if (tagParts.length === 0) {
+        // Empty filter - return condition that matches nothing
+        return sql`1 = 0`;
+      }
+      
+      // Create LIKE conditions for each tag part
+      // Tags are space-separated in posts.tags, so we need to match whole words
+      // Use AND to require all tags (similar to FTS5 behavior)
+      const likeConditions = tagParts.map((tag) => {
+        // Match tag as whole word (surrounded by spaces or at start/end)
+        // Escape special LIKE characters: %, _
+        const escapedTag = tag.replace(/[%_]/g, "\\$&");
+        return or(
+          like(posts.tags, `% ${escapedTag} %`), // Tag in middle
+          like(posts.tags, `${escapedTag} %`),   // Tag at start
+          like(posts.tags, `% ${escapedTag}`),   // Tag at end
+          eq(posts.tags, escapedTag)             // Tag is entire string
+        ) as SQL;
+      });
+      
+      // Require all tags to match (AND logic)
+      if (likeConditions.length === 1) {
+        return likeConditions[0];
+      } else {
+        return and(...likeConditions) as SQL;
+      }
+    }
   }
 
   /**
@@ -353,6 +411,18 @@ export class PostsController extends BaseController {
         // This ensures filtering happens at the join level, not after
         // The join condition (gte(posts.publishedAt, artists.createdAt)) ensures
         // we only get posts published after the artist was tracked, even if whereClause is undefined
+        // Also exclude EXTERNAL_ARTIST_ID and placeholder artists to ensure only real tracked artists
+        const joinConditions = and(
+          eq(posts.artistId, artists.id),
+          gte(posts.publishedAt, artists.createdAt),
+          not(eq(posts.artistId, EXTERNAL_ARTIST_ID)), // Exclude external posts
+          notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`) // Exclude placeholder artists
+        );
+        
+        const finalWhereClause = whereClause
+          ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
+          : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
+        
         const result = await db
           .select({
             id: posts.id,
@@ -370,14 +440,8 @@ export class PostsController extends BaseController {
             isFavorited: posts.isFavorited,
           })
           .from(posts)
-          .innerJoin(
-            artists,
-            and(
-              eq(posts.artistId, artists.id),
-              gte(posts.publishedAt, artists.createdAt)
-            )
-          )
-          .where(whereClause)
+          .innerJoin(artists, joinConditions)
+          .where(finalWhereClause)
           .orderBy(desc(posts.publishedAt))
           .limit(limit)
           .offset(offset);
