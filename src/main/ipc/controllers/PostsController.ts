@@ -199,24 +199,47 @@ export class PostsController extends BaseController {
    * (:, *, -, ", \, NEAR, AND, OR, NOT) can cause SQLITE_ERROR: fts5: syntax error
    * 
    * Solution: Remove/replace FTS5 operator characters and wrap in quotes
+   * Allows * wildcard only at the end of words for prefix search (e.g., "tag*")
    * This makes FTS5 treat the input as a literal string, not as operators
    *
    * @param query - FTS5 query string (user input from Renderer)
    * @returns Sanitized query string safe for FTS5 MATCH
+   * @throws {Error} If query becomes empty after sanitization (empty string causes FTS5 syntax error)
    */
   private sanitizeFts5Query(query: string): string {
     // Remove FTS5 special characters that can be interpreted as operators:
-    // - * (wildcard, but we want literal search)
-    // - - (NOT operator)
-    // - " (quote, will be escaped separately)
-    // - \ (escape character, can cause issues)
-    // Replace with spaces and trim to normalize
-    const clean = query.replace(/[*\-"\\]/g, " ").trim();
-    
-    // Escape double quotes by doubling them (FTS5 escaping rule)
+    // - - (NOT operator) - remove completely
+    // - " (quote, will be escaped separately) - remove, will add back
+    // - \ (escape character, can cause issues) - remove
+    // - * in the middle of words - remove (only allow at end of word for prefix search)
+    // Replace with spaces and normalize
+    let clean = query
+      // Remove NOT operator
+      .replace(/-/g, " ")
+      // Remove escape characters
+      .replace(/\\/g, " ")
+      // Remove quotes (will add back after escaping)
+      .replace(/"/g, " ")
+      // Remove * that's not at end of word (allow "word*" but not "*word" or "word*word")
+      // Keep * only if it's at end of word (after alphanumeric, before space/end)
+      .replace(/\*+(?=\w)/g, "") // Remove * followed by word character (middle of word)
+      .replace(/^\*+/g, "") // Remove * at start of string
+      .replace(/\s+\*+/g, " ") // Remove * at start of word (after space)
+      .trim();
+
+    // Check if query became empty after sanitization
+    // Empty string "" in FTS5 MATCH causes SQLITE_ERROR: fts5: syntax error
+    if (clean.length === 0) {
+      throw new Error(
+        "FTS5 query became empty after sanitization. Please use valid search terms."
+      );
+    }
+
+    // Escape remaining double quotes by doubling them (FTS5 escaping rule)
     const escaped = clean.replace(/"/g, '""');
     
     // Wrap in double quotes to make FTS5 treat it as a literal phrase
+    // This allows * wildcard at end of words (e.g., "tag*") for prefix search
     return `"${escaped}"`;
   }
 

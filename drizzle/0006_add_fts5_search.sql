@@ -10,10 +10,13 @@
 -- Using content='posts' makes FTS5 reference the main table instead of duplicating data
 -- This saves storage space: FTS5 stores only the index, tags data comes from posts table
 -- content_rowid='id' maps posts.id to FTS5 rowid (required for external content)
+-- tokenize='unicode61' enables proper Unicode handling and case-insensitive search
+-- This is optimal for tags (space-separated) and supports multiple languages
 CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(
   tags,                    -- Index tags column for full-text search
   content='posts',         -- Reference main posts table (no data duplication)
-  content_rowid='id'        -- Map posts.id to FTS5 rowid
+  content_rowid='id',      -- Map posts.id to FTS5 rowid
+  tokenize='unicode61'     -- Unicode tokenizer for proper character handling and case-insensitive search
 );
 
 -- Trigger: INSERT - Populate FTS index when new post is inserted
