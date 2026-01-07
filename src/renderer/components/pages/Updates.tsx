@@ -195,26 +195,27 @@ export const Updates = () => {
   };
 
   const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
-    const post = allPosts[index];
+    // TEMP DEBUG: Remove after debugging
+    console.log('[Updates] handlePostClick triggered for index:', index);
+    const currentPosts = allPosts;
+    const post = currentPosts[index];
 
     if (!post) {
       log.warn("[Updates] handlePostClick: post not found at index", index);
       return;
     }
 
-    // Mark as viewed first (same as Favorites)
-    if (post && !post.isViewed) {
+    // Mark as viewed first
+    if (!post.isViewed) {
       viewMutation.mutate(post.id);
     }
 
     // Open viewer with updates origin
-    // listKey: "updates" matches queryKey ["posts", "updates", tags] used in ViewerDialog
     openViewer({
       origin: { kind: "updates", tags: tags.length > 0 ? tags : undefined },
-      ids: postIds,
+      ids: currentPosts.map((p) => p.id),
       initialIndex: index,
-      listKey: "updates",
+      listKey: "updates-list",
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
     });
@@ -283,16 +284,7 @@ export const Updates = () => {
               if (!post) return null;
 
               return (
-                <div
-                  className="pointer-events-auto z-10 relative w-full h-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    log.info("[Updates] PostCard wrapper clicked, index:", index);
-                    handlePostClick(index);
-                  }}
-                >
-                  <PostCard post={post} onClick={() => handlePostClick(index)} />
-                </div>
+                <PostCard post={post} onClick={() => handlePostClick(index)} />
               );
             }}
           />

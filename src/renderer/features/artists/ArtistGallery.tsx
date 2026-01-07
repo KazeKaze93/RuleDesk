@@ -287,16 +287,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               if (!post) return null;
 
               return (
-                <div
-                  className="pointer-events-auto z-10 relative w-full h-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    log.info("[ArtistGallery] PostCard wrapper clicked, index:", index);
-                    handlePostClick(index);
-                  }}
-                >
-                  <PostCard post={post} onClick={() => handlePostClick(index)} />
-                </div>
+                <PostCard post={post} onClick={() => handlePostClick(index)} />
               );
             }}
           />
