@@ -216,9 +216,10 @@ The application is stable and production-ready with the following features imple
 - ✅ **Schema:** Three main tables (`artists`, `posts`, `settings`) with proper relationships
 - ✅ **Migrations:** Fully functional migration system using `drizzle-kit`
 - ✅ **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
+- ✅ **Composite Indexes:** Composite index on `(artist_id, rating, is_viewed)` for optimized multi-column filter queries
+- ✅ **FTS5 Full-Text Search:** FTS5 virtual table `posts_fts` with `unicode61` tokenizer for fast tag searching
 - ✅ **Provider Support:** Multi-booru support with `provider` field in artists table (rule34, gelbooru)
 - ✅ **Artist Types:** Support for `tag`, `uploader`, and `query` types
-- ⏳ **FTS5 Optimization:** Full-text search on tags planned (currently using standard indexes)
 
 ### Security & Reliability
 

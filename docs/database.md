@@ -162,6 +162,16 @@ export const posts = sqliteTable(
   },
   (table) => ({
     uniquePostPerArtist: unique().on(table.artistId, table.postId),
+    postIdIdx: index("postIdIdx").on(table.postId),
+    artistIdIdx: index("artistIdIdx").on(table.artistId),
+    isViewedIdx: index("isViewedIdx").on(table.isViewed),
+    publishedAtIdx: index("publishedAtIdx").on(table.publishedAt),
+    isFavoritedIdx: index("isFavoritedIdx").on(table.isFavorited),
+    artistRatingViewedIdx: index("posts_artist_rating_viewed_idx").on(
+      table.artistId,
+      table.rating,
+      table.isViewed
+    ),
   })
 );
 ```

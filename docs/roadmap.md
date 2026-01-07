@@ -200,7 +200,7 @@ Enhanced features after MVP:
 Advanced features for future releases:
 
 - ⏳ **Smart Playlists** - Auto-fill playlists based on tag rules
-- ⏳ **Normalized Tag Index** - Full-text search on tags (FTS5 virtual tables)
+- ✅ **Normalized Tag Index** - Full-text search on tags (FTS5 virtual table `posts_fts` with `unicode61` tokenizer implemented)
 - ⏳ **Advanced Caching** - Intelligent cache management with size limits
 - ⏳ **Proxy Support** - Optional proxy configuration for API requests
 - ⏳ **Multi-Booru** - Provider pattern for multiple booru sources
