@@ -1772,7 +1772,8 @@ Based on a comprehensive technical audit, here's the current implementation stat
 - **Age Gate:** Only disclaimer text in README, no confirmation overlay or `isAdult` flag
 - **Portable Mode:** Uses absolute paths via `app.getPath("userData")`, no relative path support
 - **Anti-Bot Measures:** Static User-Agent strings, fixed delays (1.5s/0.5s) but no randomization or rotation
-- **DB Optimization (FTS5):** Standard indexes only, no FTS5 virtual tables for tag searching
+- **DB Optimization (FTS5):** ✅ FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
+- **Composite Indexes:** ✅ Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries
 - **Centralized Validation:** No shared validation utility (`src/main/lib/validation.ts`)
 
 See [Roadmap](./roadmap.md#-technical-improvements-from-audit) for detailed implementation plans.
