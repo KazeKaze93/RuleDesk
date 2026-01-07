@@ -215,6 +215,23 @@ export class PostsController extends BaseController {
   }
 
   /**
+   * Escape special characters for SQLite LIKE queries
+   * SQLite LIKE treats % and _ as wildcards. To use them literally, we need to escape them.
+   * This function escapes % and _ by prefixing them with backslash, which works with ESCAPE clause.
+   *
+   * @param text - Text to escape for LIKE query
+   * @returns Escaped text safe for LIKE with ESCAPE '\'
+   */
+  private escapeLikePattern(text: string): string {
+    // Escape backslash first (must be first to avoid double-escaping)
+    // Then escape % and _ wildcards
+    return text
+      .replace(/\\/g, "\\\\")  // Escape backslash: \ -> \\
+      .replace(/%/g, "\\%")     // Escape %: % -> \%
+      .replace(/_/g, "\\_");    // Escape _: _ -> \_
+  }
+
+  /**
    * Sanitize FTS5 search query to prevent syntax errors
    * FTS5 interprets the search string as an expression, so special characters
    * (:, *, -, ", \, NEAR, AND, OR, NOT) can cause SQLITE_ERROR: fts5: syntax error
@@ -310,14 +327,17 @@ export class PostsController extends BaseController {
       // Tags are space-separated in posts.tags, so we need to match whole words
       // Use AND to require all tags (similar to FTS5 behavior)
       const likeConditions = tagParts.map((tag) => {
-        // Match tag as whole word (surrounded by spaces or at start/end)
-        // Escape special LIKE characters: %, _
-        const escapedTag = tag.replace(/[%_]/g, "\\$&");
+        // Escape special LIKE characters: %, _, and \
+        // Use ESCAPE clause to treat escaped characters literally
+        const escapedTag = this.escapeLikePattern(tag);
+        
+        // Use sql template with ESCAPE clause for proper LIKE escaping
+        // SQLite LIKE with ESCAPE '\' allows us to use \% and \_ literally
         return or(
-          like(posts.tags, `% ${escapedTag} %`), // Tag in middle
-          like(posts.tags, `${escapedTag} %`),   // Tag at start
-          like(posts.tags, `% ${escapedTag}`),   // Tag at end
-          eq(posts.tags, escapedTag)             // Tag is entire string
+          sql`${posts.tags} LIKE ${`% ${escapedTag} %`} ESCAPE '\\'`, // Tag in middle
+          sql`${posts.tags} LIKE ${`${escapedTag} %`} ESCAPE '\\'`,   // Tag at start
+          sql`${posts.tags} LIKE ${`% ${escapedTag}`} ESCAPE '\\'`,    // Tag at end
+          eq(posts.tags, tag)                                          // Tag is entire string (exact match, no escaping needed)
         ) as SQL;
       });
       
