@@ -196,47 +196,56 @@ export class PostsController extends BaseController {
   /**
    * Sanitize FTS5 search query to prevent syntax errors
    * FTS5 interprets the search string as an expression, so special characters
-   * (:, *, -, ", unbalanced parentheses) can cause SQLITE_ERROR: fts5: syntax error
+   * (:, *, -, ", \, NEAR, AND, OR, NOT) can cause SQLITE_ERROR: fts5: syntax error
    * 
-   * Solution: Wrap the search term in double quotes and escape internal quotes
+   * Solution: Remove/replace FTS5 operator characters and wrap in quotes
    * This makes FTS5 treat the input as a literal string, not as operators
    *
    * @param query - FTS5 query string (user input from Renderer)
    * @returns Sanitized query string safe for FTS5 MATCH
    */
   private sanitizeFts5Query(query: string): string {
+    // Remove FTS5 special characters that can be interpreted as operators:
+    // - * (wildcard, but we want literal search)
+    // - - (NOT operator)
+    // - " (quote, will be escaped separately)
+    // - \ (escape character, can cause issues)
+    // Replace with spaces and trim to normalize
+    const clean = query.replace(/[*\-"\\]/g, " ").trim();
+    
     // Escape double quotes by doubling them (FTS5 escaping rule)
-    const escaped = query.replace(/"/g, '""');
+    const escaped = clean.replace(/"/g, '""');
+    
     // Wrap in double quotes to make FTS5 treat it as a literal phrase
     return `"${escaped}"`;
   }
 
   /**
-   * Create FTS5 subquery condition for tag filtering
+   * Create FTS5 JOIN condition for tag filtering
    * Uses parameterized query to prevent SQL injection
    * Sanitizes FTS5 query to prevent syntax errors from special characters
+   * 
+   * Uses EXISTS with JOIN pattern for better performance than IN (SELECT ...):
+   * - SQLite optimizer can use FTS5 index as leading index
+   * - More efficient than IN with virtual tables
+   * - Allows better query planning
    *
    * @param tagFilter - Tag search string (user input from Renderer)
-   * @returns Drizzle condition for tag filtering using FTS5
-   * 
-   * Note: No try-catch here - sql template just creates a condition object.
-   * Actual database errors (table not found, syntax errors) will occur during query execution,
-   * not during condition creation. Error handling should be at the query execution level.
+   * @returns Drizzle SQL condition for tag filtering using FTS5
    */
-  private createTagFilterCondition(
-    tagFilter: string
-  ): ReturnType<typeof sql> {
+  private createTagFilterCondition(tagFilter: string): SQL {
     // Sanitize FTS5 query to prevent syntax errors from special characters
     // Wrap in quotes and escape internal quotes so FTS5 treats input as literal
     const sanitized = this.sanitizeFts5Query(tagFilter);
     
-    // Use FTS5 MATCH with parameterized subquery
+    // Use EXISTS with FTS5 JOIN pattern for better performance than IN (SELECT ...)
+    // This allows SQLite optimizer to use FTS5 index efficiently
     // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
     // Drizzle's sql template automatically parameterizes the value
-    // Use IN subquery instead of loading all IDs into memory
-    // This allows SQLite to optimize the join internally without memory bloat
-    return sql`${posts.id} IN (
-      SELECT rowid FROM posts_fts WHERE posts_fts MATCH ${sanitized}
+    return sql`EXISTS (
+      SELECT 1 FROM posts_fts 
+      WHERE posts_fts.rowid = ${posts.id} 
+        AND posts_fts MATCH ${sanitized}
     )`;
   }
 
@@ -244,13 +253,11 @@ export class PostsController extends BaseController {
    * Build WHERE conditions array for post filtering
    * Centralized logic to avoid code duplication (DRY principle)
    *
-   * @param db - Database instance
    * @param artistId - Optional artist ID filter
    * @param filters - Optional post filters (tags, rating, isViewed, isFavorited)
    * @returns Array of Drizzle SQL conditions for use with and()
    */
   private buildPostFilterConditions(
-    db: AppDatabase,
     artistId: number | undefined,
     filters: PostFilterRequest | undefined
   ): SQL[] {
@@ -261,7 +268,9 @@ export class PostsController extends BaseController {
     }
 
     // Use FTS5 subquery for tag filtering (parameterized, no memory bloat)
-    if (filters?.tags !== undefined) {
+    // Validate that tag filter is not empty to prevent FTS5 syntax errors
+    // Empty string "" would become '""' and cause SQLITE_ERROR: fts5: syntax error
+    if (filters?.tags && filters.tags.trim().length > 0) {
       conditions.push(this.createTagFilterCondition(filters.tags));
     }
 
@@ -304,7 +313,6 @@ export class PostsController extends BaseController {
         // Note: artistId is optional - if not provided, returns posts from all tracked artists
         // This is the expected behavior for global feeds like Updates
         const baseConditions = this.buildPostFilterConditions(
-          db,
           artistId,
           filters
         );
@@ -364,7 +372,6 @@ export class PostsController extends BaseController {
       // Standard query path (no sinceTracking filter)
       // Build where conditions array using centralized method
       const baseConditions = this.buildPostFilterConditions(
-        db,
         artistId,
         filters
       );
