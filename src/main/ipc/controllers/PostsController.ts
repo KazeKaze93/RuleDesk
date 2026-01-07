@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, like, sql, gte } from "drizzle-orm";
+import { eq, desc, count, and, sql, gte, type SQL } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists, type Post } from "../../db/schema";
@@ -194,63 +194,50 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Escape FTS5 special characters for complex queries
-   * Only needed if supporting advanced FTS5 operators (AND, OR, NEAR, NOT, etc.)
-   * For simple word search, parameterized queries handle escaping automatically
+   * Sanitize FTS5 search query to prevent syntax errors
+   * FTS5 interprets the search string as an expression, so special characters
+   * (:, *, -, ", unbalanced parentheses) can cause SQLITE_ERROR: fts5: syntax error
+   * 
+   * Solution: Wrap the search term in double quotes and escape internal quotes
+   * This makes FTS5 treat the input as a literal string, not as operators
    *
-   * @param query - FTS5 query string that may contain special operators
-   * @returns Escaped query string safe for FTS5 MATCH
+   * @param query - FTS5 query string (user input from Renderer)
+   * @returns Sanitized query string safe for FTS5 MATCH
    */
-  private escapeFts5Query(query: string): string {
-    // FTS5 special characters that need escaping:
-    // - Double quotes (") for phrases
-    // - Single quotes (') for terms
-    // - Operators: AND, OR, NOT, NEAR
-    // For simple word search, Drizzle's parameterization is sufficient
-    // This function is for future use if complex queries are needed
-    
-    // Escape double quotes (used for phrase matching)
-    let escaped = query.replace(/"/g, '""');
-    
-    // For now, return as-is since we only support simple word search
-    // If complex queries are needed, add proper escaping for operators here
-    return escaped;
+  private sanitizeFts5Query(query: string): string {
+    // Escape double quotes by doubling them (FTS5 escaping rule)
+    const escaped = query.replace(/"/g, '""');
+    // Wrap in double quotes to make FTS5 treat it as a literal phrase
+    return `"${escaped}"`;
   }
 
   /**
    * Create FTS5 subquery condition for tag filtering
    * Uses parameterized query to prevent SQL injection
-   * Falls back to LIKE if FTS5 is not available
+   * Sanitizes FTS5 query to prevent syntax errors from special characters
    *
-   * Current implementation: Simple word search (parameterized, no escaping needed)
-   * Future: Can extend to support complex FTS5 queries (AND, OR, NEAR) using escapeFts5Query()
-   *
-   * @param db - Database instance
    * @param tagFilter - Tag search string (user input from Renderer)
-   * @returns Drizzle condition for tag filtering (FTS5 or LIKE fallback)
+   * @returns Drizzle condition for tag filtering using FTS5
+   * 
+   * Note: No try-catch here - sql template just creates a condition object.
+   * Actual database errors (table not found, syntax errors) will occur during query execution,
+   * not during condition creation. Error handling should be at the query execution level.
    */
   private createTagFilterCondition(
-    db: AppDatabase,
     tagFilter: string
-  ): ReturnType<typeof sql> | ReturnType<typeof like> {
-    try {
-      // Use FTS5 MATCH with parameterized subquery
-      // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
-      // Drizzle's sql template automatically parameterizes the value
-      // For simple word search, parameterization is sufficient - no manual escaping needed
-      // If complex FTS5 queries (AND, OR, NEAR) are needed in the future, use escapeFts5Query()
-      // Use IN subquery instead of loading all IDs into memory
-      // This allows SQLite to optimize the join internally without memory bloat
-      return sql`${posts.id} IN (
-        SELECT rowid FROM posts_fts WHERE posts_fts MATCH ${tagFilter}
-      )`;
-    } catch (error) {
-      // Fallback to LIKE search if FTS5 fails (e.g., table doesn't exist)
-      log.warn(
-        `[PostsController] FTS5 search failed, falling back to LIKE: ${error}`
-      );
-      return like(posts.tags, `%${tagFilter}%`);
-    }
+  ): ReturnType<typeof sql> {
+    // Sanitize FTS5 query to prevent syntax errors from special characters
+    // Wrap in quotes and escape internal quotes so FTS5 treats input as literal
+    const sanitized = this.sanitizeFts5Query(tagFilter);
+    
+    // Use FTS5 MATCH with parameterized subquery
+    // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
+    // Drizzle's sql template automatically parameterizes the value
+    // Use IN subquery instead of loading all IDs into memory
+    // This allows SQLite to optimize the join internally without memory bloat
+    return sql`${posts.id} IN (
+      SELECT rowid FROM posts_fts WHERE posts_fts MATCH ${sanitized}
+    )`;
   }
 
   /**
@@ -260,22 +247,14 @@ export class PostsController extends BaseController {
    * @param db - Database instance
    * @param artistId - Optional artist ID filter
    * @param filters - Optional post filters (tags, rating, isViewed, isFavorited)
-   * @returns Array of Drizzle conditions for use with and()
+   * @returns Array of Drizzle SQL conditions for use with and()
    */
   private buildPostFilterConditions(
     db: AppDatabase,
     artistId: number | undefined,
     filters: PostFilterRequest | undefined
-  ): Array<
-    | ReturnType<typeof eq>
-    | ReturnType<typeof sql>
-    | ReturnType<typeof like>
-  > {
-    const conditions: Array<
-      | ReturnType<typeof eq>
-      | ReturnType<typeof sql>
-      | ReturnType<typeof like>
-    > = [];
+  ): SQL[] {
+    const conditions: SQL[] = [];
 
     if (artistId) {
       conditions.push(eq(posts.artistId, artistId));
@@ -283,7 +262,7 @@ export class PostsController extends BaseController {
 
     // Use FTS5 subquery for tag filtering (parameterized, no memory bloat)
     if (filters?.tags !== undefined) {
-      conditions.push(this.createTagFilterCondition(db, filters.tags));
+      conditions.push(this.createTagFilterCondition(filters.tags));
     }
 
     if (filters?.rating !== undefined) {
