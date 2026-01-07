@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, like, sql, gte, inArray } from "drizzle-orm";
+import { eq, desc, count, and, like, sql, gte } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists, type Post } from "../../db/schema";
@@ -194,52 +194,111 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Get post IDs matching tag filter using FTS5 full-text search
-   * Falls back to LIKE search if FTS5 is not available
+   * Escape FTS5 special characters for complex queries
+   * Only needed if supporting advanced FTS5 operators (AND, OR, NEAR, NOT, etc.)
+   * For simple word search, parameterized queries handle escaping automatically
+   *
+   * @param query - FTS5 query string that may contain special operators
+   * @returns Escaped query string safe for FTS5 MATCH
+   */
+  private escapeFts5Query(query: string): string {
+    // FTS5 special characters that need escaping:
+    // - Double quotes (") for phrases
+    // - Single quotes (') for terms
+    // - Operators: AND, OR, NOT, NEAR
+    // For simple word search, Drizzle's parameterization is sufficient
+    // This function is for future use if complex queries are needed
+    
+    // Escape double quotes (used for phrase matching)
+    let escaped = query.replace(/"/g, '""');
+    
+    // For now, return as-is since we only support simple word search
+    // If complex queries are needed, add proper escaping for operators here
+    return escaped;
+  }
+
+  /**
+   * Create FTS5 subquery condition for tag filtering
+   * Uses parameterized query to prevent SQL injection
+   * Falls back to LIKE if FTS5 is not available
+   *
+   * Current implementation: Simple word search (parameterized, no escaping needed)
+   * Future: Can extend to support complex FTS5 queries (AND, OR, NEAR) using escapeFts5Query()
    *
    * @param db - Database instance
-   * @param tagFilter - Tag search string
-   * @returns Array of post IDs matching the tag filter
+   * @param tagFilter - Tag search string (user input from Renderer)
+   * @returns Drizzle condition for tag filtering (FTS5 or LIKE fallback)
    */
-  private getPostIdsByTagFilter(
+  private createTagFilterCondition(
     db: AppDatabase,
     tagFilter: string
-  ): number[] {
+  ): ReturnType<typeof sql> | ReturnType<typeof like> {
     try {
-      // Use FTS5 MATCH operator for fast full-text search
-      // FTS5 syntax: tags MATCH 'search_term' (automatically handles word boundaries)
-      // Escape special FTS5 characters in user input for safety
-      // FTS5 uses double quotes for phrase matching, single quotes for terms
-      // Replace special characters that could break FTS5 syntax
-      const escapedTag = tagFilter
-        .replace(/"/g, '""') // Escape double quotes
-        .replace(/'/g, "''"); // Escape single quotes
-      
-      // Query FTS5 table to get matching post IDs
-      // Use raw SQL with proper quoting for FTS5 MATCH syntax
-      // FTS5 requires the search term to be in quotes
-      // Use sql template with string interpolation for the search term
-      const searchTerm = `'${escapedTag}'`;
-      const ftsResults = db
-        .select({ id: sql<number>`rowid` })
-        .from(sql`posts_fts`)
-        .where(sql`posts_fts MATCH ${sql.raw(searchTerm)}`)
-        .all();
-
-      return ftsResults.map((row) => row.id);
+      // Use FTS5 MATCH with parameterized subquery
+      // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
+      // Drizzle's sql template automatically parameterizes the value
+      // For simple word search, parameterization is sufficient - no manual escaping needed
+      // If complex FTS5 queries (AND, OR, NEAR) are needed in the future, use escapeFts5Query()
+      // Use IN subquery instead of loading all IDs into memory
+      // This allows SQLite to optimize the join internally without memory bloat
+      return sql`${posts.id} IN (
+        SELECT rowid FROM posts_fts WHERE posts_fts MATCH ${tagFilter}
+      )`;
     } catch (error) {
       // Fallback to LIKE search if FTS5 fails (e.g., table doesn't exist)
       log.warn(
         `[PostsController] FTS5 search failed, falling back to LIKE: ${error}`
       );
-      const fallbackResults = db
-        .select({ id: posts.id })
-        .from(posts)
-        .where(like(posts.tags, `%${tagFilter}%`))
-        .all();
-
-      return fallbackResults.map((row) => row.id);
+      return like(posts.tags, `%${tagFilter}%`);
     }
+  }
+
+  /**
+   * Build WHERE conditions array for post filtering
+   * Centralized logic to avoid code duplication (DRY principle)
+   *
+   * @param db - Database instance
+   * @param artistId - Optional artist ID filter
+   * @param filters - Optional post filters (tags, rating, isViewed, isFavorited)
+   * @returns Array of Drizzle conditions for use with and()
+   */
+  private buildPostFilterConditions(
+    db: AppDatabase,
+    artistId: number | undefined,
+    filters: PostFilterRequest | undefined
+  ): Array<
+    | ReturnType<typeof eq>
+    | ReturnType<typeof sql>
+    | ReturnType<typeof like>
+  > {
+    const conditions: Array<
+      | ReturnType<typeof eq>
+      | ReturnType<typeof sql>
+      | ReturnType<typeof like>
+    > = [];
+
+    if (artistId) {
+      conditions.push(eq(posts.artistId, artistId));
+    }
+
+    // Use FTS5 subquery for tag filtering (parameterized, no memory bloat)
+    if (filters?.tags !== undefined) {
+      conditions.push(this.createTagFilterCondition(db, filters.tags));
+    }
+
+    if (filters?.rating !== undefined) {
+      conditions.push(eq(posts.rating, filters.rating));
+    }
+
+    if (filters?.isFavorited !== undefined) {
+      conditions.push(eq(posts.isFavorited, filters.isFavorited));
+    }
+
+    if (filters?.isViewed !== undefined) {
+      conditions.push(eq(posts.isViewed, filters.isViewed));
+    }
+
+    return conditions;
   }
 
   /**
@@ -265,35 +324,11 @@ export class PostsController extends BaseController {
         // Build where conditions array (excluding the date filter, which goes in join)
         // Note: artistId is optional - if not provided, returns posts from all tracked artists
         // This is the expected behavior for global feeds like Updates
-        const baseConditions: ReturnType<typeof eq | typeof inArray>[] = [];
-
-        if (artistId) {
-          baseConditions.push(eq(posts.artistId, artistId));
-        }
-        
-        // Use FTS5 for tag filtering if available, otherwise fall back to LIKE
-        if (filters?.tags !== undefined) {
-          const matchingPostIds = this.getPostIdsByTagFilter(db, filters.tags);
-          if (matchingPostIds.length > 0) {
-            baseConditions.push(inArray(posts.id, matchingPostIds));
-          } else {
-            // No matches found via FTS5, return empty result
-            log.info(
-              `[PostsController] No posts found matching tag filter: "${filters.tags}"`
-            );
-            return [];
-          }
-        }
-        
-        if (filters?.rating !== undefined) {
-          baseConditions.push(eq(posts.rating, filters.rating));
-        }
-        if (filters?.isFavorited !== undefined) {
-          baseConditions.push(eq(posts.isFavorited, filters.isFavorited));
-        }
-        if (filters?.isViewed !== undefined) {
-          baseConditions.push(eq(posts.isViewed, filters.isViewed));
-        }
+        const baseConditions = this.buildPostFilterConditions(
+          db,
+          artistId,
+          filters
+        );
 
         // Combine all conditions using and()
         // Note: whereClause can be undefined if no additional filters are provided.
@@ -348,36 +383,12 @@ export class PostsController extends BaseController {
       }
 
       // Standard query path (no sinceTracking filter)
-      // Build where conditions array
-      const baseConditions: ReturnType<typeof eq | typeof inArray>[] = [];
-
-      if (artistId) {
-        baseConditions.push(eq(posts.artistId, artistId));
-      }
-      
-      // Use FTS5 for tag filtering if available, otherwise fall back to LIKE
-      if (filters?.tags !== undefined) {
-        const matchingPostIds = this.getPostIdsByTagFilter(db, filters.tags);
-        if (matchingPostIds.length > 0) {
-          baseConditions.push(inArray(posts.id, matchingPostIds));
-        } else {
-          // No matches found via FTS5, return empty result
-          log.info(
-            `[PostsController] No posts found matching tag filter: "${filters.tags}"`
-          );
-          return [];
-        }
-      }
-      
-      if (filters?.rating !== undefined) {
-        baseConditions.push(eq(posts.rating, filters.rating));
-      }
-      if (filters?.isFavorited !== undefined) {
-        baseConditions.push(eq(posts.isFavorited, filters.isFavorited));
-      }
-      if (filters?.isViewed !== undefined) {
-        baseConditions.push(eq(posts.isViewed, filters.isViewed));
-      }
+      // Build where conditions array using centralized method
+      const baseConditions = this.buildPostFilterConditions(
+        db,
+        artistId,
+        filters
+      );
 
       // Combine all conditions using and()
       const whereClause =
