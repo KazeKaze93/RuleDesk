@@ -223,7 +223,7 @@ export function TagAutocomplete({
       {shouldShowDropdown && (
         <div
           id="tag-autocomplete-listbox"
-          className="absolute z-[100] mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md"
+          className="absolute z-[1000] mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md"
           role="listbox"
         >
           {isLoading ? (

@@ -53,6 +53,7 @@ import type { Post } from "../../../main/db/schema";
 import type { Artist } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { useSearchStore } from "../../store/searchStore";
+import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../store/safeModeStore";
 import { cn } from "../../lib/utils";
 import { useViewerController } from "./hooks/useViewerController";
 
@@ -67,11 +68,17 @@ const useCurrentPost = (
 
     let queryKey: unknown[] = [];
     if (origin.kind === "artist") {
-      queryKey = ["posts", origin.artistId];
+      queryKey = origin.tags && origin.tags.length > 0
+        ? ["posts", origin.artistId, origin.tags]
+        : ["posts", origin.artistId];
     } else if (origin.kind === "favorites") {
-      queryKey = ["posts", "favorites"];
+      queryKey = origin.tags && origin.tags.length > 0
+        ? ["posts", "favorites", origin.tags]
+        : ["posts", "favorites"];
     } else if (origin.kind === "updates") {
-      queryKey = ["posts", "updates"];
+      queryKey = origin.tags && origin.tags.length > 0
+        ? ["posts", "updates", origin.tags]
+        : ["posts", "updates"];
     } else if (origin.kind === "search") {
       queryKey = ["search", origin.tags];
     } else {
@@ -92,6 +99,9 @@ const useCurrentPost = (
 const ViewerMedia = ({ post }: { post: Post }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
+  const { safeMode, panicMode, blurAmount } = useSafeModeStore();
+  const shouldBlur = shouldBlurPost(post.rating, safeMode, panicMode);
+  const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
 
   const isVideo =
     post.fileUrl.endsWith(".mp4") || post.fileUrl.endsWith(".webm");
@@ -125,21 +135,29 @@ const ViewerMedia = ({ post }: { post: Post }) => {
       onClick={handleContainerClick}
     >
       {isVideo ? (
-        <video
-          src={post.fileUrl}
-          className="object-contain max-w-full max-h-full outline-none focus:outline-none"
-          autoPlay={isVideoPlaying}
-          loop
-          controls
-          onPlay={() => setIsVideoPlaying(true)}
-          onPause={() => setIsVideoPlaying(false)}
-          ref={(el) => {
-            if (el) {
-              if (isVideoPlaying && el.paused) el.play().catch(() => {});
-              else if (!isVideoPlaying && !el.paused) el.pause();
-            }
+        <div
+          style={{
+            filter: shouldBlur
+              ? `blur(${effectiveBlur}px)`
+              : undefined,
           }}
-        />
+        >
+          <video
+            src={post.fileUrl}
+            className="object-contain max-w-full max-h-full outline-none focus:outline-none"
+            autoPlay={isVideoPlaying}
+            loop
+            controls
+            onPlay={() => setIsVideoPlaying(true)}
+            onPause={() => setIsVideoPlaying(false)}
+            ref={(el) => {
+              if (el) {
+                if (isVideoPlaying && el.paused) el.play().catch(() => {});
+                else if (!isVideoPlaying && !el.paused) el.pause();
+              }
+            }}
+          />
+        </div>
       ) : (
         <img
           src={isZoomed ? post.fileUrl : post.sampleUrl || post.fileUrl}
@@ -187,11 +205,40 @@ const TagsDrawer = ({
     return found || null;
   }, [artists, post.artistId]);
 
-  // Get all tags - we'll show artist separately, so we don't need to filter
+  // Get all tags and identify artist tag if it exists in the tag list
   // Artist tag might be in different format (e.g., "user:username" vs "username")
-  // so we just show all tags and artist separately
+  // We need to check both the raw tag and formatted versions
   const allTags = post.tags ? post.tags.trim().split(/\s+/).filter(Boolean) : [];
-  const tags = allTags;
+  
+  // Identify artist tag in the tag list
+  // Check both artist.tag and formatted versions (user:username for uploader, lowercase for tag)
+  const artistTagInList = useMemo(() => {
+    if (!artist || allTags.length === 0) return null;
+    
+    // Check exact match
+    if (allTags.includes(artist.tag)) return artist.tag;
+    
+    // Check formatted versions
+    const formattedTag = artist.type === "uploader" 
+      ? `user:${artist.tag.toLowerCase().replace(/ /g, "_")}`
+      : artist.tag.toLowerCase().replace(/ /g, "_");
+    
+    if (allTags.includes(formattedTag)) return formattedTag;
+    
+    // Check if any tag starts with user: for uploader type
+    if (artist.type === "uploader") {
+      const userTag = allTags.find(tag => tag.startsWith("user:") && tag.includes(artist.tag.toLowerCase()));
+      if (userTag) return userTag;
+    }
+    
+    return null;
+  }, [artist, allTags]);
+  
+  // Filter out artist tag from the list and sort: artist tags first, then others
+  const tags = useMemo(() => {
+    if (!artistTagInList) return allTags;
+    return allTags.filter(tag => tag !== artistTagInList);
+  }, [allTags, artistTagInList]);
 
   const { close: closeViewer } = useViewerStore(
     useShallow((state) => ({
@@ -283,7 +330,7 @@ const TagsDrawer = ({
                         <div className="sticky top-0 z-10 px-3 py-2 bg-primary/10 border-b border-primary/20 backdrop-blur-sm">
                           <button
                             onClick={handleArtistClick}
-                            className="flex w-full items-center gap-2 text-left hover:bg-primary/20 rounded transition-colors"
+                            className="flex w-full items-center gap-2 text-left hover:bg-primary/20 rounded transition-colors cursor-pointer"
                           >
                             <span className="text-xs font-semibold text-primary uppercase tracking-wide">
                               Artist
@@ -291,19 +338,32 @@ const TagsDrawer = ({
                             <span className="text-sm font-medium text-primary">
                               {artist.name}
                             </span>
+                            {artistTagInList && (
+                              <span className="ml-auto text-xs text-primary/70 font-mono">
+                                {artistTagInList}
+                              </span>
+                            )}
                           </button>
                         </div>
                       )
                     : undefined,
                 }}
-                itemContent={(index, tag) => (
-                  <button
-                    onClick={() => handleTagClick(tag)}
-                    className="w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
-                  >
-                    {tag}
-                  </button>
-                )}
+                itemContent={(index, tag) => {
+                  // Check if this tag is the artist tag (should be in header, but double-check)
+                  const isArtistTag = artistTagInList === tag;
+                  
+                  return (
+                    <button
+                      onClick={() => handleTagClick(tag)}
+                      className={cn(
+                        "w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer",
+                        isArtistTag && "bg-primary/10 text-primary font-medium"
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  );
+                }}
               />
             </div>
           </div>
@@ -747,17 +807,23 @@ export const ViewerDialog = () => {
     if (!queue.onLoadMore) return;
 
     // Query keys are consistent with component query keys:
-    // - Artist gallery: ["posts", artistId]
-    // - Favorites: ["posts", "favorites"]
-    // - Updates: ["posts", "updates"]
+    // - Artist gallery: ["posts", artistId] or ["posts", artistId, tags]
+    // - Favorites: ["posts", "favorites"] or ["posts", "favorites", tags]
+    // - Updates: ["posts", "updates"] or ["posts", "updates", tags]
     // - Search: ["search", tags]
     let queryKey: unknown[] = [];
     if (queue.origin.kind === "artist") {
-      queryKey = ["posts", queue.origin.artistId];
+      queryKey = queue.origin.tags && queue.origin.tags.length > 0
+        ? ["posts", queue.origin.artistId, queue.origin.tags]
+        : ["posts", queue.origin.artistId];
     } else if (queue.origin.kind === "favorites") {
-      queryKey = ["posts", "favorites"];
+      queryKey = queue.origin.tags && queue.origin.tags.length > 0
+        ? ["posts", "favorites", queue.origin.tags]
+        : ["posts", "favorites"];
     } else if (queue.origin.kind === "updates") {
-      queryKey = ["posts", "updates"];
+      queryKey = queue.origin.tags && queue.origin.tags.length > 0
+        ? ["posts", "updates", queue.origin.tags]
+        : ["posts", "updates"];
     } else if (queue.origin.kind === "search") {
       queryKey = ["search", queue.origin.tags];
     } else {

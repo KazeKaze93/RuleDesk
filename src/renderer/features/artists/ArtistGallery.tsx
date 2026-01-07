@@ -88,7 +88,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["posts", artist.id, tags],
       queryFn: async ({ pageParam = 1 }) => {
@@ -109,6 +109,22 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const allPosts = useMemo(() => {
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
+
+  // Create stable List component with forwardRef and aria-busy
+  // Must be memoized to prevent Virtuoso from remounting on every render
+  const ListComponent = useMemo(() => {
+    const Component = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+      (props, ref) => (
+        <GridContainer
+          {...props}
+          ref={ref}
+          aria-busy={isLoading || isFetchingNextPage}
+        />
+      )
+    );
+    Component.displayName = "ArtistGalleryList";
+    return Component;
+  }, [isLoading, isFetchingNextPage]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -166,7 +182,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     }
 
     openViewer({
-      origin: { kind: "artist", artistId: artist.id },
+      origin: { kind: "artist", artistId: artist.id, tags: tags.length > 0 ? tags : undefined },
       ids: postIds,
       initialIndex: index,
       listKey: `artist-${artist.id}`,
@@ -197,7 +213,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   return (
     <div className="flex flex-col h-full bg-background text-foreground">
       {/* Header */}
-      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+      <div className="flex z-[5] justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-4 items-center">
           <Button
             variant="ghost"
@@ -262,7 +278,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               }
             }}
             components={{
-              List: GridContainer,
+              List: ListComponent,
               Item: ItemContainer,
               Footer: () =>
                 isFetchingNextPage ? (

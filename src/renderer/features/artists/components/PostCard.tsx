@@ -23,19 +23,25 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
     <button
       type="button"
       onClick={(e) => {
+        e.preventDefault();
         e.stopPropagation();
         onClick();
+      }}
+      onMouseDown={(e) => {
+        // Prevent text selection on click
+        e.preventDefault();
       }}
       aria-label={`View post ${post.id}. Rating: ${post.rating}. ${
         isVid ? "Video" : "Image"
       }.`}
       className={cn(
-        "group relative aspect-[2/3] w-full overflow-hidden rounded-lg border bg-card transition-all cursor-zoom-in",
+        "group relative aspect-[2/3] w-full overflow-hidden rounded-lg border bg-card transition-all cursor-pointer",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
         "hover:border-primary hover:shadow-md hover:shadow-primary/10",
+        "select-none", // Prevent text selection
         post.isViewed && "border-muted-foreground/20"
       )}
-      style={{ pointerEvents: "auto" }} // Ensure button is clickable
+      style={{ pointerEvents: "auto", userSelect: "none" }} // Ensure button is clickable and prevent text selection
     >
       {/* --- Image Layer --- */}
       {post.previewUrl ? (
