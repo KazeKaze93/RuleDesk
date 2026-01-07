@@ -185,7 +185,7 @@ export const Browse = () => {
   return (
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
       {/* Header */}
-      <div className="flex z-10 flex-col gap-4 px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+      <div className="flex z-[5] flex-col gap-4 px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-2 items-center">
           <h2 className="flex gap-2 items-center text-xl font-bold">
             <Search className="w-5 h-5 text-primary" />

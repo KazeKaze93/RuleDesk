@@ -74,8 +74,9 @@ export const GlobalTopBar = () => {
   }, []);
 
   const handleSearch = () => {
-    // Trigger search update - pages will react to query change
-    // This will be handled by each page component
+    // Trigger search update - pages will react to query change via useEffect
+    // The search query is already in the store, pages will refetch automatically
+    // No need to navigate - search works in context of current tab
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

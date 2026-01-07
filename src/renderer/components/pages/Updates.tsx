@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo, useEffect } from "react";
+import React, { forwardRef, useMemo } from "react";
 import {
   useInfiniteQuery,
   useQueryClient,
@@ -106,7 +106,7 @@ export const Updates = () => {
     }))
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["posts", "updates", tags],
       queryFn: async ({ pageParam = 1 }) => {
@@ -134,10 +134,21 @@ export const Updates = () => {
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
 
-  // Refetch when tags change
-  useEffect(() => {
-    refetch();
-  }, [tags, refetch]);
+  // Create stable List component with forwardRef and aria-busy
+  // Must be memoized to prevent Virtuoso from remounting on every render
+  const ListComponent = useMemo(() => {
+    const Component = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+      (props, ref) => (
+        <GridContainer
+          {...props}
+          ref={ref}
+          aria-busy={isLoading || isFetchingNextPage}
+        />
+      )
+    );
+    Component.displayName = "UpdatesList";
+    return Component;
+  }, [isLoading, isFetchingNextPage]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -203,9 +214,9 @@ export const Updates = () => {
     }
 
     // Open viewer with updates origin
-    // listKey: "updates" matches queryKey ["posts", "updates"] used in ViewerDialog
+    // listKey: "updates" matches queryKey ["posts", "updates", tags] used in ViewerDialog
     openViewer({
-      origin: { kind: "updates" },
+      origin: { kind: "updates", tags: tags.length > 0 ? tags : undefined },
       ids: postIds,
       initialIndex: index,
       listKey: "updates",
@@ -217,7 +228,7 @@ export const Updates = () => {
   return (
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
       {/* Header */}
-      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+      <div className="flex z-[5] justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-4 items-center">
           <div>
             <h2 className="flex gap-2 items-center text-xl font-bold">
@@ -263,7 +274,7 @@ export const Updates = () => {
               }
             }}
             components={{
-              List: GridContainer,
+              List: ListComponent,
               Item: ItemContainer,
               Footer: () =>
                 isFetchingNextPage ? (

@@ -3,9 +3,9 @@ import { create } from "zustand";
 export type ViewerOrigin =
   | { kind: "browse"; filters?: string }
   | { kind: "search"; tags: string[] }
-  | { kind: "favorites" }
-  | { kind: "updates" }
-  | { kind: "artist"; artistId: number };
+  | { kind: "favorites"; tags?: string[] }
+  | { kind: "updates"; tags?: string[] }
+  | { kind: "artist"; artistId: number; tags?: string[] };
 
 // Очередь просмотра
 export interface ViewerQueue {
