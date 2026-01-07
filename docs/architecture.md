@@ -24,6 +24,7 @@
 This application follows a strict **Separation of Concerns (SoC)** architecture, dividing responsibilities between the Electron Main Process (secure Node.js environment) and the Renderer Process (sandboxed browser environment).
 
 **📖 Related Documentation:**
+
 - [API Documentation](./api.md) - IPC API reference
 - [Database Documentation](./database.md) - Database architecture details
 - [Development Guide](./development.md) - Development setup and workflows
@@ -84,15 +85,18 @@ graph TB
 RuleDesk is built on Electron, which runs two separate processes:
 
 1. **Renderer Process (Browser)** - This is where your React UI lives. It's a sandboxed browser environment that can't directly access Node.js APIs or the file system. It uses:
+
    - **React Context** for component state and data flow
    - **TanStack Query** to fetch data from the Main Process via IPC
    - **Zustand** for lightweight UI state (like which dialog is open)
 
 2. **IPC Bridge** - This is the secure communication layer between Renderer and Main Process:
+
    - **Preload script** (`preload.ts`) exposes a safe API (`window.api`) to the Renderer
    - **IPC Handlers** in Main Process validate and route requests to appropriate services
 
 3. **Main Process (Node.js)** - This is the secure backend that handles:
+
    - **Services Layer** - Business logic (sync, updates, file operations)
    - **Backend Clients** - Communication with external APIs (Rule34.xxx, Gelbooru)
 
@@ -103,6 +107,7 @@ RuleDesk is built on Electron, which runs two separate processes:
 **Data Flow Example:**
 
 When you click "Add Artist" in the UI:
+
 1. React component calls `window.api.addArtist(data)`
 2. Preload script forwards request to Main Process via IPC
 3. IPC Handler validates input using Zod schemas
@@ -213,6 +218,7 @@ Let's trace what happens when a user clicks "Add Artist":
 3. **IPC Bridge** - The preload script (`preload.ts`) receives the call and forwards it to the Main Process using `ipcRenderer.invoke('db:add-artist', artistData)`. This is Electron's secure IPC mechanism.
 
 4. **IPC Controller** - In Main Process, the `ArtistsController` receives the request. Before doing anything, it:
+
    - **Validates the input** using a Zod schema (ensures `name` and `tag` are valid strings, `apiEndpoint` is a valid URL)
    - If validation fails, it throws an error that propagates back to Renderer
 
@@ -267,6 +273,7 @@ graph LR
 All database operations happen **directly in the Main Process** using synchronous access. Here's how it works:
 
 1. **Services call Drizzle ORM** - When a service needs to query the database, it uses Drizzle's type-safe query builder:
+
    ```typescript
    const artists = await db.query.artists.findMany({
      orderBy: [asc(artists.name)],
@@ -274,35 +281,39 @@ All database operations happen **directly in the Main Process** using synchronou
    ```
 
 2. **Drizzle generates SQL** - Drizzle ORM converts the TypeScript query into optimized SQL:
+
    ```sql
    SELECT * FROM artists ORDER BY name ASC;
    ```
 
-3. **SQLite executes** - The SQLite database (via `better-sqlite3`) executes the query **synchronously**. 
+3. **SQLite executes** - The SQLite database (via `better-sqlite3`) executes the query **synchronously**.
 
    **⚠️ CRITICAL: Synchronous Execution Blocks Main Process**
-   
+
    `better-sqlite3` uses **synchronous** database operations. This means:
+
    - ✅ **Fast for simple queries** - No async overhead, direct function calls
    - ⚠️ **Blocks Main Process** - Heavy queries (e.g., full table scan without indexes) will **freeze the entire Electron application**
    - ⚠️ **UI Freezes** - If a query takes 2 seconds, the UI is frozen for 2 seconds
-   
+
    **Why this is fast for typical queries:**
+
    - No network overhead (local database)
    - Synchronous execution (no async/await delays)
    - WAL mode allows concurrent reads while writes happen
    - **Proper indexes** make queries fast (milliseconds, not seconds)
-   
+
    **⚠️ MANDATORY: Always Use Limits and Indexes**
-   
+
    To prevent Main Process blocking:
+
    - **Always use `limit`** in SELECT queries (see [Database Limits](#-critical-always-use-limits-for-select-queries))
    - **Ensure proper indexes** exist for WHERE clauses
    - **Use pagination** for large datasets
    - **Avoid full table scans** - Always filter with indexed columns
-   
+
    **Example of dangerous query:**
-   
+
    ```typescript
    // ❌ DANGEROUS: No limit, no index on tags column
    // If database has 100k posts, this will freeze UI for seconds
@@ -311,9 +322,9 @@ All database operations happen **directly in the Main Process** using synchronou
      // Missing limit!
    });
    ```
-   
-   **Example of safe query:**
-   
+
+   **Example of safe query with indexed column:**
+
    ```typescript
    // ✅ SAFE: Uses indexed column and limit
    const posts = await db.query.posts.findMany({
@@ -321,6 +332,18 @@ All database operations happen **directly in the Main Process** using synchronou
      orderBy: [desc(posts.postId)],
      limit: 50, // ← Prevents large result sets
      offset: (page - 1) * 50,
+   });
+   ```
+
+   **Example of safe tag search with FTS5:**
+
+   ```typescript
+   // ✅ SAFE: Uses FTS5 index for tag search (fast even on 100k+ records)
+   // FTS5 is used automatically when filtering by tags via PostsController
+   const posts = await db.getPosts({
+     filters: { tags: "blue_hair" }, // Uses FTS5 index, not LIKE
+     page: 1,
+     limit: 50,
    });
    ```
 
@@ -336,6 +359,7 @@ All database operations happen **directly in the Main Process** using synchronou
 **⚠️ WAL Mode is Mandatory**
 
 SQLite must run in **WAL (Write-Ahead Logging) mode** to enable:
+
 - **Concurrent reads** during writes
 - **Better performance** for read-heavy workloads
 - **Non-blocking reads** while writes are in progress
@@ -348,6 +372,7 @@ sqlite.pragma("journal_mode = WAL");
 ```
 
 **Without WAL mode:**
+
 - Writes block all reads
 - Database locked errors during concurrent access
 - Poor performance with multiple readers
@@ -490,13 +515,13 @@ const posts = await db.query.posts.findMany({
    **⚠️ CRITICAL: Always Use Limits in Database Queries**
 
    When implementing IPC handlers that query the database, **always use `limit`** in your Drizzle queries. Without limits, SQLite may return tens or hundreds of thousands of records, which will:
-   
+
    - **Overwhelm the Renderer Process** - Large arrays block IPC and freeze the UI
    - **Exhaust Memory** - Serializing 100k+ records consumes significant memory
    - **Block IPC Channel** - Large payloads prevent other operations
-   
+
    **Example in Controller:**
-   
+
    ```typescript
    // ✅ CORRECT: Always use limit
    export class PostsController extends BaseController {
@@ -507,16 +532,13 @@ const posts = await db.query.posts.findMany({
          this.getPosts.bind(this)
        );
      }
-   
-     private async getPosts(
-       _event: IpcMainInvokeEvent,
-       data: GetPostsRequest
-     ) {
+
+     private async getPosts(_event: IpcMainInvokeEvent, data: GetPostsRequest) {
        const db = container.resolve(DI_TOKENS.DB);
        const { artistId, page = 1 } = data;
        const limit = 50; // ← CRITICAL: Always limit results
        const offset = (page - 1) * limit;
-   
+
        return await db.query.posts.findMany({
          where: eq(posts.artistId, artistId),
          orderBy: [desc(posts.postId)],
@@ -526,13 +548,15 @@ const posts = await db.query.posts.findMany({
      }
    }
    ```
-   
+
    **Default Limits:**
+
    - Posts: 50 per page (max 1000 per query)
    - Artists: No limit (typically small, but consider adding if > 1000 expected)
    - Settings: Single record (no limit needed)
-   
+
    **Performance Guidelines:**
+
    - **Heavy queries** (full table scans, complex WHERE clauses) → Always use pagination
    - **Indexed queries** (WHERE on indexed columns) → Can handle larger limits (up to 1000)
    - **Unindexed queries** → Must use strict limits (50-100) to prevent blocking
@@ -576,10 +600,10 @@ const posts = await db.query.posts.findMany({
 
 10. **Bridge** (`src/main/bridge.ts`)
 
-   - Defines the IPC interface
-   - Exposed via preload script
-   - Type-safe communication contract
-   - Event listener management for real-time updates
+- Defines the IPC interface
+- Exposed via preload script
+- Type-safe communication contract
+- Event listener management for real-time updates
 
 11. **Main Entry** (`src/main/main.ts`)
     - Application initialization
@@ -786,6 +810,7 @@ sequenceDiagram
 **Human-Readable Explanation:**
 
 1. **Saving Credentials (Onboarding):**
+
    - User enters API key in Renderer (plaintext, unavoidable during input)
    - `saveSettings()` sends credentials via IPC to Main Process
    - Main Process encrypts API key using Electron's `safeStorage` API (platform keychain)
@@ -849,6 +874,7 @@ sequenceDiagram
 1. **User clicks "Tracked"** in the sidebar navigation
 
 2. **React component renders** - The `Tracked.tsx` component mounts and calls:
+
    ```typescript
    const { data: artists } = useQuery({
      queryKey: ["artists"],
@@ -863,6 +889,7 @@ sequenceDiagram
 5. **Validation** - The IPC handler validates the request (though `getTrackedArtists` has no parameters, validation still runs for consistency).
 
 6. **Database query** - The handler executes a Drizzle query:
+
    ```typescript
    const artists = await db.query.artists.findMany({
      orderBy: [asc(artists.name)],
@@ -870,6 +897,7 @@ sequenceDiagram
    ```
 
 7. **Response** - The array of artists flows back:
+
    - Database → IPC Handler → IPC Bridge → React Query → Component
 
 8. **Caching** - React Query automatically caches the result. If the user navigates away and comes back, the data is served from cache (instant load).
@@ -926,6 +954,7 @@ sequenceDiagram
 1. **User fills form** - User enters artist name "example_artist", tag "tag_name", selects type "tag", and clicks "Add".
 
 2. **Form submission** - React component calls:
+
    ```typescript
    const handleAddArtist = async (name, tag, type) => {
      await window.api.addArtist({ name, tag, type, provider: "rule34" });
@@ -935,6 +964,7 @@ sequenceDiagram
 3. **IPC call** - Request goes through IPC bridge to Main Process.
 
 4. **Validation** - The `ArtistsController` validates input using Zod schema:
+
    ```typescript
    // Zod schema checks:
    // - name is non-empty string
@@ -945,6 +975,7 @@ sequenceDiagram
 5. **Two paths:**
 
    **Path A: Validation Fails**
+
    - Zod throws validation error
    - `BaseController` catches it and returns user-friendly error
    - Promise rejects in Renderer
@@ -952,19 +983,24 @@ sequenceDiagram
    - **No database write happens**
 
    **Path B: Validation Succeeds**
+
    - Controller calls service: `dbService.addArtist(validatedData)`
    - Service executes Drizzle insert:
      ```typescript
-     await db.insert(artists).values({
-       name: "example_artist",
-       tag: "tag_name",
-       // ... other fields
-     }).returning();
+     await db
+       .insert(artists)
+       .values({
+         name: "example_artist",
+         tag: "tag_name",
+         // ... other fields
+       })
+       .returning();
      ```
    - Database returns the new artist with generated ID
    - Response flows back to Renderer
 
 6. **Cache invalidation** - On success, component invalidates React Query cache:
+
    ```typescript
    queryClient.invalidateQueries({ queryKey: ["artists"] });
    ```
@@ -991,7 +1027,7 @@ try {
   // - Validation error: "Username is required"
   // - Database error: "Tag already exists"
   // - Network error: "Failed to connect"
-  
+
   log.error("Failed to add artist:", error);
   // Show error toast to user
 }
@@ -1056,35 +1092,43 @@ sequenceDiagram
 4. **For each artist, the service:**
 
    a. **Gets artist data** from database:
-      ```typescript
-      const artists = await db.query.artists.findMany();
-      ```
+
+   ```typescript
+   const artists = await db.query.artists.findMany();
+   ```
 
    b. **Decrypts API key** - The encrypted API key is decrypted using Electron's `safeStorage` API. This happens in Main Process only (secure).
 
    c. **Fetches posts from API** - Makes HTTP request to Rule34.xxx API:
-      ```
-      GET https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=tag_name&limit=1000
-      ```
+
+   ```
+   GET https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=tag_name&limit=1000
+   ```
 
    d. **Maps API response** - Converts API JSON format to database schema format.
 
    e. **Rate limiting** - Waits 1.5 seconds before processing next artist (prevents API abuse).
 
    f. **Bulk upsert** - Saves posts to database using `ON CONFLICT` handling (updates existing, inserts new):
-      ```typescript
-      await db.insert(posts).values(newPosts)
-        .onConflictDoUpdate({
-          target: [posts.artistId, posts.postId],
-          set: { /* update fields */ }
-        });
-      ```
+
+   ```typescript
+   await db
+     .insert(posts)
+     .values(newPosts)
+     .onConflictDoUpdate({
+       target: [posts.artistId, posts.postId],
+       set: {
+         /* update fields */
+       },
+     });
+   ```
 
    g. **Updates artist** - Updates artist's `lastPostId` and `newPostsCount`.
 
    h. **Progress event** - Emits IPC event: `emit('sync:progress', 'Syncing artist_name...')`
 
 5. **UI updates in real-time** - React component listens to progress events:
+
    ```typescript
    useEffect(() => {
      const unsubscribe = window.api.onSyncProgress((message) => {
@@ -1326,6 +1370,7 @@ Zustand stores can cause performance issues if not used correctly. **Always use 
 **Why selectors matter:**
 
 When you subscribe to the entire store, the component re-renders on **any** state change, even if it doesn't use that part of the state. This can cause:
+
 - Unnecessary re-renders of large component trees
 - Performance degradation with complex UIs
 - UI freezing when state updates frequently
