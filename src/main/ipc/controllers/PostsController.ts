@@ -487,12 +487,29 @@ export class PostsController extends BaseController {
       const whereClause =
         baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
-      const result = await db.query.posts.findMany({
-        where: whereClause,
-        orderBy: [desc(posts.publishedAt)],
-        limit,
-        offset,
-      });
+      // CRITICAL: Explicitly select all fields including rating
+      // This ensures rating is included in the response for Safe Mode filtering
+      const result = await db
+        .select({
+          id: posts.id,
+          postId: posts.postId,
+          artistId: posts.artistId,
+          fileUrl: posts.fileUrl,
+          previewUrl: posts.previewUrl,
+          sampleUrl: posts.sampleUrl,
+          title: posts.title,
+          rating: posts.rating,
+          tags: posts.tags,
+          publishedAt: posts.publishedAt,
+          createdAt: posts.createdAt,
+          isViewed: posts.isViewed,
+          isFavorited: posts.isFavorited,
+        })
+        .from(posts)
+        .where(whereClause)
+        .orderBy(desc(posts.publishedAt))
+        .limit(limit)
+        .offset(offset);
 
       log.info(
         `[PostsController] Retrieved ${result.length} posts ${

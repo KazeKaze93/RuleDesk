@@ -244,44 +244,42 @@ const TagsDrawer = ({
   }, [artist, allTags]);
   
   // Sort tags: artist tags first, then others
-  // Artist tags are identified by matching artist.tag or starting with "user:" for uploader type
+  // Tags are strings, not objects, so we compare directly against artist.tag
   const sortedTags = useMemo(() => {
     if (allTags.length === 0) return [];
+    
+    // Get the current artist's tag to know what to prioritize
+    const artistTag = artist?.tag || "";
     
     // Create a COPY to avoid mutation issues
     const tagsCopy = [...allTags];
     
     return tagsCopy.sort((a, b) => {
-      // Helper function to check if a tag is an artist tag
-      const isArtistTag = (tag: string): boolean => {
-        if (!artist) return false;
-        
-        // Check exact match
-        if (tag === artist.tag) return true;
-        
-        // Check formatted versions
-        const formattedTag = artist.type === "uploader" 
-          ? `user:${artist.tag.toLowerCase().replace(/ /g, "_")}`
-          : artist.tag.toLowerCase().replace(/ /g, "_");
-        if (tag === formattedTag) return true;
-        
-        // Check if tag starts with "user:" for uploader type
-        if (artist.type === "uploader" && tag.startsWith("user:")) {
-          return tag.includes(artist.tag.toLowerCase());
-        }
-        
-        return false;
-      };
+      // Prioritize exact match with the artist's tag
+      if (a === artistTag) return -1;
+      if (b === artistTag) return 1;
       
-      const isAArtist = isArtistTag(a);
-      const isBArtist = isArtistTag(b);
+      // Secondary: Check for "user:" prefix (uploader tag)
+      // This handles cases where artist tag might be formatted as "user:artistname"
+      const isUserA = a.startsWith("user:");
+      const isUserB = b.startsWith("user:");
+      if (isUserA && !isUserB) return -1;
+      if (!isUserA && isUserB) return 1;
       
-      // Artist tags come first
-      if (isAArtist && !isBArtist) return -1;
-      if (!isAArtist && isBArtist) return 1;
+      // If artist is uploader type, prioritize tags that match artist.tag (even if formatted)
+      if (artist?.type === "uploader") {
+        const formattedTag = `user:${artistTag.toLowerCase().replace(/ /g, "_")}`;
+        if (a === formattedTag) return -1;
+        if (b === formattedTag) return 1;
+        
+        // Also check if tag includes artist tag (for partial matches)
+        const lowerArtistTag = artistTag.toLowerCase();
+        if (a.toLowerCase().includes(lowerArtistTag) && !b.toLowerCase().includes(lowerArtistTag)) return -1;
+        if (!a.toLowerCase().includes(lowerArtistTag) && b.toLowerCase().includes(lowerArtistTag)) return 1;
+      }
       
-      // If both are artist tags or both are not, maintain original order
-      return 0;
+      // Default: alphabetical order
+      return a.localeCompare(b);
     });
   }, [allTags, artist]);
   
