@@ -151,18 +151,27 @@ export const Favorites = () => {
   };
 
   const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
+    // TEMP DEBUG: Remove after debugging
+    console.log('[Favorites] handlePostClick triggered for index:', index);
+    const currentPosts = allPosts;
+    const post = currentPosts[index];
 
-    const post = allPosts[index];
-    if (post && !post.isViewed) {
+    if (!post) {
+      log.warn("[Favorites] handlePostClick: post not found at index", index);
+      return;
+    }
+
+    // Mark as viewed first
+    if (!post.isViewed) {
       viewMutation.mutate(post.id);
     }
 
+    // Open viewer with favorites origin
     openViewer({
       origin: { kind: "favorites", tags: tags.length > 0 ? tags : undefined },
-      ids: postIds,
+      ids: currentPosts.map((p) => p.id),
       initialIndex: index,
-      listKey: "favorites",
+      listKey: "favorites-list",
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
     });
@@ -228,16 +237,7 @@ export const Favorites = () => {
               if (!post) return null;
 
               return (
-                <div
-                  className="pointer-events-auto z-10 relative w-full h-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    log.info("[Favorites] PostCard wrapper clicked, index:", index);
-                    handlePostClick(index);
-                  }}
-                >
-                  <PostCard post={post} onClick={() => handlePostClick(index)} />
-                </div>
+                <PostCard post={post} onClick={() => handlePostClick(index)} />
               );
             }}
           />

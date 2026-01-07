@@ -32,6 +32,7 @@ import {
   Tags,
   ExternalLink,
   Eye,
+  Loader2,
 } from "lucide-react";
 
 import {
@@ -64,35 +65,95 @@ const useCurrentPost = (
   const queryClient = useQueryClient();
 
   return useMemo(() => {
-    if (!currentPostId || !origin) return null;
+    if (!currentPostId || !origin) return undefined;
 
-    let queryKey: unknown[] = [];
-    if (origin.kind === "artist") {
-      queryKey = origin.tags && origin.tags.length > 0
-        ? ["posts", origin.artistId, origin.tags]
-        : ["posts", origin.artistId];
-    } else if (origin.kind === "favorites") {
-      queryKey = origin.tags && origin.tags.length > 0
-        ? ["posts", "favorites", origin.tags]
-        : ["posts", "favorites"];
-    } else if (origin.kind === "updates") {
-      queryKey = origin.tags && origin.tags.length > 0
-        ? ["posts", "updates", origin.tags]
-        : ["posts", "updates"];
-    } else if (origin.kind === "search") {
-      queryKey = ["search", origin.tags];
-    } else {
-      return null;
+    // Helper to search in InfiniteData cache
+    const findInCache = (queryKey: unknown[]): Post | undefined => {
+      const data = queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
+      if (!data) return undefined;
+      for (const page of data.pages) {
+        const found = page.find((p) => p.id === currentPostId);
+        if (found) return found;
+      }
+      return undefined;
+    };
+
+    let foundPost: Post | undefined;
+
+    // Select cache based on origin - use EXACT query keys from components
+    // Note: origin.tags may be undefined, but queryKey always includes tags array (even if empty)
+    switch (origin.kind) {
+      case "updates": {
+        // Updates.tsx uses: ["posts", "updates", tags] where tags is always an array
+        // But origin.tags may be undefined if tags.length === 0
+        const tags = origin.tags ?? [];
+        foundPost = findInCache(["posts", "updates", tags]);
+        // Fallback: try with empty array if tags were undefined
+        if (!foundPost && origin.tags === undefined) {
+          foundPost = findInCache(["posts", "updates", []]);
+        }
+        break;
+      }
+      case "favorites": {
+        // Favorites.tsx uses: ["posts", "favorites", tags] where tags is always an array
+        const tags = origin.tags ?? [];
+        foundPost = findInCache(["posts", "favorites", tags]);
+        // Fallback: try with empty array if tags were undefined
+        if (!foundPost && origin.tags === undefined) {
+          foundPost = findInCache(["posts", "favorites", []]);
+        }
+        break;
+      }
+      case "artist": {
+        // ArtistGallery uses: ["posts", artistId, tags] where tags is always an array
+        const tags = origin.tags ?? [];
+        foundPost = findInCache(["posts", origin.artistId, tags]);
+        // Fallback: try with empty array if tags were undefined
+        if (!foundPost && origin.tags === undefined) {
+          foundPost = findInCache(["posts", origin.artistId, []]);
+        }
+        break;
+      }
+      case "search": {
+        // Browse.tsx uses: ["search", tags] where tags is always an array
+        foundPost = findInCache(["search", origin.tags]);
+        break;
+      }
+      case "browse": {
+        // Fallback for browse (if it exists)
+        foundPost = findInCache(["search", []]);
+        break;
+      }
+      default:
+        return undefined;
     }
 
-    const data = queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
-    if (!data) return null;
-
-    for (const page of data.pages) {
-      const post = page.find((p) => p.id === currentPostId);
-      if (post) return post;
+    // Fallback: If still not found, try to find in ANY 'posts' cache
+    // This is a safety net for edge cases - try all possible query key variations
+    if (!foundPost) {
+      const fallbackKeys: unknown[][] = [];
+      
+      // Try all possible tag combinations for updates/favorites
+      if (origin.kind === "updates" || origin.kind === "favorites") {
+        const kind = origin.kind;
+        // Try with empty array
+        fallbackKeys.push(["posts", kind, []]);
+        // Try with origin.tags if it exists
+        if (origin.tags) {
+          fallbackKeys.push(["posts", kind, origin.tags]);
+        }
+      }
+      
+      // Try search with empty array
+      fallbackKeys.push(["search", []]);
+      
+      for (const key of fallbackKeys) {
+        foundPost = findInCache(key);
+        if (foundPost) break;
+      }
     }
-    return null;
+
+    return foundPost;
   }, [currentPostId, origin, queryClient]);
 };
 
@@ -244,44 +305,29 @@ const TagsDrawer = ({
   }, [artist, allTags]);
   
   // Sort tags: artist tags first, then others
-  // Tags are strings, not objects, so we compare directly against artist.tag
   const sortedTags = useMemo(() => {
-    if (allTags.length === 0) return [];
+    if (!post?.tags) return [];
     
-    // Get the current artist's tag to know what to prioritize
-    const artistTag = artist?.tag || "";
-    
-    // Create a COPY to avoid mutation issues
-    const tagsCopy = [...allTags];
-    
-    return tagsCopy.sort((a, b) => {
-      // Prioritize exact match with the artist's tag
-      if (a === artistTag) return -1;
-      if (b === artistTag) return 1;
+    // Normalize string to array
+    const tagsArray = typeof post.tags === 'string' 
+      ? post.tags.split(' ').filter(t => t.length > 0)
+      : Array.isArray(post.tags) ? post.tags : [];
+
+    // Use artistTagInList if found, otherwise fallback to normalized artist tag
+    const artistName = artist?.name?.toLowerCase().replace(/ /g, '_');
+    const artistTag = artistTagInList?.toLowerCase() || artist?.tag?.toLowerCase() || artistName;
+
+    return tagsArray.sort((a, b) => {
+      const tagA = a.toLowerCase();
+      const tagB = b.toLowerCase();
       
-      // Secondary: Check for "user:" prefix (uploader tag)
-      // This handles cases where artist tag might be formatted as "user:artistname"
-      const isUserA = a.startsWith("user:");
-      const isUserB = b.startsWith("user:");
-      if (isUserA && !isUserB) return -1;
-      if (!isUserA && isUserB) return 1;
+      // Force artist tag to front
+      if (tagA === artistTag) return -1;
+      if (tagB === artistTag) return 1;
       
-      // If artist is uploader type, prioritize tags that match artist.tag (even if formatted)
-      if (artist?.type === "uploader") {
-        const formattedTag = `user:${artistTag.toLowerCase().replace(/ /g, "_")}`;
-        if (a === formattedTag) return -1;
-        if (b === formattedTag) return 1;
-        
-        // Also check if tag includes artist tag (for partial matches)
-        const lowerArtistTag = artistTag.toLowerCase();
-        if (a.toLowerCase().includes(lowerArtistTag) && !b.toLowerCase().includes(lowerArtistTag)) return -1;
-        if (!a.toLowerCase().includes(lowerArtistTag) && b.toLowerCase().includes(lowerArtistTag)) return 1;
-      }
-      
-      // Default: alphabetical order
-      return a.localeCompare(b);
+      return tagA.localeCompare(tagB);
     });
-  }, [allTags, artist]);
+  }, [post?.tags, artist, artistTagInList]);
   
   // Filter out artist tag from the list (it's shown in header separately)
   const tags = useMemo(() => {
@@ -997,7 +1043,8 @@ export const ViewerDialog = () => {
     };
   }, [isOpen, setControlsVisible]);
 
-  if (!post) return null;
+  // Guard: only render when store says dialog should be open
+  if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
@@ -1022,17 +1069,41 @@ export const ViewerDialog = () => {
         <div className="absolute inset-0 backdrop-blur-md pointer-events-none bg-black/60" />
 
         <div className="flex relative z-10 flex-col justify-center items-center w-full h-full">
-          <ViewerContent
-            key={post.id}
-            post={post}
-            queue={queue}
-            close={close}
-            next={next}
-            prev={prev}
-            controlsVisible={controlsVisible}
-            toggleTagsDrawer={toggleTagsDrawer}
-            isTagsDrawerOpen={isTagsDrawerOpen}
-          />
+          {post ? (
+            <ViewerContent
+              key={post.id}
+              post={post}
+              queue={queue}
+              close={close}
+              next={next}
+              prev={prev}
+              controlsVisible={controlsVisible}
+              toggleTagsDrawer={toggleTagsDrawer}
+              isTagsDrawerOpen={isTagsDrawerOpen}
+            />
+          ) : currentPostId !== null && queue ? (
+            // Post not found in cache - show error message
+            <div className="flex flex-col items-center justify-center gap-4 w-full h-full text-white">
+              <div className="text-lg font-semibold">Post not found in cache</div>
+              <div className="text-sm text-white/70">
+                Post ID: {currentPostId}
+                <br />
+                Origin: {queue.origin.kind}
+              </div>
+              <Button
+                variant="outline"
+                onClick={close}
+                className="text-white border-white/20 hover:bg-white/10"
+              >
+                Close
+              </Button>
+            </div>
+          ) : (
+            // Loading state
+            <div className="flex items-center justify-center w-full h-full text-white">
+              <Loader2 className="w-10 h-10 animate-spin" />
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

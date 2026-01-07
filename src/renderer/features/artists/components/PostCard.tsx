@@ -23,6 +23,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
     <button
       type="button"
       onClick={(e) => {
+        // TEMP DEBUG: Remove after debugging
+        console.log('[PostCard] Clicked! Post ID:', post.id);
         e.preventDefault();
         e.stopPropagation();
         onClick();
@@ -110,7 +112,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
       </div>
 
       {/* 3. Gradient & Rating (Bottom - visible on hover) */}
-      <div className="pointer-events-none flex absolute inset-0 flex-col justify-end p-3 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100">
+      <div style={{ pointerEvents: 'none' }} className="pointer-events-none flex absolute inset-0 flex-col justify-end p-3 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100">
         <div className="flex justify-between items-end">
           <span
             className={cn(
