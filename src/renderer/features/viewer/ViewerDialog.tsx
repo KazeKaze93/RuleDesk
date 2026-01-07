@@ -235,14 +235,17 @@ const ViewerMedia = ({ post }: { post: Post }) => {
   );
 };
 
+
 const TagsDrawer = ({
   post,
   isOpen,
   onOpenChange,
+  isFromBrowse = false,
 }: {
   post: Post;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  isFromBrowse?: boolean;
 }) => {
   const navigate = useNavigate();
   const { setQuery } = useSearchStore();
@@ -378,6 +381,48 @@ const TagsDrawer = ({
     }
   };
 
+  // Component for artist header with count (only in Browse)
+  const ArtistHeader = () => {
+    // Get post count for artist tag (only in Browse tab)
+    const { data: artistTagCount } = useQuery({
+      queryKey: ["posts-count-by-tag-api", artistTagInList || artist?.tag],
+      queryFn: () => {
+        const tagToSearch = artistTagInList || artist?.tag;
+        if (!tagToSearch) return 0;
+        return window.api.getPostsCountByTagFromAPI(tagToSearch);
+      },
+      enabled: isOpen && isFromBrowse && !!artistTagInList && !!artist, // Only fetch when drawer is open, in Browse, and artist tag exists
+    });
+
+    if (!artist) return null;
+
+    return (
+      <div className="sticky top-0 z-10 px-3 py-2 bg-primary/10 border-b border-primary/20 backdrop-blur-sm">
+        <button
+          onClick={handleArtistClick}
+          className="flex w-full items-center gap-2 text-left hover:bg-primary/20 rounded transition-colors cursor-pointer"
+        >
+          <span className="text-xs font-semibold text-primary uppercase tracking-wide">
+            Artist
+          </span>
+          <span className="text-sm font-medium text-primary">
+            {artist.name}
+          </span>
+          {artistTagInList && (
+            <span className="ml-auto text-xs text-primary/70 font-mono">
+              {artistTagInList}
+              {isFromBrowse && artistTagCount !== undefined && (
+                <span className="ml-1 text-primary/50">
+                  ({artistTagCount})
+                </span>
+              )}
+            </span>
+          )}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md">
@@ -441,28 +486,7 @@ const TagsDrawer = ({
                 style={{ height: "400px" }}
                 data={tags}
                 components={{
-                  Header: artist
-                    ? () => (
-                        <div className="sticky top-0 z-10 px-3 py-2 bg-primary/10 border-b border-primary/20 backdrop-blur-sm">
-                          <button
-                            onClick={handleArtistClick}
-                            className="flex w-full items-center gap-2 text-left hover:bg-primary/20 rounded transition-colors cursor-pointer"
-                          >
-                            <span className="text-xs font-semibold text-primary uppercase tracking-wide">
-                              Artist
-                            </span>
-                            <span className="text-sm font-medium text-primary">
-                              {artist.name}
-                            </span>
-                            {artistTagInList && (
-                              <span className="ml-auto text-xs text-primary/70 font-mono">
-                                {artistTagInList}
-                              </span>
-                            )}
-                          </button>
-                        </div>
-                      )
-                    : undefined,
+                  Header: artist ? ArtistHeader : undefined,
                 }}
                 itemContent={(index, tag) => {
                   // Check if this tag is an artist tag
@@ -783,10 +807,12 @@ const ViewerContent = ({
               
               return (
                 <span className="text-xs text-white/70">
-                  {date.toLocaleDateString("ru-RU", {
+                  {date.toLocaleString("en-US", {
                     year: "numeric",
                     month: "short",
                     day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </span>
               );
@@ -813,6 +839,7 @@ const ViewerContent = ({
         post={post}
         isOpen={isTagsDrawerOpen}
         onOpenChange={toggleTagsDrawer}
+        isFromBrowse={queue?.origin?.kind === "browse" || queue?.origin?.kind === "search"}
       />
 
       <button

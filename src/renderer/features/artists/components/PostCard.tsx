@@ -16,7 +16,9 @@ const isVideo = (url: string) => url.endsWith(".mp4") || url.endsWith(".webm");
 export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
   const isVid = isVideo(post.fileUrl);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
-  const shouldBlur = shouldBlurPost(post.rating, safeMode, panicMode);
+  // Normalize rating to 'e', 'q', 's' safely (handles both 'e' and 'explicit' formats)
+  const normalizedRating = post.rating ? post.rating.charAt(0).toLowerCase() as "e" | "q" | "s" : "q";
+  const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
 
   return (

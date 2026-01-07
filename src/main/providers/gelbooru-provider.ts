@@ -100,6 +100,14 @@ export class GelbooruProvider implements IBooruProvider {
     }
   }
 
+  async getPostsCountByTag(tag: string, settings: ProviderSettings): Promise<number> {
+    // Gelbooru API doesn't provide direct count endpoint
+    // This is a placeholder implementation
+    // TODO: Implement if Gelbooru API supports count queries
+    logger.warn("[GelbooruProvider] getPostsCountByTag not implemented for Gelbooru");
+    return 0;
+  }
+
   async fetchPosts(tags: string, page: number, settings: ProviderSettings): Promise<BooruPost[]> {
     // Gelbooru pages are 0-indexed usually, but let's stick to pid logic
     const params = new URLSearchParams({
