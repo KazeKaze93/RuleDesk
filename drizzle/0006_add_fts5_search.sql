@@ -42,6 +42,11 @@ END;
 -- This ensures existing posts are searchable immediately after migration
 -- For external content, we still need to insert rowid + tags to build the index
 -- Uses posts.id directly as it is INTEGER PRIMARY KEY (rowid alias)
+--
+-- PERFORMANCE WARNING: This INSERT may block Main Process on large databases (500k+ records)
+-- The application code checks post count before migration and logs a warning
+-- For very large databases, consider running this migration during off-peak hours
+-- Estimated time: ~1-2 seconds per 10,000 records (depends on hardware and tags length)
 INSERT INTO posts_fts(rowid, tags)
 SELECT id, tags FROM posts;
 

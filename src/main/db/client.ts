@@ -63,6 +63,36 @@ export async function initializeDatabase(): Promise<AppDatabase> {
 
   try {
     logger.info("[DB] Running migrations...");
+    
+    // Check post count before migration to warn about potential Main Process lock
+    // Migration 0006_add_fts5_search.sql performs INSERT INTO posts_fts SELECT ...
+    // This can block Main Process for 30+ seconds on databases with 500k+ records
+    try {
+      const postCount = sqlite
+        .prepare("SELECT COUNT(*) as count FROM posts")
+        .get() as { count: number } | undefined;
+      
+      const count = postCount?.count ?? 0;
+      
+      if (count > 100000) {
+        logger.warn(
+          `[DB] Large database detected: ${count.toLocaleString()} posts. ` +
+          `FTS5 migration may take 10-30 seconds and temporarily block Main Process. ` +
+          `Please wait...`
+        );
+      } else if (count > 50000) {
+        logger.info(
+          `[DB] Medium database: ${count.toLocaleString()} posts. ` +
+          `FTS5 migration may take 5-10 seconds.`
+        );
+      } else {
+        logger.info(`[DB] Database size: ${count.toLocaleString()} posts.`);
+      }
+    } catch (_countError) {
+      // Table might not exist yet (first migration), ignore count check
+      logger.debug("[DB] Could not check post count (table may not exist yet)");
+    }
+    
     // Run migrations asynchronously to avoid blocking the event loop
     // Use setImmediate to yield control and allow UI to update
     await new Promise<void>((resolve, reject) => {
