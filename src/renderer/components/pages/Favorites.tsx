@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo } from "react";
+import React, { forwardRef, useMemo, useEffect } from "react";
 import {
   useInfiniteQuery,
   useQueryClient,
@@ -11,8 +11,18 @@ import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
+import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
+
+// Helper function to parse tags from query string
+const parseTags = (query: string): string[] => {
+  if (!query.trim()) return [];
+  return query
+    .split(/[,\s]+/)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+};
 
 // --- Constants ---
 // Should ideally come from a shared constant or backend config
@@ -40,7 +50,12 @@ const ItemContainer = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  <div 
+    ref={ref} 
+    className={cn("w-full aspect-[2/3]", className)} 
+    {...props}
+    style={{ pointerEvents: "none" }} // Allow clicks to pass through to PostCard
+  />
 ));
 ItemContainer.displayName = "ItemContainer";
 
@@ -48,6 +63,8 @@ ItemContainer.displayName = "ItemContainer";
 
 export const Favorites = () => {
   const queryClient = useQueryClient();
+  const { query } = useSearchStore();
+  const tags = useMemo(() => parseTags(query), [query]);
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
     useShallow((state) => ({
@@ -56,13 +73,15 @@ export const Favorites = () => {
     }))
   );
 
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } =
     useInfiniteQuery({
-      queryKey: ["posts", "favorites"],
+      queryKey: ["posts", "favorites", tags],
       queryFn: async ({ pageParam = 1 }) => {
         return await window.api.getArtistPosts({
-          filters: { isFavorited: true },
+          filters: {
+            isFavorited: true,
+            tags: tags.length > 0 ? tags.join(" ") : undefined,
+          },
           page: pageParam,
         });
       },
@@ -76,6 +95,11 @@ export const Favorites = () => {
   const allPosts = useMemo(() => {
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
+
+  // Refetch when tags change
+  useEffect(() => {
+    refetch();
+  }, [tags, refetch]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {

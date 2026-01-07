@@ -1,4 +1,4 @@
-import React, { useState, useMemo, forwardRef } from "react";
+import React, { useMemo, forwardRef, useEffect, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
@@ -6,9 +6,8 @@ import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
+import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
-import { Button } from "../../components/ui/button";
-import { TagAutocomplete } from "../../components/inputs/TagAutocomplete";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -72,8 +71,7 @@ const parseTags = (query: string): string[] => {
 // --- Основной компонент ---
 
 export const Browse = () => {
-  const [query, setQuery] = useState("");
-  // Initialize with empty array to show all posts by default (empty tags = all posts in Rule34 API)
+  const { query } = useSearchStore();
   const [tags, setTags] = useState<string[]>([]);
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
@@ -83,20 +81,11 @@ export const Browse = () => {
     }))
   );
 
-  // Parse tags from query when user submits search
-  // If query is empty, use empty array to show all posts (Rule34 API returns all posts when tags parameter is omitted)
-  const handleSearch = () => {
+  // Update tags when query changes
+  useEffect(() => {
     const parsedTags = parseTags(query);
-    // Empty array means show all posts (no tags filter)
     setTags(parsedTags);
-  };
-
-  // Handle Enter key in search input
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
+  }, [query]);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
@@ -195,25 +184,13 @@ export const Browse = () => {
 
   return (
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
-      {/* Header with Search Bar */}
+      {/* Header */}
       <div className="flex z-10 flex-col gap-4 px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-2 items-center">
           <h2 className="flex gap-2 items-center text-xl font-bold">
             <Search className="w-5 h-5 text-primary" />
             Browse
           </h2>
-        </div>
-        <div className="flex gap-2 items-center">
-          <TagAutocomplete
-            value={query}
-            onChange={setQuery}
-            onKeyDown={handleKeyDown}
-            placeholder="Search for tags (e.g., 'blue_hair', 'cyberpunk')"
-          />
-          <Button onClick={handleSearch}>
-            <Search className="mr-2 w-4 h-4" />
-            Search
-          </Button>
         </div>
         {allPosts.length > 0 && (
           <div className="flex gap-2 text-xs text-muted-foreground">

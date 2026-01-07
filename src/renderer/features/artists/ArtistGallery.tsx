@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo } from "react";
+import React, { forwardRef, useMemo, useEffect } from "react";
 import {
   useInfiniteQuery,
   useQuery,
@@ -15,7 +15,17 @@ import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
+import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "./components/PostCard";
+
+// Helper function to parse tags from query string
+const parseTags = (query: string): string[] => {
+  if (!query.trim()) return [];
+  return query
+    .split(/[,\s]+/)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+};
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -43,7 +53,12 @@ const ItemContainer = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  <div 
+    ref={ref} 
+    className={cn("w-full aspect-[2/3]", className)} 
+    {...props}
+    style={{ pointerEvents: "none" }} // Allow clicks to pass through to PostCard
+  />
 ));
 ItemContainer.displayName = "ItemContainer";
 
@@ -55,6 +70,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { query } = useSearchStore();
+  const tags = useMemo(() => parseTags(query), [query]);
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
     useShallow((state) => ({
@@ -71,13 +88,16 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } =
     useInfiniteQuery({
-      queryKey: ["posts", artist.id],
+      queryKey: ["posts", artist.id, tags],
       queryFn: async ({ pageParam = 1 }) => {
         return await window.api.getArtistPosts({
           artistId: artist.id,
           page: pageParam,
+          filters: {
+            tags: tags.length > 0 ? tags.join(" ") : undefined,
+          },
         });
       },
       getNextPageParam: (lastPage, allPages) => {

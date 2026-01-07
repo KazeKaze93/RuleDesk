@@ -2,6 +2,7 @@ import React from "react";
 import { Play, Check, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Post } from "../../../../main/db/schema";
+import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../../store/safeModeStore";
 
 interface PostCardProps {
   post: Post;
@@ -14,11 +15,17 @@ const isVideo = (url: string) => url.endsWith(".mp4") || url.endsWith(".webm");
 
 export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
   const isVid = isVideo(post.fileUrl);
+  const { safeMode, panicMode, blurAmount } = useSafeModeStore();
+  const shouldBlur = shouldBlurPost(post.rating, safeMode, panicMode);
+  const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
 
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       aria-label={`View post ${post.id}. Rating: ${post.rating}. ${
         isVid ? "Video" : "Image"
       }.`}
@@ -28,21 +35,45 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
         "hover:border-primary hover:shadow-md hover:shadow-primary/10",
         post.isViewed && "border-muted-foreground/20"
       )}
+      style={{ pointerEvents: "auto" }} // Ensure button is clickable
     >
       {/* --- Image Layer --- */}
       {post.previewUrl ? (
-        <img
-          src={post.previewUrl}
-          alt={`Post ${post.id}`}
-          loading="lazy"
-          className={cn(
-            "h-full w-full object-cover transition-transform duration-300",
-            "group-hover:scale-105",
-            post.isViewed && "opacity-60 grayscale-[0.3]"
+        <div 
+          className="relative h-full w-full overflow-hidden"
+          style={{
+            filter: shouldBlur
+              ? `blur(${effectiveBlur}px)`
+              : undefined,
+          }}
+        >
+          <img
+            src={post.previewUrl}
+            alt={`Post ${post.id}`}
+            loading="lazy"
+            className={cn(
+              "h-full w-full object-cover transition-all duration-300",
+              "group-hover:scale-105",
+              post.isViewed && "opacity-60 grayscale-[0.3]"
+            )}
+          />
+          {shouldBlur && panicMode && (
+            <div className="absolute inset-0 flex justify-center items-center bg-background/80">
+              <div className="text-xs font-medium text-muted-foreground">
+                Safe Mode Active
+              </div>
+            </div>
           )}
-        />
+        </div>
       ) : (
-        <div className="flex justify-center items-center w-full h-full text-xs bg-muted text-muted-foreground">
+        <div 
+          className="flex justify-center items-center w-full h-full text-xs bg-muted text-muted-foreground"
+          style={{
+            filter: shouldBlur
+              ? `blur(${effectiveBlur}px)`
+              : undefined,
+          }}
+        >
           No Preview
         </div>
       )}
