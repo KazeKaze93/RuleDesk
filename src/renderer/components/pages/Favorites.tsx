@@ -50,12 +50,7 @@ const ItemContainer = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div 
-    ref={ref} 
-    className={cn("w-full aspect-[2/3]", className)} 
-    {...props}
-    style={{ pointerEvents: "none" }} // Allow clicks to pass through to PostCard
-  />
+  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
 ));
 ItemContainer.displayName = "ItemContainer";
 

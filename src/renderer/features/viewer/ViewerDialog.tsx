@@ -208,7 +208,16 @@ const TagsDrawer = ({
   // Get all tags and identify artist tag if it exists in the tag list
   // Artist tag might be in different format (e.g., "user:username" vs "username")
   // We need to check both the raw tag and formatted versions
-  const allTags = post.tags ? post.tags.trim().split(/\s+/).filter(Boolean) : [];
+  const allTags = useMemo(() => {
+    if (!post.tags) return [];
+    // Create a COPY to avoid mutation issues
+    const tagsArray = typeof post.tags === "string" 
+      ? post.tags.trim().split(/\s+/).filter(Boolean)
+      : Array.isArray(post.tags) 
+        ? [...post.tags]
+        : [];
+    return tagsArray;
+  }, [post.tags]);
   
   // Identify artist tag in the tag list
   // Check both artist.tag and formatted versions (user:username for uploader, lowercase for tag)
@@ -234,11 +243,74 @@ const TagsDrawer = ({
     return null;
   }, [artist, allTags]);
   
-  // Filter out artist tag from the list and sort: artist tags first, then others
+  // Sort tags: artist tags first, then others
+  // Artist tags are identified by matching artist.tag or starting with "user:" for uploader type
+  const sortedTags = useMemo(() => {
+    if (allTags.length === 0) return [];
+    
+    // Create a COPY to avoid mutation issues
+    const tagsCopy = [...allTags];
+    
+    return tagsCopy.sort((a, b) => {
+      // Helper function to check if a tag is an artist tag
+      const isArtistTag = (tag: string): boolean => {
+        if (!artist) return false;
+        
+        // Check exact match
+        if (tag === artist.tag) return true;
+        
+        // Check formatted versions
+        const formattedTag = artist.type === "uploader" 
+          ? `user:${artist.tag.toLowerCase().replace(/ /g, "_")}`
+          : artist.tag.toLowerCase().replace(/ /g, "_");
+        if (tag === formattedTag) return true;
+        
+        // Check if tag starts with "user:" for uploader type
+        if (artist.type === "uploader" && tag.startsWith("user:")) {
+          return tag.includes(artist.tag.toLowerCase());
+        }
+        
+        return false;
+      };
+      
+      const isAArtist = isArtistTag(a);
+      const isBArtist = isArtistTag(b);
+      
+      // Artist tags come first
+      if (isAArtist && !isBArtist) return -1;
+      if (!isAArtist && isBArtist) return 1;
+      
+      // If both are artist tags or both are not, maintain original order
+      return 0;
+    });
+  }, [allTags, artist]);
+  
+  // Filter out artist tag from the list (it's shown in header separately)
   const tags = useMemo(() => {
-    if (!artistTagInList) return allTags;
-    return allTags.filter(tag => tag !== artistTagInList);
-  }, [allTags, artistTagInList]);
+    if (!artistTagInList) return sortedTags;
+    return sortedTags.filter(tag => tag !== artistTagInList);
+  }, [sortedTags, artistTagInList]);
+
+  // Helper function to check if a tag is an artist tag
+  const isArtistTag = useCallback((tag: string): boolean => {
+    if (!artist) return false;
+    
+    // Check exact match
+    if (tag === artist.tag) return true;
+    
+    // Check formatted versions
+    const formattedTag = artist.type === "uploader" 
+      ? `user:${artist.tag.toLowerCase().replace(/ /g, "_")}`
+      : artist.tag.toLowerCase().replace(/ /g, "_");
+    if (tag === formattedTag) return true;
+    
+    // Check if tag starts with "user:" for uploader type
+    if (artist.type === "uploader" && tag.startsWith("user:")) {
+      return tag.includes(artist.tag.toLowerCase());
+    }
+    
+    return false;
+  }, [artist]);
 
   const { close: closeViewer } = useViewerStore(
     useShallow((state) => ({
@@ -349,15 +421,15 @@ const TagsDrawer = ({
                     : undefined,
                 }}
                 itemContent={(index, tag) => {
-                  // Check if this tag is the artist tag (should be in header, but double-check)
-                  const isArtistTag = artistTagInList === tag;
+                  // Check if this tag is an artist tag
+                  const tagIsArtist = isArtistTag(tag);
                   
                   return (
                     <button
                       onClick={() => handleTagClick(tag)}
                       className={cn(
                         "w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer",
-                        isArtistTag && "bg-primary/10 text-primary font-medium"
+                        tagIsArtist && "bg-primary/10 border-primary text-primary font-bold"
                       )}
                     >
                       {tag}
