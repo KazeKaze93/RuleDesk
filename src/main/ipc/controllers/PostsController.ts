@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, like, sql, gte } from "drizzle-orm";
+import { eq, desc, count, and, like, sql, gte, inArray } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists, type Post } from "../../db/schema";
@@ -194,6 +194,55 @@ export class PostsController extends BaseController {
   }
 
   /**
+   * Get post IDs matching tag filter using FTS5 full-text search
+   * Falls back to LIKE search if FTS5 is not available
+   *
+   * @param db - Database instance
+   * @param tagFilter - Tag search string
+   * @returns Array of post IDs matching the tag filter
+   */
+  private getPostIdsByTagFilter(
+    db: AppDatabase,
+    tagFilter: string
+  ): number[] {
+    try {
+      // Use FTS5 MATCH operator for fast full-text search
+      // FTS5 syntax: tags MATCH 'search_term' (automatically handles word boundaries)
+      // Escape special FTS5 characters in user input for safety
+      // FTS5 uses double quotes for phrase matching, single quotes for terms
+      // Replace special characters that could break FTS5 syntax
+      const escapedTag = tagFilter
+        .replace(/"/g, '""') // Escape double quotes
+        .replace(/'/g, "''"); // Escape single quotes
+      
+      // Query FTS5 table to get matching post IDs
+      // Use raw SQL with proper quoting for FTS5 MATCH syntax
+      // FTS5 requires the search term to be in quotes
+      // Use sql template with string interpolation for the search term
+      const searchTerm = `'${escapedTag}'`;
+      const ftsResults = db
+        .select({ id: sql<number>`rowid` })
+        .from(sql`posts_fts`)
+        .where(sql`posts_fts MATCH ${sql.raw(searchTerm)}`)
+        .all();
+
+      return ftsResults.map((row) => row.id);
+    } catch (error) {
+      // Fallback to LIKE search if FTS5 fails (e.g., table doesn't exist)
+      log.warn(
+        `[PostsController] FTS5 search failed, falling back to LIKE: ${error}`
+      );
+      const fallbackResults = db
+        .select({ id: posts.id })
+        .from(posts)
+        .where(like(posts.tags, `%${tagFilter}%`))
+        .all();
+
+      return fallbackResults.map((row) => row.id);
+    }
+  }
+
+  /**
    * Get posts for an artist (or globally) with pagination and filters
    *
    * @param _event - IPC event (unused)
@@ -216,14 +265,26 @@ export class PostsController extends BaseController {
         // Build where conditions array (excluding the date filter, which goes in join)
         // Note: artistId is optional - if not provided, returns posts from all tracked artists
         // This is the expected behavior for global feeds like Updates
-        const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
+        const baseConditions: ReturnType<typeof eq | typeof inArray>[] = [];
 
         if (artistId) {
           baseConditions.push(eq(posts.artistId, artistId));
         }
+        
+        // Use FTS5 for tag filtering if available, otherwise fall back to LIKE
         if (filters?.tags !== undefined) {
-          baseConditions.push(like(posts.tags, `%${filters.tags}%`));
+          const matchingPostIds = this.getPostIdsByTagFilter(db, filters.tags);
+          if (matchingPostIds.length > 0) {
+            baseConditions.push(inArray(posts.id, matchingPostIds));
+          } else {
+            // No matches found via FTS5, return empty result
+            log.info(
+              `[PostsController] No posts found matching tag filter: "${filters.tags}"`
+            );
+            return [];
+          }
         }
+        
         if (filters?.rating !== undefined) {
           baseConditions.push(eq(posts.rating, filters.rating));
         }
@@ -288,14 +349,26 @@ export class PostsController extends BaseController {
 
       // Standard query path (no sinceTracking filter)
       // Build where conditions array
-      const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
+      const baseConditions: ReturnType<typeof eq | typeof inArray>[] = [];
 
       if (artistId) {
         baseConditions.push(eq(posts.artistId, artistId));
       }
+      
+      // Use FTS5 for tag filtering if available, otherwise fall back to LIKE
       if (filters?.tags !== undefined) {
-        baseConditions.push(like(posts.tags, `%${filters.tags}%`));
+        const matchingPostIds = this.getPostIdsByTagFilter(db, filters.tags);
+        if (matchingPostIds.length > 0) {
+          baseConditions.push(inArray(posts.id, matchingPostIds));
+        } else {
+          // No matches found via FTS5, return empty result
+          log.info(
+            `[PostsController] No posts found matching tag filter: "${filters.tags}"`
+          );
+          return [];
+        }
       }
+      
       if (filters?.rating !== undefined) {
         baseConditions.push(eq(posts.rating, filters.rating));
       }
