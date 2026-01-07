@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, like, sql, gte } from "drizzle-orm";
+import { eq, desc, count, and, sql, gte, type SQL } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists, type Post } from "../../db/schema";
@@ -194,6 +194,125 @@ export class PostsController extends BaseController {
   }
 
   /**
+   * Sanitize FTS5 search query to prevent syntax errors
+   * FTS5 interprets the search string as an expression, so special characters
+   * (:, *, -, ", \, NEAR, AND, OR, NOT) can cause SQLITE_ERROR: fts5: syntax error
+   * 
+   * Solution: Remove/replace FTS5 operator characters and wrap in quotes
+   * Allows * wildcard only at the end of words for prefix search (e.g., "tag*")
+   * This makes FTS5 treat the input as a literal string, not as operators
+   *
+   * @param query - FTS5 query string (user input from Renderer)
+   * @returns Sanitized query string safe for FTS5 MATCH
+   * @throws {Error} If query becomes empty after sanitization (empty string causes FTS5 syntax error)
+   */
+  private sanitizeFts5Query(query: string): string {
+    // Remove FTS5 special characters that can be interpreted as operators:
+    // - - (NOT operator) - remove completely
+    // - " (quote, will be escaped separately) - remove, will add back
+    // - \ (escape character, can cause issues) - remove
+    // - * in the middle of words - remove (only allow at end of word for prefix search)
+    // Replace with spaces and normalize
+    let clean = query
+      // Remove NOT operator
+      .replace(/-/g, " ")
+      // Remove escape characters
+      .replace(/\\/g, " ")
+      // Remove quotes (will add back after escaping)
+      .replace(/"/g, " ")
+      // Remove * that's not at end of word (allow "word*" but not "*word" or "word*word")
+      // Keep * only if it's at end of word (after alphanumeric, before space/end)
+      .replace(/\*+(?=\w)/g, "") // Remove * followed by word character (middle of word)
+      .replace(/^\*+/g, "") // Remove * at start of string
+      .replace(/\s+\*+/g, " ") // Remove * at start of word (after space)
+      .trim();
+
+    // Check if query became empty after sanitization
+    // Empty string "" in FTS5 MATCH causes SQLITE_ERROR: fts5: syntax error
+    if (clean.length === 0) {
+      throw new Error(
+        "FTS5 query became empty after sanitization. Please use valid search terms."
+      );
+    }
+
+    // Escape remaining double quotes by doubling them (FTS5 escaping rule)
+    const escaped = clean.replace(/"/g, '""');
+    
+    // Wrap in double quotes to make FTS5 treat it as a literal phrase
+    // This allows * wildcard at end of words (e.g., "tag*") for prefix search
+    return `"${escaped}"`;
+  }
+
+  /**
+   * Create FTS5 JOIN condition for tag filtering
+   * Uses parameterized query to prevent SQL injection
+   * Sanitizes FTS5 query to prevent syntax errors from special characters
+   * 
+   * Uses EXISTS with JOIN pattern for better performance than IN (SELECT ...):
+   * - SQLite optimizer can use FTS5 index as leading index
+   * - More efficient than IN with virtual tables
+   * - Allows better query planning
+   *
+   * @param tagFilter - Tag search string (user input from Renderer)
+   * @returns Drizzle SQL condition for tag filtering using FTS5
+   */
+  private createTagFilterCondition(tagFilter: string): SQL {
+    // Sanitize FTS5 query to prevent syntax errors from special characters
+    // Wrap in quotes and escape internal quotes so FTS5 treats input as literal
+    const sanitized = this.sanitizeFts5Query(tagFilter);
+    
+    // Use EXISTS with FTS5 JOIN pattern for better performance than IN (SELECT ...)
+    // This allows SQLite optimizer to use FTS5 index efficiently
+    // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
+    // Drizzle's sql template automatically parameterizes the value
+    return sql`EXISTS (
+      SELECT 1 FROM posts_fts 
+      WHERE posts_fts.rowid = ${posts.id} 
+        AND posts_fts MATCH ${sanitized}
+    )`;
+  }
+
+  /**
+   * Build WHERE conditions array for post filtering
+   * Centralized logic to avoid code duplication (DRY principle)
+   *
+   * @param artistId - Optional artist ID filter
+   * @param filters - Optional post filters (tags, rating, isViewed, isFavorited)
+   * @returns Array of Drizzle SQL conditions for use with and()
+   */
+  private buildPostFilterConditions(
+    artistId: number | undefined,
+    filters: PostFilterRequest | undefined
+  ): SQL[] {
+    const conditions: SQL[] = [];
+
+    if (artistId) {
+      conditions.push(eq(posts.artistId, artistId));
+    }
+
+    // Use FTS5 subquery for tag filtering (parameterized, no memory bloat)
+    // Validate that tag filter is not empty to prevent FTS5 syntax errors
+    // Empty string "" would become '""' and cause SQLITE_ERROR: fts5: syntax error
+    if (filters?.tags && filters.tags.trim().length > 0) {
+      conditions.push(this.createTagFilterCondition(filters.tags));
+    }
+
+    if (filters?.rating !== undefined) {
+      conditions.push(eq(posts.rating, filters.rating));
+    }
+
+    if (filters?.isFavorited !== undefined) {
+      conditions.push(eq(posts.isFavorited, filters.isFavorited));
+    }
+
+    if (filters?.isViewed !== undefined) {
+      conditions.push(eq(posts.isViewed, filters.isViewed));
+    }
+
+    return conditions;
+  }
+
+  /**
    * Get posts for an artist (or globally) with pagination and filters
    *
    * @param _event - IPC event (unused)
@@ -216,23 +335,10 @@ export class PostsController extends BaseController {
         // Build where conditions array (excluding the date filter, which goes in join)
         // Note: artistId is optional - if not provided, returns posts from all tracked artists
         // This is the expected behavior for global feeds like Updates
-        const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
-
-        if (artistId) {
-          baseConditions.push(eq(posts.artistId, artistId));
-        }
-        if (filters?.tags !== undefined) {
-          baseConditions.push(like(posts.tags, `%${filters.tags}%`));
-        }
-        if (filters?.rating !== undefined) {
-          baseConditions.push(eq(posts.rating, filters.rating));
-        }
-        if (filters?.isFavorited !== undefined) {
-          baseConditions.push(eq(posts.isFavorited, filters.isFavorited));
-        }
-        if (filters?.isViewed !== undefined) {
-          baseConditions.push(eq(posts.isViewed, filters.isViewed));
-        }
+        const baseConditions = this.buildPostFilterConditions(
+          artistId,
+          filters
+        );
 
         // Combine all conditions using and()
         // Note: whereClause can be undefined if no additional filters are provided.
@@ -287,24 +393,11 @@ export class PostsController extends BaseController {
       }
 
       // Standard query path (no sinceTracking filter)
-      // Build where conditions array
-      const baseConditions: ReturnType<typeof eq | typeof like>[] = [];
-
-      if (artistId) {
-        baseConditions.push(eq(posts.artistId, artistId));
-      }
-      if (filters?.tags !== undefined) {
-        baseConditions.push(like(posts.tags, `%${filters.tags}%`));
-      }
-      if (filters?.rating !== undefined) {
-        baseConditions.push(eq(posts.rating, filters.rating));
-      }
-      if (filters?.isFavorited !== undefined) {
-        baseConditions.push(eq(posts.isFavorited, filters.isFavorited));
-      }
-      if (filters?.isViewed !== undefined) {
-        baseConditions.push(eq(posts.isViewed, filters.isViewed));
-      }
+      // Build where conditions array using centralized method
+      const baseConditions = this.buildPostFilterConditions(
+        artistId,
+        filters
+      );
 
       // Combine all conditions using and()
       const whereClause =
