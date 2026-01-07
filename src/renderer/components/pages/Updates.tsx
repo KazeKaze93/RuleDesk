@@ -283,7 +283,16 @@ export const Updates = () => {
               if (!post) return null;
 
               return (
-                <PostCard post={post} onClick={() => handlePostClick(index)} />
+                <div
+                  className="pointer-events-auto z-10 relative w-full h-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    log.info("[Updates] PostCard wrapper clicked, index:", index);
+                    handlePostClick(index);
+                  }}
+                >
+                  <PostCard post={post} onClick={() => handlePostClick(index)} />
+                </div>
               );
             }}
           />
