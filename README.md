@@ -502,6 +502,11 @@ npm run db:studio
 
 **Note:** Migrations run automatically on application startup. The migration path is automatically detected based on whether the app is packaged or in development mode.
 
+**Performance Optimizations:**
+- **FTS5 Full-Text Search:** Fast tag searching using SQLite FTS5 virtual table with `unicode61` tokenizer
+- **Composite Indexes:** Optimized indexes for common filter combinations (artist + rating + view status)
+- **External Content Tables:** FTS5 uses external content to avoid data duplication and save storage space
+
 ### Database Location
 
 - **Development:** Database stored in Electron user data directory
