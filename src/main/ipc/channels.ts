@@ -19,6 +19,7 @@ export const IPC_CHANNELS = {
     SEARCH_TAGS: "db:search-tags",
     GET_POSTS: "db:get-posts",
     GET_POSTS_COUNT: "db:get-posts-count",
+    GET_POSTS_COUNT_BY_TAG: "db:get-posts-count-by-tag",
     MARK_VIEWED: "db:mark-post-viewed",
     TOGGLE_FAVORITE: "db:toggle-post-favorite",
     SYNC_ALL: "db:sync-all",
@@ -29,6 +30,7 @@ export const IPC_CHANNELS = {
   API: {
     SEARCH_REMOTE: "api:search-remote-tags",
     SEARCH_POSTS: "booru:search",
+    GET_POSTS_COUNT_BY_TAG: "api:get-posts-count-by-tag",
   },
   BACKUP: {
     CREATE: "db:create-backup",
