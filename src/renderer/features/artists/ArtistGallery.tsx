@@ -108,15 +108,16 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   // Create stable List component with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
   const ListComponent = useMemo(() => {
-    const Component = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-      (props, ref) => (
-        <GridContainer
-          {...props}
-          ref={ref}
-          aria-busy={isLoading || isFetchingNextPage}
-        />
-      )
-    );
+    const Component = forwardRef<
+      HTMLDivElement,
+      React.HTMLAttributes<HTMLDivElement>
+    >((props, ref) => (
+      <GridContainer
+        {...props}
+        ref={ref}
+        aria-busy={isLoading || isFetchingNextPage}
+      />
+    ));
     Component.displayName = "ArtistGalleryList";
     return Component;
   }, [isLoading, isFetchingNextPage]);
@@ -177,7 +178,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     }
 
     openViewer({
-      origin: { kind: "artist", artistId: artist.id, tags: tags.length > 0 ? tags : undefined },
+      origin: {
+        kind: "artist",
+        artistId: artist.id,
+        tags: tags.length > 0 ? tags : undefined,
+      },
       ids: postIds,
       initialIndex: index,
       listKey: `artist-${artist.id}`,
