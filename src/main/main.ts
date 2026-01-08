@@ -346,11 +346,12 @@ async function initializeAppAndWindow() {
 
     // Forward main process logs to renderer for debugging
     // Hook into electron-log transport to forward logs to renderer
-    const originalConsole = logger.transports.console;
-    logger.transports.console = (msg: LogMessage) => {
-      originalConsole(msg);
+    const originalWriteFn = logger.transports.console.writeFn;
+    logger.transports.console.writeFn = (options: { message: LogMessage }) => {
+      originalWriteFn(options);
       // Send log to renderer if window is ready
       if (mainWindow && !mainWindow.isDestroyed()) {
+        const msg = options.message;
         mainWindow.webContents.send("log:main-log", {
           level: msg.level,
           message: msg.data.map(arg => 

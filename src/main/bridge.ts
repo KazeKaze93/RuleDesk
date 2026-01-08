@@ -88,6 +88,8 @@ export interface IpcBridge {
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
 
+  onMainLog: (callback: (data: { level: string; message: string }) => void) => () => void;
+
   markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
 
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
