@@ -278,7 +278,7 @@ export class PostsController extends BaseController {
     // - \ (escape character, can cause issues) - remove
     // - * in the middle of words - remove (only allow at end of word for prefix search)
     // Replace with spaces and normalize
-    let clean = query
+    const clean = query
       // Remove NOT operator
       .replace(/-/g, " ")
       // Remove escape characters

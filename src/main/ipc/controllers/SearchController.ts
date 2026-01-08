@@ -202,11 +202,11 @@ export class SearchController extends BaseController {
       };
 
       // Convert tags array to space-separated string (provider expects string)
-      // CRITICAL: Rule34 API requires underscores (_) instead of spaces or plus signs
-      // Replace spaces with underscores in each tag, then join with spaces
+      // Use provider.formatTag() for consistent normalization (same as SyncService)
+      // This ensures lowercase conversion and space-to-underscore replacement
       // Empty array means show all posts (provider will omit tags parameter)
       let tagsString = tags.length > 0 
-        ? tags.map(tag => tag.replace(/\s+/g, '_')).join(" ")
+        ? tags.map(tag => provider.formatTag(tag, "tag")).join(" ")
         : "";
 
       // Step 1: Primary Search - try original tags
@@ -239,7 +239,8 @@ export class SearchController extends BaseController {
               
               // If suggestion is different from original, retry with suggestion
               if (suggestion.toLowerCase() !== originalTag.toLowerCase()) {
-                const suggestionString = suggestion.replace(/\s+/g, '_');
+                // Use provider.formatTag() for consistent normalization
+                const suggestionString = provider.formatTag(suggestion, "tag");
                 booruPosts = await provider.fetchPosts(
                   suggestionString,
                   page,
@@ -252,7 +253,7 @@ export class SearchController extends BaseController {
               }
             }
           }
-        } catch (autocompleteError) {
+        } catch (_autocompleteError) {
           // Autocomplete check failed, continue with other fallback attempts
         }
 
@@ -272,7 +273,7 @@ export class SearchController extends BaseController {
             if (booruPosts.length > 0) {
               tagsString = formattedUserTag; // Update for logging
             }
-          } catch (userSearchError) {
+          } catch (_userSearchError) {
             // Uploader retry failed, continue
           }
         }
