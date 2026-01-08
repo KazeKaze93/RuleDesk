@@ -251,6 +251,50 @@ export class SearchController extends BaseController {
   }
 
   /**
+   * Parse XML response from Rule34 DAPI tag endpoint
+   * @param text - Raw XML response text
+   * @param tagName - Requested tag name for filtering
+   * @returns Array of parsed tag objects with name and type
+   */
+  private parseTagXmlResponse(
+    text: string,
+    tagName: string
+  ): Array<{ name: string; type: number; id?: number }> {
+    const items: Array<{ name: string; type: number; id?: number }> = [];
+    
+    // Parse XML: <tag id="123" name="aiyor" count="100" type="1"/>
+    // Also handle: <tag id="123" name="aiyor" count="100" type="1"></tag>
+    // Extract all <tag> elements (both self-closing and with closing tag)
+    const tagRegex = /<tag\s+([^>]+)(?:\/>|>)/g;
+    const matches = [...text.matchAll(tagRegex)];
+    
+    for (const match of matches) {
+      const attrs = match[1];
+      // Extract attributes: id="123" name="aiyor" type="1"
+      // Handle both single and double quotes
+      const idMatch = attrs.match(/id\s*=\s*["'](\d+)["']/);
+      const nameMatch = attrs.match(/name\s*=\s*["']([^"']+)["']/);
+      const typeMatch = attrs.match(/type\s*=\s*["'](\d+)["']/);
+      
+      if (nameMatch && typeMatch) {
+        const parsedName = nameMatch[1];
+        const parsedType = parseInt(typeMatch[1], 10);
+        
+        // Only add if name matches requested tag (case-insensitive)
+        if (parsedName.toLowerCase() === tagName.toLowerCase()) {
+          items.push({
+            id: idMatch ? parseInt(idMatch[1], 10) : undefined,
+            name: parsedName,
+            type: parsedType,
+          });
+        }
+      }
+    }
+    
+    return items;
+  }
+
+  /**
    * Resolve tags to identify artist tags (type=1) from Rule34 API
    * 
    * Uses persistent SQLite cache to avoid redundant API calls.
@@ -320,22 +364,24 @@ export class SearchController extends BaseController {
         return uniqueTags.filter(tag => cachedMap.get(tag) === 1);
       }
 
-      // 2. DAPI-based resolver with batched requests
-      // Batch size of 10 keeps URL length safe while processing all missing tags
-      const batchSize = 10;
-      for (let i = 0; i < missingTags.length; i += batchSize) {
-        const currentBatch = missingTags.slice(i, i + batchSize);
-        
+      // 2. DAPI-based resolver with individual requests
+      // CRITICAL: Uses Rule34 DAPI endpoint that returns tag types
+      // Endpoint: https://api.rule34.xxx/index.php?page=dapi&s=tag&q=index&json=1
+      // Parameter: name=<tag_name> (single tag per request)
+      // Response: JSON array of { "id": number, "name": "string", "type": number, ... }
+      // type=1 is Artist, type=0 is General, etc.
+      // Process tags one by one (API doesn't support batch by name)
+      for (const tagName of missingTags) {
         try {
           // Strict URL construction: only required parameters for tags endpoint
-          // Do NOT send 'limit' (default 100 is fine for batch of 10)
-          // Do NOT send 'tags' (that's for posts endpoint, not tags endpoint)
+          // CRITICAL: Use 'name' parameter (single tag name), NOT 'names'
+          // Do NOT add extra parameters that are not in the official API docs
           const params = new URLSearchParams({
             page: 'dapi',
             s: 'tag',
             q: 'index',
             json: '1',
-            names: currentBatch.join(' '), // Only missing tags in this batch
+            name: tagName, // Single tag name per request
           });
 
           if (settings.apiKey) {
@@ -356,66 +402,116 @@ export class SearchController extends BaseController {
           });
 
           if (!response.ok) {
-            log.warn(`[SearchController] API returned status ${response.status} for batch starting with "${currentBatch[0]}"`);
+            log.warn(`[SearchController] API returned status ${response.status} for tag "${tagName}"`);
             continue;
           }
 
           const text = await response.text();
+          let items: Array<{ name: string; type: string | number; id?: number }> = [];
 
-          // XML Shield: If response starts with '<', skip it silently
+          // Handle XML response (API sometimes returns XML even with json=1)
           if (text.trim().startsWith('<')) {
-            log.warn(`[SearchController] API returned XML for batch starting with "${currentBatch[0]}", skipping`);
+            items = this.parseTagXmlResponse(text, tagName);
+          } else {
+            // Handle JSON response
+            let data;
+            try {
+              data = JSON.parse(text);
+            } catch (parseErr) {
+              log.warn(`[SearchController] Failed to parse JSON for tag "${tagName}":`, parseErr);
+              continue;
+            }
+
+            // Normalize: API can return a single object or an array
+            items = Array.isArray(data) ? data : (data ? [data] : []);
+          }
+          
+          // If no items found, skip to next tag
+          if (items.length === 0) {
             continue;
           }
-
-          let data;
-          try {
-            data = JSON.parse(text);
-          } catch (parseErr) {
-            log.warn(`[SearchController] Failed to parse JSON for batch starting with "${currentBatch[0]}":`, parseErr);
-            continue;
-          }
-
-          // Normalize: API can return a single object or an array
-          const items = Array.isArray(data) ? data : (data ? [data] : []);
 
           // Filter and map to valid entries with correct type from API
+          // CRITICAL: DAPI returns { "id": number, "name": "string", "type": number, ... }
+          // type=1 is Artist, type=0 is General, etc.
+          // Only process entries that match the requested tag name (case-insensitive)
+          const requestedTagLower = tagName.toLowerCase();
           const entries = items
-            .filter((item: unknown) => 
-              item &&
-              typeof item === 'object' &&
-              item !== null &&
-              'name' in item &&
-              'type' in item
-            )
-            .map((item: { name: string; type: unknown }) => ({
-              name: String(item.name).toLowerCase(),
-              type: Number(item.type), // Correct type from API (0=General, 1=Artist, etc)
-            }));
+            .filter((item: unknown) => {
+              // Validate item structure
+              if (!item || typeof item !== 'object' || item === null) {
+                return false;
+              }
+              // Ensure name and type exist
+              if (!('name' in item) || !('type' in item)) {
+                return false;
+              }
+              // Validate name is a non-empty string
+              const name = item.name;
+              if (typeof name !== 'string' || !name.trim()) {
+                return false;
+              }
+              // CRITICAL: Only accept tags that match the requested tag name (case-insensitive)
+              if (name.toLowerCase() !== requestedTagLower) {
+                return false;
+              }
+              // Validate type is a valid number (can be string "1" or number 1)
+              const type = item.type;
+              const typeNum = typeof type === 'string' ? parseInt(type, 10) : Number(type);
+              if (isNaN(typeNum) || typeNum < 0) {
+                return false;
+              }
+              return true;
+            })
+            .map((item: { name: string; type: string | number }) => {
+              // CRITICAL: Parse type as number (API may return string "1" or number 1)
+              const typeNum = typeof item.type === 'string' 
+                ? parseInt(item.type, 10) 
+                : Number(item.type);
+              
+              return {
+                name: String(item.name).toLowerCase().trim(),
+                type: typeNum, // Correct type from API (0=General, 1=Artist, etc)
+              };
+            });
 
           if (entries.length > 0) {
-            // Save to database with correct types
+            // Save to database with correct types from DAPI
+            // CRITICAL: Update tagMetadata with REAL type from API (not default type=0)
             // Use onConflictDoUpdate to update type if tag already exists
-            db.insert(tagMetadata)
-              .values(entries)
-              .onConflictDoUpdate({
-                target: tagMetadata.name,
-                set: { type: sql`excluded.type` },
-              })
-              .run();
+            for (const entry of entries) {
+              try {
+                db.insert(tagMetadata)
+                  .values(entry)
+                  .onConflictDoUpdate({
+                    target: tagMetadata.name,
+                    set: { type: sql`excluded.type` }, // Update with real type from API
+                  })
+                  .run();
+              } catch (dbErr) {
+                log.error(`[SearchController] Database error for tag "${entry.name}":`, dbErr);
+              }
+            }
 
             // Update cache with correct types
             entries.forEach(e => cachedMap.set(e.name, e.type));
-            log.debug(`[SearchController] Cached ${entries.length} tags from batch starting with "${currentBatch[0]}"`);
           }
         } catch (err) {
-          log.error(`[SearchController] Batch error for tags starting with "${currentBatch[0]}":`, err);
+          log.error(`[SearchController] Error processing tag "${tagName}":`, err);
         }
       }
 
-      // Возвращаем только теги типа 1 (Artist)
-      const artistTags = uniqueTags.filter(tag => cachedMap.get(tag) === 1);
-      log.debug(`[SearchController] Resolved ${artistTags.length} artist tags from ${uniqueTags.length} input tags`);
+      // CRITICAL: Return ONLY tags where type === 1 (Artist)
+      // This ensures resolvedArtistTags in the frontend actually receives artists
+      const artistTags = uniqueTags.filter(tag => {
+        const tagType = cachedMap.get(tag);
+        return tagType === 1; // type=1 is Artist
+      });
+      
+      // Summary log after processing all tags
+      log.info(
+        `[SearchController] Resolved batch: found ${artistTags.length} artist(s) out of ${uniqueTags.length} tag(s) requested`
+      );
 
       return artistTags;
     } catch (error) {
