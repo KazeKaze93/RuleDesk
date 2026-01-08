@@ -83,134 +83,45 @@ export class Rule34Provider implements IBooruProvider {
     }
   }
 
-  async fetchPosts(tags: string, page: number, settings: ProviderSettings): Promise<BooruPost[]> {
+  /**
+   * Build URL for API request
+   */
+  private buildUrl(options: {
+    tags: string;
+    page: number;
+    settings: ProviderSettings;
+    json: 0 | 1;
+  }): string {
     const params = new URLSearchParams();
     
-    // Add required parameters first
     params.append("page", "dapi");
     params.append("s", "post");
     params.append("q", "index");
-    params.append("json", "1");
+    params.append("json", options.json.toString());
     
-    // Add tags parameter early (before limit/pid) - some APIs are sensitive to parameter order
-    // Only add tags parameter if provided and not empty
-    // Empty tags or "all" means show all posts (omit tags parameter)
-    if (tags && tags.trim() !== "" && tags.trim().toLowerCase() !== "all") {
-      params.append("tags", tags);
+    if (options.tags && options.tags.trim() !== "" && options.tags.trim().toLowerCase() !== "all") {
+      params.append("tags", options.tags);
     }
     
-    // Add pagination parameters
-    // Maximum limit is 1000 per API documentation
     params.append("limit", "1000");
-    params.append("pid", page.toString());
+    params.append("pid", options.page.toString());
 
-    // Add authentication last (some APIs prefer auth params at the end)
-    if (settings.userId && settings.apiKey) {
-      params.append("user_id", settings.userId);
-      params.append("api_key", settings.apiKey);
+    if (options.settings.userId && options.settings.apiKey) {
+      params.append("user_id", options.settings.userId);
+      params.append("api_key", options.settings.apiKey);
     }
 
-    const url = `${this.baseUrl}?${params}`;
-    const safeUrl = url.replace(/api_key=[^&]+/, 'api_key=***').replace(/user_id=[^&]+/, 'user_id=***');
-    logger.info(`[Rule34Provider] Fetching posts: ${safeUrl}`);
-    logger.info(`[Rule34Provider] Tags parameter value: "${tags}"`);
-    logger.info(`[Rule34Provider] Tags parameter after URL encoding: "${params.get('tags') || 'N/A'}"`);
-    
-    let responseData: unknown;
-    try {
-      const response = await axios.get<unknown>(url, {
-        timeout: REQUEST_TIMEOUT,
-        headers: { 
-          "User-Agent": USER_AGENT,
-          "Accept-Encoding": "identity"
-        }
-      });
-      responseData = response.data;
-      
-      // Log raw response for debugging empty results
-      if (tags && (!Array.isArray(responseData) || (Array.isArray(responseData) && responseData.length === 0))) {
-        logger.warn(`[Rule34Provider] Raw API response for tags "${tags}":`, {
-          type: typeof responseData,
-          isArray: Array.isArray(responseData),
-          length: Array.isArray(responseData) ? responseData.length : 'N/A',
-          preview: typeof responseData === 'object' && responseData !== null 
-            ? JSON.stringify(responseData).substring(0, 500)
-            : String(responseData).substring(0, 200)
-        });
-      }
-    } catch (error) {
-      logger.error(`[Rule34Provider] API request failed for tags "${tags}":`, error);
-      throw error;
-    }
+    return `${this.baseUrl}?${params}`;
+  }
 
-    if (!Array.isArray(responseData)) {
-      logger.warn(`[Rule34Provider] API returned non-array response for tags "${tags}":`, typeof responseData);
-      if (typeof responseData === 'object' && responseData !== null) {
-        logger.warn(`[Rule34Provider] Response object:`, JSON.stringify(responseData).substring(0, 500));
-      }
-      return [];
-    }
-    
-    logger.info(`[Rule34Provider] API returned ${responseData.length} posts for tags "${tags}" (page ${page})`);
-    
-    if (responseData.length === 0 && tags) {
-      // Log full URL for debugging (credentials already masked)
-      logger.warn(
-        `[Rule34Provider] ⚠️ Empty result for tags "${tags}". ` +
-        `URL was: ${safeUrl}. ` +
-        `This may indicate: 1) Tag doesn't exist in API (but exists on website), 2) Tag format issue, 3) API rate limiting, 4) API key/user_id issue. ` +
-        `Note: Some tags may exist on the website but not be available via API yet. ` +
-        `Try testing the URL directly in browser (replace api.rule34.xxx with rule34.xxx and use page=post&s=list instead of page=dapi&s=post&q=index)`
-      );
-      
-      // Try to verify if tag exists in API by checking tag metadata endpoint
-      // This is a diagnostic check, not a fix
-      if (settings.apiKey && settings.userId) {
-        try {
-          const tagCheckParams = new URLSearchParams({
-            page: 'dapi',
-            s: 'tag',
-            q: 'index',
-            json: '1',
-            name: tags.split(' ')[0], // Check first tag only
-          });
-          tagCheckParams.append('api_key', settings.apiKey);
-          tagCheckParams.append('user_id', settings.userId);
-          
-          const tagCheckUrl = `https://api.rule34.xxx/index.php?${tagCheckParams.toString()}`;
-          const tagResponse = await axios.get<unknown>(tagCheckUrl, {
-            timeout: 5000,
-            headers: { 
-              "User-Agent": USER_AGENT,
-              "Accept-Encoding": "identity"
-            }
-          });
-          
-          if (Array.isArray(tagResponse.data) && tagResponse.data.length > 0) {
-            logger.info(`[Rule34Provider] Tag "${tags.split(' ')[0]}" exists in API tag metadata, but no posts found. This may indicate a sync issue between website and API.`);
-          } else {
-            logger.warn(
-              `[Rule34Provider] Tag "${tags.split(' ')[0]}" not found in API tag metadata. ` +
-              `This tag exists on the website but is not yet synced to the API. ` +
-              `This is a limitation of the Rule34 API - some tags may appear on the website before they are available via API. ` +
-              `You can view posts with this tag directly on the website: https://rule34.xxx/index.php?page=post&s=list&tags=${encodeURIComponent(tags.split(' ')[0])}`
-            );
-          }
-        } catch (tagCheckError) {
-          logger.debug(`[Rule34Provider] Could not verify tag existence:`, tagCheckError);
-        }
-      }
-    }
-    
-    const data = responseData;
-
-    // Validate posts individually to handle partial failures gracefully
-    // If we use z.array() and one post fails, the entire array fails
-    // Instead, we validate each post and collect valid ones
+  /**
+   * Normalize JSON posts to BooruPost format
+   */
+  private normalizePosts(json: unknown[]): BooruPost[] {
     const validatedPosts: R34RawPost[] = [];
     const validationErrors: z.ZodError[] = [];
 
-    for (const raw of data) {
+    for (const raw of json) {
       const result = R34RawPostSchema.safeParse(raw);
       if (result.success) {
         validatedPosts.push(result.data);
@@ -219,12 +130,11 @@ export class Rule34Provider implements IBooruProvider {
       }
     }
 
-    // Log validation errors if any, but continue with valid posts
     if (validationErrors.length > 0) {
       logger.warn(
-        `[Rule34Provider] ${validationErrors.length} posts failed validation out of ${data.length} total`,
+        `[Rule34Provider] ${validationErrors.length} posts failed validation out of ${json.length} total`,
         { 
-          totalPosts: data.length,
+          totalPosts: json.length,
           validPosts: validatedPosts.length,
           invalidPosts: validationErrors.length,
           sampleErrors: validationErrors.slice(0, 3).map(e => e.errors)
@@ -235,6 +145,173 @@ export class Rule34Provider implements IBooruProvider {
     return validatedPosts
       .map((raw) => this.mapToBooruPost(raw))
       .filter((post): post is BooruPost => post !== null);
+  }
+
+  async fetchPosts(tags: string, page: number, settings: ProviderSettings): Promise<BooruPost[]> {
+    // Step 1: Try JSON first
+    const jsonUrl = this.buildUrl({ tags, page, settings, json: 1 });
+    
+    try {
+      const response = await axios.get<string>(jsonUrl, {
+        timeout: REQUEST_TIMEOUT,
+        headers: { 
+          "User-Agent": USER_AGENT,
+          "Accept-Encoding": "identity"
+        },
+        responseType: 'text',
+        validateStatus: (status) => status < 500
+      });
+      
+      const text = response.data;
+      
+      // CRITICAL: Check for "Empty Response" bug
+      if (!text || text.trim().length === 0) {
+        throw new Error("Empty response from JSON API");
+      }
+
+      // Try parsing JSON
+      const json = JSON.parse(text);
+      if (!Array.isArray(json)) {
+        throw new Error("API returned non-array JSON");
+      }
+      
+      return this.normalizePosts(json);
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn(`[Rule34Provider] JSON API failed for tags "${tags}". Error: ${errorMessage}. Retrying with XML...`);
+      
+      // Step 2: FALLBACK TO XML
+      try {
+        const xmlUrl = this.buildUrl({ tags, page, settings, json: 0 });
+        const xmlResponse = await axios.get<string>(xmlUrl, {
+          timeout: REQUEST_TIMEOUT,
+          headers: { 
+            "User-Agent": USER_AGENT,
+            "Accept-Encoding": "identity"
+          },
+          responseType: 'text',
+          validateStatus: (status) => status < 500
+        });
+        
+        const xmlText = xmlResponse.data;
+        const posts = this.parsePostXml(xmlText);
+        logger.warn(`[Rule34Provider] Recovered ${posts.length} posts via XML fallback.`);
+        return posts;
+      } catch (xmlError) {
+        logger.error("[Rule34Provider] XML Fallback failed:", xmlError);
+        return [];
+      }
+    }
+  }
+
+  /**
+   * Parse XML response from Rule34 API using regex to extract post attributes
+   * Uses regex pattern to match <post ... /> tags and extract attributes
+   * Returns BooruPost[] with strict camelCase field mapping for UI compatibility
+   * 
+   * @param xml - Raw XML response text
+   * @returns Array of parsed BooruPost objects
+   */
+  private parsePostXml(xml: string): BooruPost[] {
+    const posts: BooruPost[] = [];
+    
+    try {
+      // Match all <post ... /> tags using regex
+      // Pattern: <post followed by attributes, then >
+      const postRegex = /<post\s+([^>]+)>/g;
+      const matches = Array.from(xml.matchAll(postRegex));
+      
+      for (const match of matches) {
+        if (!match[1]) continue;
+        
+        const attributes = match[1];
+        
+        // Extract attribute values using regex
+        // Pattern: attribute_name="value" or attribute_name='value'
+        const attrRegex = /(\w+)="([^"]*)"|(\w+)='([^']*)'/g;
+        const attrs: Record<string, string> = {};
+        
+        let attrMatch;
+        while ((attrMatch = attrRegex.exec(attributes)) !== null) {
+          const key = attrMatch[1] || attrMatch[3];
+          const value = attrMatch[2] || attrMatch[4];
+          if (key && value !== undefined) {
+            attrs[key] = value;
+          }
+        }
+        
+        // Parse and validate required fields
+        const id = attrs.id ? parseInt(attrs.id, 10) : null;
+        if (!id || isNaN(id) || id <= 0) continue;
+        
+        const fileUrl = (attrs.file_url || '').trim();
+        if (!fileUrl) continue;
+        
+        // Map XML attributes directly to BooruPost format (camelCase)
+        // Use selectBestPreview for previewUrl (fallback to fileUrl if preview_url missing)
+        const previewUrl = selectBestPreview({
+          preview: attrs.preview_url,
+          sample: attrs.sample_url,
+          file: fileUrl,
+        }) || fileUrl; // Fallback to fileUrl if selectBestPreview returns empty
+        
+        const sampleUrl = (attrs.sample_url || fileUrl).trim();
+        
+        // Ensure previewUrl is never empty (critical for UI display)
+        const finalPreviewUrl = previewUrl.trim() || fileUrl;
+        if (!finalPreviewUrl) continue; // Skip if still empty
+        
+        // Parse tags: split by space and filter empty strings
+        const tags = (attrs.tags || '').split(' ').filter(Boolean);
+        
+        // Normalize rating using shared utility
+        const rating = normalizeRating(attrs.rating || 'q');
+        
+        // Parse numeric fields with fallbacks
+        const score = attrs.score ? parseInt(attrs.score, 10) : 0;
+        const width = attrs.width ? parseInt(attrs.width, 10) : 0;
+        const height = attrs.height ? parseInt(attrs.height, 10) : 0;
+        
+        // Date handling: XML may have created_at (string) or change (Unix timestamp)
+        let createdAt = new Date();
+        if (attrs.created_at) {
+          const parsedDate = new Date(attrs.created_at);
+          if (!isNaN(parsedDate.getTime())) {
+            createdAt = parsedDate;
+          }
+        } else if (attrs.change) {
+          const timestamp = parseInt(attrs.change, 10);
+          if (timestamp > 0) {
+            const parsedDate = new Date(timestamp * 1000);
+            if (!isNaN(parsedDate.getTime())) {
+              createdAt = parsedDate;
+            }
+          }
+        }
+        
+        // Build BooruPost object with strict camelCase mapping
+        const post: BooruPost = {
+          id: id,
+          fileUrl: fileUrl,
+          previewUrl: finalPreviewUrl,
+          sampleUrl: sampleUrl,
+          tags: tags,
+          rating: rating,
+          score: score,
+          source: (attrs.source || '').trim(),
+          width: width,
+          height: height,
+          createdAt: createdAt,
+        };
+        
+        posts.push(post);
+      }
+    } catch (error) {
+      logger.error(`[Rule34Provider] Failed to parse XML posts:`, error);
+    }
+    
+    return posts;
   }
 
   private mapToBooruPost(raw: R34RawPost): BooruPost | null {
