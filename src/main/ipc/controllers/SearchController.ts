@@ -48,14 +48,6 @@ export class SearchController extends BaseController {
         ...args: unknown[]
       ) => Promise<unknown>
     );
-    this.handle(
-      IPC_CHANNELS.API.GET_POSTS_COUNT_BY_TAG,
-      z.tuple([z.string().min(1)]),
-      this.getPostsCountByTag.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
-    );
 
     log.info("[SearchController] All handlers registered");
   }
@@ -246,45 +238,6 @@ export class SearchController extends BaseController {
       log.error("[SearchController] Failed to search posts:", error);
       // Re-throw original error to preserve stack trace and context
       throw error;
-    }
-  }
-
-  /**
-   * Get posts count by tag from external API (for Browse tab)
-   * 
-   * This method queries the Rule34 API directly to get the count of posts
-   * matching a specific tag. Used only in Browse tab where we need real-time
-   * counts from the website, not from local database.
-   *
-   * @param _event - IPC event (unused)
-   * @param tag - Tag to search for
-   * @returns Number of posts matching the tag
-   */
-  private async getPostsCountByTag(
-    _event: IpcMainInvokeEvent,
-    tag: string
-  ): Promise<number> {
-    try {
-      // Get provider (default to rule34)
-      const provider = getProvider("rule34");
-
-      // Get decrypted settings for authentication
-      const settings = await this.getDecryptedSettings();
-      const providerSettings = {
-        userId: settings?.userId || "",
-        apiKey: settings?.apiKey || "",
-      };
-
-      log.debug(`[SearchController] Getting post count for tag: "${tag}"`);
-
-      // Use provider method to get count from API
-      const count = await provider.getPostsCountByTag(tag, providerSettings);
-
-      log.debug(`[SearchController] Tag "${tag}" has ${count} posts from API`);
-      return count;
-    } catch (error) {
-      log.error(`[SearchController] Failed to get post count for tag "${tag}":`, error);
-      return 0;
     }
   }
 }

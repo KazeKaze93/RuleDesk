@@ -241,11 +241,17 @@ const TagsDrawer = ({
   isOpen,
   onOpenChange,
   isFromBrowse = false,
+  queue,
 }: {
   post: Post;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   isFromBrowse?: boolean;
+  queue: {
+    ids: number[];
+    origin: ViewerOrigin | undefined;
+    totalGlobalCount?: number;
+  } | null;
 }) => {
   const navigate = useNavigate();
   const { setQuery } = useSearchStore();
@@ -283,6 +289,38 @@ const TagsDrawer = ({
     return tagsArray;
   }, [post.tags]);
   
+  // Compute priority tags set (context-aware tag pinning)
+  // Combines DB Artist info + Search Context + Artist Context
+  const priorityTags = useMemo(() => {
+    const tags = new Set<string>();
+    
+    // 1. DB Artists (Hard Truth)
+    if (artist?.name) {
+      tags.add(artist.name.toLowerCase().replace(/ /g, '_'));
+    }
+    if (artist?.tag) {
+      tags.add(artist.tag.toLowerCase());
+      // Also add formatted versions
+      const formattedTag = artist.type === "uploader" 
+        ? `user:${artist.tag.toLowerCase().replace(/ /g, "_")}`
+        : artist.tag.toLowerCase().replace(/ /g, "_");
+      tags.add(formattedTag);
+    }
+    
+    // 2. Search Context (UX Heuristic)
+    // If user searched for "jamesbron", pin "jamesbron" even if untracked.
+    if (queue?.origin?.kind === 'search' && queue.origin.tags) {
+      queue.origin.tags.forEach(t => tags.add(t.toLowerCase()));
+    }
+    
+    // 3. Artist Context
+    if (queue?.origin?.kind === 'artist' && queue.origin.tags) {
+      queue.origin.tags.forEach(t => tags.add(t.toLowerCase()));
+    }
+    
+    return tags;
+  }, [artist, queue]);
+
   // Identify artist tag in the tag list
   // Check both artist.tag and formatted versions (user:username for uploader, lowercase for tag)
   const artistTagInList = useMemo(() => {
@@ -307,7 +345,25 @@ const TagsDrawer = ({
     return null;
   }, [artist, allTags]);
   
-  // Sort tags: artist tags first, then others
+  // Helper function to check if a tag matches any priority tag (fuzzy matching)
+  // Checks both exact match and if tag includes priority tag (e.g., "jamesbron_(official)" contains "jamesbron")
+  const matchesPriorityTag = useCallback((tag: string): boolean => {
+    const tagLower = tag.toLowerCase();
+    
+    // Check exact match first
+    if (priorityTags.has(tagLower)) return true;
+    
+    // Fuzzy matching: check if tag includes any priority tag
+    for (const priorityTag of priorityTags) {
+      if (tagLower.includes(priorityTag) || priorityTag.includes(tagLower)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }, [priorityTags]);
+
+  // Sort tags: priority tags first, then others
   const sortedTags = useMemo(() => {
     if (!post?.tags) return [];
     
@@ -316,21 +372,21 @@ const TagsDrawer = ({
       ? post.tags.split(' ').filter(t => t.length > 0)
       : Array.isArray(post.tags) ? post.tags : [];
 
-    // Use artistTagInList if found, otherwise fallback to normalized artist tag
-    const artistName = artist?.name?.toLowerCase().replace(/ /g, '_');
-    const artistTag = artistTagInList?.toLowerCase() || artist?.tag?.toLowerCase() || artistName;
-
     return tagsArray.sort((a, b) => {
       const tagA = a.toLowerCase();
       const tagB = b.toLowerCase();
       
-      // Force artist tag to front
-      if (tagA === artistTag) return -1;
-      if (tagB === artistTag) return 1;
+      // Check if tags match priority set (fuzzy matching)
+      const isAPriority = matchesPriorityTag(a);
+      const isBPriority = matchesPriorityTag(b);
+      
+      // Force priority tags to front
+      if (isAPriority && !isBPriority) return -1;
+      if (!isAPriority && isBPriority) return 1;
       
       return tagA.localeCompare(tagB);
     });
-  }, [post?.tags, artist, artistTagInList]);
+  }, [post?.tags, matchesPriorityTag]);
   
   // Filter out artist tag from the list (it's shown in header separately)
   const tags = useMemo(() => {
@@ -338,26 +394,11 @@ const TagsDrawer = ({
     return sortedTags.filter(tag => tag !== artistTagInList);
   }, [sortedTags, artistTagInList]);
 
-  // Helper function to check if a tag is an artist tag
-  const isArtistTag = useCallback((tag: string): boolean => {
-    if (!artist) return false;
-    
-    // Check exact match
-    if (tag === artist.tag) return true;
-    
-    // Check formatted versions
-    const formattedTag = artist.type === "uploader" 
-      ? `user:${artist.tag.toLowerCase().replace(/ /g, "_")}`
-      : artist.tag.toLowerCase().replace(/ /g, "_");
-    if (tag === formattedTag) return true;
-    
-    // Check if tag starts with "user:" for uploader type
-    if (artist.type === "uploader" && tag.startsWith("user:")) {
-      return tag.includes(artist.tag.toLowerCase());
-    }
-    
-    return false;
-  }, [artist]);
+  // Helper function to check if a tag is a priority tag (artist or search context)
+  // Uses fuzzy matching to catch variations like "jamesbron_(official)"
+  const isPriorityTag = useCallback((tag: string): boolean => {
+    return matchesPriorityTag(tag);
+  }, [matchesPriorityTag]);
 
   const { close: closeViewer } = useViewerStore(
     useShallow((state) => ({
@@ -381,20 +422,11 @@ const TagsDrawer = ({
     }
   };
 
-  // Component for artist header with count (only in Browse)
+  // Component for artist header
   const ArtistHeader = () => {
-    // Get post count for artist tag (only in Browse tab)
-    const { data: artistTagCount } = useQuery({
-      queryKey: ["posts-count-by-tag-api", artistTagInList || artist?.tag],
-      queryFn: () => {
-        const tagToSearch = artistTagInList || artist?.tag;
-        if (!tagToSearch) return 0;
-        return window.api.getPostsCountByTagFromAPI(tagToSearch);
-      },
-      enabled: isOpen && isFromBrowse && !!artistTagInList && !!artist, // Only fetch when drawer is open, in Browse, and artist tag exists
-    });
-
     if (!artist) return null;
+
+    const tagToShow = artistTagInList || artist.tag;
 
     return (
       <div className="sticky top-0 z-10 px-3 py-2 bg-primary/10 border-b border-primary/20 backdrop-blur-sm">
@@ -408,14 +440,9 @@ const TagsDrawer = ({
           <span className="text-sm font-medium text-primary">
             {artist.name}
           </span>
-          {artistTagInList && (
+          {tagToShow && (
             <span className="ml-auto text-xs text-primary/70 font-mono">
-              {artistTagInList}
-              {isFromBrowse && artistTagCount !== undefined && (
-                <span className="ml-1 text-primary/50">
-                  ({artistTagCount})
-                </span>
-              )}
+              {tagToShow}
             </span>
           )}
         </button>
@@ -489,15 +516,15 @@ const TagsDrawer = ({
                   Header: artist ? ArtistHeader : undefined,
                 }}
                 itemContent={(index, tag) => {
-                  // Check if this tag is an artist tag
-                  const tagIsArtist = isArtistTag(tag);
+                  // Check if this tag is a priority tag (artist or search context)
+                  const tagIsPriority = isPriorityTag(tag);
                   
                   return (
                     <button
                       onClick={() => handleTagClick(tag)}
                       className={cn(
                         "w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer",
-                        tagIsArtist && "bg-primary/10 border-primary text-primary font-bold"
+                        tagIsPriority && "bg-amber-500/15 text-amber-500 hover:bg-amber-500/20 border-amber-500/30 font-bold"
                       )}
                     >
                       {tag}
@@ -840,6 +867,7 @@ const ViewerContent = ({
         isOpen={isTagsDrawerOpen}
         onOpenChange={toggleTagsDrawer}
         isFromBrowse={queue?.origin?.kind === "browse" || queue?.origin?.kind === "search"}
+        queue={queue}
       />
 
       <button
