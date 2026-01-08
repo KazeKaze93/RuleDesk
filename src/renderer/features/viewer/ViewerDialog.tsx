@@ -162,7 +162,8 @@ const ViewerMedia = ({ post }: { post: Post }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
-  const shouldBlur = shouldBlurPost(post.rating, safeMode, panicMode);
+  const normalizedRating: "s" | "q" | "e" = (post.rating === "q" || post.rating === "e") ? post.rating : "s";
+  const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
 
   const isVideo =
@@ -241,7 +242,7 @@ const TagsDrawer = ({
   post,
   isOpen,
   onOpenChange,
-  isFromBrowse = false,
+  isFromBrowse: _isFromBrowse = false,
   queue,
 }: {
   post: Post;
@@ -294,7 +295,8 @@ const TagsDrawer = ({
   // Uses React Query to cache results and batch multiple tags in one request
   // Acts as a permanent session cache (staleTime: Infinity)
   // Uses IPC to call Main Process which has full access to credentials and persistent DB cache
-  const tagsString = typeof post?.tags === "string" ? post.tags : (post?.tags?.join(' ') || '');
+  // Post.tags is always a string in the schema, but handle edge cases
+  const tagsString = typeof post?.tags === "string" ? post.tags : '';
   const hasKnownArtist = !!artist;
 
   // Clean IPC call - no credentials passed from UI
@@ -303,7 +305,7 @@ const TagsDrawer = ({
     queryKey: ['resolve-tags-ipc', tagsString],
     queryFn: async () => {
       if (!tagsString) return [];
-      const tagsToAsk = tagsString.split(' ').slice(0, 20).filter(t => t.length > 0);
+      const tagsToAsk = tagsString.split(' ').slice(0, 20).filter((t: string) => t.length > 0);
       if (tagsToAsk.length === 0) return [];
       return await window.api.resolveTags(tagsToAsk);
     },
@@ -391,6 +393,7 @@ const TagsDrawer = ({
   }, [priorityTags]);
 
   // Sort tags: priority tags first, then others
+  // Artist tag should be pinned at the beginning of the list
   const sortedTags = useMemo(() => {
     if (!post?.tags) return [];
     
@@ -404,6 +407,7 @@ const TagsDrawer = ({
       const tagB = b.toLowerCase();
       
       // Check if tags match priority set (fuzzy matching)
+      // Use matchesPriorityTag callback which is stable thanks to useCallback
       const isAPriority = matchesPriorityTag(a);
       const isBPriority = matchesPriorityTag(b);
       
@@ -413,13 +417,11 @@ const TagsDrawer = ({
       
       return tagA.localeCompare(tagB);
     });
-  }, [post?.tags, matchesPriorityTag]);
+  }, [post.tags, matchesPriorityTag]);
   
-  // Filter out artist tag from the list (it's shown in header separately)
-  const tags = useMemo(() => {
-    if (!artistTagInList) return sortedTags;
-    return sortedTags.filter(tag => tag !== artistTagInList);
-  }, [sortedTags, artistTagInList]);
+  // Keep artist tag in the list - it will be pinned at the beginning by priority sorting
+  // Don't filter it out, as user wants it visible in the list
+  const tags = sortedTags;
 
   // Helper function to check if a tag is a priority tag (artist or search context)
   // Uses fuzzy matching to catch variations like "jamesbron_(official)"
@@ -533,7 +535,7 @@ const TagsDrawer = ({
           )}
           <div>
             <h3 className="mb-2 text-sm font-semibold">
-              Tags ({tags.length + (artist ? 1 : 0)})
+              Tags ({tags.length})
             </h3>
             <div className="max-h-[400px] overflow-hidden rounded-md border">
               <Virtuoso
@@ -542,7 +544,7 @@ const TagsDrawer = ({
                 components={{
                   Header: artist ? ArtistHeader : undefined,
                 }}
-                itemContent={(index, tag) => {
+                itemContent={(_index, tag) => {
                   // Check if this tag is a priority tag (artist or search context)
                   const tagIsPriority = isPriorityTag(tag);
                   
