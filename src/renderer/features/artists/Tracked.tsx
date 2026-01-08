@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import log from "electron-log/renderer";
 import { ArtistCard } from "./components/ArtistCard";
 import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
@@ -61,7 +61,10 @@ export const Tracked = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Tracked Artists</h1>
+        <h1 className="flex gap-2 items-center text-2xl font-bold tracking-tight">
+          <Users className="w-6 h-6 text-primary" />
+          Tracked Artists
+        </h1>
         <Button onClick={() => setIsAddModalOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" />
           Add Source

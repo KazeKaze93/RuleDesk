@@ -141,6 +141,7 @@
       "!**/.ai/**",
       "!**/scripts/**",
       "!**/repomix.config.json",
+      "!**/.ai/**",
       "!**/.cursorrules",
       "!**/repomix-output.*"
     ],

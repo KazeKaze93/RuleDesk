@@ -240,9 +240,11 @@ export class SyncService {
 
       if (artist && settingsData) {
         this.sendEvent("sync:repair:start", artist.name);
-        // Repair: reset lastPostId to 0 and sync ALL posts (no page limit)
-        // This ensures all posts are loaded, not just the first 3 pages
-        await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, Infinity);
+        // Repair: reset lastPostId to 0 and sync posts with safety limit
+        // CRITICAL: Use hard limit (1000 pages) instead of Infinity to prevent infinite loops
+        // At 100 posts/page, this equals 100k posts - more than sufficient for any artist
+        const MAX_PAGES_SAFETY_LIMIT = 1000;
+        await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, MAX_PAGES_SAFETY_LIMIT);
       }
     } catch (e) {
       logger.error("Repair error", e);

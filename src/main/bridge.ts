@@ -240,6 +240,15 @@ const ipcBridge: IpcBridge = {
 
   createBackup: () => ipcRenderer.invoke("db:create-backup"),
   restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
+
+  onMainLog: (callback: (data: { level: string; message: string }) => void) => {
+    const subscription = (_: IpcRendererEvent, data: { level: string; message: string }) =>
+      callback(data);
+    ipcRenderer.on("log:main-log", subscription);
+    return () => {
+      ipcRenderer.removeListener("log:main-log", subscription);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);

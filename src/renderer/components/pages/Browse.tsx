@@ -71,7 +71,7 @@ const parseTags = (query: string): string[] => {
 // --- Основной компонент ---
 
 export const Browse = () => {
-  const { query } = useSearchStore();
+  const query = useSearchStore((state) => state.query);
   const [tags, setTags] = useState<string[]>([]);
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
@@ -84,6 +84,7 @@ export const Browse = () => {
   // Update tags when query changes
   useEffect(() => {
     const parsedTags = parseTags(query);
+    log.debug(`[Browse] Query changed: "${query}" -> parsed tags:`, parsedTags);
     setTags(parsedTags);
   }, [query]);
 
@@ -92,10 +93,16 @@ export const Browse = () => {
       queryKey: ["search", tags],
       queryFn: async ({ pageParam = 1 }) => {
         // Always fetch - empty tags array means show all posts (API omits tags parameter)
-        return await window.api.searchBooru({
+        log.info(`[Browse] Fetching posts for tags:`, tags, `(page ${pageParam})`);
+        const result = await window.api.searchBooru({
           tags,
           page: pageParam,
         });
+        log.info(`[Browse] Received ${result.length} posts for tags:`, tags);
+        if (result.length === 0 && tags.length > 0) {
+          log.warn(`[Browse] ⚠️ No posts found for tags:`, tags);
+        }
+        return result;
       },
       getNextPageParam: (lastPage, _allPages, lastPageParam) => {
         // Use lastPageParam + 1 for correct pagination
@@ -192,23 +199,6 @@ export const Browse = () => {
             Browse
           </h2>
         </div>
-        {allPosts.length > 0 && (
-          <div className="flex gap-2 text-xs text-muted-foreground">
-            <span className="text-sm font-medium text-muted-foreground">
-              {allPosts.length} {allPosts.length === 1 ? "post" : "posts"}
-              {hasNextPage && " +"}
-            </span>
-            {tags.length > 0 ? (
-              <span className="text-xs text-muted-foreground/70">
-                • Tags: {tags.join(", ")}
-              </span>
-            ) : (
-              <span className="text-xs text-muted-foreground/70">
-                • Showing all posts
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Grid Content */}
