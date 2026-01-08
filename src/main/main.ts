@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog } from "electron";
 import path from "path";
 import { mkdirSync } from "fs";
-import log from "electron-log";
+import log, { type LogMessage } from "electron-log";
 
 // === Initialize electron-log first ===
 log.initialize();
@@ -343,6 +343,22 @@ async function initializeAppAndWindow() {
 
     updaterService.setWindow(mainWindow);
     syncService.setWindow(mainWindow);
+
+    // Forward main process logs to renderer for debugging
+    // Hook into electron-log transport to forward logs to renderer
+    const originalConsole = logger.transports.console;
+    logger.transports.console = (msg: LogMessage) => {
+      originalConsole(msg);
+      // Send log to renderer if window is ready
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("log:main-log", {
+          level: msg.level,
+          message: msg.data.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+          ).join(' ')
+        });
+      }
+    };
 
     mainWindow.webContents.on("did-finish-load", () => {
       logger.info("Renderer loaded");

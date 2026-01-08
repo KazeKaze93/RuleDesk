@@ -99,3 +99,15 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 - If you change file structure, remind me to run the context update command (e.g., `repo-inquisitor ctx`).
 - **Checkpoint**: If a logical unit of work is done, issue a "🛑 CHECKPOINT ALERT" and ask to commit.
 - If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
+
+# 🧠 MEMORY & CONTINUOUS IMPROVEMENT
+
+- **LESSONS FILE:** Before generating any code, YOU MUST CHECK `.ai/LESSONS.md` for specific anti-patterns and architectural constraints recorded from previous mistakes.
+- **PROTOCOL "LEARN":**
+  - IF I say: "save lesson",
+  - THEN you must:
+    1. Analyze the bug/error we just fixed.
+    2. Formulate a negative constraint (e.g., "Do not use X, because Y...").
+    3. Formulate the correct pattern (e.g., "Use Z instead").
+    4. APPEND this to `.ai/LESSONS.md` in a concise bullet point format with the current date.
+    5. CONFIRM: "Lesson saved. I will not repeat this mistake."

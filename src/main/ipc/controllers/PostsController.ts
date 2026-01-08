@@ -107,16 +107,10 @@ export class PostsController extends BaseController {
    */
   private checkFtsTableExists(): boolean {
     try {
-      const db = this.getDb();
-      // Access raw SQLite connection through Drizzle's session
-      // Drizzle BetterSQLite3Database exposes session.client as the raw better-sqlite3 Database instance
-      const sqlite = (
-        db as unknown as {
-          session: {
-            client: { prepare: (query: string) => { get: () => unknown } };
-          };
-        }
-      ).session.client;
+      // Use official getSqliteInstance export (safe, no unsafe casts)
+      // Query sqlite_master system table to check if posts_fts exists
+      const { getSqliteInstance } = require("../../db/client");
+      const sqlite = getSqliteInstance();
       const stmt = sqlite.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
       );

@@ -84,35 +84,125 @@ export class Rule34Provider implements IBooruProvider {
   }
 
   async fetchPosts(tags: string, page: number, settings: ProviderSettings): Promise<BooruPost[]> {
-    const params = new URLSearchParams({
-      page: "dapi",
-      s: "post",
-      q: "index",
-      limit: "100",
-      pid: page.toString(),
-      json: "1",
-    });
+    const params = new URLSearchParams();
     
+    // Add required parameters first
+    params.append("page", "dapi");
+    params.append("s", "post");
+    params.append("q", "index");
+    params.append("json", "1");
+    
+    // Add tags parameter early (before limit/pid) - some APIs are sensitive to parameter order
     // Only add tags parameter if provided and not empty
     // Empty tags or "all" means show all posts (omit tags parameter)
     if (tags && tags.trim() !== "" && tags.trim().toLowerCase() !== "all") {
       params.append("tags", tags);
     }
+    
+    // Add pagination parameters
+    // Maximum limit is 1000 per API documentation
+    params.append("limit", "1000");
+    params.append("pid", page.toString());
 
+    // Add authentication last (some APIs prefer auth params at the end)
     if (settings.userId && settings.apiKey) {
       params.append("user_id", settings.userId);
       params.append("api_key", settings.apiKey);
     }
 
-    const { data } = await axios.get<unknown>(`${this.baseUrl}?${params}`, {
-      timeout: REQUEST_TIMEOUT,
-      headers: { 
-        "User-Agent": USER_AGENT,
-        "Accept-Encoding": "identity"
+    const url = `${this.baseUrl}?${params}`;
+    const safeUrl = url.replace(/api_key=[^&]+/, 'api_key=***').replace(/user_id=[^&]+/, 'user_id=***');
+    logger.info(`[Rule34Provider] Fetching posts: ${safeUrl}`);
+    logger.info(`[Rule34Provider] Tags parameter value: "${tags}"`);
+    logger.info(`[Rule34Provider] Tags parameter after URL encoding: "${params.get('tags') || 'N/A'}"`);
+    
+    let responseData: unknown;
+    try {
+      const response = await axios.get<unknown>(url, {
+        timeout: REQUEST_TIMEOUT,
+        headers: { 
+          "User-Agent": USER_AGENT,
+          "Accept-Encoding": "identity"
+        }
+      });
+      responseData = response.data;
+      
+      // Log raw response for debugging empty results
+      if (tags && (!Array.isArray(responseData) || (Array.isArray(responseData) && responseData.length === 0))) {
+        logger.warn(`[Rule34Provider] Raw API response for tags "${tags}":`, {
+          type: typeof responseData,
+          isArray: Array.isArray(responseData),
+          length: Array.isArray(responseData) ? responseData.length : 'N/A',
+          preview: typeof responseData === 'object' && responseData !== null 
+            ? JSON.stringify(responseData).substring(0, 500)
+            : String(responseData).substring(0, 200)
+        });
       }
-    });
+    } catch (error) {
+      logger.error(`[Rule34Provider] API request failed for tags "${tags}":`, error);
+      throw error;
+    }
 
-    if (!Array.isArray(data)) return [];
+    if (!Array.isArray(responseData)) {
+      logger.warn(`[Rule34Provider] API returned non-array response for tags "${tags}":`, typeof responseData);
+      if (typeof responseData === 'object' && responseData !== null) {
+        logger.warn(`[Rule34Provider] Response object:`, JSON.stringify(responseData).substring(0, 500));
+      }
+      return [];
+    }
+    
+    logger.info(`[Rule34Provider] API returned ${responseData.length} posts for tags "${tags}" (page ${page})`);
+    
+    if (responseData.length === 0 && tags) {
+      // Log full URL for debugging (credentials already masked)
+      logger.warn(
+        `[Rule34Provider] ⚠️ Empty result for tags "${tags}". ` +
+        `URL was: ${safeUrl}. ` +
+        `This may indicate: 1) Tag doesn't exist in API (but exists on website), 2) Tag format issue, 3) API rate limiting, 4) API key/user_id issue. ` +
+        `Note: Some tags may exist on the website but not be available via API yet. ` +
+        `Try testing the URL directly in browser (replace api.rule34.xxx with rule34.xxx and use page=post&s=list instead of page=dapi&s=post&q=index)`
+      );
+      
+      // Try to verify if tag exists in API by checking tag metadata endpoint
+      // This is a diagnostic check, not a fix
+      if (settings.apiKey && settings.userId) {
+        try {
+          const tagCheckParams = new URLSearchParams({
+            page: 'dapi',
+            s: 'tag',
+            q: 'index',
+            json: '1',
+            name: tags.split(' ')[0], // Check first tag only
+          });
+          tagCheckParams.append('api_key', settings.apiKey);
+          tagCheckParams.append('user_id', settings.userId);
+          
+          const tagCheckUrl = `https://api.rule34.xxx/index.php?${tagCheckParams.toString()}`;
+          const tagResponse = await axios.get<unknown>(tagCheckUrl, {
+            timeout: 5000,
+            headers: { 
+              "User-Agent": USER_AGENT,
+              "Accept-Encoding": "identity"
+            }
+          });
+          
+          if (Array.isArray(tagResponse.data) && tagResponse.data.length > 0) {
+            logger.info(`[Rule34Provider] Tag "${tags.split(' ')[0]}" exists in API tag metadata, but no posts found. This may indicate a sync issue between website and API.`);
+          } else {
+            logger.warn(
+              `[Rule34Provider] Tag "${tags.split(' ')[0]}" not found in API tag metadata. ` +
+              `This tag exists on the website but is not yet synced to the API. ` +
+              `This is a limitation of the Rule34 API - some tags may appear on the website before they are available via API. ` +
+              `You can view posts with this tag directly on the website: https://rule34.xxx/index.php?page=post&s=list&tags=${encodeURIComponent(tags.split(' ')[0])}`
+            );
+          }
+        } catch (tagCheckError) {
+          logger.debug(`[Rule34Provider] Could not verify tag existence:`, tagCheckError);
+        }
+      }
+    }
+    
+    const data = responseData;
 
     // Validate posts individually to handle partial failures gracefully
     // If we use z.array() and one post fails, the entire array fails
