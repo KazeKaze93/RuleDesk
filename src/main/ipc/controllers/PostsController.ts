@@ -102,11 +102,19 @@ export class PostsController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
+  // Cache FTS table existence check (schema doesn't change at runtime)
+  private ftsTableExistsCache: boolean | null = null;
+
   /**
-   * Check if posts_fts table exists
+   * Check if posts_fts table exists (cached, checked once at initialization)
    * @returns true if FTS5 table exists, false otherwise
    */
   private checkFtsTableExists(): boolean {
+    // Return cached value if already checked
+    if (this.ftsTableExistsCache !== null) {
+      return this.ftsTableExistsCache;
+    }
+
     try {
       // Use official getSqliteInstance export (safe, no unsafe casts)
       // Query sqlite_master system table to check if posts_fts exists
@@ -115,12 +123,14 @@ export class PostsController extends BaseController {
         "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
       );
       const result = stmt.get();
-      return !!result;
+      this.ftsTableExistsCache = !!result;
+      return this.ftsTableExistsCache;
     } catch (error) {
       log.warn(
         "[PostsController] Failed to check FTS table existence, using LIKE fallback:",
         error
       );
+      this.ftsTableExistsCache = false;
       return false;
     }
   }

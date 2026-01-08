@@ -19,6 +19,23 @@ import { XMLParser } from "fast-xml-parser";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
+// Zod schema for Rule34 DAPI tag response validation
+const R34TagResponseSchema = z.object({
+  id: z.number().optional(),
+  name: z.string().min(1),
+  type: z.union([z.number(), z.string()]).transform((val) => {
+    const num = typeof val === 'string' ? parseInt(val, 10) : Number(val);
+    if (isNaN(num) || num < 0) {
+      throw new z.ZodError([{
+        code: 'custom',
+        path: ['type'],
+        message: 'Invalid type value',
+      }]);
+    }
+    return num;
+  }),
+}).passthrough(); // Allow additional fields from API
+
 // Internal type alias
 type SearchPostsParams = z.infer<typeof SearchPostsSchema>;
 
@@ -52,8 +69,35 @@ export class SearchController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS,
-      z.tuple([z.array(z.string().min(1))]), // No limit - process all tags to find artists regardless of position
+      z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
       this.resolveTags.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.API.RESOLVE_CHARACTER_TAGS,
+      z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
+      this.resolveCharacterTags.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS,
+      z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
+      (event, ...args) => {
+        const tags = args[0] as string[];
+        return this.resolveTagsByType(event, tags, 3) as Promise<unknown>;
+      }
+    );
+
+    this.handle(
+      IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE,
+      z.tuple([z.array(z.string().min(1)).max(100), z.number().int().min(0).max(5)]), // tags, type
+      this.resolveTagsByType.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
       ) => Promise<unknown>
@@ -324,7 +368,7 @@ export class SearchController extends BaseController {
    * Uses persistent SQLite cache to avoid redundant API calls.
    * Logic flow:
    * 1. Check local DB cache for requested tags
-   * 2. Fetch only missing tags from API (batch requests of 10 to keep URL length safe)
+   * 2. Fetch only missing tags from API (batch requests with CONCURRENCY_LIMIT)
    * 3. Save new tags to cache for future use
    * 4. Return only artist tags (type=1)
    * 
@@ -332,16 +376,16 @@ export class SearchController extends BaseController {
    * 
    * Network optimization:
    * - Only queries API for tags not in local cache (missingTags)
-   * - Batches requests in groups of 10 to keep URL length manageable
-   * - URL parameters: page='dapi', s='tag', q='index', json='1', names=...
-   * - Does NOT send 'limit' (default 100 is fine for batch of 10)
-   * - Does NOT send 'tags' (that parameter is for posts endpoint, not tags endpoint)
+   * - Limits concurrency to CONCURRENCY_LIMIT (5) to avoid blocking Main process
+   * - URL parameters: page='dapi', s='tag', q='index', json='1', name=<tag>
    * 
-   * Note: No limit on input tag count - all tags are processed to ensure artist tags
-   * are found even if they appear beyond position 20 in the tag list.
+   * ⚠️ ARCHITECTURE NOTE: Network I/O in Main process is not ideal.
+   * This should be moved to Utility Process in the future to prevent IPC channel blocking.
+   * Current implementation uses CONCURRENCY_LIMIT as a mitigation, but heavy network
+   * operations should not run in Main process event loop.
    *
    * @param _event - IPC event (unused)
-   * @param tags - Array of tag names to resolve (no limit, all processed)
+   * @param tags - Array of tag names to resolve (max 100, validated via Zod)
    * @returns Array of tag names that are artists (type=1)
    */
   private async resolveTags(
@@ -464,49 +508,36 @@ export class SearchController extends BaseController {
                 return [];
               }
 
-              // Filter and map to valid entries with correct type from API
+              // Validate and filter entries using Zod schema
               // CRITICAL: DAPI returns { "id": number, "name": "string", "type": number, ... }
               // type=1 is Artist, type=0 is General, etc.
               // Only process entries that match the requested tag name (case-insensitive)
               const requestedTagLower = tagName.toLowerCase();
-              const entries = items
-                .filter((item: unknown) => {
-                  // Validate item structure
-                  if (!item || typeof item !== 'object' || item === null) {
-                    return false;
-                  }
-                  // Ensure name and type exist
-                  if (!('name' in item) || !('type' in item)) {
-                    return false;
-                  }
-                  // Validate name is a non-empty string
-                  const name = item.name;
-                  if (typeof name !== 'string' || !name.trim()) {
-                    return false;
-                  }
-                  // CRITICAL: Only accept tags that match the requested tag name (case-insensitive)
-                  if (name.toLowerCase() !== requestedTagLower) {
-                    return false;
-                  }
-                  // Validate type is a valid number (can be string "1" or number 1)
-                  const type = item.type;
-                  const typeNum = typeof type === 'string' ? parseInt(type, 10) : Number(type);
-                  if (isNaN(typeNum) || typeNum < 0) {
-                    return false;
-                  }
-                  return true;
-                })
-                .map((item: { name: string; type: string | number }) => {
-                  // CRITICAL: Parse type as number (API may return string "1" or number 1)
-                  const typeNum = typeof item.type === 'string' 
-                    ? parseInt(item.type, 10) 
-                    : Number(item.type);
+              const entries: Array<{ name: string; type: number }> = [];
+              
+              for (const item of items) {
+                try {
+                  // Validate item structure with Zod
+                  const validated = R34TagResponseSchema.parse(item);
                   
-                  return {
-                    name: String(item.name).toLowerCase().trim(),
-                    type: typeNum, // Correct type from API (0=General, 1=Artist, etc)
-                  };
-                });
+                  // CRITICAL: Only accept tags that match the requested tag name (case-insensitive)
+                  if (validated.name.toLowerCase() !== requestedTagLower) {
+                    continue;
+                  }
+                  
+                  entries.push({
+                    name: validated.name.toLowerCase().trim(),
+                    type: validated.type, // Already validated and transformed by Zod
+                  });
+                } catch (validationError) {
+                  // Skip invalid items (Zod validation failed)
+                  if (validationError instanceof z.ZodError) {
+                    log.debug(`[SearchController] Skipping invalid tag item for "${tagName}":`, validationError.errors);
+                  } else {
+                    log.warn(`[SearchController] Unexpected error validating tag item:`, validationError);
+                  }
+                }
+              }
 
               return entries;
             } catch (err) {
@@ -525,18 +556,21 @@ export class SearchController extends BaseController {
       }
 
       // Bulk insert all entries at once (fixes N+1 problem)
+      // Use transaction for atomicity (all or nothing)
       if (allEntries.length > 0) {
         try {
-          // Use bulk insert with onConflictDoUpdate for all entries
-          db.insert(tagMetadata)
-            .values(allEntries)
-            .onConflictDoUpdate({
-              target: tagMetadata.name,
-              set: { type: sql`excluded.type` }, // Update with real type from API
-            })
-            .run();
+          db.transaction((tx) => {
+            // Use bulk insert with onConflictDoUpdate for all entries
+            tx.insert(tagMetadata)
+              .values(allEntries)
+              .onConflictDoUpdate({
+                target: tagMetadata.name,
+                set: { type: sql`excluded.type` }, // Update with real type from API
+              })
+              .run();
+          });
 
-          // Update cache with correct types
+          // Update cache with correct types (only after successful transaction)
           allEntries.forEach(e => cachedMap.set(e.name, e.type));
         } catch (dbErr) {
           log.error(`[SearchController] Database error during bulk insert:`, dbErr);
@@ -573,6 +607,431 @@ export class SearchController extends BaseController {
       return artistTags;
     } catch (error) {
       log.error("[SearchController] Failed to resolve tags:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Resolve tags to identify character tags (type=4) from Rule34 API
+   * 
+   * Uses the same logic as resolveTags but returns character tags (type=4) instead of artist tags (type=1).
+   * Reuses the same persistent SQLite cache and API endpoints.
+   * 
+   * @param _event - IPC event (unused)
+   * @param tags - Array of tag names to resolve (max 100, validated via Zod)
+   * @returns Array of tag names that are characters (type=4)
+   */
+  private async resolveCharacterTags(
+    _event: IpcMainInvokeEvent,
+    tags: string[]
+  ): Promise<string[]> {
+    try {
+      if (!tags || tags.length === 0) {
+        return [];
+      }
+
+      // Normalize tags (lowercase, unique) - process ALL tags, no arbitrary limits
+      const uniqueTags = [...new Set(tags.filter(Boolean).map(t => t.toLowerCase().trim()))];
+      if (uniqueTags.length === 0) {
+        return [];
+      }
+
+      const db = this.getDb();
+
+      // 1. Check local DB cache first - avoid unnecessary API calls
+      const cachedTags = db
+        .select()
+        .from(tagMetadata)
+        .where(inArray(tagMetadata.name, uniqueTags))
+        .all();
+
+      const cachedMap = new Map(cachedTags.map(t => [t.name, t.type]));
+      // Only query API for tags we don't have in cache
+      const missingTags = uniqueTags.filter(t => !cachedMap.has(t));
+
+      // Early return if all tags are cached
+      if (missingTags.length === 0) {
+        const characterTags = uniqueTags.filter(tag => cachedMap.get(tag) === 4);
+        log.debug(`[SearchController] All ${uniqueTags.length} tags found in cache, returning ${characterTags.length} characters`);
+        return characterTags;
+      }
+
+      log.info(`[SearchController] Resolving ${missingTags.length} missing tags from API for characters (${cachedTags.length} found in cache)`);
+
+      // Get decrypted settings for authentication
+      const settings = await this.getDecryptedSettings();
+      if (!settings) {
+        log.warn("[SearchController] Cannot resolve character tags: no settings available");
+        return uniqueTags.filter(tag => cachedMap.get(tag) === 4);
+      }
+
+      // 2. DAPI-based resolver with parallel requests (limited concurrency)
+      // Reuse the same API endpoint and logic as resolveTags
+      const CONCURRENCY_LIMIT = 5; // Process 5 tags simultaneously
+      const allEntries: Array<{ name: string; type: number }> = [];
+
+      // Process tags in batches with concurrency limit
+      for (let i = 0; i < missingTags.length; i += CONCURRENCY_LIMIT) {
+        const batch = missingTags.slice(i, i + CONCURRENCY_LIMIT);
+        
+        // Process batch in parallel
+        const batchResults = await Promise.allSettled(
+          batch.map(async (tagName) => {
+            try {
+              const params = new URLSearchParams({
+                page: 'dapi',
+                s: 'tag',
+                q: 'index',
+                json: '1',
+                name: tagName, // Single tag name per request
+              });
+
+              if (settings.apiKey) {
+                params.append('api_key', settings.apiKey);
+              }
+              if (settings.userId) {
+                params.append('user_id', String(settings.userId));
+              }
+
+              const url = `https://api.rule34.xxx/index.php?${params.toString()}`;
+
+              const response = await fetch(url, {
+                signal: AbortSignal.timeout(10000), // 10 second timeout
+                headers: {
+                  'User-Agent': 'RuleDesk/1.0',
+                  'Accept-Encoding': 'identity',
+                },
+              });
+
+              if (!response.ok) {
+                log.warn(`[SearchController] API returned status ${response.status} for tag "${tagName}"`);
+                return [];
+              }
+
+              const text = await response.text();
+              let items: Array<{ name: string; type: string | number; id?: number }> = [];
+
+              // Handle XML response (API sometimes returns XML even with json=1)
+              if (text.trim().startsWith('<')) {
+                items = this.parseTagXmlResponse(text, tagName);
+              } else {
+                // Handle JSON response
+                let data;
+                try {
+                  data = JSON.parse(text);
+                } catch (parseErr) {
+                  log.warn(`[SearchController] Failed to parse JSON for tag "${tagName}":`, parseErr);
+                  return [];
+                }
+
+                // Normalize: API can return a single object or an array
+                items = Array.isArray(data) ? data : (data ? [data] : []);
+              }
+              
+              // If no items found, return empty array
+              if (items.length === 0) {
+                return [];
+              }
+
+              // Validate and filter entries using Zod schema
+              const requestedTagLower = tagName.toLowerCase();
+              const entries: Array<{ name: string; type: number }> = [];
+              
+              for (const item of items) {
+                try {
+                  // Validate item structure with Zod
+                  const validated = R34TagResponseSchema.parse(item);
+                  
+                  // CRITICAL: Only accept tags that match the requested tag name (case-insensitive)
+                  if (validated.name.toLowerCase() !== requestedTagLower) {
+                    continue;
+                  }
+                  
+                  entries.push({
+                    name: validated.name.toLowerCase().trim(),
+                    type: validated.type, // Already validated and transformed by Zod
+                  });
+                } catch (validationError) {
+                  // Skip invalid items (Zod validation failed)
+                  if (validationError instanceof z.ZodError) {
+                    log.debug(`[SearchController] Skipping invalid tag item for "${tagName}":`, validationError.errors);
+                  } else {
+                    log.warn(`[SearchController] Unexpected error validating tag item:`, validationError);
+                  }
+                }
+              }
+
+              return entries;
+            } catch (err) {
+              log.error(`[SearchController] Error processing tag "${tagName}":`, err);
+              return [];
+            }
+          })
+        );
+
+        // Collect all entries from batch
+        for (const result of batchResults) {
+          if (result.status === 'fulfilled') {
+            allEntries.push(...result.value);
+          }
+        }
+      }
+
+      // Bulk insert all entries at once (fixes N+1 problem)
+      // Use transaction for atomicity (all or nothing)
+      if (allEntries.length > 0) {
+        try {
+          db.transaction((tx) => {
+            // Use bulk insert with onConflictDoUpdate for all entries
+            tx.insert(tagMetadata)
+              .values(allEntries)
+              .onConflictDoUpdate({
+                target: tagMetadata.name,
+                set: { type: sql`excluded.type` }, // Update with real type from API
+              })
+              .run();
+          });
+
+          // Update cache with correct types (only after successful transaction)
+          allEntries.forEach(e => cachedMap.set(e.name, e.type));
+        } catch (dbErr) {
+          log.error(`[SearchController] Database error during bulk insert:`, dbErr);
+          // Fallback: try individual inserts for remaining entries
+          for (const entry of allEntries) {
+            try {
+              db.insert(tagMetadata)
+                .values(entry)
+                .onConflictDoUpdate({
+                  target: tagMetadata.name,
+                  set: { type: sql`excluded.type` },
+                })
+                .run();
+              cachedMap.set(entry.name, entry.type);
+            } catch (individualErr) {
+              log.error(`[SearchController] Database error for tag "${entry.name}":`, individualErr);
+            }
+          }
+        }
+      }
+
+      // CRITICAL: Return ONLY tags where type === 4 (Character)
+      const characterTags = uniqueTags.filter(tag => {
+        const tagType = cachedMap.get(tag);
+        return tagType === 4; // type=4 is Character
+      });
+      
+      // Summary log after processing all tags
+      log.info(
+        `[SearchController] Resolved batch: found ${characterTags.length} character(s) out of ${uniqueTags.length} tag(s) requested`
+      );
+
+      return characterTags;
+    } catch (error) {
+      log.error("[SearchController] Failed to resolve character tags:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Resolve tags by type from Rule34 API
+   * Universal method that can resolve tags of any type (0=General, 1=Artist, 3=Copyright, 4=Character, 5=Meta)
+   * 
+   * @param _event - IPC event (unused)
+   * @param tags - Array of tag names to resolve (max 100, validated via Zod)
+   * @param tagType - Type of tags to return (0=General, 1=Artist, 3=Copyright, 4=Character, 5=Meta)
+   * @returns Array of tag names that match the specified type
+   */
+  private async resolveTagsByType(
+    _event: IpcMainInvokeEvent,
+    tags: string[],
+    tagType: number
+  ): Promise<string[]> {
+    try {
+      if (!tags || tags.length === 0) {
+        return [];
+      }
+
+      // Normalize tags (lowercase, unique)
+      const uniqueTags = [...new Set(tags.filter(Boolean).map(t => t.toLowerCase().trim()))];
+      if (uniqueTags.length === 0) {
+        return [];
+      }
+
+      const db = this.getDb();
+
+      // 1. Check local DB cache first
+      const cachedTags = db
+        .select()
+        .from(tagMetadata)
+        .where(inArray(tagMetadata.name, uniqueTags))
+        .all();
+
+      const cachedMap = new Map(cachedTags.map(t => [t.name, t.type]));
+      const missingTags = uniqueTags.filter(t => !cachedMap.has(t));
+
+      // Early return if all tags are cached
+      if (missingTags.length === 0) {
+        const filteredTags = uniqueTags.filter(tag => cachedMap.get(tag) === tagType);
+        log.debug(`[SearchController] All ${uniqueTags.length} tags found in cache, returning ${filteredTags.length} tags of type ${tagType}`);
+        return filteredTags;
+      }
+
+      log.info(`[SearchController] Resolving ${missingTags.length} missing tags from API for type ${tagType} (${cachedTags.length} found in cache)`);
+
+      // Get decrypted settings for authentication
+      const settings = await this.getDecryptedSettings();
+      if (!settings) {
+        log.warn(`[SearchController] Cannot resolve tags: no settings available`);
+        return uniqueTags.filter(tag => cachedMap.get(tag) === tagType);
+      }
+
+      // 2. DAPI-based resolver with parallel requests
+      const CONCURRENCY_LIMIT = 5;
+      const allEntries: Array<{ name: string; type: number }> = [];
+
+      // Process tags in batches with concurrency limit
+      for (let i = 0; i < missingTags.length; i += CONCURRENCY_LIMIT) {
+        const batch = missingTags.slice(i, i + CONCURRENCY_LIMIT);
+        
+        const batchResults = await Promise.allSettled(
+          batch.map(async (tagName) => {
+            try {
+              const params = new URLSearchParams({
+                page: 'dapi',
+                s: 'tag',
+                q: 'index',
+                json: '1',
+                name: tagName,
+              });
+
+              if (settings.apiKey) {
+                params.append('api_key', settings.apiKey);
+              }
+              if (settings.userId) {
+                params.append('user_id', String(settings.userId));
+              }
+
+              const url = `https://api.rule34.xxx/index.php?${params.toString()}`;
+
+              const response = await fetch(url, {
+                signal: AbortSignal.timeout(10000),
+                headers: {
+                  'User-Agent': 'RuleDesk/1.0',
+                  'Accept-Encoding': 'identity',
+                },
+              });
+
+              if (!response.ok) {
+                log.warn(`[SearchController] API returned status ${response.status} for tag "${tagName}"`);
+                return [];
+              }
+
+              const text = await response.text();
+              let items: Array<{ name: string; type: string | number; id?: number }> = [];
+
+              if (text.trim().startsWith('<')) {
+                items = this.parseTagXmlResponse(text, tagName);
+              } else {
+                let data;
+                try {
+                  data = JSON.parse(text);
+                } catch (parseErr) {
+                  log.warn(`[SearchController] Failed to parse JSON for tag "${tagName}":`, parseErr);
+                  return [];
+                }
+
+                items = Array.isArray(data) ? data : (data ? [data] : []);
+              }
+              
+              if (items.length === 0) {
+                return [];
+              }
+
+              const requestedTagLower = tagName.toLowerCase();
+              const entries: Array<{ name: string; type: number }> = [];
+              
+              for (const item of items) {
+                try {
+                  const validated = R34TagResponseSchema.parse(item);
+                  
+                  if (validated.name.toLowerCase() !== requestedTagLower) {
+                    continue;
+                  }
+                  
+                  entries.push({
+                    name: validated.name.toLowerCase().trim(),
+                    type: validated.type,
+                  });
+                } catch (validationError) {
+                  if (validationError instanceof z.ZodError) {
+                    log.debug(`[SearchController] Skipping invalid tag item for "${tagName}":`, validationError.errors);
+                  } else {
+                    log.warn(`[SearchController] Unexpected error validating tag item:`, validationError);
+                  }
+                }
+              }
+
+              return entries;
+            } catch (err) {
+              log.error(`[SearchController] Error processing tag "${tagName}":`, err);
+              return [];
+            }
+          })
+        );
+
+        for (const result of batchResults) {
+          if (result.status === 'fulfilled') {
+            allEntries.push(...result.value);
+          }
+        }
+      }
+
+      // Bulk insert all entries
+      if (allEntries.length > 0) {
+        try {
+          db.transaction((tx) => {
+            tx.insert(tagMetadata)
+              .values(allEntries)
+              .onConflictDoUpdate({
+                target: tagMetadata.name,
+                set: { type: sql`excluded.type` },
+              })
+              .run();
+          });
+
+          allEntries.forEach(e => cachedMap.set(e.name, e.type));
+        } catch (dbErr) {
+          log.error(`[SearchController] Database error during bulk insert:`, dbErr);
+          for (const entry of allEntries) {
+            try {
+              db.insert(tagMetadata)
+                .values(entry)
+                .onConflictDoUpdate({
+                  target: tagMetadata.name,
+                  set: { type: sql`excluded.type` },
+                })
+                .run();
+              cachedMap.set(entry.name, entry.type);
+            } catch (individualErr) {
+              log.error(`[SearchController] Database error for tag "${entry.name}":`, individualErr);
+            }
+          }
+        }
+      }
+
+      // Return only tags that match the specified type
+      const filteredTags = uniqueTags.filter(tag => {
+        const tagTypeInCache = cachedMap.get(tag);
+        return tagTypeInCache === tagType;
+      });
+      
+      log.info(
+        `[SearchController] Resolved batch: found ${filteredTags.length} tag(s) of type ${tagType} out of ${uniqueTags.length} tag(s) requested`
+      );
+
+      return filteredTags;
+    } catch (error) {
+      log.error(`[SearchController] Failed to resolve tags by type ${tagType}:`, error);
       return [];
     }
   }

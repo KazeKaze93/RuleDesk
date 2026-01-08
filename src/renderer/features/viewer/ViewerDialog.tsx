@@ -302,20 +302,33 @@ const TagsDrawer = ({
     retry: false,
   });
 
-  // Sort tags alphabetically (no special highlighting or pinning)
-  const tags = useMemo(() => {
-    if (!post?.tags) return [];
-    
-    // Normalize string to array
-    const tagsArray = typeof post.tags === 'string' 
-      ? post.tags.split(' ').filter(t => t.length > 0)
-      : Array.isArray(post.tags) ? post.tags : [];
+  // Resolve character tags (type=4) from API
+  const { data: resolvedCharacterTags = [] } = useQuery<string[]>({
+    queryKey: ['resolve-character-tags-ipc', tagsString],
+    queryFn: async () => {
+      if (!tagsString) return [];
+      const tagsToAsk = tagsString.split(' ').filter((t: string) => t.length > 0);
+      if (tagsToAsk.length === 0) return [];
+      return await window.api.resolveCharacterTags(tagsToAsk);
+    },
+    enabled: !!post && tagsString.length > 0,
+    staleTime: Infinity, // Keep in RAM for session
+    retry: false,
+  });
 
-    // Simple alphabetical sort
-    return tagsArray.sort((a, b) => 
-      a.toLowerCase().localeCompare(b.toLowerCase())
-    );
-  }, [post.tags]);
+  // Resolve copyright tags (type=3) from API
+  const { data: resolvedCopyrightTags = [] } = useQuery<string[]>({
+    queryKey: ['resolve-copyright-tags-ipc', tagsString],
+    queryFn: async () => {
+      if (!tagsString) return [];
+      const tagsToAsk = tagsString.split(' ').filter((t: string) => t.length > 0);
+      if (tagsToAsk.length === 0) return [];
+      return await window.api.resolveCopyrightTags(tagsToAsk);
+    },
+    enabled: !!post && tagsString.length > 0,
+    staleTime: Infinity, // Keep in RAM for session
+    retry: false,
+  });
 
   // Get all tags from the post for matching
   const allTags = useMemo(() => {
@@ -326,29 +339,51 @@ const TagsDrawer = ({
     return tagsArray;
   }, [post.tags]);
 
-  // Determine primary artist tag with priority:
-  // Priority 1: Local DB artist (highest trust)
-  // Priority 2: API Resolved Artist (find matching tag in post's tag list)
-  const primaryArtistTag = useMemo(() => {
-    // 1. Prefer Local DB Artist (highest trust)
+  // Get all copyright tags (type=3) - return all matching tags, not just first
+  const copyrightTags = useMemo(() => {
+    if (resolvedCopyrightTags.length === 0) return [];
+    // Find all tags in the post's tag list that match resolved copyright tags
+    return allTags.filter(t => 
+      resolvedCopyrightTags.some(r => r.toLowerCase() === t.toLowerCase())
+    );
+  }, [resolvedCopyrightTags, allTags]);
+
+  // Get all character tags (type=4) - return all matching tags, not just first
+  const characterTags = useMemo(() => {
+    if (resolvedCharacterTags.length === 0) return [];
+    // Find all tags in the post's tag list that match resolved character tags
+    return allTags.filter(t => 
+      resolvedCharacterTags.some(r => r.toLowerCase() === t.toLowerCase())
+    );
+  }, [resolvedCharacterTags, allTags]);
+
+  // Get all artist tags (type=1) - return all matching tags, not just first
+  const artistTags = useMemo(() => {
+    const tags: string[] = [];
+    // 1. Add local DB artist if exists
     if (artist?.tag) {
-      return { tag: artist.tag, source: 'local' as const };
+      tags.push(artist.tag);
     }
-    
-    // 2. Fallback to API Resolved Artist
-    // resolvedArtistTags contains strings of tags that backend confirmed are type=1 (Artist)
+    // 2. Add all API resolved artist tags that match post tags
     if (resolvedArtistTags.length > 0) {
-      // Find the first tag in the post's tag list that matches a resolved artist tag
-      const match = allTags.find(t => 
+      const apiTags = allTags.filter(t => 
         resolvedArtistTags.some(r => r.toLowerCase() === t.toLowerCase())
       );
-      if (match) {
-        return { tag: match, source: 'api' as const };
-      }
+      tags.push(...apiTags);
     }
-    
-    return null;
+    // Remove duplicates
+    return [...new Set(tags)];
   }, [artist, resolvedArtistTags, allTags]);
+
+  // Get General tags (type=0) - all tags that are not Copyright, Character, or Artist
+  const generalTags = useMemo(() => {
+    const specialTags = new Set([
+      ...copyrightTags.map(t => t.toLowerCase()),
+      ...characterTags.map(t => t.toLowerCase()),
+      ...artistTags.map(t => t.toLowerCase()),
+    ]);
+    return allTags.filter(t => !specialTags.has(t.toLowerCase()));
+  }, [allTags, copyrightTags, characterTags, artistTags]);
 
   const { close: closeViewer } = useViewerStore(
     useShallow((state) => ({
@@ -372,25 +407,6 @@ const TagsDrawer = ({
           <SheetDesc>Post ID: {post.postId}</SheetDesc>
         </SheetHeader>
         <div className="mt-6 space-y-4">
-          <div>
-            <h3 className="mb-2 text-sm font-semibold">Rating</h3>
-            <span
-              className={cn(
-                "inline-block px-2 py-1 rounded text-xs font-bold uppercase",
-                post.rating === "e"
-                  ? "bg-red-500/20 text-red-400"
-                  : post.rating === "q"
-                  ? "bg-yellow-500/20 text-yellow-400"
-                  : "bg-green-500/20 text-green-400"
-              )}
-            >
-              {post.rating === "s"
-                ? "Safe"
-                : post.rating === "q"
-                ? "Questionable"
-                : "Explicit"}
-            </span>
-          </div>
           {post.publishedAt && (
             <div>
               <h3 className="mb-2 text-sm font-semibold">Published</h3>
@@ -418,30 +434,78 @@ const TagsDrawer = ({
               </p>
             </div>
           )}
+          {/* Copyright Section */}
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">Copyright</h3>
+            {copyrightTags.length > 0 ? (
+              <div className="space-y-1">
+                {copyrightTags.map((tag, index) => (
+                  <button
+                    key={`copyright-${tag}-${index}`}
+                    onClick={() => handleTagClick(tag)}
+                    className="block text-sm text-purple-600 hover:underline text-left"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No copyright detected
+              </p>
+            )}
+          </div>
+          {/* Character Section */}
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">Character</h3>
+            {characterTags.length > 0 ? (
+              <div className="space-y-1">
+                {characterTags.map((tag, index) => (
+                  <button
+                    key={`character-${tag}-${index}`}
+                    onClick={() => handleTagClick(tag)}
+                    className="block text-sm text-green-600 hover:underline text-left"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No character detected
+              </p>
+            )}
+          </div>
           {/* Artist Section */}
           <div>
             <h3 className="mb-2 text-sm font-semibold">Artist</h3>
-            {primaryArtistTag ? (
-              <button
-                onClick={() => handleTagClick(primaryArtistTag.tag)}
-                className="text-sm text-muted-foreground hover:underline text-left"
-              >
-                {primaryArtistTag.tag}
-              </button>
+            {artistTags.length > 0 ? (
+              <div className="space-y-1">
+                {artistTags.map((tag, index) => (
+                  <button
+                    key={`artist-${tag}-${index}`}
+                    onClick={() => handleTagClick(tag)}
+                    className="block text-sm text-red-600 hover:underline text-left"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">
                 No artist detected
               </p>
             )}
           </div>
+          {/* General Tags Section */}
           <div>
             <h3 className="mb-2 text-sm font-semibold">
-              Tags ({tags.length})
+              Tags ({generalTags.length})
             </h3>
             <div className="max-h-[400px] overflow-hidden rounded-md border">
               <Virtuoso
                 style={{ height: "400px" }}
-                data={tags}
+                data={generalTags}
                 components={{
                   Header: undefined,
                 }}
@@ -449,7 +513,7 @@ const TagsDrawer = ({
                   return (
                     <button
                       onClick={() => handleTagClick(tag)}
-                      className="w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                      className="w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer text-foreground"
                     >
                       {tag}
                     </button>
@@ -499,7 +563,9 @@ const ViewerContent = ({
     await window.api.markPostAsViewed(post.id);
   }, [post]);
 
-  // Handle keyboard shortcuts
+  // Handle keyboard shortcuts with aria-live announcements
+  const [announcement, setAnnouncement] = useState<string>("");
+  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -513,20 +579,36 @@ const ViewerContent = ({
         case "F":
           e.preventDefault();
           handleToggleFavorite();
+          // Announce action for screen readers and accessibility
+          setAnnouncement(post.isFavorited ? "Removed from favorites" : "Added to favorites");
+          setTimeout(() => setAnnouncement(""), 3000);
           break;
         case "v":
         case "V":
           e.preventDefault();
           handleMarkViewed();
+          // Announce action for screen readers and accessibility
+          setAnnouncement("Marked as viewed");
+          setTimeout(() => setAnnouncement(""), 3000);
           break;
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleToggleFavorite, handleMarkViewed]);
+  }, [handleToggleFavorite, handleMarkViewed, post.isFavorited]);
 
   return (
     <>
+      {/* Aria-live region for keyboard shortcut announcements */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
+      
       <ViewerMedia post={post} />
 
       <div

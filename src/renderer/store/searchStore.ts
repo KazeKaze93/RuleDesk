@@ -37,10 +37,7 @@ export const useSearchStore = create<SearchState>((set) => ({
       .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
       .replace(/\s+/g, ' '); // Normalize whitespace
     
-    if (cleaned.length === 0) {
-      return;
-    }
-    
+    // Allow empty string to clear search (don't block it)
     set({ query: cleaned });
   },
   setActiveTab: (tab) => set({ activeTab: tab }),

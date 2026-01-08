@@ -30,6 +30,9 @@ export const IPC_CHANNELS = {
     SEARCH_REMOTE: "api:search-remote-tags",
     SEARCH_POSTS: "booru:search",
     RESOLVE_TAGS: "booru:resolve-tags",
+    RESOLVE_CHARACTER_TAGS: "booru:resolve-character-tags",
+    RESOLVE_COPYRIGHT_TAGS: "booru:resolve-copyright-tags",
+    RESOLVE_TAGS_BY_TYPE: "booru:resolve-tags-by-type",
   },
   BACKUP: {
     CREATE: "db:create-backup",
