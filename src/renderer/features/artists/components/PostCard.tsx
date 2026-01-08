@@ -25,8 +25,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
     <button
       type="button"
       onClick={(e) => {
-        // TEMP DEBUG: Remove after debugging
-        console.log('[PostCard] Clicked! Post ID:', post.id);
         e.preventDefault();
         e.stopPropagation();
         onClick();

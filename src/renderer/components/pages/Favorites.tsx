@@ -151,8 +151,6 @@ export const Favorites = () => {
   };
 
   const handlePostClick = (index: number) => {
-    // TEMP DEBUG: Remove after debugging
-    console.log('[Favorites] handlePostClick triggered for index:', index);
     const currentPosts = allPosts;
     const post = currentPosts[index];
 

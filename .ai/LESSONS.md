@@ -150,15 +150,17 @@
 **Solution**:
 - Implemented strict XML fallback mechanism in `Rule34Provider.fetchPosts`
 - When JSON API returns empty string or fails, automatically retry with `json=0` (XML mode)
-- Created `parsePostXml` method using regex to extract post attributes from XML
-- **Note**: XML parsing uses regex for simple attribute extraction (acceptable for fallback scenario)
+- Created `parsePostXml` method using `fast-xml-parser` (replaced regex-based parsing)
 - Direct mapping to `BooruPost` format ensures UI compatibility
 
 **Key Implementation**:
 - Try JSON first, catch errors and retry with XML
-- Parse XML using regex pattern `/<post\s+([^>]+)>/g` (simple attribute extraction)
+- Parse XML using `fast-xml-parser` with `attributeNamePrefix: ""` for direct attribute access (no "@_" prefix)
+- **CRITICAL**: Normalize parser output - single post becomes `[post]`, array stays array
+- Use `??` instead of `||` for attribute extraction (to preserve `0` and empty strings)
 - Map attributes directly to camelCase `BooruPost` format
 - Use `selectBestPreview` for previewUrl with fallback to fileUrl
+- **XMLParser as class field**: Create parser once as `readonly` field, not on each call
 
 ### 11. Smart Search Fallback
 
@@ -226,6 +228,67 @@
 - Ensures case-insensitive tag matching across the application
 - **Rule**: Never manually normalize tags - always use provider's formatTag method
 
+### 16. fast-xml-parser Structure Normalization
+
+**Problem**: `fast-xml-parser` returns different structures depending on XML content - single object for one element, array for multiple. This caused posts to disappear in Tracked Artists when XML fallback was used.
+
+**Why it's bad**:
+- Parser returns `{ post: {...} }` for single post, `{ post: [{...}, {...}] }` for multiple
+- Using `parsed.posts?.post || []` fails when `post` is an object (not array)
+- Results in empty array, causing posts to not be saved to database
+- Silent failure - no error, just missing data
+
+**Solution**:
+- **Always normalize parser output**: `Array.isArray(postsArray) ? postsArray : [postsArray]`
+- Explicitly check for `parsed.posts` and `parsed.post` separately
+- Handle `null`/`undefined` cases explicitly: `postsArray ? normalize : []`
+- Use `??` instead of `||` for attribute extraction (preserves `0` and empty strings)
+- **Rule**: When using XML parsers, always normalize single-element results to arrays
+
+### 17. API Request Headers Standardization
+
+**Problem**: Inconsistent headers across API requests can cause API blocking or rate limiting.
+
+**Why it's bad**:
+- Different User-Agent strings in different requests look suspicious
+- Missing standard headers (Accept, Connection) may trigger API restrictions
+- Duplicated header configuration code leads to inconsistencies
+
+**Solution**:
+- **Create single `getHeaders()` method** that returns standard headers for all requests
+- Include: User-Agent (with fallback), Accept, Accept-Encoding, Connection
+- Use `this.getHeaders()` in all axios requests (checkAuth, searchTags, fetchPosts)
+- **Rule**: Always use centralized header method for API requests to prevent blocking
+
+### 18. Rule34 API Pagination (0-based)
+
+**Problem**: Rule34 API uses 0-based pagination for `pid` parameter, but UI typically uses 1-based page numbers.
+
+**Why it's bad**:
+- Sending `pid=1` when UI requests page 1 causes API to skip first page
+- Results in missing posts and incorrect pagination
+- Silent bug - no error, just wrong data
+
+**Solution**:
+- **Convert 1-based UI pages to 0-based API pid**: `const pid = options.page > 0 ? options.page - 1 : 0;`
+- Document pagination logic in comments
+- **Rule**: Always check API documentation for pagination format (0-based vs 1-based) and convert accordingly
+
+### 19. XMLParser Configuration for Rule34
+
+**Problem**: Using `attributeNamePrefix: "@_"` requires accessing attributes as `item["@_id"]`, which is verbose and error-prone.
+
+**Why it's bad**:
+- Verbose attribute access: `item["@_id"]` instead of `item.id`
+- Easy to forget prefix, causing undefined values
+- Inconsistent with Rule34 XML structure (all data in attributes)
+
+**Solution**:
+- **Use `attributeNamePrefix: ""`** for direct attribute access
+- Access attributes directly: `post.id`, `post.file_url` (no prefix needed)
+- Create parser as `readonly` class field, not on each method call
+- **Rule**: For APIs that store all data in attributes, use empty prefix for cleaner code
+
 ## Applied Fixes
 
 ✅ Removed log forwarding from Main to Renderer  
@@ -248,4 +311,9 @@
 ✅ Fixed ViewerDialog tag categorization (Copyright, Character, Artist, General)  
 ✅ Improved UX: Added "Open on Rule34.xxx" button when API returns 0 results  
 ✅ Fixed control character regex in searchStore (replaced with charCodeAt filter)  
-✅ Fixed tag normalization inconsistency: SearchController now uses provider.formatTag() instead of manual replace
+✅ Fixed tag normalization inconsistency: SearchController now uses provider.formatTag() instead of manual replace  
+✅ Fixed XML parser structure normalization: fast-xml-parser single object vs array handling  
+✅ Replaced regex XML parsing with fast-xml-parser in parsePostXml (removed regex-based approach)  
+✅ Added getHeaders() method for standardized API request headers (prevents API blocking)  
+✅ Fixed Rule34 pagination: 0-based pid conversion (page 1 → pid=0)  
+✅ Optimized XMLParser: created as readonly class field with attributeNamePrefix: "" for direct attribute access

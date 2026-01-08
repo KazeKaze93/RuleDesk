@@ -67,15 +67,26 @@ const useCurrentPost = (
   return useMemo(() => {
     if (!currentPostId || !origin) return undefined;
 
-    // Helper to search in InfiniteData cache
-    const findInCache = (queryKey: unknown[]): Post | undefined => {
+    // Helper to create Map from InfiniteData for O(1) lookup
+    // Map is created once per queryKey/data change, not per currentPostId change
+    const createPostsMap = (queryKey: unknown[]): Map<number, Post> | undefined => {
       const data = queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
       if (!data) return undefined;
+      
+      // Create flat Map id -> post (O(n) total, but only when data changes)
+      const postsMap = new Map<number, Post>();
       for (const page of data.pages) {
-        const found = page.find((p) => p.id === currentPostId);
-        if (found) return found;
+        for (const post of page) {
+          postsMap.set(post.id, post);
+        }
       }
-      return undefined;
+      return postsMap;
+    };
+
+    // Helper to search in InfiniteData cache using Map for O(1) lookup
+    const findInCache = (queryKey: unknown[]): Post | undefined => {
+      const postsMap = createPostsMap(queryKey);
+      return postsMap?.get(currentPostId);
     };
 
     let foundPost: Post | undefined;

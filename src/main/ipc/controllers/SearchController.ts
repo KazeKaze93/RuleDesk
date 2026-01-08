@@ -89,7 +89,14 @@ export class SearchController extends BaseController {
       IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS,
       z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
       (event, ...args) => {
-        const tags = args[0] as string[];
+        // Validate args with Zod instead of unsafe casting
+        const schema = z.tuple([z.array(z.string().min(1)).max(100)]);
+        const result = schema.safeParse(args);
+        if (!result.success) {
+          log.error("[SearchController] Invalid args for RESOLVE_COPYRIGHT_TAGS:", result.error);
+          return Promise.resolve([]);
+        }
+        const [tags] = result.data;
         return this.resolveTagsByType(event, tags, 3) as Promise<unknown>;
       }
     );
