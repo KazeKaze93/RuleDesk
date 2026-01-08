@@ -16,55 +16,28 @@ export const useSearchStore = create<SearchState>((set) => ({
   activeTab: null,
   
   setQuery: (query) => {
-    // Validate query: filter out invalid characters and limit length
-    // Prevent injection of log text, extremely long strings, or invalid characters
+    // Basic validation: ensure query is a string and reasonable length
+    // Note: If logs are somehow reaching setQuery, that's a separate architectural issue
+    // This validation is a safety net, not a fix for the root cause
     if (typeof query !== 'string') {
       console.warn('[SearchStore] setQuery called with non-string value:', query);
       return;
     }
     
-    // Limit query length to prevent memory issues (reasonable limit for tag search)
-    const MAX_QUERY_LENGTH = 200; // Reduced from 1000 - tags are short, this prevents log injection
+    // Reasonable limit for tag search (tags are typically short)
+    const MAX_QUERY_LENGTH = 500;
     if (query.length > MAX_QUERY_LENGTH) {
-      console.warn(`[SearchStore] Query too long (${query.length} chars), rejecting`);
-      return; // Reject instead of truncating to prevent log injection
+      console.warn(`[SearchStore] Query too long (${query.length} chars), truncating`);
+      query = query.substring(0, MAX_QUERY_LENGTH);
     }
     
-    // Aggressive filtering: detect if query looks like logs or contains invalid patterns
-    // Check for common log patterns that indicate the query is actually log text
-    const logPatterns = [
-      /electron-log/i,
-      /Renderer loaded/i,
-      /IPC.*request/i,
-      /Request completed/i,
-      /Array\(\d+\)/,
-      /›/,
-      /\[.*?Controller\]/,
-      /\[.*?Provider\]/,
-      /electron-log_renderer/,
-      /Incoming request/,
-      /Request completed/,
-      /\d{2}:\d{2}:\d{2}\.\d{3}/, // Timestamp pattern
-      /\[.*?\]\s*[A-Z]/ // Log prefix pattern like [IPC] Request
-    ];
-    
-    const hasLogPatterns = logPatterns.some(pattern => pattern.test(query)) ||
-      query.split(/\s+/).length > 30; // Too many words = likely log text
-    
-    if (hasLogPatterns) {
-      console.warn('[SearchStore] Query rejected - contains log patterns. First 100 chars:', query.substring(0, 100));
-      return; // Reject log-like queries entirely
-    }
-    
-    // Filter out control characters and invalid tag characters
-    // Valid tag characters: letters, numbers, underscores, hyphens, colons, parentheses
+    // Basic sanitization: remove control characters and normalize whitespace
     const cleaned = query
       .trim()
-      .replace(/[^\w\s\-:()]/g, '') // Remove invalid characters
+      .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
       .replace(/\s+/g, ' '); // Normalize whitespace
     
-    // Final validation: query should be reasonable for tag search
-    if (cleaned.length === 0 || cleaned.length > MAX_QUERY_LENGTH) {
+    if (cleaned.length === 0) {
       return;
     }
     

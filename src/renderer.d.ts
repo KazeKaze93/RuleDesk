@@ -97,8 +97,6 @@ export interface IpcApi extends IpcBridge {
   writeToClipboard: (text: string) => Promise<boolean>;
 
   verifyCredentials: () => Promise<boolean>;
-
-  onMainLog: (callback: (data: { level: string; message: string }) => void) => () => void;
 }
 
 declare global {

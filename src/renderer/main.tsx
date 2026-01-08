@@ -5,30 +5,6 @@ import App from "./App";
 import "./index.css";
 import "./i18n";
 
-// Forward main process logs to renderer console
-if (window.api && window.api.onMainLog) {
-  window.api.onMainLog((data: { level: string; message: string }) => {
-    const { level, message } = data;
-    // Map electron-log levels to console methods
-    switch (level) {
-      case "error":
-        console.error(`[Main] ${message}`);
-        break;
-      case "warn":
-        console.warn(`[Main] ${message}`);
-        break;
-      case "info":
-        console.info(`[Main] ${message}`);
-        break;
-      case "debug":
-        console.debug(`[Main] ${message}`);
-        break;
-      default:
-        console.log(`[Main] ${message}`);
-    }
-  });
-}
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

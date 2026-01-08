@@ -88,8 +88,6 @@ export interface IpcBridge {
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
 
-  onMainLog: (callback: (data: { level: string; message: string }) => void) => () => void;
-
   markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
 
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
@@ -242,15 +240,6 @@ const ipcBridge: IpcBridge = {
 
   createBackup: () => ipcRenderer.invoke("db:create-backup"),
   restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
-
-  onMainLog: (callback: (data: { level: string; message: string }) => void) => {
-    const subscription = (_: IpcRendererEvent, data: { level: string; message: string }) =>
-      callback(data);
-    ipcRenderer.on("log:main-log", subscription);
-    return () => {
-      ipcRenderer.removeListener("log:main-log", subscription);
-    };
-  },
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);

@@ -91,7 +91,7 @@ const parseTags = (query: string): string[] => {
 
 export const Updates = () => {
   const queryClient = useQueryClient();
-  const { query } = useSearchStore();
+  const query = useSearchStore((state) => state.query);
   const tags = useMemo(() => parseTags(query), [query]);
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
