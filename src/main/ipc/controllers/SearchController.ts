@@ -51,7 +51,7 @@ export class SearchController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS,
-      z.tuple([z.array(z.string().min(1)).max(20)]), // Limit to 20 tags (batch + sequential fallback)
+      z.tuple([z.array(z.string().min(1))]), // No limit - process all tags to find artists regardless of position
       this.resolveTags.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -256,14 +256,24 @@ export class SearchController extends BaseController {
    * Uses persistent SQLite cache to avoid redundant API calls.
    * Logic flow:
    * 1. Check local DB cache for requested tags
-   * 2. Fetch missing tags from API (batch request)
+   * 2. Fetch only missing tags from API (batch requests of 10 to keep URL length safe)
    * 3. Save new tags to cache for future use
    * 4. Return only artist tags (type=1)
    * 
    * Uses decrypted credentials from settings for authentication.
+   * 
+   * Network optimization:
+   * - Only queries API for tags not in local cache (missingTags)
+   * - Batches requests in groups of 10 to keep URL length manageable
+   * - URL parameters: page='dapi', s='tag', q='index', json='1', names=...
+   * - Does NOT send 'limit' (default 100 is fine for batch of 10)
+   * - Does NOT send 'tags' (that parameter is for posts endpoint, not tags endpoint)
+   * 
+   * Note: No limit on input tag count - all tags are processed to ensure artist tags
+   * are found even if they appear beyond position 20 in the tag list.
    *
    * @param _event - IPC event (unused)
-   * @param tags - Array of tag names to resolve (max 20)
+   * @param tags - Array of tag names to resolve (no limit, all processed)
    * @returns Array of tag names that are artists (type=1)
    */
   private async resolveTags(
@@ -275,15 +285,15 @@ export class SearchController extends BaseController {
         return [];
       }
 
-      // Normalize tags (lowercase, unique, limit 20)
-      const uniqueTags = [...new Set(tags.filter(Boolean).map(t => t.toLowerCase().trim()))].slice(0, 20);
+      // Normalize tags (lowercase, unique) - process ALL tags, no arbitrary limits
+      const uniqueTags = [...new Set(tags.filter(Boolean).map(t => t.toLowerCase().trim()))];
       if (uniqueTags.length === 0) {
         return [];
       }
 
       const db = this.getDb();
 
-      // 1. Быстрая проверка кэша
+      // 1. Check local DB cache first - avoid unnecessary API calls
       const cachedTags = db
         .select()
         .from(tagMetadata)
@@ -291,6 +301,7 @@ export class SearchController extends BaseController {
         .all();
 
       const cachedMap = new Map(cachedTags.map(t => [t.name, t.type]));
+      // Only query API for tags we don't have in cache
       const missingTags = uniqueTags.filter(t => !cachedMap.has(t));
 
       // Early return if all tags are cached
@@ -309,18 +320,22 @@ export class SearchController extends BaseController {
         return uniqueTags.filter(tag => cachedMap.get(tag) === 1);
       }
 
-      // 2. DAPI-based resolver with smaller batches (10 tags per request for stability)
+      // 2. DAPI-based resolver with batched requests
+      // Batch size of 10 keeps URL length safe while processing all missing tags
       const batchSize = 10;
       for (let i = 0; i < missingTags.length; i += batchSize) {
         const currentBatch = missingTags.slice(i, i + batchSize);
         
         try {
+          // Strict URL construction: only required parameters for tags endpoint
+          // Do NOT send 'limit' (default 100 is fine for batch of 10)
+          // Do NOT send 'tags' (that's for posts endpoint, not tags endpoint)
           const params = new URLSearchParams({
             page: 'dapi',
             s: 'tag',
             q: 'index',
             json: '1',
-            names: currentBatch.join(' '),
+            names: currentBatch.join(' '), // Only missing tags in this batch
           });
 
           if (settings.apiKey) {
