@@ -92,6 +92,10 @@ export interface IpcApi extends IpcBridge {
 
   searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
 
+  resolveCharacterTags: (tags: string[]) => Promise<string[]>;
+  resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
+  resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
+
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
   writeToClipboard: (text: string) => Promise<boolean>;

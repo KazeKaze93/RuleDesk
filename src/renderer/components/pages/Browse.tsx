@@ -1,4 +1,4 @@
-import React, { useMemo, forwardRef, useEffect, useState } from "react";
+import React, { useMemo, forwardRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
@@ -72,7 +72,6 @@ const parseTags = (query: string): string[] => {
 
 export const Browse = () => {
   const query = useSearchStore((state) => state.query);
-  const [tags, setTags] = useState<string[]>([]);
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
     useShallow((state) => ({
@@ -81,11 +80,11 @@ export const Browse = () => {
     }))
   );
 
-  // Update tags when query changes
-  useEffect(() => {
+  // Parse tags directly from query using useMemo (no extra re-render)
+  const tags = useMemo(() => {
     const parsedTags = parseTags(query);
     log.debug(`[Browse] Query changed: "${query}" -> parsed tags:`, parsedTags);
-    setTags(parsedTags);
+    return parsedTags;
   }, [query]);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
