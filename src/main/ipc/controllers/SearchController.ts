@@ -4,7 +4,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { settings, SETTINGS_ID, posts, tagMetadata, artists } from "../../db/schema";
+import { settings, SETTINGS_ID, posts, tagMetadata } from "../../db/schema";
 import { eq, inArray, and, sql } from "drizzle-orm";
 import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
@@ -330,7 +330,7 @@ export class SearchController extends BaseController {
             params.append('user_id', String(settings.userId));
           }
 
-          const url = `https://rule34.xxx/index.php?${params.toString()}`;
+          const url = `https://api.rule34.xxx/index.php?${params.toString()}`;
 
           const response = await fetch(url, {
             signal: AbortSignal.timeout(10000), // 10 second timeout
