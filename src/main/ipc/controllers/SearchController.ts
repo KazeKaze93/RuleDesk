@@ -15,6 +15,7 @@ import type { Post } from "../../db/schema";
 import { SearchPostsSchema } from "../../../shared/schemas/search";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { XMLParser } from "fast-xml-parser";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -262,7 +263,7 @@ export class SearchController extends BaseController {
   }
 
   /**
-   * Parse XML response from Rule34 DAPI tag endpoint
+   * Parse XML response from Rule34 DAPI tag endpoint using fast-xml-parser
    * @param text - Raw XML response text
    * @param tagName - Requested tag name for filtering
    * @returns Array of parsed tag objects with name and type
@@ -271,38 +272,50 @@ export class SearchController extends BaseController {
     text: string,
     tagName: string
   ): Array<{ name: string; type: number; id?: number }> {
-    const items: Array<{ name: string; type: number; id?: number }> = [];
-    
-    // Parse XML: <tag id="123" name="aiyor" count="100" type="1"/>
-    // Also handle: <tag id="123" name="aiyor" count="100" type="1"></tag>
-    // Extract all <tag> elements (both self-closing and with closing tag)
-    const tagRegex = /<tag\s+([^>]+)(?:\/>|>)/g;
-    const matches = [...text.matchAll(tagRegex)];
-    
-    for (const match of matches) {
-      const attrs = match[1];
-      // Extract attributes: id="123" name="aiyor" type="1"
-      // Handle both single and double quotes
-      const idMatch = attrs.match(/id\s*=\s*["'](\d+)["']/);
-      const nameMatch = attrs.match(/name\s*=\s*["']([^"']+)["']/);
-      const typeMatch = attrs.match(/type\s*=\s*["'](\d+)["']/);
+    try {
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: "@_",
+        parseAttributeValue: true,
+        trimValues: true,
+      });
       
-      if (nameMatch && typeMatch) {
-        const parsedName = nameMatch[1];
-        const parsedType = parseInt(typeMatch[1], 10);
+      const parsed = parser.parse(text);
+      
+      // Handle different XML structures: <tags><tag .../></tags> or <tag .../>
+      const tags = parsed.tags?.tag || parsed.tag || [];
+      const tagArray = Array.isArray(tags) ? tags : [tags];
+      
+      const items: Array<{ name: string; type: number; id?: number }> = [];
+      const requestedTagLower = tagName.toLowerCase();
+      
+      for (const tag of tagArray) {
+        if (!tag || typeof tag !== 'object') continue;
         
-        // Only add if name matches requested tag (case-insensitive)
-        if (parsedName.toLowerCase() === tagName.toLowerCase()) {
-          items.push({
-            id: idMatch ? parseInt(idMatch[1], 10) : undefined,
-            name: parsedName,
-            type: parsedType,
-          });
+        const name = tag["@_name"] || tag.name;
+        const type = tag["@_type"] || tag.type;
+        const id = tag["@_id"] || tag.id;
+        
+        if (name && type !== undefined) {
+          const parsedName = String(name).trim();
+          const parsedType = typeof type === 'number' ? type : parseInt(String(type), 10);
+          
+          // Only add if name matches requested tag (case-insensitive)
+          if (parsedName.toLowerCase() === requestedTagLower) {
+            items.push({
+              id: id !== undefined ? (typeof id === 'number' ? id : parseInt(String(id), 10)) : undefined,
+              name: parsedName,
+              type: parsedType,
+            });
+          }
         }
       }
+      
+      return items;
+    } catch (error) {
+      log.warn(`[SearchController] Failed to parse XML response for tag "${tagName}":`, error);
+      return [];
     }
-    
-    return items;
   }
 
   /**

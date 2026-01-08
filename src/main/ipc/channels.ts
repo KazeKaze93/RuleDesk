@@ -44,7 +44,4 @@ export const IPC_CHANNELS = {
     OPEN_FOLDER: "files:open-folder",
     DOWNLOAD_PROGRESS: "files:download-progress",
   },
-  LOG: {
-    MAIN_LOG: "log:main-log",
-  },
 } as const;

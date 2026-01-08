@@ -27,7 +27,10 @@ export const GlobalTopBar = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const { safeMode, setSafeMode } = useSafeModeStore();
-  const { query, setQuery, clearSearch, setActiveTab } = useSearchStore();
+  const query = useSearchStore((state) => state.query);
+  const setQuery = useSearchStore((state) => state.setQuery);
+  const clearSearch = useSearchStore((state) => state.clearSearch);
+  const setActiveTab = useSearchStore((state) => state.setActiveTab);
 
   // Determine current tab from location
   useEffect(() => {

@@ -65,7 +65,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { query } = useSearchStore();
+  const query = useSearchStore((state) => state.query);
   const tags = useMemo(() => parseTags(query), [query]);
 
   const { open: openViewer, appendQueueIds } = useViewerStore(

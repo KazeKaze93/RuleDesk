@@ -25,6 +25,7 @@ import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
+import { getSqliteInstance } from "../../db/client";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -109,12 +110,11 @@ export class PostsController extends BaseController {
     try {
       // Use official getSqliteInstance export (safe, no unsafe casts)
       // Query sqlite_master system table to check if posts_fts exists
-      const { getSqliteInstance } = require("../../db/client");
       const sqlite = getSqliteInstance();
-      const stmt = sqlite.prepare(
+      const stmt = sqlite.prepare<[], { name: string }>(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
       );
-      const result = stmt.get() as { name: string } | undefined;
+      const result = stmt.get();
       return !!result;
     } catch (error) {
       log.warn(

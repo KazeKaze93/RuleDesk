@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq, or, desc, sql, and, notLike, not } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { artists, ARTIST_TYPES } from "../../db/schema";
+import { artists, posts, ARTIST_TYPES } from "../../db/schema";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
   PROVIDER_IDS,
@@ -33,6 +33,8 @@ type NewArtist = InferInsertModel<typeof artists>;
  *
  * Uses TypeScript utility types to automatically map Date fields to numbers.
  * This ensures type safety and eliminates manual field enumeration.
+ * 
+ * Includes postsCount from JOIN query to avoid N+1 problem.
  */
 type IpcArtist = {
   [K in keyof Artist]: Artist[K] extends Date
@@ -40,6 +42,8 @@ type IpcArtist = {
     : Artist[K] extends Date | null
     ? number | null
     : Artist[K];
+} & {
+  postsCount?: number; // Added via JOIN in getArtists to fix N+1 problem
 };
 
 /**
@@ -188,21 +192,39 @@ export class ArtistsController extends BaseController {
       // This matches the expression index: COALESCE(last_checked, created_at) DESC
       // Filter out placeholder artists created by togglePostFavorite (tag starts with EXTERNAL_ARTIST_TAG_PREFIX)
       // Also exclude artist with id === EXTERNAL_ARTIST_ID if it exists
-      const result = await db.query.artists.findMany({
-        where: and(
-          notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`), // Exclude placeholder artists
-          not(eq(artists.id, EXTERNAL_ARTIST_ID)) // Explicitly exclude EXTERNAL_ARTIST_ID
-        ),
-        orderBy: [
-          desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`),
-        ],
-      });
+      // CRITICAL: Use JOIN to get posts count in single query (fixes N+1 problem)
+      const result = await db
+        .select({
+          id: artists.id,
+          name: artists.name,
+          tag: artists.tag,
+          provider: artists.provider,
+          type: artists.type,
+          apiEndpoint: artists.apiEndpoint,
+          lastPostId: artists.lastPostId,
+          newPostsCount: artists.newPostsCount,
+          lastChecked: artists.lastChecked,
+          createdAt: artists.createdAt,
+          postsCount: sql<number>`COALESCE(COUNT(${posts.id}), 0)`.as("postsCount"),
+        })
+        .from(artists)
+        .leftJoin(posts, eq(artists.id, posts.artistId))
+        .where(
+          and(
+            notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`), // Exclude placeholder artists
+            not(eq(artists.id, EXTERNAL_ARTIST_ID)) // Explicitly exclude EXTERNAL_ARTIST_ID
+          )
+        )
+        .groupBy(artists.id)
+        .orderBy(desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`));
+      
       log.info(
         `[ArtistsController] Retrieved ${result.length} tracked artists (placeholder artists excluded)`
       );
 
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       // Uses universal toIpcSafe utility to avoid code duplication
+      // Note: postsCount is already a number, so it will pass through toIpcSafe unchanged
       return toIpcSafe(result) as IpcArtist[];
     } catch (error) {
       log.error("[ArtistsController] Failed to get artists:", error);

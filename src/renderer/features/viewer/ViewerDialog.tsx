@@ -256,7 +256,7 @@ const TagsDrawer = ({
   } | null;
 }) => {
   const navigate = useNavigate();
-  const { setQuery } = useSearchStore();
+  const setQuery = useSearchStore((state) => state.setQuery);
 
   // Get artist information - always fetch when drawer is open
   const { data: artists } = useQuery<Artist[]>({
