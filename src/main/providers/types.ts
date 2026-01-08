@@ -25,8 +25,6 @@ export interface IBooruProvider {
   fetchPosts(tags: string, page: number, settings: ProviderSettings): Promise<BooruPost[]>;
   /** Search for tags (autocomplete) with optional AbortSignal for cancellation */
   searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]>;
-  /** Gets the count of posts matching a tag (for Browse tab) */
-  getPostsCountByTag(tag: string, settings: ProviderSettings): Promise<number>;
   /** Formats a tag based on artist type (e.g. adding 'user:' prefix) */
   formatTag(tag: string, type: ArtistType): string;
   /** Returns the default API endpoint for this provider */

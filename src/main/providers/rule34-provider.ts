@@ -147,66 +147,6 @@ export class Rule34Provider implements IBooruProvider {
       .filter((post): post is BooruPost => post !== null);
   }
 
-  /**
-   * Get the count of posts matching a tag from Rule34 API
-   * 
-   * Since Rule34 API doesn't provide a direct count endpoint, we use a strategy:
-   * 1. Request first page with max limit (1000) to get an estimate
-   * 2. If we get 1000 posts, there are likely more (we return 1000+ as estimate)
-   * 3. If we get less than 1000, that's the exact count
-   * 
-   * Note: This is an approximation. For exact counts with >1000 posts, 
-   * we'd need to paginate through all pages, which is expensive.
-   * 
-   * @param tag - Tag to search for
-   * @param settings - Provider settings (userId, apiKey)
-   * @returns Estimated count of posts (exact if < 1000, otherwise "1000+")
-   */
-  async getPostsCountByTag(tag: string, settings: ProviderSettings): Promise<number> {
-    try {
-      const params = new URLSearchParams({
-        page: "dapi",
-        s: "post",
-        q: "index",
-        limit: "1000", // Max limit per API docs
-        pid: "0", // First page
-        json: "1",
-        tags: tag.trim(),
-      });
-
-      if (settings.userId && settings.apiKey) {
-        params.append("user_id", settings.userId);
-        params.append("api_key", settings.apiKey);
-      }
-
-      const { data } = await axios.get<unknown>(`${this.baseUrl}?${params}`, {
-        timeout: REQUEST_TIMEOUT,
-        headers: { 
-          "User-Agent": USER_AGENT,
-          "Accept-Encoding": "identity"
-        }
-      });
-
-      if (!Array.isArray(data)) {
-        logger.warn(`[Rule34Provider] Invalid response format for tag count: ${tag}`);
-        return 0;
-      }
-
-      const count = data.length;
-      
-      // If we got 1000 posts, there are likely more, but we return the count we have
-      // The UI can show "1000+" if needed, but for now we return the actual count
-      logger.debug(`[Rule34Provider] Tag "${tag}" has ${count} posts (${count === 1000 ? "likely more" : "exact"})`);
-      return count;
-    } catch (error) {
-      if (axios.isCancel(error)) {
-        return 0;
-      }
-      logger.error(`[Rule34Provider] Failed to get post count for tag "${tag}"`, error);
-      return 0;
-    }
-  }
-
   private mapToBooruPost(raw: R34RawPost): BooruPost | null {
     // Data is already validated through Zod schema, but we still need to handle edge cases
     const fileUrl = raw.file_url.trim();

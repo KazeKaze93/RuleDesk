@@ -129,14 +129,6 @@ export class PostsController extends BaseController {
       ) => Promise<unknown>
     );
     this.handle(
-      IPC_CHANNELS.DB.GET_POSTS_COUNT_BY_TAG,
-      z.tuple([z.string().min(1)]),
-      this.getPostsCountByTag.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
-    );
-    this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
       z.tuple([
         z.number().int(), // Allow negative IDs for external posts from Browse
@@ -565,41 +557,6 @@ export class PostsController extends BaseController {
       return total;
     } catch (error) {
       log.error("[PostsController] Failed to get posts count:", error);
-      return 0;
-    }
-  }
-
-  /**
-   * Get posts count by tag (for Browse tab)
-   * Uses the same tag filtering logic as getPosts to ensure consistency
-   *
-   * @param _event - IPC event (unused)
-   * @param tag - Tag to search for
-   * @returns Number of posts matching the tag
-   */
-  private async getPostsCountByTag(
-    _event: IpcMainInvokeEvent,
-    tag: string
-  ): Promise<number> {
-    try {
-      const db = this.getDb();
-      
-      // Use the same tag filter condition logic as getPosts
-      const tagFilterCondition = this.createTagFilterCondition(tag);
-
-      const result = await db
-        .select({ value: count() })
-        .from(posts)
-        .where(tagFilterCondition);
-
-      const total = result[0]?.value ?? 0;
-
-      log.debug(
-        `[PostsController] Posts count for tag "${tag}": ${total}`
-      );
-      return total;
-    } catch (error) {
-      log.error("[PostsController] Failed to get posts count by tag:", error);
       return 0;
     }
   }

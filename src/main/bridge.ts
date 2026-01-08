@@ -63,7 +63,6 @@ export interface IpcBridge {
   // Posts
   getArtistPosts: (params: GetPostsRequest) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
-  getPostsCountByTag: (tag: string) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
 
@@ -111,8 +110,6 @@ export interface IpcBridge {
 
   searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
 
-  getPostsCountByTagFromAPI: (tag: string) => Promise<number>;
-
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
 
@@ -131,8 +128,6 @@ const ipcBridge: IpcBridge = {
 
   searchBooru: (params) =>
     ipcRenderer.invoke("booru:search", params),
-  getPostsCountByTagFromAPI: (tag: string) =>
-    ipcRenderer.invoke("api:get-posts-count-by-tag", tag),
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 
@@ -152,8 +147,6 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke("db:get-posts", params),
   getArtistPostsCount: (artistId?: number) =>
     ipcRenderer.invoke("db:get-posts-count", artistId),
-  getPostsCountByTag: (tag: string) =>
-    ipcRenderer.invoke("db:get-posts-count-by-tag", tag),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
