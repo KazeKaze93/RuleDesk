@@ -240,7 +240,9 @@ export class SyncService {
 
       if (artist && settingsData) {
         this.sendEvent("sync:repair:start", artist.name);
-        await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, 3);
+        // Repair: reset lastPostId to 0 and sync ALL posts (no page limit)
+        // This ensures all posts are loaded, not just the first 3 pages
+        await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, Infinity);
       }
     } catch (e) {
       logger.error("Repair error", e);
@@ -288,7 +290,7 @@ export class SyncService {
     const provider = getProvider(providerId);
 
     logger.info(
-      `SyncService: Syncing ${artist.name} using provider: ${provider.name}`
+      `SyncService: Syncing ${artist.name} using provider: ${provider.name} (lastPostId: ${artist.lastPostId})`
     );
 
     let page = 0;
@@ -296,11 +298,22 @@ export class SyncService {
     let newPostsCount = 0;
     // Track current lastPostId separately to avoid mutating artist object
     let currentLastPostId = artist.lastPostId;
+    
+    // CRITICAL: For initial sync (lastPostId = 0), we need to load ALL posts
+    // For incremental sync (lastPostId > 0), we only load NEW posts with id:> filter
+    const isInitialSync = currentLastPostId === 0;
+    
+    if (isInitialSync) {
+      logger.info(`SyncService: Initial sync for ${artist.name} - will load ALL posts`);
+    } else {
+      logger.info(`SyncService: Incremental sync for ${artist.name} - will load posts with id > ${currentLastPostId}`);
+    }
 
     while (hasMore && page < maxPages) {
       try {
-        const idFilter =
-          currentLastPostId > 0 ? ` id:>${currentLastPostId}` : "";
+        // For initial sync: load all posts without id:> filter (paginate through all)
+        // For incremental sync: only load new posts with id:> filter
+        const idFilter = isInitialSync ? "" : ` id:>${currentLastPostId}`;
 
         // Use provider to format tag (handles 'user:' prefix logic)
         const baseTag = provider.formatTag(artist.tag, artist.type);
@@ -317,9 +330,16 @@ export class SyncService {
           artist.name
         );
 
-        const newPosts = postsData.filter((p) => p.id > currentLastPostId);
+        // For initial sync: save all posts (they may have IDs less than current max)
+        // For incremental sync: only save posts with ID greater than currentLastPostId
+        const newPosts = isInitialSync 
+          ? postsData // Save all posts during initial sync
+          : postsData.filter((p) => p.id > currentLastPostId);
 
-        if (newPosts.length === 0 && currentLastPostId > 0) {
+        // Stop if no new posts found (for incremental sync) or empty response
+        if (newPosts.length === 0) {
+          // For incremental sync, empty means we're caught up
+          // For initial sync, empty means we've reached the end
           hasMore = false;
           break;
         }
@@ -351,11 +371,15 @@ export class SyncService {
           db.transaction((tx) => {
             bulkUpsertPosts(postsToSave, tx);
 
-            // Update lastPostId ONLY with posts that were actually saved in this transaction
-            // Use currentLastPostId (not artist.lastPostId) to avoid race conditions
+            // Update lastPostId: for initial sync, track the highest ID seen
+            // For incremental sync, only update if we found posts with higher IDs
+            const newLastPostId = isInitialSync
+              ? Math.max(currentLastPostId, batchHighestPostId)
+              : Math.max(currentLastPostId, batchHighestPostId);
+
             tx.update(artists)
               .set({
-                lastPostId: Math.max(currentLastPostId, batchHighestPostId),
+                lastPostId: newLastPostId,
                 newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
                 lastChecked: new Date(),
               })
@@ -368,8 +392,16 @@ export class SyncService {
           newPostsCount += postsToSave.length;
         }
 
-        if (postsData.length < 100) hasMore = false;
-        else page++;
+        // Continue pagination if we got a full page (100 posts)
+        // For initial sync, continue until API returns fewer than 100 posts
+        // For incremental sync, stop when no new posts found (already handled above)
+        if (postsData.length < 100) {
+          hasMore = false;
+          logger.debug(`SyncService: ${artist.name} - Page ${page} returned ${postsData.length} posts (< 100), stopping pagination`);
+        } else {
+          page++;
+          logger.debug(`SyncService: ${artist.name} - Page ${page - 1} returned ${postsData.length} posts, continuing to page ${page}`);
+        }
       } catch (e) {
         logger.error(`Sync error for ${artist.name}`, e);
         hasMore = false;
@@ -389,7 +421,10 @@ export class SyncService {
       });
     }
 
-    logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
+    logger.info(
+      `Sync finished for ${artist.name}. Added: ${newPostsCount} posts. ` +
+      `Final lastPostId: ${currentLastPostId} (was: ${artist.lastPostId})`
+    );
   }
 }
 
