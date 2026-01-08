@@ -14,3 +14,4 @@ CREATE TABLE IF NOT EXISTS `tag_metadata` (
 -- This allows fast queries like: SELECT name FROM tag_metadata WHERE type = 1
 CREATE INDEX IF NOT EXISTS `tag_metadata_type_idx` ON `tag_metadata` (`type`);
 
+
