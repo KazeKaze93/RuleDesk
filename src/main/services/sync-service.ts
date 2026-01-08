@@ -375,9 +375,8 @@ export class SyncService {
 
             // Update lastPostId: for initial sync, track the highest ID seen
             // For incremental sync, only update if we found posts with higher IDs
-            const newLastPostId = isInitialSync
-              ? Math.max(currentLastPostId, batchHighestPostId)
-              : Math.max(currentLastPostId, batchHighestPostId);
+            // Both cases use the same logic: track the maximum ID seen
+            const newLastPostId = Math.max(currentLastPostId, batchHighestPostId);
 
             tx.update(artists)
               .set({
