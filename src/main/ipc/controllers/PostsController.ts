@@ -1,7 +1,18 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, sql, gte, not, notLike, or, type SQL } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  count,
+  and,
+  sql,
+  gte,
+  not,
+  notLike,
+  or,
+  type SQL,
+} from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists, type Post } from "../../db/schema";
@@ -10,7 +21,10 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { PostDataSchema, type PostData } from "../../../shared/schemas/post";
-import { EXTERNAL_ARTIST_ID, EXTERNAL_ARTIST_TAG_PREFIX } from "../../../shared/constants";
+import {
+  EXTERNAL_ARTIST_ID,
+  EXTERNAL_ARTIST_TAG_PREFIX,
+} from "../../../shared/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -96,14 +110,23 @@ export class PostsController extends BaseController {
       const db = this.getDb();
       // Access raw SQLite connection through Drizzle's session
       // Drizzle BetterSQLite3Database exposes session.client as the raw better-sqlite3 Database instance
-      const sqlite = (db as unknown as { session: { client: { prepare: (query: string) => { get: () => unknown } } } }).session.client;
+      const sqlite = (
+        db as unknown as {
+          session: {
+            client: { prepare: (query: string) => { get: () => unknown } };
+          };
+        }
+      ).session.client;
       const stmt = sqlite.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
       );
       const result = stmt.get() as { name: string } | undefined;
       return !!result;
     } catch (error) {
-      log.warn("[PostsController] Failed to check FTS table existence, using LIKE fallback:", error);
+      log.warn(
+        "[PostsController] Failed to check FTS table existence, using LIKE fallback:",
+        error
+      );
       return false;
     }
   }
@@ -164,10 +187,10 @@ export class PostsController extends BaseController {
 
   /**
    * Find existing post by database ID or by postId + EXTERNAL_ARTIST_ID
-   * 
+   *
    * This is a shared helper method used by markViewed and toggleFavorite
    * to avoid code duplication.
-   * 
+   *
    * @param tx - Drizzle transaction object
    * @param postId - Database post ID (for existing posts)
    * @param postData - Optional post data for external posts (contains postId for lookup)
@@ -182,7 +205,7 @@ export class PostsController extends BaseController {
     // For negative IDs, skip DB lookup by id and go straight to postId lookup
     // For positive IDs, try to find by database ID first (existing posts from DB)
     let existingPost: Post | undefined;
-    
+
     if (postId > 0) {
       // Positive ID - try to find by database ID (existing posts from DB)
       existingPost = tx
@@ -226,16 +249,16 @@ export class PostsController extends BaseController {
     // Escape backslash first (must be first to avoid double-escaping)
     // Then escape % and _ wildcards
     return text
-      .replace(/\\/g, "\\\\")  // Escape backslash: \ -> \\
-      .replace(/%/g, "\\%")     // Escape %: % -> \%
-      .replace(/_/g, "\\_");    // Escape _: _ -> \_
+      .replace(/\\/g, "\\\\") // Escape backslash: \ -> \\
+      .replace(/%/g, "\\%") // Escape %: % -> \%
+      .replace(/_/g, "\\_"); // Escape _: _ -> \_
   }
 
   /**
    * Sanitize FTS5 search query to prevent syntax errors
    * FTS5 interprets the search string as an expression, so special characters
    * (:, *, -, ", \, NEAR, AND, OR, NOT) can cause SQLITE_ERROR: fts5: syntax error
-   * 
+   *
    * Solution: Remove/replace FTS5 operator characters and wrap in quotes
    * Allows * wildcard only at the end of words for prefix search (e.g., "tag*")
    * This makes FTS5 treat the input as a literal string, not as operators
@@ -275,7 +298,7 @@ export class PostsController extends BaseController {
 
     // Escape remaining double quotes by doubling them (FTS5 escaping rule)
     const escaped = clean.replace(/"/g, '""');
-    
+
     // Wrap in double quotes to make FTS5 treat it as a literal phrase
     // This allows * wildcard at end of words (e.g., "tag*") for prefix search
     return `"${escaped}"`;
@@ -285,7 +308,7 @@ export class PostsController extends BaseController {
    * Create FTS5 JOIN condition for tag filtering
    * Uses parameterized query to prevent SQL injection
    * Sanitizes FTS5 query to prevent syntax errors from special characters
-   * 
+   *
    * Uses EXISTS with JOIN pattern for better performance than IN (SELECT ...):
    * - SQLite optimizer can use FTS5 index as leading index
    * - More efficient than IN with virtual tables
@@ -298,13 +321,13 @@ export class PostsController extends BaseController {
    */
   private createTagFilterCondition(tagFilter: string): SQL {
     const ftsTableExists = this.checkFtsTableExists();
-    
+
     if (ftsTableExists) {
       // Use FTS5 for fast full-text search
       // Sanitize FTS5 query to prevent syntax errors from special characters
       // Wrap in quotes and escape internal quotes so FTS5 treats input as literal
       const sanitized = this.sanitizeFts5Query(tagFilter);
-      
+
       // Use EXISTS with FTS5 JOIN pattern for better performance than IN (SELECT ...)
       // This allows SQLite optimizer to use FTS5 index efficiently
       // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
@@ -322,7 +345,7 @@ export class PostsController extends BaseController {
         // Empty filter - return condition that matches nothing
         return sql`1 = 0`;
       }
-      
+
       // Create LIKE conditions for each tag part
       // Tags are space-separated in posts.tags, so we need to match whole words
       // Use AND to require all tags (similar to FTS5 behavior)
@@ -330,17 +353,17 @@ export class PostsController extends BaseController {
         // Escape special LIKE characters: %, _, and \
         // Use ESCAPE clause to treat escaped characters literally
         const escapedTag = this.escapeLikePattern(tag);
-        
+
         // Use sql template with ESCAPE clause for proper LIKE escaping
         // SQLite LIKE with ESCAPE '\' allows us to use \% and \_ literally
         return or(
           sql`${posts.tags} LIKE ${`% ${escapedTag} %`} ESCAPE '\\'`, // Tag in middle
-          sql`${posts.tags} LIKE ${`${escapedTag} %`} ESCAPE '\\'`,   // Tag at start
-          sql`${posts.tags} LIKE ${`% ${escapedTag}`} ESCAPE '\\'`,    // Tag at end
-          eq(posts.tags, tag)                                          // Tag is entire string (exact match, no escaping needed)
+          sql`${posts.tags} LIKE ${`${escapedTag} %`} ESCAPE '\\'`, // Tag at start
+          sql`${posts.tags} LIKE ${`% ${escapedTag}`} ESCAPE '\\'`, // Tag at end
+          eq(posts.tags, tag) // Tag is entire string (exact match, no escaping needed)
         ) as SQL;
       });
-      
+
       // Require all tags to match (AND logic)
       if (likeConditions.length === 1) {
         return likeConditions[0];
@@ -438,11 +461,11 @@ export class PostsController extends BaseController {
           not(eq(posts.artistId, EXTERNAL_ARTIST_ID)), // Exclude external posts
           notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`) // Exclude placeholder artists
         );
-        
+
         const finalWhereClause = whereClause
           ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
           : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
-        
+
         const result = await db
           .select({
             id: posts.id,
@@ -478,10 +501,7 @@ export class PostsController extends BaseController {
 
       // Standard query path (no sinceTracking filter)
       // Build where conditions array using centralized method
-      const baseConditions = this.buildPostFilterConditions(
-        artistId,
-        filters
-      );
+      const baseConditions = this.buildPostFilterConditions(artistId, filters);
 
       // Combine all conditions using and()
       const whereClause =
@@ -639,9 +659,7 @@ export class PostsController extends BaseController {
           .run();
 
         if (updated.changes > 0) {
-          log.debug(
-            `[PostsController] Post ${postId} marked as viewed`
-          );
+          log.debug(`[PostsController] Post ${postId} marked as viewed`);
           return true;
         }
       }
