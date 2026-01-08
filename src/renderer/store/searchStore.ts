@@ -32,9 +32,17 @@ export const useSearchStore = create<SearchState>((set) => ({
     }
     
     // Basic sanitization: remove control characters and normalize whitespace
+    // Filter out control characters (excluding common whitespace: \t, \n, \r)
     const cleaned = query
       .trim()
-      .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+      .split('')
+      .filter((char) => {
+        const code = char.charCodeAt(0);
+        // Allow printable characters and common whitespace (tab, newline, carriage return)
+        // Control characters: 0x00-0x1F (except 0x09 tab, 0x0A newline, 0x0D carriage return), 0x7F
+        return (code >= 32 && code <= 126) || code === 9 || code === 10 || code === 13;
+      })
+      .join('')
       .replace(/\s+/g, ' '); // Normalize whitespace
     
     // Allow empty string to clear search (don't block it)
