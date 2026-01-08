@@ -110,6 +110,8 @@ export interface IpcBridge {
 
   searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
 
+  resolveTags: (tags: string[]) => Promise<string[]>;
+
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
 
@@ -128,6 +130,9 @@ const ipcBridge: IpcBridge = {
 
   searchBooru: (params) =>
     ipcRenderer.invoke("booru:search", params),
+
+  resolveTags: (tags) =>
+    ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS, tags),
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 

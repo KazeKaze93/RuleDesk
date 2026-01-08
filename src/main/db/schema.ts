@@ -101,6 +101,17 @@ export const settings = sqliteTable("settings", {
   tosAcceptedAt: integer("tos_accepted_at", { mode: "timestamp" }),
 });
 
+export const tagMetadata = sqliteTable(
+  "tag_metadata",
+  {
+    name: text("name").primaryKey(),
+    type: integer("type").notNull(), // 0=General, 1=Artist, 3=Copyright, 4=Character, 5=Meta
+  },
+  (t) => ({
+    typeIdx: index("tag_metadata_type_idx").on(t.type), // Index for filtering by type (e.g., all artists)
+  })
+);
+
 // Types
 export type Artist = typeof artists.$inferSelect;
 export type NewArtist = typeof artists.$inferInsert;
@@ -110,3 +121,5 @@ export type Post = typeof posts.$inferSelect & {
 export type NewPost = typeof posts.$inferInsert;
 export type Settings = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;
+export type TagMetadata = typeof tagMetadata.$inferSelect;
+export type NewTagMetadata = typeof tagMetadata.$inferInsert;

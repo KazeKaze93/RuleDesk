@@ -157,6 +157,7 @@ const useCurrentPost = (
   }, [currentPostId, origin, queryClient]);
 };
 
+
 const ViewerMedia = ({ post }: { post: Post }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
@@ -288,9 +289,31 @@ const TagsDrawer = ({
         : [];
     return tagsArray;
   }, [post.tags]);
+
+  // Lazy batch resolver for artist tags (only for untracked posts)
+  // Uses React Query to cache results and batch multiple tags in one request
+  // Acts as a permanent session cache (staleTime: Infinity)
+  // Uses IPC to call Main Process which has full access to credentials and persistent DB cache
+  const tagsString = typeof post?.tags === "string" ? post.tags : (post?.tags?.join(' ') || '');
+  const hasKnownArtist = !!artist;
+
+  // Clean IPC call - no credentials passed from UI
+  // Main Process handles authentication and persistent SQLite cache internally
+  const { data: resolvedArtistTags = [] } = useQuery<string[]>({
+    queryKey: ['resolve-tags-ipc', tagsString],
+    queryFn: async () => {
+      if (!tagsString) return [];
+      const tagsToAsk = tagsString.split(' ').slice(0, 20).filter(t => t.length > 0);
+      if (tagsToAsk.length === 0) return [];
+      return await window.api.resolveTags(tagsToAsk);
+    },
+    enabled: !!post && !hasKnownArtist && tagsString.length > 0,
+    staleTime: Infinity, // Keep in RAM for session
+    retry: false,
+  });
   
   // Compute priority tags set (context-aware tag pinning)
-  // Combines DB Artist info + Search Context + Artist Context
+  // Combines DB Artist info + Search Context + Artist Context + Batch Resolved Artists
   const priorityTags = useMemo(() => {
     const tags = new Set<string>();
     
@@ -318,8 +341,12 @@ const TagsDrawer = ({
       queue.origin.tags.forEach(t => tags.add(t.toLowerCase()));
     }
     
+    // 4. Batch Resolved Artists (for untracked posts in Browse)
+    // Add resolved artist tags from API batch lookup (via IPC with persistent cache)
+    resolvedArtistTags.forEach(tag => tags.add(tag.toLowerCase()));
+    
     return tags;
-  }, [artist, queue]);
+  }, [artist, queue, resolvedArtistTags]);
 
   // Identify artist tag in the tag list
   // Check both artist.tag and formatted versions (user:username for uploader, lowercase for tag)
