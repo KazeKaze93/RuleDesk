@@ -243,7 +243,7 @@ const TagsDrawer = ({
   isOpen,
   onOpenChange,
   isFromBrowse: _isFromBrowse = false,
-  queue,
+  queue: _queue,
 }: {
   post: Post;
   isOpen: boolean;
@@ -301,76 +301,9 @@ const TagsDrawer = ({
     staleTime: Infinity, // Keep in RAM for session
     retry: false,
   });
-  
-  // Helper function for fuzzy matching (exact match or containment)
-  const checkMatch = useCallback((tag: string, targetSet: Set<string>): boolean => {
-    const tagLower = tag.toLowerCase();
-    
-    // Check exact match first
-    if (targetSet.has(tagLower)) return true;
-    
-    // Fuzzy matching: check if tag includes any target tag or vice versa
-    for (const targetTag of targetSet) {
-      if (tagLower.includes(targetTag) || targetTag.includes(tagLower)) {
-        return true;
-      }
-    }
-    
-    return false;
-  }, []);
 
-  // Tier 1: Artist Tags Set (ALWAYS at the very top)
-  // Combines: Local DB artist, IPC resolved tags, formatted versions, and artist context
-  const artistTagsSet = useMemo(() => {
-    const tags = new Set<string>();
-    
-    // 1. Local DB Artists (Hard Truth)
-    if (artist?.name) {
-      tags.add(artist.name.toLowerCase().replace(/ /g, '_'));
-    }
-    if (artist?.tag) {
-      tags.add(artist.tag.toLowerCase());
-      // Also add formatted versions (e.g., user:name for uploader type)
-      const formattedTag = artist.type === "uploader" 
-        ? `user:${artist.tag.toLowerCase().replace(/ /g, "_")}`
-        : artist.tag.toLowerCase().replace(/ /g, "_");
-      tags.add(formattedTag);
-    }
-    
-    // 2. IPC Resolved Artists (from API batch lookup via resolveTags)
-    // These are tags that were resolved as type=1 (Artist) from the API
-    // Critical: No slice limit - all tags are checked to find artist tags even if they're beyond position 20
-    resolvedArtistTags.forEach(tag => tags.add(tag.toLowerCase()));
-    
-    // 3. Artist Context (from queue.origin if kind is 'artist')
-    if (queue?.origin?.kind === 'artist' && queue.origin.tags) {
-      queue.origin.tags.forEach(t => tags.add(t.toLowerCase()));
-    }
-    
-    return tags;
-  }, [artist, resolvedArtistTags, queue]);
-
-  // Tier 2: Search Tags Set (Search context only, NOT artist tags)
-  const searchTagsSet = useMemo(() => {
-    const tags = new Set<string>();
-    
-    // Only add search context tags (exclude artist tags)
-    if (queue?.origin?.kind === 'search' && queue.origin.tags) {
-      queue.origin.tags.forEach(t => {
-        const tagLower = t.toLowerCase();
-        // Only add if it's NOT an artist tag
-        if (!checkMatch(tagLower, artistTagsSet)) {
-          tags.add(tagLower);
-        }
-      });
-    }
-    
-    return tags;
-  }, [queue, artistTagsSet, checkMatch]);
-
-
-  // Sort tags with strict priority hierarchy
-  const sortedTags = useMemo(() => {
+  // Sort tags alphabetically (no special highlighting or pinning)
+  const tags = useMemo(() => {
     if (!post?.tags) return [];
     
     // Normalize string to array
@@ -378,32 +311,44 @@ const TagsDrawer = ({
       ? post.tags.split(' ').filter(t => t.length > 0)
       : Array.isArray(post.tags) ? post.tags : [];
 
-    return tagsArray.sort((a, b) => {
-      const tagA = a.toLowerCase();
-      const tagB = b.toLowerCase();
-      
-      // Check tier membership
-      const aIsArtist = checkMatch(a, artistTagsSet);
-      const bIsArtist = checkMatch(b, artistTagsSet);
-      const aIsSearch = !aIsArtist && checkMatch(a, searchTagsSet);
-      const bIsSearch = !bIsArtist && checkMatch(b, searchTagsSet);
-      
-      // Tier 1: Artist tags ALWAYS first
-      if (aIsArtist && !bIsArtist) return -1;
-      if (!aIsArtist && bIsArtist) return 1;
-      
-      // Tier 2: Search tags come next (only if not artist)
-      if (aIsSearch && !bIsSearch) return -1;
-      if (!aIsSearch && bIsSearch) return 1;
-      
-      // Tier 3: All other tags (alphabetical)
-      return tagA.localeCompare(tagB);
-    });
-  }, [post.tags, artistTagsSet, searchTagsSet, checkMatch]);
-  
-  // Keep artist tag in the list - it will be pinned at the beginning by priority sorting
-  // Don't filter it out, as user wants it visible in the list
-  const tags = sortedTags;
+    // Simple alphabetical sort
+    return tagsArray.sort((a, b) => 
+      a.toLowerCase().localeCompare(b.toLowerCase())
+    );
+  }, [post.tags]);
+
+  // Get all tags from the post for matching
+  const allTags = useMemo(() => {
+    if (!post?.tags) return [];
+    const tagsArray = typeof post.tags === 'string' 
+      ? post.tags.split(' ').filter(t => t.length > 0)
+      : Array.isArray(post.tags) ? post.tags : [];
+    return tagsArray;
+  }, [post.tags]);
+
+  // Determine primary artist tag with priority:
+  // Priority 1: Local DB artist (highest trust)
+  // Priority 2: API Resolved Artist (find matching tag in post's tag list)
+  const primaryArtistTag = useMemo(() => {
+    // 1. Prefer Local DB Artist (highest trust)
+    if (artist?.tag) {
+      return { tag: artist.tag, source: 'local' as const };
+    }
+    
+    // 2. Fallback to API Resolved Artist
+    // resolvedArtistTags contains strings of tags that backend confirmed are type=1 (Artist)
+    if (resolvedArtistTags.length > 0) {
+      // Find the first tag in the post's tag list that matches a resolved artist tag
+      const match = allTags.find(t => 
+        resolvedArtistTags.some(r => r.toLowerCase() === t.toLowerCase())
+      );
+      if (match) {
+        return { tag: match, source: 'api' as const };
+      }
+    }
+    
+    return null;
+  }, [artist, resolvedArtistTags, allTags]);
 
   const { close: closeViewer } = useViewerStore(
     useShallow((state) => ({
@@ -473,6 +418,22 @@ const TagsDrawer = ({
               </p>
             </div>
           )}
+          {/* Artist Section */}
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">Artist</h3>
+            {primaryArtistTag ? (
+              <button
+                onClick={() => handleTagClick(primaryArtistTag.tag)}
+                className="text-sm text-muted-foreground hover:underline text-left"
+              >
+                {primaryArtistTag.tag}
+              </button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No artist detected
+              </p>
+            )}
+          </div>
           <div>
             <h3 className="mb-2 text-sm font-semibold">
               Tags ({tags.length})
@@ -482,23 +443,13 @@ const TagsDrawer = ({
                 style={{ height: "400px" }}
                 data={tags}
                 components={{
-                  Header: undefined, // Removed ArtistHeader - artist tag is shown in the list with amber styling
+                  Header: undefined,
                 }}
                 itemContent={(_index, tag) => {
-                  // Check tier membership with strict priority
-                  const isArtistTag = checkMatch(tag, artistTagsSet);
-                  const isSearchTag = !isArtistTag && checkMatch(tag, searchTagsSet);
-                  
                   return (
                     <button
                       onClick={() => handleTagClick(tag)}
-                      className={cn(
-                        "w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer",
-                        // Tier 1: Artist tags - amber styling with left border (strict priority)
-                        isArtistTag && "bg-amber-500/15 text-amber-500 border-l-2 border-l-amber-500 font-bold",
-                        // Tier 2: Search tags (not artists) - subtle white styling
-                        isSearchTag && "bg-white/5 text-white font-medium"
-                      )}
+                      className="w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
                     >
                       {tag}
                     </button>
