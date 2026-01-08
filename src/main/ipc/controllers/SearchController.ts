@@ -103,7 +103,6 @@ export class SearchController extends BaseController {
       ) => Promise<unknown>
     );
 
-    log.info("[SearchController] All handlers registered");
   }
 
   /**
@@ -189,7 +188,7 @@ export class SearchController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: SearchPostsParams
   ): Promise<IpcPost[]> {
-    const { tags, page, limit = 50 } = params;
+    const { tags, page } = params;
 
     try {
       // Get provider (default to rule34)
@@ -206,32 +205,79 @@ export class SearchController extends BaseController {
       // CRITICAL: Rule34 API requires underscores (_) instead of spaces or plus signs
       // Replace spaces with underscores in each tag, then join with spaces
       // Empty array means show all posts (provider will omit tags parameter)
-      const tagsString = tags.length > 0 
+      let tagsString = tags.length > 0 
         ? tags.map(tag => tag.replace(/\s+/g, '_')).join(" ")
         : "";
 
-      log.info(
-        `[SearchController] Searching for tags: "${tagsString || "all (no filter)"}" (page ${page}, limit ${limit})`
-      );
-
-      // Fetch posts from external API
-      // Empty tagsString means show all posts (provider omits tags parameter)
-      const booruPosts = await provider.fetchPosts(
+      // Step 1: Primary Search - try original tags
+      let booruPosts = await provider.fetchPosts(
         tagsString,
         page,
         providerSettings
       );
 
-      log.info(
-        `[SearchController] Retrieved ${booruPosts.length} posts from external API for tags: "${tagsString || "all"}"`
-      );
-      
-      if (booruPosts.length === 0 && tagsString) {
-        log.warn(
-          `[SearchController] ⚠️ No posts found for tags "${tagsString}". ` +
-          `This may indicate: 1) Tag doesn't exist, 2) Tag format is incorrect, 3) API returned empty result.`
-        );
+      // Step 2: Fallback Logic (only if Step 1 returned 0 AND input is a single word)
+      if (booruPosts.length === 0 && tagsString && tags.length === 1) {
+        const originalTag = tags[0].trim();
+        
+        // Attempt A: Autocomplete (Fix Aliases)
+        try {
+          const autocompleteUrl = `https://rule34.xxx/autocomplete.php?q=${encodeURIComponent(originalTag)}`;
+          const autocompleteResponse = await fetch(autocompleteUrl, {
+            signal: AbortSignal.timeout(5000),
+            headers: {
+              'User-Agent': 'RuleDesk/1.0',
+              'Accept-Encoding': 'identity',
+            },
+          });
+
+          if (autocompleteResponse.ok) {
+            const autocompleteData = await autocompleteResponse.json() as Array<{ label: string; value: string; type: string }>;
+            
+            if (Array.isArray(autocompleteData) && autocompleteData.length > 0) {
+              const suggestion = autocompleteData[0].value.trim();
+              
+              // If suggestion is different from original, retry with suggestion
+              if (suggestion.toLowerCase() !== originalTag.toLowerCase()) {
+                const suggestionString = suggestion.replace(/\s+/g, '_');
+                booruPosts = await provider.fetchPosts(
+                  suggestionString,
+                  page,
+                  providerSettings
+                );
+                
+                if (booruPosts.length > 0) {
+                  tagsString = suggestionString; // Update for logging
+                }
+              }
+            }
+          }
+        } catch (autocompleteError) {
+          // Autocomplete check failed, continue with other fallback attempts
+        }
+
+        // Attempt B: User Account Search (if Attempt A failed or returned same tag)
+        if (booruPosts.length === 0 && !originalTag.toLowerCase().startsWith('user:')) {
+          // Use provider.formatTag() to ensure consistent formatting (same as SyncService)
+          // This handles lowercase conversion and space-to-underscore replacement
+          const formattedUserTag = provider.formatTag(originalTag, "uploader");
+          
+          try {
+            booruPosts = await provider.fetchPosts(
+              formattedUserTag,
+              page,
+              providerSettings
+            );
+            
+            if (booruPosts.length > 0) {
+              tagsString = formattedUserTag; // Update for logging
+            }
+          } catch (userSearchError) {
+            // Uploader retry failed, continue
+          }
+        }
       }
+      
 
       // Extract postIds from API results for local DB lookup
       const postIds = booruPosts.map((booruPost) => booruPost.id);
@@ -269,9 +315,6 @@ export class SearchController extends BaseController {
           ])
         );
 
-        log.debug(
-          `[SearchController] Found ${localPosts.length} posts in local DB out of ${postIds.length} from API`
-        );
       }
 
       // Convert BooruPost[] to Post[] format and merge with local DB state
@@ -419,11 +462,9 @@ export class SearchController extends BaseController {
       // Early return if all tags are cached
       if (missingTags.length === 0) {
         const artistTags = uniqueTags.filter(tag => cachedMap.get(tag) === 1);
-        log.debug(`[SearchController] All ${uniqueTags.length} tags found in cache, returning ${artistTags.length} artists`);
         return artistTags;
       }
 
-      log.info(`[SearchController] Resolving ${missingTags.length} missing tags from API (${cachedTags.length} found in cache)`);
 
       // Get decrypted settings for authentication
       const settings = await this.getDecryptedSettings();
@@ -531,9 +572,7 @@ export class SearchController extends BaseController {
                   });
                 } catch (validationError) {
                   // Skip invalid items (Zod validation failed)
-                  if (validationError instanceof z.ZodError) {
-                    log.debug(`[SearchController] Skipping invalid tag item for "${tagName}":`, validationError.errors);
-                  } else {
+                  if (!(validationError instanceof z.ZodError)) {
                     log.warn(`[SearchController] Unexpected error validating tag item:`, validationError);
                   }
                 }
@@ -599,10 +638,6 @@ export class SearchController extends BaseController {
         return tagType === 1; // type=1 is Artist
       });
       
-      // Summary log after processing all tags
-      log.info(
-        `[SearchController] Resolved batch: found ${artistTags.length} artist(s) out of ${uniqueTags.length} tag(s) requested`
-      );
 
       return artistTags;
     } catch (error) {
@@ -652,11 +687,9 @@ export class SearchController extends BaseController {
       // Early return if all tags are cached
       if (missingTags.length === 0) {
         const characterTags = uniqueTags.filter(tag => cachedMap.get(tag) === 4);
-        log.debug(`[SearchController] All ${uniqueTags.length} tags found in cache, returning ${characterTags.length} characters`);
         return characterTags;
       }
 
-      log.info(`[SearchController] Resolving ${missingTags.length} missing tags from API for characters (${cachedTags.length} found in cache)`);
 
       // Get decrypted settings for authentication
       const settings = await this.getDecryptedSettings();
@@ -753,9 +786,7 @@ export class SearchController extends BaseController {
                   });
                 } catch (validationError) {
                   // Skip invalid items (Zod validation failed)
-                  if (validationError instanceof z.ZodError) {
-                    log.debug(`[SearchController] Skipping invalid tag item for "${tagName}":`, validationError.errors);
-                  } else {
+                  if (!(validationError instanceof z.ZodError)) {
                     log.warn(`[SearchController] Unexpected error validating tag item:`, validationError);
                   }
                 }
@@ -872,11 +903,9 @@ export class SearchController extends BaseController {
       // Early return if all tags are cached
       if (missingTags.length === 0) {
         const filteredTags = uniqueTags.filter(tag => cachedMap.get(tag) === tagType);
-        log.debug(`[SearchController] All ${uniqueTags.length} tags found in cache, returning ${filteredTags.length} tags of type ${tagType}`);
         return filteredTags;
       }
 
-      log.info(`[SearchController] Resolving ${missingTags.length} missing tags from API for type ${tagType} (${cachedTags.length} found in cache)`);
 
       // Get decrypted settings for authentication
       const settings = await this.getDecryptedSettings();
@@ -963,9 +992,8 @@ export class SearchController extends BaseController {
                     type: validated.type,
                   });
                 } catch (validationError) {
-                  if (validationError instanceof z.ZodError) {
-                    log.debug(`[SearchController] Skipping invalid tag item for "${tagName}":`, validationError.errors);
-                  } else {
+                  // Skip invalid items (Zod validation failed)
+                  if (!(validationError instanceof z.ZodError)) {
                     log.warn(`[SearchController] Unexpected error validating tag item:`, validationError);
                   }
                 }
@@ -1025,9 +1053,6 @@ export class SearchController extends BaseController {
         return tagTypeInCache === tagType;
       });
       
-      log.info(
-        `[SearchController] Resolved batch: found ${filteredTags.length} tag(s) of type ${tagType} out of ${uniqueTags.length} tag(s) requested`
-      );
 
       return filteredTags;
     } catch (error) {

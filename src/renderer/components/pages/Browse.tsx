@@ -8,6 +8,8 @@ import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
+import { Button } from "../ui/button";
+import { ExternalLink } from "lucide-react";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -82,9 +84,7 @@ export const Browse = () => {
 
   // Parse tags directly from query using useMemo (no extra re-render)
   const tags = useMemo(() => {
-    const parsedTags = parseTags(query);
-    log.debug(`[Browse] Query changed: "${query}" -> parsed tags:`, parsedTags);
-    return parsedTags;
+    return parseTags(query);
   }, [query]);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
@@ -92,15 +92,10 @@ export const Browse = () => {
       queryKey: ["search", tags],
       queryFn: async ({ pageParam = 1 }) => {
         // Always fetch - empty tags array means show all posts (API omits tags parameter)
-        log.info(`[Browse] Fetching posts for tags:`, tags, `(page ${pageParam})`);
         const result = await window.api.searchBooru({
           tags,
           page: pageParam,
         });
-        log.info(`[Browse] Received ${result.length} posts for tags:`, tags);
-        if (result.length === 0 && tags.length > 0) {
-          log.warn(`[Browse] ⚠️ No posts found for tags:`, tags);
-        }
         return result;
       },
       getNextPageParam: (lastPage, _allPages, lastPageParam) => {
@@ -135,7 +130,6 @@ export const Browse = () => {
 
   const handleLoadMore = async () => {
     if (hasNextPage && !isFetchingNextPage) {
-      log.info("[Browse] Viewer requested more posts. Fetching...");
 
       const result = await fetchNextPage();
 
@@ -152,15 +146,7 @@ export const Browse = () => {
             .filter((id) => !existingPostIds.has(id));
 
           if (newIds.length > 0) {
-            log.info(
-              `[Browse] Fetched ${newIds.length} new posts (${
-                newPage.length - newIds.length
-              } duplicates skipped). Appending to Viewer queue.`
-            );
-
             appendQueueIds(newIds);
-          } else {
-            log.info("[Browse] All fetched posts were already in the queue.");
           }
         }
       }
@@ -207,14 +193,42 @@ export const Browse = () => {
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
         ) : allPosts.length === 0 ? (
-          <div className="flex flex-col gap-4 justify-center items-center h-full text-muted-foreground">
-            <Search className="w-16 h-16 opacity-50" />
-            <div className="text-center">
-              <p className="mb-2 text-lg font-semibold">No posts found</p>
-              <p className="text-sm">
-                Try different tags or check your spelling.
-              </p>
-            </div>
+          <div className="flex flex-col gap-4 justify-center items-center h-full px-6">
+            {tags.length > 0 ? (
+              <div className="flex flex-col gap-4 items-center max-w-md text-center">
+                <Search className="w-16 h-16 opacity-50 text-muted-foreground" />
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold text-foreground">
+                    API returned no results
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    This tag likely exists on the website but is not yet available in the API.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => {
+                    const tagString = tags.join("+");
+                    const url = `https://rule34.xxx/index.php?page=post&s=list&tags=${encodeURIComponent(tagString)}`;
+                    window.api.openExternal(url);
+                  }}
+                  variant="default"
+                  className="gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open {tags[0]} on Rule34.xxx
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 justify-center items-center text-muted-foreground">
+                <Search className="w-16 h-16 opacity-50" />
+                <div className="text-center">
+                  <p className="mb-2 text-lg font-semibold">No posts found</p>
+                  <p className="text-sm">
+                    Try different tags or check your spelling.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <VirtuosoGrid
