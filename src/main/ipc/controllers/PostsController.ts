@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, sql, gte, not, notLike, like, or, type SQL } from "drizzle-orm";
+import { eq, desc, count, and, sql, gte, not, notLike, or, type SQL } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists, type Post } from "../../db/schema";

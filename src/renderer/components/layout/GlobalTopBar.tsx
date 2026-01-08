@@ -1,16 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import {
-  Search,
   Filter,
   ArrowUpDown,
   LayoutList,
   LayoutGrid,
   Shield,
   RefreshCw,
-  X,
 } from "lucide-react";
-import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
   Select,

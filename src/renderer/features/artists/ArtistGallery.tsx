@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo, useEffect } from "react";
+import React, { forwardRef, useMemo } from "react";
 import {
   useInfiniteQuery,
   useQuery,
