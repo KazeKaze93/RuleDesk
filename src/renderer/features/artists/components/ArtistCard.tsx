@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { Trash2, User, Hash, Search } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import type { Artist } from "../../../../main/db/schema";
@@ -14,6 +15,14 @@ interface ArtistCardProps {
 export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
   const { t } = useTranslation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Get posts count for this artist
+  const { data: postsCount = 0 } = useQuery({
+    queryKey: ["posts-count", artist.id],
+    queryFn: async () => {
+      return await window.api.getArtistPostsCount(artist.id);
+    },
+  });
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -60,11 +69,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
           </div>
 
           <p className="mt-1 font-mono text-xs truncate text-slate-500">
-            [{artist.tag}] {t("app.lastId", "Last ID")}: {artist.lastPostId} |{" "}
-            {t("app.new", "New")}:{" "}
-            <span className={artist.newPostsCount > 0 ? "text-green-400" : ""}>
-              {artist.newPostsCount}
-            </span>
+            {postsCount.toLocaleString()} {postsCount === 1 ? "post" : "posts"}
           </p>
         </button>
 
