@@ -4,8 +4,8 @@ import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { settings, SETTINGS_ID, posts, tagMetadata } from "../../db/schema";
-import { eq, inArray, and } from "drizzle-orm";
+import { settings, SETTINGS_ID, posts, tagMetadata, artists } from "../../db/schema";
+import { eq, inArray, and, sql } from "drizzle-orm";
 import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -51,7 +51,7 @@ export class SearchController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS,
-      z.tuple([z.array(z.string().min(1)).max(20)]), // Limit to 20 tags to avoid URL length issues
+      z.tuple([z.array(z.string().min(1)).max(20)]), // Limit to 20 tags (batch + sequential fallback)
       this.resolveTags.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -275,118 +275,136 @@ export class SearchController extends BaseController {
         return [];
       }
 
-      // 1. Normalize tags (lowercase, unique, limit 20)
-      const uniqueTags = [...new Set(tags.map(t => t.toLowerCase()))].slice(0, 20);
+      // Normalize tags (lowercase, unique, limit 20)
+      const uniqueTags = [...new Set(tags.filter(Boolean).map(t => t.toLowerCase().trim()))].slice(0, 20);
       if (uniqueTags.length === 0) {
         return [];
       }
 
       const db = this.getDb();
 
-      // 2. CHECK LOCAL DB CACHE
+      // 1. Быстрая проверка кэша
       const cachedTags = db
         .select()
         .from(tagMetadata)
         .where(inArray(tagMetadata.name, uniqueTags))
         .all();
 
-      // Create a map for quick lookup: tag name -> type
       const cachedMap = new Map(cachedTags.map(t => [t.name, t.type]));
-
-      // Identify what is missing from cache
       const missingTags = uniqueTags.filter(t => !cachedMap.has(t));
 
-      // 3. FETCH MISSING FROM API
-      if (missingTags.length > 0) {
-        log.info(`[SearchController] Resolving ${missingTags.length} missing tags from API (${cachedTags.length} found in cache)`);
+      // Early return if all tags are cached
+      if (missingTags.length === 0) {
+        const artistTags = uniqueTags.filter(tag => cachedMap.get(tag) === 1);
+        log.debug(`[SearchController] All ${uniqueTags.length} tags found in cache, returning ${artistTags.length} artists`);
+        return artistTags;
+      }
 
-        // Get decrypted settings for authentication
-        const settings = await this.getDecryptedSettings();
-        if (!settings) {
-          log.warn("[SearchController] Cannot resolve tags: no settings available");
-          // Return cached results only (graceful degradation)
-        } else {
+      log.info(`[SearchController] Resolving ${missingTags.length} missing tags from API (${cachedTags.length} found in cache)`);
+
+      // Get decrypted settings for authentication
+      const settings = await this.getDecryptedSettings();
+      if (!settings) {
+        log.warn("[SearchController] Cannot resolve tags: no settings available");
+        return uniqueTags.filter(tag => cachedMap.get(tag) === 1);
+      }
+
+      // 2. DAPI-based resolver with smaller batches (10 tags per request for stability)
+      const batchSize = 10;
+      for (let i = 0; i < missingTags.length; i += batchSize) {
+        const currentBatch = missingTags.slice(i, i + batchSize);
+        
+        try {
           const params = new URLSearchParams({
             page: 'dapi',
             s: 'tag',
             q: 'index',
             json: '1',
-            names: missingTags.join(' '),
+            names: currentBatch.join(' '),
           });
 
-          // Inject authentication
-          if (settings.userId) {
-            params.append('user_id', settings.userId);
-          }
           if (settings.apiKey) {
             params.append('api_key', settings.apiKey);
           }
+          if (settings.userId) {
+            params.append('user_id', String(settings.userId));
+          }
 
-          // Use rule34.xxx instead of api.rule34.xxx to avoid strict gateway issues
           const url = `https://rule34.xxx/index.php?${params.toString()}`;
 
-          try {
-            const response = await fetch(url, {
-              signal: AbortSignal.timeout(10000), // 10 second timeout
-              headers: {
-                'User-Agent': 'RuleDesk/1.0',
-                'Accept-Encoding': 'identity',
-              },
-            });
+          const response = await fetch(url, {
+            signal: AbortSignal.timeout(10000), // 10 second timeout
+            headers: {
+              'User-Agent': 'RuleDesk/1.0',
+              'Accept-Encoding': 'identity',
+            },
+          });
 
-            if (response.ok) {
-              const data = await response.json();
-              if (Array.isArray(data)) {
-                // 4. SAVE NEW TAGS TO DB (Batch Insert)
-                const newEntries = data
-                  .map((t: unknown) => {
-                    if (typeof t === 'object' && t !== null && 'name' in t && 'type' in t) {
-                      return {
-                        name: String((t as { name: string }).name).toLowerCase(),
-                        type: Number((t as { type: number }).type),
-                      };
-                    }
-                    return null;
-                  })
-                  .filter((e): e is { name: string; type: number } => e !== null);
-
-                if (newEntries.length > 0) {
-                  // Use onConflictDoNothing to handle race conditions (multiple requests for same tag)
-                  // target: name (primary key) - conflicts are automatically detected
-                  db.insert(tagMetadata)
-                    .values(newEntries)
-                    .onConflictDoNothing({ target: tagMetadata.name })
-                    .run();
-
-                  // Update our local map for the return value
-                  newEntries.forEach(e => cachedMap.set(e.name, e.type));
-
-                  log.debug(`[SearchController] Cached ${newEntries.length} new tag metadata entries`);
-                }
-              } else {
-                log.warn("[SearchController] API response is not an array");
-              }
-            } else {
-              log.warn(`[SearchController] API request failed with status ${response.status}`);
-            }
-          } catch (apiError) {
-            log.error("[SearchController] API request failed, using cache only:", apiError);
-            // Continue with cached results only (graceful degradation)
+          if (!response.ok) {
+            log.warn(`[SearchController] API returned status ${response.status} for batch starting with "${currentBatch[0]}"`);
+            continue;
           }
+
+          const text = await response.text();
+
+          // XML Shield: If response starts with '<', skip it silently
+          if (text.trim().startsWith('<')) {
+            log.warn(`[SearchController] API returned XML for batch starting with "${currentBatch[0]}", skipping`);
+            continue;
+          }
+
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (parseErr) {
+            log.warn(`[SearchController] Failed to parse JSON for batch starting with "${currentBatch[0]}":`, parseErr);
+            continue;
+          }
+
+          // Normalize: API can return a single object or an array
+          const items = Array.isArray(data) ? data : (data ? [data] : []);
+
+          // Filter and map to valid entries with correct type from API
+          const entries = items
+            .filter((item: unknown) => 
+              item &&
+              typeof item === 'object' &&
+              item !== null &&
+              'name' in item &&
+              'type' in item
+            )
+            .map((item: { name: string; type: unknown }) => ({
+              name: String(item.name).toLowerCase(),
+              type: Number(item.type), // Correct type from API (0=General, 1=Artist, etc)
+            }));
+
+          if (entries.length > 0) {
+            // Save to database with correct types
+            // Use onConflictDoUpdate to update type if tag already exists
+            db.insert(tagMetadata)
+              .values(entries)
+              .onConflictDoUpdate({
+                target: tagMetadata.name,
+                set: { type: sql`excluded.type` },
+              })
+              .run();
+
+            // Update cache with correct types
+            entries.forEach(e => cachedMap.set(e.name, e.type));
+            log.debug(`[SearchController] Cached ${entries.length} tags from batch starting with "${currentBatch[0]}"`);
+          }
+        } catch (err) {
+          log.error(`[SearchController] Batch error for tags starting with "${currentBatch[0]}":`, err);
         }
-      } else {
-        log.debug(`[SearchController] All ${uniqueTags.length} tags found in cache, skipping API request`);
       }
 
-      // 5. RETURN ARTISTS ONLY (Type 1)
-      const artists = uniqueTags.filter(tag => cachedMap.get(tag) === 1);
+      // Возвращаем только теги типа 1 (Artist)
+      const artistTags = uniqueTags.filter(tag => cachedMap.get(tag) === 1);
+      log.debug(`[SearchController] Resolved ${artistTags.length} artist tags from ${uniqueTags.length} input tags`);
 
-      log.debug(`[SearchController] Resolved ${artists.length} artist tags from ${uniqueTags.length} input tags`);
-      
-      return artists;
+      return artistTags;
     } catch (error) {
       log.error("[SearchController] Failed to resolve tags:", error);
-      // Return empty array on error (graceful degradation)
       return [];
     }
   }
