@@ -7,7 +7,7 @@ import { ArtistCard } from "./components/ArtistCard";
 import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
 import { Button } from "../../components/ui/button";
 import type { Artist } from "../../../main/db/schema";
-import type { ProviderId } from "../../../main/providers";
+import type { ProviderId } from "../../../shared/constants";
 
 export const Tracked = () => {
   const navigate = useNavigate();

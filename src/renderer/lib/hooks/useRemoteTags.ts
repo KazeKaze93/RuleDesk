@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import log from "electron-log/renderer";
 import { useDebounce } from "./useDebounce";
-import type { SearchResults, ProviderId } from "../../../main/providers";
+import type { SearchResults } from "../../../main/providers";
+import type { ProviderId } from "../../../shared/constants";
 
 interface UseRemoteTagsOptions {
   query: string;

@@ -1,9 +1,10 @@
 import { Rule34Provider } from "./rule34-provider";
 import { GelbooruProvider } from "./gelbooru-provider";
 import { IBooruProvider } from "./types";
+import { PROVIDER_IDS, type ProviderId } from "../../shared/constants";
 
-export const PROVIDER_IDS = ["rule34", "gelbooru"] as const;
-export type ProviderId = typeof PROVIDER_IDS[number];
+// Re-export for backward compatibility
+export { PROVIDER_IDS, type ProviderId };
 
 const providers: Record<ProviderId, IBooruProvider> = {
   "rule34": new Rule34Provider(),

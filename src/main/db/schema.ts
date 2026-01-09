@@ -6,12 +6,13 @@ import {
   index,
 } from "drizzle-orm/sqlite-core";
 
-// Artist type constants for type safety
-export const ARTIST_TYPES = ["tag", "uploader", "query"] as const;
-export type ArtistType = (typeof ARTIST_TYPES)[number];
+import { ARTIST_TYPES, PROVIDER_IDS, type ArtistType } from "../../shared/constants";
 
-// Provider constants (must match providers/index.ts)
-export const PROVIDER_IDS_SCHEMA = ["rule34", "gelbooru"] as const;
+// Re-export for backward compatibility
+export { ARTIST_TYPES, type ArtistType };
+
+// Provider constants for Drizzle schema (must match shared/constants.ts)
+export const PROVIDER_IDS_SCHEMA = PROVIDER_IDS;
 
 // Tag type constants for type safety (matches Rule34 API tag types)
 export const TAG_TYPES = {

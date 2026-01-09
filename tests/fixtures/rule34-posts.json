@@ -1,0 +1,42 @@
+[
+  {
+    "preview_url": "https://img.rule34.xxx/thumbnails/1234/thumbnail_1234567.jpg",
+    "sample_url": "https://img.rule34.xxx/samples/1234/sample_1234567.jpg",
+    "file_url": "https://img.rule34.xxx/images/1234/1234567.jpg",
+    "directory": "1234",
+    "hash": "abc123hash",
+    "height": 1200,
+    "id": 1234567,
+    "image": "1234567.jpg",
+    "change": 1690000000,
+    "owner": "user1",
+    "parent_id": 0,
+    "rating": "explicit",
+    "sample": true,
+    "sample_height": 850,
+    "sample_width": 600,
+    "score": 42,
+    "tags": "tag1 tag2 artist_name video",
+    "width": 900
+  },
+  {
+    "preview_url": "https://img.rule34.xxx/thumbnails/1234/thumbnail_1234568.jpg",
+    "sample_url": "https://img.rule34.xxx/samples/1234/sample_1234568.jpg",
+    "file_url": "https://img.rule34.xxx/images/1234/1234568.mp4",
+    "directory": "1234",
+    "hash": "def456hash",
+    "height": 1080,
+    "id": 1234568,
+    "image": "1234568.mp4",
+    "change": 1690000050,
+    "owner": "user2",
+    "parent_id": 0,
+    "rating": "safe",
+    "sample": false,
+    "sample_height": 0,
+    "sample_width": 0,
+    "score": 10,
+    "tags": "tag3 tag4 artist_name",
+    "width": 1920
+  }
+]

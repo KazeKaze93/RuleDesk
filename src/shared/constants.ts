@@ -29,3 +29,21 @@ export const EXTERNAL_ARTIST_ID = 0;
  */
 export const EXTERNAL_ARTIST_TAG_PREFIX = "external_";
 
+/**
+ * Provider IDs
+ *
+ * Supported Booru provider identifiers.
+ * Shared between Main and Renderer processes for type safety.
+ */
+export const PROVIDER_IDS = ["rule34", "gelbooru"] as const;
+export type ProviderId = typeof PROVIDER_IDS[number];
+
+/**
+ * Artist Types
+ *
+ * Supported artist tracking types.
+ * Shared between Main and Renderer processes for type safety.
+ */
+export const ARTIST_TYPES = ["tag", "uploader", "query"] as const;
+export type ArtistType = typeof ARTIST_TYPES[number];
+
