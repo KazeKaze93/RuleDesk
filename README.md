@@ -47,7 +47,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                       |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                     |
 | **💾 Backup & Restore**           | Manual database backup and restore functionality. Create timestamped backups to protect your data. Restore from backup files with automatic application restart. Backup files are stored in the user data directory.                                                     |
-| **🔍 Search Functionality**       | Search for artists locally and search for tags remotely via Rule34.xxx autocomplete API. Supports both local database search and remote tag suggestions.                                                                                                                 |
+| **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`). Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
 | **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                             |
 | **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                   |
 | **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                            |
@@ -229,7 +229,7 @@ The application is stable and production-ready with the following features imple
 - ✅ **Context Isolation:** Enabled globally with sandbox mode for maximum security
 - ✅ **CSP (Content Security Policy):** Strict CSP in production, relaxed for development (HMR support)
 - ✅ **Portable Mode:** Fully implemented - automatically detects portable mode and uses `data/` folder
-- ⏳ **Age Gate:** Database schema includes `isAdultConfirmed` and `isAdultVerified` fields, but confirmation overlay not yet implemented
+- ✅ **Age Gate:** Age gate component implemented with legal confirmation (`confirmLegal` method)
 
 ### Data Integrity & Sync
 
@@ -244,7 +244,7 @@ The application is stable and production-ready with the following features imple
 
 - ✅ **Progressive Image Loading:** 3-layer system (Preview → Sample → Original) for instant viewing
 - ✅ **Virtualization:** `react-virtuoso` implemented for efficient large list rendering
-- ✅ **Search Functionality:** Local artist search and remote tag search via booru autocomplete API (multi-provider support)
+- ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
 - ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
 - ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles (UI implemented, backend filtering pending)
 - ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
@@ -253,7 +253,7 @@ The application is stable and production-ready with the following features imple
 - ✅ **Favorites System:** Complete implementation with `isFavorited` database field, toggle functionality, and keyboard shortcuts
 - ✅ **Backup Controls:** UI component for creating and restoring database backups with integrity checks
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
-- ✅ **Age Gate Component:** UI component exists (`AgeGate.tsx`), integration pending
+- ✅ **Age Gate Component:** Fully implemented with legal confirmation (`AgeGate.tsx` component and `confirmLegal` IPC method)
 - ⏳ **Safe Mode/NSFW Filter:** Database schema includes `isSafeMode` field, but blur logic not yet implemented in UI components
 
 ---

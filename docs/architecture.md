@@ -498,12 +498,13 @@ const posts = await db.query.posts.findMany({
 
    - `ArtistsController.ts` - Artist management operations
    - `PostsController.ts` - Post-related operations
-   - `SettingsController.ts` - Settings management
+   - `SettingsController.ts` - Settings management (including `confirmLegal` for age gate)
    - `AuthController.ts` - Authentication and credential verification
    - `MaintenanceController.ts` - Database backup/restore operations
    - `ViewerController.ts` - Viewer-related operations
    - `FileController.ts` - File download and management
    - `SystemController.ts` - System-level operations (version, clipboard, etc.)
+   - `SearchController.ts` - Booru search and tag resolution operations (`searchBooru`, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
 
    **BaseController** (`src/main/core/ipc/BaseController.ts`):
 
@@ -679,7 +680,7 @@ const posts = await db.query.posts.findMany({
 3. **IPC Client** (`window.api`)
    - Typed interface to Main process
    - All communication goes through this bridge
-   - Methods: getSettings, saveSettings, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, getArtistPostsCount, syncAll, openExternal, searchArtists, searchRemoteTags, markPostAsViewed, togglePostViewed, togglePostFavorite, downloadFile, openFileInFolder, createBackup, restoreBackup, writeToClipboard, verifyCredentials, logout, resetPostCache, repairArtist, checkForUpdates, quitAndInstall, startDownload
+   - Methods: getSettings, saveSettings, confirmLegal, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, getArtistPostsCount, syncAll, openExternal, searchArtists, searchRemoteTags, searchBooru, resolveTags, resolveCharacterTags, resolveCopyrightTags, resolveTagsByType, markPostAsViewed, togglePostViewed, togglePostFavorite, downloadFile, openFileInFolder, createBackup, restoreBackup, writeToClipboard, verifyCredentials, logout, resetPostCache, repairArtist, checkForUpdates, quitAndInstall, startDownload
 
 ## Security Architecture
 
@@ -1814,7 +1815,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 ### ⏳ Missing / Planned
 
 - **Safe Mode / NSFW Filter:** No blur logic or `safeMode` flag in database/settings
-- **Age Gate:** Only disclaimer text in README, no confirmation overlay or `isAdult` flag
+- **Age Gate:** ✅ **COMPLETED:** Age gate component (`AgeGate.tsx`) and `confirmLegal` IPC method implemented
 - **Portable Mode:** Uses absolute paths via `app.getPath("userData")`, no relative path support
 - **Anti-Bot Measures:** Static User-Agent strings, fixed delays (1.5s/0.5s) but no randomization or rotation
 - **DB Optimization (FTS5):** ✅ FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
