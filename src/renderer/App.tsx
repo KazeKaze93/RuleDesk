@@ -63,10 +63,11 @@ function App() {
         }
       } catch (error) {
         log.error("[App] Failed to check status:", error);
-        setAppState({
-          legalStatus: "unconfirmed",
-          authStatus: "unauthenticated",
-        });
+        // Don't immediately set to unconfirmed on error - might be rate limit or transient error
+        // Retry after a short delay
+        setTimeout(() => {
+          checkStatus();
+        }, 1000);
       }
     };
     checkStatus();
