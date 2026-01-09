@@ -4,7 +4,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { settings, SETTINGS_ID, posts, tagMetadata } from "../../db/schema";
+import { settings, SETTINGS_ID, posts, tagMetadata, TAG_TYPES } from "../../db/schema";
 import { eq, inArray, and, sql } from "drizzle-orm";
 import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
@@ -97,7 +97,7 @@ export class SearchController extends BaseController {
           return Promise.resolve([]);
         }
         const [tags] = result.data;
-        return this.resolveTagsByType(event, tags, 3) as Promise<unknown>;
+        return this.resolveTagsByType(event, tags, TAG_TYPES.COPYRIGHT) as Promise<unknown>;
       }
     );
 
@@ -228,35 +228,25 @@ export class SearchController extends BaseController {
         const originalTag = tags[0].trim();
         
         // Attempt A: Autocomplete (Fix Aliases)
+        // Use provider abstraction instead of direct URL access
         try {
-          const autocompleteUrl = `https://rule34.xxx/autocomplete.php?q=${encodeURIComponent(originalTag)}`;
-          const autocompleteResponse = await fetch(autocompleteUrl, {
-            signal: AbortSignal.timeout(5000),
-            headers: {
-              'User-Agent': 'RuleDesk/1.0',
-              'Accept-Encoding': 'identity',
-            },
-          });
-
-          if (autocompleteResponse.ok) {
-            const autocompleteData = await autocompleteResponse.json() as Array<{ label: string; value: string; type: string }>;
+          const autocompleteResults = await provider.searchTags(originalTag);
+          
+          if (autocompleteResults.length > 0) {
+            const suggestion = autocompleteResults[0].value.trim();
             
-            if (Array.isArray(autocompleteData) && autocompleteData.length > 0) {
-              const suggestion = autocompleteData[0].value.trim();
+            // If suggestion is different from original, retry with suggestion
+            if (suggestion.toLowerCase() !== originalTag.toLowerCase()) {
+              // Use provider.formatTag() for consistent normalization
+              const suggestionString = provider.formatTag(suggestion, "tag");
+              booruPosts = await provider.fetchPosts(
+                suggestionString,
+                page,
+                providerSettings
+              );
               
-              // If suggestion is different from original, retry with suggestion
-              if (suggestion.toLowerCase() !== originalTag.toLowerCase()) {
-                // Use provider.formatTag() for consistent normalization
-                const suggestionString = provider.formatTag(suggestion, "tag");
-                booruPosts = await provider.fetchPosts(
-                  suggestionString,
-                  page,
-                  providerSettings
-                );
-                
-                if (booruPosts.length > 0) {
-                  tagsString = suggestionString; // Update for logging
-                }
+              if (booruPosts.length > 0) {
+                tagsString = suggestionString; // Update for logging
               }
             }
           }
@@ -639,11 +629,11 @@ export class SearchController extends BaseController {
         }
       }
 
-      // CRITICAL: Return ONLY tags where type === 1 (Artist)
+      // CRITICAL: Return ONLY tags where type === TAG_TYPES.ARTIST
       // This ensures resolvedArtistTags in the frontend actually receives artists
       const artistTags = uniqueTags.filter(tag => {
         const tagType = cachedMap.get(tag);
-        return tagType === 1; // type=1 is Artist
+        return tagType === TAG_TYPES.ARTIST;
       });
       
 
@@ -853,10 +843,10 @@ export class SearchController extends BaseController {
         }
       }
 
-      // CRITICAL: Return ONLY tags where type === 4 (Character)
+      // CRITICAL: Return ONLY tags where type === TAG_TYPES.CHARACTER
       const characterTags = uniqueTags.filter(tag => {
         const tagType = cachedMap.get(tag);
-        return tagType === 4; // type=4 is Character
+        return tagType === TAG_TYPES.CHARACTER;
       });
       
       // Summary log after processing all tags
@@ -873,11 +863,11 @@ export class SearchController extends BaseController {
 
   /**
    * Resolve tags by type from Rule34 API
-   * Universal method that can resolve tags of any type (0=General, 1=Artist, 3=Copyright, 4=Character, 5=Meta)
+   * Universal method that can resolve tags of any type
    * 
    * @param _event - IPC event (unused)
    * @param tags - Array of tag names to resolve (max 100, validated via Zod)
-   * @param tagType - Type of tags to return (0=General, 1=Artist, 3=Copyright, 4=Character, 5=Meta)
+   * @param tagType - Type of tags to return (use TAG_TYPES constants: GENERAL, ARTIST, COPYRIGHT, CHARACTER, META)
    * @returns Array of tag names that match the specified type
    */
   private async resolveTagsByType(

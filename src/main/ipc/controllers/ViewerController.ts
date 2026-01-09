@@ -71,20 +71,24 @@ export class ViewerController extends BaseController {
       return null;
     }
 
-    // Step 3: Strictly verify protocol is HTTPS (case-sensitive check)
-    if (parsedUrl.protocol !== "https:") {
+    // Step 3: Get hostname for validation
+    const hostname = parsedUrl.hostname.toLowerCase();
+
+    // Step 4: Verify protocol is HTTPS or HTTP (for rule34.xxx compatibility)
+    // Allow HTTP only for rule34.xxx domain, HTTPS for all allowed hosts
+    const isRule34Domain = hostname === "rule34.xxx" || hostname === "www.rule34.xxx";
+    if (parsedUrl.protocol !== "https:" && !(isRule34Domain && parsedUrl.protocol === "http:")) {
       log.warn(`[ViewerController] Blocked unsafe protocol: ${parsedUrl.protocol} (URL: ${urlString})`);
       return null;
     }
 
-    // Step 4: Verify hostname is in whitelist (exact match, no subdomains)
-    const hostname = parsedUrl.hostname.toLowerCase();
+    // Step 5: Verify hostname is in whitelist (exact match, no subdomains)
     if (!ALLOWED_HOSTS_SET.has(hostname)) {
       log.warn(`[ViewerController] Blocked request to unauthorized hostname: ${hostname} (URL: ${urlString})`);
       return null;
     }
 
-    // Step 5: Additional security checks
+    // Step 6: Additional security checks
     // Reject IP addresses (even if they resolve to allowed domains)
     if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname) || hostname.includes(":")) {
       log.warn(`[ViewerController] Blocked IP address or IPv6: ${hostname} (URL: ${urlString})`);
@@ -98,7 +102,7 @@ export class ViewerController extends BaseController {
       return null;
     }
 
-    // Step 6: Reconstruct URL to ensure it's clean (prevent injection via URL components)
+    // Step 7: Reconstruct URL to ensure it's clean (prevent injection via URL components)
     const sanitizedUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
 
     return sanitizedUrl;

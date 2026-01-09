@@ -15,7 +15,18 @@ try {
   userDataPath = process.cwd();
 }
 
-// Настройка путей и формата
+// Disable separate main.log and renderer.log files (they're useless duplicates)
+// electron-log creates these by default, but we want a single unified app.log
+// This configuration applies to both main and renderer processes
+if (log.transports.main) {
+  log.transports.main.level = false; // Disable main.log (only contains DI init message)
+}
+if (log.transports.renderer) {
+  log.transports.renderer.level = false; // Disable renderer.log (duplicate of app.log)
+}
+
+// Configure unified app.log for all processes (main + renderer)
+// All logs from both processes will go to this single file, preserving chronological order
 log.transports.file.resolvePathFn = () =>
   path.join(userDataPath, "logs", "app.log");
 

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import { Trash2, User, Hash, Search } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import type { Artist } from "../../../../main/db/schema";
@@ -17,19 +16,11 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Get posts count for this artist
-  // Use postsCount from artist object if available (from JOIN query), otherwise fetch separately
-  // This fixes N+1 problem when getArtists includes postsCount via JOIN
-  const { data: fetchedPostsCount } = useQuery({
-    queryKey: ["posts-count", artist.id],
-    queryFn: async () => {
-      return await window.api.getArtistPostsCount(artist.id);
-    },
-    enabled: !('postsCount' in artist) || artist.postsCount === undefined, // Only fetch if not in artist object
-  });
-  
+  // postsCount comes from JOIN query in ArtistsController.getArtists (fixes N+1 problem)
+  // Trust the schema: if postsCount is in artist object, use it; otherwise default to 0
   const postsCount = ('postsCount' in artist && typeof artist.postsCount === 'number') 
     ? artist.postsCount 
-    : (fetchedPostsCount ?? 0);
+    : 0;
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
