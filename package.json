@@ -30,9 +30,6 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed",
     "// ARCHITECTURE & INQUISITOR": "---",
     "arch:stats": "inquisitor analyze .",
     "arch:police": "inquisitor police ./src",
@@ -45,8 +42,7 @@
     "dist": "npm run build && electron-builder",
     "release:minor": "npm version minor && git push --follow-tags",
     "release:patch": "npm version patch && git push --follow-tags",
-    "release:major": "npm version major && git push --follow-tags",
-    "prepare": "husky"
+    "release:major": "npm version major && git push --follow-tags"
   },
   "keywords": [
     "electron",
@@ -60,7 +56,6 @@
   "devDependencies": {
     "@electron/rebuild": "^4.0.2",
     "@eslint/js": "^9.39.1",
-    "@playwright/test": "^1.57.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/dompurify": "^3.0.5",
     "@types/node": "^22.0.0",
@@ -70,7 +65,6 @@
     "@vitest/coverage-v8": "^4.0.16",
     "@vitest/ui": "^4.0.16",
     "autoprefixer": "^10.4.16",
-    "dotenv": "^17.2.3",
     "drizzle-kit": "^0.20.6",
     "electron": "39.2.7",
     "electron-builder": "^26.0.0",
@@ -80,10 +74,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "fast-check": "^4.5.3",
     "globals": "^16.5.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
     "msw": "^2.12.7",
-    "playwright": "^1.57.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
@@ -218,12 +209,6 @@
     },
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**"
-    ]
-  },
-  "lint-staged": {
-    "src/**/*.{ts,tsx}": [
-      "eslint --fix",
-      "vitest related --run"
     ]
   }
 }

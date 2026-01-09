@@ -255,7 +255,17 @@ export class SyncService {
     }
   }
 
-  private async syncArtist(
+  /**
+   * Sync a single artist
+   * 
+   * Public method for testing. Can be called directly with artist and settings.
+   * In production, use repairArtist() or syncAllArtists() instead.
+   *
+   * @param artist - Artist to sync
+   * @param settings - API credentials (userId, apiKey)
+   * @param maxPages - Maximum pages to fetch (default: Infinity)
+   */
+  public async syncArtist(
     artist: Artist,
     settings: { userId: string; apiKey: string },
     maxPages = Infinity
@@ -267,7 +277,7 @@ export class SyncService {
 
     // Type-safe validation without casting
     const isValidProvider = (id: string): id is ProviderId => {
-      return PROVIDER_IDS.some((validId) => validId === id);
+      return PROVIDER_IDS.some((validId: ProviderId) => validId === id);
     };
 
     let providerId: ProviderId;

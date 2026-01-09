@@ -7,9 +7,9 @@
  * to ensure single source of truth. Re-export them here for convenience.
  */
 
-// Re-export types from controllers (single source of truth)
-export type { AddArtistRequest } from "../ipc/controllers/ArtistsController";
-export type { GetPostsRequest, PostFilterRequest } from "../ipc/controllers/PostsController";
+// Re-export types from shared schemas (single source of truth)
+export type { AddArtistRequest } from "../../shared/schemas/artist";
+export type { GetPostsRequest, PostFilterRequest } from "../../shared/schemas/post";
 
 /**
  * Re-export IpcSettings from shared schema for backward compatibility.

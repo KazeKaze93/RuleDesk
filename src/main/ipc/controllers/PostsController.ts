@@ -20,7 +20,13 @@ import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
-import { PostDataSchema, type PostData } from "../../../shared/schemas/post";
+import {
+  PostDataSchema,
+  GetPostsSchema,
+  type PostData,
+  type GetPostsRequest,
+  type PostFilterRequest,
+} from "../../../shared/schemas/post";
 import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
@@ -45,50 +51,8 @@ type IpcPost = {
     : Post[K];
 };
 
-/**
- * Post Filter Schema
- *
- * Single source of truth for post filtering validation and typing.
- */
-export const PostFilterSchema = z
-  .object({
-    tags: z.string().optional(),
-    rating: z.enum(["s", "q", "e"]).optional(),
-    isFavorited: z.boolean().optional(),
-    isViewed: z.boolean().optional(),
-    sinceTracking: z.boolean().optional(),
-  })
-  .partial();
-
-/**
- * Post Filter Request Type
- *
- * Exported directly from schema to ensure single source of truth.
- */
-export type PostFilterRequest = z.infer<typeof PostFilterSchema>;
-
-/**
- * Get Posts Schema
- *
- * Single source of truth for GetPosts validation and typing.
- */
-export const GetPostsSchema = z.object({
-  artistId: z.number().int().positive().optional(),
-  page: z.number().int().min(1).default(1),
-  filters: PostFilterSchema.optional(),
-  limit: z.number().int().min(1).max(100).default(50),
-});
-
-/**
- * Get Posts Request Type
- *
- * Exported directly from schema to ensure single source of truth.
- * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
- */
-export type GetPostsRequest = z.infer<typeof GetPostsSchema>;
-
 // Internal types (not exported - use types from src/main/types/ipc.ts instead)
-type GetPostsParams = z.infer<typeof GetPostsSchema>;
+type GetPostsParams = GetPostsRequest;
 
 /**
  * Posts Controller

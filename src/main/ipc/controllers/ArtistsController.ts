@@ -4,11 +4,10 @@ import { z } from "zod";
 import { eq, or, desc, sql, and, notLike, not } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { artists, posts, ARTIST_TYPES } from "../../db/schema";
+import { artists, posts } from "../../db/schema";
 import { escapeLikePattern } from "../../db/utils";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
-  PROVIDER_IDS,
   getProvider,
   type ProviderId,
   type SearchResults,
@@ -21,6 +20,7 @@ import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
+import { AddArtistSchema, type AddArtistRequest } from "../../../shared/schemas/artist";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -47,30 +47,6 @@ type IpcArtist = {
   postsCount?: number; // Added via JOIN in getArtists to fix N+1 problem
 };
 
-/**
- * Add Artist Schema
- *
- * Single source of truth for AddArtist validation and typing.
- * Type is exported directly from schema to avoid duplication.
- */
-export const AddArtistSchema = z.object({
-  name: z.string().trim().min(1),
-  tag: z.string().trim().min(1),
-  provider: z.enum(PROVIDER_IDS).default("rule34"),
-  type: z.enum(ARTIST_TYPES),
-  apiEndpoint: z.string().url().trim().optional(),
-});
-
-/**
- * Add Artist Request Type
- *
- * Exported directly from schema to ensure single source of truth.
- * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
- */
-export type AddArtistRequest = z.infer<typeof AddArtistSchema>;
-
-// Internal alias for controller methods
-type AddArtistParams = AddArtistRequest;
 
 /**
  * Artists Controller
@@ -99,9 +75,11 @@ export class ArtistsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.ADD_ARTIST,
       z.tuple([AddArtistSchema]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      // Handler method has specific parameter types, but BaseController accepts generic signature
-      this.addArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      // Wrapper to match BaseController signature, then call public method
+      async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
+        const [data] = args as [AddArtistRequest];
+        return this.handleAddArtist(event, data);
+      }
     );
     this.handle(
       IPC_CHANNELS.DB.DELETE_ARTIST,
@@ -189,32 +167,35 @@ export class ArtistsController extends BaseController {
 
   /**
    * Add a new artist or update existing one (by tag)
+   * 
+   * Public method for testing. Can be called directly without IPC context.
+   * When called from tests, pass `null` as the first argument.
    *
-   * @param _event - IPC event (unused)
-   * @param data - Artist data to add (validated)
+   * @param _event - IPC event (unused, pass null for testing)
+   * @param args - Artist data to add (validated)
    * @returns Created or updated artist
    * @throws {Error} If database operation fails
    */
-  private async addArtist(
-    _event: IpcMainInvokeEvent,
-    data: AddArtistParams
+  public async handleAddArtist(
+    _event: IpcMainInvokeEvent | null,
+    args: AddArtistRequest
   ): Promise<IpcArtist> {
     // Get default endpoint from provider if not explicitly provided
-    const provider = getProvider(data.provider);
+    const provider = getProvider(args.provider);
     const finalApiEndpoint =
-      data.apiEndpoint || provider.getDefaultApiEndpoint();
+      args.apiEndpoint || provider.getDefaultApiEndpoint();
 
     log.info(
-      `[ArtistsController] Adding artist: ${data.name} [${data.provider}]`
+      `[ArtistsController] Adding artist: ${args.name} [${args.provider}]`
     );
 
     try {
       const db = this.getDb();
       const artistData: NewArtist = {
-        name: data.name,
-        tag: data.tag,
-        type: data.type,
-        provider: data.provider,
+        name: args.name,
+        tag: args.tag,
+        type: args.type,
+        provider: args.provider,
         apiEndpoint: finalApiEndpoint,
       };
 
@@ -225,9 +206,9 @@ export class ArtistsController extends BaseController {
         .onConflictDoUpdate({
           target: artists.tag,
           set: {
-            name: data.name,
-            type: data.type,
-            provider: data.provider,
+            name: args.name,
+            type: args.type,
+            provider: args.provider,
             apiEndpoint: finalApiEndpoint,
           },
         })
