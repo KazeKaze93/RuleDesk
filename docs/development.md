@@ -21,6 +21,7 @@
 This guide covers the development setup, build process, and common development tasks.
 
 **📖 Related Documentation:**
+
 - [Contributing Guide](./contributing.md) - Code standards and guidelines
 - [Architecture Documentation](./architecture.md) - System architecture
 - [API Documentation](./api.md) - IPC API reference
@@ -321,10 +322,7 @@ Opens web interface at `http://localhost:4983` (default port).
        );
      }
 
-     private async newMethod(
-       _event: IpcMainInvokeEvent,
-       data: MyRequestType
-     ) {
+     private async newMethod(_event: IpcMainInvokeEvent, data: MyRequestType) {
        const db = container.resolve(DI_TOKENS.DB);
        // Implementation
      }
