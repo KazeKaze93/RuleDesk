@@ -81,12 +81,19 @@ export abstract class BaseController {
     ipcMain.handle(channel, async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       try {
         // Throttling: Prevent DoS attacks by limiting call frequency per channel
+        // If rate limit exceeded, throw error immediately instead of creating promise queue
         const now = Date.now();
         const lastCall = BaseController.throttleMap.get(channel);
         if (lastCall !== undefined && now - lastCall < BaseController.THROTTLE_MS) {
           const waitTime = BaseController.THROTTLE_MS - (now - lastCall);
-          log.warn(`[IPC] Throttled request for channel "${channel}" - too frequent (wait ${waitTime}ms)`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
+          log.warn(`[IPC] Rate limit exceeded for channel "${channel}" - too frequent (must wait ${waitTime}ms)`);
+          const rateLimitError: SerializableError = {
+            message: `Rate limit exceeded. Please wait ${waitTime}ms before retrying.`,
+            stack: undefined,
+            name: 'RateLimitError',
+            originalError: undefined,
+          };
+          throw rateLimitError;
         }
         BaseController.throttleMap.set(channel, Date.now());
 

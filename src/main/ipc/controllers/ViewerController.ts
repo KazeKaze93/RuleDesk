@@ -5,7 +5,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { IPC_CHANNELS } from "../channels";
-import { ALLOWED_HOSTS_SET, HTTP_ALLOWED_DOMAINS } from "../../config/allowed-hosts";
+import { ALLOWED_HOSTS_SET } from "../../config/allowed-hosts";
 
 // Dangerous protocols that should never be allowed
 const DANGEROUS_PROTOCOLS = [
@@ -72,24 +72,15 @@ export class ViewerController extends BaseController {
     }
 
     // Step 3: CRITICAL SECURITY - Verify protocol FIRST (before hostname check)
-    // Only allow https: and http: (http: only for rule34.xxx)
-    // Reject all other protocols (javascript:, data:, file:, etc.)
-    const allowedProtocols = ["https:", "http:"] as const;
-    if (!allowedProtocols.includes(parsedUrl.protocol as typeof allowedProtocols[number])) {
-      log.warn(`[ViewerController] Blocked unsafe protocol: ${parsedUrl.protocol} (URL: ${urlString})`);
+    // FORCE HTTPS ONLY - HTTP is insecure and vulnerable to MITM attacks
+    // Reject all other protocols (javascript:, data:, file:, http:, etc.)
+    if (parsedUrl.protocol !== "https:") {
+      log.warn(`[ViewerController] Blocked unsafe protocol: ${parsedUrl.protocol} (URL: ${urlString}). Only HTTPS is allowed.`);
       return null;
     }
 
     // Step 4: Get hostname for validation
     const hostname = parsedUrl.hostname.toLowerCase();
-
-    // Step 5: Verify protocol matches domain requirements
-    // Allow HTTP only for whitelisted domains, HTTPS for all allowed hosts
-    const isHttpAllowedDomain = HTTP_ALLOWED_DOMAINS.includes(hostname as typeof HTTP_ALLOWED_DOMAINS[number]);
-    if (parsedUrl.protocol === "http:" && !isHttpAllowedDomain) {
-      log.warn(`[ViewerController] Blocked HTTP for non-allowed domain: ${hostname} (URL: ${urlString})`);
-      return null;
-    }
 
     // Step 6: Verify hostname is in whitelist (exact match, no subdomains)
     if (!ALLOWED_HOSTS_SET.has(hostname)) {

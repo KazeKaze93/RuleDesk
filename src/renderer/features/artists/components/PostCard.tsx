@@ -29,10 +29,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
         e.stopPropagation();
         onClick();
       }}
-      onMouseDown={(e) => {
-        // Prevent text selection on click
-        e.preventDefault();
-      }}
       aria-label={`View post ${post.id}. Rating: ${post.rating}. ${
         isVid ? "Video" : "Image"
       }.`}
@@ -40,7 +36,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
         "group relative aspect-[2/3] w-full overflow-hidden rounded-lg border bg-card transition-all cursor-pointer",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
         "hover:border-primary hover:shadow-md hover:shadow-primary/10",
-        "select-none", // Prevent text selection
+        "select-none", // Prevent text selection via CSS (user-select: none)
         post.isViewed && "border-muted-foreground/20"
       )}
       style={{ pointerEvents: "auto", userSelect: "none" }} // Ensure button is clickable and prevent text selection

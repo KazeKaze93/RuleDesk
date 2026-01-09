@@ -113,6 +113,9 @@ export class SearchController extends BaseController {
         }, { message: "Invalid tag type. Must be one of TAG_TYPES values." }), // type
       ]),
       (event, ...args) => {
+        // BaseController already validated args with Zod schema above
+        // TypeScript doesn't know the validated type, so we extract with type assertion
+        // This is safe because BaseController.parse() guarantees the shape matches the schema
         const [tags, tagType] = args as [string[], TagType];
         return this.resolveTagsByType(event, tags, tagType);
       }

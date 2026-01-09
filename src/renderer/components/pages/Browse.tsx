@@ -2,7 +2,6 @@ import React, { useMemo, forwardRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
@@ -73,14 +72,10 @@ const parseTags = (query: string): string[] => {
 // --- Основной компонент ---
 
 export const Browse = () => {
+  // Use individual selectors to prevent unnecessary re-renders
   const query = useSearchStore((state) => state.query);
-
-  const { open: openViewer, appendQueueIds } = useViewerStore(
-    useShallow((state) => ({
-      open: state.open,
-      appendQueueIds: state.appendQueueIds,
-    }))
-  );
+  const openViewer = useViewerStore((state) => state.open);
+  const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
 
   // Parse tags directly from query using useMemo (no extra re-render)
   const tags = useMemo(() => {
