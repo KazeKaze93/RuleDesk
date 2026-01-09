@@ -15,17 +15,7 @@ import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
-import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "./components/PostCard";
-
-// Helper function to parse tags from query string
-const parseTags = (query: string): string[] => {
-  if (!query.trim()) return [];
-  return query
-    .split(/[,\s]+/)
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-};
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -65,8 +55,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const query = useSearchStore((state) => state.query);
-  const tags = useMemo(() => parseTags(query), [query]);
+  // ArtistGallery should show ALL posts for the artist, not filtered by global search query
+  // The global search query is only for Browse tab, not for Tracked Artists
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
     useShallow((state) => ({
@@ -85,14 +75,15 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["posts", artist.id, tags],
+      queryKey: ["posts", artist.id],
       queryFn: async ({ pageParam = 1 }) => {
         return await window.api.getArtistPosts({
           artistId: artist.id,
           page: pageParam,
-          filters: {
-            tags: tags.length > 0 ? tags.join(" ") : undefined,
-          },
+      filters: {
+        // No tag filtering - show all posts for this artist
+        tags: undefined,
+      },
         });
       },
       getNextPageParam: (lastPage, allPages) => {
@@ -181,7 +172,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       origin: {
         kind: "artist",
         artistId: artist.id,
-        tags: tags.length > 0 ? tags : undefined,
+        tags: undefined, // No tag filtering in artist gallery
       },
       ids: postIds,
       initialIndex: index,

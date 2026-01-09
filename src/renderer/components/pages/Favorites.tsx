@@ -7,7 +7,6 @@ import {
 } from "@tanstack/react-query";
 import { Heart, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
@@ -61,12 +60,10 @@ export const Favorites = () => {
   const query = useSearchStore((state) => state.query);
   const tags = useMemo(() => parseTags(query), [query]);
 
-  const { open: openViewer, appendQueueIds } = useViewerStore(
-    useShallow((state) => ({
-      open: state.open,
-      appendQueueIds: state.appendQueueIds,
-    }))
-  );
+  // Use separate selectors instead of destructuring to prevent unnecessary re-renders
+  // Each selector only subscribes to its specific value, not the entire store
+  const openViewer = useViewerStore((state) => state.open);
+  const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({

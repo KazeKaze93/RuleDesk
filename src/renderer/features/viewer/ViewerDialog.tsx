@@ -110,21 +110,28 @@ const useCurrentPost = (
     gcTime: Infinity, // Keep in cache forever
   });
 
-  // Optimize: Use direct search instead of creating Map on every cache update
-  // Map creation is O(N) and happens on every post update (e.g., marked as viewed)
-  // Direct search is also O(N) but only searches until found, and doesn't allocate memory
-  return useMemo(() => {
-    if (!currentPostId || !infiniteData) return undefined;
-
-    // Direct search through pages - stops at first match (O(N) worst case, but typically faster)
-    // This avoids creating Map on every cache update, which is expensive for large datasets
-    for (const page of infiniteData.pages) {
-      const found = page.find((post) => post.id === currentPostId);
-      if (found) return found;
-    }
+  // Optimize: Create Map when infiniteData changes (new pages loaded or cache updates)
+  // Map creation is O(N) but provides O(1) lookup for currentPostId
+  // React Query updates infiniteData reference when cache changes, so Map is recreated
+  // This is acceptable trade-off: O(N) Map creation vs O(N) linear search on every render
+  const postsMap = useMemo(() => {
+    if (!infiniteData) return new Map<number, Post>();
     
-    return undefined;
-  }, [currentPostId, infiniteData]);
+    // Create Map from all pages for O(1) lookup
+    const map = new Map<number, Post>();
+    for (const page of infiniteData.pages) {
+      for (const post of page) {
+        map.set(post.id, post);
+      }
+    }
+    return map;
+  }, [infiniteData]); // Recreate when infiniteData changes (includes cache updates)
+
+  // O(1) lookup using cached Map
+  return useMemo(() => {
+    if (!currentPostId || !postsMap) return undefined;
+    return postsMap.get(currentPostId);
+  }, [currentPostId, postsMap]);
 };
 
 

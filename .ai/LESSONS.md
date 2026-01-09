@@ -496,6 +496,127 @@
 - Easier debugging with single log file
 - **Rule**: Use single unified log file for Electron apps - disable separate process logs
 
+### 32. Unsafe Type Casting in IPC Handlers
+
+**Problem**: Using `as Promise<unknown>` and `as TagType` in IPC handlers bypasses TypeScript's type checking.
+
+**Why it's bad**:
+- `as` casting tells compiler "shut up, I know better" - but you usually don't
+- Hides type errors that should be caught at compile time
+- Makes code less maintainable and error-prone
+- Indicates lazy type system design
+
+**Solution**:
+- **Remove unnecessary `as Promise<unknown>`** - BaseController already accepts `Promise<unknown>`
+- **Fix Zod refine** - use `Object.values(TAG_TYPES) as number[]` instead of `as TagType` casting
+- **Use explicit type extraction** in handler wrapper: `const [tags, tagType] = args as [string[], TagType]` only after Zod validation
+- **Rule**: Never use `as` casting to silence TypeScript - fix types upstream instead
+
+### 33. IPC DoS Attack Vulnerability
+
+**Problem**: IPC handlers have no throttling, allowing renderer to spam calls and overwhelm Main process.
+
+**Why it's bad**:
+- Renderer can send unlimited IPC calls per second
+- Main process event loop gets blocked by excessive handler calls
+- Can cause UI freezes and application crashes
+- No protection against malicious or buggy renderer code
+
+**Solution**:
+- **Add throttling in BaseController**: Track last call time per channel using static `throttleMap`
+- **Minimum interval between calls**: 100ms per channel (max 10 calls/sec)
+- **Automatic delay**: If called too frequently, wait before processing
+- **Rule**: Always add throttling/rate limiting to IPC handlers to prevent DoS attacks
+
+### 34. O(N) Performance in useCurrentPost (Map vs Linear Search)
+
+**Problem**: Creating `Map<number, Post>` on every cache update is O(N) operation, but provides O(1) lookup. Linear search is also O(N) but doesn't allocate memory.
+
+**Why it's bad**:
+- Map creation is O(N) and happens on every cache update (e.g., post marked as viewed)
+- For 2000 posts, creates 2000 Map entries on every update
+- Linear search is also O(N) but stops at first match
+- Need to balance: O(N) Map creation vs O(N) search on every render
+
+**Solution**:
+- **Use Map with useMemo**: Create Map when `infiniteData` changes (new pages or cache updates)
+- **O(1) lookup**: Map provides constant-time lookup for `currentPostId`
+- **Acceptable trade-off**: O(N) Map creation when data changes vs O(N) search on every render
+- **Rule**: Use Map for O(1) lookup when data structure changes infrequently compared to lookup frequency
+
+### 35. Magic Strings for Domain Whitelisting
+
+**Problem**: Hardcoded domain strings like `"rule34.xxx"` and `"www.rule34.xxx"` scattered in code.
+
+**Why it's bad**:
+- Hard to maintain - need to update multiple places if domain changes
+- No single source of truth
+- Easy to miss one instance when updating
+- Inconsistent with constant-based approach used elsewhere
+
+**Solution**:
+- **Create `HTTP_ALLOWED_DOMAINS` constant** in `src/main/config/allowed-hosts.ts`
+- **Use constant instead of hardcoded strings**: `HTTP_ALLOWED_DOMAINS.includes(hostname)`
+- **Single source of truth** for domain whitelisting
+- **Rule**: Never hardcode domain names or URLs - always use constants
+
+### 36. Code Duplication: Mixed Logic in SyncService
+
+**Problem**: `syncArtist` method contains both initial sync and incremental sync logic with complex branching (`isInitialSync` ternary).
+
+**Why it's bad**:
+- Single method does too much (violates Single Responsibility Principle)
+- Complex branching makes code hard to understand and maintain
+- Magic number `MAX_PAGES_SAFETY_LIMIT = 1000` defined inside method
+- Difficult to test and debug
+
+**Solution**:
+- **Extract constant**: Move `MAX_PAGES_SAFETY_LIMIT` to module level
+- **Split method**: Create separate `initialSync()` and `incrementalSync()` methods
+- **Clear separation**: Each method handles one specific case
+- **Rule**: Split complex methods with branching logic into separate methods - one responsibility per method
+
+### 37. Zustand Selectors: useShallow vs Individual Selectors
+
+**Problem**: Using `useShallow` with object destructuring still causes re-renders when any field in the object changes, even if component only uses specific fields.
+
+**Why it's bad**:
+- `useShallow` compares entire object, not individual fields
+- Component re-renders when ANY field in selected object changes
+- Performance anti-pattern - breaks React optimization
+- Can cause unnecessary re-renders of large component trees
+
+**Solution**:
+- **Use individual selectors** instead of `useShallow` with destructuring:
+  ```typescript
+  // BAD: useShallow with destructuring
+  const { open, appendQueueIds } = useViewerStore(
+    useShallow((state) => ({ open: state.open, appendQueueIds: state.appendQueueIds }))
+  );
+  
+  // GOOD: Individual selectors
+  const open = useViewerStore((state) => state.open);
+  const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
+  ```
+- **Each selector subscribes only to its specific value**
+- **Rule**: Always use individual selectors for Zustand - avoid `useShallow` with destructuring
+
+### 38. Global State Leakage: Search Query Affecting Unrelated Components
+
+**Problem**: `ArtistGallery` component used global `searchStore.query` to filter posts, causing posts to disappear when a search query from Browse tab was set (e.g., clicking a tag in ViewerDialog).
+
+**Why it's bad**:
+- Global state from one context (Browse search) affects unrelated components (ArtistGallery)
+- User expects to see ALL posts for an artist in Tracked Artists, not filtered by Browse search
+- Creates confusing UX where posts "disappear" due to unrelated state
+- Violates separation of concerns - ArtistGallery should be independent of Browse search state
+
+**Solution**:
+- **Remove global state dependency** from components that should show all data
+- `ArtistGallery` should always show all posts for an artist, not filtered by global search query
+- Global search query (`searchStore`) should only affect Browse tab, not Tracked Artists
+- **Rule**: Don't use global state in components that should display unfiltered data - each component should have clear, independent data requirements
+
 ## Applied Fixes
 
 ✅ Removed log forwarding from Main to Renderer  
@@ -531,8 +652,15 @@
 ✅ Updated openExternal security: allow HTTP for rule34.xxx domain while keeping HTTPS for others
 ✅ Enhanced openExternal security: validate protocol FIRST before hostname (fail-fast security)
 ✅ Fixed synchronous SQLite calls: moved checkFtsTableExists to setup() initialization
-✅ Optimized useCurrentPost: replaced O(N) Map creation with direct search (stops at first match)
+✅ Optimized useCurrentPost: use Map with useMemo for O(1) lookup (better than O(N) search on every render)
 ✅ Fixed magic numbers in IPC: replaced z.number().min(0).max(5) with TAG_TYPES refine validation
 ✅ Extracted escapeLikePattern to utils: eliminated DRY violation in ArtistsController and PostsController
 ✅ Replaced console.warn with electron-log in searchStore: proper logging instead of console noise
 ✅ Disabled duplicate log files: unified main.log and renderer.log into single app.log
+✅ Removed unsafe type casting: fixed as Promise<unknown> and as TagType in SearchController
+✅ Added IPC throttling: 100ms minimum interval per channel to prevent DoS attacks
+✅ Optimized useCurrentPost: use Map with useMemo for O(1) lookup instead of O(N) search
+✅ Extracted domain constants: HTTP_ALLOWED_DOMAINS in allowed-hosts.ts instead of hardcoded strings
+✅ Refactored SyncService: split syncArtist into initialSync and incrementalSync methods
+✅ Fixed Zustand selectors: replaced useShallow destructuring with individual selectors in Updates.tsx and Favorites.tsx
+✅ Fixed global state leakage: removed searchStore dependency from ArtistGallery - now shows all posts for artist regardless of Browse search query

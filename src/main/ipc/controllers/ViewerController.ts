@@ -5,7 +5,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { IPC_CHANNELS } from "../channels";
-import { ALLOWED_HOSTS_SET } from "../../config/allowed-hosts";
+import { ALLOWED_HOSTS_SET, HTTP_ALLOWED_DOMAINS } from "../../config/allowed-hosts";
 
 // Dangerous protocols that should never be allowed
 const DANGEROUS_PROTOCOLS = [
@@ -84,10 +84,10 @@ export class ViewerController extends BaseController {
     const hostname = parsedUrl.hostname.toLowerCase();
 
     // Step 5: Verify protocol matches domain requirements
-    // Allow HTTP only for rule34.xxx domain, HTTPS for all allowed hosts
-    const isRule34Domain = hostname === "rule34.xxx" || hostname === "www.rule34.xxx";
-    if (parsedUrl.protocol === "http:" && !isRule34Domain) {
-      log.warn(`[ViewerController] Blocked HTTP for non-rule34 domain: ${hostname} (URL: ${urlString})`);
+    // Allow HTTP only for whitelisted domains, HTTPS for all allowed hosts
+    const isHttpAllowedDomain = HTTP_ALLOWED_DOMAINS.includes(hostname as typeof HTTP_ALLOWED_DOMAINS[number]);
+    if (parsedUrl.protocol === "http:" && !isHttpAllowedDomain) {
+      log.warn(`[ViewerController] Blocked HTTP for non-allowed domain: ${hostname} (URL: ${urlString})`);
       return null;
     }
 
