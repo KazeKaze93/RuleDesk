@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import log from "electron-log/renderer";
 
 type TabType = "browse" | "updates" | "favorites" | "tracked" | "settings";
 
@@ -20,14 +21,17 @@ export const useSearchStore = create<SearchState>((set) => ({
     // Note: If logs are somehow reaching setQuery, that's a separate architectural issue
     // This validation is a safety net, not a fix for the root cause
     if (typeof query !== 'string') {
-      console.warn('[SearchStore] setQuery called with non-string value:', query);
+      // Silently ignore invalid input - don't pollute logs with expected edge cases
       return;
     }
     
     // Reasonable limit for tag search (tags are typically short)
     const MAX_QUERY_LENGTH = 500;
     if (query.length > MAX_QUERY_LENGTH) {
-      console.warn(`[SearchStore] Query too long (${query.length} chars), truncating`);
+      // Log only if significantly over limit (potential issue)
+      if (query.length > MAX_QUERY_LENGTH * 2) {
+        log.warn(`[SearchStore] Query extremely long (${query.length} chars), truncating`);
+      }
       query = query.substring(0, MAX_QUERY_LENGTH);
     }
     

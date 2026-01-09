@@ -110,19 +110,20 @@ const useCurrentPost = (
     gcTime: Infinity, // Keep in cache forever
   });
 
+  // Optimize: Use direct search instead of creating Map on every cache update
+  // Map creation is O(N) and happens on every post update (e.g., marked as viewed)
+  // Direct search is also O(N) but only searches until found, and doesn't allocate memory
   return useMemo(() => {
     if (!currentPostId || !infiniteData) return undefined;
 
-    // Create Map from InfiniteData for O(1) lookup
-    // Cache Map creation per infiniteData reference
-    const postsMap = new Map<number, Post>();
+    // Direct search through pages - stops at first match (O(N) worst case, but typically faster)
+    // This avoids creating Map on every cache update, which is expensive for large datasets
     for (const page of infiniteData.pages) {
-      for (const post of page) {
-        postsMap.set(post.id, post);
-      }
+      const found = page.find((post) => post.id === currentPostId);
+      if (found) return found;
     }
     
-    return postsMap.get(currentPostId);
+    return undefined;
   }, [currentPostId, infiniteData]);
 };
 

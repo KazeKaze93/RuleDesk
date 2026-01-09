@@ -5,6 +5,7 @@ import { eq, or, desc, sql, and, notLike, not } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { artists, posts, ARTIST_TYPES } from "../../db/schema";
+import { escapeLikePattern } from "../../db/utils";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
   PROVIDER_IDS,
@@ -277,22 +278,6 @@ export class ArtistsController extends BaseController {
     }
   }
 
-  /**
-   * Escape special characters for SQLite LIKE queries
-   * SQLite LIKE treats % and _ as wildcards. To use them literally, we need to escape them.
-   * This function escapes % and _ by prefixing them with backslash, which works with ESCAPE clause.
-   *
-   * @param text - Text to escape for LIKE query
-   * @returns Escaped text safe for LIKE with ESCAPE '\'
-   */
-  private escapeLikePattern(text: string): string {
-    // Escape backslash first (must be first to avoid double-escaping)
-    // Then escape % and _ wildcards
-    return text
-      .replace(/\\/g, "\\\\") // Escape backslash: \ -> \\
-      .replace(/%/g, "\\%") // Escape %: % -> \%
-      .replace(/_/g, "\\_"); // Escape _: _ -> \_
-  }
 
   /**
    * Search artists by name or tag (LIKE query)
@@ -308,7 +293,7 @@ export class ArtistsController extends BaseController {
     try {
       const db = this.getDb();
       // Escape special LIKE characters before wrapping with %
-      const escapedQuery = this.escapeLikePattern(query);
+      const escapedQuery = escapeLikePattern(query);
       const searchPattern = `%${escapedQuery}%`;
 
       // Use sql template with ESCAPE clause for proper LIKE escaping

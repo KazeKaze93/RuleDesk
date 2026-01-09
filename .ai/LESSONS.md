@@ -378,6 +378,124 @@
 - Document security rationale in code comments
 - **Rule**: Security policies should be strict by default, but allow exceptions for specific, documented use cases
 
+### 25. Security: URL Validation Order in openExternal
+
+**Problem**: Validating protocol after parsing hostname allows dangerous protocols to be processed before rejection.
+
+**Why it's bad**:
+- Security vulnerability - dangerous protocols processed before validation
+- Potential for protocol injection if validation logic has bugs
+- Violates "fail fast" principle
+
+**Solution**:
+- **Validate protocol FIRST** before any other URL processing
+- Use explicit `allowedProtocols` array for strict whitelist
+- Reject all protocols not in whitelist immediately
+- Only then validate hostname and other URL components
+- **Rule**: Always validate security-critical fields (protocol, hostname) before processing URL
+
+### 26. Synchronous SQLite Calls in Runtime
+
+**Problem**: Calling `sqlite.prepare().get()` synchronously during request handling blocks the event loop.
+
+**Why it's bad**:
+- Blocks IPC channel during database query
+- Can cause UI freezes in high-load scenarios
+- Violates async/await pattern expectations
+- First call is always blocking, even with caching
+
+**Solution**:
+- **Initialize database checks at startup** (in `setup()` method)
+- Move synchronous SQLite calls to initialization phase
+- Cache results for runtime use (schema doesn't change)
+- Runtime methods return cached values only
+- **Rule**: Never perform synchronous database operations in request handlers - initialize at startup
+
+### 27. O(N) Map Creation on Cache Updates
+
+**Problem**: Creating `Map<number, Post>` from all pages on every cache update (e.g., when post marked as viewed) is expensive for large datasets.
+
+**Why it's bad**:
+- O(N) operation on every cache change
+- Allocates memory for Map even when post is in first page
+- For 2000 posts, creates 2000 Map entries on every update
+- Performance degrades linearly with dataset size
+
+**Solution**:
+- **Use direct search** (`page.find()`) instead of Map creation
+- Direct search stops at first match (typically faster)
+- No memory allocation for Map structure
+- Only searches until post is found
+- **Rule**: Avoid creating data structures (Maps, Arrays) on every render - use direct search when possible
+
+### 28. Magic Numbers in IPC Validation
+
+**Problem**: Using `z.number().int().min(0).max(5)` for tag types in IPC validation uses magic numbers.
+
+**Why it's bad**:
+- Hard to understand what 0-5 means without context
+- No type safety - compiler can't catch invalid values
+- Makes refactoring difficult if tag types change
+- Inconsistent with TAG_TYPES constants used elsewhere
+
+**Solution**:
+- **Use Zod refine with TAG_TYPES constants** for validation
+- `z.number().int().refine((val): val is TagType => Object.values(TAG_TYPES).includes(val))`
+- Provides type safety and clear error messages
+- Single source of truth (TAG_TYPES constants)
+- **Rule**: Never use magic numbers in validation schemas - always use constants with type checking
+
+### 29. Code Duplication: DRY Violation
+
+**Problem**: `escapeLikePattern` function duplicated in `ArtistsController` and `PostsController`.
+
+**Why it's bad**:
+- Violates DRY (Don't Repeat Yourself) principle
+- Bug fixes must be applied in multiple places
+- Inconsistent implementations can diverge over time
+- Increases maintenance burden
+
+**Solution**:
+- **Extract shared utilities to `src/main/db/utils.ts`**
+- Create single `escapeLikePattern` function
+- Import and use in all controllers
+- Single source of truth for logic
+- **Rule**: Extract duplicated logic to shared utilities - DRY applies to all code, not just business logic
+
+### 30. console.warn in Electron Renderer
+
+**Problem**: Using `console.warn` in Electron renderer process creates noise in DevTools console that nobody reads.
+
+**Why it's bad**:
+- Console logs in Electron are not persistent
+- No way to track warnings in production
+- Pollutes DevTools console with expected edge cases
+- Inconsistent with logging standards (electron-log)
+
+**Solution**:
+- **Use `electron-log/renderer` for all logging** in renderer process
+- Only log significant issues (not expected edge cases)
+- Silent handling for common validation failures
+- Consistent logging across main and renderer processes
+- **Rule**: Never use `console.*` in production code - always use electron-log for proper logging
+
+### 31. Duplicate Log Files (main.log vs app.log)
+
+**Problem**: `electron-log` creates separate `main.log` and `renderer.log` files by default, but all logs go to `app.log`, making other files useless.
+
+**Why it's bad**:
+- `main.log` contains only 1-2 lines (DI init)
+- `renderer.log` is duplicate of `app.log`
+- Multiple files make debugging harder (need to check multiple files)
+- Wastes disk space and creates confusion
+
+**Solution**:
+- **Disable separate log transports**: `log.transports.main.level = false` and `log.transports.renderer.level = false`
+- Use single unified `app.log` for all processes
+- Preserves chronological order of events across processes
+- Easier debugging with single log file
+- **Rule**: Use single unified log file for Electron apps - disable separate process logs
+
 ## Applied Fixes
 
 ✅ Removed log forwarding from Main to Renderer  
@@ -411,3 +529,10 @@
 ✅ Fixed provider abstraction violation: replaced direct URL access with provider.searchTags() in SearchController
 ✅ Replaced magic numbers with TAG_TYPES constants for tag type safety
 ✅ Updated openExternal security: allow HTTP for rule34.xxx domain while keeping HTTPS for others
+✅ Enhanced openExternal security: validate protocol FIRST before hostname (fail-fast security)
+✅ Fixed synchronous SQLite calls: moved checkFtsTableExists to setup() initialization
+✅ Optimized useCurrentPost: replaced O(N) Map creation with direct search (stops at first match)
+✅ Fixed magic numbers in IPC: replaced z.number().min(0).max(5) with TAG_TYPES refine validation
+✅ Extracted escapeLikePattern to utils: eliminated DRY violation in ArtistsController and PostsController
+✅ Replaced console.warn with electron-log in searchStore: proper logging instead of console noise
+✅ Disabled duplicate log files: unified main.log and renderer.log into single app.log

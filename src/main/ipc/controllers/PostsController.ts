@@ -26,6 +26,7 @@ import {
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
+import { escapeLikePattern } from "../../db/utils";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -103,18 +104,22 @@ export class PostsController extends BaseController {
   }
 
   // Cache FTS table existence check (schema doesn't change at runtime)
-  private ftsTableExistsCache: boolean | null = null;
+  // Initialized once at setup() to avoid blocking synchronous calls
+  private ftsTableExistsCache: boolean = false;
 
   /**
    * Check if posts_fts table exists (cached, checked once at initialization)
    * @returns true if FTS5 table exists, false otherwise
    */
   private checkFtsTableExists(): boolean {
-    // Return cached value if already checked
-    if (this.ftsTableExistsCache !== null) {
-      return this.ftsTableExistsCache;
-    }
+    return this.ftsTableExistsCache;
+  }
 
+  /**
+   * Initialize FTS table existence check (called once at setup)
+   * This avoids blocking synchronous SQLite calls during runtime
+   */
+  private initializeFtsTableCheck(): void {
     try {
       // Use official getSqliteInstance export (safe, no unsafe casts)
       // Query sqlite_master system table to check if posts_fts exists
@@ -124,14 +129,13 @@ export class PostsController extends BaseController {
       );
       const result = stmt.get();
       this.ftsTableExistsCache = !!result;
-      return this.ftsTableExistsCache;
+      log.info(`[PostsController] FTS table check initialized: ${this.ftsTableExistsCache}`);
     } catch (error) {
       log.warn(
         "[PostsController] Failed to check FTS table existence, using LIKE fallback:",
         error
       );
       this.ftsTableExistsCache = false;
-      return false;
     }
   }
 
@@ -185,6 +189,9 @@ export class PostsController extends BaseController {
         ...args: unknown[]
       ) => Promise<unknown>
     );
+
+    // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)
+    this.initializeFtsTableCheck();
 
     log.info("[PostsController] All handlers registered");
   }
@@ -241,22 +248,6 @@ export class PostsController extends BaseController {
     return existingPost;
   }
 
-  /**
-   * Escape special characters for SQLite LIKE queries
-   * SQLite LIKE treats % and _ as wildcards. To use them literally, we need to escape them.
-   * This function escapes % and _ by prefixing them with backslash, which works with ESCAPE clause.
-   *
-   * @param text - Text to escape for LIKE query
-   * @returns Escaped text safe for LIKE with ESCAPE '\'
-   */
-  private escapeLikePattern(text: string): string {
-    // Escape backslash first (must be first to avoid double-escaping)
-    // Then escape % and _ wildcards
-    return text
-      .replace(/\\/g, "\\\\") // Escape backslash: \ -> \\
-      .replace(/%/g, "\\%") // Escape %: % -> \%
-      .replace(/_/g, "\\_"); // Escape _: _ -> \_
-  }
 
   /**
    * Sanitize FTS5 search query to prevent syntax errors
@@ -356,7 +347,7 @@ export class PostsController extends BaseController {
       const likeConditions = tagParts.map((tag) => {
         // Escape special LIKE characters: %, _, and \
         // Use ESCAPE clause to treat escaped characters literally
-        const escapedTag = this.escapeLikePattern(tag);
+        const escapedTag = escapeLikePattern(tag);
 
         // Use sql template with ESCAPE clause for proper LIKE escaping
         // SQLite LIKE with ESCAPE '\' allows us to use \% and \_ literally

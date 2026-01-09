@@ -4,7 +4,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { settings, SETTINGS_ID, posts, tagMetadata, TAG_TYPES } from "../../db/schema";
+import { settings, SETTINGS_ID, posts, tagMetadata, TAG_TYPES, type TagType } from "../../db/schema";
 import { eq, inArray, and, sql } from "drizzle-orm";
 import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
@@ -103,7 +103,13 @@ export class SearchController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE,
-      z.tuple([z.array(z.string().min(1)).max(100), z.number().int().min(0).max(5)]), // tags, type
+      z.tuple([
+        z.array(z.string().min(1)).max(100), // tags
+        z.number().int().refine((val): val is TagType => {
+          // Use TAG_TYPES constants instead of magic numbers
+          return Object.values(TAG_TYPES).includes(val as TagType);
+        }, { message: "Invalid tag type. Must be one of TAG_TYPES values." }), // type
+      ]),
       this.resolveTagsByType.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
