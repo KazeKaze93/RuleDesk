@@ -99,10 +99,9 @@ export class ArtistsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.ADD_ARTIST,
       z.tuple([AddArtistSchema]),
-      this.addArtist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      // Handler method has specific parameter types, but BaseController accepts generic signature
+      this.addArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.DELETE_ARTIST,

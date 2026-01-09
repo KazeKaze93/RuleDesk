@@ -110,19 +110,28 @@ const useCurrentPost = (
     gcTime: Infinity, // Keep in cache forever
   });
 
-  // Optimize: Flatten pages once and use find() for lookup
-  // This avoids O(N) Map creation on every cache update
-  // Trade-off: O(N) find() vs O(N) Map creation, but find() stops at first match
-  const allPosts = useMemo(() => {
-    if (!infiniteData) return [];
-    return infiniteData.pages.flat();
-  }, [infiniteData]);
+  // Optimize: Create Map for O(1) lookup instead of O(N) find() on every slide change
+  // Trade-off: Map creation is O(N) but happens only when infiniteData changes (new pages or cache updates)
+  // For 1000+ posts, O(1) lookup on slide change is much better than O(N) search
+  // Map is recreated when infiniteData reference changes (React Query updates reference on cache changes)
+  const postsMap = useMemo(() => {
+    if (!infiniteData) return new Map<number, Post>();
+    
+    // Create Map from all pages for O(1) lookup
+    const map = new Map<number, Post>();
+    for (const page of infiniteData.pages) {
+      for (const post of page) {
+        map.set(post.id, post);
+      }
+    }
+    return map;
+  }, [infiniteData]); // Recreate when infiniteData changes (includes cache updates)
 
-  // O(N) lookup using find() - stops at first match, no Map overhead
+  // O(1) lookup using Map - much faster than O(N) find() for large datasets
   return useMemo(() => {
-    if (!currentPostId || allPosts.length === 0) return undefined;
-    return allPosts.find((post) => post.id === currentPostId);
-  }, [currentPostId, allPosts]);
+    if (!currentPostId || postsMap.size === 0) return undefined;
+    return postsMap.get(currentPostId);
+  }, [currentPostId, postsMap]);
 };
 
 
@@ -298,60 +307,68 @@ const TagsDrawer = ({
     retry: false,
   });
 
-  // Get all tags from the post for matching
-  const allTags = useMemo(() => {
-    if (!post?.tags) return [];
-    const tagsArray = typeof post.tags === 'string' 
-      ? post.tags.split(' ').filter(t => t.length > 0)
-      : Array.isArray(post.tags) ? post.tags : [];
-    return tagsArray;
-  }, [post.tags]);
+  // Group all tags by type in a single useMemo for better performance
+  // This avoids multiple useMemo dependencies and reduces re-computation overhead
+  const groupedTags = useMemo(() => {
+    // Parse all tags from post
+    const allTags: string[] = post?.tags
+      ? (typeof post.tags === 'string' 
+          ? post.tags.split(' ').filter(t => t.length > 0)
+          : Array.isArray(post.tags) ? post.tags : [])
+      : [];
 
-  // Get all copyright tags (type=3) - return all matching tags, not just first
-  const copyrightTags = useMemo(() => {
-    if (resolvedCopyrightTags.length === 0) return [];
-    // Find all tags in the post's tag list that match resolved copyright tags
-    return allTags.filter(t => 
-      resolvedCopyrightTags.some(r => r.toLowerCase() === t.toLowerCase())
-    );
-  }, [resolvedCopyrightTags, allTags]);
+    // Copyright tags (type=3)
+    const copyright: string[] = resolvedCopyrightTags.length > 0
+      ? allTags.filter(t => 
+          resolvedCopyrightTags.some(r => r.toLowerCase() === t.toLowerCase())
+        )
+      : [];
 
-  // Get all character tags (type=4) - return all matching tags, not just first
-  const characterTags = useMemo(() => {
-    if (resolvedCharacterTags.length === 0) return [];
-    // Find all tags in the post's tag list that match resolved character tags
-    return allTags.filter(t => 
-      resolvedCharacterTags.some(r => r.toLowerCase() === t.toLowerCase())
-    );
-  }, [resolvedCharacterTags, allTags]);
+    // Character tags (type=4)
+    const character: string[] = resolvedCharacterTags.length > 0
+      ? allTags.filter(t => 
+          resolvedCharacterTags.some(r => r.toLowerCase() === t.toLowerCase())
+        )
+      : [];
 
-  // Get all artist tags (type=1) - return all matching tags, not just first
-  const artistTags = useMemo(() => {
-    const tags: string[] = [];
-    // 1. Add local DB artist if exists
+    // Artist tags (type=1) - includes local DB artist and API resolved tags
+    const artistTags: string[] = [];
     if (artist?.tag) {
-      tags.push(artist.tag);
+      artistTags.push(artist.tag);
     }
-    // 2. Add all API resolved artist tags that match post tags
     if (resolvedArtistTags.length > 0) {
       const apiTags = allTags.filter(t => 
         resolvedArtistTags.some(r => r.toLowerCase() === t.toLowerCase())
       );
-      tags.push(...apiTags);
+      artistTags.push(...apiTags);
     }
     // Remove duplicates
-    return [...new Set(tags)];
-  }, [artist, resolvedArtistTags, allTags]);
+    const uniqueArtist = [...new Set(artistTags)];
 
-  // Get General tags (type=0) - all tags that are not Copyright, Character, or Artist
-  const generalTags = useMemo(() => {
+    // General tags (type=0) - all tags that are not Copyright, Character, or Artist
     const specialTags = new Set([
-      ...copyrightTags.map(t => t.toLowerCase()),
-      ...characterTags.map(t => t.toLowerCase()),
-      ...artistTags.map(t => t.toLowerCase()),
+      ...copyright.map(t => t.toLowerCase()),
+      ...character.map(t => t.toLowerCase()),
+      ...uniqueArtist.map(t => t.toLowerCase()),
     ]);
-    return allTags.filter(t => !specialTags.has(t.toLowerCase()));
-  }, [allTags, copyrightTags, characterTags, artistTags]);
+    const general = allTags.filter(t => !specialTags.has(t.toLowerCase()));
+
+    return {
+      artist: uniqueArtist,
+      character,
+      copyright,
+      general,
+    };
+  }, [
+    post.tags,
+    artist,
+    resolvedArtistTags,
+    resolvedCharacterTags,
+    resolvedCopyrightTags,
+  ]);
+
+  // Destructure for backward compatibility with existing code
+  const { artist: artistTags, character: characterTags, copyright: copyrightTags, general: generalTags } = groupedTags;
 
   const { close: closeViewer } = useViewerStore(
     useShallow((state) => ({
