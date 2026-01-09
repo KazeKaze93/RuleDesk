@@ -71,24 +71,33 @@ export class ViewerController extends BaseController {
       return null;
     }
 
-    // Step 3: Get hostname for validation
-    const hostname = parsedUrl.hostname.toLowerCase();
-
-    // Step 4: Verify protocol is HTTPS or HTTP (for rule34.xxx compatibility)
-    // Allow HTTP only for rule34.xxx domain, HTTPS for all allowed hosts
-    const isRule34Domain = hostname === "rule34.xxx" || hostname === "www.rule34.xxx";
-    if (parsedUrl.protocol !== "https:" && !(isRule34Domain && parsedUrl.protocol === "http:")) {
+    // Step 3: CRITICAL SECURITY - Verify protocol FIRST (before hostname check)
+    // Only allow https: and http: (http: only for rule34.xxx)
+    // Reject all other protocols (javascript:, data:, file:, etc.)
+    const allowedProtocols = ["https:", "http:"] as const;
+    if (!allowedProtocols.includes(parsedUrl.protocol as typeof allowedProtocols[number])) {
       log.warn(`[ViewerController] Blocked unsafe protocol: ${parsedUrl.protocol} (URL: ${urlString})`);
       return null;
     }
 
-    // Step 5: Verify hostname is in whitelist (exact match, no subdomains)
+    // Step 4: Get hostname for validation
+    const hostname = parsedUrl.hostname.toLowerCase();
+
+    // Step 5: Verify protocol matches domain requirements
+    // Allow HTTP only for rule34.xxx domain, HTTPS for all allowed hosts
+    const isRule34Domain = hostname === "rule34.xxx" || hostname === "www.rule34.xxx";
+    if (parsedUrl.protocol === "http:" && !isRule34Domain) {
+      log.warn(`[ViewerController] Blocked HTTP for non-rule34 domain: ${hostname} (URL: ${urlString})`);
+      return null;
+    }
+
+    // Step 6: Verify hostname is in whitelist (exact match, no subdomains)
     if (!ALLOWED_HOSTS_SET.has(hostname)) {
       log.warn(`[ViewerController] Blocked request to unauthorized hostname: ${hostname} (URL: ${urlString})`);
       return null;
     }
 
-    // Step 6: Additional security checks
+    // Step 7: Additional security checks
     // Reject IP addresses (even if they resolve to allowed domains)
     if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname) || hostname.includes(":")) {
       log.warn(`[ViewerController] Blocked IP address or IPv6: ${hostname} (URL: ${urlString})`);
@@ -102,7 +111,7 @@ export class ViewerController extends BaseController {
       return null;
     }
 
-    // Step 7: Reconstruct URL to ensure it's clean (prevent injection via URL components)
+    // Step 8: Reconstruct URL to ensure it's clean (prevent injection via URL components)
     const sanitizedUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
 
     return sanitizedUrl;
