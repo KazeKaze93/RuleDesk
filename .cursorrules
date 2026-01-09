@@ -102,7 +102,7 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 
 # 🧠 MEMORY & CONTINUOUS IMPROVEMENT
 
-- **MANDATORY CHECK:** Before generating any code, YOU MUST CHECK `.ai/LESSONS.md` for:
+- **MANDATORY CHECK:** Before generating any code, YOU MUST CHECK `.ai/LESSONS.txt` for:
   - Anti-patterns and architectural constraints from previous mistakes
   - Security issues and their fixes
   - Performance problems and solutions
@@ -110,13 +110,13 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 - **PROTOCOL "LEARN":**
   - IF I say: "save lesson" or "save lessons":
     1. Analyze the bug/error/improvement we just implemented
-    2. Check `.ai/LESSONS.md` for similar/duplicate entries
+    2. Check `.ai/LESSONS.txt` for similar/duplicate entries
     3. If similar exists: merge/update existing entry instead of creating duplicate
     4. Formulate:
        - **Problem**: What was wrong and why
        - **Solution**: How it was fixed
        - **Prevention**: What to avoid in future
-    5. APPEND to appropriate section in `.ai/LESSONS.md` (Critical/Important/Recommendations/Improvements)
+    5. APPEND to appropriate section in `.ai/LESSONS.txt` (Critical/Important/Recommendations/Improvements)
     6. Update "Applied Fixes" checklist if applicable
     7. CONFIRM: "Lesson saved to [section]. I will not repeat this mistake."
 - **DUPLICATE PREVENTION:**

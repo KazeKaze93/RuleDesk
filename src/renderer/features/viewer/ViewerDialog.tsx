@@ -110,28 +110,19 @@ const useCurrentPost = (
     gcTime: Infinity, // Keep in cache forever
   });
 
-  // Optimize: Create Map when infiniteData changes (new pages loaded or cache updates)
-  // Map creation is O(N) but provides O(1) lookup for currentPostId
-  // React Query updates infiniteData reference when cache changes, so Map is recreated
-  // This is acceptable trade-off: O(N) Map creation vs O(N) linear search on every render
-  const postsMap = useMemo(() => {
-    if (!infiniteData) return new Map<number, Post>();
-    
-    // Create Map from all pages for O(1) lookup
-    const map = new Map<number, Post>();
-    for (const page of infiniteData.pages) {
-      for (const post of page) {
-        map.set(post.id, post);
-      }
-    }
-    return map;
-  }, [infiniteData]); // Recreate when infiniteData changes (includes cache updates)
+  // Optimize: Flatten pages once and use find() for lookup
+  // This avoids O(N) Map creation on every cache update
+  // Trade-off: O(N) find() vs O(N) Map creation, but find() stops at first match
+  const allPosts = useMemo(() => {
+    if (!infiniteData) return [];
+    return infiniteData.pages.flat();
+  }, [infiniteData]);
 
-  // O(1) lookup using cached Map
+  // O(N) lookup using find() - stops at first match, no Map overhead
   return useMemo(() => {
-    if (!currentPostId || !postsMap) return undefined;
-    return postsMap.get(currentPostId);
-  }, [currentPostId, postsMap]);
+    if (!currentPostId || allPosts.length === 0) return undefined;
+    return allPosts.find((post) => post.id === currentPostId);
+  }, [currentPostId, allPosts]);
 };
 
 
