@@ -202,8 +202,9 @@ interface IpcBridge {
   logout: () => Promise<void>;
 
   // Settings
-  getSettings: () => Promise<Settings | undefined>;
+  getSettings: () => Promise<IpcSettings | null>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  confirmLegal: () => Promise<IpcSettings>;
 
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
@@ -217,18 +218,23 @@ interface IpcBridge {
     page?: number;
   }) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
-  markPostAsViewed: (postId: number) => Promise<boolean>;
+  markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
   togglePostViewed: (postId: number) => Promise<boolean>;
-  togglePostFavorite: (postId: number) => Promise<boolean>;
+  togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
   resetPostCache: (postId: number) => Promise<boolean>;
 
   // External
   openExternal: (url: string) => Promise<void>;
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
+  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+  resolveTags: (tags: string[]) => Promise<string[]>;
+  resolveCharacterTags: (tags: string[]) => Promise<string[]>;
+  resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
+  resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
 
   // Sync
   syncAll: () => Promise<boolean>;
-  repairArtist: (artistId: number) => Promise<boolean>;
+  repairArtist: (artistId: number) => Promise<{ success: boolean; error?: string }>;
 
   // Downloads
   downloadFile: (
@@ -551,6 +557,45 @@ const onSubmit = async (data: CredsFormValues) => {
 
 ---
 
+### `confirmLegal()`
+
+Confirms legal age verification and terms of service acceptance. Updates the `isAdultVerified` and `tosAcceptedAt` fields in settings.
+
+**When to use:** During onboarding flow when user confirms they are 18+ and accepts terms of service.
+
+**Typical scenario:** User sees age gate dialog → clicks "I am 18+" → `confirmLegal` is called → settings updated with verification timestamp → user proceeds to main app.
+
+**Why this method:** Separates legal confirmation from credential saving. This ensures legal compliance is tracked separately from API credentials.
+
+**Returns:** `Promise<IpcSettings>`
+
+**Example:**
+
+```typescript
+const settings = await window.api.confirmLegal();
+if (settings.isAdultVerified) {
+  console.log("Legal confirmation completed");
+}
+```
+
+**Real-world usage in React component:**
+
+```typescript
+// In AgeGate.tsx component
+const handleConfirm = async () => {
+  try {
+    const settings = await window.api.confirmLegal();
+    onComplete(settings);
+  } catch (error) {
+    log.error("Failed to confirm legal:", error);
+  }
+};
+```
+
+**IPC Channel:** `settings:confirm-legal`
+
+---
+
 ### `addArtist(artist: NewArtist)`
 
 Adds a new artist to track. Validates the input before insertion.
@@ -796,7 +841,7 @@ Repairs/resynchronizes an artist by resetting their `lastPostId` to 0 and re-fet
 
 - `artistId: number` - Artist ID to repair
 
-**Returns:** `Promise<boolean>`
+**Returns:** `Promise<{ success: boolean; error?: string }>`
 
 **Example:**
 
@@ -871,13 +916,14 @@ await window.api.quitAndInstall();
 
 ---
 
-### `markPostAsViewed(postId: number)`
+### `markPostAsViewed(postId: number, postData?: PostData)`
 
-Marks a post as viewed in the database.
+Marks a post as viewed in the database. Optionally accepts post data for optimization.
 
 **Parameters:**
 
 - `postId: number` - Post ID to mark as viewed
+- `postData?: PostData` - Optional post data to avoid additional database query
 
 **Returns:** `Promise<boolean>`
 
@@ -940,6 +986,146 @@ results.forEach((result) => {
 **IPC Channel:** `api:search-remote-tags`
 
 **Note:** Requires at least 2 characters. Returns empty array if query is too short or API call fails. Supports multiple booru providers via provider pattern.
+
+---
+
+### `searchBooru(params: { tags: string[]; page: number })`
+
+Searches for posts on the booru API using specified tags and page number.
+
+**When to use:** Search for posts directly from the booru API without tracking an artist. Used in Browse page for direct search functionality.
+
+**Typical scenario:** User enters tags in Browse page search → clicks search → `searchBooru` is called → posts fetched from API → displayed in gallery.
+
+**Parameters:**
+
+- `params.tags: string[]` - Array of tags to search for
+- `params.page: number` - Page number for pagination
+
+**Returns:** `Promise<Post[]>`
+
+**Example:**
+
+```typescript
+const posts = await window.api.searchBooru({
+  tags: ["blue_hair", "solo"],
+  page: 1,
+});
+console.log(`Found ${posts.length} posts`);
+```
+
+**IPC Channel:** `booru:search`
+
+---
+
+### `resolveTags(tags: string[])`
+
+Resolves tags to their canonical form using the booru API. Returns artist tags (type=1) from the provided tag list.
+
+**When to use:** When you need to identify which tags in a post are artist tags. Used in viewer to highlight artist names.
+
+**Typical scenario:** User opens a post in viewer → component calls `resolveTags` with all post tags → receives list of artist tags → highlights artist names in UI.
+
+**Parameters:**
+
+- `tags: string[]` - Array of tags to resolve
+
+**Returns:** `Promise<string[]>` - Array of resolved artist tag names
+
+**Example:**
+
+```typescript
+const artistTags = await window.api.resolveTags([
+  "tag1",
+  "tag2",
+  "tag3",
+]);
+console.log("Artist tags:", artistTags);
+```
+
+**IPC Channel:** `booru:resolve-tags`
+
+---
+
+### `resolveCharacterTags(tags: string[])`
+
+Resolves tags to their canonical form, returning only character tags (type=4).
+
+**When to use:** When you need to identify which tags are character names. Similar to `resolveTags` but filters for character tags only.
+
+**Parameters:**
+
+- `tags: string[]` - Array of tags to resolve
+
+**Returns:** `Promise<string[]>` - Array of resolved character tag names
+
+**Example:**
+
+```typescript
+const characterTags = await window.api.resolveCharacterTags([
+  "tag1",
+  "tag2",
+]);
+```
+
+**IPC Channel:** `booru:resolve-character-tags`
+
+---
+
+### `resolveCopyrightTags(tags: string[])`
+
+Resolves tags to their canonical form, returning only copyright tags (type=3).
+
+**When to use:** When you need to identify which tags are copyright/series names.
+
+**Parameters:**
+
+- `tags: string[]` - Array of tags to resolve
+
+**Returns:** `Promise<string[]>` - Array of resolved copyright tag names
+
+**Example:**
+
+```typescript
+const copyrightTags = await window.api.resolveCopyrightTags([
+  "tag1",
+  "tag2",
+]);
+```
+
+**IPC Channel:** `booru:resolve-copyright-tags`
+
+---
+
+### `resolveTagsByType(tags: string[], type: number)`
+
+Resolves tags to their canonical form, filtering by a specific tag type.
+
+**When to use:** When you need tags of a specific type. More flexible than the specific resolve methods above.
+
+**Parameters:**
+
+- `tags: string[]` - Array of tags to resolve
+- `type: number` - Tag type to filter by:
+  - `0` - General
+  - `1` - Artist
+  - `3` - Copyright
+  - `4` - Character
+  - `5` - Meta
+
+**Returns:** `Promise<string[]>` - Array of resolved tag names of the specified type
+
+**Example:**
+
+```typescript
+// Get artist tags (type=1)
+const artistTags = await window.api.resolveTagsByType(tags, 1);
+
+// Get character tags (type=4)
+const characterTags = await window.api.resolveTagsByType(tags, 4);
+```
+
+**IPC Channel:** `booru:resolve-tags-by-type`
 
 ---
 
@@ -1099,13 +1285,14 @@ const success = await window.api.togglePostViewed(123);
 
 ---
 
-### `togglePostFavorite(postId: number)`
+### `togglePostFavorite(postId: number, postData?: PostData)`
 
-Toggles the favorite status of a post.
+Toggles the favorite status of a post. Optionally accepts post data for optimization.
 
 **Parameters:**
 
 - `postId: number` - Post ID to toggle
+- `postData?: PostData` - Optional post data to avoid additional database query
 
 **Returns:** `Promise<boolean>`
 

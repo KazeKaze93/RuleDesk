@@ -218,9 +218,9 @@ Advanced features for future releases:
 - ⏳ **Safe Mode / NSFW Filter:** Implement content blur/filtering based on settings
   - **Current:** Database schema includes `isSafeMode` field in settings table, but blur logic not yet implemented in UI components
   - **Target:** Implement blur logic in `PostCard.tsx` and viewer components based on `isSafeMode` setting
-- ⏳ **Age Gate:** Implement 18+ confirmation overlay
-  - **Current:** Database schema includes `isAdultConfirmed` field, but confirmation overlay not yet implemented
-  - **Target:** One-time confirmation dialog that sets `isAdultConfirmed` flag in database
+- ✅ **Age Gate:** Implement 18+ confirmation overlay
+  - **Status:** ✅ **COMPLETED:** Age gate component (`AgeGate.tsx`) and `confirmLegal` IPC method implemented
+  - **Implementation:** One-time confirmation dialog that sets `isAdultVerified` and `tosAcceptedAt` flags in database
 
 ### Portability
 
