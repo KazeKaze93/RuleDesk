@@ -1,14 +1,14 @@
 # Документация API
 
-## 📑 Оглавление
+## 📑 Содержание
 
 - [Обзор](#overview)
 - [Архитектура](#architecture)
-- [IPC Bridge Interface](#ipc-bridge-interface)
+- [Интерфейс IPC Bridge](#ipc-bridge-interface)
 - [Методы API](#api-methods)
-- [Слушатели событий](#event-listeners)
+- [Обработчики событий](#event-listeners)
 - [Обработка ошибок](#error-handling)
-- [Вопросы безопасности](#security-considerations)
+- [Соображения безопасности](#security-considerations)
 - [Детали реализации](#implementation-details)
 - [Будущие расширения API](#future-api-extensions)
 - [Интеграция с внешним API](#external-api-integration)
@@ -17,23 +17,24 @@
 
 ## Обзор
 
-Этот документ описывает API IPC (Inter-Process Communication) между Electron Main Process и Renderer Process. Вся связь строго типизирована с использованием интерфейсов TypeScript и соответствует лучшим практикам безопасности.
+Этот документ описывает API для IPC (Inter-Process Communication) между Electron Main Process и Renderer Process. Вся связь строго типизирована с использованием интерфейсов TypeScript и соответствует лучшим практикам безопасности.
 
 **📖 Связанная документация:**
+
 - [Документация по архитектуре](./architecture.md) - Архитектура системы и дизайн IPC
 - [Документация по базе данных](./database.md) - Операции с базой данных и схема
-- [Руководство по разработке](./development.md) - Добавление новых методов IPC
+- [Руководство по разработке](./development.md) - Добавление новых IPC методов
 - [Глоссарий](./glossary.md) - Ключевые термины (IPC, Main Process, Renderer Process)
 
 ---
 
 ## 🚀 Как использовать этот API
 
-Этот раздел содержит практические рекомендации по использованию API IPC в реальных сценариях.
+В этом разделе представлено практическое руководство по использованию API IPC в реальных сценариях.
 
 ### Базовый шаблон использования
 
-Все методы IPC доступны через `window.api` в Renderer Process. Они возвращают Promises и должны использоваться с async/await или цепочками Promise.
+Все методы IPC доступны через `window.api` в Renderer Process. Они возвращают Promises и должны использоваться с `async/await` или цепочками Promise.
 
 ```typescript
 // Basic pattern
@@ -73,9 +74,9 @@ const mutation = useMutation<Artist | undefined, Error, NewArtist>({
 });
 ```
 
-### Общие шаблоны
+### Распространенные шаблоны
 
-#### Шаблон 1: Загрузка исходных данных
+#### Шаблон 1: Загрузка первоначальных данных
 
 **Сценарий:** Component должен загрузить данные при монтировании.
 
@@ -97,7 +98,7 @@ const MyComponent = () => {
 
 #### Шаблон 2: Бесконечная прокрутка
 
-**Сценарий:** Загрузка постраничных данных с бесконечной прокруткой.
+**Сценарий:** Загрузка страничных данных с бесконечной прокруткой.
 
 ```typescript
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -105,9 +106,9 @@ import type { Post } from "../../../main/db/schema";
 
 const { data, fetchNextPage, hasNextPage } = useInfiniteQuery<Post[]>({
   queryKey: ["posts", artistId],
-  queryFn: ({ pageParam = 1 }: { pageParam: number }) => 
+  queryFn: ({ pageParam = 1 }: { pageParam: number }) =>
     window.api.getArtistPosts({ artistId, page: pageParam }),
-  getNextPageParam: (lastPage: Post[], allPages: Post[][]) => 
+  getNextPageParam: (lastPage: Post[], allPages: Post[][]) =>
     lastPage.length === 50 ? allPages.length + 1 : undefined,
   initialPageParam: 1,
 });
@@ -115,9 +116,9 @@ const { data, fetchNextPage, hasNextPage } = useInfiniteQuery<Post[]>({
 const allPosts: Post[] = data?.pages.flatMap((page: Post[]) => page) || [];
 ```
 
-#### Шаблон 3: Слушатели событий
+#### Шаблон 3: Обработчики событий
 
-**Сценарий:** Прослушивание событий реального времени (ход синхронизации, загрузки и т. д.).
+**Сценарий:** Прослушивание событий в реальном времени (ход синхронизации, загрузки и т. д.).
 
 ```typescript
 useEffect(() => {
@@ -132,7 +133,7 @@ useEffect(() => {
 
 #### Шаблон 4: Обработка ошибок
 
-**Сценарий:** Изящная обработка ошибок с обратной связью для пользователя.
+**Сценарий:** Корректная обработка ошибок с обратной связью для пользователя.
 
 ```typescript
 import { useMutation } from "@tanstack/react-query";
@@ -155,12 +156,12 @@ const mutation = useMutation<Artist | undefined, Error, NewArtist>({
 
 - **Чтение данных:** Используйте `useQuery` с соответствующим `queryKey`
 - **Создание/обновление/удаление:** Используйте `useMutation` с инвалидацией кеша
-- **Обновления в реальном времени:** Используйте слушателей событий (`onSyncProgress`, `onDownloadProgress` и т. д.)
-- **Однократные операции:** Используйте прямые вызовы `await window.api.method()`
+- **Обновления в реальном времени:** Используйте обработчики событий (`onSyncProgress`, `onDownloadProgress` и т. д.)
+- **Одноразовые операции:** Используйте прямые вызовы `await window.api.method()`
 
 ### Типобезопасность
 
-Все методы IPC полностью типизированы. TypeScript обеспечит автозаполнение и проверку типов:
+Все методы IPC полностью типизированы. TypeScript предоставит автодополнение и проверку типов:
 
 ```typescript
 // TypeScript knows the return type
@@ -178,14 +179,15 @@ await window.api.addArtist({
 
 ## Архитектура
 
-Приложение использует IPC (Inter-Process Communication) Electron с включенной изоляцией контекста. Renderer Process не может напрямую обращаться к API Node.js. Вместо этого он взаимодействует с Main Process через безопасный мост, определенный в `src/main/bridge.ts`.
+Приложение использует IPC (Inter-Process Communication) Electron с включенной Context Isolation. Renderer Process не может напрямую получать доступ к Node.js API. Вместо этого он взаимодействует с Main Process через безопасный мост, определенный в `src/main/bridge.ts`.
 
 **Архитектура IPC:**
-- **На основе контроллеров:** Все обработчики IPC организованы в контроллеры, которые расширяют `BaseController`
-- **Внедрение зависимостей:** Сервисы регистрируются в DI Container и разрешаются с помощью токенов
-- **Типобезопасность:** Вся связь IPC строго типизирована с использованием интерфейсов TypeScript
-- **Валидация ввода:** Все входные данные проверяются с использованием схем Zod в `BaseController`
-- **Обработка ошибок:** Централизованная обработка ошибок через `BaseController`
+
+-   **На основе контроллеров:** Все обработчики IPC организованы в контроллеры, которые расширяют `BaseController`
+-   **Dependency Injection:** Сервисы регистрируются в DI Container и разрешаются с помощью токенов
+-   **Типобезопасность:** Вся связь IPC строго типизирована с использованием интерфейсов TypeScript
+-   **Валидация ввода:** Все входные данные валидируются с использованием Zod schemas в `BaseController`
+-   **Обработка ошибок:** Централизованная обработка ошибок через `BaseController`
 
 ## Интерфейс IPC Bridge
 
@@ -202,8 +204,9 @@ interface IpcBridge {
   logout: () => Promise<void>;
 
   // Settings
-  getSettings: () => Promise<Settings | undefined>;
+  getSettings: () => Promise<IpcSettings | null>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  confirmLegal: () => Promise<IpcSettings>;
 
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
@@ -217,18 +220,28 @@ interface IpcBridge {
     page?: number;
   }) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
-  markPostAsViewed: (postId: number) => Promise<boolean>;
+  markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
   togglePostViewed: (postId: number) => Promise<boolean>;
-  togglePostFavorite: (postId: number) => Promise<boolean>;
+  togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
   resetPostCache: (postId: number) => Promise<boolean>;
 
   // External
   openExternal: (url: string) => Promise<void>;
-  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
+  searchRemoteTags: (
+    query: string,
+    provider?: ProviderId
+  ) => Promise<SearchResults[]>;
+  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+  resolveTags: (tags: string[]) => Promise<string[]>;
+  resolveCharacterTags: (tags: string[]) => Promise<string[]>;
+  resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
+  resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
 
   // Sync
   syncAll: () => Promise<boolean>;
-  repairArtist: (artistId: number) => Promise<boolean>;
+  repairArtist: (
+    artistId: number
+  ) => Promise<{ success: boolean; error?: string }>;
 
   // Downloads
   downloadFile: (
@@ -268,9 +281,9 @@ interface IpcBridge {
 
 Возвращает текущую версию приложения.
 
-**Когда использовать:** Для отображения версии приложения в диалоговом окне "О программе", уведомлениях об обновлениях или отладочной информации.
+**Когда использовать:** Отображение версии приложения в диалоговом окне "О программе", уведомлениях об обновлениях или отладочной информации.
 
-**Типичный сценарий:** Отображение номера версии на странице "Настройки" или в диалоговом окне "О программе".
+**Типичный сценарий:** Отображение номера версии на странице настроек или в диалоговом окне "О программе".
 
 **Возвращает:** `Promise<string>`
 
@@ -293,17 +306,17 @@ const { data: version } = useQuery<string>({
 return <div>Version: {version}</div>;
 ```
 
-**Канал IPC:** `app:get-version`
+**IPC Channel:** `app:get-version`
 
 ---
 
 ### `getTrackedArtists()`
 
-Получает всех отслеживаемых артистов из локальной базы данных.
+Извлекает всех отслеживаемых артистов из локальной базы данных.
 
-**Когда использовать:** Для загрузки списка отслеживаемых артистов для отображения на странице "Отслеживаемые", в боковой панели или в выпадающем списке выбора артистов.
+**Когда использовать:** Загрузка списка отслеживаемых артистов для отображения на странице Tracked, в боковой панели или в выпадающем списке выбора артистов.
 
-**Типичный сценарий:** Пользователь открывает страницу "Отслеживаемые" → Component получает всех артистов → отображает их в виде сетки/списка.
+**Типичный сценарий:** Пользователь открывает страницу Tracked → Component извлекает всех артистов → отображает их в сетке/списке.
 
 **Почему этот метод:** Предоставляет полный список всех артистов, которых отслеживает пользователь. Используйте его для первоначальной загрузки страницы или после добавления/удаления артистов.
 
@@ -345,9 +358,9 @@ return (
 );
 ```
 
-**Канал IPC:** `db:get-artists`
+**IPC Channel:** `db:get-artists`
 
-**Тип Artist:**
+**Artist Type:**
 
 ```typescript
 type Artist = {
@@ -363,7 +376,7 @@ type Artist = {
 };
 ```
 
-**Тип Post:**
+**Post Type:**
 
 ```typescript
 type Post = {
@@ -380,7 +393,7 @@ type Post = {
 };
 ```
 
-**Тип IpcSettings (безопасный формат IPC):**
+**IpcSettings Type (Безопасный формат IPC):**
 
 ```typescript
 // ⚠️ SECURITY: This is the ONLY format Renderer receives
@@ -395,35 +408,36 @@ type IpcSettings = {
 };
 ```
 
-**Примечание:** Фактический тип `Settings` базы данных содержит `encryptedApiKey`, но он **никогда** не отправляется в Renderer Process. Тип `IpcSettings` — это безопасный контракт IPC.
+**Примечание:** Фактический тип базы данных `Settings` содержит `encryptedApiKey`, но он **никогда** не отправляется в Renderer Process. Тип `IpcSettings` является безопасным контрактом IPC.
 
 ---
 
 ### `getSettings()`
 
-Получает сохраненные настройки. **⚠️ БЕЗОПАСНОСТЬ: API Key НИКОГДА не возвращается в Renderer Process.**
+Извлекает сохраненные настройки. **⚠️ БЕЗОПАСНОСТЬ: API Key НИКОГДА не возвращается в Renderer Process.**
 
-**Когда использовать:** Для проверки, завершил ли пользователь онбординг, отображения текущего идентификатора пользователя на странице "Настройки" или проверки статуса аутентификации.
+**Когда использовать:** Проверка завершения регистрации пользователя, отображение текущего ID пользователя на странице настроек или проверка статуса аутентификации.
 
-**Типичный сценарий:** Приложение запускается → проверяет наличие настроек → показывает онбординг, если настроек нет, или основное приложение, если они есть.
+**Типичный сценарий:** Приложение запускается → проверяет наличие настроек → показывает онбординг, если их нет, или основное приложение, если они есть.
 
-**Почему этот метод:** Renderer Process **НИКОГДА** не получает API key, даже в расшифрованном виде. Этот метод возвращает только безопасные метаданные:
-- `userId` - User ID (безопасно для раскрытия)
-- `hasApiKey` - Булевый флаг, указывающий, настроен ли API key (безопасно для раскрытия)
-- Другие флаги настроек (безопасный режим, подтверждение совершеннолетия и т. д.)
+**Почему этот метод:** Renderer Process **НИКОГДА** не получает API Key, даже в расшифрованном виде. Этот метод возвращает только безопасные метаданные:
+
+-   `userId` - User ID (безопасно для раскрытия)
+-   `hasApiKey` - Булевый флаг, указывающий, настроен ли API Key (безопасно для раскрытия)
+-   Другие флаги настроек (безопасный режим, подтверждение возраста и т. д.)
 
 **Контракт безопасности:**
 
-- ✅ **Renderer получает:** `userId`, `hasApiKey` (логическое значение), другие неконфиденциальные настройки
-- ❌ **Renderer НИКОГДА не получает:** `apiKey` (зашифрованный или расшифрованный)
-- 🔒 **Жизненный цикл API Key:**
-  - Вводится в Renderer → Отправляется в Main Process через `saveSettings()` → Шифруется в Main Process → Хранится в зашифрованном виде
-  - Никогда не расшифровывается для Renderer Process
-  - Расшифровывается только в Main Process, когда это необходимо для вызовов API (в SyncService)
+-   ✅ **Renderer получает:** `userId`, `hasApiKey` (boolean), другие нечувствительные настройки
+-   ❌ **Renderer НИКОГДА не получает:** `apiKey` (зашифрованный или расшифрованный)
+-   🔒 **Жизненный цикл API Key:**
+    -   Вводится в Renderer → Отправляется в Main Process через `saveSettings()` → Шифруется в Main Process → Хранится в зашифрованном виде
+    -   Никогда не расшифровывается для Renderer Process
+    -   Расшифровывается только в Main Process, когда это необходимо для вызовов API (в SyncService)
 
 **Возвращает:** `Promise<IpcSettings | undefined>`
 
-**Тип IpcSettings:**
+**IpcSettings Type:**
 
 ```typescript
 type IpcSettings = {
@@ -462,52 +476,56 @@ const { data: settings } = useQuery<IpcSettings | undefined>({
 
 if (!settings || !settings.hasApiKey) {
   // No settings or no API key configured - show onboarding
-  return <Onboarding onComplete={() => queryClient.invalidateQueries(["settings"])} />;
+  return (
+    <Onboarding
+      onComplete={() => queryClient.invalidateQueries(["settings"])}
+    />
+  );
 }
 
 // Settings exist and API key is configured - show main app
 return <MainApp />;
 ```
 
-**Канал IPC:** `app:get-settings`
+**IPC Channel:** `app:get-settings`
 
 ---
 
 ### `saveSettings(creds: { userId: string; apiKey: string })`
 
-Сохраняет учетные данные API в базу данных. API key шифруется в состоянии покоя с использованием API `safeStorage` Electron перед сохранением.
+Сохраняет учетные данные API в базе данных. API Key шифруется в состоянии покоя с использованием API `safeStorage` Electron перед сохранением.
 
 **⚠️ КОНТРАКТ БЕЗОПАСНОСТИ:**
 
-- **Ввод:** API key отправляется из Renderer Process в **открытом виде** (неизбежно во время онбординга)
-- **Обработка:** API key **немедленно шифруется** в Main Process с использованием API `safeStorage`
-- **Хранение:** В базе данных хранится только **зашифрованный** ключ
-- **Вывод:** API key **НИКОГДА** не возвращается в Renderer Process (см. `getSettings()`, который возвращает `hasApiKey: boolean`)
+-   **Ввод:** API Key отправляется из Renderer в **открытом виде** (неизбежно во время онбординга)
+-   **Обработка:** API Key **немедленно шифруется** в Main Process с использованием API `safeStorage`
+-   **Хранение:** В базе данных хранится только **зашифрованный** ключ
+-   **Вывод:** API Key **НИКОГДА** не возвращается в Renderer (см. `getSettings()`, который возвращает `hasApiKey: boolean`)
 
-**Когда использовать:** Во время онбординга, когда пользователь вводит свои учетные данные, или при обновлении учетных данных в "Настройках".
+**Когда использовать:** Во время процесса онбординга, когда пользователь вводит свои учетные данные, или при обновлении учетных данных в настройках.
 
-**Типичный сценарий:** Пользователь вставляет учетные данные со страницы учетной записи Rule34.xxx → форма проходит валидацию → вызывает `saveSettings` → учетные данные шифруются и сохраняются → пользователь переходит к основному приложению.
+**Типичный сценарий:** Пользователь вставляет учетные данные со страницы Rule34.xxx account page → форма валидируется → вызывается `saveSettings` → учетные данные шифруются и сохраняются → пользователь переходит к основному приложению.
 
-**Почему этот метод:** Безопасность критически важна. API key шифруется в Main Process с использованием цепочки ключей платформы (Windows Credential Manager, macOS Keychain, Linux libsecret) перед хранением. Зашифрованный ключ никогда не раскрывается Renderer Process.
+**Почему этот метод:** Безопасность критически важна. API Key шифруется в Main Process с использованием связки ключей платформы (Windows Credential Manager, macOS Keychain, Linux libsecret) перед хранением. Зашифрованный ключ никогда не раскрывается Renderer Process.
 
-**Поток безопасности:**
+**Процесс безопасности:**
 
-1. Пользователь вводит API key в Renderer Process (открытый текст, неизбежно)
-2. Вызывается `saveSettings()` → API key отправляется через IPC в Main Process
-3. Main Process шифрует с использованием `safeStorage.encryptString()`
-4. Зашифрованный ключ хранится в базе данных
-5. **API key НИКОГДА не возвращается в Renderer Process** - `getSettings()` возвращает только `hasApiKey: boolean`
+1.  Пользователь вводит API Key в Renderer (открытый текст, неизбежно)
+2.  Вызывается `saveSettings()` → API Key отправляется через IPC в Main Process
+3.  Main Process шифрует с использованием `safeStorage.encryptString()`
+4.  Зашифрованный ключ хранится в базе данных
+5.  **API Key НИКОГДА не возвращается в Renderer Process** — `getSettings()` возвращает только `hasApiKey: boolean`
 
 **Параметры:**
 
-- `creds.userId: string` - User ID Rule34.xxx
-- `creds.apiKey: string` - API Key Rule34.xxx (будет зашифрован перед хранением)
+-   `creds.userId: string` - User ID Rule34.xxx
+-   `creds.apiKey: string` - API Key Rule34.xxx (будет зашифрован перед хранением)
 
 **Возвращает:** `Promise<boolean>`
 
 **Выбрасывает:**
 
-- `Error("Data is required")` - Если `userId` или `apiKey` отсутствуют
+-   `Error("Data is required")` - Если `userId` или `apiKey` отсутствуют
 
 **Пример:**
 
@@ -545,32 +563,71 @@ const onSubmit = async (data: CredsFormValues) => {
 };
 ```
 
-**Примечание по безопасности:** API key шифруется с использованием API `safeStorage` Electron в Main Process. Даже если файл базы данных будет украден, API key не может быть расшифрован без доступа к связке ключей платформы.
+**Примечание по безопасности:** API Key шифруется с использованием API `safeStorage` Electron в Main Process. Даже если файл базы данных будет украден, API Key не может быть расшифрован без доступа к связке ключей платформы.
 
-**Канал IPC:** `app:save-settings`
+**IPC Channel:** `app:save-settings`
+
+---
+
+### `confirmLegal()`
+
+Подтверждает проверку возраста и принятие условий обслуживания. Обновляет поля `isAdultVerified` и `tosAcceptedAt` в настройках.
+
+**Когда использовать:** Во время онбординга, когда пользователь подтверждает, что ему 18+ и он принимает условия обслуживания.
+
+**Типичный сценарий:** Пользователь видит диалоговое окно проверки возраста → нажимает "Мне 18+" → вызывается `confirmLegal` → настройки обновляются отметкой времени проверки → пользователь переходит к основному приложению.
+
+**Почему этот метод:** Отделяет юридическое подтверждение от сохранения учетных данных. Это гарантирует, что юридическое соответствие отслеживается отдельно от учетных данных API.
+
+**Возвращает:** `Promise<IpcSettings>`
+
+**Пример:**
+
+```typescript
+const settings = await window.api.confirmLegal();
+if (settings.isAdultVerified) {
+  console.log("Legal confirmation completed");
+}
+```
+
+**Реальное использование в React Component:**
+
+```typescript
+// In AgeGate.tsx component
+const handleConfirm = async () => {
+  try {
+    const settings = await window.api.confirmLegal();
+    onComplete(settings);
+  } catch (error) {
+    log.error("Failed to confirm legal:", error);
+  }
+};
+```
+
+**IPC Channel:** `settings:confirm-legal`
 
 ---
 
 ### `addArtist(artist: NewArtist)`
 
-Добавляет нового артиста для отслеживания. Проверяет входные данные перед вставкой.
+Добавляет нового артиста для отслеживания. Валидирует ввод перед вставкой.
 
-**Когда использовать:** Пользователь хочет начать отслеживать нового артиста/Tag. Вызывается из модального окна или формы "Добавить артиста".
+**Когда использовать:** Пользователь хочет начать отслеживать нового артиста/Tag. Вызывается из модального окна или формы "Add Artist".
 
-**Типичный сценарий:** Пользователь нажимает "Добавить артиста" → вводит имя и Tag → выбирает тип (Tag/загрузчик) → нажимает "Добавить" → вызывается `addArtist` → артист сохраняется в базу данных → пользовательский интерфейс обновляется, чтобы показать нового артиста.
+**Типичный сценарий:** Пользователь нажимает "Add Artist" → вводит имя и Tag → выбирает тип (Tag/uploader) → нажимает "Add" → вызывается `addArtist` → артист сохраняется в базу данных → UI обновляется для отображения нового артиста.
 
-**Почему этот метод:** Проверяет входные данные (имя, Tag, конечная точка API) перед сохранением. Автоматически нормализует Tags (удаляет метаданные, такие как "(123)"). Возвращает сохраненного артиста с сгенерированным ID для немедленного обновления пользовательского интерфейса.
+**Почему этот метод:** Валидирует ввод (имя, Tag, API endpoint) перед сохранением. Автоматически нормализует Tags (удаляет метаданные, такие как "(123)"). Возвращает сохраненного артиста с сгенерированным ID для немедленного обновления UI.
 
 **Параметры:**
 
-- `artist: NewArtist` - Данные артиста для добавления
+-   `artist: NewArtist` - Данные артиста для добавления
 
 **Возвращает:** `Promise<Artist | undefined>`
 
 **Выбрасывает:**
 
-- `Error("Username is required")` - Если имя пустое или состоит из пробелов
-- `Error("Invalid API Endpoint URL")` - Если `apiEndpoint` не является действительным URL
+-   `Error("Username is required")` - Если имя пустое или содержит только пробелы
+-   `Error("Invalid API Endpoint URL")` - Если `apiEndpoint` не является действительным URL
 
 **Пример:**
 
@@ -614,9 +671,11 @@ const handleAddArtist = async (
       provider,
       apiEndpoint: getDefaultApiEndpoint(provider),
     };
-    
-    const savedArtist: Artist | undefined = await window.api.addArtist(newArtist);
-    
+
+    const savedArtist: Artist | undefined = await window.api.addArtist(
+      newArtist
+    );
+
     if (savedArtist) {
       // Invalidate cache to refresh the list
       queryClient.invalidateQueries({ queryKey: ["artists"] });
@@ -629,9 +688,9 @@ const handleAddArtist = async (
 };
 ```
 
-**Канал IPC:** `db:add-artist`
+**IPC Channel:** `db:add-artist`
 
-**Тип NewArtist:**
+**NewArtist Type:**
 
 ```typescript
 type NewArtist = {
@@ -648,11 +707,11 @@ type NewArtist = {
 
 ### `deleteArtist(id: number)`
 
-Удаляет артиста из отслеживания. Также удаляет все связанные записи (каскадное удаление).
+Удаляет артиста из отслеживания. Также удаляет все связанные посты (каскадное удаление).
 
 **Параметры:**
 
-- `id: number` - ID артиста для удаления
+-   `id: number` - ID артиста для удаления
 
 **Возвращает:** `Promise<void>`
 
@@ -667,24 +726,24 @@ try {
 }
 ```
 
-**Канал IPC:** `db:delete-artist`
+**IPC Channel:** `db:delete-artist`
 
 ---
 
 ### `getArtistPosts(params: { artistId: number; page?: number })`
 
-Получает посты для конкретного артиста с пагинацией.
+Извлекает посты для конкретного артиста с пагинацией.
 
-**Когда использовать:** Для отображения постов в галерее артиста. Поддерживает бесконечную прокрутку или традиционную пагинацию.
+**Когда использовать:** Отображение постов в галерее артиста. Поддерживает бесконечную прокрутку или традиционную пагинацию.
 
-**Типичный сценарий:** Пользователь нажимает на карточку артиста → переходит в галерею артиста → Component получает первую страницу постов → пользователь прокручивает вниз → автоматически загружается следующая страница.
+**Типичный сценарий:** Пользователь нажимает на карточку артиста → переходит в галерею артиста → Component извлекает первую страницу постов → пользователь прокручивает вниз → автоматически извлекается следующая страница.
 
-**Почему этот метод:** Эффективно загружает посты частями (50 на страницу), чтобы избежать загрузки тысяч постов одновременно. Отлично работает с `useInfiniteQuery` React Query для бесконечной прокрутки.
+**Почему этот метод:** Эффективно загружает посты частями (по 50 на страницу), чтобы избежать загрузки тысяч постов за один раз. Идеально работает с `useInfiniteQuery` React Query для бесконечной прокрутки.
 
 **Параметры:**
 
-- `params.artistId: number` - ID артиста
-- `params.page?: number` - Номер страницы (по умолчанию 1)
+-   `params.artistId: number` - ID артиста
+-   `params.page?: number` - Номер страницы (по умолчанию 1)
 
 **Возвращает:** `Promise<Post[]>`
 
@@ -705,13 +764,20 @@ import type { Post } from "../../../main/db/schema";
 const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
   useInfiniteQuery<Post[]>({
     queryKey: ["posts", artist.id],
-    queryFn: async ({ pageParam = 1 }: { pageParam: number }): Promise<Post[]> => {
+    queryFn: async ({
+      pageParam = 1,
+    }: {
+      pageParam: number;
+    }): Promise<Post[]> => {
       return await window.api.getArtistPosts({
         artistId: artist.id,
         page: pageParam,
       });
     },
-    getNextPageParam: (lastPage: Post[], allPages: Post[][]): number | undefined => {
+    getNextPageParam: (
+      lastPage: Post[],
+      allPages: Post[][]
+    ): number | undefined => {
       // If last page has 50 posts, there might be more
       return lastPage.length === 50 ? allPages.length + 1 : undefined;
     },
@@ -732,24 +798,24 @@ return (
         fetchNextPage();
       }
     }}
-    // ... other props
+    // ... other Props
   />
 );
 ```
 
-**Канал IPC:** `db:get-posts`
+**IPC Channel:** `db:get-posts`
 
-**Примечание:** Каждая страница возвращает до 50 постов (лимит). Используйте пагинацию для получения большего количества постов. Идеально подходит для реализаций бесконечной прокрутки.
+**Примечание:** Каждая страница возвращает до 50 постов (лимит). Используйте пагинацию для получения большего количества постов. Идеально подходит для реализации бесконечной прокрутки.
 
 ---
 
 ### `openExternal(url: string)`
 
-Открывает URL в браузере по умолчанию. В целях безопасности разрешены только URL Rule34.xxx.
+Открывает URL во внешнем браузере по умолчанию. В целях безопасности разрешены только URL Rule34.xxx.
 
 **Параметры:**
 
-- `url: string` - URL для открытия
+-   `url: string` - URL для открытия
 
 **Возвращает:** `Promise<void>`
 
@@ -761,7 +827,7 @@ await window.api.openExternal(
 );
 ```
 
-**Канал IPC:** `app:open-external`
+**IPC Channel:** `app:open-external`
 
 **Безопасность:** Разрешены только HTTPS URL из домена Rule34.xxx.
 
@@ -769,7 +835,7 @@ await window.api.openExternal(
 
 ### `syncAll()`
 
-Инициирует фоновую синхронизацию всех отслеживаемых артистов. Получает новые посты из API Rule34.xxx.
+Инициирует фоновую синхронизацию всех отслеживаемых артистов. Извлекает новые посты из Rule34.xxx API.
 
 **Возвращает:** `Promise<boolean>`
 
@@ -782,21 +848,21 @@ if (success) {
 }
 ```
 
-**Канал IPC:** `db:sync-all`
+**IPC Channel:** `db:sync-all`
 
-**Примечание:** Это асинхронная операция. Метод возвращает управление немедленно, а синхронизация выполняется в фоновом режиме. Используйте слушателей событий (`onSyncStart`, `onSyncEnd`, `onSyncProgress`, `onSyncError`) для отслеживания прогресса. Проверьте `newPostsCount` артиста, чтобы увидеть результаты.
+**Примечание:** Это асинхронная операция. Метод возвращает управление немедленно, а синхронизация выполняется в фоновом режиме. Используйте обработчики событий (`onSyncStart`, `onSyncEnd`, `onSyncProgress`, `onSyncError`) для отслеживания прогресса. Проверьте `newPostsCount` артиста, чтобы увидеть результаты.
 
 ---
 
 ### `repairArtist(artistId: number)`
 
-Восстанавливает/ресинхронизирует артиста, сбрасывая его `lastPostId` на 0 и повторно загружая начальные страницы. Полезно для обновления превью низкого качества или устранения проблем синхронизации.
+Восстанавливает/пересинхронизирует артиста, сбрасывая его `lastPostId` на 0 и повторно извлекая начальные страницы. Полезно для обновления низкокачественных превью или исправления проблем синхронизации.
 
 **Параметры:**
 
-- `artistId: number` - ID артиста для восстановления
+-   `artistId: number` - ID артиста для восстановления
 
-**Возвращает:** `Promise<boolean>`
+**Возвращает:** `Promise<{ success: boolean; error?: string }>`
 
 **Пример:**
 
@@ -811,15 +877,15 @@ try {
 }
 ```
 
-**Канал IPC:** `sync:repair-artist`
+**IPC Channel:** `sync:repair-artist`
 
-**Примечание:** Эта операция может занять время в зависимости от количества страниц для синхронизации. `lastPostId` артиста сбрасывается на 0, и начальные страницы загружаются повторно.
+**Примечание:** Эта операция может занять время в зависимости от количества страниц для синхронизации. `lastPostId` артиста сбрасывается на 0, и начальные страницы извлекаются повторно.
 
 ---
 
 ### `checkForUpdates()`
 
-Проверяет наличие обновлений приложения на GitHub releases.
+Проверяет наличие доступных обновлений приложения из GitHub releases.
 
 **Возвращает:** `Promise<void>`
 
@@ -829,15 +895,15 @@ try {
 await window.api.checkForUpdates();
 ```
 
-**Канал IPC:** `app:check-for-updates`
+**IPC Channel:** `app:check-for-updates`
 
-**Примечание:** Используйте слушатель событий `onUpdateStatus` для получения уведомлений о статусе обновления.
+**Примечание:** Используйте обработчик событий `onUpdateStatus` для получения уведомлений о статусе обновления.
 
 ---
 
 ### `startDownload()`
 
-Начинает загрузку доступного обновления. Должен быть вызван после того, как `checkForUpdates()` сообщит о наличии обновления.
+Начинает загрузку доступного обновления. Должен быть вызван после того, как `checkForUpdates()` указывает на наличие обновления.
 
 **Возвращает:** `Promise<void>`
 
@@ -847,15 +913,15 @@ await window.api.checkForUpdates();
 await window.api.startDownload();
 ```
 
-**Канал IPC:** `app:start-download`
+**IPC Channel:** `app:start-download`
 
-**Примечание:** Используйте слушатель событий `onUpdateProgress` для отслеживания прогресса загрузки.
+**Примечание:** Используйте обработчик событий `onUpdateProgress` для отслеживания прогресса загрузки.
 
 ---
 
 ### `quitAndInstall()`
 
-Закрывает приложение и устанавливает загруженное обновление. Должен быть вызван только после полной загрузки обновления.
+Выходит из приложения и устанавливает загруженное обновление. Должен вызываться только после полной загрузки обновления.
 
 **Возвращает:** `Promise<void>`
 
@@ -865,19 +931,20 @@ await window.api.startDownload();
 await window.api.quitAndInstall();
 ```
 
-**Канал IPC:** `app:quit-and-install`
+**IPC Channel:** `app:quit-and-install`
 
-**Предупреждение:** Это немедленно закроет приложение. Перед вызовом убедитесь, что все пользовательские данные сохранены.
+**Предупреждение:** Это немедленно закроет приложение. Убедитесь, что все пользовательские данные сохранены перед вызовом.
 
 ---
 
-### `markPostAsViewed(postId: number)`
+### `markPostAsViewed(postId: number, postData?: PostData)`
 
-Отмечает пост как просмотренный в базе данных.
+Помечает пост как просмотренный в базе данных. Опционально принимает данные поста для оптимизации.
 
 **Параметры:**
 
-- `postId: number` - ID поста для отметки как просмотренного
+-   `postId: number` - ID поста для пометки как просмотренного
+-   `postData?: PostData` - Дополнительные данные поста для избежания дополнительного запроса к базе данных
 
 **Возвращает:** `Promise<boolean>`
 
@@ -890,7 +957,7 @@ if (success) {
 }
 ```
 
-**Канал IPC:** `db:mark-post-viewed`
+**IPC Channel:** `db:mark-post-viewed`
 
 ---
 
@@ -900,7 +967,7 @@ if (success) {
 
 **Параметры:**
 
-- `query: string` - Строка поискового запроса
+-   `query: string` - Строка поискового запроса
 
 **Возвращает:** `Promise<{ id: number; label: string }[]>`
 
@@ -913,18 +980,18 @@ results.forEach((result) => {
 });
 ```
 
-**Канал IPC:** `db:search-tags`
+**IPC Channel:** `db:search-tags`
 
 ---
 
 ### `searchRemoteTags(query: string, provider?: ProviderId)`
 
-Ищет Tags, используя API автозаполнения Booru (поддержка нескольких провайдеров).
+Ищет Tags с использованием autocomplete API booru (поддержка нескольких провайдеров).
 
 **Параметры:**
 
-- `query: string` - Строка поискового запроса (минимум 2 символа)
-- `provider?: ProviderId` - ID провайдера ("rule34" или "gelbooru"), по умолчанию "rule34"
+-   `query: string` - Строка поискового запроса (минимум 2 символа)
+-   `provider?: ProviderId` - ID провайдера ("rule34" или "gelbooru"), по умолчанию "rule34"
 
 **Возвращает:** `Promise<SearchResults[]>`
 
@@ -937,19 +1004,149 @@ results.forEach((result) => {
 });
 ```
 
-**Канал IPC:** `api:search-remote-tags`
+**IPC Channel:** `api:search-remote-tags`
 
-**Примечание:** Требует минимум 2 символа. Возвращает пустой массив, если запрос слишком короткий или вызов API завершается неудачей. Поддерживает несколько провайдеров Booru через шаблон провайдера.
+**Примечание:** Требуется минимум 2 символа. Возвращает пустой массив, если запрос слишком короткий или вызов API не удался. Поддерживает несколько провайдеров booru через шаблон провайдера.
+
+---
+
+### `searchBooru(params: { tags: string[]; page: number })`
+
+Ищет посты на booru API, используя указанные Tags и номер страницы.
+
+**Когда использовать:** Поиск постов непосредственно из booru API без отслеживания артиста. Используется на странице Browse для функции прямого поиска.
+
+**Типичный сценарий:** Пользователь вводит Tags в поиске на странице Browse → нажимает поиск → вызывается `searchBooru` → посты извлекаются из API → отображаются в галерее.
+
+**Параметры:**
+
+-   `params.tags: string[]` - Массив Tags для поиска
+-   `params.page: number` - Номер страницы для пагинации
+
+**Возвращает:** `Promise<Post[]>`
+
+**Пример:**
+
+```typescript
+const posts = await window.api.searchBooru({
+  tags: ["blue_hair", "solo"],
+  page: 1,
+});
+console.log(`Found ${posts.length} posts`);
+```
+
+**IPC Channel:** `booru:search`
+
+---
+
+### `resolveTags(tags: string[])`
+
+Преобразует Tags в их каноническую форму с использованием booru API. Возвращает Tags артистов (type=1) из предоставленного списка Tag.
+
+**Когда использовать:** Когда вам нужно определить, какие Tags в посте являются Tags артистов. Используется в просмотрщике для выделения имен артистов.
+
+**Типичный сценарий:** Пользователь открывает пост в просмотрщике → Component вызывает `resolveTags` со всеми Tags поста → получает список Tags артистов → выделяет имена артистов в UI.
+
+**Параметры:**
+
+-   `tags: string[]` - Массив Tags для преобразования
+
+**Возвращает:** `Promise<string[]>` - Массив преобразованных имен Tags артистов
+
+**Пример:**
+
+```typescript
+const artistTags = await window.api.resolveTags(["tag1", "tag2", "tag3"]);
+console.log("Artist tags:", artistTags);
+```
+
+**IPC Channel:** `booru:resolve-tags`
+
+---
+
+### `resolveCharacterTags(tags: string[])`
+
+Преобразует Tags в их каноническую форму, возвращая только Tags персонажей (type=4).
+
+**Когда использовать:** Когда вам нужно определить, какие Tags являются именами персонажей. Аналогично `resolveTags`, но фильтрует только Tags персонажей.
+
+**Параметры:**
+
+-   `tags: string[]` - Массив Tags для преобразования
+
+**Возвращает:** `Promise<string[]>` - Массив преобразованных имен Tags персонажей
+
+**Пример:**
+
+```typescript
+const characterTags = await window.api.resolveCharacterTags(["tag1", "tag2"]);
+```
+
+**IPC Channel:** `booru:resolve-character-tags`
+
+---
+
+### `resolveCopyrightTags(tags: string[])`
+
+Преобразует Tags в их каноническую форму, возвращая только Tags авторских прав (type=3).
+
+**Когда использовать:** Когда вам нужно определить, какие Tags являются названиями авторских прав/серий.
+
+**Параметры:**
+
+-   `tags: string[]` - Массив Tags для преобразования
+
+**Возвращает:** `Promise<string[]>` - Массив преобразованных имен Tags авторских прав
+
+**Пример:**
+
+```typescript
+const copyrightTags = await window.api.resolveCopyrightTags(["tag1", "tag2"]);
+```
+
+**IPC Channel:** `booru:resolve-copyright-tags`
+
+---
+
+### `resolveTagsByType(tags: string[], type: number)`
+
+Преобразует Tags в их каноническую форму, фильтруя по определенному типу Tag.
+
+**Когда использовать:** Когда вам нужны Tags определенного типа. Более гибкий, чем указанные выше методы преобразования.
+
+**Параметры:**
+
+-   `tags: string[]` - Массив Tags для преобразования
+-   `type: number` - Тип Tag для фильтрации:
+    -   `0` - General
+    -   `1` - Artist
+    -   `3` - Copyright
+    -   `4` - Character
+    -   `5` - Meta
+
+**Возвращает:** `Promise<string[]>` - Массив преобразованных имен Tags указанного типа
+
+**Пример:**
+
+```typescript
+// Get artist tags (type=1)
+const artistTags = await window.api.resolveTagsByType(tags, 1);
+
+// Get character tags (type=4)
+const characterTags = await window.api.resolveTagsByType(tags, 4);
+```
+
+**IPC Channel:** `booru:resolve-tags-by-type`
 
 ---
 
 ### `createBackup()`
 
-Создает резервную копию базы данных с отметкой времени.
+Создает резервную копию базы данных с меткой времени.
 
 **Возвращает:** `Promise<BackupResponse>`
 
-**Тип BackupResponse:**
+**BackupResponse Type:**
 
 ```typescript
 type BackupResponse = {
@@ -970,15 +1167,15 @@ if (result.success) {
 }
 ```
 
-**Канал IPC:** `db:create-backup`
+**IPC Channel:** `db:create-backup`
 
-**Примечание:** Файл резервной копии создается в каталоге пользовательских данных. Файловый менеджер откроется, чтобы показать расположение резервной копии.
+**Примечание:** Файл резервной копии создается в каталоге пользовательских данных. Откроется проводник файлов, чтобы показать расположение резервной копии.
 
 ---
 
 ### `restoreBackup()`
 
-Восстанавливает базу данных из файла резервной копии. Открывает диалог выбора файла для выбора файла резервной копии.
+Восстанавливает базу данных из файла резервной копии. Открывает диалоговое окно выбора файла для выбора файла резервной копии.
 
 **Возвращает:** `Promise<BackupResponse>`
 
@@ -994,7 +1191,7 @@ if (result.success) {
 }
 ```
 
-**Канал IPC:** `db:restore-backup`
+**IPC Channel:** `db:restore-backup`
 
 **Предупреждение:** Это перезапишет текущую базу данных. Приложение автоматически перезапустится после восстановления. Перед восстановлением требуется подтверждение пользователя.
 
@@ -1006,7 +1203,7 @@ if (result.success) {
 
 **Параметры:**
 
-- `text: string` - Текст для копирования в буфер обмена
+-   `text: string` - Текст для копирования в буфер обмена
 
 **Возвращает:** `Promise<boolean>`
 
@@ -1016,7 +1213,7 @@ if (result.success) {
 await window.api.writeToClipboard("Copied text");
 ```
 
-**Канал IPC:** `app:write-to-clipboard`
+**IPC Channel:** `app:write-to-clipboard`
 
 ---
 
@@ -1037,7 +1234,7 @@ if (isValid) {
 }
 ```
 
-**Канал IPC:** `app:verify-creds`
+**IPC Channel:** `app:verify-creds`
 
 ---
 
@@ -1054,17 +1251,17 @@ await window.api.logout();
 // User will be redirected to onboarding screen
 ```
 
-**Канал IPC:** `app:logout`
+**IPC Channel:** `app:logout`
 
 ---
 
 ### `getArtistPostsCount(artistId?: number)`
 
-Получает общее количество постов для артиста или всех постов, если `artistId` не предоставлен.
+Получает общее количество постов для артиста или всех постов, если `artistId` не указан.
 
 **Параметры:**
 
-- `artistId?: number` - Необязательный ID артиста. Если опущен, возвращает количество всех постов.
+-   `artistId?: number` - Необязательный ID артиста. Если опущен, возвращает количество всех постов.
 
 **Возвращает:** `Promise<number>`
 
@@ -1075,17 +1272,17 @@ const count = await window.api.getArtistPostsCount(123);
 console.log(`Artist has ${count} posts`);
 ```
 
-**Канал IPC:** `db:get-posts-count`
+**IPC Channel:** `db:get-posts-count`
 
 ---
 
 ### `togglePostViewed(postId: number)`
 
-Переключает статус "просмотрено" для поста.
+Переключает статус просмотра поста.
 
 **Параметры:**
 
-- `postId: number` - ID поста для переключения
+-   `postId: number` - ID поста для переключения
 
 **Возвращает:** `Promise<boolean>`
 
@@ -1095,17 +1292,18 @@ console.log(`Artist has ${count} posts`);
 const success = await window.api.togglePostViewed(123);
 ```
 
-**Канал IPC:** `db:toggle-post-viewed`
+**IPC Channel:** `db:toggle-post-viewed`
 
 ---
 
-### `togglePostFavorite(postId: number)`
+### `togglePostFavorite(postId: number, postData?: PostData)`
 
-Переключает статус "избранное" для поста.
+Переключает статус избранного поста. Опционально принимает данные поста для оптимизации.
 
 **Параметры:**
 
-- `postId: number` - ID поста для переключения
+-   `postId: number` - ID поста для переключения
+-   `postData?: PostData` - Дополнительные данные поста для избежания дополнительного запроса к базе данных
 
 **Возвращает:** `Promise<boolean>`
 
@@ -1118,17 +1316,17 @@ if (success) {
 }
 ```
 
-**Канал IPC:** `db:toggle-post-favorite`
+**IPC Channel:** `db:toggle-post-favorite`
 
 ---
 
 ### `resetPostCache(postId: number)`
 
-Сбрасывает кеш для конкретного поста (очищает статус "просмотрено"/"избранное").
+Сбрасывает кеш для конкретного поста (очищает статус просмотра/избранного).
 
 **Параметры:**
 
-- `postId: number` - ID поста для сброса
+-   `postId: number` - ID поста для сброса
 
 **Возвращает:** `Promise<boolean>`
 
@@ -1138,18 +1336,18 @@ if (success) {
 const success = await window.api.resetPostCache(123);
 ```
 
-**Канал IPC:** `db:reset-post-cache`
+**IPC Channel:** `db:reset-post-cache`
 
 ---
 
 ### `downloadFile(url: string, filename: string)`
 
-Загружает файл по URL в локальную файловую систему. Открывает диалог сохранения, чтобы пользователь мог выбрать место загрузки.
+Загружает файл по URL в локальную файловую систему. Открывает диалоговое окно сохранения, чтобы пользователь выбрал место загрузки.
 
 **Параметры:**
 
-- `url: string` - URL файла для загрузки
-- `filename: string` - Предлагаемое имя файла для загрузки
+-   `url: string` - URL файла для загрузки
+-   `filename: string` - Предлагаемое имя файла для загрузки
 
 **Возвращает:** `Promise<{ success: boolean; path?: string; error?: string; canceled?: boolean }>`
 
@@ -1169,7 +1367,7 @@ if (result.success && result.path) {
 }
 ```
 
-**Канал IPC:** `files:download`
+**IPC Channel:** `files:download`
 
 **Примечание:** Загрузки выполняются в Main Process с отслеживанием прогресса через событие `onDownloadProgress`.
 
@@ -1181,7 +1379,7 @@ if (result.success && result.path) {
 
 **Параметры:**
 
-- `path: string` - Полный путь к файлу
+-   `path: string` - Полный путь к файлу
 
 **Возвращает:** `Promise<boolean>`
 
@@ -1191,19 +1389,19 @@ if (result.success && result.path) {
 const success = await window.api.openFileInFolder("/path/to/file.jpg");
 ```
 
-**Канал IPC:** `files:open-folder`
+**IPC Channel:** `files:open-folder`
 
 ---
 
-### Слушатели событий
+### Обработчики событий
 
-IPC bridge предоставляет несколько слушателей событий для обновлений в реальном времени:
+IPC мост предоставляет несколько обработчиков событий для обновлений в реальном времени:
 
 #### `onUpdateStatus(callback: UpdateStatusCallback)`
 
 Прослушивает изменения статуса обновления.
 
-**Тип Callback:**
+**Callback Type:**
 
 ```typescript
 type UpdateStatusCallback = (data: UpdateStatusData) => void;
@@ -1215,7 +1413,7 @@ type UpdateStatusData = {
 };
 ```
 
-**Возвращает:** `() => void` - Функция отмены подписки
+**Возвращает:** `() => void` - Функция отписки
 
 **Пример:**
 
@@ -1230,7 +1428,7 @@ const unsubscribe = window.api.onUpdateStatus((data) => {
 unsubscribe();
 ```
 
-**Канал IPC:** `updater:status`
+**IPC Channel:** `updater:status`
 
 ---
 
@@ -1238,13 +1436,13 @@ unsubscribe();
 
 Прослушивает обновления прогресса загрузки.
 
-**Тип Callback:**
+**Callback Type:**
 
 ```typescript
 type UpdateProgressCallback = (percent: number) => void;
 ```
 
-**Возвращает:** `() => void` - Функция отмены подписки
+**Возвращает:** `() => void` - Функция отписки
 
 **Пример:**
 
@@ -1257,7 +1455,7 @@ const unsubscribe = window.api.onUpdateProgress((percent) => {
 unsubscribe();
 ```
 
-**Канал IPC:** `updater:progress`
+**IPC Channel:** `updater:progress`
 
 ---
 
@@ -1265,7 +1463,7 @@ unsubscribe();
 
 Прослушивает события начала синхронизации.
 
-**Возвращает:** `() => void` - Функция отмены подписки
+**Возвращает:** `() => void` - Функция отписки
 
 **Пример:**
 
@@ -1275,7 +1473,7 @@ const unsubscribe = window.api.onSyncStart(() => {
 });
 ```
 
-**Канал IPC:** `sync:start`
+**IPC Channel:** `sync:start`
 
 ---
 
@@ -1283,7 +1481,7 @@ const unsubscribe = window.api.onSyncStart(() => {
 
 Прослушивает события завершения синхронизации.
 
-**Возвращает:** `() => void` - Функция отмены подписки
+**Возвращает:** `() => void` - Функция отписки
 
 **Пример:**
 
@@ -1293,7 +1491,7 @@ const unsubscribe = window.api.onSyncEnd(() => {
 });
 ```
 
-**Канал IPC:** `sync:end`
+**IPC Channel:** `sync:end`
 
 ---
 
@@ -1301,7 +1499,7 @@ const unsubscribe = window.api.onSyncEnd(() => {
 
 Прослушивает сообщения о ходе синхронизации.
 
-**Возвращает:** `() => void` - Функция отмены подписки
+**Возвращает:** `() => void` - Функция отписки
 
 **Пример:**
 
@@ -1311,7 +1509,7 @@ const unsubscribe = window.api.onSyncProgress((message) => {
 });
 ```
 
-**Канал IPC:** `sync:progress`
+**IPC Channel:** `sync:progress`
 
 ---
 
@@ -1319,13 +1517,13 @@ const unsubscribe = window.api.onSyncProgress((message) => {
 
 Прослушивает события ошибок синхронизации.
 
-**Тип Callback:**
+**Callback Type:**
 
 ```typescript
 type SyncErrorCallback = (message: string) => void;
 ```
 
-**Возвращает:** `() => void` - Функция отмены подписки
+**Возвращает:** `() => void` - Функция отписки
 
 **Пример:**
 
@@ -1335,7 +1533,7 @@ const unsubscribe = window.api.onSyncError((message) => {
 });
 ```
 
-**Канал IPC:** `sync:error`
+**IPC Channel:** `sync:error`
 
 ---
 
@@ -1343,7 +1541,7 @@ const unsubscribe = window.api.onSyncError((message) => {
 
 Прослушивает обновления прогресса загрузки файлов.
 
-**Тип Callback:**
+**Callback Type:**
 
 ```typescript
 type DownloadProgressCallback = (data: DownloadProgressData) => void;
@@ -1354,7 +1552,7 @@ type DownloadProgressData = {
 };
 ```
 
-**Возвращает:** `() => void` - Функция отмены подписки
+**Возвращает:** `() => void` - Функция отписки
 
 **Пример:**
 
@@ -1367,13 +1565,13 @@ const unsubscribe = window.api.onDownloadProgress((data) => {
 unsubscribe();
 ```
 
-**Канал IPC:** `files:download-progress`
+**IPC Channel:** `files:download-progress`
 
 ---
 
 ## Обработка ошибок
 
-Все методы IPC могут выбрасывать ошибки. Всегда оборачивайте вызовы в блоки try-catch:
+Все методы IPC могут выбрасывать ошибки. Всегда оборачивайте вызовы в блоки `try-catch`:
 
 ```typescript
 try {
@@ -1386,18 +1584,23 @@ try {
 }
 ```
 
-## Вопросы безопасности
+## Соображения безопасности
 
-1.  **Изоляция контекста:** Renderer Process выполняется в изолированной среде без прямого доступа к Node.js.
+1.  **Context Isolation:** Renderer Process работает в изолированной среде без прямого доступа к Node.js.
+
 2.  **Типобезопасность:** Вся связь IPC строго типизирована. Интерфейс моста обеспечивает типобезопасность во время компиляции.
-3.  **Валидация ввода:** Все входные данные проверяются в Main Process с использованием схем Zod перед обработкой.
-4.  **Распространение ошибок:** Ошибки корректно распространяются из Main Process в Renderer Process, но конфиденциальная информация не раскрывается.
-5.  **Безопасные учетные данные:** API keys шифруются в состоянии покоя с использованием API `safeStorage` Electron. Расшифровка происходит только в Main Process, когда это необходимо для вызовов API.
+
+3.  **Валидация ввода:** Все входные данные валидируются в Main Process с использованием Zod schemas перед обработкой.
+
+4.  **Распространение ошибок:** Ошибки корректно распространяются из Main в Renderer, но конфиденциальная информация не раскрывается.
+
+5.  **Безопасные учетные данные:** API keys шифруются в состоянии покоя с использованием API `safeStorage` Electron. Дешифрование происходит только в Main Process, когда это необходимо для вызовов API.
+
 6.  **Прямой доступ к базе данных:** Операции с базой данных выполняются непосредственно в Main Process через `better-sqlite3` с режимом WAL для одновременного чтения.
 
 ## Детали реализации
 
-### Main Process (Контроллеры IPC)
+### Main Process (IPC Controllers)
 
 Обработчики IPC регистрируются через контроллеры в `src/main/ipc/index.ts`:
 
@@ -1407,9 +1610,9 @@ try {
 
 -   **BaseController** предоставляет:
     -   Централизованную обработку ошибок
-    -   Автоматическую валидацию входных данных с использованием схем Zod
+    -   Автоматическую валидацию ввода с использованием Zod schemas
     -   Типобезопасную регистрацию обработчиков
-    -   Предотвращает ошибки регистрации повторяющихся обработчиков
+    -   Предотвращение ошибок дублирования регистрации обработчиков
 
 **Настройка контроллера:**
 
@@ -1424,17 +1627,14 @@ export class ArtistsController extends BaseController {
     );
   }
 
-  private async addArtist(
-    _event: IpcMainInvokeEvent,
-    data: AddArtistRequest
-  ) {
+  private async addArtist(_event: IpcMainInvokeEvent, data: AddArtistRequest) {
     const db = container.resolve(DI_TOKENS.DB);
     // Business logic here
   }
 }
 ```
 
-**Внедрение зависимостей:**
+**Dependency Injection:**
 
 Контроллеры используют DI Container для разрешения зависимостей:
 
@@ -1443,27 +1643,30 @@ const db = container.resolve(DI_TOKENS.DB);
 const syncService = container.resolve(DI_TOKENS.SYNC_SERVICE);
 ```
 
-**Регистрация контроллеров:**
+**Регистрация контроллера:**
 
 Контроллеры регистрируются в функции `setupIpc()`:
 
 ```typescript
-export function setupIpc(): { maintenanceController: MaintenanceController; fileController: FileController } {
+export function setupIpc(): {
+  maintenanceController: MaintenanceController;
+  fileController: FileController;
+} {
   const systemController = new SystemController();
   systemController.setup();
-  
+
   const artistsController = new ArtistsController();
   artistsController.setup();
-  
+
   // ... other controllers
-  
+
   return { maintenanceController, fileController };
 }
 ```
 
 **Доступные контроллеры:**
 
--   `SystemController` - Операции системного уровня (версия, буфер обмена и т. д.)
+-   `SystemController` - Системные операции (версия, буфер обмена и т. д.)
 -   `ArtistsController` - Операции управления артистами
 -   `PostsController` - Операции, связанные с постами
 -   `SettingsController` - Управление настройками
@@ -1492,13 +1695,13 @@ export const IPC_CHANNELS = {
 } as const;
 ```
 
-**Регистрация устаревших обработчиков (устарело):**
+**Регистрация устаревшего обработчика (устаревший):**
 
-Старый подход на основе обработчиков был перенесен на контроллеры:
+Старый подход, основанный на обработчиках, был перенесен на контроллеры. Этот пример показывает устаревший шаблон только для справки:
 
 ```typescript
+// ⚠️ DEPRECATED: This code is for reference only. Current implementation uses controllers.
 export const registerIpcHandlers = (
-  dbWorkerClient: DbWorkerClient,
   syncService: SyncService,
   updaterService: UpdaterService,
   mainWindow: BrowserWindow
@@ -1506,23 +1709,28 @@ export const registerIpcHandlers = (
   // App handlers
   ipcMain.handle("app:get-version", handleGetAppVersion);
   ipcMain.handle("app:get-settings", async () => {
-    // Gets settings and decrypts API key using crypto utility
+    // Gets settings and decrypts API key using SecureStorage
     const db = getDb();
     const settings = await db.query.settings.findFirst();
-    // ... decryption logic using decrypt() from lib/crypto
+    // ... decryption logic using SecureStorage.decrypt()
   });
   ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
-    // Encrypts API key using crypto utility before saving
-    const encryptedKey = encrypt(apiKey);
+    // Encrypts API key using SecureStorage before saving
+    const encryptedKey = SecureStorage.encrypt(apiKey);
     const db = getDb();
-    await db.insert(settings).values({ userId, encryptedApiKey: encryptedKey })
-      .onConflictDoUpdate({ target: settings.id, set: { userId, encryptedApiKey: encryptedKey } });
+    await db
+      .insert(settings)
+      .values({ userId, encryptedApiKey: encryptedKey })
+      .onConflictDoUpdate({
+        target: settings.id,
+        set: { userId, encryptedApiKey: encryptedKey },
+      });
   });
   ipcMain.handle("app:open-external", async (_event, urlString: string) => {
     // Security validation and shell.openExternal
   });
 
-  // Database handlers (via worker thread)
+  // Database handlers (direct access in Main Process)
   ipcMain.handle("db:get-artists", async () => {
     const db = getDb();
     return await db.query.artists.findMany({
@@ -1568,7 +1776,10 @@ export const registerIpcHandlers = (
   ipcMain.handle("db:create-backup", async () => {
     // Backup implementation using VACUUM INTO
     const sqlite = getSqliteInstance();
-    const backupPath = path.join(app.getPath("userData"), `metadata-backup-${timestamp}.db`);
+    const backupPath = path.join(
+      app.getPath("userData"),
+      `metadata-backup-${timestamp}.db`
+    );
     const stmt = sqlite.prepare("VACUUM INTO ?");
     stmt.run(backupPath);
     shell.showItemInFolder(backupPath);
@@ -1605,7 +1816,7 @@ export const registerIpcHandlers = (
 };
 ```
 
-### Скрипт предзагрузки (Bridge)
+### Preload Script (Bridge)
 
 Мост предоставляется в `src/main/bridge.ts`:
 
@@ -1687,23 +1898,23 @@ contextBridge.exposeInMainWorld("api", ipcBridge);
 -   `updateArtist(artistId: number, data: Partial<Artist>)` - Обновление настроек артиста
 -   `downloadPost(postId: number)` - Загрузка медиафайла поста
 -   `getSubscriptions()` - Получение подписок на Tag
--   `addSubscription(tagString: string)` - Подписка на комбинацию Tags
+-   `addSubscription(tagString: string)` - Подписка на комбинацию Tag
 -   `deleteSubscription(id: number)` - Удаление подписки
 -   `getBackupList()` - Список доступных файлов резервных копий
 -   `deleteBackup(backupPath: string)` - Удаление файла резервной копии
 
 ## Интеграция с внешним API
 
-Приложение интегрируется с **API Rule34.xxx**. Интеграция обрабатывается в Main Process через `SyncService` (`src/main/services/sync-service.ts`) и не предоставляется напрямую через IPC по соображениям безопасности.
+Приложение интегрируется с **Rule34.xxx API**. Интеграция обрабатывается в Main Process через `SyncService` (`src/main/services/sync-service.ts`) и не предоставляется напрямую через IPC по соображениям безопасности.
 
 **Возможности:**
 
--   **Ограничение частоты:** Задержка 1,5 секунды между артистами, 0,5 секунды между страницами
--   **Пагинация:** Обрабатывает пагинацию Rule34.xxx (до 1000 постов на страницу)
--   **Обработка ошибок:** Изящная обработка ошибок API и сбоев сети
--   **Инкрементальная синхронизация:** Загружает только посты новее, чем `lastPostId`
--   **Аутентификация:** Использует User ID и API Key из настроек
+-   **Rate Limiting:** Задержка 1.5 секунды между артистами, 0.5 секунды между страницами
+-   **Pagination:** Обработка пагинации Rule34.xxx (до 1000 постов на страницу)
+-   **Обработка ошибок:** Корректная обработка ошибок API и сбоев сети
+-   **Incremental Sync:** Извлекает только посты новее `lastPostId`
+-   **Authentication:** Использует User ID и API Key из настроек
 
-**Конечная точка API:** `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index`
+**API Endpoint:** `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index`
 
-См. [Справочник по API Rule34](./rule34-api-reference.md) для подробной документации API.
+См. [Rule34 API Reference](./rule34-api-reference.md) для подробной документации API.
