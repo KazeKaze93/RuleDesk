@@ -2,20 +2,19 @@ import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Activity,
-  LayoutGrid,
+  Search,
   Heart,
   Users,
   Settings,
   RefreshCw,
-  Zap,
   LogOut,
 } from "lucide-react";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 
 const navItems = [
-  { to: "/updates", icon: Zap, label: "Updates" },
-  { to: "/browse", icon: LayoutGrid, label: "Browse" },
+  { to: "/updates", icon: RefreshCw, label: "Updates" },
+  { to: "/browse", icon: Search, label: "Browse" },
   { to: "/favorites", icon: Heart, label: "Favorites" },
   { to: "/tracked", icon: Users, label: "Artists" },
   { to: "/settings", icon: Settings, label: "Settings" },

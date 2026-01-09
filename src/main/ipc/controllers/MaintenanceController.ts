@@ -48,6 +48,7 @@ export class MaintenanceController extends BaseController {
     this.handle(
       IPC_CHANNELS.SYNC.REPAIR,
       z.tuple([z.number().int().positive()]),
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.repairArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(

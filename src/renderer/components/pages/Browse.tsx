@@ -1,14 +1,14 @@
-import React, { useState, useMemo, forwardRef } from "react";
+import React, { useMemo, forwardRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
+import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
-import { Button } from "../../components/ui/button";
-import { TagAutocomplete } from "../../components/inputs/TagAutocomplete";
+import { Button } from "../ui/button";
+import { ExternalLink } from "lucide-react";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -72,41 +72,26 @@ const parseTags = (query: string): string[] => {
 // --- Основной компонент ---
 
 export const Browse = () => {
-  const [query, setQuery] = useState("");
-  // Initialize with empty array to show all posts by default (empty tags = all posts in Rule34 API)
-  const [tags, setTags] = useState<string[]>([]);
+  // Use individual selectors to prevent unnecessary re-renders
+  const query = useSearchStore((state) => state.query);
+  const openViewer = useViewerStore((state) => state.open);
+  const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
 
-  const { open: openViewer, appendQueueIds } = useViewerStore(
-    useShallow((state) => ({
-      open: state.open,
-      appendQueueIds: state.appendQueueIds,
-    }))
-  );
-
-  // Parse tags from query when user submits search
-  // If query is empty, use empty array to show all posts (Rule34 API returns all posts when tags parameter is omitted)
-  const handleSearch = () => {
-    const parsedTags = parseTags(query);
-    // Empty array means show all posts (no tags filter)
-    setTags(parsedTags);
-  };
-
-  // Handle Enter key in search input
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
+  // Parse tags directly from query using useMemo (no extra re-render)
+  const tags = useMemo(() => {
+    return parseTags(query);
+  }, [query]);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["search", tags],
       queryFn: async ({ pageParam = 1 }) => {
         // Always fetch - empty tags array means show all posts (API omits tags parameter)
-        return await window.api.searchBooru({
+        const result = await window.api.searchBooru({
           tags,
           page: pageParam,
         });
+        return result;
       },
       getNextPageParam: (lastPage, _allPages, lastPageParam) => {
         // Use lastPageParam + 1 for correct pagination
@@ -140,7 +125,6 @@ export const Browse = () => {
 
   const handleLoadMore = async () => {
     if (hasNextPage && !isFetchingNextPage) {
-      log.info("[Browse] Viewer requested more posts. Fetching...");
 
       const result = await fetchNextPage();
 
@@ -157,15 +141,7 @@ export const Browse = () => {
             .filter((id) => !existingPostIds.has(id));
 
           if (newIds.length > 0) {
-            log.info(
-              `[Browse] Fetched ${newIds.length} new posts (${
-                newPage.length - newIds.length
-              } duplicates skipped). Appending to Viewer queue.`
-            );
-
             appendQueueIds(newIds);
-          } else {
-            log.info("[Browse] All fetched posts were already in the queue.");
           }
         }
       }
@@ -195,43 +171,14 @@ export const Browse = () => {
 
   return (
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
-      {/* Header with Search Bar */}
-      <div className="flex z-10 flex-col gap-4 px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+      {/* Header */}
+      <div className="flex z-[5] flex-col gap-4 px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-2 items-center">
           <h2 className="flex gap-2 items-center text-xl font-bold">
             <Search className="w-5 h-5 text-primary" />
             Browse
           </h2>
         </div>
-        <div className="flex gap-2 items-center">
-          <TagAutocomplete
-            value={query}
-            onChange={setQuery}
-            onKeyDown={handleKeyDown}
-            placeholder="Search for tags (e.g., 'blue_hair', 'cyberpunk')"
-          />
-          <Button onClick={handleSearch}>
-            <Search className="mr-2 w-4 h-4" />
-            Search
-          </Button>
-        </div>
-        {allPosts.length > 0 && (
-          <div className="flex gap-2 text-xs text-muted-foreground">
-            <span className="text-sm font-medium text-muted-foreground">
-              {allPosts.length} {allPosts.length === 1 ? "post" : "posts"}
-              {hasNextPage && " +"}
-            </span>
-            {tags.length > 0 ? (
-              <span className="text-xs text-muted-foreground/70">
-                • Tags: {tags.join(", ")}
-              </span>
-            ) : (
-              <span className="text-xs text-muted-foreground/70">
-                • Showing all posts
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Grid Content */}
@@ -241,14 +188,42 @@ export const Browse = () => {
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
         ) : allPosts.length === 0 ? (
-          <div className="flex flex-col gap-4 justify-center items-center h-full text-muted-foreground">
-            <Search className="w-16 h-16 opacity-50" />
-            <div className="text-center">
-              <p className="mb-2 text-lg font-semibold">No posts found</p>
-              <p className="text-sm">
-                Try different tags or check your spelling.
-              </p>
-            </div>
+          <div className="flex flex-col gap-4 justify-center items-center h-full px-6">
+            {tags.length > 0 ? (
+              <div className="flex flex-col gap-4 items-center max-w-md text-center">
+                <Search className="w-16 h-16 opacity-50 text-muted-foreground" />
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold text-foreground">
+                    API returned no results
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    This tag likely exists on the website but is not yet available in the API.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => {
+                    const tagString = tags.join("+");
+                    const url = `https://rule34.xxx/index.php?page=post&s=list&tags=${encodeURIComponent(tagString)}`;
+                    window.api.openExternal(url);
+                  }}
+                  variant="default"
+                  className="gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open {tags[0]} on Rule34.xxx
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4 justify-center items-center text-muted-foreground">
+                <Search className="w-16 h-16 opacity-50" />
+                <div className="text-center">
+                  <p className="mb-2 text-lg font-semibold">No posts found</p>
+                  <p className="text-sm">
+                    Try different tags or check your spelling.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <VirtuosoGrid

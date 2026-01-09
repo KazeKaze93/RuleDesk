@@ -95,11 +95,13 @@ export class FileController extends BaseController {
         DownloadFileSchema.shape.url, // URL with HTTP/HTTPS validation
         DownloadFileSchema.shape.filename, // Filename with length and character validation
       ]),
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.downloadFile.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.FILES.OPEN_FOLDER,
       OpenFolderSchema, // Single argument schema
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.openFolder.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 

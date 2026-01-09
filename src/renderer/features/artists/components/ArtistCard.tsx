@@ -15,6 +15,13 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
   const { t } = useTranslation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  // Get posts count for this artist
+  // postsCount comes from JOIN query in ArtistsController.getArtists (fixes N+1 problem)
+  // Trust the schema: if postsCount is in artist object, use it; otherwise default to 0
+  const postsCount = ('postsCount' in artist && typeof artist.postsCount === 'number') 
+    ? artist.postsCount 
+    : 0;
+
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDeleteDialogOpen(true);
@@ -60,11 +67,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
           </div>
 
           <p className="mt-1 font-mono text-xs truncate text-slate-500">
-            [{artist.tag}] {t("app.lastId", "Last ID")}: {artist.lastPostId} |{" "}
-            {t("app.new", "New")}:{" "}
-            <span className={artist.newPostsCount > 0 ? "text-green-400" : ""}>
-              {artist.newPostsCount}
-            </span>
+            {postsCount.toLocaleString()} {postsCount === 1 ? "post" : "posts"}
           </p>
         </button>
 

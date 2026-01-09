@@ -4,6 +4,7 @@
  * 
  * To add new hosts, add them to this array. Only HTTPS URLs are allowed.
  */
+
 export const ALLOWED_HOSTS = [
   "rule34.xxx",
   "www.rule34.xxx",

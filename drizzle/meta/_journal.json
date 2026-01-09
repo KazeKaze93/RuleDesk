@@ -8,6 +8,13 @@
       "when": 1766829819594,
       "tag": "0000_blue_lorna_dane",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1767832880906,
+      "tag": "0001_spooky_omega_red",
+      "breakpoints": true
     }
   ]
 }

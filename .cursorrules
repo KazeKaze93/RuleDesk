@@ -99,3 +99,21 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 - If you change file structure, remind me to run the context update command (e.g., `repo-inquisitor ctx`).
 - **Checkpoint**: If a logical unit of work is done, issue a "🛑 CHECKPOINT ALERT" and ask to commit.
 - If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
+
+# 🧠 KNOWLEDGE MANAGEMENT (STRICT)
+
+- **GOLDEN RULE**: This file is for **ARCHITECTURAL PATTERNS**, not a changelog.
+- **READ**: Before generating code, internalize constraints from `.ai/LESSONS.txt`.
+
+- **PROTOCOL "LEARN" (Updating Lessons):**
+  - **TRIGGER**: When I say "save lesson" or we fix a recurring anti-pattern.
+  - **FILTER (The "Who Cares?" Test)**:
+    - ❌ "Fixed bug in UserCard" -> **REJECT** (Too specific).
+    - ❌ "Renamed variable X to Y" -> **REJECT** (Noise).
+    - ✅ "Always use JOIN instead of loop queries" -> **ACCEPT** (Pattern).
+    - ✅ "Zustand selectors must be atomic to prevent re-renders" -> **ACCEPT** (Pattern).
+  - **MERGE STRATEGY**:
+    1. **SEARCH** first. Do NOT add a new entry if a similar topic exists (e.g., Performance, Security).
+    2. **REFINE** the existing entry. Make it stronger/clearer.
+    3. **APPEND** only if it's a completely new category of mistake.
+  - **FORMAT**: "Problem -> Root Cause -> Invariant Rule".

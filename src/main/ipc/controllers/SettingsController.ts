@@ -98,10 +98,8 @@ export class SettingsController extends BaseController {
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE,
       z.tuple([SaveSettingsSchema]), // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
-      this.saveSettings.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.saveSettings.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     // settings:confirm-legal - confirms Age Gate & ToS acceptance
     this.handle(

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Input } from "../ui/input";
 import { useRemoteTags } from "../../lib/hooks/useRemoteTags";
 import { cn } from "../../lib/utils";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search, X } from "lucide-react";
 
 interface TagAutocompleteProps {
   value: string;
@@ -10,6 +10,9 @@ interface TagAutocompleteProps {
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   placeholder?: string;
   className?: string;
+  onTagSelect?: () => void; // Callback when tag is selected from dropdown
+  onClear?: () => void; // Callback when clear button is clicked
+  showClearButton?: boolean; // Whether to show clear button
 }
 
 /**
@@ -24,6 +27,9 @@ export function TagAutocomplete({
   onKeyDown,
   placeholder = "Search for tags (e.g., 'blue_hair', 'cyberpunk')",
   className,
+  onTagSelect,
+  onClear,
+  showClearButton = false,
 }: TagAutocompleteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -107,6 +113,8 @@ export function TagAutocomplete({
     onChange(newValue);
     setIsOpen(false);
     setSelectedIndex(-1);
+    // Trigger search when tag is selected
+    onTagSelect?.();
     // Focus input after selection
     setTimeout(() => {
       inputRef.current?.focus();
@@ -166,30 +174,56 @@ export function TagAutocomplete({
     };
   }, []);
 
+  const handleClearClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onChange("");
+    onClear?.();
+    inputRef.current?.focus();
+  };
+
   return (
     <div ref={containerRef} className={cn("relative flex-1", className)}>
-      <Input
-        ref={inputRef}
-        type="text"
-        placeholder={placeholder}
-        value={value}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDownInternal}
-        className="flex-1"
-        autoComplete="off"
-        role="combobox"
-        aria-expanded={shouldShowDropdown}
-        aria-haspopup="listbox"
-        aria-controls="tag-autocomplete-listbox"
-        aria-autocomplete="list"
-      />
+      <div className="relative">
+        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          ref={inputRef}
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDownInternal}
+          className={cn(
+            "flex-1",
+            "pl-8",
+            showClearButton && value && "pr-8"
+          )}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={shouldShowDropdown}
+          aria-haspopup="listbox"
+          aria-controls="tag-autocomplete-listbox"
+          aria-autocomplete="list"
+        />
+        {showClearButton && value && (
+          <button
+            type="button"
+            onClick={handleClearClick}
+            className="absolute right-2 top-2.5 p-0.5 rounded-sm hover:bg-muted transition-colors"
+            aria-label="Clear search"
+            title="Clear search"
+          >
+            <X className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        )}
+      </div>
       
       {shouldShowDropdown && (
         <div
           id="tag-autocomplete-listbox"
-          className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md"
+          className="absolute z-[1000] mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md"
           role="listbox"
         >
           {isLoading ? (

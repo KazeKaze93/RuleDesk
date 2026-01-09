@@ -7,10 +7,10 @@ import {
 } from "@tanstack/react-query";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
+import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
 
@@ -79,25 +79,37 @@ ItemContainer.displayName = "ItemContainer";
 
 // --- Основной компонент ---
 
+// Helper function to parse tags from query string
+const parseTags = (query: string): string[] => {
+  if (!query.trim()) return [];
+  return query
+    .split(/[,\s]+/)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+};
+
 export const Updates = () => {
   const queryClient = useQueryClient();
+  const query = useSearchStore((state) => state.query);
+  const tags = useMemo(() => parseTags(query), [query]);
 
-  const { open: openViewer, appendQueueIds } = useViewerStore(
-    useShallow((state) => ({
-      open: state.open,
-      appendQueueIds: state.appendQueueIds,
-    }))
-  );
+  // Use separate selectors instead of destructuring to prevent unnecessary re-renders
+  // Each selector only subscribes to its specific value, not the entire store
+  const openViewer = useViewerStore((state) => state.open);
+  const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["posts", "updates"],
+      queryKey: ["posts", "updates", tags],
       queryFn: async ({ pageParam = 1 }) => {
         // Global feed: no artistId specified, returns posts from all tracked artists
         // sinceTracking: true filters to only posts published after artist was added
         return await window.api.getArtistPosts({
           page: pageParam,
-          filters: { sinceTracking: true },
+          filters: {
+            sinceTracking: true,
+            tags: tags.length > 0 ? tags.join(" ") : undefined,
+          },
         });
       },
       getNextPageParam: (lastPage, _allPages, lastPageParam) => {
@@ -113,6 +125,22 @@ export const Updates = () => {
   const allPosts = useMemo(() => {
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
+
+  // Create stable List component with forwardRef and aria-busy
+  // Must be memoized to prevent Virtuoso from remounting on every render
+  const ListComponent = useMemo(() => {
+    const Component = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+      (props, ref) => (
+        <GridContainer
+          {...props}
+          ref={ref}
+          aria-busy={isLoading || isFetchingNextPage}
+        />
+      )
+    );
+    Component.displayName = "UpdatesList";
+    return Component;
+  }, [isLoading, isFetchingNextPage]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -164,26 +192,25 @@ export const Updates = () => {
   };
 
   const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
-    const post = allPosts[index];
+    const currentPosts = allPosts;
+    const post = currentPosts[index];
 
     if (!post) {
       log.warn("[Updates] handlePostClick: post not found at index", index);
       return;
     }
 
-    // Mark as viewed first (same as Favorites)
-    if (post && !post.isViewed) {
+    // Mark as viewed first
+    if (!post.isViewed) {
       viewMutation.mutate(post.id);
     }
 
     // Open viewer with updates origin
-    // listKey: "updates" matches queryKey ["posts", "updates"] used in ViewerDialog
     openViewer({
-      origin: { kind: "updates" },
-      ids: postIds,
+      origin: { kind: "updates", tags: tags.length > 0 ? tags : undefined },
+      ids: currentPosts.map((p) => p.id),
       initialIndex: index,
-      listKey: "updates",
+      listKey: "updates-list",
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
     });
@@ -192,7 +219,7 @@ export const Updates = () => {
   return (
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
       {/* Header */}
-      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+      <div className="flex z-[5] justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-4 items-center">
           <div>
             <h2 className="flex gap-2 items-center text-xl font-bold">
@@ -238,7 +265,7 @@ export const Updates = () => {
               }
             }}
             components={{
-              List: GridContainer,
+              List: ListComponent,
               Item: ItemContainer,
               Footer: () =>
                 isFetchingNextPage ? (

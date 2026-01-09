@@ -34,6 +34,7 @@ export class ViewerController extends BaseController {
     this.handle(
       IPC_CHANNELS.APP.OPEN_EXTERNAL,
       z.string().url().min(1), // Single argument schema
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.openExternal.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
@@ -71,20 +72,24 @@ export class ViewerController extends BaseController {
       return null;
     }
 
-    // Step 3: Strictly verify protocol is HTTPS (case-sensitive check)
+    // Step 3: CRITICAL SECURITY - Verify protocol FIRST (before hostname check)
+    // FORCE HTTPS ONLY - HTTP is insecure and vulnerable to MITM attacks
+    // Reject all other protocols (javascript:, data:, file:, http:, etc.)
     if (parsedUrl.protocol !== "https:") {
-      log.warn(`[ViewerController] Blocked unsafe protocol: ${parsedUrl.protocol} (URL: ${urlString})`);
+      log.warn(`[ViewerController] Blocked unsafe protocol: ${parsedUrl.protocol} (URL: ${urlString}). Only HTTPS is allowed.`);
       return null;
     }
 
-    // Step 4: Verify hostname is in whitelist (exact match, no subdomains)
+    // Step 4: Get hostname for validation
     const hostname = parsedUrl.hostname.toLowerCase();
+
+    // Step 6: Verify hostname is in whitelist (exact match, no subdomains)
     if (!ALLOWED_HOSTS_SET.has(hostname)) {
       log.warn(`[ViewerController] Blocked request to unauthorized hostname: ${hostname} (URL: ${urlString})`);
       return null;
     }
 
-    // Step 5: Additional security checks
+    // Step 7: Additional security checks
     // Reject IP addresses (even if they resolve to allowed domains)
     if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname) || hostname.includes(":")) {
       log.warn(`[ViewerController] Blocked IP address or IPv6: ${hostname} (URL: ${urlString})`);
@@ -98,7 +103,7 @@ export class ViewerController extends BaseController {
       return null;
     }
 
-    // Step 6: Reconstruct URL to ensure it's clean (prevent injection via URL components)
+    // Step 8: Reconstruct URL to ensure it's clean (prevent injection via URL components)
     const sanitizedUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
 
     return sanitizedUrl;
