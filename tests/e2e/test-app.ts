@@ -1,0 +1,70 @@
+import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Launches Electron app for E2E testing with a temporary user data directory.
+ * This ensures each test run has a clean state (no existing database, settings, etc.)
+ * 
+ * @returns Object containing the Electron app instance and temp directory path
+ */
+export async function launchTestApp() {
+  // 1. Create a temp directory for userData to ensure a clean state every test
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ruledesk-e2e-'));
+  console.log('Created temp userData directory:', tempDir);
+  
+  // 2. Resolve main entry point
+  // electron-vite builds to: out/main/main.cjs
+  const mainEntry = path.resolve(__dirname, '../../out/main/main.cjs');
+  
+  if (!fs.existsSync(mainEntry)) {
+    throw new Error(`Main entry point not found: ${mainEntry}. Run 'npm run build' first.`);
+  }
+
+  // 3. Launch with custom userData path
+  const app = await electron.launch({
+    args: [mainEntry, `--user-data-dir=${tempDir}`],
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      // Disable hardware acceleration in CI/Headless environments to prevent crashes
+      ELECTRON_ENABLE_LOGGING: 'true',
+    },
+    timeout: 30000, // Increase timeout for app initialization (DB migrations, etc.)
+  });
+
+  return { app, tempDir };
+}
+
+/**
+ * Cleans up the test app and optionally removes the temporary directory.
+ * 
+ * @param app - Electron application instance (may be undefined if launch failed)
+ * @param tempDir - Temporary directory path (may be undefined if creation failed)
+ */
+export async function cleanupTestApp(app: ElectronApplication | undefined, tempDir: string | undefined) {
+  if (app) {
+    try {
+      await app.close();
+    } catch (error) {
+      console.error('Error closing Electron app:', error);
+    }
+  }
+  
+  // Optional: Clean up temp dir (sometimes risky if app holds locks, OS cleans tmp eventually)
+  // Uncomment if you want to clean up immediately (may fail if files are locked)
+  // if (tempDir && fs.existsSync(tempDir)) {
+  //   try {
+  //     fs.rmSync(tempDir, { recursive: true, force: true });
+  //     console.log('Cleaned up temp directory:', tempDir);
+  //   } catch (error) {
+  //     console.warn('Failed to clean up temp directory (files may be locked):', error);
+  //   }
+  // }
+}

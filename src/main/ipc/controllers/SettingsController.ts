@@ -59,11 +59,20 @@ function mapSettingsToIpc(
     isAdultConfirmed: !!dbSettings.isAdultConfirmed, // .default(false) in schema - Drizzle ensures value exists
     isAdultVerified: !!dbSettings.isAdultVerified, // .notNull() in schema - always present
     // Convert Date to number for IPC serialization
-    // Uses toIpcSafe utility for consistency with other controllers
-    tosAcceptedAt:
-      dbSettings.tosAcceptedAt instanceof Date
-        ? dbSettings.tosAcceptedAt.getTime()
-        : null,
+    // Drizzle with mode: "timestamp" returns Date | null
+    // But we need to handle edge cases where it might be a number (timestamp) or null
+    // CRITICAL: Drizzle with mode: "timestamp" stores as integer (milliseconds) in SQLite
+    // and returns Date object when reading, but we need to handle all cases
+    tosAcceptedAt: (() => {
+      const value = dbSettings.tosAcceptedAt;
+      if (value instanceof Date) {
+        return value.getTime();
+      }
+      if (typeof value === "number" && value > 0) {
+        return value;
+      }
+      return null;
+    })(),
   };
 }
 
@@ -128,6 +137,7 @@ export class SettingsController extends BaseController {
       if (!currentSettings) {
         // Return default values if no settings found (triggers Onboarding)
         // Use DEFAULT_IPC_SETTINGS constant (already validated, no need to parse)
+        log.debug("[SettingsController] getSettings: No settings found, returning defaults");
         return DEFAULT_IPC_SETTINGS;
       }
 
@@ -303,9 +313,6 @@ export class SettingsController extends BaseController {
       db.transaction((tx) => {
         if (existing) {
           // Update existing record
-          log.debug(
-            "[SettingsController] Updating existing settings for legal confirmation"
-          );
           tx.update(settings)
             .set({
               isAdultVerified: true,
@@ -321,9 +328,6 @@ export class SettingsController extends BaseController {
             .run();
         } else {
           // Insert new record
-          log.debug(
-            "[SettingsController] Inserting new settings for legal confirmation"
-          );
           tx.insert(settings)
             .values({
               id: SETTINGS_ID,
