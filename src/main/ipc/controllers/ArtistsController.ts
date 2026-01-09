@@ -1,17 +1,26 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, like, or, desc, sql, and, notLike, not } from "drizzle-orm";
+import { eq, or, desc, sql, and, notLike, not } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { artists, ARTIST_TYPES } from "../../db/schema";
+import { artists, posts, ARTIST_TYPES } from "../../db/schema";
+import { escapeLikePattern } from "../../db/utils";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { PROVIDER_IDS, getProvider, type ProviderId, type SearchResults } from "../../providers";
+import {
+  PROVIDER_IDS,
+  getProvider,
+  type ProviderId,
+  type SearchResults,
+} from "../../providers";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
-import { EXTERNAL_ARTIST_ID, EXTERNAL_ARTIST_TAG_PREFIX } from "../../../shared/constants";
+import {
+  EXTERNAL_ARTIST_ID,
+  EXTERNAL_ARTIST_TAG_PREFIX,
+} from "../../../shared/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -22,9 +31,11 @@ type NewArtist = InferInsertModel<typeof artists>;
 /**
  * IPC-safe Artist type with Date fields converted to numbers (timestamps in milliseconds).
  * Required for Electron 39+ IPC serialization compatibility.
- * 
+ *
  * Uses TypeScript utility types to automatically map Date fields to numbers.
  * This ensures type safety and eliminates manual field enumeration.
+ * 
+ * Includes postsCount from JOIN query to avoid N+1 problem.
  */
 type IpcArtist = {
   [K in keyof Artist]: Artist[K] extends Date
@@ -32,11 +43,13 @@ type IpcArtist = {
     : Artist[K] extends Date | null
     ? number | null
     : Artist[K];
+} & {
+  postsCount?: number; // Added via JOIN in getArtists to fix N+1 problem
 };
 
 /**
  * Add Artist Schema
- * 
+ *
  * Single source of truth for AddArtist validation and typing.
  * Type is exported directly from schema to avoid duplication.
  */
@@ -50,7 +63,7 @@ export const AddArtistSchema = z.object({
 
 /**
  * Add Artist Request Type
- * 
+ *
  * Exported directly from schema to ensure single source of truth.
  * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
  */
@@ -58,7 +71,6 @@ export type AddArtistRequest = z.infer<typeof AddArtistSchema>;
 
 // Internal alias for controller methods
 type AddArtistParams = AddArtistRequest;
-
 
 /**
  * Artists Controller
@@ -75,8 +87,6 @@ export class ArtistsController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
-
-
   /**
    * Setup IPC handlers for artist operations
    */
@@ -89,22 +99,36 @@ export class ArtistsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.ADD_ARTIST,
       z.tuple([AddArtistSchema]),
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      // Handler method has specific parameter types, but BaseController accepts generic signature
       this.addArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.DELETE_ARTIST,
       z.tuple([z.number().int().positive()]),
-      this.deleteArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.deleteArtist.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.SEARCH_TAGS,
       z.tuple([z.string().trim().min(1)]),
-      this.searchArtists.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.searchArtists.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.API.SEARCH_REMOTE,
-      z.tuple([z.string().trim().min(2), z.enum(["rule34", "gelbooru"]).optional()]),
-      this.searchRemoteTags.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      z.tuple([
+        z.string().trim().min(2),
+        z.enum(["rule34", "gelbooru"]).optional(),
+      ]),
+      this.searchRemoteTags.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
 
     log.info("[ArtistsController] All handlers registered");
@@ -119,57 +143,43 @@ export class ArtistsController extends BaseController {
   private async getArtists(_event: IpcMainInvokeEvent): Promise<IpcArtist[]> {
     const db = this.getDb();
     try {
-      // In DEBUG mode, log EXPLAIN QUERY PLAN to verify index usage
-      // Critical: Ensure the COALESCE expression matches the index exactly
-      // SQLite requires exact type and expression match for expression indexes
-      if (process.env.DEBUG === "true" || process.env.DEBUG_SQLITE === "true") {
-        const { getSqliteInstance } = await import("../../db/client");
-        const sqlite = getSqliteInstance();
-        
-        // Use the exact same expression as in the query (COALESCE with integer columns)
-        // Both lastChecked and createdAt are integer columns with timestamp mode
-        const explainQuery = sqlite.prepare(`
-          EXPLAIN QUERY PLAN
-          SELECT * FROM artists
-          ORDER BY COALESCE(last_checked, created_at) DESC
-        `);
-        const plan = explainQuery.all() as Array<{ detail?: string; [key: string]: unknown }>;
-        log.debug("[ArtistsController] EXPLAIN QUERY PLAN:", JSON.stringify(plan, null, 2));
-        
-        // Verify that artists_sort_idx is being used
-        // Check both 'detail' field and full plan for index usage
-        const usesIndex = plan.some(
-          (row) => {
-            const detail = String(row.detail || "");
-            const info = String(row.info || "");
-            return detail.includes("artists_sort_idx") || info.includes("artists_sort_idx");
-          }
-        );
-        if (!usesIndex) {
-          log.warn("[ArtistsController] ⚠️ Index artists_sort_idx not detected in query plan! Performance may be degraded.");
-          log.warn("[ArtistsController] Query plan:", plan);
-        } else {
-          log.debug("[ArtistsController] ✓ Index artists_sort_idx is being used");
-        }
-      }
-
       // Use COALESCE with integer columns (both are integer with timestamp mode)
       // This matches the expression index: COALESCE(last_checked, created_at) DESC
       // Filter out placeholder artists created by togglePostFavorite (tag starts with EXTERNAL_ARTIST_TAG_PREFIX)
       // Also exclude artist with id === EXTERNAL_ARTIST_ID if it exists
-      const result = await db.query.artists.findMany({
-        where: and(
-          notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`), // Exclude placeholder artists
-          not(eq(artists.id, EXTERNAL_ARTIST_ID)) // Explicitly exclude EXTERNAL_ARTIST_ID
-        ),
-        orderBy: [
-          desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`),
-        ],
-      });
-      log.info(`[ArtistsController] Retrieved ${result.length} tracked artists (placeholder artists excluded)`);
+      // CRITICAL: Use JOIN to get posts count in single query (fixes N+1 problem)
+      const result = await db
+        .select({
+          id: artists.id,
+          name: artists.name,
+          tag: artists.tag,
+          provider: artists.provider,
+          type: artists.type,
+          apiEndpoint: artists.apiEndpoint,
+          lastPostId: artists.lastPostId,
+          newPostsCount: artists.newPostsCount,
+          lastChecked: artists.lastChecked,
+          createdAt: artists.createdAt,
+          postsCount: sql<number>`COALESCE(COUNT(${posts.id}), 0)`.as("postsCount"),
+        })
+        .from(artists)
+        .leftJoin(posts, eq(artists.id, posts.artistId))
+        .where(
+          and(
+            notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`), // Exclude placeholder artists
+            not(eq(artists.id, EXTERNAL_ARTIST_ID)) // Explicitly exclude EXTERNAL_ARTIST_ID
+          )
+        )
+        .groupBy(artists.id)
+        .orderBy(desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`));
       
+      log.info(
+        `[ArtistsController] Retrieved ${result.length} tracked artists (placeholder artists excluded)`
+      );
+
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       // Uses universal toIpcSafe utility to avoid code duplication
+      // Note: postsCount is already a number, so it will pass through toIpcSafe unchanged
       return toIpcSafe(result) as IpcArtist[];
     } catch (error) {
       log.error("[ArtistsController] Failed to get artists:", error);
@@ -189,10 +199,10 @@ export class ArtistsController extends BaseController {
     _event: IpcMainInvokeEvent,
     data: AddArtistParams
   ): Promise<IpcArtist> {
-
     // Get default endpoint from provider if not explicitly provided
     const provider = getProvider(data.provider);
-    const finalApiEndpoint = data.apiEndpoint || provider.getDefaultApiEndpoint();
+    const finalApiEndpoint =
+      data.apiEndpoint || provider.getDefaultApiEndpoint();
 
     log.info(
       `[ArtistsController] Adding artist: ${data.name} [${data.provider}]`
@@ -225,7 +235,7 @@ export class ArtistsController extends BaseController {
 
       const inserted = result[0];
       log.info(`[ArtistsController] Artist added/updated: ${inserted.name}`);
-      
+
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       return toIpcSafe(inserted) as IpcArtist;
     } catch (error) {
@@ -267,6 +277,7 @@ export class ArtistsController extends BaseController {
     }
   }
 
+
   /**
    * Search artists by name or tag (LIKE query)
    *
@@ -280,18 +291,22 @@ export class ArtistsController extends BaseController {
   ): Promise<IpcArtist[]> {
     try {
       const db = this.getDb();
-      const searchPattern = `%${query}%`;
+      // Escape special LIKE characters before wrapping with %
+      const escapedQuery = escapeLikePattern(query);
+      const searchPattern = `%${escapedQuery}%`;
+
+      // Use sql template with ESCAPE clause for proper LIKE escaping
       const result = await db.query.artists.findMany({
         where: or(
-          like(artists.tag, searchPattern),
-          like(artists.name, searchPattern)
+          sql`${artists.tag} LIKE ${searchPattern} ESCAPE '\\'`,
+          sql`${artists.name} LIKE ${searchPattern} ESCAPE '\\'`
         ),
         limit: 20,
       });
       log.info(
         `[ArtistsController] Search "${query}" returned ${result.length} results`
       );
-      
+
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       return toIpcSafe(result) as IpcArtist[];
     } catch (error) {
@@ -323,4 +338,3 @@ export class ArtistsController extends BaseController {
     }
   }
 }
-

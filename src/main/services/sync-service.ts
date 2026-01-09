@@ -16,6 +16,10 @@ import type { BooruPost } from "../providers/types";
 // Better-SQLite3 uses modern SQLite (3.40+) with 32766 limit, but we stay conservative
 const CHUNK_SIZE = 75;
 
+// Safety limit for initial sync to prevent infinite loops
+// At 100 posts/page, this equals 100k posts - more than sufficient for any artist
+const MAX_PAGES_SAFETY_LIMIT = 1000;
+
 function bulkUpsertPosts(
   postsToSave: NewPost[],
   tx: BetterSQLite3Database<typeof schema>
@@ -240,7 +244,8 @@ export class SyncService {
 
       if (artist && settingsData) {
         this.sendEvent("sync:repair:start", artist.name);
-        await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, 3);
+        // Repair: reset lastPostId to 0 and sync posts with safety limit
+        await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, MAX_PAGES_SAFETY_LIMIT);
       }
     } catch (e) {
       logger.error("Repair error", e);
@@ -255,7 +260,6 @@ export class SyncService {
     settings: { userId: string; apiKey: string },
     maxPages = Infinity
   ) {
-    const db = getDb();
 
     // DYNAMIC PROVIDER SELECTION
     // Validate provider ID against known providers
@@ -288,23 +292,72 @@ export class SyncService {
     const provider = getProvider(providerId);
 
     logger.info(
-      `SyncService: Syncing ${artist.name} using provider: ${provider.name}`
+      `SyncService: Syncing ${artist.name} using provider: ${provider.name} (lastPostId: ${artist.lastPostId})`
+    );
+
+    // Track current lastPostId separately to avoid mutating artist object
+    const currentLastPostId = artist.lastPostId;
+    const isInitialSync = currentLastPostId === 0;
+    
+    // Unified sync method - handles both initial and incremental sync
+    return await this.syncPosts(
+      artist,
+      settings,
+      provider,
+      {
+        isInitial: isInitialSync,
+        currentLastPostId,
+        maxPages: isInitialSync ? maxPages : Infinity,
+      }
+    );
+  }
+
+  /**
+   * Unified sync method for both initial and incremental sync
+   * Parameters control behavior:
+   * - isInitial: true = load all posts (no id:> filter), false = load only new posts (id:> filter)
+   * - currentLastPostId: starting point for incremental sync (ignored if isInitial)
+   * - maxPages: maximum pages to fetch (only used for initial sync)
+   */
+  private async syncPosts(
+    artist: Artist,
+    settings: { userId: string; apiKey: string },
+    provider: ReturnType<typeof getProvider>,
+    options: {
+      isInitial: boolean;
+      currentLastPostId: number;
+      maxPages: number;
+    }
+  ): Promise<void> {
+    const db = getDb();
+    const { isInitial, currentLastPostId, maxPages } = options;
+    
+    const syncType = isInitial ? "Initial" : "Incremental";
+    logger.info(
+      `SyncService: ${syncType} sync for ${artist.name} - ` +
+      (isInitial 
+        ? `will load ALL posts (max ${maxPages} pages)`
+        : `will load posts with id > ${currentLastPostId}`)
     );
 
     let page = 0;
     let hasMore = true;
     let newPostsCount = 0;
-    // Track current lastPostId separately to avoid mutating artist object
-    let currentLastPostId = artist.lastPostId;
+    let batchHighestPostId = isInitial ? 0 : currentLastPostId;
+    
+    // Batch posts for transaction - collect multiple pages before committing
+    // This reduces transaction overhead (better-sqlite3 blocks DB on write)
+    // Batch size: 5 pages (500 posts) or until end of sync
+    const BATCH_SIZE_PAGES = 5;
+    const allPostsToSave: NewPost[] = [];
 
     while (hasMore && page < maxPages) {
       try {
-        const idFilter =
-          currentLastPostId > 0 ? ` id:>${currentLastPostId}` : "";
-
-        // Use provider to format tag (handles 'user:' prefix logic)
+        // Build tags query: initial sync uses base tag, incremental uses id:> filter
         const baseTag = provider.formatTag(artist.tag, artist.type);
-        const tagsQuery = `${baseTag}${idFilter}`;
+        const tagsQuery = isInitial 
+          ? baseTag 
+          : `${baseTag} id:>${currentLastPostId}`;
 
         const postsData = await retryWithBackoff(
           () =>
@@ -317,9 +370,13 @@ export class SyncService {
           artist.name
         );
 
-        const newPosts = postsData.filter((p) => p.id > currentLastPostId);
+        // Filter posts: initial sync saves all, incremental only saves new ones
+        const newPosts = isInitial 
+          ? postsData 
+          : postsData.filter((p) => p.id > currentLastPostId);
 
-        if (newPosts.length === 0 && currentLastPostId > 0) {
+        // Stop if no new posts found
+        if (newPosts.length === 0) {
           hasMore = false;
           break;
         }
@@ -338,49 +395,78 @@ export class SyncService {
           isFavorited: false,
         }));
 
-        // Save posts and update artist metadata atomically after each page
+        // Collect posts for batch transaction
+        allPostsToSave.push(...postsToSave);
+        
+        // Update highest post ID seen
         if (postsToSave.length > 0) {
-          // Calculate max post ID from this batch BEFORE transaction
-          const batchHighestPostId = Math.max(
-            ...postsToSave.map((p) => p.postId)
-          );
+          const pageHighestPostId = Math.max(...postsToSave.map((p) => p.postId));
+          batchHighestPostId = Math.max(batchHighestPostId, pageHighestPostId);
+        }
 
-          // better-sqlite3 transactions are synchronous
-          // Drizzle wraps them but the callback should not be async
-          // CRITICAL: All operations inside transaction must be synchronous and end with .run()
+        // Commit batch transaction when we have enough pages or reached end
+        const shouldCommitBatch = 
+          allPostsToSave.length >= BATCH_SIZE_PAGES * 100 || // 5 pages worth
+          (postsData.length < 100 && allPostsToSave.length > 0) || // End of pagination
+          !hasMore; // No more pages
+
+        if (shouldCommitBatch && allPostsToSave.length > 0) {
+          // Single transaction for entire batch
           db.transaction((tx) => {
-            bulkUpsertPosts(postsToSave, tx);
+            bulkUpsertPosts(allPostsToSave, tx);
 
-            // Update lastPostId ONLY with posts that were actually saved in this transaction
-            // Use currentLastPostId (not artist.lastPostId) to avoid race conditions
             tx.update(artists)
               .set({
-                lastPostId: Math.max(currentLastPostId, batchHighestPostId),
-                newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
+                lastPostId: batchHighestPostId,
+                newPostsCount: sql`${artists.newPostsCount} + ${allPostsToSave.length}`,
                 lastChecked: new Date(),
               })
               .where(eq(artists.id, artist.id))
               .run();
           });
 
-          // Update local tracking variable for next iteration
-          currentLastPostId = Math.max(currentLastPostId, batchHighestPostId);
-          newPostsCount += postsToSave.length;
+          newPostsCount += allPostsToSave.length;
+          allPostsToSave.length = 0; // Clear batch
+          
+          logger.debug(`SyncService: ${artist.name} - Committed batch of ${newPostsCount} posts`);
         }
 
-        if (postsData.length < 100) hasMore = false;
-        else page++;
+        // Continue pagination if we got a full page (100 posts)
+        if (postsData.length < 100) {
+          hasMore = false;
+          logger.debug(`SyncService: ${artist.name} - Page ${page} returned ${postsData.length} posts (< 100), stopping pagination`);
+        } else {
+          page++;
+          logger.debug(`SyncService: ${artist.name} - Page ${page - 1} returned ${postsData.length} posts, continuing to page ${page}`);
+        }
       } catch (e) {
         logger.error(`Sync error for ${artist.name}`, e);
         hasMore = false;
-        throw e; // Rethrow to let syncAllArtists handle it
+        throw e;
       }
+    }
+    
+    // Commit any remaining posts in batch
+    if (allPostsToSave.length > 0) {
+      db.transaction((tx) => {
+        bulkUpsertPosts(allPostsToSave, tx);
+
+        tx.update(artists)
+          .set({
+            lastPostId: batchHighestPostId,
+            newPostsCount: sql`${artists.newPostsCount} + ${allPostsToSave.length}`,
+            lastChecked: new Date(),
+          })
+          .where(eq(artists.id, artist.id))
+          .run();
+      });
+
+      newPostsCount += allPostsToSave.length;
+      logger.debug(`SyncService: ${artist.name} - Committed final batch of ${allPostsToSave.length} posts`);
     }
 
     // Final update of lastChecked even if no new posts were found
     if (newPostsCount === 0) {
-      // better-sqlite3 transactions are synchronous
-      // CRITICAL: Must call .run() to execute the query
       db.transaction((tx) => {
         tx.update(artists)
           .set({ lastChecked: new Date() })
@@ -389,7 +475,11 @@ export class SyncService {
       });
     }
 
-    logger.info(`Sync finished for ${artist.name}. Added: ${newPostsCount}`);
+    const previousLastPostId = isInitial ? artist.lastPostId : currentLastPostId;
+    logger.info(
+      `${syncType} sync finished for ${artist.name}. Added: ${newPostsCount} posts. ` +
+      `Final lastPostId: ${batchHighestPostId} (was: ${previousLastPostId})`
+    );
   }
 }
 

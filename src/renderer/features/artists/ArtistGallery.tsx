@@ -55,6 +55,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  // ArtistGallery should show ALL posts for the artist, not filtered by global search query
+  // The global search query is only for Browse tab, not for Tracked Artists
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
     useShallow((state) => ({
@@ -78,6 +80,10 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         return await window.api.getArtistPosts({
           artistId: artist.id,
           page: pageParam,
+      filters: {
+        // No tag filtering - show all posts for this artist
+        tags: undefined,
+      },
         });
       },
       getNextPageParam: (lastPage, allPages) => {
@@ -89,6 +95,23 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const allPosts = useMemo(() => {
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
+
+  // Create stable List component with forwardRef and aria-busy
+  // Must be memoized to prevent Virtuoso from remounting on every render
+  const ListComponent = useMemo(() => {
+    const Component = forwardRef<
+      HTMLDivElement,
+      React.HTMLAttributes<HTMLDivElement>
+    >((props, ref) => (
+      <GridContainer
+        {...props}
+        ref={ref}
+        aria-busy={isLoading || isFetchingNextPage}
+      />
+    ));
+    Component.displayName = "ArtistGalleryList";
+    return Component;
+  }, [isLoading, isFetchingNextPage]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -146,7 +169,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     }
 
     openViewer({
-      origin: { kind: "artist", artistId: artist.id },
+      origin: {
+        kind: "artist",
+        artistId: artist.id,
+        tags: undefined, // No tag filtering in artist gallery
+      },
       ids: postIds,
       initialIndex: index,
       listKey: `artist-${artist.id}`,
@@ -177,7 +204,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   return (
     <div className="flex flex-col h-full bg-background text-foreground">
       {/* Header */}
-      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+      <div className="flex z-[5] justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-4 items-center">
           <Button
             variant="ghost"
@@ -242,7 +269,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               }
             }}
             components={{
-              List: GridContainer,
+              List: ListComponent,
               Item: ItemContainer,
               Footer: () =>
                 isFetchingNextPage ? (

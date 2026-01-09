@@ -1,7 +1,18 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, count, and, sql, gte, type SQL } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  count,
+  and,
+  sql,
+  gte,
+  not,
+  notLike,
+  or,
+  type SQL,
+} from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists, type Post } from "../../db/schema";
@@ -10,7 +21,12 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { PostDataSchema, type PostData } from "../../../shared/schemas/post";
-import { EXTERNAL_ARTIST_ID, EXTERNAL_ARTIST_TAG_PREFIX } from "../../../shared/constants";
+import {
+  EXTERNAL_ARTIST_ID,
+  EXTERNAL_ARTIST_TAG_PREFIX,
+} from "../../../shared/constants";
+import { getSqliteInstance } from "../../db/client";
+import { escapeLikePattern } from "../../db/utils";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -87,6 +103,42 @@ export class PostsController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
+  // Cache FTS table existence check (schema doesn't change at runtime)
+  // Initialized once at setup() to avoid blocking synchronous calls
+  private ftsTableExistsCache: boolean = false;
+
+  /**
+   * Check if posts_fts table exists (cached, checked once at initialization)
+   * @returns true if FTS5 table exists, false otherwise
+   */
+  private checkFtsTableExists(): boolean {
+    return this.ftsTableExistsCache;
+  }
+
+  /**
+   * Initialize FTS table existence check (called once at setup)
+   * This avoids blocking synchronous SQLite calls during runtime
+   */
+  private initializeFtsTableCheck(): void {
+    try {
+      // Use official getSqliteInstance export (safe, no unsafe casts)
+      // Query sqlite_master system table to check if posts_fts exists
+      const sqlite = getSqliteInstance();
+      const stmt = sqlite.prepare<[], { name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
+      );
+      const result = stmt.get();
+      this.ftsTableExistsCache = !!result;
+      log.info(`[PostsController] FTS table check initialized: ${this.ftsTableExistsCache}`);
+    } catch (error) {
+      log.warn(
+        "[PostsController] Failed to check FTS table existence, using LIKE fallback:",
+        error
+      );
+      this.ftsTableExistsCache = false;
+    }
+  }
+
   /**
    * Setup IPC handlers for post operations
    */
@@ -94,18 +146,14 @@ export class PostsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS,
       z.tuple([GetPostsSchema]),
-      this.getPosts.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.getPosts.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
       z.tuple([z.number().int().positive().optional()]),
-      this.getPostsCount.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.getPostsCount.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
@@ -113,18 +161,14 @@ export class PostsController extends BaseController {
         z.number().int(), // Allow negative IDs for external posts from Browse
         PostDataSchema.optional(),
       ]),
-      this.markViewed.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.markViewed.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
       z.tuple([z.number().int().positive()]),
-      this.resetPostCache.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.resetPostCache.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
@@ -132,21 +176,22 @@ export class PostsController extends BaseController {
         z.number().int(), // Allow negative IDs for external posts from Browse
         PostDataSchema.optional(),
       ]),
-      this.toggleFavorite.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.toggleFavorite.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
+
+    // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)
+    this.initializeFtsTableCheck();
 
     log.info("[PostsController] All handlers registered");
   }
 
   /**
    * Find existing post by database ID or by postId + EXTERNAL_ARTIST_ID
-   * 
+   *
    * This is a shared helper method used by markViewed and toggleFavorite
    * to avoid code duplication.
-   * 
+   *
    * @param tx - Drizzle transaction object
    * @param postId - Database post ID (for existing posts)
    * @param postData - Optional post data for external posts (contains postId for lookup)
@@ -161,7 +206,7 @@ export class PostsController extends BaseController {
     // For negative IDs, skip DB lookup by id and go straight to postId lookup
     // For positive IDs, try to find by database ID first (existing posts from DB)
     let existingPost: Post | undefined;
-    
+
     if (postId > 0) {
       // Positive ID - try to find by database ID (existing posts from DB)
       existingPost = tx
@@ -193,11 +238,12 @@ export class PostsController extends BaseController {
     return existingPost;
   }
 
+
   /**
    * Sanitize FTS5 search query to prevent syntax errors
    * FTS5 interprets the search string as an expression, so special characters
    * (:, *, -, ", \, NEAR, AND, OR, NOT) can cause SQLITE_ERROR: fts5: syntax error
-   * 
+   *
    * Solution: Remove/replace FTS5 operator characters and wrap in quotes
    * Allows * wildcard only at the end of words for prefix search (e.g., "tag*")
    * This makes FTS5 treat the input as a literal string, not as operators
@@ -213,7 +259,7 @@ export class PostsController extends BaseController {
     // - \ (escape character, can cause issues) - remove
     // - * in the middle of words - remove (only allow at end of word for prefix search)
     // Replace with spaces and normalize
-    let clean = query
+    const clean = query
       // Remove NOT operator
       .replace(/-/g, " ")
       // Remove escape characters
@@ -237,7 +283,7 @@ export class PostsController extends BaseController {
 
     // Escape remaining double quotes by doubling them (FTS5 escaping rule)
     const escaped = clean.replace(/"/g, '""');
-    
+
     // Wrap in double quotes to make FTS5 treat it as a literal phrase
     // This allows * wildcard at end of words (e.g., "tag*") for prefix search
     return `"${escaped}"`;
@@ -247,29 +293,69 @@ export class PostsController extends BaseController {
    * Create FTS5 JOIN condition for tag filtering
    * Uses parameterized query to prevent SQL injection
    * Sanitizes FTS5 query to prevent syntax errors from special characters
-   * 
+   *
    * Uses EXISTS with JOIN pattern for better performance than IN (SELECT ...):
    * - SQLite optimizer can use FTS5 index as leading index
    * - More efficient than IN with virtual tables
    * - Allows better query planning
    *
+   * Falls back to LIKE search if FTS5 table doesn't exist
+   *
    * @param tagFilter - Tag search string (user input from Renderer)
-   * @returns Drizzle SQL condition for tag filtering using FTS5
+   * @returns Drizzle SQL condition for tag filtering using FTS5 or LIKE
    */
   private createTagFilterCondition(tagFilter: string): SQL {
-    // Sanitize FTS5 query to prevent syntax errors from special characters
-    // Wrap in quotes and escape internal quotes so FTS5 treats input as literal
-    const sanitized = this.sanitizeFts5Query(tagFilter);
-    
-    // Use EXISTS with FTS5 JOIN pattern for better performance than IN (SELECT ...)
-    // This allows SQLite optimizer to use FTS5 index efficiently
-    // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
-    // Drizzle's sql template automatically parameterizes the value
-    return sql`EXISTS (
-      SELECT 1 FROM posts_fts 
-      WHERE posts_fts.rowid = ${posts.id} 
-        AND posts_fts MATCH ${sanitized}
-    )`;
+    const ftsTableExists = this.checkFtsTableExists();
+
+    if (ftsTableExists) {
+      // Use FTS5 for fast full-text search
+      // Sanitize FTS5 query to prevent syntax errors from special characters
+      // Wrap in quotes and escape internal quotes so FTS5 treats input as literal
+      const sanitized = this.sanitizeFts5Query(tagFilter);
+
+      // Use EXISTS with FTS5 JOIN pattern for better performance than IN (SELECT ...)
+      // This allows SQLite optimizer to use FTS5 index efficiently
+      // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
+      // Drizzle's sql template automatically parameterizes the value
+      return sql`EXISTS (
+        SELECT 1 FROM posts_fts 
+        WHERE posts_fts.rowid = ${posts.id} 
+          AND posts_fts MATCH ${sanitized}
+      )`;
+    } else {
+      // Fallback to LIKE search if FTS5 table doesn't exist
+      // Split tags by space and search for each tag
+      const tagParts = tagFilter.trim().split(/\s+/).filter(Boolean);
+      if (tagParts.length === 0) {
+        // Empty filter - return condition that matches nothing
+        return sql`1 = 0`;
+      }
+
+      // Create LIKE conditions for each tag part
+      // Tags are space-separated in posts.tags, so we need to match whole words
+      // Use AND to require all tags (similar to FTS5 behavior)
+      const likeConditions = tagParts.map((tag) => {
+        // Escape special LIKE characters: %, _, and \
+        // Use ESCAPE clause to treat escaped characters literally
+        const escapedTag = escapeLikePattern(tag);
+
+        // Use sql template with ESCAPE clause for proper LIKE escaping
+        // SQLite LIKE with ESCAPE '\' allows us to use \% and \_ literally
+        return or(
+          sql`${posts.tags} LIKE ${`% ${escapedTag} %`} ESCAPE '\\'`, // Tag in middle
+          sql`${posts.tags} LIKE ${`${escapedTag} %`} ESCAPE '\\'`, // Tag at start
+          sql`${posts.tags} LIKE ${`% ${escapedTag}`} ESCAPE '\\'`, // Tag at end
+          eq(posts.tags, tag) // Tag is entire string (exact match, no escaping needed)
+        ) as SQL;
+      });
+
+      // Require all tags to match (AND logic)
+      if (likeConditions.length === 1) {
+        return likeConditions[0];
+      } else {
+        return and(...likeConditions) as SQL;
+      }
+    }
   }
 
   /**
@@ -353,6 +439,18 @@ export class PostsController extends BaseController {
         // This ensures filtering happens at the join level, not after
         // The join condition (gte(posts.publishedAt, artists.createdAt)) ensures
         // we only get posts published after the artist was tracked, even if whereClause is undefined
+        // Also exclude EXTERNAL_ARTIST_ID and placeholder artists to ensure only real tracked artists
+        const joinConditions = and(
+          eq(posts.artistId, artists.id),
+          gte(posts.publishedAt, artists.createdAt),
+          not(eq(posts.artistId, EXTERNAL_ARTIST_ID)), // Exclude external posts
+          notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`) // Exclude placeholder artists
+        );
+
+        const finalWhereClause = whereClause
+          ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
+          : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
+
         const result = await db
           .select({
             id: posts.id,
@@ -370,14 +468,8 @@ export class PostsController extends BaseController {
             isFavorited: posts.isFavorited,
           })
           .from(posts)
-          .innerJoin(
-            artists,
-            and(
-              eq(posts.artistId, artists.id),
-              gte(posts.publishedAt, artists.createdAt)
-            )
-          )
-          .where(whereClause)
+          .innerJoin(artists, joinConditions)
+          .where(finalWhereClause)
           .orderBy(desc(posts.publishedAt))
           .limit(limit)
           .offset(offset);
@@ -394,21 +486,35 @@ export class PostsController extends BaseController {
 
       // Standard query path (no sinceTracking filter)
       // Build where conditions array using centralized method
-      const baseConditions = this.buildPostFilterConditions(
-        artistId,
-        filters
-      );
+      const baseConditions = this.buildPostFilterConditions(artistId, filters);
 
       // Combine all conditions using and()
       const whereClause =
         baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
-      const result = await db.query.posts.findMany({
-        where: whereClause,
-        orderBy: [desc(posts.publishedAt)],
-        limit,
-        offset,
-      });
+      // CRITICAL: Explicitly select all fields including rating
+      // This ensures rating is included in the response for Safe Mode filtering
+      const result = await db
+        .select({
+          id: posts.id,
+          postId: posts.postId,
+          artistId: posts.artistId,
+          fileUrl: posts.fileUrl,
+          previewUrl: posts.previewUrl,
+          sampleUrl: posts.sampleUrl,
+          title: posts.title,
+          rating: posts.rating,
+          tags: posts.tags,
+          publishedAt: posts.publishedAt,
+          createdAt: posts.createdAt,
+          isViewed: posts.isViewed,
+          isFavorited: posts.isFavorited,
+        })
+        .from(posts)
+        .where(whereClause)
+        .orderBy(desc(posts.publishedAt))
+        .limit(limit)
+        .offset(offset);
 
       log.info(
         `[PostsController] Retrieved ${result.length} posts ${
@@ -538,9 +644,7 @@ export class PostsController extends BaseController {
           .run();
 
         if (updated.changes > 0) {
-          log.debug(
-            `[PostsController] Post ${postId} marked as viewed`
-          );
+          log.debug(`[PostsController] Post ${postId} marked as viewed`);
           return true;
         }
       }

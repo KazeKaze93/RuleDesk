@@ -7,12 +7,21 @@ import {
 } from "@tanstack/react-query";
 import { Heart, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
+import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
+
+// Helper function to parse tags from query string
+const parseTags = (query: string): string[] => {
+  if (!query.trim()) return [];
+  return query
+    .split(/[,\s]+/)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+};
 
 // --- Constants ---
 // Should ideally come from a shared constant or backend config
@@ -48,21 +57,23 @@ ItemContainer.displayName = "ItemContainer";
 
 export const Favorites = () => {
   const queryClient = useQueryClient();
+  const query = useSearchStore((state) => state.query);
+  const tags = useMemo(() => parseTags(query), [query]);
 
-  const { open: openViewer, appendQueueIds } = useViewerStore(
-    useShallow((state) => ({
-      open: state.open,
-      appendQueueIds: state.appendQueueIds,
-    }))
-  );
-
+  // Use separate selectors instead of destructuring to prevent unnecessary re-renders
+  // Each selector only subscribes to its specific value, not the entire store
+  const openViewer = useViewerStore((state) => state.open);
+  const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["posts", "favorites"],
+      queryKey: ["posts", "favorites", tags],
       queryFn: async ({ pageParam = 1 }) => {
         return await window.api.getArtistPosts({
-          filters: { isFavorited: true },
+          filters: {
+            isFavorited: true,
+            tags: tags.length > 0 ? tags.join(" ") : undefined,
+          },
           page: pageParam,
         });
       },
@@ -76,6 +87,22 @@ export const Favorites = () => {
   const allPosts = useMemo(() => {
     return data?.pages.flatMap((page) => page) || [];
   }, [data]);
+
+  // Create stable List component with forwardRef and aria-busy
+  // Must be memoized to prevent Virtuoso from remounting on every render
+  const ListComponent = useMemo(() => {
+    const Component = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+      (props, ref) => (
+        <GridContainer
+          {...props}
+          ref={ref}
+          aria-busy={isLoading || isFetchingNextPage}
+        />
+      )
+    );
+    Component.displayName = "FavoritesList";
+    return Component;
+  }, [isLoading, isFetchingNextPage]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -121,18 +148,25 @@ export const Favorites = () => {
   };
 
   const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
+    const currentPosts = allPosts;
+    const post = currentPosts[index];
 
-    const post = allPosts[index];
-    if (post && !post.isViewed) {
+    if (!post) {
+      log.warn("[Favorites] handlePostClick: post not found at index", index);
+      return;
+    }
+
+    // Mark as viewed first
+    if (!post.isViewed) {
       viewMutation.mutate(post.id);
     }
 
+    // Open viewer with favorites origin
     openViewer({
-      origin: { kind: "favorites" },
-      ids: postIds,
+      origin: { kind: "favorites", tags: tags.length > 0 ? tags : undefined },
+      ids: currentPosts.map((p) => p.id),
       initialIndex: index,
-      listKey: "favorites",
+      listKey: "favorites-list",
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
     });
@@ -141,7 +175,7 @@ export const Favorites = () => {
   return (
     <div className="flex flex-col h-full -m-6 bg-background text-foreground">
       {/* Header */}
-      <div className="flex z-10 justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+      <div className="flex z-[5] justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-4 items-center">
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
@@ -184,7 +218,7 @@ export const Favorites = () => {
               }
             }}
             components={{
-              List: GridContainer,
+              List: ListComponent,
               Item: ItemContainer,
               Footer: () =>
                 isFetchingNextPage ? (

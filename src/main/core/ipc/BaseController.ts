@@ -33,6 +33,17 @@ export abstract class BaseController {
    */
   public abstract setup(): void;
 
+  // Throttling: Track last call time per channel to prevent DoS attacks
+  // Map<channel, lastCallTimestamp>
+  private static readonly throttleMap = new Map<string, number>();
+  
+  // Minimum time between calls for the same channel (milliseconds)
+  // Prevents renderer from spamming IPC calls
+  private static readonly THROTTLE_MS = 100; // 100ms = max 10 calls per second per channel
+  
+  // TTL for throttle map entries (1 hour) - prevents memory leak from dynamic channel names
+  private static readonly THROTTLE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
   /**
    * Protected helper to register IPC handlers with centralized error handling and input validation
    * 
@@ -47,6 +58,9 @@ export abstract class BaseController {
    * ⚠️ SECURITY: Automatically removes existing handler before registration to prevent
    * "Attempted to register a second handler" errors that would crash the Main process.
    * This allows safe re-initialization (e.g., hot-reload, error recovery).
+   * 
+   * ⚠️ TYPE SAFETY: Handler function signature is automatically compatible with BaseController.
+   * No need for `as` type assertions - TypeScript will infer correct types from method signature.
    * 
    * @param channel - IPC channel name (e.g., 'user:get')
    * @param schema - Zod schema for validating handler arguments (tuple or single schema)
@@ -72,6 +86,34 @@ export abstract class BaseController {
 
     ipcMain.handle(channel, async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       try {
+        // Throttling: Prevent DoS attacks by limiting call frequency per channel
+        // If rate limit exceeded, throw error immediately instead of creating promise queue
+        const now = Date.now();
+        
+        // Cleanup old entries to prevent memory leak (TTL-based cleanup)
+        // Only cleanup every 1000 calls to avoid performance overhead
+        if (BaseController.throttleMap.size > 100 && Math.random() < 0.001) {
+          for (const [key, timestamp] of BaseController.throttleMap.entries()) {
+            if (now - timestamp > BaseController.THROTTLE_TTL_MS) {
+              BaseController.throttleMap.delete(key);
+            }
+          }
+        }
+        
+        const lastCall = BaseController.throttleMap.get(channel);
+        if (lastCall !== undefined && now - lastCall < BaseController.THROTTLE_MS) {
+          const waitTime = BaseController.THROTTLE_MS - (now - lastCall);
+          log.warn(`[IPC] Rate limit exceeded for channel "${channel}" - too frequent (must wait ${waitTime}ms)`);
+          const rateLimitError: SerializableError = {
+            message: `Rate limit exceeded. Please wait ${waitTime}ms before retrying.`,
+            stack: undefined,
+            name: 'RateLimitError',
+            originalError: undefined,
+          };
+          throw rateLimitError;
+        }
+        BaseController.throttleMap.set(channel, Date.now());
+
         // Security: Log only channel name and argument count, not actual arguments
         // This prevents leaking user data, file paths, or other sensitive information
         log.info(`[IPC] Incoming request: ${channel} (${args.length} arg${args.length !== 1 ? 's' : ''})`);

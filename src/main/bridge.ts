@@ -110,6 +110,11 @@ export interface IpcBridge {
 
   searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
 
+  resolveTags: (tags: string[]) => Promise<string[]>;
+  resolveCharacterTags: (tags: string[]) => Promise<string[]>;
+  resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
+  resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
+
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
 
@@ -128,6 +133,18 @@ const ipcBridge: IpcBridge = {
 
   searchBooru: (params) =>
     ipcRenderer.invoke("booru:search", params),
+
+  resolveTags: (tags) =>
+    ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS, tags),
+
+  resolveCharacterTags: (tags) =>
+    ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_CHARACTER_TAGS, tags),
+
+  resolveCopyrightTags: (tags) =>
+    ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS, tags),
+
+  resolveTagsByType: (tags, type) =>
+    ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE, tags, type),
 
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 
