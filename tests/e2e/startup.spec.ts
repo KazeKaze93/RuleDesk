@@ -1,21 +1,48 @@
-import { test, expect } from '@playwright/test';
-import { launchTestApp, cleanupTestApp } from './test-app';
-import type { ElectronApplication } from '@playwright/test';
+import { test, expect, _electron as electron } from '@playwright/test';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 test.describe('Application Startup', () => {
-  let app: ElectronApplication | undefined;
-  let tempDir: string | undefined;
+  let app: any;
 
   test.beforeAll(async () => {
-    // Launch app with isolated user data directory
-    const result = await launchTestApp();
-    app = result.app;
-    tempDir = result.tempDir;
+    // Determine path to the main process entry point
+    // electron-vite builds to: out/main/main.cjs
+    const mainEntry = path.resolve(__dirname, '../../out/main/main.cjs');
+    
+    console.log('Launching Electron app from:', mainEntry);
+    console.log('File exists:', existsSync(mainEntry));
+    
+    // Launch app
+    // Note: _electron is experimental API, requires Playwright 1.40+
+    // The app uses requestSingleInstanceLock(), which may prevent multiple instances
+    // In test mode, we rely on the app's behavior (it should quit if lock fails)
+    try {
+      app = await electron.launch({
+        args: [mainEntry],
+        env: {
+          ...process.env,
+          NODE_ENV: 'test', // Tell app it's in test mode
+        },
+        // Increase timeout for app initialization (DB migrations, etc.)
+        timeout: 30000,
+      });
+      console.log('Electron app launched successfully');
+    } catch (error) {
+      console.error('Failed to launch Electron app:', error);
+      throw error;
+    }
   });
 
   test.afterAll(async () => {
-    // Clean up app and temp directory
-    await cleanupTestApp(app, tempDir);
+    if (app) {
+      await app.close();
+    }
   });
 
   test('app window should open and load content', async () => {
