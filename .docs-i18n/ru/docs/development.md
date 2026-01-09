@@ -1,33 +1,34 @@
 # Руководство по разработке
 
-## 📑 Содержание
+## 📑 Оглавление
 
-- [Предварительные требования](#prerequisites)
-- [Начальная настройка](#initial-setup)
-- [Скрипты для разработки](#development-scripts)
-- [Структура проекта](#project-structure)
-- [Рабочий процесс разработки](#development-workflow)
-- [Конфигурация сборки](#build-configuration)
-- [Отладка](#debugging)
-- [Часто встречающиеся проблемы](#common-issues)
-- [Оптимизация производительности](#performance-optimization)
-- [Качество кода](#code-quality)
-- [Переменные окружения](#environment-variables)
+- [Prerequisites](#prerequisites)
+- [Initial Setup](#initial-setup)
+- [Development Scripts](#development-scripts)
+- [Project Structure](#project-structure)
+- [Development Workflow](#development-workflow)
+- [Build Configuration](#build-configuration)
+- [Debugging](#debugging)
+- [Common Issues](#common-issues)
+- [Performance Optimization](#performance-optimization)
+- [Code Quality](#code-quality)
+- [Environment Variables](#environment-variables)
 - [Hot Module Replacement (HMR)](#hot-module-replacement-hmr)
 - [Production Build](#production-build)
 
 ---
 
-Это руководство охватывает настройку среды разработки, процесс сборки и общие задачи разработки.
+Это руководство охватывает настройку среды разработки, процесс сборки и типовые задачи разработки.
 
 **📖 Связанная документация:**
-- [Руководство по участию в разработке](./contributing.md) - Стандарты и рекомендации по коду
+
+- [Руководство по внесению вклада](./contributing.md) - Стандарты и рекомендации по коду
 - [Документация по архитектуре](./architecture.md) - Архитектура системы
 - [Документация по API](./api.md) - Справочник по IPC API
 - [Документация по базе данных](./database.md) - Операции с базой данных
 - [Глоссарий](./glossary.md) - Ключевые термины и концепции
 
-## Предварительные требования
+## Необходимые условия
 
 - **Node.js:** v18 или выше
 - **npm:** v9 или выше (или yarn)
@@ -70,11 +71,11 @@ npm run lint
 
 Запускает приложение в режиме разработки с Hot Module Replacement (HMR).
 
-**Что делает:**
+**Что он делает:**
 
 - Запускает dev-сервер Vite для Renderer Process
-- Компилирует Main Process в режиме наблюдения за изменениями
-- Открывает окно Electron с включенными DevTools
+- Компилирует Main Process в режиме отслеживания изменений
+- Открывает окно Electron с включёнными DevTools
 - Включает HMR для React Components
 
 **Использование:**
@@ -85,13 +86,13 @@ npm run dev
 
 ### `npm run build`
 
-Собирает приложение для Production.
+Собирает приложение для production.
 
-**Что делает:**
+**Что он делает:**
 
-- Компилирует TypeScript для Main и Renderer
-- Собирает React-приложение в бандл
-- Генерирует готовое для Production приложение Electron в `out/`
+- Компилирует TypeScript для Main Process и Renderer Process
+- Собирает (бандлит) React приложение
+- Генерирует готовое к production приложение Electron в `out/`
 
 **Использование:**
 
@@ -101,7 +102,7 @@ npm run build
 
 ### `npm run preview`
 
-Предварительный просмотр Production-сборки локально.
+Предварительный просмотр production сборки локально.
 
 **Использование:**
 
@@ -130,7 +131,7 @@ npm run typecheck
 npm run lint
 ```
 
-### Скрипты для базы данных
+### Скрипты базы данных
 
 #### `npm run db:generate`
 
@@ -144,7 +145,7 @@ npm run lint
 
 #### `npm run db:migrate`
 
-Запускает отложенные миграции базы данных.
+Выполняет отложенные миграции базы данных.
 
 **Использование:**
 
@@ -152,11 +153,11 @@ npm run lint
 npm run db:migrate
 ```
 
-**Примечание:** Миграции запускаются автоматически при запуске приложения, но вы можете запустить их вручную для тестирования.
+**Примечание:** Миграции запускаются автоматически при старте приложения, но вы можете запускать их вручную для тестирования.
 
 #### `npm run db:studio`
 
-Открывает Drizzle Studio для инспектирования базы данных.
+Открывает Drizzle Studio для инспекции базы данных.
 
 **Использование:**
 
@@ -174,9 +175,9 @@ npm run db:studio
 │   ├── main/                          # Electron Main Process
 │   │   ├── db/                        # Слой базы данных
 │   │   │   ├── client.ts              # Клиент базы данных (инициализация, getDb)
-│   │   │   ├── schema.ts              # Определения Drizzle схемы
+│   │   │   ├── schema.ts              # Определения схемы Drizzle ORM
 │   │   ├── ipc/                       # IPC (Inter-Process Communication)
-│   │   │   ├── controllers/           # IPC Контроллеры (по доменам)
+│   │   │   ├── controllers/           # IPC Controllers (на основе доменов)
 │   │   │   │   ├── ArtistsController.ts
 │   │   │   │   ├── PostsController.ts
 │   │   │   │   ├── SettingsController.ts
@@ -184,6 +185,7 @@ npm run db:studio
 │   │   │   │   ├── MaintenanceController.ts
 │   │   │   │   ├── ViewerController.ts
 │   │   │   │   ├── FileController.ts
+│   │   │   │   ├── SearchController.ts
 │   │   │   │   └── SystemController.ts
 │   │   │   ├── channels.ts            # Константы IPC каналов
 │   │   │   └── index.ts               # Настройка и регистрация IPC
@@ -191,7 +193,7 @@ npm run db:studio
 │   │   │   ├── di/                    # Внедрение зависимостей (Dependency Injection)
 │   │   │   │   ├── Container.ts       # DI Container (Singleton)
 │   │   │   │   └── Token.ts           # Типобезопасные DI токены
-│   │   │   └── ipc/                   # Инфраструктура IPC
+│   │   │   └── ipc/                   # IPC инфраструктура
 │   │   │       └── BaseController.ts  # Базовый контроллер с обработкой ошибок
 │   │   ├── providers/                 # Реализации провайдеров Booru
 │   │   │   ├── rule34-provider.ts     # Провайдер Rule34.xxx
@@ -204,7 +206,7 @@ npm run db:studio
 │   │   │   └── updater-service.ts     # Автоматическое обновление
 │   │   ├── lib/                        # Утилиты
 │   │   │   └── logger.ts              # Утилита логирования
-│   │   ├── bridge.ts                  # Интерфейс IPC bridge
+│   │   ├── bridge.ts                  # Интерфейс IPC моста
 │   │   ├── main.d.ts                  # Определения типов
 │   │   └── main.ts                    # Точка входа Main Process
 │   │
@@ -220,20 +222,20 @@ npm run db:studio
 │       │   └── viewer/                # Viewer Components
 │       ├── i18n/                      # Интернационализация
 │       ├── lib/                       # Утилиты
-│       │   ├── hooks/                 # Пользовательские React Hooks
+│       │   ├── hooks/                 # Пользовательские React хуки
 │       │   ├── artist-utils.ts
 │       │   ├── tag-utils.ts
 │       │   └── utils.ts
 │       ├── locales/                   # Файлы переводов
 │       ├── schemas/                    # Схемы валидации форм
-│       ├── store/                      # Zustand Stores
+│       ├── store/                      # Zustand Store
 │       ├── App.tsx                     # Главный React Component
-│       ├── main.tsx                    # Точка входа Renderer
-│       └── index.html                  # HTML-шаблон
+│       ├── main.tsx                    # Точка входа Renderer Process
+│       └── index.html                  # HTML шаблон
 │
 ├── drizzle/                            # Миграции базы данных
 │   ├── meta/                          # Метаданные миграций
-│   └── *.sql                          # SQL-файлы миграций
+│   └── *.sql                          # SQL файлы миграций
 │
 ├── docs/                               # Документация
 │   ├── api.md
@@ -248,7 +250,7 @@ npm run db:studio
 │   ├── ai_reviewer.py
 │   └── system_prompt.md
 │
-├── .github/                            # Рабочие процессы GitHub
+├── .github/                            # GitHub workflows
 │   └── workflows/
 │       ├── ai-review.yml
 │       └── ci.yml
@@ -267,19 +269,19 @@ npm run db:studio
 **Изменения в Main Process:**
 
 - Редактируйте файлы в `src/main/`
-- Изменения требуют перезапуска приложения (HMR для Main Process не работает)
+- Изменения требуют перезапуска приложения (нет HMR для Main Process)
 - Проверяйте консоль/терминал на наличие ошибок
 - Изменения в базе данных требуют генерации миграции (`npm run db:generate`)
 
-**Изменения в Renderer:**
+**Изменения в Renderer Process:**
 
 - Редактируйте файлы в `src/renderer/`
-- Изменения автоматически горячо перезагружаются
+- Изменения автоматически перезагружаются (hot-reload)
 - Проверяйте DevTools браузера на наличие ошибок
 
 ### 2. Добавление новых функций
 
-**Добавление метода IPC:**
+**Добавление IPC метода:**
 
 1. Определите в `src/main/bridge.ts`:
 
@@ -302,7 +304,7 @@ npm run db:studio
    ```typescript
    export const IPC_CHANNELS = {
      APP: {
-       // ... существующие каналы
+       // ... existing channels
        NEW_METHOD: "app:new-method",
      },
    } as const;
@@ -315,15 +317,12 @@ npm run db:studio
      setup() {
        this.handle(
          IPC_CHANNELS.APP.NEW_METHOD,
-         MySchema, // Zod схема для валидации
+         MySchema, // Схема Zod для валидации
          this.newMethod.bind(this)
        );
      }
 
-     private async newMethod(
-       _event: IpcMainInvokeEvent,
-       data: MyRequestType
-     ) {
+     private async newMethod(_event: IpcMainInvokeEvent, data: MyRequestType) {
        const db = container.resolve(DI_TOKENS.DB);
        // Реализация
      }
@@ -354,7 +353,7 @@ npm run db:studio
 **Добавление React Component:**
 
 1. Создайте Component в `src/renderer/components/`
-2. Используйте TypeScript и правильную типизацию
+2. Используйте TypeScript и корректную типизацию
 3. Используйте Tailwind CSS для стилизации
 4. Следуйте шаблонам Components из существующего кода
 
@@ -381,24 +380,24 @@ npm run dev
 
 Конфигурирует:
 
-- Сборку Main Process
-- Сборку скрипта Preload
-- Сборку Renderer Process (Vite)
+- Сборка Main Process
+- Сборка preload-скрипта
+- Сборка Renderer Process (Vite)
 
 ### TypeScript
 
 **Файл:** `tsconfig.json`
 
-- Включен строгий режим
-- Модули ES
+- Строгий режим включён
+- ES модули
 - Сконфигурированы псевдонимы путей
 
 ### Tailwind CSS
 
 **Файл:** `tailwind.config.js`
 
-- Сконфигурированы пути содержимого
-- Расширения пользовательских тем
+- Сконфигурированы пути к контенту
+- Пользовательские расширения темы
 - Интеграция shadcn/ui
 
 ## Отладка
@@ -419,14 +418,14 @@ npm run dev
 
 **DevTools:**
 
-- Автоматически открываются в режиме разработки
+- Автоматически открывается в режиме разработки
 - Используйте расширение React DevTools
 - Используйте DevTools браузера для отладки
 
 **Консоль:**
 
 - Доступ через `window.api` в консоли DevTools
-- Тестируйте вызовы IPC напрямую
+- Тестируйте IPC вызовы напрямую
 
 ### Отладка базы данных
 
@@ -439,9 +438,9 @@ npm run db:studio
 **Логи:**
 
 - Операции с базой данных логируются через `logger`
-- Проверяйте наличие ошибок SQL в консоли
+- Проверяйте консоль на наличие SQL ошибок
 
-## Часто встречающиеся проблемы
+## Распространенные проблемы
 
 ### Проблема: Ошибки TypeScript
 
@@ -457,40 +456,40 @@ npm run typecheck
 **Решение:**
 
 1. Проверьте файлы миграции в `drizzle/`
-2. Убедитесь в правильности изменений схемы
+2. Проверьте изменения схемы
 3. Попробуйте ручную миграцию: `npm run db:migrate`
 
 ### Проблема: IPC не работает
 
 **Решение:**
 
-1. Убедитесь, что bridge экспонирован: Проверьте `src/main/bridge.ts`
-2. Убедитесь, что константа канала существует: Проверьте `src/main/ipc/channels.ts`
-3. Убедитесь, что контроллер зарегистрирован: Проверьте `src/main/ipc/index.ts` (через функцию `setupIpc()`)
-4. Убедитесь, что обработчик зарегистрирован в контроллере: Проверьте метод `setup()` контроллера
-5. Убедитесь, что типы совпадают: Проверьте `src/renderer.d.ts`
+1. Убедитесь, что мост (bridge) открыт: проверьте `src/main/bridge.ts`
+2. Убедитесь, что константа канала существует: проверьте `src/main/ipc/channels.ts`
+3. Убедитесь, что контроллер зарегистрирован: проверьте `src/main/ipc/index.ts` (через функцию `setupIpc()`)
+4. Убедитесь, что обработчик зарегистрирован в контроллере: проверьте метод `setup()` контроллера
+5. Проверьте соответствие типов: проверьте `src/renderer.d.ts`
 6. Проверьте DI container: Убедитесь, что зависимости зарегистрированы до настройки контроллера (через `registerServices()`)
 7. Проверьте BaseController: Убедитесь, что контроллер расширяет `BaseController` и использует метод `this.handle()`
 
-### Проблема: Сборка завершается с ошибкой
+### Проблема: Сборка не удалась
 
 **Решение:**
 
 1. Очистите кэш сборки: Удалите `out/` и `node_modules/.vite/`
 2. Переустановите зависимости: `rm -rf node_modules && npm install`
-3. Проверьте наличие ошибок TypeScript: `npm run typecheck`
+3. Проверьте на наличие ошибок TypeScript: `npm run typecheck`
 
 ## Оптимизация производительности
 
 ### Разработка
 
 - Используйте React DevTools Profiler
-- Мониторьте частоту вызовов IPC
+- Отслеживайте частоту вызовов IPC
 - Проверяйте производительность запросов к базе данных
 
 ### Production
 
-- Включите Production-сборки
+- Включите production сборки
 - Минимизируйте размер бандла
 - Оптимизируйте запросы к базе данных
 - Используйте индексы там, где это необходимо
@@ -499,51 +498,51 @@ npm run typecheck
 
 ### TypeScript
 
-- Отсутствие `any` типов
-- Отсутствие небезопасных приведений типов
-- Правильная обработка ошибок
+- Нет типов `any`
+- Нет небезопасных приведений типов
+- Корректная обработка ошибок
 - Вывод типов, где это возможно
 
 ### React
 
 - Только функциональные Components
-- Правильная типизация Props
-- Лучшие практики Hooks
-- Отсутствие встроенных стилей
+- Корректная типизация Props
+- Лучшие практики использования хуков
+- Нет инлайн-стилей
 
 ### База данных
 
-- Использование Drizzle ORM (без чистого SQL)
+- Используйте Drizzle ORM (без прямого SQL)
 - Типобезопасные запросы
-- Правильная обработка ошибок
-- Поддержка транзакций там, где это необходимо
+- Корректная обработка ошибок
+- Поддержка транзакций, где это необходимо
 
 ## Переменные окружения
 
-В настоящее время переменные окружения не требуются. Будущие дополнения:
+В настоящее время переменные окружения не требуются. Будущие добавления:
 
 - `API_KEY` - Ключ внешнего API (при необходимости)
-- `NODE_ENV` - Режим разработки/Production
+- `NODE_ENV` - Режим разработки/production
 - `ELECTRON_RENDERER_URL` - URL dev-сервера (автоматически устанавливается electron-vite)
 
-## Hot Module Replacement (HMR)
+## Горячая замена модулей (HMR)
 
 **Renderer Process:**
 
 - ✅ Полностью поддерживается
-- React Components горячо перезагружаются
+- React Components перезагружаются "на лету" (hot-reload)
 - Изменения CSS применяются мгновенно
-- Dev-сервер Vite обеспечивает мгновенные обновления
+- Vite dev-сервер обеспечивает мгновенные обновления
 
 **Main Process:**
 
 - ⚠️ Частично поддерживается
-- Отсутствие автоматического HMR - изменения требуют ручного перезапуска приложения
-- `electron-vite` отслеживает файлы Main Process, но не перезапускает автоматически
+- Нет автоматического HMR - изменения требуют ручного перезапуска приложения
+- `electron-vite` отслеживает файлы Main Process, но не перезапускает их автоматически
 - **Обходное решение:** Используйте `nodemon` или аналогичный инструмент для автоматического перезапуска во время разработки
 - **Текущий статус:** После изменений в Main Process требуется ручной перезапуск
 
-## Production Build
+## Production сборка
 
 ### Сборка
 
@@ -553,9 +552,9 @@ npm run build
 
 Вывод в `out/`:
 
-- `out/main/` - Бандл Main Process
-- `out/preload/` - Скрипт Preload
-- `out/renderer/` - Бандл Renderer
+- `out/main/` - Main Process бандл
+- `out/preload/` - Preload скрипт
+- `out/renderer/` - Renderer бандл
 
 ### Распространение
 
@@ -574,15 +573,15 @@ npx electron-builder --linux
 
 ## Дополнительные ресурсы
 
-- [Документация Electron](https://www.electronjs.org/docs)
-- [Документация Drizzle ORM](https://orm.drizzle.team/)
-- [Документация React](https://react.dev/)
-- [Документация TypeScript](https://www.typescriptlang.org/docs/)
-- [Документация Tailwind CSS](https://tailwindcss.com/docs)
+- [Electron Documentation](https://www.electronjs.org/docs)
+- [Drizzle ORM Documentation](https://orm.drizzle.team/)
+- [React Documentation](https://react.dev/)
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 
 ## Получение помощи
 
 1. Проверьте существующую документацию в `docs/`
-2. Просмотрите аналогичный код в кодовой базе
-3. Проверьте GitHub issues
-4. Откройте новое issue с подробным описанием
+2. Изучите аналогичный код в кодовой базе
+3. Проверьте проблемы (issues) на GitHub
+4. Откройте новую проблему (issue) с подробностями
