@@ -100,26 +100,20 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 - **Checkpoint**: If a logical unit of work is done, issue a "🛑 CHECKPOINT ALERT" and ask to commit.
 - If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
 
-# 🧠 MEMORY & CONTINUOUS IMPROVEMENT
+# 🧠 KNOWLEDGE MANAGEMENT (STRICT)
 
-- **MANDATORY CHECK:** Before generating any code, YOU MUST CHECK `.ai/LESSONS.txt` for:
-  - Anti-patterns and architectural constraints from previous mistakes
-  - Security issues and their fixes
-  - Performance problems and solutions
-  - Code quality patterns (Zod validation, Zustand selectors, Drizzle transactions, etc.)
-- **PROTOCOL "LEARN":**
-  - IF I say: "save lesson" or "save lessons":
-    1. Analyze the bug/error/improvement we just implemented
-    2. Check `.ai/LESSONS.txt` for similar/duplicate entries
-    3. If similar exists: merge/update existing entry instead of creating duplicate
-    4. Formulate:
-       - **Problem**: What was wrong and why
-       - **Solution**: How it was fixed
-       - **Prevention**: What to avoid in future
-    5. APPEND to appropriate section in `.ai/LESSONS.txt` (Critical/Important/Recommendations/Improvements)
-    6. Update "Applied Fixes" checklist if applicable
-    7. CONFIRM: "Lesson saved to [section]. I will not repeat this mistake."
-- **DUPLICATE PREVENTION:**
-  - Before adding new lesson, scan existing entries for similar logic/patterns
-  - Merge related lessons into single comprehensive entry
-  - Keep lessons concise but actionable
+- **GOLDEN RULE**: This file is for **ARCHITECTURAL PATTERNS**, not a changelog.
+- **READ**: Before generating code, internalize constraints from `.ai/LESSONS.txt`.
+
+- **PROTOCOL "LEARN" (Updating Lessons):**
+  - **TRIGGER**: When I say "save lesson" or we fix a recurring anti-pattern.
+  - **FILTER (The "Who Cares?" Test)**:
+    - ❌ "Fixed bug in UserCard" -> **REJECT** (Too specific).
+    - ❌ "Renamed variable X to Y" -> **REJECT** (Noise).
+    - ✅ "Always use JOIN instead of loop queries" -> **ACCEPT** (Pattern).
+    - ✅ "Zustand selectors must be atomic to prevent re-renders" -> **ACCEPT** (Pattern).
+  - **MERGE STRATEGY**:
+    1. **SEARCH** first. Do NOT add a new entry if a similar topic exists (e.g., Performance, Security).
+    2. **REFINE** the existing entry. Make it stronger/clearer.
+    3. **APPEND** only if it's a completely new category of mistake.
+  - **FORMAT**: "Problem -> Root Cause -> Invariant Rule".

@@ -344,6 +344,12 @@ export class SyncService {
     let hasMore = true;
     let newPostsCount = 0;
     let batchHighestPostId = isInitial ? 0 : currentLastPostId;
+    
+    // Batch posts for transaction - collect multiple pages before committing
+    // This reduces transaction overhead (better-sqlite3 blocks DB on write)
+    // Batch size: 5 pages (500 posts) or until end of sync
+    const BATCH_SIZE_PAGES = 5;
+    const allPostsToSave: NewPost[] = [];
 
     while (hasMore && page < maxPages) {
       try {
@@ -389,25 +395,40 @@ export class SyncService {
           isFavorited: false,
         }));
 
-        // Save posts and update artist metadata atomically after each page
+        // Collect posts for batch transaction
+        allPostsToSave.push(...postsToSave);
+        
+        // Update highest post ID seen
         if (postsToSave.length > 0) {
           const pageHighestPostId = Math.max(...postsToSave.map((p) => p.postId));
           batchHighestPostId = Math.max(batchHighestPostId, pageHighestPostId);
+        }
 
+        // Commit batch transaction when we have enough pages or reached end
+        const shouldCommitBatch = 
+          allPostsToSave.length >= BATCH_SIZE_PAGES * 100 || // 5 pages worth
+          (postsData.length < 100 && allPostsToSave.length > 0) || // End of pagination
+          !hasMore; // No more pages
+
+        if (shouldCommitBatch && allPostsToSave.length > 0) {
+          // Single transaction for entire batch
           db.transaction((tx) => {
-            bulkUpsertPosts(postsToSave, tx);
+            bulkUpsertPosts(allPostsToSave, tx);
 
             tx.update(artists)
               .set({
                 lastPostId: batchHighestPostId,
-                newPostsCount: sql`${artists.newPostsCount} + ${postsToSave.length}`,
+                newPostsCount: sql`${artists.newPostsCount} + ${allPostsToSave.length}`,
                 lastChecked: new Date(),
               })
               .where(eq(artists.id, artist.id))
               .run();
           });
 
-          newPostsCount += postsToSave.length;
+          newPostsCount += allPostsToSave.length;
+          allPostsToSave.length = 0; // Clear batch
+          
+          logger.debug(`SyncService: ${artist.name} - Committed batch of ${newPostsCount} posts`);
         }
 
         // Continue pagination if we got a full page (100 posts)
@@ -423,6 +444,25 @@ export class SyncService {
         hasMore = false;
         throw e;
       }
+    }
+    
+    // Commit any remaining posts in batch
+    if (allPostsToSave.length > 0) {
+      db.transaction((tx) => {
+        bulkUpsertPosts(allPostsToSave, tx);
+
+        tx.update(artists)
+          .set({
+            lastPostId: batchHighestPostId,
+            newPostsCount: sql`${artists.newPostsCount} + ${allPostsToSave.length}`,
+            lastChecked: new Date(),
+          })
+          .where(eq(artists.id, artist.id))
+          .run();
+      });
+
+      newPostsCount += allPostsToSave.length;
+      logger.debug(`SyncService: ${artist.name} - Committed final batch of ${allPostsToSave.length} posts`);
     }
 
     // Final update of lastChecked even if no new posts were found

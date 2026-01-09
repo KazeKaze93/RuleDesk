@@ -146,18 +146,14 @@ export class PostsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS,
       z.tuple([GetPostsSchema]),
-      this.getPosts.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.getPosts.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
       z.tuple([z.number().int().positive().optional()]),
-      this.getPostsCount.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.getPostsCount.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
@@ -165,18 +161,14 @@ export class PostsController extends BaseController {
         z.number().int(), // Allow negative IDs for external posts from Browse
         PostDataSchema.optional(),
       ]),
-      this.markViewed.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.markViewed.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
       z.tuple([z.number().int().positive()]),
-      this.resetPostCache.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.resetPostCache.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
@@ -184,10 +176,8 @@ export class PostsController extends BaseController {
         z.number().int(), // Allow negative IDs for external posts from Browse
         PostDataSchema.optional(),
       ]),
-      this.toggleFavorite.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.toggleFavorite.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)

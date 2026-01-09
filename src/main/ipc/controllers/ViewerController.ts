@@ -34,6 +34,7 @@ export class ViewerController extends BaseController {
     this.handle(
       IPC_CHANNELS.APP.OPEN_EXTERNAL,
       z.string().url().min(1), // Single argument schema
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.openExternal.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 

@@ -61,28 +61,22 @@ export class SearchController extends BaseController {
     this.handle(
       IPC_CHANNELS.API.SEARCH_POSTS,
       z.tuple([SearchPostsSchema]),
-      this.search.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.search.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS,
       z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
-      this.resolveTags.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.resolveTags.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_CHARACTER_TAGS,
       z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
-      this.resolveCharacterTags.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.resolveCharacterTags.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     this.handle(

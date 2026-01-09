@@ -21,6 +21,7 @@ export class SystemController extends BaseController {
     this.handle(
       "app:write-to-clipboard",
       z.tuple([z.string().min(1)]),
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.writeToClipboard.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
