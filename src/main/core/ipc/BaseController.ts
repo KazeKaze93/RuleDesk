@@ -33,6 +33,14 @@ export abstract class BaseController {
    */
   public abstract setup(): void;
 
+  // Throttling: Track last call time per channel to prevent DoS attacks
+  // Map<channel, lastCallTimestamp>
+  private static readonly throttleMap = new Map<string, number>();
+  
+  // Minimum time between calls for the same channel (milliseconds)
+  // Prevents renderer from spamming IPC calls
+  private static readonly THROTTLE_MS = 100; // 100ms = max 10 calls per second per channel
+
   /**
    * Protected helper to register IPC handlers with centralized error handling and input validation
    * 
@@ -72,6 +80,16 @@ export abstract class BaseController {
 
     ipcMain.handle(channel, async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       try {
+        // Throttling: Prevent DoS attacks by limiting call frequency per channel
+        const now = Date.now();
+        const lastCall = BaseController.throttleMap.get(channel);
+        if (lastCall !== undefined && now - lastCall < BaseController.THROTTLE_MS) {
+          const waitTime = BaseController.THROTTLE_MS - (now - lastCall);
+          log.warn(`[IPC] Throttled request for channel "${channel}" - too frequent (wait ${waitTime}ms)`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+        BaseController.throttleMap.set(channel, Date.now());
+
         // Security: Log only channel name and argument count, not actual arguments
         // This prevents leaking user data, file paths, or other sensitive information
         log.info(`[IPC] Incoming request: ${channel} (${args.length} arg${args.length !== 1 ? 's' : ''})`);

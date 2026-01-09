@@ -97,7 +97,7 @@ export class SearchController extends BaseController {
           return Promise.resolve([]);
         }
         const [tags] = result.data;
-        return this.resolveTagsByType(event, tags, TAG_TYPES.COPYRIGHT) as Promise<unknown>;
+        return this.resolveTagsByType(event, tags, TAG_TYPES.COPYRIGHT);
       }
     );
 
@@ -107,13 +107,15 @@ export class SearchController extends BaseController {
         z.array(z.string().min(1)).max(100), // tags
         z.number().int().refine((val): val is TagType => {
           // Use TAG_TYPES constants instead of magic numbers
-          return Object.values(TAG_TYPES).includes(val as TagType);
+          // Type guard ensures val is TagType if validation passes
+          const tagTypeValues = Object.values(TAG_TYPES) as number[];
+          return tagTypeValues.includes(val);
         }, { message: "Invalid tag type. Must be one of TAG_TYPES values." }), // type
       ]),
-      this.resolveTagsByType.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      (event, ...args) => {
+        const [tags, tagType] = args as [string[], TagType];
+        return this.resolveTagsByType(event, tags, tagType);
+      }
     );
 
   }
