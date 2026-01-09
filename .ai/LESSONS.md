@@ -289,6 +289,95 @@
 - Create parser as `readonly` class field, not on each method call
 - **Rule**: For APIs that store all data in attributes, use empty prefix for cleaner code
 
+### 20. React Query Cache Reactivity (useQuery vs getQueryData)
+
+**Problem**: Using `queryClient.getQueryData()` inside `useMemo` is not reactive. When cache data changes (e.g., post marked as viewed), component doesn't re-render.
+
+**Why it's bad**:
+- `getQueryData` is a one-time read - it doesn't subscribe to cache updates
+- Component won't reflect changes made to cache by other parts of the app
+- Silent UI bugs - data updates but UI doesn't
+
+**Solution**:
+- **Use `useQuery` with `enabled: false` and `initialData`** for reactive cache access
+- `useQuery` subscribes to cache updates even when `enabled: false`
+- Set `initialData` from cache to populate initial value
+- Set `staleTime: Infinity` and `gcTime: Infinity` to prevent refetching
+- **Rule**: Never use `getQueryData` in render logic - always use `useQuery` for reactive cache access
+
+### 21. Provider Abstraction Violation
+
+**Problem**: Controller directly accessing provider URLs (e.g., `https://rule34.xxx/autocomplete.php`) instead of using provider abstraction.
+
+**Why it's bad**:
+- Violates separation of concerns - controller shouldn't know provider internals
+- Makes code harder to maintain if provider changes
+- Duplicates logic that already exists in provider
+- Breaks abstraction layer
+
+**Solution**:
+- **Always use provider methods** (e.g., `provider.searchTags()`) instead of direct URL access
+- Controller should only know about provider interface, not implementation details
+- Move all URL construction and API-specific logic to provider
+- **Rule**: Controllers must use provider abstraction, never access provider URLs directly
+
+### 22. Magic Numbers for Tag Types
+
+**Problem**: Using integer literals (0, 1, 3, 4, 5) for tag types without constants makes code unreadable and error-prone.
+
+**Why it's bad**:
+- Hard to understand what `type === 3` means without context
+- Easy to make mistakes (typo in number)
+- No type safety - compiler can't catch invalid values
+- Makes refactoring difficult
+
+**Solution**:
+- **Create constants object** for all tag types:
+  ```typescript
+  export const TAG_TYPES = {
+    GENERAL: 0,
+    ARTIST: 1,
+    COPYRIGHT: 3,
+    CHARACTER: 4,
+    META: 5,
+  } as const;
+  ```
+- Use constants everywhere instead of magic numbers
+- Export `TagType` type for type safety
+- **Rule**: Never use magic numbers for enums or type identifiers - always use named constants
+
+### 23. N+1 Query Anti-pattern (Residual)
+
+**Problem**: Even after fixing N+1 with JOIN query, residual `useQuery` calls remain in components "just in case" data is missing.
+
+**Why it's bad**:
+- Creates unnecessary IPC calls and DB queries
+- Indicates lack of trust in schema/API contract
+- Performance overhead for no benefit
+- Code complexity increases
+
+**Solution**:
+- **Trust the schema** - if JOIN query returns `postsCount`, use it directly
+- Remove all fallback `useQuery` calls when data is guaranteed from parent query
+- If data might be missing, fix the parent query instead of adding fallbacks
+- **Rule**: Don't add defensive queries "just in case" - fix the root cause
+
+### 24. Security: HTTP Protocol for Specific Domains
+
+**Problem**: Strict HTTPS-only policy blocks legitimate HTTP requests for domains that don't support HTTPS (e.g., rule34.xxx).
+
+**Why it's bad**:
+- Breaks functionality for legitimate use cases
+- Overly restrictive security policy
+- User can't access content that exists but isn't available via HTTPS
+
+**Solution**:
+- **Allow HTTP only for specific whitelisted domains** (e.g., `rule34.xxx`)
+- Keep HTTPS requirement for all other domains
+- Validate domain before allowing HTTP protocol
+- Document security rationale in code comments
+- **Rule**: Security policies should be strict by default, but allow exceptions for specific, documented use cases
+
 ## Applied Fixes
 
 ✅ Removed log forwarding from Main to Renderer  
@@ -317,3 +406,8 @@
 ✅ Added getHeaders() method for standardized API request headers (prevents API blocking)  
 ✅ Fixed Rule34 pagination: 0-based pid conversion (page 1 → pid=0)  
 ✅ Optimized XMLParser: created as readonly class field with attributeNamePrefix: "" for direct attribute access
+✅ Fixed useCurrentPost reactivity: replaced getQueryData with useQuery (enabled: false) for reactive cache access
+✅ Removed residual N+1 queries: removed unnecessary useQuery for postsCount in ArtistCard (trusts JOIN query)
+✅ Fixed provider abstraction violation: replaced direct URL access with provider.searchTags() in SearchController
+✅ Replaced magic numbers with TAG_TYPES constants for tag type safety
+✅ Updated openExternal security: allow HTTP for rule34.xxx domain while keeping HTTPS for others

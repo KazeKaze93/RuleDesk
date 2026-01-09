@@ -64,108 +64,66 @@ const useCurrentPost = (
 ) => {
   const queryClient = useQueryClient();
 
-  return useMemo(() => {
-    if (!currentPostId || !origin) return undefined;
-
-    // Helper to create Map from InfiniteData for O(1) lookup
-    // Map is created once per queryKey/data change, not per currentPostId change
-    const createPostsMap = (queryKey: unknown[]): Map<number, Post> | undefined => {
-      const data = queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
-      if (!data) return undefined;
-      
-      // Create flat Map id -> post (O(n) total, but only when data changes)
-      const postsMap = new Map<number, Post>();
-      for (const page of data.pages) {
-        for (const post of page) {
-          postsMap.set(post.id, post);
-        }
-      }
-      return postsMap;
-    };
-
-    // Helper to search in InfiniteData cache using Map for O(1) lookup
-    const findInCache = (queryKey: unknown[]): Post | undefined => {
-      const postsMap = createPostsMap(queryKey);
-      return postsMap?.get(currentPostId);
-    };
-
-    let foundPost: Post | undefined;
-
-    // Select cache based on origin - use EXACT query keys from components
-    // Note: origin.tags may be undefined, but queryKey always includes tags array (even if empty)
+  // Build query key based on origin
+  const queryKey = useMemo(() => {
+    if (!origin) return null;
+    
     switch (origin.kind) {
       case "updates": {
-        // Updates.tsx uses: ["posts", "updates", tags] where tags is always an array
-        // But origin.tags may be undefined if tags.length === 0
         const tags = origin.tags ?? [];
-        foundPost = findInCache(["posts", "updates", tags]);
-        // Fallback: try with empty array if tags were undefined
-        if (!foundPost && origin.tags === undefined) {
-          foundPost = findInCache(["posts", "updates", []]);
-        }
-        break;
+        return ["posts", "updates", tags] as const;
       }
       case "favorites": {
-        // Favorites.tsx uses: ["posts", "favorites", tags] where tags is always an array
         const tags = origin.tags ?? [];
-        foundPost = findInCache(["posts", "favorites", tags]);
-        // Fallback: try with empty array if tags were undefined
-        if (!foundPost && origin.tags === undefined) {
-          foundPost = findInCache(["posts", "favorites", []]);
-        }
-        break;
+        return ["posts", "favorites", tags] as const;
       }
       case "artist": {
-        // ArtistGallery uses: ["posts", artistId, tags] where tags is always an array
         const tags = origin.tags ?? [];
-        foundPost = findInCache(["posts", origin.artistId, tags]);
-        // Fallback: try with empty array if tags were undefined
-        if (!foundPost && origin.tags === undefined) {
-          foundPost = findInCache(["posts", origin.artistId, []]);
-        }
-        break;
+        return ["posts", origin.artistId, tags] as const;
       }
       case "search": {
-        // Browse.tsx uses: ["search", tags] where tags is always an array
-        foundPost = findInCache(["search", origin.tags]);
-        break;
+        return ["search", origin.tags] as const;
       }
       case "browse": {
-        // Fallback for browse (if it exists)
-        foundPost = findInCache(["search", []]);
-        break;
+        return ["search", []] as const;
       }
       default:
-        return undefined;
+        return null;
     }
+  }, [origin]);
 
-    // Fallback: If still not found, try to find in ANY 'posts' cache
-    // This is a safety net for edge cases - try all possible query key variations
-    if (!foundPost) {
-      const fallbackKeys: unknown[][] = [];
-      
-      // Try all possible tag combinations for updates/favorites
-      if (origin.kind === "updates" || origin.kind === "favorites") {
-        const kind = origin.kind;
-        // Try with empty array
-        fallbackKeys.push(["posts", kind, []]);
-        // Try with origin.tags if it exists
-        if (origin.tags) {
-          fallbackKeys.push(["posts", kind, origin.tags]);
-        }
-      }
-      
-      // Try search with empty array
-      fallbackKeys.push(["search", []]);
-      
-      for (const key of fallbackKeys) {
-        foundPost = findInCache(key);
-        if (foundPost) break;
+  // Use useQuery with enabled: false for reactive cache access
+  // This ensures component re-renders when cache data changes (e.g., post marked as viewed)
+  // initialData is set from cache, and useQuery will reactively update when cache changes
+  const { data: infiniteData } = useQuery<InfiniteData<Post[]>>({
+    queryKey: queryKey ?? ["__invalid__"],
+    queryFn: async () => {
+      // This should never be called since enabled: false
+      // But TypeScript requires a valid queryFn
+      const cached = queryKey ? queryClient.getQueryData<InfiniteData<Post[]>>(queryKey) : undefined;
+      if (!cached) throw new Error("useCurrentPost: No cached data available");
+      return cached;
+    },
+    enabled: queryKey !== null && currentPostId !== null,
+    initialData: queryKey ? queryClient.getQueryData<InfiniteData<Post[]>>(queryKey) : undefined,
+    staleTime: Infinity, // Never refetch, only use cache
+    gcTime: Infinity, // Keep in cache forever
+  });
+
+  return useMemo(() => {
+    if (!currentPostId || !infiniteData) return undefined;
+
+    // Create Map from InfiniteData for O(1) lookup
+    // Cache Map creation per infiniteData reference
+    const postsMap = new Map<number, Post>();
+    for (const page of infiniteData.pages) {
+      for (const post of page) {
+        postsMap.set(post.id, post);
       }
     }
-
-    return foundPost;
-  }, [currentPostId, origin, queryClient]);
+    
+    return postsMap.get(currentPostId);
+  }, [currentPostId, infiniteData]);
 };
 
 

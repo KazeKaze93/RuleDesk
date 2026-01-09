@@ -13,6 +13,17 @@ export type ArtistType = (typeof ARTIST_TYPES)[number];
 // Provider constants (must match providers/index.ts)
 export const PROVIDER_IDS_SCHEMA = ["rule34", "gelbooru"] as const;
 
+// Tag type constants for type safety (matches Rule34 API tag types)
+export const TAG_TYPES = {
+  GENERAL: 0,
+  ARTIST: 1,
+  COPYRIGHT: 3,
+  CHARACTER: 4,
+  META: 5,
+} as const;
+
+export type TagType = typeof TAG_TYPES[keyof typeof TAG_TYPES];
+
 // Settings ID constant for single profile design
 export const SETTINGS_ID = 1;
 
@@ -105,7 +116,7 @@ export const tagMetadata = sqliteTable(
   "tag_metadata",
   {
     name: text("name").primaryKey(),
-    type: integer("type").notNull(), // 0=General, 1=Artist, 3=Copyright, 4=Character, 5=Meta
+    type: integer("type").notNull(), // Use TAG_TYPES constants: 0=General, 1=Artist, 3=Copyright, 4=Character, 5=Meta
   },
   (t) => ({
     typeIdx: index("tag_metadata_type_idx").on(t.type), // Index for filtering by type (e.g., all artists)
