@@ -20,6 +20,7 @@
 This document describes the IPC (Inter-Process Communication) API between the Electron Main Process and Renderer Process. All communication is strictly typed using TypeScript interfaces and follows security best practices.
 
 **📖 Related Documentation:**
+
 - [Architecture Documentation](./architecture.md) - System architecture and IPC design
 - [Database Documentation](./database.md) - Database operations and schema
 - [Development Guide](./development.md) - Adding new IPC methods
@@ -105,9 +106,9 @@ import type { Post } from "../../../main/db/schema";
 
 const { data, fetchNextPage, hasNextPage } = useInfiniteQuery<Post[]>({
   queryKey: ["posts", artistId],
-  queryFn: ({ pageParam = 1 }: { pageParam: number }) => 
+  queryFn: ({ pageParam = 1 }: { pageParam: number }) =>
     window.api.getArtistPosts({ artistId, page: pageParam }),
-  getNextPageParam: (lastPage: Post[], allPages: Post[][]) => 
+  getNextPageParam: (lastPage: Post[], allPages: Post[][]) =>
     lastPage.length === 50 ? allPages.length + 1 : undefined,
   initialPageParam: 1,
 });
@@ -181,6 +182,7 @@ await window.api.addArtist({
 The application uses Electron's IPC (Inter-Process Communication) with Context Isolation enabled. The Renderer process cannot directly access Node.js APIs. Instead, it communicates with the Main process through a secure bridge defined in `src/main/bridge.ts`.
 
 **IPC Architecture:**
+
 - **Controller-based:** All IPC handlers are organized in controllers that extend `BaseController`
 - **Dependency Injection:** Services are registered in DI Container and resolved via tokens
 - **Type Safety:** All IPC communication is strictly typed using TypeScript interfaces
@@ -225,7 +227,10 @@ interface IpcBridge {
 
   // External
   openExternal: (url: string) => Promise<void>;
-  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
+  searchRemoteTags: (
+    query: string,
+    provider?: ProviderId
+  ) => Promise<SearchResults[]>;
   searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
   resolveTags: (tags: string[]) => Promise<string[]>;
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
@@ -234,7 +239,9 @@ interface IpcBridge {
 
   // Sync
   syncAll: () => Promise<boolean>;
-  repairArtist: (artistId: number) => Promise<{ success: boolean; error?: string }>;
+  repairArtist: (
+    artistId: number
+  ) => Promise<{ success: boolean; error?: string }>;
 
   // Downloads
   downloadFile: (
@@ -414,6 +421,7 @@ Retrieves stored settings. **⚠️ SECURITY: API Key is NEVER returned to Rende
 **Typical scenario:** App starts → check if settings exist → show onboarding if missing, or main app if present.
 
 **Why this method:** The Renderer process **NEVER** receives the API key, even in decrypted form. This method returns only safe metadata:
+
 - `userId` - User ID (safe to expose)
 - `hasApiKey` - Boolean flag indicating if API key is configured (safe to expose)
 - Other settings flags (safe mode, adult confirmation, etc.)
@@ -422,7 +430,7 @@ Retrieves stored settings. **⚠️ SECURITY: API Key is NEVER returned to Rende
 
 - ✅ **Renderer receives:** `userId`, `hasApiKey` (boolean), other non-sensitive settings
 - ❌ **Renderer NEVER receives:** `apiKey` (encrypted or decrypted)
-- 🔒 **API Key lifecycle:** 
+- 🔒 **API Key lifecycle:**
   - Entered in Renderer → Sent to Main via `saveSettings()` → Encrypted in Main → Stored encrypted
   - Never decrypted for Renderer
   - Only decrypted in Main Process when needed for API calls (in SyncService)
@@ -468,7 +476,11 @@ const { data: settings } = useQuery<IpcSettings | undefined>({
 
 if (!settings || !settings.hasApiKey) {
   // No settings or no API key configured - show onboarding
-  return <Onboarding onComplete={() => queryClient.invalidateQueries(["settings"])} />;
+  return (
+    <Onboarding
+      onComplete={() => queryClient.invalidateQueries(["settings"])}
+    />
+  );
 }
 
 // Settings exist and API key is configured - show main app
@@ -659,9 +671,11 @@ const handleAddArtist = async (
       provider,
       apiEndpoint: getDefaultApiEndpoint(provider),
     };
-    
-    const savedArtist: Artist | undefined = await window.api.addArtist(newArtist);
-    
+
+    const savedArtist: Artist | undefined = await window.api.addArtist(
+      newArtist
+    );
+
     if (savedArtist) {
       // Invalidate cache to refresh the list
       queryClient.invalidateQueries({ queryKey: ["artists"] });
@@ -750,13 +764,20 @@ import type { Post } from "../../../main/db/schema";
 const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
   useInfiniteQuery<Post[]>({
     queryKey: ["posts", artist.id],
-    queryFn: async ({ pageParam = 1 }: { pageParam: number }): Promise<Post[]> => {
+    queryFn: async ({
+      pageParam = 1,
+    }: {
+      pageParam: number;
+    }): Promise<Post[]> => {
       return await window.api.getArtistPosts({
         artistId: artist.id,
         page: pageParam,
       });
     },
-    getNextPageParam: (lastPage: Post[], allPages: Post[][]): number | undefined => {
+    getNextPageParam: (
+      lastPage: Post[],
+      allPages: Post[][]
+    ): number | undefined => {
       // If last page has 50 posts, there might be more
       return lastPage.length === 50 ? allPages.length + 1 : undefined;
     },
@@ -1035,11 +1056,7 @@ Resolves tags to their canonical form using the booru API. Returns artist tags (
 **Example:**
 
 ```typescript
-const artistTags = await window.api.resolveTags([
-  "tag1",
-  "tag2",
-  "tag3",
-]);
+const artistTags = await window.api.resolveTags(["tag1", "tag2", "tag3"]);
 console.log("Artist tags:", artistTags);
 ```
 
@@ -1062,10 +1079,7 @@ Resolves tags to their canonical form, returning only character tags (type=4).
 **Example:**
 
 ```typescript
-const characterTags = await window.api.resolveCharacterTags([
-  "tag1",
-  "tag2",
-]);
+const characterTags = await window.api.resolveCharacterTags(["tag1", "tag2"]);
 ```
 
 **IPC Channel:** `booru:resolve-character-tags`
@@ -1087,10 +1101,7 @@ Resolves tags to their canonical form, returning only copyright tags (type=3).
 **Example:**
 
 ```typescript
-const copyrightTags = await window.api.resolveCopyrightTags([
-  "tag1",
-  "tag2",
-]);
+const copyrightTags = await window.api.resolveCopyrightTags(["tag1", "tag2"]);
 ```
 
 **IPC Channel:** `booru:resolve-copyright-tags`
@@ -1616,10 +1627,7 @@ export class ArtistsController extends BaseController {
     );
   }
 
-  private async addArtist(
-    _event: IpcMainInvokeEvent,
-    data: AddArtistRequest
-  ) {
+  private async addArtist(_event: IpcMainInvokeEvent, data: AddArtistRequest) {
     const db = container.resolve(DI_TOKENS.DB);
     // Business logic here
   }
@@ -1640,15 +1648,18 @@ const syncService = container.resolve(DI_TOKENS.SYNC_SERVICE);
 Controllers are registered in `setupIpc()` function:
 
 ```typescript
-export function setupIpc(): { maintenanceController: MaintenanceController; fileController: FileController } {
+export function setupIpc(): {
+  maintenanceController: MaintenanceController;
+  fileController: FileController;
+} {
   const systemController = new SystemController();
   systemController.setup();
-  
+
   const artistsController = new ArtistsController();
   artistsController.setup();
-  
+
   // ... other controllers
-  
+
   return { maintenanceController, fileController };
 }
 ```
@@ -1707,8 +1718,13 @@ export const registerIpcHandlers = (
     // Encrypts API key using SecureStorage before saving
     const encryptedKey = SecureStorage.encrypt(apiKey);
     const db = getDb();
-    await db.insert(settings).values({ userId, encryptedApiKey: encryptedKey })
-      .onConflictDoUpdate({ target: settings.id, set: { userId, encryptedApiKey: encryptedKey } });
+    await db
+      .insert(settings)
+      .values({ userId, encryptedApiKey: encryptedKey })
+      .onConflictDoUpdate({
+        target: settings.id,
+        set: { userId, encryptedApiKey: encryptedKey },
+      });
   });
   ipcMain.handle("app:open-external", async (_event, urlString: string) => {
     // Security validation and shell.openExternal
@@ -1760,7 +1776,10 @@ export const registerIpcHandlers = (
   ipcMain.handle("db:create-backup", async () => {
     // Backup implementation using VACUUM INTO
     const sqlite = getSqliteInstance();
-    const backupPath = path.join(app.getPath("userData"), `metadata-backup-${timestamp}.db`);
+    const backupPath = path.join(
+      app.getPath("userData"),
+      `metadata-backup-${timestamp}.db`
+    );
     const stmt = sqlite.prepare("VACUUM INTO ?");
     stmt.run(backupPath);
     shell.showItemInFolder(backupPath);
