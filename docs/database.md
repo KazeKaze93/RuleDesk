@@ -22,6 +22,7 @@
 The application uses **SQLite** as the local database for storing metadata, tracked artists, posts, and settings. The database is accessed directly in the **Main Process** using **Drizzle ORM** for type-safe queries. WAL (Write-Ahead Logging) mode is enabled for concurrent reads.
 
 **📖 Related Documentation:**
+
 - [Architecture Documentation](./architecture.md) - Database architecture in system design
 - [API Documentation](./api.md) - IPC methods for database operations
 - [Development Guide](./development.md) - Database scripts and migrations
@@ -32,11 +33,13 @@ The application uses **SQLite** as the local database for storing metadata, trac
 The database file location depends on the application mode:
 
 **Standard Mode (Installed):**
+
 - **Windows:** `%APPDATA%/RuleDesk/metadata.db`
 - **macOS:** `~/Library/Application Support/RuleDesk/metadata.db`
 - **Linux:** `~/.config/RuleDesk/metadata.db`
 
 **Portable Mode (Portable Executable):**
+
 - Database is stored in `data/metadata.db` next to the executable
 
 **Implementation:**
@@ -58,41 +61,45 @@ const dbPath = path.join(app.getPath("userData"), "metadata.db");
 
 Stores information about tracked artists/users.
 
-| Column            | Type                           | Description                                 |
-| ----------------- | ------------------------------ | ------------------------------------------- |
-| `id`              | INTEGER (PK, AutoIncrement)    | Primary key                                 |
-| `name`            | TEXT (NOT NULL)                | Artist display name                         |
-| `tag`             | TEXT (NOT NULL, UNIQUE)        | Tag or username for tracking                |
-| `provider`        | TEXT (NOT NULL, DEFAULT 'rule34') | Provider ID: "rule34" or "gelbooru"      |
-| `type`            | TEXT (NOT NULL, DEFAULT 'tag') | Type: "tag", "uploader", or "query"         |
-| `api_endpoint`    | TEXT (NOT NULL)                | Base API endpoint URL                       |
-| `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)  | ID of the last seen post                    |
-| `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)  | Count of new, unviewed posts                |
-| `last_checked`    | INTEGER (NULL)                 | Timestamp of last API poll (timestamp mode) |
-| `created_at`      | INTEGER (NOT NULL)             | Creation timestamp (timestamp mode, ms)     |
+| Column            | Type                              | Description                                 |
+| ----------------- | --------------------------------- | ------------------------------------------- |
+| `id`              | INTEGER (PK, AutoIncrement)       | Primary key                                 |
+| `name`            | TEXT (NOT NULL)                   | Artist display name                         |
+| `tag`             | TEXT (NOT NULL, UNIQUE)           | Tag or username for tracking                |
+| `provider`        | TEXT (NOT NULL, DEFAULT 'rule34') | Provider ID: "rule34" or "gelbooru"         |
+| `type`            | TEXT (NOT NULL, DEFAULT 'tag')    | Type: "tag", "uploader", or "query"         |
+| `api_endpoint`    | TEXT (NOT NULL)                   | Base API endpoint URL                       |
+| `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)     | ID of the last seen post                    |
+| `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)     | Count of new, unviewed posts                |
+| `last_checked`    | INTEGER (NULL)                    | Timestamp of last API poll (timestamp mode) |
+| `created_at`      | INTEGER (NOT NULL)                | Creation timestamp (timestamp mode, ms)     |
 
 **Schema Definition:**
 
 ```typescript
-export const artists = sqliteTable("artists", {
-  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  tag: text("tag").notNull().unique(),
-  provider: text("provider", { enum: ["rule34", "gelbooru"] })
-    .notNull()
-    .default("rule34"),
-  type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
-  apiEndpoint: text("api_endpoint").notNull(),
-  lastPostId: integer("last_post_id").default(0).notNull(),
-  newPostsCount: integer("new_posts_count").default(0).notNull(),
-  lastChecked: integer("last_checked", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-}, (t) => ({
-  lastCheckedIdx: index("artists_lastChecked_idx").on(t.lastChecked),
-  createdAtIdx: index("artists_createdAt_idx").on(t.createdAt),
-}));
+export const artists = sqliteTable(
+  "artists",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    tag: text("tag").notNull().unique(),
+    provider: text("provider", { enum: ["rule34", "gelbooru"] })
+      .notNull()
+      .default("rule34"),
+    type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
+    apiEndpoint: text("api_endpoint").notNull(),
+    lastPostId: integer("last_post_id").default(0).notNull(),
+    newPostsCount: integer("new_posts_count").default(0).notNull(),
+    lastChecked: integer("last_checked", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    lastCheckedIdx: index("artists_lastChecked_idx").on(t.lastChecked),
+    createdAtIdx: index("artists_createdAt_idx").on(t.createdAt),
+  })
+);
 ```
 
 **TypeScript Types:**
@@ -125,6 +132,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 **Unique Constraint:** `(artist_id, post_id)` - Prevents duplicate posts per artist.
 
 **Indexes:**
+
 - `postIdIdx` - Index on `post_id` for efficient lookups
 - `artistIdIdx` - Index on `artist_id` for artist-based queries
 - `isViewedIdx` - Index on `is_viewed` for view status filtering
@@ -187,15 +195,15 @@ export type NewPost = typeof posts.$inferInsert;
 
 Stores application settings including API credentials and user preferences.
 
-| Column                | Type                          | Description                                    |
-| --------------------- | ----------------------------- | ---------------------------------------------- |
-| `id`                  | INTEGER (PK, AutoIncrement)   | Primary key                                    |
-| `user_id`             | TEXT (DEFAULT '')             | Booru User ID (provider-specific)              |
-| `encrypted_api_key`   | TEXT (DEFAULT '')             | Encrypted API key (encrypted at rest)          |
-| `is_safe_mode`        | INTEGER (BOOLEAN, DEFAULT 1) | Safe mode flag (blur NSFW content)            |
-| `is_adult_confirmed`  | INTEGER (BOOLEAN, DEFAULT 0) | Adult confirmation flag (18+ confirmation)     |
-| `is_adult_verified`   | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Adult verification flag (legal confirmation) |
-| `tos_accepted_at`     | INTEGER (TIMESTAMP, NULL)     | Terms of Service acceptance timestamp          |
+| Column               | Type                                   | Description                                  |
+| -------------------- | -------------------------------------- | -------------------------------------------- |
+| `id`                 | INTEGER (PK, AutoIncrement)            | Primary key                                  |
+| `user_id`            | TEXT (DEFAULT '')                      | Booru User ID (provider-specific)            |
+| `encrypted_api_key`  | TEXT (DEFAULT '')                      | Encrypted API key (encrypted at rest)        |
+| `is_safe_mode`       | INTEGER (BOOLEAN, DEFAULT 1)           | Safe mode flag (blur NSFW content)           |
+| `is_adult_confirmed` | INTEGER (BOOLEAN, DEFAULT 0)           | Adult confirmation flag (18+ confirmation)   |
+| `is_adult_verified`  | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Adult verification flag (legal confirmation) |
+| `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | Terms of Service acceptance timestamp        |
 
 **Schema Definition:**
 
@@ -205,7 +213,9 @@ export const settings = sqliteTable("settings", {
   userId: text("user_id").default(""),
   encryptedApiKey: text("encrypted_api_key").default(""),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
-  isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(false),
+  isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
+    false
+  ),
   isAdultVerified: integer("is_adult_verified", { mode: "boolean" })
     .default(false)
     .notNull(),
@@ -444,10 +454,7 @@ import { posts } from "./schema";
 import { eq } from "drizzle-orm";
 
 const db = getDb();
-await db
-  .update(posts)
-  .set({ isViewed: true })
-  .where(eq(posts.id, 123));
+await db.update(posts).set({ isViewed: true }).where(eq(posts.id, 123));
 ```
 
 #### Toggle Post Favorite
@@ -488,10 +495,7 @@ import { or, like } from "drizzle-orm";
 const db = getDb();
 const query = "artist";
 const results = await db.query.artists.findMany({
-  where: or(
-    like(artists.name, `%${query}%`),
-    like(artists.tag, `%${query}%`)
-  ),
+  where: or(like(artists.name, `%${query}%`), like(artists.tag, `%${query}%`)),
 });
 ```
 
@@ -708,7 +712,7 @@ If the database becomes corrupted and you need to restore manually:
 ## Performance Considerations
 
 1. **WAL Mode:** Write-Ahead Logging mode enabled for concurrent reads
-2. **Indexes:** 
+2. **Indexes:**
    - Single-column indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
    - Composite index on `(artist_id, rating, is_viewed)` for common filter combinations
 3. **FTS5 Full-Text Search:**
@@ -722,7 +726,7 @@ If the database becomes corrupted and you need to restore manually:
    - `temp_store = MEMORY` for faster temporary table operations
    - Memory-mapped I/O (configurable via `SQLITE_MMAP_SIZE` env var, default 64MB)
 5. **Batch Operations:** Bulk upsert operations process posts in chunks (200 posts per chunk) to avoid SQLite variable limit
-6. **Query Optimization:** 
+6. **Query Optimization:**
    - Use Drizzle's query builder efficiently with proper indexes
    - FTS5 queries use EXISTS with JOIN pattern for optimal performance
    - Composite indexes optimize multi-column filter queries
@@ -736,6 +740,7 @@ The application uses SQLite FTS5 for efficient tag searching in the `posts` tabl
 ### FTS5 Virtual Table
 
 **Table:** `posts_fts`
+
 - **Type:** External content table (references `posts` table, no data duplication)
 - **Tokenizer:** `unicode61` for proper Unicode handling and case-insensitive search
 - **Columns:** `tags` (indexed for full-text search)
@@ -761,7 +766,7 @@ FTS5 is used automatically when filtering posts by tags via `PostsController.get
 const posts = await db.getPosts({
   filters: { tags: "blue_hair" },
   page: 1,
-  limit: 50
+  limit: 50,
 });
 ```
 

@@ -18,6 +18,7 @@
 Thank you for your interest in contributing to RuleDesk! This document provides guidelines and instructions for contributing.
 
 **📖 Related Documentation:**
+
 - [Development Guide](./development.md) - Development setup and workflows
 - [Architecture Documentation](./architecture.md) - System architecture and design patterns
 - [API Documentation](./api.md) - IPC API reference
@@ -260,6 +261,7 @@ const artists = db.prepare("SELECT * FROM artists WHERE id = ?").all(artistId);
    ```
 
 3. **Review Migration** (in `drizzle/` folder)
+
    - SQL migration files (`drizzle/*.sql`) are tracked in git
    - Meta files (`drizzle/meta/`) are ignored by git and generated locally
 
