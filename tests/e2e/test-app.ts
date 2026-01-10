@@ -32,15 +32,25 @@ export async function launchTestApp() {
   // Playwright for Electron runs headless by default
   const isHeadless = process.env.CI === 'true' || process.env.HEADLESS !== 'false';
   
+  // SECURITY: Only use unsafe flags in test environment
+  // These flags are NEVER used in production builds - they're only passed via Playwright's electron.launch()
+  // which is exclusively called from test files (tests/e2e/*.spec.ts)
+  const isTestEnv = process.env.NODE_ENV === 'test';
+  if (!isTestEnv) {
+    throw new Error('launchTestApp() can only be called in test environment (NODE_ENV=test)');
+  }
+  
   const app = await electron.launch({
     args: [
       mainEntry,
       `--user-data-dir=${tempDir}`,
       // Headless mode flags for Electron (Electron doesn't support --headless flag directly)
       // Playwright handles headless mode automatically, but we add stability flags for CI
+      // SECURITY WARNING: --no-sandbox is UNSAFE and only used in isolated test environment
+      // This code path is NEVER executed in production - only in E2E tests via Playwright
       ...(isHeadless ? [
         '--disable-gpu',
-        '--no-sandbox',
+        '--no-sandbox', // ⚠️ UNSAFE: Only for CI/test environment, never in production
         '--disable-dev-shm-usage',
         '--disable-software-rasterizer',
       ] : []),
