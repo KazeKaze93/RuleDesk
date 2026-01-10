@@ -3,14 +3,13 @@ import { createMockDb } from '../../helpers/mock-db';
 import { server } from '../../mocks/server';
 import { artists, posts, settings, SETTINGS_ID } from '@/main/db/schema';
 import { eq } from 'drizzle-orm';
-import { PROVIDER_IDS, ARTIST_TYPES } from '@/shared/constants';
 
 // Mock Electron BEFORE imports
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp' },
   safeStorage: {
     isEncryptionAvailable: () => true,
-    decryptString: (buffer: Buffer) => {
+    decryptString: (_buffer: Buffer) => {
       // Mock decryption - return a test API key
       return 'test-api-key-12345';
     },

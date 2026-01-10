@@ -25,15 +25,19 @@ This directory contains end-to-end (E2E) tests for the Electron application usin
 ## Running Tests
 
 ```bash
-# Run all E2E tests
+# Run all E2E tests (headless by default)
 npm run test:e2e
 
-# Run with UI mode
-npm run test:e2e:ui
+# Run in headless mode (explicit, same as default)
+npm run test:e2e:headless
 
-# Run in headed mode (see browser)
-npm run test:e2e:headed
+# Run in headed mode (see Electron window, for debugging)
+# On Windows PowerShell: $env:HEADLESS="false"; npm run test:e2e
+# On Linux/Mac: HEADLESS=false npm run test:e2e
+# Or use: npx playwright test --headed (if supported)
 ```
+
+**Note:** E2E tests run in headless mode by default. This is optimal for CI/CD. Use headed mode only for local debugging.
 
 ## Test Structure
 

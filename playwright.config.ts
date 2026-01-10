@@ -22,6 +22,9 @@ export default defineConfig({
   use: {
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Headless mode: Playwright for Electron runs headless by default
+    // Set to false only if you want to see the Electron window (for debugging)
+    headless: process.env.HEADLESS !== 'false',
   },
   
   // Global setup: ensure app is built before tests
