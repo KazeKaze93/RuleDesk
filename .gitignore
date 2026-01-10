@@ -29,8 +29,8 @@ npm-debug.log
 # База данных разработки и миграции
 /data/*.db # Например, data/metadata.db
 /drizzle # Папка для миграций
-/drizzle/meta/           # Исключает временные метаданные (папка)
-/drizzle/migrations.json # Исключает файл, который Drizzle использует локально
+/drizzle/meta/          
+/drizzle/migrations.json
 
 # --- IDEs / OS ---
 .vscode
