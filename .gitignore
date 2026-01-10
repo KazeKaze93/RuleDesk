@@ -43,7 +43,6 @@ Thumbs.db
 
 # --- Локальная Конфигурация и Секреты ---
 .env
-.env.local
 .env.*
 
 # Portable data folder
