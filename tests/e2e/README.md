@@ -13,6 +13,7 @@ This directory contains end-to-end (E2E) tests for the Electron application usin
 ## Setup
 
 1. Install Playwright browsers (if not already installed):
+
    ```bash
    npx playwright install
    ```
