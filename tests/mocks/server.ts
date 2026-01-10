@@ -8,7 +8,8 @@ export const handlers = [
   // Intercept GET requests to Rule34 API
   http.get('https://api.rule34.xxx/index.php', ({ request }) => {
     const url = new URL(request.url);
-    const page = url.searchParams.get('json'); // Check if json param exists
+    // Check if json param exists (for potential future pagination logic)
+    url.searchParams.get('json');
     
     // You can add logic here to return empty arrays for pagination end, etc.
     // For now, always return the fixture

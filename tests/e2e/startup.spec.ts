@@ -7,8 +7,10 @@ import { existsSync } from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import type { ElectronApplication, Page } from '@playwright/test';
+
 test.describe('Application Startup', () => {
-  let app: any;
+  let app: ElectronApplication | undefined;
 
   test.beforeAll(async () => {
     // Determine path to the main process entry point
@@ -77,7 +79,7 @@ test.describe('Application Startup', () => {
     }
   });
   
-  async function testWindow(window: any) {
+  async function testWindow(window: Page) {
     // Wait for window to be ready
     // The app shows a loading window first, then main window
     try {
