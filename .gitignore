@@ -27,8 +27,8 @@ npm-debug.log
 
 # --- Drizzle ORM / SQLite ---
 # База данных разработки и миграции
-/data/*.db # Например, data/metadata.db
-/drizzle # Папка для миграций
+/data/*.db
+/drizzle
 /drizzle/meta/          
 /drizzle/migrations.json
 
