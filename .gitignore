@@ -25,8 +25,7 @@ npm-debug.log
 
 # --- Drizzle ORM / SQLite ---
 /data/*.db
-/drizzle
-/drizzle/meta/          
+/drizzle/meta/
 /drizzle/migrations.json
 
 # --- IDEs / OS ---

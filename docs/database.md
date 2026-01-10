@@ -521,9 +521,13 @@ npm run db:migrate
 
 Migrations are stored in `drizzle/`:
 
-- SQL files: `0000_*.sql`
-- Metadata: `meta/_journal.json`
-- Snapshots: `meta/*_snapshot.json`
+- **SQL files:** `drizzle/*.sql` - **Tracked in git** (included in repository and build)
+- **Metadata:** `drizzle/meta/` - **Ignored by git** (local development files)
+  - `meta/_journal.json` - Migration journal
+  - `meta/*_snapshot.json` - Schema snapshots
+- **Migrations config:** `drizzle/migrations.json` - **Ignored by git** (generated file)
+
+**Note:** Only SQL migration files are tracked in version control. Meta files and migration configuration are generated locally and should not be committed.
 
 **Example Migration:**
 

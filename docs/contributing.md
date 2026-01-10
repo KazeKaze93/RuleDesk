@@ -260,6 +260,8 @@ const artists = db.prepare("SELECT * FROM artists WHERE id = ?").all(artistId);
    ```
 
 3. **Review Migration** (in `drizzle/` folder)
+   - SQL migration files (`drizzle/*.sql`) are tracked in git
+   - Meta files (`drizzle/meta/`) are ignored by git and generated locally
 
 4. **Test Migration**
    ```bash
@@ -393,9 +395,11 @@ const artists = db.prepare("SELECT * FROM artists WHERE id = ?").all(artistId);
 
 1. **Add Schema** (`src/main/db/schema.ts`)
 2. **Generate Migration** (`npm run db:generate`)
-3. **Review Migration** (check generated SQL in `drizzle/` folder)
+3. **Review Migration** (check generated SQL in `drizzle/*.sql` files - these are tracked in git)
 4. **Test Migration** (`npm run db:migrate`)
 5. **Update Documentation** (`docs/database.md` - add table documentation)
+
+**Note:** Only SQL migration files (`drizzle/*.sql`) should be committed. Meta files in `drizzle/meta/` are automatically ignored by git.
 
 ## Questions?
 

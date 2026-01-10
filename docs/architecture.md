@@ -1599,10 +1599,10 @@ src/
 
 Root:
 ├── drizzle/                        # Database migrations
-│   ├── meta/                       # Migration metadata
-│   │   ├── _journal.json
-│   │   └── *_snapshot.json
-│   └── *.sql                       # SQL migration files
+│   ├── *.sql                       # SQL migration files (tracked in git)
+│   └── meta/                       # Migration metadata (ignored by git)
+│       ├── _journal.json           # Migration journal
+│       └── *_snapshot.json         # Schema snapshots
 ├── docs/                           # Documentation
 │   ├── api.md
 │   ├── architecture.md

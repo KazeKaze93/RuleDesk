@@ -234,8 +234,10 @@ Opens web interface at `http://localhost:4983` (default port).
 │       └── index.html                  # HTML template
 │
 ├── drizzle/                            # Database migrations
-│   ├── meta/                          # Migration metadata
-│   └── *.sql                          # SQL migration files
+│   ├── *.sql                          # SQL migration files (tracked in git)
+│   └── meta/                          # Migration metadata (ignored by git)
+│       ├── _journal.json              # Migration journal
+│       └── *_snapshot.json            # Schema snapshots
 │
 ├── docs/                               # Documentation
 │   ├── api.md
