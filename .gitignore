@@ -58,3 +58,7 @@ repomix-output.txt
 
 # --- Documentation Translation ---
 .docs-i18n/**/*.hash
+
+# --- Testing ---
+/playwright-report/
+/test-results/
