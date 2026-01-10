@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import log from "electron-log/renderer";
 import { normalizeTag } from "../../lib/tag-utils";
@@ -37,7 +37,6 @@ export function AddArtistModal({
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-    watch,
     setValue,
   } = useForm<AddArtistRequest>({
     resolver: zodResolver(AddArtistSchema),
@@ -49,8 +48,8 @@ export function AddArtistModal({
     },
   });
 
-  const provider = watch("provider");
-  const tag = watch("tag");
+  const provider = useWatch({ control, name: "provider" });
+  const tag = useWatch({ control, name: "tag" });
 
   const handleClose = () => {
     reset();

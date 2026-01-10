@@ -1,4 +1,4 @@
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import { _electron as electron, type ElectronApplication } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -28,13 +28,42 @@ export async function launchTestApp() {
   }
 
   // 3. Launch with custom userData path
+  // Determine if we're in headless mode (CI or when HEADLESS is not explicitly set to 'false')
+  // Playwright for Electron runs headless by default
+  const isHeadless = process.env.CI === 'true' || process.env.HEADLESS !== 'false';
+  
+  // SECURITY: Only use unsafe flags in test environment
+  // These flags are NEVER used in production builds - they're only passed via Playwright's electron.launch()
+  // which is exclusively called from test files (tests/e2e/*.spec.ts)
+  const isTestEnv = process.env.NODE_ENV === 'test';
+  if (!isTestEnv) {
+    throw new Error('launchTestApp() can only be called in test environment (NODE_ENV=test)');
+  }
+  
   const app = await electron.launch({
-    args: [mainEntry, `--user-data-dir=${tempDir}`],
+    args: [
+      mainEntry,
+      `--user-data-dir=${tempDir}`,
+      // Headless mode flags for Electron (Electron doesn't support --headless flag directly)
+      // Playwright handles headless mode automatically, but we add stability flags for CI
+      // SECURITY WARNING: --no-sandbox is UNSAFE and only used in isolated test environment
+      // This code path is NEVER executed in production - only in E2E tests via Playwright
+      ...(isHeadless ? [
+        '--disable-gpu',
+        '--no-sandbox', // ⚠️ UNSAFE: Only for CI/test environment, never in production
+        '--disable-dev-shm-usage',
+        '--disable-software-rasterizer',
+      ] : []),
+    ],
     env: {
       ...process.env,
       NODE_ENV: 'test',
       // Disable hardware acceleration in CI/Headless environments to prevent crashes
       ELECTRON_ENABLE_LOGGING: 'true',
+      // Additional headless environment variables for Linux CI
+      ...(isHeadless && process.platform === 'linux' ? {
+        DISPLAY: process.env.DISPLAY || ':99',
+      } : {}),
     },
     timeout: 30000, // Increase timeout for app initialization (DB migrations, etc.)
   });
@@ -48,7 +77,7 @@ export async function launchTestApp() {
  * @param app - Electron application instance (may be undefined if launch failed)
  * @param tempDir - Temporary directory path (may be undefined if creation failed)
  */
-export async function cleanupTestApp(app: ElectronApplication | undefined, tempDir: string | undefined) {
+export async function cleanupTestApp(app: ElectronApplication | undefined, _tempDir: string | undefined) {
   if (app) {
     try {
       await app.close();

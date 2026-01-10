@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { escapeLikePattern } from '@/main/db/utils';
 import { AddArtistSchema } from '@/shared/schemas/artist';
-import { PROVIDER_IDS, ARTIST_TYPES } from '@/shared/constants';
+import { PROVIDER_IDS, ARTIST_TYPES, type ProviderId, type ArtistType } from '@/shared/constants';
 
 describe('Property-Based Testing (Fuzzing)', () => {
   
@@ -118,7 +118,7 @@ describe('Property-Based Testing (Fuzzing)', () => {
     it('should reject invalid provider values', () => {
       fc.assert(
         fc.property(
-          fc.string().filter(s => !PROVIDER_IDS.includes(s as any)),
+          fc.string().filter((s): s is string => !PROVIDER_IDS.includes(s as ProviderId)),
           (invalidProvider) => {
             const result = AddArtistSchema.safeParse({
               name: 'Test Artist',
@@ -141,7 +141,7 @@ describe('Property-Based Testing (Fuzzing)', () => {
     it('should reject invalid type values', () => {
       fc.assert(
         fc.property(
-          fc.string().filter(s => !ARTIST_TYPES.includes(s as any)),
+          fc.string().filter((s): s is string => !ARTIST_TYPES.includes(s as ArtistType)),
           (invalidType) => {
             const result = AddArtistSchema.safeParse({
               name: 'Test Artist',

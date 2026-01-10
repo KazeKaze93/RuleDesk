@@ -30,7 +30,8 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
+    "test:e2e": "npx playwright test",
+    "test:e2e:headless": "npx playwright test",
     "// ARCHITECTURE & INQUISITOR": "---",
     "arch:stats": "inquisitor analyze .",
     "arch:police": "inquisitor police ./src",
@@ -55,7 +56,7 @@
   "author": "",
   "license": "Apache License 2.0",
   "devDependencies": {
-    "@electron/rebuild": "^4.0.2",
+    "@electron/rebuild": "^3.7.2",
     "@eslint/js": "^9.39.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/dompurify": "^3.0.5",
