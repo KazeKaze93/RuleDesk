@@ -42,8 +42,8 @@ Thumbs.db
 /settings.json
 
 # --- Локальная Конфигурация и Секреты ---
-.env               # Основной файл секретов
-.env.local         # Локальные/девелоперские переменные
+.env
+.env.local
 .env.*
 
 # Portable data folder
