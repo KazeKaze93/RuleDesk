@@ -225,7 +225,11 @@ if (lastCall !== undefined && timeSinceLastCall < THROTTLE_MS) {
 }
 
 // SettingsController - no way to indicate idempotency
-this.handle(IPC_CHANNELS.SETTINGS.GET, z.tuple([]), this.getSettings.bind(this));
+this.handle(
+  IPC_CHANNELS.SETTINGS.GET,
+  z.tuple([]),
+  this.getSettings.bind(this)
+);
 ```
 
 ### Example (CORRECT):
@@ -828,8 +832,8 @@ Clean code is maintainable code. Unused variables indicate incomplete refactorin
 28. **SQL-level filtering when possible** - leverage database indexes and reduce data transfer over IPC
 29. **Create shared types for workers** - workers cannot import from main/db, use shared/types for compatibility
 30. **Debounce worker requests** - prevent worker spam during rapid filter changes (250ms recommended)
-26. **Use Web Workers for heavy processing** - offload filtering/sorting to separate thread, use Promise-based API
-27. **Single-pass filtering** - combine all filter conditions in one `.filter()` pass instead of chaining
-28. **SQL-level filtering when possible** - leverage database indexes and reduce data transfer over IPC
-29. **Create shared types for workers** - workers cannot import from main/db, use shared/types for compatibility
-30. **Debounce worker requests** - prevent worker spam during rapid filter changes (250ms recommended)
+31. **Use Web Workers for heavy processing** - offload filtering/sorting to separate thread, use Promise-based API
+32. **Single-pass filtering** - combine all filter conditions in one `.filter()` pass instead of chaining
+33. **SQL-level filtering when possible** - leverage database indexes and reduce data transfer over IPC
+34. **Create shared types for workers** - workers cannot import from main/db, use shared/types for compatibility
+35. **Debounce worker requests** - prevent worker spam during rapid filter changes (250ms recommended)
