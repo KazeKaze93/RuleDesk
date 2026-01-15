@@ -198,27 +198,41 @@ function getWorker(): Worker {
 /**
  * Cleanup worker when no longer needed
  * 
- * Note: In React Strict Mode (dev), useEffect cleanup runs twice.
- * We use ref count to ensure worker is only terminated when truly unused.
+ * CRITICAL: In React Strict Mode (dev), useEffect cleanup runs twice.
+ * Race condition: First cleanup decrements refCount, second cleanup sees 0 and terminates worker
+ * even though second "instance" still needs it.
+ * 
+ * Fix: Use setImmediate to check refCount AFTER all microtasks complete.
+ * This ensures both cleanup calls have finished decrementing before termination check.
  */
 function releaseWorker(): void {
   if (globalWorkerRefCount > 0) {
     globalWorkerRefCount--;
   }
   
-  // Only terminate worker if ref count reaches 0 and worker exists
-  if (globalWorkerRefCount <= 0 && globalWorker) {
-    // Reject all pending requests
-    globalPendingRequests.forEach(({ reject }) => {
-      reject(new Error("Worker terminated"));
-    });
-    globalPendingRequests.clear();
-    loadingStateCallbacks.clear();
+  // CRITICAL: Use setImmediate to check refCount AFTER all microtasks
+  // In React Strict Mode, both cleanup functions run synchronously, but we need to
+  // check the final refCount after both have decremented
+  setImmediate(() => {
+    // Re-check refCount after all microtasks (including second cleanup) have run
+    if (globalWorkerRefCount <= 0 && globalWorker) {
+      // Reject all pending requests
+      globalPendingRequests.forEach(({ reject }) => {
+        try {
+          reject(new Error("Worker terminated"));
+        } catch (rejectError) {
+          // Ignore errors from reject (promise already settled)
+          console.warn("[useWorkerProcessor] Error rejecting promise:", rejectError);
+        }
+      });
+      globalPendingRequests.clear();
+      loadingStateCallbacks.clear();
 
-    globalWorker.terminate();
-    globalWorker = null;
-    globalWorkerRefCount = 0; // Reset to prevent negative values
-  }
+      globalWorker.terminate();
+      globalWorker = null;
+      globalWorkerRefCount = 0; // Reset to prevent negative values
+    }
+  });
 }
 
 /**

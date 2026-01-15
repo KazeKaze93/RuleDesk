@@ -32,7 +32,6 @@ import {
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
-import { escapeLikePattern } from "../../db/utils";
 import { isVideoUrl } from "../../lib/media-utils";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
@@ -341,38 +340,18 @@ export class PostsController extends BaseController {
           AND posts_fts MATCH ${sanitized}
       )`;
     } else {
-      // Fallback to LIKE search if FTS5 table doesn't exist
-      // Split tags by space and search for each tag
-      const tagParts = tagFilter.trim().split(/\s+/).filter(Boolean);
-      if (tagParts.length === 0) {
-        // Empty filter - return condition that matches nothing
-        return sql`1 = 0`;
-      }
-
-      // Create LIKE conditions for each tag part
-      // Tags are space-separated in posts.tags, so we need to match whole words
-      // Use AND to require all tags (similar to FTS5 behavior)
-      const likeConditions = tagParts.map((tag) => {
-        // Escape special LIKE characters: %, _, and \
-        // Use ESCAPE clause to treat escaped characters literally
-        const escapedTag = escapeLikePattern(tag);
-
-        // Use sql template with ESCAPE clause for proper LIKE escaping
-        // SQLite LIKE with ESCAPE '\' allows us to use \% and \_ literally
-        return or(
-          sql`${posts.tags} LIKE ${`% ${escapedTag} %`} ESCAPE '\\'`, // Tag in middle
-          sql`${posts.tags} LIKE ${`${escapedTag} %`} ESCAPE '\\'`, // Tag at start
-          sql`${posts.tags} LIKE ${`% ${escapedTag}`} ESCAPE '\\'`, // Tag at end
-          eq(posts.tags, tag) // Tag is entire string (exact match, no escaping needed)
-        ) as SQL;
-      });
-
-      // Require all tags to match (AND logic)
-      if (likeConditions.length === 1) {
-        return likeConditions[0];
-      } else {
-        return and(...likeConditions) as SQL;
-      }
+      // CRITICAL: Do NOT use LIKE %...% fallback - it causes Main Process freeze on large databases
+      // LIKE %...% with leading wildcard disables indexes and causes Full Table Scan
+      // On 100k+ records, this will freeze the entire Electron app
+      // If FTS5 table doesn't exist, throw error instead of killing the app
+      log.error(
+        `[PostsController] FTS5 table does not exist for tag filtering. ` +
+        `LIKE %...% fallback would freeze Main Process on large databases. ` +
+        `Please ensure FTS5 migration (0006_add_fts5_search.sql) completed successfully.`
+      );
+      // Return condition that matches nothing (empty result) instead of freezing
+      // This is safer than LIKE %...% which would freeze the app
+      return sql`1 = 0`;
     }
   }
 

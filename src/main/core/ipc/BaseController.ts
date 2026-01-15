@@ -51,13 +51,18 @@ export abstract class BaseController {
    * PERFORMANCE: Uses only critical identifiers (id, type) instead of full serialization
    * This prevents Main Process blocking on large objects (e.g., 20k+ post arrays)
    * 
+   * CRITICAL: Returns null if args cannot be safely collapsed (prevents data leakage)
+   * If two different calls with different complex objects get same key, they would share Promise
+   * 
    * Strategy:
    * - Empty args: use channel only
    * - Single arg with id/type: use those fields
    * - Arrays: use length + first element id (if available)
-   * - Fallback: fast hash for small objects (< 1KB), reject large objects
+   * - Complex objects without id/type: return null (disable collapsing)
+   * 
+   * @returns Collapse key string, or null if collapsing is unsafe
    */
-  private static getCollapseKey(channel: string, args: unknown[]): string {
+  private static getCollapseKey(channel: string, args: unknown[]): string | null {
     // Empty args - most common case (e.g., getSettings)
     if (args.length === 0) {
       return channel;
@@ -79,14 +84,14 @@ export abstract class BaseController {
         if ("type" in obj && typeof obj.type === "string") {
           return `${channel}:type=${obj.type}`;
         }
-        // CRITICAL: Do NOT use JSON.stringify - it blocks Main Process
-        // Complex objects should not use Request Collapsing
-        // Renderer should pass hash of complex args if needed
+        // CRITICAL: Do NOT return default key for complex objects
+        // Returning ":complex" would cause data leakage - different objects would share Promise
+        // Disable collapsing for complex objects without id/type
         log.warn(
           `[IPC] Complex argument object for idempotent channel "${channel}" without id/type. ` +
-          `Request Collapsing requires primitive keys. Consider using non-idempotent handler or pass hash from Renderer.`
+          `Request Collapsing disabled to prevent data leakage. Consider using non-idempotent handler or pass hash from Renderer.`
         );
-        return `${channel}:complex`;
+        return null; // Disable collapsing - prevents data leakage
       }
       
       // Primitive values
@@ -104,13 +109,13 @@ export abstract class BaseController {
       return `${channel}:id=${(firstArg as Record<string, unknown>).id}:count=${args.length}`;
     }
 
-    // CRITICAL: Do NOT use JSON.stringify for multiple args - it blocks Main Process
-    // For multiple args without IDs, use count only (not ideal, but safe)
+    // CRITICAL: Do NOT return default key for multiple args without IDs
+    // Returning ":multi:count=N" would cause data leakage - different arg sets would share Promise
     log.warn(
       `[IPC] Multiple arguments for idempotent channel "${channel}" without id/type. ` +
-      `Request Collapsing may not work correctly. Consider using non-idempotent handler.`
+      `Request Collapsing disabled to prevent data leakage. Consider using non-idempotent handler.`
     );
-    return `${channel}:multi:count=${args.length}`;
+    return null; // Disable collapsing - prevents data leakage
   }
 
   // Minimum time between calls for the same channel (milliseconds)
@@ -220,40 +225,48 @@ export abstract class BaseController {
           // CRITICAL: Key includes args hash to prevent data leakage (getUser(1) vs getUser(2))
           if (isIdempotent) {
             // Generate collapse key from channel + args (prevents different args from sharing Promise)
+            // Returns null if args cannot be safely collapsed (prevents data leakage)
             const collapseKey = BaseController.getCollapseKey(channel, args);
             
-            // Check for existing Promise FIRST (before creating new one)
-            const existingPromise =
-              BaseController.requestCollapseMap.get(collapseKey);
-            if (existingPromise) {
-              // Request already in-flight, return the same Promise
-              // This bypasses throttling because we're reusing existing work
+            // If collapsing is unsafe (complex args without id/type), disable it
+            if (collapseKey === null) {
               log.debug(
-                `[IPC] Request collapsing for idempotent channel "${channel}" with key "${collapseKey}"`
+                `[IPC] Request collapsing disabled for idempotent channel "${channel}" - complex args without id/type`
               );
-              return existingPromise;
-            }
-            
-            // Create Promise IMMEDIATELY (synchronously) and store in map
-            // This ensures second call (even milliseconds later) will see the Promise
-            let promiseResolve: (value: unknown) => void;
-            let promiseReject: (error: unknown) => void;
-            const promise = new Promise<unknown>((resolve, reject) => {
-              promiseResolve = resolve;
-              promiseReject = reject;
-            });
+              // Fall through to normal execution (no collapsing, but still idempotent)
+            } else {
+              // Check for existing Promise FIRST (before creating new one)
+              const existingPromise =
+                BaseController.requestCollapseMap.get(collapseKey);
+              if (existingPromise) {
+                // Request already in-flight, return the same Promise
+                // This bypasses throttling because we're reusing existing work
+                log.debug(
+                  `[IPC] Request collapsing for idempotent channel "${channel}" with key "${collapseKey}"`
+                );
+                return existingPromise;
+              }
+              
+              // Create Promise IMMEDIATELY (synchronously) and store in map
+              // This ensures second call (even milliseconds later) will see the Promise
+              let promiseResolve: (value: unknown) => void;
+              let promiseReject: (error: unknown) => void;
+              const promise = new Promise<unknown>((resolve, reject) => {
+                promiseResolve = resolve;
+                promiseReject = reject;
+              });
 
-            // Store Promise in collapse map IMMEDIATELY (synchronously)
-            // This prevents race condition where second call arrives before Promise is stored
-            BaseController.requestCollapseMap.set(collapseKey, promise);
-            
-            // NOTE: No throttling for idempotent handlers with Request Collapsing
-            // Request Collapsing already prevents duplicate work, so throttling is redundant
-            // If handler has internal cache (like SettingsController.getSettings), rapid calls are safe
+              // Store Promise in collapse map IMMEDIATELY (synchronously)
+              // This prevents race condition where second call arrives before Promise is stored
+              BaseController.requestCollapseMap.set(collapseKey, promise);
+              
+              // NOTE: No throttling for idempotent handlers with Request Collapsing
+              // Request Collapsing already prevents duplicate work, so throttling is redundant
+              // If handler has internal cache (like SettingsController.getSettings), rapid calls are safe
 
-            // Execute handler logic (validation + execution) asynchronously
-            // Throttling already checked above
-            (async () => {
+              // Execute handler logic (validation + execution) asynchronously
+              // Throttling already checked above
+              (async () => {
               try {
                 // Execute validation and handler (inline to avoid method extraction complexity)
                 // Security: Log only channel name and argument count
@@ -318,9 +331,10 @@ export abstract class BaseController {
                 // Clean up collapse map after Promise resolves/rejects
                 BaseController.requestCollapseMap.delete(collapseKey);
               }
-            })();
+              })();
 
-            return promise;
+              return promise;
+            }
           }
 
           // Non-idempotent handlers: execute directly with throttling
