@@ -1,5 +1,5 @@
 import React, { useMemo, forwardRef, useCallback, useRef, useEffect } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
@@ -11,9 +11,7 @@ import { PostCard } from "../../features/artists/components/PostCard";
 import { Button } from "../ui/button";
 import { ExternalLink } from "lucide-react";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
-
-// --- Constants ---
-const POSTS_PER_PAGE = 50;
+import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
@@ -26,7 +24,7 @@ const GridContainer = forwardRef<
     className={cn(
       viewType === "grid"
         ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5 space-y-4",
+        : "flex flex-wrap gap-4 justify-center p-4 pb-32",
       className
     )}
     {...props}
@@ -99,35 +97,42 @@ export const Browse = () => {
     queryFn: () => window.api.getTrackedArtists(),
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["search", tags],
-      queryFn: async ({ pageParam = 1 }) => {
-        // Always fetch - empty tags array means show all posts (API omits tags parameter)
-        const result = await window.api.searchBooru({
-          tags,
-          page: pageParam,
-        });
-        return result;
-      },
-      getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-        // Use lastPageParam + 1 for correct pagination
-        return lastPage.length === POSTS_PER_PAGE
-          ? (lastPageParam as number) + 1
-          : undefined;
-      },
-      initialPageParam: 1,
-      // Always enabled - empty tags array means show all posts
-    });
-
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const filters = useSearchStore((state) => state.filters);
   const viewType = useSearchStore((state) => state.viewType);
 
-  // Store raw posts (before filtering) for infinite scroll calculation
-  const rawPosts = useMemo(() => {
-    return data?.pages.flatMap((page) => page) || [];
-  }, [data]);
+  // Use the new infinite scroll hook
+  // For external API (Browse), we need custom getNextPageParam logic
+  // because API may return less than 50 posts but still have more pages
+  const {
+    data,
+    allPosts: rawPosts,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    handleEndReached,
+  } = useGalleryInfiniteScroll({
+    queryKey: ["search", tags],
+    fetchFn: async (pageParam) => {
+      // Always fetch - empty tags array means show all posts (API omits tags parameter)
+      return await window.api.searchBooru({
+        tags,
+        page: pageParam,
+      });
+    },
+    // Custom getNextPageParam for external API: continue loading until empty array
+    // Unlike local DB, external API doesn't tell us total count, so we load until empty
+    getNextPageParam: (lastPage, allPages) => {
+      // For external API, continue loading if we got any posts
+      // Only stop if lastPage is empty (no more posts available)
+      if (lastPage.length === 0) {
+        return undefined; // No more posts
+      }
+      // Continue loading next page - API may return less than 50 but still have more
+      return allPages.length + 1;
+    },
+  });
 
   // Build tracked tags set with all variations for subscriptions filter
   const trackedTagsSet = useMemo(() => {
@@ -222,38 +227,49 @@ export const Browse = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [rawPosts, sortOrder, filters, trackedTagsSet]);
+  }, [rawPosts, sortOrder, filters, trackedTagsSet, tags]);
 
-
-  // Handle end reached for infinite scroll - always load more if available
-  const handleEndReached = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Ref for masonry infinite scroll observer
   const masonryObserverRef = useRef<IntersectionObserver | null>(null);
   const masonryTriggerRef = useRef<HTMLDivElement | null>(null);
+  const handleEndReachedRef = useRef(handleEndReached);
+
+  // Keep ref in sync with latest handleEndReached
+  useEffect(() => {
+    handleEndReachedRef.current = handleEndReached;
+  }, [handleEndReached]);
 
   useEffect(() => {
+    // Disconnect existing observer first (important for viewType changes)
+    if (masonryObserverRef.current) {
+      masonryObserverRef.current.disconnect();
+      masonryObserverRef.current = null;
+    }
+
+    // Only create observer in masonry mode
     if (viewType === "masonry" && masonryTriggerRef.current) {
       masonryObserverRef.current = new IntersectionObserver(
         (entries) => {
           if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-            handleEndReached();
+            handleEndReachedRef.current();
           }
         },
-        { threshold: 0.1 }
+        { 
+          threshold: 0.1,
+          rootMargin: '400px'
+        }
       );
       masonryObserverRef.current.observe(masonryTriggerRef.current);
     }
+
     return () => {
       if (masonryObserverRef.current) {
         masonryObserverRef.current.disconnect();
+        masonryObserverRef.current = null;
       }
     };
-  }, [viewType, hasNextPage, isFetchingNextPage, handleEndReached]);
+  }, [viewType, hasNextPage, isFetchingNextPage]);
 
 
   // Create stable List and Item components with forwardRef and aria-busy
@@ -379,22 +395,25 @@ export const Browse = () => {
             )}
           </div>
         ) : viewType === "masonry" ? (
-            // Masonry layout without virtualization (CSS columns doesn't work well with VirtuosoGrid)
+            // Masonry layout without virtualization (using flexbox)
             <div className="h-full overflow-auto">
-              <div className="columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5">
+              <div className="flex flex-wrap gap-4 justify-center p-4 pb-32">
                 {allPosts.map((post, index) => (
-                  <div key={post.id} className="mb-4 break-inside-avoid">
+                  <div 
+                    key={post.id} 
+                    className="flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]"
+                  >
                     <PostCard post={post} onClick={() => handlePostClick(index)} />
                   </div>
                 ))}
                 {isFetchingNextPage && (
-                  <div className="flex col-span-full justify-center py-4 w-full">
+                  <div className="flex justify-center py-4 w-full">
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
                 )}
+                {/* Infinite scroll trigger for masonry - strictly after map loop */}
+                <div ref={masonryTriggerRef} className="h-10 w-full" />
               </div>
-              {/* Infinite scroll trigger for masonry */}
-              <div ref={masonryTriggerRef} className="h-10" />
             </div>
           ) : (
             <VirtuosoGrid

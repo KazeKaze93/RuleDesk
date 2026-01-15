@@ -1,6 +1,5 @@
-import React, { forwardRef, useMemo, useRef, useCallback, useEffect } from "react";
+import React, { forwardRef, useMemo, useRef, useEffect } from "react";
 import {
-  useInfiniteQuery,
   useQuery,
   useQueryClient,
   useMutation,
@@ -18,6 +17,7 @@ import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "./components/PostCard";
+import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -35,7 +35,7 @@ const GridContainer = forwardRef<
     className={cn(
       viewType === "grid"
         ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5 space-y-4",
+        : "flex flex-wrap gap-4 justify-center p-4 pb-32",
       className
     )}
     {...props}
@@ -96,59 +96,34 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["posts", artist.id],
-      queryFn: async ({ pageParam = 1 }) => {
-        return await window.api.getArtistPosts({
-          artistId: artist.id,
-          page: pageParam,
-      filters: {
-        // No tag filtering - show all posts for this artist
-        tags: undefined,
-      },
-        });
-      },
-      getNextPageParam: (lastPage, allPages) => {
-        return lastPage.length === 50 ? allPages.length + 1 : undefined;
-      },
-      initialPageParam: 1,
-    });
-
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const filters = useSearchStore((state) => state.filters);
   const viewType = useSearchStore((state) => state.viewType);
-  
-  // Debounce endReached to prevent rate limit errors
-  const endReachedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Handle end reached with debounce
-  const handleEndReached = useCallback(() => {
-    // Clear any pending timeout
-    if (endReachedTimeoutRef.current) {
-      clearTimeout(endReachedTimeoutRef.current);
-    }
-    
-    // Debounce the fetch to prevent rate limit errors
-    endReachedTimeoutRef.current = setTimeout(() => {
-      if (hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-      endReachedTimeoutRef.current = null;
-    }, 150);
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (endReachedTimeoutRef.current) {
-        clearTimeout(endReachedTimeoutRef.current);
-      }
-    };
-  }, []);
+  // Use the new infinite scroll hook
+  const {
+    allPosts: rawPosts,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    handleEndReached,
+  } = useGalleryInfiniteScroll({
+    queryKey: ["posts", artist.id],
+    fetchFn: async (pageParam) => {
+      return await window.api.getArtistPosts({
+        artistId: artist.id,
+        page: pageParam,
+        filters: {
+          // No tag filtering - show all posts for this artist
+          tags: undefined,
+        },
+      });
+    },
+  });
 
   const allPosts = useMemo(() => {
-    let posts = data?.pages.flatMap((page) => page) || [];
+    let posts = [...rawPosts];
     
     // Apply filters
     // Filter AI generated posts
@@ -191,24 +166,69 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, filters]);
+  }, [rawPosts, sortOrder, filters]);
+
+  // Ref for masonry infinite scroll observer
+  const masonryObserverRef = useRef<IntersectionObserver | null>(null);
+  const masonryTriggerRef = useRef<HTMLDivElement | null>(null);
+  const handleEndReachedRef = useRef(handleEndReached);
+
+  // Keep ref in sync with latest handleEndReached
+  useEffect(() => {
+    handleEndReachedRef.current = handleEndReached;
+  }, [handleEndReached]);
+
+  useEffect(() => {
+    // Disconnect existing observer first (important for viewType changes)
+    if (masonryObserverRef.current) {
+      masonryObserverRef.current.disconnect();
+      masonryObserverRef.current = null;
+    }
+
+    // Only create observer in masonry mode
+    if (viewType === "masonry" && masonryTriggerRef.current) {
+      masonryObserverRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+            handleEndReachedRef.current();
+          }
+        },
+        { 
+          threshold: 0.1,
+          rootMargin: '400px'
+        }
+      );
+      masonryObserverRef.current.observe(masonryTriggerRef.current);
+    }
+
+    return () => {
+      if (masonryObserverRef.current) {
+        masonryObserverRef.current.disconnect();
+        masonryObserverRef.current = null;
+      }
+    };
+  }, [viewType, hasNextPage, isFetchingNextPage]);
 
   // Create stable List component with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
-  const ListComponent = useMemo(() => {
-    const Component = forwardRef<
-      HTMLDivElement,
-      React.HTMLAttributes<HTMLDivElement>
-    >((props, ref) => (
-      <GridContainer
-        {...props}
-        ref={ref}
-        aria-busy={isLoading || isFetchingNextPage}
-      />
-    ));
-    Component.displayName = "ArtistGalleryList";
-    return Component;
-  }, [isLoading, isFetchingNextPage]);
+  const { ListComponent, ItemComponent } = useMemo(() => {
+    const VirtuosoList = createVirtuosoList(viewType);
+    const List = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+      (props, ref) => (
+        <VirtuosoList
+          {...props}
+          ref={ref}
+          aria-busy={isLoading || isFetchingNextPage}
+        />
+      )
+    );
+    List.displayName = "ArtistGalleryList";
+    
+    const Item = createItemContainer(viewType);
+    Item.displayName = "ArtistGalleryItem";
+    
+    return { ListComponent: List, ItemComponent: Item };
+  }, [isLoading, isFetchingNextPage, viewType]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -357,25 +377,30 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
         ) : viewType === "masonry" ? (
-          // Masonry layout without virtualization
+          // Masonry layout without virtualization (using flexbox)
           <div className="h-full overflow-auto">
-            <div className="columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5">
+            <div className="flex flex-wrap gap-4 justify-center p-4 pb-32">
               {allPosts.map((post, index) => (
-                <div key={post.id} className="mb-4 break-inside-avoid">
+                <div 
+                  key={post.id} 
+                  className="flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]"
+                >
                   <PostCard post={post} onClick={() => handlePostClick(index)} />
                 </div>
               ))}
               {isFetchingNextPage && (
-                <div className="flex col-span-full justify-center py-4 w-full">
+                <div className="flex justify-center py-4 w-full">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
               )}
+              {/* Infinite scroll trigger for masonry - strictly after map loop */}
+              <div ref={masonryTriggerRef} className="h-10 w-full" />
             </div>
           </div>
         ) : (
           <VirtuosoGrid
             style={{ height: "100%" }}
-            totalCount={allPosts.length}
+            totalCount={rawPosts.length}
             endReached={handleEndReached}
             increaseViewportBy={2000}
             components={{

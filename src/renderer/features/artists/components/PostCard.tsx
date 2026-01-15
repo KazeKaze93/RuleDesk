@@ -3,6 +3,7 @@ import { Play, Check, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Post } from "../../../../main/db/schema";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../../store/safeModeStore";
+import { useSearchStore } from "../../../store/searchStore";
 import { isVideoPost } from "../../../lib/filter-utils";
 
 interface PostCardProps {
@@ -15,6 +16,7 @@ interface PostCardProps {
 export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
   const isVid = isVideoPost(post.fileUrl);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
+  const viewType = useSearchStore((state) => state.viewType);
   // Normalize rating to 'e', 'q', 's' safely (handles both 'e' and 'explicit' formats)
   const normalizedRating = post.rating ? post.rating.charAt(0).toLowerCase() as "e" | "q" | "s" : "q";
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
@@ -32,7 +34,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
         isVid ? "Video" : "Image"
       }.`}
       className={cn(
-        "group relative aspect-[2/3] w-full overflow-hidden rounded-lg border bg-card transition-all cursor-pointer",
+        "group relative w-full overflow-hidden rounded-lg border bg-card transition-all cursor-pointer",
+        // Grid: fixed aspect ratio, Masonry: natural aspect ratio (height auto)
+        viewType === "grid" ? "aspect-[3/4]" : "",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
         "hover:border-primary hover:shadow-md hover:shadow-primary/10",
         "select-none", // Prevent text selection via CSS (user-select: none)
@@ -43,7 +47,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
       {/* --- Image Layer --- */}
       {post.previewUrl ? (
         <div 
-          className="relative h-full w-full overflow-hidden"
+          className={cn(
+            "relative w-full overflow-hidden",
+            viewType === "grid" ? "h-full" : ""
+          )}
           style={{
             filter: shouldBlur
               ? `blur(${effectiveBlur}px)`
@@ -55,7 +62,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
             alt={`Post ${post.id}`}
             loading="lazy"
             className={cn(
-              "h-full w-full object-cover transition-all duration-300",
+              "w-full transition-all duration-300",
+              viewType === "grid" 
+                ? "h-full object-cover" 
+                : "h-auto",
               "group-hover:scale-105",
               post.isViewed && "opacity-60 grayscale-[0.3]"
             )}
@@ -63,7 +73,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
         </div>
       ) : (
         <div 
-          className="flex justify-center items-center w-full h-full text-xs bg-muted text-muted-foreground"
+          className={cn(
+            "flex justify-center items-center w-full text-xs bg-muted text-muted-foreground",
+            viewType === "grid" ? "h-full" : "min-h-[200px]"
+          )}
           style={{
             filter: shouldBlur
               ? `blur(${effectiveBlur}px)`
