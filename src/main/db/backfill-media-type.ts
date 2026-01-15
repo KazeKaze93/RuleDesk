@@ -9,13 +9,15 @@ import { getMediaTypeFromUrl } from "@shared/utils/media";
  * Updates media_type in batches (chunks) to prevent database lock.
  * 
  * Strategy:
- * - Process in chunks of 1000 rows
+ * - Process in small chunks (100-200 rows) to prevent Main Process blocking
  * - Use file extension to determine media_type (image vs video)
  * - Update only NULL values to avoid overwriting existing data
- * - Run asynchronously without blocking UI
+ * - Use setImmediate to yield control between batches, allowing IPC to process
+ * - CRITICAL: better-sqlite3 is synchronous and blocks Event Loop
+ *   Small batches + setImmediate prevent UI freezes on slow HDDs
  */
-const BATCH_SIZE = 1000;
-const BATCH_DELAY_MS = 100; // Delay between batches to prevent blocking
+const BATCH_SIZE = 150; // Reduced from 1000 to prevent Main Process blocking
+const BATCH_DELAY_MS = 10; // Reduced delay, setImmediate provides better yielding
 
 /**
  * Backfill media_type column for existing posts
@@ -53,8 +55,15 @@ export async function backfillMediaType(): Promise<void> {
     let updated = 0;
     
     // Process in batches to avoid blocking Main Process
+    // CRITICAL: Use setImmediate to yield control after each batch
+    // This allows IPC handlers to process while backfill runs
     while (true) {
+      // Yield control before each batch to allow IPC to process
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      
       // Get batch of posts with NULL media_type
+      // CRITICAL: This is synchronous and blocks Event Loop
+      // Small BATCH_SIZE (150) minimizes blocking time
       const batch = sqlite
         .prepare(
           `SELECT id, file_url FROM posts 
@@ -85,16 +94,16 @@ export async function backfillMediaType(): Promise<void> {
       updateBatch(batch);
       processed += batch.length;
       
-      // Log progress every 10 batches
-      if (processed % (BATCH_SIZE * 10) === 0) {
+      // Log progress every 20 batches (reduced frequency due to smaller batches)
+      if (processed % (BATCH_SIZE * 20) === 0) {
         log.info(
           `[backfillMediaType] Progress: ${processed.toLocaleString()}/${totalNulls.toLocaleString()} ` +
           `(${Math.round((processed / totalNulls) * 100)}%)`
         );
       }
       
-      // Yield control between batches to prevent blocking
-      if (batch.length === BATCH_SIZE) {
+      // Additional delay for very slow systems (optional)
+      if (batch.length === BATCH_SIZE && BATCH_DELAY_MS > 0) {
         await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
       }
     }

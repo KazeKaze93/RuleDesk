@@ -9,7 +9,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
 import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
 import type { BooruPost } from "../providers/types";
-import { isVideoUrl } from "../lib/media-utils";
+import { isVideoUrl } from "@shared/utils/media";
 
 // SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
 // Each post has ~12 fields for INSERT + ~6 for UPDATE in onConflictDoUpdate

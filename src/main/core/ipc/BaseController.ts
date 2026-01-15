@@ -39,12 +39,16 @@ export abstract class BaseController {
   private static readonly throttleMap = new Map<string, number>();
 
   // Request Collapsing: For idempotent handlers, reuse in-flight Promise to prevent duplicate work
-  // Map<key, { promise: Promise<unknown>, createdAt: number }> - key includes channel + serialized args to prevent data leakage
+  // Map<key, { promise: Promise<unknown>, createdAt: number, timeoutId: NodeJS.Timeout }>
   // CRITICAL: Key must include args hash, otherwise getUser(1) and getUser(2) would share Promise
-  // MEMORY LEAK PREVENTION: Store creation timestamp to detect and remove stuck promises (>30s)
+  // MEMORY LEAK PREVENTION: Each promise has its own setTimeout to ensure cleanup even if IPC stops
   private static readonly requestCollapseMap = new Map<
     string,
-    { promise: Promise<unknown>; createdAt: number }
+    { 
+      promise: Promise<unknown>; 
+      createdAt: number;
+      timeoutId: NodeJS.Timeout; // Individual timeout for each promise
+    }
   >();
   
   // Timeout for request collapsing: remove stuck promises after 30 seconds
@@ -102,13 +106,13 @@ export abstract class BaseController {
       // Primitive values
       const argString = String(arg);
       
-      // CRITICAL: Hash sensitive/long arguments to prevent data leakage in static map
-      // Long strings (>32 chars) or strings that look like tokens/secrets should be hashed
-      // This prevents sensitive data (tokens, private tags) from being stored in memory forever
+      // CRITICAL: Hash long arguments to prevent data leakage in static map
+      // Simple rule: hash everything longer than 16 characters
+      // No guessing about "sensitive data" - just hash long strings
+      // This prevents tokens, long tags, or other long data from being stored in memory forever
       // PERFORMANCE: Use fast non-cryptographic hash (djb2) instead of SHA-256
-      // SHA-256 is synchronous and can block Main Process Event Loop on large strings
       // djb2 is O(n) but much faster and sufficient for collision-resistant key generation
-      if (argString.length > 32 || this.looksLikeSensitiveData(argString)) {
+      if (argString.length > 16) {
         const hash = this.fastHash(argString);
         return `${channel}:hash=${hash}`;
       }
@@ -155,32 +159,6 @@ export abstract class BaseController {
     }
     // Convert to positive hex string and take first 16 chars
     return Math.abs(hash).toString(16).substring(0, 16);
-  }
-
-  /**
-   * Check if a string looks like sensitive data (token, secret, private tag)
-   * Used to determine if argument should be hashed instead of stored directly
-   * 
-   * @param str - String to check
-   * @returns true if string looks like sensitive data
-   */
-  private static looksLikeSensitiveData(str: string): boolean {
-    // Check for common patterns that indicate sensitive data:
-    // - Long alphanumeric strings (likely tokens)
-    // - Strings with special characters that look like secrets
-    // - UUIDs (though short, they're identifiers that shouldn't be in keys)
-    
-    // Long alphanumeric strings (32+ chars) are likely tokens
-    if (str.length >= 32 && /^[a-zA-Z0-9_-]+$/.test(str)) {
-      return true;
-    }
-    
-    // Strings with special characters that look like secrets
-    if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(str) && str.length > 16) {
-      return true;
-    }
-    
-    return false;
   }
 
   // Minimum time between calls for the same channel (milliseconds)
@@ -280,6 +258,7 @@ export abstract class BaseController {
               }
               
               // MEMORY LEAK PREVENTION: Clean up stuck promises in requestCollapseMap
+              // Note: Each promise has its own setTimeout, but we also check here as backup
               const now = Date.now();
               const stuckKeys: string[] = [];
               for (const [key, entry] of BaseController.requestCollapseMap.entries()) {
@@ -289,13 +268,17 @@ export abstract class BaseController {
                 }
               }
               
-              // Delete stuck promises
+              // Delete stuck promises and clear their timeouts
               for (const key of stuckKeys) {
-                log.warn(
-                  `[IPC] Cleaning up stuck promise with key "${key}" ` +
-                  `(age: ${now - BaseController.requestCollapseMap.get(key)!.createdAt}ms)`
-                );
-                BaseController.requestCollapseMap.delete(key);
+                const entry = BaseController.requestCollapseMap.get(key);
+                if (entry) {
+                  clearTimeout(entry.timeoutId); // Clear individual timeout
+                  log.warn(
+                    `[IPC] Cleaning up stuck promise with key "${key}" ` +
+                    `(age: ${now - entry.createdAt}ms)`
+                  );
+                  BaseController.requestCollapseMap.delete(key);
+                }
               }
             });
           }
@@ -354,10 +337,24 @@ export abstract class BaseController {
 
               // Store Promise in collapse map IMMEDIATELY (synchronously)
               // This prevents race condition where second call arrives before Promise is stored
-              // MEMORY LEAK PREVENTION: Store creation timestamp to detect stuck promises
+              // MEMORY LEAK PREVENTION: Each promise gets its own setTimeout to ensure cleanup
+              // Even if IPC calls stop, stuck promises will be removed after timeout
+              const createdAt = Date.now();
+              const timeoutId = setTimeout(() => {
+                const entry = BaseController.requestCollapseMap.get(collapseKey);
+                if (entry && Date.now() - entry.createdAt > BaseController.REQUEST_COLLAPSE_TIMEOUT_MS) {
+                  log.warn(
+                    `[IPC] Timeout cleanup: removing stuck promise for channel "${channel}" ` +
+                    `with key "${collapseKey}" (age: ${Date.now() - entry.createdAt}ms)`
+                  );
+                  BaseController.requestCollapseMap.delete(collapseKey);
+                }
+              }, BaseController.REQUEST_COLLAPSE_TIMEOUT_MS);
+              
               BaseController.requestCollapseMap.set(collapseKey, {
                 promise,
-                createdAt: Date.now(),
+                createdAt,
+                timeoutId,
               });
               
               // NOTE: No throttling for idempotent handlers with Request Collapsing
@@ -429,8 +426,12 @@ export abstract class BaseController {
                 promiseReject!(error);
               } finally {
                 // Clean up collapse map after Promise resolves/rejects
-                // MEMORY LEAK PREVENTION: Always remove promise, even if handler hangs
-                BaseController.requestCollapseMap.delete(collapseKey);
+                // MEMORY LEAK PREVENTION: Clear timeout and remove promise
+                const entry = BaseController.requestCollapseMap.get(collapseKey);
+                if (entry) {
+                  clearTimeout(entry.timeoutId); // Clear individual timeout
+                  BaseController.requestCollapseMap.delete(collapseKey);
+                }
               }
               })();
 

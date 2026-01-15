@@ -227,8 +227,8 @@ function getCSPPolicy(): string {
     scriptSrc +
     " " +
     styleSrc +
-    "img-src 'self' https://*.rule34.xxx data: blob:; " + // Картинки только наши и с R34
-    "media-src 'self' https://*.rule34.xxx; " + // Видео с R34
+    "img-src 'self' https://*.rule34.xxx https://*.gelbooru.com data: blob:; " + // Картинки с R34 и Gelbooru
+    "media-src 'self' https://*.rule34.xxx https://*.gelbooru.com https:; " + // Видео с R34, Gelbooru и других источников
     connectSrc +
     " " +
     "font-src 'self' https://fonts.gstatic.com;"; // Разрешаем загрузку шрифтов с Google Fonts
