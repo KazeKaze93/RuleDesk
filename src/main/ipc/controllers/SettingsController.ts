@@ -90,15 +90,36 @@ export class SettingsController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
+  // Cache settings to avoid DB queries on every call (settings change rarely)
+  // Cache is invalidated when settings are saved
+  private settingsCache: IpcSettings | null = null;
+  private settingsCacheTimestamp: number = 0;
+  private static readonly SETTINGS_CACHE_TTL_MS = 5000; // 5 seconds cache TTL
+
+  /**
+   * Check if settings cache is valid (for BaseController throttling bypass)
+   * This allows React Strict Mode double-invocation to work correctly
+   */
+  public hasValidCache(): boolean {
+    const now = Date.now();
+    return (
+      this.settingsCache !== null &&
+      now - this.settingsCacheTimestamp < SettingsController.SETTINGS_CACHE_TTL_MS
+    );
+  }
+
   /**
    * Setup IPC handlers for settings operations
    */
   public setup(): void {
     // app:get-settings-status - returns full settings object (used by frontend)
+    // This handler is idempotent and cached, so we allow bypassing throttling for cached results
+    // This prevents React Strict Mode double-invocation from causing rate limit errors
     this.handle(
       IPC_CHANNELS.SETTINGS.GET,
       z.tuple([]),
-      this.getSettings.bind(this)
+      this.getSettings.bind(this),
+      { skipThrottleIfCached: true }
     );
     // app:save-settings - saves settings
     // CRITICAL: SaveSettingsSchema validates input from Renderer (userId regex, apiKey length, etc.)
@@ -121,12 +142,24 @@ export class SettingsController extends BaseController {
   }
 
   /**
-   * Get settings object
+   * Get settings object (cached for 5 seconds to prevent DB spam)
+   * 
+   * This method is idempotent - multiple calls return the same result.
+   * Cache is invalidated when settings are saved.
    *
    * @param _event - IPC event (unused)
    * @returns Settings object with all fields including Age Gate & ToS status
    */
   private async getSettings(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
+    // Return cached value if still valid
+    const now = Date.now();
+    if (
+      this.settingsCache !== null &&
+      now - this.settingsCacheTimestamp < SettingsController.SETTINGS_CACHE_TTL_MS
+    ) {
+      return this.settingsCache;
+    }
+
     try {
       const db = this.getDb();
       // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
@@ -134,16 +167,23 @@ export class SettingsController extends BaseController {
         where: eq(settings.id, SETTINGS_ID),
       });
 
+      let result: IpcSettings;
       if (!currentSettings) {
         // Return default values if no settings found (triggers Onboarding)
         // Use DEFAULT_IPC_SETTINGS constant (already validated, no need to parse)
         log.debug("[SettingsController] getSettings: No settings found, returning defaults");
-        return DEFAULT_IPC_SETTINGS;
+        result = DEFAULT_IPC_SETTINGS;
+      } else {
+        // Use Drizzle's inferred type directly (no redundant validation)
+        // mapSettingsToIpc handles mapping and validation internally
+        result = mapSettingsToIpc(currentSettings);
       }
 
-      // Use Drizzle's inferred type directly (no redundant validation)
-      // mapSettingsToIpc handles mapping and validation internally
-      return mapSettingsToIpc(currentSettings);
+      // Update cache
+      this.settingsCache = result;
+      this.settingsCacheTimestamp = now;
+
+      return result;
     } catch (error) {
       log.error("[SettingsController] Failed to get settings:", error);
       throw error;
@@ -270,6 +310,11 @@ export class SettingsController extends BaseController {
           saved.tosAcceptedAt ? "set" : "null"
         }`
       );
+      
+      // Invalidate cache after saving settings
+      this.settingsCache = null;
+      this.settingsCacheTimestamp = 0;
+      
       return true;
     } catch (error) {
       log.error("[SettingsController] Failed to save settings:", error);

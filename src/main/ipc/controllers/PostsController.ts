@@ -232,23 +232,33 @@ export class PostsController extends BaseController {
       );
     }
     
-    // Validate each word against whitelist
+    // Validate and sanitize each word
+    // SECURITY: Allow Unicode characters (Cyrillic, CJK, etc.) but escape FTS5 operators
+    // Use parameterized query approach: escape special characters instead of removing them
     const sanitizedWords = words.map((word) => {
-      // Remove any characters not in whitelist
-      // Allow: alphanumeric, hyphen, underscore, and * only at end
-      const cleaned = word.replace(/[^a-zA-Z0-9_-]/g, "");
+      // Remove FTS5 operators that could cause syntax errors or injection
+      // Block: : (column specifier), NEAR, AND, OR, NOT operators
+      // Allow: Unicode characters, alphanumeric, hyphens, underscores, spaces within words
+      const cleaned = word
+        .replace(/:/g, "") // Remove column specifier
+        .replace(/\bNEAR\b/gi, "") // Remove NEAR operator
+        .replace(/\bAND\b/gi, "") // Remove AND operator
+        .replace(/\bOR\b/gi, "") // Remove OR operator
+        .replace(/\bNOT\b/gi, "") // Remove NOT operator
+        .replace(/"/g, "") // Remove quotes (will add back after escaping)
+        .replace(/\\/g, ""); // Remove backslashes
       
       // Allow * only at the end of word (prefix search)
       const hasTrailingStar = cleaned.endsWith("*");
       const baseWord = hasTrailingStar ? cleaned.slice(0, -1) : cleaned;
       
-      if (baseWord.length === 0) {
+      if (baseWord.trim().length === 0) {
         throw new Error(
-          `Invalid search term: "${word}". Only alphanumeric characters, hyphens, and underscores are allowed.`
+          `Invalid search term: "${word}". Search term cannot be empty after sanitization.`
         );
       }
       
-      return hasTrailingStar ? `${baseWord}*` : baseWord;
+      return hasTrailingStar ? `${baseWord.trim()}*` : baseWord.trim();
     });
     
     // Join words with spaces and wrap in quotes for FTS5 literal phrase search

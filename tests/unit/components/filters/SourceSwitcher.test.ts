@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import type { ReactNode } from 'react';
 
 // Mock React and dependencies
 vi.mock('react', () => ({
   default: {
     createContext: vi.fn(() => ({
-      Provider: ({ children }: any) => children,
+      Provider: ({ children }: { children: ReactNode }) => children,
     })),
     useContext: vi.fn(() => ({
       type: 'single',
@@ -13,7 +14,7 @@ vi.mock('react', () => ({
       size: 'sm',
       variant: 'outline',
     })),
-    forwardRef: (fn: any) => fn,
+    forwardRef: <T,>(fn: T) => fn,
   },
 }));
 
@@ -24,14 +25,13 @@ vi.mock('lucide-react', () => ({
 }));
 
 vi.mock('@/renderer/lib/utils', () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(' '),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }));
 
 // Test SourceSwitcher logic (value handling, disabled state)
 describe('SourceSwitcher Logic', () => {
   describe('Value handling', () => {
     it('should handle "all" value correctly', () => {
-      const value = 'all';
       const onValueChange = vi.fn();
       
       // Simulate value change

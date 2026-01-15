@@ -26,7 +26,7 @@ describe('VirtuosoGrid totalCount Logic', () => {
     });
 
     it('should handle case when all posts are filtered out', () => {
-      const rawPosts = Array.from({ length: 100 }, (_, i) => ({ id: i + 1 }));
+      const _rawPosts = Array.from({ length: 100 }, (_, i) => ({ id: i + 1 }));
       const allPosts: typeof rawPosts = []; // All filtered out
 
       const totalCount = allPosts.length;

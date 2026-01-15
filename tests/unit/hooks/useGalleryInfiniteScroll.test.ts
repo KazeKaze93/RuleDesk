@@ -12,18 +12,18 @@ vi.mock('electron-log/renderer', () => ({
 
 // Mock React hooks
 vi.mock('react', () => ({
-  useCallback: (fn: any) => fn,
-  useEffect: (fn: any) => {
+  useCallback: <T,>(fn: T) => fn,
+  useEffect: (fn: () => void | (() => void)) => {
     // Return cleanup function
     return fn();
   },
-  useRef: (initial: any) => ({ current: initial }),
+  useRef: <T,>(initial: T) => ({ current: initial }),
 }));
 
 // Mock @tanstack/react-query
 const mockUseInfiniteQuery = vi.fn();
 vi.mock('@tanstack/react-query', () => ({
-  useInfiniteQuery: (options: any) => mockUseInfiniteQuery(options),
+  useInfiniteQuery: (options: unknown) => mockUseInfiniteQuery(options),
 }));
 
 // Test pagination logic directly (without React rendering)
@@ -43,7 +43,7 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
       const lastPage = Array.from({ length: 50 }, (_, i) => ({ id: i + 1 }));
       const allPages = [lastPage];
 
-      const defaultGetNextPageParam = (lastPage: any[], allPages: any[][]) => {
+      const defaultGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
         return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
       };
 
@@ -56,7 +56,7 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
       const lastPage = Array.from({ length: 30 }, (_, i) => ({ id: i + 1 }));
       const allPages = [lastPage];
 
-      const defaultGetNextPageParam = (lastPage: any[], allPages: any[][]) => {
+      const defaultGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
         return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
       };
 
@@ -66,10 +66,10 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
 
     it('should return undefined if last page is empty', () => {
       const POSTS_PER_PAGE = 50;
-      const lastPage: any[] = [];
+      const lastPage: unknown[] = [];
       const allPages = [lastPage];
 
-      const defaultGetNextPageParam = (lastPage: any[], allPages: any[][]) => {
+      const defaultGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
         return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
       };
 
@@ -83,7 +83,7 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
       const lastPage = Array.from({ length: 30 }, (_, i) => ({ id: i + 1 }));
       const allPages = [lastPage];
 
-      const browseGetNextPageParam = (lastPage: any[], allPages: any[][]) => {
+      const browseGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
         if (lastPage.length === 0) return undefined;
         return allPages.length + 1;
       };
@@ -93,10 +93,10 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
     });
 
     it('should stop loading only when page is empty', () => {
-      const lastPage: any[] = [];
+      const lastPage: unknown[] = [];
       const allPages = [lastPage];
 
-      const browseGetNextPageParam = (lastPage: any[], allPages: any[][]) => {
+      const browseGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
         if (lastPage.length === 0) return undefined;
         return allPages.length + 1;
       };
@@ -109,7 +109,7 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
       const lastPage = Array.from({ length: 10 }, (_, i) => ({ id: i + 1 }));
       const allPages = [lastPage];
 
-      const browseGetNextPageParam = (lastPage: any[], allPages: any[][]) => {
+      const browseGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
         if (lastPage.length === 0) return undefined;
         return allPages.length + 1;
       };
@@ -126,7 +126,7 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
       const page3 = Array.from({ length: 30 }, (_, i) => ({ id: i + 101 }));
       const allPages = [page1, page2, page3];
 
-      const defaultGetNextPageParam = (lastPage: any[], allPages: any[][]) => {
+      const defaultGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
         const POSTS_PER_PAGE = 50;
         return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
       };

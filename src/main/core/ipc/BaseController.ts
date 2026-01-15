@@ -47,7 +47,8 @@ export abstract class BaseController {
 
   // Cleanup interval: cleanup throttle map every N calls to prevent memory leak
   // Use counter instead of random to ensure predictable cleanup behavior
-  private static readonly CLEANUP_INTERVAL_CALLS = 1000; // Cleanup every 1000 calls
+  // Reduced from 1000 to 200 to prevent map bloat with dynamic channels
+  private static readonly CLEANUP_INTERVAL_CALLS = 200; // Cleanup every 200 calls
   private static callCount = 0; // Counter for tracking IPC calls
 
   /**
@@ -71,13 +72,15 @@ export abstract class BaseController {
    * @param channel - IPC channel name (e.g., 'user:get')
    * @param schema - Zod schema for validating handler arguments (tuple or single schema)
    * @param handler - Async handler function with validated, typed arguments
+   * @param options - Optional configuration (e.g., skipThrottleIfCached for idempotent handlers)
    */
   protected handle(
     channel: string,
     schema:
       | z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], z.ZodTypeAny | null>
       | z.ZodTypeAny,
-    handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+    handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>,
+    options?: { skipThrottleIfCached?: boolean }
   ): void {
     // Critical: Remove existing handler to prevent "duplicate handler" crash
     // This allows safe re-initialization (hot-reload, error recovery, etc.)
@@ -128,16 +131,19 @@ export abstract class BaseController {
           }
 
           const lastCall = BaseController.throttleMap.get(channel);
-          // In development mode, allow critical channels to bypass rate limit
-          // This prevents issues with React Strict Mode double-invocation
-          const isCriticalChannel = channel === "app:get-settings-status" || 
-                                     channel === "app:get-settings";
-          const isDevMode = process.env.NODE_ENV !== "production";
+          
+          // For idempotent/cached handlers, allow bypassing throttling for very recent calls
+          // This prevents React Strict Mode double-invocation from causing rate limit errors
+          // React Strict Mode calls useEffect twice immediately, so calls are < 50ms apart
+          // Handler will check cache internally and return immediately if cached
+          const timeSinceLastCall = lastCall !== undefined ? now - lastCall : Infinity;
+          const isVeryRecentCall = timeSinceLastCall < 50; // < 50ms = likely Strict Mode
+          const shouldSkipThrottle = options?.skipThrottleIfCached && isVeryRecentCall;
           
           if (
+            !shouldSkipThrottle &&
             lastCall !== undefined &&
-            now - lastCall < BaseController.THROTTLE_MS &&
-            !(isDevMode && isCriticalChannel) // Bypass rate limit for critical channels in dev
+            timeSinceLastCall < BaseController.THROTTLE_MS
           ) {
             const waitTime = BaseController.THROTTLE_MS - (now - lastCall);
             log.warn(
@@ -152,6 +158,8 @@ export abstract class BaseController {
             };
             throw rateLimitError;
           }
+          
+          // Update throttle timestamp only if we're actually processing the request
           BaseController.throttleMap.set(channel, Date.now());
 
           // Security: Log only channel name and argument count, not actual arguments

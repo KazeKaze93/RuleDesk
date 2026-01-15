@@ -101,16 +101,17 @@ export const Browse = () => {
   });
 
   // Use useShallow for multiple filter values to prevent unnecessary re-renders
-  // This is more efficient than individual selectors when selecting multiple related values
-  const { sortOrder, viewType, filters } = useSearchStore(
+  // Extract only the filter fields that are actually used in this component
+  // This prevents re-renders when unrelated filter fields (e.g., orientation) change
+  const { sortOrder, viewType, aiFilter, mediaType, source } = useSearchStore(
     useShallow((state) => ({
       sortOrder: state.sortOrder,
       viewType: state.viewType,
-      filters: state.filters,
+      aiFilter: state.filters.aiFilter,
+      mediaType: state.filters.mediaType,
+      source: state.filters.source,
     }))
   );
-  
-  const { aiFilter, mediaType, source } = filters;
 
   // Use the new infinite scroll hook
   // For external API (Browse), we need custom getNextPageParam logic
