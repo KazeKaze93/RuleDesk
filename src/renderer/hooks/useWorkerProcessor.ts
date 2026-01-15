@@ -202,18 +202,21 @@ function getWorker(): Worker {
  * Race condition: First cleanup decrements refCount, second cleanup sees 0 and terminates worker
  * even though second "instance" still needs it.
  * 
- * Fix: Use setImmediate to check refCount AFTER all microtasks complete.
+ * Fix: Use setTimeout(0) to check refCount AFTER all microtasks complete.
  * This ensures both cleanup calls have finished decrementing before termination check.
+ * Note: setImmediate is Node.js-only, so we use setTimeout(0) which works in browser context.
  */
 function releaseWorker(): void {
   if (globalWorkerRefCount > 0) {
     globalWorkerRefCount--;
   }
   
-  // CRITICAL: Use setImmediate to check refCount AFTER all microtasks
+  // CRITICAL: Use setTimeout(0) to check refCount AFTER all microtasks
   // In React Strict Mode, both cleanup functions run synchronously, but we need to
   // check the final refCount after both have decremented
-  setImmediate(() => {
+  // setTimeout(0) schedules callback in next event loop tick (after all microtasks)
+  // This is equivalent to setImmediate but works in browser/Renderer context
+  setTimeout(() => {
     // Re-check refCount after all microtasks (including second cleanup) have run
     if (globalWorkerRefCount <= 0 && globalWorker) {
       // Reject all pending requests
@@ -232,7 +235,7 @@ function releaseWorker(): void {
       globalWorker = null;
       globalWorkerRefCount = 0; // Reset to prevent negative values
     }
-  });
+  }, 0);
 }
 
 /**

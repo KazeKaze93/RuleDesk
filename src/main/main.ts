@@ -275,6 +275,15 @@ async function initializeAppAndWindow() {
     // Initialize database asynchronously (migrations may take time)
     await initializeDatabase();
     logger.info("✅ Main: Database initialized and ready.");
+    
+    // Start background backfill for media_type column (non-blocking)
+    // This runs after migrations to avoid blocking app startup
+    import("./db/backfill-media-type").then(({ backfillMediaType }) => {
+      // Run backfill asynchronously without blocking UI
+      backfillMediaType().catch((error) => {
+        logger.error("[Main] Background media_type backfill failed:", error);
+      });
+    });
 
     // Close loading window
     if (loadingWindow && !loadingWindow.isDestroyed()) {

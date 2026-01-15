@@ -1,6 +1,7 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import type { SerializableError, ValidationError } from "../../types/ipc";
 import { ErrorCode } from "../../types/ipc";
 
@@ -95,7 +96,17 @@ export abstract class BaseController {
       }
       
       // Primitive values
-      return `${channel}:${String(arg)}`;
+      const argString = String(arg);
+      
+      // CRITICAL: Hash sensitive/long arguments to prevent data leakage in static map
+      // Long strings (>32 chars) or strings that look like tokens/secrets should be hashed
+      // This prevents sensitive data (tokens, private tags) from being stored in memory forever
+      if (argString.length > 32 || this.looksLikeSensitiveData(argString)) {
+        const hash = createHash("sha256").update(argString).digest("hex").substring(0, 16);
+        return `${channel}:hash=${hash}`;
+      }
+      
+      return `${channel}:${argString}`;
     }
 
     // Multiple arguments - use first arg id + count
@@ -116,6 +127,32 @@ export abstract class BaseController {
       `Request Collapsing disabled to prevent data leakage. Consider using non-idempotent handler.`
     );
     return null; // Disable collapsing - prevents data leakage
+  }
+
+  /**
+   * Check if a string looks like sensitive data (token, secret, private tag)
+   * Used to determine if argument should be hashed instead of stored directly
+   * 
+   * @param str - String to check
+   * @returns true if string looks like sensitive data
+   */
+  private static looksLikeSensitiveData(str: string): boolean {
+    // Check for common patterns that indicate sensitive data:
+    // - Long alphanumeric strings (likely tokens)
+    // - Strings with special characters that look like secrets
+    // - UUIDs (though short, they're identifiers that shouldn't be in keys)
+    
+    // Long alphanumeric strings (32+ chars) are likely tokens
+    if (str.length >= 32 && /^[a-zA-Z0-9_-]+$/.test(str)) {
+      return true;
+    }
+    
+    // Strings with special characters that look like secrets
+    if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(str) && str.length > 16) {
+      return true;
+    }
+    
+    return false;
   }
 
   // Minimum time between calls for the same channel (milliseconds)

@@ -427,35 +427,45 @@ export class PostsController extends BaseController {
         // FTS5 OR operator is safe when all operands are validated literals
         const ftsQuery = sanitizedTagQueries.join(" OR ");
 
-        // SECURITY: ftsQuery is constructed from hardcoded, validated AI tags
-        // Each tag is validated with /^[a-zA-Z0-9_-]+$/ and escaped (quotes doubled)
-        // Drizzle's sql template will attempt to parameterize ${ftsQuery}, but SQLite FTS5 MATCH
-        // may require the query string in SQL text rather than as a parameter.
-        // This is safe because:
-        // 1. All AI tags are hardcoded (not user input)
-        // 2. Each tag validated with strict regex before escaping
-        // 3. Quotes are properly escaped (doubled) for FTS5
-        // For user input (tagFilter), use createTagFilterCondition which handles parameterization correctly
-        if (filters.aiFilter === "hide") {
-          // Exclude AI posts: NOT (FTS5 match)
-          conditions.push(
-            not(
+        // CRITICAL: Ensure ftsQuery is not empty to prevent SQLite syntax error
+        // If sanitizedTagQueries is empty (shouldn't happen with hardcoded tags), skip filter
+        if (!ftsQuery || ftsQuery.trim().length === 0) {
+          log.warn(
+            "[PostsController] Empty FTS5 query for AI filter, skipping filter condition"
+          );
+          // Skip adding filter condition if query is empty
+        } else {
+          // SECURITY: ftsQuery is constructed from hardcoded, validated AI tags
+          // Each tag is validated with /^[a-zA-Z0-9_-]+$/ and escaped (quotes doubled)
+          // Drizzle's sql template will attempt to parameterize ${ftsQuery}, but SQLite FTS5 MATCH
+          // may require the query string in SQL text rather than as a parameter.
+          // This is safe because:
+          // 1. All AI tags are hardcoded (not user input)
+          // 2. Each tag validated with strict regex before escaping
+          // 3. Quotes are properly escaped (doubled) for FTS5
+          // 4. Query is validated to be non-empty before use
+          // For user input (tagFilter), use createTagFilterCondition which handles parameterization correctly
+          if (filters.aiFilter === "hide") {
+            // Exclude AI posts: NOT (FTS5 match)
+            conditions.push(
+              not(
+                sql`EXISTS (
+                  SELECT 1 FROM posts_fts 
+                  WHERE posts_fts.rowid = ${posts.id} 
+                    AND posts_fts MATCH ${ftsQuery}
+                )`
+              ) as SQL
+            );
+          } else {
+            // Only AI posts: FTS5 match
+            conditions.push(
               sql`EXISTS (
                 SELECT 1 FROM posts_fts 
                 WHERE posts_fts.rowid = ${posts.id} 
                   AND posts_fts MATCH ${ftsQuery}
-              )`
-            ) as SQL
-          );
-        } else {
-          // Only AI posts: FTS5 match
-          conditions.push(
-            sql`EXISTS (
-              SELECT 1 FROM posts_fts 
-              WHERE posts_fts.rowid = ${posts.id} 
-                AND posts_fts MATCH ${ftsQuery}
-            )` as SQL
-          );
+              )` as SQL
+            );
+          }
         }
       } else {
         // Fallback to LIKE only if FTS5 table doesn't exist (should not happen in production)
@@ -485,10 +495,19 @@ export class PostsController extends BaseController {
 
     // Media type filter: use indexed media_type column for efficient filtering
     // Replaces slow LIKE "%...%" queries that cause Full Table Scan
+    // CRITICAL: During backfill, some posts may have NULL media_type
+    // Treat NULL as "image" (default) to avoid hiding existing posts
     if (filters?.mediaType === "videos") {
+      // Only videos (exclude NULL and images)
       conditions.push(eq(posts.mediaType, "video"));
     } else if (filters?.mediaType === "images") {
-      conditions.push(eq(posts.mediaType, "image"));
+      // Images OR NULL (NULL treated as image during backfill)
+      conditions.push(
+        or(
+          eq(posts.mediaType, "image"),
+          sql`${posts.mediaType} IS NULL`
+        ) as SQL
+      );
     }
 
     return conditions;
