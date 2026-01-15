@@ -38,6 +38,10 @@ export abstract class BaseController {
   // Map<channel, lastCallTimestamp>
   private static readonly throttleMap = new Map<string, number>();
 
+  // Request Collapsing: For idempotent handlers, reuse in-flight Promise to prevent duplicate work
+  // Map<channel, Promise<unknown>> - stores active Promise for each idempotent channel
+  private static readonly requestCollapseMap = new Map<string, Promise<unknown>>();
+
   // Minimum time between calls for the same channel (milliseconds)
   // Prevents renderer from spamming IPC calls
   private static readonly THROTTLE_MS = 100; // 100ms = max 10 calls per second per channel
@@ -130,18 +134,24 @@ export abstract class BaseController {
             });
           }
 
+          const isIdempotent = options?.isIdempotent === true;
+          
+          // Request Collapsing: For idempotent handlers, reuse in-flight Promise
+          // This prevents duplicate work when multiple calls arrive simultaneously (e.g., React Strict Mode)
+          // Instead of allowing spam, we collapse requests into a single Promise
+          if (isIdempotent) {
+            const existingPromise = BaseController.requestCollapseMap.get(channel);
+            if (existingPromise) {
+              // Request already in-flight, return the same Promise
+              log.debug(`[IPC] Request collapsing for idempotent channel "${channel}"`);
+              return existingPromise;
+            }
+          }
+          
           const lastCall = BaseController.throttleMap.get(channel);
           const timeSinceLastCall = lastCall !== undefined ? now - lastCall : Infinity;
           
-          // For idempotent handlers (cached operations), allow bypassing throttling for very recent calls
-          // This is correct architecture: idempotent operations don't create load, so rapid calls are safe
-          // React Strict Mode double-invocation is a common case, but this applies to any rapid idempotent calls
-          const isIdempotent = options?.isIdempotent === true;
-          const isVeryRecentCall = timeSinceLastCall < 50; // < 50ms = likely same logical operation
-          const shouldSkipThrottle = isIdempotent && isVeryRecentCall;
-          
           if (
-            !shouldSkipThrottle &&
             lastCall !== undefined &&
             timeSinceLastCall < BaseController.THROTTLE_MS
           ) {
@@ -282,10 +292,32 @@ export abstract class BaseController {
           // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
           const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
 
-          const result = await handler(event, ...handlerArgs);
-          // Performance: Use debug level to avoid I/O overhead on high-frequency calls
-          log.debug(`[IPC] Request completed: ${channel}`);
-          return result;
+          // For idempotent handlers, wrap in Promise and store in collapse map
+          // This allows multiple simultaneous calls to share the same Promise
+          const executeHandler = async (): Promise<unknown> => {
+            try {
+              const result = await handler(event, ...handlerArgs);
+              // Performance: Use debug level to avoid I/O overhead on high-frequency calls
+              log.debug(`[IPC] Request completed: ${channel}`);
+              return result;
+            } finally {
+              // Clean up collapse map after Promise resolves/rejects
+              // This allows subsequent calls to create a new Promise if needed
+              if (isIdempotent) {
+                BaseController.requestCollapseMap.delete(channel);
+              }
+            }
+          };
+
+          // Store Promise in collapse map for idempotent handlers
+          if (isIdempotent) {
+            const promise = executeHandler();
+            BaseController.requestCollapseMap.set(channel, promise);
+            return promise;
+          }
+
+          // Non-idempotent handlers execute directly
+          return executeHandler();
         } catch (error: unknown) {
           // Skip error handling if it's already a serialized error (ValidationError, RateLimitError, etc.)
           // Check for SerializableError structure: has name, message, and code properties

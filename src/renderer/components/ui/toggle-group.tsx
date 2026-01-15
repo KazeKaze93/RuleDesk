@@ -103,6 +103,7 @@ const ToggleGroupItem = React.forwardRef<HTMLButtonElement, ToggleGroupItemProps
         )}
         onClick={handleClick}
         disabled={disabled}
+        aria-pressed={isSelected}
         data-state={isSelected ? "on" : "off"}
         {...props}
       >

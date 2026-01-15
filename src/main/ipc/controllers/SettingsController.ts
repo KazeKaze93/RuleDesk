@@ -91,10 +91,8 @@ export class SettingsController extends BaseController {
   }
 
   // Cache settings to avoid DB queries on every call (settings change rarely)
-  // Cache is invalidated when settings are saved
+  // Cache is invalidated only when settings are saved (no TTL - settings don't change externally)
   private settingsCache: IpcSettings | null = null;
-  private settingsCacheTimestamp: number = 0;
-  private static readonly SETTINGS_CACHE_TTL_MS = 5000; // 5 seconds cache TTL
 
 
   /**
@@ -132,21 +130,17 @@ export class SettingsController extends BaseController {
   }
 
   /**
-   * Get settings object (cached for 5 seconds to prevent DB spam)
+   * Get settings object (cached until invalidated)
    * 
    * This method is idempotent - multiple calls return the same result.
-   * Cache is invalidated when settings are saved.
+   * Cache is invalidated only when settings are saved (no TTL - settings don't change externally).
    *
    * @param _event - IPC event (unused)
    * @returns Settings object with all fields including Age Gate & ToS status
    */
   private async getSettings(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
-    // Return cached value if still valid
-    const now = Date.now();
-    if (
-      this.settingsCache !== null &&
-      now - this.settingsCacheTimestamp < SettingsController.SETTINGS_CACHE_TTL_MS
-    ) {
+    // Return cached value if available (cache is invalidated only on save)
+    if (this.settingsCache !== null) {
       return this.settingsCache;
     }
 
@@ -169,9 +163,8 @@ export class SettingsController extends BaseController {
         result = mapSettingsToIpc(currentSettings);
       }
 
-      // Update cache
+      // Update cache (no timestamp - cache is invalidated only on save)
       this.settingsCache = result;
-      this.settingsCacheTimestamp = now;
 
       return result;
     } catch (error) {
@@ -303,7 +296,6 @@ export class SettingsController extends BaseController {
       
       // Invalidate cache after saving settings
       this.settingsCache = null;
-      this.settingsCacheTimestamp = 0;
       
       return true;
     } catch (error) {
@@ -392,7 +384,12 @@ export class SettingsController extends BaseController {
 
       // Use Drizzle's inferred type directly (no redundant validation)
       // mapSettingsToIpc handles mapping and validation internally
-      return mapSettingsToIpc(updatedSettings);
+      const result = mapSettingsToIpc(updatedSettings);
+      
+      // Invalidate cache after confirming legal (settings changed)
+      this.settingsCache = null;
+      
+      return result;
     } catch (error) {
       log.error("[SettingsController] Failed to confirm legal:", error);
       throw error;

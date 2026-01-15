@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useWorkerProcessor, type WorkerFilterConfig } from "./useWorkerProcessor";
 import { useDebounce } from "../lib/hooks/useDebounce";
 import type { Post } from "../../main/db/schema";
-import type { WorkerPost } from "../../shared/types/post";
+import { WorkerPostArraySchema } from "../../shared/types/post";
 import log from "electron-log/renderer";
 
 /**
@@ -45,12 +45,13 @@ export function useWorkerFilteredPosts(
       }
 
       try {
-        // Pass Post[] directly to Worker via Structured Clone API
-        // Post and WorkerPost are structurally compatible - Worker only uses fields present in both
-        // This avoids blocking UI thread with manual mapping of large arrays
-        // Structured Clone handles Date serialization automatically
+        // Validate Post[] against WorkerPost schema before sending to Worker
+        // This ensures type safety and catches schema mismatches at runtime
+        // Structured Clone API handles Date serialization automatically (Date -> number)
+        const validatedPosts = WorkerPostArraySchema.parse(rawPosts);
+        
         const result = await processData({
-          posts: rawPosts as unknown as WorkerPost[],
+          posts: validatedPosts,
           filters: debouncedFilters,
         });
 

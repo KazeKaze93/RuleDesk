@@ -394,19 +394,32 @@ export class PostsController extends BaseController {
         ];
         
         // Build FTS5 query: "ai_generated OR ai-generated OR ..."
-        // SECURITY: Each tag is already safe (hardcoded), so we can safely construct the query manually
-        // Each tag is already validated (hardcoded list), so we only need to escape quotes
-        // Note: sanitizeFts5Query would remove OR operators, so we handle this manually for hardcoded tags
-        const sanitizedTags = aiTags.map(tag => `"${tag.replace(/"/g, '""')}"`).join(" OR ");
+        // SECURITY: Validate and sanitize each tag, then construct query safely
+        // Even though tags are hardcoded, we validate them to prevent future bugs if list changes
+        // Use sanitizeFts5Query for each tag, then join with OR (which is safe for hardcoded tags)
+        const sanitizedTagQueries = aiTags.map(tag => {
+          // Validate tag format: only alphanumeric, hyphens, underscores allowed
+          // This prevents injection if aiTags list is ever extended to user input
+          if (!/^[a-zA-Z0-9_-]+$/.test(tag)) {
+            throw new Error(`Invalid AI tag format: "${tag}". Only alphanumeric, hyphens, and underscores allowed.`);
+          }
+          // Escape quotes for FTS5 (double quotes for literal)
+          return `"${tag.replace(/"/g, '""')}"`;
+        });
+        
+        // Join with OR - safe because all tags are validated above
+        // FTS5 OR operator is safe when all operands are validated literals
+        const ftsQuery = sanitizedTagQueries.join(" OR ");
         
         if (filters.aiFilter === "hide") {
           // Exclude AI posts: NOT (FTS5 match)
+          // Use sql template with validated query string
           conditions.push(
             not(
               sql`EXISTS (
                 SELECT 1 FROM posts_fts 
                 WHERE posts_fts.rowid = ${posts.id} 
-                  AND posts_fts MATCH ${sanitizedTags}
+                  AND posts_fts MATCH ${ftsQuery}
               )`
             ) as SQL
           );
@@ -416,7 +429,7 @@ export class PostsController extends BaseController {
             sql`EXISTS (
               SELECT 1 FROM posts_fts 
               WHERE posts_fts.rowid = ${posts.id} 
-                AND posts_fts MATCH ${sanitizedTags}
+                AND posts_fts MATCH ${ftsQuery}
             )` as SQL
           );
         }

@@ -102,6 +102,12 @@ export const posts = sqliteTable(
       t.isViewed
     ),
     mediaTypeIdx: index("posts_media_type_idx").on(t.mediaType),
+    // Composite index for common filter combination: artistId + mediaType
+    // Optimizes queries filtering by artist and media type simultaneously
+    artistMediaTypeIdx: index("posts_artist_media_type_idx").on(
+      t.artistId,
+      t.mediaType
+    ),
   })
 );
 
