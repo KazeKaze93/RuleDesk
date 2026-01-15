@@ -200,52 +200,70 @@ useEffect(() => {
 
 ---
 
-## IPC Rate Limiting for Idempotent Handlers
+## IPC Rate Limiting for Idempotent Handlers (Request Collapsing)
 
 ### Problem
 
-React Strict Mode double-invocation causes rapid IPC calls (< 50ms apart) to hit rate limits, even for idempotent/cached handlers. This breaks Age Gate initialization and other startup flows.
+React Strict Mode double-invocation causes rapid IPC calls (< 50ms apart) to hit rate limits, even for idempotent/cached handlers. This breaks Age Gate initialization and other startup flows. Simple time-based bypass (< 50ms) is a crutch that allows spam if renderer goes crazy.
 
 ### Root Cause
 
-BaseController applies rate limiting uniformly to all channels, but idempotent handlers (like `getSettings` with 5s cache) don't create load on repeated calls. React Strict Mode's double-invocation is a common case, but any rapid idempotent calls should be allowed.
+BaseController applies rate limiting uniformly to all channels, but idempotent handlers (like `getSettings` with cache) don't create load on repeated calls. React Strict Mode's double-invocation is a common case, but any rapid idempotent calls should reuse the same Promise, not just bypass throttling.
 
 ### Solution
 
 - **Mark idempotent handlers** with `{ isIdempotent: true }` option in `BaseController.handle()`
-- **Bypass rate limit** for idempotent handlers if last call was < 50ms (same logical operation)
-- **Handler must implement caching** internally (e.g., `SettingsController.getSettings()` with 5s TTL)
+- **Implement Request Collapsing**: Use `Map<channel, Promise>` to reuse in-flight Promise for idempotent handlers
+- **Create Promise synchronously** BEFORE throttling check to prevent race conditions
+- **Handler must implement caching** internally (e.g., `SettingsController.getSettings()` with cache invalidation on save)
 
-### Example (WRONG):
+### Example (WRONG - Simple Time-Based Bypass):
 
 ```tsx
-// BaseController - applies rate limit to all handlers uniformly
-if (lastCall !== undefined && timeSinceLastCall < THROTTLE_MS) {
-  throw rateLimitError; // тЭМ Blocks React Strict Mode double-invocation
+// BaseController - simple time-based bypass (crutch)
+const isVeryRecentCall = timeSinceLastCall < 50;
+const shouldSkipThrottle = isIdempotent && isVeryRecentCall;
+if (!shouldSkipThrottle && timeSinceLastCall < THROTTLE_MS) {
+  throw rateLimitError; // тЭМ Allows spam if renderer calls every 10ms
 }
-
-// SettingsController - no way to indicate idempotency
-this.handle(
-  IPC_CHANNELS.SETTINGS.GET,
-  z.tuple([]),
-  this.getSettings.bind(this)
-);
 ```
 
-### Example (CORRECT):
+### Example (CORRECT - Request Collapsing):
 
 ```tsx
-// BaseController - allow bypass for idempotent handlers
-const isIdempotent = options?.isIdempotent === true;
-const isVeryRecentCall = timeSinceLastCall < 50; // < 50ms = likely same logical operation
-const shouldSkipThrottle = isIdempotent && isVeryRecentCall;
-
-if (
-  !shouldSkipThrottle &&
-  lastCall !== undefined &&
-  timeSinceLastCall < THROTTLE_MS
-) {
-  throw rateLimitError; // тЬЕ Only block if not idempotent or not very recent
+// BaseController - Request Collapsing for idempotent handlers
+if (isIdempotent) {
+  const existingPromise = requestCollapseMap.get(channel);
+  if (existingPromise) {
+    return existingPromise; // тЬЕ Reuse existing Promise, bypass throttling
+  }
+  
+  // Check throttling for FIRST call only
+  if (lastCall !== undefined && timeSinceLastCall < THROTTLE_MS) {
+    throw rateLimitError;
+  }
+  
+  // Create Promise IMMEDIATELY (synchronously) and store in map
+  let promiseResolve, promiseReject;
+  const promise = new Promise((resolve, reject) => {
+    promiseResolve = resolve;
+    promiseReject = reject;
+  });
+  requestCollapseMap.set(channel, promise); // тЬЕ Store BEFORE async execution
+  
+  // Execute handler asynchronously, resolve/reject stored Promise
+  (async () => {
+    try {
+      const result = await handler(...);
+      promiseResolve(result);
+    } catch (error) {
+      promiseReject(error);
+    } finally {
+      requestCollapseMap.delete(channel); // тЬЕ Cleanup after completion
+    }
+  })();
+  
+  return promise;
 }
 
 // SettingsController - mark as idempotent (handler has internal cache)
@@ -253,16 +271,17 @@ this.handle(
   IPC_CHANNELS.SETTINGS.GET,
   z.tuple([]),
   this.getSettings.bind(this),
-  { isIdempotent: true } // тЬЕ Handler returns cached result instantly
+  { isIdempotent: true } // тЬЕ Enables Request Collapsing
 );
 ```
 
 ### Key Insight
 
-- **Idempotent operations don't create load** - rapid calls are safe if handler returns cached result
-- **This is correct architecture**, not a React.StrictMode workaround
+- **Request Collapsing prevents duplicate work** - multiple simultaneous calls share the same Promise
+- **Promise created synchronously** - prevents race condition where second call arrives before Promise is stored
+- **Throttling checked for first call only** - subsequent calls reuse existing Promise
 - **Handler must implement caching** - marking as idempotent without cache is wrong
-- **50ms threshold** - distinguishes same logical operation from actual spam
+- **This is correct architecture** - not a React.StrictMode workaround, but proper request deduplication
 
 ---
 

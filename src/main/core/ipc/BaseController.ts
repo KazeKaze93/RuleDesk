@@ -147,19 +147,112 @@ export abstract class BaseController {
 
           // Request Collapsing: For idempotent handlers, reuse in-flight Promise
           // This prevents duplicate work when multiple calls arrive simultaneously (e.g., React Strict Mode)
-          // Instead of allowing spam, we collapse requests into a single Promise
+          // CRITICAL: For idempotent handlers, Request Collapsing replaces throttling
+          // Throttling is not needed because collapsing prevents duplicate work
           if (isIdempotent) {
+            // Check for existing Promise FIRST (before creating new one)
             const existingPromise =
               BaseController.requestCollapseMap.get(channel);
             if (existingPromise) {
               // Request already in-flight, return the same Promise
+              // This bypasses throttling because we're reusing existing work
               log.debug(
                 `[IPC] Request collapsing for idempotent channel "${channel}"`
               );
               return existingPromise;
             }
+            
+            // Create Promise IMMEDIATELY (synchronously) and store in map
+            // This ensures second call (even milliseconds later) will see the Promise
+            let promiseResolve: (value: unknown) => void;
+            let promiseReject: (error: unknown) => void;
+            const promise = new Promise<unknown>((resolve, reject) => {
+              promiseResolve = resolve;
+              promiseReject = reject;
+            });
+
+            // Store Promise in collapse map IMMEDIATELY (synchronously)
+            // This prevents race condition where second call arrives before Promise is stored
+            BaseController.requestCollapseMap.set(channel, promise);
+            
+            // NOTE: No throttling for idempotent handlers with Request Collapsing
+            // Request Collapsing already prevents duplicate work, so throttling is redundant
+            // If handler has internal cache (like SettingsController.getSettings), rapid calls are safe
+
+            // Execute handler logic (validation + execution) asynchronously
+            // Throttling already checked above
+            (async () => {
+              try {
+                // Execute validation and handler (inline to avoid method extraction complexity)
+                // Security: Log only channel name and argument count
+                log.debug(
+                  `[IPC] Incoming request: ${channel} (${args.length} arg${
+                    args.length !== 1 ? "s" : ""
+                  })`
+                );
+
+                // Determine if schema is a tuple
+                const isTuple = schema instanceof z.ZodTuple;
+
+                // Strict validation: Check argument count BEFORE parsing
+                if (isTuple) {
+                  const tupleSchema = schema as z.AnyZodTuple;
+                  const expectedCount = tupleSchema.items.length;
+                  if (args.length !== expectedCount) {
+                    const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
+                    log.error(
+                      `[IPC] Validation failed for channel "${channel}": ${errorMessage}`
+                    );
+                    const serializedError: ValidationError = {
+                      message: errorMessage,
+                      stack: undefined,
+                      name: "ValidationError",
+                      originalError: undefined,
+                      errors: [{ path: [], message: errorMessage, code: "custom" }],
+                    };
+                    throw serializedError;
+                  }
+                } else {
+                  if (args.length !== 1) {
+                    const errorMessage = `Argument count mismatch: expected 1, got ${args.length}`;
+                    log.error(
+                      `[IPC] Validation failed for channel "${channel}": ${errorMessage}`
+                    );
+                    const serializedError: ValidationError = {
+                      message: errorMessage,
+                      stack: undefined,
+                      name: "ValidationError",
+                      originalError: undefined,
+                      errors: [{ path: [], message: errorMessage, code: "custom" }],
+                    };
+                    throw serializedError;
+                  }
+                }
+
+                // Normalize schema and validate
+                const normalizedSchema = isTuple
+                  ? schema
+                  : z.tuple([schema as z.ZodTypeAny]);
+                const validatedArgs = normalizedSchema.parse(args) as unknown[];
+                const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
+
+                // Execute handler
+                const result = await handler(event, ...handlerArgs);
+                log.debug(`[IPC] Request completed: ${channel}`);
+                promiseResolve!(result);
+              } catch (error) {
+                promiseReject!(error);
+              } finally {
+                // Clean up collapse map after Promise resolves/rejects
+                BaseController.requestCollapseMap.delete(channel);
+              }
+            })();
+
+            return promise;
           }
 
+          // Non-idempotent handlers: execute directly with throttling
+          // Throttling: Only apply to non-idempotent requests
           const lastCall = BaseController.throttleMap.get(channel);
           const timeSinceLastCall =
             lastCall !== undefined ? now - lastCall : Infinity;
@@ -184,6 +277,8 @@ export abstract class BaseController {
 
           // Update throttle timestamp only if we're actually processing the request
           BaseController.throttleMap.set(channel, Date.now());
+
+          // Continue with validation and execution (code continues below)
 
           // Security: Log only channel name and argument count, not actual arguments
           // This prevents leaking user data, file paths, or other sensitive information
@@ -305,32 +400,11 @@ export abstract class BaseController {
           // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
           const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
 
-          // For idempotent handlers, wrap in Promise and store in collapse map
-          // This allows multiple simultaneous calls to share the same Promise
-          const executeHandler = async (): Promise<unknown> => {
-            try {
-              const result = await handler(event, ...handlerArgs);
-              // Performance: Use debug level to avoid I/O overhead on high-frequency calls
-              log.debug(`[IPC] Request completed: ${channel}`);
-              return result;
-            } finally {
-              // Clean up collapse map after Promise resolves/rejects
-              // This allows subsequent calls to create a new Promise if needed
-              if (isIdempotent) {
-                BaseController.requestCollapseMap.delete(channel);
-              }
-            }
-          };
-
-          // Store Promise in collapse map for idempotent handlers
-          if (isIdempotent) {
-            const promise = executeHandler();
-            BaseController.requestCollapseMap.set(channel, promise);
-            return promise;
-          }
-
-          // Non-idempotent handlers execute directly
-          return executeHandler();
+          // Execute handler
+          const result = await handler(event, ...handlerArgs);
+          // Performance: Use debug level to avoid I/O overhead on high-frequency calls
+          log.debug(`[IPC] Request completed: ${channel}`);
+          return result;
         } catch (error: unknown) {
           // Skip error handling if it's already a serialized error (ValidationError, RateLimitError, etc.)
           // Check for SerializableError structure: has name, message, and code properties

@@ -20,12 +20,13 @@ export const WorkerPostSchema = z
     title: z.string().nullable(),
     rating: z.string().nullable(),
     tags: z.string().min(1),
+    mediaType: z.enum(["image", "video"]).nullable().optional(), // Optional: Post has it, Worker may not need it
     publishedAt: z.union([z.date(), z.number().int(), z.null()]),
     createdAt: z.union([z.date(), z.number().int(), z.null()]),
     isViewed: z.boolean(),
     isFavorited: z.boolean(),
   })
-  .strict();
+  .passthrough(); // Allow extra fields (like mediaType) that Worker doesn't use but Post has
 
 /**
  * Post type for Web Worker context
