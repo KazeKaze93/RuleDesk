@@ -227,8 +227,8 @@ function getCSPPolicy(): string {
     scriptSrc +
     " " +
     styleSrc +
-    "img-src 'self' https://*.rule34.xxx data: blob:; " + // Картинки только наши и с R34
-    "media-src 'self' https://*.rule34.xxx; " + // Видео с R34
+    "img-src 'self' https://*.rule34.xxx https://*.gelbooru.com data: blob:; " + // Картинки с R34 и Gelbooru
+    "media-src 'self' https://*.rule34.xxx https://*.gelbooru.com; " + // Видео только с R34 и Gelbooru (безопасность)
     connectSrc +
     " " +
     "font-src 'self' https://fonts.gstatic.com;"; // Разрешаем загрузку шрифтов с Google Fonts
@@ -275,6 +275,15 @@ async function initializeAppAndWindow() {
     // Initialize database asynchronously (migrations may take time)
     await initializeDatabase();
     logger.info("✅ Main: Database initialized and ready.");
+    
+    // Start background backfill for media_type column (non-blocking)
+    // This runs after migrations to avoid blocking app startup
+    import("./db/backfill-media-type").then(({ backfillMediaType }) => {
+      // Run backfill asynchronously without blocking UI
+      backfillMediaType().catch((error) => {
+        logger.error("[Main] Background media_type backfill failed:", error);
+      });
+    });
 
     // Close loading window
     if (loadingWindow && !loadingWindow.isDestroyed()) {

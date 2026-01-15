@@ -56,6 +56,7 @@ import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { useSearchStore } from "../../store/searchStore";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../store/safeModeStore";
 import { cn } from "../../lib/utils";
+import { isVideoPost } from "../../lib/filter-utils";
 import { useViewerController } from "./hooks/useViewerController";
 
 const useCurrentPost = (
@@ -78,7 +79,13 @@ const useCurrentPost = (
         return ["posts", "favorites", tags] as const;
       }
       case "artist": {
-        const tags = origin.tags ?? [];
+        // CRITICAL: Match query key from ArtistGallery.tsx
+        // When tags is undefined or empty, use ["posts", artistId] (no tags in key)
+        // This ensures cache lookup matches the query key used for fetching artist posts
+        const tags = origin.tags;
+        if (tags === undefined || tags.length === 0) {
+          return ["posts", origin.artistId] as const;
+        }
         return ["posts", origin.artistId, tags] as const;
       }
       case "search": {
@@ -138,13 +145,19 @@ const useCurrentPost = (
 const ViewerMedia = ({ post }: { post: Post }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [hasTriedFallback, setHasTriedFallback] = useState(false);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
+  
+  // Reset fallback flag when post changes
+  // Use key prop on img element instead of useEffect to avoid cascading renders
+  // Key change forces React to remount component, resetting state naturally
   const normalizedRating: "s" | "q" | "e" = (post.rating === "q" || post.rating === "e") ? post.rating : "s";
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
 
-  const isVideo =
-    post.fileUrl.endsWith(".mp4") || post.fileUrl.endsWith(".webm");
+  const isVideo = isVideoPost(post.fileUrl);
 
   useEffect(() => {
     const handleMediaKeys = (e: KeyboardEvent) => {
@@ -175,32 +188,79 @@ const ViewerMedia = ({ post }: { post: Post }) => {
       onClick={handleContainerClick}
     >
       {isVideo ? (
-        <div
-          style={{
-            filter: shouldBlur
-              ? `blur(${effectiveBlur}px)`
-              : undefined,
-          }}
-        >
-          <video
-            src={post.fileUrl}
-            className="object-contain max-w-full max-h-full outline-none focus:outline-none"
-            autoPlay={isVideoPlaying}
-            loop
-            controls
-            onPlay={() => setIsVideoPlaying(true)}
-            onPause={() => setIsVideoPlaying(false)}
-            ref={(el) => {
-              if (el) {
-                if (isVideoPlaying && el.paused) el.play().catch(() => {});
-                else if (!isVideoPlaying && !el.paused) el.pause();
-              }
+        videoError ? (
+          <div className="flex flex-col gap-4 justify-center items-center w-full h-full text-muted-foreground">
+            <FileText className="w-16 h-16 opacity-50" />
+            <div className="text-center">
+              <p className="text-lg font-semibold">Failed to load video</p>
+              <p className="text-sm">The video file could not be loaded.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => {
+                  setVideoError(false);
+                }}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              filter: shouldBlur
+                ? `blur(${effectiveBlur}px)`
+                : undefined,
             }}
-          />
+          >
+            <video
+              src={post.fileUrl}
+              className="object-contain max-w-full max-h-full outline-none focus:outline-none"
+              autoPlay={isVideoPlaying}
+              loop
+              controls
+              onPlay={() => setIsVideoPlaying(true)}
+              onPause={() => setIsVideoPlaying(false)}
+              onError={() => {
+                log.error("[ViewerMedia] Video load error:", post.fileUrl);
+                setVideoError(true);
+              }}
+              ref={(el) => {
+                if (el) {
+                  if (isVideoPlaying && el.paused) el.play().catch(() => {});
+                  else if (!isVideoPlaying && !el.paused) el.pause();
+                }
+              }}
+            />
+          </div>
+        )
+      ) : imageError ? (
+        <div className="flex flex-col gap-4 justify-center items-center w-full h-full text-muted-foreground">
+          <FileText className="w-16 h-16 opacity-50" />
+          <div className="text-center">
+            <p className="text-lg font-semibold">Failed to load image</p>
+            <p className="text-sm">The image file could not be loaded.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => {
+                setImageError(false);
+                setHasTriedFallback(false); // Reset fallback flag on retry
+                // Force reload by changing src (React will re-render img with new src)
+              }}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </div>
         </div>
       ) : (
         <img
-          src={isZoomed ? post.fileUrl : post.sampleUrl || post.fileUrl}
+          key={`${post.id}-${hasTriedFallback}`} // Force re-render when fallback changes, resets state on post change
+          src={isZoomed ? post.fileUrl : (hasTriedFallback ? post.fileUrl : (post.sampleUrl || post.fileUrl))}
           alt={`Post ${post.id}`}
           className={cn(
             "transition-all duration-300 ease-out",
@@ -208,6 +268,21 @@ const ViewerMedia = ({ post }: { post: Post }) => {
               ? "max-w-none max-h-none cursor-zoom-out"
               : "object-contain max-w-full max-h-full cursor-zoom-in"
           )}
+          onError={(e) => {
+            log.error("[ViewerMedia] Image load error:", post.fileUrl);
+            
+            // CRITICAL: Use simple flag to prevent infinite loop
+            // If both sampleUrl and fileUrl fail (404), we'd loop forever without this check
+            // Simple useState flag is more reliable than URL comparison (which has overhead)
+            if (!hasTriedFallback && post.fileUrl) {
+              // Try fileUrl as fallback (only once)
+              setHasTriedFallback(true);
+              e.currentTarget.src = post.fileUrl;
+            } else {
+              // Both URLs failed or already tried - show error
+              setImageError(true);
+            }
+          }}
         />
       )}
     </div>
@@ -545,7 +620,17 @@ const ViewerContent = ({
 
   const handleMarkViewed = useCallback(async () => {
     if (post.isViewed) return;
-    await window.api.markPostAsViewed(post.id);
+    // Fire and forget: suppress rate limit errors
+    window.api.markPostAsViewed(post.id).catch((err) => {
+      // Ignore rate limit errors - use typed errorCode, NOT string parsing
+      const errorCode = (err as { code?: string })?.code;
+      if (errorCode === "RATE_LIMIT") {
+        return; // Silently ignore rate limit errors
+      }
+      // Log other errors for debugging
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      log.error("[ViewerDialog] Failed to mark post as viewed:", errorMessage);
+    });
   }, [post]);
 
   // Handle keyboard shortcuts with aria-live announcements

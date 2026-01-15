@@ -2,19 +2,53 @@ import { create } from "zustand";
 import log from "electron-log/renderer";
 
 type TabType = "browse" | "updates" | "favorites" | "tracked" | "settings";
+type SortOrder = "asc" | "desc";
+type MediaType = "all" | "images" | "videos";
+type SourceType = "all" | "favorites" | "subscriptions";
+type ViewType = "grid" | "masonry";
+type AiFilterType = "all" | "hide" | "only";
+type OrientationType = "all" | "horizontal" | "vertical";
+type SortByType = "date" | "score";
+
+interface PostFilters {
+  aiFilter: AiFilterType;
+  mediaType: MediaType;
+  source: SourceType;
+  orientation: OrientationType;
+  sortBy: SortByType;
+}
 
 interface SearchState {
   query: string;
   activeTab: TabType | null;
+  sortOrder: SortOrder;
+  filters: PostFilters;
+  viewType: ViewType;
   
   setQuery: (query: string) => void;
   setActiveTab: (tab: TabType | null) => void;
   clearSearch: () => void;
+  setSortOrder: (order: SortOrder) => void;
+  toggleSortOrder: () => void;
+  setFilters: (filters: Partial<PostFilters>) => void;
+  resetFilters: () => void;
+  setViewType: (viewType: ViewType) => void;
 }
+
+const DEFAULT_FILTERS: PostFilters = {
+  aiFilter: "all",
+  mediaType: "all",
+  source: "all",
+  orientation: "all",
+  sortBy: "date",
+};
 
 export const useSearchStore = create<SearchState>((set) => ({
   query: "",
   activeTab: null,
+  sortOrder: "desc",
+  filters: DEFAULT_FILTERS,
+  viewType: "grid",
   
   setQuery: (query) => {
     // Basic validation: ensure query is a string and reasonable length
@@ -49,5 +83,14 @@ export const useSearchStore = create<SearchState>((set) => ({
   },
   setActiveTab: (tab) => set({ activeTab: tab }),
   clearSearch: () => set({ query: "" }),
+  setSortOrder: (order) => set({ sortOrder: order }),
+  toggleSortOrder: () => set((state) => ({ 
+    sortOrder: state.sortOrder === "desc" ? "asc" : "desc" 
+  })),
+  setFilters: (newFilters) => set((state) => ({
+    filters: { ...state.filters, ...newFilters }
+  })),
+  resetFilters: () => set({ filters: DEFAULT_FILTERS }),
+  setViewType: (viewType) => set({ viewType }),
 }));
 

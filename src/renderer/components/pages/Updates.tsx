@@ -5,10 +5,12 @@ import {
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
+import { useShallow } from "zustand/react/shallow";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
+import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
@@ -52,16 +54,18 @@ const updatePostInInfiniteData = (
   };
 };
 
-// --- Компоненты для виртуализации (Grid Layout) ---
+// --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { viewType?: "grid" | "masonry" }
+>(({ className, viewType = "grid", ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      viewType === "grid"
+        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        : "flex flex-wrap gap-4 justify-center p-4 pb-32",
       className
     )}
     {...props}
@@ -69,13 +73,36 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-const ItemContainer = forwardRef<
+// ItemContainer will be created dynamically based on viewType
+const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  <div
+    ref={ref}
+    className={cn(
+      viewType === "grid" 
+        ? "w-full aspect-[2/3]" 
+        : "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
+      className
+    )}
+    {...props}
+  />
 ));
-ItemContainer.displayName = "ItemContainer";
+
+// VirtuosoList component factory
+const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType={viewType}
+  />
+));
 
 // --- Основной компонент ---
 
@@ -122,25 +149,84 @@ export const Updates = () => {
       initialPageParam: 1,
     });
 
-  const allPosts = useMemo(() => {
-    return data?.pages.flatMap((page) => page) || [];
-  }, [data]);
+  // Use useShallow for multiple filter values to prevent unnecessary re-renders
+  // This is more efficient than individual selectors when selecting multiple related values
+  const { sortOrder, viewType, filters } = useSearchStore(
+    useShallow((state) => ({
+      sortOrder: state.sortOrder,
+      viewType: state.viewType,
+      filters: state.filters,
+    }))
+  );
+  
+  const { aiFilter, mediaType, source } = filters;
 
-  // Create stable List component with forwardRef and aria-busy
+  const allPosts = useMemo(() => {
+    let posts = data?.pages.flatMap((page) => page) || [];
+    
+    // Apply filters using atomic selectors
+    // Filter AI generated posts
+    if (aiFilter === "hide") {
+      posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
+    } else if (aiFilter === "only") {
+      posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
+    }
+    
+    // Filter by media type
+    if (mediaType !== "all") {
+      posts = posts.filter((post) => {
+        const isVideo = isVideoPost(post.fileUrl);
+        return mediaType === "videos" ? isVideo : !isVideo;
+      });
+    }
+    
+    // Filter by source - Updates tab shows subscriptions by default
+    if (source === "favorites") {
+      // Show only favorited posts from subscriptions
+      posts = posts.filter((post) => post.isFavorited === true);
+    } else if (source === "subscriptions") {
+      // Already showing subscriptions, no filter needed
+    } else if (source === "all") {
+      // Show all posts (no filter)
+    }
+    
+    // Sort by publishedAt (date of post creation)
+    return [...posts].sort((a, b) => {
+      const dateA = a.publishedAt instanceof Date 
+        ? a.publishedAt.getTime() 
+        : typeof a.publishedAt === "number" 
+        ? a.publishedAt 
+        : 0;
+      const dateB = b.publishedAt instanceof Date 
+        ? b.publishedAt.getTime() 
+        : typeof b.publishedAt === "number" 
+        ? b.publishedAt 
+        : 0;
+      
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    });
+  }, [data, sortOrder, aiFilter, mediaType, source]);
+
+  // Create stable List and Item components with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
-  const ListComponent = useMemo(() => {
-    const Component = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  const { ListComponent, ItemComponent } = useMemo(() => {
+    const VirtuosoList = createVirtuosoList(viewType);
+    const List = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
       (props, ref) => (
-        <GridContainer
+        <VirtuosoList
           {...props}
           ref={ref}
           aria-busy={isLoading || isFetchingNextPage}
         />
       )
     );
-    Component.displayName = "UpdatesList";
-    return Component;
-  }, [isLoading, isFetchingNextPage]);
+    List.displayName = "UpdatesList";
+    
+    const Item = createItemContainer(viewType);
+    Item.displayName = "UpdatesItem";
+    
+    return { ListComponent: List, ItemComponent: Item };
+  }, [isLoading, isFetchingNextPage, viewType]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -156,6 +242,16 @@ export const Updates = () => {
             isViewed: true,
           }))
       );
+    },
+    onError: (err) => {
+      // Ignore rate limit errors - use typed errorCode, NOT string parsing
+      const errorCode = (err as { code?: string })?.code;
+      if (errorCode === "RATE_LIMIT") {
+        return; // Silently ignore rate limit errors
+      }
+      // Log other errors for debugging
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      log.error("[Updates] Failed to mark post as viewed:", errorMessage);
     },
   });
 
@@ -264,9 +360,10 @@ export const Updates = () => {
                 fetchNextPage();
               }
             }}
+            increaseViewportBy={600}
             components={{
               List: ListComponent,
-              Item: ItemContainer,
+              Item: ItemComponent,
               Footer: () =>
                 isFetchingNextPage ? (
                   <div className="flex col-span-full justify-center py-4 w-full">

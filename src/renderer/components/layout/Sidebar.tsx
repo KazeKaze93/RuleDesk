@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Activity,
@@ -24,19 +24,37 @@ export const Sidebar = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState("12:30");
   const [appVersion, setAppVersion] = useState<string>("");
+  const hasFetchedVersionRef = useRef(false);
 
   // Fetch app version on mount
   useEffect(() => {
+    // Prevent double execution in React Strict Mode (dev)
+    if (hasFetchedVersionRef.current) {
+      return;
+    }
+    hasFetchedVersionRef.current = true;
+
     const fetchVersion = async () => {
       try {
         const version = await window.api.getAppVersion();
         setAppVersion(version);
       } catch (error) {
+        // Don't log rate limit errors as errors - use typed errorCode, NOT string parsing
+        const errorCode = (error as { code?: string })?.code;
+        if (errorCode === "RATE_LIMIT") {
+          log.debug("[Sidebar] Rate limit on version fetch, skipping");
+          return;
+        }
         log.error("[Sidebar] Failed to fetch app version:", error);
       }
     };
 
-    fetchVersion();
+    // Add small delay to avoid rate limit conflicts with App.tsx
+    const timeoutId = setTimeout(() => {
+      fetchVersion();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const handleSync = async () => {

@@ -6,7 +6,11 @@ import {
   index,
 } from "drizzle-orm/sqlite-core";
 
-import { ARTIST_TYPES, PROVIDER_IDS, type ArtistType } from "../../shared/constants";
+import {
+  ARTIST_TYPES,
+  PROVIDER_IDS,
+  type ArtistType,
+} from "../../shared/constants";
 
 // Re-export for backward compatibility
 export { ARTIST_TYPES, type ArtistType };
@@ -23,7 +27,7 @@ export const TAG_TYPES = {
   META: 5,
 } as const;
 
-export type TagType = typeof TAG_TYPES[keyof typeof TAG_TYPES];
+export type TagType = (typeof TAG_TYPES)[keyof typeof TAG_TYPES];
 
 // Settings ID constant for single profile design
 export const SETTINGS_ID = 1;
@@ -71,6 +75,7 @@ export const posts = sqliteTable(
     title: text("title").default(""),
     rating: text("rating").default(""),
     tags: text("tags").notNull(),
+    mediaType: text("media_type", { enum: ["image", "video"] }),
     publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
@@ -95,6 +100,13 @@ export const posts = sqliteTable(
       t.artistId,
       t.rating,
       t.isViewed
+    ),
+    mediaTypeIdx: index("posts_media_type_idx").on(t.mediaType),
+    // Composite index for common filter combination: artistId + mediaType
+    // Optimizes queries filtering by artist and media type simultaneously
+    artistMediaTypeIdx: index("posts_artist_media_type_idx").on(
+      t.artistId,
+      t.mediaType
     ),
   })
 );

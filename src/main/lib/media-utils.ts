@@ -1,13 +1,20 @@
 /**
  * Media utilities for booru providers
+ * 
+ * DRY: Uses shared media type detection logic from @shared/utils/media
  */
+
+import { isVideoUrl as isVideoUrlShared } from "@shared/utils/media";
 
 /**
  * Check if URL points to a video file
+ * DRY: Re-exports shared implementation to maintain backward compatibility
+ * 
+ * @deprecated Use isVideoUrl from @shared/utils/media directly
+ * This re-export is kept for backward compatibility with existing imports
  */
 export function isVideoUrl(url?: string): boolean {
-  if (!url) return false;
-  return /\.(webm|mp4|mov)(\?|$)/i.test(url);
+  return isVideoUrlShared(url);
 }
 
 /**

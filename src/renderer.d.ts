@@ -23,6 +23,8 @@ export interface PostQueryFilters {
   isViewed?: boolean;
   isFavorited?: boolean;
   sinceTracking?: boolean;
+  aiFilter?: "all" | "hide" | "only";
+  mediaType?: "all" | "images" | "videos";
 }
 
 export interface IpcSettings {

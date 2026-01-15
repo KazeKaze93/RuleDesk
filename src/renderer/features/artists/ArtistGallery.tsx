@@ -1,6 +1,5 @@
 import React, { forwardRef, useMemo } from "react";
 import {
-  useInfiniteQuery,
   useQuery,
   useQueryClient,
   useMutation,
@@ -15,23 +14,27 @@ import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
+import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "./components/PostCard";
+import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 
 interface ArtistGalleryProps {
   artist: Artist;
   onBack: () => void;
 }
 
-// --- Компоненты для виртуализации (Grid Layout) ---
+// --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { viewType?: "grid" | "masonry" }
+>(({ className, viewType = "grid", ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      viewType === "grid"
+        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        : "flex flex-wrap gap-4 justify-center p-4 pb-32",
       className
     )}
     {...props}
@@ -39,13 +42,35 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-const ItemContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
-));
-ItemContainer.displayName = "ItemContainer";
+const createItemContainer = (viewType: "grid" | "masonry") =>
+  forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+    ({ className, ...props }, ref) => (
+      <div
+        ref={ref}
+        className={cn(
+          viewType === "grid"
+            ? "w-full aspect-[2/3]"
+            : "w-full mb-4 break-inside-avoid",
+          className
+        )}
+        {...props}
+      />
+    )
+  );
+
+const createVirtuosoList = (viewType: "grid" | "masonry") =>
+  forwardRef<
+    HTMLDivElement,
+    React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+  >(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+    <GridContainer
+      {...props}
+      ref={ref}
+      className={className}
+      aria-busy={ariaBusy}
+      viewType={viewType}
+    />
+  ));
 
 // --- Основной компонент ---
 
@@ -73,45 +98,90 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["posts", artist.id],
-      queryFn: async ({ pageParam = 1 }) => {
-        return await window.api.getArtistPosts({
-          artistId: artist.id,
-          page: pageParam,
-      filters: {
-        // No tag filtering - show all posts for this artist
-        tags: undefined,
-      },
-        });
-      },
-      getNextPageParam: (lastPage, allPages) => {
-        return lastPage.length === 50 ? allPages.length + 1 : undefined;
-      },
-      initialPageParam: 1,
-    });
+  // Use atomic selectors to prevent unnecessary re-renders
+  const sortOrder = useSearchStore((state) => state.sortOrder);
+  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const mediaType = useSearchStore((state) => state.filters.mediaType);
+  const source = useSearchStore((state) => state.filters.source);
+  const viewType = useSearchStore((state) => state.viewType);
+
+  // Use the new infinite scroll hook
+  // AI and Media Type filters are now applied at SQL level for better performance
+  const {
+    allPosts: rawPosts,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    handleEndReached,
+  } = useGalleryInfiniteScroll({
+    queryKey: ["posts", artist.id, aiFilter, mediaType],
+    fetchFn: async (pageParam) => {
+      return await window.api.getArtistPosts({
+        artistId: artist.id,
+        page: pageParam,
+        filters: {
+          // No tag filtering - show all posts for this artist
+          // No tag filter - tag search is not supported in ArtistGallery context
+          tags: undefined,
+          // AI and Media Type filters applied only if not in 'all' mode
+          aiFilter: aiFilter === "all" ? undefined : aiFilter,
+          mediaType: mediaType === "all" ? undefined : mediaType,
+          // No extra filters until business requirements change; keep this simple
+        },
+      });
+    },
+  });
 
   const allPosts = useMemo(() => {
-    return data?.pages.flatMap((page) => page) || [];
-  }, [data]);
+    // Single-pass filter: only source filter remains (AI and Media Type are now in SQL)
+    const filtered = rawPosts.filter((post) => {
+      // Filter by source - ArtistGallery shows artist posts (subscriptions) by default
+      if (source === "favorites" && !post.isFavorited) return false;
+      // source === "subscriptions" or "all" - no filter needed (already filtered by artistId)
+      return true;
+    });
+
+    // Sort only if needed
+    return filtered.sort((a, b) => {
+      const dateA =
+        a.publishedAt instanceof Date
+          ? a.publishedAt.getTime()
+          : typeof a.publishedAt === "number"
+          ? a.publishedAt
+          : 0;
+      const dateB =
+        b.publishedAt instanceof Date
+          ? b.publishedAt.getTime()
+          : typeof b.publishedAt === "number"
+          ? b.publishedAt
+          : 0;
+
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    });
+  }, [rawPosts, sortOrder, source]);
 
   // Create stable List component with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
-  const ListComponent = useMemo(() => {
-    const Component = forwardRef<
+  const { ListComponent, ItemComponent } = useMemo(() => {
+    const VirtuosoList = createVirtuosoList(viewType);
+    const List = forwardRef<
       HTMLDivElement,
       React.HTMLAttributes<HTMLDivElement>
     >((props, ref) => (
-      <GridContainer
+      <VirtuosoList
         {...props}
         ref={ref}
         aria-busy={isLoading || isFetchingNextPage}
       />
     ));
-    Component.displayName = "ArtistGalleryList";
-    return Component;
-  }, [isLoading, isFetchingNextPage]);
+    List.displayName = "ArtistGalleryList";
+
+    const Item = createItemContainer(viewType);
+    Item.displayName = "ArtistGalleryItem";
+
+    return { ListComponent: List, ItemComponent: Item };
+  }, [isLoading, isFetchingNextPage, viewType]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -132,6 +202,16 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           };
         }
       );
+    },
+    onError: (err) => {
+      // Ignore rate limit errors - use typed errorCode, NOT string parsing
+      const errorCode = (err as { code?: string })?.code;
+      if (errorCode === "RATE_LIMIT") {
+        return; // Silently ignore rate limit errors
+      }
+      // Log other errors for debugging
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      log.error("[ArtistGallery] Failed to mark post as viewed:", errorMessage);
     },
   });
 
@@ -263,14 +343,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           <VirtuosoGrid
             style={{ height: "100%" }}
             totalCount={allPosts.length}
-            endReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
+            endReached={handleEndReached}
+            increaseViewportBy={600}
             components={{
               List: ListComponent,
-              Item: ItemContainer,
+              Item: ItemComponent,
               Footer: () =>
                 isFetchingNextPage ? (
                   <div className="flex col-span-full justify-center py-4 w-full">

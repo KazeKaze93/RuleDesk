@@ -32,7 +32,7 @@ import {
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
-import { escapeLikePattern } from "../../db/utils";
+import { isVideoUrl } from "@shared/utils/media";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -93,7 +93,9 @@ export class PostsController extends BaseController {
       );
       const result = stmt.get();
       this.ftsTableExistsCache = !!result;
-      log.info(`[PostsController] FTS table check initialized: ${this.ftsTableExistsCache}`);
+      log.info(
+        `[PostsController] FTS table check initialized: ${this.ftsTableExistsCache}`
+      );
     } catch (error) {
       log.warn(
         "[PostsController] Failed to check FTS table existence, using LIKE fallback:",
@@ -111,13 +113,19 @@ export class PostsController extends BaseController {
       IPC_CHANNELS.DB.GET_POSTS,
       z.tuple([GetPostsSchema]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.getPosts.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.getPosts.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
       z.tuple([z.number().int().positive().optional()]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.getPostsCount.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.getPostsCount.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
@@ -126,13 +134,19 @@ export class PostsController extends BaseController {
         PostDataSchema.optional(),
       ]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.markViewed.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.markViewed.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
       z.tuple([z.number().int().positive()]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.resetPostCache.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.resetPostCache.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
@@ -141,7 +155,10 @@ export class PostsController extends BaseController {
         PostDataSchema.optional(),
       ]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.toggleFavorite.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.toggleFavorite.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
 
     // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)
@@ -202,55 +219,125 @@ export class PostsController extends BaseController {
     return existingPost;
   }
 
-
   /**
-   * Sanitize FTS5 search query to prevent syntax errors
-   * FTS5 interprets the search string as an expression, so special characters
-   * (:, *, -, ", \, NEAR, AND, OR, NOT) can cause SQLITE_ERROR: fts5: syntax error
+   * Sanitize FTS5 search query to prevent SQL injection and syntax errors
    *
-   * Solution: Remove/replace FTS5 operator characters and wrap in quotes
-   * Allows * wildcard only at the end of words for prefix search (e.g., "tag*")
-   * This makes FTS5 treat the input as a literal string, not as operators
+   * SECURITY: Strict whitelist approach - only allow alphanumeric characters,
+   * spaces, hyphens, underscores, and * at end of words for prefix search.
+   * All FTS5 operators (:, NEAR, AND, OR, NOT, etc.) are completely blocked.
    *
    * @param query - FTS5 query string (user input from Renderer)
    * @returns Sanitized query string safe for FTS5 MATCH
-   * @throws {Error} If query becomes empty after sanitization (empty string causes FTS5 syntax error)
+   * @throws {Error} If query contains invalid characters or becomes empty after sanitization
    */
   private sanitizeFts5Query(query: string): string {
-    // Remove FTS5 special characters that can be interpreted as operators:
-    // - - (NOT operator) - remove completely
-    // - " (quote, will be escaped separately) - remove, will add back
-    // - \ (escape character, can cause issues) - remove
-    // - * in the middle of words - remove (only allow at end of word for prefix search)
-    // Replace with spaces and normalize
-    const clean = query
-      // Remove NOT operator
-      .replace(/-/g, " ")
-      // Remove escape characters
-      .replace(/\\/g, " ")
-      // Remove quotes (will add back after escaping)
-      .replace(/"/g, " ")
-      // Remove * that's not at end of word (allow "word*" but not "*word" or "word*word")
-      // Keep * only if it's at end of word (after alphanumeric, before space/end)
-      .replace(/\*+(?=\w)/g, "") // Remove * followed by word character (middle of word)
-      .replace(/^\*+/g, "") // Remove * at start of string
-      .replace(/\s+\*+/g, " ") // Remove * at start of word (after space)
-      .trim();
+    // SECURITY: Strict whitelist validation - reject any input not matching pattern
+    // Only allow: alphanumeric, spaces, hyphens, underscores, and * at end of words
+    // Pattern: ^[a-zA-Z0-9_* ]+$ with additional validation for * placement
+    // This prevents FTS5 injection via Unicode tricks or operator sequences
 
-    // Check if query became empty after sanitization
-    // Empty string "" in FTS5 MATCH causes SQLITE_ERROR: fts5: syntax error
-    if (clean.length === 0) {
+    // Trim and validate non-empty
+    const trimmed = query.trim();
+    if (trimmed.length === 0) {
       throw new Error(
-        "FTS5 query became empty after sanitization. Please use valid search terms."
+        "FTS5 query is empty. Please provide valid search terms."
       );
     }
 
-    // Escape remaining double quotes by doubling them (FTS5 escaping rule)
-    const escaped = clean.replace(/"/g, '""');
+    // CRITICAL: Strict whitelist regex - reject anything not matching
+    // Allow: a-z, A-Z, 0-9, _, -, space, and * (but validate * placement)
+    const strictWhitelistRegex = /^[a-zA-Z0-9_* -]+$/;
+    if (!strictWhitelistRegex.test(trimmed)) {
+      throw new Error(
+        `Invalid FTS5 query: "${query}". Only alphanumeric characters, spaces, hyphens, underscores, and trailing asterisks are allowed.`
+      );
+    }
+
+    // Split by spaces to handle multiple tags
+    const words = trimmed.split(/\s+/).filter(Boolean);
+
+    if (words.length === 0) {
+      throw new Error(
+        "FTS5 query is empty. Please provide valid search terms."
+      );
+    }
+
+    // Validate and sanitize each word
+    // CRITICAL: * can only appear at the end of a word (prefix search)
+    // Reject * in middle or beginning, or multiple * characters
+    const sanitizedWords = words.map((word) => {
+      // Check if * appears anywhere except at the end
+      const starIndex = word.indexOf("*");
+      if (starIndex !== -1 && starIndex !== word.length - 1) {
+        throw new Error(
+          `Invalid search term: "${word}". Asterisk (*) can only appear at the end of a word for prefix search.`
+        );
+      }
+
+      // Check for multiple asterisks
+      const starCount = (word.match(/\*/g) || []).length;
+      if (starCount > 1) {
+        throw new Error(
+          `Invalid search term: "${word}". Only one asterisk (*) allowed at the end of a word.`
+        );
+      }
+
+      // Remove * for base validation, then add back if it was trailing
+      const hasTrailingStar = word.endsWith("*");
+      const baseWord = hasTrailingStar ? word.slice(0, -1) : word;
+
+      if (baseWord.trim().length === 0) {
+        throw new Error(
+          `Invalid search term: "${word}". Search term cannot be empty or only asterisk.`
+        );
+      }
+
+      return hasTrailingStar ? `${baseWord.trim()}*` : baseWord.trim();
+    });
+
+    // Join words with spaces and wrap in quotes for FTS5 literal phrase search
+    const sanitized = sanitizedWords.join(" ");
+
+    // Escape double quotes by doubling them (FTS5 escaping rule)
+    const escaped = sanitized.replace(/"/g, '""');
 
     // Wrap in double quotes to make FTS5 treat it as a literal phrase
-    // This allows * wildcard at end of words (e.g., "tag*") for prefix search
+    // This prevents FTS5 from interpreting any remaining characters as operators
     return `"${escaped}"`;
+  }
+
+  /**
+   * Build FTS5 OR query from array of tags
+   * SECURITY: Validates and sanitizes each tag before constructing query
+   * This is safer than manual string concatenation with join(" OR ")
+   * 
+   * @param tags - Array of tags to search for (must be validated)
+   * @returns FTS5 query string with OR operators
+   * @throws {Error} If any tag is invalid
+   */
+  private buildFts5OrQuery(tags: string[]): string {
+    if (tags.length === 0) {
+      throw new Error("Cannot build FTS5 OR query from empty tag array");
+    }
+    
+    // Validate and sanitize each tag
+    const sanitizedTags = tags.map((tag) => {
+      // Validate tag format: only alphanumeric, hyphens, underscores allowed
+      // This prevents injection if tags list is ever extended to user input
+      if (!/^[a-zA-Z0-9_-]+$/.test(tag)) {
+        throw new Error(
+          `Invalid tag format: "${tag}". Only alphanumeric, hyphens, and underscores allowed.`
+        );
+      }
+      // Escape quotes for FTS5 (double quotes for literal)
+      const escaped = tag.replace(/"/g, '""');
+      // Wrap in quotes to make FTS5 treat it as literal
+      return `"${escaped}"`;
+    });
+    
+    // Join with OR operator
+    // SECURITY: All tags are validated and escaped above, so this is safe
+    return sanitizedTags.join(" OR ");
   }
 
   /**
@@ -287,38 +374,18 @@ export class PostsController extends BaseController {
           AND posts_fts MATCH ${sanitized}
       )`;
     } else {
-      // Fallback to LIKE search if FTS5 table doesn't exist
-      // Split tags by space and search for each tag
-      const tagParts = tagFilter.trim().split(/\s+/).filter(Boolean);
-      if (tagParts.length === 0) {
-        // Empty filter - return condition that matches nothing
-        return sql`1 = 0`;
-      }
-
-      // Create LIKE conditions for each tag part
-      // Tags are space-separated in posts.tags, so we need to match whole words
-      // Use AND to require all tags (similar to FTS5 behavior)
-      const likeConditions = tagParts.map((tag) => {
-        // Escape special LIKE characters: %, _, and \
-        // Use ESCAPE clause to treat escaped characters literally
-        const escapedTag = escapeLikePattern(tag);
-
-        // Use sql template with ESCAPE clause for proper LIKE escaping
-        // SQLite LIKE with ESCAPE '\' allows us to use \% and \_ literally
-        return or(
-          sql`${posts.tags} LIKE ${`% ${escapedTag} %`} ESCAPE '\\'`, // Tag in middle
-          sql`${posts.tags} LIKE ${`${escapedTag} %`} ESCAPE '\\'`, // Tag at start
-          sql`${posts.tags} LIKE ${`% ${escapedTag}`} ESCAPE '\\'`, // Tag at end
-          eq(posts.tags, tag) // Tag is entire string (exact match, no escaping needed)
-        ) as SQL;
-      });
-
-      // Require all tags to match (AND logic)
-      if (likeConditions.length === 1) {
-        return likeConditions[0];
-      } else {
-        return and(...likeConditions) as SQL;
-      }
+      // CRITICAL: Do NOT use LIKE %...% fallback - it causes Main Process freeze on large databases
+      // LIKE %...% with leading wildcard disables indexes and causes Full Table Scan
+      // On 100k+ records, this will freeze the entire Electron app
+      // If FTS5 table doesn't exist, throw error instead of killing the app
+      log.error(
+        `[PostsController] FTS5 table does not exist for tag filtering. ` +
+        `LIKE %...% fallback would freeze Main Process on large databases. ` +
+        `Please ensure FTS5 migration (0006_add_fts5_search.sql) completed successfully.`
+      );
+      // Return condition that matches nothing (empty result) instead of freezing
+      // This is safer than LIKE %...% which would freeze the app
+      return sql`1 = 0`;
     }
   }
 
@@ -357,6 +424,110 @@ export class PostsController extends BaseController {
 
     if (filters?.isViewed !== undefined) {
       conditions.push(eq(posts.isViewed, filters.isViewed));
+    }
+
+    // AI filter: filter by AI-generated tags using FTS5 for performance
+    // CRITICAL: LIKE "%...%" causes Full Table Scan. Use FTS5 instead.
+    if (filters?.aiFilter === "hide" || filters?.aiFilter === "only") {
+      const ftsTableExists = this.checkFtsTableExists();
+
+      if (ftsTableExists) {
+        // Use FTS5 for indexed search (much faster than LIKE)
+        // AI tags to search for
+        const aiTags = [
+          "ai_generated",
+          "ai-generated",
+          "ai_generation",
+          "ai-generated_content",
+        ];
+
+        // Build FTS5 query using safe array-based construction
+        // SECURITY: Validate and sanitize each tag, then construct query safely
+        // Even though tags are hardcoded, we validate them to prevent future bugs if list changes
+        // Use helper function to build FTS5 OR query from array of tags
+        const ftsQuery = this.buildFts5OrQuery(aiTags);
+
+        // CRITICAL: Ensure ftsQuery is not empty to prevent SQLite syntax error
+        // If sanitizedTagQueries is empty (shouldn't happen with hardcoded tags), skip filter
+        if (!ftsQuery || ftsQuery.trim().length === 0) {
+          log.warn(
+            "[PostsController] Empty FTS5 query for AI filter, skipping filter condition"
+          );
+          // Skip adding filter condition if query is empty
+        } else {
+          // SECURITY: ftsQuery is constructed from hardcoded, validated AI tags
+          // Each tag is validated with /^[a-zA-Z0-9_-]+$/ and escaped (quotes doubled)
+          // Drizzle's sql template will attempt to parameterize ${ftsQuery}, but SQLite FTS5 MATCH
+          // may require the query string in SQL text rather than as a parameter.
+          // This is safe because:
+          // 1. All AI tags are hardcoded (not user input)
+          // 2. Each tag validated with strict regex before escaping
+          // 3. Quotes are properly escaped (doubled) for FTS5
+          // 4. Query is validated to be non-empty before use
+          // For user input (tagFilter), use createTagFilterCondition which handles parameterization correctly
+          if (filters.aiFilter === "hide") {
+            // Exclude AI posts: NOT (FTS5 match)
+            conditions.push(
+              not(
+                sql`EXISTS (
+                  SELECT 1 FROM posts_fts 
+                  WHERE posts_fts.rowid = ${posts.id} 
+                    AND posts_fts MATCH ${ftsQuery}
+                )`
+              ) as SQL
+            );
+          } else {
+            // Only AI posts: FTS5 match
+            conditions.push(
+              sql`EXISTS (
+                SELECT 1 FROM posts_fts 
+                WHERE posts_fts.rowid = ${posts.id} 
+                  AND posts_fts MATCH ${ftsQuery}
+              )` as SQL
+            );
+          }
+        }
+      } else {
+        // Fallback to LIKE only if FTS5 table doesn't exist (should not happen in production)
+        // NOTE: This is inefficient for large datasets - FTS5 should be available
+        log.warn(
+          "[PostsController] FTS5 table not found, using slow LIKE fallback for AI filter"
+        );
+        const aiTagPatterns = [
+          "%ai_generated%",
+          "%ai-generated%",
+          "%ai_generation%",
+          "%ai-generated_content%",
+        ];
+        const aiConditions = aiTagPatterns.map(
+          (pattern) => sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
+        );
+        if (aiConditions.length > 0) {
+          const aiOrCondition = or(...aiConditions) as SQL;
+          if (filters.aiFilter === "hide") {
+            conditions.push(not(aiOrCondition));
+          } else {
+            conditions.push(aiOrCondition);
+          }
+        }
+      }
+    }
+
+    // Media type filter: use indexed media_type column for efficient filtering
+    // Replaces slow LIKE "%...%" queries that cause Full Table Scan
+    // CRITICAL: During backfill, some posts may have NULL media_type
+    // Treat NULL as "image" (default) to avoid hiding existing posts
+    if (filters?.mediaType === "videos") {
+      // Only videos (exclude NULL and images)
+      conditions.push(eq(posts.mediaType, "video"));
+    } else if (filters?.mediaType === "images") {
+      // Images OR NULL (NULL treated as image during backfill)
+      conditions.push(
+        or(
+          eq(posts.mediaType, "image"),
+          sql`${posts.mediaType} IS NULL`
+        ) as SQL
+      );
     }
 
     return conditions;
@@ -580,6 +751,7 @@ export class PostsController extends BaseController {
             title: "",
             rating: postData.rating ?? "",
             tags: postData.tags ?? "",
+            mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
             publishedAt: publishedAt,
             createdAt: now,
             isViewed: true, // Set to true since we're marking as viewed
@@ -791,6 +963,7 @@ export class PostsController extends BaseController {
               title: "",
               rating: postData.rating ?? "",
               tags: postData.tags ?? "", // NOT NULL constraint - empty string is valid
+              mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
               publishedAt: publishedAt,
               createdAt: now,
               isViewed: false,

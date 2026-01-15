@@ -9,11 +9,14 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
 import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
 import type { BooruPost } from "../providers/types";
+import { isVideoUrl } from "@shared/utils/media";
 
 // SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
 // Each post has ~12 fields for INSERT + ~6 for UPDATE in onConflictDoUpdate
 // Safe calculation: 999 / 18 ≈ 55, use 75 for optimal performance
 // Better-SQLite3 uses modern SQLite (3.40+) with 32766 limit, but we stay conservative
+// NOTE: With 50 posts/page limit, this handles 1.5 pages per chunk, which is efficient
+// For initial sync (1000+ posts), chunking prevents SQLite from choking on large batches
 const CHUNK_SIZE = 75;
 
 // Safety limit for initial sync to prevent infinite loops
@@ -39,6 +42,7 @@ function bulkUpsertPosts(
           previewUrl: sql`excluded.preview_url`,
           tags: sql`excluded.tags`,
           rating: sql`excluded.rating`,
+          mediaType: sql`excluded.media_type`,
           publishedAt: sql`excluded.published_at`,
         },
       })
@@ -391,19 +395,26 @@ export class SyncService {
           break;
         }
 
-        const postsToSave: NewPost[] = newPosts.map((p: BooruPost) => ({
-          artistId: artist.id,
-          fileUrl: p.fileUrl,
-          postId: p.id,
-          previewUrl: p.previewUrl,
-          sampleUrl: p.sampleUrl,
-          title: "",
-          rating: p.rating,
-          tags: p.tags.join(" "),
-          publishedAt: p.createdAt,
-          isViewed: false,
-          isFavorited: false,
-        }));
+        // Pre-compute mediaType for all posts to avoid repeated URL parsing
+        // This optimizes the map operation by computing mediaType once per post
+        const postsToSave: NewPost[] = newPosts.map((p: BooruPost) => {
+          // Compute mediaType once per post (isVideoUrl is optimized but still benefits from single call)
+          const mediaType = isVideoUrl(p.fileUrl) ? "video" : "image";
+          return {
+            artistId: artist.id,
+            fileUrl: p.fileUrl,
+            postId: p.id,
+            previewUrl: p.previewUrl,
+            sampleUrl: p.sampleUrl,
+            title: "",
+            rating: p.rating,
+            tags: p.tags.join(" "),
+            mediaType,
+            publishedAt: p.createdAt,
+            isViewed: false,
+            isFavorited: false,
+          };
+        });
 
         // Collect posts for batch transaction
         allPostsToSave.push(...postsToSave);

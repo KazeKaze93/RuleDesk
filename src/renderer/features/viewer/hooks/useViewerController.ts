@@ -68,41 +68,56 @@ export function useViewerController({
 
     // For external posts from Browse (artistId === EXTERNAL_ARTIST_ID), pass post data to create post in DB
     // All data normalization is handled by normalizePostToPostData utility
-    const postData = post.artistId === EXTERNAL_ARTIST_ID ? normalizePostToPostData(post) : undefined;
+    const postData =
+      post.artistId === EXTERNAL_ARTIST_ID
+        ? normalizePostToPostData(post)
+        : undefined;
 
-    // Always pass second argument (even if undefined) to match schema
-    window.api.markPostAsViewed(post.id, postData);
+    // Prevent spamming the DB when scrolling fast through viewer
+    // Only mark as viewed if user looks at it for at least 500ms
+    const timer = setTimeout(() => {
+      // Fire and forget: suppress rate limit errors, they are expected during fast scrolling
+      window.api.markPostAsViewed(post.id, postData).catch((err) => {
+        // Ignore rate limit errors - use typed errorCode, NOT string parsing
+        const errorCode = (err as { code?: string })?.code;
+        if (errorCode === "RATE_LIMIT") {
+          return; // Silently ignore rate limit errors
+        }
+        // Log other errors for debugging
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        log.error(
+          "[ViewerController] Failed to mark post as viewed:",
+          errorMessage
+        );
+      });
+    }, 500); // 500ms delay: only mark as viewed if user looks at it for half a second
 
-    // Update all relevant caches using shared utility
+    // Update all relevant caches optimistically (immediate UI feedback)
     // Update artist gallery cache if post has artistId
     if (post.artistId) {
       const artistQueryKey = ["posts", post.artistId];
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        artistQueryKey,
-        (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+      queryClient.setQueryData<InfiniteData<Post[]>>(artistQueryKey, (old) =>
+        updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
       );
     }
 
     // Update updates feed cache
     const updatesQueryKey = ["posts", "updates"];
-    queryClient.setQueryData<InfiniteData<Post[]>>(
-      updatesQueryKey,
-      (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+    queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) =>
+      updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
     );
 
     // Update search cache (for Browse page) if post is from search
     if (queue?.origin?.kind === "search") {
       const searchQueryKey = ["search", queue.origin.tags];
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        searchQueryKey,
-        (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+      queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) =>
+        updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
       );
     }
-  }, [
-    post,
-    queue?.origin,
-    queryClient,
-  ]);
+
+    // Cancel request if user navigates away quickly
+    return () => clearTimeout(timer);
+  }, [post, queue?.origin, queryClient]);
 
   useEffect(() => {
     const filenameId = `${post.artistId}_${post.postId}.${
@@ -136,7 +151,10 @@ export function useViewerController({
 
     // For external posts from Browse (artistId === EXTERNAL_ARTIST_ID), pass post data to create post in DB
     // All data normalization is handled by normalizePostToPostData utility
-    const postData = post.artistId === EXTERNAL_ARTIST_ID ? normalizePostToPostData(post) : undefined;
+    const postData =
+      post.artistId === EXTERNAL_ARTIST_ID
+        ? normalizePostToPostData(post)
+        : undefined;
 
     // OPTIMISTIC UPDATE
     setIsFavorited(!previousState);
@@ -151,25 +169,31 @@ export function useViewerController({
       // Update artist gallery cache if post has artistId
       if (post.artistId) {
         const artistQueryKey = ["posts", post.artistId];
-        queryClient.setQueryData<InfiniteData<Post[]>>(
-          artistQueryKey,
-          (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isFavorited: newState }))
+        queryClient.setQueryData<InfiniteData<Post[]>>(artistQueryKey, (old) =>
+          updatePostInCache(old, post.id, (p) => ({
+            ...p,
+            isFavorited: newState,
+          }))
         );
       }
 
       // Update updates feed cache
       const updatesQueryKey = ["posts", "updates"];
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        updatesQueryKey,
-        (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isFavorited: newState }))
+      queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) =>
+        updatePostInCache(old, post.id, (p) => ({
+          ...p,
+          isFavorited: newState,
+        }))
       );
 
       // Update search cache (for Browse page) if post is from search
       if (queue?.origin?.kind === "search") {
         const searchQueryKey = ["search", queue.origin.tags];
-        queryClient.setQueryData<InfiniteData<Post[]>>(
-          searchQueryKey,
-          (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isFavorited: newState }))
+        queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) =>
+          updatePostInCache(old, post.id, (p) => ({
+            ...p,
+            isFavorited: newState,
+          }))
         );
       }
 

@@ -16,6 +16,7 @@ import { SearchPostsSchema } from "../../../shared/schemas/search";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { XMLParser } from "fast-xml-parser";
+import { isVideoUrl } from "@shared/utils/media";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -181,6 +182,7 @@ export class SearchController extends BaseController {
       title: "",
       rating: booruPost.rating,
       tags: booruPost.tags.join(" "), // Convert array to space-separated string
+      mediaType: isVideoUrl(booruPost.fileUrl) ? "video" : "image",
       publishedAt: booruPost.createdAt,
       createdAt: booruPost.createdAt,
       isViewed: false,
