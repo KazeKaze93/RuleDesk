@@ -72,7 +72,7 @@ export abstract class BaseController {
    * @param channel - IPC channel name (e.g., 'user:get')
    * @param schema - Zod schema for validating handler arguments (tuple or single schema)
    * @param handler - Async handler function with validated, typed arguments
-   * @param options - Optional configuration (e.g., skipThrottleIfCached for idempotent handlers)
+   * @param options - Optional configuration (e.g., isIdempotent for cached/idempotent handlers)
    */
   protected handle(
     channel: string,
@@ -80,7 +80,7 @@ export abstract class BaseController {
       | z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], z.ZodTypeAny | null>
       | z.ZodTypeAny,
     handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>,
-    options?: { skipThrottleIfCached?: boolean }
+    options?: { isIdempotent?: boolean }
   ): void {
     // Critical: Remove existing handler to prevent "duplicate handler" crash
     // This allows safe re-initialization (hot-reload, error recovery, etc.)
@@ -131,14 +131,14 @@ export abstract class BaseController {
           }
 
           const lastCall = BaseController.throttleMap.get(channel);
-          
-          // For idempotent/cached handlers, allow bypassing throttling for very recent calls
-          // This prevents React Strict Mode double-invocation from causing rate limit errors
-          // React Strict Mode calls useEffect twice immediately, so calls are < 50ms apart
-          // Handler will check cache internally and return immediately if cached
           const timeSinceLastCall = lastCall !== undefined ? now - lastCall : Infinity;
-          const isVeryRecentCall = timeSinceLastCall < 50; // < 50ms = likely Strict Mode
-          const shouldSkipThrottle = options?.skipThrottleIfCached && isVeryRecentCall;
+          
+          // For idempotent handlers (cached operations), allow bypassing throttling for very recent calls
+          // This is correct architecture: idempotent operations don't create load, so rapid calls are safe
+          // React Strict Mode double-invocation is a common case, but this applies to any rapid idempotent calls
+          const isIdempotent = options?.isIdempotent === true;
+          const isVeryRecentCall = timeSinceLastCall < 50; // < 50ms = likely same logical operation
+          const shouldSkipThrottle = isIdempotent && isVeryRecentCall;
           
           if (
             !shouldSkipThrottle &&

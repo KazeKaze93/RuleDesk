@@ -333,7 +333,7 @@ export const Favorites = () => {
                 fetchNextPage();
               }
             }}
-            increaseViewportBy={2000}
+            increaseViewportBy={600}
             components={{
               List: ListComponent,
               Item: ItemComponent,

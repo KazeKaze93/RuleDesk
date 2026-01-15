@@ -347,7 +347,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             style={{ height: "100%" }}
             totalCount={allPosts.length}
             endReached={handleEndReached}
-            increaseViewportBy={2000}
+            increaseViewportBy={600}
             components={{
               List: ListComponent,
               Item: ItemComponent,

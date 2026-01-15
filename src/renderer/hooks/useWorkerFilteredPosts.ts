@@ -45,27 +45,12 @@ export function useWorkerFilteredPosts(
       }
 
       try {
-        // Convert Post[] to WorkerPost[] (structurally compatible)
-        // Use type-safe mapping: Post and WorkerPost have compatible structures
-        // This avoids manual field enumeration and ensures type safety
-        const workerPosts: WorkerPost[] = rawPosts.map((post): WorkerPost => ({
-          id: post.id,
-          postId: post.postId,
-          artistId: post.artistId,
-          fileUrl: post.fileUrl,
-          previewUrl: post.previewUrl,
-          sampleUrl: post.sampleUrl,
-          title: post.title ?? null,
-          rating: post.rating ?? null,
-          tags: post.tags,
-          publishedAt: post.publishedAt,
-          createdAt: post.createdAt,
-          isViewed: post.isViewed,
-          isFavorited: post.isFavorited,
-        }));
-
+        // Pass Post[] directly to Worker via Structured Clone API
+        // Post and WorkerPost are structurally compatible - Worker only uses fields present in both
+        // This avoids blocking UI thread with manual mapping of large arrays
+        // Structured Clone handles Date serialization automatically
         const result = await processData({
-          posts: workerPosts,
+          posts: rawPosts as unknown as WorkerPost[],
           filters: debouncedFilters,
         });
 

@@ -96,30 +96,20 @@ export class SettingsController extends BaseController {
   private settingsCacheTimestamp: number = 0;
   private static readonly SETTINGS_CACHE_TTL_MS = 5000; // 5 seconds cache TTL
 
-  /**
-   * Check if settings cache is valid (for BaseController throttling bypass)
-   * This allows React Strict Mode double-invocation to work correctly
-   */
-  public hasValidCache(): boolean {
-    const now = Date.now();
-    return (
-      this.settingsCache !== null &&
-      now - this.settingsCacheTimestamp < SettingsController.SETTINGS_CACHE_TTL_MS
-    );
-  }
 
   /**
    * Setup IPC handlers for settings operations
    */
   public setup(): void {
     // app:get-settings-status - returns full settings object (used by frontend)
-    // This handler is idempotent and cached, so we allow bypassing throttling for cached results
-    // This prevents React Strict Mode double-invocation from causing rate limit errors
+    // This handler is idempotent and cached internally (5s TTL)
+    // Cache prevents DB queries on repeated calls (e.g., React Strict Mode double-invocation)
+    // Mark as idempotent to allow rapid calls when cache is valid
     this.handle(
       IPC_CHANNELS.SETTINGS.GET,
       z.tuple([]),
       this.getSettings.bind(this),
-      { skipThrottleIfCached: true }
+      { isIdempotent: true }
     );
     // app:save-settings - saves settings
     // CRITICAL: SaveSettingsSchema validates input from Renderer (userId regex, apiKey length, etc.)

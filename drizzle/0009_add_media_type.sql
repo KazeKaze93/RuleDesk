@@ -5,10 +5,9 @@
 -- Add media_type column (nullable initially, will be populated)
 ALTER TABLE `posts` ADD COLUMN `media_type` text;
 
--- Add CHECK constraint to enforce enum values at database level
--- This provides data integrity even if application code has bugs
-ALTER TABLE `posts` ADD CONSTRAINT `posts_media_type_check` 
-  CHECK (`media_type` IS NULL OR `media_type` IN ('image', 'video'));
+-- NOTE: SQLite does not support adding CHECK constraints via ALTER TABLE.
+-- CHECK constraints can only be added during CREATE TABLE.
+-- Data integrity is enforced at application level via Zod schemas and TypeScript types.
 
 -- Create index for efficient filtering by media type
 CREATE INDEX IF NOT EXISTS `posts_media_type_idx` ON `posts` (`media_type`);

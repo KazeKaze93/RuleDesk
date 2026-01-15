@@ -200,6 +200,68 @@ useEffect(() => {
 
 ---
 
+## IPC Rate Limiting for Idempotent Handlers
+
+### Problem
+
+React Strict Mode double-invocation causes rapid IPC calls (< 50ms apart) to hit rate limits, even for idempotent/cached handlers. This breaks Age Gate initialization and other startup flows.
+
+### Root Cause
+
+BaseController applies rate limiting uniformly to all channels, but idempotent handlers (like `getSettings` with 5s cache) don't create load on repeated calls. React Strict Mode's double-invocation is a common case, but any rapid idempotent calls should be allowed.
+
+### Solution
+
+- **Mark idempotent handlers** with `{ isIdempotent: true }` option in `BaseController.handle()`
+- **Bypass rate limit** for idempotent handlers if last call was < 50ms (same logical operation)
+- **Handler must implement caching** internally (e.g., `SettingsController.getSettings()` with 5s TTL)
+
+### Example (WRONG):
+
+```tsx
+// BaseController - applies rate limit to all handlers uniformly
+if (lastCall !== undefined && timeSinceLastCall < THROTTLE_MS) {
+  throw rateLimitError; // тЭМ Blocks React Strict Mode double-invocation
+}
+
+// SettingsController - no way to indicate idempotency
+this.handle(IPC_CHANNELS.SETTINGS.GET, z.tuple([]), this.getSettings.bind(this));
+```
+
+### Example (CORRECT):
+
+```tsx
+// BaseController - allow bypass for idempotent handlers
+const isIdempotent = options?.isIdempotent === true;
+const isVeryRecentCall = timeSinceLastCall < 50; // < 50ms = likely same logical operation
+const shouldSkipThrottle = isIdempotent && isVeryRecentCall;
+
+if (
+  !shouldSkipThrottle &&
+  lastCall !== undefined &&
+  timeSinceLastCall < THROTTLE_MS
+) {
+  throw rateLimitError; // тЬЕ Only block if not idempotent or not very recent
+}
+
+// SettingsController - mark as idempotent (handler has internal cache)
+this.handle(
+  IPC_CHANNELS.SETTINGS.GET,
+  z.tuple([]),
+  this.getSettings.bind(this),
+  { isIdempotent: true } // тЬЕ Handler returns cached result instantly
+);
+```
+
+### Key Insight
+
+- **Idempotent operations don't create load** - rapid calls are safe if handler returns cached result
+- **This is correct architecture**, not a React.StrictMode workaround
+- **Handler must implement caching** - marking as idempotent without cache is wrong
+- **50ms threshold** - distinguishes same logical operation from actual spam
+
+---
+
 ## Professional UI Density and Spacing
 
 ### Problem

@@ -86,26 +86,13 @@ const VIDEO_EXTENSION_REGEX = /\.(mp4|webm|mov)$/i;
 function isVideoPost(fileUrl: string | undefined | null): boolean {
   if (!fileUrl) return false;
   
-  const hasQueryOrHash = fileUrl.includes('?') || fileUrl.includes('#');
+  // Extract pathname: everything before ? or # (query params/hash)
+  // Use regex to extract pathname without creating URL object
+  const pathMatch = fileUrl.match(/^[^?#]+/);
+  const pathname = pathMatch ? pathMatch[0] : fileUrl;
   
-  if (!hasQueryOrHash) {
-    // Fast path: simple URL without query params
-    const lastDot = fileUrl.lastIndexOf('.');
-    if (lastDot === -1) return false;
-    const ext = fileUrl.slice(lastDot).toLowerCase();
-    return ext === '.mp4' || ext === '.webm' || ext === '.mov';
-  }
-  
-  // Complex URL with query params - extract pathname
-  try {
-    const url = new URL(fileUrl);
-    return VIDEO_EXTENSION_REGEX.test(url.pathname);
-  } catch {
-    // Fallback for relative paths or invalid URLs
-    const pathMatch = fileUrl.match(/^[^?#]+/);
-    const path = pathMatch ? pathMatch[0] : fileUrl;
-    return VIDEO_EXTENSION_REGEX.test(path);
-  }
+  // Check if pathname ends with video extension (case-insensitive)
+  return VIDEO_EXTENSION_REGEX.test(pathname);
 }
 
 /**

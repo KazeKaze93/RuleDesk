@@ -2,7 +2,6 @@ import React, { useMemo, forwardRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
@@ -100,18 +99,14 @@ export const Browse = () => {
     queryFn: () => window.api.getTrackedArtists(),
   });
 
-  // Use useShallow for multiple filter values to prevent unnecessary re-renders
-  // Extract only the filter fields that are actually used in this component
-  // This prevents re-renders when unrelated filter fields (e.g., orientation) change
-  const { sortOrder, viewType, aiFilter, mediaType, source } = useSearchStore(
-    useShallow((state) => ({
-      sortOrder: state.sortOrder,
-      viewType: state.viewType,
-      aiFilter: state.filters.aiFilter,
-      mediaType: state.filters.mediaType,
-      source: state.filters.source,
-    }))
-  );
+  // Use atomic selectors to prevent unnecessary re-renders
+  // Each field is selected independently, so changing viewType won't trigger
+  // re-render if only filters change, and vice versa
+  const sortOrder = useSearchStore((state) => state.sortOrder);
+  const viewType = useSearchStore((state) => state.viewType);
+  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const mediaType = useSearchStore((state) => state.filters.mediaType);
+  const source = useSearchStore((state) => state.filters.source);
 
   // Use the new infinite scroll hook
   // For external API (Browse), we need custom getNextPageParam logic
@@ -315,7 +310,7 @@ export const Browse = () => {
               style={{ height: "100%" }}
               totalCount={allPosts.length}
               endReached={handleEndReached}
-              increaseViewportBy={2000}
+              increaseViewportBy={600}
               components={{
                 List: ListComponent,
                 Item: ItemComponent,
