@@ -232,15 +232,30 @@ export class PostsController extends BaseController {
    * @throws {Error} If query contains invalid characters or becomes empty after sanitization
    */
   private sanitizeFts5Query(query: string): string {
-    // SECURITY: Strict whitelist - only allow:
-    // - Alphanumeric characters (a-z, A-Z, 0-9)
-    // - Spaces (for multiple tags)
-    // - Hyphens and underscores (common in tags like "blue_hair", "ai-generated")
-    // - * only at end of words (for prefix search like "tag*")
-    // Block all FTS5 operators: :, NEAR, AND, OR, NOT, quotes, backslashes, etc.
+    // SECURITY: Strict whitelist validation - reject any input not matching pattern
+    // Only allow: alphanumeric, spaces, hyphens, underscores, and * at end of words
+    // Pattern: ^[a-zA-Z0-9_* ]+$ with additional validation for * placement
+    // This prevents FTS5 injection via Unicode tricks or operator sequences
+
+    // Trim and validate non-empty
+    const trimmed = query.trim();
+    if (trimmed.length === 0) {
+      throw new Error(
+        "FTS5 query is empty. Please provide valid search terms."
+      );
+    }
+
+    // CRITICAL: Strict whitelist regex - reject anything not matching
+    // Allow: a-z, A-Z, 0-9, _, -, space, and * (but validate * placement)
+    const strictWhitelistRegex = /^[a-zA-Z0-9_* -]+$/;
+    if (!strictWhitelistRegex.test(trimmed)) {
+      throw new Error(
+        `Invalid FTS5 query: "${query}". Only alphanumeric characters, spaces, hyphens, underscores, and trailing asterisks are allowed.`
+      );
+    }
 
     // Split by spaces to handle multiple tags
-    const words = query.trim().split(/\s+/).filter(Boolean);
+    const words = trimmed.split(/\s+/).filter(Boolean);
 
     if (words.length === 0) {
       throw new Error(
@@ -249,28 +264,32 @@ export class PostsController extends BaseController {
     }
 
     // Validate and sanitize each word
-    // SECURITY: Allow Unicode characters (Cyrillic, CJK, etc.) but escape FTS5 operators
-    // Use parameterized query approach: escape special characters instead of removing them
+    // CRITICAL: * can only appear at the end of a word (prefix search)
+    // Reject * in middle or beginning, or multiple * characters
     const sanitizedWords = words.map((word) => {
-      // Remove FTS5 operators that could cause syntax errors or injection
-      // Block: : (column specifier), NEAR, AND, OR, NOT operators
-      // Allow: Unicode characters, alphanumeric, hyphens, underscores, spaces within words
-      const cleaned = word
-        .replace(/:/g, "") // Remove column specifier
-        .replace(/\bNEAR\b/gi, "") // Remove NEAR operator
-        .replace(/\bAND\b/gi, "") // Remove AND operator
-        .replace(/\bOR\b/gi, "") // Remove OR operator
-        .replace(/\bNOT\b/gi, "") // Remove NOT operator
-        .replace(/"/g, "") // Remove quotes (will add back after escaping)
-        .replace(/\\/g, ""); // Remove backslashes
+      // Check if * appears anywhere except at the end
+      const starIndex = word.indexOf("*");
+      if (starIndex !== -1 && starIndex !== word.length - 1) {
+        throw new Error(
+          `Invalid search term: "${word}". Asterisk (*) can only appear at the end of a word for prefix search.`
+        );
+      }
 
-      // Allow * only at the end of word (prefix search)
-      const hasTrailingStar = cleaned.endsWith("*");
-      const baseWord = hasTrailingStar ? cleaned.slice(0, -1) : cleaned;
+      // Check for multiple asterisks
+      const starCount = (word.match(/\*/g) || []).length;
+      if (starCount > 1) {
+        throw new Error(
+          `Invalid search term: "${word}". Only one asterisk (*) allowed at the end of a word.`
+        );
+      }
+
+      // Remove * for base validation, then add back if it was trailing
+      const hasTrailingStar = word.endsWith("*");
+      const baseWord = hasTrailingStar ? word.slice(0, -1) : word;
 
       if (baseWord.trim().length === 0) {
         throw new Error(
-          `Invalid search term: "${word}". Search term cannot be empty after sanitization.`
+          `Invalid search term: "${word}". Search term cannot be empty or only asterisk.`
         );
       }
 

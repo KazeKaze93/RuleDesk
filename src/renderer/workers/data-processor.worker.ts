@@ -137,8 +137,21 @@ function filterAndSortPosts(
         if (source === "subscriptions") {
           if (trackedSet.size === 0) return false;
           if (!post.tags) return false;
-          const postTags = post.tags.toLowerCase().split(/\s+/);
-          if (!postTags.some((tag: string) => trackedSet.has(tag))) return false;
+          // PERFORMANCE: Use string includes instead of split to avoid GC thrashing
+          // Check if any tracked tag appears in the tags string (space-separated)
+          // This avoids creating 20k+ temporary arrays during filtering
+          const tagsLower = post.tags.toLowerCase();
+          let hasTrackedTag = false;
+          for (const trackedTag of trackedSet) {
+            // Check if tag appears as whole word (surrounded by spaces or at start/end)
+            // Use word boundary regex equivalent: tag preceded by space/start and followed by space/end
+            const tagPattern = new RegExp(`(^|\\s)${trackedTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`, 'i');
+            if (tagPattern.test(tagsLower)) {
+              hasTrackedTag = true;
+              break;
+            }
+          }
+          if (!hasTrackedTag) return false;
         }
     }
     

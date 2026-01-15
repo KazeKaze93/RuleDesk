@@ -35,6 +35,9 @@ interface WorkerResponse<T = unknown> {
  */
 let globalWorker: Worker | null = null;
 let globalWorkerRefCount = 0;
+let workerRestartAttempts = 0;
+const MAX_RESTART_ATTEMPTS = 3;
+const RESTART_DELAY_MS = 1000; // 1 second delay between restart attempts
 const globalPendingRequests = new Map<string, {
   resolve: (value: WorkerPost[]) => void;
   reject: (error: Error) => void;
@@ -55,6 +58,9 @@ function updateLoadingState(loading: boolean): void {
  */
 function getWorker(): Worker {
   if (!globalWorker) {
+    // Reset restart attempts on successful initialization
+    workerRestartAttempts = 0;
+    
     globalWorker = new Worker(
       new URL("../workers/data-processor.worker.ts", import.meta.url),
       { type: "module" }
@@ -84,15 +90,79 @@ function getWorker(): Worker {
       }
     });
 
-    // Handle worker errors
+    // Handle worker errors with restart policy
     globalWorker.addEventListener("error", (error) => {
       console.error("[useWorkerProcessor] Worker error:", error);
       updateLoadingState(false);
+      
       // Reject all pending requests
-      globalPendingRequests.forEach(({ reject }) => {
+      const pendingCopy = new Map(globalPendingRequests);
+      globalPendingRequests.clear();
+      pendingCopy.forEach(({ reject }) => {
         reject(new Error(`Worker error: ${error.message}`));
       });
+      
+      // Restart worker if attempts remaining
+      if (workerRestartAttempts < MAX_RESTART_ATTEMPTS) {
+        workerRestartAttempts++;
+        console.warn(
+          `[useWorkerProcessor] Restarting worker (attempt ${workerRestartAttempts}/${MAX_RESTART_ATTEMPTS})`
+        );
+        
+        // Clean up failed worker
+        try {
+          globalWorker?.terminate();
+        } catch (_e) {
+          // Ignore termination errors
+        }
+        globalWorker = null;
+        
+        // Restart after delay
+        setTimeout(() => {
+          if (globalWorkerRefCount > 0) {
+            // Only restart if still needed
+            try {
+              getWorker(); // Reinitialize worker
+            } catch (restartError) {
+              console.error("[useWorkerProcessor] Worker restart failed:", restartError);
+            }
+          }
+        }, RESTART_DELAY_MS);
+      } else {
+        console.error(
+          "[useWorkerProcessor] Max restart attempts reached. Worker will not restart."
+        );
+      }
+    });
+    
+    // Handle worker termination (unexpected shutdown)
+    globalWorker.addEventListener("messageerror", (error) => {
+      console.error("[useWorkerProcessor] Worker message error:", error);
+      // Same restart logic as error handler
+      const pendingCopy = new Map(globalPendingRequests);
       globalPendingRequests.clear();
+      pendingCopy.forEach(({ reject }) => {
+        reject(new Error("Worker message error"));
+      });
+      
+      if (workerRestartAttempts < MAX_RESTART_ATTEMPTS) {
+        workerRestartAttempts++;
+        try {
+          globalWorker?.terminate();
+        } catch (_e) {
+          // Ignore
+        }
+        globalWorker = null;
+        setTimeout(() => {
+          if (globalWorkerRefCount > 0) {
+            try {
+              getWorker();
+            } catch (restartError) {
+              console.error("[useWorkerProcessor] Worker restart failed:", restartError);
+            }
+          }
+        }, RESTART_DELAY_MS);
+      }
     });
   }
   return globalWorker;

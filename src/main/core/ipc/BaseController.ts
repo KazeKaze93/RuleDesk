@@ -39,11 +39,41 @@ export abstract class BaseController {
   private static readonly throttleMap = new Map<string, number>();
 
   // Request Collapsing: For idempotent handlers, reuse in-flight Promise to prevent duplicate work
-  // Map<channel, Promise<unknown>> - stores active Promise for each idempotent channel
+  // Map<key, Promise<unknown>> - key includes channel + serialized args to prevent data leakage
+  // CRITICAL: Key must include args hash, otherwise getUser(1) and getUser(2) would share Promise
   private static readonly requestCollapseMap = new Map<
     string,
     Promise<unknown>
   >();
+
+  /**
+   * Generate stable key for Request Collapsing from channel + args
+   * Uses JSON.stringify with sorted keys for deterministic serialization
+   * Performance: Synchronous, acceptable for IPC args (typically small objects)
+   */
+  private static getCollapseKey(channel: string, args: unknown[]): string {
+    // Sort object keys for stable serialization (order-independent)
+    const stableSerialize = (value: unknown): unknown => {
+      if (value === null || value === undefined) {
+        return value;
+      }
+      if (Array.isArray(value)) {
+        return value.map(stableSerialize);
+      }
+      if (typeof value === "object") {
+        const sorted: Record<string, unknown> = {};
+        const keys = Object.keys(value).sort();
+        for (const key of keys) {
+          sorted[key] = stableSerialize((value as Record<string, unknown>)[key]);
+        }
+        return sorted;
+      }
+      return value;
+    };
+
+    const serializedArgs = stableSerialize(args);
+    return `${channel}:${JSON.stringify(serializedArgs)}`;
+  }
 
   // Minimum time between calls for the same channel (milliseconds)
   // Prevents renderer from spamming IPC calls
@@ -149,15 +179,19 @@ export abstract class BaseController {
           // This prevents duplicate work when multiple calls arrive simultaneously (e.g., React Strict Mode)
           // CRITICAL: For idempotent handlers, Request Collapsing replaces throttling
           // Throttling is not needed because collapsing prevents duplicate work
+          // CRITICAL: Key includes args hash to prevent data leakage (getUser(1) vs getUser(2))
           if (isIdempotent) {
+            // Generate collapse key from channel + args (prevents different args from sharing Promise)
+            const collapseKey = BaseController.getCollapseKey(channel, args);
+            
             // Check for existing Promise FIRST (before creating new one)
             const existingPromise =
-              BaseController.requestCollapseMap.get(channel);
+              BaseController.requestCollapseMap.get(collapseKey);
             if (existingPromise) {
               // Request already in-flight, return the same Promise
               // This bypasses throttling because we're reusing existing work
               log.debug(
-                `[IPC] Request collapsing for idempotent channel "${channel}"`
+                `[IPC] Request collapsing for idempotent channel "${channel}" with key "${collapseKey}"`
               );
               return existingPromise;
             }
@@ -173,7 +207,7 @@ export abstract class BaseController {
 
             // Store Promise in collapse map IMMEDIATELY (synchronously)
             // This prevents race condition where second call arrives before Promise is stored
-            BaseController.requestCollapseMap.set(channel, promise);
+            BaseController.requestCollapseMap.set(collapseKey, promise);
             
             // NOTE: No throttling for idempotent handlers with Request Collapsing
             // Request Collapsing already prevents duplicate work, so throttling is redundant
@@ -244,7 +278,7 @@ export abstract class BaseController {
                 promiseReject!(error);
               } finally {
                 // Clean up collapse map after Promise resolves/rejects
-                BaseController.requestCollapseMap.delete(channel);
+                BaseController.requestCollapseMap.delete(collapseKey);
               }
             })();
 
