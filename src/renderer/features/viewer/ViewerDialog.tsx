@@ -269,10 +269,21 @@ const ViewerMedia = ({ post }: { post: Post }) => {
             log.error("[ViewerMedia] Image load error:", post.fileUrl);
             const img = e.currentTarget;
             // Try fallback to fileUrl if sampleUrl failed
-            // Use includes() to handle query parameters and avoid infinite loop
-            if (post.fileUrl && !img.src.includes(post.fileUrl)) {
+            // CRITICAL: Use URL comparison without query params to prevent infinite loop
+            // If server redirects to same broken URL or query params change, we'd loop forever
+            const currentUrl = new URL(img.src, window.location.href);
+            const fallbackUrl = post.fileUrl ? new URL(post.fileUrl, window.location.href) : null;
+            
+            // Check if we're already trying fileUrl (not sampleUrl)
+            const isAlreadyFileUrl = fallbackUrl && 
+              currentUrl.pathname === fallbackUrl.pathname &&
+              currentUrl.hostname === fallbackUrl.hostname;
+            
+            if (post.fileUrl && !isAlreadyFileUrl) {
+              // Try fileUrl as fallback (only once)
               img.src = post.fileUrl;
             } else {
+              // Both URLs failed or already tried - show error
               setImageError(true);
             }
           }}

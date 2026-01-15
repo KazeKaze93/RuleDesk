@@ -48,31 +48,89 @@ export abstract class BaseController {
 
   /**
    * Generate stable key for Request Collapsing from channel + args
-   * Uses JSON.stringify with sorted keys for deterministic serialization
-   * Performance: Synchronous, acceptable for IPC args (typically small objects)
+   * PERFORMANCE: Uses only critical identifiers (id, type) instead of full serialization
+   * This prevents Main Process blocking on large objects (e.g., 20k+ post arrays)
+   * 
+   * Strategy:
+   * - Empty args: use channel only
+   * - Single arg with id/type: use those fields
+   * - Arrays: use length + first element id (if available)
+   * - Fallback: fast hash for small objects (< 1KB), reject large objects
    */
   private static getCollapseKey(channel: string, args: unknown[]): string {
-    // Sort object keys for stable serialization (order-independent)
-    const stableSerialize = (value: unknown): unknown => {
-      if (value === null || value === undefined) {
-        return value;
-      }
-      if (Array.isArray(value)) {
-        return value.map(stableSerialize);
-      }
-      if (typeof value === "object") {
-        const sorted: Record<string, unknown> = {};
-        const keys = Object.keys(value).sort();
-        for (const key of keys) {
-          sorted[key] = stableSerialize((value as Record<string, unknown>)[key]);
-        }
-        return sorted;
-      }
-      return value;
-    };
+    // Empty args - most common case (e.g., getSettings)
+    if (args.length === 0) {
+      return channel;
+    }
 
-    const serializedArgs = stableSerialize(args);
-    return `${channel}:${JSON.stringify(serializedArgs)}`;
+    // Single argument - extract id or type if available
+    if (args.length === 1) {
+      const arg = args[0];
+      if (arg === null || arg === undefined) {
+        return `${channel}:null`;
+      }
+      
+      // Check for common identifier fields
+      if (typeof arg === "object" && arg !== null) {
+        const obj = arg as Record<string, unknown>;
+        if ("id" in obj && typeof obj.id === "number") {
+          return `${channel}:id=${obj.id}`;
+        }
+        if ("type" in obj && typeof obj.type === "string") {
+          return `${channel}:type=${obj.type}`;
+        }
+        // For small objects, use fast hash (djb2)
+        const json = JSON.stringify(arg);
+        if (json.length < 1024) {
+          return `${channel}:${BaseController.fastHash(json)}`;
+        }
+        // Large objects should not use Request Collapsing
+        log.warn(
+          `[IPC] Large argument object for idempotent channel "${channel}". ` +
+          `Request Collapsing may be inefficient. Consider using non-idempotent handler.`
+        );
+        return `${channel}:large`;
+      }
+      
+      // Primitive values
+      return `${channel}:${String(arg)}`;
+    }
+
+    // Multiple arguments - use first arg id + count
+    const firstArg = args[0];
+    if (
+      typeof firstArg === "object" &&
+      firstArg !== null &&
+      "id" in firstArg &&
+      typeof (firstArg as Record<string, unknown>).id === "number"
+    ) {
+      return `${channel}:id=${(firstArg as Record<string, unknown>).id}:count=${args.length}`;
+    }
+
+    // Fallback: hash of args (only for small payloads)
+    const json = JSON.stringify(args);
+    if (json.length < 1024) {
+      return `${channel}:${BaseController.fastHash(json)}`;
+    }
+    
+    log.warn(
+      `[IPC] Large arguments array for idempotent channel "${channel}". ` +
+      `Request Collapsing may be inefficient.`
+    );
+    return `${channel}:large:count=${args.length}`;
+  }
+
+  /**
+   * Fast hash function (djb2) for small objects
+   * Performance: O(n) where n is string length, no recursion
+   */
+  private static fastHash(str: string): string {
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) + hash) + str.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
   }
 
   // Minimum time between calls for the same channel (milliseconds)

@@ -12,25 +12,12 @@ ALTER TABLE `posts` ADD COLUMN `media_type` text;
 -- Create index for efficient filtering by media type
 CREATE INDEX IF NOT EXISTS `posts_media_type_idx` ON `posts` (`media_type`);
 
--- Backfill existing data: determine media_type from fileUrl extension
--- Videos: .mp4, .webm, .mov (case-insensitive)
--- Images: everything else
--- CRITICAL: Use LIKE '%.ext' (not '%.ext%') to match only files ending with extension
--- This prevents false positives like "video.mp4.backup.jpg" being marked as video
+-- NOTE: Data backfill is NOT performed in this migration to prevent Main Process blocking.
+-- For large databases (100k+ records), UPDATE would block SQLite and cause app freeze.
+-- 
+-- Backfill must be done in background after app startup:
+-- 1. Migration only adds column (fast, non-blocking)
+-- 2. Background process updates media_type in chunks (e.g., 1000 rows per batch)
+-- 3. Use: UPDATE posts SET media_type = ... WHERE id IN (SELECT id FROM posts WHERE media_type IS NULL LIMIT 1000);
 --
--- PERFORMANCE NOTE: For large databases (100k+ records), this UPDATE may block the database
--- during migration. SQLite does not support LIMIT in UPDATE, so chunking requires:
---   UPDATE posts SET media_type = ... WHERE id IN (SELECT id FROM posts WHERE media_type IS NULL LIMIT 1000);
---   (Repeat until no rows affected)
--- For typical databases (< 50k records), this single UPDATE is acceptable.
--- For production deployments with 100k+ records, consider running backfill in background
--- after app startup using a maintenance script instead of in-migration.
-UPDATE `posts`
-SET `media_type` = CASE
-  WHEN LOWER(`file_url`) LIKE '%.mp4' OR 
-       LOWER(`file_url`) LIKE '%.webm' OR 
-       LOWER(`file_url`) LIKE '%.mov' 
-  THEN 'video'
-  ELSE 'image'
-END
-WHERE `media_type` IS NULL;
+-- See: src/main/db/backfill-media-type.ts (to be implemented)
