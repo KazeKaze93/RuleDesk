@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useWorkerProcessor, type WorkerFilterConfig } from "./useWorkerProcessor";
+import {
+  useWorkerProcessor,
+  type WorkerFilterConfig,
+} from "./useWorkerProcessor";
 import { useDebounce } from "../lib/hooks/useDebounce";
 import type { Post } from "../../main/db/schema";
 import { WorkerPostArraySchema } from "../../shared/types/post";
@@ -7,10 +10,10 @@ import log from "electron-log/renderer";
 
 /**
  * Custom hook for worker-based post filtering
- * 
+ *
  * Avoids cascade renders by managing state internally and returning
  * { data, isLoading } instead of using useEffect + setState pattern.
- * 
+ *
  * @param rawPosts - Raw posts array to filter
  * @param filters - Filter configuration
  * @param debounceDelay - Debounce delay in ms (default: 250)
@@ -49,7 +52,7 @@ export function useWorkerFilteredPosts(
         // This ensures type safety and catches schema mismatches at runtime
         // Structured Clone API handles Date serialization automatically (Date -> number)
         const validatedPosts = WorkerPostArraySchema.parse(rawPosts);
-        
+
         const result = await processData({
           posts: validatedPosts,
           filters: debouncedFilters,
@@ -61,15 +64,17 @@ export function useWorkerFilteredPosts(
           // Worker returns dates as Date | number | null, but Post expects Date
           const mappedPosts: Post[] = result.map((workerPost): Post => {
             // Convert date values to Date objects if needed
-            const publishedAt = workerPost.publishedAt instanceof Date 
-              ? workerPost.publishedAt 
-              : workerPost.publishedAt 
-                ? new Date(workerPost.publishedAt) 
+            const publishedAt =
+              workerPost.publishedAt instanceof Date
+                ? workerPost.publishedAt
+                : workerPost.publishedAt
+                ? new Date(workerPost.publishedAt)
                 : new Date();
-            const createdAt = workerPost.createdAt instanceof Date 
-              ? workerPost.createdAt 
-              : workerPost.createdAt 
-                ? new Date(workerPost.createdAt) 
+            const createdAt =
+              workerPost.createdAt instanceof Date
+                ? workerPost.createdAt
+                : workerPost.createdAt
+                ? new Date(workerPost.createdAt)
                 : new Date();
 
             return {
@@ -95,7 +100,8 @@ export function useWorkerFilteredPosts(
       } catch (error) {
         log.error("[useWorkerFilteredPosts] Worker processing error:", error);
         if (!cancelledRef.current) {
-          const errorObj = error instanceof Error ? error : new Error(String(error));
+          const errorObj =
+            error instanceof Error ? error : new Error(String(error));
           setError(errorObj);
           // Fallback: set empty array on error to prevent UI from showing stale data
           setFilteredPosts([]);

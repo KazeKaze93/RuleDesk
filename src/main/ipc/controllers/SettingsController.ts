@@ -94,7 +94,6 @@ export class SettingsController extends BaseController {
   // Cache is invalidated only when settings are saved (no TTL - settings don't change externally)
   private settingsCache: IpcSettings | null = null;
 
-
   /**
    * Setup IPC handlers for settings operations
    */
@@ -117,7 +116,10 @@ export class SettingsController extends BaseController {
       IPC_CHANNELS.SETTINGS.SAVE,
       z.tuple([SaveSettingsSchema]), // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.saveSettings.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.saveSettings.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     // settings:confirm-legal - confirms Age Gate & ToS acceptance
     this.handle(
@@ -131,7 +133,7 @@ export class SettingsController extends BaseController {
 
   /**
    * Get settings object (cached until invalidated)
-   * 
+   *
    * This method is idempotent - multiple calls return the same result.
    * Cache is invalidated only when settings are saved (no TTL - settings don't change externally).
    *
@@ -155,7 +157,9 @@ export class SettingsController extends BaseController {
       if (!currentSettings) {
         // Return default values if no settings found (triggers Onboarding)
         // Use DEFAULT_IPC_SETTINGS constant (already validated, no need to parse)
-        log.debug("[SettingsController] getSettings: No settings found, returning defaults");
+        log.debug(
+          "[SettingsController] getSettings: No settings found, returning defaults"
+        );
         result = DEFAULT_IPC_SETTINGS;
       } else {
         // Use Drizzle's inferred type directly (no redundant validation)
@@ -192,7 +196,7 @@ export class SettingsController extends BaseController {
 
       // PERFORMANCE: Prepare all data BEFORE transaction to minimize I/O wait inside transaction
       // Encryption and logging are CPU-bound operations that should not block the database
-      
+
       // Handle Encryption BEFORE transaction
       // If a new 'apiKey' comes from frontend, encrypt it.
       // If not provided, we keep the old encrypted one.
@@ -217,7 +221,7 @@ export class SettingsController extends BaseController {
       // SECURITY: Get existing settings INSIDE transaction to avoid race conditions
       // PERFORMANCE: Minimize logic inside transaction - only DB operations
       let existing: InferSelectModel<typeof settings> | undefined;
-      
+
       db.transaction((tx) => {
         // Get existing settings synchronously inside transaction to avoid race conditions
         // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
@@ -238,7 +242,7 @@ export class SettingsController extends BaseController {
               : existing.encryptedApiKey ?? "";
           // CRITICAL: Use existing.id instead of SETTINGS_ID to ensure we update the correct record
           const targetId = existing.id;
-          
+
           // Execute update using Drizzle update - should work in transaction
           // Using explicit .set() for all fields to ensure they are updated
           tx.update(settings)
@@ -272,7 +276,9 @@ export class SettingsController extends BaseController {
       log.debug(
         `[SettingsController] Transaction completed: existing=${
           existing ? "found" : "not found"
-        }, id=${existing?.id ?? "none"}, userId=${userId}, hasApiKey=${!!encryptedKey}`
+        }, id=${
+          existing?.id ?? "none"
+        }, userId=${userId}, hasApiKey=${!!encryptedKey}`
       );
 
       // Verify the save worked - use SETTINGS_ID (existing is now set inside transaction)
@@ -293,10 +299,10 @@ export class SettingsController extends BaseController {
           saved.tosAcceptedAt ? "set" : "null"
         }`
       );
-      
+
       // Invalidate cache after saving settings
       this.settingsCache = null;
-      
+
       return true;
     } catch (error) {
       log.error("[SettingsController] Failed to save settings:", error);
@@ -385,10 +391,10 @@ export class SettingsController extends BaseController {
       // Use Drizzle's inferred type directly (no redundant validation)
       // mapSettingsToIpc handles mapping and validation internally
       const result = mapSettingsToIpc(updatedSettings);
-      
+
       // Invalidate cache after confirming legal (settings changed)
       this.settingsCache = null;
-      
+
       return result;
     } catch (error) {
       log.error("[SettingsController] Failed to confirm legal:", error);

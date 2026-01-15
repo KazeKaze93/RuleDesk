@@ -94,7 +94,9 @@ export class PostsController extends BaseController {
       );
       const result = stmt.get();
       this.ftsTableExistsCache = !!result;
-      log.info(`[PostsController] FTS table check initialized: ${this.ftsTableExistsCache}`);
+      log.info(
+        `[PostsController] FTS table check initialized: ${this.ftsTableExistsCache}`
+      );
     } catch (error) {
       log.warn(
         "[PostsController] Failed to check FTS table existence, using LIKE fallback:",
@@ -112,13 +114,19 @@ export class PostsController extends BaseController {
       IPC_CHANNELS.DB.GET_POSTS,
       z.tuple([GetPostsSchema]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.getPosts.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.getPosts.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
       z.tuple([z.number().int().positive().optional()]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.getPostsCount.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.getPostsCount.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
@@ -127,13 +135,19 @@ export class PostsController extends BaseController {
         PostDataSchema.optional(),
       ]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.markViewed.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.markViewed.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
       z.tuple([z.number().int().positive()]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.resetPostCache.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.resetPostCache.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
     this.handle(
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
@@ -142,7 +156,10 @@ export class PostsController extends BaseController {
         PostDataSchema.optional(),
       ]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.toggleFavorite.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      this.toggleFavorite.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
 
     // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)
@@ -203,14 +220,13 @@ export class PostsController extends BaseController {
     return existingPost;
   }
 
-
   /**
    * Sanitize FTS5 search query to prevent SQL injection and syntax errors
-   * 
+   *
    * SECURITY: Strict whitelist approach - only allow alphanumeric characters,
    * spaces, hyphens, underscores, and * at end of words for prefix search.
    * All FTS5 operators (:, NEAR, AND, OR, NOT, etc.) are completely blocked.
-   * 
+   *
    * @param query - FTS5 query string (user input from Renderer)
    * @returns Sanitized query string safe for FTS5 MATCH
    * @throws {Error} If query contains invalid characters or becomes empty after sanitization
@@ -222,16 +238,16 @@ export class PostsController extends BaseController {
     // - Hyphens and underscores (common in tags like "blue_hair", "ai-generated")
     // - * only at end of words (for prefix search like "tag*")
     // Block all FTS5 operators: :, NEAR, AND, OR, NOT, quotes, backslashes, etc.
-    
+
     // Split by spaces to handle multiple tags
     const words = query.trim().split(/\s+/).filter(Boolean);
-    
+
     if (words.length === 0) {
       throw new Error(
         "FTS5 query is empty. Please provide valid search terms."
       );
     }
-    
+
     // Validate and sanitize each word
     // SECURITY: Allow Unicode characters (Cyrillic, CJK, etc.) but escape FTS5 operators
     // Use parameterized query approach: escape special characters instead of removing them
@@ -247,26 +263,26 @@ export class PostsController extends BaseController {
         .replace(/\bNOT\b/gi, "") // Remove NOT operator
         .replace(/"/g, "") // Remove quotes (will add back after escaping)
         .replace(/\\/g, ""); // Remove backslashes
-      
+
       // Allow * only at the end of word (prefix search)
       const hasTrailingStar = cleaned.endsWith("*");
       const baseWord = hasTrailingStar ? cleaned.slice(0, -1) : cleaned;
-      
+
       if (baseWord.trim().length === 0) {
         throw new Error(
           `Invalid search term: "${word}". Search term cannot be empty after sanitization.`
         );
       }
-      
+
       return hasTrailingStar ? `${baseWord.trim()}*` : baseWord.trim();
     });
-    
+
     // Join words with spaces and wrap in quotes for FTS5 literal phrase search
     const sanitized = sanitizedWords.join(" ");
-    
+
     // Escape double quotes by doubling them (FTS5 escaping rule)
     const escaped = sanitized.replace(/"/g, '""');
-    
+
     // Wrap in double quotes to make FTS5 treat it as a literal phrase
     // This prevents FTS5 from interpreting any remaining characters as operators
     return `"${escaped}"`;
@@ -382,7 +398,7 @@ export class PostsController extends BaseController {
     // CRITICAL: LIKE "%...%" causes Full Table Scan. Use FTS5 instead.
     if (filters?.aiFilter === "hide" || filters?.aiFilter === "only") {
       const ftsTableExists = this.checkFtsTableExists();
-      
+
       if (ftsTableExists) {
         // Use FTS5 for indexed search (much faster than LIKE)
         // AI tags to search for
@@ -392,25 +408,27 @@ export class PostsController extends BaseController {
           "ai_generation",
           "ai-generated_content",
         ];
-        
+
         // Build FTS5 query: "ai_generated OR ai-generated OR ..."
         // SECURITY: Validate and sanitize each tag, then construct query safely
         // Even though tags are hardcoded, we validate them to prevent future bugs if list changes
         // Use sanitizeFts5Query for each tag, then join with OR (which is safe for hardcoded tags)
-        const sanitizedTagQueries = aiTags.map(tag => {
+        const sanitizedTagQueries = aiTags.map((tag) => {
           // Validate tag format: only alphanumeric, hyphens, underscores allowed
           // This prevents injection if aiTags list is ever extended to user input
           if (!/^[a-zA-Z0-9_-]+$/.test(tag)) {
-            throw new Error(`Invalid AI tag format: "${tag}". Only alphanumeric, hyphens, and underscores allowed.`);
+            throw new Error(
+              `Invalid AI tag format: "${tag}". Only alphanumeric, hyphens, and underscores allowed.`
+            );
           }
           // Escape quotes for FTS5 (double quotes for literal)
           return `"${tag.replace(/"/g, '""')}"`;
         });
-        
+
         // Join with OR - safe because all tags are validated above
         // FTS5 OR operator is safe when all operands are validated literals
         const ftsQuery = sanitizedTagQueries.join(" OR ");
-        
+
         if (filters.aiFilter === "hide") {
           // Exclude AI posts: NOT (FTS5 match)
           // Use sql template with validated query string
@@ -436,15 +454,17 @@ export class PostsController extends BaseController {
       } else {
         // Fallback to LIKE only if FTS5 table doesn't exist (should not happen in production)
         // NOTE: This is inefficient for large datasets - FTS5 should be available
-        log.warn("[PostsController] FTS5 table not found, using slow LIKE fallback for AI filter");
+        log.warn(
+          "[PostsController] FTS5 table not found, using slow LIKE fallback for AI filter"
+        );
         const aiTagPatterns = [
           "%ai_generated%",
           "%ai-generated%",
           "%ai_generation%",
           "%ai-generated_content%",
         ];
-        const aiConditions = aiTagPatterns.map((pattern) =>
-          sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
+        const aiConditions = aiTagPatterns.map(
+          (pattern) => sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
         );
         if (aiConditions.length > 0) {
           const aiOrCondition = or(...aiConditions) as SQL;

@@ -40,7 +40,10 @@ export abstract class BaseController {
 
   // Request Collapsing: For idempotent handlers, reuse in-flight Promise to prevent duplicate work
   // Map<channel, Promise<unknown>> - stores active Promise for each idempotent channel
-  private static readonly requestCollapseMap = new Map<string, Promise<unknown>>();
+  private static readonly requestCollapseMap = new Map<
+    string,
+    Promise<unknown>
+  >();
 
   // Minimum time between calls for the same channel (milliseconds)
   // Prevents renderer from spamming IPC calls
@@ -83,7 +86,10 @@ export abstract class BaseController {
     schema:
       | z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], z.ZodTypeAny | null>
       | z.ZodTypeAny,
-    handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>,
+    handler: (
+      event: IpcMainInvokeEvent,
+      ...args: unknown[]
+    ) => Promise<unknown>,
     options?: { isIdempotent?: boolean }
   ): void {
     // Critical: Remove existing handler to prevent "duplicate handler" crash
@@ -113,20 +119,23 @@ export abstract class BaseController {
             BaseController.callCount >= BaseController.CLEANUP_INTERVAL_CALLS
           ) {
             BaseController.callCount = 0; // Reset counter
-            
+
             // Schedule cleanup asynchronously to avoid blocking Event Loop
             // Use setImmediate to yield control and allow other IPC calls to proceed
             setImmediate(() => {
               const cleanupNow = Date.now();
               const keysToDelete: string[] = [];
-              
+
               // Collect keys to delete (avoid modifying Map during iteration)
-              for (const [key, timestamp] of BaseController.throttleMap.entries()) {
+              for (const [
+                key,
+                timestamp,
+              ] of BaseController.throttleMap.entries()) {
                 if (cleanupNow - timestamp > BaseController.THROTTLE_TTL_MS) {
                   keysToDelete.push(key);
                 }
               }
-              
+
               // Delete collected keys
               for (const key of keysToDelete) {
                 BaseController.throttleMap.delete(key);
@@ -135,22 +144,26 @@ export abstract class BaseController {
           }
 
           const isIdempotent = options?.isIdempotent === true;
-          
+
           // Request Collapsing: For idempotent handlers, reuse in-flight Promise
           // This prevents duplicate work when multiple calls arrive simultaneously (e.g., React Strict Mode)
           // Instead of allowing spam, we collapse requests into a single Promise
           if (isIdempotent) {
-            const existingPromise = BaseController.requestCollapseMap.get(channel);
+            const existingPromise =
+              BaseController.requestCollapseMap.get(channel);
             if (existingPromise) {
               // Request already in-flight, return the same Promise
-              log.debug(`[IPC] Request collapsing for idempotent channel "${channel}"`);
+              log.debug(
+                `[IPC] Request collapsing for idempotent channel "${channel}"`
+              );
               return existingPromise;
             }
           }
-          
+
           const lastCall = BaseController.throttleMap.get(channel);
-          const timeSinceLastCall = lastCall !== undefined ? now - lastCall : Infinity;
-          
+          const timeSinceLastCall =
+            lastCall !== undefined ? now - lastCall : Infinity;
+
           if (
             lastCall !== undefined &&
             timeSinceLastCall < BaseController.THROTTLE_MS
@@ -168,7 +181,7 @@ export abstract class BaseController {
             };
             throw rateLimitError;
           }
-          
+
           // Update throttle timestamp only if we're actually processing the request
           BaseController.throttleMap.set(channel, Date.now());
 
@@ -337,11 +350,15 @@ export abstract class BaseController {
           // Serialize error to plain object, but hide sensitive details in production
           // Security: Never log stack traces in production - they may contain file paths
           const isProduction = process.env.NODE_ENV === "production";
-          
+
           // Log error details for debugging (without sensitive argument data)
           log.error(`[IPC] Error in channel "${channel}":`, {
             message: error instanceof Error ? error.message : "Unknown error",
-            stack: isProduction ? undefined : (error instanceof Error ? error.stack : undefined),
+            stack: isProduction
+              ? undefined
+              : error instanceof Error
+              ? error.stack
+              : undefined,
             // Security: Do not log args - they may contain sensitive data even after sanitization
           });
 
