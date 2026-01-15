@@ -1,42 +1,45 @@
-# Документация базы данных
+# Документация по базе данных
 
-## 📑 Содержание
+## 📑 Оглавление
 
-- [Обзор](#обзор)
-- [Расположение базы данных](#расположение-базы-данных)
-- [Схема](#схема)
-- [Архитектура базы данных](#архитектура-базы-данных)
-- [Доступные методы](#доступные-методы-via-drizzle-orm)
-- [Миграции](#миграции)
+- [Обзор](#overview)
+- [Расположение базы данных](#database-location)
+- [Схема](#schema)
+- [Архитектура базы данных](#database-architecture)
+- [Доступные методы](#available-methods-via-drizzle-orm)
+- [Миграции](#migrations)
 - [Drizzle ORM](#drizzle-orm)
 - [Database Studio](#database-studio)
-- [Рекомендации](#рекомендации)
-- [Резервное копирование и восстановление](#резервное-копирование-и-восстановление)
-- [Вопросы производительности](#вопросы-производительности)
-- [Будущие улучшения](#будущие-улучшения)
+- [Рекомендации](#best-practices)
+- [Резервное копирование и восстановление](#backup-and-recovery)
+- [Вопросы производительности](#performance-considerations)
+- [Будущие улучшения](#future-enhancements)
 
 ---
 
 ## Обзор
 
-Приложение использует **SQLite** в качестве локальной базы данных для хранения метаданных, отслеживаемых художников, публикаций и настроек. Доступ к базе данных осуществляется напрямую в **Main Process** с помощью **Drizzle ORM** для типобезопасных запросов. Режим WAL (Write-Ahead Logging) включен для одновременного чтения.
+Приложение использует **SQLite** как локальную базу данных для хранения метаданных, отслеживаемых артистов, постов и настроек. Доступ к базе данных осуществляется напрямую в **Main Process** с использованием **Drizzle ORM** для типобезопасных запросов. Включен режим WAL (Write-Ahead Logging) для одновременного чтения.
 
 **📖 Связанная документация:**
-- [Документация по архитектуре](./architecture.md) - Архитектура базы данных в системном дизайне
-- [Документация API](./api.md) - методы IPC для операций с базой данных
-- [Руководство разработчика](./development.md) - Скрипты базы данных и миграции
-- [Глоссарий](./glossary.md) - Основные термины (режим WAL, Drizzle ORM, миграция и т.д.)
+
+- [Architecture Documentation](./architecture.md) - Архитектура базы данных в системном проектировании
+- [API Documentation](./api.md) - IPC методы для операций с базой данных
+- [Development Guide](./development.md) - Скрипты базы данных и миграции
+- [Glossary](./glossary.md) - Ключевые термины (WAL Mode, Drizzle ORM, Migration и т.д.)
 
 ## Расположение базы данных
 
 Расположение файла базы данных зависит от режима работы приложения:
 
 **Стандартный режим (установленный):**
+
 - **Windows:** `%APPDATA%/RuleDesk/metadata.db`
 - **macOS:** `~/Library/Application Support/RuleDesk/metadata.db`
 - **Linux:** `~/.config/RuleDesk/metadata.db`
 
 **Портативный режим (портативный исполняемый файл):**
+
 - База данных хранится в `data/metadata.db` рядом с исполняемым файлом
 
 **Реализация:**
@@ -56,43 +59,47 @@ const dbPath = path.join(app.getPath("userData"), "metadata.db");
 
 ### Таблица: `artists`
 
-Хранит информацию об отслеживаемых художниках/пользователях.
+Хранит информацию об отслеживаемых артистах/пользователях.
 
-| Столбец            | Тип                           | Описание                                 |
-| ----------------- | ------------------------------ | ------------------------------------------- |
-| `id`              | INTEGER (PK, AutoIncrement)    | Первичный ключ                                 |
-| `name`            | TEXT (NOT NULL)                | Отображаемое имя художника                         |
-| `tag`             | TEXT (NOT NULL, UNIQUE)        | Tag или имя пользователя для отслеживания                |
-| `provider`        | TEXT (NOT NULL, DEFAULT 'rule34') | ID провайдера: "rule34" или "gelbooru"      |
-| `type`            | TEXT (NOT NULL, DEFAULT 'tag') | Тип: "tag", "uploader" или "query"         |
-| `api_endpoint`    | TEXT (NOT NULL)                | Базовый URL конечной точки API                       |
-| `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)  | ID последней просмотренной публикации                    |
-| `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)  | Количество новых, непросмотренных публикаций                |
-| `last_checked`    | INTEGER (NULL)                 | Временная метка последнего опроса API (режим timestamp) |
-| `created_at`      | INTEGER (NOT NULL)             | Временная метка создания (режим timestamp, мс)     |
+| Колонка           | Тип                               | Описание                                  |
+| ----------------- | --------------------------------- | ----------------------------------------- |
+| `id`              | INTEGER (PK, AutoIncrement)       | Первичный ключ                            |
+| `name`            | TEXT (NOT NULL)                   | Отображаемое имя артиста                  |
+| `tag`             | TEXT (NOT NULL, UNIQUE)           | Tag или имя пользователя для отслеживания |
+| `provider`        | TEXT (NOT NULL, DEFAULT 'rule34') | ID провайдера: "rule34" или "gelbooru"    |
+| `type`            | TEXT (NOT NULL, DEFAULT 'tag')    | Тип: "tag", "uploader" или "query"        |
+| `api_endpoint`    | TEXT (NOT NULL)                   | Базовый URL API-конечной точки            |
+| `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)     | ID последнего просмотренного поста        |
+| `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)     | Количество новых, непросмотренных постов  |
+| `last_checked`    | INTEGER (NULL)                    | Метка времени последней проверки API      |
+| `created_at`      | INTEGER (NOT NULL)                | Метка времени создания (мс)               |
 
 **Определение схемы:**
 
 ```typescript
-export const artists = sqliteTable("artists", {
-  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  tag: text("tag").notNull().unique(),
-  provider: text("provider", { enum: ["rule34", "gelbooru"] })
-    .notNull()
-    .default("rule34"),
-  type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
-  apiEndpoint: text("api_endpoint").notNull(),
-  lastPostId: integer("last_post_id").default(0).notNull(),
-  newPostsCount: integer("new_posts_count").default(0).notNull(),
-  lastChecked: integer("last_checked", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-}, (t) => ({
-  lastCheckedIdx: index("artists_lastChecked_idx").on(t.lastChecked),
-  createdAtIdx: index("artists_createdAt_idx").on(t.createdAt),
-}));
+export const artists = sqliteTable(
+  "artists",
+  {
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    tag: text("tag").notNull().unique(),
+    provider: text("provider", { enum: ["rule34", "gelbooru"] })
+      .notNull()
+      .default("rule34"),
+    type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
+    apiEndpoint: text("api_endpoint").notNull(),
+    lastPostId: integer("last_post_id").default(0).notNull(),
+    newPostsCount: integer("new_posts_count").default(0).notNull(),
+    lastChecked: integer("last_checked", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    lastCheckedIdx: index("artists_lastChecked_idx").on(t.lastChecked),
+    createdAtIdx: index("artists_createdAt_idx").on(t.createdAt),
+  })
+);
 ```
 
 **Типы TypeScript:**
@@ -104,33 +111,37 @@ export type NewArtist = typeof artists.$inferInsert;
 
 ### Таблица: `posts`
 
-Кэширует метаданные публикаций для фильтрации, статистики и управления загрузками. Поддерживает прогрессивную загрузку изображений с URL-адресами предварительного просмотра, образца и полного разрешения.
+Кэширует метаданные постов для фильтрации, статистики и управления загрузками. Поддерживает прогрессивную загрузку изображений с URL-адресами предварительного просмотра, образцов и полного разрешения.
 
-| Столбец         | Тип                                   | Описание                                   |
+| Колонка        | Тип                                    | Описание                                      |
 | -------------- | -------------------------------------- | --------------------------------------------- |
-| `id`           | INTEGER (PK, AutoIncrement)            | Внутренний ID публикации                              |
-| `post_id`      | INTEGER (NOT NULL)                     | ID публикации из внешнего API                     |
-| `artist_id`    | INTEGER (FK → artists.id)              | Ссылка на художника                           |
-| `file_url`     | TEXT (NOT NULL)                        | Прямой URL к медиафайлу полного разрешения      |
-| `preview_url`  | TEXT (NOT NULL)                        | URL к предварительному просмотру низкого разрешения (размытому)       |
-| `sample_url`   | TEXT (NOT NULL, DEFAULT '')            | URL к образцу среднего разрешения               |
-| `title`        | TEXT                                   | Заголовок публикации                                    |
+| `id`           | INTEGER (PK, AutoIncrement)            | Внутренний ID поста                           |
+| `post_id`      | INTEGER (NOT NULL)                     | ID поста из внешнего API                      |
+| `artist_id`    | INTEGER (FK → artists.id)              | Ссылка на артиста                             |
+| `file_url`     | TEXT (NOT NULL)                        | Прямой URL к медиафайлу полного разрешения   |
+| `preview_url`  | TEXT (NOT NULL)                        | URL к предварительному просмотру низкого разрешения (размытому) |
+| `sample_url`   | TEXT (NOT NULL, DEFAULT '')            | URL к образцу среднего разрешения             |
+| `title`        | TEXT                                   | Заголовок поста                               |
 | `rating`       | TEXT                                   | Рейтинг контента (safe, questionable, explicit) |
-| `tags`         | TEXT                                   | Tagи, разделённые пробелами                          |
-| `published_at` | INTEGER (NOT NULL)                     | Временная метка публикации (режим timestamp, мс)    |
-| `created_at`   | INTEGER (NOT NULL)                     | Когда добавлено в локальную базу данных (timestamp мс)   |
-| `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Просмотрена ли публикация                  |
-| `is_favorited` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Добавлена ли публикация в избранное               |
+| `tags`         | TEXT                                   | Tag-и, разделённые пробелами                  |
+| `media_type`   | TEXT (NULL)                            | Тип медиа: "image" или "video" (индексировано) |
+| `published_at` | INTEGER (NOT NULL)                     | Метка времени публикации (мс)                 |
+| `created_at`   | INTEGER (NOT NULL)                     | Когда добавлено в локальную базу данных (мс)  |
+| `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Просмотрен ли пост                            |
+| `is_favorited` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Добавлен ли пост в избранное                  |
 
-**Уникальное ограничение:** `(artist_id, post_id)` - Предотвращает дублирование публикаций для каждого художника.
+**Уникальное ограничение:** `(artist_id, post_id)` - предотвращает дублирование постов для одного артиста.
 
 **Индексы:**
+
 - `postIdIdx` - Индекс по `post_id` для эффективного поиска
-- `artistIdIdx` - Индекс по `artist_id` для запросов, основанных на художниках
+- `artistIdIdx` - Индекс по `artist_id` для запросов на основе артистов
 - `isViewedIdx` - Индекс по `is_viewed` для фильтрации по статусу просмотра
 - `publishedAtIdx` - Индекс по `published_at` для сортировки по дате
 - `isFavoritedIdx` - Индекс по `is_favorited` для фильтрации избранного
-- `posts_artist_rating_viewed_idx` - Составной индекс по `(artist_id, rating, is_viewed)` для оптимизированных многоколоночных запросов фильтрации
+- `posts_media_type_idx` - Индекс по `media_type` для быстрой фильтрации изображений/видео
+- `posts_artist_rating_viewed_idx` - Композитный индекс по `(artist_id, rating, is_viewed)` для оптимизированных многоколоночных запросов фильтрации
+- `posts_artist_media_type_idx` - Композитный индекс по `(artist_id, media_type)` для оптимизированной фильтрации по артисту + типу медиа
 
 **Определение схемы:**
 
@@ -149,6 +160,7 @@ export const posts = sqliteTable(
     title: text("title").default(""),
     rating: text("rating").default(""),
     tags: text("tags").notNull(),
+    mediaType: text("media_type", { enum: ["image", "video"] }),
     publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
@@ -167,10 +179,15 @@ export const posts = sqliteTable(
     isViewedIdx: index("isViewedIdx").on(table.isViewed),
     publishedAtIdx: index("publishedAtIdx").on(table.publishedAt),
     isFavoritedIdx: index("isFavoritedIdx").on(table.isFavorited),
+    mediaTypeIdx: index("posts_media_type_idx").on(table.mediaType),
     artistRatingViewedIdx: index("posts_artist_rating_viewed_idx").on(
       table.artistId,
       table.rating,
       table.isViewed
+    ),
+    artistMediaTypeIdx: index("posts_artist_media_type_idx").on(
+      table.artistId,
+      table.mediaType
     ),
   })
 );
@@ -187,15 +204,15 @@ export type NewPost = typeof posts.$inferInsert;
 
 Хранит настройки приложения, включая учетные данные API и пользовательские предпочтения.
 
-| Столбец                | Тип                          | Описание                                    |
-| --------------------- | ----------------------------- | ---------------------------------------------- |
-| `id`                  | INTEGER (PK, AutoIncrement)   | Первичный ключ                                    |
-| `user_id`             | TEXT (DEFAULT '')             | ID пользователя Booru (зависит от провайдера)              |
-| `encrypted_api_key`   | TEXT (DEFAULT '')             | Зашифрованный ключ API (зашифрованный при хранении)          |
-| `is_safe_mode`        | INTEGER (BOOLEAN, DEFAULT 1) | Флаг безопасного режима (размытие NSFW контента)            |
-| `is_adult_confirmed`  | INTEGER (BOOLEAN, DEFAULT 0) | Флаг подтверждения совершеннолетия (подтверждение 18+)     |
-| `is_adult_verified`   | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Флаг проверки совершеннолетия (юридическое подтверждение) |
-| `tos_accepted_at`     | INTEGER (TIMESTAMP, NULL)     | Временная метка принятия Условий обслуживания          |
+| Колонка              | Тип                                    | Описание                                     |
+| -------------------- | -------------------------------------- | -------------------------------------------- |
+| `id`                 | INTEGER (PK, AutoIncrement)            | Первичный ключ                               |
+| `user_id`            | TEXT (DEFAULT '')                      | ID пользователя Booru (зависит от провайдера) |
+| `encrypted_api_key`  | TEXT (DEFAULT '')                      | Зашифрованный ключ API (зашифрован в покое)  |
+| `is_safe_mode`       | INTEGER (BOOLEAN, DEFAULT 1)           | Флаг безопасного режима (размытие NSFW контента) |
+| `is_adult_confirmed` | INTEGER (BOOLEAN, DEFAULT 0)           | Флаг подтверждения совершеннолетия (18+)    |
+| `is_adult_verified`  | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Флаг верификации совершеннолетия (юридическое подтверждение) |
+| `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | Метка времени принятия Условий использования |
 
 **Определение схемы:**
 
@@ -205,7 +222,9 @@ export const settings = sqliteTable("settings", {
   userId: text("user_id").default(""),
   encryptedApiKey: text("encrypted_api_key").default(""),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
-  isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(false),
+  isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
+    false
+  ),
   isAdultVerified: integer("is_adult_verified", { mode: "boolean" })
     .default(false)
     .notNull(),
@@ -222,41 +241,41 @@ export type NewSettings = typeof settings.$inferInsert;
 
 ## Архитектура базы данных
 
-Все операции с базой данных выполняются напрямую в **Main Process** с использованием синхронного доступа через `better-sqlite3`. Режим WAL (Write-Ahead Logging) включен для обеспечения одновременного чтения во время выполнения записи.
+Все операции с базой данных выполняются непосредственно в **Main Process** с использованием синхронного доступа через `better-sqlite3`. Режим WAL (Write-Ahead Logging) включен для обеспечения одновременного чтения во время выполнения операций записи.
 
 ### Архитектура клиента базы данных
 
 **Клиент базы данных** (`src/main/db/client.ts`):
 
-- Прямой синхронный доступ к SQLite через `better-sqlite3`
-- Режим WAL включен для одновременного чтения
-- Оптимизированные прагмы SQLite: `synchronous = NORMAL`, `temp_store = MEMORY`, ввод/вывод с отображением в памяти
-- Управляет инициализацией базы данных и миграциями
-- Предоставляет функции `getDb()` и `getSqliteInstance()`
-- Автоматическое выполнение миграций при запуске
-- Поддержка портативного режима (автоматическое обнаружение)
+-   Прямой синхронный доступ к SQLite через `better-sqlite3`
+-   Режим WAL включен для одновременного чтения
+-   Оптимизированные прагмы SQLite: `synchronous = NORMAL`, `temp_store = MEMORY`, память, отображаемая на ввод-вывод
+-   Управляет инициализацией и миграциями базы данных
+-   Предоставляет функции `getDb()` и `getSqliteInstance()`
+-   Автоматическое выполнение миграций при запуске
+-   Поддержка портативного режима (автоматическое определение)
 
 ### Инициализация
 
 ```typescript
 import { initializeDatabase, getDb } from "./db/client";
 
-// Инициализация базы данных (автоматически запускает миграции)
+// Initialize database (runs migrations automatically)
 await initializeDatabase();
 
-// Получение экземпляра базы данных для запросов
+// Get database instance for queries
 const db = getDb();
 ```
 
-**Примечание:** Миграции запускаются автоматически при инициализации базы данных. Соединение с базой данных управляется в Main Process.
+**Примечание:** Миграции запускаются автоматически при инициализации базы данных. Подключение к базе данных управляется в Main Process.
 
 ### Доступные методы (через Drizzle ORM)
 
-Все операции с базой данных осуществляются через Drizzle ORM с использованием экземпляра базы данных из `getDb()`.
+Все операции с базой данных доступны через Drizzle ORM, используя экземпляр базы данных из `getDb()`.
 
-#### Получить всех художников
+#### Получить всех артистов
 
-Получает всех отслеживаемых художников, отсортированных по имени.
+Извлекает всех отслеживаемых артистов, отсортированных по имени.
 
 **Пример:**
 
@@ -271,14 +290,14 @@ const artistsList = await db.query.artists.findMany({
 });
 ```
 
-#### Добавить художника
+#### Добавить артиста
 
-Добавляет нового художника для отслеживания.
+Добавляет нового артиста для отслеживания.
 
 **Пример:**
 
 ```typescript
-import { getDb } => from "./db/client";
+import { getDb } from "./db/client";
 import { artists } from "./schema";
 
 const db = getDb();
@@ -295,9 +314,9 @@ const result = await db.insert(artists).values(newArtist).returning();
 const savedArtist = result[0];
 ```
 
-#### Удалить художника
+#### Удалить артиста
 
-Удаляет художника и все связанные публикации (каскадное удаление).
+Удаляет артиста и все связанные с ним посты (каскадное удаление).
 
 **Пример:**
 
@@ -310,9 +329,9 @@ const db = getDb();
 await db.delete(artists).where(eq(artists.id, 123));
 ```
 
-#### Получить публикации художника
+#### Получить посты по артисту
 
-Получает публикации для определенного художника с пагинацией.
+Извлекает посты для конкретного артиста с пагинацией.
 
 **Пример:**
 
@@ -333,11 +352,11 @@ const postsList = await db.query.posts.findMany({
 });
 ```
 
-**Примечание:** Метод IPC `getArtistPosts` использует лимит в 50 публикаций на страницу для лучшей производительности.
+**Примечание:** IPC-метод `getArtistPosts` использует ограничение в 50 постов на страницу для лучшей производительности.
 
-#### Сохранить публикации (массовая вставка/обновление)
+#### Сохранить посты (массовая вставка/обновление)
 
-Сохраняет публикации для художника с использованием массовой вставки/обновления. Обновляет `lastPostId` художника и увеличивает `newPostsCount`.
+Сохраняет посты для артиста, используя массовую вставку/обновление. Обновляет `lastPostId` артиста и увеличивает `newPostsCount`.
 
 **Пример:**
 
@@ -360,7 +379,7 @@ const newPosts: NewPost[] = [
   },
 ];
 
-// Массовая вставка/обновление с обработкой ON CONFLICT
+// Bulk upsert with ON CONFLICT handling
 await db
   .insert(posts)
   .values(newPosts)
@@ -369,11 +388,11 @@ await db
     set: {
       fileUrl: sql`excluded.file_url`,
       previewUrl: sql`excluded.preview_url`,
-      // ... другие поля
+      // ... other fields
     },
   });
 
-// Обновить lastPostId художника
+// Update artist's lastPostId
 await db
   .update(artists)
   .set({ lastPostId: Math.max(...newPosts.map((p) => p.postId)) })
@@ -382,7 +401,7 @@ await db
 
 #### Получить настройки
 
-Получает сохраненные настройки. Ключ API зашифрован и должен быть расшифрован в Main Process.
+Извлекает сохраненные настройки. Ключ API зашифрован и должен быть дешифрован в Main Process.
 
 **Пример:**
 
@@ -395,9 +414,9 @@ const db = getDb();
 const settingsRecord = await db.query.settings.findFirst();
 
 if (settingsRecord && settingsRecord.encryptedApiKey) {
-  // Расшифровать ключ API с помощью SecureStorage (только в Main Process)
+  // Decrypt API key using SecureStorage (only in Main Process)
   const decryptedKey = SecureStorage.decrypt(settingsRecord.encryptedApiKey);
-  // decryptedKey имеет тип string | null
+  // decryptedKey is string | null
 }
 ```
 
@@ -432,9 +451,9 @@ await db
   });
 ```
 
-#### Отметить публикацию как просмотренную
+#### Пометить пост как просмотренный
 
-Отмечает публикацию как просмотренную в базе данных.
+Помечает пост как просмотренный в базе данных.
 
 **Пример:**
 
@@ -444,15 +463,12 @@ import { posts } from "./schema";
 import { eq } from "drizzle-orm";
 
 const db = getDb();
-await db
-  .update(posts)
-  .set({ isViewed: true })
-  .where(eq(posts.id, 123));
+await db.update(posts).set({ isViewed: true }).where(eq(posts.id, 123));
 ```
 
-#### Переключить статус избранного для публикации
+#### Переключить статус избранного для поста
 
-Переключает статус избранного для публикации в базе данных.
+Переключает статус избранного для поста в базе данных.
 
 **Пример:**
 
@@ -474,9 +490,9 @@ if (post) {
 }
 ```
 
-#### Поиск художников
+#### Поиск артистов
 
-Ищет художников в локальной базе данных по имени или tagу.
+Ищет артистов в локальной базе данных по имени или tag-у.
 
 **Пример:**
 
@@ -488,10 +504,7 @@ import { or, like } from "drizzle-orm";
 const db = getDb();
 const query = "artist";
 const results = await db.query.artists.findMany({
-  where: or(
-    like(artists.name, `%${query}%`),
-    like(artists.tag, `%${query}%`)
-  ),
+  where: or(like(artists.name, `%${query}%`), like(artists.tag, `%${query}%`)),
 });
 ```
 
@@ -505,7 +518,7 @@ const results = await db.query.artists.findMany({
 npm run db:generate
 ```
 
-Это создает новый файл миграции в директории `drizzle/`.
+Это создаст новый файл миграции в каталоге `drizzle/`.
 
 ### Запуск миграций
 
@@ -521,9 +534,13 @@ npm run db:migrate
 
 Миграции хранятся в `drizzle/`:
 
-- SQL-файлы: `0000_*.sql`
-- Метаданные: `meta/_journal.json`
-- Снимки: `meta/*_snapshot.json`
+-   **SQL-файлы:** `drizzle/*.sql` - **Отслеживаются в git** (включены в репозиторий и сборку)
+-   **Метаданные:** `drizzle/meta/` - **Игнорируются git-ом** (файлы для локальной разработки)
+    -   `meta/_journal.json` - Журнал миграций
+    -   `meta/*_snapshot.json` - Снимки схемы
+-   **Конфигурация миграций:** `drizzle/migrations.json` - **Игнорируется git-ом** (сгенерированный файл)
+
+**Примечание:** Только SQL-файлы миграций отслеживаются в системе контроля версий. Метафайлы и конфигурация миграций генерируются локально и не должны быть зафиксированы.
 
 **Пример миграции:**
 
@@ -558,7 +575,7 @@ export default defineConfig({
 
 ### Примеры запросов
 
-**Выбрать всех художников:**
+**Выбрать всех артистов:**
 
 ```typescript
 const artists = await db.query.artists.findMany({
@@ -566,7 +583,7 @@ const artists = await db.query.artists.findMany({
 });
 ```
 
-**Найти художника по ID:**
+**Найти артиста по ID:**
 
 ```typescript
 const artist = await db.query.artists.findFirst({
@@ -574,7 +591,7 @@ const artist = await db.query.artists.findFirst({
 });
 ```
 
-**Вставить художника:**
+**Вставить артиста:**
 
 ```typescript
 const result = await db
@@ -583,7 +600,7 @@ const result = await db
   .returning({ id: schema.artists.id });
 ```
 
-**Обновить художника:**
+**Обновить артиста:**
 
 ```typescript
 await db
@@ -591,7 +608,7 @@ await db
   .set({
     lastPostId: newPostId,
     newPostsCount: count,
-    lastChecked: new Date(), // Использует режим timestamp
+    lastChecked: new Date(), // Uses timestamp mode
   })
   .where(eq(schema.artists.id, artistId));
 ```
@@ -610,13 +627,13 @@ npm run db:studio
 
 ### 1. Типобезопасность
 
-Всегда используйте выведенные Drizzle типы:
+Всегда используйте выведенные типы Drizzle:
 
 ```typescript
-// Правильно
+// Good
 const artist: Artist = await dbService.getTrackedArtists()[0];
 
-// Неправильно
+// Bad
 const artist: any = await dbService.getTrackedArtists()[0];
 ```
 
@@ -628,7 +645,7 @@ const artist: any = await dbService.getTrackedArtists()[0];
 try {
   const artist = await dbService.addArtist(data);
 } catch (error) {
-  logger.error("Ошибка базы данных:", error);
+  logger.error("Database error:", error);
   throw error;
 }
 ```
@@ -638,7 +655,7 @@ try {
 Для нескольких связанных операций используйте транзакции:
 
 ```typescript
-// Пример (будет реализовано)
+// Example (to be implemented)
 await db.transaction(async (tx) => {
   await tx.insert(schema.artists).values(artistData);
   await tx.insert(schema.posts).values(postData);
@@ -650,11 +667,11 @@ await db.transaction(async (tx) => {
 Добавляйте индексы для часто запрашиваемых столбцов:
 
 ```typescript
-// Пример (будет добавлено)
+// Example (to be added)
 export const artists = sqliteTable(
   "artists",
   {
-    // ... столбцы
+    // ... columns
   },
   (table) => ({
     usernameIdx: index("username_idx").on(table.username),
@@ -668,16 +685,16 @@ export const artists = sqliteTable(
 
 Приложение предоставляет встроенную функциональность резервного копирования:
 
-1.  **Ручное резервное копирование:** Используйте `window.api.createBackup()` или компонент пользовательского интерфейса Backup Controls
-2.  **Расположение резервных копий:** Резервные копии хранятся в каталоге пользовательских данных с именами файлов, содержащими временные метки
-3.  **Формат резервной копии:** Полная копия базы данных SQLite
+1.  **Ручное резервное копирование:** Используйте `window.api.createBackup()` или компонент пользовательского интерфейса Backup Controls.
+2.  **Расположение резервных копий:** Резервные копии хранятся в каталоге пользовательских данных с именами файлов, включающими метку времени.
+3.  **Формат резервной копии:** Полная копия базы данных SQLite.
 
 **Пример:**
 
 ```typescript
 const result = await window.api.createBackup();
 if (result.success) {
-  console.log(`Резервная копия создана по адресу: ${result.path}`);
+  console.log(`Backup created at: ${result.path}`);
 }
 ```
 
@@ -685,103 +702,111 @@ if (result.success) {
 
 **Использование приложения:**
 
-1.  Используйте `window.api.restoreBackup()` или компонент пользовательского интерфейса Backup Controls
-2.  Выберите файл резервной копии из диалогового окна
-3.  Проверка целостности базы данных выполняется автоматически перед восстановлением
-4.  Окно приложения перезагружается после успешного восстановления
+1.  Используйте `window.api.restoreBackup()` или компонент пользовательского интерфейса Backup Controls.
+2.  Выберите файл резервной копии в диалоговом окне.
+3.  Проверка целостности базы данных запускается автоматически перед восстановлением.
+4.  Окно приложения перезагружается после успешного восстановления.
 
 **Ручное восстановление:**
 
 Если база данных повреждена и требуется ручное восстановление:
 
-1.  Остановите приложение
-2.  Найдите файл резервной копии (в каталоге пользовательских данных)
-3.  Скопируйте файл резервной копии для замены `metadata.db`
-4.  Перезапустите приложение (миграции будут запущены автоматически)
+1.  Остановите приложение.
+2.  Найдите файл резервной копии (в каталоге пользовательских данных).
+3.  Скопируйте файл резервной копии для замены `metadata.db`.
+4.  Перезапустите приложение (миграции запустятся автоматически).
 
-**Примечание:** Процесс восстановления включает автоматические проверки целостности с использованием `PRAGMA integrity_check` перед заменой базы данных. Если проверка целостности не удалась, восстановление откатывается, и исходная база данных сохраняется.
+**Примечание:** Процесс восстановления включает автоматическую проверку целостности с использованием `PRAGMA integrity_check` перед заменой базы данных. Если проверка целостности не удается, восстановление откатывается, и исходная база данных сохраняется.
 
 ## Вопросы производительности
 
-1.  **Режим WAL:** Режим Write-Ahead Logging включен для одновременного чтения
+1.  **WAL Mode:** Режим Write-Ahead Logging включен для одновременного чтения.
 2.  **Индексы:**
-    - Одноколоночные индексы по `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
-    - Составной индекс по `(artist_id, rating, is_viewed)` для общих комбинаций фильтров
+    -   Одноколоночные индексы по `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`.
+    -   Композитный индекс по `(artist_id, rating, is_viewed)` для общих комбинаций фильтров.
+    -   Композитный индекс по `(artist_id, media_type)` для фильтрации по артисту + типу медиа.
+    -   Индекс по `media_type` для быстрой фильтрации изображений/видео.
 3.  **Полнотекстовый поиск FTS5:**
-    - Виртуальная таблица `posts_fts` для быстрого поиска по tagам с использованием FTS5
-    - Внешняя таблица контента (без дублирования данных) с токенизатором `unicode61`
-    - Автоматическая синхронизация через триггеры (INSERT, UPDATE, DELETE)
-    - Поддерживает префиксный поиск с использованием маски `*` (например, `tag*`)
-    - Поиск без учета регистра с правильной обработкой Unicode
+    -   Виртуальная таблица `posts_fts` для быстрого поиска по tag-ам с использованием FTS5.
+    -   Внешняя таблица содержимого (без дублирования данных) с токенизатором `unicode61`.
+    -   Автоматическая синхронизация через триггеры (INSERT, UPDATE, DELETE).
+    -   Поддерживает поиск по префиксу с использованием `*` (например, `tag*`).
+    -   Поиск без учета регистра с правильной обработкой Unicode.
 4.  **Оптимизация SQLite:**
-    - `synchronous = NORMAL` для оптимальной производительности в режиме WAL
-    - `temp_store = MEMORY` для более быстрых операций с временными таблицами
-    - Ввод/вывод с отображением в памяти (настраивается через переменную среды `SQLITE_MMAP_SIZE`, по умолчанию 64 МБ)
-5.  **Пакетные операции:** Операции массовой вставки/обновления обрабатывают публикации порциями (200 публикаций на порцию), чтобы избежать ограничения количества переменных SQLite
+    -   `synchronous = NORMAL` для оптимальной производительности в режиме WAL.
+    -   `temp_store = MEMORY` для более быстрых операций с временными таблицами.
+    -   Ввод-вывод с отображением в память (настраивается через переменную среды `SQLITE_MMAP_SIZE`, по умолчанию 64 МБ).
+5.  **Пакетные операции:** Массовые операции вставки/обновления обрабатывают посты порциями (200 постов за раз), чтобы избежать ограничения количества переменных SQLite.
 6.  **Оптимизация запросов:**
-    - Эффективно используйте построитель запросов Drizzle с правильными индексами
-    - Запросы FTS5 используют EXISTS с шаблоном JOIN для оптимальной производительности
-    - Составные индексы оптимизируют запросы фильтрации по нескольким столбцам
-7.  **Синхронный доступ:** Прямой синхронный доступ через `better-sqlite3` в Main Process
-8.  **Управление соединением:** Одно соединение с базой данных, управляемое в Main Process
+    -   Эффективное использование конструктора запросов Drizzle с правильными индексами.
+    -   Запросы FTS5 используют шаблон EXISTS с JOIN для оптимальной производительности.
+    -   Композитные индексы оптимизируют запросы фильтрации по нескольким столбцам.
+7.  **Синхронный доступ:** Прямой синхронный доступ через `better-sqlite3` в Main Process.
+8.  **Управление подключениями:** Единое подключение к базе данных управляется в Main Process.
 
 ## Полнотекстовый поиск (FTS5)
 
-Приложение использует SQLite FTS5 для эффективного поиска по tagам в таблице `posts`.
+Приложение использует SQLite FTS5 для эффективного поиска по tag-ам в таблице `posts`.
 
 ### Виртуальная таблица FTS5
 
 **Таблица:** `posts_fts`
-- **Тип:** Внешняя таблица контента (ссылается на таблицу `posts`, без дублирования данных)
-- **Токенизатор:** `unicode61` для правильной обработки Unicode и поиска без учета регистра
-- **Столбцы:** `tags` (индексируются для полнотекстового поиска)
-- **Сопоставление контента:** `content='posts'`, `content_rowid='id'`
+
+-   **Тип:** Внешняя таблица содержимого (ссылается на таблицу `posts`, без дублирования данных).
+-   **Токенизатор:** `unicode61` для правильной обработки Unicode и поиска без учета регистра.
+-   **Столбцы:** `tags` (индексируются для полнотекстового поиска).
+-   **Сопоставление содержимого:** `content='posts'`, `content_rowid='id'`.
 
 ### Возможности
 
-- **Быстрый поиск по Tagам:** Индекс FTS5 обеспечивает производительность поиска менее чем за миллисекунду даже на больших наборах данных (более 100 тыс. записей)
-- **Префиксный поиск:** Поддерживает маску `*` в конце слов (например, `tag*` ищет tagи, начинающиеся с "tag")
-- **Без учета регистра:** Токенизатор Unicode автоматически обрабатывает поиск без учета регистра
-- **Многоязычная поддержка:** Правильная обработка Unicode для tagов на разных языках
-- **Автоматическая синхронизация:** Триггеры поддерживают синхронизацию индекса FTS5 с таблицей `posts`:
-  - `posts_fts_insert` - Заполняет индекс при INSERT
-  - `posts_fts_update` - Обновляет индекс при UPDATE tagов
-  - `posts_fts_delete` - Удаляет из индекса при DELETE
+-   **Быстрый поиск по Tag-ам:** Индекс FTS5 обеспечивает производительность поиска менее миллисекунды даже на больших наборах данных (100k+ записей).
+-   **Поиск по префиксу:** Поддерживает подстановочный знак `*` в конце слов (например, `tag*` ищет tag-и, начинающиеся с "tag").
+-   **Без учета регистра:** Токенизатор Unicode автоматически обрабатывает поиск без учета регистра.
+-   **Многоязычная поддержка:** Правильная обработка Unicode для tag-ов на разных языках.
+-   **Автоматическая синхронизация:** Триггеры поддерживают синхронизацию индекса FTS5 с таблицей `posts`:
+    -   `posts_fts_insert` - Заполняет индекс при INSERT.
+    -   `posts_fts_update` - Обновляет индекс при UPDATE tag-ов.
+    -   `posts_fts_delete` - Удаляет из индекса при DELETE.
 
 ### Использование
 
-FTS5 используется автоматически при фильтрации публикаций по tagам через `PostsController.getPosts()`:
+FTS5 используется автоматически при фильтрации постов по tag-ам через `PostsController.getPosts()`:
 
 ```typescript
-// Поиск FTS5 используется внутри, когда filters.tags предоставлен
+// FTS5 search is used internally when filters.tags is provided
 const posts = await db.getPosts({
   filters: { tags: "blue_hair" },
   page: 1,
-  limit: 50
+  limit: 50,
 });
 ```
 
 ### Производительность
 
-- **Размер индекса:** Минимальный (внешняя таблица контента хранит только индекс, а не данные)
-- **Скорость поиска:** Сложность O(log n), обычно < 10 мс для 100 тыс.+ записей
-- **Использование памяти:** Низкое (без дублирования данных, только индексные структуры)
+-   **Размер индекса:** Минимальный (внешняя таблица содержимого хранит только индекс, а не данные).
+-   **Скорость поиска:** Сложность O(log n), обычно < 10 мс для 100k+ записей.
+-   **Использование памяти:** Низкое (нет дублирования данных, только структуры индекса).
 
 ## Будущие улучшения
 
-Запланированные улучшения базы данных:
+Планируемые улучшения базы данных:
 
-- ✅ **Полнотекстовые индексы для tagов (FTS5):** ✅ **Реализовано**
-  - Виртуальная таблица FTS5 `posts_fts` с токенизатором `unicode61`
-  - Внешняя таблица контента для экономии места
-  - Автоматическая синхронизация через триггеры
-  - Поддерживает префиксный поиск и запросы без учета регистра
-- ✅ **Составные индексы:** ✅ **Реализовано**
-  - Составной индекс по `(artist_id, rating, is_viewed)` для оптимизированных запросов фильтрации
-- ✅ **Система избранного:** Реализована с полем `isFavorited` и индексом
-- ⏳ **Таблица подписок:** Функция подписок на tagи запланирована (схема еще не реализована)
-- ⏳ **Таблицы плейлистов:** Функция плейлистов запланирована (схема еще не реализована)
-- ⏳ Логика дедупликации публикаций
-- ⏳ Таблицы статистики для аналитики
-- ⏳ Функциональность экспорта/импорта
-- ⏳ Утилиты для сжатия базы данных
+-   ✅ **Индексы полнотекстового поиска для tag-ов (FTS5):** ✅ **Реализовано**
+    -   Виртуальная таблица FTS5 `posts_fts` с токенизатором `unicode61`.
+    -   Внешняя таблица содержимого для экономии места.
+    -   Автоматическая синхронизация через триггеры.
+    -   Поддерживает поиск по префиксу и запросы без учета регистра.
+-   ✅ **Композитные индексы:** ✅ **Реализовано**
+    -   Композитный индекс по `(artist_id, rating, is_viewed)` для оптимизированных запросов фильтрации.
+    -   Композитный индекс по `(artist_id, media_type)` для оптимизированной фильтрации по артисту + типу медиа.
+-   ✅ **Столбец типа медиа:** ✅ **Реализовано**
+    -   Столбец `media_type` в таблице `posts` для эффективной фильтрации изображений/видео.
+    -   Автоматическое обнаружение во время синхронизации, фоновое заполнение для существующих данных.
+    -   Индексированные запросы по столбцам заменяют медленные запросы `LIKE`.
+-   ✅ **Система избранного:** Реализовано с полем `isFavorited` и индексом.
+-   ⏳ **Таблица подписок:** Планируется функция подписки на Tag-и (схема пока не реализована).
+-   ⏳ **Таблицы плейлистов:** Планируется функция плейлистов (схема пока не реализована).
+-   ⏳ Логика дедупликации постов.
+-   ⏳ Таблицы статистики для аналитики.
+-   ⏳ Функциональность экспорта/импорта.
+-   ⏳ Утилиты для сжатия базы данных.

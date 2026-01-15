@@ -2,38 +2,38 @@
 
 ## 📑 Оглавление
 
-- [Prerequisites](#prerequisites)
-- [Initial Setup](#initial-setup)
-- [Development Scripts](#development-scripts)
-- [Project Structure](#project-structure)
-- [Development Workflow](#development-workflow)
-- [Build Configuration](#build-configuration)
-- [Debugging](#debugging)
-- [Common Issues](#common-issues)
-- [Performance Optimization](#performance-optimization)
-- [Code Quality](#code-quality)
-- [Environment Variables](#environment-variables)
+- [Предварительные требования](#prerequisites)
+- [Начальная настройка](#initial-setup)
+- [Скрипты для разработки](#development-scripts)
+- [Структура проекта](#project-structure)
+- [Рабочий процесс разработки](#development-workflow)
+- [Конфигурация сборки](#build-configuration)
+- [Отладка](#debugging)
+- [Часто встречающиеся проблемы](#common-issues)
+- [Оптимизация производительности](#performance-optimization)
+- [Качество кода](#code-quality)
+- [Переменные окружения](#environment-variables)
 - [Hot Module Replacement (HMR)](#hot-module-replacement-hmr)
-- [Production Build](#production-build)
+- [Продуктовая сборка](#production-build)
 
 ---
 
-Это руководство охватывает настройку среды разработки, процесс сборки и типовые задачи разработки.
+Это руководство охватывает настройку для разработки, процесс сборки и общие задачи разработки.
 
 **📖 Связанная документация:**
 
-- [Руководство по внесению вклада](./contributing.md) - Стандарты и рекомендации по коду
+- [Руководство по участию в разработке](./contributing.md) - Стандарты и рекомендации по коду
 - [Документация по архитектуре](./architecture.md) - Архитектура системы
 - [Документация по API](./api.md) - Справочник по IPC API
 - [Документация по базе данных](./database.md) - Операции с базой данных
 - [Глоссарий](./glossary.md) - Ключевые термины и концепции
 
-## Необходимые условия
+## Предварительные требования
 
-- **Node.js:** v18 или выше
-- **npm:** v9 или выше (или yarn)
-- **Git:** Для контроля версий
-- **Python:** Требуется для сборки нативных модулей (better-sqlite3) в Windows
+-   **Node.js:** v18 или выше
+-   **npm:** v9 или выше (или yarn)
+-   **Git:** Для контроля версий
+-   **Python:** Требуется для сборки нативных модулей (better-sqlite3) в Windows
 
 ## Начальная настройка
 
@@ -52,11 +52,11 @@ npm install
 
 Это устанавливает:
 
-- Electron и связанные с Electron зависимости
-- React и связанные с React зависимости
-- TypeScript и инструменты сборки
-- Библиотеки баз данных (Drizzle ORM, better-sqlite3)
-- UI библиотеки (Tailwind CSS, shadcn/ui Components)
+-   Electron и связанные с Electron зависимости
+-   React и связанные с React зависимости
+-   TypeScript и инструменты сборки
+-   Библиотеки баз данных (Drizzle ORM, better-sqlite3)
+-   Библиотеки UI (Tailwind CSS, shadcn/ui Components)
 
 ### 3. Проверка установки
 
@@ -71,12 +71,12 @@ npm run lint
 
 Запускает приложение в режиме разработки с Hot Module Replacement (HMR).
 
-**Что он делает:**
+**Что делает:**
 
-- Запускает dev-сервер Vite для Renderer Process
-- Компилирует Main Process в режиме отслеживания изменений
-- Открывает окно Electron с включёнными DevTools
-- Включает HMR для React Components
+-   Запускает dev-сервер Vite для Renderer Process
+-   Компилирует Main Process в режиме наблюдения за изменениями
+-   Открывает окно Electron с включенными DevTools
+-   Включает HMR для React Components
 
 **Использование:**
 
@@ -86,13 +86,13 @@ npm run dev
 
 ### `npm run build`
 
-Собирает приложение для production.
+Собирает приложение для продакшена.
 
-**Что он делает:**
+**Что делает:**
 
-- Компилирует TypeScript для Main Process и Renderer Process
-- Собирает (бандлит) React приложение
-- Генерирует готовое к production приложение Electron в `out/`
+-   Компилирует TypeScript для Main и Renderer
+-   Собирает React-приложение
+-   Генерирует готовое к продакшену Electron-приложение в `out/`
 
 **Использование:**
 
@@ -100,9 +100,72 @@ npm run dev
 npm run build
 ```
 
+### Скрипты для тестирования
+
+Проект использует **Vitest** для модульных и интеграционных тестов, а также **Playwright** для E2E-тестов.
+
+#### `npm test`
+
+Запускает все тесты с автоматическим переключением ABI:
+
+-   **Перед тестами:** Пересобирает `better-sqlite3` для Node.js (`pretest` hook)
+-   **Запускает тесты:** Выполняет набор тестов Vitest
+-   **После тестов:** Пересобирает `better-sqlite3` для Electron (`posttest` hook)
+
+Это гарантирует корректное выполнение тестов и немедленную работу `npm run dev` после них.
+
+**Использование:**
+
+```bash
+npm test
+```
+
+#### `npm run test:integration`
+
+Запускает только интеграционные тесты (автономно, автоматически пересобирает для Node.js).
+
+**Использование:**
+
+```bash
+npm run test:integration
+```
+
+#### `npm run test:integration:watch`
+
+Запускает интеграционные тесты в режиме наблюдения за изменениями для рабочего процесса TDD.
+
+**Использование:**
+
+```bash
+npm run test:integration:watch
+```
+
+#### `npm run test:e2e`
+
+Запускает сквозные (end-to-end) тесты с Playwright.
+
+**Использование:**
+
+```bash
+npm run test:e2e
+```
+
+**Архитектура тестирования:**
+
+-   **Модульные тесты (Unit Tests):** `tests/unit/` - Тестируют отдельные Components, Hooks и утилиты
+-   **Интеграционные тесты (Integration Tests):** `tests/integration/` - Тестируют IPC-контроллеры и сервисы с реальной базой данных
+-   **Сквозные тесты (E2E Tests):** `tests/e2e/` - Тестируют полные пользовательские сценарии с Playwright
+
+**Поддержка двойного ABI:**
+
+Настройка тестирования автоматически переключается между Node.js и Electron ABI для `better-sqlite3`:
+-   `pretest` hook пересобирает для Node.js перед тестами
+-   `posttest` hook пересобирает для Electron после тестов
+-   Скрипты интеграционных тестов включают свой собственный шаг пересборки для автономной работы
+
 ### `npm run preview`
 
-Предварительный просмотр production сборки локально.
+Предварительно просматривает продуктовую сборку локально.
 
 **Использование:**
 
@@ -131,7 +194,7 @@ npm run typecheck
 npm run lint
 ```
 
-### Скрипты базы данных
+### Скрипты для базы данных
 
 #### `npm run db:generate`
 
@@ -139,13 +202,13 @@ npm run lint
 
 **Использование:**
 
-1. Измените `src/main/db/schema.ts`
-2. Запустите: `npm run db:generate`
-3. Просмотрите сгенерированную миграцию в `drizzle/`
+1.  Измените `src/main/db/schema.ts`
+2.  Запустите: `npm run db:generate`
+3.  Проверьте сгенерированную миграцию в `drizzle/`
 
 #### `npm run db:migrate`
 
-Выполняет отложенные миграции базы данных.
+Запускает отложенные миграции базы данных.
 
 **Использование:**
 
@@ -175,9 +238,9 @@ npm run db:studio
 │   ├── main/                          # Electron Main Process
 │   │   ├── db/                        # Слой базы данных
 │   │   │   ├── client.ts              # Клиент базы данных (инициализация, getDb)
-│   │   │   ├── schema.ts              # Определения схемы Drizzle ORM
+│   │   │   ├── schema.ts              # Определения схемы Drizzle
 │   │   ├── ipc/                       # IPC (Inter-Process Communication)
-│   │   │   ├── controllers/           # IPC Controllers (на основе доменов)
+│   │   │   ├── controllers/           # IPC Контроллеры (по доменам)
 │   │   │   │   ├── ArtistsController.ts
 │   │   │   │   ├── PostsController.ts
 │   │   │   │   ├── SettingsController.ts
@@ -187,12 +250,12 @@ npm run db:studio
 │   │   │   │   ├── FileController.ts
 │   │   │   │   ├── SearchController.ts
 │   │   │   │   └── SystemController.ts
-│   │   │   ├── channels.ts            # Константы IPC каналов
+│   │   │   ├── channels.ts            # IPC константы каналов
 │   │   │   └── index.ts               # Настройка и регистрация IPC
 │   │   ├── core/                      # Базовая инфраструктура
 │   │   │   ├── di/                    # Внедрение зависимостей (Dependency Injection)
 │   │   │   │   ├── Container.ts       # DI Container (Singleton)
-│   │   │   │   └── Token.ts           # Типобезопасные DI токены
+│   │   │   │   └── Token.ts           # Типобезопасные DI-токены
 │   │   │   └── ipc/                   # IPC инфраструктура
 │   │   │       └── BaseController.ts  # Базовый контроллер с обработкой ошибок
 │   │   ├── providers/                 # Реализации провайдеров Booru
@@ -200,42 +263,44 @@ npm run db:studio
 │   │   │   ├── gelbooru-provider.ts   # Провайдер Gelbooru
 │   │   │   ├── types.ts               # Интерфейсы провайдеров
 │   │   │   └── index.ts               # Реестр провайдеров
-│   │   ├── services/                  # Фоновые службы
+│   │   ├── services/                  # Фоновые сервисы
 │   │   │   ├── secure-storage.ts      # Безопасное хранилище для учетных данных
 │   │   │   ├── sync-service.ts        # Синхронизация API
-│   │   │   └── updater-service.ts     # Автоматическое обновление
+│   │   │   └── updater-service.ts     # Автоматический обновлятор
 │   │   ├── lib/                        # Утилиты
 │   │   │   └── logger.ts              # Утилита логирования
-│   │   ├── bridge.ts                  # Интерфейс IPC моста
+│   │   ├── bridge.ts                  # IPC bridge интерфейс
 │   │   ├── main.d.ts                  # Определения типов
 │   │   └── main.ts                    # Точка входа Main Process
 │   │
 │   └── renderer/                      # Electron Renderer Process
 │       ├── components/                 # React Components
-│       │   ├── dialogs/               # Dialog Components
-│       │   ├── gallery/               # Gallery Components
-│       │   ├── inputs/                # Input Components
-│       │   ├── layout/                # Layout Components
-│       │   ├── pages/                 # Page Components
-│       │   ├── settings/              # Settings Components
+│       │   ├── dialogs/               # Компоненты диалогов
+│       │   ├── gallery/               # Компоненты галереи
+│       │   ├── inputs/                # Компоненты ввода
+│       │   ├── layout/                # Компоненты макета
+│       │   ├── pages/                 # Компоненты страниц
+│       │   ├── settings/              # Компоненты настроек
 │       │   ├── ui/                    # shadcn/ui Components
-│       │   └── viewer/                # Viewer Components
+│       │   └── viewer/                # Компоненты просмотра
 │       ├── i18n/                      # Интернационализация
 │       ├── lib/                       # Утилиты
-│       │   ├── hooks/                 # Пользовательские React хуки
+│       │   ├── hooks/                 # Пользовательские React Hooks
 │       │   ├── artist-utils.ts
 │       │   ├── tag-utils.ts
 │       │   └── utils.ts
 │       ├── locales/                   # Файлы переводов
 │       ├── schemas/                    # Схемы валидации форм
-│       ├── store/                      # Zustand Store
+│       ├── store/                      # Zustand Stores
 │       ├── App.tsx                     # Главный React Component
-│       ├── main.tsx                    # Точка входа Renderer Process
-│       └── index.html                  # HTML шаблон
+│       ├── main.tsx                    # Точка входа Renderer
+│       └── index.html                  # HTML-шаблон
 │
 ├── drizzle/                            # Миграции базы данных
-│   ├── meta/                          # Метаданные миграций
-│   └── *.sql                          # SQL файлы миграций
+│   ├── *.sql                          # SQL файлы миграций (отслеживаются в git)
+│   └── meta/                          # Метаданные миграций (игнорируются git)
+│       ├── _journal.json              # Журнал миграций
+│       └── *_snapshot.json            # Снимки схемы
 │
 ├── docs/                               # Документация
 │   ├── api.md
@@ -246,11 +311,11 @@ npm run db:studio
 │   ├── roadmap.md
 │   └── rule34-api-reference.md
 │
-├── scripts/                            # Скрипты сборки и утилиты
+├── scripts/                            # Скрипты сборки и утилит
 │   ├── ai_reviewer.py
 │   └── system_prompt.md
 │
-├── .github/                            # GitHub workflows
+├── .github/                            # Рабочие процессы GitHub
 │   └── workflows/
 │       ├── ai-review.yml
 │       └── ci.yml
@@ -268,107 +333,107 @@ npm run db:studio
 
 **Изменения в Main Process:**
 
-- Редактируйте файлы в `src/main/`
-- Изменения требуют перезапуска приложения (нет HMR для Main Process)
-- Проверяйте консоль/терминал на наличие ошибок
-- Изменения в базе данных требуют генерации миграции (`npm run db:generate`)
+-   Редактируйте файлы в `src/main/`
+-   Изменения требуют перезапуска приложения (без HMR для Main Process)
+-   Проверяйте консоль/терминал на наличие ошибок
+-   Изменения в базе данных требуют генерации миграции (`npm run db:generate`)
 
-**Изменения в Renderer Process:**
+**Изменения в Renderer:**
 
-- Редактируйте файлы в `src/renderer/`
-- Изменения автоматически перезагружаются (hot-reload)
-- Проверяйте DevTools браузера на наличие ошибок
+-   Редактируйте файлы в `src/renderer/`
+-   Изменения автоматически обновляются в реальном времени (hot-reload)
+-   Проверяйте DevTools браузера на наличие ошибок
 
 ### 2. Добавление новых функций
 
-**Добавление IPC метода:**
+**Добавление IPC-метода:**
 
-1. Определите в `src/main/bridge.ts`:
+1.  Определите в `src/main/bridge.ts`:
 
-   ```typescript
-   export interface IpcBridge {
-     newMethod: () => Promise<ReturnType>;
-   }
-   ```
+    ```typescript
+    export interface IpcBridge {
+      newMethod: () => Promise<ReturnType>;
+    }
+    ```
 
-2. Реализуйте в `src/main/bridge.ts`:
+2.  Реализуйте в `src/main/bridge.ts`:
 
-   ```typescript
-   const ipcBridge: IpcBridge = {
-     newMethod: () => ipcRenderer.invoke(IPC_CHANNELS.APP.NEW_METHOD),
-   };
-   ```
+    ```typescript
+    const ipcBridge: IpcBridge = {
+      newMethod: () => ipcRenderer.invoke(IPC_CHANNELS.APP.NEW_METHOD),
+    };
+    ```
 
-3. Добавьте константу канала в `src/main/ipc/channels.ts`:
+3.  Добавьте константу канала в `src/main/ipc/channels.ts`:
 
-   ```typescript
-   export const IPC_CHANNELS = {
-     APP: {
-       // ... existing channels
-       NEW_METHOD: "app:new-method",
-     },
-   } as const;
-   ```
+    ```typescript
+    export const IPC_CHANNELS = {
+      APP: {
+        // ... existing channels
+        NEW_METHOD: "app:new-method",
+      },
+    } as const;
+    ```
 
-4. Добавьте обработчик в соответствующий контроллер (`src/main/ipc/controllers/`):
+4.  Добавьте обработчик в соответствующий контроллер (`src/main/ipc/controllers/`):
 
-   ```typescript
-   export class MyController extends BaseController {
-     setup() {
-       this.handle(
-         IPC_CHANNELS.APP.NEW_METHOD,
-         MySchema, // Схема Zod для валидации
-         this.newMethod.bind(this)
-       );
-     }
+    ```typescript
+    export class MyController extends BaseController {
+      setup() {
+        this.handle(
+          IPC_CHANNELS.APP.NEW_METHOD,
+          MySchema, // Zod schema for validation
+          this.newMethod.bind(this)
+        );
+      }
 
-     private async newMethod(_event: IpcMainInvokeEvent, data: MyRequestType) {
-       const db = container.resolve(DI_TOKENS.DB);
-       // Реализация
-     }
-   }
-   ```
+      private async newMethod(_event: IpcMainInvokeEvent, data: MyRequestType) {
+        const db = container.resolve(DI_TOKENS.DB);
+        // Implementation
+      }
+    }
+    ```
 
-5. Зарегистрируйте контроллер в `src/main/ipc/index.ts` (через функцию `setupIpc()`):
+5.  Зарегистрируйте контроллер в `src/main/ipc/index.ts` (через функцию `setupIpc()`):
 
-   ```typescript
-   const myController = new MyController();
-   myController.setup();
-   ```
+    ```typescript
+    const myController = new MyController();
+    myController.setup();
+    ```
 
-6. Обновите типы в `src/renderer.d.ts`:
-   ```typescript
-   export interface IpcApi {
-     newMethod: () => Promise<ReturnType>;
-   }
-   ```
+6.  Обновите типы в `src/renderer.d.ts`:
+    ```typescript
+    export interface IpcApi {
+      newMethod: () => Promise<ReturnType>;
+    }
+    ```
 
 **Добавление таблицы базы данных:**
 
-1. Добавьте схему в `src/main/db/schema.ts`
-2. Сгенерируйте миграцию: `npm run db:generate`
-3. Просмотрите миграцию в `drizzle/`
-4. Протестируйте: `npm run db:migrate`
+1.  Добавьте схему в `src/main/db/schema.ts`
+2.  Сгенерируйте миграцию: `npm run db:generate`
+3.  Проверьте миграцию в `drizzle/`
+4.  Протестируйте: `npm run db:migrate`
 
 **Добавление React Component:**
 
-1. Создайте Component в `src/renderer/components/`
-2. Используйте TypeScript и корректную типизацию
-3. Используйте Tailwind CSS для стилизации
-4. Следуйте шаблонам Components из существующего кода
+1.  Создайте Component в `src/renderer/components/`
+2.  Используйте TypeScript и корректную типизацию
+3.  Используйте Tailwind CSS для стилизации
+4.  Следуйте паттернам Components из существующего кода
 
 ### 3. Тестирование изменений
 
 **Перед коммитом:**
 
 ```bash
-# Проверка типов
+# Type check
 npm run typecheck
 
-# Линтинг
+# Lint
 npm run lint
 
-# Ручное тестирование
+# Manual testing
 npm run dev
 ```
 
@@ -380,25 +445,25 @@ npm run dev
 
 Конфигурирует:
 
-- Сборка Main Process
-- Сборка preload-скрипта
-- Сборка Renderer Process (Vite)
+-   Сборку Main Process
+-   Сборку Preload-скрипта
+-   Сборку Renderer Process (Vite)
 
 ### TypeScript
 
 **Файл:** `tsconfig.json`
 
-- Строгий режим включён
-- ES модули
-- Сконфигурированы псевдонимы путей
+-   Строгий режим включен
+-   Модули ES
+-   Настроены псевдонимы путей
 
 ### Tailwind CSS
 
 **Файл:** `tailwind.config.js`
 
-- Сконфигурированы пути к контенту
-- Пользовательские расширения темы
-- Интеграция shadcn/ui
+-   Настроены пути к содержимому
+-   Пользовательские расширения темы
+-   Интеграция shadcn/ui
 
 ## Отладка
 
@@ -406,26 +471,26 @@ npm run dev
 
 **Логи консоли:**
 
-- Используйте `logger` из `src/main/lib/logger.ts`
-- Логи появляются в терминале/консоли
+-   Используйте `logger` из `src/main/lib/logger.ts`
+-   Логи появляются в терминале/консоли
 
 **Отладчик:**
 
-- Используйте отладчик VS Code с конфигурацией Electron
-- Установите точки останова в коде Main Process
+-   Используйте отладчик VS Code с конфигурацией Electron
+-   Устанавливайте точки останова в коде Main Process
 
 ### Отладка Renderer Process
 
 **DevTools:**
 
-- Автоматически открывается в режиме разработки
-- Используйте расширение React DevTools
-- Используйте DevTools браузера для отладки
+-   Автоматически открываются в режиме разработки
+-   Используйте расширение React DevTools
+-   Используйте DevTools браузера для отладки
 
 **Консоль:**
 
-- Доступ через `window.api` в консоли DevTools
-- Тестируйте IPC вызовы напрямую
+-   Доступ через `window.api` в консоли DevTools
+-   Тестируйте IPC-вызовы напрямую
 
 ### Отладка базы данных
 
@@ -437,10 +502,10 @@ npm run db:studio
 
 **Логи:**
 
-- Операции с базой данных логируются через `logger`
-- Проверяйте консоль на наличие SQL ошибок
+-   Операции с базой данных логируются через `logger`
+-   Проверяйте консоль на наличие SQL-ошибок
 
-## Распространенные проблемы
+## Часто встречающиеся проблемы
 
 ### Проблема: Ошибки TypeScript
 
@@ -448,101 +513,101 @@ npm run db:studio
 
 ```bash
 npm run typecheck
-# Исправьте показанные ошибки
+# Fix errors shown
 ```
 
 ### Проблема: Ошибки миграции базы данных
 
 **Решение:**
 
-1. Проверьте файлы миграции в `drizzle/`
-2. Проверьте изменения схемы
-3. Попробуйте ручную миграцию: `npm run db:migrate`
+1.  Проверьте файлы миграций в `drizzle/`
+2.  Убедитесь в правильности изменений схемы
+3.  Попробуйте ручную миграцию: `npm run db:migrate`
 
 ### Проблема: IPC не работает
 
 **Решение:**
 
-1. Убедитесь, что мост (bridge) открыт: проверьте `src/main/bridge.ts`
-2. Убедитесь, что константа канала существует: проверьте `src/main/ipc/channels.ts`
-3. Убедитесь, что контроллер зарегистрирован: проверьте `src/main/ipc/index.ts` (через функцию `setupIpc()`)
-4. Убедитесь, что обработчик зарегистрирован в контроллере: проверьте метод `setup()` контроллера
-5. Проверьте соответствие типов: проверьте `src/renderer.d.ts`
-6. Проверьте DI container: Убедитесь, что зависимости зарегистрированы до настройки контроллера (через `registerServices()`)
-7. Проверьте BaseController: Убедитесь, что контроллер расширяет `BaseController` и использует метод `this.handle()`
+1.  Проверьте, что bridge выставлен: Проверьте `src/main/bridge.ts`
+2.  Убедитесь, что константа канала существует: Проверьте `src/main/ipc/channels.ts`
+3.  Убедитесь, что контроллер зарегистрирован: Проверьте `src/main/ipc/index.ts` (через функцию `setupIpc()`)
+4.  Убедитесь, что обработчик зарегистрирован в контроллере: Проверьте метод `setup()` контроллера
+5.  Проверьте соответствие типов: Проверьте `src/renderer.d.ts`
+6.  Проверьте DI Container: Убедитесь, что зависимости зарегистрированы до настройки контроллера (через `registerServices()`)
+7.  Проверьте BaseController: Убедитесь, что контроллер расширяет `BaseController` и использует метод `this.handle()`
 
-### Проблема: Сборка не удалась
+### Проблема: Сбой сборки
 
 **Решение:**
 
-1. Очистите кэш сборки: Удалите `out/` и `node_modules/.vite/`
-2. Переустановите зависимости: `rm -rf node_modules && npm install`
-3. Проверьте на наличие ошибок TypeScript: `npm run typecheck`
+1.  Очистите кэш сборки: Удалите `out/` и `node_modules/.vite/`
+2.  Переустановите зависимости: `rm -rf node_modules && npm install`
+3.  Проверьте наличие ошибок TypeScript: `npm run typecheck`
 
 ## Оптимизация производительности
 
 ### Разработка
 
-- Используйте React DevTools Profiler
-- Отслеживайте частоту вызовов IPC
-- Проверяйте производительность запросов к базе данных
+-   Используйте React DevTools Profiler
+-   Мониторьте частоту вызовов IPC
+-   Проверяйте производительность запросов к базе данных
 
-### Production
+### Продакшен
 
-- Включите production сборки
-- Минимизируйте размер бандла
-- Оптимизируйте запросы к базе данных
-- Используйте индексы там, где это необходимо
+-   Включите продакшен-сборки
+-   Минимизируйте размер бандла
+-   Оптимизируйте запросы к базе данных
+-   Используйте индексы, где это необходимо
 
 ## Качество кода
 
 ### TypeScript
 
-- Нет типов `any`
-- Нет небезопасных приведений типов
-- Корректная обработка ошибок
-- Вывод типов, где это возможно
+-   Отсутствие типов `any`
+-   Отсутствие небезопасных приведений типов
+-   Правильная обработка ошибок
+-   Вывод типов там, где это возможно
 
 ### React
 
-- Только функциональные Components
-- Корректная типизация Props
-- Лучшие практики использования хуков
-- Нет инлайн-стилей
+-   Только функциональные Components
+-   Правильная типизация Props
+-   Лучшие практики Hooks
+-   Отсутствие инлайн-стилей
 
 ### База данных
 
-- Используйте Drizzle ORM (без прямого SQL)
-- Типобезопасные запросы
-- Корректная обработка ошибок
-- Поддержка транзакций, где это необходимо
+-   Используйте Drizzle ORM (без чистого SQL)
+-   Типобезопасные запросы
+-   Правильная обработка ошибок
+-   Поддержка транзакций, где это необходимо
 
 ## Переменные окружения
 
-В настоящее время переменные окружения не требуются. Будущие добавления:
+В настоящее время переменные окружения не требуются. Будущие дополнения:
 
-- `API_KEY` - Ключ внешнего API (при необходимости)
-- `NODE_ENV` - Режим разработки/production
-- `ELECTRON_RENDERER_URL` - URL dev-сервера (автоматически устанавливается electron-vite)
+-   `API_KEY` - Ключ внешнего API (при необходимости)
+-   `NODE_ENV` - Режим разработки/продакшена
+-   `ELECTRON_RENDERER_URL` - URL dev-сервера (автоматически устанавливается electron-vite)
 
-## Горячая замена модулей (HMR)
+## Hot Module Replacement (HMR)
 
 **Renderer Process:**
 
-- ✅ Полностью поддерживается
-- React Components перезагружаются "на лету" (hot-reload)
-- Изменения CSS применяются мгновенно
-- Vite dev-сервер обеспечивает мгновенные обновления
+-   ✅ Полностью поддерживается
+-   React Components горячо перезагружаются
+-   Изменения CSS применяются мгновенно
+-   Vite dev-сервер обеспечивает мгновенные обновления
 
 **Main Process:**
 
-- ⚠️ Частично поддерживается
-- Нет автоматического HMR - изменения требуют ручного перезапуска приложения
-- `electron-vite` отслеживает файлы Main Process, но не перезапускает их автоматически
-- **Обходное решение:** Используйте `nodemon` или аналогичный инструмент для автоматического перезапуска во время разработки
-- **Текущий статус:** После изменений в Main Process требуется ручной перезапуск
+-   ⚠️ Частично поддерживается
+-   Нет автоматического HMR - изменения требуют ручного перезапуска приложения
+-   `electron-vite` отслеживает файлы Main Process, но не перезапускает автоматически
+-   **Обходной путь:** Используйте `nodemon` или аналогичный инструмент для автоматического перезапуска во время разработки
+-   **Текущий статус:** Ручной перезапуск требуется после изменений в Main Process
 
-## Production сборка
+## Продуктовая сборка
 
 ### Сборка
 
@@ -550,11 +615,11 @@ npm run typecheck
 npm run build
 ```
 
-Вывод в `out/`:
+Выход в `out/`:
 
-- `out/main/` - Main Process бандл
-- `out/preload/` - Preload скрипт
-- `out/renderer/` - Renderer бандл
+-   `out/main/` - Бандл Main Process
+-   `out/preload/` - Preload-скрипт
+-   `out/renderer/` - Бандл Renderer
 
 ### Распространение
 
@@ -573,15 +638,15 @@ npx electron-builder --linux
 
 ## Дополнительные ресурсы
 
-- [Electron Documentation](https://www.electronjs.org/docs)
-- [Drizzle ORM Documentation](https://orm.drizzle.team/)
-- [React Documentation](https://react.dev/)
-- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+-   [Документация Electron](https://www.electronjs.org/docs)
+-   [Документация Drizzle ORM](https://orm.drizzle.team/)
+-   [Документация React](https://react.dev/)
+-   [Документация TypeScript](https://www.typescriptlang.org/docs/)
+-   [Документация Tailwind CSS](https://tailwindcss.com/docs)
 
 ## Получение помощи
 
-1. Проверьте существующую документацию в `docs/`
-2. Изучите аналогичный код в кодовой базе
-3. Проверьте проблемы (issues) на GitHub
-4. Откройте новую проблему (issue) с подробностями
+1.  Проверьте существующую документацию в `docs/`
+2.  Изучите аналогичный код в кодовой базе
+3.  Проверьте GitHub Issues
+4.  Откройте новую Issue с подробностями
