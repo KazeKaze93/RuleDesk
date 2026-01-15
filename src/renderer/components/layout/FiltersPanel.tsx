@@ -36,17 +36,6 @@ export const FiltersPanel = () => {
     );
   }, [filters]);
 
-  // Count active filters
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (filters.aiFilter !== "all") count++;
-    if (filters.mediaType !== "all") count++;
-    if (filters.source !== "all") count++;
-    if (filters.orientation !== "all") count++;
-    if (filters.sortBy !== "date") count++;
-    return count;
-  }, [filters]);
-
   return (
     <div className="space-y-4">
       {/* Source Switcher - At the top */}

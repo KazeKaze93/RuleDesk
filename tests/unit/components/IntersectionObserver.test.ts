@@ -6,7 +6,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
  */
 
 describe('IntersectionObserver Configuration', () => {
-  let mockObserver: any;
+  let mockObserver: Partial<IntersectionObserver> & {
+    observe: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
+    options?: IntersectionObserverInit;
+    callback?: IntersectionObserverCallback;
+  };
   let mockObserve: ReturnType<typeof vi.fn>;
   let mockDisconnect: ReturnType<typeof vi.fn>;
   let OriginalIntersectionObserver: typeof IntersectionObserver;
@@ -170,7 +175,7 @@ describe('IntersectionObserver Configuration', () => {
     });
 
     it('should set observer ref to null after disconnect', () => {
-      let observerRef: any = new IntersectionObserver(() => {}, { 
+      let observerRef: IntersectionObserver | null = new IntersectionObserver(() => {}, { 
         threshold: 0.1, 
         rootMargin: '400px' 
       });
@@ -184,8 +189,8 @@ describe('IntersectionObserver Configuration', () => {
 
   describe('ViewType change handling', () => {
     it('should disconnect observer when switching from masonry to grid', () => {
-      let viewType = 'masonry';
-      let observer: any = null;
+      let viewType: 'grid' | 'masonry' = 'masonry';
+      let observer: IntersectionObserver | null = null;
 
       // Create observer for masonry
       if (viewType === 'masonry') {
@@ -204,8 +209,8 @@ describe('IntersectionObserver Configuration', () => {
     });
 
     it('should create observer when switching from grid to masonry', () => {
-      let viewType = 'grid';
-      let observer: any = null;
+      let viewType: 'grid' | 'masonry' = 'grid';
+      let observer: IntersectionObserver | null = null;
 
       // Switch to masonry
       viewType = 'masonry';

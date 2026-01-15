@@ -400,7 +400,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         ) : (
           <VirtuosoGrid
             style={{ height: "100%" }}
-            totalCount={rawPosts.length}
+            totalCount={allPosts.length}
             endReached={handleEndReached}
             increaseViewportBy={2000}
             components={{

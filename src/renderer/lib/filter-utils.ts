@@ -31,8 +31,21 @@ export function hasAiGeneratedTag(tags: string | undefined | null): boolean {
 
 /**
  * Check if post is a video based on file URL
+ * Handles query parameters and URL parsing correctly
  */
 export function isVideoPost(fileUrl: string | undefined | null): boolean {
   if (!fileUrl) return false;
-  return fileUrl.endsWith(".mp4") || fileUrl.endsWith(".webm");
+  
+  try {
+    // Try to parse as URL to handle query parameters
+    const url = new URL(fileUrl);
+    const path = url.pathname;
+    return /\.(mp4|webm|mov)$/i.test(path);
+  } catch {
+    // Fallback for relative paths or invalid URLs
+    // Extract pathname manually if URL parsing fails
+    const pathMatch = fileUrl.match(/^[^?#]+/);
+    const path = pathMatch ? pathMatch[0] : fileUrl;
+    return /\.(mp4|webm|mov)$/i.test(path);
+  }
 }

@@ -40,6 +40,7 @@ You do not tolerate sloppy code, "any" types, "as" casting, magic numbers, or pr
    - **No Magic**: NO Magic Numbers or Magic Strings. Extract constants.
    - **Definitions**: Use `type` for fixed definitions, `interface` for extendable structures.
    - **Python**: Type hinting is mandatory (TypeDict, Pydantic). No bare `try-except`.
+   - **Unused Imports**: **MANDATORY** - After every code change, remove all unused imports and variables. Run `npm run typecheck` to verify. Unused code is technical debt and must be cleaned immediately.
 
 5. **Testing**:
    - Focus on behavior/integration over implementation details.

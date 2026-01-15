@@ -36,6 +36,8 @@ function App() {
     }
     hasCheckedRef.current = true;
 
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const checkStatus = async () => {
       try {
         const settings = await window.api.getSettings();
@@ -84,7 +86,7 @@ function App() {
           retryCountRef.current += 1;
           const delay = Math.min(1000 * Math.pow(2, retryCountRef.current - 1), 5000);
           log.info(`[App] Rate limit detected, retrying in ${delay}ms (attempt ${retryCountRef.current}/${MAX_RETRIES})`);
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             checkStatus();
           }, delay);
           return;
@@ -101,7 +103,14 @@ function App() {
         });
       }
     };
+    
     checkStatus();
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, []);
 
   // Loading state: waiting for settings to load

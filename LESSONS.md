@@ -30,66 +30,6 @@ const handleEndReached = useCallback(() => { ... }, [deps]);  // ✅ Hook at top
 
 ---
 
-## Infinite Scroll with Filters
-
-### Problem
-When filters reduce the visible post count, `totalCount` based on filtered posts prevents infinite scroll from working correctly.
-
-### Solution
-- Use **raw (unfiltered) data length** for `totalCount` in VirtuosoGrid
-- Always check `hasNextPage` based on raw data, not filtered
-- Use `increaseViewportBy` prop to preload items
-
-### Example:
-```tsx
-const rawPosts = useMemo(() => {
-  return data?.pages.flatMap((page) => page) || [];
-}, [data]);
-
-const allPosts = useMemo(() => {
-  // Apply filters to rawPosts
-  return filteredPosts;
-}, [rawPosts, filters]);
-
-<VirtuosoGrid
-  totalCount={rawPosts.length}  // ✅ Use raw data length
-  endReached={handleEndReached}
-  increaseViewportBy={2000}
-/>
-```
-
----
-
-## Masonry Layout with Virtualization
-
-### Problem
-CSS `columns` layout doesn't work well with `react-virtuoso`'s `VirtuosoGrid` because virtualization requires fixed item positions, but masonry columns dynamically rearrange items.
-
-### Solution
-- **Disable virtualization for masonry layout**
-- Use plain CSS columns with `IntersectionObserver` for infinite scroll
-- Keep virtualization only for grid layout
-
-### Example:
-```tsx
-{viewType === "masonry" ? (
-  <div className="h-full overflow-auto">
-    <div className="columns-2 gap-4 md:columns-3 lg:columns-4">
-      {allPosts.map((post, index) => (
-        <div key={post.id} className="mb-4 break-inside-avoid">
-          <PostCard post={post} onClick={() => handlePostClick(index)} />
-        </div>
-      ))}
-    </div>
-    <div ref={masonryTriggerRef} className="h-10" />
-  </div>
-) : (
-  <VirtuosoGrid ... />  // ✅ Use virtualization for grid
-)}
-```
-
----
-
 ## Filter State Management
 
 ### Problem
@@ -177,34 +117,6 @@ const { ListComponent, ItemComponent } = useMemo(() => {
 ```
 
 ---
-
-## Error Handling in Image Loading
-
-### Problem
-Failed image/video loads show black screens with no user feedback.
-
-### Solution
-- Add `onError` handlers to `<img>` and `<video>` tags
-- Implement fallback URLs (e.g., `sampleUrl` → `fileUrl`)
-- Show error UI with retry option
-- Log errors for debugging
-
-### Example:
-```tsx
-const [imageError, setImageError] = useState(false);
-
-<img
-  src={post.sampleUrl || post.fileUrl}
-  onError={(e) => {
-    const img = e.currentTarget;
-    if (img.src !== post.fileUrl && post.fileUrl) {
-      img.src = post.fileUrl;  // Try fallback
-    } else {
-      setImageError(true);  // Show error UI
-    }
-  }}
-/>
-```
 
 ---
 
@@ -492,13 +404,266 @@ const viewType = useSearchStore((state) => state.viewType);
 
 ---
 
+## VirtuosoGrid totalCount: Filtered vs Raw Data
+
+### Problem
+Using `rawPosts.length` for `totalCount` but rendering `allPosts[index]` creates empty holes in virtualization. If you have 1000 raw posts but filters leave only 10, Virtuoso creates a scrollbar for 1000 items, with 990 empty holes.
+
+### Solution
+- **Always use `allPosts.length` for `totalCount`** - matches the actual rendered items
+- **Keep `endReached` logic on `rawPosts`** - we want to load more data even when filters hide posts
+- The `itemContent` callback receives indices from 0 to `totalCount-1`, so `totalCount` must match filtered data
+
+### Example (WRONG):
+```tsx
+const rawPosts = useMemo(() => data?.pages.flat() || [], [data]);
+const allPosts = useMemo(() => rawPosts.filter(...), [rawPosts, filters]);
+
+<VirtuosoGrid
+  totalCount={rawPosts.length}  // ❌ 1000 items
+  itemContent={(index) => allPosts[index]}  // ❌ Only 10 valid = 990 empty holes
+/>
+```
+
+### Example (CORRECT):
+```tsx
+const rawPosts = useMemo(() => data?.pages.flat() || [], [data]);
+const allPosts = useMemo(() => rawPosts.filter(...), [rawPosts, filters]);
+
+<VirtuosoGrid
+  totalCount={allPosts.length}  // ✅ 10 items = no empty holes
+  itemContent={(index) => allPosts[index]}  // ✅ All indices valid
+  endReached={handleEndReached}  // ✅ Still works on rawPosts for loading
+/>
+```
+
+### Key Insight:
+- `totalCount` = number of items to render (filtered)
+- `endReached` = logic for loading more data (raw/unfiltered)
+- These serve different purposes and can use different data sources
+
+---
+
+## Memory Leaks: Cleanup Timeouts in useEffect
+
+### Problem
+`setTimeout` in retry logic not cleaned up causes memory leaks. If component unmounts during retry delay, the timeout fires and tries to update state of a dead component.
+
+### Solution
+- **Always store timeout ID** in a variable
+- **Return cleanup function** from `useEffect` to clear timeout
+- **Check if timeout exists** before clearing
+
+### Example (WRONG):
+```tsx
+useEffect(() => {
+  const checkStatus = async () => {
+    try { ... }
+    catch (error) {
+      if (isRateLimit && retryCountRef.current < MAX_RETRIES) {
+        setTimeout(() => { checkStatus(); }, delay);  // ❌ No cleanup
+      }
+    }
+  };
+  checkStatus();
+}, []);
+```
+
+### Example (CORRECT):
+```tsx
+useEffect(() => {
+  let timeoutId: NodeJS.Timeout | null = null;
+  
+  const checkStatus = async () => {
+    try { ... }
+    catch (error) {
+      if (isRateLimit && retryCountRef.current < MAX_RETRIES) {
+        timeoutId = setTimeout(() => { checkStatus(); }, delay);  // ✅ Store ID
+      }
+    }
+  };
+  
+  checkStatus();
+  
+  return () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);  // ✅ Cleanup
+    }
+  };
+}, []);
+```
+
+### Key Insight:
+Any async operation started in `useEffect` must be cancellable. Timeouts, intervals, and promises should all have cleanup paths.
+
+---
+
+## Infinite Loop Prevention in Error Handlers
+
+### Problem
+In `onError` handlers, setting `img.src = post.fileUrl` can create infinite loops if `fileUrl` is also broken (404 or invalid protocol). The error handler fires again, tries the same URL, fires again, etc.
+
+### Solution
+- **Use `includes()` instead of `!==`** to handle query parameters
+- **Track attempted URLs** to prevent retrying the same URL
+- **Set error state** after exhausting fallbacks
+
+### Example (WRONG):
+```tsx
+onError={(e) => {
+  const img = e.currentTarget;
+  if (img.src !== post.fileUrl && post.fileUrl) {
+    img.src = post.fileUrl;  // ❌ If fileUrl also fails, infinite loop
+  }
+}}
+```
+
+### Example (CORRECT):
+```tsx
+onError={(e) => {
+  const img = e.currentTarget;
+  // Use includes() to handle query parameters and prevent loop
+  if (post.fileUrl && !img.src.includes(post.fileUrl)) {
+    img.src = post.fileUrl;  // ✅ Try fallback once
+  } else {
+    setImageError(true);  // ✅ Stop retrying, show error
+  }
+}}
+```
+
+### Key Insight:
+Error handlers must have a termination condition. Always check if you've already tried the fallback before retrying.
+
+---
+
+## URL Parsing: Handling Query Parameters
+
+### Problem
+Using `endsWith('.mp4')` breaks with query parameters like `?token=...` or `?v=1`. The check fails even for valid video URLs.
+
+### Solution
+- **Parse URL using `URL` API** to extract pathname
+- **Use regex on pathname** instead of entire URL string
+- **Handle relative paths** with fallback regex
+- **Case-insensitive matching** with `/i` flag
+
+### Example (WRONG):
+```tsx
+export function isVideoPost(fileUrl: string | undefined | null): boolean {
+  if (!fileUrl) return false;
+  return fileUrl.endsWith(".mp4") || fileUrl.endsWith(".webm");  // ❌ Breaks with ?token=abc
+}
+```
+
+### Example (CORRECT):
+```tsx
+export function isVideoPost(fileUrl: string | undefined | null): boolean {
+  if (!fileUrl) return false;
+  
+  try {
+    // Parse URL to handle query parameters
+    const url = new URL(fileUrl);
+    const path = url.pathname;
+    return /\.(mp4|webm|mov)$/i.test(path);  // ✅ Works with query params
+  } catch {
+    // Fallback for relative paths or invalid URLs
+    const pathMatch = fileUrl.match(/^[^?#]+/);
+    const path = pathMatch ? pathMatch[0] : fileUrl;
+    return /\.(mp4|webm|mov)$/i.test(path);  // ✅ Handles relative paths
+  }
+}
+```
+
+### Benefits:
+- ✅ Handles query parameters: `video.mp4?token=abc`
+- ✅ Handles hash fragments: `video.mp4#section`
+- ✅ Case-insensitive: `.MP4`, `.mp4` both work
+- ✅ Handles relative paths: `/path/to/video.mp4`
+- ✅ Graceful fallback for invalid URLs
+
+---
+
+## Type Safety: Avoid `any` in Tests
+
+### Problem
+Using `any` in tests reduces type safety and can hide real bugs. Tests should catch type errors, not ignore them.
+
+### Solution
+- **Use proper types** even for mocks
+- **Use `Partial<T>` for partial mocks**
+- **Type intersection** for extended mock objects
+- **Use `| null` for nullable types**
+
+### Example (WRONG):
+```tsx
+let mockObserver: any;  // ❌ No type safety
+let observer: any = null;  // ❌ Hides type errors
+```
+
+### Example (CORRECT):
+```tsx
+let mockObserver: Partial<IntersectionObserver> & {
+  observe: ReturnType<typeof vi.fn>;
+  disconnect: ReturnType<typeof vi.fn>;
+  options?: IntersectionObserverInit;
+  callback?: IntersectionObserverCallback;
+};  // ✅ Properly typed
+
+let observer: IntersectionObserver | null = null;  // ✅ Explicit nullable type
+```
+
+### Key Insight:
+Tests are code too. They should follow the same type safety standards as production code. `any` defeats the purpose of TypeScript.
+
+---
+
+## TypeScript: Remove Unused Variables
+
+### Problem
+Unused imports and variables clutter code and can cause confusion. TypeScript's `--noEmit` mode flags these as errors.
+
+### Solution
+- **Run `npm run typecheck` regularly** to catch unused code
+- **Remove unused imports** immediately
+- **Remove unused variables** from destructuring
+- **Remove unused computed values** (like `useMemo` that's never read)
+
+### Common Patterns:
+```tsx
+// ❌ Unused import
+import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+
+// ❌ Unused variable from destructuring
+const { data, allPosts, ... } = useGalleryInfiniteScroll(...);
+
+// ❌ Unused computed value
+const hasActiveFilters = useMemo(() => { ... }, [filters]);
+```
+
+### Fix:
+```tsx
+// ✅ Remove unused import
+// import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+
+// ✅ Remove unused from destructuring
+const { allPosts, ... } = useGalleryInfiniteScroll(...);
+
+// ✅ Remove unused variable
+// const hasActiveFilters = useMemo(() => { ... }, [filters]);
+```
+
+### Key Insight:
+Clean code is maintainable code. Unused variables indicate incomplete refactoring or dead code that should be removed.
+
+---
+
 ## Key Takeaways
 
 1. **Always follow Rules of Hooks** - hooks at top level, same order
-2. **Use raw data for infinite scroll calculations** - filters should only affect display
-3. **Masonry and virtualization don't mix** - choose one approach
+2. **totalCount must match filtered data** - use `allPosts.length` not `rawPosts.length` for VirtuosoGrid
+3. **endReached works on raw data** - load more data even when filters hide posts
 4. **Update all consumers when changing store structure** - don't miss any components
-5. **Handle errors gracefully** - provide fallbacks and user feedback
+5. **Handle errors gracefully** - provide fallbacks and user feedback, prevent infinite loops
 6. **Debounce expensive operations** - prevent rate limiting
 7. **Use refs to prevent double execution** - especially in Strict Mode
 8. **Match JSX brackets carefully** - syntax errors are hard to debug
@@ -514,3 +679,8 @@ const viewType = useSearchStore((state) => state.viewType);
 18. **Flexbox for masonry** - more flexible than CSS columns, better responsive support
 19. **Adapt components to viewType** - conditional styling based on layout mode
 20. **Continue loading until empty** - for external APIs without total count
+21. **Always cleanup timeouts** - prevent memory leaks with `clearTimeout` in useEffect cleanup
+22. **Prevent infinite loops in error handlers** - use `includes()` instead of `!==`, check if fallback already tried
+23. **Parse URLs properly** - use `URL` API for query parameters, not `endsWith()`
+24. **Type safety in tests** - avoid `any`, use proper types even for mocks
+25. **Remove unused code** - run typecheck regularly, clean up unused imports and variables

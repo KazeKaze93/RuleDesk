@@ -16,6 +16,7 @@ interface PostCardProps {
 export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
   const isVid = isVideoPost(post.fileUrl);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
+  // Optimize: subscribe only to viewType, not entire store
   const viewType = useSearchStore((state) => state.viewType);
   // Normalize rating to 'e', 'q', 's' safely (handles both 'e' and 'explicit' formats)
   const normalizedRating = post.rating ? post.rating.charAt(0).toLowerCase() as "e" | "q" | "s" : "q";

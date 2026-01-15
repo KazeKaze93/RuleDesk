@@ -269,7 +269,8 @@ const ViewerMedia = ({ post }: { post: Post }) => {
             log.error("[ViewerMedia] Image load error:", post.fileUrl);
             const img = e.currentTarget;
             // Try fallback to fileUrl if sampleUrl failed
-            if (img.src !== post.fileUrl && post.fileUrl) {
+            // Use includes() to handle query parameters and avoid infinite loop
+            if (post.fileUrl && !img.src.includes(post.fileUrl)) {
               img.src = post.fileUrl;
             } else {
               setImageError(true);

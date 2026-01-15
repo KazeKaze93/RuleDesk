@@ -99,13 +99,37 @@ describe('filter-utils', () => {
       expect(isVideoPost('animated.gif')).toBe(false);
     });
 
-    it('should handle case sensitivity - endsWith is case sensitive', () => {
-      // Note: endsWith() is case-sensitive, so uppercase extensions won't match
-      expect(isVideoPost('file.MP4')).toBe(false); // endsWith('.mp4') is false
-      expect(isVideoPost('file.WEBM')).toBe(false); // endsWith('.webm') is false
+    it('should handle case sensitivity correctly (case-insensitive)', () => {
+      // New implementation uses regex with /i flag, so case-insensitive
+      expect(isVideoPost('file.MP4')).toBe(true);
+      expect(isVideoPost('file.WEBM')).toBe(true);
       expect(isVideoPost('file.mp4')).toBe(true);
       expect(isVideoPost('file.webm')).toBe(true);
+      expect(isVideoPost('file.MOV')).toBe(true);
       expect(isVideoPost('file.JPG')).toBe(false);
+    });
+
+    it('should handle URLs with query parameters', () => {
+      expect(isVideoPost('https://example.com/video.mp4?token=abc123')).toBe(true);
+      expect(isVideoPost('https://example.com/video.webm?v=1&t=10')).toBe(true);
+      expect(isVideoPost('https://example.com/image.jpg?size=large')).toBe(false);
+    });
+
+    it('should handle URLs with hash fragments', () => {
+      expect(isVideoPost('https://example.com/video.mp4#section')).toBe(true);
+      expect(isVideoPost('https://example.com/video.webm#timestamp=10')).toBe(true);
+    });
+
+    it('should handle relative paths', () => {
+      expect(isVideoPost('/path/to/video.mp4')).toBe(true);
+      expect(isVideoPost('./video.webm')).toBe(true);
+      expect(isVideoPost('../media/video.mov')).toBe(true);
+    });
+
+    it('should handle invalid URLs gracefully', () => {
+      // Invalid URL should fallback to regex on original string
+      expect(isVideoPost('not-a-url-but-has.mp4')).toBe(true);
+      expect(isVideoPost('invalid-url.webm')).toBe(true);
     });
 
     it('should return false for URLs without file extension', () => {

@@ -10,7 +10,6 @@ import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { Button } from "../ui/button";
 import { ExternalLink } from "lucide-react";
-import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
@@ -105,7 +104,6 @@ export const Browse = () => {
   // For external API (Browse), we need custom getNextPageParam logic
   // because API may return less than 50 posts but still have more pages
   const {
-    data,
     allPosts: rawPosts,
     fetchNextPage,
     hasNextPage,
@@ -158,14 +156,6 @@ export const Browse = () => {
     
     return tagsSet;
   }, [trackedArtists]);
-
-  // Check if we have active filters
-  const hasActiveFilters = useMemo(() => {
-    return filters.aiFilter !== "all" || 
-           filters.mediaType !== "all" || 
-           filters.source !== "all" ||
-           filters.orientation !== "all";
-  }, [filters]);
 
   const allPosts = useMemo(() => {
     let posts = [...rawPosts];
@@ -418,7 +408,7 @@ export const Browse = () => {
           ) : (
             <VirtuosoGrid
               style={{ height: "100%" }}
-              totalCount={rawPosts.length}
+              totalCount={allPosts.length}
               endReached={handleEndReached}
               increaseViewportBy={2000}
               components={{

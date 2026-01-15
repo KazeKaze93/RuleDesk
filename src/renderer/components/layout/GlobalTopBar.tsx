@@ -2,7 +2,6 @@ import { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Filter,
-  ArrowUpDown,
   ArrowUpNarrowWide,
   ArrowDownNarrowWide,
   LayoutList,
