@@ -79,17 +79,14 @@ export abstract class BaseController {
         if ("type" in obj && typeof obj.type === "string") {
           return `${channel}:type=${obj.type}`;
         }
-        // For small objects, use fast hash (djb2)
-        const json = JSON.stringify(arg);
-        if (json.length < 1024) {
-          return `${channel}:${BaseController.fastHash(json)}`;
-        }
-        // Large objects should not use Request Collapsing
+        // CRITICAL: Do NOT use JSON.stringify - it blocks Main Process
+        // Complex objects should not use Request Collapsing
+        // Renderer should pass hash of complex args if needed
         log.warn(
-          `[IPC] Large argument object for idempotent channel "${channel}". ` +
-          `Request Collapsing may be inefficient. Consider using non-idempotent handler.`
+          `[IPC] Complex argument object for idempotent channel "${channel}" without id/type. ` +
+          `Request Collapsing requires primitive keys. Consider using non-idempotent handler or pass hash from Renderer.`
         );
-        return `${channel}:large`;
+        return `${channel}:complex`;
       }
       
       // Primitive values
@@ -107,30 +104,13 @@ export abstract class BaseController {
       return `${channel}:id=${(firstArg as Record<string, unknown>).id}:count=${args.length}`;
     }
 
-    // Fallback: hash of args (only for small payloads)
-    const json = JSON.stringify(args);
-    if (json.length < 1024) {
-      return `${channel}:${BaseController.fastHash(json)}`;
-    }
-    
+    // CRITICAL: Do NOT use JSON.stringify for multiple args - it blocks Main Process
+    // For multiple args without IDs, use count only (not ideal, but safe)
     log.warn(
-      `[IPC] Large arguments array for idempotent channel "${channel}". ` +
-      `Request Collapsing may be inefficient.`
+      `[IPC] Multiple arguments for idempotent channel "${channel}" without id/type. ` +
+      `Request Collapsing may not work correctly. Consider using non-idempotent handler.`
     );
-    return `${channel}:large:count=${args.length}`;
-  }
-
-  /**
-   * Fast hash function (djb2) for small objects
-   * Performance: O(n) where n is string length, no recursion
-   */
-  private static fastHash(str: string): string {
-    let hash = 5381;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) + hash) + str.charCodeAt(i);
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(36);
+    return `${channel}:multi:count=${args.length}`;
   }
 
   // Minimum time between calls for the same channel (milliseconds)

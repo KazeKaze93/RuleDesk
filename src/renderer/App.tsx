@@ -106,12 +106,10 @@ function App() {
           return;
         }
         
-        // Use typed error code instead of brittle string matching
+        // Use typed error code - do NOT parse error messages (brittle and error-prone)
+        // If Main process changes error text, UI would break without this check
         const errorCode = (error as { code?: string })?.code;
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const isRateLimit = errorCode === "RATE_LIMIT" || 
-          errorMessage.includes("Rate limit") || 
-          errorMessage.includes("too frequent");
+        const isRateLimit = errorCode === "RATE_LIMIT";
         
         // Handle rate limit errors with exponential backoff
         if (isRateLimit && retryCountRef.current < MAX_RETRIES) {

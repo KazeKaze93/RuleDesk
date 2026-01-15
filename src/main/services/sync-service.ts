@@ -15,6 +15,8 @@ import { isVideoUrl } from "../lib/media-utils";
 // Each post has ~12 fields for INSERT + ~6 for UPDATE in onConflictDoUpdate
 // Safe calculation: 999 / 18 ≈ 55, use 75 for optimal performance
 // Better-SQLite3 uses modern SQLite (3.40+) with 32766 limit, but we stay conservative
+// NOTE: With 50 posts/page limit, this handles 1.5 pages per chunk, which is efficient
+// For initial sync (1000+ posts), chunking prevents SQLite from choking on large batches
 const CHUNK_SIZE = 75;
 
 // Safety limit for initial sync to prevent infinite loops

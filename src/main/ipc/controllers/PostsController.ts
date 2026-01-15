@@ -448,9 +448,17 @@ export class PostsController extends BaseController {
         // FTS5 OR operator is safe when all operands are validated literals
         const ftsQuery = sanitizedTagQueries.join(" OR ");
 
+        // SECURITY: ftsQuery is constructed from hardcoded, validated AI tags
+        // Each tag is validated with /^[a-zA-Z0-9_-]+$/ and escaped (quotes doubled)
+        // Drizzle's sql template will attempt to parameterize ${ftsQuery}, but SQLite FTS5 MATCH
+        // may require the query string in SQL text rather than as a parameter.
+        // This is safe because:
+        // 1. All AI tags are hardcoded (not user input)
+        // 2. Each tag validated with strict regex before escaping
+        // 3. Quotes are properly escaped (doubled) for FTS5
+        // For user input (tagFilter), use createTagFilterCondition which handles parameterization correctly
         if (filters.aiFilter === "hide") {
           // Exclude AI posts: NOT (FTS5 match)
-          // Use sql template with validated query string
           conditions.push(
             not(
               sql`EXISTS (

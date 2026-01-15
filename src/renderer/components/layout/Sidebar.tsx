@@ -39,9 +39,9 @@ export const Sidebar = () => {
         const version = await window.api.getAppVersion();
         setAppVersion(version);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        // Don't log rate limit errors as errors - they're expected in dev mode
-        if (errorMessage.includes("Rate limit") || errorMessage.includes("too frequent")) {
+        // Don't log rate limit errors as errors - use typed errorCode, NOT string parsing
+        const errorCode = (error as { code?: string })?.code;
+        if (errorCode === "RATE_LIMIT") {
           log.debug("[Sidebar] Rate limit on version fetch, skipping");
           return;
         }

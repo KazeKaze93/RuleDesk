@@ -2,7 +2,6 @@ import React, { useMemo, forwardRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
@@ -105,14 +104,11 @@ export const Browse = () => {
   // re-render if only filters change, and vice versa
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const viewType = useSearchStore((state) => state.viewType);
-  // Use useShallow to prevent re-renders when other filter fields change
-  const { aiFilter, mediaType, source } = useSearchStore(
-    useShallow((state) => ({
-      aiFilter: state.filters.aiFilter,
-      mediaType: state.filters.mediaType,
-      source: state.filters.source,
-    }))
-  );
+  // Use atomic selectors - faster than useShallow for 3 fields
+  // Each selector only re-renders when its specific field changes
+  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const mediaType = useSearchStore((state) => state.filters.mediaType);
+  const source = useSearchStore((state) => state.filters.source);
 
   // Use the new infinite scroll hook
   // For external API (Browse), we need custom getNextPageParam logic

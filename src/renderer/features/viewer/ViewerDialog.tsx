@@ -626,16 +626,13 @@ const ViewerContent = ({
     if (post.isViewed) return;
     // Fire and forget: suppress rate limit errors
     window.api.markPostAsViewed(post.id).catch((err) => {
-      // Ignore rate limit errors, they are expected during fast interactions
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      if (
-        errorMessage.includes("Rate limit") ||
-        errorMessage.includes("too frequent") ||
-        (err as { code?: string })?.code === "RATE_LIMIT"
-      ) {
+      // Ignore rate limit errors - use typed errorCode, NOT string parsing
+      const errorCode = (err as { code?: string })?.code;
+      if (errorCode === "RATE_LIMIT") {
         return; // Silently ignore rate limit errors
       }
       // Log other errors for debugging
+      const errorMessage = err instanceof Error ? err.message : String(err);
       log.error("[ViewerDialog] Failed to mark post as viewed:", errorMessage);
     });
   }, [post]);
