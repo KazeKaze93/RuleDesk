@@ -1,16 +1,19 @@
-import React, { useMemo, forwardRef, useCallback, useRef, useEffect } from "react";
+import React, { useMemo, forwardRef, useCallback, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
-import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { Button } from "../ui/button";
 import { ExternalLink } from "lucide-react";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
+import { useWorkerProcessor, type WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
+import { useDebounce } from "../../lib/hooks/useDebounce";
+import type { Post } from "../../../main/db/schema";
+import type { WorkerPost } from "../../../shared/types/post";
 
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
@@ -39,7 +42,9 @@ const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
   <div
     ref={ref}
     className={cn(
-      viewType === "grid" ? "w-full aspect-[2/3]" : "w-full mb-4 break-inside-avoid",
+      viewType === "grid" 
+        ? "w-full aspect-[2/3]" 
+        : "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
       className
     )}
     {...props}
@@ -96,8 +101,11 @@ export const Browse = () => {
     queryFn: () => window.api.getTrackedArtists(),
   });
 
+  // Use atomic selectors to prevent unnecessary re-renders
   const sortOrder = useSearchStore((state) => state.sortOrder);
-  const filters = useSearchStore((state) => state.filters);
+  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const mediaType = useSearchStore((state) => state.filters.mediaType);
+  const source = useSearchStore((state) => state.filters.source);
   const viewType = useSearchStore((state) => state.viewType);
 
   // Use the new infinite scroll hook
@@ -132,9 +140,9 @@ export const Browse = () => {
     },
   });
 
-  // Build tracked tags set with all variations for subscriptions filter
-  const trackedTagsSet = useMemo(() => {
-    if (!trackedArtists || trackedArtists.length === 0) return new Set<string>();
+  // Build tracked tags array for subscriptions filter (worker needs array, not Set)
+  const trackedTagsArray = useMemo(() => {
+    if (!trackedArtists || trackedArtists.length === 0) return [];
     
     const tagsSet = new Set<string>();
     trackedArtists.forEach((artist) => {
@@ -154,112 +162,94 @@ export const Browse = () => {
       }
     });
     
-    return tagsSet;
+    return Array.from(tagsSet);
   }, [trackedArtists]);
 
-  const allPosts = useMemo(() => {
-    let posts = [...rawPosts];
-    
-    // Apply filters
-    // Filter AI generated posts
-    if (filters.aiFilter === "hide") {
-      posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
-    } else if (filters.aiFilter === "only") {
-      posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
-    }
-    
-    // Filter by media type
-    if (filters.mediaType !== "all") {
-      posts = posts.filter((post) => {
-        const isVideo = isVideoPost(post.fileUrl);
-        return filters.mediaType === "videos" ? isVideo : !isVideo;
-      });
-    }
-    
-    // Filter by source - Browse shows external posts
-    // Only apply source filter if there's an active search (tags.length > 0)
-    // This prevents duplication with Favorites and Updates tabs
-    if (tags.length > 0) {
-      if (filters.source === "favorites") {
-        // Show only favorited posts (check isFavorited flag)
-        // Use strict check to ensure we only show posts that are explicitly favorited
-        posts = posts.filter((post) => Boolean(post.isFavorited) === true);
-      } else if (filters.source === "subscriptions") {
-        // Show only posts from tracked artists (check if post tags match tracked artist tags)
-        if (trackedTagsSet.size > 0) {
-          posts = posts.filter((post) => {
-            if (!post.tags) return false;
-            const postTags = post.tags.toLowerCase().split(/\s+/);
-            return postTags.some((tag) => trackedTagsSet.has(tag));
-          });
-        } else {
-          // No tracked artists, show nothing
-          posts = [];
-        }
-      } else if (filters.source === "all") {
-        // Show all posts (no filter)
+  // Worker-based processing
+  const { processData, loading: workerLoading } = useWorkerProcessor();
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
+
+  // Debounce filter changes to avoid spamming worker (250ms delay)
+  // This prevents worker from being overwhelmed during rapid filter changes
+  const debouncedRawPosts = useDebounce(rawPosts, 250);
+  const debouncedAiFilter = useDebounce(aiFilter, 250);
+  const debouncedMediaType = useDebounce(mediaType, 250);
+  const debouncedSource = useDebounce(source, 250);
+  const debouncedSortOrder = useDebounce(sortOrder, 250);
+  const debouncedTags = useDebounce(tags, 250);
+  const debouncedTrackedTagsArray = useDebounce(trackedTagsArray, 250);
+
+  // Process data in worker when inputs change
+  useEffect(() => {
+    let cancelled = false;
+
+    const processInWorker = async () => {
+      if (debouncedRawPosts.length === 0) {
+        setAllPosts([]);
+        return;
       }
-    }
-    // If no active search (tags.length === 0), ignore source filter
-    
-    // Sort by publishedAt (date of post creation)
-    return [...posts].sort((a, b) => {
-      const dateA = a.publishedAt instanceof Date 
-        ? a.publishedAt.getTime() 
-        : typeof a.publishedAt === "number" 
-        ? a.publishedAt 
-        : 0;
-      const dateB = b.publishedAt instanceof Date 
-        ? b.publishedAt.getTime() 
-        : typeof b.publishedAt === "number" 
-        ? b.publishedAt 
-        : 0;
-      
-      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
-    });
-  }, [rawPosts, sortOrder, filters, trackedTagsSet, tags]);
 
+      const filterConfig: WorkerFilterConfig = {
+        aiFilter: debouncedAiFilter,
+        mediaType: debouncedMediaType,
+        source: debouncedSource,
+        sortOrder: debouncedSortOrder,
+        trackedTagsSet: debouncedTrackedTagsArray,
+        tags: debouncedTags,
+      };
 
-  // Ref for masonry infinite scroll observer
-  const masonryObserverRef = useRef<IntersectionObserver | null>(null);
-  const masonryTriggerRef = useRef<HTMLDivElement | null>(null);
-  const handleEndReachedRef = useRef(handleEndReached);
+      try {
+        // Convert Post[] to WorkerPost[] (they're structurally compatible)
+        const workerPosts: WorkerPost[] = debouncedRawPosts.map((post) => ({
+          id: post.id,
+          postId: post.postId,
+          artistId: post.artistId,
+          fileUrl: post.fileUrl,
+          previewUrl: post.previewUrl,
+          sampleUrl: post.sampleUrl,
+          title: post.title,
+          rating: post.rating,
+          tags: post.tags,
+          publishedAt: post.publishedAt,
+          createdAt: post.createdAt,
+          isViewed: post.isViewed,
+          isFavorited: post.isFavorited,
+        }));
 
-  // Keep ref in sync with latest handleEndReached
-  useEffect(() => {
-    handleEndReachedRef.current = handleEndReached;
-  }, [handleEndReached]);
+        const result = await processData({
+          posts: workerPosts,
+          filters: filterConfig,
+        });
 
-  useEffect(() => {
-    // Disconnect existing observer first (important for viewType changes)
-    if (masonryObserverRef.current) {
-      masonryObserverRef.current.disconnect();
-      masonryObserverRef.current = null;
-    }
-
-    // Only create observer in masonry mode
-    if (viewType === "masonry" && masonryTriggerRef.current) {
-      masonryObserverRef.current = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-            handleEndReachedRef.current();
-          }
-        },
-        { 
-          threshold: 0.1,
-          rootMargin: '400px'
+        if (!cancelled) {
+          // Convert WorkerPost[] back to Post[] (they're structurally compatible)
+          setAllPosts(result as Post[]);
         }
-      );
-      masonryObserverRef.current.observe(masonryTriggerRef.current);
-    }
-
-    return () => {
-      if (masonryObserverRef.current) {
-        masonryObserverRef.current.disconnect();
-        masonryObserverRef.current = null;
+      } catch (error) {
+        log.error("[Browse] Worker processing error:", error);
+        if (!cancelled) {
+          // Fallback: set empty array on error
+          setAllPosts([]);
+        }
       }
     };
-  }, [viewType, hasNextPage, isFetchingNextPage]);
+
+    // Process in worker (even for small datasets for consistency)
+    processInWorker();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    debouncedRawPosts,
+    debouncedAiFilter,
+    debouncedMediaType,
+    debouncedSource,
+    debouncedSortOrder,
+    debouncedTags,
+    debouncedTrackedTagsArray,
+    processData,
+  ]);
 
 
   // Create stable List and Item components with forwardRef and aria-busy
@@ -342,7 +332,7 @@ export const Browse = () => {
 
       {/* Grid Content */}
       <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
+        {(isLoading || workerLoading) && allPosts.length === 0 ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
@@ -384,28 +374,8 @@ export const Browse = () => {
               </div>
             )}
           </div>
-        ) : viewType === "masonry" ? (
-            // Masonry layout without virtualization (using flexbox)
-            <div className="h-full overflow-auto">
-              <div className="flex flex-wrap gap-4 justify-center p-4 pb-32">
-                {allPosts.map((post, index) => (
-                  <div 
-                    key={post.id} 
-                    className="flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]"
-                  >
-                    <PostCard post={post} onClick={() => handlePostClick(index)} />
-                  </div>
-                ))}
-                {isFetchingNextPage && (
-                  <div className="flex justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                )}
-                {/* Infinite scroll trigger for masonry - strictly after map loop */}
-                <div ref={masonryTriggerRef} className="h-10 w-full" />
-              </div>
-            </div>
-          ) : (
+        ) : (
+            // Use VirtuosoGrid for both grid and masonry - virtualization is critical for performance
             <VirtuosoGrid
               style={{ height: "100%" }}
               totalCount={allPosts.length}

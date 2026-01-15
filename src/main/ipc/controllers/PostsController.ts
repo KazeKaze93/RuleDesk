@@ -359,6 +359,60 @@ export class PostsController extends BaseController {
       conditions.push(eq(posts.isViewed, filters.isViewed));
     }
 
+    // AI filter: filter by AI-generated tags in posts.tags
+    if (filters?.aiFilter === "hide") {
+      // Hide AI-generated posts: exclude posts with AI tags
+      // Check for various AI tag formats using LIKE
+      const aiTagPatterns = [
+        "%ai_generated%",
+        "%ai-generated%",
+        "%ai_generation%",
+        "%ai-generated_content%",
+      ];
+      // Use OR to match any AI tag pattern, then negate with NOT
+      const aiConditions = aiTagPatterns.map((pattern) =>
+        sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
+      );
+      if (aiConditions.length > 0) {
+        const aiOrCondition = or(...aiConditions) as SQL;
+        conditions.push(not(aiOrCondition));
+      }
+    } else if (filters?.aiFilter === "only") {
+      // Only show AI-generated posts: include only posts with AI tags
+      const aiTagPatterns = [
+        "%ai_generated%",
+        "%ai-generated%",
+        "%ai_generation%",
+        "%ai-generated_content%",
+      ];
+      const aiConditions = aiTagPatterns.map((pattern) =>
+        sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
+      );
+      if (aiConditions.length > 0) {
+        conditions.push(or(...aiConditions) as SQL);
+      }
+    }
+
+    // Media type filter: filter by file extension in posts.fileUrl
+    if (filters?.mediaType === "videos") {
+      // Only videos: fileUrl contains .mp4, .webm, or .mov
+      // Use LIKE with wildcard to match extension (handles query params)
+      const videoConditions = [
+        sql`${posts.fileUrl} LIKE ${"%.mp4%"} ESCAPE '\\'`,
+        sql`${posts.fileUrl} LIKE ${"%.webm%"} ESCAPE '\\'`,
+        sql`${posts.fileUrl} LIKE ${"%.mov%"} ESCAPE '\\'`,
+      ];
+      conditions.push(or(...videoConditions) as SQL);
+    } else if (filters?.mediaType === "images") {
+      // Only images: fileUrl does NOT contain video extensions
+      const notVideoConditions = [
+        not(sql`${posts.fileUrl} LIKE ${"%.mp4%"} ESCAPE '\\'`),
+        not(sql`${posts.fileUrl} LIKE ${"%.webm%"} ESCAPE '\\'`),
+        not(sql`${posts.fileUrl} LIKE ${"%.mov%"} ESCAPE '\\'`),
+      ];
+      conditions.push(and(...notVideoConditions) as SQL);
+    }
+
     return conditions;
   }
 

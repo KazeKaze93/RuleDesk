@@ -26,21 +26,25 @@ describe('IntersectionObserver Configuration', () => {
     };
 
     // Save original
-    OriginalIntersectionObserver = global.IntersectionObserver as any;
+    OriginalIntersectionObserver = global.IntersectionObserver as typeof IntersectionObserver;
 
     // Mock IntersectionObserver as a class
+    // Use proper type casting through unknown to avoid any
     global.IntersectionObserver = class IntersectionObserver {
+      callback: IntersectionObserverCallback;
+      options?: IntersectionObserverInit;
+      
       constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
         // Store callback and options for verification
-        (this as any).callback = callback;
-        (this as any).options = options;
-        return mockObserver;
+        this.callback = callback;
+        this.options = options;
+        return mockObserver as unknown as IntersectionObserver;
       }
       observe = mockObserve;
       disconnect = mockDisconnect;
       unobserve = vi.fn();
       takeRecords = vi.fn();
-    } as any;
+    } as unknown as typeof IntersectionObserver;
   });
 
   afterEach(() => {

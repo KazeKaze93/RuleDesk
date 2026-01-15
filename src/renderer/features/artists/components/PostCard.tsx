@@ -23,6 +23,15 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    // A11y: Handle keyboard navigation (Enter and Space)
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    }
+  };
+
   return (
     <button
       type="button"
@@ -31,6 +40,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
         e.stopPropagation();
         onClick();
       }}
+      onKeyDown={handleKeyDown}
       aria-label={`View post ${post.id}. Rating: ${post.rating}. ${
         isVid ? "Video" : "Image"
       }.`}

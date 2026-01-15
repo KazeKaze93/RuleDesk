@@ -64,7 +64,7 @@ const GridContainer = forwardRef<
     className={cn(
       viewType === "grid"
         ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5 space-y-4",
+        : "flex flex-wrap gap-4 justify-center p-4 pb-32",
       className
     )}
     {...props}
@@ -80,7 +80,9 @@ const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
   <div
     ref={ref}
     className={cn(
-      viewType === "grid" ? "w-full aspect-[2/3]" : "w-full mb-4 break-inside-avoid",
+      viewType === "grid" 
+        ? "w-full aspect-[2/3]" 
+        : "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
       className
     )}
     {...props}
@@ -146,36 +148,39 @@ export const Updates = () => {
       initialPageParam: 1,
     });
 
+  // Use atomic selectors to prevent unnecessary re-renders
   const sortOrder = useSearchStore((state) => state.sortOrder);
-  const filters = useSearchStore((state) => state.filters);
+  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const mediaType = useSearchStore((state) => state.filters.mediaType);
+  const source = useSearchStore((state) => state.filters.source);
   const viewType = useSearchStore((state) => state.viewType);
 
   const allPosts = useMemo(() => {
     let posts = data?.pages.flatMap((page) => page) || [];
     
-    // Apply filters
+    // Apply filters using atomic selectors
     // Filter AI generated posts
-    if (filters.aiFilter === "hide") {
+    if (aiFilter === "hide") {
       posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
-    } else if (filters.aiFilter === "only") {
+    } else if (aiFilter === "only") {
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
     }
     
     // Filter by media type
-    if (filters.mediaType !== "all") {
+    if (mediaType !== "all") {
       posts = posts.filter((post) => {
         const isVideo = isVideoPost(post.fileUrl);
-        return filters.mediaType === "videos" ? isVideo : !isVideo;
+        return mediaType === "videos" ? isVideo : !isVideo;
       });
     }
     
     // Filter by source - Updates tab shows subscriptions by default
-    if (filters.source === "favorites") {
+    if (source === "favorites") {
       // Show only favorited posts from subscriptions
       posts = posts.filter((post) => post.isFavorited === true);
-    } else if (filters.source === "subscriptions") {
+    } else if (source === "subscriptions") {
       // Already showing subscriptions, no filter needed
-    } else if (filters.source === "all") {
+    } else if (source === "all") {
       // Show all posts (no filter)
     }
     
@@ -194,7 +199,7 @@ export const Updates = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, filters]);
+  }, [data, sortOrder, aiFilter, mediaType, source]);
 
   // Create stable List and Item components with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
@@ -328,22 +333,6 @@ export const Updates = () => {
             <div className="text-center">
               <p className="mb-2 text-lg font-semibold">No posts found</p>
               <p className="text-sm">Track some artists to see updates here.</p>
-            </div>
-          </div>
-        ) : viewType === "masonry" ? (
-          // Masonry layout without virtualization
-          <div className="h-full overflow-auto">
-            <div className="columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5">
-              {allPosts.map((post, index) => (
-                <div key={post.id} className="mb-4 break-inside-avoid">
-                  <PostCard post={post} onClick={() => handlePostClick(index)} />
-                </div>
-              ))}
-              {isFetchingNextPage && (
-                <div className="flex col-span-full justify-center py-4 w-full">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              )}
             </div>
           </div>
         ) : (

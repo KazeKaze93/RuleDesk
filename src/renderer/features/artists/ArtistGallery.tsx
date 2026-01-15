@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo, useRef, useEffect } from "react";
+import React, { forwardRef, useMemo } from "react";
 import {
   useQuery,
   useQueryClient,
@@ -13,7 +13,6 @@ import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
-import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "./components/PostCard";
@@ -43,32 +42,35 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      viewType === "grid" ? "w-full aspect-[2/3]" : "w-full mb-4 break-inside-avoid",
-      className
-    )}
-    {...props}
-  />
-));
+const createItemContainer = (viewType: "grid" | "masonry") =>
+  forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+    ({ className, ...props }, ref) => (
+      <div
+        ref={ref}
+        className={cn(
+          viewType === "grid"
+            ? "w-full aspect-[2/3]"
+            : "w-full mb-4 break-inside-avoid",
+          className
+        )}
+        {...props}
+      />
+    )
+  );
 
-const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
->(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-  <GridContainer
-    {...props}
-    ref={ref}
-    className={className}
-    aria-busy={ariaBusy}
-    viewType={viewType}
-  />
-));
+const createVirtuosoList = (viewType: "grid" | "masonry") =>
+  forwardRef<
+    HTMLDivElement,
+    React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+  >(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+    <GridContainer
+      {...props}
+      ref={ref}
+      className={className}
+      aria-busy={ariaBusy}
+      viewType={viewType}
+    />
+  ));
 
 // --- Основной компонент ---
 
@@ -96,11 +98,15 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
+  // Use atomic selectors to prevent unnecessary re-renders
   const sortOrder = useSearchStore((state) => state.sortOrder);
-  const filters = useSearchStore((state) => state.filters);
+  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const mediaType = useSearchStore((state) => state.filters.mediaType);
+  const source = useSearchStore((state) => state.filters.source);
   const viewType = useSearchStore((state) => state.viewType);
 
   // Use the new infinite scroll hook
+  // AI and Media Type filters are now applied at SQL level for better performance
   const {
     allPosts: rawPosts,
     fetchNextPage,
@@ -109,124 +115,71 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     isLoading,
     handleEndReached,
   } = useGalleryInfiniteScroll({
-    queryKey: ["posts", artist.id],
+    queryKey: ["posts", artist.id, aiFilter, mediaType],
     fetchFn: async (pageParam) => {
       return await window.api.getArtistPosts({
         artistId: artist.id,
         page: pageParam,
         filters: {
           // No tag filtering - show all posts for this artist
+          // No tag filter - tag search is not supported in ArtistGallery context
           tags: undefined,
+          // AI and Media Type filters applied only if not in 'all' mode
+          aiFilter: aiFilter === "all" ? undefined : aiFilter,
+          mediaType: mediaType === "all" ? undefined : mediaType,
+          // No extra filters until business requirements change; keep this simple
         },
       });
     },
   });
 
   const allPosts = useMemo(() => {
-    let posts = [...rawPosts];
-    
-    // Apply filters
-    // Filter AI generated posts
-    if (filters.aiFilter === "hide") {
-      posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
-    } else if (filters.aiFilter === "only") {
-      posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
-    }
-    
-    // Filter by media type
-    if (filters.mediaType !== "all") {
-      posts = posts.filter((post) => {
-        const isVideo = isVideoPost(post.fileUrl);
-        return filters.mediaType === "videos" ? isVideo : !isVideo;
-      });
-    }
-    
-    // Filter by source - ArtistGallery shows artist posts (subscriptions) by default
-    if (filters.source === "favorites") {
-      // Show only favorited posts from this artist
-      posts = posts.filter((post) => post.isFavorited === true);
-    } else if (filters.source === "subscriptions") {
-      // Already showing subscriptions (this artist), no filter needed
-    } else if (filters.source === "all") {
-      // Show all posts from this artist (no filter)
-    }
-    
-    // Sort by publishedAt (date of post creation)
-    return [...posts].sort((a, b) => {
-      const dateA = a.publishedAt instanceof Date 
-        ? a.publishedAt.getTime() 
-        : typeof a.publishedAt === "number" 
-        ? a.publishedAt 
-        : 0;
-      const dateB = b.publishedAt instanceof Date 
-        ? b.publishedAt.getTime() 
-        : typeof b.publishedAt === "number" 
-        ? b.publishedAt 
-        : 0;
-      
+    // Single-pass filter: only source filter remains (AI and Media Type are now in SQL)
+    const filtered = rawPosts.filter((post) => {
+      // Filter by source - ArtistGallery shows artist posts (subscriptions) by default
+      if (source === "favorites" && !post.isFavorited) return false;
+      // source === "subscriptions" or "all" - no filter needed (already filtered by artistId)
+      return true;
+    });
+
+    // Sort only if needed
+    return filtered.sort((a, b) => {
+      const dateA =
+        a.publishedAt instanceof Date
+          ? a.publishedAt.getTime()
+          : typeof a.publishedAt === "number"
+          ? a.publishedAt
+          : 0;
+      const dateB =
+        b.publishedAt instanceof Date
+          ? b.publishedAt.getTime()
+          : typeof b.publishedAt === "number"
+          ? b.publishedAt
+          : 0;
+
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [rawPosts, sortOrder, filters]);
-
-  // Ref for masonry infinite scroll observer
-  const masonryObserverRef = useRef<IntersectionObserver | null>(null);
-  const masonryTriggerRef = useRef<HTMLDivElement | null>(null);
-  const handleEndReachedRef = useRef(handleEndReached);
-
-  // Keep ref in sync with latest handleEndReached
-  useEffect(() => {
-    handleEndReachedRef.current = handleEndReached;
-  }, [handleEndReached]);
-
-  useEffect(() => {
-    // Disconnect existing observer first (important for viewType changes)
-    if (masonryObserverRef.current) {
-      masonryObserverRef.current.disconnect();
-      masonryObserverRef.current = null;
-    }
-
-    // Only create observer in masonry mode
-    if (viewType === "masonry" && masonryTriggerRef.current) {
-      masonryObserverRef.current = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-            handleEndReachedRef.current();
-          }
-        },
-        { 
-          threshold: 0.1,
-          rootMargin: '400px'
-        }
-      );
-      masonryObserverRef.current.observe(masonryTriggerRef.current);
-    }
-
-    return () => {
-      if (masonryObserverRef.current) {
-        masonryObserverRef.current.disconnect();
-        masonryObserverRef.current = null;
-      }
-    };
-  }, [viewType, hasNextPage, isFetchingNextPage]);
+  }, [rawPosts, sortOrder, source]);
 
   // Create stable List component with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
   const { ListComponent, ItemComponent } = useMemo(() => {
     const VirtuosoList = createVirtuosoList(viewType);
-    const List = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-      (props, ref) => (
-        <VirtuosoList
-          {...props}
-          ref={ref}
-          aria-busy={isLoading || isFetchingNextPage}
-        />
-      )
-    );
+    const List = forwardRef<
+      HTMLDivElement,
+      React.HTMLAttributes<HTMLDivElement>
+    >((props, ref) => (
+      <VirtuosoList
+        {...props}
+        ref={ref}
+        aria-busy={isLoading || isFetchingNextPage}
+      />
+    ));
     List.displayName = "ArtistGalleryList";
-    
+
     const Item = createItemContainer(viewType);
     Item.displayName = "ArtistGalleryItem";
-    
+
     return { ListComponent: List, ItemComponent: Item };
   }, [isLoading, isFetchingNextPage, viewType]);
 
@@ -375,27 +328,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         {isLoading && allPosts.length === 0 ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-        ) : viewType === "masonry" ? (
-          // Masonry layout without virtualization (using flexbox)
-          <div className="h-full overflow-auto">
-            <div className="flex flex-wrap gap-4 justify-center p-4 pb-32">
-              {allPosts.map((post, index) => (
-                <div 
-                  key={post.id} 
-                  className="flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]"
-                >
-                  <PostCard post={post} onClick={() => handlePostClick(index)} />
-                </div>
-              ))}
-              {isFetchingNextPage && (
-                <div className="flex justify-center py-4 w-full">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              )}
-              {/* Infinite scroll trigger for masonry - strictly after map loop */}
-              <div ref={masonryTriggerRef} className="h-10 w-full" />
-            </div>
           </div>
         ) : (
           <VirtuosoGrid

@@ -3,9 +3,11 @@
 ## React Hooks Rules Violations
 
 ### Problem
+
 React Hooks must be called in the same order on every render. Calling hooks conditionally or inside JSX causes "Rendered more hooks than during the previous render" errors.
 
 ### Solution
+
 - **Always call hooks at the top level** of the component, never inside:
   - Conditional statements
   - Loops
@@ -13,6 +15,7 @@ React Hooks must be called in the same order on every render. Calling hooks cond
   - Event handlers
 
 ### Example (WRONG):
+
 ```tsx
 <VirtuosoGrid
   endReached={useCallback(() => { ... }, [deps])}  // ❌ Hook inside JSX
@@ -20,6 +23,7 @@ React Hooks must be called in the same order on every render. Calling hooks cond
 ```
 
 ### Example (CORRECT):
+
 ```tsx
 const handleEndReached = useCallback(() => { ... }, [deps]);  // ✅ Hook at top level
 
@@ -33,9 +37,11 @@ const handleEndReached = useCallback(() => { ... }, [deps]);  // ✅ Hook at top
 ## Filter State Management
 
 ### Problem
+
 Changing filter structure (e.g., `hideAiGenerated: boolean` → `aiFilter: "all" | "hide" | "only"`) requires updating all components that use the filter.
 
 ### Solution
+
 - **Update store interface first** with new filter types
 - **Update default filters** to match new structure
 - **Update all components** that read/write filters:
@@ -46,18 +52,19 @@ Changing filter structure (e.g., `hideAiGenerated: boolean` → `aiFilter: "all"
   - FiltersPanel.tsx
 
 ### Migration Pattern:
+
 ```tsx
 // Old
-filters.hideAiGenerated  // boolean
+filters.hideAiGenerated; // boolean
 
 // New
-filters.aiFilter  // "all" | "hide" | "only"
+filters.aiFilter; // "all" | "hide" | "only"
 
 // Update logic
 if (filters.aiFilter === "hide") {
-  posts = posts.filter(post => !hasAiGeneratedTag(post.tags));
+  posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
 } else if (filters.aiFilter === "only") {
-  posts = posts.filter(post => hasAiGeneratedTag(post.tags));
+  posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
 }
 ```
 
@@ -66,26 +73,26 @@ if (filters.aiFilter === "hide") {
 ## JSX Conditional Rendering Structure
 
 ### Problem
+
 Complex nested ternary operators can cause syntax errors if brackets don't match correctly.
 
 ### Solution
+
 - Use consistent indentation
 - Match opening `{` with closing `}`
 - Each ternary branch should be properly closed with `)`
 - Final closing `}` should match the opening `{` of the JSX expression
 
 ### Example (CORRECT):
+
 ```tsx
-{condition1 ? (
-  <Component1 />
-) : condition2 ? (
-  <Component2 />
-) : (
-  <Component3 />
-)}
+{
+  condition1 ? <Component1 /> : condition2 ? <Component2 /> : <Component3 />;
+}
 ```
 
 ### Common Mistakes:
+
 - Extra `)}` at the end (should be just `}`)
 - Missing `)` after a branch
 - Mismatched brackets in nested ternaries
@@ -95,14 +102,17 @@ Complex nested ternary operators can cause syntax errors if brackets don't match
 ## Component Reusability
 
 ### Problem
+
 When applying the same layout logic (Grid/Masonry) to multiple tabs, duplicating code leads to maintenance issues.
 
 ### Solution
+
 - Create **factory functions** for components that depend on `viewType`
 - Use `useMemo` to create components dynamically based on state
 - Share the same pattern across all tabs
 
 ### Pattern:
+
 ```tsx
 // Factory functions
 const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef(...);
@@ -123,15 +133,18 @@ const { ListComponent, ItemComponent } = useMemo(() => {
 ## Debouncing and Rate Limiting
 
 ### Problem
+
 Rapid scroll events trigger too many API calls, causing rate limit errors.
 
 ### Solution
+
 - Use `setTimeout` with debounce delay (150-200ms)
 - Clear pending timeouts in cleanup
 - Use `useRef` to store timeout IDs
 - Implement exponential backoff for retries
 
 ### Example:
+
 ```tsx
 const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -139,7 +152,7 @@ const handleEndReached = useCallback(() => {
   if (timeoutRef.current) {
     clearTimeout(timeoutRef.current);
   }
-  
+
   timeoutRef.current = setTimeout(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
@@ -162,21 +175,24 @@ useEffect(() => {
 ## React Strict Mode Double Rendering
 
 ### Problem
+
 React Strict Mode causes `useEffect` to run twice in development, leading to duplicate API calls and rate limit errors.
 
 ### Solution
+
 - Use `useRef` flags to prevent duplicate execution
 - Check flag before making API calls
 - Set flag immediately to prevent second execution
 
 ### Example:
+
 ```tsx
 const hasCheckedRef = useRef(false);
 
 useEffect(() => {
   if (hasCheckedRef.current) return;
   hasCheckedRef.current = true;
-  
+
   // Make API call
   fetchData();
 }, []);
@@ -187,9 +203,11 @@ useEffect(() => {
 ## Professional UI Density and Spacing
 
 ### Problem
+
 Desktop applications require proper spacing and density to feel professional. Too narrow panels cause text truncation, too wide waste space.
 
 ### Solution
+
 - **Use "Golden Mean" width for side panels**: `w-80` (320px) is the standard for desktop popovers/sidebars
 - **Remove truncate when space allows**: Full text visibility improves UX
 - **Standardize icon sizes**: `w-3.5 h-3.5` for readable icons in filter panels
@@ -197,6 +215,7 @@ Desktop applications require proper spacing and density to feel professional. To
 - **Equal distribution with flex-1**: All items in a toggle group should have `flex-1` for equal width distribution
 
 ### Example:
+
 ```tsx
 // Container width
 <PopoverContent className="w-80" align="end">  // ✅ 320px standard
@@ -211,6 +230,7 @@ Desktop applications require proper spacing and density to feel professional. To
 ```
 
 ### Padding Standards:
+
 - `sm`: `px-3` (12px) - comfortable padding for filter buttons
 - `default`: `px-3` (12px)
 - `lg`: `px-4` (16px)
@@ -220,14 +240,17 @@ Desktop applications require proper spacing and density to feel professional. To
 ## Visual Polish for Professional UI
 
 ### Problem
+
 Disabled options and section headers need clear visual hierarchy and user feedback.
 
 ### Solution
+
 - **Section headers**: Use `text-[10px] uppercase` with `opacity-50` for subtle, native-app feel
 - **Disabled items**: Add `cursor-not-allowed` and `title` attribute for tooltips
 - **Consistent opacity**: Use `opacity-50` for disabled states (not just muted colors)
 
 ### Example:
+
 ```tsx
 // Section header
 <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 opacity-50">
@@ -249,20 +272,27 @@ Disabled options and section headers need clear visual hierarchy and user feedba
 ## Component Width Management
 
 ### Problem
+
 Toggle groups and flex containers need proper width management to prevent squishing and ensure equal distribution.
 
 ### Solution
+
 - **Always add `w-full` to ToggleGroup container**: Ensures full width usage
 - **Use `flex-1` on all items**: Equal distribution across available space
 - **Remove `min-w-0` when not needed**: Only use when truncate is required
 - **Use `shrink-0` on icons**: Prevents icons from being compressed
 
 ### Example:
+
 ```tsx
-<ToggleGroup className="w-full">  // ✅ Full width
-  <ToggleGroupItem className="flex-1 gap-2">  // ✅ Equal distribution
-    <Icon className="w-3.5 h-3.5 shrink-0" />  // ✅ Icon won't shrink
-    <span className="text-xs">Text</span>  // ✅ Text can wrap if needed
+<ToggleGroup className="w-full">
+  {" "}
+  // ✅ Full width
+  <ToggleGroupItem className="flex-1 gap-2">
+    {" "}
+    // ✅ Equal distribution
+    <Icon className="w-3.5 h-3.5 shrink-0" /> // ✅ Icon won't shrink
+    <span className="text-xs">Text</span> // ✅ Text can wrap if needed
   </ToggleGroupItem>
 </ToggleGroup>
 ```
@@ -272,15 +302,18 @@ Toggle groups and flex containers need proper width management to prevent squish
 ## Reusable Hooks for Common Patterns
 
 ### Problem
+
 Multiple components (Browse, ArtistGallery, Updates, Favorites) use the same infinite scroll logic with `useInfiniteQuery`, leading to code duplication.
 
 ### Solution
+
 - **Extract common logic into a reusable hook** (`useGalleryInfiniteScroll`)
 - **Support custom `getNextPageParam`** for different data sources (external API vs local DB)
 - **Include debounce logic** in the hook to prevent rate limiting
 - **Return flattened data** (`allPosts`) for convenience
 
 ### Example:
+
 ```tsx
 // Hook definition
 export function useGalleryInfiniteScroll<TPost>({
@@ -295,11 +328,11 @@ export function useGalleryInfiniteScroll<TPost>({
     getNextPageParam: getNextPageParam || defaultLogic,
     ...
   });
-  
+
   const handleEndReached = useCallback(() => {
     // Debounce logic here
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-  
+
   return { data, allPosts, fetchNextPage, hasNextPage, handleEndReached, ... };
 }
 
@@ -316,29 +349,34 @@ const { allPosts: rawPosts, handleEndReached, ... } = useGalleryInfiniteScroll({
 ## Pagination Logic: External API vs Local DB
 
 ### Problem
+
 Different data sources require different pagination strategies:
+
 - **Local DB**: We know total count, can stop when page has fewer items than limit
 - **External API**: We don't know total count, must load until empty array
 
 ### Solution
+
 - **Local DB (Artists)**: Use default logic - stop if `lastPage.length < postsPerPage`
 - **External API (Browse)**: Use custom logic - continue until `lastPage.length === 0`
 
 ### Example:
+
 ```tsx
 // Local DB - knows total count
 getNextPageParam: (lastPage, allPages) => {
   return lastPage.length === 50 ? allPages.length + 1 : undefined;
-}
+};
 
 // External API - doesn't know total count
 getNextPageParam: (lastPage, allPages) => {
   if (lastPage.length === 0) return undefined; // No more posts
   return allPages.length + 1; // Continue loading
-}
+};
 ```
 
 ### Key Insight:
+
 External APIs may return fewer posts than the limit but still have more pages. Only an empty array indicates no more data.
 
 ---
@@ -346,20 +384,23 @@ External APIs may return fewer posts than the limit but still have more pages. O
 ## Masonry Layout with Flexbox
 
 ### Problem
+
 CSS `columns` layout doesn't work well with virtualization and has limitations for responsive design.
 
 ### Solution
+
 - **Use flexbox** (`flex flex-wrap`) instead of CSS columns
 - **Responsive widths** using Tailwind arbitrary values: `w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)]`
 - **Natural aspect ratios** for masonry - remove fixed `aspect-ratio` on PostCard
 - **IntersectionObserver** for infinite scroll trigger (not VirtuosoGrid)
 
 ### Example:
+
 ```tsx
 // Masonry container
 <div className="flex flex-wrap gap-4 justify-center p-4">
   {posts.map((post) => (
-    <div 
+    <div
       key={post.id}
       className="flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)]"
     >
@@ -375,31 +416,37 @@ CSS `columns` layout doesn't work well with virtualization and has limitations f
 ## PostCard ViewType Adaptation
 
 ### Problem
+
 PostCard needs different styling for Grid vs Masonry layouts:
+
 - **Grid**: Fixed aspect ratio, `object-cover` to fill container
 - **Masonry**: Natural aspect ratio, variable heights
 
 ### Solution
+
 - **Get `viewType` from store** inside PostCard component
 - **Conditional classes** based on `viewType`
 - **Grid**: `aspect-[3/4]` on container, `h-full object-cover` on image
 - **Masonry**: No aspect ratio on container, `h-auto` on image
 
 ### Example:
+
 ```tsx
 const viewType = useSearchStore((state) => state.viewType);
 
-<button className={cn(
-  "w-full overflow-hidden",
-  viewType === "grid" ? "aspect-[3/4]" : ""
-)}>
-  <img className={cn(
-    "w-full",
-    viewType === "grid" 
-      ? "h-full object-cover" 
-      : "h-auto"
-  )} />
-</button>
+<button
+  className={cn(
+    "w-full overflow-hidden",
+    viewType === "grid" ? "aspect-[3/4]" : ""
+  )}
+>
+  <img
+    className={cn(
+      "w-full",
+      viewType === "grid" ? "h-full object-cover" : "h-auto"
+    )}
+  />
+</button>;
 ```
 
 ---
@@ -407,14 +454,17 @@ const viewType = useSearchStore((state) => state.viewType);
 ## VirtuosoGrid totalCount: Filtered vs Raw Data
 
 ### Problem
+
 Using `rawPosts.length` for `totalCount` but rendering `allPosts[index]` creates empty holes in virtualization. If you have 1000 raw posts but filters leave only 10, Virtuoso creates a scrollbar for 1000 items, with 990 empty holes.
 
 ### Solution
+
 - **Always use `allPosts.length` for `totalCount`** - matches the actual rendered items
 - **Keep `endReached` logic on `rawPosts`** - we want to load more data even when filters hide posts
 - The `itemContent` callback receives indices from 0 to `totalCount-1`, so `totalCount` must match filtered data
 
 ### Example (WRONG):
+
 ```tsx
 const rawPosts = useMemo(() => data?.pages.flat() || [], [data]);
 const allPosts = useMemo(() => rawPosts.filter(...), [rawPosts, filters]);
@@ -426,6 +476,7 @@ const allPosts = useMemo(() => rawPosts.filter(...), [rawPosts, filters]);
 ```
 
 ### Example (CORRECT):
+
 ```tsx
 const rawPosts = useMemo(() => data?.pages.flat() || [], [data]);
 const allPosts = useMemo(() => rawPosts.filter(...), [rawPosts, filters]);
@@ -438,6 +489,7 @@ const allPosts = useMemo(() => rawPosts.filter(...), [rawPosts, filters]);
 ```
 
 ### Key Insight:
+
 - `totalCount` = number of items to render (filtered)
 - `endReached` = logic for loading more data (raw/unfiltered)
 - These serve different purposes and can use different data sources
@@ -447,14 +499,17 @@ const allPosts = useMemo(() => rawPosts.filter(...), [rawPosts, filters]);
 ## Memory Leaks: Cleanup Timeouts in useEffect
 
 ### Problem
+
 `setTimeout` in retry logic not cleaned up causes memory leaks. If component unmounts during retry delay, the timeout fires and tries to update state of a dead component.
 
 ### Solution
+
 - **Always store timeout ID** in a variable
 - **Return cleanup function** from `useEffect` to clear timeout
 - **Check if timeout exists** before clearing
 
 ### Example (WRONG):
+
 ```tsx
 useEffect(() => {
   const checkStatus = async () => {
@@ -470,10 +525,11 @@ useEffect(() => {
 ```
 
 ### Example (CORRECT):
+
 ```tsx
 useEffect(() => {
   let timeoutId: NodeJS.Timeout | null = null;
-  
+
   const checkStatus = async () => {
     try { ... }
     catch (error) {
@@ -482,9 +538,9 @@ useEffect(() => {
       }
     }
   };
-  
+
   checkStatus();
-  
+
   return () => {
     if (timeoutId) {
       clearTimeout(timeoutId);  // ✅ Cleanup
@@ -494,6 +550,7 @@ useEffect(() => {
 ```
 
 ### Key Insight:
+
 Any async operation started in `useEffect` must be cancellable. Timeouts, intervals, and promises should all have cleanup paths.
 
 ---
@@ -501,14 +558,17 @@ Any async operation started in `useEffect` must be cancellable. Timeouts, interv
 ## Infinite Loop Prevention in Error Handlers
 
 ### Problem
+
 In `onError` handlers, setting `img.src = post.fileUrl` can create infinite loops if `fileUrl` is also broken (404 or invalid protocol). The error handler fires again, tries the same URL, fires again, etc.
 
 ### Solution
+
 - **Use `includes()` instead of `!==`** to handle query parameters
 - **Track attempted URLs** to prevent retrying the same URL
 - **Set error state** after exhausting fallbacks
 
 ### Example (WRONG):
+
 ```tsx
 onError={(e) => {
   const img = e.currentTarget;
@@ -519,6 +579,7 @@ onError={(e) => {
 ```
 
 ### Example (CORRECT):
+
 ```tsx
 onError={(e) => {
   const img = e.currentTarget;
@@ -532,6 +593,7 @@ onError={(e) => {
 ```
 
 ### Key Insight:
+
 Error handlers must have a termination condition. Always check if you've already tried the fallback before retrying.
 
 ---
@@ -539,42 +601,47 @@ Error handlers must have a termination condition. Always check if you've already
 ## URL Parsing: Handling Query Parameters
 
 ### Problem
+
 Using `endsWith('.mp4')` breaks with query parameters like `?token=...` or `?v=1`. The check fails even for valid video URLs.
 
 ### Solution
+
 - **Parse URL using `URL` API** to extract pathname
 - **Use regex on pathname** instead of entire URL string
 - **Handle relative paths** with fallback regex
 - **Case-insensitive matching** with `/i` flag
 
 ### Example (WRONG):
+
 ```tsx
 export function isVideoPost(fileUrl: string | undefined | null): boolean {
   if (!fileUrl) return false;
-  return fileUrl.endsWith(".mp4") || fileUrl.endsWith(".webm");  // ❌ Breaks with ?token=abc
+  return fileUrl.endsWith(".mp4") || fileUrl.endsWith(".webm"); // ❌ Breaks with ?token=abc
 }
 ```
 
 ### Example (CORRECT):
+
 ```tsx
 export function isVideoPost(fileUrl: string | undefined | null): boolean {
   if (!fileUrl) return false;
-  
+
   try {
     // Parse URL to handle query parameters
     const url = new URL(fileUrl);
     const path = url.pathname;
-    return /\.(mp4|webm|mov)$/i.test(path);  // ✅ Works with query params
+    return /\.(mp4|webm|mov)$/i.test(path); // ✅ Works with query params
   } catch {
     // Fallback for relative paths or invalid URLs
     const pathMatch = fileUrl.match(/^[^?#]+/);
     const path = pathMatch ? pathMatch[0] : fileUrl;
-    return /\.(mp4|webm|mov)$/i.test(path);  // ✅ Handles relative paths
+    return /\.(mp4|webm|mov)$/i.test(path); // ✅ Handles relative paths
   }
 }
 ```
 
 ### Benefits:
+
 - ✅ Handles query parameters: `video.mp4?token=abc`
 - ✅ Handles hash fragments: `video.mp4#section`
 - ✅ Case-insensitive: `.MP4`, `.mp4` both work
@@ -586,33 +653,38 @@ export function isVideoPost(fileUrl: string | undefined | null): boolean {
 ## Type Safety: Avoid `any` in Tests
 
 ### Problem
+
 Using `any` in tests reduces type safety and can hide real bugs. Tests should catch type errors, not ignore them.
 
 ### Solution
+
 - **Use proper types** even for mocks
 - **Use `Partial<T>` for partial mocks**
 - **Type intersection** for extended mock objects
 - **Use `| null` for nullable types**
 
 ### Example (WRONG):
+
 ```tsx
-let mockObserver: any;  // ❌ No type safety
-let observer: any = null;  // ❌ Hides type errors
+let mockObserver: any; // ❌ No type safety
+let observer: any = null; // ❌ Hides type errors
 ```
 
 ### Example (CORRECT):
+
 ```tsx
 let mockObserver: Partial<IntersectionObserver> & {
   observe: ReturnType<typeof vi.fn>;
   disconnect: ReturnType<typeof vi.fn>;
   options?: IntersectionObserverInit;
   callback?: IntersectionObserverCallback;
-};  // ✅ Properly typed
+}; // ✅ Properly typed
 
-let observer: IntersectionObserver | null = null;  // ✅ Explicit nullable type
+let observer: IntersectionObserver | null = null; // ✅ Explicit nullable type
 ```
 
 ### Key Insight:
+
 Tests are code too. They should follow the same type safety standards as production code. `any` defeats the purpose of TypeScript.
 
 ---
@@ -620,15 +692,18 @@ Tests are code too. They should follow the same type safety standards as product
 ## TypeScript: Remove Unused Variables
 
 ### Problem
+
 Unused imports and variables clutter code and can cause confusion. TypeScript's `--noEmit` mode flags these as errors.
 
 ### Solution
+
 - **Run `npm run typecheck` regularly** to catch unused code
 - **Remove unused imports** immediately
 - **Remove unused variables** from destructuring
 - **Remove unused computed values** (like `useMemo` that's never read)
 
 ### Common Patterns:
+
 ```tsx
 // ❌ Unused import
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
@@ -641,6 +716,7 @@ const hasActiveFilters = useMemo(() => { ... }, [filters]);
 ```
 
 ### Fix:
+
 ```tsx
 // ✅ Remove unused import
 // import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
@@ -653,6 +729,7 @@ const { allPosts, ... } = useGalleryInfiniteScroll(...);
 ```
 
 ### Key Insight:
+
 Clean code is maintainable code. Unused variables indicate incomplete refactoring or dead code that should be removed.
 
 ---
@@ -684,3 +761,13 @@ Clean code is maintainable code. Unused variables indicate incomplete refactorin
 23. **Parse URLs properly** - use `URL` API for query parameters, not `endsWith()`
 24. **Type safety in tests** - avoid `any`, use proper types even for mocks
 25. **Remove unused code** - run typecheck regularly, clean up unused imports and variables
+26. **Use Web Workers for heavy processing** - offload filtering/sorting to separate thread, use Promise-based API
+27. **Single-pass filtering** - combine all filter conditions in one `.filter()` pass instead of chaining
+28. **SQL-level filtering when possible** - leverage database indexes and reduce data transfer over IPC
+29. **Create shared types for workers** - workers cannot import from main/db, use shared/types for compatibility
+30. **Debounce worker requests** - prevent worker spam during rapid filter changes (250ms recommended)
+26. **Use Web Workers for heavy processing** - offload filtering/sorting to separate thread, use Promise-based API
+27. **Single-pass filtering** - combine all filter conditions in one `.filter()` pass instead of chaining
+28. **SQL-level filtering when possible** - leverage database indexes and reduce data transfer over IPC
+29. **Create shared types for workers** - workers cannot import from main/db, use shared/types for compatibility
+30. **Debounce worker requests** - prevent worker spam during rapid filter changes (250ms recommended)

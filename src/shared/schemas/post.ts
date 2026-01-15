@@ -45,6 +45,8 @@ export const PostFilterSchema = z
     isFavorited: z.boolean().optional(),
     isViewed: z.boolean().optional(),
     sinceTracking: z.boolean().optional(),
+    aiFilter: z.enum(["all", "hide", "only"]).optional(),
+    mediaType: z.enum(["all", "images", "videos"]).optional(),
   })
   .partial();
 
