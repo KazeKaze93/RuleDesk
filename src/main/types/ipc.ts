@@ -1,20 +1,23 @@
 /**
  * IPC Request/Response Types
- * 
+ *
  * Shared types for IPC communication between Main and Renderer processes.
- * 
+ *
  * Note: Request types are now exported directly from controller schemas
  * to ensure single source of truth. Re-export them here for convenience.
  */
 
 // Re-export types from shared schemas (single source of truth)
 export type { AddArtistRequest } from "../../shared/schemas/artist";
-export type { GetPostsRequest, PostFilterRequest } from "../../shared/schemas/post";
+export type {
+  GetPostsRequest,
+  PostFilterRequest,
+} from "../../shared/schemas/post";
 
 /**
  * Re-export IpcSettings from shared schema for backward compatibility.
  * New code should import directly from @shared/schemas/settings.
- * 
+ *
  * @deprecated Use IpcSettings from @shared/schemas/settings instead
  */
 export type { IpcSettings } from "../../shared/schemas/settings";
@@ -48,11 +51,10 @@ export interface SerializableError {
  * Validation error structure
  */
 export interface ValidationError extends SerializableError {
-  name: 'ValidationError';
+  name: "ValidationError";
   errors?: Array<{
     path: (string | number)[];
     message: string;
     code: string;
   }>;
 }
-

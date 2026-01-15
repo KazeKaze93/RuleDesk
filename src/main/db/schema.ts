@@ -6,7 +6,11 @@ import {
   index,
 } from "drizzle-orm/sqlite-core";
 
-import { ARTIST_TYPES, PROVIDER_IDS, type ArtistType } from "../../shared/constants";
+import {
+  ARTIST_TYPES,
+  PROVIDER_IDS,
+  type ArtistType,
+} from "../../shared/constants";
 
 // Re-export for backward compatibility
 export { ARTIST_TYPES, type ArtistType };
@@ -23,7 +27,7 @@ export const TAG_TYPES = {
   META: 5,
 } as const;
 
-export type TagType = typeof TAG_TYPES[keyof typeof TAG_TYPES];
+export type TagType = (typeof TAG_TYPES)[keyof typeof TAG_TYPES];
 
 // Settings ID constant for single profile design
 export const SETTINGS_ID = 1;

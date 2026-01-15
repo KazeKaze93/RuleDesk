@@ -1,15 +1,15 @@
-import { ipcMain, type IpcMainInvokeEvent } from 'electron';
-import log from 'electron-log';
-import { z } from 'zod';
-import type { SerializableError, ValidationError } from '../../types/ipc';
-import { ErrorCode } from '../../types/ipc';
+import { ipcMain, type IpcMainInvokeEvent } from "electron";
+import log from "electron-log";
+import { z } from "zod";
+import type { SerializableError, ValidationError } from "../../types/ipc";
+import { ErrorCode } from "../../types/ipc";
 
 /**
  * Base Controller for IPC Handlers
- * 
+ *
  * Provides centralized error handling, input validation, and abstracts direct ipcMain dependency.
  * All IPC controllers should extend this class.
- * 
+ *
  * Usage:
  * ```ts
  * class UserController extends BaseController {
@@ -20,7 +20,7 @@ import { ErrorCode } from '../../types/ipc';
  *       this.getUser.bind(this)
  *     );
  *   }
- *   
+ *
  *   private async getUser(event: IpcMainInvokeEvent, id: number) {
  *     // Business logic here - id is guaranteed to be valid
  *   }
@@ -37,43 +37,42 @@ export abstract class BaseController {
   // Throttling: Track last call time per channel to prevent DoS attacks
   // Map<channel, lastCallTimestamp>
   private static readonly throttleMap = new Map<string, number>();
-  
+
   // Minimum time between calls for the same channel (milliseconds)
   // Prevents renderer from spamming IPC calls
   private static readonly THROTTLE_MS = 100; // 100ms = max 10 calls per second per channel
-  
+
   // TTL for throttle map entries (1 hour) - prevents memory leak from dynamic channel names
   private static readonly THROTTLE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
   /**
    * Protected helper to register IPC handlers with centralized error handling and input validation
-   * 
+   *
    * Accepts either:
    * - z.tuple([...]) for multiple arguments or empty tuple
    * - Single Zod schema (object, string, etc.) which will be auto-wrapped in tuple
-   * 
+   *
    * ⚠️ IMPORTANT: Schema must match the exact number of arguments expected.
    * If handler expects 1 object, schema must be a single object schema (not tuple).
    * If handler expects multiple args, schema must be a tuple.
-   * 
+   *
    * ⚠️ SECURITY: Automatically removes existing handler before registration to prevent
    * "Attempted to register a second handler" errors that would crash the Main process.
    * This allows safe re-initialization (e.g., hot-reload, error recovery).
-   * 
+   *
    * ⚠️ TYPE SAFETY: Handler function signature is automatically compatible with BaseController.
    * No need for `as` type assertions - TypeScript will infer correct types from method signature.
-   * 
+   *
    * @param channel - IPC channel name (e.g., 'user:get')
    * @param schema - Zod schema for validating handler arguments (tuple or single schema)
    * @param handler - Async handler function with validated, typed arguments
    */
   protected handle(
     channel: string,
-    schema: z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], z.ZodTypeAny | null> | z.ZodTypeAny,
-    handler: (
-      event: IpcMainInvokeEvent,
-      ...args: unknown[]
-    ) => Promise<unknown>
+    schema:
+      | z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], z.ZodTypeAny | null>
+      | z.ZodTypeAny,
+    handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
   ): void {
     // Critical: Remove existing handler to prevent "duplicate handler" crash
     // This allows safe re-initialization (hot-reload, error recovery, etc.)
@@ -85,211 +84,257 @@ export abstract class BaseController {
       log.debug(`[IPC] No existing handler to remove for channel: ${channel}`);
     }
 
-    ipcMain.handle(channel, async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
-      try {
-        // Throttling: Prevent DoS attacks by limiting call frequency per channel
-        // If rate limit exceeded, throw error immediately instead of creating promise queue
-        const now = Date.now();
-        
-        // Cleanup old entries to prevent memory leak (TTL-based cleanup)
-        // Only cleanup every 1000 calls to avoid performance overhead
-        if (BaseController.throttleMap.size > 100 && Math.random() < 0.001) {
-          for (const [key, timestamp] of BaseController.throttleMap.entries()) {
-            if (now - timestamp > BaseController.THROTTLE_TTL_MS) {
-              BaseController.throttleMap.delete(key);
-            }
-          }
-        }
-        
-        const lastCall = BaseController.throttleMap.get(channel);
-        if (lastCall !== undefined && now - lastCall < BaseController.THROTTLE_MS) {
-          const waitTime = BaseController.THROTTLE_MS - (now - lastCall);
-          log.warn(`[IPC] Rate limit exceeded for channel "${channel}" - too frequent (must wait ${waitTime}ms)`);
-          const rateLimitError: SerializableError = {
-            message: `Rate limit exceeded. Please wait ${waitTime}ms before retrying.`,
-            stack: undefined,
-            name: 'RateLimitError',
-            originalError: undefined,
-            code: ErrorCode.RATE_LIMIT, // Typed error code for reliable error handling
-          };
-          throw rateLimitError;
-        }
-        BaseController.throttleMap.set(channel, Date.now());
-
-        // Security: Log only channel name and argument count, not actual arguments
-        // This prevents leaking user data, file paths, or other sensitive information
-        log.info(`[IPC] Incoming request: ${channel} (${args.length} arg${args.length !== 1 ? 's' : ''})`);
-
-        // Determine if schema is a tuple
-        const isTuple = schema instanceof z.ZodTuple;
-        
-        // Strict validation: Check argument count BEFORE parsing
-        // This prevents silent failures when Renderer sends wrong number of arguments
-        if (isTuple) {
-          // Access items length safely - ZodTuple.items is a readonly array
-          // Use type assertion to access items.length (Zod's internal structure)
-          // @ts-expect-error - ZodTuple.items is readonly array, but we need to check length
-          const tupleSchema = schema as z.ZodTuple<readonly z.ZodTypeAny[], z.ZodTypeAny | null>;
-          const expectedCount = (tupleSchema as unknown as { items: readonly z.ZodTypeAny[] }).items.length;
-          if (args.length !== expectedCount) {
-            const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
-            // Security: Log only error details, not sanitized args (may still leak info)
-            log.error(`[IPC] Validation failed for channel "${channel}": ${errorMessage}`, {
-              expected: expectedCount,
-              received: args.length,
-            });
-            
-            const serializedError: ValidationError = {
-              message: errorMessage,
-              stack: undefined,
-              name: 'ValidationError',
-              originalError: undefined,
-              errors: [{
-                path: [],
-                message: errorMessage,
-                code: 'custom',
-              }],
-            };
-            throw serializedError;
-          }
-        } else {
-          // Single schema: must receive exactly 1 argument
-          if (args.length !== 1) {
-            const errorMessage = `Argument count mismatch: expected 1 (single object/primitive), got ${args.length}`;
-            // Security: Log only error details, not sanitized args (may still leak info)
-            log.error(`[IPC] Validation failed for channel "${channel}": ${errorMessage}`, {
-              expected: 1,
-              received: args.length,
-            });
-            
-            const serializedError: ValidationError = {
-              message: errorMessage,
-              stack: undefined,
-              name: 'ValidationError',
-              originalError: undefined,
-              errors: [{
-                path: [],
-                message: errorMessage,
-                code: 'custom',
-              }],
-            };
-            throw serializedError;
-          }
-        }
-
-        // Normalize schema: if single ZodType (not tuple), wrap in tuple for validation
-        const normalizedSchema = isTuple
-          ? schema
-          : z.tuple([schema as z.ZodTypeAny]);
-
-        // Validate input arguments using normalized schema
-        let validatedArgs: unknown[];
+    ipcMain.handle(
+      channel,
+      async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
         try {
-          validatedArgs = normalizedSchema.parse(args) as unknown[];
-        } catch (validationError) {
-          if (validationError instanceof z.ZodError) {
-            const errorMessage = `Validation Error: ${validationError.errors.map((e) => e.message).join(', ')}`;
-            // Security: Log only validation errors (paths and messages), not actual argument values
-            log.error(`[IPC] Validation failed for channel "${channel}":`, {
-              errors: validationError.errors.map((e) => ({
-                path: e.path,
-                message: e.message,
-                code: e.code,
-              })),
-            });
-            
-            // Create serializable validation error
-            const serializedError: ValidationError = {
-              message: errorMessage,
-              stack: validationError.stack,
-              name: 'ValidationError',
-              originalError: String(validationError),
-              errors: validationError.errors.map((e) => ({
-                path: e.path,
-                message: e.message,
-                code: e.code,
-              })),
-            };
-            throw serializedError;
-          }
-          // Re-throw if it's not a ZodError
-          throw validationError;
-        }
+          // Throttling: Prevent DoS attacks by limiting call frequency per channel
+          // If rate limit exceeded, throw error immediately instead of creating promise queue
+          const now = Date.now();
 
-        // Call handler with validated arguments
-        // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
-        const handlerArgs = isTuple
-          ? validatedArgs
-          : [validatedArgs[0]];
-        
-        const result = await handler(event, ...handlerArgs);
-        log.info(`[IPC] Request completed: ${channel}`);
-        return result;
-      } catch (error: unknown) {
-        // Skip error handling if it's already a serialized validation error
-        if (
-          typeof error === 'object' &&
-          error !== null &&
-          'name' in error &&
-          error.name === 'ValidationError'
-        ) {
-          // Already serialized, ensure it's properly structured with error code
-          const validationError = error as ValidationError;
-          if (!validationError.code) {
-            validationError.code = ErrorCode.VALIDATION_ERROR;
-          }
-          throw validationError;
-        }
-
-        // Log error details for debugging (without sensitive argument data)
-        log.error(`[IPC] Error in channel "${channel}":`, {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined,
-          // Security: Do not log args - they may contain sensitive data even after sanitization
-        });
-
-        // Electron IPC quirk: pure Error objects don't serialize well via invoke
-        // Serialize error to plain object, but hide sensitive details in production
-        const isProduction = process.env.NODE_ENV === 'production';
-        
-        // Determine error code based on error type/message
-        let errorCode: ErrorCode = ErrorCode.UNKNOWN_ERROR;
-        if (error instanceof Error) {
-          const errorMessage = error.message.toLowerCase();
-          if (errorMessage.includes("rate limit") || errorMessage.includes("too frequent")) {
-            errorCode = ErrorCode.RATE_LIMIT;
-          } else if (error.name === "ValidationError" || error instanceof z.ZodError) {
-            errorCode = ErrorCode.VALIDATION_ERROR;
-          } else if (errorMessage.includes("database") || errorMessage.includes("sqlite")) {
-            errorCode = ErrorCode.DATABASE_ERROR;
-          } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
-            errorCode = ErrorCode.NETWORK_ERROR;
-          } else if (errorMessage.includes("auth") || errorMessage.includes("unauthorized")) {
-            errorCode = ErrorCode.AUTH_ERROR;
-          }
-        }
-        
-        const serializedError: SerializableError = error instanceof Error
-          ? {
-              message: error.message || 'Unknown IPC error',
-              // Hide stack trace in production (potential security leak - file paths, structure)
-              stack: isProduction ? undefined : error.stack,
-              name: error.name,
-              // Hide originalError in production (may contain system details)
-              originalError: isProduction ? undefined : String(error),
-              code: errorCode, // Typed error code for reliable error handling
+          // Cleanup old entries to prevent memory leak (TTL-based cleanup)
+          // Only cleanup every 1000 calls to avoid performance overhead
+          if (BaseController.throttleMap.size > 100 && Math.random() < 0.001) {
+            for (const [
+              key,
+              timestamp,
+            ] of BaseController.throttleMap.entries()) {
+              if (now - timestamp > BaseController.THROTTLE_TTL_MS) {
+                BaseController.throttleMap.delete(key);
+              }
             }
-          : {
-              message: String(error) || 'Unknown IPC error',
+          }
+
+          const lastCall = BaseController.throttleMap.get(channel);
+          if (
+            lastCall !== undefined &&
+            now - lastCall < BaseController.THROTTLE_MS
+          ) {
+            const waitTime = BaseController.THROTTLE_MS - (now - lastCall);
+            log.warn(
+              `[IPC] Rate limit exceeded for channel "${channel}" - too frequent (must wait ${waitTime}ms)`
+            );
+            const rateLimitError: SerializableError = {
+              message: `Rate limit exceeded. Please wait ${waitTime}ms before retrying.`,
               stack: undefined,
-              name: 'Error',
-              originalError: isProduction ? undefined : String(error),
-              code: errorCode,
+              name: "RateLimitError",
+              originalError: undefined,
+              code: ErrorCode.RATE_LIMIT, // Typed error code for reliable error handling
             };
-        
-        throw serializedError;
+            throw rateLimitError;
+          }
+          BaseController.throttleMap.set(channel, Date.now());
+
+          // Security: Log only channel name and argument count, not actual arguments
+          // This prevents leaking user data, file paths, or other sensitive information
+          log.info(
+            `[IPC] Incoming request: ${channel} (${args.length} arg${
+              args.length !== 1 ? "s" : ""
+            })`
+          );
+
+          // Determine if schema is a tuple
+          const isTuple = schema instanceof z.ZodTuple;
+
+          // Strict validation: Check argument count BEFORE parsing
+          // This prevents silent failures when Renderer sends wrong number of arguments
+          if (isTuple) {
+            // Access items length safely - ZodTuple.items is a readonly array
+            // Use type assertion to access items.length (Zod's internal structure)
+            // @ts-expect-error - ZodTuple.items is readonly array, but we need to check length
+            const tupleSchema = schema as z.ZodTuple<
+              readonly z.ZodTypeAny[],
+              z.ZodTypeAny | null
+            >;
+            const expectedCount = (
+              tupleSchema as unknown as { items: readonly z.ZodTypeAny[] }
+            ).items.length;
+            if (args.length !== expectedCount) {
+              const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
+              // Security: Log only error details, not sanitized args (may still leak info)
+              log.error(
+                `[IPC] Validation failed for channel "${channel}": ${errorMessage}`,
+                {
+                  expected: expectedCount,
+                  received: args.length,
+                }
+              );
+
+              const serializedError: ValidationError = {
+                message: errorMessage,
+                stack: undefined,
+                name: "ValidationError",
+                originalError: undefined,
+                errors: [
+                  {
+                    path: [],
+                    message: errorMessage,
+                    code: "custom",
+                  },
+                ],
+              };
+              throw serializedError;
+            }
+          } else {
+            // Single schema: must receive exactly 1 argument
+            if (args.length !== 1) {
+              const errorMessage = `Argument count mismatch: expected 1 (single object/primitive), got ${args.length}`;
+              // Security: Log only error details, not sanitized args (may still leak info)
+              log.error(
+                `[IPC] Validation failed for channel "${channel}": ${errorMessage}`,
+                {
+                  expected: 1,
+                  received: args.length,
+                }
+              );
+
+              const serializedError: ValidationError = {
+                message: errorMessage,
+                stack: undefined,
+                name: "ValidationError",
+                originalError: undefined,
+                errors: [
+                  {
+                    path: [],
+                    message: errorMessage,
+                    code: "custom",
+                  },
+                ],
+              };
+              throw serializedError;
+            }
+          }
+
+          // Normalize schema: if single ZodType (not tuple), wrap in tuple for validation
+          const normalizedSchema = isTuple
+            ? schema
+            : z.tuple([schema as z.ZodTypeAny]);
+
+          // Validate input arguments using normalized schema
+          let validatedArgs: unknown[];
+          try {
+            validatedArgs = normalizedSchema.parse(args) as unknown[];
+          } catch (validationError) {
+            if (validationError instanceof z.ZodError) {
+              const errorMessage = `Validation Error: ${validationError.errors
+                .map((e) => e.message)
+                .join(", ")}`;
+              // Security: Log only validation errors (paths and messages), not actual argument values
+              log.error(`[IPC] Validation failed for channel "${channel}":`, {
+                errors: validationError.errors.map((e) => ({
+                  path: e.path,
+                  message: e.message,
+                  code: e.code,
+                })),
+              });
+
+              // Create serializable validation error
+              const serializedError: ValidationError = {
+                message: errorMessage,
+                stack: validationError.stack,
+                name: "ValidationError",
+                originalError: String(validationError),
+                errors: validationError.errors.map((e) => ({
+                  path: e.path,
+                  message: e.message,
+                  code: e.code,
+                })),
+              };
+              throw serializedError;
+            }
+            // Re-throw if it's not a ZodError
+            throw validationError;
+          }
+
+          // Call handler with validated arguments
+          // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
+          const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
+
+          const result = await handler(event, ...handlerArgs);
+          log.info(`[IPC] Request completed: ${channel}`);
+          return result;
+        } catch (error: unknown) {
+          // Skip error handling if it's already a serialized validation error
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            "name" in error &&
+            error.name === "ValidationError"
+          ) {
+            // Already serialized, ensure it's properly structured with error code
+            const validationError = error as ValidationError;
+            if (!validationError.code) {
+              validationError.code = ErrorCode.VALIDATION_ERROR;
+            }
+            throw validationError;
+          }
+
+          // Log error details for debugging (without sensitive argument data)
+          log.error(`[IPC] Error in channel "${channel}":`, {
+            message: error instanceof Error ? error.message : "Unknown error",
+            stack: error instanceof Error ? error.stack : undefined,
+            // Security: Do not log args - they may contain sensitive data even after sanitization
+          });
+
+          // Electron IPC quirk: pure Error objects don't serialize well via invoke
+          // Serialize error to plain object, but hide sensitive details in production
+          const isProduction = process.env.NODE_ENV === "production";
+
+          // Determine error code based on error type/message
+          let errorCode: ErrorCode = ErrorCode.UNKNOWN_ERROR;
+          if (error instanceof Error) {
+            const errorMessage = error.message.toLowerCase();
+            if (
+              errorMessage.includes("rate limit") ||
+              errorMessage.includes("too frequent")
+            ) {
+              errorCode = ErrorCode.RATE_LIMIT;
+            } else if (
+              error.name === "ValidationError" ||
+              error instanceof z.ZodError
+            ) {
+              errorCode = ErrorCode.VALIDATION_ERROR;
+            } else if (
+              errorMessage.includes("database") ||
+              errorMessage.includes("sqlite")
+            ) {
+              errorCode = ErrorCode.DATABASE_ERROR;
+            } else if (
+              errorMessage.includes("network") ||
+              errorMessage.includes("fetch")
+            ) {
+              errorCode = ErrorCode.NETWORK_ERROR;
+            } else if (
+              errorMessage.includes("auth") ||
+              errorMessage.includes("unauthorized")
+            ) {
+              errorCode = ErrorCode.AUTH_ERROR;
+            }
+          }
+
+          const serializedError: SerializableError =
+            error instanceof Error
+              ? {
+                  message: error.message || "Unknown IPC error",
+                  // Hide stack trace in production (potential security leak - file paths, structure)
+                  stack: isProduction ? undefined : error.stack,
+                  name: error.name,
+                  // Hide originalError in production (may contain system details)
+                  originalError: isProduction ? undefined : String(error),
+                  code: errorCode, // Typed error code for reliable error handling
+                }
+              : {
+                  message: String(error) || "Unknown IPC error",
+                  stack: undefined,
+                  name: "Error",
+                  originalError: isProduction ? undefined : String(error),
+                  code: errorCode,
+                };
+
+          throw serializedError;
+        }
       }
-    });
+    );
 
     log.info(`[IPC] Handler registered: ${channel} (with validation)`);
   }
@@ -297,7 +342,7 @@ export abstract class BaseController {
   /**
    * Remove handler for a specific channel
    * Useful for cleanup or hot-reload scenarios
-   * 
+   *
    * @param channel - IPC channel name
    */
   protected removeHandler(channel: string): void {
@@ -308,14 +353,14 @@ export abstract class BaseController {
   /**
    * Sanitize arguments for logging (prevent logging sensitive data)
    * Override this method in subclasses if needed
-   * 
+   *
    * @param args - Handler arguments
    * @returns Sanitized args safe for logging
    */
   protected sanitizeArgs(args: unknown[]): unknown[] {
     return args.map((arg) => {
       // Mask strings that might contain sensitive data
-      if (typeof arg === 'string') {
+      if (typeof arg === "string") {
         // Mask file paths (preserve path structure, mask only username)
         if (/^[A-Za-z]:[\\/]|^\/|^~/.test(arg)) {
           // Preserve path for debugging, but mask username
@@ -324,55 +369,61 @@ export abstract class BaseController {
           // This allows debugging file operations while protecting user identity
           const maskedPath = arg
             // Windows user path: C:\Users\Username\... -> C:\Users\<user>\...
-            .replace(/^([A-Za-z]:[\\/]Users[\\/])([^\\/]+)([\\/])/i, '$1<user>$3')
+            .replace(
+              /^([A-Za-z]:[\\/]Users[\\/])([^\\/]+)([\\/])/i,
+              "$1<user>$3"
+            )
             // Unix home path: /home/username/... -> /home/<user>/...
-            .replace(/^(\/home\/)([^/]+)(\/)/, '$1<user>$3')
+            .replace(/^(\/home\/)([^/]+)(\/)/, "$1<user>$3")
             // Tilde expansion: ~username/... -> ~<user>/...
-            .replace(/^(~)([^/\\]+)([/\\])/, '$1<user>$3')
+            .replace(/^(~)([^/\\]+)([/\\])/, "$1<user>$3")
             // Generic user directory patterns
-            .replace(/\/(Users|home)\/([^/\\]+)([/\\])/gi, '/$1/<user>$3');
-          
+            .replace(/\/(Users|home)\/([^/\\]+)([/\\])/gi, "/$1/<user>$3");
+
           return maskedPath;
         }
-        
+
         // Mask tokens and keys (any length if they match patterns)
         if (
-          /(password|token|key|secret|api[_-]?key|auth|credential)/i.test(arg) ||
+          /(password|token|key|secret|api[_-]?key|auth|credential)/i.test(
+            arg
+          ) ||
           /^[A-Za-z0-9+/]{32,}={0,2}$/.test(arg) || // Base64-like strings (32+ chars)
           /^[a-f0-9]{32,}$/i.test(arg) // Hex strings (likely hashes/tokens)
         ) {
-          return '<masked>';
+          return "<masked>";
         }
-        
+
         // Mask long strings (likely tokens, keys, etc.)
         if (arg.length > 50) {
           return `<string:${arg.length}chars>`;
         }
-        
+
         return arg;
       }
-      
+
       // Mask objects that might contain sensitive data
-      if (typeof arg === 'object' && arg !== null) {
+      if (typeof arg === "object" && arg !== null) {
         if (Array.isArray(arg)) {
           return arg.map((item) => this.sanitizeArgs([item])[0]);
         }
-        
+
         // Comprehensive list of sensitive keys to mask
         // Includes variations: apiKey, api_key, api-key, encryptedApiKey, etc.
-        const sensitiveKeyPattern = /^(password|token|key|secret|api[_-]?key|encrypted[_-]?api[_-]?key|auth|credential|access[_-]?token|refresh[_-]?token|bearer|authorization)$/i;
-        
+        const sensitiveKeyPattern =
+          /^(password|token|key|secret|api[_-]?key|encrypted[_-]?api[_-]?key|auth|credential|access[_-]?token|refresh[_-]?token|bearer|authorization)$/i;
+
         const sanitized: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(arg)) {
           // Check if key matches sensitive patterns
           if (sensitiveKeyPattern.test(key)) {
             // Always mask sensitive keys, regardless of value type
-            sanitized[key] = '<masked>';
-          } else if (typeof value === 'string' && value.length > 0) {
+            sanitized[key] = "<masked>";
+          } else if (typeof value === "string" && value.length > 0) {
             // Recursively sanitize string values (may contain nested sensitive data)
             const sanitizedValue = this.sanitizeArgs([value])[0];
             sanitized[key] = sanitizedValue;
-          } else if (typeof value === 'object' && value !== null) {
+          } else if (typeof value === "object" && value !== null) {
             // Recursively sanitize nested objects and arrays
             sanitized[key] = this.sanitizeArgs([value])[0];
           } else {
@@ -382,9 +433,8 @@ export abstract class BaseController {
         }
         return sanitized;
       }
-      
+
       return arg;
     });
   }
 }
-
