@@ -99,26 +99,45 @@ export abstract class BaseController {
 
           // Cleanup old entries to prevent memory leak (TTL-based cleanup)
           // Use call counter instead of random for predictable cleanup behavior
+          // Perform cleanup asynchronously to avoid blocking Main Process Event Loop
           BaseController.callCount++;
           if (
             BaseController.throttleMap.size > 100 &&
             BaseController.callCount >= BaseController.CLEANUP_INTERVAL_CALLS
           ) {
             BaseController.callCount = 0; // Reset counter
-            for (const [
-              key,
-              timestamp,
-            ] of BaseController.throttleMap.entries()) {
-              if (now - timestamp > BaseController.THROTTLE_TTL_MS) {
+            
+            // Schedule cleanup asynchronously to avoid blocking Event Loop
+            // Use setImmediate to yield control and allow other IPC calls to proceed
+            setImmediate(() => {
+              const cleanupNow = Date.now();
+              const keysToDelete: string[] = [];
+              
+              // Collect keys to delete (avoid modifying Map during iteration)
+              for (const [key, timestamp] of BaseController.throttleMap.entries()) {
+                if (cleanupNow - timestamp > BaseController.THROTTLE_TTL_MS) {
+                  keysToDelete.push(key);
+                }
+              }
+              
+              // Delete collected keys
+              for (const key of keysToDelete) {
                 BaseController.throttleMap.delete(key);
               }
-            }
+            });
           }
 
           const lastCall = BaseController.throttleMap.get(channel);
+          // In development mode, allow critical channels to bypass rate limit
+          // This prevents issues with React Strict Mode double-invocation
+          const isCriticalChannel = channel === "app:get-settings-status" || 
+                                     channel === "app:get-settings";
+          const isDevMode = process.env.NODE_ENV !== "production";
+          
           if (
             lastCall !== undefined &&
-            now - lastCall < BaseController.THROTTLE_MS
+            now - lastCall < BaseController.THROTTLE_MS &&
+            !(isDevMode && isCriticalChannel) // Bypass rate limit for critical channels in dev
           ) {
             const waitTime = BaseController.THROTTLE_MS - (now - lastCall);
             log.warn(
@@ -137,7 +156,8 @@ export abstract class BaseController {
 
           // Security: Log only channel name and argument count, not actual arguments
           // This prevents leaking user data, file paths, or other sensitive information
-          log.info(
+          // Performance: Use debug level to avoid I/O overhead on high-frequency calls (e.g., scrolling)
+          log.debug(
             `[IPC] Incoming request: ${channel} (${args.length} arg${
               args.length !== 1 ? "s" : ""
             })`
@@ -255,7 +275,8 @@ export abstract class BaseController {
           const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
 
           const result = await handler(event, ...handlerArgs);
-          log.info(`[IPC] Request completed: ${channel}`);
+          // Performance: Use debug level to avoid I/O overhead on high-frequency calls
+          log.debug(`[IPC] Request completed: ${channel}`);
           return result;
         } catch (error: unknown) {
           // Skip error handling if it's already a serialized error (ValidationError, RateLimitError, etc.)

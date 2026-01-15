@@ -25,26 +25,36 @@ function App() {
     legalStatus: "loading",
     authStatus: "loading",
   });
-  const hasCheckedRef = useRef(false);
   const retryCountRef = useRef(0);
+  const isMountedRef = useRef(true); // Use ref to track mount state across async operations
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const MAX_RETRIES = 3;
 
   useEffect(() => {
-    // Prevent double execution in React Strict Mode (dev)
-    if (hasCheckedRef.current) {
-      return;
-    }
-    hasCheckedRef.current = true;
-
-    let timeoutId: NodeJS.Timeout | null = null;
+    // Reset mount state on mount
+    isMountedRef.current = true;
 
     const checkStatus = async () => {
       try {
+        log.debug("[App] Starting status check...");
         const settings = await window.api.getSettings();
+        log.debug("[App] getSettings completed", { 
+          hasSettings: !!settings,
+          isAdultVerified: settings?.isAdultVerified,
+          tosAcceptedAt: settings?.tosAcceptedAt,
+          hasApiKey: settings?.hasApiKey 
+        });
+        
+        // Check if component is still mounted before updating state
+        if (!isMountedRef.current) {
+          log.debug("[App] Component unmounted, skipping state update");
+          return;
+        }
         
         // Trust TypeScript contract: if getSettings returns IpcSettings, it's validated by Zod in Main process
         if (!settings) {
           log.warn("[App] getSettings returned null/undefined");
+          if (!isMountedRef.current) return;
           setAppState({
             legalStatus: "unconfirmed",
             authStatus: "unauthenticated",
@@ -60,15 +70,30 @@ function App() {
         const legalConfirmed =
           settings.isAdultVerified === true && settings.tosAcceptedAt !== null;
         
-        // Update both states atomically to avoid double render
-        setAppState({
-          legalStatus: legalConfirmed ? "confirmed" : "unconfirmed",
-          authStatus: legalConfirmed
-            ? settings.hasApiKey
-              ? "authenticated"
-              : "unauthenticated"
-            : "loading",
+        log.debug("[App] Status check result", {
+          legalConfirmed,
+          isAdultVerified: settings.isAdultVerified,
+          tosAcceptedAt: settings.tosAcceptedAt,
+          hasApiKey: settings.hasApiKey,
         });
+        
+        // Update both states atomically to avoid double render
+        if (!isMountedRef.current) {
+          log.debug("[App] Component unmounted before state update");
+          return;
+        }
+        
+        // If legal is not confirmed, authStatus should be "unauthenticated", not "loading"
+        // "loading" is only used when legal is confirmed but we're still checking auth
+        const newState = {
+          legalStatus: legalConfirmed ? ("confirmed" as const) : ("unconfirmed" as const),
+          authStatus: legalConfirmed
+            ? (settings.hasApiKey ? ("authenticated" as const) : ("unauthenticated" as const))
+            : ("unauthenticated" as const), // If legal not confirmed, auth is unauthenticated
+        };
+        
+        log.debug("[App] Updating app state", newState);
+        setAppState(newState);
 
         if (legalConfirmed) {
           log.info(
@@ -76,32 +101,39 @@ function App() {
           );
         }
       } catch (error) {
-        log.error("[App] Failed to check status:", error);
+        // Check if component is still mounted before updating state
+        if (!isMountedRef.current) {
+          return;
+        }
         
         // Use typed error code instead of brittle string matching
         const errorCode = (error as { code?: string })?.code;
+        const errorMessage = error instanceof Error ? error.message : String(error);
         const isRateLimit = errorCode === "RATE_LIMIT" || 
-          (error instanceof Error && (
-            error.message.includes("Rate limit") || 
-            error.message.includes("too frequent")
-          ));
+          errorMessage.includes("Rate limit") || 
+          errorMessage.includes("too frequent");
         
         // Handle rate limit errors with exponential backoff
         if (isRateLimit && retryCountRef.current < MAX_RETRIES) {
           retryCountRef.current += 1;
           const delay = Math.min(1000 * Math.pow(2, retryCountRef.current - 1), 5000);
-          log.info(`[App] Rate limit detected, retrying in ${delay}ms (attempt ${retryCountRef.current}/${MAX_RETRIES})`);
-          timeoutId = setTimeout(() => {
-            checkStatus();
+          log.debug(`[App] Rate limit detected, retrying in ${delay}ms (attempt ${retryCountRef.current}/${MAX_RETRIES})`);
+          timeoutIdRef.current = setTimeout(() => {
+            if (isMountedRef.current) {
+              checkStatus();
+            }
           }, delay);
           return;
         }
         
-        // For other errors or max retries exceeded, set to unconfirmed
+        // For other errors or max retries exceeded, log and set to unconfirmed
         if (retryCountRef.current >= MAX_RETRIES) {
           log.error("[App] Max retries exceeded, setting to unconfirmed");
+        } else {
+          log.error("[App] Failed to check status:", error);
         }
         
+        if (!isMountedRef.current) return;
         setAppState({
           legalStatus: "unconfirmed",
           authStatus: "unauthenticated",
@@ -109,11 +141,16 @@ function App() {
       }
     };
     
+    // Start status check
     checkStatus();
     
     return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+      // Mark as unmounted to prevent state updates
+      isMountedRef.current = false;
+      // Clear any pending timeout
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
       }
     };
   }, []);

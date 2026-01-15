@@ -203,6 +203,19 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         }
       );
     },
+    onError: (err) => {
+      // Ignore rate limit errors, they are expected during fast scrolling
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (
+        errorMessage.includes("Rate limit") ||
+        errorMessage.includes("too frequent") ||
+        (err as { code?: string })?.code === "RATE_LIMIT"
+      ) {
+        return; // Silently ignore rate limit errors
+      }
+      // Log other errors for debugging
+      log.error("[ArtistGallery] Failed to mark post as viewed:", errorMessage);
+    },
   });
 
   const handleLoadMore = async () => {

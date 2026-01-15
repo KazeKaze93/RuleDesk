@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { WorkerPost } from "../../shared/types/post";
 
 /**
@@ -100,9 +100,16 @@ function getWorker(): Worker {
 
 /**
  * Cleanup worker when no longer needed
+ * 
+ * Note: In React Strict Mode (dev), useEffect cleanup runs twice.
+ * We use ref count to ensure worker is only terminated when truly unused.
  */
 function releaseWorker(): void {
-  globalWorkerRefCount--;
+  if (globalWorkerRefCount > 0) {
+    globalWorkerRefCount--;
+  }
+  
+  // Only terminate worker if ref count reaches 0 and worker exists
   if (globalWorkerRefCount <= 0 && globalWorker) {
     // Reject all pending requests
     globalPendingRequests.forEach(({ reject }) => {
@@ -113,7 +120,7 @@ function releaseWorker(): void {
 
     globalWorker.terminate();
     globalWorker = null;
-    globalWorkerRefCount = 0;
+    globalWorkerRefCount = 0; // Reset to prevent negative values
   }
 }
 
@@ -132,14 +139,26 @@ export function useWorkerProcessor() {
 
   // Initialize worker on mount, release on unmount
   useEffect(() => {
-    globalWorkerRefCount++;
-    
-    // Register loading state callback
-    loadingStateCallbacks.add(setLoading);
-    
-    return () => {
+    try {
+      globalWorkerRefCount++;
+      
+      // Register loading state callback
+      loadingStateCallbacks.add(setLoading);
+    } catch (error) {
+      // If initialization fails, ensure cleanup
       loadingStateCallbacks.delete(setLoading);
       releaseWorker();
+      throw error;
+    }
+    
+    return () => {
+      try {
+        loadingStateCallbacks.delete(setLoading);
+        releaseWorker();
+      } catch (error) {
+        // Ensure cleanup even if releaseWorker fails
+        console.error("[useWorkerProcessor] Cleanup error:", error);
+      }
     };
   }, []);
 

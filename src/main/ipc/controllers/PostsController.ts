@@ -205,52 +205,60 @@ export class PostsController extends BaseController {
 
 
   /**
-   * Sanitize FTS5 search query to prevent syntax errors
-   * FTS5 interprets the search string as an expression, so special characters
-   * (:, *, -, ", \, NEAR, AND, OR, NOT) can cause SQLITE_ERROR: fts5: syntax error
-   *
-   * Solution: Remove/replace FTS5 operator characters and wrap in quotes
-   * Allows * wildcard only at the end of words for prefix search (e.g., "tag*")
-   * This makes FTS5 treat the input as a literal string, not as operators
-   *
+   * Sanitize FTS5 search query to prevent SQL injection and syntax errors
+   * 
+   * SECURITY: Strict whitelist approach - only allow alphanumeric characters,
+   * spaces, hyphens, underscores, and * at end of words for prefix search.
+   * All FTS5 operators (:, NEAR, AND, OR, NOT, etc.) are completely blocked.
+   * 
    * @param query - FTS5 query string (user input from Renderer)
    * @returns Sanitized query string safe for FTS5 MATCH
-   * @throws {Error} If query becomes empty after sanitization (empty string causes FTS5 syntax error)
+   * @throws {Error} If query contains invalid characters or becomes empty after sanitization
    */
   private sanitizeFts5Query(query: string): string {
-    // Remove FTS5 special characters that can be interpreted as operators:
-    // - - (NOT operator) - remove completely
-    // - " (quote, will be escaped separately) - remove, will add back
-    // - \ (escape character, can cause issues) - remove
-    // - * in the middle of words - remove (only allow at end of word for prefix search)
-    // Replace with spaces and normalize
-    const clean = query
-      // Remove NOT operator
-      .replace(/-/g, " ")
-      // Remove escape characters
-      .replace(/\\/g, " ")
-      // Remove quotes (will add back after escaping)
-      .replace(/"/g, " ")
-      // Remove * that's not at end of word (allow "word*" but not "*word" or "word*word")
-      // Keep * only if it's at end of word (after alphanumeric, before space/end)
-      .replace(/\*+(?=\w)/g, "") // Remove * followed by word character (middle of word)
-      .replace(/^\*+/g, "") // Remove * at start of string
-      .replace(/\s+\*+/g, " ") // Remove * at start of word (after space)
-      .trim();
-
-    // Check if query became empty after sanitization
-    // Empty string "" in FTS5 MATCH causes SQLITE_ERROR: fts5: syntax error
-    if (clean.length === 0) {
+    // SECURITY: Strict whitelist - only allow:
+    // - Alphanumeric characters (a-z, A-Z, 0-9)
+    // - Spaces (for multiple tags)
+    // - Hyphens and underscores (common in tags like "blue_hair", "ai-generated")
+    // - * only at end of words (for prefix search like "tag*")
+    // Block all FTS5 operators: :, NEAR, AND, OR, NOT, quotes, backslashes, etc.
+    
+    // Split by spaces to handle multiple tags
+    const words = query.trim().split(/\s+/).filter(Boolean);
+    
+    if (words.length === 0) {
       throw new Error(
-        "FTS5 query became empty after sanitization. Please use valid search terms."
+        "FTS5 query is empty. Please provide valid search terms."
       );
     }
-
-    // Escape remaining double quotes by doubling them (FTS5 escaping rule)
-    const escaped = clean.replace(/"/g, '""');
-
+    
+    // Validate each word against whitelist
+    const sanitizedWords = words.map((word) => {
+      // Remove any characters not in whitelist
+      // Allow: alphanumeric, hyphen, underscore, and * only at end
+      const cleaned = word.replace(/[^a-zA-Z0-9_-]/g, "");
+      
+      // Allow * only at the end of word (prefix search)
+      const hasTrailingStar = cleaned.endsWith("*");
+      const baseWord = hasTrailingStar ? cleaned.slice(0, -1) : cleaned;
+      
+      if (baseWord.length === 0) {
+        throw new Error(
+          `Invalid search term: "${word}". Only alphanumeric characters, hyphens, and underscores are allowed.`
+        );
+      }
+      
+      return hasTrailingStar ? `${baseWord}*` : baseWord;
+    });
+    
+    // Join words with spaces and wrap in quotes for FTS5 literal phrase search
+    const sanitized = sanitizedWords.join(" ");
+    
+    // Escape double quotes by doubling them (FTS5 escaping rule)
+    const escaped = sanitized.replace(/"/g, '""');
+    
     // Wrap in double quotes to make FTS5 treat it as a literal phrase
-    // This allows * wildcard at end of words (e.g., "tag*") for prefix search
+    // This prevents FTS5 from interpreting any remaining characters as operators
     return `"${escaped}"`;
   }
 
@@ -376,8 +384,10 @@ export class PostsController extends BaseController {
         ];
         
         // Build FTS5 query: "ai_generated OR ai-generated OR ..."
-        const ftsQuery = aiTags.map(tag => `"${tag}"`).join(" OR ");
-        const sanitized = this.sanitizeFts5Query(ftsQuery);
+        // SECURITY: Each tag is already safe (hardcoded), so we can safely construct the query manually
+        // Each tag is already validated (hardcoded list), so we only need to escape quotes
+        // Note: sanitizeFts5Query would remove OR operators, so we handle this manually for hardcoded tags
+        const sanitizedTags = aiTags.map(tag => `"${tag.replace(/"/g, '""')}"`).join(" OR ");
         
         if (filters.aiFilter === "hide") {
           // Exclude AI posts: NOT (FTS5 match)
@@ -386,7 +396,7 @@ export class PostsController extends BaseController {
               sql`EXISTS (
                 SELECT 1 FROM posts_fts 
                 WHERE posts_fts.rowid = ${posts.id} 
-                  AND posts_fts MATCH ${sanitized}
+                  AND posts_fts MATCH ${sanitizedTags}
               )`
             ) as SQL
           );
@@ -396,7 +406,7 @@ export class PostsController extends BaseController {
             sql`EXISTS (
               SELECT 1 FROM posts_fts 
               WHERE posts_fts.rowid = ${posts.id} 
-                AND posts_fts MATCH ${sanitized}
+                AND posts_fts MATCH ${sanitizedTags}
             )` as SQL
           );
         }

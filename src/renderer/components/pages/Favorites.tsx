@@ -6,6 +6,7 @@ import {
   InfiniteData,
   useQuery,
 } from "@tanstack/react-query";
+import { useShallow } from "zustand/react/shallow";
 import { Heart, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
@@ -116,12 +117,17 @@ export const Favorites = () => {
       initialPageParam: 1,
     });
 
-  // Use atomic selectors to prevent unnecessary re-renders
-  const sortOrder = useSearchStore((state) => state.sortOrder);
-  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
-  const mediaType = useSearchStore((state) => state.filters.mediaType);
-  const source = useSearchStore((state) => state.filters.source);
-  const viewType = useSearchStore((state) => state.viewType);
+  // Use useShallow for multiple filter values to prevent unnecessary re-renders
+  // This is more efficient than individual selectors when selecting multiple related values
+  const { sortOrder, viewType, filters } = useSearchStore(
+    useShallow((state) => ({
+      sortOrder: state.sortOrder,
+      viewType: state.viewType,
+      filters: state.filters,
+    }))
+  );
+  
+  const { aiFilter, mediaType, source } = filters;
 
   const allPosts = useMemo(() => {
     let posts = data?.pages.flatMap((page) => page) || [];
@@ -220,6 +226,19 @@ export const Favorites = () => {
           };
         }
       );
+    },
+    onError: (err) => {
+      // Ignore rate limit errors, they are expected during fast scrolling
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (
+        errorMessage.includes("Rate limit") ||
+        errorMessage.includes("too frequent") ||
+        (err as { code?: string })?.code === "RATE_LIMIT"
+      ) {
+        return; // Silently ignore rate limit errors
+      }
+      // Log other errors for debugging
+      log.error("[Favorites] Failed to mark post as viewed:", errorMessage);
     },
   });
 
