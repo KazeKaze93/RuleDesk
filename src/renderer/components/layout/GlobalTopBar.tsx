@@ -8,9 +8,16 @@ import {
   LayoutList,
   LayoutGrid,
 } from "lucide-react";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../ui/popover";
 import { useSearchStore } from "../../store/searchStore";
 import { TagAutocomplete } from "../inputs/TagAutocomplete";
+import { FiltersPanel } from "./FiltersPanel";
 import { cn } from "../../lib/utils";
 
 export const GlobalTopBar = () => {
@@ -22,6 +29,20 @@ export const GlobalTopBar = () => {
   const activeTab = useSearchStore((state) => state.activeTab);
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const toggleSortOrder = useSearchStore((state) => state.toggleSortOrder);
+  const viewType = useSearchStore((state) => state.viewType);
+  const setViewType = useSearchStore((state) => state.setViewType);
+  const filters = useSearchStore((state) => state.filters);
+
+  // Count active filters
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (filters.aiFilter !== "all") count++;
+    if (filters.mediaType !== "all") count++;
+    if (filters.source !== "all") count++;
+    if (filters.orientation !== "all") count++;
+    if (filters.sortBy !== "date") count++;
+    return count;
+  }, [filters]);
 
   // Determine current tab from location
   useEffect(() => {
@@ -129,28 +150,66 @@ export const GlobalTopBar = () => {
         </Button>
 
         {/* Filters Trigger */}
-        <Button variant="outline" size="sm" className="gap-2 h-9 text-xs">
-          <Filter className="w-3.5 h-3.5" />
-          Filters
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 h-9 text-xs relative">
+              <Filter className="w-3.5 h-3.5" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <Badge
+                  variant="default"
+                  className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-bold"
+                >
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="end">
+            <div className="space-y-1 mb-4">
+              <h4 className="font-medium text-sm leading-none">Filters And Settings</h4>
+            </div>
+            <FiltersPanel />
+          </PopoverContent>
+        </Popover>
 
         <div className="mx-1 w-px h-4 bg-border" />
 
-        {/* View Toggle */}
+        {/* View Toggle - Grid/Masonry */}
         <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
           <Button
             variant="ghost"
             size="icon"
-            className="w-7 h-7 rounded-sm shadow-sm bg-background"
+            className={cn(
+              "w-7 h-7 rounded-sm",
+              viewType === "grid"
+                ? "bg-background shadow-sm"
+                : "hover:bg-background/50"
+            )}
+            onClick={() => setViewType("grid")}
+            title="Grid Layout"
           >
-            <LayoutGrid className="w-4 h-4" />
+            <LayoutGrid className={cn(
+              "w-4 h-4",
+              viewType === "grid" ? "text-foreground" : "text-muted-foreground"
+            )} />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="w-7 h-7 rounded-sm hover:bg-background/50"
+            className={cn(
+              "w-7 h-7 rounded-sm",
+              viewType === "masonry"
+                ? "bg-background shadow-sm"
+                : "hover:bg-background/50"
+            )}
+            onClick={() => setViewType("masonry")}
+            title="Masonry Layout"
           >
-            <LayoutList className="w-4 h-4 text-muted-foreground" />
+            <LayoutList className={cn(
+              "w-4 h-4",
+              viewType === "masonry" ? "text-foreground" : "text-muted-foreground"
+            )} />
           </Button>
         </div>
       </div>

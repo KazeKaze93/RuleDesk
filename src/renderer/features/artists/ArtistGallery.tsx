@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo } from "react";
+import React, { forwardRef, useMemo, useRef, useCallback, useEffect } from "react";
 import {
   useInfiniteQuery,
   useQuery,
@@ -14,6 +14,7 @@ import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
+import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "./components/PostCard";
@@ -23,16 +24,18 @@ interface ArtistGalleryProps {
   onBack: () => void;
 }
 
-// --- Компоненты для виртуализации (Grid Layout) ---
+// --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { viewType?: "grid" | "masonry" }
+>(({ className, viewType = "grid", ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      viewType === "grid"
+        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        : "columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5 space-y-4",
       className
     )}
     {...props}
@@ -40,13 +43,32 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-const ItemContainer = forwardRef<
+const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  <div
+    ref={ref}
+    className={cn(
+      viewType === "grid" ? "w-full aspect-[2/3]" : "w-full mb-4 break-inside-avoid",
+      className
+    )}
+    {...props}
+  />
 ));
-ItemContainer.displayName = "ItemContainer";
+
+const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType={viewType}
+  />
+));
 
 // --- Основной компонент ---
 
@@ -94,9 +116,66 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     });
 
   const sortOrder = useSearchStore((state) => state.sortOrder);
+  const filters = useSearchStore((state) => state.filters);
+  const viewType = useSearchStore((state) => state.viewType);
+  
+  // Debounce endReached to prevent rate limit errors
+  const endReachedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle end reached with debounce
+  const handleEndReached = useCallback(() => {
+    // Clear any pending timeout
+    if (endReachedTimeoutRef.current) {
+      clearTimeout(endReachedTimeoutRef.current);
+    }
+    
+    // Debounce the fetch to prevent rate limit errors
+    endReachedTimeoutRef.current = setTimeout(() => {
+      if (hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+      endReachedTimeoutRef.current = null;
+    }, 150);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (endReachedTimeoutRef.current) {
+        clearTimeout(endReachedTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const allPosts = useMemo(() => {
-    const posts = data?.pages.flatMap((page) => page) || [];
+    let posts = data?.pages.flatMap((page) => page) || [];
+    
+    // Apply filters
+    // Filter AI generated posts
+    if (filters.aiFilter === "hide") {
+      posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
+    } else if (filters.aiFilter === "only") {
+      posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
+    }
+    
+    // Filter by media type
+    if (filters.mediaType !== "all") {
+      posts = posts.filter((post) => {
+        const isVideo = isVideoPost(post.fileUrl);
+        return filters.mediaType === "videos" ? isVideo : !isVideo;
+      });
+    }
+    
+    // Filter by source - ArtistGallery shows artist posts (subscriptions) by default
+    if (filters.source === "favorites") {
+      // Show only favorited posts from this artist
+      posts = posts.filter((post) => post.isFavorited === true);
+    } else if (filters.source === "subscriptions") {
+      // Already showing subscriptions (this artist), no filter needed
+    } else if (filters.source === "all") {
+      // Show all posts from this artist (no filter)
+    }
+    
     // Sort by publishedAt (date of post creation)
     return [...posts].sort((a, b) => {
       const dateA = a.publishedAt instanceof Date 
@@ -112,7 +191,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder]);
+  }, [data, sortOrder, filters]);
 
   // Create stable List component with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
@@ -277,18 +356,31 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
+        ) : viewType === "masonry" ? (
+          // Masonry layout without virtualization
+          <div className="h-full overflow-auto">
+            <div className="columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5">
+              {allPosts.map((post, index) => (
+                <div key={post.id} className="mb-4 break-inside-avoid">
+                  <PostCard post={post} onClick={() => handlePostClick(index)} />
+                </div>
+              ))}
+              {isFetchingNextPage && (
+                <div className="flex col-span-full justify-center py-4 w-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <VirtuosoGrid
             style={{ height: "100%" }}
             totalCount={allPosts.length}
-            endReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
+            endReached={handleEndReached}
+            increaseViewportBy={2000}
             components={{
               List: ListComponent,
-              Item: ItemContainer,
+              Item: ItemComponent,
               Footer: () =>
                 isFetchingNextPage ? (
                   <div className="flex col-span-full justify-center py-4 w-full">

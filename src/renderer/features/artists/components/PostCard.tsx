@@ -3,6 +3,7 @@ import { Play, Check, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Post } from "../../../../main/db/schema";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../../store/safeModeStore";
+import { isVideoPost } from "../../../lib/filter-utils";
 
 interface PostCardProps {
   post: Post;
@@ -11,10 +12,8 @@ interface PostCardProps {
   onToggleViewed?: (e: React.MouseEvent) => void;
 }
 
-const isVideo = (url: string) => url.endsWith(".mp4") || url.endsWith(".webm");
-
 export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
-  const isVid = isVideo(post.fileUrl);
+  const isVid = isVideoPost(post.fileUrl);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
   // Normalize rating to 'e', 'q', 's' safely (handles both 'e' and 'explicit' formats)
   const normalizedRating = post.rating ? post.rating.charAt(0).toLowerCase() as "e" | "q" | "s" : "q";

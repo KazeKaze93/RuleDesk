@@ -4,15 +4,18 @@ import {
   useQueryClient,
   useMutation,
   InfiniteData,
+  useQuery,
 } from "@tanstack/react-query";
 import { Heart, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
+import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
+import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 
 // Helper function to parse tags from query string
 const parseTags = (query: string): string[] => {
@@ -28,16 +31,18 @@ const parseTags = (query: string): string[] => {
 // This matches the default limit in GetPostsSchema
 const POSTS_PER_PAGE = 50;
 
-// --- Компоненты для виртуализации (Grid Layout) ---
+// --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { viewType?: "grid" | "masonry" }
+>(({ className, viewType = "grid", ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      viewType === "grid"
+        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        : "columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5 space-y-4",
       className
     )}
     {...props}
@@ -45,13 +50,32 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-const ItemContainer = forwardRef<
+const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  <div
+    ref={ref}
+    className={cn(
+      viewType === "grid" ? "w-full aspect-[2/3]" : "w-full mb-4 break-inside-avoid",
+      className
+    )}
+    {...props}
+  />
 ));
-ItemContainer.displayName = "ItemContainer";
+
+const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType={viewType}
+  />
+));
 
 // --- Основной компонент ---
 
@@ -64,6 +88,12 @@ export const Favorites = () => {
   // Each selector only subscribes to its specific value, not the entire store
   const openViewer = useViewerStore((state) => state.open);
   const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
+
+  // Fetch tracked artists for subscriptions filter
+  const { data: trackedArtists } = useQuery({
+    queryKey: ["artists"],
+    queryFn: () => window.api.getTrackedArtists(),
+  });
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
@@ -85,9 +115,49 @@ export const Favorites = () => {
     });
 
   const sortOrder = useSearchStore((state) => state.sortOrder);
+  const filters = useSearchStore((state) => state.filters);
+  const viewType = useSearchStore((state) => state.viewType);
 
   const allPosts = useMemo(() => {
-    const posts = data?.pages.flatMap((page) => page) || [];
+    let posts = data?.pages.flatMap((page) => page) || [];
+    
+    // Apply filters
+    // Filter AI generated posts
+    if (filters.aiFilter === "hide") {
+      posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
+    } else if (filters.aiFilter === "only") {
+      posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
+    }
+    
+    // Filter by media type
+    if (filters.mediaType !== "all") {
+      posts = posts.filter((post) => {
+        const isVideo = isVideoPost(post.fileUrl);
+        return filters.mediaType === "videos" ? isVideo : !isVideo;
+      });
+    }
+    
+    // Filter by source - Favorites tab shows favorites by default
+    if (filters.source === "favorites") {
+      // Already showing favorites, no filter needed
+    } else if (filters.source === "subscriptions") {
+      // Show only favorites from tracked artists
+      if (trackedArtists && trackedArtists.length > 0) {
+        const trackedArtistIds = new Set(trackedArtists.map((artist) => artist.id));
+        posts = posts.filter((post) => {
+          // Exclude external posts (EXTERNAL_ARTIST_ID = 0)
+          if (post.artistId === EXTERNAL_ARTIST_ID) return false;
+          // Check if post belongs to tracked artist
+          return trackedArtistIds.has(post.artistId);
+        });
+      } else {
+        // No tracked artists, show nothing
+        posts = [];
+      }
+    } else if (filters.source === "all") {
+      // Show all favorites (no filter)
+    }
+    
     // Sort by publishedAt (date of post creation)
     return [...posts].sort((a, b) => {
       const dateA = a.publishedAt instanceof Date 
@@ -103,23 +173,28 @@ export const Favorites = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder]);
+  }, [data, sortOrder, filters, trackedArtists]);
 
-  // Create stable List component with forwardRef and aria-busy
+  // Create stable List and Item components with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
-  const ListComponent = useMemo(() => {
-    const Component = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  const { ListComponent, ItemComponent } = useMemo(() => {
+    const VirtuosoList = createVirtuosoList(viewType);
+    const List = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
       (props, ref) => (
-        <GridContainer
+        <VirtuosoList
           {...props}
           ref={ref}
           aria-busy={isLoading || isFetchingNextPage}
         />
       )
     );
-    Component.displayName = "FavoritesList";
-    return Component;
-  }, [isLoading, isFetchingNextPage]);
+    List.displayName = "FavoritesList";
+    
+    const Item = createItemContainer(viewType);
+    Item.displayName = "FavoritesItem";
+    
+    return { ListComponent: List, ItemComponent: Item };
+  }, [isLoading, isFetchingNextPage, viewType]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -225,6 +300,22 @@ export const Favorites = () => {
               <p className="text-sm">Go explore and mark posts as favorites!</p>
             </div>
           </div>
+        ) : viewType === "masonry" ? (
+          // Masonry layout without virtualization
+          <div className="h-full overflow-auto">
+            <div className="columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5">
+              {allPosts.map((post, index) => (
+                <div key={post.id} className="mb-4 break-inside-avoid">
+                  <PostCard post={post} onClick={() => handlePostClick(index)} />
+                </div>
+              ))}
+              {isFetchingNextPage && (
+                <div className="flex col-span-full justify-center py-4 w-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <VirtuosoGrid
             style={{ height: "100%" }}
@@ -234,9 +325,10 @@ export const Favorites = () => {
                 fetchNextPage();
               }
             }}
+            increaseViewportBy={2000}
             components={{
               List: ListComponent,
-              Item: ItemContainer,
+              Item: ItemComponent,
               Footer: () =>
                 isFetchingNextPage ? (
                   <div className="flex col-span-full justify-center py-4 w-full">

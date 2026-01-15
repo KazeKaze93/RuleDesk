@@ -56,6 +56,7 @@ import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { useSearchStore } from "../../store/searchStore";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../store/safeModeStore";
 import { cn } from "../../lib/utils";
+import { isVideoPost } from "../../lib/filter-utils";
 import { useViewerController } from "./hooks/useViewerController";
 
 const useCurrentPost = (
@@ -144,13 +145,14 @@ const useCurrentPost = (
 const ViewerMedia = ({ post }: { post: Post }) => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
   const normalizedRating: "s" | "q" | "e" = (post.rating === "q" || post.rating === "e") ? post.rating : "s";
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
 
-  const isVideo =
-    post.fileUrl.endsWith(".mp4") || post.fileUrl.endsWith(".webm");
+  const isVideo = isVideoPost(post.fileUrl);
 
   useEffect(() => {
     const handleMediaKeys = (e: KeyboardEvent) => {
@@ -181,28 +183,77 @@ const ViewerMedia = ({ post }: { post: Post }) => {
       onClick={handleContainerClick}
     >
       {isVideo ? (
-        <div
-          style={{
-            filter: shouldBlur
-              ? `blur(${effectiveBlur}px)`
-              : undefined,
-          }}
-        >
-          <video
-            src={post.fileUrl}
-            className="object-contain max-w-full max-h-full outline-none focus:outline-none"
-            autoPlay={isVideoPlaying}
-            loop
-            controls
-            onPlay={() => setIsVideoPlaying(true)}
-            onPause={() => setIsVideoPlaying(false)}
-            ref={(el) => {
-              if (el) {
-                if (isVideoPlaying && el.paused) el.play().catch(() => {});
-                else if (!isVideoPlaying && !el.paused) el.pause();
-              }
+        videoError ? (
+          <div className="flex flex-col gap-4 justify-center items-center w-full h-full text-muted-foreground">
+            <FileText className="w-16 h-16 opacity-50" />
+            <div className="text-center">
+              <p className="text-lg font-semibold">Failed to load video</p>
+              <p className="text-sm">The video file could not be loaded.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => {
+                  setVideoError(false);
+                }}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              filter: shouldBlur
+                ? `blur(${effectiveBlur}px)`
+                : undefined,
             }}
-          />
+          >
+            <video
+              src={post.fileUrl}
+              className="object-contain max-w-full max-h-full outline-none focus:outline-none"
+              autoPlay={isVideoPlaying}
+              loop
+              controls
+              onPlay={() => setIsVideoPlaying(true)}
+              onPause={() => setIsVideoPlaying(false)}
+              onError={() => {
+                log.error("[ViewerMedia] Video load error:", post.fileUrl);
+                setVideoError(true);
+              }}
+              ref={(el) => {
+                if (el) {
+                  if (isVideoPlaying && el.paused) el.play().catch(() => {});
+                  else if (!isVideoPlaying && !el.paused) el.pause();
+                }
+              }}
+            />
+          </div>
+        )
+      ) : imageError ? (
+        <div className="flex flex-col gap-4 justify-center items-center w-full h-full text-muted-foreground">
+          <FileText className="w-16 h-16 opacity-50" />
+          <div className="text-center">
+            <p className="text-lg font-semibold">Failed to load image</p>
+            <p className="text-sm">The image file could not be loaded.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => {
+                setImageError(false);
+                // Try fallback URL
+                const fallbackUrl = isZoomed ? post.fileUrl : (post.sampleUrl || post.fileUrl);
+                if (fallbackUrl !== post.fileUrl) {
+                  // Force reload by changing src
+                }
+              }}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </div>
         </div>
       ) : (
         <img
@@ -214,6 +265,16 @@ const ViewerMedia = ({ post }: { post: Post }) => {
               ? "max-w-none max-h-none cursor-zoom-out"
               : "object-contain max-w-full max-h-full cursor-zoom-in"
           )}
+          onError={(e) => {
+            log.error("[ViewerMedia] Image load error:", post.fileUrl);
+            const img = e.currentTarget;
+            // Try fallback to fileUrl if sampleUrl failed
+            if (img.src !== post.fileUrl && post.fileUrl) {
+              img.src = post.fileUrl;
+            } else {
+              setImageError(true);
+            }
+          }}
         />
       )}
     </div>

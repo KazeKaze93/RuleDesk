@@ -9,6 +9,7 @@ import { RefreshCw, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
+import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
@@ -52,16 +53,18 @@ const updatePostInInfiniteData = (
   };
 };
 
-// --- Компоненты для виртуализации (Grid Layout) ---
+// --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { viewType?: "grid" | "masonry" }
+>(({ className, viewType = "grid", ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      viewType === "grid"
+        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        : "columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5 space-y-4",
       className
     )}
     {...props}
@@ -69,13 +72,34 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-const ItemContainer = forwardRef<
+// ItemContainer will be created dynamically based on viewType
+const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  <div
+    ref={ref}
+    className={cn(
+      viewType === "grid" ? "w-full aspect-[2/3]" : "w-full mb-4 break-inside-avoid",
+      className
+    )}
+    {...props}
+  />
 ));
-ItemContainer.displayName = "ItemContainer";
+
+// VirtuosoList component factory
+const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType={viewType}
+  />
+));
 
 // --- Основной компонент ---
 
@@ -123,9 +147,38 @@ export const Updates = () => {
     });
 
   const sortOrder = useSearchStore((state) => state.sortOrder);
+  const filters = useSearchStore((state) => state.filters);
+  const viewType = useSearchStore((state) => state.viewType);
 
   const allPosts = useMemo(() => {
-    const posts = data?.pages.flatMap((page) => page) || [];
+    let posts = data?.pages.flatMap((page) => page) || [];
+    
+    // Apply filters
+    // Filter AI generated posts
+    if (filters.aiFilter === "hide") {
+      posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
+    } else if (filters.aiFilter === "only") {
+      posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
+    }
+    
+    // Filter by media type
+    if (filters.mediaType !== "all") {
+      posts = posts.filter((post) => {
+        const isVideo = isVideoPost(post.fileUrl);
+        return filters.mediaType === "videos" ? isVideo : !isVideo;
+      });
+    }
+    
+    // Filter by source - Updates tab shows subscriptions by default
+    if (filters.source === "favorites") {
+      // Show only favorited posts from subscriptions
+      posts = posts.filter((post) => post.isFavorited === true);
+    } else if (filters.source === "subscriptions") {
+      // Already showing subscriptions, no filter needed
+    } else if (filters.source === "all") {
+      // Show all posts (no filter)
+    }
+    
     // Sort by publishedAt (date of post creation)
     return [...posts].sort((a, b) => {
       const dateA = a.publishedAt instanceof Date 
@@ -141,23 +194,28 @@ export const Updates = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder]);
+  }, [data, sortOrder, filters]);
 
-  // Create stable List component with forwardRef and aria-busy
+  // Create stable List and Item components with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
-  const ListComponent = useMemo(() => {
-    const Component = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  const { ListComponent, ItemComponent } = useMemo(() => {
+    const VirtuosoList = createVirtuosoList(viewType);
+    const List = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
       (props, ref) => (
-        <GridContainer
+        <VirtuosoList
           {...props}
           ref={ref}
           aria-busy={isLoading || isFetchingNextPage}
         />
       )
     );
-    Component.displayName = "UpdatesList";
-    return Component;
-  }, [isLoading, isFetchingNextPage]);
+    List.displayName = "UpdatesList";
+    
+    const Item = createItemContainer(viewType);
+    Item.displayName = "UpdatesItem";
+    
+    return { ListComponent: List, ItemComponent: Item };
+  }, [isLoading, isFetchingNextPage, viewType]);
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -272,6 +330,22 @@ export const Updates = () => {
               <p className="text-sm">Track some artists to see updates here.</p>
             </div>
           </div>
+        ) : viewType === "masonry" ? (
+          // Masonry layout without virtualization
+          <div className="h-full overflow-auto">
+            <div className="columns-2 gap-4 p-4 pb-32 md:columns-3 lg:columns-4 xl:columns-5">
+              {allPosts.map((post, index) => (
+                <div key={post.id} className="mb-4 break-inside-avoid">
+                  <PostCard post={post} onClick={() => handlePostClick(index)} />
+                </div>
+              ))}
+              {isFetchingNextPage && (
+                <div className="flex col-span-full justify-center py-4 w-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <VirtuosoGrid
             style={{ height: "100%" }}
@@ -281,9 +355,10 @@ export const Updates = () => {
                 fetchNextPage();
               }
             }}
+            increaseViewportBy={2000}
             components={{
               List: ListComponent,
-              Item: ItemContainer,
+              Item: ItemComponent,
               Footer: () =>
                 isFetchingNextPage ? (
                   <div className="flex col-span-full justify-center py-4 w-full">
