@@ -2,6 +2,7 @@ import React, { useMemo, forwardRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
+import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
@@ -99,12 +100,17 @@ export const Browse = () => {
     queryFn: () => window.api.getTrackedArtists(),
   });
 
-  // Use atomic selectors to prevent unnecessary re-renders
-  const sortOrder = useSearchStore((state) => state.sortOrder);
-  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
-  const mediaType = useSearchStore((state) => state.filters.mediaType);
-  const source = useSearchStore((state) => state.filters.source);
-  const viewType = useSearchStore((state) => state.viewType);
+  // Use useShallow for multiple filter values to prevent unnecessary re-renders
+  // This is more efficient than individual selectors when selecting multiple related values
+  const { sortOrder, viewType, filters } = useSearchStore(
+    useShallow((state) => ({
+      sortOrder: state.sortOrder,
+      viewType: state.viewType,
+      filters: state.filters,
+    }))
+  );
+  
+  const { aiFilter, mediaType, source } = filters;
 
   // Use the new infinite scroll hook
   // For external API (Browse), we need custom getNextPageParam logic

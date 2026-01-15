@@ -103,64 +103,6 @@ export async function initializeDatabase(): Promise<AppDatabase> {
             throw new Error("Database instance is null");
           }
           migrate(dbInstance, { migrationsFolder });
-          
-          // Manual migration check: ensure media_type column exists
-          // This is a workaround for cases where migration was registered but not applied
-          try {
-            const checkColumn = sqlite.prepare<[], { name: string }>(
-              "SELECT name FROM pragma_table_info('posts') WHERE name = 'media_type'"
-            );
-            const columnExists = checkColumn.get();
-            
-            if (!columnExists) {
-              logger.warn("[DB] media_type column missing, applying migration manually...");
-              const migrationPath = path.join(migrationsFolder, "0009_add_media_type.sql");
-              if (fs.existsSync(migrationPath)) {
-                const migrationSQL = fs.readFileSync(migrationPath, "utf-8");
-                sqlite.exec(migrationSQL);
-                logger.info("[DB] Manual migration 0009_add_media_type applied successfully");
-              } else {
-                logger.error("[DB] Migration file 0009_add_media_type.sql not found");
-              }
-            } else {
-              // Migration already applied - verify it's working
-              logger.info("[DB] ✅ Migration 0009_add_media_type: column 'media_type' exists");
-              
-              // Check how many posts have media_type set
-              const countWithType = sqlite.prepare<[], { count: number }>(
-                "SELECT COUNT(*) as count FROM posts WHERE media_type IS NOT NULL"
-              ).get();
-              
-              const totalPosts = sqlite.prepare<[], { count: number }>(
-                "SELECT COUNT(*) as count FROM posts"
-              ).get();
-              
-              if (countWithType && totalPosts) {
-                logger.info(
-                  `[DB] ✅ Migration status: ${countWithType.count}/${totalPosts.count} posts have media_type set`
-                );
-                if (countWithType.count < totalPosts.count) {
-                  logger.warn(
-                    `[DB] ⚠️  ${totalPosts.count - countWithType.count} posts still have NULL media_type (backfill may be incomplete)`
-                  );
-                }
-              }
-              
-              // Check if index exists
-              const checkIndex = sqlite.prepare<[], { name: string }>(
-                "SELECT name FROM sqlite_master WHERE type='index' AND name='posts_media_type_idx'"
-              ).get();
-              
-              if (checkIndex) {
-                logger.info("[DB] ✅ Index 'posts_media_type_idx' exists");
-              } else {
-                logger.warn("[DB] ⚠️  Index 'posts_media_type_idx' missing (should be created by migration)");
-              }
-            }
-          } catch (manualMigrationError) {
-            logger.warn("[DB] Manual migration check failed (non-critical):", manualMigrationError);
-          }
-          
           resolve();
         } catch (error) {
           reject(error);

@@ -30,80 +30,119 @@ interface WorkerResponse<T = unknown> {
 }
 
 /**
- * React hook for Web Worker-based data processing
- * 
- * Provides a Promise-based API for sending tasks to the worker and receiving results.
- * Automatically handles worker lifecycle (creation, cleanup) and loading state.
- * 
- * @example
- * const { processData, loading } = useWorkerProcessor();
- * const result = await processData({ posts, filters });
+ * Singleton Worker instance to prevent memory leaks
+ * Creating a Worker is expensive, so we reuse a single instance across all hook calls
  */
-export function useWorkerProcessor() {
-  const workerRef = useRef<Worker | null>(null);
-  const [loading, setLoading] = useState(false);
-  const pendingRequestsRef = useRef<Map<string, {
-    resolve: (value: WorkerPost[]) => void;
-    reject: (error: Error) => void;
-  }>>(new Map());
+let globalWorker: Worker | null = null;
+let globalWorkerRefCount = 0;
+const globalPendingRequests = new Map<string, {
+  resolve: (value: WorkerPost[]) => void;
+  reject: (error: Error) => void;
+}>();
 
-  // Initialize worker
-  useEffect(() => {
-    // Create worker with proper Vite worker import syntax
-    const worker = new Worker(
+// Track loading state callbacks from all hook instances
+const loadingStateCallbacks = new Set<(loading: boolean) => void>();
+
+/**
+ * Update loading state for all hook instances
+ */
+function updateLoadingState(loading: boolean): void {
+  loadingStateCallbacks.forEach((callback) => callback(loading));
+}
+
+/**
+ * Initialize or get existing worker instance
+ */
+function getWorker(): Worker {
+  if (!globalWorker) {
+    globalWorker = new Worker(
       new URL("../workers/data-processor.worker.ts", import.meta.url),
       { type: "module" }
     );
 
     // Handle worker messages
-    worker.addEventListener("message", (event: MessageEvent<WorkerResponse<WorkerPost[]>>) => {
+    globalWorker.addEventListener("message", (event: MessageEvent<WorkerResponse<WorkerPost[]>>) => {
       const { id, success, data, error } = event.data;
 
-      const pending = pendingRequestsRef.current.get(id);
+      const pending = globalPendingRequests.get(id);
       if (!pending) {
         console.warn(`[useWorkerProcessor] Received response for unknown request: ${id}`);
         return;
       }
 
-      pendingRequestsRef.current.delete(id);
+      globalPendingRequests.delete(id);
+
+      // Update loading state when all requests are complete
+      if (globalPendingRequests.size === 0) {
+        updateLoadingState(false);
+      }
 
       if (success && data) {
         pending.resolve(data);
       } else {
         pending.reject(new Error(error || "Worker processing failed"));
       }
-
-      // Update loading state when all requests are complete
-      if (pendingRequestsRef.current.size === 0) {
-        setLoading(false);
-      }
     });
 
     // Handle worker errors
-    worker.addEventListener("error", (error) => {
+    globalWorker.addEventListener("error", (error) => {
       console.error("[useWorkerProcessor] Worker error:", error);
-      setLoading(false);
+      updateLoadingState(false);
       // Reject all pending requests
-      pendingRequestsRef.current.forEach(({ reject }) => {
+      globalPendingRequests.forEach(({ reject }) => {
         reject(new Error(`Worker error: ${error.message}`));
       });
-      pendingRequestsRef.current.clear();
+      globalPendingRequests.clear();
     });
+  }
+  return globalWorker;
+}
 
-    workerRef.current = worker;
+/**
+ * Cleanup worker when no longer needed
+ */
+function releaseWorker(): void {
+  globalWorkerRefCount--;
+  if (globalWorkerRefCount <= 0 && globalWorker) {
+    // Reject all pending requests
+    globalPendingRequests.forEach(({ reject }) => {
+      reject(new Error("Worker terminated"));
+    });
+    globalPendingRequests.clear();
+    loadingStateCallbacks.clear();
 
-    // Cleanup: terminate worker on unmount
+    globalWorker.terminate();
+    globalWorker = null;
+    globalWorkerRefCount = 0;
+  }
+}
+
+/**
+ * React hook for Web Worker-based data processing
+ * 
+ * Provides a Promise-based API for sending tasks to the worker and receiving results.
+ * Uses singleton worker instance to prevent memory leaks and improve performance.
+ * 
+ * @example
+ * const { processData, loading } = useWorkerProcessor();
+ * const result = await processData({ posts, filters });
+ */
+export function useWorkerProcessor() {
+  const [loading, setLoading] = useState(false);
+
+  // Initialize worker on mount, release on unmount
+  useEffect(() => {
+    globalWorkerRefCount++;
+    
+    // Register loading state callback
+    loadingStateCallbacks.add(setLoading);
+    
     return () => {
-      // Reject all pending requests
-      pendingRequestsRef.current.forEach(({ reject }) => {
-        reject(new Error("Worker terminated"));
-      });
-      pendingRequestsRef.current.clear();
-
-      worker.terminate();
-      workerRef.current = null;
+      loadingStateCallbacks.delete(setLoading);
+      releaseWorker();
     };
   }, []);
+
 
   /**
    * Process data using the worker
@@ -114,7 +153,7 @@ export function useWorkerProcessor() {
       posts: WorkerPost[];
       filters: WorkerFilterConfig;
     }): Promise<WorkerPost[]> => {
-      const worker = workerRef.current;
+      const worker = getWorker();
       if (!worker) {
         throw new Error("Worker not initialized");
       }
@@ -124,8 +163,12 @@ export function useWorkerProcessor() {
 
       // Create promise for this request
       return new Promise<WorkerPost[]>((resolve, reject) => {
-        pendingRequestsRef.current.set(id, { resolve, reject });
-        setLoading(true);
+        globalPendingRequests.set(id, { resolve, reject });
+        
+        // Update loading state when request starts
+        if (globalPendingRequests.size === 1) {
+          updateLoadingState(true);
+        }
 
         const request: WorkerRequest = {
           id,

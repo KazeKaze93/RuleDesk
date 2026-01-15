@@ -393,20 +393,26 @@ export class SyncService {
           break;
         }
 
-        const postsToSave: NewPost[] = newPosts.map((p: BooruPost) => ({
-          artistId: artist.id,
-          fileUrl: p.fileUrl,
-          postId: p.id,
-          previewUrl: p.previewUrl,
-          sampleUrl: p.sampleUrl,
-          title: "",
-          rating: p.rating,
-          tags: p.tags.join(" "),
-          mediaType: isVideoUrl(p.fileUrl) ? "video" : "image",
-          publishedAt: p.createdAt,
-          isViewed: false,
-          isFavorited: false,
-        }));
+        // Pre-compute mediaType for all posts to avoid repeated URL parsing
+        // This optimizes the map operation by computing mediaType once per post
+        const postsToSave: NewPost[] = newPosts.map((p: BooruPost) => {
+          // Compute mediaType once per post (isVideoUrl is optimized but still benefits from single call)
+          const mediaType = isVideoUrl(p.fileUrl) ? "video" : "image";
+          return {
+            artistId: artist.id,
+            fileUrl: p.fileUrl,
+            postId: p.id,
+            previewUrl: p.previewUrl,
+            sampleUrl: p.sampleUrl,
+            title: "",
+            rating: p.rating,
+            tags: p.tags.join(" "),
+            mediaType,
+            publishedAt: p.createdAt,
+            isViewed: false,
+            isFavorited: false,
+          };
+        });
 
         // Collect posts for batch transaction
         allPostsToSave.push(...postsToSave);

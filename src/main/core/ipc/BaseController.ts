@@ -149,17 +149,10 @@ export abstract class BaseController {
           // Strict validation: Check argument count BEFORE parsing
           // This prevents silent failures when Renderer sends wrong number of arguments
           if (isTuple) {
-            // Access items length safely - use type guard and explicit type checking
-            // ZodTuple has items property that is a readonly array
-            const tupleSchema = schema as z.ZodTuple<
-              readonly z.ZodTypeAny[],
-              z.ZodTypeAny | null
-            >;
-            // Use type guard to safely access items.length
-            const expectedCount =
-              "items" in tupleSchema && Array.isArray(tupleSchema.items)
-                ? tupleSchema.items.length
-                : 1; // Fallback to 1 if structure is unexpected
+            // Use proper Zod type checking: ZodTuple has items property
+            // Cast to z.AnyZodTuple for type-safe access to items.length
+            const tupleSchema = schema as z.AnyZodTuple;
+            const expectedCount = tupleSchema.items.length;
             if (args.length !== expectedCount) {
               const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
               // Security: Log only error details, not sanitized args (may still leak info)
@@ -265,19 +258,18 @@ export abstract class BaseController {
           log.info(`[IPC] Request completed: ${channel}`);
           return result;
         } catch (error: unknown) {
-          // Skip error handling if it's already a serialized validation error
+          // Skip error handling if it's already a serialized error (ValidationError, RateLimitError, etc.)
+          // Check for SerializableError structure: has name, message, and code properties
           if (
             typeof error === "object" &&
             error !== null &&
             "name" in error &&
-            error.name === "ValidationError"
+            "message" in error &&
+            "code" in error
           ) {
-            // Already serialized, ensure it's properly structured with error code
-            const validationError = error as ValidationError;
-            if (!validationError.code) {
-              validationError.code = ErrorCode.VALIDATION_ERROR;
-            }
-            throw validationError;
+            // Already serialized (ValidationError, RateLimitError, or other SerializableError)
+            // Just re-throw it as-is without re-serialization
+            throw error;
           }
 
           // Electron IPC quirk: pure Error objects don't serialize well via invoke

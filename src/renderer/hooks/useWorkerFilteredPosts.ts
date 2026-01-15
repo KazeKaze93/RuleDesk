@@ -25,16 +25,18 @@ export function useWorkerFilteredPosts(
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   const cancelledRef = useRef(false);
 
-  // Debounce inputs to prevent worker spam
-  const debouncedRawPosts = useDebounce(rawPosts, debounceDelay);
+  // Debounce only filters to prevent worker spam on filter changes
+  // rawPosts should be processed immediately to avoid UI lag during scrolling
   const debouncedFilters = useDebounce(filters, debounceDelay);
 
-  // Process data when debounced inputs change
+  // Process data when inputs change
+  // Use rawPosts directly (no debounce) to avoid UI lag during scrolling
+  // Only debounce filters to prevent spam on rapid filter changes
   useEffect(() => {
     cancelledRef.current = false;
 
     const processInWorker = async () => {
-      if (debouncedRawPosts.length === 0) {
+      if (rawPosts.length === 0) {
         if (!cancelledRef.current) {
           setFilteredPosts([]);
         }
@@ -45,7 +47,7 @@ export function useWorkerFilteredPosts(
         // Convert Post[] to WorkerPost[] (structurally compatible)
         // Use type-safe mapping: Post and WorkerPost have compatible structures
         // This avoids manual field enumeration and ensures type safety
-        const workerPosts: WorkerPost[] = debouncedRawPosts.map((post): WorkerPost => ({
+        const workerPosts: WorkerPost[] = rawPosts.map((post): WorkerPost => ({
           id: post.id,
           postId: post.postId,
           artistId: post.artistId,
@@ -84,7 +86,7 @@ export function useWorkerFilteredPosts(
     return () => {
       cancelledRef.current = true;
     };
-  }, [debouncedRawPosts, debouncedFilters, processData]);
+  }, [rawPosts, debouncedFilters, processData]);
 
   return {
     data: filteredPosts,
