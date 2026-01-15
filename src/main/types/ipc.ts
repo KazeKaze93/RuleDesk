@@ -20,6 +20,19 @@ export type { GetPostsRequest, PostFilterRequest } from "../../shared/schemas/po
 export type { IpcSettings } from "../../shared/schemas/settings";
 
 /**
+ * Error codes for typed error handling
+ * Prevents brittle string matching in error handling
+ */
+export enum ErrorCode {
+  RATE_LIMIT = "RATE_LIMIT",
+  VALIDATION_ERROR = "VALIDATION_ERROR",
+  DATABASE_ERROR = "DATABASE_ERROR",
+  NETWORK_ERROR = "NETWORK_ERROR",
+  AUTH_ERROR = "AUTH_ERROR",
+  UNKNOWN_ERROR = "UNKNOWN_ERROR",
+}
+
+/**
  * Serializable error structure for IPC communication
  * Electron IPC cannot serialize Error objects properly, so we use plain objects
  */
@@ -28,6 +41,7 @@ export interface SerializableError {
   stack?: string;
   name: string;
   originalError?: string;
+  code?: ErrorCode; // Typed error code for reliable error handling
 }
 
 /**

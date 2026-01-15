@@ -71,6 +71,8 @@ export const posts = sqliteTable(
     title: text("title").default(""),
     rating: text("rating").default(""),
     tags: text("tags").notNull(),
+    // TODO: Add media_type column (enum: 'image' | 'video') with index for efficient filtering
+    // Current LIKE "%...%" filtering causes Full Table Scan. media_type column would allow index usage.
     publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()

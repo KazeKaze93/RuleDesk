@@ -1,4 +1,4 @@
-import React, { useMemo, forwardRef, useCallback, useState, useEffect } from "react";
+import React, { useMemo, forwardRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
@@ -10,10 +10,8 @@ import { PostCard } from "../../features/artists/components/PostCard";
 import { Button } from "../ui/button";
 import { ExternalLink } from "lucide-react";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
-import { useWorkerProcessor, type WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
-import { useDebounce } from "../../lib/hooks/useDebounce";
-import type { Post } from "../../../main/db/schema";
-import type { WorkerPost } from "../../../shared/types/post";
+import { useWorkerFilteredPosts } from "../../hooks/useWorkerFilteredPosts";
+import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
 
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
@@ -165,91 +163,21 @@ export const Browse = () => {
     return Array.from(tagsSet);
   }, [trackedArtists]);
 
-  // Worker-based processing
-  const { processData, loading: workerLoading } = useWorkerProcessor();
-  const [allPosts, setAllPosts] = useState<Post[]>([]);
+  // Worker-based processing with custom hook to avoid cascade renders
+  const filterConfig: WorkerFilterConfig = useMemo(() => ({
+    aiFilter,
+    mediaType,
+    source,
+    sortOrder,
+    trackedTagsSet: trackedTagsArray,
+    tags,
+  }), [aiFilter, mediaType, source, sortOrder, trackedTagsArray, tags]);
 
-  // Debounce filter changes to avoid spamming worker (250ms delay)
-  // This prevents worker from being overwhelmed during rapid filter changes
-  const debouncedRawPosts = useDebounce(rawPosts, 250);
-  const debouncedAiFilter = useDebounce(aiFilter, 250);
-  const debouncedMediaType = useDebounce(mediaType, 250);
-  const debouncedSource = useDebounce(source, 250);
-  const debouncedSortOrder = useDebounce(sortOrder, 250);
-  const debouncedTags = useDebounce(tags, 250);
-  const debouncedTrackedTagsArray = useDebounce(trackedTagsArray, 250);
-
-  // Process data in worker when inputs change
-  useEffect(() => {
-    let cancelled = false;
-
-    const processInWorker = async () => {
-      if (debouncedRawPosts.length === 0) {
-        setAllPosts([]);
-        return;
-      }
-
-      const filterConfig: WorkerFilterConfig = {
-        aiFilter: debouncedAiFilter,
-        mediaType: debouncedMediaType,
-        source: debouncedSource,
-        sortOrder: debouncedSortOrder,
-        trackedTagsSet: debouncedTrackedTagsArray,
-        tags: debouncedTags,
-      };
-
-      try {
-        // Convert Post[] to WorkerPost[] (they're structurally compatible)
-        const workerPosts: WorkerPost[] = debouncedRawPosts.map((post) => ({
-          id: post.id,
-          postId: post.postId,
-          artistId: post.artistId,
-          fileUrl: post.fileUrl,
-          previewUrl: post.previewUrl,
-          sampleUrl: post.sampleUrl,
-          title: post.title,
-          rating: post.rating,
-          tags: post.tags,
-          publishedAt: post.publishedAt,
-          createdAt: post.createdAt,
-          isViewed: post.isViewed,
-          isFavorited: post.isFavorited,
-        }));
-
-        const result = await processData({
-          posts: workerPosts,
-          filters: filterConfig,
-        });
-
-        if (!cancelled) {
-          // Convert WorkerPost[] back to Post[] (they're structurally compatible)
-          setAllPosts(result as Post[]);
-        }
-      } catch (error) {
-        log.error("[Browse] Worker processing error:", error);
-        if (!cancelled) {
-          // Fallback: set empty array on error
-          setAllPosts([]);
-        }
-      }
-    };
-
-    // Process in worker (even for small datasets for consistency)
-    processInWorker();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    debouncedRawPosts,
-    debouncedAiFilter,
-    debouncedMediaType,
-    debouncedSource,
-    debouncedSortOrder,
-    debouncedTags,
-    debouncedTrackedTagsArray,
-    processData,
-  ]);
+  const { data: allPosts, isLoading: workerLoading } = useWorkerFilteredPosts(
+    rawPosts,
+    filterConfig,
+    250 // Debounce delay
+  );
 
 
   // Create stable List and Item components with forwardRef and aria-busy

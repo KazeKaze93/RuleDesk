@@ -76,10 +76,15 @@ function App() {
           );
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const isRateLimit = errorMessage.includes("Rate limit") || errorMessage.includes("too frequent");
-        
         log.error("[App] Failed to check status:", error);
+        
+        // Use typed error code instead of brittle string matching
+        const errorCode = (error as { code?: string })?.code;
+        const isRateLimit = errorCode === "RATE_LIMIT" || 
+          (error instanceof Error && (
+            error.message.includes("Rate limit") || 
+            error.message.includes("too frequent")
+          ));
         
         // Handle rate limit errors with exponential backoff
         if (isRateLimit && retryCountRef.current < MAX_RETRIES) {

@@ -2,6 +2,7 @@ import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import log from 'electron-log';
 import { z } from 'zod';
 import type { SerializableError, ValidationError } from '../../types/ipc';
+import { ErrorCode } from '../../types/ipc';
 
 /**
  * Base Controller for IPC Handlers
@@ -109,6 +110,7 @@ export abstract class BaseController {
             stack: undefined,
             name: 'RateLimitError',
             originalError: undefined,
+            code: ErrorCode.RATE_LIMIT, // Typed error code for reliable error handling
           };
           throw rateLimitError;
         }
@@ -231,8 +233,12 @@ export abstract class BaseController {
           'name' in error &&
           error.name === 'ValidationError'
         ) {
-          // Already serialized, ensure it's properly structured
-          throw error as ValidationError;
+          // Already serialized, ensure it's properly structured with error code
+          const validationError = error as ValidationError;
+          if (!validationError.code) {
+            validationError.code = ErrorCode.VALIDATION_ERROR;
+          }
+          throw validationError;
         }
 
         // Log error details for debugging (without sensitive argument data)
@@ -246,6 +252,23 @@ export abstract class BaseController {
         // Serialize error to plain object, but hide sensitive details in production
         const isProduction = process.env.NODE_ENV === 'production';
         
+        // Determine error code based on error type/message
+        let errorCode: ErrorCode = ErrorCode.UNKNOWN_ERROR;
+        if (error instanceof Error) {
+          const errorMessage = error.message.toLowerCase();
+          if (errorMessage.includes("rate limit") || errorMessage.includes("too frequent")) {
+            errorCode = ErrorCode.RATE_LIMIT;
+          } else if (error.name === "ValidationError" || error instanceof z.ZodError) {
+            errorCode = ErrorCode.VALIDATION_ERROR;
+          } else if (errorMessage.includes("database") || errorMessage.includes("sqlite")) {
+            errorCode = ErrorCode.DATABASE_ERROR;
+          } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+            errorCode = ErrorCode.NETWORK_ERROR;
+          } else if (errorMessage.includes("auth") || errorMessage.includes("unauthorized")) {
+            errorCode = ErrorCode.AUTH_ERROR;
+          }
+        }
+        
         const serializedError: SerializableError = error instanceof Error
           ? {
               message: error.message || 'Unknown IPC error',
@@ -254,12 +277,14 @@ export abstract class BaseController {
               name: error.name,
               // Hide originalError in production (may contain system details)
               originalError: isProduction ? undefined : String(error),
+              code: errorCode, // Typed error code for reliable error handling
             }
           : {
               message: String(error) || 'Unknown IPC error',
               stack: undefined,
               name: 'Error',
               originalError: isProduction ? undefined : String(error),
+              code: errorCode,
             };
         
         throw serializedError;

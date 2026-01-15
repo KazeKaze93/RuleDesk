@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
 // Constants
@@ -85,7 +85,11 @@ export function useGalleryInfiniteScroll<TPost, TQueryKey extends unknown[] = un
   }, []);
 
   // Flatten all pages into a single array
-  const allPosts = data?.pages.flatMap((page) => page) || [];
+  // CRITICAL: Wrap in useMemo to prevent recalculation on every render
+  // For large datasets (100+ pages), flatMap can be expensive
+  const allPosts = useMemo(() => {
+    return data?.pages.flat() ?? [];
+  }, [data]);
 
   return {
     data,

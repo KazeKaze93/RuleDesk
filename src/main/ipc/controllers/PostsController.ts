@@ -359,55 +359,96 @@ export class PostsController extends BaseController {
       conditions.push(eq(posts.isViewed, filters.isViewed));
     }
 
-    // AI filter: filter by AI-generated tags in posts.tags
-    if (filters?.aiFilter === "hide") {
-      // Hide AI-generated posts: exclude posts with AI tags
-      // Check for various AI tag formats using LIKE
-      const aiTagPatterns = [
-        "%ai_generated%",
-        "%ai-generated%",
-        "%ai_generation%",
-        "%ai-generated_content%",
-      ];
-      // Use OR to match any AI tag pattern, then negate with NOT
-      const aiConditions = aiTagPatterns.map((pattern) =>
-        sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
-      );
-      if (aiConditions.length > 0) {
-        const aiOrCondition = or(...aiConditions) as SQL;
-        conditions.push(not(aiOrCondition));
-      }
-    } else if (filters?.aiFilter === "only") {
-      // Only show AI-generated posts: include only posts with AI tags
-      const aiTagPatterns = [
-        "%ai_generated%",
-        "%ai-generated%",
-        "%ai_generation%",
-        "%ai-generated_content%",
-      ];
-      const aiConditions = aiTagPatterns.map((pattern) =>
-        sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
-      );
-      if (aiConditions.length > 0) {
-        conditions.push(or(...aiConditions) as SQL);
+    // AI filter: filter by AI-generated tags using FTS5 for performance
+    // CRITICAL: LIKE "%...%" causes Full Table Scan. Use FTS5 instead.
+    if (filters?.aiFilter === "hide" || filters?.aiFilter === "only") {
+      const ftsTableExists = this.checkFtsTableExists();
+      
+      if (ftsTableExists) {
+        // Use FTS5 for indexed search (much faster than LIKE)
+        // AI tags to search for
+        const aiTags = [
+          "ai_generated",
+          "ai-generated",
+          "ai_generation",
+          "ai-generated_content",
+        ];
+        
+        // Build FTS5 query: "ai_generated OR ai-generated OR ..."
+        const ftsQuery = aiTags.map(tag => `"${tag}"`).join(" OR ");
+        const sanitized = this.sanitizeFts5Query(ftsQuery);
+        
+        if (filters.aiFilter === "hide") {
+          // Exclude AI posts: NOT (FTS5 match)
+          conditions.push(
+            not(
+              sql`EXISTS (
+                SELECT 1 FROM posts_fts 
+                WHERE posts_fts.rowid = ${posts.id} 
+                  AND posts_fts MATCH ${sanitized}
+              )`
+            ) as SQL
+          );
+        } else {
+          // Only AI posts: FTS5 match
+          conditions.push(
+            sql`EXISTS (
+              SELECT 1 FROM posts_fts 
+              WHERE posts_fts.rowid = ${posts.id} 
+                AND posts_fts MATCH ${sanitized}
+            )` as SQL
+          );
+        }
+      } else {
+        // Fallback to LIKE only if FTS5 table doesn't exist (should not happen in production)
+        // NOTE: This is inefficient for large datasets - FTS5 should be available
+        log.warn("[PostsController] FTS5 table not found, using slow LIKE fallback for AI filter");
+        const aiTagPatterns = [
+          "%ai_generated%",
+          "%ai-generated%",
+          "%ai_generation%",
+          "%ai-generated_content%",
+        ];
+        const aiConditions = aiTagPatterns.map((pattern) =>
+          sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
+        );
+        if (aiConditions.length > 0) {
+          const aiOrCondition = or(...aiConditions) as SQL;
+          if (filters.aiFilter === "hide") {
+            conditions.push(not(aiOrCondition));
+          } else {
+            conditions.push(aiOrCondition);
+          }
+        }
       }
     }
 
     // Media type filter: filter by file extension in posts.fileUrl
+    // NOTE: LIKE "%...%" causes Full Table Scan. For production, consider adding media_type column
+    // with index during post indexing. For now, we use LIKE but with optimized patterns.
+    // TODO: Add media_type column (enum: 'image' | 'video') to posts table with index
     if (filters?.mediaType === "videos") {
-      // Only videos: fileUrl contains .mp4, .webm, or .mov
-      // Use LIKE with wildcard to match extension (handles query params)
+      // Only videos: fileUrl ends with video extensions
+      // Use LIKE with trailing wildcard only (more efficient than leading wildcard)
+      // Pattern: fileUrl LIKE '%.mp4' OR fileUrl LIKE '%.mp4%' (handles query params)
       const videoConditions = [
+        sql`${posts.fileUrl} LIKE ${"%.mp4"} ESCAPE '\\'`,
         sql`${posts.fileUrl} LIKE ${"%.mp4%"} ESCAPE '\\'`,
+        sql`${posts.fileUrl} LIKE ${"%.webm"} ESCAPE '\\'`,
         sql`${posts.fileUrl} LIKE ${"%.webm%"} ESCAPE '\\'`,
+        sql`${posts.fileUrl} LIKE ${"%.mov"} ESCAPE '\\'`,
         sql`${posts.fileUrl} LIKE ${"%.mov%"} ESCAPE '\\'`,
       ];
       conditions.push(or(...videoConditions) as SQL);
     } else if (filters?.mediaType === "images") {
-      // Only images: fileUrl does NOT contain video extensions
+      // Only images: fileUrl does NOT end with video extensions
+      // Use trailing wildcard patterns for better index usage
       const notVideoConditions = [
+        not(sql`${posts.fileUrl} LIKE ${"%.mp4"} ESCAPE '\\'`),
         not(sql`${posts.fileUrl} LIKE ${"%.mp4%"} ESCAPE '\\'`),
+        not(sql`${posts.fileUrl} LIKE ${"%.webm"} ESCAPE '\\'`),
         not(sql`${posts.fileUrl} LIKE ${"%.webm%"} ESCAPE '\\'`),
+        not(sql`${posts.fileUrl} LIKE ${"%.mov"} ESCAPE '\\'`),
         not(sql`${posts.fileUrl} LIKE ${"%.mov%"} ESCAPE '\\'`),
       ];
       conditions.push(and(...notVideoConditions) as SQL);

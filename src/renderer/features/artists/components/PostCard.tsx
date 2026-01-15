@@ -35,6 +35,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
   return (
     <button
       type="button"
+      tabIndex={0}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();

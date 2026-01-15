@@ -75,7 +75,10 @@ describe('IntersectionObserver Configuration', () => {
     });
 
     it('should observe the trigger element', () => {
-      const triggerElement = { current: { tagName: 'DIV' } as any };
+      // Properly typed mock element
+      const triggerElement: { current: HTMLElement | null } = { 
+        current: { tagName: 'DIV' } as HTMLElement 
+      };
       const observer = new IntersectionObserver(() => {}, { threshold: 0.1, rootMargin: '400px' });
       
       if (triggerElement.current) {
