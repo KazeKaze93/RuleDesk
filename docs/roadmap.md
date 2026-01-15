@@ -16,7 +16,7 @@
 
 ## ✅ Recent Fixes & Current Status (COMPLETED)
 
-We have successfully stabilized the application core. The following issues are RESOLVED:
+We have successfully stabilized the application core and implemented major features in v4.0.0. The following issues are RESOLVED:
 
 ### Infrastructure & Build
 
@@ -42,6 +42,15 @@ We have successfully stabilized the application core. The following issues are R
 - ✅ Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
 - ✅ Basic Gallery grid is functional
 - ✅ AsyncAutocomplete component for artist/tag search with free-text input support
+- ✅ Advanced Filtering System: AI filter, media type filter, source switcher, and sorting implemented
+- ✅ View Modes: Grid and masonry layout options with responsive design
+- ✅ Content Security Policy: Strict CSP with support for Rule34.xxx and Gelbooru.com media sources
+
+### Testing & Quality
+
+- ✅ Testing Architecture: Unified testing setup with Vitest for unit/integration tests, Playwright for E2E tests
+- ✅ Dual ABI Support: Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
+- ✅ Integration Test Infrastructure: In-memory database setup with idempotent migration handling
 
 ---
 
@@ -176,13 +185,17 @@ Non-blocking database maintenance:
 Core features for initial release:
 
 - ✅ **Navigation & Sidebar** - Persistent sidebar with main sections, sync button, logout (implemented)
-- ✅ **Global Top Bar** - Search bar, sort dropdown, filters button, view toggle UI (fully implemented in `GlobalTopBar.tsx`, backend filtering pending)
+- ✅ **Global Top Bar** - Search bar, sort dropdown, filters button, view toggle UI (fully implemented)
+- ✅ **Advanced Filtering** - AI filter, media type filter, source switcher, and sorting (implemented)
+- ✅ **View Modes** - Grid and masonry layout options (implemented)
 - ✅ **Viewer Polish** - Full-screen viewer with keyboard shortcuts, download, favorites (implemented)
 - ✅ **Progressive Loading** - Preview → Sample → Original (implemented)
 - ⏳ **Auto-sync Startup** - Toggle for automatic sync on app launch (planned)
 - ✅ **Database Architecture** - Direct synchronous access via `better-sqlite3` with WAL mode (completed)
+- ✅ **Media Type Support** - `media_type` column with indexing for efficient filtering (implemented)
 - ✅ **Download Manager** - Individual file downloads with progress tracking (implemented)
 - ✅ **Favorites System** - Mark and manage favorite posts (implemented)
+- ✅ **Testing Infrastructure** - Unified testing setup with Vitest and Playwright (implemented)
 
 ### Next Phase
 
@@ -190,10 +203,13 @@ Enhanced features after MVP:
 
 - ✅ **Favorites System** - Mark and manage favorite posts (implemented)
 - ✅ **Tag Autocomplete** - Local and remote tag search with autocomplete (implemented)
+- ✅ **Advanced Filtering** - AI filter, media type filter, source switcher, and sorting (implemented)
+- ✅ **View Modes** - Grid and masonry layout options (implemented)
+- ✅ **Media Type Support** - `media_type` column with indexing for efficient filtering (implemented)
+- ✅ **Card Overlays** - Viewed, favorite, rating, and media type badges (implemented)
 - ⏳ **Favorites Sync** - Sync account favorites from booru (planned)
 - ⏳ **Playlists Groundwork** - Basic playlist tables and UI structure (planned)
 - ⏳ **Periodic Sync** - Configurable interval sync while app running (planned)
-- ⏳ **Card Overlays** - Viewed, favorite, rating, media type badges (partially implemented - viewed and favorite badges exist)
 
 ### Later Phase
 
@@ -201,14 +217,19 @@ Advanced features for future releases:
 
 - ⏳ **Smart Playlists** - Auto-fill playlists based on tag rules
 - ✅ **Normalized Tag Index** - Full-text search on tags (FTS5 virtual table `posts_fts` with `unicode61` tokenizer implemented)
+- ✅ **Media Type Optimization** - Indexed `media_type` column for efficient image/video filtering (implemented)
 - ⏳ **Advanced Caching** - Intelligent cache management with size limits
 - ⏳ **Proxy Support** - Optional proxy configuration for API requests
-- ⏳ **Multi-Booru** - Provider pattern for multiple booru sources
+- ✅ **Multi-Booru** - Provider pattern for multiple booru sources (Rule34.xxx and Gelbooru implemented)
 
 ## 🔧 Technical Improvements (From Audit)
 
 ### Developer Experience
 
+- ✅ **Testing Architecture:** Unified testing setup with Vitest and Playwright
+  - **Implemented:** Vitest for unit/integration tests, Playwright for E2E tests
+  - **Features:** Automatic ABI switching (Node.js/Electron) via npm lifecycle hooks
+  - **Scripts:** `pretest`/`posttest` hooks for seamless dual ABI support
 - ⏳ **Main Process HMR:** Implement auto-restart for Main process changes (nodemon/watch mode)
   - **Current:** Manual restart required
   - **Target:** Automatic restart on Main process file changes
@@ -247,7 +268,11 @@ Advanced features for future releases:
   - **Features:** External content table, automatic sync via triggers, prefix search support
   - **Performance:** Sub-millisecond search on 100k+ records
 - ✅ **Composite Indexes:** Optimized multi-column filter queries
-  - **Implemented:** Composite index on `(artist_id, rating, is_viewed)` for common filter combinations
+  - **Implemented:** Composite indexes on `(artist_id, rating, is_viewed)` and `(artist_id, media_type)` for common filter combinations
+- ✅ **Media Type Column:** Efficient media type filtering
+  - **Implemented:** `media_type` column in `posts` table with index for fast image/video filtering
+  - **Features:** Automatic detection during sync, background backfill for existing data
+  - **Performance:** Indexed column lookups replace slow `LIKE` queries
 
 ### Error Handling
 
@@ -261,34 +286,35 @@ Advanced features for future releases:
   - **Current:** Video handling exists, relies on Electron defaults
   - **Target:** Explicit `enableWebGL` and hardware acceleration flags
 
-### A. Filters (Advanced Search) [Priority: High] 🚧 UI Ready, Backend Pending
+### A. Filters (Advanced Search) [Priority: High] ✅ Partially Implemented
 
 **Goal:** Allow users to refine the gallery view.
 
 **UI:**
 
 - ✅ **Global Top Bar:** Fully implemented in `GlobalTopBar.tsx` and used in `AppLayout.tsx`
-- ✅ Search bar in Global Top Bar (UI ready, search functionality pending)
-- ✅ Sort dropdown in Global Top Bar (UI ready, sorting logic pending)
-- ✅ View toggle (Grid/List) in Global Top Bar (UI ready, view switching pending)
-- ✅ Filters button in Global Top Bar (UI ready, filter panel pending)
+- ✅ **Filters Panel:** Complete filter UI with AI filter, media type, source switcher, and sort controls
+- ✅ **View Toggle:** Grid and masonry layout options implemented
+- ✅ **Search Bar:** UI ready, advanced tag search integration pending
 
 **Functionality:**
 
-- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - UI ready, backend filtering pending
-- ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
-- ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
-- ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
-- ⏳ Search functionality - UI ready, search logic pending
+- ✅ **AI Filter:** Filter by AI-generated tags (hide/only/all) - fully implemented with backend support
+- ✅ **Media Type Filter:** Filter by image/video - fully implemented with `media_type` database column and backend filtering
+- ✅ **Source Filter:** Filter by source (all/favorites/subscriptions) - fully implemented
+- ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending) - fully implemented
+- ✅ **View Modes:** Grid and masonry layouts - fully implemented
+- ⏳ **Rating Filter:** Filter by rating (Safe/Questionable/Explicit) - UI ready, backend filtering pending
+- ⏳ **Tag Search:** Advanced tag search with FTS5 integration - UI ready, needs filter panel integration
 
 **Implementation Notes:**
 
-- Use Drizzle ORM queries with proper filtering
-- Maintain type safety with Zod/TypeScript
-- Update UI state via React Query invalidation
-- Connect `GlobalTopBar` controls to `ArtistGallery` filtering logic
+- ✅ Drizzle ORM queries with proper filtering implemented
+- ✅ Type safety maintained with Zod/TypeScript
+- ✅ UI state managed via React Query and Zustand store
+- ✅ `GlobalTopBar` controls connected to filtering logic in `Browse.tsx`, `Updates.tsx`, `Favorites.tsx`, and `ArtistGallery.tsx`
 
-**Status:** Global Top Bar UI is fully implemented and visible in the application. Backend filtering, sorting, and search logic needs to be connected to the UI controls.
+**Status:** Core filtering functionality is implemented and working. Advanced tag search with FTS5 and rating filtering are planned for future releases.
 
 ---
 

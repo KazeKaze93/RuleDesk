@@ -2,6 +2,8 @@
 
 > A modern, secure desktop companion built on Electron and React/TypeScript for browsing and organizing booru-style imageboard content via its public API. Designed for performance and maintainability.
 
+**Current Version:** 4.0.0
+
 **🌐 Languages:** [English](README.md) | [Русский](.docs-i18n/ru/README.md)
 
 ---
@@ -201,7 +203,7 @@ Continuous synchronization while the application is running:
 
 ## ✅ Current Status
 
-The application is stable and production-ready with the following features implemented:
+The application is stable and production-ready (v4.0.0) with the following features implemented:
 
 ### Infrastructure & Build
 
@@ -209,14 +211,17 @@ The application is stable and production-ready with the following features imple
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
 - ✅ **Portable Mode:** Support for portable executables with data folder next to executable
+- ✅ **Testing Architecture:** Unified testing setup with Vitest for Unit/Integration tests, Playwright for E2E tests
+- ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ⚠️ **HMR Status:** Renderer process has full HMR support. Main process requires manual restart (no auto-restart on file changes)
 
 ### Database & Schema
 
 - ✅ **Schema:** Three main tables (`artists`, `posts`, `settings`) with proper relationships
-- ✅ **Migrations:** Fully functional migration system using `drizzle-kit`
-- ✅ **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
-- ✅ **Composite Indexes:** Composite index on `(artist_id, rating, is_viewed)` for optimized multi-column filter queries
+- ✅ **Migrations:** Fully functional migration system using `drizzle-kit` with idempotent migration handling
+- ✅ **Media Type Support:** `media_type` column in `posts` table for efficient image/video filtering (`image`, `video`)
+- ✅ **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`, `mediaType`
+- ✅ **Composite Indexes:** Composite indexes on `(artist_id, rating, is_viewed)` and `(artist_id, media_type)` for optimized multi-column filter queries
 - ✅ **FTS5 Full-Text Search:** FTS5 virtual table `posts_fts` with `unicode61` tokenizer for fast tag searching
 - ✅ **Provider Support:** Multi-booru support with `provider` field in artists table (rule34, gelbooru)
 - ✅ **Artist Types:** Support for `tag`, `uploader`, and `query` types
@@ -246,14 +251,18 @@ The application is stable and production-ready with the following features imple
 - ✅ **Virtualization:** `react-virtuoso` implemented for efficient large list rendering
 - ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
 - ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
-- ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles (UI implemented, backend filtering pending)
+- ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles
+- ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), source (all/favorites/subscriptions), and rating
+- ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending)
+- ✅ **View Modes:** Grid and masonry layout options with responsive design
 - ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
-- ✅ **Video Support:** `.mp4` and `.webm` video formats supported with native `<video>` element
+- ✅ **Video Support:** `.mp4`, `.webm`, `.mov`, `.avi`, `.mkv`, `.flv`, `.wmv`, `.m4v` video formats supported with native `<video>` element
 - ✅ **Download Manager:** Download full-resolution files with progress tracking and queue management
 - ✅ **Favorites System:** Complete implementation with `isFavorited` database field, toggle functionality, and keyboard shortcuts
 - ✅ **Backup Controls:** UI component for creating and restoring database backups with integrity checks
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 - ✅ **Age Gate Component:** Fully implemented with legal confirmation (`AgeGate.tsx` component and `confirmLegal` IPC method)
+- ✅ **Content Security Policy:** Strict CSP with support for Rule34.xxx and Gelbooru.com media sources
 - ⏳ **Safe Mode/NSFW Filter:** Database schema includes `isSafeMode` field, but blur logic not yet implemented in UI components
 
 ---
@@ -329,17 +338,20 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
 We are moving to Feature Development. Priority tasks:
 
-### A. Filters (Advanced Search) 🚧 UI Ready, Backend Pending
+### A. Filters (Advanced Search) ✅ Partially Implemented
 
 **Goal:** Allow users to refine the gallery view.
 
 - ✅ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle - fully implemented in `GlobalTopBar.tsx`
-- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - UI ready, backend filtering pending
-- ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
-- ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
-- ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
+- ✅ **AI Filter:** Filter by AI-generated tags (hide/only/all) - fully implemented with backend support
+- ✅ **Media Type Filter:** Filter by image/video - fully implemented with `media_type` column and backend filtering
+- ✅ **Source Filter:** Filter by source (all/favorites/subscriptions) - fully implemented
+- ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending) - fully implemented
+- ✅ **View Modes:** Grid and masonry layout options - fully implemented
+- ⏳ **Tag Search:** Advanced tag search with FTS5 (UI ready, needs integration with filter panel)
+- ⏳ **Rating Filter:** Filter by rating (Safe/Questionable/Explicit) - UI ready, backend filtering pending
 
-**Note:** Global Top Bar UI is fully implemented and visible in the application. Backend filtering and sorting logic needs to be connected to the UI controls via IPC handlers.
+**Status:** Core filtering functionality is implemented and working. Advanced tag search and rating filtering are planned for future releases.
 
 ### B. Download Manager ✅ Implemented (Core Features)
 
@@ -451,6 +463,43 @@ npm run lint
 # Run both (validation)
 npm run validate
 ```
+
+### Testing
+
+The project uses **Vitest** for unit and integration tests, and **Playwright** for E2E tests.
+
+```bash
+# Run all tests (automatically rebuilds better-sqlite3 for Node.js, then rebuilds for Electron after)
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run only integration tests (autonomous, rebuilds for Node.js automatically)
+npm run test:integration
+
+# Run integration tests in watch mode (for TDD)
+npm run test:integration:watch
+
+# Run E2E tests
+npm run test:e2e
+
+# Generate coverage report
+npm run test:coverage
+```
+
+**Testing Architecture:**
+
+- **Unit Tests:** Located in `tests/unit/` - Test individual components, hooks, and utilities
+- **Integration Tests:** Located in `tests/integration/` - Test IPC controllers and services with real database
+- **E2E Tests:** Located in `tests/e2e/` - Test full user workflows with Playwright
+
+**Dual ABI Support:**
+
+The testing setup automatically handles switching between Node.js and Electron ABI for `better-sqlite3`:
+- `pretest` hook rebuilds for Node.js before tests
+- `posttest` hook rebuilds for Electron after tests
+- This ensures `npm test` works seamlessly, and `npm run dev` works immediately after
 
 ## 📜 License & Legal
 

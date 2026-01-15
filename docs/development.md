@@ -100,6 +100,69 @@ Builds the application for production.
 npm run build
 ```
 
+### Testing Scripts
+
+The project uses **Vitest** for unit and integration tests, and **Playwright** for E2E tests.
+
+#### `npm test`
+
+Runs all tests with automatic ABI switching:
+
+- **Before tests:** Rebuilds `better-sqlite3` for Node.js (`pretest` hook)
+- **Runs tests:** Executes Vitest test suite
+- **After tests:** Rebuilds `better-sqlite3` for Electron (`posttest` hook)
+
+This ensures tests run correctly and `npm run dev` works immediately after.
+
+**Usage:**
+
+```bash
+npm test
+```
+
+#### `npm run test:integration`
+
+Runs only integration tests (autonomous, rebuilds for Node.js automatically).
+
+**Usage:**
+
+```bash
+npm run test:integration
+```
+
+#### `npm run test:integration:watch`
+
+Runs integration tests in watch mode for TDD workflow.
+
+**Usage:**
+
+```bash
+npm run test:integration:watch
+```
+
+#### `npm run test:e2e`
+
+Runs end-to-end tests with Playwright.
+
+**Usage:**
+
+```bash
+npm run test:e2e
+```
+
+**Testing Architecture:**
+
+- **Unit Tests:** `tests/unit/` - Test individual components, hooks, and utilities
+- **Integration Tests:** `tests/integration/` - Test IPC controllers and services with real database
+- **E2E Tests:** `tests/e2e/` - Test full user workflows with Playwright
+
+**Dual ABI Support:**
+
+The testing setup automatically handles switching between Node.js and Electron ABI for `better-sqlite3`:
+- `pretest` hook rebuilds for Node.js before tests
+- `posttest` hook rebuilds for Electron after tests
+- Integration test scripts include their own rebuild step for autonomous operation
+
 ### `npm run preview`
 
 Previews the production build locally.

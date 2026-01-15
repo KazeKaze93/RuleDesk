@@ -124,6 +124,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 | `title`        | TEXT                                   | Post title                                    |
 | `rating`       | TEXT                                   | Content rating (safe, questionable, explicit) |
 | `tags`         | TEXT                                   | Space-separated tags                          |
+| `media_type`   | TEXT (NULL)                            | Media type: "image" or "video" (indexed)     |
 | `published_at` | INTEGER (NOT NULL)                     | Publication timestamp (timestamp mode, ms)    |
 | `created_at`   | INTEGER (NOT NULL)                     | When added to local database (timestamp ms)   |
 | `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been viewed                  |
@@ -138,7 +139,9 @@ Caches post metadata for filtering, statistics, and download management. Support
 - `isViewedIdx` - Index on `is_viewed` for view status filtering
 - `publishedAtIdx` - Index on `published_at` for date-based sorting
 - `isFavoritedIdx` - Index on `is_favorited` for favorites filtering
+- `posts_media_type_idx` - Index on `media_type` for fast image/video filtering
 - `posts_artist_rating_viewed_idx` - Composite index on `(artist_id, rating, is_viewed)` for optimized multi-column filter queries
+- `posts_artist_media_type_idx` - Composite index on `(artist_id, media_type)` for optimized artist + media type filtering
 
 **Schema Definition:**
 
@@ -157,6 +160,7 @@ export const posts = sqliteTable(
     title: text("title").default(""),
     rating: text("rating").default(""),
     tags: text("tags").notNull(),
+    mediaType: text("media_type", { enum: ["image", "video"] }),
     publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
@@ -175,10 +179,15 @@ export const posts = sqliteTable(
     isViewedIdx: index("isViewedIdx").on(table.isViewed),
     publishedAtIdx: index("publishedAtIdx").on(table.publishedAt),
     isFavoritedIdx: index("isFavoritedIdx").on(table.isFavorited),
+    mediaTypeIdx: index("posts_media_type_idx").on(table.mediaType),
     artistRatingViewedIdx: index("posts_artist_rating_viewed_idx").on(
       table.artistId,
       table.rating,
       table.isViewed
+    ),
+    artistMediaTypeIdx: index("posts_artist_media_type_idx").on(
+      table.artistId,
+      table.mediaType
     ),
   })
 );
@@ -715,6 +724,8 @@ If the database becomes corrupted and you need to restore manually:
 2. **Indexes:**
    - Single-column indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
    - Composite index on `(artist_id, rating, is_viewed)` for common filter combinations
+   - Composite index on `(artist_id, media_type)` for artist + media type filtering
+   - Index on `media_type` for fast image/video filtering
 3. **FTS5 Full-Text Search:**
    - Virtual table `posts_fts` for fast tag searching using FTS5
    - External content table (no data duplication) with `unicode61` tokenizer
@@ -787,6 +798,11 @@ Planned database improvements:
   - Supports prefix search and case-insensitive queries
 - ✅ **Composite Indexes:** ✅ **Implemented**
   - Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries
+  - Composite index on `(artist_id, media_type)` for optimized artist + media type filtering
+- ✅ **Media Type Column:** ✅ **Implemented**
+  - `media_type` column in `posts` table for efficient image/video filtering
+  - Automatic detection during sync, background backfill for existing data
+  - Indexed column lookups replace slow `LIKE` queries
 - ✅ **Favorites System:** Implemented with `isFavorited` field and index
 - ⏳ **Subscriptions Table:** Tag subscriptions feature planned (schema not yet implemented)
 - ⏳ **Playlists Tables:** Playlists feature planned (schema not yet implemented)
