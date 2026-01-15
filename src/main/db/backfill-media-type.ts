@@ -1,5 +1,6 @@
 import log from "electron-log";
 import { getSqliteInstance } from "./client";
+import { getMediaTypeFromUrl } from "@shared/utils/media";
 
 /**
  * Background process to backfill media_type column for existing posts
@@ -15,45 +16,6 @@ import { getSqliteInstance } from "./client";
  */
 const BATCH_SIZE = 1000;
 const BATCH_DELAY_MS = 100; // Delay between batches to prevent blocking
-
-/**
- * Determine media type from file URL
- * Returns "image" or "video" based on file extension
- */
-function getMediaTypeFromUrl(fileUrl: string | null): "image" | "video" | null {
-  if (!fileUrl) return null;
-  
-  const urlLower = fileUrl.toLowerCase();
-  
-  // Video extensions
-  if (
-    urlLower.endsWith(".mp4") ||
-    urlLower.endsWith(".webm") ||
-    urlLower.endsWith(".mov") ||
-    urlLower.endsWith(".avi") ||
-    urlLower.endsWith(".mkv") ||
-    urlLower.endsWith(".flv") ||
-    urlLower.endsWith(".wmv")
-  ) {
-    return "video";
-  }
-  
-  // Image extensions (default)
-  if (
-    urlLower.endsWith(".jpg") ||
-    urlLower.endsWith(".jpeg") ||
-    urlLower.endsWith(".png") ||
-    urlLower.endsWith(".gif") ||
-    urlLower.endsWith(".webp") ||
-    urlLower.endsWith(".bmp") ||
-    urlLower.endsWith(".svg")
-  ) {
-    return "image";
-  }
-  
-  // Default to image if extension unknown (most posts are images)
-  return "image";
-}
 
 /**
  * Backfill media_type column for existing posts

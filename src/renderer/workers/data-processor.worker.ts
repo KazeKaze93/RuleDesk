@@ -20,6 +20,8 @@
 
 // Worker cannot use path aliases, use relative path
 import type { WorkerPost } from "../../shared/types/post";
+import { WorkerPostArraySchema } from "../../shared/types/post";
+import { z } from "zod";
 
 // Worker message types
 interface WorkerRequest {
@@ -165,7 +167,28 @@ self.addEventListener("message", (event: MessageEvent<WorkerRequest>) => {
     switch (action) {
       case "FILTER_AND_SORT": {
         const { posts, filters } = payload as FilterAndSortPayload;
-        const result = filterAndSortPosts(posts, filters);
+        
+        // PERFORMANCE: Validate posts in Worker thread (not Renderer)
+        // This prevents UI blocking - validation happens in background thread
+        // Zod.parse() on 10k+ posts can take 100-200ms, but in Worker it won't freeze UI
+        let validatedPosts: WorkerPost[];
+        try {
+          validatedPosts = WorkerPostArraySchema.parse(posts);
+        } catch (validationError) {
+          const response: WorkerResponse = {
+            id,
+            success: false,
+            error: validationError instanceof z.ZodError
+              ? `Validation failed: ${validationError.errors.map(e => e.message).join(", ")}`
+              : validationError instanceof Error
+              ? validationError.message
+              : String(validationError),
+          };
+          self.postMessage(response);
+          break;
+        }
+        
+        const result = filterAndSortPosts(validatedPosts, filters);
         
         const response: WorkerResponse<WorkerPost[]> = {
           id,

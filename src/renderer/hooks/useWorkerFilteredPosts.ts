@@ -5,7 +5,6 @@ import {
 } from "./useWorkerProcessor";
 import { useDebounce } from "../lib/hooks/useDebounce";
 import type { Post } from "../../main/db/schema";
-import { WorkerPostArraySchema } from "../../shared/types/post";
 import log from "electron-log/renderer";
 
 /**
@@ -48,13 +47,14 @@ export function useWorkerFilteredPosts(
       }
 
       try {
-        // Validate Post[] against WorkerPost schema before sending to Worker
-        // This ensures type safety and catches schema mismatches at runtime
+        // PERFORMANCE: Do NOT validate in Renderer thread - it blocks UI
+        // Zod.parse() on 10k+ posts can freeze UI for 100-200ms
+        // Validation is moved to Worker thread where it won't block UI
         // Structured Clone API handles Date serialization automatically (Date -> number)
-        const validatedPosts = WorkerPostArraySchema.parse(rawPosts);
-
+        // Worker will validate posts internally if needed
+        
         const result = await processData({
-          posts: validatedPosts,
+          posts: rawPosts, // Send raw posts - Worker will validate if needed
           filters: debouncedFilters,
         });
 

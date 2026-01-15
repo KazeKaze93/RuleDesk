@@ -307,6 +307,40 @@ export class PostsController extends BaseController {
   }
 
   /**
+   * Build FTS5 OR query from array of tags
+   * SECURITY: Validates and sanitizes each tag before constructing query
+   * This is safer than manual string concatenation with join(" OR ")
+   * 
+   * @param tags - Array of tags to search for (must be validated)
+   * @returns FTS5 query string with OR operators
+   * @throws {Error} If any tag is invalid
+   */
+  private buildFts5OrQuery(tags: string[]): string {
+    if (tags.length === 0) {
+      throw new Error("Cannot build FTS5 OR query from empty tag array");
+    }
+    
+    // Validate and sanitize each tag
+    const sanitizedTags = tags.map((tag) => {
+      // Validate tag format: only alphanumeric, hyphens, underscores allowed
+      // This prevents injection if tags list is ever extended to user input
+      if (!/^[a-zA-Z0-9_-]+$/.test(tag)) {
+        throw new Error(
+          `Invalid tag format: "${tag}". Only alphanumeric, hyphens, and underscores allowed.`
+        );
+      }
+      // Escape quotes for FTS5 (double quotes for literal)
+      const escaped = tag.replace(/"/g, '""');
+      // Wrap in quotes to make FTS5 treat it as literal
+      return `"${escaped}"`;
+    });
+    
+    // Join with OR operator
+    // SECURITY: All tags are validated and escaped above, so this is safe
+    return sanitizedTags.join(" OR ");
+  }
+
+  /**
    * Create FTS5 JOIN condition for tag filtering
    * Uses parameterized query to prevent SQL injection
    * Sanitizes FTS5 query to prevent syntax errors from special characters
@@ -407,25 +441,11 @@ export class PostsController extends BaseController {
           "ai-generated_content",
         ];
 
-        // Build FTS5 query: "ai_generated OR ai-generated OR ..."
+        // Build FTS5 query using safe array-based construction
         // SECURITY: Validate and sanitize each tag, then construct query safely
         // Even though tags are hardcoded, we validate them to prevent future bugs if list changes
-        // Use sanitizeFts5Query for each tag, then join with OR (which is safe for hardcoded tags)
-        const sanitizedTagQueries = aiTags.map((tag) => {
-          // Validate tag format: only alphanumeric, hyphens, underscores allowed
-          // This prevents injection if aiTags list is ever extended to user input
-          if (!/^[a-zA-Z0-9_-]+$/.test(tag)) {
-            throw new Error(
-              `Invalid AI tag format: "${tag}". Only alphanumeric, hyphens, and underscores allowed.`
-            );
-          }
-          // Escape quotes for FTS5 (double quotes for literal)
-          return `"${tag.replace(/"/g, '""')}"`;
-        });
-
-        // Join with OR - safe because all tags are validated above
-        // FTS5 OR operator is safe when all operands are validated literals
-        const ftsQuery = sanitizedTagQueries.join(" OR ");
+        // Use helper function to build FTS5 OR query from array of tags
+        const ftsQuery = this.buildFts5OrQuery(aiTags);
 
         // CRITICAL: Ensure ftsQuery is not empty to prevent SQLite syntax error
         // If sanitizedTagQueries is empty (shouldn't happen with hardcoded tags), skip filter

@@ -147,7 +147,12 @@ const ViewerMedia = ({ post }: { post: Post }) => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [hasTriedFallback, setHasTriedFallback] = useState(false);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
+  
+  // Reset fallback flag when post changes
+  // Use key prop on img element instead of useEffect to avoid cascading renders
+  // Key change forces React to remount component, resetting state naturally
   const normalizedRating: "s" | "q" | "e" = (post.rating === "q" || post.rating === "e") ? post.rating : "s";
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
@@ -243,11 +248,8 @@ const ViewerMedia = ({ post }: { post: Post }) => {
               className="mt-4"
               onClick={() => {
                 setImageError(false);
-                // Try fallback URL
-                const fallbackUrl = isZoomed ? post.fileUrl : (post.sampleUrl || post.fileUrl);
-                if (fallbackUrl !== post.fileUrl) {
-                  // Force reload by changing src
-                }
+                setHasTriedFallback(false); // Reset fallback flag on retry
+                // Force reload by changing src (React will re-render img with new src)
               }}
             >
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -257,7 +259,8 @@ const ViewerMedia = ({ post }: { post: Post }) => {
         </div>
       ) : (
         <img
-          src={isZoomed ? post.fileUrl : post.sampleUrl || post.fileUrl}
+          key={`${post.id}-${hasTriedFallback}`} // Force re-render when fallback changes, resets state on post change
+          src={isZoomed ? post.fileUrl : (hasTriedFallback ? post.fileUrl : (post.sampleUrl || post.fileUrl))}
           alt={`Post ${post.id}`}
           className={cn(
             "transition-all duration-300 ease-out",
@@ -267,21 +270,14 @@ const ViewerMedia = ({ post }: { post: Post }) => {
           )}
           onError={(e) => {
             log.error("[ViewerMedia] Image load error:", post.fileUrl);
-            const img = e.currentTarget;
-            // Try fallback to fileUrl if sampleUrl failed
-            // CRITICAL: Use URL comparison without query params to prevent infinite loop
-            // If server redirects to same broken URL or query params change, we'd loop forever
-            const currentUrl = new URL(img.src, window.location.href);
-            const fallbackUrl = post.fileUrl ? new URL(post.fileUrl, window.location.href) : null;
             
-            // Check if we're already trying fileUrl (not sampleUrl)
-            const isAlreadyFileUrl = fallbackUrl && 
-              currentUrl.pathname === fallbackUrl.pathname &&
-              currentUrl.hostname === fallbackUrl.hostname;
-            
-            if (post.fileUrl && !isAlreadyFileUrl) {
+            // CRITICAL: Use simple flag to prevent infinite loop
+            // If both sampleUrl and fileUrl fail (404), we'd loop forever without this check
+            // Simple useState flag is more reliable than URL comparison (which has overhead)
+            if (!hasTriedFallback && post.fileUrl) {
               // Try fileUrl as fallback (only once)
-              img.src = post.fileUrl;
+              setHasTriedFallback(true);
+              e.currentTarget.src = post.fileUrl;
             } else {
               // Both URLs failed or already tried - show error
               setImageError(true);

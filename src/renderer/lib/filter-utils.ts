@@ -29,22 +29,12 @@ export function hasAiGeneratedTag(tags: string | undefined | null): boolean {
   return aiTags.some((aiTag) => tagArray.includes(aiTag));
 }
 
-// Compiled regex for video extension check (reused across calls)
-const VIDEO_EXTENSION_REGEX = /\.(mp4|webm|mov)$/i;
+import { isVideoUrl } from "../../shared/utils/media";
 
 /**
  * Check if post is a video based on file URL
- * Optimized: uses only string operations, no URL object creation
- * Handles query parameters and hash fragments by extracting pathname manually
+ * DRY: Uses shared media type detection logic
  */
 export function isVideoPost(fileUrl: string | undefined | null): boolean {
-  if (!fileUrl) return false;
-  
-  // Extract pathname: everything before ? or # (query params/hash)
-  // Use regex to extract pathname without creating URL object
-  const pathMatch = fileUrl.match(/^[^?#]+/);
-  const pathname = pathMatch ? pathMatch[0] : fileUrl;
-  
-  // Check if pathname ends with video extension (case-insensitive)
-  return VIDEO_EXTENSION_REGEX.test(pathname);
+  return isVideoUrl(fileUrl);
 }
