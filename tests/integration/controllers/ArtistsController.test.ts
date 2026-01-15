@@ -48,24 +48,34 @@ describe('ArtistsController Integration', () => {
   let controller: ArtistsController;
 
   beforeEach(() => {
-    // Create in-memory database
+    // CRITICAL: Clear DI container before each test to prevent state leakage
+    // This ensures that each test starts with a fresh container state
+    container.clear();
+
+    // Create fresh in-memory database (:memory: guarantees clean slate)
     mockDb = createMockDb();
 
     // Register mock DB in DI container
     // Container.register expects the instance directly, not wrapped in an object
     container.register(DI_TOKENS.DB, mockDb.db);
 
-    // Instantiate controller
+    // Instantiate controller (will use the fresh DB from container)
     controller = new ArtistsController();
   });
 
   afterEach(() => {
-    // Close database connection
-    mockDb.sqlite.close();
+    // Close database connection (only if mockDb was successfully created)
+    if (mockDb?.sqlite) {
+      try {
+        mockDb.sqlite.close();
+      } catch (error) {
+        // Ignore errors when closing (database might already be closed)
+      }
+    }
 
-    // Clear DI container registrations
-    // Note: Container might not have a clear method, so we'll just close the DB
-    // The container will be reused for next test
+    // Clear DI container registrations to prevent state leakage
+    // This ensures the next test starts with a clean container
+    container.clear();
   });
 
   describe('handleAddArtist', () => {

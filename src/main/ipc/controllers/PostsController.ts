@@ -32,7 +32,7 @@ import {
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
-import { isVideoUrl } from "../../lib/media-utils";
+import { isVideoUrl } from "@shared/utils/media";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 

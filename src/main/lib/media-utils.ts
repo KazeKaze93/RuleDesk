@@ -1,18 +1,20 @@
 /**
  * Media utilities for booru providers
+ * 
+ * DRY: Uses shared media type detection logic from @shared/utils/media
  */
 
-// PERFORMANCE: Compile regex once (static) to avoid recompilation on every call
-// This prevents 1000+ regex allocations in bulkUpsertPosts
-const VIDEO_EXTENSION_REGEX = /\.(webm|mp4|mov)(\?|$)/i;
+import { isVideoUrl as isVideoUrlShared } from "@shared/utils/media";
 
 /**
  * Check if URL points to a video file
- * PERFORMANCE: Uses pre-compiled regex to avoid allocations in hot paths
+ * DRY: Re-exports shared implementation to maintain backward compatibility
+ * 
+ * @deprecated Use isVideoUrl from @shared/utils/media directly
+ * This re-export is kept for backward compatibility with existing imports
  */
 export function isVideoUrl(url?: string): boolean {
-  if (!url) return false;
-  return VIDEO_EXTENSION_REGEX.test(url);
+  return isVideoUrlShared(url);
 }
 
 /**

@@ -87,6 +87,37 @@ describe('filter-utils', () => {
       expect(isVideoPost('path/to/file.webm')).toBe(true);
     });
 
+    it('should detect .mov files', () => {
+      expect(isVideoPost('file.mov')).toBe(true);
+      expect(isVideoPost('https://example.com/video.mov')).toBe(true);
+      expect(isVideoPost('path/to/file.mov')).toBe(true);
+    });
+
+    it('should detect .avi files', () => {
+      expect(isVideoPost('file.avi')).toBe(true);
+      expect(isVideoPost('https://example.com/video.avi')).toBe(true);
+    });
+
+    it('should detect .mkv files', () => {
+      expect(isVideoPost('file.mkv')).toBe(true);
+      expect(isVideoPost('https://example.com/video.mkv')).toBe(true);
+    });
+
+    it('should detect .flv files', () => {
+      expect(isVideoPost('file.flv')).toBe(true);
+      expect(isVideoPost('https://example.com/video.flv')).toBe(true);
+    });
+
+    it('should detect .wmv files', () => {
+      expect(isVideoPost('file.wmv')).toBe(true);
+      expect(isVideoPost('https://example.com/video.wmv')).toBe(true);
+    });
+
+    it('should detect .m4v files', () => {
+      expect(isVideoPost('file.m4v')).toBe(true);
+      expect(isVideoPost('https://example.com/video.m4v')).toBe(true);
+    });
+
     it('should return false for image files', () => {
       expect(isVideoPost('file.jpg')).toBe(false);
       expect(isVideoPost('file.png')).toBe(false);
@@ -100,12 +131,17 @@ describe('filter-utils', () => {
     });
 
     it('should handle case sensitivity correctly (case-insensitive)', () => {
-      // New implementation uses regex with /i flag, so case-insensitive
+      // Implementation uses toLowerCase() and endsWith(), so case-insensitive
       expect(isVideoPost('file.MP4')).toBe(true);
       expect(isVideoPost('file.WEBM')).toBe(true);
       expect(isVideoPost('file.mp4')).toBe(true);
       expect(isVideoPost('file.webm')).toBe(true);
       expect(isVideoPost('file.MOV')).toBe(true);
+      expect(isVideoPost('file.AVI')).toBe(true);
+      expect(isVideoPost('file.MKV')).toBe(true);
+      expect(isVideoPost('file.FLV')).toBe(true);
+      expect(isVideoPost('file.WMV')).toBe(true);
+      expect(isVideoPost('file.M4V')).toBe(true);
       expect(isVideoPost('file.JPG')).toBe(false);
     });
 

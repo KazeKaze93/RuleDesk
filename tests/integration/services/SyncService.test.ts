@@ -78,7 +78,7 @@ describe('SyncService Integration', () => {
   });
 
   beforeEach(async () => {
-    // 1. Setup DB
+    // 1. Create fresh in-memory database (:memory: guarantees clean slate)
     mockDb = createMockDb();
     
     // 2. Inject mock DB into getDb() mock
@@ -113,8 +113,15 @@ describe('SyncService Integration', () => {
   });
 
   afterEach(() => {
-    // Close database connection
-    mockDb.sqlite.close();
+    // Close database connection (only if mockDb was successfully created)
+    if (mockDb?.sqlite) {
+      try {
+        mockDb.sqlite.close();
+      } catch (error) {
+        // Ignore errors when closing (database might already be closed)
+      }
+    }
+    // Clear mock DB instance to prevent state leakage
     mockDbInstance = null;
     vi.clearAllMocks();
   });

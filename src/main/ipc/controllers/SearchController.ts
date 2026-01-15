@@ -16,7 +16,7 @@ import { SearchPostsSchema } from "../../../shared/schemas/search";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { XMLParser } from "fast-xml-parser";
-import { isVideoUrl } from "../../lib/media-utils";
+import { isVideoUrl } from "@shared/utils/media";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
