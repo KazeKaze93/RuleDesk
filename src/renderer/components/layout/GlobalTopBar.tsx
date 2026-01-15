@@ -1,36 +1,27 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Filter,
   ArrowUpDown,
+  ArrowUpNarrowWide,
+  ArrowDownNarrowWide,
   LayoutList,
   LayoutGrid,
-  Shield,
-  RefreshCw,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { useSafeModeStore } from "../../store/safeModeStore";
 import { useSearchStore } from "../../store/searchStore";
 import { TagAutocomplete } from "../inputs/TagAutocomplete";
 import { cn } from "../../lib/utils";
-import log from "electron-log/renderer";
 
 export const GlobalTopBar = () => {
   const location = useLocation();
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const { safeMode, setSafeMode } = useSafeModeStore();
   const query = useSearchStore((state) => state.query);
   const setQuery = useSearchStore((state) => state.setQuery);
   const clearSearch = useSearchStore((state) => state.clearSearch);
   const setActiveTab = useSearchStore((state) => state.setActiveTab);
+  const activeTab = useSearchStore((state) => state.activeTab);
+  const sortOrder = useSearchStore((state) => state.sortOrder);
+  const toggleSortOrder = useSearchStore((state) => state.toggleSortOrder);
 
   // Determine current tab from location
   useEffect(() => {
@@ -50,28 +41,24 @@ export const GlobalTopBar = () => {
     }
   }, [location.pathname, setActiveTab]);
 
-  // Handle sync status
-  useEffect(() => {
-    const unsubscribeStart = window.api.onSyncStart(() => {
-      setIsSyncing(true);
-      setSyncMessage("Syncing...");
-    });
+  // Parse tags from query to check if there's a search on Browse tab
+  const tags = useMemo(() => {
+    if (!query.trim()) return [];
+    return query
+      .split(/[,\s]+/)
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+  }, [query]);
 
-    const unsubscribeEnd = window.api.onSyncEnd(() => {
-      setIsSyncing(false);
-      setSyncMessage(null);
-    });
-
-    const unsubscribeProgress = window.api.onSyncProgress((message) => {
-      setSyncMessage(message);
-    });
-
-    return () => {
-      unsubscribeStart();
-      unsubscribeEnd();
-      unsubscribeProgress();
-    };
-  }, []);
+  // Determine if sort button should be enabled
+  const isSortEnabled = useMemo(() => {
+    if (activeTab === "browse") {
+      // On Browse tab, only enable if there's a search query (tags.length > 0)
+      return tags.length > 0;
+    }
+    // On all other tabs, always enable
+    return activeTab !== null && activeTab !== "settings";
+  }, [activeTab, tags.length]);
 
   const handleSearch = () => {
     // Trigger search update - pages will react to query change via useEffect
@@ -89,18 +76,12 @@ export const GlobalTopBar = () => {
     clearSearch();
   };
 
-  const handleSync = async () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
-    try {
-      log.info("[GlobalTopBar] Triggering Sync...");
-      await window.api.syncAll();
-    } catch (error) {
-      log.error("[GlobalTopBar] Sync failed:", error);
-    } finally {
-      setIsSyncing(false);
-    }
+  const handleSortToggle = () => {
+    toggleSortOrder();
   };
+
+  // Get appropriate sort icon based on sort order
+  const SortIcon = sortOrder === "desc" ? ArrowDownNarrowWide : ArrowUpNarrowWide;
 
   return (
     <header className="h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 flex items-center justify-between sticky top-0 z-10">
@@ -128,61 +109,24 @@ export const GlobalTopBar = () => {
 
       {/* Right: Actions */}
       <div className="flex gap-2 items-center">
-        {/* Safe Mode Toggle */}
-        <Button
-          variant={safeMode ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSafeMode(!safeMode)}
-          className={cn(
-            "gap-2 h-9 text-xs",
-            safeMode && "bg-primary text-primary-foreground"
-          )}
-          title={safeMode ? "Disable Safe Mode" : "Enable Safe Mode"}
-        >
-          <Shield className="w-3.5 h-3.5" />
-          Safe
-        </Button>
-
-        <div className="mx-1 w-px h-4 bg-border" />
-
-        {/* Sync Status */}
+        {/* Sort Button - Sort by date */}
         <Button
           variant="outline"
-          size="sm"
-          onClick={handleSync}
-          disabled={isSyncing}
-          className="gap-2 h-9 text-xs"
-          title={syncMessage || "Sync all artists"}
-        >
-          <RefreshCw
-            className={cn(
-              "w-3.5 h-3.5",
-              isSyncing && "animate-spin"
-            )}
-          />
-          {syncMessage ? (
-            <span className="max-w-[100px] truncate text-xs">
-              {syncMessage}
-            </span>
-          ) : (
-            <span className="text-xs">Sync</span>
+          size="icon"
+          onClick={handleSortToggle}
+          disabled={!isSortEnabled}
+          className={cn(
+            "h-9 w-9",
+            !isSortEnabled && "opacity-50 cursor-not-allowed"
           )}
+          title={
+            isSortEnabled
+              ? `Sort by date (${sortOrder === "desc" ? "newest first" : "oldest first"})`
+              : "Sorting not available"
+          }
+        >
+          <SortIcon className="w-4 h-4" />
         </Button>
-
-        <div className="mx-1 w-px h-4 bg-border" />
-
-        {/* Sort Dropdown */}
-        <Select defaultValue="date_desc">
-          <SelectTrigger className="w-[140px] h-9 text-xs">
-            <ArrowUpDown className="w-3.5 h-3.5 mr-2 opacity-70" />
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="date_desc">Date Added</SelectItem>
-            <SelectItem value="id_desc">Post ID</SelectItem>
-            <SelectItem value="rating">Rating</SelectItem>
-          </SelectContent>
-        </Select>
 
         {/* Filters Trigger */}
         <Button variant="outline" size="sm" className="gap-2 h-9 text-xs">

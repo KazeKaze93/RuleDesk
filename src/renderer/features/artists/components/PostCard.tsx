@@ -61,13 +61,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
               post.isViewed && "opacity-60 grayscale-[0.3]"
             )}
           />
-          {shouldBlur && panicMode && (
-            <div className="absolute inset-0 flex justify-center items-center bg-background/80">
-              <div className="text-xs font-medium text-muted-foreground">
-                Safe Mode Active
-              </div>
-            </div>
-          )}
         </div>
       ) : (
         <div 

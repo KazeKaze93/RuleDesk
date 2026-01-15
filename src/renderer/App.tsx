@@ -1,5 +1,5 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import log from "electron-log/renderer";
 
 import { AppLayout as Layout } from "./components/layout/AppLayout";
@@ -25,8 +25,17 @@ function App() {
     legalStatus: "loading",
     authStatus: "loading",
   });
+  const hasCheckedRef = useRef(false);
+  const retryCountRef = useRef(0);
+  const MAX_RETRIES = 3;
 
   useEffect(() => {
+    // Prevent double execution in React Strict Mode (dev)
+    if (hasCheckedRef.current) {
+      return;
+    }
+    hasCheckedRef.current = true;
+
     const checkStatus = async () => {
       try {
         const settings = await window.api.getSettings();
@@ -40,6 +49,9 @@ function App() {
           });
           return;
         }
+        
+        // Reset retry count on success
+        retryCountRef.current = 0;
         
         // Check Age Gate & ToS status
         // tosAcceptedAt is timestamp (number), null means not accepted
@@ -62,12 +74,31 @@ function App() {
           );
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isRateLimit = errorMessage.includes("Rate limit") || errorMessage.includes("too frequent");
+        
         log.error("[App] Failed to check status:", error);
-        // Don't immediately set to unconfirmed on error - might be rate limit or transient error
-        // Retry after a short delay
-        setTimeout(() => {
-          checkStatus();
-        }, 1000);
+        
+        // Handle rate limit errors with exponential backoff
+        if (isRateLimit && retryCountRef.current < MAX_RETRIES) {
+          retryCountRef.current += 1;
+          const delay = Math.min(1000 * Math.pow(2, retryCountRef.current - 1), 5000);
+          log.info(`[App] Rate limit detected, retrying in ${delay}ms (attempt ${retryCountRef.current}/${MAX_RETRIES})`);
+          setTimeout(() => {
+            checkStatus();
+          }, delay);
+          return;
+        }
+        
+        // For other errors or max retries exceeded, set to unconfirmed
+        if (retryCountRef.current >= MAX_RETRIES) {
+          log.error("[App] Max retries exceeded, setting to unconfirmed");
+        }
+        
+        setAppState({
+          legalStatus: "unconfirmed",
+          authStatus: "unauthenticated",
+        });
       }
     };
     checkStatus();

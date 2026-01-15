@@ -2,19 +2,24 @@ import { create } from "zustand";
 import log from "electron-log/renderer";
 
 type TabType = "browse" | "updates" | "favorites" | "tracked" | "settings";
+type SortOrder = "asc" | "desc";
 
 interface SearchState {
   query: string;
   activeTab: TabType | null;
+  sortOrder: SortOrder;
   
   setQuery: (query: string) => void;
   setActiveTab: (tab: TabType | null) => void;
   clearSearch: () => void;
+  setSortOrder: (order: SortOrder) => void;
+  toggleSortOrder: () => void;
 }
 
 export const useSearchStore = create<SearchState>((set) => ({
   query: "",
   activeTab: null,
+  sortOrder: "desc",
   
   setQuery: (query) => {
     // Basic validation: ensure query is a string and reasonable length
@@ -49,5 +54,9 @@ export const useSearchStore = create<SearchState>((set) => ({
   },
   setActiveTab: (tab) => set({ activeTab: tab }),
   clearSearch: () => set({ query: "" }),
+  setSortOrder: (order) => set({ sortOrder: order }),
+  toggleSortOrder: () => set((state) => ({ 
+    sortOrder: state.sortOrder === "desc" ? "asc" : "desc" 
+  })),
 }));
 

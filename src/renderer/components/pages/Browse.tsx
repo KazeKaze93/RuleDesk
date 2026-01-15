@@ -103,9 +103,26 @@ export const Browse = () => {
       // Always enabled - empty tags array means show all posts
     });
 
+  const sortOrder = useSearchStore((state) => state.sortOrder);
+
   const allPosts = useMemo(() => {
-    return data?.pages.flatMap((page) => page) || [];
-  }, [data]);
+    const posts = data?.pages.flatMap((page) => page) || [];
+    // Sort by publishedAt (date of post creation)
+    return [...posts].sort((a, b) => {
+      const dateA = a.publishedAt instanceof Date 
+        ? a.publishedAt.getTime() 
+        : typeof a.publishedAt === "number" 
+        ? a.publishedAt 
+        : 0;
+      const dateB = b.publishedAt instanceof Date 
+        ? b.publishedAt.getTime() 
+        : typeof b.publishedAt === "number" 
+        ? b.publishedAt 
+        : 0;
+      
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    });
+  }, [data, sortOrder]);
 
   // Create stable List component with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render

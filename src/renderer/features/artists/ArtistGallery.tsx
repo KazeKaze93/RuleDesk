@@ -15,6 +15,7 @@ import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
+import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "./components/PostCard";
 
 interface ArtistGalleryProps {
@@ -92,9 +93,26 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       initialPageParam: 1,
     });
 
+  const sortOrder = useSearchStore((state) => state.sortOrder);
+
   const allPosts = useMemo(() => {
-    return data?.pages.flatMap((page) => page) || [];
-  }, [data]);
+    const posts = data?.pages.flatMap((page) => page) || [];
+    // Sort by publishedAt (date of post creation)
+    return [...posts].sort((a, b) => {
+      const dateA = a.publishedAt instanceof Date 
+        ? a.publishedAt.getTime() 
+        : typeof a.publishedAt === "number" 
+        ? a.publishedAt 
+        : 0;
+      const dateB = b.publishedAt instanceof Date 
+        ? b.publishedAt.getTime() 
+        : typeof b.publishedAt === "number" 
+        ? b.publishedAt 
+        : 0;
+      
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    });
+  }, [data, sortOrder]);
 
   // Create stable List component with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
