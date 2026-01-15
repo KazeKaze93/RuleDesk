@@ -60,3 +60,6 @@ repomix-output.txt
 # --- Testing ---
 /playwright-report/
 /test-results/
+
+# --- Documentation ---
+LESSONS.md

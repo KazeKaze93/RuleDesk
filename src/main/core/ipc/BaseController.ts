@@ -45,6 +45,11 @@ export abstract class BaseController {
   // TTL for throttle map entries (1 hour) - prevents memory leak from dynamic channel names
   private static readonly THROTTLE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+  // Cleanup interval: cleanup throttle map every N calls to prevent memory leak
+  // Use counter instead of random to ensure predictable cleanup behavior
+  private static readonly CLEANUP_INTERVAL_CALLS = 1000; // Cleanup every 1000 calls
+  private static callCount = 0; // Counter for tracking IPC calls
+
   /**
    * Protected helper to register IPC handlers with centralized error handling and input validation
    *
@@ -93,8 +98,13 @@ export abstract class BaseController {
           const now = Date.now();
 
           // Cleanup old entries to prevent memory leak (TTL-based cleanup)
-          // Only cleanup every 1000 calls to avoid performance overhead
-          if (BaseController.throttleMap.size > 100 && Math.random() < 0.001) {
+          // Use call counter instead of random for predictable cleanup behavior
+          BaseController.callCount++;
+          if (
+            BaseController.throttleMap.size > 100 &&
+            BaseController.callCount >= BaseController.CLEANUP_INTERVAL_CALLS
+          ) {
+            BaseController.callCount = 0; // Reset counter
             for (const [
               key,
               timestamp,
@@ -139,16 +149,17 @@ export abstract class BaseController {
           // Strict validation: Check argument count BEFORE parsing
           // This prevents silent failures when Renderer sends wrong number of arguments
           if (isTuple) {
-            // Access items length safely - ZodTuple.items is a readonly array
-            // Use type assertion to access items.length (Zod's internal structure)
-            // @ts-expect-error - ZodTuple.items is readonly array, but we need to check length
+            // Access items length safely - use type guard and explicit type checking
+            // ZodTuple has items property that is a readonly array
             const tupleSchema = schema as z.ZodTuple<
               readonly z.ZodTypeAny[],
               z.ZodTypeAny | null
             >;
-            const expectedCount = (
-              tupleSchema as unknown as { items: readonly z.ZodTypeAny[] }
-            ).items.length;
+            // Use type guard to safely access items.length
+            const expectedCount =
+              "items" in tupleSchema && Array.isArray(tupleSchema.items)
+                ? tupleSchema.items.length
+                : 1; // Fallback to 1 if structure is unexpected
             if (args.length !== expectedCount) {
               const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
               // Security: Log only error details, not sanitized args (may still leak info)
@@ -269,16 +280,17 @@ export abstract class BaseController {
             throw validationError;
           }
 
+          // Electron IPC quirk: pure Error objects don't serialize well via invoke
+          // Serialize error to plain object, but hide sensitive details in production
+          // Security: Never log stack traces in production - they may contain file paths
+          const isProduction = process.env.NODE_ENV === "production";
+          
           // Log error details for debugging (without sensitive argument data)
           log.error(`[IPC] Error in channel "${channel}":`, {
             message: error instanceof Error ? error.message : "Unknown error",
-            stack: error instanceof Error ? error.stack : undefined,
+            stack: isProduction ? undefined : (error instanceof Error ? error.stack : undefined),
             // Security: Do not log args - they may contain sensitive data even after sanitization
           });
-
-          // Electron IPC quirk: pure Error objects don't serialize well via invoke
-          // Serialize error to plain object, but hide sensitive details in production
-          const isProduction = process.env.NODE_ENV === "production";
 
           // Determine error code based on error type/message
           let errorCode: ErrorCode = ErrorCode.UNKNOWN_ERROR;

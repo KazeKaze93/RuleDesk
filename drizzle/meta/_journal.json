@@ -50,6 +50,13 @@
       "when": 1700000006000,
       "tag": "0008_add_tag_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1700000007000,
+      "tag": "0009_add_media_type",
+      "breakpoints": true
     }
   ]
 }

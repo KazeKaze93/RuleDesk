@@ -35,7 +35,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
   return (
     <button
       type="button"
-      tabIndex={0}
+      tabIndex={-1}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -45,6 +45,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
       aria-label={`View post ${post.id}. Rating: ${post.rating}. ${
         isVid ? "Video" : "Image"
       }.`}
+      role="button"
       className={cn(
         "group relative w-full overflow-hidden rounded-lg border bg-card transition-all cursor-pointer",
         // Grid: fixed aspect ratio, Masonry: natural aspect ratio (height auto)

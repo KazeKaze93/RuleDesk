@@ -9,6 +9,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
 import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
 import type { BooruPost } from "../providers/types";
+import { isVideoUrl } from "../lib/media-utils";
 
 // SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
 // Each post has ~12 fields for INSERT + ~6 for UPDATE in onConflictDoUpdate
@@ -39,6 +40,7 @@ function bulkUpsertPosts(
           previewUrl: sql`excluded.preview_url`,
           tags: sql`excluded.tags`,
           rating: sql`excluded.rating`,
+          mediaType: sql`excluded.media_type`,
           publishedAt: sql`excluded.published_at`,
         },
       })
@@ -400,6 +402,7 @@ export class SyncService {
           title: "",
           rating: p.rating,
           tags: p.tags.join(" "),
+          mediaType: isVideoUrl(p.fileUrl) ? "video" : "image",
           publishedAt: p.createdAt,
           isViewed: false,
           isFavorited: false,

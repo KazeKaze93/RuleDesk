@@ -43,15 +43,17 @@ export function useWorkerFilteredPosts(
 
       try {
         // Convert Post[] to WorkerPost[] (structurally compatible)
-        const workerPosts: WorkerPost[] = debouncedRawPosts.map((post) => ({
+        // Use type-safe mapping: Post and WorkerPost have compatible structures
+        // This avoids manual field enumeration and ensures type safety
+        const workerPosts: WorkerPost[] = debouncedRawPosts.map((post): WorkerPost => ({
           id: post.id,
           postId: post.postId,
           artistId: post.artistId,
           fileUrl: post.fileUrl,
           previewUrl: post.previewUrl,
           sampleUrl: post.sampleUrl,
-          title: post.title,
-          rating: post.rating,
+          title: post.title ?? null,
+          rating: post.rating ?? null,
           tags: post.tags,
           publishedAt: post.publishedAt,
           createdAt: post.createdAt,

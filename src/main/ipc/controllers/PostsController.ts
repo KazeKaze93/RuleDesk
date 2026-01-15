@@ -33,6 +33,7 @@ import {
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { escapeLikePattern } from "../../db/utils";
+import { isVideoUrl } from "../../lib/media-utils";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -423,35 +424,12 @@ export class PostsController extends BaseController {
       }
     }
 
-    // Media type filter: filter by file extension in posts.fileUrl
-    // NOTE: LIKE "%...%" causes Full Table Scan. For production, consider adding media_type column
-    // with index during post indexing. For now, we use LIKE but with optimized patterns.
-    // TODO: Add media_type column (enum: 'image' | 'video') to posts table with index
+    // Media type filter: use indexed media_type column for efficient filtering
+    // Replaces slow LIKE "%...%" queries that cause Full Table Scan
     if (filters?.mediaType === "videos") {
-      // Only videos: fileUrl ends with video extensions
-      // Use LIKE with trailing wildcard only (more efficient than leading wildcard)
-      // Pattern: fileUrl LIKE '%.mp4' OR fileUrl LIKE '%.mp4%' (handles query params)
-      const videoConditions = [
-        sql`${posts.fileUrl} LIKE ${"%.mp4"} ESCAPE '\\'`,
-        sql`${posts.fileUrl} LIKE ${"%.mp4%"} ESCAPE '\\'`,
-        sql`${posts.fileUrl} LIKE ${"%.webm"} ESCAPE '\\'`,
-        sql`${posts.fileUrl} LIKE ${"%.webm%"} ESCAPE '\\'`,
-        sql`${posts.fileUrl} LIKE ${"%.mov"} ESCAPE '\\'`,
-        sql`${posts.fileUrl} LIKE ${"%.mov%"} ESCAPE '\\'`,
-      ];
-      conditions.push(or(...videoConditions) as SQL);
+      conditions.push(eq(posts.mediaType, "video"));
     } else if (filters?.mediaType === "images") {
-      // Only images: fileUrl does NOT end with video extensions
-      // Use trailing wildcard patterns for better index usage
-      const notVideoConditions = [
-        not(sql`${posts.fileUrl} LIKE ${"%.mp4"} ESCAPE '\\'`),
-        not(sql`${posts.fileUrl} LIKE ${"%.mp4%"} ESCAPE '\\'`),
-        not(sql`${posts.fileUrl} LIKE ${"%.webm"} ESCAPE '\\'`),
-        not(sql`${posts.fileUrl} LIKE ${"%.webm%"} ESCAPE '\\'`),
-        not(sql`${posts.fileUrl} LIKE ${"%.mov"} ESCAPE '\\'`),
-        not(sql`${posts.fileUrl} LIKE ${"%.mov%"} ESCAPE '\\'`),
-      ];
-      conditions.push(and(...notVideoConditions) as SQL);
+      conditions.push(eq(posts.mediaType, "image"));
     }
 
     return conditions;
@@ -675,6 +653,7 @@ export class PostsController extends BaseController {
             title: "",
             rating: postData.rating ?? "",
             tags: postData.tags ?? "",
+            mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
             publishedAt: publishedAt,
             createdAt: now,
             isViewed: true, // Set to true since we're marking as viewed
@@ -886,6 +865,7 @@ export class PostsController extends BaseController {
               title: "",
               rating: postData.rating ?? "",
               tags: postData.tags ?? "", // NOT NULL constraint - empty string is valid
+              mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
               publishedAt: publishedAt,
               createdAt: now,
               isViewed: false,

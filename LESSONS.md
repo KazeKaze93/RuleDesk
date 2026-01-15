@@ -18,14 +18,14 @@ React Hooks must be called in the same order on every render. Calling hooks cond
 
 ```tsx
 <VirtuosoGrid
-  endReached={useCallback(() => { ... }, [deps])}  // ❌ Hook inside JSX
+  endReached={useCallback(() => { ... }, [deps])}  // тЭМ Hook inside JSX
 />
 ```
 
 ### Example (CORRECT):
 
 ```tsx
-const handleEndReached = useCallback(() => { ... }, [deps]);  // ✅ Hook at top level
+const handleEndReached = useCallback(() => { ... }, [deps]);  // тЬЕ Hook at top level
 
 <VirtuosoGrid
   endReached={handleEndReached}
@@ -38,7 +38,7 @@ const handleEndReached = useCallback(() => { ... }, [deps]);  // ✅ Hook at top
 
 ### Problem
 
-Changing filter structure (e.g., `hideAiGenerated: boolean` → `aiFilter: "all" | "hide" | "only"`) requires updating all components that use the filter.
+Changing filter structure (e.g., `hideAiGenerated: boolean` тЖТ `aiFilter: "all" | "hide" | "only"`) requires updating all components that use the filter.
 
 ### Solution
 
@@ -218,13 +218,13 @@ Desktop applications require proper spacing and density to feel professional. To
 
 ```tsx
 // Container width
-<PopoverContent className="w-80" align="end">  // ✅ 320px standard
+<PopoverContent className="w-80" align="end">  // тЬЕ 320px standard
 
 // ToggleGroup with equal distribution
 <ToggleGroup className="w-full">
-  <ToggleGroupItem className="flex-1 gap-2">  // ✅ Equal width, proper gap
-    <Icon className="w-3.5 h-3.5 shrink-0" />  // ✅ Readable size
-    <span className="text-xs">Full Text</span>  // ✅ No truncate
+  <ToggleGroupItem className="flex-1 gap-2">  // тЬЕ Equal width, proper gap
+    <Icon className="w-3.5 h-3.5 shrink-0" />  // тЬЕ Readable size
+    <span className="text-xs">Full Text</span>  // тЬЕ No truncate
   </ToggleGroupItem>
 </ToggleGroup>
 ```
@@ -261,7 +261,7 @@ Disabled options and section headers need clear visual hierarchy and user feedba
 <ToggleGroupItem
   disabled={true}
   className="opacity-50 cursor-not-allowed"
-  title="Coming soon"  // ✅ Native tooltip
+  title="Coming soon"  // тЬЕ Native tooltip
 >
   {label}
 </ToggleGroupItem>
@@ -287,12 +287,12 @@ Toggle groups and flex containers need proper width management to prevent squish
 ```tsx
 <ToggleGroup className="w-full">
   {" "}
-  // ✅ Full width
+  // тЬЕ Full width
   <ToggleGroupItem className="flex-1 gap-2">
     {" "}
-    // ✅ Equal distribution
-    <Icon className="w-3.5 h-3.5 shrink-0" /> // ✅ Icon won't shrink
-    <span className="text-xs">Text</span> // ✅ Text can wrap if needed
+    // тЬЕ Equal distribution
+    <Icon className="w-3.5 h-3.5 shrink-0" /> // тЬЕ Icon won't shrink
+    <span className="text-xs">Text</span> // тЬЕ Text can wrap if needed
   </ToggleGroupItem>
 </ToggleGroup>
 ```
@@ -470,8 +470,8 @@ const rawPosts = useMemo(() => data?.pages.flat() || [], [data]);
 const allPosts = useMemo(() => rawPosts.filter(...), [rawPosts, filters]);
 
 <VirtuosoGrid
-  totalCount={rawPosts.length}  // ❌ 1000 items
-  itemContent={(index) => allPosts[index]}  // ❌ Only 10 valid = 990 empty holes
+  totalCount={rawPosts.length}  // тЭМ 1000 items
+  itemContent={(index) => allPosts[index]}  // тЭМ Only 10 valid = 990 empty holes
 />
 ```
 
@@ -482,9 +482,9 @@ const rawPosts = useMemo(() => data?.pages.flat() || [], [data]);
 const allPosts = useMemo(() => rawPosts.filter(...), [rawPosts, filters]);
 
 <VirtuosoGrid
-  totalCount={allPosts.length}  // ✅ 10 items = no empty holes
-  itemContent={(index) => allPosts[index]}  // ✅ All indices valid
-  endReached={handleEndReached}  // ✅ Still works on rawPosts for loading
+  totalCount={allPosts.length}  // тЬЕ 10 items = no empty holes
+  itemContent={(index) => allPosts[index]}  // тЬЕ All indices valid
+  endReached={handleEndReached}  // тЬЕ Still works on rawPosts for loading
 />
 ```
 
@@ -516,7 +516,7 @@ useEffect(() => {
     try { ... }
     catch (error) {
       if (isRateLimit && retryCountRef.current < MAX_RETRIES) {
-        setTimeout(() => { checkStatus(); }, delay);  // ❌ No cleanup
+        setTimeout(() => { checkStatus(); }, delay);  // тЭМ No cleanup
       }
     }
   };
@@ -534,7 +534,7 @@ useEffect(() => {
     try { ... }
     catch (error) {
       if (isRateLimit && retryCountRef.current < MAX_RETRIES) {
-        timeoutId = setTimeout(() => { checkStatus(); }, delay);  // ✅ Store ID
+        timeoutId = setTimeout(() => { checkStatus(); }, delay);  // тЬЕ Store ID
       }
     }
   };
@@ -543,7 +543,7 @@ useEffect(() => {
 
   return () => {
     if (timeoutId) {
-      clearTimeout(timeoutId);  // ✅ Cleanup
+      clearTimeout(timeoutId);  // тЬЕ Cleanup
     }
   };
 }, []);
@@ -573,7 +573,7 @@ In `onError` handlers, setting `img.src = post.fileUrl` can create infinite loop
 onError={(e) => {
   const img = e.currentTarget;
   if (img.src !== post.fileUrl && post.fileUrl) {
-    img.src = post.fileUrl;  // ❌ If fileUrl also fails, infinite loop
+    img.src = post.fileUrl;  // тЭМ If fileUrl also fails, infinite loop
   }
 }}
 ```
@@ -585,9 +585,9 @@ onError={(e) => {
   const img = e.currentTarget;
   // Use includes() to handle query parameters and prevent loop
   if (post.fileUrl && !img.src.includes(post.fileUrl)) {
-    img.src = post.fileUrl;  // ✅ Try fallback once
+    img.src = post.fileUrl;  // тЬЕ Try fallback once
   } else {
-    setImageError(true);  // ✅ Stop retrying, show error
+    setImageError(true);  // тЬЕ Stop retrying, show error
   }
 }}
 ```
@@ -616,7 +616,7 @@ Using `endsWith('.mp4')` breaks with query parameters like `?token=...` or `?v=1
 ```tsx
 export function isVideoPost(fileUrl: string | undefined | null): boolean {
   if (!fileUrl) return false;
-  return fileUrl.endsWith(".mp4") || fileUrl.endsWith(".webm"); // ❌ Breaks with ?token=abc
+  return fileUrl.endsWith(".mp4") || fileUrl.endsWith(".webm"); // тЭМ Breaks with ?token=abc
 }
 ```
 
@@ -630,23 +630,23 @@ export function isVideoPost(fileUrl: string | undefined | null): boolean {
     // Parse URL to handle query parameters
     const url = new URL(fileUrl);
     const path = url.pathname;
-    return /\.(mp4|webm|mov)$/i.test(path); // ✅ Works with query params
+    return /\.(mp4|webm|mov)$/i.test(path); // тЬЕ Works with query params
   } catch {
     // Fallback for relative paths or invalid URLs
     const pathMatch = fileUrl.match(/^[^?#]+/);
     const path = pathMatch ? pathMatch[0] : fileUrl;
-    return /\.(mp4|webm|mov)$/i.test(path); // ✅ Handles relative paths
+    return /\.(mp4|webm|mov)$/i.test(path); // тЬЕ Handles relative paths
   }
 }
 ```
 
 ### Benefits:
 
-- ✅ Handles query parameters: `video.mp4?token=abc`
-- ✅ Handles hash fragments: `video.mp4#section`
-- ✅ Case-insensitive: `.MP4`, `.mp4` both work
-- ✅ Handles relative paths: `/path/to/video.mp4`
-- ✅ Graceful fallback for invalid URLs
+- тЬЕ Handles query parameters: `video.mp4?token=abc`
+- тЬЕ Handles hash fragments: `video.mp4#section`
+- тЬЕ Case-insensitive: `.MP4`, `.mp4` both work
+- тЬЕ Handles relative paths: `/path/to/video.mp4`
+- тЬЕ Graceful fallback for invalid URLs
 
 ---
 
@@ -666,8 +666,8 @@ Using `any` in tests reduces type safety and can hide real bugs. Tests should ca
 ### Example (WRONG):
 
 ```tsx
-let mockObserver: any; // ❌ No type safety
-let observer: any = null; // ❌ Hides type errors
+let mockObserver: any; // тЭМ No type safety
+let observer: any = null; // тЭМ Hides type errors
 ```
 
 ### Example (CORRECT):
@@ -678,9 +678,9 @@ let mockObserver: Partial<IntersectionObserver> & {
   disconnect: ReturnType<typeof vi.fn>;
   options?: IntersectionObserverInit;
   callback?: IntersectionObserverCallback;
-}; // ✅ Properly typed
+}; // тЬЕ Properly typed
 
-let observer: IntersectionObserver | null = null; // ✅ Explicit nullable type
+let observer: IntersectionObserver | null = null; // тЬЕ Explicit nullable type
 ```
 
 ### Key Insight:
@@ -705,26 +705,26 @@ Unused imports and variables clutter code and can cause confusion. TypeScript's 
 ### Common Patterns:
 
 ```tsx
-// ❌ Unused import
+// тЭМ Unused import
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 
-// ❌ Unused variable from destructuring
+// тЭМ Unused variable from destructuring
 const { data, allPosts, ... } = useGalleryInfiniteScroll(...);
 
-// ❌ Unused computed value
+// тЭМ Unused computed value
 const hasActiveFilters = useMemo(() => { ... }, [filters]);
 ```
 
 ### Fix:
 
 ```tsx
-// ✅ Remove unused import
+// тЬЕ Remove unused import
 // import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 
-// ✅ Remove unused from destructuring
+// тЬЕ Remove unused from destructuring
 const { allPosts, ... } = useGalleryInfiniteScroll(...);
 
-// ✅ Remove unused variable
+// тЬЕ Remove unused variable
 // const hasActiveFilters = useMemo(() => { ... }, [filters]);
 ```
 
