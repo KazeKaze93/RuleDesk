@@ -133,7 +133,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Tracked />} />
+          <Route index element={<Browse />} />
           <Route path="tracked" element={<Tracked />} />
           <Route path="artist/:id" element={<ArtistDetails />} />
           <Route path="browse" element={<Browse />} />

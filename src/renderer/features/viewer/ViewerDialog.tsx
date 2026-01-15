@@ -78,7 +78,13 @@ const useCurrentPost = (
         return ["posts", "favorites", tags] as const;
       }
       case "artist": {
-        const tags = origin.tags ?? [];
+        // CRITICAL: Match query key from ArtistGallery.tsx
+        // When tags is undefined or empty, use ["posts", artistId] (no tags in key)
+        // This ensures cache lookup matches the query key used for fetching artist posts
+        const tags = origin.tags;
+        if (tags === undefined || tags.length === 0) {
+          return ["posts", origin.artistId] as const;
+        }
         return ["posts", origin.artistId, tags] as const;
       }
       case "search": {
