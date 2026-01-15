@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Mock electron-log
-vi.mock('electron-log/renderer', () => ({
+vi.mock("electron-log/renderer", () => ({
   default: {
     info: vi.fn(),
     error: vi.fn(),
@@ -11,24 +11,23 @@ vi.mock('electron-log/renderer', () => ({
 }));
 
 // Mock React hooks
-vi.mock('react', () => ({
-  useCallback: <T,>(fn: T) => fn,
+vi.mock("react", () => ({
+  useCallback: <T>(fn: T) => fn,
   useEffect: (fn: () => void | (() => void)) => {
     // Return cleanup function
     return fn();
   },
-  useRef: <T,>(initial: T) => ({ current: initial }),
+  useRef: <T>(initial: T) => ({ current: initial }),
 }));
 
 // Mock @tanstack/react-query
 const mockUseInfiniteQuery = vi.fn();
-vi.mock('@tanstack/react-query', () => ({
+vi.mock("@tanstack/react-query", () => ({
   useInfiniteQuery: (options: unknown) => mockUseInfiniteQuery(options),
 }));
 
 // Test pagination logic directly (without React rendering)
-describe('useGalleryInfiniteScroll - Pagination Logic', () => {
-
+describe("useGalleryInfiniteScroll - Pagination Logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -37,40 +36,55 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
     vi.restoreAllMocks();
   });
 
-  describe('Default pagination logic (Local DB)', () => {
-    it('should return next page if last page has exactly POSTS_PER_PAGE items', () => {
+  describe("Default pagination logic (Local DB)", () => {
+    it("should return next page if last page has exactly POSTS_PER_PAGE items", () => {
       const POSTS_PER_PAGE = 50;
       const lastPage = Array.from({ length: 50 }, (_, i) => ({ id: i + 1 }));
       const allPages = [lastPage];
 
-      const defaultGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
-        return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
+      const defaultGetNextPageParam = (
+        lastPage: unknown[],
+        allPages: unknown[][]
+      ) => {
+        return lastPage.length === POSTS_PER_PAGE
+          ? allPages.length + 1
+          : undefined;
       };
 
       const result = defaultGetNextPageParam(lastPage, allPages);
       expect(result).toBe(2);
     });
 
-    it('should return undefined if last page has less than POSTS_PER_PAGE items', () => {
+    it("should return undefined if last page has less than POSTS_PER_PAGE items", () => {
       const POSTS_PER_PAGE = 50;
       const lastPage = Array.from({ length: 30 }, (_, i) => ({ id: i + 1 }));
       const allPages = [lastPage];
 
-      const defaultGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
-        return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
+      const defaultGetNextPageParam = (
+        lastPage: unknown[],
+        allPages: unknown[][]
+      ) => {
+        return lastPage.length === POSTS_PER_PAGE
+          ? allPages.length + 1
+          : undefined;
       };
 
       const result = defaultGetNextPageParam(lastPage, allPages);
       expect(result).toBeUndefined();
     });
 
-    it('should return undefined if last page is empty', () => {
+    it("should return undefined if last page is empty", () => {
       const POSTS_PER_PAGE = 50;
       const lastPage: unknown[] = [];
       const allPages = [lastPage];
 
-      const defaultGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
-        return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
+      const defaultGetNextPageParam = (
+        lastPage: unknown[],
+        allPages: unknown[][]
+      ) => {
+        return lastPage.length === POSTS_PER_PAGE
+          ? allPages.length + 1
+          : undefined;
       };
 
       const result = defaultGetNextPageParam(lastPage, allPages);
@@ -78,12 +92,15 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
     });
   });
 
-  describe('Custom pagination logic (External API - Browse)', () => {
-    it('should continue loading if page has any posts', () => {
+  describe("Custom pagination logic (External API - Browse)", () => {
+    it("should continue loading if page has any posts", () => {
       const lastPage = Array.from({ length: 30 }, (_, i) => ({ id: i + 1 }));
       const allPages = [lastPage];
 
-      const browseGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
+      const browseGetNextPageParam = (
+        lastPage: unknown[],
+        allPages: unknown[][]
+      ) => {
         if (lastPage.length === 0) return undefined;
         return allPages.length + 1;
       };
@@ -92,11 +109,14 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
       expect(result).toBe(2);
     });
 
-    it('should stop loading only when page is empty', () => {
+    it("should stop loading only when page is empty", () => {
       const lastPage: unknown[] = [];
       const allPages = [lastPage];
 
-      const browseGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
+      const browseGetNextPageParam = (
+        lastPage: unknown[],
+        allPages: unknown[][]
+      ) => {
         if (lastPage.length === 0) return undefined;
         return allPages.length + 1;
       };
@@ -105,11 +125,14 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should continue loading even with less than 50 posts', () => {
+    it("should continue loading even with less than 50 posts", () => {
       const lastPage = Array.from({ length: 10 }, (_, i) => ({ id: i + 1 }));
       const allPages = [lastPage];
 
-      const browseGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
+      const browseGetNextPageParam = (
+        lastPage: unknown[],
+        allPages: unknown[][]
+      ) => {
         if (lastPage.length === 0) return undefined;
         return allPages.length + 1;
       };
@@ -119,24 +142,29 @@ describe('useGalleryInfiniteScroll - Pagination Logic', () => {
     });
   });
 
-  describe('Pagination edge cases', () => {
-    it('should handle multiple pages correctly', () => {
+  describe("Pagination edge cases", () => {
+    it("should handle multiple pages correctly", () => {
       const page1 = Array.from({ length: 50 }, (_, i) => ({ id: i + 1 }));
       const page2 = Array.from({ length: 50 }, (_, i) => ({ id: i + 51 }));
       const page3 = Array.from({ length: 30 }, (_, i) => ({ id: i + 101 }));
       const allPages = [page1, page2, page3];
 
-      const defaultGetNextPageParam = (lastPage: unknown[], allPages: unknown[][]) => {
+      const defaultGetNextPageParam = (
+        lastPage: unknown[],
+        allPages: unknown[][]
+      ) => {
         const POSTS_PER_PAGE = 50;
-        return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
+        return lastPage.length === POSTS_PER_PAGE
+          ? allPages.length + 1
+          : undefined;
       };
 
       // Test page 1 -> page 2
       expect(defaultGetNextPageParam(page1, [page1])).toBe(2);
-      
+
       // Test page 2 -> page 3
       expect(defaultGetNextPageParam(page2, [page1, page2])).toBe(3);
-      
+
       // Test page 3 (last, < 50) -> stop
       expect(defaultGetNextPageParam(page3, allPages)).toBeUndefined();
     });

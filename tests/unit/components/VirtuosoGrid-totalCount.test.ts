@@ -1,13 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 
 /**
  * Tests to verify VirtuosoGrid totalCount logic
  * Ensures totalCount matches filtered posts to avoid empty holes in virtualization
  */
 
-describe('VirtuosoGrid totalCount Logic', () => {
-  describe('totalCount should match filtered posts', () => {
-    it('should use allPosts.length for totalCount (not rawPosts.length)', () => {
+describe("VirtuosoGrid totalCount Logic", () => {
+  describe("totalCount should match filtered posts", () => {
+    it("should use allPosts.length for totalCount (not rawPosts.length)", () => {
       // Simulate scenario: 1000 raw posts, filter leaves 10
       const rawPosts = Array.from({ length: 1000 }, (_, i) => ({ id: i + 1 }));
       const allPosts = rawPosts.filter((_, i) => i < 10); // Filter leaves 10 posts
@@ -18,14 +18,14 @@ describe('VirtuosoGrid totalCount Logic', () => {
       // totalCount should match filtered posts
       expect(totalCount).toBe(10);
       expect(totalCount).not.toBe(rawCount);
-      
+
       // Verify that itemContent will receive valid indices
       for (let i = 0; i < totalCount; i++) {
         expect(allPosts[i]).toBeDefined();
       }
     });
 
-    it('should handle case when all posts are filtered out', () => {
+    it("should handle case when all posts are filtered out", () => {
       const _rawPosts = Array.from({ length: 100 }, (_, i) => ({ id: i + 1 }));
       const allPosts: typeof rawPosts = []; // All filtered out
 
@@ -35,7 +35,7 @@ describe('VirtuosoGrid totalCount Logic', () => {
       // VirtuosoGrid with totalCount=0 won't render items, which is correct
     });
 
-    it('should handle case when no filters applied (allPosts === rawPosts)', () => {
+    it("should handle case when no filters applied (allPosts === rawPosts)", () => {
       const rawPosts = Array.from({ length: 50 }, (_, i) => ({ id: i + 1 }));
       const allPosts = rawPosts; // No filters
 
@@ -46,7 +46,7 @@ describe('VirtuosoGrid totalCount Logic', () => {
       expect(totalCount).toBe(50);
     });
 
-    it('should ensure itemContent indices are always valid', () => {
+    it("should ensure itemContent indices are always valid", () => {
       const rawPosts = Array.from({ length: 100 }, (_, i) => ({ id: i + 1 }));
       // Filter: keep only even IDs
       const allPosts = rawPosts.filter((post) => post.id % 2 === 0);
@@ -64,8 +64,8 @@ describe('VirtuosoGrid totalCount Logic', () => {
     });
   });
 
-  describe('endReached should work on rawPosts for infinite scroll', () => {
-    it('should continue loading based on rawPosts, not filtered allPosts', () => {
+  describe("endReached should work on rawPosts for infinite scroll", () => {
+    it("should continue loading based on rawPosts, not filtered allPosts", () => {
       // Scenario: Filter hides most posts, but we still want to load more raw data
       const rawPosts = Array.from({ length: 50 }, (_, i) => ({ id: i + 1 }));
       const allPosts = rawPosts.filter((_, i) => i < 5); // Filter leaves 5
@@ -77,7 +77,7 @@ describe('VirtuosoGrid totalCount Logic', () => {
 
       expect(shouldLoadMore).toBe(true); // Should continue loading
       expect(filteredCount).toBe(5); // But only 5 visible
-      
+
       // This is correct: we load more raw data, filters apply to new data too
     });
   });
