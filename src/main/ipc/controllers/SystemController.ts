@@ -1,5 +1,7 @@
 import { app, clipboard, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
+import path from "node:path";
+import { readFileSync, existsSync } from "fs";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 
@@ -17,6 +19,7 @@ export class SystemController extends BaseController {
    */
   public setup(): void {
     this.handle("app:get-version", z.tuple([]), this.getAppVersion.bind(this));
+    this.handle("app:get-icon-path", z.tuple([]), this.getIconPath.bind(this));
     this.handle("app:quit", z.tuple([]), this.quitApp.bind(this));
     this.handle(
       "app:write-to-clipboard",
@@ -37,6 +40,60 @@ export class SystemController extends BaseController {
     const version = app.getVersion();
     log.info(`[SystemController] Version requested: ${version}`);
     return version;
+  }
+
+  /**
+   * Get application icon as base64 data URL
+   *
+   * @returns Base64 data URL of icon.png for use in img src
+   */
+  private async getIconPath(_event: IpcMainInvokeEvent): Promise<string> {
+    log.info("[SystemController] getIconPath called");
+    try {
+      const isDev = process.env.NODE_ENV === "development";
+      
+      let iconPath: string;
+      if (isDev) {
+        iconPath = path.join(process.cwd(), "resources", "icons", "icon.png");
+      } else {
+        // In production, resources folder should be at the app root level
+        iconPath = path.join(app.getAppPath(), "..", "resources", "icons", "icon.png");
+      }
+      
+      log.info(`[SystemController] Attempting to load icon from: ${iconPath}`);
+      
+      // Check if file exists before reading
+      if (!existsSync(iconPath)) {
+        const errorMsg = `Icon file not found at: ${iconPath}`;
+        log.error(`[SystemController] ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+      
+      // Read file and convert to base64 data URL
+      const iconBuffer = readFileSync(iconPath);
+      const fileSizeKB = Math.round(iconBuffer.length / 1024);
+      
+      // Check file size - warn if too large (may cause performance issues)
+      if (iconBuffer.length > 1024 * 1024) {
+        log.warn(`[SystemController] Icon file is large (${fileSizeKB}KB), may cause performance issues`);
+      }
+      
+      const base64 = iconBuffer.toString("base64");
+      const dataUrl = `data:image/png;base64,${base64}`;
+      
+      log.info(`[SystemController] Icon loaded successfully from: ${iconPath} (${fileSizeKB}KB, ${dataUrl.length} chars in data URL)`);
+      return dataUrl;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      log.error("[SystemController] Failed to load icon:", {
+        message: errorMessage,
+        stack: errorStack,
+        error: String(error),
+      });
+      // Re-throw error so BaseController can serialize it properly
+      throw new Error(`Failed to load icon: ${errorMessage}`);
+    }
   }
 
   /**

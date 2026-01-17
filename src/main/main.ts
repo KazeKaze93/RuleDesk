@@ -1,6 +1,6 @@
-import { app, BrowserWindow, dialog } from "electron";
-import path from "path";
-import { mkdirSync } from "fs";
+import { app, BrowserWindow, dialog, Tray, nativeImage } from "electron";
+import path from "node:path";
+import { mkdirSync, existsSync } from "fs";
 import log from "electron-log";
 
 // === Initialize electron-log first ===
@@ -84,6 +84,7 @@ migrateUserData();
 process.env.USER_DATA_PATH = app.getPath("userData");
 
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -99,7 +100,13 @@ if (!gotTheLock) {
     }
   });
 
-  app.on("ready", initializeAppAndWindow);
+  app.on("ready", () => {
+    // Set app user model ID for Windows taskbar (helps with icon display)
+    if (process.platform === "win32") {
+      app.setAppUserModelId("com.kaze.ruledesk");
+    }
+    initializeAppAndWindow();
+  });
 }
 
 function getMigrationsPath(): string {
@@ -110,6 +117,38 @@ function getMigrationsPath(): string {
   }
 
   return path.join(process.resourcesPath, "drizzle");
+}
+
+/**
+ * Gets the path to the application icon for the window (taskbar/panel).
+ * Uses .png for all platforms as nativeImage handles it better.
+ * For Windows taskbar, Electron will use the .ico from package.json build config.
+ * In development, uses the resources folder from the project root.
+ * In production, uses the resources folder relative to the app path.
+ */
+function getIconPath(): string {
+  const isDev = process.env.NODE_ENV === "development";
+  const iconsFolder = isDev
+    ? path.join(process.cwd(), "resources", "icons")
+    : path.join(__dirname, "../../resources/icons");
+
+  // Use PNG - nativeImage handles it better than ICO
+  // For Windows taskbar, the .ico from package.json build config will be used automatically
+  return path.join(iconsFolder, "icon.png");
+}
+
+/**
+ * Gets the path to the tray icon.
+ * Uses .png for all platforms as nativeImage handles it better than .ico
+ */
+function getTrayIconPath(): string {
+  const isDev = process.env.NODE_ENV === "development";
+  const iconsFolder = isDev
+    ? path.join(process.cwd(), "resources", "icons")
+    : path.join(__dirname, "../../resources/icons");
+
+  // Use PNG for tray - nativeImage handles PNG better than ICO
+  return path.join(iconsFolder, "icon.png");
 }
 
 /**
@@ -291,6 +330,31 @@ async function initializeAppAndWindow() {
       loadingWindow = null;
     }
 
+    // Get icon path and load using nativeImage for better compatibility
+    const windowIconPath = getIconPath();
+    logger.info(`[Main] Window icon path: ${windowIconPath}`);
+    
+    let windowIcon: nativeImage | null = null;
+    
+    // Check if icon file exists and load it
+    if (!existsSync(windowIconPath)) {
+      logger.error(`[Main] Window icon file not found: ${windowIconPath}`);
+    } else {
+      try {
+        windowIcon = nativeImage.createFromPath(windowIconPath);
+        if (windowIcon.isEmpty()) {
+          logger.error(`[Main] Failed to load window icon from: ${windowIconPath}`);
+          windowIcon = null;
+        } else {
+          const iconSize = windowIcon.getSize();
+          logger.info(`[Main] Window icon loaded successfully, size: ${iconSize.width}x${iconSize.height}px`);
+        }
+      } catch (error) {
+        logger.error(`[Main] Error loading window icon:`, error);
+        windowIcon = null;
+      }
+    }
+
     mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -298,6 +362,7 @@ async function initializeAppAndWindow() {
       minHeight: 600,
       show: false,
       title: `RuleDesk v${app.getVersion()}`,
+      icon: windowIcon || windowIconPath, // Use nativeImage if loaded, otherwise fallback to path
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
@@ -305,6 +370,16 @@ async function initializeAppAndWindow() {
         sandbox: true,
       },
     });
+
+    // Set icon again after window creation to ensure it's applied (Windows sometimes needs this)
+    if (windowIcon && !windowIcon.isEmpty()) {
+      try {
+        mainWindow.setIcon(windowIcon);
+        logger.info(`[Main] Window icon set successfully via setIcon()`);
+      } catch (error) {
+        logger.error(`[Main] Failed to set window icon via setIcon():`, error);
+      }
+    }
 
     // Setup Content Security Policy for this specific window (not global)
     // This is more efficient than using session.defaultSession, as it only applies to this window's requests
@@ -378,6 +453,9 @@ async function initializeAppAndWindow() {
         // setupIpc is called inside registerAllHandlers now
         registerAllHandlers(syncService, updaterService, window);
 
+        // Create system tray
+        createTray(window);
+
         setTimeout(() => {
           logger.info("Main: DB maintenance skipped for now (direct DB mode)");
         }, 3000);
@@ -386,6 +464,15 @@ async function initializeAppAndWindow() {
 
     mainWindow.on("closed", () => {
       mainWindow = null;
+      // Don't destroy tray on window close - allow app to run in background
+    });
+
+    // Clean up tray when app quits
+    app.on("before-quit", () => {
+      if (tray) {
+        tray.destroy();
+        tray = null;
+      }
     });
   } catch (e) {
     // Close loading window if it's still open
@@ -404,9 +491,132 @@ async function initializeAppAndWindow() {
   }
 }
 
+/**
+ * Creates system tray icon
+ */
+function createTray(window: BrowserWindow): void {
+  try {
+    const trayIconPath = getTrayIconPath();
+    logger.info(`[Tray] Attempting to create tray with icon: ${trayIconPath}`);
+
+    // Check if icon file exists
+    if (!existsSync(trayIconPath)) {
+      logger.error(`[Tray] Icon file not found: ${trayIconPath}`);
+      return;
+    }
+
+    const trayImage = nativeImage.createFromPath(trayIconPath);
+    
+    // Check if image was loaded successfully
+    if (trayImage.isEmpty()) {
+      logger.error(`[Tray] Failed to load icon image from: ${trayIconPath}`);
+      return;
+    }
+
+    // Resize tray icon to appropriate size
+    // Windows: 16x16 is standard, but can use larger for better visibility
+    // macOS/Linux: 22x22 is standard
+    const traySize = process.platform === "win32" ? 32 : 22; // Use 32x32 on Windows for better visibility
+    const resizedImage = trayImage.resize({ 
+      width: traySize, 
+      height: traySize,
+      quality: "best" // Use best quality for resizing
+    });
+
+    if (resizedImage.isEmpty()) {
+      logger.error(`[Tray] Failed to resize icon image`);
+      return;
+    }
+
+    logger.info(`[Tray] Icon resized to ${traySize}x${traySize}px`);
+
+    // Destroy existing tray if any
+    if (tray) {
+      try {
+        tray.destroy();
+      } catch (e) {
+        // Ignore errors when destroying
+      }
+      tray = null;
+    }
+
+    tray = new Tray(resizedImage);
+    tray.setToolTip("RuleDesk");
+
+    // Tray click handler - show/hide window
+    // Use 'click' on Windows/Linux, 'click' on macOS shows context menu, so we use 'click' for all
+    tray.on("click", (event, bounds) => {
+      try {
+        // On macOS, click shows context menu, so we handle it differently
+        if (process.platform === "darwin") {
+          // On macOS, we might want to show context menu instead
+          return;
+        }
+
+        // Check if window exists and is not destroyed
+        if (!mainWindow) {
+          logger.warn("[Tray] Main window is null");
+          return;
+        }
+
+        if (mainWindow.isDestroyed()) {
+          logger.warn("[Tray] Main window is destroyed");
+          return;
+        }
+        
+        if (mainWindow.isVisible()) {
+          mainWindow.hide();
+        } else {
+          mainWindow.show();
+          // Double-check before focusing
+          if (!mainWindow.isDestroyed()) {
+            mainWindow.focus();
+          }
+        }
+      } catch (error) {
+        logger.error("[Tray] Error in click handler:", error);
+      }
+    });
+
+    // Tray double-click handler - show and focus window (Windows/Linux)
+    if (process.platform !== "darwin") {
+      tray.on("double-click", () => {
+        try {
+          if (!mainWindow) {
+            logger.warn("[Tray] Main window is null");
+            return;
+          }
+
+          if (mainWindow.isDestroyed()) {
+            logger.warn("[Tray] Main window is destroyed");
+            return;
+          }
+          
+          mainWindow.show();
+          // Double-check before focusing
+          if (!mainWindow.isDestroyed()) {
+            mainWindow.focus();
+          }
+        } catch (error) {
+          logger.error("[Tray] Error in double-click handler:", error);
+        }
+      });
+    }
+
+    logger.info(`[Tray] System tray created successfully with icon: ${trayIconPath}`);
+  } catch (error) {
+    logger.error("[Tray] Failed to create system tray:", error);
+  }
+}
+
 app.on("window-all-closed", () => {
+  // On macOS, keep app running even when all windows are closed
+  // On other platforms, quit only if tray is not available
   if (process.platform !== "darwin") {
-    app.quit();
+    // If tray exists, don't quit - allow running in background
+    if (!tray) {
+      app.quit();
+    }
   }
 });
 

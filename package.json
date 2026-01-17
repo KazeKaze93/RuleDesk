@@ -15,6 +15,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
+    "update-readme-version": "node scripts/update-readme-version.js",
     "// DATABASE": "---",
     "db:rebuild": "npx @electron/rebuild -f -w better-sqlite3",
     "db:rebuild:node": "npm rebuild better-sqlite3",
@@ -207,10 +208,12 @@
       "requestExecutionLevel": "user"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "resources/icon.icns"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "resources/icons"
     },
     "nsis": {
       "oneClick": false,

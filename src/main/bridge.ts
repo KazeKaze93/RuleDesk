@@ -43,6 +43,7 @@ export interface PostQueryFilters {
 export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
+  getIconPath: () => Promise<string>;
 
   writeToClipboard: (text: string) => Promise<boolean>;
 
@@ -123,6 +124,10 @@ export interface IpcBridge {
 
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
+  getIconPath: () => {
+    console.log("[Bridge] getIconPath called, invoking IPC...");
+    return ipcRenderer.invoke("app:get-icon-path");
+  },
 
   writeToClipboard: (text) =>
     ipcRenderer.invoke("app:write-to-clipboard", text),

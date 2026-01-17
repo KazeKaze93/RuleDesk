@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import {
-  Activity,
   Search,
   Heart,
   Users,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
+import { AppLogo } from "../ui/app-logo";
 
 const navItems = [
   { to: "/updates", icon: RefreshCw, label: "Updates" },
@@ -95,7 +95,7 @@ export const Sidebar = () => {
     <aside className="flex sticky top-0 flex-col w-64 h-screen border-r bg-background">
       {/* Logo Area */}
       <div className="flex items-center px-6 h-14 border-b">
-        <Activity className="mr-2 w-6 h-6 text-primary" />
+        <AppLogo className="mr-3 h-12 w-12 flex-shrink-0 transition-all hover:scale-110" />
         <div className="flex flex-col">
           <span className="text-lg font-bold tracking-tight">RuleDesk</span>
           {appVersion && (

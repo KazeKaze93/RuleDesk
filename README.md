@@ -1,10 +1,14 @@
+<div align="center">
+
 # 💻 RuleDesk
+
+<img src="resources/icons/icon-preview.png" width="128" alt="RuleDesk Logo">
 
 > A modern, secure desktop companion built on Electron and React/TypeScript for browsing and organizing booru-style imageboard content via its public API. Designed for performance and maintainability.
 
-**Current Version:** 4.0.0
-
 **🌐 Languages:** [English](README.md) | [Русский](.docs-i18n/ru/README.md)
+
+</div>
 
 ---
 
