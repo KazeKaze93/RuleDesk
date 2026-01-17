@@ -1,6 +1,6 @@
 <div align="center">
 
-# 💻 RuleDesk
+
 
 <img src="resources/icons/icon-preview.png" width="128" alt="RuleDesk Logo">
 
