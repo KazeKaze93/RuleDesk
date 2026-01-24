@@ -415,7 +415,54 @@ export abstract class BaseController {
                 const normalizedSchema = isTuple
                   ? schema
                   : z.tuple([schema as z.ZodTypeAny]);
-                const validatedArgs = normalizedSchema.parse(args) as unknown[];
+                
+                let validatedArgs: unknown[];
+                try {
+                  validatedArgs = normalizedSchema.parse(args) as unknown[];
+                } catch (validationError) {
+                  if (validationError instanceof z.ZodError) {
+                    // Build detailed error message with path information
+                    const errorMessages = validationError.errors.map((e) => {
+                      const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
+                      return `${e.message}${pathStr}`;
+                    });
+                    const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
+                    
+                    // Security: Log only validation errors (paths and messages), not actual argument values
+                    log.error(`[IPC] Validation failed for channel "${channel}":`, {
+                      errors: validationError.errors.map((e) => ({
+                        path: e.path,
+                        message: e.message,
+                        code: e.code,
+                      })),
+                    });
+
+                    // Create serializable validation error with proper string representation
+                    const serializedError: ValidationError = {
+                      message: errorMessage,
+                      stack: validationError.stack,
+                      name: "ValidationError",
+                      originalError: JSON.stringify({
+                        name: validationError.name,
+                        message: validationError.message,
+                        errors: validationError.errors.map((e) => ({
+                          path: e.path,
+                          message: e.message,
+                          code: e.code,
+                        })),
+                      }),
+                      errors: validationError.errors.map((e) => ({
+                        path: e.path,
+                        message: e.message,
+                        code: e.code,
+                      })),
+                    };
+                    throw serializedError;
+                  }
+                  // Re-throw if it's not a ZodError
+                  throw validationError;
+                }
+                
                 const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
 
                 // Execute handler
@@ -554,9 +601,13 @@ export abstract class BaseController {
             validatedArgs = normalizedSchema.parse(args) as unknown[];
           } catch (validationError) {
             if (validationError instanceof z.ZodError) {
-              const errorMessage = `Validation Error: ${validationError.errors
-                .map((e) => e.message)
-                .join(", ")}`;
+              // Build detailed error message with path information
+              const errorMessages = validationError.errors.map((e) => {
+                const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
+                return `${e.message}${pathStr}`;
+              });
+              const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
+              
               // Security: Log only validation errors (paths and messages), not actual argument values
               log.error(`[IPC] Validation failed for channel "${channel}":`, {
                 errors: validationError.errors.map((e) => ({
@@ -566,12 +617,21 @@ export abstract class BaseController {
                 })),
               });
 
-              // Create serializable validation error
+              // Create serializable validation error with proper string representation
+              // Use JSON.stringify for originalError to prevent [object Object] output
               const serializedError: ValidationError = {
                 message: errorMessage,
                 stack: validationError.stack,
                 name: "ValidationError",
-                originalError: String(validationError),
+                originalError: JSON.stringify({
+                  name: validationError.name,
+                  message: validationError.message,
+                  errors: validationError.errors.map((e) => ({
+                    path: e.path,
+                    message: e.message,
+                    code: e.code,
+                  })),
+                }),
                 errors: validationError.errors.map((e) => ({
                   path: e.path,
                   message: e.message,

@@ -1,25 +1,27 @@
 import { z } from "zod";
 
 /**
+ * Smart Playlist Tag Schema
+ *
+ * Tag-centric structure for smart playlists.
+ * Tags can be included (AND logic) or excluded (OR logic).
+ */
+export const SmartPlaylistTagSchema = z.object({
+  tag: z.string().min(1, "Tag cannot be empty"),
+  type: z.enum(["include", "exclude"]),
+});
+
+export type SmartPlaylistTag = z.infer<typeof SmartPlaylistTagSchema>;
+
+/**
  * Smart Playlist Query Schema
  *
- * Defines the structure for smart playlist queries.
- * Supports logical operators (AND, OR) and various filters.
+ * Tag-centric structure: only tags with include/exclude logic.
+ * Include tags are combined with AND, exclude tags with OR (standard booru search).
+ * Hybrid search: always queries both local DB and remote API, then merges results.
  */
 export const SmartPlaylistQuerySchema = z.object({
-  operator: z.enum(["AND", "OR"]).default("AND"),
-  filters: z.array(
-    z.object({
-      type: z.enum(["tags", "rating", "media_type", "viewed"]),
-      operator: z.enum(["include", "exclude", "equals", "not_equals"]),
-      value: z.union([
-        z.string(), // For tags
-        z.array(z.enum(["s", "q", "e"])), // For ratings
-        z.enum(["image", "video"]), // For media_type
-        z.boolean(), // For viewed
-      ]),
-    })
-  ),
+  tags: z.array(SmartPlaylistTagSchema).min(1, "At least one tag is required"),
 });
 
 export type SmartPlaylistQuery = z.infer<typeof SmartPlaylistQuerySchema>;
@@ -35,8 +37,7 @@ export type SmartPlaylistQuery = z.infer<typeof SmartPlaylistQuerySchema>;
  */
 export const CreatePlaylistSchema = z.object({
   name: z.string().trim().min(1, "Name cannot be empty").max(200, "Name too long"),
-  description: z.string().trim().max(1000, "Description too long").optional().default(""),
-  isSmart: z.boolean().default(false),
+  isSmart: z.boolean().default(true), // Default to Smart Collection
   queryJson: z.string().optional().default(""),
   iconName: z.string().max(50).optional().default(""),
 });
@@ -57,7 +58,6 @@ export type CreatePlaylistRequest = z.infer<typeof CreatePlaylistSchema>;
  */
 export const UpdatePlaylistSchema = z.object({
   name: z.string().trim().min(1, "Name cannot be empty").max(200, "Name too long").optional(),
-  description: z.string().trim().max(1000, "Description too long").optional(),
   queryJson: z.string().optional(),
   iconName: z.string().max(50).optional(),
 });
@@ -117,7 +117,8 @@ export const GetPlaylistPostsSchema = z.object({
     rating: z.enum(["s", "q", "e"]).optional(),
     mediaType: z.enum(["all", "images", "videos"]).optional(),
   }).optional(),
-  limit: z.number().int().min(1).max(100).default(50),
+  limit: z.number().int().min(1).max(1000).default(50), // Increased max limit to 1000 for larger gallery views
+  isRandom: z.boolean().optional().default(false),
 });
 
 /**
@@ -132,11 +133,18 @@ export type GetPlaylistPostsRequest = z.infer<typeof GetPlaylistPostsSchema>;
  *
  * Single source of truth for ResolvePlaylistPosts validation and typing.
  * Used to resolve posts for both static and smart playlists.
+ * Includes global filters (rating, mediaType) for integration with GlobalTopBar.
  */
 export const ResolvePlaylistPostsSchema = z.object({
   playlistId: z.number().int().positive(),
   page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(100).default(50),
+  limit: z.number().int().min(1).max(1000).default(50), // Increased max limit to 1000 for larger gallery views
+  filters: z.object({
+    rating: z.enum(["s", "q", "e"]).optional(),
+    mediaType: z.enum(["all", "images", "videos"]).optional(),
+  }).optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
+  isRandom: z.boolean().optional().default(false),
 });
 
 /**

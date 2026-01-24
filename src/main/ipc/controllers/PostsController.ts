@@ -160,6 +160,15 @@ export class PostsController extends BaseController {
         ...args: unknown[]
       ) => Promise<unknown>
     );
+    this.handle(
+      IPC_CHANNELS.DB.SHADOW_INSERT_POST,
+      z.tuple([PostDataSchema]),
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.shadowInsertPost.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
 
     // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)
     this.initializeFtsTableCheck();
@@ -545,7 +554,7 @@ export class PostsController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: GetPostsParams
   ): Promise<IpcPost[]> {
-    const { artistId, page, filters, limit } = params;
+    const { artistId, page, filters, limit, isRandom } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -586,7 +595,7 @@ export class PostsController extends BaseController {
           ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
           : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
 
-        const result = await db
+        const queryBuilder = db
           .select({
             id: posts.id,
             postId: posts.postId,
@@ -604,10 +613,11 @@ export class PostsController extends BaseController {
           })
           .from(posts)
           .innerJoin(artists, joinConditions)
-          .where(finalWhereClause)
-          .orderBy(desc(posts.publishedAt))
-          .limit(limit)
-          .offset(offset);
+          .where(finalWhereClause);
+
+        const result = isRandom
+          ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+          : queryBuilder.orderBy(desc(posts.publishedAt)).limit(limit).offset(offset).all();
 
         log.info(
           `[PostsController] Retrieved ${result.length} posts ${
@@ -629,7 +639,7 @@ export class PostsController extends BaseController {
 
       // CRITICAL: Explicitly select all fields including rating
       // This ensures rating is included in the response for Safe Mode filtering
-      const result = await db
+      const queryBuilder = db
         .select({
           id: posts.id,
           postId: posts.postId,
@@ -646,10 +656,11 @@ export class PostsController extends BaseController {
           isFavorited: posts.isFavorited,
         })
         .from(posts)
-        .where(whereClause)
-        .orderBy(desc(posts.publishedAt))
-        .limit(limit)
-        .offset(offset);
+        .where(whereClause);
+
+      const result = isRandom
+        ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+        : queryBuilder.orderBy(desc(posts.publishedAt)).limit(limit).offset(offset).all();
 
       log.info(
         `[PostsController] Retrieved ${result.length} posts ${
@@ -1012,6 +1023,200 @@ export class PostsController extends BaseController {
       log.error("[PostsController] Failed to toggle favorite:", error);
       // Re-throw original error to preserve stack trace and context
       throw error;
+    }
+  }
+
+  /**
+   * Shadow Insert: Silently insert a remote post into the local database
+   * 
+   * This method is called when a remote post (from API) is opened in the viewer.
+   * It ensures the post exists in the local DB so that all subsequent actions
+   * (favoriting, viewing, tag resolution) work with a real database record.
+   * 
+   * Uses onConflictDoNothing to handle race conditions gracefully (if post already exists).
+   * 
+   * @param _event - IPC event (unused)
+   * @param postData - Post data from remote API
+   * @returns Inserted post ID (or existing post ID if already in DB)
+   */
+  private async shadowInsertPost(
+    _event: IpcMainInvokeEvent,
+    postData: PostData
+  ): Promise<number> {
+    log.info(`[PostsController] Shadow insert attempt: postId=${postData.postId}, fileUrl=${postData.fileUrl?.substring(0, 50)}...`);
+    
+    try {
+      const db = this.getDb();
+
+      // Validate required fields
+      if (!postData.postId) {
+        throw new Error("postId is required for shadow insert");
+      }
+      if (!postData.fileUrl || postData.fileUrl.trim() === "") {
+        throw new Error("fileUrl is required and cannot be empty");
+      }
+      if (!postData.previewUrl || postData.previewUrl.trim() === "") {
+        throw new Error("previewUrl is required and cannot be empty");
+      }
+
+      // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
+      let insertedPostId: number | null = null;
+
+      db.transaction((tx) => {
+        // Check if post already exists (by postId and EXTERNAL_ARTIST_ID)
+        const existingPost = tx
+          .select()
+          .from(posts)
+          .where(
+            and(
+              eq(posts.postId, postData.postId),
+              eq(posts.artistId, EXTERNAL_ARTIST_ID)
+            )
+          )
+          .limit(1)
+          .all()[0];
+
+        if (existingPost) {
+          // Post already exists - return existing ID
+          insertedPostId = existingPost.id;
+          log.debug(
+            `[PostsController] Shadow insert: Post already exists (id: ${existingPost.id}, postId: ${postData.postId})`
+          );
+          return;
+        }
+
+        // Ensure EXTERNAL_ARTIST_ID exists
+        const existingArtist = tx
+          .select()
+          .from(artists)
+          .where(eq(artists.id, EXTERNAL_ARTIST_ID))
+          .limit(1)
+          .all()[0];
+
+        if (!existingArtist) {
+          // Create placeholder artist
+          const now = new Date();
+          tx.insert(artists)
+            .values({
+              id: EXTERNAL_ARTIST_ID,
+              name: `Artist ${EXTERNAL_ARTIST_ID}`,
+              tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${EXTERNAL_ARTIST_ID}`,
+              provider: "rule34",
+              type: "tag",
+              apiEndpoint: "",
+              lastPostId: 0,
+              newPostsCount: 0,
+              createdAt: now,
+            })
+            .run();
+          log.debug(
+            `[PostsController] Shadow insert: Created placeholder artist ${EXTERNAL_ARTIST_ID}`
+          );
+        }
+
+        // Insert post using onConflictDoNothing to handle race conditions gracefully
+        // If post already exists (unique constraint on artistId + postId), ignore and return existing ID
+        const now = new Date();
+        const publishedAt = postData.publishedAt
+          ? new Date(postData.publishedAt)
+          : now;
+
+        try {
+          const result = tx
+            .insert(posts)
+            .values({
+              postId: postData.postId,
+              artistId: EXTERNAL_ARTIST_ID,
+              fileUrl: postData.fileUrl,
+              previewUrl: postData.previewUrl,
+              sampleUrl: postData.sampleUrl ?? "",
+              title: "",
+              rating: postData.rating ?? "",
+              tags: postData.tags ?? "",
+              mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
+              publishedAt: publishedAt,
+              createdAt: now,
+              isViewed: false,
+              isFavorited: false,
+            })
+            .onConflictDoNothing({
+              target: [posts.artistId, posts.postId],
+            })
+            .returning()
+            .all();
+
+          if (result && result.length > 0) {
+            insertedPostId = result[0].id;
+            log.info(
+              `[PostsController] Shadow insert: Created post (id: ${insertedPostId}, postId: ${postData.postId})`
+            );
+          } else {
+            // Post already exists (onConflictDoNothing didn't insert)
+            // Query again to get the existing ID
+            const existingPost = tx
+              .select()
+              .from(posts)
+              .where(
+                and(
+                  eq(posts.postId, postData.postId),
+                  eq(posts.artistId, EXTERNAL_ARTIST_ID)
+                )
+              )
+              .limit(1)
+              .all()[0];
+            
+            if (existingPost) {
+              insertedPostId = existingPost.id;
+              log.debug(
+                `[PostsController] Shadow insert: Post already exists (id: ${insertedPostId}, postId: ${postData.postId})`
+              );
+            }
+          }
+        } catch (insertError) {
+          // Fallback error handling (should not happen with onConflictDoNothing)
+          const errorMessage = insertError instanceof Error ? insertError.message : String(insertError);
+          log.warn(`[PostsController] Shadow insert error (fallback): ${errorMessage}`);
+          
+          // Try to find existing post as fallback
+          const existingPost = tx
+            .select()
+            .from(posts)
+            .where(
+              and(
+                eq(posts.postId, postData.postId),
+                eq(posts.artistId, EXTERNAL_ARTIST_ID)
+              )
+            )
+            .limit(1)
+            .all()[0];
+          
+          if (existingPost) {
+            insertedPostId = existingPost.id;
+            log.debug(
+              `[PostsController] Shadow insert: Found existing post after error (id: ${insertedPostId}, postId: ${postData.postId})`
+            );
+          } else {
+            throw insertError;
+          }
+        }
+      });
+
+      if (insertedPostId === null) {
+        throw new Error(`Failed to shadow insert post (postId: ${postData.postId})`);
+      }
+
+      return insertedPostId;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log.error(`[PostsController] Failed to shadow insert post (postId: ${postData.postId}):`, {
+        error: errorMessage,
+        postId: postData.postId,
+        hasFileUrl: !!postData.fileUrl,
+        hasPreviewUrl: !!postData.previewUrl,
+      });
+      // Re-throw with a more descriptive error message
+      // BaseController will serialize this properly for IPC
+      throw new Error(`Failed to cache post: ${errorMessage}`);
     }
   }
 }

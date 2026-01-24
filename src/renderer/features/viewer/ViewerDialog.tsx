@@ -34,6 +34,8 @@ import {
   Eye,
   Loader2,
   List,
+  Plus,
+  Shuffle,
 } from "lucide-react";
 
 import {
@@ -60,6 +62,197 @@ import { cn } from "../../lib/utils";
 import { isVideoPost } from "../../lib/filter-utils";
 import { useViewerController } from "./hooks/useViewerController";
 import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
+import type { PostData } from "../../../shared/schemas/post";
+import { isVideoUrl } from "@shared/utils/media";
+
+/**
+ * PostNotFoundFallback: Handles shadow insert for remote posts not in cache
+ * 
+ * When a post from a playlist is not found in cache, this component:
+ * 1. Checks if it's a remote post (id=0) in infiniteData
+ * 2. If found, triggers shadow insert to cache it in local DB
+ * 3. After insert, updates the cache and renders the post
+ */
+const PostNotFoundFallback = ({
+  currentPostId,
+  queue,
+  infiniteData,
+  onPostFound,
+  onClose,
+}: {
+  currentPostId: number;
+  queue: {
+    ids: number[];
+    origin: ViewerOrigin | undefined;
+    totalGlobalCount?: number;
+  };
+  infiniteData?: InfiniteData<Post[]>;
+  onPostFound: (post: Post) => React.ReactNode;
+  onClose: () => void;
+}) => {
+  const queryClient = useQueryClient();
+  const [isInserting, setIsInserting] = useState(false);
+  const [insertedPost, setInsertedPost] = useState<Post | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Try to find remote post in infiniteData
+    // Only attempt shadow insert for playlist origin (remote posts from playlists)
+    if (!infiniteData || queue.origin?.kind !== "playlist") {
+      // For non-playlist origins, if post is not found, it's a real error
+      // Don't attempt shadow insert - these posts should already be in cache
+      if (!infiniteData) {
+        setError("Post not found in cache. This may indicate a data synchronization issue.");
+      }
+      return;
+    }
+
+    const allPosts = infiniteData.pages.flat();
+    const foundPost = allPosts.find((p) => 
+      p.id === currentPostId || (p.id === 0 && p.postId === currentPostId)
+    );
+
+    if (!foundPost || foundPost.id !== 0) {
+      // Not a remote post or not found - show error
+      if (!foundPost) {
+        setError(`Post not found in cache (ID: ${currentPostId})`);
+      }
+      return;
+    }
+
+    // Found remote post - trigger shadow insert
+    const performShadowInsert = async () => {
+      setIsInserting(true);
+      setError(null);
+
+      try {
+        // Validate required fields before attempting shadow insert
+        if (!foundPost.postId) {
+          throw new Error("Post ID is required for shadow insert");
+        }
+        if (!foundPost.fileUrl || foundPost.fileUrl.trim() === "") {
+          throw new Error("File URL is required for shadow insert");
+        }
+        if (!foundPost.previewUrl || foundPost.previewUrl.trim() === "") {
+          throw new Error("Preview URL is required for shadow insert");
+        }
+
+        // Convert remote post to PostData format
+        const postData: PostData = {
+          postId: foundPost.postId,
+          fileUrl: foundPost.fileUrl,
+          previewUrl: foundPost.previewUrl,
+          sampleUrl: foundPost.sampleUrl || "",
+          rating: foundPost.rating || "",
+          tags: typeof foundPost.tags === "string" ? foundPost.tags : foundPost.tags.join(" "),
+          publishedAt: foundPost.publishedAt instanceof Date 
+            ? foundPost.publishedAt.getTime() 
+            : typeof foundPost.publishedAt === "number" 
+            ? foundPost.publishedAt 
+            : Date.now(),
+        };
+
+        // Perform shadow insert
+        const insertedId = await window.api.shadowInsertPost(postData);
+        log.info(`[ViewerDialog] Shadow insert successful: postId ${foundPost.postId} -> local id ${insertedId}`);
+
+        // Fetch the inserted post from DB
+        // We need to invalidate the playlist query to refetch with the new post
+        const queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
+        await queryClient.invalidateQueries({ queryKey });
+
+        // Wait a bit for cache to update, then find the post
+        // The post should now have a real ID instead of 0
+        setTimeout(() => {
+          const updatedData = queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
+          if (updatedData) {
+            const allUpdatedPosts = updatedData.pages.flat();
+            const updatedPost = allUpdatedPosts.find((p) => p.id === insertedId || p.postId === foundPost.postId);
+            if (updatedPost) {
+              setInsertedPost(updatedPost);
+            } else {
+              // Fallback: create a post object with the inserted ID
+              setInsertedPost({
+                ...foundPost,
+                id: insertedId,
+              } as Post);
+            }
+          } else {
+            // Fallback: create a post object with the inserted ID
+            setInsertedPost({
+              ...foundPost,
+              id: insertedId,
+            } as Post);
+          }
+          setIsInserting(false);
+        }, 100);
+      } catch (err) {
+        log.error(`[ViewerDialog] Shadow insert failed for postId ${foundPost.postId}:`, err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(errorMessage || "Failed to cache post");
+        setIsInserting(false);
+      }
+    };
+
+    performShadowInsert();
+  }, [currentPostId, infiniteData, queue.origin, queryClient]);
+
+  // If post was inserted, render it
+  if (insertedPost) {
+    return <>{onPostFound(insertedPost)}</>;
+  }
+
+  // Show loading or error state
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 w-full h-full text-white">
+      {isInserting ? (
+        <>
+          <Loader2 className="w-10 h-10 animate-spin" />
+          <div className="text-lg font-semibold">Caching post...</div>
+          <div className="text-sm text-white/70">
+            Post ID: {currentPostId}
+          </div>
+        </>
+      ) : error ? (
+        <>
+          <div className="text-lg font-semibold">Failed to cache post</div>
+          <div className="text-sm text-white/70">
+            {error}
+          </div>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="text-white border-white/20 hover:bg-white/10"
+          >
+            Close
+          </Button>
+        </>
+      ) : (
+        <>
+          <div className="text-lg font-semibold">Post not found in cache</div>
+          <div className="text-sm text-white/70">
+            Post ID: {currentPostId}
+            <br />
+            Origin: {queue.origin?.kind}
+            {queue.origin?.kind === "playlist" && (
+              <>
+                <br />
+                Playlist ID: {queue.origin.playlistId}
+              </>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="text-white border-white/20 hover:bg-white/10"
+          >
+            Close
+          </Button>
+        </>
+      )}
+    </div>
+  );
+};
 
 const useCurrentPost = (
   currentPostId: number | null,
@@ -82,13 +275,11 @@ const useCurrentPost = (
       }
       case "artist": {
         // CRITICAL: Match query key from ArtistGallery.tsx
-        // When tags is undefined or empty, use ["posts", artistId] (no tags in key)
+        // QueryKey includes: ["posts", artistId, aiFilter, mediaType]
         // This ensures cache lookup matches the query key used for fetching artist posts
-        const tags = origin.tags;
-        if (tags === undefined || tags.length === 0) {
-          return ["posts", origin.artistId] as const;
-        }
-        return ["posts", origin.artistId, tags] as const;
+        const aiFilter = origin.aiFilter ?? "all";
+        const mediaType = origin.mediaType ?? "all";
+        return ["posts", origin.artistId, aiFilter, mediaType] as const;
       }
       case "search": {
         return ["search", origin.tags] as const;
@@ -97,7 +288,8 @@ const useCurrentPost = (
         return ["search", []] as const;
       }
       case "playlist": {
-        return ["playlist-posts", origin.playlistId] as const;
+        // Match query key from PlaylistGallery: ["playlist-posts", playlistId, mediaType, sortOrder]
+        return ["playlist-posts", origin.playlistId, origin.mediaType ?? "all", origin.sortOrder ?? "desc"] as const;
       }
       default:
         return null;
@@ -126,23 +318,36 @@ const useCurrentPost = (
   // Trade-off: Map creation is O(N) but happens only when infiniteData changes (new pages or cache updates)
   // For 1000+ posts, O(1) lookup on slide change is much better than O(N) search
   // Map is recreated when infiniteData reference changes (React Query updates reference on cache changes)
+  // Support both id (local posts) and postId (remote posts with id=0) lookup
   const postsMap = useMemo(() => {
     if (!infiniteData) return new Map<number, Post>();
     
     // Create Map from all pages for O(1) lookup
+    // Use both id and postId as keys to support remote posts (id=0)
     const map = new Map<number, Post>();
     for (const page of infiniteData.pages) {
       for (const post of page) {
         map.set(post.id, post);
+        // For remote posts (id=0), also index by postId for lookup
+        if (post.id === 0 && post.postId) {
+          map.set(post.postId, post);
+        }
       }
     }
     return map;
   }, [infiniteData]); // Recreate when infiniteData changes (includes cache updates)
 
   // O(1) lookup using Map - much faster than O(N) find() for large datasets
+  // Try id first, then postId for remote posts
   return useMemo(() => {
     if (!currentPostId || postsMap.size === 0) return undefined;
-    return postsMap.get(currentPostId);
+    // First try direct id lookup (works for local posts)
+    const postById = postsMap.get(currentPostId);
+    if (postById) return postById;
+    // If not found, currentPostId might be a postId (for remote posts with id=0)
+    // This handles the case where remote posts have id=0 but we're searching by postId
+    // The map already has postId entries for remote posts, so this will find them
+    return undefined;
   }, [currentPostId, postsMap]);
 };
 
@@ -619,6 +824,14 @@ const ViewerContent = ({
   const ctrl = useViewerController({ post, queue });
   const isDeveloperMode = true;
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
+  // Local state for randomization in viewer (not synced with global store)
+  const isRandom = queue?.isRandom ?? false;
+  const setQueueIsRandom = useViewerStore((state) => state.setQueueIsRandom);
+
+  const handleToggleRandom = useCallback(() => {
+    const newIsRandom = !isRandom;
+    setQueueIsRandom(newIsRandom);
+  }, [isRandom, setQueueIsRandom]);
 
   const handleToggleFavorite = useCallback(async () => {
     await ctrl.toggleFavorite();
@@ -740,6 +953,34 @@ const ViewerContent = ({
           </Button>
 
           <Button
+            variant={isRandom ? "default" : "ghost"}
+            size="icon"
+            onClick={handleToggleRandom}
+            className={cn(
+              "text-white rounded-full hover:bg-white/10",
+              isRandom && "bg-primary hover:bg-primary/90"
+            )}
+            aria-label={isRandom ? "Disable randomization" : "Enable randomization"}
+            title={isRandom ? "Randomization enabled (click to disable)" : "Randomization disabled (click to enable)"}
+          >
+            <Shuffle className={cn("w-5 h-5", isRandom && "fill-current")} />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPlaylistDialog(true);
+            }}
+            className="text-white rounded-full hover:bg-white/10"
+            aria-label="Add to Playlist"
+            title="Add to Playlist"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
+
+          <Button
             variant="ghost"
             size="icon"
             onClick={ctrl.downloadImage}
@@ -841,18 +1082,6 @@ const ViewerContent = ({
               <DropdownMenuItem onClick={ctrl.openFolder}>
                 <Folder className="mr-2 w-4 h-4" />
                 Reveal in folder
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPlaylistDialog(true);
-                }}
-              >
-                <List className="mr-2 w-4 h-4" />
-                Add to Playlist...
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
@@ -1064,6 +1293,35 @@ export const ViewerDialog = () => {
   const post = useCurrentPost(currentPostId, queue?.origin);
   const queryClient = useQueryClient();
 
+  // Get infiniteData for fallback lookup (for remote posts)
+  const infiniteData = useMemo(() => {
+    if (!queue?.origin) return undefined;
+    
+    let queryKey: unknown[] = [];
+    if (queue.origin.kind === "playlist") {
+      // Match query key from PlaylistGallery: ["playlist-posts", playlistId, mediaType, sortOrder]
+      queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
+    } else if (queue.origin.kind === "artist") {
+      const aiFilter = queue.origin.aiFilter ?? "all";
+      const mediaType = queue.origin.mediaType ?? "all";
+      queryKey = ["posts", queue.origin.artistId, aiFilter, mediaType];
+    } else if (queue.origin.kind === "favorites") {
+      queryKey = queue.origin.tags && queue.origin.tags.length > 0
+        ? ["posts", "favorites", queue.origin.tags]
+        : ["posts", "favorites"];
+    } else if (queue.origin.kind === "updates") {
+      queryKey = queue.origin.tags && queue.origin.tags.length > 0
+        ? ["posts", "updates", queue.origin.tags]
+        : ["posts", "updates"];
+    } else if (queue.origin.kind === "search") {
+      queryKey = ["search", queue.origin.tags];
+    } else {
+      return undefined;
+    }
+    
+    return queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
+  }, [queue?.origin, queryClient]);
+
   useEffect(() => {
     if (!isOpen || !queue || !queue.origin) return;
 
@@ -1097,15 +1355,16 @@ export const ViewerDialog = () => {
     if (!queue.onLoadMore) return;
 
     // Query keys are consistent with component query keys:
-    // - Artist gallery: ["posts", artistId] or ["posts", artistId, tags]
-    // - Favorites: ["posts", "favorites"] or ["posts", "favorites", tags]
-    // - Updates: ["posts", "updates"] or ["posts", "updates", tags]
+    // - Artist gallery: ["posts", artistId, aiFilter, mediaType]
+    // - Favorites: ["posts", "favorites", tags] or ["posts", "favorites"]
+    // - Updates: ["posts", "updates", tags] or ["posts", "updates"]
     // - Search: ["search", tags]
+    // - Playlist: ["playlist-posts", playlistId, mediaType, sortOrder]
     let queryKey: unknown[] = [];
     if (queue.origin.kind === "artist") {
-      queryKey = queue.origin.tags && queue.origin.tags.length > 0
-        ? ["posts", queue.origin.artistId, queue.origin.tags]
-        : ["posts", queue.origin.artistId];
+      const aiFilter = queue.origin.aiFilter ?? "all";
+      const mediaType = queue.origin.mediaType ?? "all";
+      queryKey = ["posts", queue.origin.artistId, aiFilter, mediaType];
     } else if (queue.origin.kind === "favorites") {
       queryKey = queue.origin.tags && queue.origin.tags.length > 0
         ? ["posts", "favorites", queue.origin.tags]
@@ -1117,7 +1376,8 @@ export const ViewerDialog = () => {
     } else if (queue.origin.kind === "search") {
       queryKey = ["search", queue.origin.tags];
     } else if (queue.origin.kind === "playlist") {
-      queryKey = ["playlist-posts", queue.origin.playlistId];
+      // Match query key from PlaylistGallery: ["playlist-posts", playlistId, mediaType, sortOrder]
+      queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
     } else {
       return;
     }
@@ -1258,22 +1518,26 @@ export const ViewerDialog = () => {
               isTagsDrawerOpen={isTagsDrawerOpen}
             />
           ) : currentPostId !== null && queue ? (
-            // Post not found in cache - show error message
-            <div className="flex flex-col items-center justify-center gap-4 w-full h-full text-white">
-              <div className="text-lg font-semibold">Post not found in cache</div>
-              <div className="text-sm text-white/70">
-                Post ID: {currentPostId}
-                <br />
-                Origin: {queue.origin.kind}
-              </div>
-              <Button
-                variant="outline"
-                onClick={close}
-                className="text-white border-white/20 hover:bg-white/10"
-              >
-                Close
-              </Button>
-            </div>
+            // Post not found in cache - try shadow insert for remote posts
+            <PostNotFoundFallback
+              currentPostId={currentPostId}
+              queue={queue}
+              infiniteData={infiniteData}
+              onPostFound={(foundPost) => (
+                <ViewerContent
+                  key={foundPost.id}
+                  post={foundPost}
+                  queue={queue}
+                  close={close}
+                  next={next}
+                  prev={prev}
+                  controlsVisible={controlsVisible}
+                  toggleTagsDrawer={toggleTagsDrawer}
+                  isTagsDrawerOpen={isTagsDrawerOpen}
+                />
+              )}
+              onClose={close}
+            />
           ) : (
             // Loading state
             <div className="flex items-center justify-center w-full h-full text-white">

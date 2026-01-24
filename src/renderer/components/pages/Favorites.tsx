@@ -98,6 +98,16 @@ export const Favorites = () => {
     queryFn: () => window.api.getTrackedArtists(),
   });
 
+  // Use useShallow for multiple filter values to prevent unnecessary re-renders
+  // This is more efficient than individual selectors when selecting multiple related values
+  const { sortOrder, viewType, filters } = useSearchStore(
+    useShallow((state) => ({
+      sortOrder: state.sortOrder,
+      viewType: state.viewType,
+      filters: state.filters,
+    }))
+  );
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["posts", "favorites", tags],
@@ -116,16 +126,6 @@ export const Favorites = () => {
       },
       initialPageParam: 1,
     });
-
-  // Use useShallow for multiple filter values to prevent unnecessary re-renders
-  // This is more efficient than individual selectors when selecting multiple related values
-  const { sortOrder, viewType, filters } = useSearchStore(
-    useShallow((state) => ({
-      sortOrder: state.sortOrder,
-      viewType: state.viewType,
-      filters: state.filters,
-    }))
-  );
   
   const { aiFilter, mediaType, source } = filters;
 

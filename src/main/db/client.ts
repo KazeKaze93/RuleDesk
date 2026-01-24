@@ -110,6 +110,76 @@ export async function initializeDatabase(): Promise<AppDatabase> {
       });
     });
     logger.info("[DB] Migrations complete.");
+    
+    // Ensure FTS5 table exists (create if migration didn't run or failed)
+    try {
+      const ftsCheck = sqlite
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'")
+        .get() as { name: string } | undefined;
+      
+      if (!ftsCheck) {
+        logger.warn("[DB] FTS5 table does not exist, creating it now...");
+        
+        // Create FTS5 virtual table
+        sqlite.exec(`
+          CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(
+            tags,
+            content='posts',
+            content_rowid='id',
+            tokenize='unicode61'
+          );
+        `);
+        
+        // Create triggers
+        sqlite.exec(`
+          CREATE TRIGGER IF NOT EXISTS posts_fts_insert AFTER INSERT ON posts BEGIN
+            INSERT INTO posts_fts(rowid, tags) VALUES (new.id, new.tags);
+          END;
+        `);
+        
+        sqlite.exec(`
+          CREATE TRIGGER IF NOT EXISTS posts_fts_update AFTER UPDATE OF tags ON posts BEGIN
+            DELETE FROM posts_fts WHERE rowid = old.id;
+            INSERT INTO posts_fts(rowid, tags) VALUES (new.id, new.tags);
+          END;
+        `);
+        
+        sqlite.exec(`
+          CREATE TRIGGER IF NOT EXISTS posts_fts_delete AFTER DELETE ON posts BEGIN
+            DELETE FROM posts_fts WHERE rowid = old.id;
+          END;
+        `);
+        
+        // Populate FTS5 index with existing posts
+        try {
+          const postCount = sqlite
+            .prepare("SELECT COUNT(*) as count FROM posts")
+            .get() as { count: number } | undefined;
+          
+          const count = postCount?.count ?? 0;
+          
+          if (count > 0) {
+            logger.info(`[DB] Populating FTS5 index with ${count.toLocaleString()} existing posts...`);
+            sqlite.exec(`
+              INSERT INTO posts_fts(rowid, tags)
+              SELECT id, tags FROM posts;
+            `);
+            logger.info("[DB] FTS5 index populated successfully.");
+          } else {
+            logger.info("[DB] No posts to index in FTS5 table.");
+          }
+        } catch (populateError) {
+          logger.error("[DB] Failed to populate FTS5 index:", populateError);
+        }
+        
+        logger.info("[DB] FTS5 table created successfully.");
+      } else {
+        logger.debug("[DB] FTS5 table exists.");
+      }
+    } catch (ftsError) {
+      logger.error("[DB] Failed to ensure FTS5 table exists:", ftsError);
+      // Don't throw - FTS5 is optional for basic functionality
+    }
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
     

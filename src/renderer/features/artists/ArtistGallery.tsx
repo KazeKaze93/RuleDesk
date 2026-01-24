@@ -253,6 +253,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         kind: "artist",
         artistId: artist.id,
         tags: undefined, // No tag filtering in artist gallery
+        aiFilter: aiFilter === "all" ? undefined : aiFilter,
+        mediaType: mediaType === "all" ? undefined : mediaType,
       },
       ids: postIds,
       initialIndex: index,

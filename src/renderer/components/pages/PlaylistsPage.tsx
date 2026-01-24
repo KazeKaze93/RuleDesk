@@ -1,10 +1,9 @@
 import React, { forwardRef, useMemo, useState } from "react";
 import {
-  useQuery,
   useQueryClient,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
@@ -16,11 +15,13 @@ import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Checkbox } from "../../components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
+import { Badge } from "../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "../../components/ui/dialog";
-import type { SmartPlaylistQuery } from "../../../shared/schemas/playlist";
+import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
+import { AsyncAutocomplete } from "../../components/inputs/AsyncAutocomplete";
+import type { SmartPlaylistQuery, SmartPlaylistTag } from "../../../shared/schemas/playlist";
+import { usePlaylists } from "../../lib/hooks/usePlaylists";
+import type { SearchResults } from "../../../main/providers";
 
 interface PlaylistsPageProps {
   onBack?: () => void;
@@ -88,7 +89,21 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
   );
 
   const viewType = useSearchStore((state) => state.viewType);
+  const filters = useSearchStore((state) => state.filters);
+  const sortOrder = useSearchStore((state) => state.sortOrder);
   const queryClient = useQueryClient();
+
+  // Build filters for API call from GlobalTopBar filters
+  const apiFilters = useMemo(() => {
+    const result: { rating?: "s" | "q" | "e"; mediaType?: "all" | "images" | "videos" } = {};
+    
+    // Map mediaType filter from GlobalTopBar
+    if (filters.mediaType && filters.mediaType !== "all") {
+      result.mediaType = filters.mediaType;
+    }
+    
+    return result;
+  }, [filters.mediaType]);
 
   const {
     data,
@@ -97,12 +112,14 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery<Post[]>({
-    queryKey: ["playlist-posts", playlist.id],
+    queryKey: ["playlist-posts", playlist.id, filters.mediaType, sortOrder],
     queryFn: async ({ pageParam = 1 }) => {
       return await window.api.resolvePlaylistPosts({
         playlistId: playlist.id,
         page: pageParam as number,
         limit: 50,
+        filters: Object.keys(apiFilters).length > 0 ? apiFilters : undefined,
+        sortOrder,
       });
     },
     getNextPageParam: (lastPage, allPages) => {
@@ -123,11 +140,14 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
   };
 
   const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
+    // For remote posts (id=0), use postId as identifier; for local posts, use id
+    const postIds = allPosts.map((p) => (p.id === 0 && p.postId ? p.postId : p.id));
     openViewer({
       origin: {
         kind: "playlist",
         playlistId: playlist.id,
+        mediaType: filters.mediaType,
+        sortOrder,
       },
       ids: postIds,
       initialIndex: index,
@@ -182,11 +202,10 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
             )}
             <div>
               <h1 className="text-xl font-semibold">{playlist.name}</h1>
-              {playlist.description && (
-                <p className="text-sm text-muted-foreground">{playlist.description}</p>
-              )}
               {playlist.isSmart && (
-                <p className="text-xs text-muted-foreground mt-1">Smart Collection</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Smart Collection
+                </p>
               )}
             </div>
           </div>
@@ -241,69 +260,76 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
-  const [newPlaylistDescription, setNewPlaylistDescription] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [playlistType, setPlaylistType] = useState<"static" | "smart">("static");
+  const [playlistType, setPlaylistType] = useState<"smart" | "manual">("manual");
+  const [tagInputValue, setTagInputValue] = useState("");
   
-  // Smart Collection filters state
-  const [smartFilters, setSmartFilters] = useState<SmartPlaylistQuery>({
-    operator: "AND",
-    filters: [],
-  });
+  // Smart Collection tags state
+  const [smartTags, setSmartTags] = useState<SmartPlaylistTag[]>([]);
+  
+  // Filter state for playlist type
+  const [playlistFilter, setPlaylistFilter] = useState<"all" | "smart" | "manual">("all");
   
   const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [playlistToEdit, setPlaylistToEdit] = useState<Playlist | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: playlists = [], isLoading } = useQuery<Playlist[]>({
-    queryKey: ["playlists"],
-    queryFn: async () => {
-      return await window.api.getPlaylists();
-    },
-  });
+  // Use optimized usePlaylists hook with caching
+  const { data: playlists = [], isLoading } = usePlaylists();
+
+  // Filter playlists based on playlistFilter
+  const filteredPlaylists = useMemo(() => {
+    if (playlistFilter === "all") {
+      return playlists;
+    }
+    return playlists.filter((playlist) => 
+      playlistFilter === "smart" ? playlist.isSmart : !playlist.isSmart
+    );
+  }, [playlists, playlistFilter]);
 
   const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) {
       return;
     }
 
-    if (playlistType === "smart") {
-      if (smartFilters.filters.length === 0) {
-        log.error("[PlaylistsPage] Smart collection must have at least one filter");
-        return;
-      }
-      
-      // Validate filters
-      for (const filter of smartFilters.filters) {
-        if (filter.type === "tags" && typeof filter.value === "string" && !filter.value.trim()) {
-          log.error("[PlaylistsPage] Tag filter cannot be empty");
-          return;
-        }
-        if (filter.type === "rating" && (!Array.isArray(filter.value) || filter.value.length === 0)) {
-          log.error("[PlaylistsPage] Rating filter must have at least one rating selected");
-          return;
-        }
-      }
+    // Smart collections require at least one tag
+    if (playlistType === "smart" && smartTags.length === 0) {
+      log.error("[PlaylistsPage] Smart collection must have at least one tag");
+      return;
     }
 
     setIsCreating(true);
     try {
-      const queryJson = playlistType === "smart" ? JSON.stringify(smartFilters) : "";
+      // Normalize tags (trim + lowercase) for consistency with FTS5 unicode61 tokenizer
+      const normalizedTags = playlistType === "smart"
+        ? smartTags.map(tag => ({
+            tag: tag.tag.trim().toLowerCase(),
+            type: tag.type,
+          }))
+        : [];
+      
+      const queryJson = playlistType === "smart" 
+        ? JSON.stringify({ 
+            tags: normalizedTags,
+          } as SmartPlaylistQuery)
+        : "";
       
       await window.api.createPlaylist({
         name: newPlaylistName.trim(),
-        description: newPlaylistDescription.trim(),
         isSmart: playlistType === "smart",
         queryJson,
         iconName: "",
       });
 
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
-      setNewPlaylistName("");
-      setNewPlaylistDescription("");
-      setPlaylistType("static");
-      setSmartFilters({ operator: "AND", filters: [] });
-      setIsDialogOpen(false);
+          setNewPlaylistName("");
+          setTagInputValue("");
+          setSmartTags([]);
+          setPlaylistType("manual"); // Reset to manual for next creation
+          setIsDialogOpen(false);
     } catch (error) {
       log.error("[PlaylistsPage] Failed to create playlist:", error);
     } finally {
@@ -311,34 +337,80 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     }
   };
 
-  const addSmartFilter = () => {
-    setSmartFilters((prev) => ({
-      ...prev,
-      filters: [
-        ...prev.filters,
-        {
-          type: "tags",
-          operator: "include",
-          value: "",
-        },
-      ],
-    }));
+  const handleTagSelect = (option: SearchResults | null) => {
+    if (!option) return;
+
+    const tagName = option.value.trim();
+    if (!tagName) return;
+
+    // Check if tag already exists
+    if (smartTags.some((t) => t.tag.toLowerCase() === tagName.toLowerCase())) {
+      setTagInputValue("");
+      return;
+    }
+
+    // Add tag with default "include" type
+    setSmartTags((prev) => [...prev, { tag: tagName, type: "include" }]);
+    setTagInputValue("");
   };
 
-  const removeSmartFilter = (index: number) => {
-    setSmartFilters((prev) => ({
-      ...prev,
-      filters: prev.filters.filter((_, i) => i !== index),
-    }));
+  const toggleTagType = (index: number) => {
+    setSmartTags((prev) =>
+      prev.map((tag, i) =>
+        i === index ? { ...tag, type: tag.type === "include" ? "exclude" : "include" } : tag
+      )
+    );
   };
 
-  const updateSmartFilter = (index: number, updates: Partial<SmartPlaylistQuery["filters"][0]>) => {
-    setSmartFilters((prev) => ({
-      ...prev,
-      filters: prev.filters.map((filter, i) =>
-        i === index ? { ...filter, ...updates } : filter
-      ),
-    }));
+  const removeTag = (index: number) => {
+    setSmartTags((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdatePlaylist = async () => {
+    if (!playlistToEdit) return;
+    if (!newPlaylistName.trim()) {
+      return;
+    }
+
+    // Smart collections require at least one tag
+    if (playlistType === "smart" && smartTags.length === 0) {
+      log.error("[PlaylistsPage] Smart collection must have at least one tag");
+      return;
+    }
+
+    setIsEditing(true);
+    try {
+      // Normalize tags (trim + lowercase) for consistency with FTS5 unicode61 tokenizer
+      const normalizedTags = playlistType === "smart"
+        ? smartTags.map(tag => ({
+            tag: tag.tag.trim().toLowerCase(),
+            type: tag.type,
+          }))
+        : [];
+      
+      const queryJson = playlistType === "smart" 
+        ? JSON.stringify({ 
+            tags: normalizedTags,
+          } as SmartPlaylistQuery)
+        : "";
+      
+      await window.api.updatePlaylist(playlistToEdit.id, {
+        name: newPlaylistName.trim(),
+        queryJson,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      setNewPlaylistName("");
+      setTagInputValue("");
+      setSmartTags([]);
+      setPlaylistType("manual");
+      setPlaylistToEdit(null);
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      log.error("[PlaylistsPage] Failed to update playlist:", error);
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   const handleDeletePlaylist = async () => {
@@ -375,19 +447,49 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-background">
-        <div className="flex items-center gap-4">
-          {onBack && (
-            <Button variant="ghost" size="icon" onClick={onBack}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          )}
-          <h1 className="text-xl font-semibold">Playlists</h1>
+      <div className="flex flex-col gap-4 p-4 border-b bg-background">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {onBack && (
+              <Button variant="ghost" size="icon" onClick={onBack}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            )}
+            <h1 className="text-xl font-semibold">Playlists</h1>
+          </div>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Playlist
+          </Button>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Playlist
-        </Button>
+        
+        {/* Playlist Type Filter */}
+        <div className="flex items-center gap-2">
+          <Label className="text-sm text-muted-foreground">Filter:</Label>
+          <ToggleGroup
+            type="single"
+            value={playlistFilter}
+            onValueChange={(value) => {
+              if (value === "all" || value === "smart" || value === "manual") {
+                setPlaylistFilter(value);
+              }
+            }}
+            size="sm"
+            variant="outline"
+          >
+            <ToggleGroupItem value="all" className="gap-2">
+              All
+            </ToggleGroupItem>
+            <ToggleGroupItem value="smart" className="gap-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              Smart Collections
+            </ToggleGroupItem>
+            <ToggleGroupItem value="manual" className="gap-2">
+              <List className="w-3.5 h-3.5" />
+              Manual Playlists
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
       </div>
 
       {/* Playlist List */}
@@ -402,9 +504,27 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             <p className="text-lg">No playlists yet</p>
             <p className="text-sm mt-2">Create your first playlist to get started</p>
           </div>
+        ) : filteredPlaylists.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            {playlistFilter === "smart" ? (
+              <Sparkles className="w-16 h-16 mb-4 opacity-50" />
+            ) : (
+              <List className="w-16 h-16 mb-4 opacity-50" />
+            )}
+            <p className="text-lg">
+              {playlistFilter === "smart" 
+                ? "No smart collections yet" 
+                : "No manual playlists yet"}
+            </p>
+            <p className="text-sm mt-2">
+              {playlistFilter === "smart"
+                ? "Create a smart collection to get started"
+                : "Create a manual playlist to get started"}
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {playlists.map((playlist) => (
+            {filteredPlaylists.map((playlist) => (
               <div
                 key={playlist.id}
                 className={cn(
@@ -425,27 +545,53 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                     )}
                     <h3 className="font-semibold flex-1 truncate">{playlist.name}</h3>
                   </div>
-                  {playlist.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 w-full">
-                      {playlist.description}
-                    </p>
-                  )}
                   {playlist.isSmart && (
-                    <span className="text-xs text-primary font-medium">Smart Collection</span>
+                    <span className="text-xs text-primary font-medium">
+                      Smart Collection
+                    </span>
                   )}
                 </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPlaylistToDelete(playlist);
-                  }}
-                  title="Delete playlist"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPlaylistToEdit(playlist);
+                      setIsEditDialogOpen(true);
+                      // Load playlist data into edit form
+                      setNewPlaylistName(playlist.name);
+                      setPlaylistType(playlist.isSmart ? "smart" : "manual");
+                      if (playlist.isSmart && playlist.queryJson) {
+                        try {
+                          const queryJson = JSON.parse(playlist.queryJson) as SmartPlaylistQuery;
+                          setSmartTags(queryJson.tags || []);
+                        } catch {
+                          setSmartTags([]);
+                        }
+                      } else {
+                        setSmartTags([]);
+                      }
+                      setTagInputValue("");
+                    }}
+                    title="Edit playlist"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPlaylistToDelete(playlist);
+                    }}
+                    title="Delete playlist"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -458,48 +604,22 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
         if (!open) {
           // Reset form when closing
           setNewPlaylistName("");
-          setNewPlaylistDescription("");
-          setPlaylistType("static");
-          setSmartFilters({ operator: "AND", filters: [] });
+          setTagInputValue("");
+          setSmartTags([]);
+          setPlaylistType("manual");
         }
       }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Playlist</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary" />
+              Create Playlist
+            </DialogTitle>
             <DialogDescription>
-              Create a static playlist or a smart collection that automatically updates based on filters.
+              Create a manual playlist or a smart collection that automatically updates based on tags.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
-            {/* Playlist Name */}
-            <div className="space-y-2">
-              <Label htmlFor="playlist-name">Playlist Name</Label>
-              <Input
-                id="playlist-name"
-                placeholder="My Playlist"
-                value={newPlaylistName}
-                onChange={(e) => setNewPlaylistName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isCreating && newPlaylistName.trim()) {
-                    handleCreatePlaylist();
-                  }
-                }}
-                disabled={isCreating}
-              />
-            </div>
-
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="playlist-description">Description (Optional)</Label>
-              <Input
-                id="playlist-description"
-                placeholder="A brief description..."
-                value={newPlaylistDescription}
-                onChange={(e) => setNewPlaylistDescription(e.target.value)}
-                disabled={isCreating}
-              />
-            </div>
-
             {/* Playlist Type Toggle */}
             <div className="space-y-2">
               <Label>Playlist Type</Label>
@@ -507,208 +627,103 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                 type="single"
                 value={playlistType}
                 onValueChange={(value) => {
-                  if (value === "static" || value === "smart") {
+                  if (value === "smart" || value === "manual") {
                     setPlaylistType(value);
-                    if (value === "static") {
-                      setSmartFilters({ operator: "AND", filters: [] });
+                    // Clear tags when switching to manual
+                    if (value === "manual") {
+                      setSmartTags([]);
+                      setTagInputValue("");
                     }
                   }
                 }}
+                size="default"
+                variant="outline"
                 className="w-full"
               >
-                <ToggleGroupItem value="static" className="flex-1">
-                  <List className="mr-2 h-4 w-4" />
-                  Static Playlist
+                <ToggleGroupItem value="manual" className="flex-1">
+                  <List className="w-4 h-4 mr-2" />
+                  Manual Playlist
                 </ToggleGroupItem>
                 <ToggleGroupItem value="smart" className="flex-1">
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Sparkles className="w-4 h-4 mr-2" />
                   Smart Collection
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
 
-            {/* Smart Collection Filters */}
+            {/* Playlist Name */}
+            <div className="space-y-2">
+              <Label htmlFor="playlist-name">
+                {playlistType === "smart" ? "Collection Name" : "Playlist Name"}
+              </Label>
+              <Input
+                id="playlist-name"
+                placeholder={playlistType === "smart" ? "My Smart Collection" : "My Playlist"}
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !isCreating && newPlaylistName.trim()) {
+                    if (playlistType === "smart" && smartTags.length > 0) {
+                      handleCreatePlaylist();
+                    } else if (playlistType === "manual") {
+                      handleCreatePlaylist();
+                    }
+                  }
+                }}
+                disabled={isCreating}
+              />
+            </div>
+
+            {/* Tag Input - Only for Smart Collections */}
             {playlistType === "smart" && (
-              <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <Label>Filters</Label>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground">Operator:</Label>
-                    <Select
-                      value={smartFilters.operator}
-                      onValueChange={(value: "AND" | "OR") => {
-                        setSmartFilters((prev) => ({ ...prev, operator: value }));
-                      }}
-                    >
-                      <SelectTrigger className="w-24">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AND">AND</SelectItem>
-                        <SelectItem value="OR">OR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <>
+                <div className="space-y-2">
+                  <Label>Tags</Label>
+                  <AsyncAutocomplete
+                    label=""
+                    value={tagInputValue}
+                    onQueryChange={setTagInputValue}
+                    onSelect={handleTagSelect}
+                    placeholder="Search for tags..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Click tags to toggle between Include (green) and Exclude (red)
+                  </p>
                 </div>
 
-                {smartFilters.filters.length === 0 ? (
-                  <div className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
-                    No filters added. Click "Add Filter" to get started.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {smartFilters.filters.map((filter, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start gap-2 p-3 border rounded-md bg-muted/50"
-                      >
-                        <div className="flex-1 grid grid-cols-3 gap-2">
-                          {/* Filter Type */}
-                          <Select
-                            value={filter.type}
-                            onValueChange={(value: "tags" | "rating" | "media_type" | "viewed") => {
-                              const newFilter: SmartPlaylistQuery["filters"][0] = {
-                                type: value,
-                                operator: value === "tags" ? "include" : value === "viewed" ? "equals" : "equals",
-                                value:
-                                  value === "tags"
-                                    ? ""
-                                    : value === "rating"
-                                    ? []
-                                    : value === "media_type"
-                                    ? "image"
-                                    : false,
-                              };
-                              updateSmartFilter(index, newFilter);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="tags">Tags</SelectItem>
-                              <SelectItem value="rating">Rating</SelectItem>
-                              <SelectItem value="media_type">Media Type</SelectItem>
-                              <SelectItem value="viewed">Viewed</SelectItem>
-                            </SelectContent>
-                          </Select>
-
-                          {/* Operator */}
-                          <Select
-                            value={filter.operator}
-                            onValueChange={(value: string) => {
-                              updateSmartFilter(index, { operator: value as any });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {filter.type === "tags" ? (
-                                <>
-                                  <SelectItem value="include">Include</SelectItem>
-                                  <SelectItem value="exclude">Exclude</SelectItem>
-                                </>
-                              ) : filter.type === "rating" ? (
-                                <>
-                                  <SelectItem value="equals">Equals</SelectItem>
-                                  <SelectItem value="not_equals">Not Equals</SelectItem>
-                                </>
-                              ) : (
-                                <>
-                                  <SelectItem value="equals">Equals</SelectItem>
-                                  <SelectItem value="not_equals">Not Equals</SelectItem>
-                                </>
-                              )}
-                            </SelectContent>
-                          </Select>
-
-                          {/* Value */}
-                          {filter.type === "tags" && (
-                            <Input
-                              placeholder="tag1 tag2..."
-                              value={typeof filter.value === "string" ? filter.value : ""}
-                              onChange={(e) => updateSmartFilter(index, { value: e.target.value })}
-                            />
-                          )}
-                          {filter.type === "rating" && (
-                            <div className="flex items-center gap-2">
-                              {(["s", "q", "e"] as const).map((rating) => (
-                                <div key={rating} className="flex items-center gap-1">
-                                  <Checkbox
-                                    checked={
-                                      Array.isArray(filter.value) && filter.value.includes(rating)
-                                    }
-                                    onCheckedChange={(checked) => {
-                                      const current = Array.isArray(filter.value) ? filter.value : [];
-                                      const newValue = checked
-                                        ? [...current, rating]
-                                        : current.filter((r) => r !== rating);
-                                      updateSmartFilter(index, { value: newValue });
-                                    }}
-                                  />
-                                  <Label className="text-xs">{rating.toUpperCase()}</Label>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {filter.type === "media_type" && (
-                            <Select
-                              value={typeof filter.value === "string" ? filter.value : "image"}
-                              onValueChange={(value: "image" | "video") => {
-                                updateSmartFilter(index, { value });
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="image">Image</SelectItem>
-                                <SelectItem value="video">Video</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
-                          {filter.type === "viewed" && (
-                            <Select
-                              value={typeof filter.value === "boolean" ? String(filter.value) : "false"}
-                              onValueChange={(value) => {
-                                updateSmartFilter(index, { value: value === "true" });
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="true">Viewed</SelectItem>
-                                <SelectItem value="false">Not Viewed</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeSmartFilter(index)}
-                          className="h-8 w-8"
+                {/* Tag Badges */}
+                {smartTags.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Selected Tags</Label>
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/50 min-h-[60px]">
+                      {smartTags.map((tag, index) => (
+                        <Badge
+                          key={`${tag.tag}-${index}`}
+                          variant={tag.type === "include" ? "default" : "destructive"}
+                          className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
+                          onClick={() => toggleTagType(index)}
                         >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                          {tag.type === "include" ? (
+                            <Check className="w-3 h-3" />
+                          ) : (
+                            <Minus className="w-3 h-3" />
+                          )}
+                          <span>{tag.tag}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeTag(index);
+                            }}
+                            className="ml-1 hover:bg-black/20 rounded-full p-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 )}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addSmartFilter}
-                  className="w-full"
-                  disabled={isCreating}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Filter
-                </Button>
-              </div>
+              </>
             )}
           </div>
           <DialogFooter>
@@ -722,9 +737,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             <Button
               onClick={handleCreatePlaylist}
               disabled={
-                isCreating ||
-                !newPlaylistName.trim() ||
-                (playlistType === "smart" && smartFilters.filters.length === 0)
+                isCreating || 
+                !newPlaylistName.trim() || 
+                (playlistType === "smart" && smartTags.length === 0)
               }
             >
               {isCreating ? (
@@ -733,7 +748,19 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                   Creating...
                 </>
               ) : (
-                "Create"
+                <>
+                  {playlistType === "smart" ? (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Create Collection
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Playlist
+                    </>
+                  )}
+                </>
               )}
             </Button>
           </DialogFooter>
@@ -773,6 +800,138 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                 </>
               ) : (
                 "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Playlist Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) {
+          // Reset form when closing
+          setNewPlaylistName("");
+          setTagInputValue("");
+          setSmartTags([]);
+          setPlaylistType("manual");
+          setPlaylistToEdit(null);
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-primary" />
+              Edit Playlist
+            </DialogTitle>
+            <DialogDescription>
+              Update playlist name and tags. Smart collections automatically update based on tags.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Playlist Name */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-playlist-name">Name</Label>
+              <Input
+                id="edit-playlist-name"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                placeholder="Enter playlist name..."
+                disabled={isEditing}
+              />
+            </div>
+
+            {/* Playlist Type Toggle - Disabled for editing (can't change type) */}
+            <div className="space-y-2">
+              <Label>Playlist Type</Label>
+              <ToggleGroup
+                type="single"
+                value={playlistType}
+                disabled={true}
+                size="default"
+                variant="outline"
+                className="w-full"
+              >
+                <ToggleGroupItem value="manual" className="flex-1">
+                  <List className="w-4 h-4 mr-2" />
+                  Manual Playlist
+                </ToggleGroupItem>
+                <ToggleGroupItem value="smart" className="flex-1">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Smart Collection
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            {/* Tag Input - Only for Smart Collections */}
+            {playlistType === "smart" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Tags</Label>
+                  <AsyncAutocomplete
+                    label=""
+                    value={tagInputValue}
+                    onQueryChange={setTagInputValue}
+                    onSelect={handleTagSelect}
+                    placeholder="Search for tags..."
+                    disabled={isEditing}
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {smartTags.map((tag, index) => (
+                      <Badge
+                        key={index}
+                        variant={tag.type === "include" ? "default" : "destructive"}
+                        className="cursor-pointer flex items-center gap-1"
+                        onClick={() => toggleTagType(index)}
+                      >
+                        {tag.type === "include" ? (
+                          <Check className="w-3 h-3" />
+                        ) : (
+                          <Minus className="w-3 h-3" />
+                        )}
+                        <span>{tag.tag}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeTag(index);
+                          }}
+                          className="ml-1 hover:bg-black/20 rounded-full p-0.5"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={isEditing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdatePlaylist}
+              disabled={
+                isEditing || 
+                !newPlaylistName.trim() || 
+                (playlistType === "smart" && smartTags.length === 0)
+              }
+            >
+              {isEditing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Update Playlist
+                </>
               )}
             </Button>
           </DialogFooter>

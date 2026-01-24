@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, Tray, nativeImage } from "electron";
+import { app, BrowserWindow, dialog, Tray, nativeImage, Menu } from "electron";
 import path from "node:path";
 import { mkdirSync, existsSync } from "fs";
 import log from "electron-log";
@@ -542,6 +542,42 @@ function createTray(_window: BrowserWindow): void {
 
     tray = new Tray(resizedImage);
     tray.setToolTip("RuleDesk");
+
+    // Create context menu for tray
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: "Show",
+        click: () => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        },
+      },
+      {
+        label: "Hide",
+        click: () => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.hide();
+          }
+        },
+      },
+      { type: "separator" },
+      {
+        label: "Quit",
+        click: () => {
+          // Destroy tray first
+          if (tray) {
+            tray.destroy();
+            tray = null;
+          }
+          // Then quit the app
+          app.quit();
+        },
+      },
+    ]);
+
+    tray.setContextMenu(contextMenu);
 
     // Tray click handler - show/hide window
     // Use 'click' on Windows/Linux, 'click' on macOS shows context menu, so we use 'click' for all

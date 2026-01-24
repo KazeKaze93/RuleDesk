@@ -24,6 +24,7 @@ interface SearchState {
   sortOrder: SortOrder;
   filters: PostFilters;
   viewType: ViewType;
+  isRandom: boolean;
   
   setQuery: (query: string) => void;
   setActiveTab: (tab: TabType | null) => void;
@@ -33,6 +34,8 @@ interface SearchState {
   setFilters: (filters: Partial<PostFilters>) => void;
   resetFilters: () => void;
   setViewType: (viewType: ViewType) => void;
+  setIsRandom: (isRandom: boolean) => void;
+  toggleIsRandom: () => void;
 }
 
 const DEFAULT_FILTERS: PostFilters = {
@@ -49,6 +52,7 @@ export const useSearchStore = create<SearchState>((set) => ({
   sortOrder: "desc",
   filters: DEFAULT_FILTERS,
   viewType: "grid",
+  isRandom: false,
   
   setQuery: (query) => {
     // Basic validation: ensure query is a string and reasonable length
@@ -92,5 +96,7 @@ export const useSearchStore = create<SearchState>((set) => ({
   })),
   resetFilters: () => set({ filters: DEFAULT_FILTERS }),
   setViewType: (viewType) => set({ viewType }),
+  setIsRandom: (isRandom) => set({ isRandom }),
+  toggleIsRandom: () => set((state) => ({ isRandom: !state.isRandom })),
 }));
 

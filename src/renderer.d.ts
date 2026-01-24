@@ -68,6 +68,7 @@ export interface IpcApi extends IpcBridge {
     artistId?: number;
     page?: number;
     filters?: PostQueryFilters;
+    isRandom?: boolean;
   }) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
 
@@ -97,6 +98,8 @@ export interface IpcApi extends IpcBridge {
   markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
 
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
+
+  shadowInsertPost: (postData: PostData) => Promise<number>;
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 

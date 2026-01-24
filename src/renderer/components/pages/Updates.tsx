@@ -125,6 +125,16 @@ export const Updates = () => {
   const openViewer = useViewerStore((state) => state.open);
   const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
 
+  // Use useShallow for multiple filter values to prevent unnecessary re-renders
+  // This is more efficient than individual selectors when selecting multiple related values
+  const { sortOrder, viewType, filters } = useSearchStore(
+    useShallow((state) => ({
+      sortOrder: state.sortOrder,
+      viewType: state.viewType,
+      filters: state.filters,
+    }))
+  );
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["posts", "updates", tags],
@@ -149,16 +159,6 @@ export const Updates = () => {
       initialPageParam: 1,
     });
 
-  // Use useShallow for multiple filter values to prevent unnecessary re-renders
-  // This is more efficient than individual selectors when selecting multiple related values
-  const { sortOrder, viewType, filters } = useSearchStore(
-    useShallow((state) => ({
-      sortOrder: state.sortOrder,
-      viewType: state.viewType,
-      filters: state.filters,
-    }))
-  );
-  
   const { aiFilter, mediaType, source } = filters;
 
   const allPosts = useMemo(() => {

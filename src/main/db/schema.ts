@@ -142,7 +142,6 @@ export const playlists = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
-    description: text("description").default(""),
     isSmart: integer("is_smart", { mode: "boolean" })
       .notNull()
       .default(false),

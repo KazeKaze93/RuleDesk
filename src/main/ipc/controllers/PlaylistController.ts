@@ -1,7 +1,7 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, desc, and, inArray, sql, or, not, type SQL } from "drizzle-orm";
+import { eq, desc, and, inArray, sql, or, not, asc, type SQL } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { playlists, playlistEntries, posts, type Post } from "../../db/schema";
@@ -27,6 +27,9 @@ import {
 import { PostFilterSchema } from "../../../shared/schemas/post";
 import { isVideoUrl } from "@shared/utils/media";
 import { getSqliteInstance } from "../../db/client";
+import { getProvider } from "../../providers";
+import { settings, SETTINGS_ID } from "../../db/schema";
+import { safeStorage } from "electron";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -72,6 +75,79 @@ export class PlaylistController extends BaseController {
   }
 
   /**
+   * Get decrypted settings for API authentication
+   *
+   * @returns Decrypted settings or null if not available
+   */
+  private async getDecryptedSettings(): Promise<{
+    userId: string;
+    apiKey: string;
+  } | null> {
+    try {
+      const db = this.getDb();
+      const settingsRecord = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all();
+
+      if (!settingsRecord || settingsRecord.length === 0) {
+        return null;
+      }
+
+      const record = settingsRecord[0];
+      if (!record.userId || !record.encryptedApiKey) {
+        return null;
+      }
+
+      // Decrypt API key using Electron's safeStorage
+      let apiKey = record.encryptedApiKey;
+      if (apiKey && safeStorage.isEncryptionAvailable()) {
+        try {
+          const buff = Buffer.from(apiKey, "base64");
+          apiKey = safeStorage.decryptString(buff);
+        } catch (e) {
+          log.warn("[PlaylistController] Failed to decrypt API Key.", e);
+          apiKey = record.encryptedApiKey;
+        }
+      }
+
+      return {
+        userId: record.userId,
+        apiKey: apiKey,
+      };
+    } catch (error) {
+      log.error("[PlaylistController] Failed to get decrypted settings:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Build booru query string from smart playlist tags
+   * 
+   * Format: include tags joined with spaces (AND logic), exclude tags prefixed with minus (NOT logic)
+   * Example: "bioshock blowjob -futa -loli"
+   * 
+   * @param query - Smart playlist query with tags
+   * @returns Booru query string
+   */
+  private buildBooruQueryString(query: SmartPlaylistQuery): string {
+    const includeTags = query.tags
+      .filter((t) => t.type === "include")
+      .map((t) => t.tag.trim().toLowerCase())
+      .filter(Boolean);
+    
+    const excludeTags = query.tags
+      .filter((t) => t.type === "exclude")
+      .map((t) => `-${t.tag.trim().toLowerCase()}`)
+      .filter(Boolean);
+    
+    const allTags = [...includeTags, ...excludeTags];
+    return allTags.join(" ");
+  }
+
+  /**
    * Setup IPC handlers for playlist operations
    */
   public setup(): void {
@@ -87,7 +163,8 @@ export class PlaylistController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLISTS,
       z.tuple([]),
-      this.getPlaylists.bind(this)
+      this.getPlaylists.bind(this),
+      { isIdempotent: true } // Mark as idempotent for better rate limiting and request collapsing
     );
 
     this.handle(
@@ -167,9 +244,22 @@ export class PlaylistController extends BaseController {
         "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
       );
       const result = stmt.get();
-      return !!result;
+      const exists = !!result;
+      
+      if (exists) {
+        // Check if table has data
+        const countStmt = sqlite.prepare<[], { count: number }>(
+          "SELECT COUNT(*) as count FROM posts_fts"
+        );
+        const ftsCount = countStmt.get();
+        log.info(`[PlaylistController] FTS5 table exists with ${ftsCount?.count ?? 0} entries`);
+      } else {
+        log.warn("[PlaylistController] FTS5 table does not exist!");
+      }
+      
+      return exists;
     } catch (error) {
-      log.warn("[PlaylistController] Failed to check FTS table existence:", error);
+      log.error("[PlaylistController] Failed to check FTS table existence:", error);
       return false;
     }
   }
@@ -227,121 +317,191 @@ export class PlaylistController extends BaseController {
   }
 
   /**
-   * Build SQL conditions from smart playlist query filters
+   * Build SQL conditions from smart playlist tag query
    *
-   * @param query - Smart playlist query object
-   * @returns Array of SQL conditions
+   * Include tags are combined with AND logic.
+   * Exclude tags are combined with OR logic (standard booru search).
+   * Uses FTS5 for optimal performance.
+   *
+   * For include tags: Use a single FTS5 query with AND operator inside FTS5
+   * For exclude tags: Use OR operator inside FTS5, then wrap in NOT
+   *
+   * @param query - Smart playlist query object (tag-centric)
+   * @returns Object with includeConditions and excludeConditions arrays
    */
-  private buildSmartPlaylistConditions(query: SmartPlaylistQuery): SQL[] {
-    const conditions: SQL[] = [];
+  private buildSmartPlaylistTagConditions(query: SmartPlaylistQuery): {
+    includeConditions: SQL[];
+    excludeConditions: SQL[];
+  } {
+    const includeConditions: SQL[] = [];
+    const excludeConditions: SQL[] = [];
     const ftsTableExists = this.checkFtsTableExists();
 
-    for (const filter of query.filters) {
-      switch (filter.type) {
-        case "tags": {
-          if (typeof filter.value !== "string") {
-            log.warn("[PlaylistController] Invalid tag filter value, skipping");
-            continue;
+    if (!ftsTableExists) {
+      log.error(
+        "[PlaylistController] FTS5 table does not exist for tag filtering in smart playlist"
+      );
+      return { includeConditions: [sql`1 = 0`], excludeConditions: [] };
+    }
+
+    // Check if FTS5 table has any data
+    try {
+      const sqlite = getSqliteInstance();
+      const countStmt = sqlite.prepare<[], { count: number }>(
+        "SELECT COUNT(*) as count FROM posts_fts"
+      );
+      const ftsCount = countStmt.get();
+      const count = ftsCount?.count ?? 0;
+      log.info(`[PlaylistController] FTS5 table has ${count} entries`);
+      
+      if (count === 0) {
+        log.warn(
+          "[PlaylistController] FTS5 table exists but is empty. " +
+          "This may indicate that posts table has no data or FTS5 triggers are not working. " +
+          "Trying to populate FTS5 table..."
+        );
+        
+        // Try to populate FTS5 table
+        try {
+          const postsCount = sqlite.prepare<[], { count: number }>(
+            "SELECT COUNT(*) as count FROM posts"
+          ).get() as { count: number } | undefined;
+          
+          const postsCountValue = postsCount?.count ?? 0;
+          log.info(`[PlaylistController] Found ${postsCountValue} posts in database`);
+          
+          if (postsCountValue > 0) {
+            log.info("[PlaylistController] Populating FTS5 table with existing posts...");
+            sqlite.exec(`
+              INSERT INTO posts_fts(rowid, tags)
+              SELECT id, tags FROM posts
+              WHERE id NOT IN (SELECT rowid FROM posts_fts);
+            `);
+            
+            // Check count again
+            const newCount = sqlite.prepare<[], { count: number }>(
+              "SELECT COUNT(*) as count FROM posts_fts"
+            ).get() as { count: number } | undefined;
+            log.info(`[PlaylistController] FTS5 table now has ${newCount?.count ?? 0} entries`);
           }
-
-          if (filter.operator === "include" || filter.operator === "exclude") {
-            if (!ftsTableExists) {
-              log.error(
-                "[PlaylistController] FTS5 table does not exist for tag filtering in smart playlist"
-              );
-              // Return condition that matches nothing
-              conditions.push(sql`1 = 0`);
-              continue;
-            }
-
-            try {
-              const sanitized = this.sanitizeFts5Query(filter.value);
-              const tagCondition = sql`EXISTS (
-                SELECT 1 FROM posts_fts 
-                WHERE posts_fts.rowid = ${posts.id} 
-                  AND posts_fts MATCH ${sanitized}
-              )`;
-
-              if (filter.operator === "exclude") {
-                conditions.push(not(tagCondition));
-              } else {
-                conditions.push(tagCondition);
-              }
-            } catch (error) {
-              log.error(
-                `[PlaylistController] Failed to sanitize tag filter "${filter.value}":`,
-                error
-              );
-              // Skip invalid filter
-            }
-          }
-          break;
+        } catch (populateError) {
+          log.error("[PlaylistController] Failed to populate FTS5 table:", populateError);
         }
+      }
+    } catch (error) {
+      log.warn("[PlaylistController] Failed to check FTS5 table count:", error);
+    }
 
-        case "rating": {
-          if (!Array.isArray(filter.value)) {
-            log.warn("[PlaylistController] Invalid rating filter value, skipping");
-            continue;
+    // Build include tags query: combine all include tags with AND inside FTS5
+    const includeTags = query.tags.filter((t) => t.type === "include").map((t) => t.tag);
+    if (includeTags.length > 0) {
+      try {
+        // Sanitize each tag individually (validate format and normalize)
+        const sanitizedTags = includeTags.map((tag) => {
+          log.debug(`[PlaylistController] Processing include tag: ${tag}`);
+          
+          // Validate tag format and normalize (trim, lowercase for consistency with unicode61 tokenizer)
+          const trimmed = tag.trim().toLowerCase();
+          if (trimmed.length === 0) {
+            throw new Error("Tag cannot be empty");
           }
-
-          if (filter.operator === "equals") {
-            if (filter.value.length === 1) {
-              conditions.push(eq(posts.rating, filter.value[0]));
-            } else if (filter.value.length > 1) {
-              conditions.push(inArray(posts.rating, filter.value));
-            }
-          } else if (filter.operator === "not_equals") {
-            if (filter.value.length === 1) {
-              conditions.push(not(eq(posts.rating, filter.value[0])));
-            } else {
-              // For multiple ratings, use NOT IN
-              conditions.push(not(inArray(posts.rating, filter.value)));
-            }
+          
+          const strictWhitelistRegex = /^[a-zA-Z0-9_* -]+$/;
+          if (!strictWhitelistRegex.test(trimmed)) {
+            throw new Error(`Invalid tag: "${tag}". Only alphanumeric characters, spaces, hyphens, underscores, and trailing asterisks are allowed.`);
           }
-          break;
-        }
-
-        case "media_type": {
-          if (typeof filter.value !== "string") {
-            log.warn("[PlaylistController] Invalid media_type filter value, skipping");
-            continue;
-          }
-
-          if (filter.operator === "equals") {
-            conditions.push(eq(posts.mediaType, filter.value));
-          } else if (filter.operator === "not_equals") {
-            conditions.push(not(eq(posts.mediaType, filter.value)));
-          }
-          break;
-        }
-
-        case "viewed": {
-          if (typeof filter.value !== "boolean") {
-            log.warn("[PlaylistController] Invalid viewed filter value, skipping");
-            continue;
-          }
-
-          if (filter.operator === "equals") {
-            conditions.push(eq(posts.isViewed, filter.value));
-          } else if (filter.operator === "not_equals") {
-            conditions.push(not(eq(posts.isViewed, filter.value)));
-          }
-          break;
-        }
-
-        default:
-          log.warn(`[PlaylistController] Unknown filter type: ${(filter as { type: string }).type}`);
+          
+          // For FTS5, tags should be used without quotes unless they contain spaces
+          // Since we validate that tags don't contain special characters, we can use them directly
+          // Escape single quotes if present (though validation should prevent this)
+          return trimmed.replace(/'/g, "''");
+        });
+        
+        // Combine with AND operator (uppercase as required by FTS5 syntax)
+        // FTS5 syntax: tag1 AND tag2 (no quotes around individual tags)
+        const combinedQuery = sanitizedTags.join(" AND ");
+        
+        log.debug(`[PlaylistController] Combined FTS5 include query: ${combinedQuery}`);
+        
+        // Build the entire EXISTS subquery using sql.raw() to avoid Drizzle parameterization issues
+        // We've already sanitized and validated each tag, so this is safe
+        // The entire MATCH expression must be raw because FTS5 requires specific syntax
+        // Use single quotes for FTS5 MATCH string literal, and escape single quotes in the query
+        // In SQLite, posts_fts.rowid references posts.id, so we use the table.column syntax
+        const escapedQuery = combinedQuery.replace(/'/g, "''");
+        const includeCondition = sql.raw(`EXISTS (
+          SELECT 1 FROM posts_fts 
+          WHERE posts_fts.rowid = posts.id
+            AND posts_fts MATCH '${escapedQuery}'
+        )`);
+        
+        includeConditions.push(includeCondition);
+      } catch (error) {
+        log.error(
+          `[PlaylistController] Failed to build include tags condition:`,
+          error
+        );
       }
     }
 
-    return conditions;
+    // Build exclude tags query: combine all exclude tags with OR inside FTS5
+    const excludeTags = query.tags.filter((t) => t.type === "exclude").map((t) => t.tag);
+    if (excludeTags.length > 0) {
+      try {
+        // Sanitize each tag individually (validate format and normalize)
+        const sanitizedTags = excludeTags.map((tag) => {
+          log.debug(`[PlaylistController] Processing exclude tag: ${tag}`);
+          
+          // Validate tag format and normalize (trim, lowercase for consistency with unicode61 tokenizer)
+          const trimmed = tag.trim().toLowerCase();
+          if (trimmed.length === 0) {
+            throw new Error("Tag cannot be empty");
+          }
+          
+          const strictWhitelistRegex = /^[a-zA-Z0-9_* -]+$/;
+          if (!strictWhitelistRegex.test(trimmed)) {
+            throw new Error(`Invalid tag: "${tag}". Only alphanumeric characters, spaces, hyphens, underscores, and trailing asterisks are allowed.`);
+          }
+          
+          // For FTS5, tags should be used without quotes unless they contain spaces
+          // Escape single quotes if present (though validation should prevent this)
+          return trimmed.replace(/'/g, "''");
+        });
+        
+        // Combine with OR operator (uppercase as required by FTS5 syntax)
+        // FTS5 OR syntax: tag1 OR tag2 (no quotes around individual tags)
+        const combinedQuery = sanitizedTags.join(" OR ");
+        
+        log.debug(`[PlaylistController] Combined FTS5 exclude query: ${combinedQuery}`);
+        
+        // Build the entire EXISTS subquery using sql.raw() to avoid Drizzle parameterization issues
+        // We've already sanitized and validated each tag, so this is safe
+        // Use single quotes for FTS5 MATCH string literal, and escape single quotes in the query
+        // In SQLite, posts_fts.rowid references posts.id, so we use the table.column syntax
+        const escapedQuery = combinedQuery.replace(/'/g, "''");
+        const excludeCondition = sql.raw(`EXISTS (
+          SELECT 1 FROM posts_fts 
+          WHERE posts_fts.rowid = posts.id
+            AND posts_fts MATCH '${escapedQuery}'
+        )`);
+        
+        excludeConditions.push(excludeCondition);
+      } catch (error) {
+        log.error(
+          `[PlaylistController] Failed to build exclude tags condition:`,
+          error
+        );
+      }
+    }
+
+    return { includeConditions, excludeConditions };
   }
 
   /**
    * Create a new playlist
    *
    * @param _event - IPC event (unused)
-   * @param data - Playlist data (name, description, isSmart, queryJson, iconName)
+   * @param data - Playlist data (name, isSmart, queryJson, iconName)
    * @returns Created playlist
    */
   private async createPlaylist(
@@ -355,8 +515,7 @@ export class PlaylistController extends BaseController {
         .insert(playlists)
         .values({
           name: data.name,
-          description: data.description ?? "",
-          isSmart: data.isSmart ?? false,
+          isSmart: data.isSmart ?? true, // Default to Smart Collection
           queryJson: data.queryJson ?? "",
           iconName: data.iconName ?? "",
         })
@@ -371,6 +530,22 @@ export class PlaylistController extends BaseController {
       log.info(
         `[PlaylistController] Created playlist: ${playlist.id} (${playlist.name}, smart: ${playlist.isSmart})`
       );
+      
+      // Log queryJson for smart playlists to help debug empty collections
+      if (playlist.isSmart && playlist.queryJson) {
+        try {
+          const parsedQuery = JSON.parse(playlist.queryJson);
+          log.info(
+            `[PlaylistController] Smart playlist ${playlist.id} query_json:`,
+            JSON.stringify(parsedQuery, null, 2)
+          );
+        } catch (error) {
+          log.warn(
+            `[PlaylistController] Failed to parse query_json for newly created playlist ${playlist.id}:`,
+            error
+          );
+        }
+      }
 
       return toIpcSafe(playlist) as IpcPlaylist;
     } catch (error) {
@@ -441,7 +616,7 @@ export class PlaylistController extends BaseController {
    *
    * @param _event - IPC event (unused)
    * @param playlistId - Playlist ID
-   * @param data - Update data (name, description - all optional)
+   * @param data - Update data (name, queryJson, iconName - all optional)
    * @returns Updated playlist
    */
   private async updatePlaylist(
@@ -455,9 +630,6 @@ export class PlaylistController extends BaseController {
       const updateData: Partial<typeof playlists.$inferInsert> = {};
       if (data.name !== undefined) {
         updateData.name = data.name;
-      }
-      if (data.description !== undefined) {
-        updateData.description = data.description;
       }
       if (data.queryJson !== undefined) {
         updateData.queryJson = data.queryJson;
@@ -638,7 +810,7 @@ export class PlaylistController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: GetPlaylistPostsRequest
   ): Promise<IpcPost[]> {
-    const { playlistId, page, filters, limit } = params;
+    const { playlistId, page, filters, limit, isRandom } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -668,7 +840,7 @@ export class PlaylistController extends BaseController {
       const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
       // Use JOIN to efficiently retrieve posts with their playlist entries
-      const result = db
+      const queryBuilder = db
         .select({
           id: posts.id,
           postId: posts.postId,
@@ -687,11 +859,11 @@ export class PlaylistController extends BaseController {
         })
         .from(playlistEntries)
         .innerJoin(posts, eq(playlistEntries.postId, posts.id))
-        .where(whereClause)
-        .orderBy(desc(posts.publishedAt))
-        .limit(limit)
-        .offset(offset)
-        .all();
+        .where(whereClause);
+
+      const result = isRandom
+        ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+        : queryBuilder.orderBy(desc(posts.publishedAt)).limit(limit).offset(offset).all();
 
       log.info(
         `[PlaylistController] Retrieved ${result.length} posts from playlist ${playlistId} (page ${page})`
@@ -708,17 +880,18 @@ export class PlaylistController extends BaseController {
    * Resolve posts for a playlist (static or smart)
    *
    * For static playlists: Uses JOIN with playlist_entries.
-   * For smart playlists: Parses query_json and builds dynamic Drizzle query.
+   * For smart playlists: Parses query_json and builds dynamic Drizzle query with tag filters.
+   * Integrates with global filters (rating, mediaType) from GlobalTopBar.
    *
    * @param _event - IPC event (unused)
-   * @param params - Request parameters (playlistId, page, limit)
+   * @param params - Request parameters (playlistId, page, limit, filters)
    * @returns Array of posts
    */
   private async resolvePlaylistPosts(
     _event: IpcMainInvokeEvent,
     params: ResolvePlaylistPostsRequest
   ): Promise<IpcPost[]> {
-    const { playlistId, page, limit } = params;
+    const { playlistId, page, limit, filters, sortOrder = "desc", isRandom } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -738,9 +911,32 @@ export class PlaylistController extends BaseController {
 
       const playlist = playlistResult[0];
 
-      // Static playlist: use JOIN with playlist_entries
+      // Build global filter conditions (from GlobalTopBar)
+      const globalConditions: SQL[] = [];
+      if (filters?.rating) {
+        globalConditions.push(eq(posts.rating, filters.rating));
+      }
+      if (filters?.mediaType === "videos") {
+        globalConditions.push(eq(posts.mediaType, "video"));
+      } else if (filters?.mediaType === "images") {
+        globalConditions.push(
+          or(
+            eq(posts.mediaType, "image"),
+            sql`${posts.mediaType} IS NULL`
+          ) as typeof posts.mediaType
+        );
+      }
+
+      // Static playlist: use JOIN with playlist_entries + global filters
       if (!playlist.isSmart) {
-        const result = db
+        const conditions = [eq(playlistEntries.playlistId, playlistId)];
+        if (globalConditions.length > 0) {
+          conditions.push(...globalConditions);
+        }
+
+        const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+        const queryBuilder = db
           .select({
             id: posts.id,
             postId: posts.postId,
@@ -759,11 +955,11 @@ export class PlaylistController extends BaseController {
           })
           .from(playlistEntries)
           .innerJoin(posts, eq(playlistEntries.postId, posts.id))
-          .where(eq(playlistEntries.playlistId, playlistId))
-          .orderBy(desc(playlistEntries.addedAt))
-          .limit(limit)
-          .offset(offset)
-          .all();
+          .where(whereClause);
+
+        const result = isRandom
+          ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+          : queryBuilder.orderBy(sortOrder === "asc" ? asc(playlistEntries.addedAt) : desc(playlistEntries.addedAt)).limit(limit).offset(offset).all();
 
         log.info(
           `[PlaylistController] Resolved ${result.length} posts from static playlist ${playlistId} (page ${page})`
@@ -781,6 +977,7 @@ export class PlaylistController extends BaseController {
       let query: SmartPlaylistQuery;
       try {
         query = JSON.parse(playlist.queryJson);
+        log.info(`[PlaylistController] Parsed query_json for smart playlist ${playlistId}:`, JSON.stringify(query));
       } catch (error) {
         log.error(
           `[PlaylistController] Failed to parse query_json for smart playlist ${playlistId}:`,
@@ -789,50 +986,272 @@ export class PlaylistController extends BaseController {
         throw new Error(`Invalid query_json for smart playlist ${playlistId}`);
       }
 
-      // Build conditions from smart playlist query
-      const conditions = this.buildSmartPlaylistConditions(query);
+      // Smart playlist: Hybrid Search - always query both local DB and remote API concurrently
+      // Step 1: Query local DB using FTS5
+      // Step 2: Concurrently fetch from remote API
+      // Step 3: Merge and deduplicate results (prioritize local entries for isViewed/isFavorited status)
+      
+      // Build tag conditions from smart playlist query
+      const { includeConditions, excludeConditions } = this.buildSmartPlaylistTagConditions(query);
+      
+      log.info(
+        `[PlaylistController] Built conditions for smart playlist ${playlistId}: ` +
+        `${includeConditions.length} include, ${excludeConditions.length} exclude`
+      );
 
-      if (conditions.length === 0) {
-        log.warn(`[PlaylistController] Smart playlist ${playlistId} has no valid filters, returning empty result`);
+      if (includeConditions.length === 0 && excludeConditions.length === 0) {
+        log.warn(`[PlaylistController] Smart playlist ${playlistId} has no valid tags, returning empty result`);
         return [];
       }
 
-      // Combine conditions using AND or OR operator
-      const whereClause =
-        query.operator === "OR" ? or(...conditions) : and(...conditions);
+      // Combine conditions for local DB query
+      const allConditions: SQL[] = [];
 
-      // Execute query
-      const result = db
-        .select({
-          id: posts.id,
-          postId: posts.postId,
-          artistId: posts.artistId,
-          fileUrl: posts.fileUrl,
-          previewUrl: posts.previewUrl,
-          sampleUrl: posts.sampleUrl,
-          title: posts.title,
-          rating: posts.rating,
-          tags: posts.tags,
-          mediaType: posts.mediaType,
-          publishedAt: posts.publishedAt,
-          createdAt: posts.createdAt,
-          isViewed: posts.isViewed,
-          isFavorited: posts.isFavorited,
-        })
-        .from(posts)
-        .where(whereClause)
-        .orderBy(desc(posts.publishedAt))
-        .limit(limit)
-        .offset(offset)
-        .all();
+      if (includeConditions.length > 0) {
+        if (includeConditions.length === 1) {
+          allConditions.push(includeConditions[0]);
+        } else {
+          allConditions.push(and(...includeConditions));
+        }
+      }
+
+      if (excludeConditions.length > 0) {
+        if (excludeConditions.length === 1) {
+          allConditions.push(not(excludeConditions[0]));
+        } else {
+          allConditions.push(not(or(...excludeConditions)));
+        }
+      }
+
+      // Add global filters
+      if (globalConditions.length > 0) {
+        allConditions.push(...globalConditions);
+      }
+
+      const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0];
+
+      // Execute local DB query and remote API query concurrently
+      const [localPosts, remotePosts] = await Promise.all([
+        // Local DB query
+        (async () => {
+          try {
+            const queryBuilder = db
+              .select({
+                id: posts.id,
+                postId: posts.postId,
+                artistId: posts.artistId,
+                fileUrl: posts.fileUrl,
+                previewUrl: posts.previewUrl,
+                sampleUrl: posts.sampleUrl,
+                title: posts.title,
+                rating: posts.rating,
+                tags: posts.tags,
+                mediaType: posts.mediaType,
+                publishedAt: posts.publishedAt,
+                createdAt: posts.createdAt,
+                isViewed: posts.isViewed,
+                isFavorited: posts.isFavorited,
+              })
+              .from(posts)
+              .where(whereClause);
+
+            const result = isRandom
+              ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+              : queryBuilder.orderBy(sortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt)).limit(limit).offset(offset).all();
+            log.info(
+              `[PlaylistController] Local DB query returned ${result.length} posts for smart playlist ${playlistId}`
+            );
+            return toIpcSafe(result) as IpcPost[];
+          } catch (error) {
+            log.error(`[PlaylistController] Local DB query failed for smart playlist ${playlistId}:`, error);
+            return []; // Return empty array on error, continue with remote results
+          }
+        })(),
+        // Remote API query
+        (async () => {
+          try {
+            return await this.resolveRemotePlaylistPosts(playlistId, query, page, limit, filters, sortOrder, isRandom);
+          } catch (error) {
+            log.error(`[PlaylistController] Remote API query failed for smart playlist ${playlistId}:`, error);
+            return []; // Return empty array on error, continue with local results
+          }
+        })(),
+      ]);
+
+      // Merge and deduplicate results
+      // Create a Map keyed by postId to deduplicate
+      // Prioritize local entries (they have isViewed/isFavorited status)
+      const mergedMap = new Map<number, IpcPost>();
+      
+      // First, add all local posts (these have priority)
+      for (const post of localPosts) {
+        mergedMap.set(post.postId, post);
+      }
+      
+      // Then, add remote posts that aren't already in the map
+      for (const post of remotePosts) {
+        if (!mergedMap.has(post.postId)) {
+          mergedMap.set(post.postId, post);
+        } else {
+          log.debug(
+            `[PlaylistController] Deduplicated remote post (postId: ${post.postId}) - local entry exists`
+          );
+        }
+      }
+
+      // Convert map back to array and sort/shuffle
+      const mergedPosts = Array.from(mergedMap.values());
+      
+      if (isRandom) {
+        // Shuffle merged results for true randomization
+        for (let i = mergedPosts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [mergedPosts[i], mergedPosts[j]] = [mergedPosts[j], mergedPosts[i]];
+        }
+      } else {
+        // Sort by publishedAt
+        mergedPosts.sort((a, b) => {
+          if (sortOrder === "asc") {
+            return a.publishedAt - b.publishedAt;
+          } else {
+            return b.publishedAt - a.publishedAt;
+          }
+        });
+      }
+
+      // Apply pagination (limit and offset)
+      const paginatedPosts = mergedPosts.slice(offset, offset + limit);
 
       log.info(
-        `[PlaylistController] Resolved ${result.length} posts from smart playlist ${playlistId} (page ${page})`
+        `[PlaylistController] Hybrid search resolved ${paginatedPosts.length} posts for smart playlist ${playlistId} ` +
+        `(local: ${localPosts.length}, remote: ${remotePosts.length}, merged: ${mergedPosts.length}, page ${page})`
       );
 
-      return toIpcSafe(result) as IpcPost[];
+      return paginatedPosts;
     } catch (error) {
       log.error(`[PlaylistController] Failed to resolve playlist posts for ${playlistId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Resolve smart playlist posts from remote API
+   * 
+   * Fetches posts from booru API using the tag query string.
+   * Applies global filters (rating, media type) after fetching.
+   * 
+   * @param playlistId - Playlist ID
+   * @param query - Smart playlist query
+   * @param page - Page number (1-indexed)
+   * @param limit - Number of posts per page
+   * @param filters - Global filters (rating, media type)
+   * @param sortOrder - Sort order (asc/desc)
+   * @returns Array of posts from remote API
+   */
+  private async resolveRemotePlaylistPosts(
+    playlistId: number,
+    query: SmartPlaylistQuery,
+    page: number,
+    limit: number,
+    filters?: ResolvePlaylistPostsRequest["filters"],
+    sortOrder: "asc" | "desc" = "desc",
+    isRandom: boolean = false
+  ): Promise<IpcPost[]> {
+    try {
+      // Build booru query string from tags
+      const booruQuery = this.buildBooruQueryString(query);
+      log.info(`[PlaylistController] Fetching remote posts for playlist ${playlistId} with query: "${booruQuery}"`);
+
+      // Get provider and settings
+      const provider = getProvider("rule34");
+      const apiSettings = await this.getDecryptedSettings();
+      
+      if (!apiSettings) {
+        log.warn(`[PlaylistController] Cannot fetch remote posts: no API settings available`);
+        return [];
+      }
+
+      const providerSettings = {
+        userId: apiSettings.userId,
+        apiKey: apiSettings.apiKey,
+      };
+
+      // Fetch posts from remote API (page is 0-indexed in API, but 1-indexed in our system)
+      // If isRandom is true, use a random page number (1-20) and shuffle results
+      const apiPage = isRandom ? Math.floor(Math.random() * 20) + 1 : page - 1;
+      const booruPosts = await provider.fetchPosts(booruQuery, apiPage, providerSettings, isRandom);
+      
+      log.info(`[PlaylistController] Fetched ${booruPosts.length} posts from remote API for playlist ${playlistId}`);
+
+      // Convert BooruPost to IpcPost format and apply filters
+      const filteredPosts = booruPosts
+        .filter((post) => {
+          // Apply rating filter
+          if (filters?.rating && post.rating !== filters.rating) {
+            return false;
+          }
+          
+          // Apply media type filter
+          if (filters?.mediaType) {
+            const isVideo = isVideoUrl(post.fileUrl);
+            if (filters.mediaType === "videos" && !isVideo) {
+              return false;
+            }
+            if (filters.mediaType === "images" && isVideo) {
+              return false;
+            }
+          }
+          
+          return true;
+        })
+        .map((post) => {
+          const isVideo = isVideoUrl(post.fileUrl);
+          return {
+            id: 0, // Remote posts don't have local DB ID
+            postId: post.id,
+            artistId: null, // Remote posts don't have artist association
+            fileUrl: post.fileUrl,
+            previewUrl: post.previewUrl,
+            sampleUrl: post.sampleUrl,
+            title: "",
+            rating: post.rating,
+            tags: post.tags.join(" "),
+            mediaType: isVideo ? "video" : "image",
+            publishedAt: post.createdAt.getTime(),
+            createdAt: post.createdAt.getTime(),
+            isViewed: false, // Remote posts are never viewed locally
+            isFavorited: false, // Remote posts are never favorited locally
+          } as IpcPost;
+        });
+
+      // Sort or shuffle posts based on isRandom flag
+      if (isRandom) {
+        // Shuffle filtered posts for randomization
+        for (let i = filteredPosts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [filteredPosts[i], filteredPosts[j]] = [filteredPosts[j], filteredPosts[i]];
+        }
+      } else {
+        // Sort posts (remote API usually returns sorted, but we ensure it)
+        filteredPosts.sort((a, b) => {
+          if (sortOrder === "asc") {
+            return a.publishedAt - b.publishedAt;
+          } else {
+            return b.publishedAt - a.publishedAt;
+          }
+        });
+      }
+
+      // Apply pagination (limit)
+      const paginatedPosts = filteredPosts.slice(0, limit);
+
+      log.info(
+        `[PlaylistController] Resolved ${paginatedPosts.length} posts from remote API for smart playlist ${playlistId} (page ${page}, filtered from ${booruPosts.length} total)`
+      );
+
+      return paginatedPosts;
+    } catch (error) {
+      log.error(`[PlaylistController] Failed to resolve remote playlist posts for ${playlistId}:`, error);
       throw error;
     }
   }

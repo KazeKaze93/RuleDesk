@@ -101,6 +101,8 @@ export interface IpcBridge {
 
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
 
+  shadowInsertPost: (postData: PostData) => Promise<number>;
+
   // Downloads
   downloadFile: (
     url: string,
@@ -117,7 +119,7 @@ export interface IpcBridge {
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
-  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+  searchBooru: (params: { tags: string[]; page: number; isRandom?: boolean }) => Promise<Post[]>;
 
   resolveTags: (tags: string[]) => Promise<string[]>;
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
@@ -198,6 +200,9 @@ const ipcBridge: IpcBridge = {
 
   togglePostFavorite: (postId, postData) =>
     ipcRenderer.invoke("db:toggle-post-favorite", postId, postData),
+
+  shadowInsertPost: (postData) =>
+    ipcRenderer.invoke("db:shadow-insert-post", postData),
 
   togglePostViewed: (postId) =>
     ipcRenderer.invoke("db:toggle-post-viewed", postId),

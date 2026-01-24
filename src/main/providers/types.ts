@@ -22,7 +22,7 @@ export interface IBooruProvider {
   /** Validates provided credentials against the API */
   checkAuth(settings: ProviderSettings): Promise<boolean>;
   /** Fetches posts based on tags and page */
-  fetchPosts(tags: string, page: number, settings: ProviderSettings): Promise<BooruPost[]>;
+  fetchPosts(tags: string, page: number, settings: ProviderSettings, isRandom?: boolean): Promise<BooruPost[]>;
   /** Search for tags (autocomplete) with optional AbortSignal for cancellation */
   searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]>;
   /** Formats a tag based on artist type (e.g. adding 'user:' prefix) */

@@ -100,14 +100,17 @@ export class GelbooruProvider implements IBooruProvider {
     }
   }
 
-  async fetchPosts(tags: string, page: number, settings: ProviderSettings): Promise<BooruPost[]> {
+  async fetchPosts(tags: string, page: number, settings: ProviderSettings, isRandom: boolean = false): Promise<BooruPost[]> {
+    // If isRandom is true, use a random page number (1-20) for better randomization
+    const apiPage = isRandom ? Math.floor(Math.random() * 20) + 1 : page;
+    
     // Gelbooru pages are 0-indexed usually, but let's stick to pid logic
     const params = new URLSearchParams({
       page: "dapi",
       s: "post",
       q: "index",
       limit: "100",
-      pid: page.toString(),
+      pid: apiPage.toString(),
       tags: tags,
       json: "1",
     });
@@ -180,9 +183,19 @@ export class GelbooruProvider implements IBooruProvider {
         );
       }
 
-      return validatedPosts
+      const posts = validatedPosts
         .map((raw) => this.mapToBooruPost(raw))
         .filter((post): post is BooruPost => post !== null);
+      
+      // If isRandom is true, shuffle the results array
+      if (isRandom && posts.length > 1) {
+        for (let i = posts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [posts[i], posts[j]] = [posts[j], posts[i]];
+        }
+      }
+      
+      return posts;
     } catch (error) {
        logger.error(`[Gelbooru] Error fetching page ${page}`, error);
        return [];

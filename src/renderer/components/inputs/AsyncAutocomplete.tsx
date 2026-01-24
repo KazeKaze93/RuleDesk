@@ -1,228 +1,226 @@
-import { useState, useEffect, useRef } from "react";
-import { Combobox, Transition } from "@headlessui/react";
-import { ChevronUpDownIcon, CheckIcon } from "@heroicons/react/20/solid";
-import log from "electron-log/renderer";
-import { useDebounce } from "../../lib/hooks/useDebounce";
-import { Fragment } from "react";
-
-export interface AutocompleteOption {
-  id: string | number;
-  label: string;
-}
+import { useState, useRef, useEffect } from "react";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { useRemoteTags } from "../../lib/hooks/useRemoteTags";
+import { cn } from "../../lib/utils";
+import { Loader2 } from "lucide-react";
+import type { SearchResults } from "../../../main/providers";
 
 export interface AsyncAutocompleteProps {
   label: string;
-  fetchOptions: (query: string) => Promise<AutocompleteOption[]>;
-  onSelect: (option: AutocompleteOption | null) => void;
+  onSelect: (option: SearchResults | null) => void;
   onQueryChange?: (query: string) => void;
   placeholder?: string;
   value?: string;
   onBlur?: () => void;
 }
 
+/**
+ * AsyncAutocomplete component for tag selection
+ * 
+ * Uses the same logic as TagAutocomplete - uses useRemoteTags hook
+ * and renders a simple dropdown list without Headless UI Combobox
+ */
 export function AsyncAutocomplete({
   label,
-  fetchOptions,
   onSelect,
   onQueryChange,
-  placeholder = "Type to search...",
+  placeholder = "Search for tags...",
   value,
   onBlur,
 }: AsyncAutocompleteProps) {
   const isControlled = value !== undefined;
   const [internalQuery, setInternalQuery] = useState(value || "");
   const query = isControlled ? value : internalQuery;
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const [options, setOptions] = useState<AutocompleteOption[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedOption, setSelectedOption] =
-    useState<AutocompleteOption | null>(null);
+  // Use the same hook as TagAutocomplete
+  const { results, isLoading } = useRemoteTags({
+    query: query.trim(),
+    minQueryLength: 2,
+    debounceMs: 300,
+    provider: "rule34",
+  });
 
-  const debouncedQuery = useDebounce(query, 300);
-  const fetchOptionsRef = useRef(fetchOptions);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const isValidQueryRef = useRef(false);
+  // Show dropdown when there are results and query is long enough
+  const shouldShowDropdown = isOpen && query.trim().length >= 2 && results.length > 0;
 
-  useEffect(() => {
-    fetchOptionsRef.current = fetchOptions;
-  }, [fetchOptions]);
+  // Handle input change
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newQuery = e.target.value;
 
-  useEffect(() => {
-    const currentQuery = debouncedQuery || "";
-    const trimmedQuery = currentQuery.trim();
-
-    // Cancel previous request if still pending
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
+    if (!isControlled) {
+      setInternalQuery(newQuery);
     }
 
-    // Don't search if query is empty or too short (min 2 chars for remote search)
-    if (!trimmedQuery || trimmedQuery.length < 2) {
-      isValidQueryRef.current = false;
-      // Clear state via cleanup to avoid synchronous setState
-      return () => {
-        setOptions([]);
-        setIsLoading(false);
-      };
+    onQueryChange?.(newQuery);
+
+    // Show dropdown if there's a query
+    if (newQuery.trim().length >= 2) {
+      setIsOpen(true);
+      setSelectedIndex(-1);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  // Handle input focus
+  const handleFocus = () => {
+    if (query.trim().length >= 2 && results.length > 0) {
+      setIsOpen(true);
+    }
+  };
+
+  // Handle input blur (close dropdown)
+  const handleBlurInternal = () => {
+    setIsOpen(false);
+    setSelectedIndex(-1);
+    onBlur?.();
+  };
+
+  // Handle tag selection
+  const handleSelectTag = (result: SearchResults, e?: React.MouseEvent) => {
+    // Prevent input blur when clicking on list item
+    e?.preventDefault();
+    
+    onSelect(result);
+    setIsOpen(false);
+    setSelectedIndex(-1);
+    
+    // Clear input after selection
+    if (!isControlled) {
+      setInternalQuery("");
+    }
+    onQueryChange?.("");
+    
+    // Focus input after selection
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!shouldShowDropdown) {
+      return;
     }
 
-    isValidQueryRef.current = true;
-
-    // Create new AbortController for this request
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    // Set loading state asynchronously to avoid synchronous setState warning
-    Promise.resolve().then(() => {
-      if (isValidQueryRef.current && abortControllerRef.current === abortController) {
-        setIsLoading(true);
-      }
-    });
-
-    fetchOptionsRef
-      .current(trimmedQuery)
-      .then((results) => {
-        // Only update state if request wasn't aborted and query is still valid
-        if (!abortController.signal.aborted && isValidQueryRef.current) {
-          setOptions(results);
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev < results.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        break;
+      case "Enter":
+        if (selectedIndex >= 0 && selectedIndex < results.length) {
+          e.preventDefault();
+          handleSelectTag(results[selectedIndex]);
         }
-      })
-      .catch((err) => {
-        // Ignore abort errors
-        if (err.name !== "AbortError" && !abortController.signal.aborted) {
-          log.error("[AsyncAutocomplete] Search error:", err);
-        }
-      })
-      .finally(() => {
-        // Only update loading state if this is still the active request
-        if (!abortController.signal.aborted && abortControllerRef.current === abortController) {
-          setIsLoading(false);
-          abortControllerRef.current = null;
-        }
-      });
+        break;
+      case "Escape":
+        setIsOpen(false);
+        setSelectedIndex(-1);
+        break;
+    }
+  };
 
-    return () => {
-      // Cleanup: abort request and clear state if component unmounts or query changes
-      isValidQueryRef.current = false;
-      abortController.abort();
-      if (abortControllerRef.current === abortController) {
-        abortControllerRef.current = null;
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+        setSelectedIndex(-1);
       }
     };
-  }, [debouncedQuery]);
 
-  const handleSelect = (option: AutocompleteOption | null) => {
-    setSelectedOption(option);
-    const newQuery = option?.label || "";
-
-    if (!isControlled) {
-      setInternalQuery(newQuery);
-    }
-
-    onSelect(option);
-    onQueryChange?.(newQuery);
-  };
-
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newQuery = event.target.value;
-
-    if (!isControlled) {
-      setInternalQuery(newQuery);
-    }
-
-    onQueryChange?.(newQuery);
-
-    if (selectedOption && newQuery !== selectedOption.label) {
-      setSelectedOption(null);
-      onSelect(null);
-    }
-
-    if (newQuery.trim() === "") {
-      setOptions([]);
-      setIsLoading(false);
-    }
-  };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
-    <Combobox value={selectedOption} onChange={handleSelect} nullable>
+    <div ref={containerRef} className="relative">
+      {label && (
+        <Label className="block ml-1 mb-1.5 text-xs font-medium text-muted-foreground">
+          {label}
+        </Label>
+      )}
       <div className="relative">
-        {label && (
-          <Combobox.Label className="block ml-1 mb-1.5 text-xs font-medium text-zinc-400">
-            {label}
-          </Combobox.Label>
-        )}
-        <div className="relative">
-          <Combobox.Input
-            className="px-3 py-2 pr-10 w-full text-white rounded border bg-slate-950 border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-600"
-            displayValue={(option: AutocompleteOption | null) =>
-              option?.label ?? (query || "")
-            }
-            onChange={handleInputChange}
-            onBlur={onBlur}
-            placeholder={placeholder}
-            autoComplete="off"
-          />
-          <Combobox.Button className="flex absolute inset-y-0 right-0 items-center pr-2">
-            <ChevronUpDownIcon
-              className="w-5 h-5 text-slate-400"
-              aria-hidden="true"
-            />
-          </Combobox.Button>
-        </div>
-
-        <Transition
-          as={Fragment}
-          leave="transition ease-in duration-100"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <Combobox.Options className="overflow-auto absolute z-50 py-1 mt-1 w-full max-h-60 text-base rounded-md border ring-1 ring-black ring-opacity-5 shadow-lg bg-slate-950 border-slate-800 focus:outline-none sm:text-sm">
-            {isLoading ? (
-              <div className="relative px-4 py-2 cursor-default select-none text-slate-400">
-                Loading...
-              </div>
-            ) : options.length === 0 && (query || "").trim() !== "" ? (
-              <div className="relative px-4 py-2 cursor-default select-none text-slate-400">
-                Nothing found on Rule34
-              </div>
-            ) : (
-              options.map((option) => (
-                <Combobox.Option
-                  key={option.id}
-                  value={option}
-                  className={({ active }) =>
-                    `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                      active ? "bg-blue-600 text-white" : "text-slate-300"
-                    }`
-                  }
-                >
-                  {({ selected, active }) => (
-                    <>
-                      <span
-                        className={`block truncate ${
-                          selected ? "font-medium" : "font-normal"
-                        }`}
-                      >
-                        {option.label}
-                      </span>
-                      {selected ? (
-                        <span
-                          className={`absolute inset-y-0 left-0 flex items-center pl-3 ${
-                            active ? "text-white" : "text-blue-400"
-                          }`}
-                        >
-                          <CheckIcon className="w-5 h-5" aria-hidden="true" />
-                        </span>
-                      ) : null}
-                    </>
-                  )}
-                </Combobox.Option>
-              ))
-            )}
-          </Combobox.Options>
-        </Transition>
+        <Input
+          ref={inputRef}
+          type="text"
+          placeholder={placeholder}
+          value={query}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlurInternal}
+          onKeyDown={handleKeyDown}
+          className="w-full"
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={shouldShowDropdown}
+          aria-haspopup="listbox"
+          aria-controls="async-autocomplete-listbox"
+          aria-autocomplete="list"
+        />
       </div>
-    </Combobox>
+      
+      {shouldShowDropdown && (
+        <div
+          id="async-autocomplete-listbox"
+          className="absolute z-[100] mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md"
+          role="listbox"
+        >
+          {isLoading ? (
+            <div
+              className="flex items-center justify-center px-4 py-2 text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="mr-2 w-4 h-4 animate-spin" aria-hidden="true" />
+              Loading...
+            </div>
+          ) : (
+            <ul className="py-1" role="group">
+              {results.map((result, index) => (
+                <li
+                  key={result.id}
+                  role="option"
+                  aria-selected={index === selectedIndex}
+                  className={cn(
+                    "relative cursor-pointer select-none px-4 py-2 text-sm",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    index === selectedIndex && "bg-accent text-accent-foreground"
+                  )}
+                  onMouseDown={(e) => {
+                    setSelectedIndex(index);
+                    handleSelectTag(result, e);
+                  }}
+                >
+                  {result.label}
+                  {result.type && (
+                    <span className="ml-2 text-xs text-muted-foreground" aria-label={`Type: ${result.type}`}>
+                      ({result.type})
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

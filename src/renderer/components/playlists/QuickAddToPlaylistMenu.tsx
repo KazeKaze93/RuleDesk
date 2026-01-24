@@ -13,8 +13,8 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
-import type { Playlist } from "../../../main/db/schema";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePlaylists } from "../../lib/hooks/usePlaylists";
 
 interface QuickAddToPlaylistMenuProps {
   postId: number;
@@ -31,25 +31,23 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch all playlists
-  const { data: playlists = [], isLoading } = useQuery<Playlist[]>({
-    queryKey: ["playlists"],
-    queryFn: async () => {
-      return await window.api.getPlaylists();
-    },
-  });
+  // Fetch all playlists - only when menu is opened (lazy loading)
+  const { data: allPlaylists = [], isLoading } = usePlaylists({ enabled: isMenuOpen });
+  
+  // Filter out smart playlists - only show manual playlists
+  const playlists = allPlaylists.filter((p) => !p.isSmart);
 
   // Fetch which playlists this post is already in
   const { data: existingPlaylistIds = [] } = useQuery<number[]>({
     queryKey: ["playlist-entries", postId],
     queryFn: async () => {
-      // Get all playlists and check which ones contain this post
-      const allPlaylists = await window.api.getPlaylists();
+      // Use cached playlists from usePlaylists hook
       const postPlaylists: number[] = [];
 
-      for (const playlist of allPlaylists) {
+      for (const playlist of playlists) {
         try {
           const posts = await window.api.getPlaylistPosts({
             playlistId: playlist.id,
@@ -66,7 +64,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
 
       return postPlaylists;
     },
-    enabled: playlists.length > 0,
+    enabled: isMenuOpen && playlists.length > 0,
   });
 
   // Initialize selected playlists with existing ones
@@ -116,7 +114,9 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
     try {
       const newPlaylist = await window.api.createPlaylist({
         name: newPlaylistName.trim(),
-        description: "",
+        isSmart: false, // Manual playlist
+        queryJson: "",
+        iconName: "",
       });
 
       // Add to selected playlists and immediately add post
@@ -152,7 +152,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <DropdownMenuTrigger asChild>
           {trigger || defaultTrigger}
         </DropdownMenuTrigger>
@@ -163,31 +163,26 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
             <div className="flex items-center justify-center px-2 py-4">
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
-          ) : playlists.length === 0 ? (
-            <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-              No playlists yet
-            </div>
           ) : (
             <>
-              {playlists.map((playlist) => (
-                <DropdownMenuCheckboxItem
-                  key={playlist.id}
-                  checked={selectedPlaylistIds.has(playlist.id)}
-                  onCheckedChange={() => handleTogglePlaylist(playlist.id)}
-                  disabled={playlist.isSmart}
-                  title={
-                    playlist.isSmart
-                      ? "Smart playlists cannot be manually edited"
-                      : undefined
-                  }
-                >
-                  {playlist.name}
-                  {playlist.isSmart && (
-                    <span className="ml-2 text-xs text-muted-foreground">(Smart)</span>
-                  )}
-                </DropdownMenuCheckboxItem>
-              ))}
-              <DropdownMenuSeparator />
+              {playlists.length === 0 ? (
+                <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                  No playlists yet
+                </div>
+              ) : (
+                <>
+                  {playlists.map((playlist) => (
+                    <DropdownMenuCheckboxItem
+                      key={playlist.id}
+                      checked={selectedPlaylistIds.has(playlist.id)}
+                      onCheckedChange={() => handleTogglePlaylist(playlist.id)}
+                    >
+                      {playlist.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={() => setIsDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create New Playlist

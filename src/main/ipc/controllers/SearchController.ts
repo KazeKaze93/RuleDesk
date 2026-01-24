@@ -202,7 +202,7 @@ export class SearchController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: SearchPostsParams
   ): Promise<IpcPost[]> {
-    const { tags, page } = params;
+    const { tags, page, isRandom } = params;
 
     try {
       // Get provider (default to rule34)
@@ -224,10 +224,13 @@ export class SearchController extends BaseController {
         : "";
 
       // Step 1: Primary Search - try original tags
+      // If isRandom is true, use a random page number (1-20) for better randomization
+      const apiPage = isRandom ? Math.floor(Math.random() * 20) + 1 : page;
       let booruPosts = await provider.fetchPosts(
         tagsString,
-        page,
-        providerSettings
+        apiPage,
+        providerSettings,
+        isRandom
       );
 
       // Step 2: Fallback Logic (only if Step 1 returned 0 AND input is a single word)
@@ -248,8 +251,9 @@ export class SearchController extends BaseController {
               const suggestionString = provider.formatTag(suggestion, "tag");
               booruPosts = await provider.fetchPosts(
                 suggestionString,
-                page,
-                providerSettings
+                apiPage,
+                providerSettings,
+                isRandom
               );
               
               if (booruPosts.length > 0) {
@@ -270,8 +274,9 @@ export class SearchController extends BaseController {
           try {
             booruPosts = await provider.fetchPosts(
               formattedUserTag,
-              page,
-              providerSettings
+              apiPage,
+              providerSettings,
+              isRandom
             );
             
             if (booruPosts.length > 0) {
