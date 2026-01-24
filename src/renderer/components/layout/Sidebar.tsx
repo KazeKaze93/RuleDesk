@@ -7,6 +7,7 @@ import {
   Settings,
   RefreshCw,
   LogOut,
+  List,
 } from "lucide-react";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
@@ -16,6 +17,7 @@ const navItems = [
   { to: "/updates", icon: RefreshCw, label: "Updates" },
   { to: "/browse", icon: Search, label: "Browse" },
   { to: "/favorites", icon: Heart, label: "Favorites" },
+  { to: "/playlists", icon: List, label: "Playlists" },
   { to: "/tracked", icon: Users, label: "Artists" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];

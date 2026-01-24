@@ -1,4 +1,4 @@
-import type { Artist, Post } from "./main/db/schema";
+import type { Artist, Post, Playlist } from "./main/db/schema";
 import {
   IpcBridge,
   UpdateStatusCallback,
@@ -7,6 +7,14 @@ import {
 } from "./main/bridge";
 import type { PostData } from "./shared/schemas/post";
 import type { SearchResults, ProviderId } from "./main/providers";
+import type {
+  CreatePlaylistRequest,
+  UpdatePlaylistRequest,
+  AddPostsToPlaylistRequest,
+  RemovePostsFromPlaylistRequest,
+  GetPlaylistPostsRequest,
+  ResolvePlaylistPostsRequest,
+} from "./shared/schemas/playlist";
 
 export type SyncErrorCallback = (message: string) => void;
 
@@ -103,6 +111,17 @@ export interface IpcApi extends IpcBridge {
   writeToClipboard: (text: string) => Promise<boolean>;
 
   verifyCredentials: () => Promise<boolean>;
+
+  // Playlists
+  createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
+  getPlaylists: () => Promise<Playlist[]>;
+  getPlaylist: (playlistId: number) => Promise<Playlist | null>;
+  updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
+  deletePlaylist: (playlistId: number) => Promise<boolean>;
+  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
+  removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
+  getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
+  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
 }
 
 declare global {

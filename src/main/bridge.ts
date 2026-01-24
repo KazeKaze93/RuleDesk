@@ -1,10 +1,18 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import type { Artist, Post } from "./db/schema";
+import type { Artist, Post, Playlist } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
 import type { GetPostsRequest, AddArtistRequest } from "./types/ipc";
 import type { IpcSettings } from "../shared/schemas/settings";
 import type { PostData } from "../shared/schemas/post";
 import type { ProviderId, SearchResults } from "./providers";
+import type {
+  CreatePlaylistRequest,
+  UpdatePlaylistRequest,
+  AddPostsToPlaylistRequest,
+  RemovePostsFromPlaylistRequest,
+  GetPlaylistPostsRequest,
+  ResolvePlaylistPostsRequest,
+} from "../shared/schemas/playlist";
 
 export type UpdateStatusData = {
   status: string;
@@ -120,6 +128,17 @@ export interface IpcBridge {
   restoreBackup: () => Promise<BackupResponse>;
 
   verifyCredentials: () => Promise<boolean>;
+
+  // Playlists
+  createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
+  getPlaylists: () => Promise<Playlist[]>;
+  getPlaylist: (playlistId: number) => Promise<Playlist | null>;
+  updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
+  deletePlaylist: (playlistId: number) => Promise<boolean>;
+  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
+  removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
+  getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
+  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -257,6 +276,25 @@ const ipcBridge: IpcBridge = {
 
   createBackup: () => ipcRenderer.invoke("db:create-backup"),
   restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
+
+  // Playlists
+  createPlaylist: (data: CreatePlaylistRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.CREATE_PLAYLIST, data),
+  getPlaylists: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLISTS),
+  getPlaylist: (playlistId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLIST, playlistId),
+  updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.UPDATE_PLAYLIST, playlistId, data),
+  deletePlaylist: (playlistId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.DELETE_PLAYLIST, playlistId),
+  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.ADD_POSTS_TO_PLAYLIST, data),
+  removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.REMOVE_POSTS_FROM_PLAYLIST, data),
+  getPlaylistPosts: (params: GetPlaylistPostsRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLIST_POSTS, params),
+  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);

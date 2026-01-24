@@ -4,6 +4,7 @@ import {
   integer,
   unique,
   index,
+  primaryKey,
 } from "drizzle-orm/sqlite-core";
 
 import {
@@ -136,6 +137,56 @@ export const tagMetadata = sqliteTable(
   })
 );
 
+export const playlists = sqliteTable(
+  "playlists",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    description: text("description").default(""),
+    isSmart: integer("is_smart", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    queryJson: text("query_json").default(""),
+    iconName: text("icon_name").default(""),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    createdAtIdx: index("playlists_createdAt_idx").on(t.createdAt),
+    isSmartIdx: index("playlists_isSmart_idx").on(t.isSmart),
+  })
+);
+
+export const playlistEntries = sqliteTable(
+  "playlist_entries",
+  {
+    playlistId: integer("playlist_id")
+      .notNull()
+      .references(() => playlists.id, { onDelete: "cascade" }),
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    addedAt: integer("added_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    // Composite primary key: (playlist_id, post_id)
+    // This ensures uniqueness and prevents duplicate entries
+    pk: primaryKey({ columns: [t.playlistId, t.postId] }),
+    // Indexes for fast retrieval
+    playlistIdIdx: index("playlist_entries_playlist_id_idx").on(t.playlistId),
+    postIdIdx: index("playlist_entries_post_id_idx").on(t.postId),
+    // Composite index for common query: get all posts in a playlist
+    playlistPostIdx: index("playlist_entries_playlist_post_idx").on(
+      t.playlistId,
+      t.postId
+    ),
+    addedAtIdx: index("playlist_entries_added_at_idx").on(t.addedAt),
+  })
+);
+
 // Types
 export type Artist = typeof artists.$inferSelect;
 export type NewArtist = typeof artists.$inferInsert;
@@ -147,3 +198,7 @@ export type Settings = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;
 export type TagMetadata = typeof tagMetadata.$inferSelect;
 export type NewTagMetadata = typeof tagMetadata.$inferInsert;
+export type Playlist = typeof playlists.$inferSelect;
+export type NewPlaylist = typeof playlists.$inferInsert;
+export type PlaylistEntry = typeof playlistEntries.$inferSelect;
+export type NewPlaylistEntry = typeof playlistEntries.$inferInsert;

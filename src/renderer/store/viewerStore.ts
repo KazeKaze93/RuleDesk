@@ -5,7 +5,8 @@ export type ViewerOrigin =
   | { kind: "search"; tags: string[] }
   | { kind: "favorites"; tags?: string[] }
   | { kind: "updates"; tags?: string[] }
-  | { kind: "artist"; artistId: number; tags?: string[] };
+  | { kind: "artist"; artistId: number; tags?: string[] }
+  | { kind: "playlist"; playlistId: number };
 
 // Очередь просмотра
 export interface ViewerQueue {

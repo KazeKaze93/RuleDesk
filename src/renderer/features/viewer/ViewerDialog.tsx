@@ -33,6 +33,7 @@ import {
   ExternalLink,
   Eye,
   Loader2,
+  List,
 } from "lucide-react";
 
 import {
@@ -58,6 +59,7 @@ import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../
 import { cn } from "../../lib/utils";
 import { isVideoPost } from "../../lib/filter-utils";
 import { useViewerController } from "./hooks/useViewerController";
+import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
 
 const useCurrentPost = (
   currentPostId: number | null,
@@ -93,6 +95,9 @@ const useCurrentPost = (
       }
       case "browse": {
         return ["search", []] as const;
+      }
+      case "playlist": {
+        return ["playlist-posts", origin.playlistId] as const;
       }
       default:
         return null;
@@ -613,6 +618,7 @@ const ViewerContent = ({
 }) => {
   const ctrl = useViewerController({ post, queue });
   const isDeveloperMode = true;
+  const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
 
   const handleToggleFavorite = useCallback(async () => {
     await ctrl.toggleFavorite();
@@ -839,6 +845,18 @@ const ViewerContent = ({
 
               <DropdownMenuSeparator />
 
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPlaylistDialog(true);
+                }}
+              >
+                <List className="mr-2 w-4 h-4" />
+                Add to Playlist...
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem onClick={ctrl.downloadImage}>
                 <Download className="mr-2 w-4 h-4" />
@@ -975,6 +993,31 @@ const ViewerContent = ({
       >
         <ChevronRight className="w-10 h-10 drop-shadow-md" />
       </button>
+
+      {/* Playlist Dialog */}
+      {showPlaylistDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => setShowPlaylistDialog(false)}>
+          <div className="bg-neutral-900 rounded-lg p-4 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <QuickAddToPlaylistMenu
+              postId={post.id}
+              trigger={
+                <Button variant="outline" className="w-full mb-4">
+                  <List className="mr-2 h-4 w-4" />
+                  Select Playlists
+                </Button>
+              }
+              onSuccess={() => setShowPlaylistDialog(false)}
+            />
+            <Button
+              variant="ghost"
+              onClick={() => setShowPlaylistDialog(false)}
+              className="w-full mt-2"
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -1073,6 +1116,8 @@ export const ViewerDialog = () => {
         : ["posts", "updates"];
     } else if (queue.origin.kind === "search") {
       queryKey = ["search", queue.origin.tags];
+    } else if (queue.origin.kind === "playlist") {
+      queryKey = ["playlist-posts", queue.origin.playlistId];
     } else {
       return;
     }

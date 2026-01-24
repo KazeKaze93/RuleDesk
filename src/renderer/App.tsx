@@ -11,6 +11,7 @@ import { ArtistDetails } from "./features/artists/ArtistDetails";
 import { Favorites } from "./components/pages/Favorites";
 import { Updates } from "./components/pages/Updates";
 import { Browse } from "./components/pages/Browse";
+import { PlaylistsPage } from "./components/pages/PlaylistsPage";
 
 type LegalStatus = "loading" | "confirmed" | "unconfirmed";
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
@@ -219,6 +220,7 @@ function App() {
           <Route path="browse" element={<Browse />} />
           <Route path="updates" element={<Updates />} />
           <Route path="favorites" element={<Favorites />} />
+          <Route path="playlists" element={<PlaylistsPage />} />
           <Route path="settings" element={<Settings />} />
           <Route
             path="*"
