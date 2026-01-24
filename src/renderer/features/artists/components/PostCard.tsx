@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Play, Check, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Post } from "../../../../main/db/schema";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../../store/safeModeStore";
 import { useSearchStore } from "../../../store/searchStore";
 import { isVideoPost } from "../../../lib/filter-utils";
+import { isVideoUrl } from "../../../../shared/utils/media";
 
 interface PostCardProps {
   post: Post;
@@ -23,14 +24,91 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
 
+  // Video hover preview state
+  const [isHovered, setIsHovered] = useState(false);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const cardRef = useRef<HTMLButtonElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Determine video preview URL: prefer sampleUrl if it's a video, otherwise use fileUrl
+  const videoPreviewUrl = isVid
+    ? (post.sampleUrl && isVideoUrl(post.sampleUrl) ? post.sampleUrl : post.fileUrl)
+    : null;
+
+  // IntersectionObserver: only initialize video when card is in viewport
+  useEffect(() => {
+    if (!isVid || !videoPreviewUrl || !cardRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // Only allow video loading when in viewport
+          if (entry.isIntersecting) {
+            setShouldLoadVideo(true);
+          }
+        });
+      },
+      {
+        rootMargin: "100px", // Start loading slightly before entering viewport
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(cardRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isVid, videoPreviewUrl]);
+
+  // Handle video playback on hover
+  useEffect(() => {
+    if (!videoRef.current || !shouldLoadVideo || !isHovered) return;
+
+    const video = videoRef.current;
+    
+    // Play video on hover
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((error) => {
+        // Video play failed (e.g., autoplay policy, network error)
+        // Silently handle - we'll fallback to static image
+        setVideoError(true);
+      });
+    }
+
+    return () => {
+      // Pause video when not hovered
+      if (video && !video.paused) {
+        video.pause();
+      }
+    };
+  }, [isHovered, shouldLoadVideo]);
+
+  // Reset video error when post changes
+  useEffect(() => {
+    setVideoError(false);
+  }, [post.id]);
+
+  // Show video preview only if: video post, in viewport, hovered, video URL available, and no error
+  const showVideoPreview = isVid && 
+    shouldLoadVideo && 
+    isHovered && 
+    videoPreviewUrl && 
+    !videoError;
+
   return (
     <button
+      ref={cardRef}
       type="button"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onClick();
       }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       aria-label={`View post ${post.id}. Rating: ${post.rating}. ${
         isVid ? "Video" : "Image"
       }.`}
@@ -45,7 +123,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
       )}
       style={{ pointerEvents: "auto", userSelect: "none" }} // Ensure button is clickable and prevent text selection
     >
-      {/* --- Image Layer --- */}
+      {/* --- Media Layer (Image + Video Preview) --- */}
       {post.previewUrl ? (
         <div 
           className={cn(
@@ -58,6 +136,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
               : undefined,
           }}
         >
+          {/* Static Preview Image */}
           <img
             src={post.previewUrl}
             alt={`Post ${post.id}`}
@@ -67,10 +146,40 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
               viewType === "grid" 
                 ? "h-full object-cover" 
                 : "h-auto",
-              "group-hover:scale-105",
-              post.isViewed && "opacity-60 grayscale-[0.3]"
+              // Only scale on hover when video preview is not showing
+              !showVideoPreview && "group-hover:scale-105",
+              post.isViewed && "opacity-60 grayscale-[0.3]",
+              // Cross-fade: hide image when video is showing
+              showVideoPreview && "opacity-0"
             )}
           />
+
+          {/* Video Preview (overlay on hover) */}
+          {isVid && shouldLoadVideo && videoPreviewUrl && (
+            <video
+              ref={videoRef}
+              src={videoPreviewUrl}
+              muted
+              loop
+              playsInline
+              preload="none"
+              className={cn(
+                "absolute inset-0 w-full transition-opacity duration-300 z-10",
+                viewType === "grid" 
+                  ? "h-full object-cover" 
+                  : "h-auto",
+                // Cross-fade: show video when hovered, hide otherwise
+                showVideoPreview ? "opacity-100" : "opacity-0 pointer-events-none"
+              )}
+              onError={() => {
+                setVideoError(true);
+              }}
+              onLoadedData={() => {
+                // Reset error state if video loads successfully
+                setVideoError(false);
+              }}
+            />
+          )}
         </div>
       ) : (
         <div 

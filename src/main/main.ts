@@ -334,7 +334,7 @@ async function initializeAppAndWindow() {
     const windowIconPath = getIconPath();
     logger.info(`[Main] Window icon path: ${windowIconPath}`);
     
-    let windowIcon: nativeImage | null = null;
+    let windowIcon: Electron.NativeImage | null = null;
     
     // Check if icon file exists and load it
     if (!existsSync(windowIconPath)) {
@@ -494,7 +494,7 @@ async function initializeAppAndWindow() {
 /**
  * Creates system tray icon
  */
-function createTray(window: BrowserWindow): void {
+function createTray(_window: BrowserWindow): void {
   try {
     const trayIconPath = getTrayIconPath();
     logger.info(`[Tray] Attempting to create tray with icon: ${trayIconPath}`);
@@ -534,7 +534,7 @@ function createTray(window: BrowserWindow): void {
     if (tray) {
       try {
         tray.destroy();
-      } catch (e) {
+      } catch (_e) {
         // Ignore errors when destroying
       }
       tray = null;
@@ -545,7 +545,7 @@ function createTray(window: BrowserWindow): void {
 
     // Tray click handler - show/hide window
     // Use 'click' on Windows/Linux, 'click' on macOS shows context menu, so we use 'click' for all
-    tray.on("click", (event, bounds) => {
+    tray.on("click", (_event, _bounds) => {
       try {
         // On macOS, click shows context menu, so we handle it differently
         if (process.platform === "darwin") {
