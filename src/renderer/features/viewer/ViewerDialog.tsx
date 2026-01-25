@@ -928,9 +928,14 @@ const ViewerContent = ({
   const ctrl = useViewerController({ post, queue });
   const isDeveloperMode = true;
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
-  // NOTE: isRandom removed from viewerStore - randomization should be part of API query parameters
-  // For search origin, use searchStore.isRandom; for other origins, pass isRandom in API params
-  // Randomization toggle removed - it should be controlled at the query level, not viewer level
+  // Local state for randomization in viewer (not synced with global store)
+  const isRandom = (queue && "isRandom" in queue) ? queue.isRandom ?? false : false;
+  const setQueueIsRandom = useViewerStore((state) => state.setQueueIsRandom);
+
+  const handleToggleRandom = useCallback(() => {
+    const newIsRandom = !isRandom;
+    setQueueIsRandom(newIsRandom);
+  }, [isRandom, setQueueIsRandom]);
 
   const handleToggleFavorite = useCallback(async () => {
     await ctrl.toggleFavorite();
@@ -1052,14 +1057,17 @@ const ViewerContent = ({
           </Button>
 
           <Button
-            variant="ghost"
+            variant={isRandom ? "default" : "ghost"}
             size="icon"
-            className="h-9 w-9 text-white rounded-full hover:bg-white/10"
-            aria-label="Randomization disabled (feature removed - use API query parameters)"
-            title="Randomization is now controlled at API query level, not viewer level"
-            disabled
+            onClick={handleToggleRandom}
+            className={cn(
+              "text-white rounded-full hover:bg-white/10",
+              isRandom && "bg-primary hover:bg-primary/90"
+            )}
+            aria-label={isRandom ? "Disable randomization" : "Enable randomization"}
+            title={isRandom ? "Randomization enabled (click to disable)" : "Randomization disabled (click to enable)"}
           >
-            <Shuffle className="w-5 h-5 opacity-50" />
+            <Shuffle className={cn("w-5 h-5", isRandom && "fill-current")} />
           </Button>
 
           <Button
