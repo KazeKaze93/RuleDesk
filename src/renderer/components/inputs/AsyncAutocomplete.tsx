@@ -111,11 +111,13 @@ export function AsyncAutocomplete({
     setIsOpen(false);
     setSelectedIndex(-1);
     
-    // Clear input after selection
+    // Clear input after selection ONLY if not controlled
+    // In controlled mode, the parent component manages the value
     if (!isControlled) {
       setInternalQuery("");
+      onQueryChange?.("");
     }
-    onQueryChange?.("");
+    // In controlled mode, don't clear - let parent component handle value via onSelect
     
     // Focus input after selection (use requestAnimationFrame for better timing)
     requestAnimationFrame(() => {

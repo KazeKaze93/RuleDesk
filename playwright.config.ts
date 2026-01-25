@@ -1,4 +1,10 @@
 import { defineConfig } from "@playwright/test";
+import { config } from "dotenv";
+import { resolve } from "path";
+
+// Load .env file if it exists (for local development)
+// In CI, variables come from GitHub Secrets
+config({ path: resolve(process.cwd(), ".env") });
 
 /**
  * Playwright configuration for E2E testing

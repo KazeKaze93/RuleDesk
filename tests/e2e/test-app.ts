@@ -68,6 +68,9 @@ export async function launchTestApp() {
       NODE_ENV: 'test',
       // Disable hardware acceleration in CI/Headless environments to prevent crashes
       ELECTRON_ENABLE_LOGGING: 'true',
+      // Pass through test credentials from .env or CI secrets
+      TEST_USER_ID: process.env.TEST_USER_ID,
+      TEST_API_KEY: process.env.TEST_API_KEY,
       // Additional headless environment variables for Linux CI
       ...(isHeadless && process.platform === 'linux' ? {
         DISPLAY: process.env.DISPLAY || ':99',

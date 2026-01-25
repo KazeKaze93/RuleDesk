@@ -596,6 +596,17 @@ async function initializeAppAndWindow() {
         }`
       );
     }
+    
+    // In test mode, don't exit immediately - let Playwright handle the error
+    // This allows tests to catch and report the error properly
+    if (isTestMode) {
+      logger.error("[Main] Test mode: Initialization failed, but not exiting (Playwright will handle cleanup)");
+      // Still set mainWindow to null so tests can detect the failure
+      mainWindow = null;
+      // Don't call app.exit() - let Playwright detect the failure and clean up
+      return;
+    }
+    
     app.exit(1);
   }
 }
@@ -758,6 +769,13 @@ function createTray(_window: BrowserWindow): void {
 }
 
 app.on("window-all-closed", () => {
+  // In test mode, don't quit when all windows are closed
+  // Playwright manages the app lifecycle and will close it explicitly
+  if (isTestMode) {
+    logger.info("[Main] Test mode: window-all-closed event ignored (Playwright manages lifecycle)");
+    return;
+  }
+  
   // On macOS, keep app running even when all windows are closed
   // On other platforms, quit only if tray is not available
   if (process.platform !== "darwin") {
