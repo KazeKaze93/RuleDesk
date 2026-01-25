@@ -31,7 +31,7 @@ export async function waitForWindow(app: ElectronApplication, timeout: number): 
         await app.waitForEvent('window', { timeout: Math.min(timeout, 5000) }).catch(() => {});
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
-    } catch (error) {
+    } catch (_error) {
       if (attempt === maxRetries) {
         throw new Error(`No windows available after ${maxRetries} attempts. App may have failed to initialize.`);
       }

@@ -103,9 +103,7 @@ test.describe('Application Startup', () => {
       // Try to get another window using retry helper
       window = await waitForWindow(app, timeout);
     }
-  });
-  
-  async function testWindow(window: Page) {
+    
     // Wait for window to be ready
     // The app shows a loading window first, then main window
     try {
@@ -150,5 +148,5 @@ test.describe('Application Startup', () => {
     // Verify window has some content (not blank)
     const bodyText = await window.textContent('body');
     expect(bodyText).toBeTruthy(); // Body should have some content
-  }
+  });
 });
