@@ -239,7 +239,116 @@ export type Settings = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;
 ```
 
-## Database Architecture
+### Table: `playlists`
+
+Stores playlist/collection information for curated post collections.
+
+| Column        | Type                              | Description                                    |
+| ------------- | --------------------------------- | ---------------------------------------------- |
+| `id`          | INTEGER (PK, AutoIncrement)      | Primary key                                    |
+| `name`        | TEXT (NOT NULL)                   | Playlist display name                          |
+| `is_smart`    | INTEGER (BOOLEAN, DEFAULT 0)      | Smart playlist flag (dynamic tag-based queries) |
+| `query_json`  | TEXT (DEFAULT '')                 | JSON-encoded smart playlist query              |
+| `icon_name`   | TEXT (DEFAULT '')                 | Icon name for playlist display                 |
+| `created_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Creation timestamp (timestamp mode, ms)        |
+
+**Indexes:**
+
+- `playlists_createdAt_idx` - Index on `created_at` for sorting
+- `playlists_isSmart_idx` - Index on `is_smart` for filtering smart playlists
+
+**Schema Definition:**
+
+```typescript
+export const playlists = sqliteTable(
+  "playlists",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    isSmart: integer("is_smart", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    queryJson: text("query_json").default(""),
+    iconName: text("icon_name").default(""),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    createdAtIdx: index("playlists_createdAt_idx").on(t.createdAt),
+    isSmartIdx: index("playlists_isSmart_idx").on(t.isSmart),
+  })
+);
+```
+
+**TypeScript Types:**
+
+```typescript
+export type Playlist = typeof playlists.$inferSelect;
+export type NewPlaylist = typeof playlists.$inferInsert;
+```
+
+### Table: `playlist_entries`
+
+Junction table linking playlists to posts. Uses composite primary key to prevent duplicate entries.
+
+| Column        | Type                              | Description                                    |
+| ------------- | --------------------------------- | ---------------------------------------------- |
+| `playlist_id` | INTEGER (NOT NULL, FK)            | Foreign key to `playlists.id` (CASCADE DELETE) |
+| `post_id`     | INTEGER (NOT NULL, FK)            | Foreign key to `posts.id` (CASCADE DELETE)     |
+| `added_at`    | INTEGER (TIMESTAMP, NOT NULL)     | Timestamp when post was added (timestamp mode, ms) |
+
+**Primary Key:**
+
+- Composite primary key: `(playlist_id, post_id)` - Ensures uniqueness and prevents duplicate entries
+
+**Indexes:**
+
+- `playlist_entries_playlist_id_idx` - Index on `playlist_id` for fast playlist queries
+- `playlist_entries_post_id_idx` - Index on `post_id` for fast post queries
+- `playlist_entries_playlist_post_idx` - Composite index on `(playlist_id, post_id)` for common queries
+- `playlist_entries_added_at_idx` - Index on `added_at` for sorting by addition date
+
+**Schema Definition:**
+
+```typescript
+export const playlistEntries = sqliteTable(
+  "playlist_entries",
+  {
+    playlistId: integer("playlist_id")
+      .notNull()
+      .references(() => playlists.id, { onDelete: "cascade" }),
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    addedAt: integer("added_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.playlistId, t.postId] }),
+    playlistIdIdx: index("playlist_entries_playlist_id_idx").on(t.playlistId),
+    postIdIdx: index("playlist_entries_post_id_idx").on(t.postId),
+    playlistPostIdx: index("playlist_entries_playlist_post_idx").on(
+      t.playlistId,
+      t.postId
+    ),
+    addedAtIdx: index("playlist_entries_added_at_idx").on(t.addedAt),
+  })
+);
+```
+
+**TypeScript Types:**
+
+```typescript
+export type PlaylistEntry = typeof playlistEntries.$inferSelect;
+export type NewPlaylistEntry = typeof playlistEntries.$inferInsert;
+```
+
+**Cascade Behavior:**
+
+- Deleting a playlist automatically deletes all associated `playlist_entries` records
+- Deleting a post automatically removes it from all playlists (via cascade delete)
 
 All database operations are performed directly in the **Main Process** using synchronous access via `better-sqlite3`. WAL (Write-Ahead Logging) mode is enabled to allow concurrent reads while writes are in progress.
 
@@ -722,10 +831,11 @@ If the database becomes corrupted and you need to restore manually:
 
 1. **WAL Mode:** Write-Ahead Logging mode enabled for concurrent reads
 2. **Indexes:**
-   - Single-column indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
+   - Single-column indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`, `mediaType`
    - Composite index on `(artist_id, rating, is_viewed)` for common filter combinations
    - Composite index on `(artist_id, media_type)` for artist + media type filtering
    - Index on `media_type` for fast image/video filtering
+   - Playlist indexes: `playlists_createdAt_idx`, `playlists_isSmart_idx`, `playlist_entries_playlist_id_idx`, `playlist_entries_post_id_idx`, `playlist_entries_added_at_idx`, `playlist_entries_playlist_post_idx`
 3. **FTS5 Full-Text Search:**
    - Virtual table `posts_fts` for fast tag searching using FTS5
    - External content table (no data duplication) with `unicode61` tokenizer
@@ -804,8 +914,11 @@ Planned database improvements:
   - Automatic detection during sync, background backfill for existing data
   - Indexed column lookups replace slow `LIKE` queries
 - ✅ **Favorites System:** Implemented with `isFavorited` field and index
+- ✅ **Playlists Tables:** ✅ **Implemented**
+  - `playlists` table with support for manual and smart playlists
+  - `playlist_entries` junction table with composite primary key
+  - Full CRUD operations via `PlaylistController`
 - ⏳ **Subscriptions Table:** Tag subscriptions feature planned (schema not yet implemented)
-- ⏳ **Playlists Tables:** Playlists feature planned (schema not yet implemented)
 - ⏳ Post deduplication logic
 - ⏳ Statistics tables for analytics
 - ⏳ Export/import functionality

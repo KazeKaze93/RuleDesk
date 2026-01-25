@@ -148,7 +148,6 @@ export interface IpcBridge {
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke("app:get-version"),
   getIconPath: () => {
-    console.log("[Bridge] getIconPath called, invoking IPC...");
     return ipcRenderer.invoke("app:get-icon-path");
   },
 

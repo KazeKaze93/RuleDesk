@@ -57,7 +57,8 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                                                                           |
 | **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                                                                                                 |
 | **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                                                                          |
-| **🧭 Navigation & Layout**        | Sidebar navigation with dedicated pages: Updates, Browse, Favorites, Tracked, and Settings. Global Top Bar with search, filters, sort controls, and view toggles. Responsive layout with modern UI components.                                                                                                                                         |
+| **🧭 Navigation & Layout**        | Sidebar navigation with dedicated pages: Updates, Browse, Favorites, Tracked, Playlists, and Settings. Global Top Bar with search, filters, sort controls, and view toggles. Responsive layout with modern UI components.                                                                                                                                         |
+| **📋 Playlists & Collections**    | Create curated collections of posts independent of Artists/Trackers. Create, rename, and delete playlists. Add posts to playlists via quick menu on Post Cards or in viewer. View playlist galleries with filtering and sorting. Support for smart playlists with tag-based queries.                                                                                                                                  |
 | **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                                                                                                          |
 | **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                                                                                                  |
 | **🔌 Multi-Source Ready**         | Provider pattern abstraction for multi-booru support. Current implementations: Rule34.xxx, Gelbooru. `IBooruProvider` interface allows adding new sources (Danbooru, etc.) without core database changes.                                                                                                                                              |
@@ -105,6 +106,7 @@ The application is organized into the following main sections accessible via the
 - **Updates (Subscriptions)** - View new posts from tracked artists and tag subscriptions
 - **Browse (All posts)** - Browse all cached posts with advanced filtering and search
 - **Favorites (Account favorites)** - Access your account favorites synced from the booru
+- **Playlists (Collections)** - Create and manage curated collections of posts
 - **Tracked (Artists/Tags management)** - Manage tracked artists, tags, and subscriptions
 - **Settings** - Configure sync behavior, storage limits, security, and database maintenance
 
@@ -368,17 +370,22 @@ We are moving to Feature Development. Priority tasks:
 - ⏳ "Download All" for current filter/artist (planned)
 - ⏳ **Settings:** Allow choosing a default download directory (planned)
 
-### C. Playlists / Collections ⏳ Not Started
+### C. Playlists / Collections ✅ Implemented
 
 **Goal:** Create curated collections of posts independent of Artists/Trackers.
 
-**Phase 1: MVP**
+**Phase 1: MVP** ✅ **COMPLETED**
 
-- New table `playlists` (`id`, `name`, `created_at`)
-- New table `playlist_posts` (`playlist_id`, `post_id`, `added_at`)
-- "⭐ Add to playlist" button on Post Card
-- New Page/Tab: "Playlists"
-- View Playlist: Grid view with filtering and sorting
+- ✅ **Database Tables:** `playlists` table (`id`, `name`, `is_smart`, `query_json`, `icon_name`, `created_at`) and `playlist_entries` table (`playlist_id`, `post_id`, `added_at`) with proper indexes
+- ✅ **Playlist Management:** Create, rename, delete playlists with full CRUD operations
+- ✅ **Add to Playlist:** Quick add menu on Post Cards and in viewer dialog
+- ✅ **Playlists Page:** Dedicated page in Sidebar with playlist list and gallery views
+- ✅ **Playlist Gallery:** Grid and masonry view modes with filtering, sorting, and search
+- ✅ **Smart Playlists:** Support for dynamic playlists with tag-based queries (auto-fill based on tags)
+- ✅ **FTS5 Integration:** Fast tag searching within playlists using FTS5 full-text search
+- ✅ **IPC Controller:** Full `PlaylistController` implementation with type-safe operations
+
+**Status:** ✅ Core playlist functionality fully implemented. Users can create playlists, add posts, view galleries, and manage collections independently of artist tracking.
 
 ### 🛡️ Security & Reliability (Hardening)
 

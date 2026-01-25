@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import log from "electron-log/renderer";
 import type { WorkerPost } from "../../shared/types/post";
 
 /**
@@ -72,7 +73,7 @@ function getWorker(): Worker {
 
       const pending = globalPendingRequests.get(id);
       if (!pending) {
-        console.warn(`[useWorkerProcessor] Received response for unknown request: ${id}`);
+        log.warn(`[useWorkerProcessor] Received response for unknown request: ${id}`);
         return;
       }
 
@@ -92,7 +93,7 @@ function getWorker(): Worker {
 
     // Handle worker errors with restart policy
     globalWorker.addEventListener("error", (error) => {
-      console.error("[useWorkerProcessor] Worker error:", error);
+      log.error("[useWorkerProcessor] Worker error:", error);
       updateLoadingState(false);
       
       // CRITICAL: Reject all pending requests BEFORE clearing map
@@ -108,7 +109,7 @@ function getWorker(): Worker {
             reject(new Error(`Worker error: ${error.message}`));
           } catch (rejectError) {
             // Ignore errors from reject (promise already settled)
-            console.warn("[useWorkerProcessor] Error rejecting promise:", rejectError);
+            log.warn("[useWorkerProcessor] Error rejecting promise:", rejectError);
           }
         });
       }, 0);
@@ -116,7 +117,7 @@ function getWorker(): Worker {
       // Restart worker if attempts remaining
       if (workerRestartAttempts < MAX_RESTART_ATTEMPTS) {
         workerRestartAttempts++;
-        console.warn(
+        log.warn(
           `[useWorkerProcessor] Restarting worker (attempt ${workerRestartAttempts}/${MAX_RESTART_ATTEMPTS})`
         );
         
@@ -135,12 +136,12 @@ function getWorker(): Worker {
             try {
               getWorker(); // Reinitialize worker
             } catch (restartError) {
-              console.error("[useWorkerProcessor] Worker restart failed:", restartError);
+              log.error("[useWorkerProcessor] Worker restart failed:", restartError);
             }
           }
         }, RESTART_DELAY_MS);
       } else {
-        console.error(
+        log.error(
           "[useWorkerProcessor] Max restart attempts reached. Worker will not restart."
         );
         // Reset refCount to prevent memory leak if worker is permanently dead
@@ -151,7 +152,7 @@ function getWorker(): Worker {
     
     // Handle worker termination (unexpected shutdown)
     globalWorker.addEventListener("messageerror", (error) => {
-      console.error("[useWorkerProcessor] Worker message error:", error);
+      log.error("[useWorkerProcessor] Worker message error:", error);
       updateLoadingState(false);
       
       // Same restart logic as error handler
@@ -164,7 +165,7 @@ function getWorker(): Worker {
           try {
             reject(new Error("Worker message error"));
           } catch (rejectError) {
-            console.warn("[useWorkerProcessor] Error rejecting promise:", rejectError);
+            log.warn("[useWorkerProcessor] Error rejecting promise:", rejectError);
           }
         });
       }, 0);
@@ -182,7 +183,7 @@ function getWorker(): Worker {
             try {
               getWorker();
             } catch (restartError) {
-              console.error("[useWorkerProcessor] Worker restart failed:", restartError);
+              log.error("[useWorkerProcessor] Worker restart failed:", restartError);
             }
           }
         }, RESTART_DELAY_MS);
@@ -225,7 +226,7 @@ function releaseWorker(): void {
           reject(new Error("Worker terminated"));
         } catch (rejectError) {
           // Ignore errors from reject (promise already settled)
-          console.warn("[useWorkerProcessor] Error rejecting promise:", rejectError);
+          log.warn("[useWorkerProcessor] Error rejecting promise:", rejectError);
         }
       });
       globalPendingRequests.clear();
@@ -271,7 +272,7 @@ export function useWorkerProcessor() {
         releaseWorker();
       } catch (error) {
         // Ensure cleanup even if releaseWorker fails
-        console.error("[useWorkerProcessor] Cleanup error:", error);
+        log.error("[useWorkerProcessor] Cleanup error:", error);
       }
     };
   }, []);

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
+import log from "electron-log/renderer";
 
 export interface AppLogoProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   className?: string;
@@ -16,7 +17,6 @@ export const AppLogo = ({ className, ...props }: AppLogoProps) => {
   useEffect(() => {
     // Prevent multiple simultaneous calls
     if (isLoadingRef.current) {
-      console.log("[AppLogo] Already loading, skipping...");
       return;
     }
 
@@ -24,43 +24,29 @@ export const AppLogo = ({ className, ...props }: AppLogoProps) => {
     const loadIconPath = async () => {
       isLoadingRef.current = true;
       try {
-        console.log("[AppLogo] Attempting to load icon via IPC...");
-        console.log("[AppLogo] window.api exists:", !!window.api);
-        console.log("[AppLogo] window.api.getIconPath exists:", !!window.api?.getIconPath);
-        
         // Check if method exists
         if (!window.api) {
-          console.error("[AppLogo] window.api is not available");
+          log.error("[AppLogo] window.api is not available");
           setIconPath("");
           return;
         }
         
         if (!window.api.getIconPath) {
-          console.error("[AppLogo] window.api.getIconPath is not available");
+          log.error("[AppLogo] window.api.getIconPath is not available");
           setIconPath("");
           return;
         }
         
-        console.log("[AppLogo] Calling window.api.getIconPath()...");
         const path = await window.api.getIconPath();
-        console.log("[AppLogo] Received response, type:", typeof path, "length:", path?.length || 0);
-        console.log("[AppLogo] Response preview:", path?.substring(0, 100) || "null/undefined");
         
         if (path && typeof path === "string" && path.startsWith("data:image")) {
-          console.log("[AppLogo] Valid data URL received, setting icon");
           setIconPath(path);
         } else {
-          console.warn("[AppLogo] Invalid icon path received:", path?.substring(0, 50) || "null/undefined");
+          log.warn("[AppLogo] Invalid icon path received:", path?.substring(0, 50) || "null/undefined");
           setIconPath("");
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const errorStack = error instanceof Error ? error.stack : undefined;
-        console.error("[AppLogo] Failed to get icon path:", {
-          message: errorMessage,
-          stack: errorStack,
-          error: String(error),
-        });
+        log.error("[AppLogo] Failed to get icon path:", error);
         // Fallback to empty string (will show broken image, but won't crash)
         setIconPath("");
       } finally {
@@ -102,7 +88,7 @@ export const AppLogo = ({ className, ...props }: AppLogoProps) => {
         msImageRendering: "auto",
       } as React.CSSProperties}
       onError={(e) => {
-        console.error("[AppLogo] Image load error");
+        log.error("[AppLogo] Image load error");
         // Hide broken image
         e.currentTarget.style.display = "none";
       }}

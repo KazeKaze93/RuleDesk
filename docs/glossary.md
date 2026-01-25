@@ -221,9 +221,17 @@ Tag-based subscriptions for tracking specific tag combinations. Currently planne
 
 ### Playlists / Collections
 
-Curated collections of posts independent of Artists/Trackers. Currently planned but not yet implemented.
+Curated collections of posts independent of Artists/Trackers. Users can create playlists, add/remove posts, and view galleries with filtering and sorting. Supports both manual playlists and smart playlists with tag-based queries.
 
-**Related:** [Roadmap - Playlists](./roadmap.md#c-playlists--collections-priority-medium--not-started)
+**Features:**
+
+- Create, rename, and delete playlists
+- Add posts to playlists via quick menu on Post Cards or in viewer
+- View playlist galleries with grid and masonry layouts
+- Filter and sort posts within playlists (FTS5 tag search, rating, media type, AI filter)
+- Smart playlists with dynamic tag-based queries
+
+**Related:** [Roadmap - Playlists](./roadmap.md#c-playlists--collections-priority-medium--implemented), [Database Schema - Playlists](./database.md#table-playlists)
 
 ---
 

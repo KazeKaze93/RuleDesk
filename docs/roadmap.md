@@ -208,14 +208,14 @@ Enhanced features after MVP:
 - ✅ **Media Type Support** - `media_type` column with indexing for efficient filtering (implemented)
 - ✅ **Card Overlays** - Viewed, favorite, rating, and media type badges (implemented)
 - ⏳ **Favorites Sync** - Sync account favorites from booru (planned)
-- ⏳ **Playlists Groundwork** - Basic playlist tables and UI structure (planned)
+- ✅ **Playlists Groundwork** - Basic playlist tables and UI structure (completed)
 - ⏳ **Periodic Sync** - Configurable interval sync while app running (planned)
 
 ### Later Phase
 
 Advanced features for future releases:
 
-- ⏳ **Smart Playlists** - Auto-fill playlists based on tag rules
+- ✅ **Smart Playlists** - Auto-fill playlists based on tag rules (implemented)
 - ✅ **Normalized Tag Index** - Full-text search on tags (FTS5 virtual table `posts_fts` with `unicode61` tokenizer implemented)
 - ✅ **Media Type Optimization** - Indexed `media_type` column for efficient image/video filtering (implemented)
 - ⏳ **Advanced Caching** - Intelligent cache management with size limits
@@ -342,42 +342,48 @@ Advanced features for future releases:
 
 ---
 
-### C. Playlists / Collections [Priority: Medium] ⏳ Not Started
+### C. Playlists / Collections [Priority: Medium] ✅ Implemented
 
 **Goal:** Create curated collections of posts independent of Artists/Trackers.
 
-#### Phase 1: MVP
+#### Phase 1: MVP ✅ **COMPLETED**
 
 1. **Database:**
 
-   - [ ] New table `playlists` (`id`, `name`, `created_at`)
-   - [ ] New table `playlist_posts` (`playlist_id`, `post_id`, `added_at`)
+   - ✅ New table `playlists` (`id`, `name`, `is_smart`, `query_json`, `icon_name`, `created_at`) with indexes
+   - ✅ New table `playlist_entries` (`playlist_id`, `post_id`, `added_at`) with composite primary key and indexes
 
 2. **UI Interactions:**
 
-   - [ ] "⭐ Add to playlist" button on Post Card (opens Popover: List of playlists + "Create New")
-   - [ ] New Page/Tab: "Playlists" (in Sidebar)
-   - [ ] View Playlist: Grid view of posts inside a playlist
+   - ✅ "⭐ Add to playlist" button on Post Card (opens QuickAddToPlaylistMenu with list of playlists + "Create New")
+   - ✅ Add to playlist from viewer dialog
+   - ✅ New Page/Tab: "Playlists" (in Sidebar navigation)
+   - ✅ View Playlist: Grid and masonry view modes with filtering and sorting
 
 3. **Logic:**
-   - [ ] Filter inside playlist (Search tags by `LIKE`)
-   - [ ] Sort by `addedAt`
-   - [ ] Remove post from playlist
-   - [ ] Delete/Rename playlist
+   - ✅ Filter inside playlist (FTS5 tag search, rating, media type, AI filter)
+   - ✅ Sort by `addedAt`, `publishedAt`, rating (ascending/descending)
+   - ✅ Remove post from playlist
+   - ✅ Delete/Rename playlist
+   - ✅ Create new playlists with custom names and icons
+   - ✅ Smart playlists support (dynamic playlists with tag-based queries)
 
 **Implementation Notes:**
 
-- Follow existing database patterns (Drizzle ORM, type safety)
-- Use IPC for all database operations
-- Maintain separation of concerns (Renderer ↔ Main)
+- ✅ Follows existing database patterns (Drizzle ORM, type safety)
+- ✅ Full IPC controller (`PlaylistController`) with type-safe operations
+- ✅ Maintains separation of concerns (Renderer ↔ Main)
+- ✅ FTS5 integration for fast tag searching within playlists
+- ✅ Smart playlist query parsing and resolution
+- ✅ Comprehensive error handling and validation
 
-**Status:** No playlist tables in schema, no playlist-related code implemented.
+**Status:** ✅ **COMPLETED:** Core playlist functionality fully implemented. Users can create playlists, add/remove posts, view galleries with filtering and sorting, and manage smart playlists with tag-based queries.
 
 #### Phase 2: Future Improvements (Not for now)
 
-- Drag & Drop sorting
-- Smart/Dynamic Playlists (Auto-fill based on tags)
-- JSON Export/Import
+- ⏳ Drag & Drop sorting
+- ✅ Smart/Dynamic Playlists (Auto-fill based on tags) - **IMPLEMENTED**
+- ⏳ JSON Export/Import
 
 ---
 

@@ -1743,19 +1743,22 @@ Root:
 
 **Status:** ✅ Core download functionality implemented. Individual file downloads work with progress tracking. Batch download and default directory settings are planned for future releases.
 
-### C. Playlists / Collections ⏳ Not Started
+### C. Playlists / Collections ✅ Implemented
 
 **Goal:** Create curated collections of posts independent of Artists/Trackers.
 
-**Phase 1: MVP**
+**Phase 1: MVP** ✅ **COMPLETED**
 
-- New table `playlists` (`id`, `name`, `created_at`)
-- New table `playlist_posts` (`playlist_id`, `post_id`, `added_at`)
-- "⭐ Add to playlist" button on Post Card
-- New Page/Tab: "Playlists"
-- View Playlist: Grid view with filtering and sorting
+- ✅ **Database Tables:** `playlists` table (`id`, `name`, `is_smart`, `query_json`, `icon_name`, `created_at`) and `playlist_entries` table (`playlist_id`, `post_id`, `added_at`) with proper indexes and composite primary key
+- ✅ **Playlist Management:** Full CRUD operations via `PlaylistController` (create, read, update, delete playlists)
+- ✅ **Add to Playlist:** Quick add menu (`QuickAddToPlaylistMenu`) on Post Cards and in viewer dialog
+- ✅ **Playlists Page:** Dedicated `PlaylistsPage` component in Sidebar navigation
+- ✅ **Playlist Gallery:** Grid and masonry view modes with filtering (FTS5 tag search, rating, media type, AI filter) and sorting (by `addedAt`, `publishedAt`, rating)
+- ✅ **Smart Playlists:** Support for dynamic playlists with tag-based queries (auto-fill based on tags)
+- ✅ **FTS5 Integration:** Fast tag searching within playlists using FTS5 full-text search
+- ✅ **IPC Controller:** Complete `PlaylistController` implementation with type-safe operations and comprehensive error handling
 
-**Status:** No playlist tables in schema, no playlist-related code implemented.
+**Status:** ✅ **COMPLETED:** Core playlist functionality fully implemented. Users can create playlists, add/remove posts, view galleries with filtering and sorting, and manage smart playlists with tag-based queries.
 
 ### 🛡️ Security & Reliability (Hardening)
 
