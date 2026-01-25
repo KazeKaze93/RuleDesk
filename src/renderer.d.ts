@@ -5,7 +5,7 @@ import {
   UpdateProgressCallback,
   AddArtistPayload,
 } from "./main/bridge";
-import type { PostData } from "./shared/schemas/post";
+import type { ShadowInsertRequest } from "./shared/schemas/shadow-insert";
 import type { SearchResults, ProviderId } from "./main/providers";
 import type {
   CreatePlaylistRequest,
@@ -99,7 +99,7 @@ export interface IpcApi extends IpcBridge {
 
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
 
-  shadowInsertPost: (postData: PostData) => Promise<number>;
+  shadowInsertPost: (request: ShadowInsertRequest) => Promise<Post>;
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 

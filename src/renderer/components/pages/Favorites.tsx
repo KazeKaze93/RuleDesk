@@ -6,7 +6,6 @@ import {
   InfiniteData,
   useQuery,
 } from "@tanstack/react-query";
-import { useShallow } from "zustand/react/shallow";
 import { Heart, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
@@ -98,15 +97,12 @@ export const Favorites = () => {
     queryFn: () => window.api.getTrackedArtists(),
   });
 
-  // Use useShallow for multiple filter values to prevent unnecessary re-renders
-  // This is more efficient than individual selectors when selecting multiple related values
-  const { sortOrder, viewType, filters } = useSearchStore(
-    useShallow((state) => ({
-      sortOrder: state.sortOrder,
-      viewType: state.viewType,
-      filters: state.filters,
-    }))
-  );
+  // Use atomic selectors to prevent unnecessary re-renders
+  // Each selector only subscribes to its specific value, not the entire store
+  // This is more efficient than useShallow when fields are used in different parts of the tree
+  const sortOrder = useSearchStore((state) => state.sortOrder);
+  const viewType = useSearchStore((state) => state.viewType);
+  const filters = useSearchStore((state) => state.filters);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({

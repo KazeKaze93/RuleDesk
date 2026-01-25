@@ -4,6 +4,7 @@ import { IPC_CHANNELS } from "./ipc/channels";
 import type { GetPostsRequest, AddArtistRequest } from "./types/ipc";
 import type { IpcSettings } from "../shared/schemas/settings";
 import type { PostData } from "../shared/schemas/post";
+import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
 import type { ProviderId, SearchResults } from "./providers";
 import type {
   CreatePlaylistRequest,
@@ -101,7 +102,7 @@ export interface IpcBridge {
 
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
 
-  shadowInsertPost: (postData: PostData) => Promise<number>;
+  shadowInsertPost: (request: ShadowInsertRequest) => Promise<Post>;
 
   // Downloads
   downloadFile: (
@@ -202,8 +203,8 @@ const ipcBridge: IpcBridge = {
   togglePostFavorite: (postId, postData) =>
     ipcRenderer.invoke("db:toggle-post-favorite", postId, postData),
 
-  shadowInsertPost: (postData) =>
-    ipcRenderer.invoke("db:shadow-insert-post", postData),
+  shadowInsertPost: (request: ShadowInsertRequest) =>
+    ipcRenderer.invoke("db:shadow-insert-post", request),
 
   togglePostViewed: (postId) =>
     ipcRenderer.invoke("db:toggle-post-viewed", postId),

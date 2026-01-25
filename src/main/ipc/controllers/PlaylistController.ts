@@ -68,6 +68,11 @@ export class PlaylistController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
+  // Cache FTS5 table count to avoid blocking Main Process with COUNT(*) queries
+  // Initialized once at setup() and updated when posts are inserted/updated
+  private fts5CountCache: number | null = null;
+  private fts5CountCacheInitialized: boolean = false;
+
   /**
    * Get decrypted settings for API authentication
    *
@@ -234,6 +239,38 @@ export class PlaylistController extends BaseController {
     );
 
     log.info("[PlaylistController] All handlers registered");
+    
+    // Initialize FTS5 count cache once at setup (avoids blocking synchronous calls at runtime)
+    this.initializeFts5CountCache();
+  }
+
+  /**
+   * Initialize FTS5 count cache (called once at setup)
+   * This avoids blocking synchronous SQLite COUNT(*) calls during runtime
+   */
+  private initializeFts5CountCache(): void {
+    try {
+      const sqlite = getSqliteInstance();
+      const countStmt = sqlite.prepare<[], { count: number }>(
+        "SELECT COUNT(*) as count FROM posts_fts"
+      );
+      const ftsCount = countStmt.get();
+      this.fts5CountCache = ftsCount?.count ?? 0;
+      this.fts5CountCacheInitialized = true;
+      log.info(`[PlaylistController] FTS5 count cache initialized: ${this.fts5CountCache} entries`);
+    } catch (error) {
+      log.warn("[PlaylistController] Failed to initialize FTS5 count cache:", error);
+      this.fts5CountCache = null;
+      this.fts5CountCacheInitialized = false;
+    }
+  }
+
+  /**
+   * Get FTS5 count (cached, checked once at initialization)
+   * @returns FTS5 count or null if not initialized
+   */
+  private getFts5Count(): number | null {
+    return this.fts5CountCache;
   }
 
   /**
@@ -295,7 +332,7 @@ export class PlaylistController extends BaseController {
       return { includeConditions: [sql`1 = 0`], excludeConditions: [] };
     }
 
-    // Check if FTS5 table has any data
+    // Check if FTS5 table has any data (use cached count to avoid blocking Main Process)
     // CRITICAL: Do NOT populate FTS5 table here - this blocks Main Process
     // FTS5 population should happen:
     // 1. During migration (0006_add_fts5_search.sql) - one-time operation
@@ -307,31 +344,26 @@ export class PlaylistController extends BaseController {
     // - Triggers are not working (schema issue)
     // - Database is new (triggers will populate automatically)
     //
-    // In any case, blocking IPC handler with sqlite.exec() is unacceptable.
+    // In any case, blocking IPC handler with COUNT(*) is unacceptable.
     // Return empty result instead of blocking UI.
-    try {
-      const sqlite = getSqliteInstance();
-      const countStmt = sqlite.prepare<[], { count: number }>(
-        "SELECT COUNT(*) as count FROM posts_fts"
-      );
-      const ftsCount = countStmt.get();
-      const count = ftsCount?.count ?? 0;
-      log.info(`[PlaylistController] FTS5 table has ${count} entries`);
-      
+    if (!this.fts5CountCacheInitialized) {
+      // Cache not initialized - initialize it now (only happens once)
+      this.initializeFts5CountCache();
+    }
+    
+    const count = this.getFts5Count();
+    
+    if (count === null || count === 0) {
       if (count === 0) {
         log.warn(
-          "[PlaylistController] FTS5 table exists but is empty. " +
+          "[PlaylistController] FTS5 table exists but is empty (cached). " +
           "This may indicate that posts table has no data or FTS5 triggers are not working. " +
           "Returning empty result to avoid blocking Main Process. " +
           "FTS5 should be populated by migration 0006_add_fts5_search.sql or triggers."
         );
-        // Return empty conditions to avoid blocking - FTS5 will be populated by triggers
-        // or background maintenance task, not during user request
-        return { includeConditions: [sql`1 = 0`], excludeConditions: [] };
       }
-    } catch (error) {
-      log.warn("[PlaylistController] Failed to check FTS5 table count:", error);
-      // Return empty result on error to avoid blocking
+      // Return empty conditions to avoid blocking - FTS5 will be populated by triggers
+      // or background maintenance task, not during user request
       return { includeConditions: [sql`1 = 0`], excludeConditions: [] };
     }
 
@@ -363,6 +395,21 @@ export class PlaylistController extends BaseController {
         // Combine with AND operator (uppercase as required by FTS5 syntax)
         // FTS5 syntax: tag1 AND tag2 (no quotes around individual tags)
         const combinedQuery = sanitizedTags.join(" AND ");
+        
+        // DEFENSE IN DEPTH: Additional validation for FTS5 query safety
+        // Check for dangerous FTS5 operators that could break query parsing
+        // FTS5 special characters: : (colon for column specifier), * (wildcard only at end), " (quotes)
+        // Block queries that start with * (invalid), contain : (column specifier), or have unbalanced quotes
+        if (combinedQuery.includes(":")) {
+          throw new Error(`Invalid FTS5 query: colon (:) is not allowed in tag queries`);
+        }
+        if (combinedQuery.includes("*") && !/^[a-zA-Z0-9_ -]+\*(\s+AND\s+[a-zA-Z0-9_ -]+\*?)*$/i.test(combinedQuery)) {
+          // Allow trailing * for prefix search, but block * at start or middle
+          throw new Error(`Invalid FTS5 query: wildcard (*) can only appear at the end of tags`);
+        }
+        if ((combinedQuery.match(/"/g) || []).length % 2 !== 0) {
+          throw new Error(`Invalid FTS5 query: unbalanced quotes`);
+        }
         
         log.debug(`[PlaylistController] Combined FTS5 include query: ${combinedQuery}`);
         

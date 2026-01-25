@@ -35,6 +35,10 @@ import {
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { isVideoUrl } from "@shared/utils/media";
+import { getProvider, type ProviderId } from "../../providers";
+import { safeStorage } from "electron";
+import { settings, SETTINGS_ID } from "../../db/schema";
+import { ShadowInsertRequestSchema } from "../../../shared/schemas/shadow-insert";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -73,6 +77,10 @@ export class PostsController extends BaseController {
   // Cache FTS table existence check (schema doesn't change at runtime)
   // Initialized once at setup() to avoid blocking synchronous calls
   private ftsTableExistsCache: boolean = false;
+  
+  // Cache EXTERNAL_ARTIST_ID existence check (avoids repeated DB queries)
+  // Initialized once at first shadowInsertPost call
+  private externalArtistExistsCache: boolean = false;
 
   /**
    * Check if posts_fts table exists (cached, checked once at initialization)
@@ -165,7 +173,7 @@ export class PostsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.DB.SHADOW_INSERT_POST,
-      z.tuple([PostDataSchema]),
+      z.tuple([ShadowInsertRequestSchema]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.shadowInsertPost.bind(this) as (
         event: IpcMainInvokeEvent,
@@ -1084,95 +1092,193 @@ export class PostsController extends BaseController {
   }
 
   /**
+   * Get decrypted settings for API authentication
+   *
+   * @returns Decrypted settings or null if not available
+   */
+  private async getDecryptedSettings(): Promise<{
+    userId: string;
+    apiKey: string;
+  } | null> {
+    try {
+      const db = this.getDb();
+      const settingsRecord = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all();
+
+      if (!settingsRecord || settingsRecord.length === 0) {
+        return null;
+      }
+
+      const record = settingsRecord[0];
+      if (!record.userId || !record.encryptedApiKey) {
+        return null;
+      }
+
+      // Decrypt API key using Electron's safeStorage
+      let apiKey = record.encryptedApiKey;
+      if (apiKey && safeStorage.isEncryptionAvailable()) {
+        try {
+          const buff = Buffer.from(apiKey, "base64");
+          apiKey = safeStorage.decryptString(buff);
+        } catch (e) {
+          log.warn("[PostsController] Failed to decrypt API Key.", e);
+          apiKey = record.encryptedApiKey;
+        }
+      }
+
+      return {
+        userId: record.userId,
+        apiKey: apiKey,
+      };
+    } catch (error) {
+      log.error("[PostsController] Failed to get decrypted settings:", error);
+      return null;
+    }
+  }
+
+  /**
    * Shadow Insert: Silently insert a remote post into the local database
    * 
-   * This method is called when a remote post (from API) is opened in the viewer.
-   * It ensures the post exists in the local DB so that all subsequent actions
-   * (favoriting, viewing, tag resolution) work with a real database record.
-   * 
-   * Uses onConflictDoNothing to handle race conditions gracefully (if post already exists).
+   * CRITICAL SECURITY: Renderer only passes postId and provider.
+   * Main process fetches post data from API to ensure data integrity.
+   * This prevents Renderer from injecting malicious URLs or data.
    * 
    * @param _event - IPC event (unused)
-   * @param postData - Post data from remote API
-   * @returns Inserted post ID (or existing post ID if already in DB)
+   * @param request - Shadow insert request (postId + provider)
+   * @returns Inserted post object (IPC-safe format with Date -> number conversion)
    */
   private async shadowInsertPost(
     _event: IpcMainInvokeEvent,
-    postData: PostData
-  ): Promise<number> {
-    log.info(`[PostsController] Shadow insert attempt: postId=${postData.postId}, fileUrl=${postData.fileUrl?.substring(0, 50)}...`);
+    request: { postId: number; provider: ProviderId }
+  ): Promise<IpcPost> {
+    log.info(`[PostsController] Shadow insert attempt: postId=${request.postId}, provider=${request.provider}`);
     
     try {
       const db = this.getDb();
 
-      // Validate required fields
-      if (!postData.postId) {
-        throw new Error("postId is required for shadow insert");
+      // Step 1: Check if post already exists in DB
+      const existingPost = db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.postId, request.postId),
+            eq(posts.artistId, EXTERNAL_ARTIST_ID)
+          )
+        )
+        .limit(1)
+        .all()[0];
+
+      if (existingPost) {
+        log.debug(`[PostsController] Shadow insert: Post already exists (id: ${existingPost.id}, postId: ${request.postId})`);
+        return toIpcSafe(existingPost) as IpcPost;
       }
-      if (!postData.fileUrl || postData.fileUrl.trim() === "") {
-        throw new Error("fileUrl is required and cannot be empty");
+
+      // Step 2: Fetch post data from API (Main process controls data source)
+      const provider = getProvider(request.provider);
+      const apiSettings = await this.getDecryptedSettings();
+      
+      if (!apiSettings) {
+        throw new Error("API credentials not configured. Cannot fetch post data from provider.");
       }
-      if (!postData.previewUrl || postData.previewUrl.trim() === "") {
-        throw new Error("previewUrl is required and cannot be empty");
+
+      // Fetch post by ID using provider API
+      // Most Booru APIs support id:postId query format
+      const tagsQuery = `id:${request.postId}`;
+      const booruPosts = await provider.fetchPosts(
+        tagsQuery,
+        0, // Page 0 for single post lookup
+        {
+          userId: apiSettings.userId,
+          apiKey: apiSettings.apiKey,
+        },
+        false // Not random
+      );
+
+      if (!booruPosts || booruPosts.length === 0) {
+        throw new Error(`Post ${request.postId} not found in ${request.provider} API`);
+      }
+
+      const booruPost = booruPosts.find(p => p.id === request.postId);
+      if (!booruPost) {
+        throw new Error(`Post ${request.postId} not found in API response`);
+      }
+
+      // Step 3: Validate URLs from API response
+      if (!booruPost.fileUrl || booruPost.fileUrl.trim() === "") {
+        throw new Error("API returned post with empty fileUrl");
+      }
+      if (!booruPost.previewUrl || booruPost.previewUrl.trim() === "") {
+        throw new Error("API returned post with empty previewUrl");
       }
 
       // CRITICAL SECURITY: Validate URL protocols to prevent RCE attacks
       // Only allow https: protocol - blocks javascript:, data:, file:, etc.
-      if (!this.validateUrlProtocol(postData.fileUrl)) {
-        throw new Error(`Invalid fileUrl protocol. Only HTTPS URLs are allowed.`);
+      if (!this.validateUrlProtocol(booruPost.fileUrl)) {
+        throw new Error(`Invalid fileUrl protocol from API. Only HTTPS URLs are allowed.`);
       }
-      if (!this.validateUrlProtocol(postData.previewUrl)) {
-        throw new Error(`Invalid previewUrl protocol. Only HTTPS URLs are allowed.`);
+      if (!this.validateUrlProtocol(booruPost.previewUrl)) {
+        throw new Error(`Invalid previewUrl protocol from API. Only HTTPS URLs are allowed.`);
       }
-      if (postData.sampleUrl && postData.sampleUrl.trim() !== "" && !this.validateUrlProtocol(postData.sampleUrl)) {
-        throw new Error(`Invalid sampleUrl protocol. Only HTTPS URLs are allowed.`);
+      if (booruPost.sampleUrl && booruPost.sampleUrl.trim() !== "" && !this.validateUrlProtocol(booruPost.sampleUrl)) {
+        throw new Error(`Invalid sampleUrl protocol from API. Only HTTPS URLs are allowed.`);
       }
 
-      // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
-      // PERFORMANCE OPTIMIZATION: Use single atomic INSERT ... ON CONFLICT DO UPDATE with RETURNING
-      // This eliminates multiple queries (select -> select -> insert -> select) and reduces
-      // Main Process blocking time. Single query is faster and more atomic.
-      let insertedPostId: number | null = null;
+      // Step 4: Ensure EXTERNAL_ARTIST_ID exists (cached check)
+      if (!this.externalArtistExistsCache) {
+        db.transaction((tx) => {
+          const now = new Date();
+          tx.insert(artists)
+            .values({
+              id: EXTERNAL_ARTIST_ID,
+              name: `Artist ${EXTERNAL_ARTIST_ID}`,
+              tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${EXTERNAL_ARTIST_ID}`,
+              provider: request.provider,
+              type: "tag",
+              apiEndpoint: "",
+              lastPostId: 0,
+              newPostsCount: 0,
+              createdAt: now,
+            })
+            .onConflictDoNothing()
+            .run();
+        });
+        this.externalArtistExistsCache = true;
+      }
+
+      // Step 5: Insert post into database
+      let insertedPost: InferSelectModel<typeof posts> | null = null;
 
       db.transaction((tx) => {
-        // Ensure EXTERNAL_ARTIST_ID exists first (required for foreign key)
-        // Use INSERT OR IGNORE to avoid error if artist already exists
         const now = new Date();
-        tx.insert(artists)
-          .values({
-            id: EXTERNAL_ARTIST_ID,
-            name: `Artist ${EXTERNAL_ARTIST_ID}`,
-            tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${EXTERNAL_ARTIST_ID}`,
-            provider: "rule34",
-            type: "tag",
-            apiEndpoint: "",
-            lastPostId: 0,
-            newPostsCount: 0,
-            createdAt: now,
-          })
-          .onConflictDoNothing()
-          .run();
+        const publishedAt = booruPost.createdAt instanceof Date 
+          ? booruPost.createdAt 
+          : new Date(booruPost.createdAt || now);
 
-        // Single atomic operation: INSERT ... ON CONFLICT DO UPDATE with RETURNING
-        // This replaces: select -> select -> insert -> select with one query
-        // If post exists, RETURNING returns existing post ID
-        // If post doesn't exist, RETURNING returns newly inserted post ID
-        const publishedAt = postData.publishedAt
-          ? new Date(postData.publishedAt)
-          : now;
+        // Normalize tags: BooruPost.tags is string[], convert to space-separated string
+        const tagsString = Array.isArray(booruPost.tags) 
+          ? booruPost.tags.join(" ") 
+          : booruPost.tags || "";
+
+        // Normalize rating
+        const rating = booruPost.rating || "";
 
         const result = tx
           .insert(posts)
           .values({
-            postId: postData.postId,
+            postId: request.postId,
             artistId: EXTERNAL_ARTIST_ID,
-            fileUrl: postData.fileUrl,
-            previewUrl: postData.previewUrl,
-            sampleUrl: postData.sampleUrl ?? "",
+            fileUrl: booruPost.fileUrl,
+            previewUrl: booruPost.previewUrl,
+            sampleUrl: booruPost.sampleUrl || "",
             title: "",
-            rating: postData.rating ?? "",
-            tags: postData.tags ?? "",
-            mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
+            rating: rating,
+            tags: tagsString,
+            mediaType: isVideoUrl(booruPost.fileUrl) ? "video" : "image",
             publishedAt: publishedAt,
             createdAt: now,
             isViewed: false,
@@ -1181,7 +1287,7 @@ export class PostsController extends BaseController {
           .onConflictDoUpdate({
             target: [posts.artistId, posts.postId],
             set: {
-              // Update URLs if they changed (though unlikely for same postId)
+              // Update URLs if they changed
               fileUrl: sql`excluded.file_url`,
               previewUrl: sql`excluded.preview_url`,
               sampleUrl: sql`excluded.sample_url`,
@@ -1191,31 +1297,28 @@ export class PostsController extends BaseController {
           .all();
 
         if (result && result.length > 0) {
-          insertedPostId = result[0].id;
+          insertedPost = result[0];
           log.info(
-            `[PostsController] Shadow insert: Post ${insertedPostId} (postId: ${postData.postId}) - ${result[0].createdAt.getTime() === now.getTime() ? "created" : "updated"}`
+            `[PostsController] Shadow insert: Post ${insertedPost.id} (postId: ${request.postId}) - ${insertedPost.createdAt.getTime() === now.getTime() ? "created" : "updated"}`
           );
         } else {
-          // This should not happen with RETURNING, but handle gracefully
-          log.warn(`[PostsController] Shadow insert: No result returned for postId ${postData.postId}`);
+          throw new Error(`Failed to insert post (postId: ${request.postId})`);
         }
       });
 
-      if (insertedPostId === null) {
-        throw new Error(`Failed to shadow insert post (postId: ${postData.postId})`);
+      if (!insertedPost) {
+        throw new Error(`Failed to shadow insert post (postId: ${request.postId})`);
       }
 
-      return insertedPostId;
+      // Step 6: Return IPC-safe Post object
+      return toIpcSafe(insertedPost) as IpcPost;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      log.error(`[PostsController] Failed to shadow insert post (postId: ${postData.postId}):`, {
+      log.error(`[PostsController] Failed to shadow insert post (postId: ${request.postId}):`, {
         error: errorMessage,
-        postId: postData.postId,
-        hasFileUrl: !!postData.fileUrl,
-        hasPreviewUrl: !!postData.previewUrl,
+        postId: request.postId,
+        provider: request.provider,
       });
-      // Re-throw with a more descriptive error message
-      // BaseController will serialize this properly for IPC
       throw new Error(`Failed to cache post: ${errorMessage}`);
     }
   }

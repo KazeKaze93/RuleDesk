@@ -62,7 +62,6 @@ import { cn } from "../../lib/utils";
 import { isVideoPost } from "../../lib/filter-utils";
 import { useViewerController } from "./hooks/useViewerController";
 import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
-import type { PostData } from "../../../shared/schemas/post";
 
 /**
  * PostNotFoundFallback: Handles shadow insert for remote posts not in cache
@@ -125,88 +124,53 @@ const PostNotFoundFallback = ({
       setError(null);
 
       try {
-        // Validate required fields before attempting shadow insert
+        // Validate required field
         if (!foundPost.postId) {
           throw new Error("Post ID is required for shadow insert");
         }
-        if (!foundPost.fileUrl || foundPost.fileUrl.trim() === "") {
-          throw new Error("File URL is required for shadow insert");
-        }
-        if (!foundPost.previewUrl || foundPost.previewUrl.trim() === "") {
-          throw new Error("Preview URL is required for shadow insert");
-        }
 
-        // ARCHITECTURE NOTE: This component handles data transformation for shadowInsertPost.
-        // Ideally, Renderer should only pass minimal data (postId + provider) to Main process,
-        // and Main should fetch/normalize the data itself. However, we already have the post
-        // data in infiniteData cache, so transforming it here avoids an extra IPC round-trip.
-        // This is acceptable as a performance optimization, but be aware that this creates
-        // a coupling between Renderer and Main's data format expectations.
+        // CRITICAL SECURITY: Renderer only passes postId and provider to Main process.
+        // Main process fetches post data from API to ensure data integrity.
+        // This prevents Renderer from injecting malicious URLs or data.
         
-        // Convert remote post to PostData format
-        // Handle tags: Post.tags is always string in DB, but may be array in API responses
-        const tagsString = typeof foundPost.tags === "string" 
-          ? foundPost.tags 
-          : Array.isArray(foundPost.tags) 
-          ? (foundPost.tags as string[]).join(" ") 
-          : "";
+        // Determine provider from queue origin or use default
+        // For playlist origins, we need to determine provider from playlist data
+        // Default to rule34 if provider not available
+        const provider: "rule34" | "gelbooru" = "rule34"; // TODO: Get provider from playlist if available
         
-        const postData: PostData = {
+        // Perform shadow insert - Main process fetches data from API
+        const insertedPost = await window.api.shadowInsertPost({
           postId: foundPost.postId,
-          artistId: 0, // Use EXTERNAL_ARTIST_ID (0) for remote posts
-          fileUrl: foundPost.fileUrl,
-          previewUrl: foundPost.previewUrl,
-          sampleUrl: foundPost.sampleUrl || "",
-          rating: (foundPost.rating === "s" || foundPost.rating === "q" || foundPost.rating === "e") ? foundPost.rating : undefined,
-          tags: tagsString || undefined,
-          publishedAt: foundPost.publishedAt instanceof Date 
-            ? foundPost.publishedAt.getTime() 
-            : typeof foundPost.publishedAt === "number" 
-            ? foundPost.publishedAt 
-            : Date.now(),
-        };
+          provider,
+        });
+        
+        log.info(`[ViewerDialog] Shadow insert successful: postId ${foundPost.postId} -> local id ${insertedPost.id}`);
 
-        // Perform shadow insert
-        const insertedId = await window.api.shadowInsertPost(postData);
-        log.info(`[ViewerDialog] Shadow insert successful: postId ${foundPost.postId} -> local id ${insertedId}`);
-
-        // Fetch the inserted post from DB
-        // We need to invalidate the playlist query to refetch with the new post
-        let queryKey: unknown[] | null = null;
+        // Update cache with inserted post (no setTimeout needed - we have the post object)
         if (queue.origin && queue.origin.kind === "playlist") {
-          queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
-          await queryClient.invalidateQueries({ queryKey });
+          const queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
+          
+          // Update cache directly with inserted post
+          queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (oldData) => {
+            if (!oldData) return oldData;
+            
+            // Replace remote post (id=0) with inserted post in cache
+            const updatedPages = oldData.pages.map(page =>
+              page.map(p => 
+                (p.id === 0 && p.postId === foundPost.postId) ? insertedPost : p
+              )
+            );
+            
+            return {
+              ...oldData,
+              pages: updatedPages,
+            };
+          });
         }
-
-        // Wait a bit for cache to update, then find the post
-        // The post should now have a real ID instead of 0
-        if (queryKey) {
-          setTimeout(() => {
-            const updatedData = queryClient.getQueryData<InfiniteData<Post[]>>(queryKey!);
-            if (updatedData) {
-              const allUpdatedPosts = updatedData.pages.flat();
-              const updatedPost = allUpdatedPosts.find((p) => p.id === insertedId || p.postId === foundPost.postId);
-              if (updatedPost) {
-                setInsertedPost(updatedPost);
-              } else {
-                // Fallback: create a post object with the inserted ID
-                setInsertedPost({
-                  ...foundPost,
-                  id: insertedId,
-                } as Post);
-              }
-            } else {
-              // Fallback: create a post object with the inserted ID
-              setInsertedPost({
-                ...foundPost,
-                id: insertedId,
-              } as Post);
-            }
-            setIsInserting(false);
-          }, 100);
-        } else {
-          setIsInserting(false);
-        }
+        
+        // Use the returned post directly (no setTimeout needed)
+        setInsertedPost(insertedPost);
+        setIsInserting(false);
       } catch (err) {
         log.error(`[ViewerDialog] Shadow insert failed for postId ${foundPost.postId}:`, err);
         const errorMessage = err instanceof Error ? err.message : String(err);

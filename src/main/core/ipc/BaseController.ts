@@ -428,14 +428,24 @@ export abstract class BaseController {
                     });
                     const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
                     
-                    // Security: Log only validation errors (paths and messages), not actual argument values
-                    log.error(`[IPC] Validation failed for channel "${channel}":`, {
-                      errors: validationError.errors.map((e) => ({
-                        path: e.path,
-                        message: e.message,
-                        code: e.code,
-                      })),
-                    });
+              // Security: Log only validation errors (paths and messages), not actual argument values
+              // Mask sensitive data in error paths (e.g., paths containing "password", "token", "key")
+              log.error(`[IPC] Validation failed for channel "${channel}":`, {
+                errors: validationError.errors.map((e) => ({
+                  path: e.path.map(segment => {
+                    // Mask sensitive path segments
+                    const segmentStr = String(segment);
+                    if (/password|token|key|secret|api[_-]?key|auth|credential/i.test(segmentStr)) {
+                      return "<masked>";
+                    }
+                    return segment;
+                  }),
+                  message: e.message,
+                  code: e.code,
+                  // SECURITY: Do not log actual values - they may contain sensitive data
+                  // Only log path and message, not the value that failed validation
+                })),
+              });
 
                     // Create serializable validation error with proper string representation
                     // SECURITY: Limit JSON.stringify output size to prevent huge error strings in production logs
@@ -474,6 +484,8 @@ export abstract class BaseController {
                   throw validationError;
                 }
                 
+                // Call handler with validated arguments
+                // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
                 const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
 
                 // Execute handler
@@ -606,10 +618,12 @@ export abstract class BaseController {
             ? schema
             : z.tuple([schema as z.ZodTypeAny]);
 
-          // Validate input arguments using normalized schema
-          let validatedArgs: unknown[];
+          // Use z.infer to extract types from schema instead of as unknown[]
+          // This provides proper type safety without type assertions
+          type ValidatedArgs = z.infer<typeof normalizedSchema>;
+          let validatedArgs: ValidatedArgs;
           try {
-            validatedArgs = normalizedSchema.parse(args) as unknown[];
+            validatedArgs = normalizedSchema.parse(args) as ValidatedArgs;
           } catch (validationError) {
             if (validationError instanceof z.ZodError) {
               // Build detailed error message with path information
@@ -620,11 +634,21 @@ export abstract class BaseController {
               const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
               
               // Security: Log only validation errors (paths and messages), not actual argument values
+              // Mask sensitive data in error paths (e.g., paths containing "password", "token", "key")
               log.error(`[IPC] Validation failed for channel "${channel}":`, {
                 errors: validationError.errors.map((e) => ({
-                  path: e.path,
+                  path: e.path.map(segment => {
+                    // Mask sensitive path segments
+                    const segmentStr = String(segment);
+                    if (/password|token|key|secret|api[_-]?key|auth|credential/i.test(segmentStr)) {
+                      return "<masked>";
+                    }
+                    return segment;
+                  }),
                   message: e.message,
                   code: e.code,
+                  // SECURITY: Do not log actual values - they may contain sensitive data
+                  // Only log path and message, not the value that failed validation
                 })),
               });
 
