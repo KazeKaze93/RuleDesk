@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { _electron as electron } from '@playwright/test';
+import { _electron as electron, type Page } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
+import { waitForWindow } from './utils/window-helpers';
+import { waitForAppReady } from './utils/app-ready';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -90,44 +92,29 @@ test.describe('Age Gate Persistence', () => {
       // Get the first window (with increased timeout for CI)
       // In headless mode, windows may take longer to appear
       const timeout = process.env.CI === 'true' ? 60000 : 30000;
-      let page;
+      let page: Page;
       try {
         page = await app.firstWindow({ timeout });
       } catch (error) {
-        // If firstWindow fails, try waiting for window event
-        console.warn('firstWindow failed, waiting for window event...', error);
-        await app.waitForEvent('window', { timeout });
-        const windows = app.windows();
-        if (windows.length === 0) {
-          throw new Error('No windows available after waiting. App may have failed to initialize.');
-        }
-        page = windows[0];
+        // If firstWindow fails, use retry helper
+        console.warn('firstWindow failed, using retry helper...', error);
+        page = await waitForWindow(app, timeout);
       }
       
-      // Wait a moment for window to initialize (app may show loading window first)
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Check if window is still open
-      if (page.isClosed()) {
-        const windows = app.windows();
-        if (windows.length === 0) {
-          throw new Error('No windows available. App may have closed immediately.');
-        }
-        page = windows[0];
-        if (page.isClosed()) {
-          throw new Error('All windows are closed');
-        }
-      }
-      
-      await page.waitForLoadState('domcontentloaded', { timeout: 20000 });
-      
-      // Wait a bit more for app to initialize
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Check if Age Gate is visible
+      // Wait for Age Gate UI elements to appear (replaces setTimeout)
       const ageGateTitle = page.getByText('Age Verification & Terms');
       const ageCheckbox = page.locator('#age-confirm');
       
+      // Wait for app to be fully ready (DOM + React hydration)
+      await waitForAppReady(page, 30000);
+      
+      // Wait for either element to appear (Age Gate is visible)
+      await Promise.race([
+        ageGateTitle.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        ageCheckbox.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+      ]);
+      
+      // Check if Age Gate is visible
       const isAgeGateVisible = await ageGateTitle.isVisible().catch(() => false) || 
                                await ageCheckbox.isVisible().catch(() => false);
       
@@ -150,42 +137,25 @@ test.describe('Age Gate Persistence', () => {
       
       // Get the first window (with increased timeout for CI)
       const timeout = process.env.CI === 'true' ? 60000 : 30000;
-      let page;
+      let page: Page;
       try {
         page = await app.firstWindow({ timeout });
       } catch (error) {
-        console.warn('firstWindow failed, waiting for window event...', error);
-        await app.waitForEvent('window', { timeout });
-        const windows = app.windows();
-        if (windows.length === 0) {
-          throw new Error('No windows available after waiting. App may have failed to initialize.');
-        }
-        page = windows[0];
+        console.warn('firstWindow failed, using retry helper...', error);
+        page = await waitForWindow(app, timeout);
       }
       
-      // Wait a moment for window to initialize
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await waitForAppReady(page, 30000);
       
-      // Check if window is still open
-      if (page.isClosed()) {
-        const windows = app.windows();
-        if (windows.length === 0) {
-          throw new Error('No windows available. App may have closed immediately.');
-        }
-        page = windows[0];
-        if (page.isClosed()) {
-          throw new Error('All windows are closed');
-        }
-      }
-      
-      await page.waitForLoadState('domcontentloaded', { timeout: 20000 });
-      
-      // Wait a bit for app to initialize
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Confirm Age Gate
+      // Wait for Age Gate UI elements to appear (replaces setTimeout)
       const ageGateTitle = page.getByText('Age Verification & Terms');
       const ageCheckbox = page.locator('#age-confirm');
+      
+      // Wait for either element to appear (Age Gate is visible)
+      await Promise.race([
+        ageGateTitle.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        ageCheckbox.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+      ]);
       
       const isAgeGateVisible = await ageGateTitle.isVisible().catch(() => false) || 
                                await ageCheckbox.isVisible().catch(() => false);
@@ -224,38 +194,26 @@ test.describe('Age Gate Persistence', () => {
       
       // Get the first window (with increased timeout for CI)
       const timeout = process.env.CI === 'true' ? 60000 : 30000;
-      let page;
+      let page: Page;
       try {
         page = await app.firstWindow({ timeout });
       } catch (error) {
-        console.warn('firstWindow failed, waiting for window event...', error);
-        await app.waitForEvent('window', { timeout });
-        const windows = app.windows();
-        if (windows.length === 0) {
-          throw new Error('No windows available after waiting. App may have failed to initialize.');
-        }
-        page = windows[0];
+        console.warn('firstWindow failed, using retry helper...', error);
+        page = await waitForWindow(app, timeout);
       }
       
-      // Wait a moment for window to initialize
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await waitForAppReady(page, 30000);
       
-      // Check if window is still open
-      if (page.isClosed()) {
-        const windows = app.windows();
-        if (windows.length === 0) {
-          throw new Error('No windows available. App may have closed immediately.');
-        }
-        page = windows[0];
-        if (page.isClosed()) {
-          throw new Error('All windows are closed');
-        }
-      }
+      // Wait for main app UI to appear (replaces setTimeout)
+      // Age Gate should NOT be visible, so wait for main app elements instead
+      const mainAppButton = page.getByRole('button', { name: /add source|add artist/i });
+      const onboardingInput = page.locator('#user-id-input');
       
-      await page.waitForLoadState('domcontentloaded', { timeout: 20000 });
-      
-      // Wait a bit for app to initialize and check settings
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Wait for either main app or onboarding to appear (Age Gate should be gone)
+      await Promise.race([
+        mainAppButton.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        onboardingInput.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+      ]);
       
       // Check if Age Gate is visible (it should NOT be)
       const ageGateTitle = page.getByText('Age Verification & Terms');
@@ -269,9 +227,6 @@ test.describe('Age Gate Persistence', () => {
       
       // Verify we're on the main app or onboarding (but NOT Age Gate)
       // Either we see the main app (if auth is configured) or onboarding (if not)
-      const mainAppButton = page.getByRole('button', { name: /add source|add artist/i });
-      const onboardingInput = page.locator('#user-id-input');
-      
       const isMainApp = await mainAppButton.isVisible({ timeout: 2000 }).catch(() => false);
       const isOnboarding = await onboardingInput.isVisible({ timeout: 2000 }).catch(() => false);
       

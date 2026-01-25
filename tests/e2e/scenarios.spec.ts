@@ -1,6 +1,7 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test';
 import { launchTestApp, cleanupTestApp } from './test-app';
 import { completeOnboarding } from './utils/onboarding';
+import { waitForWindow } from './utils/window-helpers';
 
 test.describe('User Journeys', () => {
   let app: ElectronApplication;
@@ -23,34 +24,19 @@ test.describe('User Journeys', () => {
     try {
       page = await app.firstWindow({ timeout });
     } catch (error) {
-      // If firstWindow fails, try waiting for window event
-      console.warn('firstWindow failed, waiting for window event...', error);
-      await app.waitForEvent('window', { timeout });
-      const windows = app.windows();
-      if (windows.length === 0) {
-        throw new Error('No windows available after waiting. App may have failed to initialize.');
-      }
-      page = windows[0];
+      // If firstWindow fails, use retry helper
+      console.warn('firstWindow failed, using retry helper...', error);
+      page = await waitForWindow(app, timeout);
     }
     
-    // Wait a moment for window to initialize (app may show loading window first)
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Wait for window content to load (replaces setTimeout)
+    await page.waitForLoadState('domcontentloaded', { timeout: 20000 });
     
     // Check if window is still open
     if (page.isClosed()) {
-      // Try to get another window
-      const windows = app.windows();
-      if (windows.length === 0) {
-        throw new Error('No windows available. App may have closed immediately.');
-      }
-      page = windows[0];
-      if (page.isClosed()) {
-        throw new Error('All windows are closed');
-      }
+      // Try to get another window using retry helper
+      page = await waitForWindow(app, timeout);
     }
-    
-    // Wait for app to settle (loading screen -> main window)
-    await page.waitForLoadState('domcontentloaded', { timeout: 20000 });
 
     // Perform Onboarding (Age Gate + Real Auth)
     await completeOnboarding(page);

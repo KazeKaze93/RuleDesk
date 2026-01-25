@@ -2,6 +2,7 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
+import { waitForWindow } from './utils/window-helpers';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -88,37 +89,19 @@ test.describe('Application Startup', () => {
     try {
       window = await app.firstWindow({ timeout });
     } catch (error) {
-      // If firstWindow fails, try waiting for window event
-      console.warn('firstWindow failed, waiting for window event...', error);
-      await app.waitForEvent('window', { timeout });
-      const windows = app.windows();
-      if (windows.length === 0) {
-        throw new Error('No windows available after waiting. App may have failed to initialize.');
-      }
-      window = windows[0];
+      // If firstWindow fails, use retry helper
+      console.warn('firstWindow failed, using retry helper...', error);
+      window = await waitForWindow(app, timeout);
     }
     console.log('Window obtained');
     
-    // Wait a moment for window to initialize
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Wait for window content to load (replaces setTimeout)
+    await window.waitForLoadState('domcontentloaded', { timeout: 20000 });
     
     // Check if window is still open
     if (window.isClosed()) {
-      // Try to get another window
-      const windows = app.windows();
-      console.log('First window closed, available windows:', windows.length);
-      if (windows.length === 0) {
-        throw new Error('No windows available. App may have closed immediately.');
-      }
-      // Use the first available window (might be a different one)
-      const newWindow = windows[0];
-      if (newWindow.isClosed()) {
-        throw new Error('All windows are closed');
-      }
-      // Continue with the new window
-      await testWindow(newWindow);
-    } else {
-      await testWindow(window);
+      // Try to get another window using retry helper
+      window = await waitForWindow(app, timeout);
     }
   });
   

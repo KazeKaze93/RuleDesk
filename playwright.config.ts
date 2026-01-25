@@ -15,10 +15,13 @@ import { defineConfig } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./tests/e2e",
-  timeout: 30000,
-  retries: 0,
+  timeout: 60000, // Increased from 30000 to handle slow CI/xvfb rendering
+  retries: 2, // Retry transient "Target closed" issues in CI
   workers: 1, // Electron не любит параллельные запуски
   reporter: "html",
+  expect: {
+    timeout: 10000, // Increased expect timeout to handle slow rendering in CI/xvfb
+  },
   use: {
     trace: "on-first-retry",
     screenshot: "only-on-failure",

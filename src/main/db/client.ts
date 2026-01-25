@@ -17,11 +17,43 @@ export async function initializeDatabase(): Promise<AppDatabase> {
   if (dbInstance) return dbInstance;
 
   const dbPath = path.join(app.getPath("userData"), "metadata.db");
-  const migrationsFolder = app.isPackaged
-    ? path.join(process.resourcesPath, "drizzle")
-    : path.join(__dirname, "../../drizzle");
+  
+  // Determine migrations folder path - handle test environment correctly
+  // In test mode, migrations are in project root (not packaged)
+  const isTestMode = process.env.NODE_ENV === "test";
+  const isDev = process.env.NODE_ENV === "development";
+  
+  // In test mode, ensure database is created in the unique tempDir provided by test runner
+  // This avoids 'busy' or 'locked' errors from parallel runs
+  if (isTestMode) {
+    const userDataPath = app.getPath("userData");
+    logger.info(`[DB] Test mode: Using userData path: ${userDataPath}`);
+    logger.info(`[DB] Test mode: Database will be created at: ${dbPath}`);
+    // Verify that userData path is a temp directory (should contain 'ruledesk-e2e' or similar)
+    if (!userDataPath.includes('ruledesk-e2e') && !userDataPath.includes('tmp')) {
+      logger.warn(`[DB] Test mode: userData path doesn't look like a temp directory: ${userDataPath}`);
+    }
+  }
+  
+  let migrationsFolder: string;
+  if (app.isPackaged && !isTestMode) {
+    // Production: migrations are in resources folder
+    migrationsFolder = path.join(process.resourcesPath, "drizzle");
+  } else {
+    // Development or test: migrations are in project root
+    // Use __dirname to resolve relative to this file's location
+    migrationsFolder = path.join(__dirname, "../../drizzle");
+  }
+  
+  // Ensure migrations folder exists and is accessible
+  if (!fs.existsSync(migrationsFolder)) {
+    const errorMsg = `Migrations folder not found: ${migrationsFolder}. Current working directory: ${process.cwd()}, __dirname: ${__dirname}`;
+    logger.error(`[DB] ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
 
   logger.info(`[DB] Initializing at: ${dbPath}`);
+  logger.info(`[DB] Migrations folder: ${migrationsFolder} (test mode: ${isTestMode}, dev: ${isDev}, packaged: ${app.isPackaged})`);
 
   const dbDir = path.dirname(dbPath);
   if (!fs.existsSync(dbDir)) {
@@ -402,15 +434,20 @@ export async function initializeDatabase(): Promise<AppDatabase> {
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
     
-    // Show error dialog to user in production (critical error)
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    const errorDetails = `Database migration failed. The application cannot start.\n\nError: ${errorMessage}\n\nPlease check the logs for more details.`;
+    // Don't show error dialog in headless/test mode (blocks process in CI)
+    const isHeadless = process.env.NODE_ENV === "test" || process.env.CI === "true" || !process.env.DISPLAY;
     
-    // Use showErrorBox for synchronous display (works even if app is crashing)
-    dialog.showErrorBox(
-      "Database Migration Error",
-      errorDetails
-    );
+    if (!isHeadless) {
+      // Show error dialog to user in production (critical error)
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorDetails = `Database migration failed. The application cannot start.\n\nError: ${errorMessage}\n\nPlease check the logs for more details.`;
+      
+      // Use showErrorBox for synchronous display (works even if app is crashing)
+      dialog.showErrorBox(
+        "Database Migration Error",
+        errorDetails
+      );
+    }
     
     throw e;
   }

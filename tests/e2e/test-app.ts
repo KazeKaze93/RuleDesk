@@ -35,15 +35,18 @@ export async function launchTestApp() {
   // SECURITY: Only use unsafe flags in test environment
   // These flags are NEVER used in production builds - they're only passed via Playwright's electron.launch()
   // which is exclusively called from test files (tests/e2e/*.spec.ts)
-  const isTestEnv = process.env.NODE_ENV === 'test';
+  // Check for test environment: NODE_ENV=test OR Playwright's internal execution context
+  const isTestEnv = process.env.NODE_ENV === 'test' || !!process.env.PW_TEST_PROJECT_NAME;
   if (!isTestEnv) {
-    throw new Error('launchTestApp() can only be called in test environment (NODE_ENV=test)');
+    throw new Error('launchTestApp() can only be called in test environment (NODE_ENV=test or PW_TEST_PROJECT_NAME must be set)');
   }
   
   const app = await electron.launch({
+    executablePath: undefined, // Use Electron from node_modules (default)
     args: [
       mainEntry,
       `--user-data-dir=${tempDir}`,
+      '--remote-debugging-port=9222', // Stabilize CDP connection between Playwright and Electron
       // Headless mode flags for Electron (Electron doesn't support --headless flag directly)
       // Playwright handles headless mode automatically, but we add stability flags for CI
       // SECURITY WARNING: --no-sandbox is UNSAFE and only used in isolated test environment

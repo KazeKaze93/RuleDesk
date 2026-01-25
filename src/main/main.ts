@@ -1,10 +1,63 @@
 import { app, BrowserWindow, dialog, Tray, nativeImage, Menu } from "electron";
 import path from "node:path";
-import { mkdirSync, existsSync } from "fs";
+import { mkdirSync, existsSync, writeFileSync } from "fs";
 import log from "electron-log";
 
 // === Initialize electron-log first ===
 log.initialize();
+
+// === E2E CRASH LOGGING ===
+// In test mode, log all uncaught errors to a dedicated file for E2E diagnostics
+// IMPORTANT: This must be set up BEFORE any imports that might fail (like better-sqlite3)
+const isTestMode = process.env.NODE_ENV === "test";
+let crashLogPath: string | null = null;
+
+if (isTestMode) {
+  try {
+    // Get userData path early - it's set via --user-data-dir in tests
+    crashLogPath = path.join(app.getPath("userData"), "crash-e2e.log");
+    
+    // Clear previous crash log at startup
+    try {
+      writeFileSync(crashLogPath, `=== E2E Crash Log Started: ${new Date().toISOString()} ===\n\n`, "utf-8");
+    } catch {
+      // Ignore errors if file can't be written
+    }
+    
+    const writeCrashLog = (type: string, error: Error | unknown) => {
+      if (!crashLogPath) return;
+      try {
+        const timestamp = new Date().toISOString();
+        const errorMessage = error instanceof Error 
+          ? `${error.name}: ${error.message}\n${error.stack || ""}`
+          : String(error);
+        const logEntry = `[${timestamp}] ${type}:\n${errorMessage}\n\n`;
+        writeFileSync(crashLogPath, logEntry, { flag: "a", encoding: "utf-8" });
+        // Also log to console for immediate visibility
+        console.error(`[E2E Crash Log] ${type}:`, error);
+      } catch {
+        // Ignore errors if file can't be written
+      }
+    };
+    
+    // Catch synchronous errors during module loading
+    process.on("uncaughtException", (error) => {
+      writeCrashLog("uncaughtException", error);
+      // Don't exit immediately - let the error propagate so dialog can show
+    });
+    
+    process.on("unhandledRejection", (reason) => {
+      writeCrashLog("unhandledRejection", reason);
+    });
+    
+    console.log(`[E2E] Crash logging enabled. Log file: ${crashLogPath}`);
+  } catch (error) {
+    // If crash logging setup fails, log to console
+    console.error("[E2E] Failed to set up crash logging:", error);
+  }
+}
+
+// === PORTABLE MODE LOGIC ===
 
 // === PORTABLE MODE LOGIC ===
 if (app.isPackaged) {
@@ -88,7 +141,6 @@ let tray: Tray | null = null;
 
 // In test mode, skip single instance lock to allow multiple test instances
 // Each test uses a unique --user-data-dir, so there's no conflict
-const isTestMode = process.env.NODE_ENV === "test";
 const gotTheLock = isTestMode ? true : app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
@@ -313,13 +365,23 @@ async function initializeAppAndWindow() {
     const MIGRATIONS_PATH = getMigrationsPath();
     logger.info(`Main: Migrations Path: ${MIGRATIONS_PATH}`);
 
-    // Show loading window during database initialization
-    loadingWindow = createLoadingWindow();
-    loadingWindow.show();
+    // Show loading window during database initialization (skip in test mode)
+    if (!isTestMode) {
+      loadingWindow = createLoadingWindow();
+      loadingWindow.show();
+    }
 
     // Initialize database asynchronously (migrations may take time)
-    await initializeDatabase();
-    logger.info("✅ Main: Database initialized and ready.");
+    // Add extra logging around database initialization to catch silent crashes in CI
+    logger.info("[Main] Starting database initialization...");
+    try {
+      await initializeDatabase();
+      logger.info("✅ Main: Database initialized and ready.");
+    } catch (error) {
+      logger.error("[Main] FATAL: Database initialization failed:", error);
+      // Re-throw to be caught by outer try-catch
+      throw error;
+    }
     
     // Start background backfill for media_type column (non-blocking)
     // This runs after migrations to avoid blocking app startup
@@ -456,35 +518,10 @@ async function initializeAppAndWindow() {
       mainWindow.webContents.openDevTools();
     }
 
-    mainWindow.once("ready-to-show", () => {
-      const window = mainWindow;
-
-      if (window) {
-        // In test mode, window is already shown, so just ensure it's visible
-        if (!isTestMode) {
-          window.show();
-        }
-        updaterService.checkForUpdates();
-
-        // Initialize IPC architecture (controllers + legacy handlers)
-        // setupIpc is called inside registerAllHandlers now
-        registerAllHandlers(syncService, updaterService, window);
-
-        // Create system tray (skip in test mode)
-        if (!isTestMode) {
-          createTray(window);
-        }
-
-        setTimeout(() => {
-          logger.info("Main: DB maintenance skipped for now (direct DB mode)");
-        }, 3000);
-      }
-    });
-
-    // In test mode, initialize IPC immediately after window creation
-    // Don't wait for ready-to-show which may not fire in headless mode
+    // In test mode, skip ready-to-show listener and initialize IPC immediately
+    // ready-to-show may not fire reliably in headless CI environments
     if (isTestMode) {
-      logger.info("[Main] Test mode: Initializing IPC handlers immediately");
+      logger.info("[Main] Test mode: Skipping ready-to-show listener, initializing IPC immediately");
       // Initialize IPC immediately so tests can interact with the app
       registerAllHandlers(syncService, updaterService, mainWindow);
       
@@ -500,6 +537,27 @@ async function initializeAppAndWindow() {
             logger.info("[Main] Test mode: Window shown explicitly after did-finish-load");
           }
           logger.info("[Main] Test mode: Window ready for Playwright");
+        }
+      });
+    } else {
+      // Normal mode: wait for ready-to-show event
+      mainWindow.once("ready-to-show", () => {
+        const window = mainWindow;
+
+        if (window) {
+          window.show();
+          updaterService.checkForUpdates();
+
+          // Initialize IPC architecture (controllers + legacy handlers)
+          // setupIpc is called inside registerAllHandlers now
+          registerAllHandlers(syncService, updaterService, window);
+
+          // Create system tray
+          createTray(window);
+
+          setTimeout(() => {
+            logger.info("Main: DB maintenance skipped for now (direct DB mode)");
+          }, 3000);
         }
       });
     }
@@ -527,12 +585,17 @@ async function initializeAppAndWindow() {
     }
 
     logger.error("FATAL: Failed to initialize application or database.", e);
-    dialog.showErrorBox(
-      "Fatal Error",
-      `App initialization failed:\n${
-        e instanceof Error ? e.message : String(e)
-      }`
-    );
+    
+    // Don't show error dialog in headless/test mode (blocks process in CI)
+    const isHeadless = isTestMode || process.env.CI === "true" || !process.env.DISPLAY;
+    if (!isHeadless) {
+      dialog.showErrorBox(
+        "Fatal Error",
+        `App initialization failed:\n${
+          e instanceof Error ? e.message : String(e)
+        }`
+      );
+    }
     app.exit(1);
   }
 }
