@@ -15,6 +15,7 @@ import { Input } from "../../components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePlaylists } from "../../lib/hooks/usePlaylists";
+import type { Playlist } from "../../../main/db/schema";
 
 interface QuickAddToPlaylistMenuProps {
   postId: number;
@@ -38,7 +39,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   const { data: allPlaylists = [], isLoading } = usePlaylists({ enabled: isMenuOpen });
   
   // Filter out smart playlists - only show manual playlists
-  const playlists = allPlaylists.filter((p) => !p.isSmart);
+  const playlists = allPlaylists.filter((p: Playlist) => !p.isSmart);
 
   // Fetch which playlists this post is already in - single query instead of N queries
   const { data: existingPlaylistIds = [] } = useQuery<number[]>({
@@ -154,7 +155,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
                 </div>
               ) : (
                 <>
-                  {playlists.map((playlist) => (
+                  {playlists.map((playlist: Playlist) => (
                     <DropdownMenuCheckboxItem
                       key={playlist.id}
                       checked={selectedPlaylistIds.has(playlist.id)}

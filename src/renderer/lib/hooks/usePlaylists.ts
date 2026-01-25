@@ -20,7 +20,7 @@ export function usePlaylists(options?: { enabled?: boolean }) {
       return await window.api.getPlaylists();
     },
     staleTime: 60000, // 1 minute - data is fresh for 1 minute
-    cacheTime: 300000, // 5 minutes - keep cached data for 5 minutes
+    gcTime: 300000, // 5 minutes - keep cached data for 5 minutes (renamed from cacheTime in React Query v5)
     enabled: options?.enabled !== false, // Default to true, can be disabled for lazy loading
   });
 }

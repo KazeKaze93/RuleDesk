@@ -73,7 +73,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
     // Play video on hover
     const playPromise = video.play();
     if (playPromise !== undefined) {
-      playPromise.catch((error) => {
+      playPromise.catch(() => {
         // Video play failed (e.g., autoplay policy, network error)
         // Silently handle - we'll fallback to static image
         setVideoError(true);

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq, desc, and, inArray, sql, or, not, asc, type SQL } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { playlists, playlistEntries, posts, type Post } from "../../db/schema";
+import { playlists, playlistEntries, posts } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
@@ -25,8 +25,8 @@ import {
   type ResolvePlaylistPostsRequest,
   type SmartPlaylistQuery,
 } from "../../../shared/schemas/playlist";
-import { PostFilterSchema } from "../../../shared/schemas/post";
 import { isVideoUrl } from "@shared/utils/media";
+import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { getProvider } from "../../providers";
 import { settings, SETTINGS_ID } from "../../db/schema";
@@ -278,58 +278,6 @@ export class PlaylistController extends BaseController {
       log.error("[PlaylistController] Failed to check FTS table existence:", error);
       return false;
     }
-  }
-
-  /**
-   * Sanitize FTS5 query to prevent SQL injection
-   * Reuses logic from PostsController
-   */
-  private sanitizeFts5Query(query: string): string {
-    const trimmed = query.trim();
-    if (trimmed.length === 0) {
-      throw new Error("FTS5 query is empty");
-    }
-
-    const strictWhitelistRegex = /^[a-zA-Z0-9_* -]+$/;
-    if (!strictWhitelistRegex.test(trimmed)) {
-      throw new Error(
-        `Invalid FTS5 query: "${query}". Only alphanumeric characters, spaces, hyphens, underscores, and trailing asterisks are allowed.`
-      );
-    }
-
-    const words = trimmed.split(/\s+/).filter(Boolean);
-    if (words.length === 0) {
-      throw new Error("FTS5 query is empty");
-    }
-
-    const sanitizedWords = words.map((word) => {
-      const starIndex = word.indexOf("*");
-      if (starIndex !== -1 && starIndex !== word.length - 1) {
-        throw new Error(
-          `Invalid search term: "${word}". Asterisk (*) can only appear at the end of a word.`
-        );
-      }
-
-      const starCount = (word.match(/\*/g) || []).length;
-      if (starCount > 1) {
-        throw new Error(
-          `Invalid search term: "${word}". Only one asterisk (*) allowed at the end of a word.`
-        );
-      }
-
-      const hasTrailingStar = word.endsWith("*");
-      const baseWord = hasTrailingStar ? word.slice(0, -1) : word;
-
-      if (baseWord.trim().length === 0) {
-        throw new Error(`Invalid search term: "${word}". Search term cannot be empty.`);
-      }
-
-      return hasTrailingStar ? `${baseWord.trim()}*` : baseWord.trim();
-    });
-
-    const sanitized = sanitizedWords.join(" ");
-    const escaped = sanitized.replace(/"/g, '""');
-    return `"${escaped}"`;
   }
 
   /**
@@ -846,7 +794,7 @@ export class PlaylistController extends BaseController {
           or(
             eq(posts.mediaType, "image"),
             sql`${posts.mediaType} IS NULL`
-          ) as typeof posts.mediaType
+          ) as SQL
         );
       }
 
@@ -976,7 +924,7 @@ export class PlaylistController extends BaseController {
           or(
             eq(posts.mediaType, "image"),
             sql`${posts.mediaType} IS NULL`
-          ) as typeof posts.mediaType
+          ) as SQL
         );
       }
 
@@ -1064,15 +1012,18 @@ export class PlaylistController extends BaseController {
         if (includeConditions.length === 1) {
           allConditions.push(includeConditions[0]);
         } else {
-          allConditions.push(and(...includeConditions));
+          allConditions.push(and(...includeConditions) as SQL);
         }
       }
 
       if (excludeConditions.length > 0) {
         if (excludeConditions.length === 1) {
-          allConditions.push(not(excludeConditions[0]));
+          allConditions.push(not(excludeConditions[0]) as SQL);
         } else {
-          allConditions.push(not(or(...excludeConditions)));
+          const orCondition = or(...excludeConditions);
+          if (orCondition) {
+            allConditions.push(not(orCondition) as SQL);
+          }
         }
       }
 
@@ -1081,7 +1032,7 @@ export class PlaylistController extends BaseController {
         allConditions.push(...globalConditions);
       }
 
-      const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0];
+      const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;
 
       // Execute local DB query and remote API query concurrently
       const [localPosts, remotePosts] = await Promise.all([
@@ -1266,7 +1217,7 @@ export class PlaylistController extends BaseController {
           return {
             id: 0, // Remote posts don't have local DB ID
             postId: post.id,
-            artistId: null, // Remote posts don't have artist association
+            artistId: EXTERNAL_ARTIST_ID, // Use EXTERNAL_ARTIST_ID instead of null (schema requires notNull)
             fileUrl: post.fileUrl,
             previewUrl: post.previewUrl,
             sampleUrl: post.sampleUrl,

@@ -121,6 +121,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
         limit: 50,
         filters: Object.keys(apiFilters).length > 0 ? apiFilters : undefined,
         sortOrder,
+        isRandom: false,
       });
     },
     getNextPageParam: (lastPage, allPages) => {
@@ -286,7 +287,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     if (playlistFilter === "all") {
       return playlists;
     }
-    return playlists.filter((playlist) => 
+    return playlists.filter((playlist: Playlist) => 
       playlistFilter === "smart" ? playlist.isSmart : !playlist.isSmart
     );
   }, [playlists, playlistFilter]);
@@ -525,7 +526,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredPlaylists.map((playlist) => (
+            {filteredPlaylists.map((playlist: Playlist) => (
               <div
                 key={playlist.id}
                 className={cn(
@@ -845,7 +846,6 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
               <ToggleGroup
                 type="single"
                 value={playlistType}
-                disabled={true}
                 size="default"
                 variant="outline"
                 className="w-full"
@@ -872,7 +872,6 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                     onQueryChange={setTagInputValue}
                     onSelect={handleTagSelect}
                     placeholder="Search for tags..."
-                    disabled={isEditing}
                   />
                   <div className="flex flex-wrap gap-2 mt-2">
                     {smartTags.map((tag, index) => (

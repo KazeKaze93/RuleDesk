@@ -63,7 +63,6 @@ import { isVideoPost } from "../../lib/filter-utils";
 import { useViewerController } from "./hooks/useViewerController";
 import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
 import type { PostData } from "../../../shared/schemas/post";
-import { isVideoUrl } from "@shared/utils/media";
 
 /**
  * PostNotFoundFallback: Handles shadow insert for remote posts not in cache
@@ -138,13 +137,21 @@ const PostNotFoundFallback = ({
         }
 
         // Convert remote post to PostData format
+        // Handle tags: Post.tags is always string in DB, but may be array in API responses
+        const tagsString = typeof foundPost.tags === "string" 
+          ? foundPost.tags 
+          : Array.isArray(foundPost.tags) 
+          ? (foundPost.tags as string[]).join(" ") 
+          : "";
+        
         const postData: PostData = {
           postId: foundPost.postId,
+          artistId: 0, // Use EXTERNAL_ARTIST_ID (0) for remote posts
           fileUrl: foundPost.fileUrl,
           previewUrl: foundPost.previewUrl,
           sampleUrl: foundPost.sampleUrl || "",
-          rating: foundPost.rating || "",
-          tags: typeof foundPost.tags === "string" ? foundPost.tags : foundPost.tags.join(" "),
+          rating: (foundPost.rating === "s" || foundPost.rating === "q" || foundPost.rating === "e") ? foundPost.rating : undefined,
+          tags: tagsString || undefined,
           publishedAt: foundPost.publishedAt instanceof Date 
             ? foundPost.publishedAt.getTime() 
             : typeof foundPost.publishedAt === "number" 
@@ -158,18 +165,29 @@ const PostNotFoundFallback = ({
 
         // Fetch the inserted post from DB
         // We need to invalidate the playlist query to refetch with the new post
-        const queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
-        await queryClient.invalidateQueries({ queryKey });
+        let queryKey: unknown[] | null = null;
+        if (queue.origin && queue.origin.kind === "playlist") {
+          queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
+          await queryClient.invalidateQueries({ queryKey });
+        }
 
         // Wait a bit for cache to update, then find the post
         // The post should now have a real ID instead of 0
-        setTimeout(() => {
-          const updatedData = queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
-          if (updatedData) {
-            const allUpdatedPosts = updatedData.pages.flat();
-            const updatedPost = allUpdatedPosts.find((p) => p.id === insertedId || p.postId === foundPost.postId);
-            if (updatedPost) {
-              setInsertedPost(updatedPost);
+        if (queryKey) {
+          setTimeout(() => {
+            const updatedData = queryClient.getQueryData<InfiniteData<Post[]>>(queryKey!);
+            if (updatedData) {
+              const allUpdatedPosts = updatedData.pages.flat();
+              const updatedPost = allUpdatedPosts.find((p) => p.id === insertedId || p.postId === foundPost.postId);
+              if (updatedPost) {
+                setInsertedPost(updatedPost);
+              } else {
+                // Fallback: create a post object with the inserted ID
+                setInsertedPost({
+                  ...foundPost,
+                  id: insertedId,
+                } as Post);
+              }
             } else {
               // Fallback: create a post object with the inserted ID
               setInsertedPost({
@@ -177,15 +195,11 @@ const PostNotFoundFallback = ({
                 id: insertedId,
               } as Post);
             }
-          } else {
-            // Fallback: create a post object with the inserted ID
-            setInsertedPost({
-              ...foundPost,
-              id: insertedId,
-            } as Post);
-          }
+            setIsInserting(false);
+          }, 100);
+        } else {
           setIsInserting(false);
-        }, 100);
+        }
       } catch (err) {
         log.error(`[ViewerDialog] Shadow insert failed for postId ${foundPost.postId}:`, err);
         const errorMessage = err instanceof Error ? err.message : String(err);
@@ -825,7 +839,7 @@ const ViewerContent = ({
   const isDeveloperMode = true;
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   // Local state for randomization in viewer (not synced with global store)
-  const isRandom = queue?.isRandom ?? false;
+  const isRandom = (queue && "isRandom" in queue) ? queue.isRandom ?? false : false;
   const setQueueIsRandom = useViewerStore((state) => state.setQueueIsRandom);
 
   const handleToggleRandom = useCallback(() => {
