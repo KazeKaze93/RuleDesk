@@ -5,7 +5,6 @@ import {
 } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
-import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
 import type { Playlist, Post } from "../../../main/db/schema";
@@ -83,11 +82,8 @@ interface PlaylistGalleryProps {
 }
 
 const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) => {
-  const { open: openViewer } = useViewerStore(
-    useShallow((state) => ({
-      open: state.open,
-    }))
-  );
+  // Use atomic selector instead of useShallow for single value
+  const openViewer = useViewerStore((state) => state.open);
 
   const viewType = useSearchStore((state) => state.viewType);
   const filters = useSearchStore((state) => state.filters);

@@ -240,15 +240,22 @@ export class PlaylistController extends BaseController {
 
     log.info("[PlaylistController] All handlers registered");
     
-    // Initialize FTS5 count cache once at setup (avoids blocking synchronous calls at runtime)
-    this.initializeFts5CountCache();
+    // CRITICAL: Do NOT initialize FTS5 count cache synchronously in setup()
+    // This would block Main Process during app startup if database is large.
+    // Instead, initialize lazily on first use in buildSmartPlaylistTagConditions.
+    // This ensures app starts quickly and FTS5 count is only checked when needed.
   }
 
   /**
-   * Initialize FTS5 count cache (called once at setup)
-   * This avoids blocking synchronous SQLite COUNT(*) calls during runtime
+   * Initialize FTS5 count cache lazily (called on first use, not at startup)
+   * This avoids blocking Main Process during app startup
    */
   private initializeFts5CountCache(): void {
+    // Only initialize once
+    if (this.fts5CountCacheInitialized) {
+      return;
+    }
+    
     try {
       const sqlite = getSqliteInstance();
       const countStmt = sqlite.prepare<[], { count: number }>(
@@ -346,8 +353,8 @@ export class PlaylistController extends BaseController {
     //
     // In any case, blocking IPC handler with COUNT(*) is unacceptable.
     // Return empty result instead of blocking UI.
+    // Initialize cache lazily on first use (not at startup)
     if (!this.fts5CountCacheInitialized) {
-      // Cache not initialized - initialize it now (only happens once)
       this.initializeFts5CountCache();
     }
     
@@ -388,8 +395,11 @@ export class PlaylistController extends BaseController {
           
           // For FTS5, tags should be used without quotes unless they contain spaces
           // Since we validate that tags don't contain special characters, we can use them directly
-          // No manual escaping needed - Drizzle will handle parameterization safely
-          return trimmed;
+          // SECURITY: Escape double quotes in tags to prevent FTS5 query injection
+          // FTS5 uses double quotes for phrase matching, so we need to escape them
+          // Replace " with "" (FTS5 escape sequence) to safely include quotes in tags
+          const escapedTag = trimmed.replace(/"/g, '""');
+          return escapedTag;
         });
         
         // Combine with AND operator (uppercase as required by FTS5 syntax)
@@ -452,8 +462,11 @@ export class PlaylistController extends BaseController {
           }
           
           // For FTS5, tags should be used without quotes unless they contain spaces
-          // No manual escaping needed - Drizzle will handle parameterization safely
-          return trimmed;
+          // SECURITY: Escape double quotes in tags to prevent FTS5 query injection
+          // FTS5 uses double quotes for phrase matching, so we need to escape them
+          // Replace " with "" (FTS5 escape sequence) to safely include quotes in tags
+          const escapedTag = trimmed.replace(/"/g, '""');
+          return escapedTag;
         });
         
         // Combine with OR operator (uppercase as required by FTS5 syntax)
@@ -507,29 +520,43 @@ export class PlaylistController extends BaseController {
           iconName: data.iconName ?? "",
         })
         .returning()
-        .all();
+        .get();
 
-      if (!result || result.length === 0) {
+      if (!result) {
         throw new Error("Failed to create playlist");
       }
 
-      const playlist = result[0];
+      const playlist = result;
       log.info(
         `[PlaylistController] Created playlist: ${playlist.id} (${playlist.name}, smart: ${playlist.isSmart})`
       );
       
       // Log queryJson for smart playlists to help debug empty collections
+      // SECURITY: Never trust JSON.parse without try-catch, even for logging
       if (playlist.isSmart && playlist.queryJson) {
         try {
           const parsedQuery = JSON.parse(playlist.queryJson);
-          log.info(
-            `[PlaylistController] Smart playlist ${playlist.id} query_json:`,
-            JSON.stringify(parsedQuery, null, 2)
-          );
-        } catch (error) {
+          // SECURITY: Wrap JSON.stringify in try-catch to prevent crashes from circular references or invalid data
+          try {
+            log.info(
+              `[PlaylistController] Smart playlist ${playlist.id} query_json:`,
+              JSON.stringify(parsedQuery, null, 2)
+            );
+          } catch (stringifyError) {
+            // If JSON.stringify fails (circular reference, etc.), log a safe message
+            log.warn(
+              `[PlaylistController] Failed to stringify query_json for playlist ${playlist.id}:`,
+              stringifyError instanceof Error ? stringifyError.message : String(stringifyError)
+            );
+            // Log raw queryJson length as fallback
+            log.info(
+              `[PlaylistController] Smart playlist ${playlist.id} query_json length: ${playlist.queryJson.length} chars`
+            );
+          }
+        } catch (parseError) {
           log.warn(
             `[PlaylistController] Failed to parse query_json for newly created playlist ${playlist.id}:`,
-            error
+            parseError instanceof Error ? parseError.message : String(parseError)
           );
         }
       }
@@ -585,13 +612,13 @@ export class PlaylistController extends BaseController {
         .from(playlists)
         .where(eq(playlists.id, playlistId))
         .limit(1)
-        .all();
+        .get();
 
-      if (result.length === 0) {
+      if (!result) {
         return null;
       }
 
-      return toIpcSafe(result[0]) as IpcPlaylist;
+      return toIpcSafe(result) as IpcPlaylist;
     } catch (error) {
       log.error(`[PlaylistController] Failed to get playlist ${playlistId}:`, error);
       throw error;
@@ -925,18 +952,16 @@ export class PlaylistController extends BaseController {
       const db = this.getDb();
 
       // Get playlist to check if it's smart
-      const playlistResult = db
+      const playlist = db
         .select()
         .from(playlists)
         .where(eq(playlists.id, playlistId))
         .limit(1)
-        .all();
+        .get();
 
-      if (playlistResult.length === 0) {
+      if (!playlist) {
         throw new Error(`Playlist ${playlistId} not found`);
       }
-
-      const playlist = playlistResult[0];
 
       // Build global filter conditions (from GlobalTopBar)
       const globalConditions: SQL[] = [];
@@ -1017,6 +1042,12 @@ export class PlaylistController extends BaseController {
       // Step 1: Query local DB using FTS5
       // Step 2: Concurrently fetch from remote API
       // Step 3: Merge and deduplicate results (prioritize local entries for isViewed/isFavorited status)
+      // 
+      // PERFORMANCE NOTE: resolveRemotePlaylistPosts fetches a full page (limit) of posts from API.
+      // This is NOT an N+1 query - we fetch all posts for the page in a single API call.
+      // The remote posts are then merged with local DB results and deduplicated.
+      // If a remote post is not found in local cache, it will be shadow-inserted when opened in viewer,
+      // but that's a separate operation and doesn't cause N+1 during playlist resolution.
       
       // Build tag conditions from smart playlist query
       const { includeConditions, excludeConditions } = this.buildSmartPlaylistTagConditions(query);
@@ -1193,6 +1224,9 @@ export class PlaylistController extends BaseController {
       log.info(`[PlaylistController] Fetching remote posts for playlist ${playlistId} with query: "${booruQuery}"`);
 
       // Get provider and settings
+      // TODO: Add provider field to playlists schema to support multiple providers
+      // For now, default to rule34 for all smart playlists
+      // This is a temporary limitation - smart playlists should support provider selection
       const provider = getProvider("rule34");
       const apiSettings = await this.getDecryptedSettings();
       

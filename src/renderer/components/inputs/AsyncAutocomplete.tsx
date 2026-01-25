@@ -47,7 +47,7 @@ export function AsyncAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Use the same hook as TagAutocomplete
-  const { results, isLoading } = useRemoteTags({
+  const { results, isLoading, error } = useRemoteTags({
     query: query.trim(),
     minQueryLength: 2,
     debounceMs: 300,
@@ -202,6 +202,17 @@ export function AsyncAutocomplete({
             >
               <Loader2 className="mr-2 w-4 h-4 animate-spin" aria-hidden="true" />
               Loading...
+            </div>
+          ) : error ? (
+            <div
+              className="px-4 py-2 text-sm text-destructive"
+              role="alert"
+              aria-live="assertive"
+            >
+              <p className="font-medium">Search failed</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {error.message || "Unable to search tags. Please try again."}
+              </p>
             </div>
           ) : (
             <ul className="py-1" role="group">

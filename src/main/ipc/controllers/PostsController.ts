@@ -215,7 +215,7 @@ export class PostsController extends BaseController {
         .from(posts)
         .where(eq(posts.id, postId))
         .limit(1)
-        .all()[0];
+        .get();
     }
 
     // If not found (or negative ID for external post) and postData is provided,
@@ -233,7 +233,7 @@ export class PostsController extends BaseController {
           )
         )
         .limit(1)
-        .all()[0];
+        .get();
     }
 
     return existingPost;
@@ -944,7 +944,7 @@ export class PostsController extends BaseController {
             .from(artists)
             .where(eq(artists.id, targetArtistId))
             .limit(1)
-            .all()[0]; // Get first result or undefined
+            .get();
 
           if (!existingArtist) {
             // Artist doesn't exist - create placeholder artist to satisfy FOREIGN KEY constraint
@@ -1171,7 +1171,7 @@ export class PostsController extends BaseController {
           )
         )
         .limit(1)
-        .all()[0];
+        .get();
 
       if (existingPost) {
         log.debug(`[PostsController] Shadow insert: Post already exists (id: ${existingPost.id}, postId: ${request.postId})`);
@@ -1294,16 +1294,16 @@ export class PostsController extends BaseController {
             },
           })
           .returning()
-          .all();
+          .get();
 
-        if (result && result.length > 0) {
-          insertedPost = result[0];
-          log.info(
-            `[PostsController] Shadow insert: Post ${insertedPost.id} (postId: ${request.postId}) - ${insertedPost.createdAt.getTime() === now.getTime() ? "created" : "updated"}`
-          );
-        } else {
+        if (!result) {
           throw new Error(`Failed to insert post (postId: ${request.postId})`);
         }
+
+        insertedPost = result;
+        log.info(
+          `[PostsController] Shadow insert: Post ${insertedPost.id} (postId: ${request.postId}) - ${insertedPost.createdAt.getTime() === now.getTime() ? "created" : "updated"}`
+        );
       });
 
       if (!insertedPost) {

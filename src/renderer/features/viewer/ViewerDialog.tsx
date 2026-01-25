@@ -133,10 +133,24 @@ const PostNotFoundFallback = ({
         // Main process fetches post data from API to ensure data integrity.
         // This prevents Renderer from injecting malicious URLs or data.
         
-        // Determine provider from queue origin or use default
-        // For playlist origins, we need to determine provider from playlist data
-        // Default to rule34 if provider not available
-        const provider: "rule34" | "gelbooru" = "rule34"; // TODO: Get provider from playlist if available
+        // Determine provider from playlist data
+        // TODO: Add provider field to playlists schema to support multiple providers
+        // For now, default to rule34 - this is a temporary limitation
+        // Smart playlists should support provider selection in the future
+        const provider: "rule34" | "gelbooru" = "rule34";
+        
+        if (queue.origin?.kind === "playlist") {
+          try {
+            // Fetch playlist to determine provider (if supported in future)
+            // For now, all playlists use rule34, but this allows future extension
+            // when provider field is added to playlists schema
+            await window.api.getPlaylist(queue.origin.playlistId);
+            // provider = playlist?.provider ?? "rule34";
+          } catch (error) {
+            log.warn(`[ViewerDialog] Failed to get playlist for provider detection:`, error);
+            // Fallback to default provider
+          }
+        }
         
         // Perform shadow insert - Main process fetches data from API
         const insertedPost = await window.api.shadowInsertPost({

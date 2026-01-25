@@ -26,7 +26,7 @@ if (app.isPackaged) {
 
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
-import { initializeDatabase } from "./db/client";
+import { initializeDatabase, closeDatabase } from "./db/client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
@@ -467,12 +467,16 @@ async function initializeAppAndWindow() {
       // Don't destroy tray on window close - allow app to run in background
     });
 
-    // Clean up tray when app quits
+    // Clean up tray and database when app quits
     app.on("before-quit", () => {
       if (tray) {
         tray.destroy();
         tray = null;
       }
+      // CRITICAL: Close database connection before quitting to prevent data corruption
+      // SQLite requires explicit close() to ensure all transactions are committed
+      // and WAL file is properly synchronized
+      closeDatabase();
     });
   } catch (e) {
     // Close loading window if it's still open
@@ -571,6 +575,9 @@ function createTray(_window: BrowserWindow): void {
             tray.destroy();
             tray = null;
           }
+          // CRITICAL: Close database connection before quitting to prevent data corruption
+          // SQLite requires explicit close() to ensure all transactions are committed
+          closeDatabase();
           // Then quit the app
           app.quit();
         },
@@ -651,6 +658,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     // If tray exists, don't quit - allow running in background
     if (!tray) {
+      // CRITICAL: Close database connection before quitting to prevent data corruption
+      closeDatabase();
       app.quit();
     }
   }
