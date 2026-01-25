@@ -72,6 +72,8 @@ jobs:
         # Note: These secrets must be added in GitHub Settings → Secrets and variables → Actions
         # If secrets are missing, tests will fail with a clear error message
         env:
+          NODE_ENV: test
+          CI: "true"
           TEST_USER_ID: ${{ secrets.TEST_USER_ID }}
           TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
         run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" npm run test:e2e

@@ -19,12 +19,31 @@ async function launchAppWithUserData(userDataDir: string) {
     throw new Error(`Main entry point not found: ${mainEntry}. Run 'npm run build' first.`);
   }
 
+  // Determine if we're in headless mode (CI or when HEADLESS is not explicitly set to 'false')
+  const isHeadless = process.env.CI === 'true' || process.env.HEADLESS !== 'false';
+
   const app = await electron.launch({
-    args: [mainEntry, `--user-data-dir=${userDataDir}`],
+    args: [
+      mainEntry,
+      `--user-data-dir=${userDataDir}`,
+      // Headless mode flags for Electron (Electron doesn't support --headless flag directly)
+      // Playwright handles headless mode automatically, but we add stability flags for CI
+      // SECURITY WARNING: --no-sandbox is UNSAFE and only used in isolated test environment
+      ...(isHeadless ? [
+        '--disable-gpu',
+        '--no-sandbox', // ⚠️ UNSAFE: Only for CI/test environment, never in production
+        '--disable-dev-shm-usage',
+        '--disable-software-rasterizer',
+      ] : []),
+    ],
     env: {
       ...process.env,
       NODE_ENV: 'test',
       ELECTRON_ENABLE_LOGGING: 'true',
+      // Additional headless environment variables for Linux CI
+      ...(isHeadless && process.platform === 'linux' ? {
+        DISPLAY: process.env.DISPLAY || ':99',
+      } : {}),
     },
     timeout: 30000,
   });

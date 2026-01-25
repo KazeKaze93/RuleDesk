@@ -20,16 +20,35 @@ test.describe('Application Startup', () => {
     console.log('Launching Electron app from:', mainEntry);
     console.log('File exists:', existsSync(mainEntry));
     
+    // Determine if we're in headless mode (CI or when HEADLESS is not explicitly set to 'false')
+    const isHeadless = process.env.CI === 'true' || process.env.HEADLESS !== 'false';
+    
     // Launch app
     // Note: _electron is experimental API, requires Playwright 1.40+
     // The app uses requestSingleInstanceLock(), which may prevent multiple instances
     // In test mode, we rely on the app's behavior (it should quit if lock fails)
     try {
       app = await electron.launch({
-        args: [mainEntry],
+        args: [
+          mainEntry,
+          // Headless mode flags for Electron (Electron doesn't support --headless flag directly)
+          // Playwright handles headless mode automatically, but we add stability flags for CI
+          // SECURITY WARNING: --no-sandbox is UNSAFE and only used in isolated test environment
+          ...(isHeadless ? [
+            '--disable-gpu',
+            '--no-sandbox', // ⚠️ UNSAFE: Only for CI/test environment, never in production
+            '--disable-dev-shm-usage',
+            '--disable-software-rasterizer',
+          ] : []),
+        ],
         env: {
           ...process.env,
           NODE_ENV: 'test', // Tell app it's in test mode
+          ELECTRON_ENABLE_LOGGING: 'true',
+          // Additional headless environment variables for Linux CI
+          ...(isHeadless && process.platform === 'linux' ? {
+            DISPLAY: process.env.DISPLAY || ':99',
+          } : {}),
         },
         // Increase timeout for app initialization (DB migrations, etc.)
         timeout: 30000,
