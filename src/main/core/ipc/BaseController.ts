@@ -12,6 +12,9 @@ import { ErrorCode } from "../../types/ipc";
  * 
  * This is more robust than regex replacement because it prevents values from appearing
  * in error messages at the source, rather than sanitizing them after the fact.
+ * 
+ * NOTE: This is used locally in BaseController validation, not as a global error map.
+ * This prevents side effects on other parts of the application that may need detailed error messages.
  */
 const sanitizedErrorMap: ZodErrorMap = (_issue, ctx) => {
   const defaultMessage = ctx.defaultError;
@@ -22,10 +25,6 @@ const sanitizedErrorMap: ZodErrorMap = (_issue, ctx) => {
   
   return { message: sanitized };
 };
-
-// Set global Zod error map for all schemas used in IPC validation
-// This ensures consistent sanitization across all BaseController validations
-z.setErrorMap(sanitizedErrorMap);
 
 /**
  * Base Controller for IPC Handlers
@@ -441,10 +440,13 @@ export abstract class BaseController {
                 
                 // Use z.infer to extract types from schema for proper type safety
                 // This eliminates the need for 'as unknown[]' type assertion
+                // SECURITY: Use local error map to sanitize error messages without affecting global Zod settings
                 type ValidatedArgs = z.infer<typeof normalizedSchema>;
                 let validatedArgs: ValidatedArgs;
                 try {
-                  validatedArgs = normalizedSchema.parse(args) as ValidatedArgs;
+                  validatedArgs = normalizedSchema.parse(args, {
+                    errorMap: sanitizedErrorMap,
+                  }) as ValidatedArgs;
                 } catch (validationError) {
                   if (validationError instanceof z.ZodError) {
                     // Build detailed error message with path information
@@ -653,10 +655,13 @@ export abstract class BaseController {
 
           // Use z.infer to extract types from schema instead of as unknown[]
           // This provides proper type safety without type assertions
+          // SECURITY: Use local error map to sanitize error messages without affecting global Zod settings
           type ValidatedArgs = z.infer<typeof normalizedSchema>;
           let validatedArgs: ValidatedArgs;
           try {
-            validatedArgs = normalizedSchema.parse(args) as ValidatedArgs;
+            validatedArgs = normalizedSchema.parse(args, {
+              errorMap: sanitizedErrorMap,
+            }) as ValidatedArgs;
           } catch (validationError) {
             if (validationError instanceof z.ZodError) {
               // Build detailed error message with path information

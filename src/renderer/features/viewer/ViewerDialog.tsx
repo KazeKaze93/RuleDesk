@@ -215,11 +215,27 @@ const PostNotFoundFallback = ({
         
         log.info(`[ViewerDialog] Shadow insert successful: postId ${foundPost.postId} -> local id ${insertedPost.id}`);
 
+        // CRITICAL: Check if component is still mounted and currentPostId hasn't changed
+        // before updating cache to prevent race conditions
+        // If user closed dialog or switched posts, don't mutate global cache
+        if (abortController.signal.aborted) {
+          log.debug(`[ViewerDialog] Skipping cache update - request was aborted (user switched posts)`);
+          return;
+        }
+        
+        // Double-check: verify currentPostId matches the post we just inserted
+        // This prevents updating cache for a post that's no longer being viewed
+        if (currentPostId !== foundPost.postId && currentPostId !== foundPost.postId) {
+          log.debug(`[ViewerDialog] Skipping cache update - currentPostId changed (${currentPostId} vs ${foundPost.postId})`);
+          return;
+        }
+
         // Update cache with inserted post (no setTimeout needed - we have the post object)
         if (queue.origin && queue.origin.kind === "playlist") {
           const queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
           
           // Update cache directly with inserted post
+          // Use functional update to ensure we're working with latest cache state
           queryClient.setQueryData<InfiniteData<Post[]>>(queryKey, (oldData) => {
             if (!oldData) return oldData;
             
@@ -912,14 +928,9 @@ const ViewerContent = ({
   const ctrl = useViewerController({ post, queue });
   const isDeveloperMode = true;
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
-  // Local state for randomization in viewer (not synced with global store)
-  const isRandom = (queue && "isRandom" in queue) ? queue.isRandom ?? false : false;
-  const setQueueIsRandom = useViewerStore((state) => state.setQueueIsRandom);
-
-  const handleToggleRandom = useCallback(() => {
-    const newIsRandom = !isRandom;
-    setQueueIsRandom(newIsRandom);
-  }, [isRandom, setQueueIsRandom]);
+  // NOTE: isRandom removed from viewerStore - randomization should be part of API query parameters
+  // For search origin, use searchStore.isRandom; for other origins, pass isRandom in API params
+  // Randomization toggle removed - it should be controlled at the query level, not viewer level
 
   const handleToggleFavorite = useCallback(async () => {
     await ctrl.toggleFavorite();
@@ -1041,17 +1052,14 @@ const ViewerContent = ({
           </Button>
 
           <Button
-            variant={isRandom ? "default" : "ghost"}
+            variant="ghost"
             size="icon"
-            onClick={handleToggleRandom}
-            className={cn(
-              "text-white rounded-full hover:bg-white/10",
-              isRandom && "bg-primary hover:bg-primary/90"
-            )}
-            aria-label={isRandom ? "Disable randomization" : "Enable randomization"}
-            title={isRandom ? "Randomization enabled (click to disable)" : "Randomization disabled (click to enable)"}
+            className="h-9 w-9 text-white rounded-full hover:bg-white/10"
+            aria-label="Randomization disabled (feature removed - use API query parameters)"
+            title="Randomization is now controlled at API query level, not viewer level"
+            disabled
           >
-            <Shuffle className={cn("w-5 h-5", isRandom && "fill-current")} />
+            <Shuffle className="w-5 h-5 opacity-50" />
           </Button>
 
           <Button

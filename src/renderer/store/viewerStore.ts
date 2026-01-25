@@ -17,7 +17,8 @@ export interface ViewerQueue {
   totalGlobalCount?: number;
   hasNextPage?: boolean;
   onLoadMore?: () => void | Promise<void>;
-  isRandom?: boolean; // Store isRandom state in queue for viewer navigation
+  // NOTE: isRandom removed - randomization should be part of API query parameters, not global state
+  // This prevents conflicts when multiple viewers or content types are open
 }
 
 interface ViewerState {
@@ -39,7 +40,8 @@ interface ViewerState {
   setControlsVisible: (visible: boolean) => void;
   updateQueueIds: (ids: number[]) => void;
   appendQueueIds: (newIds: number[]) => void;
-  setQueueIsRandom: (isRandom: boolean) => void;
+  // NOTE: setQueueIsRandom removed - randomization should be part of API query parameters
+  // Use searchStore.isRandom for search queries, pass isRandom in API params for other origins
 }
 
 export const useViewerStore = create<ViewerState>((set, get) => ({
@@ -77,38 +79,14 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
     const { queue, currentIndex } = get();
     if (!queue) return;
 
-    // Check if random mode is enabled (from queue or fallback to false)
-    const isRandom = queue.isRandom ?? false;
-    
-    if (isRandom && queue.ids.length > 1) {
-      // Random navigation: use shuffle-bag algorithm to avoid showing same posts
-      // Create a shuffled array of available indices
-      const availableIndices = queue.ids.map((_, idx) => idx);
-      
-      // Fisher-Yates shuffle for better randomness
-      for (let i = availableIndices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [availableIndices[i], availableIndices[j]] = [availableIndices[j], availableIndices[i]];
-      }
-      
-      // Find current index in shuffled array and pick next one
-      const currentShuffledIndex = availableIndices.indexOf(currentIndex);
-      const nextShuffledIndex = (currentShuffledIndex + 1) % availableIndices.length;
-      const randomIndex = availableIndices[nextShuffledIndex];
-      
+    // Sequential navigation only - randomization is handled at API query level
+    // This prevents conflicts when multiple viewers or content types are open
+    if (currentIndex < queue.ids.length - 1) {
+      const newIndex = currentIndex + 1;
       set({
-        currentIndex: randomIndex,
-        currentPostId: queue.ids[randomIndex],
+        currentIndex: newIndex,
+        currentPostId: queue.ids[newIndex],
       });
-    } else {
-      // Sequential navigation
-      if (currentIndex < queue.ids.length - 1) {
-        const newIndex = currentIndex + 1;
-        set({
-          currentIndex: newIndex,
-          currentPostId: queue.ids[newIndex],
-        });
-      }
     }
   },
 
@@ -148,14 +126,6 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
           ...state.queue,
           ids: [...state.queue.ids, ...uniqueNewIds],
         },
-      };
-    }),
-
-  setQueueIsRandom: (isRandom) =>
-    set((state) => {
-      if (!state.queue) return {};
-      return {
-        queue: { ...state.queue, isRandom },
       };
     }),
 }));

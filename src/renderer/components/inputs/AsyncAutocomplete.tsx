@@ -84,7 +84,19 @@ export function AsyncAutocomplete({
   };
 
   // Handle input blur (close dropdown)
-  const handleBlurInternal = () => {
+  // CRITICAL: Check relatedTarget to determine if blur was caused by clicking on dropdown
+  // This prevents closing dropdown when user clicks on list items
+  const handleBlurInternal = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Check if focus is moving to an element within the container
+    // relatedTarget is the element receiving focus (if any)
+    const relatedTarget = e.relatedTarget as Node | null;
+    
+    // If focus is moving to an element inside the container, don't close dropdown
+    if (relatedTarget && containerRef.current?.contains(relatedTarget)) {
+      return;
+    }
+    
+    // Focus is moving outside the container - close dropdown
     setIsOpen(false);
     setSelectedIndex(-1);
     onBlur?.();
@@ -92,7 +104,7 @@ export function AsyncAutocomplete({
 
   // Handle tag selection
   const handleSelectTag = (result: SearchResults, e?: React.MouseEvent) => {
-    // Prevent input blur when clicking on list item
+    // Prevent default to avoid triggering blur before selection
     e?.preventDefault();
     
     onSelect(result);
@@ -105,10 +117,10 @@ export function AsyncAutocomplete({
     }
     onQueryChange?.("");
     
-    // Focus input after selection
-    setTimeout(() => {
+    // Focus input after selection (use requestAnimationFrame for better timing)
+    requestAnimationFrame(() => {
       inputRef.current?.focus();
-    }, 0);
+    });
   };
 
   // Handle keyboard navigation

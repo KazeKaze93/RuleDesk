@@ -284,12 +284,14 @@ export class PlaylistController extends BaseController {
    * Initialize FTS5 count cache lazily (called on first use, not at startup)
    * This avoids blocking Main Process during app startup
    * 
+   * PERFORMANCE: Uses O(1) lookup from fts5_count_meta table instead of O(n) COUNT(*)
+   * The count is maintained by SQLite triggers, ensuring accuracy without blocking Main Process
+   * 
    * CACHE INVALIDATION: Checks fts5_cache_invalidation table to ensure cache is still valid.
    * If posts were added/updated/deleted through other controllers, cache is automatically invalidated.
    * 
-   * GRACEFUL DEGRADATION: If fts5_cache_invalidation table doesn't exist (migration not applied),
-   * falls back to simple caching without invalidation tracking. This ensures app works even if
-   * migration 0010_add_fts5_cache_invalidation.sql hasn't been applied yet.
+   * GRACEFUL DEGRADATION: If fts5_count_meta table doesn't exist (migration not applied),
+   * falls back to COUNT(*) with a warning. This ensures app works even if migration hasn't been applied yet.
    */
   private initializeFts5CountCache(): void {
     // Check if cache needs invalidation by comparing timestamps
@@ -317,28 +319,45 @@ export class PlaylistController extends BaseController {
         
         // Only initialize if not already initialized or if cache was invalidated
         if (!this.fts5CountCacheInitialized) {
-          const countStmt = sqlite.prepare<[], { count: number }>(
-            "SELECT COUNT(*) as count FROM posts_fts"
-          );
-          const ftsCount = countStmt.get();
-          this.fts5CountCache = ftsCount?.count ?? 0;
-          this.fts5CountCacheTimestamp = invalidation.invalidated_at;
-          this.fts5CountCacheInitialized = true;
-          log.info(
-            `[PlaylistController] FTS5 count cache initialized: ${this.fts5CountCache} entries (timestamp: ${this.fts5CountCacheTimestamp})`
-          );
+          // PERFORMANCE: Use O(1) lookup from fts5_count_meta table instead of O(n) COUNT(*)
+          // This prevents Main Process blocking on large databases (100k+ records)
+          try {
+            const countStmt = sqlite.prepare<[], { count: number }>(
+              "SELECT count FROM fts5_count_meta WHERE id = 1"
+            );
+            const countResult = countStmt.get();
+            
+            if (countResult) {
+              this.fts5CountCache = countResult.count;
+              this.fts5CountCacheTimestamp = invalidation.invalidated_at;
+              this.fts5CountCacheInitialized = true;
+              log.info(
+                `[PlaylistController] FTS5 count cache initialized from meta table: ${this.fts5CountCache} entries (timestamp: ${this.fts5CountCacheTimestamp})`
+              );
+            } else {
+              // Meta table exists but no row (should not happen, but handle gracefully)
+              log.warn("[PlaylistController] fts5_count_meta table exists but has no row, falling back to COUNT(*)");
+              this.fallbackToCountQuery(sqlite, invalidation.invalidated_at);
+            }
+          } catch (metaError) {
+            // Meta table doesn't exist (migration 0011 not applied), fall back to COUNT(*)
+            const errorMessage = metaError instanceof Error ? metaError.message : String(metaError);
+            if (errorMessage.includes("no such table: fts5_count_meta")) {
+              log.warn(
+                "[PlaylistController] fts5_count_meta table not found (migration 0011 not applied), " +
+                "falling back to COUNT(*) which may block Main Process on large databases. " +
+                "Apply migration 0011_add_fts5_count_meta.sql for O(1) performance."
+              );
+              this.fallbackToCountQuery(sqlite, invalidation.invalidated_at);
+            } else {
+              throw metaError;
+            }
+          }
         }
       } else {
         // Table exists but no row (should not happen, but handle gracefully)
         log.warn("[PlaylistController] fts5_cache_invalidation table exists but has no row, initializing cache without invalidation tracking");
-        const countStmt = sqlite.prepare<[], { count: number }>(
-          "SELECT COUNT(*) as count FROM posts_fts"
-        );
-        const ftsCount = countStmt.get();
-        this.fts5CountCache = ftsCount?.count ?? 0;
-        this.fts5CountCacheTimestamp = Date.now();
-        this.fts5CountCacheInitialized = true;
-        log.info(`[PlaylistController] FTS5 count cache initialized: ${this.fts5CountCache} entries (no invalidation tracking)`);
+        this.fallbackToCountQuery(sqlite, Date.now());
       }
     } catch (error) {
       // GRACEFUL DEGRADATION: If table doesn't exist (migration not applied), fall back to simple caching
@@ -351,24 +370,7 @@ export class PlaylistController extends BaseController {
         );
         // Fall back to simple caching without invalidation tracking
         if (!this.fts5CountCacheInitialized) {
-          try {
-            const countStmt = sqlite.prepare<[], { count: number }>(
-              "SELECT COUNT(*) as count FROM posts_fts"
-            );
-            const ftsCount = countStmt.get();
-            this.fts5CountCache = ftsCount?.count ?? 0;
-            this.fts5CountCacheTimestamp = Date.now();
-            this.fts5CountCacheInitialized = true;
-            log.info(
-              `[PlaylistController] FTS5 count cache initialized (simple mode): ${this.fts5CountCache} entries. ` +
-              `Note: Cache will not be invalidated automatically. Apply migration 0010_add_fts5_cache_invalidation.sql to enable automatic cache invalidation.`
-            );
-          } catch (countError) {
-            log.warn("[PlaylistController] Failed to initialize FTS5 count cache (fallback):", countError);
-            this.fts5CountCache = null;
-            this.fts5CountCacheInitialized = false;
-            this.fts5CountCacheTimestamp = null;
-          }
+          this.fallbackToCountQuery(sqlite, Date.now());
         }
       } else {
         // Other errors (not "table not found") are logged as warnings
@@ -377,6 +379,36 @@ export class PlaylistController extends BaseController {
         this.fts5CountCacheInitialized = false;
         this.fts5CountCacheTimestamp = null;
       }
+    }
+  }
+
+  /**
+   * Fallback to COUNT(*) query when meta table is not available
+   * 
+   * PERFORMANCE WARNING: This is O(n) and may block Main Process on large databases (100k+ records)
+   * Should only be used when migration 0011_add_fts5_count_meta.sql hasn't been applied
+   * 
+   * @param sqlite - SQLite instance
+   * @param timestamp - Cache timestamp
+   */
+  private fallbackToCountQuery(sqlite: ReturnType<typeof getSqliteInstance>, timestamp: number): void {
+    try {
+      const countStmt = sqlite.prepare<[], { count: number }>(
+        "SELECT COUNT(*) as count FROM posts_fts"
+      );
+      const ftsCount = countStmt.get();
+      this.fts5CountCache = ftsCount?.count ?? 0;
+      this.fts5CountCacheTimestamp = timestamp;
+      this.fts5CountCacheInitialized = true;
+      log.info(
+        `[PlaylistController] FTS5 count cache initialized (fallback mode): ${this.fts5CountCache} entries. ` +
+        `Note: Using COUNT(*) which may block Main Process on large databases. Apply migration 0011_add_fts5_count_meta.sql for O(1) performance.`
+      );
+    } catch (countError) {
+      log.warn("[PlaylistController] Failed to initialize FTS5 count cache (fallback):", countError);
+      this.fts5CountCache = null;
+      this.fts5CountCacheInitialized = false;
+      this.fts5CountCacheTimestamp = null;
     }
   }
 

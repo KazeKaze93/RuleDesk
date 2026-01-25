@@ -32,7 +32,6 @@ import {
 import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
-  DANGEROUS_URL_PROTOCOLS,
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { isVideoUrl } from "@shared/utils/media";
@@ -1057,7 +1056,9 @@ export class PostsController extends BaseController {
    * 
    * SECURITY: Blocks dangerous protocols that could execute code or access local files.
    * Only allows https: and http: protocols for remote resources.
-   * Uses DANGEROUS_URL_PROTOCOLS constant for maintainability.
+   * 
+   * CRITICAL: Checks parsedUrl.protocol directly, not startsWith on raw string.
+   * This prevents bypass attempts with spaces or special characters (e.g., " javascript:").
    * 
    * @param urlString - URL string to validate
    * @returns true if URL protocol is safe, false otherwise
@@ -1070,20 +1071,11 @@ export class PostsController extends BaseController {
     try {
       const parsedUrl = new URL(urlString);
       // SECURITY: Only allow https: and http: protocols
-      // Check protocol directly from parsed URL (more reliable than startsWith)
+      // Check protocol directly from parsed URL - this is the authoritative source
+      // URL parser handles edge cases like spaces, special characters, etc.
       const protocol = parsedUrl.protocol.toLowerCase();
       if (protocol !== "https:" && protocol !== "http:") {
         return false;
-      }
-      
-      // Additional check: block dangerous protocols from constants
-      // This provides defense-in-depth in case URL parsing fails or allows edge cases
-      const lowerUrl = urlString.toLowerCase();
-      for (const dangerousProtocol of DANGEROUS_URL_PROTOCOLS) {
-        if (lowerUrl.startsWith(dangerousProtocol)) {
-          log.warn(`[PostsController] Blocked dangerous protocol in URL: ${urlString}`);
-          return false;
-        }
       }
       
       return true;
