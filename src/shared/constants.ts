@@ -64,3 +64,24 @@ export type ArtistType = typeof ARTIST_TYPES[number];
  */
 export const MAX_RANDOM_PAGES = 20;
 
+/**
+ * Dangerous URL Protocols
+ *
+ * List of URL protocols that should be blocked for security reasons.
+ * These protocols can execute code or access local files, posing security risks.
+ * 
+ * Used in:
+ * - PostsController: validateUrlProtocol() for URL validation
+ */
+export const DANGEROUS_URL_PROTOCOLS = [
+  "javascript:",
+  "data:",
+  "file:",
+  "vbscript:",
+  "about:",
+  "chrome:",
+  "chrome-extension:",
+  "moz-extension:",
+  "ms-browser-extension:",
+] as const;
+

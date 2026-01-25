@@ -439,9 +439,12 @@ export abstract class BaseController {
                   ? schema
                   : z.tuple([schema as z.ZodTypeAny]);
                 
-                let validatedArgs: unknown[];
+                // Use z.infer to extract types from schema for proper type safety
+                // This eliminates the need for 'as unknown[]' type assertion
+                type ValidatedArgs = z.infer<typeof normalizedSchema>;
+                let validatedArgs: ValidatedArgs;
                 try {
-                  validatedArgs = normalizedSchema.parse(args) as unknown[];
+                  validatedArgs = normalizedSchema.parse(args) as ValidatedArgs;
                 } catch (validationError) {
                   if (validationError instanceof z.ZodError) {
                     // Build detailed error message with path information

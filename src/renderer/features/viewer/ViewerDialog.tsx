@@ -56,6 +56,7 @@ import { useNavigate } from "react-router-dom";
 import type { Post } from "../../../main/db/schema";
 import type { Artist } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
 import { useSearchStore } from "../../store/searchStore";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../store/safeModeStore";
 import { cn } from "../../lib/utils";
@@ -175,9 +176,13 @@ const PostNotFoundFallback = ({
                 return;
               }
               
+              // SECURITY: Validate queryJson using parsePlaylistQuery utility
+              // This prevents crashes from invalid JSON or malicious data
               if (playlist?.isSmart && playlist.queryJson) {
-                const parsedQuery = JSON.parse(playlist.queryJson) as { provider?: "rule34" | "gelbooru" };
-                provider = parsedQuery.provider ?? "rule34";
+                const parsedQuery = parsePlaylistQuery(playlist.queryJson);
+                if (parsedQuery?.provider) {
+                  provider = parsedQuery.provider;
+                }
               }
             } catch (error) {
               // Ignore errors if request was aborted
@@ -282,13 +287,33 @@ const PostNotFoundFallback = ({
           <div className="text-sm text-white/70">
             {error}
           </div>
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="text-white border-white/20 hover:bg-white/10"
-          >
-            Close
-          </Button>
+          <div className="flex gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Reset error state and trigger retry by clearing insertedPost
+                setError(null);
+                setInsertedPost(null);
+                setIsInserting(false);
+                // Trigger useEffect again by clearing abortController
+                if (abortControllerRef.current) {
+                  abortControllerRef.current.abort();
+                  abortControllerRef.current = null;
+                }
+              }}
+              className="text-white border-white/20 hover:bg-white/10"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="text-white border-white/20 hover:bg-white/10"
+            >
+              Close
+            </Button>
+          </div>
         </>
       ) : (
         <>

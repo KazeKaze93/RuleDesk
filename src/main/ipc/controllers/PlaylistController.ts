@@ -18,6 +18,7 @@ import {
   RemovePostsFromPlaylistSchema,
   GetPlaylistPostsSchema,
   ResolvePlaylistPostsSchema,
+  SmartPlaylistQuerySchema,
   type CreatePlaylistRequest,
   type UpdatePlaylistRequest,
   type AddPostsToPlaylistRequest,
@@ -73,6 +74,10 @@ export class PlaylistController extends BaseController {
   private fts5CountCache: number | null = null;
   private fts5CountCacheInitialized: boolean = false;
   private fts5CountCacheTimestamp: number | null = null; // Timestamp when cache was last updated
+  
+  // Cache FTS5 table existence check (schema doesn't change at runtime)
+  // Initialized once at setup() to avoid blocking synchronous calls
+  private ftsTableExistsCache: boolean = false;
 
   /**
    * Get decrypted settings for API authentication
@@ -241,10 +246,38 @@ export class PlaylistController extends BaseController {
 
     log.info("[PlaylistController] All handlers registered");
     
+    // CRITICAL: Initialize FTS5 table existence check once at setup
+    // This avoids blocking Main Process with synchronous SQLite calls during runtime
+    this.initializeFtsTableCheck();
+    
     // CRITICAL: Do NOT initialize FTS5 count cache synchronously in setup()
     // This would block Main Process during app startup if database is large.
     // Instead, initialize lazily on first use in buildSmartPlaylistTagConditions.
     // This ensures app starts quickly and FTS5 count is only checked when needed.
+  }
+
+  /**
+   * Initialize FTS5 table existence check (called once at setup)
+   * This avoids blocking synchronous SQLite calls during runtime
+   */
+  private initializeFtsTableCheck(): void {
+    try {
+      const sqlite = getSqliteInstance();
+      const stmt = sqlite.prepare<[], { name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
+      );
+      const result = stmt.get();
+      this.ftsTableExistsCache = !!result;
+      log.info(
+        `[PlaylistController] FTS5 table check initialized: ${this.ftsTableExistsCache}`
+      );
+    } catch (error) {
+      log.warn(
+        "[PlaylistController] Failed to check FTS5 table existence, assuming it doesn't exist:",
+        error
+      );
+      this.ftsTableExistsCache = false;
+    }
   }
 
   /**
@@ -360,30 +393,7 @@ export class PlaylistController extends BaseController {
    * @returns true if FTS5 table exists, false otherwise
    */
   private checkFtsTableExists(): boolean {
-    try {
-      const sqlite = getSqliteInstance();
-      const stmt = sqlite.prepare<[], { name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
-      );
-      const result = stmt.get();
-      const exists = !!result;
-      
-      if (exists) {
-        // Check if table has data
-        const countStmt = sqlite.prepare<[], { count: number }>(
-          "SELECT COUNT(*) as count FROM posts_fts"
-        );
-        const ftsCount = countStmt.get();
-        log.info(`[PlaylistController] FTS5 table exists with ${ftsCount?.count ?? 0} entries`);
-      } else {
-        log.warn("[PlaylistController] FTS5 table does not exist!");
-      }
-      
-      return exists;
-    } catch (error) {
-      log.error("[PlaylistController] Failed to check FTS table existence:", error);
-      return false;
-    }
+    return this.ftsTableExistsCache;
   }
 
   /**
@@ -656,24 +666,35 @@ export class PlaylistController extends BaseController {
       
       // Log queryJson for smart playlists to help debug empty collections
       // SECURITY: Never trust JSON.parse without try-catch, even for logging
+      // Use Zod schema validation to ensure data integrity
       if (playlist.isSmart && playlist.queryJson) {
         try {
-          const parsedQuery = JSON.parse(playlist.queryJson);
-          // SECURITY: Wrap JSON.stringify in try-catch to prevent crashes from circular references or invalid data
-          try {
-            log.info(
-              `[PlaylistController] Smart playlist ${playlist.id} query_json:`,
-              JSON.stringify(parsedQuery, null, 2)
-            );
-          } catch (stringifyError) {
-            // If JSON.stringify fails (circular reference, etc.), log a safe message
+          // SECURITY: Validate queryJson using Zod schema before parsing
+          // This prevents crashes from invalid JSON or malicious data
+          const parseResult = SmartPlaylistQuerySchema.safeParse(JSON.parse(playlist.queryJson));
+          
+          if (parseResult.success) {
+            // SECURITY: Wrap JSON.stringify in try-catch to prevent crashes from circular references or invalid data
+            try {
+              log.info(
+                `[PlaylistController] Smart playlist ${playlist.id} query_json:`,
+                JSON.stringify(parseResult.data, null, 2)
+              );
+            } catch (stringifyError) {
+              // If JSON.stringify fails (circular reference, etc.), log a safe message
+              log.warn(
+                `[PlaylistController] Failed to stringify query_json for playlist ${playlist.id}:`,
+                stringifyError instanceof Error ? stringifyError.message : String(stringifyError)
+              );
+              // Log raw queryJson length as fallback
+              log.info(
+                `[PlaylistController] Smart playlist ${playlist.id} query_json length: ${playlist.queryJson.length} chars`
+              );
+            }
+          } else {
             log.warn(
-              `[PlaylistController] Failed to stringify query_json for playlist ${playlist.id}:`,
-              stringifyError instanceof Error ? stringifyError.message : String(stringifyError)
-            );
-            // Log raw queryJson length as fallback
-            log.info(
-              `[PlaylistController] Smart playlist ${playlist.id} query_json length: ${playlist.queryJson.length} chars`
+              `[PlaylistController] Invalid query_json schema for playlist ${playlist.id}:`,
+              parseResult.error.errors
             );
           }
         } catch (parseError) {
@@ -1147,16 +1168,30 @@ export class PlaylistController extends BaseController {
         return [];
       }
 
+      // Parse and validate queryJson using Zod schema
+      // SECURITY: Never trust JSON.parse without validation - use Zod schema to ensure data integrity
+      // This prevents crashes from invalid JSON or malicious data in database
       let query: SmartPlaylistQuery;
       try {
-        query = JSON.parse(playlist.queryJson);
+        const rawParsed = JSON.parse(playlist.queryJson);
+        const parseResult = SmartPlaylistQuerySchema.safeParse(rawParsed);
+        
+        if (!parseResult.success) {
+          log.error(
+            `[PlaylistController] Invalid query_json schema for smart playlist ${playlistId}:`,
+            parseResult.error.errors
+          );
+          throw new Error(`Invalid query_json schema for smart playlist ${playlistId}: ${parseResult.error.message}`);
+        }
+        
+        query = parseResult.data;
         log.info(`[PlaylistController] Parsed query_json for smart playlist ${playlistId}:`, JSON.stringify(query));
       } catch (error) {
         log.error(
           `[PlaylistController] Failed to parse query_json for smart playlist ${playlistId}:`,
           error
         );
-        throw new Error(`Invalid query_json for smart playlist ${playlistId}`);
+        throw new Error(`Invalid query_json for smart playlist ${playlistId}: ${error instanceof Error ? error.message : String(error)}`);
       }
 
       // Smart playlist: Hybrid Search - always query both local DB and remote API concurrently

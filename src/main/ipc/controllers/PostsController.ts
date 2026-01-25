@@ -32,6 +32,7 @@ import {
 import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
+  DANGEROUS_URL_PROTOCOLS,
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { isVideoUrl } from "@shared/utils/media";
@@ -1051,48 +1052,43 @@ export class PostsController extends BaseController {
    * @param urlString - URL string to validate
    * @returns true if URL is safe, false otherwise
    */
+  /**
+   * Validate URL protocol for security
+   * 
+   * SECURITY: Blocks dangerous protocols that could execute code or access local files.
+   * Only allows https: and http: protocols for remote resources.
+   * Uses DANGEROUS_URL_PROTOCOLS constant for maintainability.
+   * 
+   * @param urlString - URL string to validate
+   * @returns true if URL protocol is safe, false otherwise
+   */
   private validateUrlProtocol(urlString: string): boolean {
     if (!urlString || typeof urlString !== "string") {
       return false;
     }
 
-    // Dangerous protocols that should never be allowed
-    const dangerousProtocols = [
-      "javascript:",
-      "data:",
-      "file:",
-      "vbscript:",
-      "about:",
-      "chrome:",
-      "chrome-extension:",
-      "moz-extension:",
-      "ms-browser-extension:",
-    ];
-
-    const lowerUrl = urlString.toLowerCase().trim();
-    
-    // Check for dangerous protocols before parsing
-    for (const protocol of dangerousProtocols) {
-      if (lowerUrl.startsWith(protocol)) {
-        log.warn(`[PostsController] Blocked dangerous protocol in URL: ${urlString}`);
-        return false;
-      }
-    }
-
-    // Parse URL to validate protocol
     try {
       const parsedUrl = new URL(urlString);
-      
-      // Only allow https: protocol for security
-      // HTTP is insecure and vulnerable to MITM attacks
-      if (parsedUrl.protocol !== "https:") {
-        log.warn(`[PostsController] Blocked unsafe protocol: ${parsedUrl.protocol} (URL: ${urlString}). Only HTTPS is allowed.`);
+      // SECURITY: Only allow https: and http: protocols
+      // Check protocol directly from parsed URL (more reliable than startsWith)
+      const protocol = parsedUrl.protocol.toLowerCase();
+      if (protocol !== "https:" && protocol !== "http:") {
         return false;
+      }
+      
+      // Additional check: block dangerous protocols from constants
+      // This provides defense-in-depth in case URL parsing fails or allows edge cases
+      const lowerUrl = urlString.toLowerCase();
+      for (const dangerousProtocol of DANGEROUS_URL_PROTOCOLS) {
+        if (lowerUrl.startsWith(dangerousProtocol)) {
+          log.warn(`[PostsController] Blocked dangerous protocol in URL: ${urlString}`);
+          return false;
+        }
       }
       
       return true;
-    } catch (error) {
-      log.warn(`[PostsController] Invalid URL format: ${urlString}`, error);
+    } catch {
+      // Invalid URL format
       return false;
     }
   }

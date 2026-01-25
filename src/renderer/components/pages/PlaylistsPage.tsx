@@ -11,6 +11,7 @@ import type { Playlist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
+import { useShallow } from "zustand/react/shallow";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -85,9 +86,15 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
   // Use atomic selector instead of useShallow for single value
   const openViewer = useViewerStore((state) => state.open);
 
-  const viewType = useSearchStore((state) => state.viewType);
-  const filters = useSearchStore((state) => state.filters);
-  const sortOrder = useSearchStore((state) => state.sortOrder);
+  // Use useShallow for combined selector to prevent multiple re-renders
+  // This ensures all three values are selected atomically, preventing cascading re-renders
+  const { viewType, filters, sortOrder } = useSearchStore(
+    useShallow((state) => ({
+      viewType: state.viewType,
+      filters: state.filters,
+      sortOrder: state.sortOrder,
+    }))
+  );
   const queryClient = useQueryClient();
 
   // Build filters for API call from GlobalTopBar filters
