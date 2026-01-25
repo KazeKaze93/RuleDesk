@@ -73,6 +73,28 @@ export async function launchTestApp() {
     timeout: 30000, // Increase timeout for app initialization (DB migrations, etc.)
   });
 
+  // Wait a bit for app to initialize
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // Check if windows are created by evaluating in main process
+  try {
+    const windowCount = await app.evaluate(({ BrowserWindow }) => {
+      return BrowserWindow.getAllWindows().length;
+    });
+    console.log(`[Test App] Windows count after launch: ${windowCount}`);
+    
+    if (windowCount === 0) {
+      // Wait a bit more and check again
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      const windowCount2 = await app.evaluate(({ BrowserWindow }) => {
+        return BrowserWindow.getAllWindows().length;
+      });
+      console.log(`[Test App] Windows count after additional wait: ${windowCount2}`);
+    }
+  } catch (error) {
+    console.warn('[Test App] Failed to check window count:', error);
+  }
+
   return { app, tempDir };
 }
 

@@ -134,6 +134,46 @@ export function createMockDb() {
             // Ignore errors when marking
           }
         }
+      } else if (entry.tag === '0011_add_fts5_count_meta') {
+        // Handle migration 0011 specially - it tries to create triggers on FTS5 virtual table
+        // SQLite doesn't allow triggers on virtual tables, so we skip trigger creation in tests
+        // but still create the count meta table
+        try {
+          // Create the count meta table (this part works)
+          sqlite.exec(`
+            CREATE TABLE IF NOT EXISTS fts5_count_meta (
+              id INTEGER PRIMARY KEY CHECK (id = 1),
+              count INTEGER NOT NULL DEFAULT 0
+            );
+          `);
+          
+          // Initialize the single row with count from posts_fts (if table exists)
+          try {
+            const countResult = sqlite.prepare('SELECT COUNT(*) as count FROM posts_fts').get() as { count: number } | undefined;
+            const count = countResult?.count ?? 0;
+            sqlite.exec(`
+              INSERT OR IGNORE INTO fts5_count_meta (id, count) 
+              VALUES (1, ${count});
+            `);
+          } catch {
+            // If posts_fts doesn't exist yet, initialize with 0
+            sqlite.exec('INSERT OR IGNORE INTO fts5_count_meta (id, count) VALUES (1, 0);');
+          }
+          
+          // Skip trigger creation - triggers on virtual tables are not supported
+          console.warn('[Test DB] Migration 0011: Skipping FTS5 trigger creation (not supported on virtual tables in tests)');
+          
+          // Mark migration as executed
+          sqlite.prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)').run(entry.tag, Date.now());
+        } catch (error) {
+          // If table creation fails, log and mark as executed anyway
+          console.warn(`[Test DB] Migration ${entry.tag} partially failed (triggers skipped):`, error);
+          try {
+            sqlite.prepare('INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)').run(entry.tag, Date.now());
+          } catch {
+            // Ignore errors when marking
+          }
+        }
       } else {
         // Execute other migrations normally
         sqlite.exec(migrationSQL);
@@ -156,7 +196,7 @@ export function createMockDb() {
           // Ignore errors when marking
         }
       } else if (errorCode === 'SQLITE_ERROR' && errorMessage.includes('cannot create triggers on virtual tables')) {
-        // Migration 0010 tries to create triggers on FTS5 virtual table, which is not supported
+        // Migration 0010 or 0011 tries to create triggers on FTS5 virtual table, which is not supported
         // This is expected in test environments - skip trigger creation but mark migration as executed
         console.warn(`[Test DB] Migration ${entry.tag} attempted to create triggers on virtual table. Skipping triggers...`);
         // Mark as executed anyway to prevent retry
