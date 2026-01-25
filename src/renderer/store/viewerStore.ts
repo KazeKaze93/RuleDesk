@@ -6,7 +6,7 @@ export type ViewerOrigin =
   | { kind: "favorites"; tags?: string[] }
   | { kind: "updates"; tags?: string[] }
   | { kind: "artist"; artistId: number; tags?: string[]; aiFilter?: "all" | "hide" | "only"; mediaType?: "all" | "images" | "videos" }
-  | { kind: "playlist"; playlistId: number; mediaType?: "all" | "images" | "videos"; sortOrder?: "asc" | "desc" };
+  | { kind: "playlist"; playlistId: number; mediaType?: "all" | "images" | "videos"; sortOrder?: "asc" | "desc"; provider?: "rule34" | "gelbooru" };
 
 // Очередь просмотра
 export interface ViewerQueue {

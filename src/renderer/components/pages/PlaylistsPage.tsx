@@ -140,12 +140,22 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
   const handlePostClick = (index: number) => {
     // For remote posts (id=0), use postId as identifier; for local posts, use id
     const postIds = allPosts.map((p) => (p.id === 0 && p.postId ? p.postId : p.id));
+    
+    // CRITICAL: Extract provider from playlist queryJson for shadow insert operations
+    // Provider must match the actual source of posts to prevent 404 or invalid data
+    let provider: "rule34" | "gelbooru" | undefined = undefined;
+    if (playlist.isSmart && playlist.queryJson) {
+      const parsedQuery = parsePlaylistQuery(playlist.queryJson);
+      provider = parsedQuery?.provider;
+    }
+    
     openViewer({
       origin: {
         kind: "playlist",
         playlistId: playlist.id,
         mediaType: filters.mediaType,
         sortOrder,
+        provider, // Pass provider to origin for shadow insert operations
       },
       ids: postIds,
       initialIndex: index,

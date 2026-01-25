@@ -81,6 +81,12 @@ export class PostsController extends BaseController {
   // Cache EXTERNAL_ARTIST_ID existence check (avoids repeated DB queries)
   // Initialized once at first shadowInsertPost call
   private externalArtistExistsCache: boolean = false;
+  
+  // CRITICAL: In-flight request deduplication to prevent race conditions
+  // Map<`${postId}-${provider}`, Promise<IpcPost>>
+  // Reuses active Promise if same postId+provider is already being fetched
+  // Prevents duplicate API calls when user clicks rapidly
+  private static readonly inFlightShadowInserts = new Map<string, Promise<IpcPost>>();
 
   /**
    * Check if posts_fts table exists (cached, checked once at initialization)
@@ -1153,6 +1159,41 @@ export class PostsController extends BaseController {
    */
   private async shadowInsertPost(
     _event: IpcMainInvokeEvent,
+    request: { postId: number; provider: ProviderId }
+  ): Promise<IpcPost> {
+    // CRITICAL: Generate deduplication key for in-flight request tracking
+    const dedupeKey = `${request.postId}-${request.provider}`;
+    
+    // Check if same request is already in-flight
+    const existingPromise = PostsController.inFlightShadowInserts.get(dedupeKey);
+    if (existingPromise) {
+      log.debug(`[PostsController] Reusing in-flight shadow insert for ${dedupeKey}`);
+      return existingPromise;
+    }
+    
+    // Create new Promise for this request
+    const insertPromise = this.performShadowInsert(request);
+    
+    // Store Promise for deduplication
+    PostsController.inFlightShadowInserts.set(dedupeKey, insertPromise);
+    
+    // Clean up after Promise resolves/rejects (prevent memory leak)
+    insertPromise
+      .finally(() => {
+        PostsController.inFlightShadowInserts.delete(dedupeKey);
+      })
+      .catch(() => {
+        // Error already logged in performShadowInsert, just clean up
+      });
+    
+    return insertPromise;
+  }
+  
+  /**
+   * Internal method that performs the actual shadow insert operation
+   * Separated from public method to enable Promise reuse for deduplication
+   */
+  private async performShadowInsert(
     request: { postId: number; provider: ProviderId }
   ): Promise<IpcPost> {
     log.info(`[PostsController] Shadow insert attempt: postId=${request.postId}, provider=${request.provider}`);

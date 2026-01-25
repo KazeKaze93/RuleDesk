@@ -1223,11 +1223,10 @@ export class PlaylistController extends BaseController {
       const booruQuery = this.buildBooruQueryString(query);
       log.info(`[PlaylistController] Fetching remote posts for playlist ${playlistId} with query: "${booruQuery}"`);
 
-      // Get provider and settings
-      // TODO: Add provider field to playlists schema to support multiple providers
-      // For now, default to rule34 for all smart playlists
-      // This is a temporary limitation - smart playlists should support provider selection
-      const provider = getProvider("rule34");
+      // Get provider from query (defaults to rule34 if not specified)
+      // CRITICAL: Provider must match the actual source of posts to prevent 404 or invalid data
+      const providerId = query.provider ?? "rule34";
+      const provider = getProvider(providerId);
       const apiSettings = await this.getDecryptedSettings();
       
       if (!apiSettings) {

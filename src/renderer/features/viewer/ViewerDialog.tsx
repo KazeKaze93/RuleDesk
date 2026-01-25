@@ -133,22 +133,26 @@ const PostNotFoundFallback = ({
         // Main process fetches post data from API to ensure data integrity.
         // This prevents Renderer from injecting malicious URLs or data.
         
-        // Determine provider from playlist data
-        // TODO: Add provider field to playlists schema to support multiple providers
-        // For now, default to rule34 - this is a temporary limitation
-        // Smart playlists should support provider selection in the future
-        const provider: "rule34" | "gelbooru" = "rule34";
+        // Determine provider from playlist metadata or origin
+        // Priority: 1) origin.provider (from playlist queryJson), 2) fetched playlist provider, 3) default rule34
+        let provider: "rule34" | "gelbooru" = "rule34";
         
         if (queue.origin?.kind === "playlist") {
-          try {
-            // Fetch playlist to determine provider (if supported in future)
-            // For now, all playlists use rule34, but this allows future extension
-            // when provider field is added to playlists schema
-            await window.api.getPlaylist(queue.origin.playlistId);
-            // provider = playlist?.provider ?? "rule34";
-          } catch (error) {
-            log.warn(`[ViewerDialog] Failed to get playlist for provider detection:`, error);
-            // Fallback to default provider
+          // First, check if provider is already in origin (from playlist queryJson)
+          if (queue.origin.provider) {
+            provider = queue.origin.provider;
+          } else {
+            // Fallback: fetch playlist to get provider from queryJson
+            try {
+              const playlist = await window.api.getPlaylist(queue.origin.playlistId);
+              if (playlist?.isSmart && playlist.queryJson) {
+                const parsedQuery = JSON.parse(playlist.queryJson) as { provider?: "rule34" | "gelbooru" };
+                provider = parsedQuery.provider ?? "rule34";
+              }
+            } catch (error) {
+              log.warn(`[ViewerDialog] Failed to get playlist for provider detection:`, error);
+              // Fallback to default provider
+            }
           }
         }
         

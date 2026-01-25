@@ -19,9 +19,13 @@ export type SmartPlaylistTag = z.infer<typeof SmartPlaylistTagSchema>;
  * Tag-centric structure: only tags with include/exclude logic.
  * Include tags are combined with AND, exclude tags with OR (standard booru search).
  * Hybrid search: always queries both local DB and remote API, then merges results.
+ * 
+ * Provider field: Specifies which Booru provider to use for remote API queries.
+ * This is critical for shadow insert operations - wrong provider = 404 or invalid data.
  */
 export const SmartPlaylistQuerySchema = z.object({
   tags: z.array(SmartPlaylistTagSchema).min(1, "At least one tag is required"),
+  provider: z.enum(["rule34", "gelbooru"]).optional().default("rule34"),
 });
 
 export type SmartPlaylistQuery = z.infer<typeof SmartPlaylistQuerySchema>;

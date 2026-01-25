@@ -422,9 +422,15 @@ export abstract class BaseController {
                 } catch (validationError) {
                   if (validationError instanceof z.ZodError) {
                     // Build detailed error message with path information
+                    // SECURITY: Sanitize error messages to prevent leaking sensitive data
+                    // Zod error messages may contain values like "Expected string, received 12345"
+                    // We must strip actual values and only keep type/format information
                     const errorMessages = validationError.errors.map((e) => {
                       const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
-                      return `${e.message}${pathStr}`;
+                      // SECURITY: Sanitize message - remove actual values that may be sensitive
+                      // Replace patterns like "received 12345" with "received <value>"
+                      const sanitizedMessage = e.message.replace(/received\s+[^\s,;]+/gi, "received <value>");
+                      return `${sanitizedMessage}${pathStr}`;
                     });
                     const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
                     
@@ -440,10 +446,12 @@ export abstract class BaseController {
                     }
                     return segment;
                   }),
-                  message: e.message,
+                  // SECURITY: Sanitize message to remove actual values
+                  // Replace patterns like "Expected string, received 12345" with "Expected string, received <value>"
+                  message: e.message.replace(/received\s+[^\s,;]+/gi, "received <value>"),
                   code: e.code,
                   // SECURITY: Do not log actual values - they may contain sensitive data
-                  // Only log path and message, not the value that failed validation
+                  // Only log path and sanitized message, not the value that failed validation
                 })),
               });
 
@@ -627,9 +635,15 @@ export abstract class BaseController {
           } catch (validationError) {
             if (validationError instanceof z.ZodError) {
               // Build detailed error message with path information
+              // SECURITY: Sanitize error messages to prevent leaking sensitive data
+              // Zod error messages may contain values like "Expected string, received 12345"
+              // We must strip actual values and only keep type/format information
               const errorMessages = validationError.errors.map((e) => {
                 const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
-                return `${e.message}${pathStr}`;
+                // SECURITY: Sanitize message - remove actual values that may be sensitive
+                // Replace patterns like "received 12345" with "received <value>"
+                const sanitizedMessage = e.message.replace(/received\s+[^\s,;]+/gi, "received <value>");
+                return `${sanitizedMessage}${pathStr}`;
               });
               const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
               
@@ -645,10 +659,12 @@ export abstract class BaseController {
                     }
                     return segment;
                   }),
-                  message: e.message,
+                  // SECURITY: Sanitize message to remove actual values
+                  // Replace patterns like "Expected string, received 12345" with "Expected string, received <value>"
+                  message: e.message.replace(/received\s+[^\s,;]+/gi, "received <value>"),
                   code: e.code,
                   // SECURITY: Do not log actual values - they may contain sensitive data
-                  // Only log path and message, not the value that failed validation
+                  // Only log path and sanitized message, not the value that failed validation
                 })),
               });
 
