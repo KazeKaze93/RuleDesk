@@ -54,6 +54,8 @@ export const GlobalTopBar = () => {
       setActiveTab("favorites");
     } else if (path === "/tracked" || path.startsWith("/artist/")) {
       setActiveTab("tracked");
+    } else if (path === "/playlists") {
+      setActiveTab("browse"); // Use "browse" tab type for playlists to enable filters
     } else if (path === "/settings") {
       setActiveTab("settings");
     } else {

@@ -16,6 +16,7 @@ import {
 import type { ArtistType } from "../db/schema";
 import { R34RawPostSchema, type R34RawPost } from "../../shared/schemas/booru";
 import { normalizeRating } from "../../shared/utils/post-normalization";
+import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 
 interface R34AutocompleteItem {
@@ -209,10 +210,18 @@ export class Rule34Provider implements IBooruProvider {
   async fetchPosts(
     tags: string,
     page: number,
-    settings: ProviderSettings
+    settings: ProviderSettings,
+    isRandom: boolean = false
   ): Promise<BooruPost[]> {
+    // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
+    // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
+    // should be done via API's native sort:random parameter if the provider supports it.
+    // If the provider doesn't support native randomization, this pseudo-random approach
+    // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
+    const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
+    
     // Step 1: Try JSON first
-    const jsonUrl = this.buildUrl({ tags, page, settings, json: 1 });
+    const jsonUrl = this.buildUrl({ tags, page: apiPage, settings, json: 1 });
 
     try {
       const response = await axios.get<string>(jsonUrl, {
@@ -235,7 +244,17 @@ export class Rule34Provider implements IBooruProvider {
         throw new Error("API returned non-array JSON");
       }
 
-      return this.normalizePosts(json);
+      const posts = this.normalizePosts(json);
+      
+      // If isRandom is true, shuffle the results array
+      if (isRandom && posts.length > 1) {
+        for (let i = posts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [posts[i], posts[j]] = [posts[j], posts[i]];
+        }
+      }
+      
+      return posts;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -245,7 +264,7 @@ export class Rule34Provider implements IBooruProvider {
 
       // Step 2: FALLBACK TO XML
       try {
-        const xmlUrl = this.buildUrl({ tags, page, settings, json: 0 });
+        const xmlUrl = this.buildUrl({ tags, page: apiPage, settings, json: 0 });
         const xmlResponse = await axios.get<string>(xmlUrl, {
           timeout: REQUEST_TIMEOUT,
           headers: this.getHeaders(),
@@ -255,6 +274,15 @@ export class Rule34Provider implements IBooruProvider {
 
         const xmlText = xmlResponse.data;
         const posts = this.parsePostXml(xmlText);
+        
+        // If isRandom is true, shuffle the results array
+        if (isRandom && posts.length > 1) {
+          for (let i = posts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [posts[i], posts[j]] = [posts[j], posts[i]];
+          }
+        }
+        
         logger.warn(
           `[Rule34Provider] Recovered ${posts.length} posts via XML fallback.`
         );

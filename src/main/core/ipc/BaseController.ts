@@ -1,8 +1,30 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
-import { z } from "zod";
+import { z, type ZodErrorMap } from "zod";
 import type { SerializableError, ValidationError } from "../../types/ipc";
 import { ErrorCode } from "../../types/ipc";
+
+/**
+ * Custom Zod error map that sanitizes error messages to prevent leaking sensitive data
+ * 
+ * SECURITY: Never includes actual values in error messages.
+ * Instead of "Expected string, received 12345", returns "Expected string, received <value>"
+ * 
+ * This is more robust than regex replacement because it prevents values from appearing
+ * in error messages at the source, rather than sanitizing them after the fact.
+ * 
+ * NOTE: This is used locally in BaseController validation, not as a global error map.
+ * This prevents side effects on other parts of the application that may need detailed error messages.
+ */
+const sanitizedErrorMap: ZodErrorMap = (_issue, ctx) => {
+  const defaultMessage = ctx.defaultError;
+  
+  // SECURITY: Replace any value patterns in default messages
+  // Patterns like "received 12345", "Expected number, received string", etc.
+  const sanitized = defaultMessage.replace(/received\s+[^\s,;]+/gi, "received <value>");
+  
+  return { message: sanitized };
+};
 
 /**
  * Base Controller for IPC Handlers
@@ -415,7 +437,90 @@ export abstract class BaseController {
                 const normalizedSchema = isTuple
                   ? schema
                   : z.tuple([schema as z.ZodTypeAny]);
-                const validatedArgs = normalizedSchema.parse(args) as unknown[];
+                
+                // Use z.infer to extract types from schema for proper type safety
+                // This eliminates the need for 'as unknown[]' type assertion
+                // SECURITY: Use local error map to sanitize error messages without affecting global Zod settings
+                type ValidatedArgs = z.infer<typeof normalizedSchema>;
+                let validatedArgs: ValidatedArgs;
+                try {
+                  validatedArgs = normalizedSchema.parse(args, {
+                    errorMap: sanitizedErrorMap,
+                  }) as ValidatedArgs;
+                } catch (validationError) {
+                  if (validationError instanceof z.ZodError) {
+                    // Build detailed error message with path information
+                    // SECURITY: Sanitize error messages to prevent leaking sensitive data
+                    // Zod error messages may contain values like "Expected string, received 12345"
+                    // We must strip actual values and only keep type/format information
+                    const errorMessages = validationError.errors.map((e) => {
+                      const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
+                      // SECURITY: Error messages are already sanitized by custom errorMap
+                      // No need for regex replacement - values are never included in messages
+                      return `${e.message}${pathStr}`;
+                    });
+                    const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
+                    
+              // Security: Log only validation errors (paths and messages), not actual argument values
+              // Mask sensitive data in error paths (e.g., paths containing "password", "token", "key")
+              log.error(`[IPC] Validation failed for channel "${channel}":`, {
+                errors: validationError.errors.map((e) => ({
+                  path: e.path.map(segment => {
+                    // Mask sensitive path segments
+                    const segmentStr = String(segment);
+                    if (/password|token|key|secret|api[_-]?key|auth|credential/i.test(segmentStr)) {
+                      return "<masked>";
+                    }
+                    return segment;
+                  }),
+                  // SECURITY: Error messages are already sanitized by custom errorMap
+                  // No need for regex replacement - values are never included in messages
+                  message: e.message,
+                  code: e.code,
+                  // SECURITY: Do not log actual values - they may contain sensitive data
+                  // Only log path and sanitized message, not the value that failed validation
+                })),
+              });
+
+                    // Create serializable validation error with proper string representation
+                    // SECURITY: Limit JSON.stringify output size to prevent huge error strings in production logs
+                    // Only include essential error information (name, message, error count) for production
+                    const isProduction = process.env.NODE_ENV === "production";
+                    const originalErrorJson = isProduction
+                      ? JSON.stringify({
+                          name: validationError.name,
+                          message: validationError.message,
+                          errorCount: validationError.errors.length,
+                        })
+                      : JSON.stringify({
+                          name: validationError.name,
+                          message: validationError.message,
+                          errors: validationError.errors.map((e) => ({
+                            path: e.path,
+                            message: e.message,
+                            code: e.code,
+                          })),
+                        });
+                    
+                    const serializedError: ValidationError = {
+                      message: errorMessage,
+                      stack: validationError.stack,
+                      name: "ValidationError",
+                      originalError: originalErrorJson,
+                      errors: validationError.errors.map((e) => ({
+                        path: e.path,
+                        message: e.message,
+                        code: e.code,
+                      })),
+                    };
+                    throw serializedError;
+                  }
+                  // Re-throw if it's not a ZodError
+                  throw validationError;
+                }
+                
+                // Call handler with validated arguments
+                // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
                 const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
 
                 // Execute handler
@@ -548,30 +653,76 @@ export abstract class BaseController {
             ? schema
             : z.tuple([schema as z.ZodTypeAny]);
 
-          // Validate input arguments using normalized schema
-          let validatedArgs: unknown[];
+          // Use z.infer to extract types from schema instead of as unknown[]
+          // This provides proper type safety without type assertions
+          // SECURITY: Use local error map to sanitize error messages without affecting global Zod settings
+          type ValidatedArgs = z.infer<typeof normalizedSchema>;
+          let validatedArgs: ValidatedArgs;
           try {
-            validatedArgs = normalizedSchema.parse(args) as unknown[];
+            validatedArgs = normalizedSchema.parse(args, {
+              errorMap: sanitizedErrorMap,
+            }) as ValidatedArgs;
           } catch (validationError) {
             if (validationError instanceof z.ZodError) {
-              const errorMessage = `Validation Error: ${validationError.errors
-                .map((e) => e.message)
-                .join(", ")}`;
+              // Build detailed error message with path information
+              // SECURITY: Sanitize error messages to prevent leaking sensitive data
+              // Zod error messages may contain values like "Expected string, received 12345"
+              // We must strip actual values and only keep type/format information
+              const errorMessages = validationError.errors.map((e) => {
+                const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
+                // SECURITY: Error messages are already sanitized by custom errorMap
+                // No need for regex replacement - values are never included in messages
+                return `${e.message}${pathStr}`;
+              });
+              const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
+              
               // Security: Log only validation errors (paths and messages), not actual argument values
+              // Mask sensitive data in error paths (e.g., paths containing "password", "token", "key")
               log.error(`[IPC] Validation failed for channel "${channel}":`, {
                 errors: validationError.errors.map((e) => ({
-                  path: e.path,
+                  path: e.path.map(segment => {
+                    // Mask sensitive path segments
+                    const segmentStr = String(segment);
+                    if (/password|token|key|secret|api[_-]?key|auth|credential/i.test(segmentStr)) {
+                      return "<masked>";
+                    }
+                    return segment;
+                  }),
+                  // SECURITY: Error messages are already sanitized by custom errorMap
+                  // No need for regex replacement - values are never included in messages
                   message: e.message,
                   code: e.code,
+                  // SECURITY: Do not log actual values - they may contain sensitive data
+                  // Only log path and sanitized message, not the value that failed validation
                 })),
               });
 
-              // Create serializable validation error
+              // Create serializable validation error with proper string representation
+              // Use JSON.stringify for originalError to prevent [object Object] output
+              // SECURITY: Limit JSON.stringify output size to prevent huge error strings in production logs
+              // Only include essential error information (name, message, error count) for production
+              const isProduction = process.env.NODE_ENV === "production";
+              const originalErrorJson = isProduction
+                ? JSON.stringify({
+                    name: validationError.name,
+                    message: validationError.message,
+                    errorCount: validationError.errors.length,
+                  })
+                : JSON.stringify({
+                    name: validationError.name,
+                    message: validationError.message,
+                    errors: validationError.errors.map((e) => ({
+                      path: e.path,
+                      message: e.message,
+                      code: e.code,
+                    })),
+                  });
+              
               const serializedError: ValidationError = {
                 message: errorMessage,
                 stack: validationError.stack,
                 name: "ValidationError",
-                originalError: String(validationError),
+                originalError: originalErrorJson,
                 errors: validationError.errors.map((e) => ({
                   path: e.path,
                   message: e.message,

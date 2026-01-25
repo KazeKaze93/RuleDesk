@@ -6,6 +6,7 @@ import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./ty
 import type { ArtistType } from "../db/schema";
 import { GelbooruRawPostSchema, type GelbooruRawPost } from "../../shared/schemas/booru";
 import { normalizeRating } from "../../shared/utils/post-normalization";
+import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 
 export class GelbooruProvider implements IBooruProvider {
@@ -100,14 +101,21 @@ export class GelbooruProvider implements IBooruProvider {
     }
   }
 
-  async fetchPosts(tags: string, page: number, settings: ProviderSettings): Promise<BooruPost[]> {
+  async fetchPosts(tags: string, page: number, settings: ProviderSettings, isRandom: boolean = false): Promise<BooruPost[]> {
+    // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
+    // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
+    // should be done via API's native sort:random parameter if the provider supports it.
+    // If the provider doesn't support native randomization, this pseudo-random approach
+    // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
+    const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
+    
     // Gelbooru pages are 0-indexed usually, but let's stick to pid logic
     const params = new URLSearchParams({
       page: "dapi",
       s: "post",
       q: "index",
       limit: "100",
-      pid: page.toString(),
+      pid: apiPage.toString(),
       tags: tags,
       json: "1",
     });
@@ -180,9 +188,19 @@ export class GelbooruProvider implements IBooruProvider {
         );
       }
 
-      return validatedPosts
+      const posts = validatedPosts
         .map((raw) => this.mapToBooruPost(raw))
         .filter((post): post is BooruPost => post !== null);
+      
+      // If isRandom is true, shuffle the results array
+      if (isRandom && posts.length > 1) {
+        for (let i = posts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [posts[i], posts[j]] = [posts[j], posts[i]];
+        }
+      }
+      
+      return posts;
     } catch (error) {
        logger.error(`[Gelbooru] Error fetching page ${page}`, error);
        return [];

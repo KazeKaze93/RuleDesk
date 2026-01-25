@@ -5,7 +5,8 @@ export type ViewerOrigin =
   | { kind: "search"; tags: string[] }
   | { kind: "favorites"; tags?: string[] }
   | { kind: "updates"; tags?: string[] }
-  | { kind: "artist"; artistId: number; tags?: string[] };
+  | { kind: "artist"; artistId: number; tags?: string[]; aiFilter?: "all" | "hide" | "only"; mediaType?: "all" | "images" | "videos" }
+  | { kind: "playlist"; playlistId: number; mediaType?: "all" | "images" | "videos"; sortOrder?: "asc" | "desc"; provider?: "rule34" | "gelbooru" };
 
 // Очередь просмотра
 export interface ViewerQueue {
@@ -16,6 +17,7 @@ export interface ViewerQueue {
   totalGlobalCount?: number;
   hasNextPage?: boolean;
   onLoadMore?: () => void | Promise<void>;
+  isRandom?: boolean; // Store isRandom state in queue for viewer navigation
 }
 
 interface ViewerState {
@@ -37,6 +39,7 @@ interface ViewerState {
   setControlsVisible: (visible: boolean) => void;
   updateQueueIds: (ids: number[]) => void;
   appendQueueIds: (newIds: number[]) => void;
+  setQueueIsRandom: (isRandom: boolean) => void;
 }
 
 export const useViewerStore = create<ViewerState>((set, get) => ({
@@ -74,12 +77,38 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
     const { queue, currentIndex } = get();
     if (!queue) return;
 
-    if (currentIndex < queue.ids.length - 1) {
-      const newIndex = currentIndex + 1;
+    // Check if random mode is enabled (from queue or fallback to false)
+    const isRandom = queue.isRandom ?? false;
+    
+    if (isRandom && queue.ids.length > 1) {
+      // Random navigation: use shuffle-bag algorithm to avoid showing same posts
+      // Create a shuffled array of available indices
+      const availableIndices = queue.ids.map((_, idx) => idx);
+      
+      // Fisher-Yates shuffle for better randomness
+      for (let i = availableIndices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [availableIndices[i], availableIndices[j]] = [availableIndices[j], availableIndices[i]];
+      }
+      
+      // Find current index in shuffled array and pick next one
+      const currentShuffledIndex = availableIndices.indexOf(currentIndex);
+      const nextShuffledIndex = (currentShuffledIndex + 1) % availableIndices.length;
+      const randomIndex = availableIndices[nextShuffledIndex];
+      
       set({
-        currentIndex: newIndex,
-        currentPostId: queue.ids[newIndex],
+        currentIndex: randomIndex,
+        currentPostId: queue.ids[randomIndex],
       });
+    } else {
+      // Sequential navigation
+      if (currentIndex < queue.ids.length - 1) {
+        const newIndex = currentIndex + 1;
+        set({
+          currentIndex: newIndex,
+          currentPostId: queue.ids[newIndex],
+        });
+      }
     }
   },
 
@@ -119,6 +148,14 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
           ...state.queue,
           ids: [...state.queue.ids, ...uniqueNewIds],
         },
+      };
+    }),
+
+  setQueueIsRandom: (isRandom) =>
+    set((state) => {
+      if (!state.queue) return {};
+      return {
+        queue: { ...state.queue, isRandom },
       };
     }),
 }));

@@ -57,6 +57,27 @@
       "when": 1700000007000,
       "tag": "0009_add_media_type",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1769269362002,
+      "tag": "0008_famous_the_spike",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1769269363000,
+      "tag": "0010_add_fts5_cache_invalidation",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1769269364000,
+      "tag": "0011_add_fts5_count_meta",
+      "breakpoints": true
     }
   ]
 }

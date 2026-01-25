@@ -30,10 +30,15 @@ export async function initializeDatabase(): Promise<AppDatabase> {
 
   // Only enable verbose SQLite logging in DEBUG mode to avoid performance issues
   // Verbose logging can generate thousands of log entries per query with joins
+  // CRITICAL: Set busyTimeout to handle SQLITE_BUSY errors from concurrent transactions
+  // Default timeout: 5000ms (5 seconds) - prevents race conditions in shadowInsertPost
+  // If two processes try to insert the same post simultaneously, SQLite will wait up to 5s
+  // instead of immediately throwing SQLITE_BUSY
   const sqlite = new Database(dbPath, {
     verbose: process.env.DEBUG === "true" || process.env.DEBUG_SQLITE === "true"
       ? (message) => log.debug(`[SQLite] ${message}`)
       : undefined,
+    timeout: 5000, // 5 seconds timeout for SQLITE_BUSY (concurrent access)
   });
 
   // Configure SQLite for optimal performance and data safety
@@ -110,6 +115,11 @@ export async function initializeDatabase(): Promise<AppDatabase> {
       });
     });
     logger.info("[DB] Migrations complete.");
+    
+    // FTS5 table creation is handled by migration 0006_add_fts5_search.sql
+    // Do NOT create FTS5 tables here - this causes split-brain state if migration fails
+    // If FTS5 table doesn't exist after migrations, it's a migration failure that should be fixed
+    // by fixing the migration, not by creating it in code
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
     

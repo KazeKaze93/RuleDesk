@@ -117,7 +117,7 @@ describe('SyncService Integration', () => {
     if (mockDb?.sqlite) {
       try {
         mockDb.sqlite.close();
-      } catch (error) {
+      } catch (_error) {
         // Ignore errors when closing (database might already be closed)
       }
     }

@@ -11,6 +11,7 @@ export const SearchPostsSchema = z.object({
   // Empty array is allowed - means show all posts (API omits tags parameter)
   page: z.number().int().positive(),
   limit: z.number().int().positive().max(100).optional(),
+  isRandom: z.boolean().optional().default(false),
 });
 
 /**

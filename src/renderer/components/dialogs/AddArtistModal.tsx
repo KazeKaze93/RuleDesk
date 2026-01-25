@@ -1,10 +1,9 @@
 import { X } from "lucide-react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import log from "electron-log/renderer";
 import { normalizeTag } from "../../lib/tag-utils";
 import { AsyncAutocomplete } from "../inputs/AsyncAutocomplete";
-import type { AutocompleteOption } from "../inputs/AsyncAutocomplete";
+import type { SearchResults } from "../../../main/providers";
 import {
   Select,
   SelectContent,
@@ -72,7 +71,7 @@ export function AddArtistModal({
     handleClose();
   };
 
-  const handleTagSelect = (option: AutocompleteOption | null) => {
+  const handleTagSelect = (option: SearchResults | null) => {
     const selectedTag = option?.label || "";
     setValue("tag", selectedTag);
     setValue("name", selectedTag); // Set name to tag for consistency
@@ -135,14 +134,6 @@ export function AddArtistModal({
                     onQueryChange={handleTagChange}
                     onSelect={handleTagSelect}
                     placeholder={`Search on ${provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}...`}
-                    fetchOptions={async (query: string) => {
-                      try {
-                        return await window.api.searchRemoteTags(query, provider);
-                      } catch (error) {
-                        log.error("[AddArtistModal] Failed to search tags:", error);
-                        return [];
-                      }
-                    }}
                     onBlur={field.onBlur}
                   />
                 )}

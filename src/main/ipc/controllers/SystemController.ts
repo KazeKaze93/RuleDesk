@@ -4,6 +4,7 @@ import path from "node:path";
 import { readFileSync, existsSync } from "fs";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
+import { closeDatabase } from "../../db/client";
 
 /**
  * System Controller
@@ -101,11 +102,16 @@ export class SystemController extends BaseController {
    *
    * ⚠️ Note: This will trigger app lifecycle events (before-quit, will-quit, quit)
    * Make sure all cleanup handlers are properly registered before calling this.
+   * 
+   * CRITICAL: Closes database connection before quitting to prevent data corruption.
    *
    * @returns void (application will quit before return)
    */
   private async quitApp(_event: IpcMainInvokeEvent): Promise<void> {
     log.info("[SystemController] Application quit requested");
+    // CRITICAL: Close database connection before quitting to prevent data corruption
+    // SQLite requires explicit close() to ensure all transactions are committed
+    closeDatabase();
     app.quit();
   }
 

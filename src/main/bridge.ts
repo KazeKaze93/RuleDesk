@@ -1,10 +1,19 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import type { Artist, Post } from "./db/schema";
+import type { Artist, Post, Playlist } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
 import type { GetPostsRequest, AddArtistRequest } from "./types/ipc";
 import type { IpcSettings } from "../shared/schemas/settings";
 import type { PostData } from "../shared/schemas/post";
+import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
 import type { ProviderId, SearchResults } from "./providers";
+import type {
+  CreatePlaylistRequest,
+  UpdatePlaylistRequest,
+  AddPostsToPlaylistRequest,
+  RemovePostsFromPlaylistRequest,
+  GetPlaylistPostsRequest,
+  ResolvePlaylistPostsRequest,
+} from "../shared/schemas/playlist";
 
 export type UpdateStatusData = {
   status: string;
@@ -93,6 +102,8 @@ export interface IpcBridge {
 
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
 
+  shadowInsertPost: (request: ShadowInsertRequest) => Promise<Post>;
+
   // Downloads
   downloadFile: (
     url: string,
@@ -109,7 +120,7 @@ export interface IpcBridge {
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
-  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+  searchBooru: (params: { tags: string[]; page: number; isRandom?: boolean }) => Promise<Post[]>;
 
   resolveTags: (tags: string[]) => Promise<string[]>;
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
@@ -120,6 +131,18 @@ export interface IpcBridge {
   restoreBackup: () => Promise<BackupResponse>;
 
   verifyCredentials: () => Promise<boolean>;
+
+  // Playlists
+  createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
+  getPlaylists: () => Promise<Playlist[]>;
+  getPlaylist: (playlistId: number) => Promise<Playlist | null>;
+  updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
+  deletePlaylist: (playlistId: number) => Promise<boolean>;
+  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
+  removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
+  getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
+  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
+  getPlaylistsContainingPost: (postId: number) => Promise<number[]>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -179,6 +202,9 @@ const ipcBridge: IpcBridge = {
 
   togglePostFavorite: (postId, postData) =>
     ipcRenderer.invoke("db:toggle-post-favorite", postId, postData),
+
+  shadowInsertPost: (request: ShadowInsertRequest) =>
+    ipcRenderer.invoke("db:shadow-insert-post", request),
 
   togglePostViewed: (postId) =>
     ipcRenderer.invoke("db:toggle-post-viewed", postId),
@@ -257,6 +283,27 @@ const ipcBridge: IpcBridge = {
 
   createBackup: () => ipcRenderer.invoke("db:create-backup"),
   restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
+
+  // Playlists
+  createPlaylist: (data: CreatePlaylistRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.CREATE_PLAYLIST, data),
+  getPlaylists: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLISTS),
+  getPlaylist: (playlistId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLIST, playlistId),
+  updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.UPDATE_PLAYLIST, playlistId, data),
+  deletePlaylist: (playlistId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.DELETE_PLAYLIST, playlistId),
+  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.ADD_POSTS_TO_PLAYLIST, data),
+  removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.REMOVE_POSTS_FROM_PLAYLIST, data),
+  getPlaylistPosts: (params: GetPlaylistPostsRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLIST_POSTS, params),
+  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
+  getPlaylistsContainingPost: (postId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST, postId),
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);

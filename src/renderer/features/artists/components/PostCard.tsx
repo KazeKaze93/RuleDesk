@@ -1,20 +1,22 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Play, Check, Heart } from "lucide-react";
+import { Play, Check, Heart, List, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Post } from "../../../../main/db/schema";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../../store/safeModeStore";
 import { useSearchStore } from "../../../store/searchStore";
 import { isVideoPost } from "../../../lib/filter-utils";
 import { isVideoUrl } from "../../../../shared/utils/media";
+import { QuickAddToPlaylistMenu } from "../../../components/playlists/QuickAddToPlaylistMenu";
 
 interface PostCardProps {
   post: Post;
   onClick: () => void;
   onToggleFavorite?: (e: React.MouseEvent) => void;
   onToggleViewed?: (e: React.MouseEvent) => void;
+  onRemoveFromPlaylist?: () => void;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
+export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromPlaylist }) => {
   const isVid = isVideoPost(post.fileUrl);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
   // Optimize: subscribe only to viewType, not entire store
@@ -71,7 +73,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
     // Play video on hover
     const playPromise = video.play();
     if (playPromise !== undefined) {
-      playPromise.catch((error) => {
+      playPromise.catch(() => {
         // Video play failed (e.g., autoplay policy, network error)
         // Silently handle - we'll fallback to static image
         setVideoError(true);
@@ -86,10 +88,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
     };
   }, [isHovered, shouldLoadVideo]);
 
-  // Reset video error when post changes
-  useEffect(() => {
-    setVideoError(false);
-  }, [post.id]);
+  // Use key prop on video element to reset state when post changes
+  // This avoids useEffect setState (which causes cascading renders)
+  // The key prop will cause React to unmount/remount the video element when post.id changes,
+  // which naturally resets the video error state
+  const videoKey = `${post.id}`;
 
   // Show video preview only if: video post, in viewport, hovered, video URL available, and no error
   const showVideoPreview = isVid && 
@@ -157,6 +160,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
           {/* Video Preview (overlay on hover) */}
           {isVid && shouldLoadVideo && videoPreviewUrl && (
             <video
+              key={videoKey}
               ref={videoRef}
               src={videoPreviewUrl}
               muted
@@ -201,8 +205,92 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick }) => {
 
       {/* 1. Video Indicator (Top Right) */}
       {isVid && (
-        <div className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 backdrop-blur-sm">
+        <div className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 backdrop-blur-sm z-20">
           <Play className="w-3 h-3 text-white fill-white" />
+        </div>
+      )}
+
+      {/* 1.5. Playlist Menu (Top Right, below video indicator if present) */}
+      <div
+        className={cn(
+          "absolute right-2 z-20 opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+          isVid ? "top-12" : "top-2"
+        )}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          // A11y: Handle keyboard navigation for wrapper div
+          // Prevent card click when Space/Enter is pressed on wrapper
+          if (e.key === "Enter" || e.key === " ") {
+            e.stopPropagation();
+          }
+        }}
+        role="presentation"
+        aria-hidden="true"
+      >
+        <QuickAddToPlaylistMenu
+          postId={post.id}
+          trigger={
+            <span
+              className="inline-flex items-center justify-center rounded-full bg-black/50 p-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer"
+              role="button"
+              tabIndex={0}
+              aria-label="Add to playlist"
+              title="Add to playlist"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+            >
+              <List className="w-3 h-3 text-white" />
+            </span>
+          }
+        />
+      </div>
+
+      {/* 1.6. Remove from Playlist Button (Top Left, below indicators) */}
+      {onRemoveFromPlaylist && (
+        <div
+          className="absolute left-2 z-20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+          style={{ top: post.isFavorited || post.isViewed ? "3.5rem" : "0.5rem" }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <span
+            className="inline-flex items-center justify-center rounded-full bg-red-500/90 p-1.5 backdrop-blur-sm hover:bg-red-600 transition-colors cursor-pointer"
+            role="button"
+            tabIndex={0}
+            aria-label="Remove from playlist"
+            title="Remove from playlist"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRemoveFromPlaylist();
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onRemoveFromPlaylist();
+              }
+            }}
+          >
+            <Trash2 className="w-3 h-3 text-white" />
+          </span>
         </div>
       )}
 

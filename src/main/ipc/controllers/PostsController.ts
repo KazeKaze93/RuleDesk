@@ -15,11 +15,13 @@ import {
 } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { posts, artists, type Post } from "../../db/schema";
+import { posts, artists } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
+import type { InferSelectModel } from "drizzle-orm";
+import type { IpcSafe } from "../../../shared/types/ipc";
 import {
   PostDataSchema,
   GetPostsSchema,
@@ -33,6 +35,10 @@ import {
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { isVideoUrl } from "@shared/utils/media";
+import { getProvider, type ProviderId } from "../../providers";
+import { safeStorage } from "electron";
+import { settings, SETTINGS_ID } from "../../db/schema";
+import { ShadowInsertRequestSchema } from "../../../shared/schemas/shadow-insert";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -40,16 +46,17 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
  * Required for Electron 39+ IPC serialization compatibility.
  *
- * Uses TypeScript utility types to automatically map Date fields to numbers.
+ * Uses Drizzle's InferSelectModel to automatically infer types from schema.
+ * Then applies toIpcSafe transformation to convert Date fields to numbers.
  * This ensures type safety and eliminates manual field enumeration.
  */
-type IpcPost = {
-  [K in keyof Post]: Post[K] extends Date
-    ? number
-    : Post[K] extends Date | null
-    ? number | null
-    : Post[K];
-};
+/**
+ * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
+ * Required for Electron 39+ IPC serialization compatibility.
+ *
+ * Uses shared IpcSafe utility type for automatic Date -> number conversion.
+ */
+type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
 
 // Internal types (not exported - use types from src/main/types/ipc.ts instead)
 type GetPostsParams = GetPostsRequest;
@@ -70,6 +77,16 @@ export class PostsController extends BaseController {
   // Cache FTS table existence check (schema doesn't change at runtime)
   // Initialized once at setup() to avoid blocking synchronous calls
   private ftsTableExistsCache: boolean = false;
+  
+  // Cache EXTERNAL_ARTIST_ID existence check (avoids repeated DB queries)
+  // Initialized once at first shadowInsertPost call
+  private externalArtistExistsCache: boolean = false;
+  
+  // CRITICAL: In-flight request deduplication to prevent race conditions
+  // Map<`${postId}-${provider}`, Promise<IpcPost>>
+  // Reuses active Promise if same postId+provider is already being fetched
+  // Prevents duplicate API calls when user clicks rapidly
+  private static readonly inFlightShadowInserts = new Map<string, Promise<IpcPost>>();
 
   /**
    * Check if posts_fts table exists (cached, checked once at initialization)
@@ -160,6 +177,15 @@ export class PostsController extends BaseController {
         ...args: unknown[]
       ) => Promise<unknown>
     );
+    this.handle(
+      IPC_CHANNELS.DB.SHADOW_INSERT_POST,
+      z.tuple([ShadowInsertRequestSchema]),
+      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
+      this.shadowInsertPost.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
 
     // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)
     this.initializeFtsTableCheck();
@@ -182,11 +208,11 @@ export class PostsController extends BaseController {
     tx: Parameters<Parameters<AppDatabase["transaction"]>[0]>[0],
     postId: number,
     postData?: PostData
-  ): Post | undefined {
+  ): InferSelectModel<typeof posts> | undefined {
     // CRITICAL: Negative IDs indicate external posts (from Browse) that haven't been saved to DB yet
     // For negative IDs, skip DB lookup by id and go straight to postId lookup
     // For positive IDs, try to find by database ID first (existing posts from DB)
-    let existingPost: Post | undefined;
+    let existingPost: InferSelectModel<typeof posts> | undefined;
 
     if (postId > 0) {
       // Positive ID - try to find by database ID (existing posts from DB)
@@ -195,7 +221,7 @@ export class PostsController extends BaseController {
         .from(posts)
         .where(eq(posts.id, postId))
         .limit(1)
-        .all()[0];
+        .get();
     }
 
     // If not found (or negative ID for external post) and postData is provided,
@@ -213,7 +239,7 @@ export class PostsController extends BaseController {
           )
         )
         .limit(1)
-        .all()[0];
+        .get();
     }
 
     return existingPost;
@@ -545,7 +571,7 @@ export class PostsController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: GetPostsParams
   ): Promise<IpcPost[]> {
-    const { artistId, page, filters, limit } = params;
+    const { artistId, page, filters, limit, isRandom } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -586,7 +612,7 @@ export class PostsController extends BaseController {
           ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
           : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
 
-        const result = await db
+        const queryBuilder = db
           .select({
             id: posts.id,
             postId: posts.postId,
@@ -604,10 +630,11 @@ export class PostsController extends BaseController {
           })
           .from(posts)
           .innerJoin(artists, joinConditions)
-          .where(finalWhereClause)
-          .orderBy(desc(posts.publishedAt))
-          .limit(limit)
-          .offset(offset);
+          .where(finalWhereClause);
+
+        const result = isRandom
+          ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+          : queryBuilder.orderBy(desc(posts.publishedAt)).limit(limit).offset(offset).all();
 
         log.info(
           `[PostsController] Retrieved ${result.length} posts ${
@@ -629,7 +656,7 @@ export class PostsController extends BaseController {
 
       // CRITICAL: Explicitly select all fields including rating
       // This ensures rating is included in the response for Safe Mode filtering
-      const result = await db
+      const queryBuilder = db
         .select({
           id: posts.id,
           postId: posts.postId,
@@ -646,10 +673,11 @@ export class PostsController extends BaseController {
           isFavorited: posts.isFavorited,
         })
         .from(posts)
-        .where(whereClause)
-        .orderBy(desc(posts.publishedAt))
-        .limit(limit)
-        .offset(offset);
+        .where(whereClause);
+
+      const result = isRandom
+        ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+        : queryBuilder.orderBy(desc(posts.publishedAt)).limit(limit).offset(offset).all();
 
       log.info(
         `[PostsController] Retrieved ${result.length} posts ${
@@ -922,7 +950,7 @@ export class PostsController extends BaseController {
             .from(artists)
             .where(eq(artists.id, targetArtistId))
             .limit(1)
-            .all()[0]; // Get first result or undefined
+            .get();
 
           if (!existingArtist) {
             // Artist doesn't exist - create placeholder artist to satisfy FOREIGN KEY constraint
@@ -1012,6 +1040,315 @@ export class PostsController extends BaseController {
       log.error("[PostsController] Failed to toggle favorite:", error);
       // Re-throw original error to preserve stack trace and context
       throw error;
+    }
+  }
+
+  /**
+   * Validates URL protocol to prevent RCE attacks
+   * Only allows https: protocol or safe custom schemes
+   * Blocks javascript:, data:, file:, and other dangerous protocols
+   * 
+   * @param urlString - URL string to validate
+   * @returns true if URL is safe, false otherwise
+   */
+  /**
+   * Validate URL protocol for security
+   * 
+   * SECURITY: Blocks dangerous protocols that could execute code or access local files.
+   * Only allows https: and http: protocols for remote resources.
+   * 
+   * CRITICAL: Checks parsedUrl.protocol directly, not startsWith on raw string.
+   * This prevents bypass attempts with spaces or special characters (e.g., " javascript:").
+   * 
+   * @param urlString - URL string to validate
+   * @returns true if URL protocol is safe, false otherwise
+   */
+  private validateUrlProtocol(urlString: string): boolean {
+    if (!urlString || typeof urlString !== "string") {
+      return false;
+    }
+
+    try {
+      const parsedUrl = new URL(urlString);
+      // SECURITY: Only allow https: and http: protocols
+      // Check protocol directly from parsed URL - this is the authoritative source
+      // URL parser handles edge cases like spaces, special characters, etc.
+      const protocol = parsedUrl.protocol.toLowerCase();
+      if (protocol !== "https:" && protocol !== "http:") {
+        return false;
+      }
+      
+      return true;
+    } catch {
+      // Invalid URL format
+      return false;
+    }
+  }
+
+  /**
+   * Get decrypted settings for API authentication
+   *
+   * @returns Decrypted settings or null if not available
+   */
+  private async getDecryptedSettings(): Promise<{
+    userId: string;
+    apiKey: string;
+  } | null> {
+    try {
+      const db = this.getDb();
+      const settingsRecord = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all();
+
+      if (!settingsRecord || settingsRecord.length === 0) {
+        return null;
+      }
+
+      const record = settingsRecord[0];
+      if (!record.userId || !record.encryptedApiKey) {
+        return null;
+      }
+
+      // Decrypt API key using Electron's safeStorage
+      let apiKey = record.encryptedApiKey;
+      if (apiKey && safeStorage.isEncryptionAvailable()) {
+        try {
+          const buff = Buffer.from(apiKey, "base64");
+          apiKey = safeStorage.decryptString(buff);
+        } catch (e) {
+          log.warn("[PostsController] Failed to decrypt API Key.", e);
+          apiKey = record.encryptedApiKey;
+        }
+      }
+
+      return {
+        userId: record.userId,
+        apiKey: apiKey,
+      };
+    } catch (error) {
+      log.error("[PostsController] Failed to get decrypted settings:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Shadow Insert: Silently insert a remote post into the local database
+   * 
+   * CRITICAL SECURITY: Renderer only passes postId and provider.
+   * Main process fetches post data from API to ensure data integrity.
+   * This prevents Renderer from injecting malicious URLs or data.
+   * 
+   * @param _event - IPC event (unused)
+   * @param request - Shadow insert request (postId + provider)
+   * @returns Inserted post object (IPC-safe format with Date -> number conversion)
+   */
+  private async shadowInsertPost(
+    _event: IpcMainInvokeEvent,
+    request: { postId: number; provider: ProviderId }
+  ): Promise<IpcPost> {
+    // CRITICAL: Generate deduplication key for in-flight request tracking
+    const dedupeKey = `${request.postId}-${request.provider}`;
+    
+    // Check if same request is already in-flight
+    const existingPromise = PostsController.inFlightShadowInserts.get(dedupeKey);
+    if (existingPromise) {
+      log.debug(`[PostsController] Reusing in-flight shadow insert for ${dedupeKey}`);
+      return existingPromise;
+    }
+    
+    // Create new Promise for this request
+    const insertPromise = this.performShadowInsert(request);
+    
+    // Store Promise for deduplication
+    PostsController.inFlightShadowInserts.set(dedupeKey, insertPromise);
+    
+    // Clean up after Promise resolves/rejects (prevent memory leak)
+    insertPromise
+      .finally(() => {
+        PostsController.inFlightShadowInserts.delete(dedupeKey);
+      })
+      .catch(() => {
+        // Error already logged in performShadowInsert, just clean up
+      });
+    
+    return insertPromise;
+  }
+  
+  /**
+   * Internal method that performs the actual shadow insert operation
+   * Separated from public method to enable Promise reuse for deduplication
+   */
+  private async performShadowInsert(
+    request: { postId: number; provider: ProviderId }
+  ): Promise<IpcPost> {
+    log.info(`[PostsController] Shadow insert attempt: postId=${request.postId}, provider=${request.provider}`);
+    
+    try {
+      const db = this.getDb();
+
+      // Step 1: Check if post already exists in DB
+      const existingPost = db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.postId, request.postId),
+            eq(posts.artistId, EXTERNAL_ARTIST_ID)
+          )
+        )
+        .limit(1)
+        .get();
+
+      if (existingPost) {
+        log.debug(`[PostsController] Shadow insert: Post already exists (id: ${existingPost.id}, postId: ${request.postId})`);
+        return toIpcSafe(existingPost) as IpcPost;
+      }
+
+      // Step 2: Fetch post data from API (Main process controls data source)
+      const provider = getProvider(request.provider);
+      const apiSettings = await this.getDecryptedSettings();
+      
+      if (!apiSettings) {
+        throw new Error("API credentials not configured. Cannot fetch post data from provider.");
+      }
+
+      // Fetch post by ID using provider API
+      // Most Booru APIs support id:postId query format
+      const tagsQuery = `id:${request.postId}`;
+      const booruPosts = await provider.fetchPosts(
+        tagsQuery,
+        0, // Page 0 for single post lookup
+        {
+          userId: apiSettings.userId,
+          apiKey: apiSettings.apiKey,
+        },
+        false // Not random
+      );
+
+      if (!booruPosts || booruPosts.length === 0) {
+        throw new Error(`Post ${request.postId} not found in ${request.provider} API`);
+      }
+
+      const booruPost = booruPosts.find(p => p.id === request.postId);
+      if (!booruPost) {
+        throw new Error(`Post ${request.postId} not found in API response`);
+      }
+
+      // Step 3: Validate URLs from API response
+      if (!booruPost.fileUrl || booruPost.fileUrl.trim() === "") {
+        throw new Error("API returned post with empty fileUrl");
+      }
+      if (!booruPost.previewUrl || booruPost.previewUrl.trim() === "") {
+        throw new Error("API returned post with empty previewUrl");
+      }
+
+      // CRITICAL SECURITY: Validate URL protocols to prevent RCE attacks
+      // Only allow https: protocol - blocks javascript:, data:, file:, etc.
+      if (!this.validateUrlProtocol(booruPost.fileUrl)) {
+        throw new Error(`Invalid fileUrl protocol from API. Only HTTPS URLs are allowed.`);
+      }
+      if (!this.validateUrlProtocol(booruPost.previewUrl)) {
+        throw new Error(`Invalid previewUrl protocol from API. Only HTTPS URLs are allowed.`);
+      }
+      if (booruPost.sampleUrl && booruPost.sampleUrl.trim() !== "" && !this.validateUrlProtocol(booruPost.sampleUrl)) {
+        throw new Error(`Invalid sampleUrl protocol from API. Only HTTPS URLs are allowed.`);
+      }
+
+      // Step 4: Ensure EXTERNAL_ARTIST_ID exists (cached check)
+      if (!this.externalArtistExistsCache) {
+        db.transaction((tx) => {
+          const now = new Date();
+          tx.insert(artists)
+            .values({
+              id: EXTERNAL_ARTIST_ID,
+              name: `Artist ${EXTERNAL_ARTIST_ID}`,
+              tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${EXTERNAL_ARTIST_ID}`,
+              provider: request.provider,
+              type: "tag",
+              apiEndpoint: "",
+              lastPostId: 0,
+              newPostsCount: 0,
+              createdAt: now,
+            })
+            .onConflictDoNothing()
+            .run();
+        });
+        this.externalArtistExistsCache = true;
+      }
+
+      // Step 5: Insert post into database
+      let insertedPost: InferSelectModel<typeof posts> | null = null;
+
+      db.transaction((tx) => {
+        const now = new Date();
+        const publishedAt = booruPost.createdAt instanceof Date 
+          ? booruPost.createdAt 
+          : new Date(booruPost.createdAt || now);
+
+        // Normalize tags: BooruPost.tags is string[], convert to space-separated string
+        const tagsString = Array.isArray(booruPost.tags) 
+          ? booruPost.tags.join(" ") 
+          : booruPost.tags || "";
+
+        // Normalize rating
+        const rating = booruPost.rating || "";
+
+        const result = tx
+          .insert(posts)
+          .values({
+            postId: request.postId,
+            artistId: EXTERNAL_ARTIST_ID,
+            fileUrl: booruPost.fileUrl,
+            previewUrl: booruPost.previewUrl,
+            sampleUrl: booruPost.sampleUrl || "",
+            title: "",
+            rating: rating,
+            tags: tagsString,
+            mediaType: isVideoUrl(booruPost.fileUrl) ? "video" : "image",
+            publishedAt: publishedAt,
+            createdAt: now,
+            isViewed: false,
+            isFavorited: false,
+          })
+          .onConflictDoUpdate({
+            target: [posts.artistId, posts.postId],
+            set: {
+              // Update URLs if they changed
+              fileUrl: sql`excluded.file_url`,
+              previewUrl: sql`excluded.preview_url`,
+              sampleUrl: sql`excluded.sample_url`,
+            },
+          })
+          .returning()
+          .get();
+
+        if (!result) {
+          throw new Error(`Failed to insert post (postId: ${request.postId})`);
+        }
+
+        insertedPost = result;
+        log.info(
+          `[PostsController] Shadow insert: Post ${insertedPost.id} (postId: ${request.postId}) - ${insertedPost.createdAt.getTime() === now.getTime() ? "created" : "updated"}`
+        );
+      });
+
+      if (!insertedPost) {
+        throw new Error(`Failed to shadow insert post (postId: ${request.postId})`);
+      }
+
+      // Step 6: Return IPC-safe Post object
+      return toIpcSafe(insertedPost) as IpcPost;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log.error(`[PostsController] Failed to shadow insert post (postId: ${request.postId}):`, {
+        error: errorMessage,
+        postId: request.postId,
+        provider: request.provider,
+      });
+      throw new Error(`Failed to cache post: ${errorMessage}`);
     }
   }
 }

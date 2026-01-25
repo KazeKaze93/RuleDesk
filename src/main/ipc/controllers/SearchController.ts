@@ -14,7 +14,7 @@ import type { BooruPost } from "../../providers/types";
 import type { Post } from "../../db/schema";
 import { SearchPostsSchema } from "../../../shared/schemas/search";
 import { toIpcSafe } from "../../utils/ipc-serialization";
-import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
 import { XMLParser } from "fast-xml-parser";
 import { isVideoUrl } from "@shared/utils/media";
 
@@ -202,7 +202,7 @@ export class SearchController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: SearchPostsParams
   ): Promise<IpcPost[]> {
-    const { tags, page } = params;
+    const { tags, page, isRandom } = params;
 
     try {
       // Get provider (default to rule34)
@@ -224,10 +224,17 @@ export class SearchController extends BaseController {
         : "";
 
       // Step 1: Primary Search - try original tags
+      // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
+      // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
+      // should be done via API's native sort:random parameter if the provider supports it.
+      // If the provider doesn't support native randomization, this pseudo-random approach
+      // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
+      const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
       let booruPosts = await provider.fetchPosts(
         tagsString,
-        page,
-        providerSettings
+        apiPage,
+        providerSettings,
+        isRandom
       );
 
       // Step 2: Fallback Logic (only if Step 1 returned 0 AND input is a single word)
@@ -248,8 +255,9 @@ export class SearchController extends BaseController {
               const suggestionString = provider.formatTag(suggestion, "tag");
               booruPosts = await provider.fetchPosts(
                 suggestionString,
-                page,
-                providerSettings
+                apiPage,
+                providerSettings,
+                isRandom
               );
               
               if (booruPosts.length > 0) {
@@ -270,8 +278,9 @@ export class SearchController extends BaseController {
           try {
             booruPosts = await provider.fetchPosts(
               formattedUserTag,
-              page,
-              providerSettings
+              apiPage,
+              providerSettings,
+              isRandom
             );
             
             if (booruPosts.length > 0) {

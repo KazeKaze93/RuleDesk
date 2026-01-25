@@ -1,12 +1,20 @@
-import type { Artist, Post } from "./main/db/schema";
+import type { Artist, Post, Playlist } from "./main/db/schema";
 import {
   IpcBridge,
   UpdateStatusCallback,
   UpdateProgressCallback,
   AddArtistPayload,
 } from "./main/bridge";
-import type { PostData } from "./shared/schemas/post";
+import type { ShadowInsertRequest } from "./shared/schemas/shadow-insert";
 import type { SearchResults, ProviderId } from "./main/providers";
+import type {
+  CreatePlaylistRequest,
+  UpdatePlaylistRequest,
+  AddPostsToPlaylistRequest,
+  RemovePostsFromPlaylistRequest,
+  GetPlaylistPostsRequest,
+  ResolvePlaylistPostsRequest,
+} from "./shared/schemas/playlist";
 
 export type SyncErrorCallback = (message: string) => void;
 
@@ -60,6 +68,7 @@ export interface IpcApi extends IpcBridge {
     artistId?: number;
     page?: number;
     filters?: PostQueryFilters;
+    isRandom?: boolean;
   }) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
 
@@ -90,6 +99,8 @@ export interface IpcApi extends IpcBridge {
 
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
 
+  shadowInsertPost: (request: ShadowInsertRequest) => Promise<Post>;
+
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
   searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
@@ -103,6 +114,18 @@ export interface IpcApi extends IpcBridge {
   writeToClipboard: (text: string) => Promise<boolean>;
 
   verifyCredentials: () => Promise<boolean>;
+
+  // Playlists
+  createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
+  getPlaylists: () => Promise<Playlist[]>;
+  getPlaylist: (playlistId: number) => Promise<Playlist | null>;
+  updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
+  deletePlaylist: (playlistId: number) => Promise<boolean>;
+  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
+  removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
+  getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
+  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
+  getPlaylistsContainingPost: (postId: number) => Promise<number[]>;
 }
 
 declare global {

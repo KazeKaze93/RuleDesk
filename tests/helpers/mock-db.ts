@@ -36,7 +36,7 @@ export function createMockDb() {
     const journalContent = fs.readFileSync(journalPath, 'utf-8');
     const journal = JSON.parse(journalContent);
     migrationEntries = journal.entries || [];
-  } catch (journalError) {
+  } catch (_journalError) {
     // If journal doesn't exist, fall back to standard migrate
     console.warn('[Test DB] Could not read migration journal, using standard migrate');
     try {
