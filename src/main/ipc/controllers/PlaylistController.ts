@@ -69,9 +69,10 @@ export class PlaylistController extends BaseController {
   }
 
   // Cache FTS5 table count to avoid blocking Main Process with COUNT(*) queries
-  // Initialized once at setup() and updated when posts are inserted/updated
+  // Initialized lazily on first use and invalidated when posts_fts changes
   private fts5CountCache: number | null = null;
   private fts5CountCacheInitialized: boolean = false;
+  private fts5CountCacheTimestamp: number | null = null; // Timestamp when cache was last updated
 
   /**
    * Get decrypted settings for API authentication
@@ -249,26 +250,100 @@ export class PlaylistController extends BaseController {
   /**
    * Initialize FTS5 count cache lazily (called on first use, not at startup)
    * This avoids blocking Main Process during app startup
+   * 
+   * CACHE INVALIDATION: Checks fts5_cache_invalidation table to ensure cache is still valid.
+   * If posts were added/updated/deleted through other controllers, cache is automatically invalidated.
+   * 
+   * GRACEFUL DEGRADATION: If fts5_cache_invalidation table doesn't exist (migration not applied),
+   * falls back to simple caching without invalidation tracking. This ensures app works even if
+   * migration 0010_add_fts5_cache_invalidation.sql hasn't been applied yet.
    */
   private initializeFts5CountCache(): void {
-    // Only initialize once
-    if (this.fts5CountCacheInitialized) {
-      return;
-    }
+    // Check if cache needs invalidation by comparing timestamps
+    const sqlite = getSqliteInstance();
     
     try {
-      const sqlite = getSqliteInstance();
-      const countStmt = sqlite.prepare<[], { count: number }>(
-        "SELECT COUNT(*) as count FROM posts_fts"
+      // Get current invalidation timestamp from database
+      // If table doesn't exist, this will throw and we'll fall back to simple caching
+      const invalidationStmt = sqlite.prepare<[], { invalidated_at: number }>(
+        "SELECT invalidated_at FROM fts5_cache_invalidation WHERE id = 1"
       );
-      const ftsCount = countStmt.get();
-      this.fts5CountCache = ftsCount?.count ?? 0;
-      this.fts5CountCacheInitialized = true;
-      log.info(`[PlaylistController] FTS5 count cache initialized: ${this.fts5CountCache} entries`);
+      const invalidation = invalidationStmt.get();
+      
+      if (invalidation) {
+        // If cache exists but timestamp changed, invalidate it
+        if (this.fts5CountCacheInitialized && 
+            this.fts5CountCacheTimestamp !== null &&
+            this.fts5CountCacheTimestamp < invalidation.invalidated_at) {
+          log.debug(
+            `[PlaylistController] FTS5 cache invalidated (timestamp changed: ${this.fts5CountCacheTimestamp} -> ${invalidation.invalidated_at})`
+          );
+          this.fts5CountCache = null;
+          this.fts5CountCacheInitialized = false;
+        }
+        
+        // Only initialize if not already initialized or if cache was invalidated
+        if (!this.fts5CountCacheInitialized) {
+          const countStmt = sqlite.prepare<[], { count: number }>(
+            "SELECT COUNT(*) as count FROM posts_fts"
+          );
+          const ftsCount = countStmt.get();
+          this.fts5CountCache = ftsCount?.count ?? 0;
+          this.fts5CountCacheTimestamp = invalidation.invalidated_at;
+          this.fts5CountCacheInitialized = true;
+          log.info(
+            `[PlaylistController] FTS5 count cache initialized: ${this.fts5CountCache} entries (timestamp: ${this.fts5CountCacheTimestamp})`
+          );
+        }
+      } else {
+        // Table exists but no row (should not happen, but handle gracefully)
+        log.warn("[PlaylistController] fts5_cache_invalidation table exists but has no row, initializing cache without invalidation tracking");
+        const countStmt = sqlite.prepare<[], { count: number }>(
+          "SELECT COUNT(*) as count FROM posts_fts"
+        );
+        const ftsCount = countStmt.get();
+        this.fts5CountCache = ftsCount?.count ?? 0;
+        this.fts5CountCacheTimestamp = Date.now();
+        this.fts5CountCacheInitialized = true;
+        log.info(`[PlaylistController] FTS5 count cache initialized: ${this.fts5CountCache} entries (no invalidation tracking)`);
+      }
     } catch (error) {
-      log.warn("[PlaylistController] Failed to initialize FTS5 count cache:", error);
-      this.fts5CountCache = null;
-      this.fts5CountCacheInitialized = false;
+      // GRACEFUL DEGRADATION: If table doesn't exist (migration not applied), fall back to simple caching
+      // This ensures app works even if migration 0010_add_fts5_cache_invalidation.sql hasn't been applied yet
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("no such table: fts5_cache_invalidation")) {
+        log.debug(
+          "[PlaylistController] fts5_cache_invalidation table not found (migration 0010 not applied), " +
+          "using simple caching without invalidation tracking. Cache will be initialized once and not invalidated."
+        );
+        // Fall back to simple caching without invalidation tracking
+        if (!this.fts5CountCacheInitialized) {
+          try {
+            const countStmt = sqlite.prepare<[], { count: number }>(
+              "SELECT COUNT(*) as count FROM posts_fts"
+            );
+            const ftsCount = countStmt.get();
+            this.fts5CountCache = ftsCount?.count ?? 0;
+            this.fts5CountCacheTimestamp = Date.now();
+            this.fts5CountCacheInitialized = true;
+            log.info(
+              `[PlaylistController] FTS5 count cache initialized (simple mode): ${this.fts5CountCache} entries. ` +
+              `Note: Cache will not be invalidated automatically. Apply migration 0010_add_fts5_cache_invalidation.sql to enable automatic cache invalidation.`
+            );
+          } catch (countError) {
+            log.warn("[PlaylistController] Failed to initialize FTS5 count cache (fallback):", countError);
+            this.fts5CountCache = null;
+            this.fts5CountCacheInitialized = false;
+            this.fts5CountCacheTimestamp = null;
+          }
+        }
+      } else {
+        // Other errors (not "table not found") are logged as warnings
+        log.warn("[PlaylistController] Failed to initialize FTS5 count cache:", error);
+        this.fts5CountCache = null;
+        this.fts5CountCacheInitialized = false;
+        this.fts5CountCacheTimestamp = null;
+      }
     }
   }
 
@@ -354,8 +429,44 @@ export class PlaylistController extends BaseController {
     // In any case, blocking IPC handler with COUNT(*) is unacceptable.
     // Return empty result instead of blocking UI.
     // Initialize cache lazily on first use (not at startup)
+    // CACHE INVALIDATION: Cache is automatically invalidated by SQLite triggers
+    // when posts_fts changes (INSERT/UPDATE/DELETE), ensuring accuracy even if
+    // posts are added through other controllers or direct database operations
+    // 
+    // GRACEFUL DEGRADATION: If fts5_cache_invalidation table doesn't exist,
+    // falls back to simple caching without invalidation checks
     if (!this.fts5CountCacheInitialized) {
       this.initializeFts5CountCache();
+    } else {
+      // Check if cache needs invalidation (posts may have been added through other controllers)
+      // This is a lightweight check (single SELECT) compared to COUNT(*)
+      // Only perform if cache invalidation table exists (migration applied)
+      try {
+        const sqlite = getSqliteInstance();
+        const invalidationStmt = sqlite.prepare<[], { invalidated_at: number }>(
+          "SELECT invalidated_at FROM fts5_cache_invalidation WHERE id = 1"
+        );
+        const invalidation = invalidationStmt.get();
+        
+        if (invalidation && 
+            this.fts5CountCacheTimestamp !== null &&
+            this.fts5CountCacheTimestamp < invalidation.invalidated_at) {
+          // Cache is stale, reinitialize
+          log.debug("[PlaylistController] FTS5 cache is stale, reinitializing...");
+          this.fts5CountCache = null;
+          this.fts5CountCacheInitialized = false;
+          this.fts5CountCacheTimestamp = null;
+          this.initializeFts5CountCache();
+        }
+      } catch (error) {
+        // If invalidation check fails (table doesn't exist), continue with existing cache
+        // This is graceful degradation - app works without migration, just without cache invalidation
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (!errorMessage.includes("no such table: fts5_cache_invalidation")) {
+          // Only log non-"table not found" errors as debug (not warnings)
+          log.debug("[PlaylistController] Failed to check FTS5 cache invalidation:", error);
+        }
+      }
     }
     
     const count = this.getFts5Count();
@@ -386,6 +497,12 @@ export class PlaylistController extends BaseController {
           const trimmed = tag.trim().toLowerCase();
           if (trimmed.length === 0) {
             throw new Error("Tag cannot be empty");
+          }
+          
+          // SECURITY: Block single asterisk (*) - it can cause unpredictable FTS5 parser behavior
+          // FTS5 wildcard (*) must be at the end of a tag, not standalone
+          if (trimmed === "*") {
+            throw new Error(`Invalid tag: "*". Wildcard (*) can only appear at the end of tags, not as a standalone tag.`);
           }
           
           const strictWhitelistRegex = /^[a-zA-Z0-9_* -]+$/;
@@ -454,6 +571,12 @@ export class PlaylistController extends BaseController {
           const trimmed = tag.trim().toLowerCase();
           if (trimmed.length === 0) {
             throw new Error("Tag cannot be empty");
+          }
+          
+          // SECURITY: Block single asterisk (*) - it can cause unpredictable FTS5 parser behavior
+          // FTS5 wildcard (*) must be at the end of a tag, not standalone
+          if (trimmed === "*") {
+            throw new Error(`Invalid tag: "*". Wildcard (*) can only appear at the end of tags, not as a standalone tag.`);
           }
           
           const strictWhitelistRegex = /^[a-zA-Z0-9_* -]+$/;
@@ -578,11 +701,10 @@ export class PlaylistController extends BaseController {
     try {
       const db = this.getDb();
 
-      const result = db
-        .select()
-        .from(playlists)
-        .orderBy(desc(playlists.createdAt))
-        .all();
+      // Use Drizzle Query API for cleaner code and automatic type inference
+      const result = await db.query.playlists.findMany({
+        orderBy: (playlists, { desc }) => [desc(playlists.createdAt)],
+      });
 
       log.info(`[PlaylistController] Retrieved ${result.length} playlists`);
 
@@ -607,12 +729,10 @@ export class PlaylistController extends BaseController {
     try {
       const db = this.getDb();
 
-      const result = db
-        .select()
-        .from(playlists)
-        .where(eq(playlists.id, playlistId))
-        .limit(1)
-        .get();
+      // Use Drizzle Query API for cleaner code and automatic type inference
+      const result = await db.query.playlists.findFirst({
+        where: (playlists, { eq }) => eq(playlists.id, playlistId),
+      });
 
       if (!result) {
         return null;
@@ -893,8 +1013,12 @@ export class PlaylistController extends BaseController {
   /**
    * Get all playlists that contain a specific post
    * 
-   * Uses a single JOIN query to efficiently find all playlists containing the post.
+   * Uses Drizzle Query API for cleaner code and automatic type inference.
    * This eliminates N+1 query problem when checking post membership across multiple playlists.
+   * 
+   * PERFORMANCE: Uses direct query on playlist_entries with WHERE clause.
+   * No JOIN needed - we only need playlistId, which is already in playlist_entries table.
+   * This is more efficient than JOIN because we don't need any data from playlists table.
    * 
    * @param _event - IPC event (unused)
    * @param postId - Post ID (database ID)
@@ -907,15 +1031,14 @@ export class PlaylistController extends BaseController {
     try {
       const db = this.getDb();
 
-      // Single JOIN query to get all playlists containing this post
-      // Much more efficient than N queries (one per playlist)
-      const result = db
-        .select({
-          playlistId: playlistEntries.playlistId,
-        })
-        .from(playlistEntries)
-        .where(eq(playlistEntries.postId, postId))
-        .all();
+      // Use Drizzle Query API for cleaner code and automatic type inference
+      // Efficient single query: SELECT playlist_id FROM playlist_entries WHERE post_id = ?
+      const result = await db.query.playlistEntries.findMany({
+        where: (playlistEntries, { eq }) => eq(playlistEntries.postId, postId),
+        columns: {
+          playlistId: true,
+        },
+      });
 
       const playlistIds = result.map((r) => r.playlistId);
       
@@ -952,12 +1075,10 @@ export class PlaylistController extends BaseController {
       const db = this.getDb();
 
       // Get playlist to check if it's smart
-      const playlist = db
-        .select()
-        .from(playlists)
-        .where(eq(playlists.id, playlistId))
-        .limit(1)
-        .get();
+      // Use Drizzle Query API for cleaner code and automatic type inference
+      const playlist = await db.query.playlists.findFirst({
+        where: (playlists, { eq }) => eq(playlists.id, playlistId),
+      });
 
       if (!playlist) {
         throw new Error(`Playlist ${playlistId} not found`);

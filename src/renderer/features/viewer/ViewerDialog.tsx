@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useMemo } from "react";
+import { useEffect, useCallback, useState, useMemo, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -92,8 +92,18 @@ const PostNotFoundFallback = ({
   const [isInserting, setIsInserting] = useState(false);
   const [insertedPost, setInsertedPost] = useState<Post | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // AbortController для отмены запросов при быстром переключении постов
+  // Предотвращает забивание очереди ненужными запросами
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    // Отменить предыдущий запрос при изменении currentPostId
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
     // Try to find remote post in infiniteData
     // Only attempt shadow insert for playlist origin (remote posts from playlists)
     if (!infiniteData || queue.origin?.kind !== "playlist") {
@@ -119,7 +129,16 @@ const PostNotFoundFallback = ({
     }
 
     // Found remote post - trigger shadow insert
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    
     const performShadowInsert = async () => {
+      // Check if request was already aborted before starting
+      if (abortController.signal.aborted) {
+        return;
+      }
+      
       setIsInserting(true);
       setError(null);
 
@@ -143,17 +162,37 @@ const PostNotFoundFallback = ({
             provider = queue.origin.provider;
           } else {
             // Fallback: fetch playlist to get provider from queryJson
+            // Check abort signal before async operation
+            if (abortController.signal.aborted) {
+              return;
+            }
+            
             try {
               const playlist = await window.api.getPlaylist(queue.origin.playlistId);
+              
+              // Check abort signal after async operation
+              if (abortController.signal.aborted) {
+                return;
+              }
+              
               if (playlist?.isSmart && playlist.queryJson) {
                 const parsedQuery = JSON.parse(playlist.queryJson) as { provider?: "rule34" | "gelbooru" };
                 provider = parsedQuery.provider ?? "rule34";
               }
             } catch (error) {
+              // Ignore errors if request was aborted
+              if (abortController.signal.aborted) {
+                return;
+              }
               log.warn(`[ViewerDialog] Failed to get playlist for provider detection:`, error);
               // Fallback to default provider
             }
           }
+        }
+        
+        // Check abort signal before shadow insert
+        if (abortController.signal.aborted) {
+          return;
         }
         
         // Perform shadow insert - Main process fetches data from API
@@ -161,6 +200,13 @@ const PostNotFoundFallback = ({
           postId: foundPost.postId,
           provider,
         });
+        
+        // CRITICAL: Check if request was aborted after async operation
+        // If user switched posts, ignore the result to prevent stale data
+        if (abortController.signal.aborted) {
+          log.debug(`[ViewerDialog] Shadow insert aborted for postId ${foundPost.postId} (user switched posts)`);
+          return;
+        }
         
         log.info(`[ViewerDialog] Shadow insert successful: postId ${foundPost.postId} -> local id ${insertedPost.id}`);
 
@@ -190,6 +236,12 @@ const PostNotFoundFallback = ({
         setInsertedPost(insertedPost);
         setIsInserting(false);
       } catch (err) {
+        // Ignore errors if request was aborted (user switched posts)
+        if (abortController.signal.aborted) {
+          log.debug(`[ViewerDialog] Shadow insert error ignored (request aborted):`, err);
+          return;
+        }
+        
         log.error(`[ViewerDialog] Shadow insert failed for postId ${foundPost.postId}:`, err);
         const errorMessage = err instanceof Error ? err.message : String(err);
         setError(errorMessage || "Failed to cache post");
@@ -198,7 +250,15 @@ const PostNotFoundFallback = ({
     };
 
     performShadowInsert();
-  }, [currentPostId, infiniteData, queue.origin, queryClient]);
+    
+    // Cleanup: abort request on unmount or when currentPostId changes
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [currentPostId, infiniteData, queue, queryClient]);
 
   // If post was inserted, render it
   if (insertedPost) {

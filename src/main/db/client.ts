@@ -30,10 +30,15 @@ export async function initializeDatabase(): Promise<AppDatabase> {
 
   // Only enable verbose SQLite logging in DEBUG mode to avoid performance issues
   // Verbose logging can generate thousands of log entries per query with joins
+  // CRITICAL: Set busyTimeout to handle SQLITE_BUSY errors from concurrent transactions
+  // Default timeout: 5000ms (5 seconds) - prevents race conditions in shadowInsertPost
+  // If two processes try to insert the same post simultaneously, SQLite will wait up to 5s
+  // instead of immediately throwing SQLITE_BUSY
   const sqlite = new Database(dbPath, {
     verbose: process.env.DEBUG === "true" || process.env.DEBUG_SQLITE === "true"
       ? (message) => log.debug(`[SQLite] ${message}`)
       : undefined,
+    timeout: 5000, // 5 seconds timeout for SQLITE_BUSY (concurrent access)
   });
 
   // Configure SQLite for optimal performance and data safety

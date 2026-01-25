@@ -6,6 +6,7 @@ import {
   index,
   primaryKey,
 } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm";
 
 import {
   ARTIST_TYPES,
@@ -201,3 +202,19 @@ export type Playlist = typeof playlists.$inferSelect;
 export type NewPlaylist = typeof playlists.$inferInsert;
 export type PlaylistEntry = typeof playlistEntries.$inferSelect;
 export type NewPlaylistEntry = typeof playlistEntries.$inferInsert;
+
+// Relations for Drizzle Query API
+export const playlistsRelations = relations(playlists, ({ many }) => ({
+  entries: many(playlistEntries),
+}));
+
+export const playlistEntriesRelations = relations(playlistEntries, ({ one }) => ({
+  playlist: one(playlists, {
+    fields: [playlistEntries.playlistId],
+    references: [playlists.id],
+  }),
+  post: one(posts, {
+    fields: [playlistEntries.postId],
+    references: [posts.id],
+  }),
+}));

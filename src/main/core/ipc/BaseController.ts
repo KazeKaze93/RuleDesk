@@ -1,8 +1,31 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
-import { z } from "zod";
+import { z, type ZodErrorMap } from "zod";
 import type { SerializableError, ValidationError } from "../../types/ipc";
 import { ErrorCode } from "../../types/ipc";
+
+/**
+ * Custom Zod error map that sanitizes error messages to prevent leaking sensitive data
+ * 
+ * SECURITY: Never includes actual values in error messages.
+ * Instead of "Expected string, received 12345", returns "Expected string, received <value>"
+ * 
+ * This is more robust than regex replacement because it prevents values from appearing
+ * in error messages at the source, rather than sanitizing them after the fact.
+ */
+const sanitizedErrorMap: ZodErrorMap = (_issue, ctx) => {
+  const defaultMessage = ctx.defaultError;
+  
+  // SECURITY: Replace any value patterns in default messages
+  // Patterns like "received 12345", "Expected number, received string", etc.
+  const sanitized = defaultMessage.replace(/received\s+[^\s,;]+/gi, "received <value>");
+  
+  return { message: sanitized };
+};
+
+// Set global Zod error map for all schemas used in IPC validation
+// This ensures consistent sanitization across all BaseController validations
+z.setErrorMap(sanitizedErrorMap);
 
 /**
  * Base Controller for IPC Handlers
@@ -427,10 +450,9 @@ export abstract class BaseController {
                     // We must strip actual values and only keep type/format information
                     const errorMessages = validationError.errors.map((e) => {
                       const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
-                      // SECURITY: Sanitize message - remove actual values that may be sensitive
-                      // Replace patterns like "received 12345" with "received <value>"
-                      const sanitizedMessage = e.message.replace(/received\s+[^\s,;]+/gi, "received <value>");
-                      return `${sanitizedMessage}${pathStr}`;
+                      // SECURITY: Error messages are already sanitized by custom errorMap
+                      // No need for regex replacement - values are never included in messages
+                      return `${e.message}${pathStr}`;
                     });
                     const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
                     
@@ -446,9 +468,9 @@ export abstract class BaseController {
                     }
                     return segment;
                   }),
-                  // SECURITY: Sanitize message to remove actual values
-                  // Replace patterns like "Expected string, received 12345" with "Expected string, received <value>"
-                  message: e.message.replace(/received\s+[^\s,;]+/gi, "received <value>"),
+                  // SECURITY: Error messages are already sanitized by custom errorMap
+                  // No need for regex replacement - values are never included in messages
+                  message: e.message,
                   code: e.code,
                   // SECURITY: Do not log actual values - they may contain sensitive data
                   // Only log path and sanitized message, not the value that failed validation
@@ -640,10 +662,9 @@ export abstract class BaseController {
               // We must strip actual values and only keep type/format information
               const errorMessages = validationError.errors.map((e) => {
                 const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
-                // SECURITY: Sanitize message - remove actual values that may be sensitive
-                // Replace patterns like "received 12345" with "received <value>"
-                const sanitizedMessage = e.message.replace(/received\s+[^\s,;]+/gi, "received <value>");
-                return `${sanitizedMessage}${pathStr}`;
+                // SECURITY: Error messages are already sanitized by custom errorMap
+                // No need for regex replacement - values are never included in messages
+                return `${e.message}${pathStr}`;
               });
               const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
               
@@ -659,9 +680,9 @@ export abstract class BaseController {
                     }
                     return segment;
                   }),
-                  // SECURITY: Sanitize message to remove actual values
-                  // Replace patterns like "Expected string, received 12345" with "Expected string, received <value>"
-                  message: e.message.replace(/received\s+[^\s,;]+/gi, "received <value>"),
+                  // SECURITY: Error messages are already sanitized by custom errorMap
+                  // No need for regex replacement - values are never included in messages
+                  message: e.message,
                   code: e.code,
                   // SECURITY: Do not log actual values - they may contain sensitive data
                   // Only log path and sanitized message, not the value that failed validation

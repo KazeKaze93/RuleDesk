@@ -64,6 +64,13 @@
       "when": 1769269362002,
       "tag": "0008_famous_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1769269363000,
+      "tag": "0010_add_fts5_cache_invalidation",
+      "breakpoints": true
     }
   ]
 }
