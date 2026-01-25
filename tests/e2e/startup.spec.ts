@@ -39,6 +39,12 @@ test.describe('Application Startup', () => {
             '--no-sandbox', // ⚠️ UNSAFE: Only for CI/test environment, never in production
             '--disable-dev-shm-usage',
             '--disable-software-rasterizer',
+            '--force-device-scale-factor=1', // Force device scale factor for consistent rendering
+            '--enable-logging', // Enable logging for debugging in CI
+            '--disable-features=CalculateNativeWinOcclusion', // Disable window occlusion calculation for headless
+            '--disable-background-timer-throttling', // Prevent throttling in background
+            '--disable-backgrounding-occluded-windows', // Prevent backgrounding occluded windows
+            '--disable-renderer-backgrounding', // Prevent renderer backgrounding
           ] : []),
         ],
         env: {
@@ -71,8 +77,26 @@ test.describe('Application Startup', () => {
     // The app may show a loading window first, then main window
     console.log('Waiting for window to appear...');
     
-    // Get the first window (with timeout)
-    const window = await app.firstWindow({ timeout: 30000 });
+    // Wait for app to initialize (database migrations, etc.)
+    // Give it more time in CI/headless mode
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // Get the first window (with increased timeout for CI)
+    // In headless mode, windows may take longer to appear
+    const timeout = process.env.CI === 'true' ? 60000 : 30000;
+    let window: Page;
+    try {
+      window = await app.firstWindow({ timeout });
+    } catch (error) {
+      // If firstWindow fails, try waiting for window event
+      console.warn('firstWindow failed, waiting for window event...', error);
+      await app.waitForEvent('window', { timeout });
+      const windows = app.windows();
+      if (windows.length === 0) {
+        throw new Error('No windows available after waiting. App may have failed to initialize.');
+      }
+      window = windows[0];
+    }
     console.log('Window obtained');
     
     // Wait a moment for window to initialize

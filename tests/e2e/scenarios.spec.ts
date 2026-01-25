@@ -13,8 +13,25 @@ test.describe('User Journeys', () => {
     app = session.app;
     tempDir = session.tempDir;
     
-    // Get the first window (with timeout)
-    page = await app.firstWindow({ timeout: 30000 });
+    // Wait for app to initialize (database migrations, etc.)
+    // Give it more time in CI/headless mode
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // Get the first window (with increased timeout for CI)
+    // In headless mode, windows may take longer to appear
+    const timeout = process.env.CI === 'true' ? 60000 : 30000;
+    try {
+      page = await app.firstWindow({ timeout });
+    } catch (error) {
+      // If firstWindow fails, try waiting for window event
+      console.warn('firstWindow failed, waiting for window event...', error);
+      await app.waitForEvent('window', { timeout });
+      const windows = app.windows();
+      if (windows.length === 0) {
+        throw new Error('No windows available after waiting. App may have failed to initialize.');
+      }
+      page = windows[0];
+    }
     
     // Wait a moment for window to initialize (app may show loading window first)
     await new Promise(resolve => setTimeout(resolve, 3000));

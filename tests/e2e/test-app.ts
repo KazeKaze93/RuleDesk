@@ -47,12 +47,17 @@ export async function launchTestApp() {
       // Headless mode flags for Electron (Electron doesn't support --headless flag directly)
       // Playwright handles headless mode automatically, but we add stability flags for CI
       // SECURITY WARNING: --no-sandbox is UNSAFE and only used in isolated test environment
-      // This code path is NEVER executed in production - only in E2E tests via Playwright
       ...(isHeadless ? [
         '--disable-gpu',
         '--no-sandbox', // ⚠️ UNSAFE: Only for CI/test environment, never in production
         '--disable-dev-shm-usage',
         '--disable-software-rasterizer',
+        '--force-device-scale-factor=1', // Force device scale factor for consistent rendering
+        '--enable-logging', // Enable logging for debugging in CI
+        '--disable-features=CalculateNativeWinOcclusion', // Disable window occlusion calculation for headless
+        '--disable-background-timer-throttling', // Prevent throttling in background
+        '--disable-backgrounding-occluded-windows', // Prevent backgrounding occluded windows
+        '--disable-renderer-backgrounding', // Prevent renderer backgrounding
       ] : []),
     ],
     env: {
