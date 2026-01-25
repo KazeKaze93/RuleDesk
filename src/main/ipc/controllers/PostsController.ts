@@ -21,6 +21,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import type { InferSelectModel } from "drizzle-orm";
+import type { IpcSafe } from "../../../shared/types/ipc";
 import {
   PostDataSchema,
   GetPostsSchema,
@@ -45,13 +46,13 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  * Then applies toIpcSafe transformation to convert Date fields to numbers.
  * This ensures type safety and eliminates manual field enumeration.
  */
-type IpcPost = {
-  [K in keyof InferSelectModel<typeof posts>]: InferSelectModel<typeof posts>[K] extends Date
-    ? number
-    : InferSelectModel<typeof posts>[K] extends Date | null
-    ? number | null
-    : InferSelectModel<typeof posts>[K];
-};
+/**
+ * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
+ * Required for Electron 39+ IPC serialization compatibility.
+ *
+ * Uses shared IpcSafe utility type for automatic Date -> number conversion.
+ */
+type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
 
 // Internal types (not exported - use types from src/main/types/ipc.ts instead)
 type GetPostsParams = GetPostsRequest;
@@ -1128,149 +1129,75 @@ export class PostsController extends BaseController {
       }
 
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
-      // PERFORMANCE WARNING: This transaction performs multiple synchronous DB operations
-      // which can block the Main Process on slow disks or under heavy load.
-      // TODO: Consider moving heavy write operations to a Worker Thread or Utility Process
-      // for better UI responsiveness. For now, transactions are kept synchronous as required
-      // by better-sqlite3, but this should be optimized in the future.
+      // PERFORMANCE OPTIMIZATION: Use single atomic INSERT ... ON CONFLICT DO UPDATE with RETURNING
+      // This eliminates multiple queries (select -> select -> insert -> select) and reduces
+      // Main Process blocking time. Single query is faster and more atomic.
       let insertedPostId: number | null = null;
 
       db.transaction((tx) => {
-        // Check if post already exists (by postId and EXTERNAL_ARTIST_ID)
-        const existingPost = tx
-          .select()
-          .from(posts)
-          .where(
-            and(
-              eq(posts.postId, postData.postId),
-              eq(posts.artistId, EXTERNAL_ARTIST_ID)
-            )
-          )
-          .limit(1)
-          .all()[0];
-
-        if (existingPost) {
-          // Post already exists - return existing ID
-          insertedPostId = existingPost.id;
-          log.debug(
-            `[PostsController] Shadow insert: Post already exists (id: ${existingPost.id}, postId: ${postData.postId})`
-          );
-          return;
-        }
-
-        // Ensure EXTERNAL_ARTIST_ID exists
-        const existingArtist = tx
-          .select()
-          .from(artists)
-          .where(eq(artists.id, EXTERNAL_ARTIST_ID))
-          .limit(1)
-          .all()[0];
-
-        if (!existingArtist) {
-          // Create placeholder artist
-          const now = new Date();
-          tx.insert(artists)
-            .values({
-              id: EXTERNAL_ARTIST_ID,
-              name: `Artist ${EXTERNAL_ARTIST_ID}`,
-              tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${EXTERNAL_ARTIST_ID}`,
-              provider: "rule34",
-              type: "tag",
-              apiEndpoint: "",
-              lastPostId: 0,
-              newPostsCount: 0,
-              createdAt: now,
-            })
-            .run();
-          log.debug(
-            `[PostsController] Shadow insert: Created placeholder artist ${EXTERNAL_ARTIST_ID}`
-          );
-        }
-
-        // Insert post using onConflictDoNothing to handle race conditions gracefully
-        // If post already exists (unique constraint on artistId + postId), ignore and return existing ID
+        // Ensure EXTERNAL_ARTIST_ID exists first (required for foreign key)
+        // Use INSERT OR IGNORE to avoid error if artist already exists
         const now = new Date();
+        tx.insert(artists)
+          .values({
+            id: EXTERNAL_ARTIST_ID,
+            name: `Artist ${EXTERNAL_ARTIST_ID}`,
+            tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${EXTERNAL_ARTIST_ID}`,
+            provider: "rule34",
+            type: "tag",
+            apiEndpoint: "",
+            lastPostId: 0,
+            newPostsCount: 0,
+            createdAt: now,
+          })
+          .onConflictDoNothing()
+          .run();
+
+        // Single atomic operation: INSERT ... ON CONFLICT DO UPDATE with RETURNING
+        // This replaces: select -> select -> insert -> select with one query
+        // If post exists, RETURNING returns existing post ID
+        // If post doesn't exist, RETURNING returns newly inserted post ID
         const publishedAt = postData.publishedAt
           ? new Date(postData.publishedAt)
           : now;
 
-        try {
-          const result = tx
-            .insert(posts)
-            .values({
-              postId: postData.postId,
-              artistId: EXTERNAL_ARTIST_ID,
-              fileUrl: postData.fileUrl,
-              previewUrl: postData.previewUrl,
-              sampleUrl: postData.sampleUrl ?? "",
-              title: "",
-              rating: postData.rating ?? "",
-              tags: postData.tags ?? "",
-              mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
-              publishedAt: publishedAt,
-              createdAt: now,
-              isViewed: false,
-              isFavorited: false,
-            })
-            .onConflictDoNothing({
-              target: [posts.artistId, posts.postId],
-            })
-            .returning()
-            .all();
+        const result = tx
+          .insert(posts)
+          .values({
+            postId: postData.postId,
+            artistId: EXTERNAL_ARTIST_ID,
+            fileUrl: postData.fileUrl,
+            previewUrl: postData.previewUrl,
+            sampleUrl: postData.sampleUrl ?? "",
+            title: "",
+            rating: postData.rating ?? "",
+            tags: postData.tags ?? "",
+            mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
+            publishedAt: publishedAt,
+            createdAt: now,
+            isViewed: false,
+            isFavorited: false,
+          })
+          .onConflictDoUpdate({
+            target: [posts.artistId, posts.postId],
+            set: {
+              // Update URLs if they changed (though unlikely for same postId)
+              fileUrl: sql`excluded.file_url`,
+              previewUrl: sql`excluded.preview_url`,
+              sampleUrl: sql`excluded.sample_url`,
+            },
+          })
+          .returning()
+          .all();
 
-          if (result && result.length > 0) {
-            insertedPostId = result[0].id;
-            log.info(
-              `[PostsController] Shadow insert: Created post (id: ${insertedPostId}, postId: ${postData.postId})`
-            );
-          } else {
-            // Post already exists (onConflictDoNothing didn't insert)
-            // Query again to get the existing ID
-            const existingPost = tx
-              .select()
-              .from(posts)
-              .where(
-                and(
-                  eq(posts.postId, postData.postId),
-                  eq(posts.artistId, EXTERNAL_ARTIST_ID)
-                )
-              )
-              .limit(1)
-              .all()[0];
-            
-            if (existingPost) {
-              insertedPostId = existingPost.id;
-              log.debug(
-                `[PostsController] Shadow insert: Post already exists (id: ${insertedPostId}, postId: ${postData.postId})`
-              );
-            }
-          }
-        } catch (insertError) {
-          // Fallback error handling (should not happen with onConflictDoNothing)
-          const errorMessage = insertError instanceof Error ? insertError.message : String(insertError);
-          log.warn(`[PostsController] Shadow insert error (fallback): ${errorMessage}`);
-          
-          // Try to find existing post as fallback
-          const existingPost = tx
-            .select()
-            .from(posts)
-            .where(
-              and(
-                eq(posts.postId, postData.postId),
-                eq(posts.artistId, EXTERNAL_ARTIST_ID)
-              )
-            )
-            .limit(1)
-            .all()[0];
-          
-          if (existingPost) {
-            insertedPostId = existingPost.id;
-            log.debug(
-              `[PostsController] Shadow insert: Found existing post after error (id: ${insertedPostId}, postId: ${postData.postId})`
-            );
-          } else {
-            throw insertError;
-          }
+        if (result && result.length > 0) {
+          insertedPostId = result[0].id;
+          log.info(
+            `[PostsController] Shadow insert: Post ${insertedPostId} (postId: ${postData.postId}) - ${result[0].createdAt.getTime() === now.getTime() ? "created" : "updated"}`
+          );
+        } else {
+          // This should not happen with RETURNING, but handle gracefully
+          log.warn(`[PostsController] Shadow insert: No result returned for postId ${postData.postId}`);
         }
       });
 

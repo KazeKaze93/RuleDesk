@@ -438,19 +438,30 @@ export abstract class BaseController {
                     });
 
                     // Create serializable validation error with proper string representation
+                    // SECURITY: Limit JSON.stringify output size to prevent huge error strings in production logs
+                    // Only include essential error information (name, message, error count) for production
+                    const isProduction = process.env.NODE_ENV === "production";
+                    const originalErrorJson = isProduction
+                      ? JSON.stringify({
+                          name: validationError.name,
+                          message: validationError.message,
+                          errorCount: validationError.errors.length,
+                        })
+                      : JSON.stringify({
+                          name: validationError.name,
+                          message: validationError.message,
+                          errors: validationError.errors.map((e) => ({
+                            path: e.path,
+                            message: e.message,
+                            code: e.code,
+                          })),
+                        });
+                    
                     const serializedError: ValidationError = {
                       message: errorMessage,
                       stack: validationError.stack,
                       name: "ValidationError",
-                      originalError: JSON.stringify({
-                        name: validationError.name,
-                        message: validationError.message,
-                        errors: validationError.errors.map((e) => ({
-                          path: e.path,
-                          message: e.message,
-                          code: e.code,
-                        })),
-                      }),
+                      originalError: originalErrorJson,
                       errors: validationError.errors.map((e) => ({
                         path: e.path,
                         message: e.message,
@@ -619,19 +630,30 @@ export abstract class BaseController {
 
               // Create serializable validation error with proper string representation
               // Use JSON.stringify for originalError to prevent [object Object] output
+              // SECURITY: Limit JSON.stringify output size to prevent huge error strings in production logs
+              // Only include essential error information (name, message, error count) for production
+              const isProduction = process.env.NODE_ENV === "production";
+              const originalErrorJson = isProduction
+                ? JSON.stringify({
+                    name: validationError.name,
+                    message: validationError.message,
+                    errorCount: validationError.errors.length,
+                  })
+                : JSON.stringify({
+                    name: validationError.name,
+                    message: validationError.message,
+                    errors: validationError.errors.map((e) => ({
+                      path: e.path,
+                      message: e.message,
+                      code: e.code,
+                    })),
+                  });
+              
               const serializedError: ValidationError = {
                 message: errorMessage,
                 stack: validationError.stack,
                 name: "ValidationError",
-                originalError: JSON.stringify({
-                  name: validationError.name,
-                  message: validationError.message,
-                  errors: validationError.errors.map((e) => ({
-                    path: e.path,
-                    message: e.message,
-                    code: e.code,
-                  })),
-                }),
+                originalError: originalErrorJson,
                 errors: validationError.errors.map((e) => ({
                   path: e.path,
                   message: e.message,

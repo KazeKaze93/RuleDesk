@@ -14,7 +14,7 @@ import type { BooruPost } from "../../providers/types";
 import type { Post } from "../../db/schema";
 import { SearchPostsSchema } from "../../../shared/schemas/search";
 import { toIpcSafe } from "../../utils/ipc-serialization";
-import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
 import { XMLParser } from "fast-xml-parser";
 import { isVideoUrl } from "@shared/utils/media";
 
@@ -224,8 +224,12 @@ export class SearchController extends BaseController {
         : "";
 
       // Step 1: Primary Search - try original tags
-      // If isRandom is true, use a random page number (1-20) for better randomization
-      const apiPage = isRandom ? Math.floor(Math.random() * 20) + 1 : page;
+      // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
+      // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
+      // should be done via API's native sort:random parameter if the provider supports it.
+      // If the provider doesn't support native randomization, this pseudo-random approach
+      // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
+      const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
       let booruPosts = await provider.fetchPosts(
         tagsString,
         apiPage,

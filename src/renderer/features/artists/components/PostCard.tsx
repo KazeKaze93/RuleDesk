@@ -88,10 +88,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
     };
   }, [isHovered, shouldLoadVideo]);
 
-  // Reset video error when post changes
-  useEffect(() => {
-    setVideoError(false);
-  }, [post.id]);
+  // Use key prop on video element to reset state when post changes
+  // This avoids useEffect setState (which causes cascading renders)
+  // The key prop will cause React to unmount/remount the video element when post.id changes,
+  // which naturally resets the video error state
+  const videoKey = `${post.id}`;
 
   // Show video preview only if: video post, in viewport, hovered, video URL available, and no error
   const showVideoPreview = isVid && 
@@ -159,6 +160,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
           {/* Video Preview (overlay on hover) */}
           {isVid && shouldLoadVideo && videoPreviewUrl && (
             <video
+              key={videoKey}
               ref={videoRef}
               src={videoPreviewUrl}
               muted

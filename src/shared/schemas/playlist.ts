@@ -170,7 +170,7 @@ export function parsePlaylistQuery(queryJson: string | null | undefined): SmartP
   
   try {
     return JSON.parse(queryJson) as SmartPlaylistQuery;
-  } catch (error) {
+  } catch (_error) {
     // Invalid JSON - return null instead of throwing
     // This allows graceful handling in UI
     return null;

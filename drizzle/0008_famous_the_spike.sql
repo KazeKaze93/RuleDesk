@@ -10,7 +10,6 @@ CREATE TABLE `playlist_entries` (
 CREATE TABLE `playlists` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
-	`description` text DEFAULT '',
 	`is_smart` integer DEFAULT false NOT NULL,
 	`query_json` text DEFAULT '',
 	`icon_name` text DEFAULT '',

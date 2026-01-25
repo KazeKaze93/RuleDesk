@@ -136,6 +136,13 @@ const PostNotFoundFallback = ({
           throw new Error("Preview URL is required for shadow insert");
         }
 
+        // ARCHITECTURE NOTE: This component handles data transformation for shadowInsertPost.
+        // Ideally, Renderer should only pass minimal data (postId + provider) to Main process,
+        // and Main should fetch/normalize the data itself. However, we already have the post
+        // data in infiniteData cache, so transforming it here avoids an extra IPC round-trip.
+        // This is acceptable as a performance optimization, but be aware that this creates
+        // a coupling between Renderer and Main's data format expectations.
+        
         // Convert remote post to PostData format
         // Handle tags: Post.tags is always string in DB, but may be array in API responses
         const tagsString = typeof foundPost.tags === "string" 
@@ -1308,6 +1315,7 @@ export const ViewerDialog = () => {
   const queryClient = useQueryClient();
 
   // Get infiniteData for fallback lookup (for remote posts)
+  // React Compiler: Use queue directly instead of queue?.origin to match inferred dependencies
   const infiniteData = useMemo(() => {
     if (!queue?.origin) return undefined;
     
@@ -1334,7 +1342,7 @@ export const ViewerDialog = () => {
     }
     
     return queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
-  }, [queue?.origin, queryClient]);
+  }, [queue, queryClient]);
 
   useEffect(() => {
     if (!isOpen || !queue || !queue.origin) return;

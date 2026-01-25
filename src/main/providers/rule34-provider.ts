@@ -16,6 +16,7 @@ import {
 import type { ArtistType } from "../db/schema";
 import { R34RawPostSchema, type R34RawPost } from "../../shared/schemas/booru";
 import { normalizeRating } from "../../shared/utils/post-normalization";
+import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 
 interface R34AutocompleteItem {
@@ -212,12 +213,12 @@ export class Rule34Provider implements IBooruProvider {
     settings: ProviderSettings,
     isRandom: boolean = false
   ): Promise<BooruPost[]> {
-    // Pseudo-random fallback: If isRandom is true, use a random page number (1-20) for better randomization
+    // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
     // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
     // should be done via API's native sort:random parameter if the provider supports it.
     // If the provider doesn't support native randomization, this pseudo-random approach
-    // provides reasonable distribution across pages (1-20) for better variety.
-    const apiPage = isRandom ? Math.floor(Math.random() * 20) + 1 : page;
+    // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
+    const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
     
     // Step 1: Try JSON first
     const jsonUrl = this.buildUrl({ tags, page: apiPage, settings, json: 1 });

@@ -10,6 +10,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import type { InferSelectModel } from "drizzle-orm";
+import type { IpcSafe } from "../../../shared/types/ipc";
 import {
   CreatePlaylistSchema,
   UpdatePlaylistSchema,
@@ -26,7 +27,7 @@ import {
   type SmartPlaylistQuery,
 } from "../../../shared/schemas/playlist";
 import { isVideoUrl } from "@shared/utils/media";
-import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { getProvider } from "../../providers";
 import { settings, SETTINGS_ID } from "../../db/schema";
@@ -38,30 +39,16 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  * IPC-safe Playlist type with Date fields converted to numbers (timestamps in milliseconds).
  * Required for Electron 39+ IPC serialization compatibility.
  * 
- * Uses Drizzle's InferSelectModel to automatically infer types from schema.
- * Then applies toIpcSafe transformation to convert Date fields to numbers.
+ * Uses shared IpcSafe utility type for automatic Date -> number conversion.
  */
-type IpcPlaylist = {
-  [K in keyof InferSelectModel<typeof playlists>]: InferSelectModel<typeof playlists>[K] extends Date
-    ? number
-    : InferSelectModel<typeof playlists>[K] extends Date | null
-    ? number | null
-    : InferSelectModel<typeof playlists>[K];
-};
+type IpcPlaylist = IpcSafe<InferSelectModel<typeof playlists>>;
 
 /**
  * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
  * 
- * Uses Drizzle's InferSelectModel to automatically infer types from schema.
- * Then applies toIpcSafe transformation to convert Date fields to numbers.
+ * Uses shared IpcSafe utility type for automatic Date -> number conversion.
  */
-type IpcPost = {
-  [K in keyof InferSelectModel<typeof posts>]: InferSelectModel<typeof posts>[K] extends Date
-    ? number
-    : InferSelectModel<typeof posts>[K] extends Date | null
-    ? number | null
-    : InferSelectModel<typeof posts>[K];
-};
+type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
 
 /**
  * Playlist Controller
@@ -309,6 +296,19 @@ export class PlaylistController extends BaseController {
     }
 
     // Check if FTS5 table has any data
+    // CRITICAL: Do NOT populate FTS5 table here - this blocks Main Process
+    // FTS5 population should happen:
+    // 1. During migration (0006_add_fts5_search.sql) - one-time operation
+    // 2. Via triggers (automatic on INSERT/UPDATE)
+    // 3. In background maintenance task (if needed)
+    // 
+    // If FTS5 table is empty, it means:
+    // - Migration didn't run (should not happen in production)
+    // - Triggers are not working (schema issue)
+    // - Database is new (triggers will populate automatically)
+    //
+    // In any case, blocking IPC handler with sqlite.exec() is unacceptable.
+    // Return empty result instead of blocking UI.
     try {
       const sqlite = getSqliteInstance();
       const countStmt = sqlite.prepare<[], { count: number }>(
@@ -322,38 +322,17 @@ export class PlaylistController extends BaseController {
         log.warn(
           "[PlaylistController] FTS5 table exists but is empty. " +
           "This may indicate that posts table has no data or FTS5 triggers are not working. " +
-          "Trying to populate FTS5 table..."
+          "Returning empty result to avoid blocking Main Process. " +
+          "FTS5 should be populated by migration 0006_add_fts5_search.sql or triggers."
         );
-        
-        // Try to populate FTS5 table
-        try {
-          const postsCount = sqlite.prepare<[], { count: number }>(
-            "SELECT COUNT(*) as count FROM posts"
-          ).get() as { count: number } | undefined;
-          
-          const postsCountValue = postsCount?.count ?? 0;
-          log.info(`[PlaylistController] Found ${postsCountValue} posts in database`);
-          
-          if (postsCountValue > 0) {
-            log.info("[PlaylistController] Populating FTS5 table with existing posts...");
-            sqlite.exec(`
-              INSERT INTO posts_fts(rowid, tags)
-              SELECT id, tags FROM posts
-              WHERE id NOT IN (SELECT rowid FROM posts_fts);
-            `);
-            
-            // Check count again
-            const newCount = sqlite.prepare<[], { count: number }>(
-              "SELECT COUNT(*) as count FROM posts_fts"
-            ).get() as { count: number } | undefined;
-            log.info(`[PlaylistController] FTS5 table now has ${newCount?.count ?? 0} entries`);
-          }
-        } catch (populateError) {
-          log.error("[PlaylistController] Failed to populate FTS5 table:", populateError);
-        }
+        // Return empty conditions to avoid blocking - FTS5 will be populated by triggers
+        // or background maintenance task, not during user request
+        return { includeConditions: [sql`1 = 0`], excludeConditions: [] };
       }
     } catch (error) {
       log.warn("[PlaylistController] Failed to check FTS5 table count:", error);
+      // Return empty result on error to avoid blocking
+      return { includeConditions: [sql`1 = 0`], excludeConditions: [] };
     }
 
     // Build include tags query: combine all include tags with AND inside FTS5
@@ -1181,12 +1160,12 @@ export class PlaylistController extends BaseController {
       };
 
       // Fetch posts from remote API (page is 0-indexed in API, but 1-indexed in our system)
-      // Pseudo-random fallback: If isRandom is true, use a random page number (1-20) and shuffle results
+      // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) and shuffle results
       // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
       // should be done via API's native sort:random parameter if the provider supports it.
       // If the provider doesn't support native randomization, this pseudo-random approach
-      // provides reasonable distribution across pages (1-20) for better variety.
-      const apiPage = isRandom ? Math.floor(Math.random() * 20) + 1 : page - 1;
+      // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
+      const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page - 1;
       const booruPosts = await provider.fetchPosts(booruQuery, apiPage, providerSettings, isRandom);
       
       log.info(`[PlaylistController] Fetched ${booruPosts.length} posts from remote API for playlist ${playlistId}`);
