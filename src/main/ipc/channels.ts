@@ -35,6 +35,7 @@ export const IPC_CHANNELS = {
     REMOVE_POSTS_FROM_PLAYLIST: "db:remove-posts-from-playlist",
     GET_PLAYLIST_POSTS: "db:get-playlist-posts",
     RESOLVE_PLAYLIST_POSTS: "db:resolve-playlist-posts",
+    GET_PLAYLISTS_CONTAINING_POST: "db:get-playlists-containing-post",
   },
   API: {
     SEARCH_REMOTE: "api:search-remote-tags",

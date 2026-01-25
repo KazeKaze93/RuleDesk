@@ -15,11 +15,12 @@ import {
 } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { posts, artists, type Post } from "../../db/schema";
+import { posts, artists } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
+import type { InferSelectModel } from "drizzle-orm";
 import {
   PostDataSchema,
   GetPostsSchema,
@@ -40,15 +41,16 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
  * Required for Electron 39+ IPC serialization compatibility.
  *
- * Uses TypeScript utility types to automatically map Date fields to numbers.
+ * Uses Drizzle's InferSelectModel to automatically infer types from schema.
+ * Then applies toIpcSafe transformation to convert Date fields to numbers.
  * This ensures type safety and eliminates manual field enumeration.
  */
 type IpcPost = {
-  [K in keyof Post]: Post[K] extends Date
+  [K in keyof InferSelectModel<typeof posts>]: InferSelectModel<typeof posts>[K] extends Date
     ? number
-    : Post[K] extends Date | null
+    : InferSelectModel<typeof posts>[K] extends Date | null
     ? number | null
-    : Post[K];
+    : InferSelectModel<typeof posts>[K];
 };
 
 // Internal types (not exported - use types from src/main/types/ipc.ts instead)
@@ -191,11 +193,11 @@ export class PostsController extends BaseController {
     tx: Parameters<Parameters<AppDatabase["transaction"]>[0]>[0],
     postId: number,
     postData?: PostData
-  ): Post | undefined {
+  ): InferSelectModel<typeof posts> | undefined {
     // CRITICAL: Negative IDs indicate external posts (from Browse) that haven't been saved to DB yet
     // For negative IDs, skip DB lookup by id and go straight to postId lookup
     // For positive IDs, try to find by database ID first (existing posts from DB)
-    let existingPost: Post | undefined;
+    let existingPost: InferSelectModel<typeof posts> | undefined;
 
     if (postId > 0) {
       // Positive ID - try to find by database ID (existing posts from DB)
@@ -1027,6 +1029,60 @@ export class PostsController extends BaseController {
   }
 
   /**
+   * Validates URL protocol to prevent RCE attacks
+   * Only allows https: protocol or safe custom schemes
+   * Blocks javascript:, data:, file:, and other dangerous protocols
+   * 
+   * @param urlString - URL string to validate
+   * @returns true if URL is safe, false otherwise
+   */
+  private validateUrlProtocol(urlString: string): boolean {
+    if (!urlString || typeof urlString !== "string") {
+      return false;
+    }
+
+    // Dangerous protocols that should never be allowed
+    const dangerousProtocols = [
+      "javascript:",
+      "data:",
+      "file:",
+      "vbscript:",
+      "about:",
+      "chrome:",
+      "chrome-extension:",
+      "moz-extension:",
+      "ms-browser-extension:",
+    ];
+
+    const lowerUrl = urlString.toLowerCase().trim();
+    
+    // Check for dangerous protocols before parsing
+    for (const protocol of dangerousProtocols) {
+      if (lowerUrl.startsWith(protocol)) {
+        log.warn(`[PostsController] Blocked dangerous protocol in URL: ${urlString}`);
+        return false;
+      }
+    }
+
+    // Parse URL to validate protocol
+    try {
+      const parsedUrl = new URL(urlString);
+      
+      // Only allow https: protocol for security
+      // HTTP is insecure and vulnerable to MITM attacks
+      if (parsedUrl.protocol !== "https:") {
+        log.warn(`[PostsController] Blocked unsafe protocol: ${parsedUrl.protocol} (URL: ${urlString}). Only HTTPS is allowed.`);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      log.warn(`[PostsController] Invalid URL format: ${urlString}`, error);
+      return false;
+    }
+  }
+
+  /**
    * Shadow Insert: Silently insert a remote post into the local database
    * 
    * This method is called when a remote post (from API) is opened in the viewer.
@@ -1059,7 +1115,24 @@ export class PostsController extends BaseController {
         throw new Error("previewUrl is required and cannot be empty");
       }
 
+      // CRITICAL SECURITY: Validate URL protocols to prevent RCE attacks
+      // Only allow https: protocol - blocks javascript:, data:, file:, etc.
+      if (!this.validateUrlProtocol(postData.fileUrl)) {
+        throw new Error(`Invalid fileUrl protocol. Only HTTPS URLs are allowed.`);
+      }
+      if (!this.validateUrlProtocol(postData.previewUrl)) {
+        throw new Error(`Invalid previewUrl protocol. Only HTTPS URLs are allowed.`);
+      }
+      if (postData.sampleUrl && postData.sampleUrl.trim() !== "" && !this.validateUrlProtocol(postData.sampleUrl)) {
+        throw new Error(`Invalid sampleUrl protocol. Only HTTPS URLs are allowed.`);
+      }
+
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
+      // PERFORMANCE WARNING: This transaction performs multiple synchronous DB operations
+      // which can block the Main Process on slow disks or under heavy load.
+      // TODO: Consider moving heavy write operations to a Worker Thread or Utility Process
+      // for better UI responsiveness. For now, transactions are kept synchronous as required
+      // by better-sqlite3, but this should be optimized in the future.
       let insertedPostId: number | null = null;
 
       db.transaction((tx) => {

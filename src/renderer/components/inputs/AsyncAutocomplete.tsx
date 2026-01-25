@@ -18,6 +18,15 @@ export interface AsyncAutocompleteProps {
 /**
  * AsyncAutocomplete component for tag selection
  * 
+ * WAI-ARIA Compliant: Implements ARIA combobox pattern with proper roles and attributes:
+ * - role="combobox" on input
+ * - role="listbox" on dropdown
+ * - role="option" on each item
+ * - aria-expanded, aria-haspopup, aria-controls, aria-autocomplete
+ * - aria-selected for keyboard navigation
+ * - aria-activedescendant for screen reader support
+ * - Keyboard navigation: ArrowUp/Down, Enter, Escape
+ * 
  * Uses the same logic as TagAutocomplete - uses useRemoteTags hook
  * and renders a simple dropdown list without Headless UI Combobox
  */
@@ -174,6 +183,8 @@ export function AsyncAutocomplete({
           aria-haspopup="listbox"
           aria-controls="async-autocomplete-listbox"
           aria-autocomplete="list"
+          aria-activedescendant={selectedIndex >= 0 ? `async-autocomplete-option-${selectedIndex}` : undefined}
+          aria-label={label || placeholder}
         />
       </div>
       
@@ -197,6 +208,7 @@ export function AsyncAutocomplete({
               {results.map((result, index) => (
                 <li
                   key={result.id}
+                  id={`async-autocomplete-option-${index}`}
                   role="option"
                   aria-selected={index === selectedIndex}
                   className={cn(

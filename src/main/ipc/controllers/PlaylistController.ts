@@ -9,6 +9,7 @@ import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
+import type { InferSelectModel } from "drizzle-orm";
 import {
   CreatePlaylistSchema,
   UpdatePlaylistSchema,
@@ -36,24 +37,30 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
 /**
  * IPC-safe Playlist type with Date fields converted to numbers (timestamps in milliseconds).
  * Required for Electron 39+ IPC serialization compatibility.
+ * 
+ * Uses Drizzle's InferSelectModel to automatically infer types from schema.
+ * Then applies toIpcSafe transformation to convert Date fields to numbers.
  */
 type IpcPlaylist = {
-  [K in keyof typeof playlists.$inferSelect]: typeof playlists.$inferSelect[K] extends Date
+  [K in keyof InferSelectModel<typeof playlists>]: InferSelectModel<typeof playlists>[K] extends Date
     ? number
-    : typeof playlists.$inferSelect[K] extends Date | null
+    : InferSelectModel<typeof playlists>[K] extends Date | null
     ? number | null
-    : typeof playlists.$inferSelect[K];
+    : InferSelectModel<typeof playlists>[K];
 };
 
 /**
  * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
+ * 
+ * Uses Drizzle's InferSelectModel to automatically infer types from schema.
+ * Then applies toIpcSafe transformation to convert Date fields to numbers.
  */
 type IpcPost = {
-  [K in keyof Post]: Post[K] extends Date
+  [K in keyof InferSelectModel<typeof posts>]: InferSelectModel<typeof posts>[K] extends Date
     ? number
-    : Post[K] extends Date | null
+    : InferSelectModel<typeof posts>[K] extends Date | null
     ? number | null
-    : Post[K];
+    : InferSelectModel<typeof posts>[K];
 };
 
 /**
@@ -225,6 +232,15 @@ export class PlaylistController extends BaseController {
       IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS,
       z.tuple([ResolvePlaylistPostsSchema]),
       this.resolvePlaylistPosts.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
+      z.tuple([z.number().int().positive()]),
+      this.getPlaylistsContainingPost.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
       ) => Promise<unknown>
@@ -413,8 +429,8 @@ export class PlaylistController extends BaseController {
           
           // For FTS5, tags should be used without quotes unless they contain spaces
           // Since we validate that tags don't contain special characters, we can use them directly
-          // Escape single quotes if present (though validation should prevent this)
-          return trimmed.replace(/'/g, "''");
+          // No manual escaping needed - Drizzle will handle parameterization safely
+          return trimmed;
         });
         
         // Combine with AND operator (uppercase as required by FTS5 syntax)
@@ -423,17 +439,15 @@ export class PlaylistController extends BaseController {
         
         log.debug(`[PlaylistController] Combined FTS5 include query: ${combinedQuery}`);
         
-        // Build the entire EXISTS subquery using sql.raw() to avoid Drizzle parameterization issues
-        // We've already sanitized and validated each tag, so this is safe
-        // The entire MATCH expression must be raw because FTS5 requires specific syntax
-        // Use single quotes for FTS5 MATCH string literal, and escape single quotes in the query
-        // In SQLite, posts_fts.rowid references posts.id, so we use the table.column syntax
-        const escapedQuery = combinedQuery.replace(/'/g, "''");
-        const includeCondition = sql.raw(`EXISTS (
+        // CRITICAL SECURITY: Use Drizzle sql template with parameterization instead of sql.raw()
+        // Drizzle will properly escape the FTS5 query string, preventing SQL injection
+        // Even though tags are validated, we use parameterization as defense in depth
+        // FTS5 MATCH accepts string literals, and Drizzle handles the escaping correctly
+        const includeCondition = sql`EXISTS (
           SELECT 1 FROM posts_fts 
-          WHERE posts_fts.rowid = posts.id
-            AND posts_fts MATCH '${escapedQuery}'
-        )`);
+          WHERE posts_fts.rowid = ${posts.id}
+            AND posts_fts MATCH ${combinedQuery}
+        )`;
         
         includeConditions.push(includeCondition);
       } catch (error) {
@@ -464,8 +478,8 @@ export class PlaylistController extends BaseController {
           }
           
           // For FTS5, tags should be used without quotes unless they contain spaces
-          // Escape single quotes if present (though validation should prevent this)
-          return trimmed.replace(/'/g, "''");
+          // No manual escaping needed - Drizzle will handle parameterization safely
+          return trimmed;
         });
         
         // Combine with OR operator (uppercase as required by FTS5 syntax)
@@ -474,16 +488,15 @@ export class PlaylistController extends BaseController {
         
         log.debug(`[PlaylistController] Combined FTS5 exclude query: ${combinedQuery}`);
         
-        // Build the entire EXISTS subquery using sql.raw() to avoid Drizzle parameterization issues
-        // We've already sanitized and validated each tag, so this is safe
-        // Use single quotes for FTS5 MATCH string literal, and escape single quotes in the query
-        // In SQLite, posts_fts.rowid references posts.id, so we use the table.column syntax
-        const escapedQuery = combinedQuery.replace(/'/g, "''");
-        const excludeCondition = sql.raw(`EXISTS (
+        // CRITICAL SECURITY: Use Drizzle sql template with parameterization instead of sql.raw()
+        // Drizzle will properly escape the FTS5 query string, preventing SQL injection
+        // Even though tags are validated, we use parameterization as defense in depth
+        // FTS5 MATCH accepts string literals, and Drizzle handles the escaping correctly
+        const excludeCondition = sql`EXISTS (
           SELECT 1 FROM posts_fts 
-          WHERE posts_fts.rowid = posts.id
-            AND posts_fts MATCH '${escapedQuery}'
-        )`);
+          WHERE posts_fts.rowid = ${posts.id}
+            AND posts_fts MATCH ${combinedQuery}
+        )`;
         
         excludeConditions.push(excludeCondition);
       } catch (error) {
@@ -877,6 +890,46 @@ export class PlaylistController extends BaseController {
   }
 
   /**
+   * Get all playlists that contain a specific post
+   * 
+   * Uses a single JOIN query to efficiently find all playlists containing the post.
+   * This eliminates N+1 query problem when checking post membership across multiple playlists.
+   * 
+   * @param _event - IPC event (unused)
+   * @param postId - Post ID (database ID)
+   * @returns Array of playlist IDs that contain this post
+   */
+  private async getPlaylistsContainingPost(
+    _event: IpcMainInvokeEvent,
+    postId: number
+  ): Promise<number[]> {
+    try {
+      const db = this.getDb();
+
+      // Single JOIN query to get all playlists containing this post
+      // Much more efficient than N queries (one per playlist)
+      const result = db
+        .select({
+          playlistId: playlistEntries.playlistId,
+        })
+        .from(playlistEntries)
+        .where(eq(playlistEntries.postId, postId))
+        .all();
+
+      const playlistIds = result.map((r) => r.playlistId);
+      
+      log.debug(
+        `[PlaylistController] Post ${postId} is in ${playlistIds.length} playlist(s)`
+      );
+
+      return playlistIds;
+    } catch (error) {
+      log.error(`[PlaylistController] Failed to get playlists containing post ${postId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Resolve posts for a playlist (static or smart)
    *
    * For static playlists: Uses JOIN with playlist_entries.
@@ -1177,7 +1230,11 @@ export class PlaylistController extends BaseController {
       };
 
       // Fetch posts from remote API (page is 0-indexed in API, but 1-indexed in our system)
-      // If isRandom is true, use a random page number (1-20) and shuffle results
+      // Pseudo-random fallback: If isRandom is true, use a random page number (1-20) and shuffle results
+      // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
+      // should be done via API's native sort:random parameter if the provider supports it.
+      // If the provider doesn't support native randomization, this pseudo-random approach
+      // provides reasonable distribution across pages (1-20) for better variety.
       const apiPage = isRandom ? Math.floor(Math.random() * 20) + 1 : page - 1;
       const booruPosts = await provider.fetchPosts(booruQuery, apiPage, providerSettings, isRandom);
       

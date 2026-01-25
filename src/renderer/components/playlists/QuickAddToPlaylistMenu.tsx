@@ -40,29 +40,12 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   // Filter out smart playlists - only show manual playlists
   const playlists = allPlaylists.filter((p) => !p.isSmart);
 
-  // Fetch which playlists this post is already in
+  // Fetch which playlists this post is already in - single query instead of N queries
   const { data: existingPlaylistIds = [] } = useQuery<number[]>({
     queryKey: ["playlist-entries", postId],
     queryFn: async () => {
-      // Use cached playlists from usePlaylists hook
-      const postPlaylists: number[] = [];
-
-      for (const playlist of playlists) {
-        try {
-          const posts = await window.api.getPlaylistPosts({
-            playlistId: playlist.id,
-            page: 1,
-            limit: 1000, // Get all posts to check membership
-          });
-          if (posts.some((p) => p.id === postId)) {
-            postPlaylists.push(playlist.id);
-          }
-        } catch (error) {
-          log.error(`[QuickAddToPlaylistMenu] Failed to check playlist ${playlist.id}:`, error);
-        }
-      }
-
-      return postPlaylists;
+      // Use optimized single-query method instead of looping through playlists
+      return await window.api.getPlaylistsContainingPost(postId);
     },
     enabled: isMenuOpen && playlists.length > 0,
   });

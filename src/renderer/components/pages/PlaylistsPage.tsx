@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { AsyncAutocomplete } from "../../components/inputs/AsyncAutocomplete";
 import type { SmartPlaylistQuery, SmartPlaylistTag } from "../../../shared/schemas/playlist";
+import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
 import { usePlaylists } from "../../lib/hooks/usePlaylists";
 import type { SearchResults } from "../../../main/providers";
 
@@ -564,12 +565,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                       setNewPlaylistName(playlist.name);
                       setPlaylistType(playlist.isSmart ? "smart" : "manual");
                       if (playlist.isSmart && playlist.queryJson) {
-                        try {
-                          const queryJson = JSON.parse(playlist.queryJson) as SmartPlaylistQuery;
-                          setSmartTags(queryJson.tags || []);
-                        } catch {
-                          setSmartTags([]);
-                        }
+                        // Use shared utility to parse queryJson (Renderer shouldn't know DB format)
+                        const queryJson = parsePlaylistQuery(playlist.queryJson);
+                        setSmartTags(queryJson?.tags || []);
                       } else {
                         setSmartTags([]);
                       }

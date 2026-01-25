@@ -153,3 +153,26 @@ export const ResolvePlaylistPostsSchema = z.object({
  * Exported directly from schema to ensure single source of truth.
  */
 export type ResolvePlaylistPostsRequest = z.infer<typeof ResolvePlaylistPostsSchema>;
+
+/**
+ * Parse playlist queryJson string into SmartPlaylistQuery object
+ * 
+ * This utility function centralizes queryJson parsing logic.
+ * Renderer should not know about internal database storage format.
+ * 
+ * @param queryJson - JSON string from database (may be empty for manual playlists)
+ * @returns Parsed SmartPlaylistQuery or null if invalid/empty
+ */
+export function parsePlaylistQuery(queryJson: string | null | undefined): SmartPlaylistQuery | null {
+  if (!queryJson || queryJson.trim() === "") {
+    return null;
+  }
+  
+  try {
+    return JSON.parse(queryJson) as SmartPlaylistQuery;
+  } catch (error) {
+    // Invalid JSON - return null instead of throwing
+    // This allows graceful handling in UI
+    return null;
+  }
+}

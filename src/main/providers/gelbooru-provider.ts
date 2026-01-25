@@ -101,7 +101,11 @@ export class GelbooruProvider implements IBooruProvider {
   }
 
   async fetchPosts(tags: string, page: number, settings: ProviderSettings, isRandom: boolean = false): Promise<BooruPost[]> {
-    // If isRandom is true, use a random page number (1-20) for better randomization
+    // Pseudo-random fallback: If isRandom is true, use a random page number (1-20) for better randomization
+    // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
+    // should be done via API's native sort:random parameter if the provider supports it.
+    // If the provider doesn't support native randomization, this pseudo-random approach
+    // provides reasonable distribution across pages (1-20) for better variety.
     const apiPage = isRandom ? Math.floor(Math.random() * 20) + 1 : page;
     
     // Gelbooru pages are 0-indexed usually, but let's stick to pid logic

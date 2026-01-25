@@ -125,6 +125,7 @@ export interface IpcApi extends IpcBridge {
   removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
   getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
+  getPlaylistsContainingPost: (postId: number) => Promise<number[]>;
 }
 
 declare global {

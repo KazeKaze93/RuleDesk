@@ -141,6 +141,7 @@ export interface IpcBridge {
   removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
   getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
+  getPlaylistsContainingPost: (postId: number) => Promise<number[]>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -300,6 +301,8 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLIST_POSTS, params),
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
+  getPlaylistsContainingPost: (postId: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST, postId),
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);
