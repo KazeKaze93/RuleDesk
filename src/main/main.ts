@@ -86,19 +86,25 @@ process.env.USER_DATA_PATH = app.getPath("userData");
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
-const gotTheLock = app.requestSingleInstanceLock();
+// In test mode, skip single instance lock to allow multiple test instances
+// Each test uses a unique --user-data-dir, so there's no conflict
+const isTestMode = process.env.NODE_ENV === "test";
+const gotTheLock = isTestMode ? true : app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   logger.warn("Another instance is already running. Quitting...");
   app.quit();
 } else {
-  app.on("second-instance", () => {
-    logger.info("Second instance detected. Focusing main window...");
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
+  // Only register second-instance handler if not in test mode
+  if (!isTestMode) {
+    app.on("second-instance", () => {
+      logger.info("Second instance detected. Focusing main window...");
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    });
+  }
 
   app.on("ready", () => {
     // Set app user model ID for Windows taskbar (helps with icon display)
@@ -461,6 +467,22 @@ async function initializeAppAndWindow() {
         }, 3000);
       }
     });
+
+    // In test mode, ensure window is shown even if ready-to-show doesn't fire
+    // This is important for headless CI environments where ready-to-show may not trigger
+    if (isTestMode) {
+      mainWindow.webContents.once("did-finish-load", () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          // Show window after a short delay to ensure it's ready
+          setTimeout(() => {
+            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+              mainWindow.show();
+              logger.info("[Main] Test mode: Window shown explicitly after did-finish-load");
+            }
+          }, 1000);
+        }
+      });
+    }
 
     mainWindow.on("closed", () => {
       mainWindow = null;
