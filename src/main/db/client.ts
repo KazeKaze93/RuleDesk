@@ -104,10 +104,121 @@ export async function initializeDatabase(): Promise<AppDatabase> {
       setImmediate(() => {
         try {
           // dbInstance is guaranteed to be non-null here (created above)
-          if (!dbInstance) {
+          if (!dbInstance || !sqliteInstance) {
             throw new Error("Database instance is null");
           }
-          migrate(dbInstance, { migrationsFolder });
+          
+          // Handle migration 0004 specially - it tries to add columns that may already exist
+          // This happens when database is created from schema (migration 0000) which already includes these columns
+          // We need to manually execute migrations to handle duplicate column errors gracefully
+          const journalPath = path.join(migrationsFolder, "meta", "_journal.json");
+          let migrationEntries: Array<{ tag: string }> = [];
+          
+          try {
+            const journalContent = fs.readFileSync(journalPath, "utf-8");
+            const journal = JSON.parse(journalContent);
+            migrationEntries = journal.entries || [];
+          } catch (_journalError) {
+            // If journal doesn't exist, use standard migrate
+            logger.warn("[DB] Could not read migration journal, using standard migrate");
+            migrate(dbInstance, { migrationsFolder });
+            resolve();
+            return;
+          }
+          
+          // Create __drizzle_migrations table if it doesn't exist
+          sqliteInstance.exec(`
+            CREATE TABLE IF NOT EXISTS __drizzle_migrations (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              hash text NOT NULL,
+              created_at bigint
+            );
+          `);
+          
+          // Execute migrations manually, handling duplicate column errors
+          for (const entry of migrationEntries) {
+            const migrationFile = path.join(migrationsFolder, `${entry.tag}.sql`);
+            
+            if (!fs.existsSync(migrationFile)) {
+              logger.warn(`[DB] Migration file not found: ${migrationFile}`);
+              continue;
+            }
+            
+            // Check if migration was already executed
+            const existing = sqliteInstance
+              .prepare("SELECT hash FROM __drizzle_migrations WHERE hash = ?")
+              .get(entry.tag);
+            if (existing) {
+              logger.debug(`[DB] Migration ${entry.tag} already executed, skipping...`);
+              continue;
+            }
+            
+            try {
+              const migrationSQL = fs.readFileSync(migrationFile, "utf-8");
+              
+              // Handle migration 0004 specially - check if columns exist before adding
+              if (entry.tag === "0004_exotic_misty_knight") {
+                const tableInfo = sqliteInstance
+                  .prepare("PRAGMA table_info(settings)")
+                  .all() as Array<{ name: string }>;
+                const columnNames = tableInfo.map((col) => col.name);
+                
+                // Only execute ALTER TABLE if columns don't exist
+                const needsIsAdultVerified = !columnNames.includes("is_adult_verified");
+                const needsTosAcceptedAt = !columnNames.includes("tos_accepted_at");
+                
+                if (needsIsAdultVerified) {
+                  sqliteInstance.exec(
+                    "ALTER TABLE settings ADD COLUMN is_adult_verified integer DEFAULT 0 NOT NULL;"
+                  );
+                  logger.debug("[DB] Added is_adult_verified column");
+                }
+                if (needsTosAcceptedAt) {
+                  sqliteInstance.exec("ALTER TABLE settings ADD COLUMN tos_accepted_at integer;");
+                  logger.debug("[DB] Added tos_accepted_at column");
+                }
+                
+                // Mark migration as executed
+                sqliteInstance
+                  .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
+                  .run(entry.tag, Date.now());
+              } else {
+                // Execute other migrations normally
+                sqliteInstance.exec(migrationSQL);
+                
+                // Mark migration as executed
+                sqliteInstance
+                  .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
+                  .run(entry.tag, Date.now());
+              }
+            } catch (migrationError: unknown) {
+              const error = migrationError as Error & { code?: string; message?: string };
+              const errorMessage = error.message || String(error);
+              const errorCode = error.code || "";
+              
+              // If it's a duplicate column error, log and mark as executed
+              if (errorCode === "SQLITE_ERROR" && errorMessage.includes("duplicate column")) {
+                logger.warn(
+                  `[DB] Migration ${entry.tag} attempted to add duplicate column. Skipping...`
+                );
+                // Mark as executed anyway to prevent retry
+                try {
+                  sqliteInstance
+                    .prepare(
+                      "INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)"
+                    )
+                    .run(entry.tag, Date.now());
+                } catch {
+                  // Ignore errors when marking
+                }
+              } else {
+                // For other errors, throw
+                logger.error(`[DB] Migration ${entry.tag} failed:`, errorMessage);
+                throw migrationError;
+              }
+            }
+          }
+          
           resolve();
         } catch (error) {
           reject(error);

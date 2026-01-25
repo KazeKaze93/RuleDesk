@@ -366,7 +366,9 @@ async function initializeAppAndWindow() {
       height: 800,
       minWidth: 800,
       minHeight: 600,
-      show: false,
+      // In test mode, show window immediately to ensure Playwright can detect it
+      // In normal mode, show: false and wait for ready-to-show event
+      show: isTestMode,
       title: `RuleDesk v${app.getVersion()}`,
       icon: windowIcon || windowIconPath, // Use nativeImage if loaded, otherwise fallback to path
       webPreferences: {
@@ -376,6 +378,9 @@ async function initializeAppAndWindow() {
         sandbox: true,
       },
     });
+
+    // Log window creation for debugging (especially in test mode)
+    logger.info(`[Main] Window created (show: ${isTestMode}, test mode: ${isTestMode})`);
 
     // Set icon again after window creation to ensure it's applied (Windows sometimes needs this)
     if (windowIcon && !windowIcon.isEmpty()) {
@@ -444,6 +449,9 @@ async function initializeAppAndWindow() {
       mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
     }
 
+    // Log window URL loading for debugging
+    logger.info(`[Main] Loading window URL (test mode: ${isTestMode})`);
+
     if (process.env.NODE_ENV === "development") {
       mainWindow.webContents.openDevTools();
     }
@@ -452,15 +460,20 @@ async function initializeAppAndWindow() {
       const window = mainWindow;
 
       if (window) {
-        window.show();
+        // In test mode, window is already shown, so just ensure it's visible
+        if (!isTestMode) {
+          window.show();
+        }
         updaterService.checkForUpdates();
 
         // Initialize IPC architecture (controllers + legacy handlers)
         // setupIpc is called inside registerAllHandlers now
         registerAllHandlers(syncService, updaterService, window);
 
-        // Create system tray
-        createTray(window);
+        // Create system tray (skip in test mode)
+        if (!isTestMode) {
+          createTray(window);
+        }
 
         setTimeout(() => {
           logger.info("Main: DB maintenance skipped for now (direct DB mode)");
@@ -468,18 +481,25 @@ async function initializeAppAndWindow() {
       }
     });
 
-    // In test mode, ensure window is shown even if ready-to-show doesn't fire
-    // This is important for headless CI environments where ready-to-show may not trigger
+    // In test mode, initialize IPC immediately after window creation
+    // Don't wait for ready-to-show which may not fire in headless mode
     if (isTestMode) {
+      logger.info("[Main] Test mode: Initializing IPC handlers immediately");
+      // Initialize IPC immediately so tests can interact with the app
+      registerAllHandlers(syncService, updaterService, mainWindow);
+      
+      // Log window state for debugging
+      logger.info(`[Main] Test mode: Window created, visible: ${mainWindow.isVisible()}, destroyed: ${mainWindow.isDestroyed()}`);
+      
+      // Ensure window is visible (it should already be with show: true, but double-check)
       mainWindow.webContents.once("did-finish-load", () => {
         if (mainWindow && !mainWindow.isDestroyed()) {
-          // Show window after a short delay to ensure it's ready
-          setTimeout(() => {
-            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
-              mainWindow.show();
-              logger.info("[Main] Test mode: Window shown explicitly after did-finish-load");
-            }
-          }, 1000);
+          logger.info(`[Main] Test mode: did-finish-load fired, window visible: ${mainWindow.isVisible()}`);
+          if (!mainWindow.isVisible()) {
+            mainWindow.show();
+            logger.info("[Main] Test mode: Window shown explicitly after did-finish-load");
+          }
+          logger.info("[Main] Test mode: Window ready for Playwright");
         }
       });
     }
