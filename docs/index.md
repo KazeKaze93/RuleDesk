@@ -60,13 +60,6 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
   - [Development Workflow](./development.md#development-workflow) - Making changes and adding features
   - [Debugging](./development.md#debugging) - Debugging techniques
 
-#### Contributing
-
-- **[Contributing Guide](./contributing.md)** - Guidelines for contributors
-  - [Development Principles](./contributing.md#development-principles) - KISS, YAGNI, SOLID, DRY
-  - [Code Standards](./contributing.md#code-standards) - TypeScript, React, error handling
-  - [Pull Request Process](./contributing.md#pull-request-process) - PR guidelines
-
 ### External API Reference
 
 - **[Rule34 API Reference](./rule34-api-reference.md)** - Unofficial Rule34.xxx API documentation
@@ -98,10 +91,10 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 2. Study [Architecture Documentation](./architecture.md) for system design
 3. Reference [API Documentation](./api.md) for IPC methods
 4. Review [Database Documentation](./database.md) for schema and operations
-5. Follow [Contributing Guide](./contributing.md) for code standards
+5. Follow [.cursorrules](../.cursorrules) for code standards
 
 #### I'm Contributing
-1. Read [Contributing Guide](./contributing.md) for guidelines
+1. Read [.cursorrules](../.cursorrules) for guidelines
 2. Review [Development Guide](./development.md) for workflows
 3. Check [Roadmap](./roadmap.md) for planned features
 4. Study [Architecture Documentation](./architecture.md) for design patterns
@@ -118,7 +111,7 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 - [Development Setup](./development.md#initial-setup) - Getting started
 - [Project Structure](./development.md#project-structure) - Code organization
 - [Adding Features](./development.md#2-adding-new-features) - Feature development
-- [Code Standards](./contributing.md#code-standards) - Coding guidelines
+- [Code Standards](../.cursorrules) - Coding guidelines
 
 #### Using the API
 - [IPC Bridge Interface](./api.md#ipc-bridge-interface) - Type definitions
@@ -143,8 +136,8 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 - [Glossary](./glossary.md) - Key terms and concepts
 
 ### Common Tasks
-- [Adding an IPC Method](./contributing.md#adding-a-new-ipc-method) - Extend IPC API
-- [Adding a Database Table](./contributing.md#adding-a-new-database-table) - Schema changes
+- [Adding an IPC Method](./development.md#adding-features) - Extend IPC API
+- [Adding a Database Table](./database.md#schema) - Schema changes
 - [Creating Migrations](./development.md#database-scripts) - Database migrations
 - [Debugging](./development.md#debugging) - Debugging techniques
 
@@ -179,11 +172,8 @@ Database Documentation
 └── Migrations → Development Guide
 
 Development Guide
-├── Setup → Contributing Guide
+├── Setup → .cursorrules
 └── Workflow → Architecture Documentation
-
-Contributing Guide
-└── Standards → Development Guide
 
 Roadmap
 └── All documents (references features and improvements)

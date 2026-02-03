@@ -95,6 +95,10 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 5.  **Accessibility (a11y)**:
     - Mandatory. Ensure proper ARIA labels and keyboard navigation.
 
+# DOCUMENTATION
+
+- **BAN**: Never create `contributing.md`. This file is forbidden. Project standards live in `.cursorrules` and `.ai/LESSONS.txt`.
+
 # WORKFLOW
 
 - If you change file structure, remind me to run the context update command (e.g., `repo-inquisitor ctx`).

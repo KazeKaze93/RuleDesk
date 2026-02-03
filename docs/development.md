@@ -22,7 +22,7 @@ This guide covers the development setup, build process, and common development t
 
 **📖 Related Documentation:**
 
-- [Contributing Guide](./contributing.md) - Code standards and guidelines
+- [.cursorrules](../.cursorrules) - Code standards and guidelines
 - [Architecture Documentation](./architecture.md) - System architecture
 - [API Documentation](./api.md) - IPC API reference
 - [Database Documentation](./database.md) - Database operations
@@ -305,7 +305,6 @@ Opens web interface at `http://localhost:4983` (default port).
 ├── docs/                               # Documentation
 │   ├── api.md
 │   ├── architecture.md
-│   ├── contributing.md
 │   ├── database.md
 │   ├── development.md
 │   ├── roadmap.md

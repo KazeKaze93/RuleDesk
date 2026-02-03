@@ -331,7 +331,7 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 - **[API Documentation](./docs/api.md)** - Complete IPC API reference and usage examples
 - **[Database Documentation](./docs/database.md)** - Database schema, operations, and best practices
 - **[Development Guide](./docs/development.md)** - Development setup, build process, and workflows
-- **[Contributing Guide](./docs/contributing.md)** - Guidelines for contributors and code standards
+- **[.cursorrules](./.cursorrules)** - Code standards and development principles
 
 ### 📋 Planning & Reference
 
@@ -593,4 +593,4 @@ This project adheres to strict development principles:
 - **Logging:** `electron-log` for all logging (no `console.log` in production code)
 - **IPC:** Controller-based architecture with dependency injection
 
-**📖 For detailed guidelines, see [Contributing Guide](./docs/contributing.md).**
+**📖 For detailed guidelines, see [.cursorrules](./.cursorrules) and [.ai/LESSONS.txt](./.ai/LESSONS.txt).**
