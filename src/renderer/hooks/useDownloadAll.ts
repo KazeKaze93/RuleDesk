@@ -99,7 +99,16 @@ export function useDownloadAllWithFilters(
           setTotalCount(0);
         }
       });
-  }, [fetchParams?.artistId, JSON.stringify(fetchParams?.filters)]);
+  }, [
+    fetchParams?.artistId,
+    fetchParams?.filters?.tags,
+    fetchParams?.filters?.rating,
+    fetchParams?.filters?.isFavorited,
+    fetchParams?.filters?.isViewed,
+    fetchParams?.filters?.sinceTracking,
+    fetchParams?.filters?.aiFilter,
+    fetchParams?.filters?.mediaType,
+  ]);
 
   const backendResult = useDownloadAllFromBackend(
     fetchParams ? { ...fetchParams, page: 1, limit: 50 } : null,

@@ -2,9 +2,8 @@ import { type IpcMainInvokeEvent } from "electron";
 import { app, shell, dialog, BrowserWindow, type BrowserWindow as BrowserWindowType } from "electron";
 import path from "path";
 import fs from "fs";
+import { Worker } from "worker_threads";
 import { access, mkdir, readFile, realpath, unlink, writeFile } from "fs/promises";
-import axios, { type AxiosProgressEvent } from "axios";
-import { pipeline } from "stream/promises";
 import log from "electron-log";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -61,8 +60,7 @@ export class FileController extends BaseController {
   private totalBytes = 0;
   // Track active downloads to cancel them on window close
   private activeDownloads = new Map<string, AbortController>();
-  private batchAbortController: AbortController | null = null;
-  private batchPaused = false;
+  private downloadWorker: Worker | null = null;
 
   /**
    * Set main window reference (needed for download dialogs and progress events)
@@ -79,32 +77,35 @@ export class FileController extends BaseController {
   }
 
   /**
-   * Cancel batch download (called from IPC or window close)
+   * Cancel batch download (sends message to Worker Thread)
    */
   public cancelDownloadAll(): boolean {
-    if (this.batchAbortController) {
-      this.batchAbortController.abort();
-      this.batchPaused = false;
-      log.info("[FileController] Batch download canceled by user");
+    if (this.downloadWorker) {
+      this.downloadWorker.postMessage({ type: "cancel" });
+      log.info("[FileController] Batch download cancel requested");
       return true;
     }
     return false;
   }
 
   /**
-   * Pause batch download (workers stop taking new items)
+   * Pause batch download
    */
   public pauseDownloadAll(): void {
-    this.batchPaused = true;
-    log.info("[FileController] Batch download paused");
+    if (this.downloadWorker) {
+      this.downloadWorker.postMessage({ type: "pause" });
+      log.info("[FileController] Batch download paused");
+    }
   }
 
   /**
    * Resume batch download
    */
   public resumeDownloadAll(): void {
-    this.batchPaused = false;
-    log.info("[FileController] Batch download resumed");
+    if (this.downloadWorker) {
+      this.downloadWorker.postMessage({ type: "resume" });
+      log.info("[FileController] Batch download resumed");
+    }
   }
 
   /**
@@ -117,9 +118,10 @@ export class FileController extends BaseController {
       log.debug(`[FileController] Canceled download: ${filename}`);
     }
     this.activeDownloads.clear();
-    if (this.batchAbortController) {
-      this.batchAbortController.abort();
-      this.batchAbortController = null;
+    if (this.downloadWorker) {
+      this.downloadWorker.postMessage({ type: "cancel" });
+      this.downloadWorker.terminate().catch(() => {});
+      this.downloadWorker = null;
     }
   }
 
@@ -411,8 +413,9 @@ export class FileController extends BaseController {
   }
 
   /**
-   * Download multiple files with rate limiting and progress tracking
-   * Uses concurrency limit and delay between requests to avoid bans (see docs/download-batch-risks.md)
+   * Download multiple files via Worker Thread.
+   * Heavy I/O (network, disk) runs off Main process to avoid blocking UI.
+   * Main only orchestrates: spawn Worker, forward progress, handle cancel/pause/resume.
    */
   private async downloadAll(
     _event: IpcMainInvokeEvent,
@@ -465,157 +468,72 @@ export class FileController extends BaseController {
       }
     }
 
-    this.batchAbortController = new AbortController();
-    this.batchPaused = false;
-    let downloaded = 0;
-    let failed = 0;
-
-    await this.writeQueueFile({
-      items: validItems,
-      doneCount: 0,
-      total: validItems.length,
-      folder,
-      timestamp: Date.now(),
-    });
-
-    const updateQueueProgress = async () => {
-      await this.writeQueueFile({
-        items: validItems,
-        doneCount: downloaded,
-        total: validItems.length,
-        folder,
-        timestamp: Date.now(),
-      });
-    };
-
-    const runOne = async (item: { url: string; filename: string }): Promise<void> => {
-      if (this.batchAbortController?.signal.aborted) return;
-      while (this.batchPaused && !this.batchAbortController?.signal.aborted) {
-        await new Promise((r) => setTimeout(r, 200));
-      }
-      if (this.batchAbortController?.signal.aborted) return;
-
-      const filePath = this.getFilePath(folder, item.filename, downloadFolderStructure);
-      const dir = path.dirname(filePath);
-      try {
-        await access(dir);
-      } catch {
-        try {
-          await mkdir(dir, { recursive: true });
-        } catch (e) {
-          log.warn(`[FileController] Failed to create subdir ${dir}`, e);
-          failed++;
-          return;
-        }
-      }
-
-      let fileExists = false;
-      try {
-        await access(filePath);
-        fileExists = true;
-      } catch {
-        /* file doesn't exist */
-      }
-      if (fileExists && duplicateFileBehavior === "skip") {
-        downloaded++;
-        await updateQueueProgress();
-        if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_ALL_PROGRESS, {
-            id: item.filename,
-            percent: 100,
-            done: downloaded,
-            total: validItems.length,
-          });
-        }
-        return;
-      }
+    const workerPath = path.join(__dirname, "workers", "downloadWorker.cjs");
+    return new Promise((resolve) => {
+      const fail = (error: string) =>
+        resolve({
+          success: false,
+          downloaded: 0,
+          failed: validItems.length,
+          canceled: false,
+          error,
+        });
 
       try {
-        const response = await axios({
-          method: "GET",
-          url: item.url,
-          responseType: "stream",
-          signal: this.batchAbortController?.signal,
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        const worker = new Worker(workerPath, {
+          workerData: {
+            items: validItems,
+            folder,
+            duplicateFileBehavior,
+            downloadFolderStructure,
+            queueFilePath: this.getQueueFilePath(),
           },
-          onDownloadProgress: (ev: AxiosProgressEvent) => {
-            if (mainWindow.isDestroyed() || this.batchAbortController?.signal.aborted) return;
-            if (ev.total) {
-              const pct = Math.round((ev.loaded * 100) / ev.total);
-              mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_ALL_PROGRESS, {
-                id: item.filename,
-                percent: pct,
-                done: downloaded + (pct >= 100 ? 1 : 0),
-                total: validItems.length,
-              });
+        });
+        this.downloadWorker = worker;
+
+        worker.on("message", (msg: { type: string; id?: string; percent?: number; done?: number; total?: number; success?: boolean; downloaded?: number; failed?: number; canceled?: boolean; error?: string }) => {
+          if (msg.type === "progress" && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_ALL_PROGRESS, {
+              id: msg.id,
+              percent: msg.percent ?? 0,
+              done: msg.done ?? 0,
+              total: msg.total ?? validItems.length,
+            });
+          } else if (msg.type === "complete") {
+            this.downloadWorker = null;
+            if (msg.success && !msg.canceled) {
+              this.notifyPendingDownloadStateChanged();
             }
-          },
-        });
-        const writer = fs.createWriteStream(filePath);
-        await pipeline(response.data, writer, {
-          signal: this.batchAbortController?.signal,
-        });
-        downloaded++;
-        await updateQueueProgress();
-        if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_ALL_PROGRESS, {
-            id: item.filename,
-            percent: 100,
-            done: downloaded,
-            total: validItems.length,
-          });
-        }
-      } catch (err) {
-        if (this.batchAbortController?.signal.aborted) return;
-        failed++;
-        const isAborted =
-          (err instanceof Error && err.name === "AbortError") ||
-          (axios.isAxiosError(err) && err.code === "ERR_CANCELED");
-        if (isAborted) return;
-        log.warn(`[FileController] Batch download failed: ${item.filename}`, err);
-        try {
-          await access(filePath);
-          await unlink(filePath);
-        } catch {
-          /* ignore */
-        }
-      }
-    };
-
-    const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-    // Process with concurrency limit and delay
-    const queue = [...validItems];
-    const workers: Promise<void>[] = [];
-    for (let i = 0; i < BATCH_DOWNLOAD_CONCURRENCY; i++) {
-      workers.push(
-        (async () => {
-          while (queue.length > 0 && !this.batchAbortController?.signal.aborted) {
-            const item = queue.shift();
-            if (!item) break;
-            await runOne(item);
-            await delay(BATCH_DOWNLOAD_DELAY_MS);
+            resolve({
+              success: msg.success ?? false,
+              downloaded: msg.downloaded ?? 0,
+              failed: msg.failed ?? 0,
+              canceled: msg.canceled ?? false,
+            });
+          } else if (msg.type === "error") {
+            this.downloadWorker = null;
+            fail(msg.error ?? "Worker error");
           }
-        })()
-      );
-    }
-    await Promise.all(workers);
+        });
 
-    const canceled = this.batchAbortController?.signal.aborted ?? false;
-    this.batchAbortController = null;
+        worker.on("error", (err) => {
+          this.downloadWorker = null;
+          log.error("[FileController] Download worker error:", err);
+          fail(err.message);
+        });
 
-    if (!canceled && failed === 0) {
-      await this.deleteQueueFile();
-    }
-
-    return {
-      success: failed === 0 && !canceled,
-      downloaded,
-      failed,
-      canceled,
-    };
+        worker.on("exit", (code) => {
+          if (code !== 0 && this.downloadWorker) {
+            this.downloadWorker = null;
+            fail(`Worker exited with code ${code}`);
+          }
+        });
+      } catch (err) {
+        this.downloadWorker = null;
+        log.error("[FileController] Failed to spawn download worker:", err);
+        fail(err instanceof Error ? err.message : String(err));
+      }
+    });
   }
 
   /**

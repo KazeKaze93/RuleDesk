@@ -177,6 +177,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
 
   return (
     <>
+      {/* modal={false} allows menu to stay open when clicking outside; verify A11y with screen reader */}
       <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
         <DropdownMenuTrigger asChild>
           {trigger || defaultTrigger}

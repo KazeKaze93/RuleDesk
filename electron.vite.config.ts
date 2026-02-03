@@ -15,6 +15,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           main: resolve(__dirname, "src/main/main.ts"),
+          "workers/downloadWorker": resolve(__dirname, "src/main/workers/downloadWorker.ts"),
         },
         output: {
           dir: "out/main",

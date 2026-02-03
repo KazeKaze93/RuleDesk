@@ -223,7 +223,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
             e.stopPropagation();
           }
         }}
-        role="presentation"
       >
         <QuickAddToPlaylistMenu
           post={{ id: post.id, postId: post.postId }}
