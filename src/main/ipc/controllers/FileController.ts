@@ -2,6 +2,7 @@ import { type IpcMainInvokeEvent } from "electron";
 import { app, shell, dialog, BrowserWindow, type BrowserWindow as BrowserWindowType } from "electron";
 import path from "path";
 import fs from "fs";
+import { access, mkdir, readFile, realpath, unlink, writeFile } from "fs/promises";
 import axios, { type AxiosProgressEvent } from "axios";
 import { pipeline } from "stream/promises";
 import log from "electron-log";
@@ -126,31 +127,31 @@ export class FileController extends BaseController {
     return path.join(app.getPath("userData"), DOWNLOAD_QUEUE_FILE);
   }
 
-  private writeQueueFile(data: {
+  private async writeQueueFile(data: {
     items: Array<{ url: string; filename: string }>;
     doneCount: number;
     total: number;
     folder: string;
     timestamp: number;
-  }): void {
+  }): Promise<void> {
     try {
-      fs.writeFileSync(this.getQueueFilePath(), JSON.stringify(data), "utf-8");
+      await writeFile(this.getQueueFilePath(), JSON.stringify(data), "utf-8");
     } catch (e) {
       log.warn("[FileController] Failed to write queue file:", e);
     }
   }
 
-  private readQueueFile(): {
+  private async readQueueFile(): Promise<{
     items: Array<{ url: string; filename: string }>;
     doneCount: number;
     total: number;
     folder: string;
     timestamp: number;
-  } | null {
+  } | null> {
     try {
       const p = this.getQueueFilePath();
-      if (!fs.existsSync(p)) return null;
-      const raw = fs.readFileSync(p, "utf-8");
+      await access(p);
+      const raw = await readFile(p, "utf-8");
       const data = JSON.parse(raw);
       if (!Array.isArray(data.items) || typeof data.doneCount !== "number") return null;
       return data;
@@ -159,26 +160,37 @@ export class FileController extends BaseController {
     }
   }
 
-  private deleteQueueFile(): void {
+  private async deleteQueueFile(): Promise<void> {
     try {
       const p = this.getQueueFilePath();
-      if (fs.existsSync(p)) fs.unlinkSync(p);
+      await access(p);
+      await unlink(p);
+      this.notifyPendingDownloadStateChanged();
     } catch (e) {
-      log.warn("[FileController] Failed to delete queue file:", e);
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
+        log.warn("[FileController] Failed to delete queue file:", e);
+      }
     }
   }
 
-  private getPendingDownload(): {
+  private notifyPendingDownloadStateChanged(): void {
+    const win = this.getMainWindow();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(IPC_CHANNELS.FILES.PENDING_DOWNLOAD_STATE_CHANGED);
+    }
+  }
+
+  private async getPendingDownload(): Promise<{
     hasPending: boolean;
     total: number;
     done: number;
     folder: string;
-  } | null {
-    const data = this.readQueueFile();
+  } | null> {
+    const data = await this.readQueueFile();
     if (!data || data.doneCount >= data.items.length) return null;
     const maxAgeMs = 7 * 24 * 60 * 60 * 1000;
     if (Date.now() - data.timestamp > maxAgeMs) {
-      this.deleteQueueFile();
+      await this.deleteQueueFile();
       return null;
     }
     return {
@@ -192,13 +204,13 @@ export class FileController extends BaseController {
   private async resumePendingDownload(
     event: IpcMainInvokeEvent
   ): Promise<{ success: boolean; error?: string }> {
-    const data = this.readQueueFile();
+    const data = await this.readQueueFile();
     if (!data || data.doneCount >= data.items.length) {
-      this.deleteQueueFile();
+      await this.deleteQueueFile();
       return { success: false, error: "No pending download" };
     }
     const remaining = data.items.slice(data.doneCount);
-    this.deleteQueueFile();
+    await this.deleteQueueFile();
     const result = await this.downloadAll(event, remaining);
     return {
       success: result.success,
@@ -237,27 +249,36 @@ export class FileController extends BaseController {
   }
 
   /**
-   * Build full file path from root, structure template, and filename
-   * Filename format: artistId_postId.ext - we extract artistId for {artist_id} structure
+   * Build full file path from root, structure template, and filename.
+   * Filename format: artistId_postId.ext - we extract artistId for {artist_id} structure.
+   * Sanitizes path to prevent traversal outside downloadRoot.
    */
   private getFilePath(
     root: string,
     filename: string,
     structure: "flat" | "{artist_id}"
   ): string {
+    const resolvedRoot = path.resolve(root);
+    let fullPath: string;
     if (structure === "flat") {
-      return path.join(root, filename);
+      fullPath = path.resolve(root, filename);
+    } else {
+      const match = filename.match(/^(\d+)_/);
+      const artistId = match ? match[1] : "unknown";
+      fullPath = path.resolve(root, artistId, filename);
     }
-    const match = filename.match(/^(\d+)_/);
-    const artistId = match ? match[1] : "unknown";
-    const subdir = path.join(root, artistId);
-    return path.join(subdir, filename);
+    const relative = path.relative(resolvedRoot, fullPath);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
+      log.error(`[FileController] Path traversal blocked: ${fullPath} outside ${resolvedRoot}`);
+      throw new Error("Path traversal attempted");
+    }
+    return fullPath;
   }
 
   /**
    * Get download root folder from settings (or default)
    */
-  private getDownloadRoot(): string {
+  private async getDownloadRoot(): Promise<string> {
     try {
       const db = container.resolve(DI_TOKENS.DB);
       const row = db
@@ -267,8 +288,13 @@ export class FileController extends BaseController {
         .limit(1)
         .get();
       const folder = row?.downloadFolder?.trim();
-      if (folder && fs.existsSync(folder)) {
-        return folder;
+      if (folder) {
+        try {
+          await access(folder);
+          return folder;
+        } catch {
+          /* folder doesn't exist or inaccessible */
+        }
       }
     } catch (e) {
       log.warn("[FileController] Failed to get download folder from settings:", e);
@@ -357,9 +383,9 @@ export class FileController extends BaseController {
     this.handle(
       IPC_CHANNELS.FILES.DISMISS_PENDING_DOWNLOAD,
       z.tuple([]),
-      () => {
-        this.deleteQueueFile();
-        return Promise.resolve();
+      async () => {
+        await this.deleteQueueFile();
+        this.notifyPendingDownloadStateChanged();
       }
     );
 
@@ -377,7 +403,7 @@ export class FileController extends BaseController {
     if (!mainWindow) return null;
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       title: "Select Download Folder",
-      defaultPath: this.getDownloadRoot(),
+      defaultPath: await this.getDownloadRoot(),
       properties: ["openDirectory"],
     });
     if (canceled || !filePaths?.length) return null;
@@ -420,11 +446,13 @@ export class FileController extends BaseController {
       return { success: true, downloaded: 0, failed: 0, canceled: false };
     }
 
-    const folder = this.getDownloadRoot();
+    const folder = await this.getDownloadRoot();
     const { duplicateFileBehavior, downloadFolderStructure } = this.getDownloadSettings();
-    if (!fs.existsSync(folder)) {
+    try {
+      await access(folder);
+    } catch {
       try {
-        fs.mkdirSync(folder, { recursive: true });
+        await mkdir(folder, { recursive: true });
       } catch (e) {
         log.error("[FileController] Failed to create download directory", e);
         return {
@@ -442,7 +470,7 @@ export class FileController extends BaseController {
     let downloaded = 0;
     let failed = 0;
 
-    this.writeQueueFile({
+    await this.writeQueueFile({
       items: validItems,
       doneCount: 0,
       total: validItems.length,
@@ -450,8 +478,8 @@ export class FileController extends BaseController {
       timestamp: Date.now(),
     });
 
-    const updateQueueProgress = () => {
-      this.writeQueueFile({
+    const updateQueueProgress = async () => {
+      await this.writeQueueFile({
         items: validItems,
         doneCount: downloaded,
         total: validItems.length,
@@ -469,9 +497,11 @@ export class FileController extends BaseController {
 
       const filePath = this.getFilePath(folder, item.filename, downloadFolderStructure);
       const dir = path.dirname(filePath);
-      if (!fs.existsSync(dir)) {
+      try {
+        await access(dir);
+      } catch {
         try {
-          fs.mkdirSync(dir, { recursive: true });
+          await mkdir(dir, { recursive: true });
         } catch (e) {
           log.warn(`[FileController] Failed to create subdir ${dir}`, e);
           failed++;
@@ -479,9 +509,16 @@ export class FileController extends BaseController {
         }
       }
 
-      if (fs.existsSync(filePath) && duplicateFileBehavior === "skip") {
+      let fileExists = false;
+      try {
+        await access(filePath);
+        fileExists = true;
+      } catch {
+        /* file doesn't exist */
+      }
+      if (fileExists && duplicateFileBehavior === "skip") {
         downloaded++;
-        updateQueueProgress();
+        await updateQueueProgress();
         if (!mainWindow.isDestroyed()) {
           mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_ALL_PROGRESS, {
             id: item.filename,
@@ -521,7 +558,7 @@ export class FileController extends BaseController {
           signal: this.batchAbortController?.signal,
         });
         downloaded++;
-        updateQueueProgress();
+        await updateQueueProgress();
         if (!mainWindow.isDestroyed()) {
           mainWindow.webContents.send(IPC_CHANNELS.FILES.DOWNLOAD_ALL_PROGRESS, {
             id: item.filename,
@@ -539,7 +576,8 @@ export class FileController extends BaseController {
         if (isAborted) return;
         log.warn(`[FileController] Batch download failed: ${item.filename}`, err);
         try {
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          await access(filePath);
+          await unlink(filePath);
         } catch {
           /* ignore */
         }
@@ -569,7 +607,7 @@ export class FileController extends BaseController {
     this.batchAbortController = null;
 
     if (!canceled && failed === 0) {
-      this.deleteQueueFile();
+      await this.deleteQueueFile();
     }
 
     return {
@@ -610,12 +648,14 @@ export class FileController extends BaseController {
     const { url: validUrl, filename: validFilename } = validation.data;
 
     try {
-      const defaultDir = this.getDownloadRoot();
+      const defaultDir = await this.getDownloadRoot();
 
       // Safely create directory
-      if (!fs.existsSync(defaultDir)) {
+      try {
+        await access(defaultDir);
+      } catch {
         try {
-          fs.mkdirSync(defaultDir, { recursive: true });
+          await mkdir(defaultDir, { recursive: true });
         } catch (e) {
           log.error("[FileController] Failed to create download directory", e);
           // Don't fail, dialog will just open in OS default folder
@@ -721,11 +761,12 @@ export class FileController extends BaseController {
           log.info(`[FileController] Download canceled: ${validFilename}`);
           // Clean up partial file if it exists
           try {
-            if (fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
-            }
+            await access(filePath);
+            await unlink(filePath);
           } catch (unlinkError) {
-            log.warn("[FileController] Failed to clean up partial file:", unlinkError);
+            if ((unlinkError as NodeJS.ErrnoException).code !== "ENOENT") {
+              log.warn("[FileController] Failed to clean up partial file:", unlinkError);
+            }
           }
           return { success: false, canceled: true };
         }
@@ -763,7 +804,7 @@ export class FileController extends BaseController {
     filePathOrName: string
   ): Promise<boolean> {
     try {
-      const downloadRoot = this.getDownloadRoot();
+      const downloadRoot = await this.getDownloadRoot();
       let fullPath = filePathOrName;
 
       if (!path.isAbsolute(filePathOrName)) {
@@ -783,22 +824,23 @@ export class FileController extends BaseController {
 
       // Critical security: resolve symlinks to get real path on disk
       // This prevents path traversal via symbolic links
-      let realPath: string;
+      let resolvedPath: string;
       try {
-        // Use realpathSync to resolve all symlinks and get canonical path
-        realPath = fs.realpathSync(normalizedPath);
+        resolvedPath = await realpath(normalizedPath);
       } catch (error) {
         // Path doesn't exist or is inaccessible, fallback to download root
         log.warn(`[FileController] Failed to resolve real path: ${normalizedPath}`, error);
-        if (fs.existsSync(downloadRoot)) {
+        try {
+          await access(downloadRoot);
           await shell.openPath(downloadRoot);
           return true;
+        } catch {
+          return false;
         }
-        return false;
       }
 
       // Security check: ensure real path (after symlink resolution) is still within safe directory
-      const normalizedRealPath = path.normalize(realPath);
+      const normalizedRealPath = path.normalize(resolvedPath);
       if (!normalizedRealPath.startsWith(downloadRoot)) {
         log.error(
           `[FileController] SECURITY VIOLATION: Real path outside safe directory: ${normalizedRealPath} (original: ${normalizedPath})`
@@ -807,17 +849,21 @@ export class FileController extends BaseController {
         return false;
       }
 
-      if (fs.existsSync(realPath)) {
-        shell.showItemInFolder(realPath);
+      try {
+        await access(resolvedPath);
+        shell.showItemInFolder(resolvedPath);
         return true;
+      } catch {
+        /* path doesn't exist */
       }
 
-      if (fs.existsSync(downloadRoot)) {
+      try {
+        await access(downloadRoot);
         await shell.openPath(downloadRoot);
         return true;
+      } catch {
+        return false;
       }
-
-      return false;
     } catch (error) {
       log.error("[FileController] Failed to open folder:", error);
       return false;

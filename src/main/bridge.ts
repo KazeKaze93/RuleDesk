@@ -148,6 +148,7 @@ export interface IpcBridge {
   onDownloadAllProgress: (
     callback: (data: { id: string; percent: number; done: number; total: number }) => void
   ) => () => void;
+  onPendingDownloadStateChanged: (callback: () => void) => () => void;
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
@@ -290,6 +291,13 @@ const ipcBridge: IpcBridge = {
       _: IpcRendererEvent,
       data: { id: string; percent: number; done: number; total: number }
     ) => callback(data);
+    ipcRenderer.on(channel, subscription);
+    return () => ipcRenderer.removeListener(channel, subscription);
+  },
+
+  onPendingDownloadStateChanged: (callback) => {
+    const channel = IPC_CHANNELS.FILES.PENDING_DOWNLOAD_STATE_CHANGED;
+    const subscription = () => callback();
     ipcRenderer.on(channel, subscription);
     return () => ipcRenderer.removeListener(channel, subscription);
   },

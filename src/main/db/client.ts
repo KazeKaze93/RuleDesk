@@ -206,59 +206,6 @@ export async function initializeDatabase(): Promise<AppDatabase> {
                     .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
                     .run(entry.tag, Date.now());
                 }
-              } else if (entry.tag === "0004_exotic_misty_knight") {
-                const tableInfo = sqliteInstance
-                  .prepare("PRAGMA table_info(settings)")
-                  .all() as Array<{ name: string }>;
-                const columnNames = tableInfo.map((col) => col.name);
-                
-                // Only execute ALTER TABLE if columns don't exist
-                const needsIsAdultVerified = !columnNames.includes("is_adult_verified");
-                const needsTosAcceptedAt = !columnNames.includes("tos_accepted_at");
-                
-                if (needsIsAdultVerified) {
-                  sqliteInstance.exec(
-                    "ALTER TABLE settings ADD COLUMN is_adult_verified integer DEFAULT 0 NOT NULL;"
-                  );
-                  logger.debug("[DB] Added is_adult_verified column");
-                }
-                if (needsTosAcceptedAt) {
-                  sqliteInstance.exec("ALTER TABLE settings ADD COLUMN tos_accepted_at integer;");
-                  logger.debug("[DB] Added tos_accepted_at column");
-                }
-                
-                // Mark migration as executed
-                sqliteInstance
-                  .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
-                  .run(entry.tag, Date.now());
-              } else if (entry.tag === "0012_add_download_folder") {
-                const tableInfo = sqliteInstance
-                  .prepare("PRAGMA table_info(settings)")
-                  .all() as Array<{ name: string }>;
-                const hasDownloadFolder = tableInfo.some((col) => col.name === "download_folder");
-                if (!hasDownloadFolder) {
-                  sqliteInstance.exec("ALTER TABLE settings ADD COLUMN download_folder text;");
-                  logger.debug("[DB] Added download_folder column");
-                }
-                sqliteInstance
-                  .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
-                  .run(entry.tag, Date.now());
-              } else if (entry.tag === "0013_add_download_settings") {
-                const tableInfo = sqliteInstance
-                  .prepare("PRAGMA table_info(settings)")
-                  .all() as Array<{ name: string }>;
-                const columnNames = tableInfo.map((col) => col.name);
-                if (!columnNames.includes("duplicate_file_behavior")) {
-                  sqliteInstance.exec("ALTER TABLE settings ADD COLUMN duplicate_file_behavior text DEFAULT 'skip';");
-                  logger.debug("[DB] Added duplicate_file_behavior column");
-                }
-                if (!columnNames.includes("download_folder_structure")) {
-                  sqliteInstance.exec("ALTER TABLE settings ADD COLUMN download_folder_structure text DEFAULT 'flat';");
-                  logger.debug("[DB] Added download_folder_structure column");
-                }
-                sqliteInstance
-                  .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
-                  .run(entry.tag, Date.now());
               } else if (entry.tag === "0010_add_fts5_cache_invalidation") {
                 // Handle migration 0010 specially - it tries to create triggers on FTS5 virtual table
                 // SQLite doesn't allow triggers on virtual tables in some configurations
