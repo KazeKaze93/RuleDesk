@@ -745,7 +745,7 @@ export class FileController extends BaseController {
       let resolvedPath: string;
       try {
         resolvedPath = await realpath(normalizedPath);
-      } catch (error) {
+      } catch (error: unknown) {
         // Path doesn't exist or is inaccessible, fallback to download root
         log.warn(`[FileController] Failed to resolve real path: ${normalizedPath}`, error);
         try {
@@ -782,7 +782,7 @@ export class FileController extends BaseController {
       } catch {
         return false;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       log.error("[FileController] Failed to open folder:", error);
       return false;
     }

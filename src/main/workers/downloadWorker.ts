@@ -250,7 +250,7 @@ async function runWorker(): Promise<void> {
   });
 }
 
-runWorker().catch((err) => {
+runWorker().catch((err: unknown) => {
   parentPort?.postMessage({
     type: "error",
     error: err instanceof Error ? err.message : String(err),

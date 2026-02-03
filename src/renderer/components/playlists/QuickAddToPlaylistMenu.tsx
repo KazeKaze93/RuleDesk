@@ -113,7 +113,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
 
       invalidatePostPlaylists(effectivePostId, [playlistId]);
       onSuccess?.();
-    } catch (error) {
+    } catch (error: unknown) {
       log.error("[QuickAddToPlaylistMenu] Failed to toggle playlist:", error);
       setSelectedPlaylistIds(prevSet);
     }
