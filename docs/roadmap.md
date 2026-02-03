@@ -328,8 +328,8 @@ Advanced features for future releases:
 - ✅ **Queue System:** Handle downloads in the background/main process with progress tracking
 - ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
 - ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
-- ⏳ "Download All" for current filter/artist (planned)
-- ⏳ **Settings:** Allow choosing a default download directory (planned)
+- ✅ **Download All:** Batch download for Artist Gallery, Favorites, Updates (rate-limited, max 500 files)
+- ✅ **Settings:** Default download folder configurable in Settings
 
 **Implementation Notes:**
 

@@ -167,7 +167,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
             );
           `);
           
-          // Execute migrations manually, handling duplicate column errors
+          // Execute migrations manually, handling duplicate column/table errors
           for (const entry of migrationEntries) {
             const migrationFile = path.join(migrationsFolder, `${entry.tag}.sql`);
             
@@ -188,32 +188,24 @@ export async function initializeDatabase(): Promise<AppDatabase> {
             try {
               const migrationSQL = fs.readFileSync(migrationFile, "utf-8");
               
-              // Handle migration 0004 specially - check if columns exist before adding
-              if (entry.tag === "0004_exotic_misty_knight") {
-                const tableInfo = sqliteInstance
-                  .prepare("PRAGMA table_info(settings)")
-                  .all() as Array<{ name: string }>;
-                const columnNames = tableInfo.map((col) => col.name);
-                
-                // Only execute ALTER TABLE if columns don't exist
-                const needsIsAdultVerified = !columnNames.includes("is_adult_verified");
-                const needsTosAcceptedAt = !columnNames.includes("tos_accepted_at");
-                
-                if (needsIsAdultVerified) {
-                  sqliteInstance.exec(
-                    "ALTER TABLE settings ADD COLUMN is_adult_verified integer DEFAULT 0 NOT NULL;"
-                  );
-                  logger.debug("[DB] Added is_adult_verified column");
+              // Handle migration 0000: if artists table exists, skip (DB was created without migrations)
+              if (entry.tag === "0000_blue_lorna_dane") {
+                const artistsTableExists = sqliteInstance
+                  .prepare(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='artists'"
+                  )
+                  .get();
+                if (artistsTableExists) {
+                  logger.debug("[DB] Migration 0000: artists exists, skipping");
+                  sqliteInstance
+                    .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
+                    .run(entry.tag, Date.now());
+                } else {
+                  sqliteInstance.exec(migrationSQL);
+                  sqliteInstance
+                    .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
+                    .run(entry.tag, Date.now());
                 }
-                if (needsTosAcceptedAt) {
-                  sqliteInstance.exec("ALTER TABLE settings ADD COLUMN tos_accepted_at integer;");
-                  logger.debug("[DB] Added tos_accepted_at column");
-                }
-                
-                // Mark migration as executed
-                sqliteInstance
-                  .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
-                  .run(entry.tag, Date.now());
               } else if (entry.tag === "0010_add_fts5_cache_invalidation") {
                 // Handle migration 0010 specially - it tries to create triggers on FTS5 virtual table
                 // SQLite doesn't allow triggers on virtual tables in some configurations
@@ -377,10 +369,14 @@ export async function initializeDatabase(): Promise<AppDatabase> {
               const errorMessage = error.message || String(error);
               const errorCode = error.code || "";
               
-              // If it's a duplicate column error, log and mark as executed
-              if (errorCode === "SQLITE_ERROR" && errorMessage.includes("duplicate column")) {
+              // If it's a duplicate column/table/index error, log and mark as executed
+              // (DB was created without migrations or from different schema)
+              const isAlreadyExists =
+                (errorCode === "SQLITE_ERROR" && errorMessage.includes("duplicate column")) ||
+                (errorCode === "SQLITE_ERROR" && errorMessage.includes("already exists"));
+              if (isAlreadyExists) {
                 logger.warn(
-                  `[DB] Migration ${entry.tag} attempted to add duplicate column. Skipping...`
+                  `[DB] Migration ${entry.tag}: object already exists. Skipping...`
                 );
                 // Mark as executed anyway to prevent retry
                 try {

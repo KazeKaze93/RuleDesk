@@ -125,6 +125,9 @@ export const settings = sqliteTable("settings", {
     .default(false)
     .notNull(),
   tosAcceptedAt: integer("tos_accepted_at", { mode: "timestamp" }),
+  downloadFolder: text("download_folder"),
+  duplicateFileBehavior: text("duplicate_file_behavior").default("skip"),
+  downloadFolderStructure: text("download_folder_structure").default("flat"),
 });
 
 export const tagMetadata = sqliteTable(

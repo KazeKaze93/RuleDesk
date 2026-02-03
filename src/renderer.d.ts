@@ -42,6 +42,9 @@ export interface IpcSettings {
   isAdultConfirmed: boolean;
   isAdultVerified: boolean;
   tosAcceptedAt: number | null; // Timestamp in milliseconds (Date.getTime())
+  downloadFolder: string | null; // Custom folder for downloads
+  duplicateFileBehavior: "skip" | "overwrite";
+  downloadFolderStructure: "flat" | "{artist_id}";
 }
 
 export interface IpcApi extends IpcBridge {
@@ -51,6 +54,7 @@ export interface IpcApi extends IpcBridge {
   // Settings
   getSettings: () => Promise<IpcSettings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  saveDownloadFolder: (path: string | null) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
   logout: () => Promise<void>;
   openExternal: (url: string) => Promise<void>;

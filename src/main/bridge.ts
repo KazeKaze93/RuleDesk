@@ -59,6 +59,7 @@ export interface IpcBridge {
   // Settings
   getSettings: () => Promise<IpcSettings | null>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  saveDownloadFolder: (path: string | null) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
   logout: () => Promise<void>;
 
@@ -73,6 +74,8 @@ export interface IpcBridge {
   // Posts
   getArtistPosts: (params: GetPostsRequest) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
+  getDownloadItems: (params: GetPostsRequest & { limit?: number }) => Promise<{ items: Array<{ url: string; filename: string }> }>;
+  getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
 
@@ -114,9 +117,38 @@ export interface IpcBridge {
     error?: string;
     canceled?: boolean;
   }>;
+  downloadAll: (
+    items: Array<{ url: string; filename: string }>
+  ) => Promise<{
+    success: boolean;
+    downloaded: number;
+    failed: number;
+    canceled: boolean;
+    error?: string;
+  }>;
+  cancelDownloadAll: () => Promise<boolean>;
+  pauseDownloadAll: () => Promise<void>;
+  resumeDownloadAll: () => Promise<void>;
+  getPendingDownload: () => Promise<{
+    hasPending: boolean;
+    total: number;
+    done: number;
+    folder: string;
+  } | null>;
+  resumePendingDownload: () => Promise<{ success: boolean; error?: string }>;
+  dismissPendingDownload: () => Promise<void>;
+  saveDownloadSettings: (data: {
+    duplicateFileBehavior?: "skip" | "overwrite";
+    downloadFolderStructure?: "flat" | "{artist_id}";
+  }) => Promise<boolean>;
   openFileInFolder: (path: string) => Promise<boolean>;
+  selectDownloadFolder: () => Promise<string | null>;
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
+  onDownloadAllProgress: (
+    callback: (data: { id: string; percent: number; done: number; total: number }) => void
+  ) => () => void;
+  onPendingDownloadStateChanged: (callback: () => void) => () => void;
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
@@ -142,7 +174,7 @@ export interface IpcBridge {
   removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
   getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
-  getPlaylistsContainingPost: (postId: number) => Promise<number[]>;
+  getPlaylistsContainingPost: (postId: number, rule34PostId?: number) => Promise<number[]>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -176,6 +208,8 @@ const ipcBridge: IpcBridge = {
   verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
 
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.GET),
+  saveDownloadFolder: (path) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER, path),
   saveSettings: (creds) =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE, creds),
   confirmLegal: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.CONFIRM_LEGAL),
@@ -191,6 +225,10 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke("db:get-posts", params),
   getArtistPostsCount: (artistId?: number) =>
     ipcRenderer.invoke("db:get-posts-count", artistId),
+  getDownloadItems: (params: GetPostsRequest & { limit?: number }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS, params),
+  getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS, params),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 
@@ -214,8 +252,27 @@ const ipcBridge: IpcBridge = {
     return ipcRenderer.invoke("files:download", url, filename);
   },
 
+  downloadAll: (items: Array<{ url: string; filename: string }>) =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILES.DOWNLOAD_ALL, items),
+  cancelDownloadAll: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILES.CANCEL_DOWNLOAD_ALL),
+  pauseDownloadAll: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILES.PAUSE_DOWNLOAD_ALL),
+  resumeDownloadAll: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILES.RESUME_DOWNLOAD_ALL),
+  getPendingDownload: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILES.GET_PENDING_DOWNLOAD),
+  resumePendingDownload: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILES.RESUME_PENDING_DOWNLOAD),
+  dismissPendingDownload: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILES.DISMISS_PENDING_DOWNLOAD),
+  saveDownloadSettings: (data) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS, data),
   openFileInFolder: (path: string) =>
     ipcRenderer.invoke("files:open-folder", path),
+
+  selectDownloadFolder: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.FILES.SELECT_DOWNLOAD_FOLDER),
 
   onDownloadProgress: (callback) => {
     const channel = "files:download-progress";
@@ -226,6 +283,23 @@ const ipcBridge: IpcBridge = {
     return () => {
       ipcRenderer.removeListener(channel, subscription);
     };
+  },
+
+  onDownloadAllProgress: (callback) => {
+    const channel = IPC_CHANNELS.FILES.DOWNLOAD_ALL_PROGRESS;
+    const subscription = (
+      _: IpcRendererEvent,
+      data: { id: string; percent: number; done: number; total: number }
+    ) => callback(data);
+    ipcRenderer.on(channel, subscription);
+    return () => ipcRenderer.removeListener(channel, subscription);
+  },
+
+  onPendingDownloadStateChanged: (callback) => {
+    const channel = IPC_CHANNELS.FILES.PENDING_DOWNLOAD_STATE_CHANGED;
+    const subscription = () => callback();
+    ipcRenderer.on(channel, subscription);
+    return () => ipcRenderer.removeListener(channel, subscription);
   },
 
   repairArtist: (artistId) =>
@@ -301,8 +375,8 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLIST_POSTS, params),
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
-  getPlaylistsContainingPost: (postId: number) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST, postId),
+  getPlaylistsContainingPost: (postId: number, rule34PostId?: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST, postId, rule34PostId),
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);

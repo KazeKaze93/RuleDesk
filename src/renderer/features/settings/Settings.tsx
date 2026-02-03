@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
 import {
@@ -8,7 +8,15 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { Loader2, Database, Upload } from "lucide-react";
+import { Label } from "../../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import { Loader2, Database, Upload, FolderOpen } from "lucide-react";
 
 export const Settings = () => {
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -19,6 +27,24 @@ export const Settings = () => {
   const [restoreStatus, setRestoreStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
+  const [downloadFolder, setDownloadFolder] = useState<string | null>(null);
+  const [downloadFolderStatus, setDownloadFolderStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+  const [duplicateFileBehavior, setDuplicateFileBehavior] = useState<
+    "skip" | "overwrite"
+  >("skip");
+  const [downloadFolderStructure, setDownloadFolderStructure] = useState<
+    "flat" | "{artist_id}"
+  >("flat");
+
+  useEffect(() => {
+    window.api.getSettings().then((s) => {
+      if (s?.downloadFolder) setDownloadFolder(s.downloadFolder);
+      if (s?.duplicateFileBehavior) setDuplicateFileBehavior(s.duplicateFileBehavior);
+      if (s?.downloadFolderStructure) setDownloadFolderStructure(s.downloadFolderStructure);
+    });
+  }, []);
 
   const handleBackup = async () => {
     setIsBackingUp(true);
@@ -39,6 +65,42 @@ export const Settings = () => {
       setTimeout(() => setBackupStatus("idle"), 3000);
     } finally {
       setIsBackingUp(false);
+    }
+  };
+
+  const handleSelectDownloadFolder = async () => {
+    try {
+      const path = await window.api.selectDownloadFolder();
+      if (path) {
+        const ok = await window.api.saveDownloadFolder(path);
+        if (ok) {
+          setDownloadFolder(path);
+          setDownloadFolderStatus("success");
+          setTimeout(() => setDownloadFolderStatus("idle"), 3000);
+        } else {
+          setDownloadFolderStatus("error");
+          setTimeout(() => setDownloadFolderStatus("idle"), 3000);
+        }
+      }
+    } catch (err) {
+      log.error("[Settings] Failed to set download folder:", err);
+      setDownloadFolderStatus("error");
+      setTimeout(() => setDownloadFolderStatus("idle"), 3000);
+    }
+  };
+
+  const handleResetDownloadFolder = async () => {
+    try {
+      const ok = await window.api.saveDownloadFolder(null);
+      if (ok) {
+        setDownloadFolder(null);
+        setDownloadFolderStatus("success");
+        setTimeout(() => setDownloadFolderStatus("idle"), 3000);
+      }
+    } catch (err) {
+      log.error("[Settings] Failed to reset download folder:", err);
+      setDownloadFolderStatus("error");
+      setTimeout(() => setDownloadFolderStatus("idle"), 3000);
     }
   };
 
@@ -72,6 +134,88 @@ export const Settings = () => {
           Manage your database backups and application preferences.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Downloads</CardTitle>
+          <CardDescription>
+            Choose a default folder for saving downloaded files. If not set,
+            files are saved to your system Downloads folder.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground truncate max-w-md">
+              {downloadFolder ?? "Default (Downloads/BooruClient)"}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSelectDownloadFolder}
+                variant="outline"
+                size="sm"
+              >
+                <FolderOpen className="mr-2 w-4 h-4" />
+                Choose Folder
+              </Button>
+              {downloadFolder && (
+                <Button
+                  onClick={handleResetDownloadFolder}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Reset to Default
+                </Button>
+              )}
+            </div>
+            {downloadFolderStatus === "success" && (
+              <p className="text-sm text-green-600 dark:text-green-400">
+                Download folder updated.
+              </p>
+            )}
+            {downloadFolderStatus === "error" && (
+              <p className="text-sm text-red-600 dark:text-red-400">
+                Failed to update. Please try again.
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label>When file already exists</Label>
+            <Select
+              value={duplicateFileBehavior}
+              onValueChange={async (v: "skip" | "overwrite") => {
+                setDuplicateFileBehavior(v);
+                await window.api.saveDownloadSettings({ duplicateFileBehavior: v });
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="skip">Skip (keep existing)</SelectItem>
+                <SelectItem value="overwrite">Overwrite</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Folder structure</Label>
+            <Select
+              value={downloadFolderStructure}
+              onValueChange={async (v: "flat" | "{artist_id}") => {
+                setDownloadFolderStructure(v);
+                await window.api.saveDownloadSettings({ downloadFolderStructure: v });
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="flat">Flat (all files in one folder)</SelectItem>
+                <SelectItem value="{artist_id}">By artist (subfolder per artist)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

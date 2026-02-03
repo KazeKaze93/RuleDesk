@@ -89,6 +89,9 @@ export const IpcSettingsSchema = z.object({
   isAdultConfirmed: z.boolean(),
   isAdultVerified: z.boolean(),
   tosAcceptedAt: z.number().nullable(), // Timestamp in milliseconds
+  downloadFolder: z.string().nullable(), // Custom folder for downloads (null = use default)
+  duplicateFileBehavior: z.enum(["skip", "overwrite"]).default("skip"),
+  downloadFolderStructure: z.enum(["flat", "{artist_id}"]).default("flat"),
 });
 
 /**

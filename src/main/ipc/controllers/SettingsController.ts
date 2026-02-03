@@ -28,6 +28,9 @@ const DEFAULT_IPC_SETTINGS: IpcSettings = {
   isAdultConfirmed: false,
   isAdultVerified: false,
   tosAcceptedAt: null,
+  downloadFolder: null,
+  duplicateFileBehavior: "skip",
+  downloadFolderStructure: "flat",
 };
 
 /**
@@ -73,6 +76,11 @@ function mapSettingsToIpc(
       }
       return null;
     })(),
+    downloadFolder: dbSettings.downloadFolder ?? null,
+    duplicateFileBehavior:
+      (dbSettings.duplicateFileBehavior as "skip" | "overwrite") || "skip",
+    downloadFolderStructure:
+      (dbSettings.downloadFolderStructure as "flat" | "{artist_id}") || "flat",
   };
 }
 
@@ -126,6 +134,29 @@ export class SettingsController extends BaseController {
       IPC_CHANNELS.SETTINGS.CONFIRM_LEGAL,
       z.tuple([]),
       this.confirmLegal.bind(this)
+    );
+    // settings:save-download-folder - saves custom download folder path
+    this.handle(
+      IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER,
+      z.tuple([z.string().max(4096).nullable()]),
+      this.saveDownloadFolder.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+    // settings:save-download-settings - saves duplicate/folder structure
+    this.handle(
+      IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS,
+      z.tuple([
+        z.object({
+          duplicateFileBehavior: z.enum(["skip", "overwrite"]).optional(),
+          downloadFolderStructure: z.enum(["flat", "{artist_id}"]).optional(),
+        }),
+      ]),
+      this.saveDownloadSettings.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
 
     log.info("[SettingsController] All handlers registered");
@@ -306,6 +337,71 @@ export class SettingsController extends BaseController {
       return true;
     } catch (error) {
       log.error("[SettingsController] Failed to save settings:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save download folder path (null = use default)
+   */
+  private async saveDownloadFolder(
+    _event: IpcMainInvokeEvent,
+    folderPath: string | null
+  ): Promise<boolean> {
+    try {
+      const db = this.getDb();
+      const existing = await db.query.settings.findFirst({
+        where: eq(settings.id, SETTINGS_ID),
+      });
+      if (!existing) {
+        log.warn("[SettingsController] No settings record for download folder, skipping");
+        return false;
+      }
+      await db
+        .update(settings)
+        .set({ downloadFolder: folderPath || null })
+        .where(eq(settings.id, SETTINGS_ID))
+        .run();
+      this.settingsCache = null;
+      log.debug(`[SettingsController] Download folder saved: ${folderPath ?? "default"}`);
+      return true;
+    } catch (error) {
+      log.error("[SettingsController] Failed to save download folder:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save download behavior settings (duplicate handling, folder structure)
+   */
+  private async saveDownloadSettings(
+    _event: IpcMainInvokeEvent,
+    data: { duplicateFileBehavior?: "skip" | "overwrite"; downloadFolderStructure?: "flat" | "{artist_id}" }
+  ): Promise<boolean> {
+    try {
+      const db = this.getDb();
+      const existing = await db.query.settings.findFirst({
+        where: eq(settings.id, SETTINGS_ID),
+      });
+      if (!existing) {
+        log.warn("[SettingsController] No settings record for download settings, skipping");
+        return false;
+      }
+      const updates: Partial<InferSelectModel<typeof settings>> = {};
+      if (data.duplicateFileBehavior !== undefined) {
+        updates.duplicateFileBehavior = data.duplicateFileBehavior;
+      }
+      if (data.downloadFolderStructure !== undefined) {
+        updates.downloadFolderStructure = data.downloadFolderStructure;
+      }
+      if (Object.keys(updates).length > 0) {
+        await db.update(settings).set(updates).where(eq(settings.id, SETTINGS_ID)).run();
+        this.settingsCache = null;
+        log.debug(`[SettingsController] Download settings saved:`, updates);
+      }
+      return true;
+    } catch (error) {
+      log.error("[SettingsController] Failed to save download settings:", error);
       throw error;
     }
   }

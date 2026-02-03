@@ -10,6 +10,8 @@ import { PostCard } from "../../features/artists/components/PostCard";
 import { Button } from "../ui/button";
 import { ExternalLink } from "lucide-react";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
+import { useDownloadAll } from "../../hooks/useDownloadAll";
+import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { useWorkerFilteredPosts } from "../../hooks/useWorkerFilteredPosts";
 import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
 
@@ -177,7 +179,7 @@ export const Browse = () => {
     tags,
   }), [aiFilter, mediaType, source, sortOrder, trackedTagsArray, tags]);
 
-  const { data: allPosts, isLoading: workerLoading } = useWorkerFilteredPosts(
+  const { data: allPosts = [], isLoading: workerLoading } = useWorkerFilteredPosts(
     rawPosts,
     filterConfig,
     250 // Debounce delay
@@ -229,6 +231,17 @@ export const Browse = () => {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, rawPosts, appendQueueIds]);
 
+  const {
+    downloadAll,
+    cancel,
+    pause,
+    resume,
+    isDownloading: isDownloadingAll,
+    isPaused,
+    progress: downloadAllProgress,
+    canDownload,
+  } = useDownloadAll(allPosts);
+
   const handlePostClick = (index: number) => {
     const postIds = allPosts.map((p) => p.id);
     const post = allPosts[index];
@@ -254,11 +267,22 @@ export const Browse = () => {
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
       {/* Header */}
       <div className="flex z-[5] flex-col gap-4 px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
-        <div className="flex gap-2 items-center">
+        <div className="flex justify-between items-center">
           <h2 className="flex gap-2 items-center text-xl font-bold">
             <Search className="w-5 h-5 text-primary" />
             Browse
           </h2>
+          <DownloadAllButton
+            onClick={downloadAll}
+            onCancel={cancel}
+            onPause={pause}
+            onResume={resume}
+            isDownloading={isDownloadingAll}
+            isPaused={isPaused}
+            progress={downloadAllProgress}
+            canDownload={canDownload && tags.length > 0}
+            totalLabel={allPosts.length}
+          />
         </div>
       </div>
 

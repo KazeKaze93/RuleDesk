@@ -237,7 +237,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([z.number().int(), z.number().int().positive().optional()]),
       this.getPlaylistsContainingPost.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -1079,19 +1079,33 @@ export class PlaylistController extends BaseController {
    */
   private async getPlaylistsContainingPost(
     _event: IpcMainInvokeEvent,
-    postId: number
+    postId: number,
+    rule34PostId?: number
   ): Promise<number[]> {
     try {
       const db = this.getDb();
 
-      // Use Drizzle Query API for cleaner code and automatic type inference
-      // Efficient single query: SELECT playlist_id FROM playlist_entries WHERE post_id = ?
-      const result = await db.query.playlistEntries.findMany({
-        where: (playlistEntries, { eq }) => eq(playlistEntries.postId, postId),
-        columns: {
-          playlistId: true,
-        },
-      });
+      let result: { playlistId: number }[];
+      if (postId <= 0 && rule34PostId != null && rule34PostId > 0) {
+        // External post from Browse: look up by posts.postId and artistId=EXTERNAL_ARTIST_ID
+        const rows = db
+          .select({ playlistId: playlistEntries.playlistId })
+          .from(playlistEntries)
+          .innerJoin(posts, eq(playlistEntries.postId, posts.id))
+          .where(
+            and(
+              eq(posts.postId, rule34PostId),
+              eq(posts.artistId, EXTERNAL_ARTIST_ID)
+            )
+          )
+          .all();
+        result = rows;
+      } else {
+        result = await db.query.playlistEntries.findMany({
+          where: (entries, { eq }) => eq(entries.postId, postId),
+          columns: { playlistId: true },
+        });
+      }
 
       const playlistIds = result.map((r) => r.playlistId);
       
