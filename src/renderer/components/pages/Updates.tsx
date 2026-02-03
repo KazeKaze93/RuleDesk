@@ -14,6 +14,9 @@ import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
+import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
+import { DownloadAllButton } from "../downloads/DownloadAllButton";
+import { Button } from "../../components/ui/button";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -203,6 +206,30 @@ export const Updates = () => {
     });
   }, [data, sortOrder, aiFilter, mediaType, source]);
 
+  const fetchParams = useMemo(
+    () => ({
+      filters: {
+        sinceTracking: true,
+        tags: tags.length > 0 ? tags.join(" ") : undefined,
+        aiFilter: aiFilter === "all" ? undefined : aiFilter,
+        mediaType: mediaType === "all" ? undefined : mediaType,
+        isFavorited: source === "favorites" ? true : undefined,
+      },
+    }),
+    [tags, aiFilter, mediaType, source]
+  );
+  const {
+    downloadAll,
+    cancel,
+    pause,
+    resume,
+    isDownloading: isDownloadingAll,
+    isPaused,
+    progress: downloadAllProgress,
+    canDownload,
+    totalCount: downloadTotalCount,
+  } = useDownloadAllWithFilters(fetchParams);
+
   // Create stable List and Item components with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
   const { ListComponent, ItemComponent } = useMemo(() => {
@@ -331,6 +358,17 @@ export const Updates = () => {
             )}
           </div>
         </div>
+        <DownloadAllButton
+          onClick={downloadAll}
+          onCancel={cancel}
+          onPause={pause}
+          onResume={resume}
+          isDownloading={isDownloadingAll}
+          isPaused={isPaused}
+          progress={downloadAllProgress}
+          canDownload={canDownload || allPosts.length > 0}
+          totalLabel={downloadTotalCount || allPosts.length}
+        />
       </div>
 
       {/* Grid Content */}

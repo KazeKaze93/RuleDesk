@@ -219,17 +219,14 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
-          // A11y: Handle keyboard navigation for wrapper div
-          // Prevent card click when Space/Enter is pressed on wrapper
           if (e.key === "Enter" || e.key === " ") {
             e.stopPropagation();
           }
         }}
         role="presentation"
-        aria-hidden="true"
       >
         <QuickAddToPlaylistMenu
-          postId={post.id}
+          post={{ id: post.id, postId: post.postId }}
           trigger={
             <span
               className="inline-flex items-center justify-center rounded-full bg-black/50 p-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer"

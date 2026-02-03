@@ -22,6 +22,8 @@ import { AsyncAutocomplete } from "../../components/inputs/AsyncAutocomplete";
 import type { SmartPlaylistQuery, SmartPlaylistTag } from "../../../shared/schemas/playlist";
 import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
 import { usePlaylists } from "../../lib/hooks/usePlaylists";
+import { useDownloadAll } from "../../hooks/useDownloadAll";
+import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import type { SearchResults } from "../../../main/providers";
 
 interface PlaylistsPageProps {
@@ -138,6 +140,17 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     return data?.pages.flat() ?? [];
   }, [data]);
 
+  const {
+    downloadAll,
+    cancel,
+    pause,
+    resume,
+    isDownloading: isDownloadingAll,
+    isPaused,
+    progress: downloadAllProgress,
+    canDownload,
+  } = useDownloadAll(allPosts);
+
   const handleLoadMore = () => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
@@ -222,8 +235,26 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
                   Smart Collection
                 </p>
               )}
+              {allPosts.length > 0 && (
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Total: {allPosts.length}
+                </p>
+              )}
             </div>
           </div>
+        </div>
+        <div className="flex gap-2">
+          <DownloadAllButton
+            onClick={downloadAll}
+            onCancel={cancel}
+            onPause={pause}
+            onResume={resume}
+            isDownloading={isDownloadingAll}
+            isPaused={isPaused}
+            progress={downloadAllProgress}
+            canDownload={canDownload}
+            totalLabel={allPosts.length}
+          />
         </div>
       </div>
 

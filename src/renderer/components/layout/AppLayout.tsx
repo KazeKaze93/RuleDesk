@@ -3,6 +3,7 @@ import { Sidebar } from "./Sidebar";
 import { GlobalTopBar } from "./GlobalTopBar";
 import { PanicButton } from "./PanicButton";
 import { ViewerDialog } from "@/features/viewer/ViewerDialog";
+import { PendingDownloadBanner } from "../downloads/PendingDownloadBanner";
 
 export const AppLayout = () => {
   return (
@@ -12,6 +13,7 @@ export const AppLayout = () => {
 
       {/* Main Content Area */}
       <div className="flex flex-col flex-1 min-w-0">
+        <PendingDownloadBanner />
         <GlobalTopBar />
 
         {/* Scrollable Content */}

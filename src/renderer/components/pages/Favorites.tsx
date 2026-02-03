@@ -9,6 +9,7 @@ import {
 import { Heart, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
+import { Button } from "../../components/ui/button";
 import { cn } from "../../lib/utils";
 import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
@@ -16,6 +17,8 @@ import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
+import { DownloadAllButton } from "../downloads/DownloadAllButton";
 
 // Helper function to parse tags from query string
 const parseTags = (query: string): string[] => {
@@ -182,6 +185,29 @@ export const Favorites = () => {
     });
   }, [data, sortOrder, aiFilter, mediaType, source, trackedArtists]);
 
+  const fetchParams = useMemo(
+    () => ({
+      filters: {
+        isFavorited: true,
+        tags: tags.length > 0 ? tags.join(" ") : undefined,
+        aiFilter: aiFilter === "all" ? undefined : aiFilter,
+        mediaType: mediaType === "all" ? undefined : mediaType,
+      },
+    }),
+    [tags, aiFilter, mediaType]
+  );
+  const {
+    downloadAll,
+    cancel,
+    pause,
+    resume,
+    isDownloading: isDownloadingAll,
+    isPaused,
+    progress: downloadAllProgress,
+    canDownload,
+    totalCount: downloadTotalCount,
+  } = useDownloadAllWithFilters(fetchParams);
+
   // Create stable List and Item components with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
   const { ListComponent, ItemComponent } = useMemo(() => {
@@ -301,6 +327,17 @@ export const Favorites = () => {
             )}
           </div>
         </div>
+        <DownloadAllButton
+          onClick={downloadAll}
+          onCancel={cancel}
+          onPause={pause}
+          onResume={resume}
+          isDownloading={isDownloadingAll}
+          isPaused={isPaused}
+          progress={downloadAllProgress}
+          canDownload={canDownload || allPosts.length > 0}
+          totalLabel={downloadTotalCount || allPosts.length}
+        />
       </div>
 
       {/* Grid Content */}

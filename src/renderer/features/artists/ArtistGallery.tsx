@@ -17,6 +17,8 @@ import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "./components/PostCard";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
+import { useDownloadAllFromBackend } from "../../hooks/useDownloadAll";
+import { DownloadAllButton } from "../../components/downloads/DownloadAllButton";
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -265,6 +267,29 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     });
   };
 
+  const fetchParams = useMemo(
+    () => ({
+      artistId: artist.id,
+      page: 1,
+      filters: {
+        aiFilter: aiFilter === "all" ? undefined : aiFilter,
+        mediaType: mediaType === "all" ? undefined : mediaType,
+        isFavorited: source === "favorites" ? true : undefined,
+      },
+    }),
+    [artist.id, aiFilter, mediaType, source]
+  );
+  const {
+    downloadAll,
+    cancel,
+    pause,
+    resume,
+    isDownloading: isDownloadingAll,
+    isPaused,
+    progress: downloadAllProgress,
+    canDownload,
+  } = useDownloadAllFromBackend(fetchParams, totalPosts);
+
   const handleRepairSync = async () => {
     if (isLoading) return;
     if (
@@ -309,6 +334,17 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         </div>
 
         <div className="flex gap-2">
+          <DownloadAllButton
+            onClick={downloadAll}
+            onCancel={cancel}
+            onPause={pause}
+            onResume={resume}
+            isDownloading={isDownloadingAll}
+            isPaused={isPaused}
+            progress={downloadAllProgress}
+            canDownload={canDownload}
+            totalLabel={totalPosts}
+          />
           <Button
             variant="outline"
             size="sm"

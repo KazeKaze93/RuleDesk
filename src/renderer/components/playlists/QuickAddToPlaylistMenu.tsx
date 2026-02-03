@@ -18,16 +18,17 @@ import { usePlaylists } from "../../lib/hooks/usePlaylists";
 import type { Playlist } from "../../../main/db/schema";
 
 interface QuickAddToPlaylistMenuProps {
-  postId: number;
+  post: { id: number; postId: number };
   trigger?: React.ReactNode;
   onSuccess?: () => void;
 }
 
 export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
-  postId,
+  post,
   trigger,
   onSuccess,
 }) => {
+  const postId = post.id;
   const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<Set<number>>(new Set());
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
@@ -43,20 +44,31 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
 
   // Fetch which playlists this post is already in - single query instead of N queries
   const { data: existingPlaylistIds = [] } = useQuery<number[]>({
-    queryKey: ["playlist-entries", postId],
+    queryKey: ["playlist-entries", postId, post.postId],
     queryFn: async () => {
-      // Use optimized single-query method instead of looping through playlists
-      return await window.api.getPlaylistsContainingPost(postId);
+      return await window.api.getPlaylistsContainingPost(
+        postId,
+        postId <= 0 ? post.postId : undefined
+      );
     },
     enabled: isMenuOpen && playlists.length > 0,
   });
 
-  // Initialize selected playlists with existing ones
+  // Initialize selected playlists only when menu first opens (don't overwrite user selection)
+  const hasInitializedRef = React.useRef(false);
   useEffect(() => {
-    if (existingPlaylistIds.length > 0) {
-      setSelectedPlaylistIds(new Set(existingPlaylistIds));
+    if (isMenuOpen && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      if (existingPlaylistIds.length > 0) {
+        setSelectedPlaylistIds(new Set(existingPlaylistIds));
+      }
     }
-  }, [existingPlaylistIds]);
+  }, [isMenuOpen, existingPlaylistIds]);
+  useEffect(() => {
+    if (!isMenuOpen) {
+      hasInitializedRef.current = false;
+    }
+  }, [isMenuOpen]);
 
   const handleTogglePlaylist = (playlistId: number) => {
     const newSet = new Set(selectedPlaylistIds);
@@ -74,14 +86,32 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
     }
 
     try {
+      let effectivePostId = postId;
+      // External posts (from Browse) have id <= 0 - must shadow insert first to get real DB id
+      if (postId <= 0 && post.postId > 0) {
+        const inserted = await window.api.shadowInsertPost({
+          postId: post.postId,
+          provider: "rule34",
+        });
+        effectivePostId = inserted.id;
+      }
+      if (effectivePostId <= 0) {
+        log.error("[QuickAddToPlaylistMenu] Cannot add: post has no valid DB id");
+        return;
+      }
+
       await window.api.addPostsToPlaylist({
         playlistIds: Array.from(selectedPlaylistIds),
-        postIds: [postId],
+        postIds: [effectivePostId],
       });
 
       // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["playlist-entries", effectivePostId] });
       queryClient.invalidateQueries({ queryKey: ["playlist-entries", postId] });
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      for (const pid of selectedPlaylistIds) {
+        queryClient.invalidateQueries({ queryKey: ["playlist-posts", pid] });
+      }
 
       onSuccess?.();
     } catch (error) {
@@ -108,15 +138,26 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
       newSet.add(newPlaylist.id);
       setSelectedPlaylistIds(newSet);
 
-      // Add post to the new playlist
-      await window.api.addPostsToPlaylist({
-        playlistIds: [newPlaylist.id],
-        postIds: [postId],
-      });
+      // Add post to the new playlist (shadow insert if external post)
+      let effectivePostId = postId;
+      if (postId <= 0 && post.postId > 0) {
+        const inserted = await window.api.shadowInsertPost({
+          postId: post.postId,
+          provider: "rule34",
+        });
+        effectivePostId = inserted.id;
+      }
+      if (effectivePostId > 0) {
+        await window.api.addPostsToPlaylist({
+          playlistIds: [newPlaylist.id],
+          postIds: [effectivePostId],
+        });
+      }
 
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
       queryClient.invalidateQueries({ queryKey: ["playlist-entries", postId] });
+      queryClient.invalidateQueries({ queryKey: ["playlist-posts", newPlaylist.id] });
 
       setNewPlaylistName("");
       setIsDialogOpen(false);
@@ -136,7 +177,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
 
   return (
     <>
-      <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+      <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
         <DropdownMenuTrigger asChild>
           {trigger || defaultTrigger}
         </DropdownMenuTrigger>
@@ -160,6 +201,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
                       key={playlist.id}
                       checked={selectedPlaylistIds.has(playlist.id)}
                       onCheckedChange={() => handleTogglePlaylist(playlist.id)}
+                      onSelect={(e) => e.preventDefault()}
                     >
                       {playlist.name}
                     </DropdownMenuCheckboxItem>
@@ -174,7 +216,12 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
               {selectedPlaylistIds.size > 0 && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSave}>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      void handleSave().finally(() => setIsMenuOpen(false));
+                    }}
+                  >
                     Save ({selectedPlaylistIds.size})
                   </DropdownMenuItem>
                 </>

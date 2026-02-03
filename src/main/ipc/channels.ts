@@ -11,14 +11,18 @@ export const IPC_CHANNELS = {
     GET: "app:get-settings-status",
     SAVE: "app:save-settings",
     CONFIRM_LEGAL: "settings:confirm-legal",
+    SAVE_DOWNLOAD_FOLDER: "settings:save-download-folder",
+    SAVE_DOWNLOAD_SETTINGS: "settings:save-download-settings",
   },
   DB: {
+    GET_DOWNLOAD_ITEMS: "db:get-download-items",
     GET_ARTISTS: "db:get-artists",
     ADD_ARTIST: "db:add-artist",
     DELETE_ARTIST: "db:delete-artist",
     SEARCH_TAGS: "db:search-tags",
     GET_POSTS: "db:get-posts",
     GET_POSTS_COUNT: "db:get-posts-count",
+    GET_POSTS_COUNT_WITH_FILTERS: "db:get-posts-count-with-filters",
     MARK_VIEWED: "db:mark-post-viewed",
     TOGGLE_FAVORITE: "db:toggle-post-favorite",
     SYNC_ALL: "db:sync-all",
@@ -36,6 +40,7 @@ export const IPC_CHANNELS = {
     GET_PLAYLIST_POSTS: "db:get-playlist-posts",
     RESOLVE_PLAYLIST_POSTS: "db:resolve-playlist-posts",
     GET_PLAYLISTS_CONTAINING_POST: "db:get-playlists-containing-post",
+    GET_PLAYLIST_DOWNLOAD_ITEMS: "db:get-playlist-download-items",
   },
   API: {
     SEARCH_REMOTE: "api:search-remote-tags",
@@ -55,7 +60,16 @@ export const IPC_CHANNELS = {
 
   FILES: {
     DOWNLOAD: "files:download",
+    DOWNLOAD_ALL: "files:download-all",
+    CANCEL_DOWNLOAD_ALL: "files:cancel-download-all",
+    PAUSE_DOWNLOAD_ALL: "files:pause-download-all",
+    RESUME_DOWNLOAD_ALL: "files:resume-download-all",
+    GET_PENDING_DOWNLOAD: "files:get-pending-download",
+    RESUME_PENDING_DOWNLOAD: "files:resume-pending-download",
+    DISMISS_PENDING_DOWNLOAD: "files:dismiss-pending-download",
     OPEN_FOLDER: "files:open-folder",
     DOWNLOAD_PROGRESS: "files:download-progress",
+    DOWNLOAD_ALL_PROGRESS: "files:download-all-progress",
+    SELECT_DOWNLOAD_FOLDER: "files:select-download-folder",
   },
 } as const;

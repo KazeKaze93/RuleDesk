@@ -671,6 +671,9 @@ function createTray(_window: BrowserWindow): void {
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.show();
             mainWindow.focus();
+          } else {
+            // Window was closed - recreate it
+            initializeAppAndWindow();
           }
         },
       },
@@ -712,14 +715,9 @@ function createTray(_window: BrowserWindow): void {
           return;
         }
 
-        // Check if window exists and is not destroyed
-        if (!mainWindow) {
-          logger.warn("[Tray] Main window is null");
-          return;
-        }
-
-        if (mainWindow.isDestroyed()) {
-          logger.warn("[Tray] Main window is destroyed");
+        // Window was closed - recreate it
+        if (!mainWindow || mainWindow.isDestroyed()) {
+          initializeAppAndWindow();
           return;
         }
         
@@ -741,13 +739,8 @@ function createTray(_window: BrowserWindow): void {
     if (process.platform !== "darwin") {
       tray.on("double-click", () => {
         try {
-          if (!mainWindow) {
-            logger.warn("[Tray] Main window is null");
-            return;
-          }
-
-          if (mainWindow.isDestroyed()) {
-            logger.warn("[Tray] Main window is destroyed");
+          if (!mainWindow || mainWindow.isDestroyed()) {
+            initializeAppAndWindow();
             return;
           }
           

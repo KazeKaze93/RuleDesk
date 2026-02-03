@@ -136,6 +136,18 @@ export class PostsController extends BaseController {
       ) => Promise<unknown>
     );
     this.handle(
+      IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS,
+      z.tuple([
+        GetPostsSchema.extend({
+          limit: z.number().int().min(1).max(500).default(500),
+        }),
+      ]),
+      this.getDownloadItems.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+    this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
       z.tuple([z.number().int().positive().optional()]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
@@ -143,6 +155,15 @@ export class PostsController extends BaseController {
         event: IpcMainInvokeEvent,
         ...args: unknown[]
       ) => Promise<unknown>
+    );
+    this.handle(
+      IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS,
+      z.tuple([GetPostsSchema.pick({ artistId: true, filters: true })]),
+      this.getPostsCountWithFilters.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>,
+      { isIdempotent: true }
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
@@ -560,6 +581,33 @@ export class PostsController extends BaseController {
   }
 
   /**
+   * Get download items for batch download (all posts matching filters, up to 500)
+   * Returns { items } for use with Download All. Total for display comes from getArtistPostsCount.
+   */
+  private async getDownloadItems(
+    _event: IpcMainInvokeEvent,
+    params: GetPostsParams & { limit?: number }
+  ): Promise<{ items: Array<{ url: string; filename: string }> }> {
+    const posts = await this.getPosts(_event, {
+      ...params,
+      page: 1,
+      limit: Math.min(params.limit ?? 500, 500),
+    });
+    const items = posts
+      .filter((p) => p.fileUrl?.trim())
+      .map((p) => {
+        const pathMatch = (p.fileUrl || "").match(/^[^?#]+/);
+        const pathname = pathMatch ? pathMatch[0] : p.fileUrl || "";
+        const ext = pathname.split(".").pop()?.toLowerCase() || "jpg";
+        return {
+          url: p.fileUrl!,
+          filename: `${p.artistId}_${p.postId}.${ext}`,
+        };
+      });
+    return { items };
+  }
+
+  /**
    * Get posts for an artist (or globally) with pagination and filters
    *
    * @param _event - IPC event (unused)
@@ -725,6 +773,60 @@ export class PostsController extends BaseController {
       return total;
     } catch (error) {
       log.error("[PostsController] Failed to get posts count:", error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get posts count with filters (for Updates, Favorites - matches getPosts logic)
+   */
+  private async getPostsCountWithFilters(
+    _event: IpcMainInvokeEvent,
+    params: Pick<GetPostsRequest, "artistId" | "filters">
+  ): Promise<number> {
+    try {
+      const db = this.getDb();
+      const { artistId, filters } = params;
+
+      if (filters?.sinceTracking === true) {
+        const baseConditions = this.buildPostFilterConditions(artistId, filters);
+        const whereClause =
+          baseConditions.length > 0 ? and(...baseConditions) : undefined;
+        const joinConditions = and(
+          eq(posts.artistId, artists.id),
+          gte(posts.publishedAt, artists.createdAt),
+          not(eq(posts.artistId, EXTERNAL_ARTIST_ID)),
+          notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`)
+        );
+        const finalWhereClause = whereClause
+          ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
+          : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
+
+        const result = await db
+          .select({ value: count() })
+          .from(posts)
+          .innerJoin(artists, joinConditions)
+          .where(finalWhereClause);
+
+        const total = result[0]?.value ?? 0;
+        log.debug(`[PostsController] Posts count with filters: ${total}`);
+        return total;
+      }
+
+      const baseConditions = this.buildPostFilterConditions(artistId, filters);
+      const whereClause =
+        baseConditions.length > 0 ? and(...baseConditions) : undefined;
+
+      const result = await db
+        .select({ value: count() })
+        .from(posts)
+        .where(whereClause);
+
+      const total = result[0]?.value ?? 0;
+      log.debug(`[PostsController] Posts count with filters: ${total}`);
+      return total;
+    } catch (error) {
+      log.error("[PostsController] Failed to get posts count with filters:", error);
       return 0;
     }
   }

@@ -1332,7 +1332,7 @@ const ViewerContent = ({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => setShowPlaylistDialog(false)}>
           <div className="bg-neutral-900 rounded-lg p-4 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <QuickAddToPlaylistMenu
-              postId={post.id}
+              post={{ id: post.id, postId: post.postId }}
               trigger={
                 <Button variant="outline" className="w-full mb-4">
                   <List className="mr-2 h-4 w-4" />
