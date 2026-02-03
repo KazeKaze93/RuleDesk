@@ -43,7 +43,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   const playlists = allPlaylists.filter((p: Playlist) => !p.isSmart);
 
   // Fetch which playlists this post is already in - single query instead of N queries
-  const { data: existingPlaylistIds = [] } = useQuery<number[]>({
+  const { data: existingPlaylistIds = [], isFetching } = useQuery<number[]>({
     queryKey: ["playlist-entries", postId, post.postId],
     queryFn: async () => {
       return await window.api.getPlaylistsContainingPost(
@@ -54,40 +54,38 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
     enabled: isMenuOpen && playlists.length > 0,
   });
 
-  // Initialize selected playlists only when menu first opens (don't overwrite user selection)
-  const hasInitializedRef = React.useRef(false);
+  // Sync selectedPlaylistIds with server data when it changes. Only sync when not fetching
+  // to avoid overwriting optimistic updates during refetch after toggle.
   useEffect(() => {
-    if (isMenuOpen && !hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      if (existingPlaylistIds.length > 0) {
-        setSelectedPlaylistIds(new Set(existingPlaylistIds));
-      }
+    if (isMenuOpen && !isFetching) {
+      setSelectedPlaylistIds(new Set(existingPlaylistIds));
     }
-  }, [isMenuOpen, existingPlaylistIds]);
-  useEffect(() => {
-    if (!isMenuOpen) {
-      hasInitializedRef.current = false;
-    }
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isFetching, existingPlaylistIds]);
 
-  const handleTogglePlaylist = (playlistId: number) => {
-    const newSet = new Set(selectedPlaylistIds);
-    if (newSet.has(playlistId)) {
-      newSet.delete(playlistId);
-    } else {
-      newSet.add(playlistId);
+  const invalidatePostPlaylists = (effectivePostId: number, playlistIds: number[]) => {
+    queryClient.invalidateQueries({ queryKey: ["playlist-entries", effectivePostId] });
+    queryClient.invalidateQueries({ queryKey: ["playlist-entries", postId] });
+    queryClient.invalidateQueries({ queryKey: ["playlists"] });
+    for (const pid of playlistIds) {
+      queryClient.invalidateQueries({ queryKey: ["playlist-posts", pid] });
     }
-    setSelectedPlaylistIds(newSet);
   };
 
-  const handleSave = async () => {
-    if (selectedPlaylistIds.size === 0) {
-      return;
+  const handleTogglePlaylist = async (playlistId: number) => {
+    const isAdding = !selectedPlaylistIds.has(playlistId);
+    const prevSet = new Set(selectedPlaylistIds);
+
+    // Optimistic update
+    const newSet = new Set(selectedPlaylistIds);
+    if (isAdding) {
+      newSet.add(playlistId);
+    } else {
+      newSet.delete(playlistId);
     }
+    setSelectedPlaylistIds(newSet);
 
     try {
       let effectivePostId = postId;
-      // External posts (from Browse) have id <= 0 - must shadow insert first to get real DB id
       if (postId <= 0 && post.postId > 0) {
         const inserted = await window.api.shadowInsertPost({
           postId: post.postId,
@@ -96,26 +94,28 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
         effectivePostId = inserted.id;
       }
       if (effectivePostId <= 0) {
-        log.error("[QuickAddToPlaylistMenu] Cannot add: post has no valid DB id");
+        log.error("[QuickAddToPlaylistMenu] Cannot add/remove: post has no valid DB id");
+        setSelectedPlaylistIds(prevSet);
         return;
       }
 
-      await window.api.addPostsToPlaylist({
-        playlistIds: Array.from(selectedPlaylistIds),
-        postIds: [effectivePostId],
-      });
-
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["playlist-entries", effectivePostId] });
-      queryClient.invalidateQueries({ queryKey: ["playlist-entries", postId] });
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
-      for (const pid of selectedPlaylistIds) {
-        queryClient.invalidateQueries({ queryKey: ["playlist-posts", pid] });
+      if (isAdding) {
+        await window.api.addPostsToPlaylist({
+          playlistIds: [playlistId],
+          postIds: [effectivePostId],
+        });
+      } else {
+        await window.api.removePostsFromPlaylist({
+          playlistId,
+          postIds: [effectivePostId],
+        });
       }
 
+      invalidatePostPlaylists(effectivePostId, [playlistId]);
       onSuccess?.();
     } catch (error) {
-      log.error("[QuickAddToPlaylistMenu] Failed to add post to playlists:", error);
+      log.error("[QuickAddToPlaylistMenu] Failed to toggle playlist:", error);
+      setSelectedPlaylistIds(prevSet);
     }
   };
 
@@ -213,19 +213,6 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
                 <Plus className="mr-2 h-4 w-4" />
                 Create New Playlist
               </DropdownMenuItem>
-              {selectedPlaylistIds.size > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      void handleSave().finally(() => setIsMenuOpen(false));
-                    }}
-                  >
-                    Save ({selectedPlaylistIds.size})
-                  </DropdownMenuItem>
-                </>
-              )}
             </>
           )}
         </DropdownMenuContent>

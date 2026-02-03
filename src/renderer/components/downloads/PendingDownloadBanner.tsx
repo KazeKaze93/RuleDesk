@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Download, X } from "lucide-react";
+import { useDownloadStore } from "../../store/downloadStore";
 
 export const PendingDownloadBanner: React.FC = () => {
+  const { isDownloading, setDownloading } = useDownloadStore();
   const [pending, setPending] = useState<{
     total: number;
     done: number;
@@ -28,9 +30,28 @@ export const PendingDownloadBanner: React.FC = () => {
   }, []);
 
   const handleResume = async () => {
-    const result = await window.api.resumePendingDownload();
-    if (result.success) {
-      setPending(null);
+    setDownloading(true);
+    setPending(null);
+    try {
+      const result = await window.api.resumePendingDownload();
+      if (result.success) {
+        let unsub: () => void;
+        const timeout = setTimeout(() => {
+          setDownloading(false);
+          unsub?.();
+        }, 600_000);
+        unsub = window.api.onDownloadAllProgress((data) => {
+          if (data.total > 0 && data.done >= data.total) {
+            clearTimeout(timeout);
+            setDownloading(false);
+            unsub();
+          }
+        });
+      } else {
+        setDownloading(false);
+      }
+    } catch {
+      setDownloading(false);
     }
   };
 
@@ -39,7 +60,7 @@ export const PendingDownloadBanner: React.FC = () => {
     setPending(null);
   };
 
-  if (!pending) return null;
+  if (!pending || isDownloading) return null;
 
   const remaining = pending.total - pending.done;
   return (

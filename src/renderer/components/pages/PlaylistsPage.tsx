@@ -203,9 +203,11 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
         postIds: [postId],
       });
 
-      // Invalidate queries to refresh the list
+      // Invalidate playlist posts list
       queryClient.invalidateQueries({ queryKey: ["playlist-posts", playlist.id] });
+      // Invalidate playlist-entries so PostCard/QuickAddToPlaylistMenu on other tabs show correct status
       queryClient.invalidateQueries({ queryKey: ["playlist-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["playlist-entries", postId] });
     } catch (error) {
       log.error("[PlaylistGallery] Failed to remove post from playlist:", error);
     }

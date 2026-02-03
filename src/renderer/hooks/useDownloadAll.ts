@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import log from "electron-log/renderer";
 import type { Post } from "../../main/db/schema";
 import type { GetPostsRequest } from "../../main/types/ipc";
+import { useDownloadStore } from "../store/downloadStore";
 
 function postToDownloadItem(p: Post): { url: string; filename: string } | null {
   if (!p.fileUrl?.trim()) return null;
@@ -17,6 +18,7 @@ function postToDownloadItem(p: Post): { url: string; filename: string } | null {
 /** Download from loaded posts (Favorites, Updates, Browse, Playlists) */
 export function useDownloadAll(posts: Post[]) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const setGlobalDownloading = useDownloadStore((s) => s.setDownloading);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
 
@@ -34,6 +36,7 @@ export function useDownloadAll(posts: Post[]) {
       .filter((x): x is { url: string; filename: string } => x !== null);
     if (items.length === 0) return;
     setIsDownloading(true);
+    setGlobalDownloading(true);
     setIsPaused(false);
     setProgress({ done: 0, total: items.length });
     try {
@@ -45,6 +48,7 @@ export function useDownloadAll(posts: Post[]) {
       log.error("[useDownloadAll] Failed:", e);
     } finally {
       setIsDownloading(false);
+      setGlobalDownloading(false);
       setIsPaused(false);
       setProgress({ done: 0, total: 0 });
     }
@@ -111,6 +115,7 @@ export function useDownloadAllFromBackend(
   totalCount: number
 ) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const setGlobalDownloading = useDownloadStore((s) => s.setDownloading);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
 
@@ -123,8 +128,9 @@ export function useDownloadAllFromBackend(
   }, [isDownloading]);
 
   const downloadAll = async () => {
-    if (!fetchParams || totalCount === 0) return;
+    if (!fetchParams) return;
     setIsDownloading(true);
+    setGlobalDownloading(true);
     setIsPaused(false);
     setProgress({ done: 0, total: 0 });
     try {
@@ -142,6 +148,7 @@ export function useDownloadAllFromBackend(
       log.error("[useDownloadAllFromBackend] Failed:", e);
     } finally {
       setIsDownloading(false);
+      setGlobalDownloading(false);
       setIsPaused(false);
       setProgress({ done: 0, total: 0 });
     }

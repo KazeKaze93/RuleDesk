@@ -320,8 +320,9 @@ export const Favorites = () => {
             {allPosts.length > 0 && (
               <div className="flex gap-2 text-xs text-muted-foreground">
                 <span className="text-sm font-medium text-muted-foreground">
-                  {allPosts.length} {allPosts.length === 1 ? "post" : "posts"}
-                  {hasNextPage && " +"}
+                  {downloadTotalCount || allPosts.length}{" "}
+                  {(downloadTotalCount || allPosts.length) === 1 ? "post" : "posts"}
+                  {!downloadTotalCount && hasNextPage ? " +" : ""}
                 </span>
               </div>
             )}

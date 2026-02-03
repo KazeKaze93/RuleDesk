@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "../ui/button";
 import { Download, Loader2, Square, Pause, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDownloadStore } from "../../store/downloadStore";
 
 export interface DownloadAllButtonProps {
   onClick: () => void;
@@ -30,7 +31,9 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
   size = "sm",
   className,
 }) => {
+  const isAnyDownloadActive = useDownloadStore((s) => s.isDownloading);
   const pct = progress.total > 0 ? Math.round((progress.done * 100) / progress.total) : 0;
+  const disabled = !canDownload || (isAnyDownloadActive && !isDownloading);
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
@@ -40,8 +43,8 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
             variant="outline"
             size={size}
             onClick={onClick}
-            disabled={!canDownload}
-            title={`Download ${totalLabel} files`}
+            disabled={disabled}
+            title={disabled && isAnyDownloadActive ? "Download in progress" : `Download ${totalLabel} files`}
           >
             <Download className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Download All ({totalLabel})</span>
