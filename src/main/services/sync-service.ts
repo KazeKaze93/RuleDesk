@@ -188,7 +188,7 @@ export class SyncService {
     }
   }
 
-  public async checkCredentials(): Promise<boolean> {
+  public async checkCredentials(providerId: ProviderId = "rule34"): Promise<boolean> {
     try {
       const settings = await this.getDecryptedSettings();
       if (!settings?.userId || !settings?.apiKey) {
@@ -201,7 +201,7 @@ export class SyncService {
         `SyncService: Verifying connectivity for User ID: ${settings.userId}...`
       );
 
-      const provider = getProvider("rule34");
+      const provider = getProvider(providerId);
       const isValid = await provider.checkAuth({
         userId: settings.userId,
         apiKey: settings.apiKey,

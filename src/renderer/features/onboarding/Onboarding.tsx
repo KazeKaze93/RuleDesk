@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z, ZodIssueOptionalMessage, ErrorMapCtx } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +7,14 @@ import log from "electron-log/renderer";
 import { Button } from "@/components/ui/button";
 import { KeyRound, User } from "lucide-react";
 import { credsBaseSchema, CredsFormValues } from "@/schemas/form-schemas";
+import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -33,6 +41,8 @@ const parseCredentialsFromText = (text: string): { userId?: string; apiKey?: str
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const { t } = useTranslation();
+  const [verifyProviderId, setVerifyProviderId] = useState<ProviderId>("rule34");
+  const [verificationError, setVerificationError] = useState<string>("");
 
   const {
     register,
@@ -76,7 +86,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const onSubmit = async (data: CredsFormValues) => {
     try {
+      setVerificationError("");
       await window.api.saveSettings(data);
+      const isValid = await window.api.verifyCredentials(verifyProviderId);
+      if (!isValid) {
+        setVerificationError(
+          "Credentials are invalid for the selected provider. Check your User ID/API key and try again."
+        );
+        return;
+      }
       onComplete();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unknown save error.";
@@ -164,6 +182,31 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               </span>
             )}
           </div>
+
+          <div>
+            <label className="block mb-1 text-sm font-medium text-slate-400">
+              Verify for
+            </label>
+            <Select
+              value={verifyProviderId}
+              onValueChange={(value: ProviderId) => setVerifyProviderId(value)}
+            >
+              <SelectTrigger className="w-full text-white bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500">
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVIDER_IDS.map((providerId) => (
+                  <SelectItem key={providerId} value={providerId}>
+                    {providerId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {verificationError && (
+            <div className="text-xs text-red-500">{verificationError}</div>
+          )}
 
           <Button
             type="submit"

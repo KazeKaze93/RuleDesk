@@ -117,7 +117,7 @@ export interface IpcApi extends IpcBridge {
   restoreBackup: () => Promise<BackupResponse>;
   writeToClipboard: (text: string) => Promise<boolean>;
 
-  verifyCredentials: () => Promise<boolean>;
+  verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;

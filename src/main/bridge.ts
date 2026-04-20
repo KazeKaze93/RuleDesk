@@ -162,7 +162,7 @@ export interface IpcBridge {
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
 
-  verifyCredentials: () => Promise<boolean>;
+  verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
@@ -205,7 +205,8 @@ const ipcBridge: IpcBridge = {
   resolveTagsByType: (tags, type) =>
     ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE, tags, type),
 
-  verifyCredentials: () => ipcRenderer.invoke("app:verify-creds"),
+  verifyCredentials: (providerId) =>
+    ipcRenderer.invoke("app:verify-creds", providerId),
 
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.GET),
   saveDownloadFolder: (path) =>
