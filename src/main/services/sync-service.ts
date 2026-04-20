@@ -23,6 +23,31 @@ const CHUNK_SIZE = 75;
 // At 100 posts/page, this equals 100k posts - more than sufficient for any artist
 const MAX_PAGES_SAFETY_LIMIT = 1000;
 
+type CredentialErrorCode = "KEYCHAIN_UNAVAILABLE" | "DECRYPT_FAILED";
+type DecryptedSettings = { userId: string; apiKey: string };
+
+class CredentialDecryptionError extends Error {
+  public readonly code: CredentialErrorCode;
+
+  constructor(code: CredentialErrorCode, message: string) {
+    super(message);
+    this.name = "CredentialDecryptionError";
+    this.code = code;
+  }
+}
+
+const isCredentialDecryptionError = (
+  error: unknown
+): error is CredentialDecryptionError => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return (
+    error instanceof CredentialDecryptionError ||
+    error.name === "CredentialDecryptionError"
+  );
+};
+
 function bulkUpsertPosts(
   postsToSave: NewPost[],
   tx: BetterSQLite3Database<typeof schema>
@@ -120,35 +145,46 @@ export class SyncService {
     }
   }
 
-  private async getDecryptedSettings() {
-    try {
-      const db = getDb();
-      const settingsRecord = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
+  private async getDecryptedSettings(): Promise<DecryptedSettings | null> {
+    const db = getDb();
+    const settingsRecord = await db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
 
-      if (!settingsRecord) {
-        logger.warn("SyncService: No settings found in database");
-        return null;
-      }
+    if (!settingsRecord) {
+      logger.warn("SyncService: No settings found in database");
+      return null;
+    }
 
-      let realApiKey = settingsRecord.encryptedApiKey || "";
-      if (realApiKey && safeStorage.isEncryptionAvailable()) {
-        try {
-          const buff = Buffer.from(realApiKey, "base64");
-          realApiKey = safeStorage.decryptString(buff);
-        } catch (e) {
-          logger.warn("SyncService: Failed to decrypt API Key.", e);
-          realApiKey = settingsRecord.encryptedApiKey || "";
-        }
-      }
+    const storedApiKey = settingsRecord.encryptedApiKey || "";
+    if (!storedApiKey) {
       return {
         userId: settingsRecord.userId || "",
-        apiKey: realApiKey,
+        apiKey: "",
       };
-    } catch (error) {
-      logger.error("SyncService: Error fetching settings:", error);
-      return null;
+    }
+
+    if (!safeStorage.isEncryptionAvailable()) {
+      throw new CredentialDecryptionError(
+        "KEYCHAIN_UNAVAILABLE",
+        "OS keychain unavailable; cannot decrypt API key."
+      );
+    }
+
+    try {
+      const decryptedApiKey = safeStorage.decryptString(
+        Buffer.from(storedApiKey, "base64")
+      );
+      return {
+        userId: settingsRecord.userId || "",
+        apiKey: decryptedApiKey,
+      };
+    } catch (error: unknown) {
+      logger.warn("SyncService: Failed to decrypt API Key.", error);
+      throw new CredentialDecryptionError(
+        "DECRYPT_FAILED",
+        "Failed to decrypt API key; credentials may be from another OS user or corrupted."
+      );
     }
   }
 
@@ -177,7 +213,17 @@ export class SyncService {
         logger.warn("SyncService: Verification failed.");
       }
       return isValid;
-    } catch (error) {
+    } catch (error: unknown) {
+      if (isCredentialDecryptionError(error)) {
+        this.sendEvent(
+          "sync:error",
+          "Credentials invalid. Please re-enter API key in settings."
+        );
+        logger.warn(
+          `SyncService: Credential decryption failed (${error.code}) during verification.`
+        );
+        return false;
+      }
       logger.error("SyncService: Verification error", error);
       return false;
     }
@@ -194,7 +240,22 @@ export class SyncService {
       const artistsList = await db.query.artists.findMany({
         orderBy: [artists.name],
       });
-      const settingsData = await this.getDecryptedSettings();
+      let settingsData: DecryptedSettings | null;
+      try {
+        settingsData = await this.getDecryptedSettings();
+      } catch (error: unknown) {
+        if (isCredentialDecryptionError(error)) {
+          this.sendEvent(
+            "sync:error",
+            "Credentials invalid. Please re-enter API key in settings."
+          );
+          logger.warn(
+            `SyncService: Credential decryption failed (${error.code}) before full sync.`
+          );
+          return;
+        }
+        throw error;
+      }
       if (!settingsData?.userId) throw new Error("No API credentials");
       for (const artist of artistsList) {
         try {
@@ -230,7 +291,22 @@ export class SyncService {
       const artist = await db.query.artists.findFirst({
         where: eq(artists.id, artistId),
       });
-      const settingsData = await this.getDecryptedSettings();
+      let settingsData: DecryptedSettings | null;
+      try {
+        settingsData = await this.getDecryptedSettings();
+      } catch (error: unknown) {
+        if (isCredentialDecryptionError(error)) {
+          this.sendEvent(
+            "sync:error",
+            "Credentials invalid. Please re-enter API key in settings."
+          );
+          logger.warn(
+            `SyncService: Credential decryption failed (${error.code}) during repair sync.`
+          );
+          return;
+        }
+        throw error;
+      }
 
       if (artist && settingsData) {
         this.sendEvent("sync:repair:start", artist.name);

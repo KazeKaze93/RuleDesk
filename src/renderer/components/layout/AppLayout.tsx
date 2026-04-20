@@ -4,6 +4,7 @@ import { GlobalTopBar } from "./GlobalTopBar";
 import { PanicButton } from "./PanicButton";
 import { ViewerDialog } from "@/features/viewer/ViewerDialog";
 import { PendingDownloadBanner } from "../downloads/PendingDownloadBanner";
+import { CredentialsErrorToast } from "../dialogs/CredentialsErrorToast";
 
 export const AppLayout = () => {
   return (
@@ -24,6 +25,7 @@ export const AppLayout = () => {
 
       {/* ViewerDialog must always be rendered - it manages visibility internally via Dialog */}
       <ViewerDialog />
+      <CredentialsErrorToast />
       <PanicButton />
     </div>
   );

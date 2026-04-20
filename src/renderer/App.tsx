@@ -154,6 +154,20 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const openOnboarding = () => {
+      setAppState((prev) => ({
+        ...prev,
+        authStatus: "unauthenticated",
+      }));
+    };
+
+    window.addEventListener("app:open-onboarding", openOnboarding);
+    return () => {
+      window.removeEventListener("app:open-onboarding", openOnboarding);
+    };
+  }, []);
+
   // Loading state: waiting for settings to load
   if (appState.legalStatus === "loading") {
     return (
