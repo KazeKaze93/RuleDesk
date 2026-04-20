@@ -877,57 +877,114 @@ export class PostsController extends BaseController {
         return false;
       }
 
-      // If postData is provided, use onConflictDoUpdate for atomic insert/update
-      // This eliminates the need for separate select + insert/update queries
+      // If postData is provided, handle external post by (artistId, postId).
+      // Decrement artist counter only when state transitions false -> true.
       if (postData) {
-        const now = new Date();
-        const publishedAt = postData.publishedAt
-          ? new Date(postData.publishedAt)
-          : now;
+        db.transaction((tx) => {
+          const existingPost = tx
+            .select({
+              id: posts.id,
+              isViewed: posts.isViewed,
+              artistId: posts.artistId,
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.artistId, EXTERNAL_ARTIST_ID),
+                eq(posts.postId, postData.postId)
+              )
+            )
+            .limit(1)
+            .get();
 
-        // Use onConflictDoUpdate to atomically insert or update post
-        // Target: unique constraint on (artistId, postId)
-        // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-        db.insert(posts)
-          .values({
-            postId: postData.postId,
-            artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-            fileUrl: postData.fileUrl,
-            previewUrl: postData.previewUrl,
-            sampleUrl: postData.sampleUrl ?? "",
-            title: "",
-            rating: postData.rating ?? "",
-            tags: postData.tags ?? "",
-            mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
-            publishedAt: publishedAt,
-            createdAt: now,
-            isViewed: true, // Set to true since we're marking as viewed
-            isFavorited: false,
-          })
-          .onConflictDoUpdate({
-            target: [posts.artistId, posts.postId],
-            set: {
-              isViewed: sql`1`, // SQLite boolean: 1 = true
-            },
-          })
-          .run();
+          if (existingPost) {
+            if (existingPost.isViewed) {
+              return;
+            }
+
+            tx.update(posts)
+              .set({ isViewed: true })
+              .where(eq(posts.id, existingPost.id))
+              .run();
+
+            tx.update(artists)
+              .set({
+                newPostsCount: sql`MAX(0, ${artists.newPostsCount} - 1)`,
+              })
+              .where(eq(artists.id, existingPost.artistId))
+              .run();
+            return;
+          }
+
+          const now = new Date();
+          const publishedAt = postData.publishedAt
+            ? new Date(postData.publishedAt)
+            : now;
+
+          tx.insert(posts)
+            .values({
+              postId: postData.postId,
+              artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
+              fileUrl: postData.fileUrl,
+              previewUrl: postData.previewUrl,
+              sampleUrl: postData.sampleUrl ?? "",
+              title: "",
+              rating: postData.rating ?? "",
+              tags: postData.tags ?? "",
+              mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
+              publishedAt: publishedAt,
+              createdAt: now,
+              isViewed: true, // Set to true since we're marking as viewed
+              isFavorited: false,
+            })
+            .run();
+        });
 
         log.debug(
-          `[PostsController] Post (postId: ${postData.postId}) marked as viewed using onConflictDoUpdate`
+          `[PostsController] Post (postId: ${postData.postId}) marked as viewed in transaction`
         );
         return true;
       }
 
-      // For existing posts (positive ID), update directly
+      // For existing posts (positive ID), atomically update post and artist counter.
       if (postId > 0) {
-        const updated = db
-          .update(posts)
-          .set({ isViewed: true })
-          .where(eq(posts.id, postId))
-          .run();
+        const markViewedResult = db.transaction((tx) => {
+          const post = tx
+            .select({
+              id: posts.id,
+              isViewed: posts.isViewed,
+              artistId: posts.artistId,
+            })
+            .from(posts)
+            .where(eq(posts.id, postId))
+            .limit(1)
+            .get();
 
-        if (updated.changes > 0) {
-          log.debug(`[PostsController] Post ${postId} marked as viewed`);
+          if (!post) {
+            return false;
+          }
+
+          if (post.isViewed) {
+            return true;
+          }
+
+          tx.update(posts)
+            .set({ isViewed: true })
+            .where(eq(posts.id, postId))
+            .run();
+
+          tx.update(artists)
+            .set({
+              newPostsCount: sql`MAX(0, ${artists.newPostsCount} - 1)`,
+            })
+            .where(eq(artists.id, post.artistId))
+            .run();
+
+          return true;
+        });
+
+        if (markViewedResult) {
+          log.debug(`[PostsController] Post ${postId} marked as viewed in transaction`);
           return true;
         }
       }

@@ -186,6 +186,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           };
         }
       );
+      queryClient.invalidateQueries({ queryKey: ["artists"] });
     },
     onError: (err) => {
       // Ignore rate limit errors - use typed errorCode, NOT string parsing
