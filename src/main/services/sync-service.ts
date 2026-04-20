@@ -1,6 +1,6 @@
 import { BrowserWindow, safeStorage } from "electron";
 import { logger } from "../lib/logger";
-import { getDb } from "../db/client";
+import { getDb, getSqliteInstance } from "../db/client";
 import { artists, settings, posts, SETTINGS_ID } from "../db/schema";
 import { eq, sql } from "drizzle-orm";
 import axios from "axios";
@@ -279,6 +279,13 @@ export class SyncService {
       );
     } finally {
       this.isSyncing = false;
+      try {
+        const sqlite = getSqliteInstance();
+        sqlite.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+        logger.info("SyncService: WAL checkpoint truncated.");
+      } catch (e) {
+        logger.warn("SyncService: WAL checkpoint failed", e);
+      }
       this.sendEvent("sync:end");
     }
   }
