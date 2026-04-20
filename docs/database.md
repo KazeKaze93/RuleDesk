@@ -382,6 +382,8 @@ const db = getDb();
 
 All database operations are accessed through Drizzle ORM using the database instance from `getDb()`.
 
+**Driver behavior note:** This project uses `better-sqlite3` (synchronous driver). Write queries (`insert`, `update`, `delete`) must end with `.run()`. Read queries (`db.query...`) auto-execute.
+
 #### Get All Artists
 
 Retrieves all tracked artists, ordered by name.
@@ -419,8 +421,8 @@ const newArtist = {
   newPostsCount: 0,
 };
 
-const result = await db.insert(artists).values(newArtist).returning();
-const savedArtist = result[0];
+const result = db.insert(artists).values(newArtist).run();
+const savedArtistId = Number(result.lastInsertRowid);
 ```
 
 #### Delete Artist
@@ -435,7 +437,7 @@ import { artists } from "./schema";
 import { eq } from "drizzle-orm";
 
 const db = getDb();
-await db.delete(artists).where(eq(artists.id, 123));
+db.delete(artists).where(eq(artists.id, 123)).run();
 ```
 
 #### Get Posts by Artist
@@ -489,7 +491,7 @@ const newPosts: NewPost[] = [
 ];
 
 // Bulk upsert with ON CONFLICT handling
-await db
+db
   .insert(posts)
   .values(newPosts)
   .onConflictDoUpdate({
@@ -499,13 +501,15 @@ await db
       previewUrl: sql`excluded.preview_url`,
       // ... other fields
     },
-  });
+  })
+  .run();
 
 // Update artist's lastPostId
-await db
+db
   .update(artists)
   .set({ lastPostId: Math.max(...newPosts.map((p) => p.postId)) })
-  .where(eq(artists.id, 1));
+  .where(eq(artists.id, 1))
+  .run();
 ```
 
 #### Get Settings
@@ -543,7 +547,7 @@ import { SecureStorage } from "../services/secure-storage";
 const db = getDb();
 const encryptedKey = SecureStorage.encrypt("your-api-key");
 
-await db
+db
   .insert(settings)
   .values({
     userId: "123456",
@@ -557,7 +561,8 @@ await db
       userId: sql`excluded.user_id`,
       encryptedApiKey: sql`excluded.encrypted_api_key`,
     },
-  });
+  })
+  .run();
 ```
 
 #### Mark Post as Viewed
@@ -572,7 +577,7 @@ import { posts } from "./schema";
 import { eq } from "drizzle-orm";
 
 const db = getDb();
-await db.update(posts).set({ isViewed: true }).where(eq(posts.id, 123));
+db.update(posts).set({ isViewed: true }).where(eq(posts.id, 123)).run();
 ```
 
 #### Toggle Post Favorite
@@ -592,10 +597,11 @@ const post = await db.query.posts.findFirst({
 });
 
 if (post) {
-  await db
+  db
     .update(posts)
     .set({ isFavorited: !post.isFavorited })
-    .where(eq(posts.id, 123));
+    .where(eq(posts.id, 123))
+    .run();
 }
 ```
 
@@ -703,23 +709,24 @@ const artist = await db.query.artists.findFirst({
 **Insert Artist:**
 
 ```typescript
-const result = await db
+const result = db
   .insert(schema.artists)
   .values(artistData)
-  .returning({ id: schema.artists.id });
+  .run();
 ```
 
 **Update Artist:**
 
 ```typescript
-await db
+db
   .update(schema.artists)
   .set({
     lastPostId: newPostId,
     newPostsCount: count,
     lastChecked: new Date(), // Uses timestamp mode
   })
-  .where(eq(schema.artists.id, artistId));
+  .where(eq(schema.artists.id, artistId))
+  .run();
 ```
 
 ## Database Studio
@@ -761,13 +768,15 @@ try {
 
 ### 3. Transactions
 
+> ⚠️ **Synchronous transactions only:** This project uses better-sqlite3 (synchronous driver). All DB operations inside a transaction are SYNCHRONOUS. Never use `async` callbacks or `await` inside `db.transaction(...)`. See `.cursorrules` for the full ruleset.
+
 For multiple related operations, use transactions:
 
 ```typescript
-// Example (to be implemented)
-await db.transaction(async (tx) => {
-  await tx.insert(schema.artists).values(artistData);
-  await tx.insert(schema.posts).values(postData);
+// CORRECT: sync callback, sync operations, mandatory .run()
+db.transaction((tx) => {
+  tx.insert(schema.artists).values(artistData).run();
+  tx.insert(schema.posts).values(postData).run();
 });
 ```
 

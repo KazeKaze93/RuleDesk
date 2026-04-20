@@ -516,9 +516,9 @@ The testing setup automatically handles switching between Node.js and Electron A
 
 ### License
 
-This project is licensed under the **Apache License 2.0**.
+This project is licensed under **Apache 2.0**.
 
-You may use, reproduce, modify, distribute, and sublicense the software under the terms of the Apache License 2.0. The license also includes an express patent grant and requires preservation of copyright and license notices.
+You may use, reproduce, modify, distribute, and sublicense the software under the terms of Apache 2.0. The license includes an express patent grant and requires preservation of copyright and license notices.
 
 The full license text is available in the `LICENSE` file in this repository.
 
