@@ -3,6 +3,8 @@ import { createMockDb } from '../../helpers/mock-db';
 import { server } from '../../mocks/server';
 import { artists, posts, settings, SETTINGS_ID } from '@/main/db/schema';
 import { eq } from 'drizzle-orm';
+import { getProvider } from '@/main/providers';
+import type { BooruPost } from '@/main/providers/types';
 
 // Mock Electron BEFORE imports
 vi.mock('electron', () => ({
@@ -307,5 +309,86 @@ describe('SyncService Integration', () => {
       .where(eq(posts.artistId, artist.id));
     
     expect(savedPosts).toHaveLength(0);
+  });
+
+  it('should preserve accumulated posts when a later page fails', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const createPage = (startId: number): BooruPost[] =>
+      Array.from({ length: 100 }, (_, index) => {
+        const id = startId + index;
+        return {
+          id,
+          fileUrl: `https://cdn.example.com/${id}.jpg`,
+          previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+          sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+          tags: ['artist_name', `tag_${id}`],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 1000,
+          height: 1000,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        };
+      });
+
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async (_tags, page) => {
+        if (page === 0) {
+          return createPage(1);
+        }
+        if (page === 1) {
+          return createPage(101);
+        }
+        if (page === 2) {
+          throw new Error('Provider page 3 failure');
+        }
+        return [];
+      }
+    );
+
+    try {
+      await expect(
+        service.syncArtist(artist, {
+          userId: settingsRecord.userId || '',
+          apiKey,
+        })
+      ).rejects.toThrow('Provider page 3 failure');
+
+      const savedPosts = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+
+      expect(savedPosts).toHaveLength(200);
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+
+      expect(updatedArtist?.lastPostId).toBe(200);
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
   });
 });

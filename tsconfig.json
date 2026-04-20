@@ -28,10 +28,9 @@
     "types": ["node", "vite/client"],
 
     /* Paths */
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/renderer/*"],
-      "@shared/*": ["src/shared/*"]
+      "@/*": ["./src/renderer/*"],
+      "@shared/*": ["./src/shared/*"]
     }
   },
   "include": ["src"],
