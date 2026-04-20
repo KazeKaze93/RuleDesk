@@ -6,8 +6,7 @@ import { logger } from "../lib/logger";
 import { getProvider, type ProviderId } from "../providers";
 import { SyncOrchestrator } from "./sync-orchestrator";
 
-// Safety limit for initial sync to prevent infinite loops
-// At 100 posts/page, this equals 100k posts - more than sufficient for any artist
+// Safety limit for initial sync to prevent infinite loops (page count × provider page size)
 const MAX_PAGES_SAFETY_LIMIT = 1000;
 type CredentialErrorCode = "KEYCHAIN_UNAVAILABLE" | "DECRYPT_FAILED";
 type DecryptedSettings = { userId: string; apiKey: string };

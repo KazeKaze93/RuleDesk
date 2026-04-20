@@ -27,6 +27,8 @@ interface R34AutocompleteItem {
 export class Rule34Provider implements IBooruProvider {
   readonly id = "rule34";
   readonly name = "Rule34.xxx";
+  /** Matches `limit` in {@link buildUrl}; Rule34 allows up to 1000 but 100 is safer (timeouts, parity with sync pagination). */
+  readonly pageSize = 100;
   private readonly baseUrl = "https://api.rule34.xxx/index.php";
   private lastRequestAt = 0;
   private sessionUA: string;
@@ -191,10 +193,7 @@ export class Rule34Provider implements IBooruProvider {
     // If UI sends page 1, we must send pid=0.
     const pid = options.page > 0 ? options.page - 1 : 0;
     
-    // Rule34 LIMIT is hardcapped at 1000 for standard API,
-    // but typical browsing is lower. API ignores 'limit' param in some endpoints
-    // if not strictly passed, but we keep it for consistency.
-    params.append("limit", "1000");
+    params.append("limit", String(this.pageSize));
     params.append("pid", pid.toString());
 
     if (options.settings.userId && options.settings.apiKey) {

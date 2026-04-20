@@ -3,7 +3,6 @@ import type { BooruPost } from "../../shared/schemas/booru";
 
 // Re-export BooruPost from shared schema for backward compatibility
 export type { BooruPost };
-export const PAGE_SIZE = 100;
 
 export interface SearchResults {
   id: string;
@@ -20,6 +19,8 @@ export interface ProviderSettings {
 export interface IBooruProvider {
   id: string;
   name: string;
+  /** Posts per API page; must match the `limit` (or equivalent) used in {@link fetchPosts}. */
+  readonly pageSize: number;
   /** Validates provided credentials against the API */
   checkAuth(settings: ProviderSettings): Promise<boolean>;
   /** Fetches posts based on tags and page */

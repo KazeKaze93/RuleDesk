@@ -101,3 +101,21 @@ export const IpcSettingsSchema = z.object({
 export type IpcSettings = z.infer<typeof IpcSettingsSchema>;
 export type SaveSettings = z.infer<typeof SaveSettingsSchema>;
 
+/** Path from folder picker or manual entry (null = use app default). */
+export const SaveDownloadFolderPathSchema = z.string().max(4096).nullable();
+
+export type SaveDownloadFolderPath = z.infer<typeof SaveDownloadFolderPathSchema>;
+
+export const SaveDownloadSettingsPayloadSchema = z.object({
+  duplicateFileBehavior: z.enum(["skip", "overwrite"]).optional(),
+  downloadFolderStructure: z.enum(["flat", "{artist_id}"]).optional(),
+});
+
+export type SaveDownloadSettingsPayload = z.infer<
+  typeof SaveDownloadSettingsPayloadSchema
+>;
+
+export const SaveDownloadFolderIpcSchema = z.tuple([SaveDownloadFolderPathSchema]);
+
+export const SaveDownloadSettingsIpcSchema = z.tuple([SaveDownloadSettingsPayloadSchema]);
+

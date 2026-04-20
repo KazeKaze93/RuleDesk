@@ -3,7 +3,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq, desc, and, inArray, sql, or, not, asc, type SQL } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getService } from "../../core/services";
 import { playlists, playlistEntries, posts } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -13,12 +13,15 @@ import type { InferSelectModel } from "drizzle-orm";
 import type { IpcSafe } from "../../../shared/types/ipc";
 import {
   CreatePlaylistSchema,
-  UpdatePlaylistSchema,
   AddPostsToPlaylistSchema,
   RemovePostsFromPlaylistSchema,
   GetPlaylistPostsSchema,
   ResolvePlaylistPostsSchema,
   SmartPlaylistQuerySchema,
+  GetPlaylistByIdIpcSchema,
+  UpdatePlaylistIpcSchema,
+  DeletePlaylistIpcSchema,
+  GetPlaylistsContainingPostIpcSchema,
   type CreatePlaylistRequest,
   type UpdatePlaylistRequest,
   type AddPostsToPlaylistRequest,
@@ -66,7 +69,7 @@ type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
  */
 export class PlaylistController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
+    return getService("db");
   }
 
   // Cache FTS5 table count to avoid blocking Main Process with COUNT(*) queries
@@ -174,7 +177,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLIST,
-      z.tuple([z.number().int().positive()]),
+      GetPlaylistByIdIpcSchema,
       this.getPlaylist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -183,7 +186,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.UPDATE_PLAYLIST,
-      z.tuple([z.number().int().positive(), UpdatePlaylistSchema]),
+      UpdatePlaylistIpcSchema,
       this.updatePlaylist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -192,7 +195,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.DELETE_PLAYLIST,
-      z.tuple([z.number().int().positive()]),
+      DeletePlaylistIpcSchema,
       this.deletePlaylist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -237,7 +240,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
-      z.tuple([z.number().int(), z.number().int().positive().optional()]),
+      GetPlaylistsContainingPostIpcSchema,
       this.getPlaylistsContainingPost.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]

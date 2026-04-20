@@ -2,9 +2,9 @@ import { type IpcMainInvokeEvent } from "electron";
 import { shell } from "electron";
 import { URL } from "url";
 import log from "electron-log";
-import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { IPC_CHANNELS } from "../channels";
+import { OpenExternalUrlSchema } from "../../../shared/schemas/viewer";
 import { ALLOWED_HOSTS_SET } from "../../config/allowed-hosts";
 
 // Dangerous protocols that should never be allowed
@@ -33,7 +33,7 @@ export class ViewerController extends BaseController {
   public setup(): void {
     this.handle(
       IPC_CHANNELS.APP.OPEN_EXTERNAL,
-      z.string().url().min(1), // Single argument schema
+      OpenExternalUrlSchema,
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.openExternal.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );

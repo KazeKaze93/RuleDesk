@@ -28,3 +28,14 @@ export const AddArtistSchema = z.object({
  * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
  */
 export type AddArtistRequest = z.infer<typeof AddArtistSchema>;
+
+export const DeleteArtistIdSchema = z.number().int().positive();
+
+export const SearchLocalArtistsQuerySchema = z.string().trim().min(1);
+
+export const SearchRemoteTagsTupleSchema = z.tuple([
+  z.string().trim().min(2),
+  z.enum(PROVIDER_IDS).optional(),
+]);
+
+export type SearchRemoteTagsArgs = z.infer<typeof SearchRemoteTagsTupleSchema>;

@@ -3,7 +3,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq, or, desc, sql, and, notLike, not } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getService } from "../../core/services";
 import { artists, posts } from "../../db/schema";
 import { escapeLikePattern } from "../../db/utils";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
@@ -20,7 +20,13 @@ import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
-import { AddArtistSchema, type AddArtistRequest } from "../../../shared/schemas/artist";
+import {
+  AddArtistSchema,
+  DeleteArtistIdSchema,
+  SearchLocalArtistsQuerySchema,
+  SearchRemoteTagsTupleSchema,
+  type AddArtistRequest,
+} from "../../../shared/schemas/artist";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -60,7 +66,7 @@ type IpcArtist = {
  */
 export class ArtistsController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
+    return getService("db");
   }
 
   /**
@@ -83,7 +89,7 @@ export class ArtistsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.DB.DELETE_ARTIST,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([DeleteArtistIdSchema]),
       this.deleteArtist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -91,7 +97,7 @@ export class ArtistsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.DB.SEARCH_TAGS,
-      z.tuple([z.string().trim().min(1)]),
+      z.tuple([SearchLocalArtistsQuerySchema]),
       this.searchArtists.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -99,10 +105,7 @@ export class ArtistsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.API.SEARCH_REMOTE,
-      z.tuple([
-        z.string().trim().min(2),
-        z.enum(["rule34", "gelbooru"]).optional(),
-      ]),
+      SearchRemoteTagsTupleSchema,
       this.searchRemoteTags.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -155,10 +158,18 @@ export class ArtistsController extends BaseController {
         `[ArtistsController] Retrieved ${result.length} tracked artists (placeholder artists excluded)`
       );
 
+      // COUNT() may surface as bigint from SQLite — coerce before IPC (toIpcSafe rejects BigInt)
+      const normalized = result.map((row) => ({
+        ...row,
+        postsCount:
+          typeof row.postsCount === "bigint"
+            ? Number(row.postsCount)
+            : row.postsCount,
+      }));
+
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       // Uses universal toIpcSafe utility to avoid code duplication
-      // Note: postsCount is already a number, so it will pass through toIpcSafe unchanged
-      return toIpcSafe(result) as IpcArtist[];
+      return toIpcSafe(normalized) as IpcArtist[];
     } catch (error) {
       log.error("[ArtistsController] Failed to get artists:", error);
       throw new Error("Failed to fetch artists");

@@ -10,42 +10,19 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getService } from "../../core/services";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
+import {
+  BATCH_DOWNLOAD_MAX_FILES,
+  DownloadAllSchema,
+  DownloadFileSchema,
+  DownloadFileIpcSchema,
+  OpenFolderSchema,
+} from "../../../shared/schemas/download";
 
 const DEFAULT_DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 const DOWNLOAD_QUEUE_FILE = "download-queue.json";
-
-// Maximum filename length to prevent filesystem errors
-// Most filesystems (Windows, Linux, macOS) limit filenames to 255 characters
-// We use 200 to account for path length and extensions
-const MAX_FILENAME_LENGTH = 200;
-
-const DownloadFileSchema = z.object({
-  url: z
-    .string()
-    .url()
-    .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
-      message: "Only HTTP/HTTPS protocols are allowed for downloads.",
-    }),
-  filename: z
-    .string()
-    .min(1)
-    .max(MAX_FILENAME_LENGTH, `Filename must not exceed ${MAX_FILENAME_LENGTH} characters`)
-    .regex(/^[\w\-. ]+$/, "Invalid filename characters"),
-});
-
-const OpenFolderSchema = z.string().min(1);
-
-const BATCH_DOWNLOAD_MAX_FILES = 500;
-
-const DownloadAllItemSchema = z.object({
-  url: DownloadFileSchema.shape.url,
-  filename: DownloadFileSchema.shape.filename,
-});
-
-const DownloadAllSchema = z.array(DownloadAllItemSchema).max(BATCH_DOWNLOAD_MAX_FILES);
 
 /**
  * File Controller
@@ -213,7 +190,7 @@ export class FileController extends BaseController {
     downloadFolderStructure: "flat" | "{artist_id}";
   } {
     try {
-      const db = container.resolve(DI_TOKENS.DB);
+      const db = getService("db");
       const row = db
         .select({
           duplicateFileBehavior: settings.duplicateFileBehavior,
@@ -240,7 +217,7 @@ export class FileController extends BaseController {
    */
   private async getDownloadRoot(): Promise<string> {
     try {
-      const db = container.resolve(DI_TOKENS.DB);
+      const db = getService("db");
       const row = db
         .select({ downloadFolder: settings.downloadFolder })
         .from(settings)
@@ -282,10 +259,7 @@ export class FileController extends BaseController {
   public setup(): void {
     this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD,
-      z.tuple([
-        DownloadFileSchema.shape.url, // URL with HTTP/HTTPS validation
-        DownloadFileSchema.shape.filename, // Filename with length and character validation
-      ]),
+      DownloadFileIpcSchema,
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.downloadFile.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );

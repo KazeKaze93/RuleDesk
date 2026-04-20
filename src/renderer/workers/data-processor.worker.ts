@@ -135,7 +135,8 @@ function filterAndSortPosts(
     if (hasActiveSearch) {
       if (source === "favorites" && !post.isFavorited) return false;
         if (source === "subscriptions") {
-          if (trackedSet.size === 0) return false;
+          // No tracked sources: do not hide everything — subscriptions filter cannot apply
+          if (trackedSet.size === 0) return true;
           if (!post.tags) return false;
           // PERFORMANCE: Split once and use Set.has() for O(1) lookup
           // This is faster than creating RegExp on each iteration (20k+ times)

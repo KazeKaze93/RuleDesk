@@ -3,7 +3,7 @@ import { safeStorage } from "electron";
 import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getService } from "../../core/services";
 import { settings, SETTINGS_ID, posts, tagMetadata, TAG_TYPES, type TagType } from "../../db/schema";
 import { eq, inArray, and, sql } from "drizzle-orm";
 import { getProvider } from "../../providers";
@@ -12,30 +12,18 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import type { BooruPost } from "../../providers/types";
 import type { Post } from "../../db/schema";
-import { SearchPostsSchema } from "../../../shared/schemas/search";
+import {
+  R34TagResponseSchema,
+  ResolveTagsByTypeIpcSchema,
+  ResolveTagsIpcSchema,
+  SearchPostsSchema,
+} from "../../../shared/schemas/search";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
 import { XMLParser } from "fast-xml-parser";
 import { isVideoUrl } from "@shared/utils/media";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
-
-// Zod schema for Rule34 DAPI tag response validation
-const R34TagResponseSchema = z.object({
-  id: z.number().optional(),
-  name: z.string().min(1),
-  type: z.union([z.number(), z.string()]).transform((val) => {
-    const num = typeof val === 'string' ? parseInt(val, 10) : Number(val);
-    if (isNaN(num) || num < 0) {
-      throw new z.ZodError([{
-        code: 'custom',
-        path: ['type'],
-        message: 'Invalid type value',
-      }]);
-    }
-    return num;
-  }),
-}).passthrough(); // Allow additional fields from API
 
 // Internal type alias
 type SearchPostsParams = z.infer<typeof SearchPostsSchema>;
@@ -52,7 +40,7 @@ type IpcPost = ReturnType<typeof toIpcSafe<Post>>;
  */
 export class SearchController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
+    return getService("db");
   }
 
   /**
@@ -68,49 +56,31 @@ export class SearchController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS,
-      z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
+      ResolveTagsIpcSchema,
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.resolveTags.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_CHARACTER_TAGS,
-      z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
+      ResolveTagsIpcSchema,
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.resolveCharacterTags.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS,
-      z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
+      ResolveTagsIpcSchema,
       (event, ...args) => {
-        // Validate args with Zod instead of unsafe casting
-        const schema = z.tuple([z.array(z.string().min(1)).max(100)]);
-        const result = schema.safeParse(args);
-        if (!result.success) {
-          log.error("[SearchController] Invalid args for RESOLVE_COPYRIGHT_TAGS:", result.error);
-          return Promise.resolve([]);
-        }
-        const [tags] = result.data;
+        const [tags] = args as [string[]];
         return this.resolveTagsByType(event, tags, TAG_TYPES.COPYRIGHT);
       }
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE,
-      z.tuple([
-        z.array(z.string().min(1)).max(100), // tags
-        z.number().int().refine((val): val is TagType => {
-          // Use TAG_TYPES constants instead of magic numbers
-          // Type guard ensures val is TagType if validation passes
-          const tagTypeValues = Object.values(TAG_TYPES) as number[];
-          return tagTypeValues.includes(val);
-        }, { message: "Invalid tag type. Must be one of TAG_TYPES values." }), // type
-      ]),
+      ResolveTagsByTypeIpcSchema,
       (event, ...args) => {
-        // BaseController already validated args with Zod schema above
-        // TypeScript doesn't know the validated type, so we extract with type assertion
-        // This is safe because BaseController.parse() guarantees the shape matches the schema
         const [tags, tagType] = args as [string[], TagType];
         return this.resolveTagsByType(event, tags, tagType);
       }

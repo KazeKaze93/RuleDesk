@@ -12,6 +12,8 @@ import { z } from "zod";
 export class GelbooruProvider implements IBooruProvider {
   readonly id = "gelbooru";
   readonly name = "Gelbooru";
+  /** Gelbooru API `limit` per page; typical max 100 for index.php JSON. */
+  readonly pageSize = 100;
   private readonly baseUrl = "https://gelbooru.com/index.php";
 
   getDefaultApiEndpoint(): string {
@@ -114,7 +116,7 @@ export class GelbooruProvider implements IBooruProvider {
       page: "dapi",
       s: "post",
       q: "index",
-      limit: "100",
+      limit: String(this.pageSize),
       pid: apiPage.toString(),
       tags: tags,
       json: "1",

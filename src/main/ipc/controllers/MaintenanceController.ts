@@ -6,8 +6,9 @@ import Database from "better-sqlite3";
 import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getService } from "../../core/services";
 import { IPC_CHANNELS } from "../channels";
+import { RepairArtistIdIpcSchema } from "../../../shared/schemas/maintenance";
 import { getSqliteInstance, closeDatabase, initializeDatabase } from "../../db/client";
 import { maintenanceQueue } from "../../db/maintenance-queue";
 import type { SyncService } from "../../services/sync-service";
@@ -33,7 +34,7 @@ export class MaintenanceController extends BaseController {
   }
 
   private getSyncService(): SyncService {
-    return container.resolve(DI_TOKENS.SYNC_SERVICE);
+    return getService("sync");
   }
 
   /**
@@ -47,7 +48,7 @@ export class MaintenanceController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.SYNC.REPAIR,
-      z.tuple([z.number().int().positive()]),
+      RepairArtistIdIpcSchema,
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.repairArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createMockDb } from '../../helpers/mock-db';
 import { ARTIST_TYPES, PROVIDER_IDS } from '@/shared/constants';
-import { container, DI_TOKENS } from '@/main/core/di/Container';
+import { __resetServices, registerService } from '@/main/core/services';
 import { artists } from '@/main/db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -48,18 +48,13 @@ describe('ArtistsController Integration', () => {
   let controller: ArtistsController;
 
   beforeEach(() => {
-    // CRITICAL: Clear DI container before each test to prevent state leakage
-    // This ensures that each test starts with a fresh container state
-    container.clear();
+    __resetServices();
 
     // Create fresh in-memory database (:memory: guarantees clean slate)
     mockDb = createMockDb();
 
-    // Register mock DB in DI container
-    // Container.register expects the instance directly, not wrapped in an object
-    container.register(DI_TOKENS.DB, mockDb.db);
+    registerService('db', mockDb.db);
 
-    // Instantiate controller (will use the fresh DB from container)
     controller = new ArtistsController();
   });
 
@@ -73,9 +68,7 @@ describe('ArtistsController Integration', () => {
       }
     }
 
-    // Clear DI container registrations to prevent state leakage
-    // This ensures the next test starts with a clean container
-    container.clear();
+    __resetServices();
   });
 
   describe('handleAddArtist', () => {

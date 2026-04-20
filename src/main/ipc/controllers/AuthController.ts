@@ -3,9 +3,10 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getService } from "../../core/services";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
+import { VerifyCredentialsIpcSchema } from "../../../shared/schemas/auth";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
@@ -22,11 +23,11 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  */
 export class AuthController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
+    return getService("db");
   }
 
   private getSyncService(): SyncService {
-    return container.resolve(DI_TOKENS.SYNC_SERVICE);
+    return getService("sync");
   }
 
   /**
@@ -35,7 +36,7 @@ export class AuthController extends BaseController {
   public setup(): void {
     this.handle(
       IPC_CHANNELS.APP.VERIFY_CREDS,
-      z.tuple([z.enum(["rule34", "gelbooru"]).optional()]),
+      VerifyCredentialsIpcSchema,
       this.verifyCredentials.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]

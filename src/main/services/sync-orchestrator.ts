@@ -8,7 +8,6 @@ import type * as schema from "../db/schema";
 import { logger } from "../lib/logger";
 import { retryWithBackoff } from "../lib/retry";
 import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
-import { PAGE_SIZE } from "../providers/types";
 import { mapBooruToNewPost } from "./post-mapper";
 
 // SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
@@ -144,6 +143,7 @@ export class SyncOrchestrator {
     options: SyncPostsOptions
   ): Promise<void> {
     const { isInitial, currentLastPostId, maxPages } = options;
+    const pageSize = provider.pageSize;
     const syncType = isInitial ? "Initial" : "Incremental";
     logger.info(
       `SyncService: ${syncType} sync for ${artist.name} - ` +
@@ -208,8 +208,8 @@ export class SyncOrchestrator {
           }
 
           const shouldCommitBatch =
-            allPostsToSave.length >= BATCH_SIZE_PAGES * PAGE_SIZE ||
-            (postsData.length < PAGE_SIZE && allPostsToSave.length > 0) ||
+            allPostsToSave.length >= BATCH_SIZE_PAGES * pageSize ||
+            (postsData.length < pageSize && allPostsToSave.length > 0) ||
             !hasMore;
 
           if (shouldCommitBatch && allPostsToSave.length > 0) {
@@ -233,10 +233,10 @@ export class SyncOrchestrator {
             );
           }
 
-          if (postsData.length < PAGE_SIZE) {
+          if (postsData.length < pageSize) {
             hasMore = false;
             logger.debug(
-              `SyncService: ${artist.name} - Page ${page} returned ${postsData.length} posts (< ${PAGE_SIZE}), stopping pagination`
+              `SyncService: ${artist.name} - Page ${page} returned ${postsData.length} posts (< ${pageSize}), stopping pagination`
             );
           } else {
             page++;

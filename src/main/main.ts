@@ -79,7 +79,8 @@ if (app.isPackaged) {
 
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
-import { initializeDatabase, closeDatabase } from "./db/client";
+import { initializeDatabase, closeDatabase, getDb } from "./db/client";
+import { registerService } from "./core/services";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
@@ -376,6 +377,8 @@ async function initializeAppAndWindow() {
     logger.info("[Main] Starting database initialization...");
     try {
       await initializeDatabase();
+      registerService("db", getDb());
+      registerService("sync", syncService);
       logger.info("✅ Main: Database initialized and ready.");
     } catch (error) {
       logger.error("[Main] FATAL: Database initialization failed:", error);
@@ -523,7 +526,7 @@ async function initializeAppAndWindow() {
     if (isTestMode) {
       logger.info("[Main] Test mode: Skipping ready-to-show listener, initializing IPC immediately");
       // Initialize IPC immediately so tests can interact with the app
-      registerAllHandlers(syncService, updaterService, mainWindow);
+      registerAllHandlers(updaterService, mainWindow);
       
       // Log window state for debugging
       logger.info(`[Main] Test mode: Window created, visible: ${mainWindow.isVisible()}, destroyed: ${mainWindow.isDestroyed()}`);
@@ -550,7 +553,7 @@ async function initializeAppAndWindow() {
 
           // Initialize IPC architecture (controllers + legacy handlers)
           // setupIpc is called inside registerAllHandlers now
-          registerAllHandlers(syncService, updaterService, window);
+          registerAllHandlers(updaterService, window);
 
           // Create system tray
           createTray(window);

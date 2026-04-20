@@ -158,6 +158,27 @@ export const ResolvePlaylistPostsSchema = z.object({
  */
 export type ResolvePlaylistPostsRequest = z.infer<typeof ResolvePlaylistPostsSchema>;
 
+export const PlaylistIdSchema = z.number().int().positive();
+
+export const GetPlaylistByIdIpcSchema = z.tuple([PlaylistIdSchema]);
+
+export const UpdatePlaylistIpcSchema = z.tuple([
+  PlaylistIdSchema,
+  UpdatePlaylistSchema,
+]);
+
+export const DeletePlaylistIpcSchema = z.tuple([PlaylistIdSchema]);
+
+/** Post id and optional artist id for "playlists containing this post". */
+export const GetPlaylistsContainingPostIpcSchema = z.tuple([
+  z.number().int(),
+  z.number().int().positive().optional(),
+]);
+
+export type GetPlaylistsContainingPostIpcArgs = z.infer<
+  typeof GetPlaylistsContainingPostIpcSchema
+>;
+
 /**
  * Parse playlist queryJson string into SmartPlaylistQuery object
  * 

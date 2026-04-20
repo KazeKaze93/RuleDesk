@@ -4,6 +4,7 @@ import path from "node:path";
 import { readFileSync, existsSync } from "fs";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
+import { WriteClipboardIpcSchema } from "../../../shared/schemas/system";
 import { closeDatabase } from "../../db/client";
 
 /**
@@ -24,7 +25,7 @@ export class SystemController extends BaseController {
     this.handle("app:quit", z.tuple([]), this.quitApp.bind(this));
     this.handle(
       "app:write-to-clipboard",
-      z.tuple([z.string().min(1)]),
+      WriteClipboardIpcSchema,
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.writeToClipboard.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );

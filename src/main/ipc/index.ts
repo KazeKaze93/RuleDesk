@@ -11,26 +11,18 @@ import { ViewerController } from "./controllers/ViewerController";
 import { FileController } from "./controllers/FileController";
 import { SearchController } from "./controllers/SearchController";
 import { PlaylistController } from "./controllers/PlaylistController";
-import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
-import { getDb } from "../db/client";
-import { container, DI_TOKENS } from "../core/di/Container";
 
 /**
  * Setup IPC Handlers
- * 
- * Initializes DI Container and registers all IPC controllers.
- * Called once during application startup.
- * 
+ *
+ * Expects `db` and `sync` to be registered via {@link registerService} in main.ts (before IPC setup).
+ * before this runs.
+ *
  * @returns Object with controllers that need window reference
  */
 export function setupIpc(): { maintenanceController: MaintenanceController; fileController: FileController } {
   log.info("[IPC] Setting up IPC handlers...");
-
-  // Register database in DI container (using type-safe tokens)
-  const db = getDb();
-  container.register(DI_TOKENS.DB, db);
-  log.info("[IPC] Database registered in DI container");
 
   // Register core controllers
   const systemController = new SystemController();
@@ -69,16 +61,6 @@ export function setupIpc(): { maintenanceController: MaintenanceController; file
 }
 
 /**
- * Register services in DI container (called after services are initialized)
- * 
- * @param syncService - Sync service instance
- */
-export function registerServices(syncService: SyncService): void {
-  container.register(DI_TOKENS.SYNC_SERVICE, syncService);
-  log.info("[IPC] SyncService registered in DI container");
-}
-
-/**
  * Set main window for controllers that need it (backup/restore, file dialogs)
  * 
  * @param controllers - Controllers that need window reference
@@ -96,15 +78,13 @@ export function setControllerWindows(
 
 // --- Main Registration Function ---
 export const registerAllHandlers = (
-  syncService: SyncService,
   _updaterService: UpdaterService,
   mainWindow: BrowserWindow
 ) => {
   log.info("[IPC] Registering all handlers...");
 
-  // Initialize all controllers
+  // Initialize all controllers (services registered in main.ts before this runs)
   const controllers = setupIpc();
-  registerServices(syncService);
   setControllerWindows(controllers, mainWindow);
 
   log.info("[IPC] All handlers registered (controllers only - migration complete).");

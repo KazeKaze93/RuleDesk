@@ -133,7 +133,15 @@ export const Updates = () => {
   const viewType = useSearchStore((state) => state.viewType);
   const filters = useSearchStore((state) => state.filters);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+  } =
     useInfiniteQuery({
       queryKey: ["posts", "updates", tags],
       queryFn: async ({ pageParam = 1 }) => {
@@ -386,7 +394,14 @@ export const Updates = () => {
 
       {/* Grid Content */}
       <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
+        {isError ? (
+          <div className="flex flex-col justify-center items-center h-full gap-2 px-6 text-center text-destructive">
+            <p className="font-medium">Could not load updates</p>
+            <p className="text-sm text-muted-foreground max-w-md">
+              {error instanceof Error ? error.message : String(error)}
+            </p>
+          </div>
+        ) : isLoading && allPosts.length === 0 ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>

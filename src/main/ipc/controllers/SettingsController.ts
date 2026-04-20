@@ -3,11 +3,13 @@ import log from "electron-log";
 import type { InferSelectModel } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getService } from "../../core/services";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { encrypt } from "../../lib/crypto";
 import { IPC_CHANNELS } from "../channels";
 import {
+  SaveDownloadFolderIpcSchema,
+  SaveDownloadSettingsIpcSchema,
   SaveSettingsSchema,
   type IpcSettings,
   type SaveSettings,
@@ -95,7 +97,7 @@ function mapSettingsToIpc(
  */
 export class SettingsController extends BaseController {
   private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
+    return getService("db");
   }
 
   // Cache settings to avoid DB queries on every call (settings change rarely)
@@ -138,7 +140,7 @@ export class SettingsController extends BaseController {
     // settings:save-download-folder - saves custom download folder path
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER,
-      z.tuple([z.string().max(4096).nullable()]),
+      SaveDownloadFolderIpcSchema,
       this.saveDownloadFolder.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -147,12 +149,7 @@ export class SettingsController extends BaseController {
     // settings:save-download-settings - saves duplicate/folder structure
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS,
-      z.tuple([
-        z.object({
-          duplicateFileBehavior: z.enum(["skip", "overwrite"]).optional(),
-          downloadFolderStructure: z.enum(["flat", "{artist_id}"]).optional(),
-        }),
-      ]),
+      SaveDownloadSettingsIpcSchema,
       this.saveDownloadSettings.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
