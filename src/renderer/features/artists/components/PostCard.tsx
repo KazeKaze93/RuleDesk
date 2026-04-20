@@ -151,6 +151,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             src={post.previewUrl}
             alt={`Post ${post.id}`}
             loading="lazy"
+            decoding="async"
             className={cn(
               "w-full transition-all duration-300",
               shouldPreserveAspect
