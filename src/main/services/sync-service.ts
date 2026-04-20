@@ -463,6 +463,35 @@ export class SyncService {
       } catch (e) {
         logger.error(`Sync error for ${artist.name}`, e);
         hasMore = false;
+
+        if (allPostsToSave.length > 0) {
+          try {
+            const partialSize = allPostsToSave.length;
+            db.transaction((tx) => {
+              bulkUpsertPosts(allPostsToSave, tx);
+
+              tx.update(artists)
+                .set({
+                  lastPostId: batchHighestPostId,
+                  newPostsCount: sql`${artists.newPostsCount} + ${partialSize}`,
+                  lastChecked: new Date(),
+                })
+                .where(eq(artists.id, artist.id))
+                .run();
+            });
+
+            newPostsCount += partialSize;
+            logger.warn(
+              `SyncService: Partial commit of ${partialSize} posts after error for ${artist.name}`
+            );
+          } catch (commitErr) {
+            logger.error(
+              `SyncService: Partial commit failed for ${artist.name}`,
+              commitErr
+            );
+          }
+        }
+
         throw e;
       }
     }
