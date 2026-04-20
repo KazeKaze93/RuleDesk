@@ -46,10 +46,10 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   const { data: existingPlaylistIds = [], isFetching } = useQuery<number[]>({
     queryKey: ["playlist-entries", postId, post.postId],
     queryFn: async () => {
-      return await window.api.getPlaylistsContainingPost(
-        postId,
-        postId <= 0 ? post.postId : undefined
-      );
+      if (postId <= 0) {
+        return [];
+      }
+      return await window.api.getPlaylistsContainingPost(postId);
     },
     enabled: isMenuOpen && playlists.length > 0,
   });

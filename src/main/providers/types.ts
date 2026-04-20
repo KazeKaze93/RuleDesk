@@ -3,6 +3,7 @@ import type { BooruPost } from "../../shared/schemas/booru";
 
 // Re-export BooruPost from shared schema for backward compatibility
 export type { BooruPost };
+export const PAGE_SIZE = 100;
 
 export interface SearchResults {
   id: string;

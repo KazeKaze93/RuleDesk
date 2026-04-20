@@ -8,7 +8,7 @@
 import { parentPort, workerData } from "worker_threads";
 import path from "path";
 import fs from "fs";
-import { access, mkdir, readFile, unlink, writeFile } from "fs/promises";
+import { access, mkdir, unlink, writeFile } from "fs/promises";
 import axios, { type AxiosProgressEvent } from "axios";
 import { pipeline } from "stream/promises";
 

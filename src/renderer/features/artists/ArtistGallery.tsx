@@ -271,6 +271,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     () => ({
       artistId: artist.id,
       page: 1,
+      limit: 50,
+      isRandom: false,
       filters: {
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
         mediaType: mediaType === "all" ? undefined : mediaType,

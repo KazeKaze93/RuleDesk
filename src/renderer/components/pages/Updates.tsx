@@ -16,7 +16,6 @@ import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
 import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../downloads/DownloadAllButton";
-import { Button } from "../../components/ui/button";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;

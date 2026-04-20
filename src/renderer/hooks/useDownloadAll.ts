@@ -85,12 +85,10 @@ export function useDownloadAllWithFilters(
   fetchParams: Pick<GetPostsRequest, "artistId" | "filters"> | null
 ) {
   const [totalCount, setTotalCount] = useState(0);
+  const effectiveTotalCount = fetchParams ? totalCount : 0;
 
   useEffect(() => {
-    if (!fetchParams) {
-      setTotalCount(0);
-      return;
-    }
+    if (!fetchParams) return;
     window.api
       .getPostsCountWithFilters(fetchParams)
       .then(setTotalCount)
@@ -99,23 +97,14 @@ export function useDownloadAllWithFilters(
           setTotalCount(0);
         }
       });
-  }, [
-    fetchParams?.artistId,
-    fetchParams?.filters?.tags,
-    fetchParams?.filters?.rating,
-    fetchParams?.filters?.isFavorited,
-    fetchParams?.filters?.isViewed,
-    fetchParams?.filters?.sinceTracking,
-    fetchParams?.filters?.aiFilter,
-    fetchParams?.filters?.mediaType,
-  ]);
+  }, [fetchParams]);
 
   const backendResult = useDownloadAllFromBackend(
-    fetchParams ? { ...fetchParams, page: 1, limit: 50 } : null,
-    totalCount
+    fetchParams ? { ...fetchParams, page: 1, limit: 50, isRandom: false } : null,
+    effectiveTotalCount
   );
 
-  return { ...backendResult, totalCount };
+  return { ...backendResult, totalCount: effectiveTotalCount };
 }
 
 /** Download from backend (ArtistGallery - fetches all from DB, uses totalCount for display) */

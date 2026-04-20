@@ -9,7 +9,6 @@ import {
 import { Heart, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
-import { Button } from "../../components/ui/button";
 import { cn } from "../../lib/utils";
 import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
