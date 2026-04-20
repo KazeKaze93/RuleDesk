@@ -69,6 +69,7 @@ export type PostFilterRequest = z.infer<typeof PostFilterSchema>;
 export const GetPostsSchema = z.object({
   artistId: z.number().int().positive().optional(),
   page: z.number().int().min(1).default(1),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
   filters: PostFilterSchema.optional(),
   limit: z.number().int().min(1).max(100).default(50),
   isRandom: z.boolean().optional().default(false),
@@ -81,4 +82,11 @@ export const GetPostsSchema = z.object({
  * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
  */
 export type GetPostsRequest = z.infer<typeof GetPostsSchema>;
+
+export const GetPostsCountSchema = z.object({
+  artistId: z.number().int().positive().optional(),
+  filters: PostFilterSchema.optional(),
+});
+
+export type GetPostsCountRequest = z.infer<typeof GetPostsCountSchema>;
 

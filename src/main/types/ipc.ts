@@ -11,6 +11,7 @@
 export type { AddArtistRequest } from "../../shared/schemas/artist";
 export type {
   GetPostsRequest,
+  GetPostsCountRequest,
   PostFilterRequest,
 } from "../../shared/schemas/post";
 

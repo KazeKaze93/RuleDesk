@@ -7,6 +7,7 @@ import {
 } from "./main/bridge";
 import type { ShadowInsertRequest } from "./shared/schemas/shadow-insert";
 import type { SearchResults, ProviderId } from "./main/providers";
+import type { PostData, GetPostsCountRequest } from "./shared/schemas/post";
 import type {
   CreatePlaylistRequest,
   UpdatePlaylistRequest,
@@ -71,10 +72,11 @@ export interface IpcApi extends IpcBridge {
   getArtistPosts: (params: {
     artistId?: number;
     page?: number;
+    sortOrder?: "asc" | "desc";
     filters?: PostQueryFilters;
     isRandom?: boolean;
   }) => Promise<Post[]>;
-  getArtistPostsCount: (artistId?: number) => Promise<number>;
+  getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
 
