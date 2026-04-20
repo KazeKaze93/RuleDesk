@@ -50,6 +50,7 @@ vi.mock('electron-log', () => ({
 // Mock getDb to return our mock database
 // We'll set this up in beforeEach
 let mockDbInstance: ReturnType<typeof createMockDb>['db'] | null = null;
+let mockSqliteInstance: ReturnType<typeof createMockDb>['sqlite'] | null = null;
 
 vi.mock('@/main/db/client', () => ({
   getDb: () => {
@@ -59,7 +60,12 @@ vi.mock('@/main/db/client', () => ({
     return mockDbInstance;
   },
   initializeDatabase: vi.fn(),
-  getSqliteInstance: vi.fn(),
+  getSqliteInstance: () => {
+    if (!mockSqliteInstance) {
+      throw new Error('Mock SQLite not set. Call setMockDbInstance() first.');
+    }
+    return mockSqliteInstance;
+  },
   closeDatabase: vi.fn(),
 }));
 
@@ -85,6 +91,7 @@ describe('SyncService Integration', () => {
     
     // 2. Inject mock DB into getDb() mock
     mockDbInstance = mockDb.db;
+    mockSqliteInstance = mockDb.sqlite;
 
     // 3. Seed DB with settings (required for SyncService)
     await mockDb.db.insert(settings).values({
@@ -125,6 +132,7 @@ describe('SyncService Integration', () => {
     }
     // Clear mock DB instance to prevent state leakage
     mockDbInstance = null;
+    mockSqliteInstance = null;
     vi.clearAllMocks();
   });
 
@@ -197,6 +205,83 @@ describe('SyncService Integration', () => {
     });
     
     expect(updatedArtist?.lastPostId).toBe(1234568); // The ID of the newest post in fixture
+  });
+
+  it('should rebuild FTS index after initial sync', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const createPage = (startId: number): BooruPost[] =>
+      Array.from({ length: 100 }, (_, index) => {
+        const id = startId + index;
+        return {
+          id,
+          fileUrl: `https://cdn.example.com/${id}.jpg`,
+          previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+          sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+          tags: ['artist_name', `tag_${id}`],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 1000,
+          height: 1000,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        };
+      });
+
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async (_tags, page) => {
+        if (page === 0) {
+          return createPage(1);
+        }
+        return [];
+      }
+    );
+
+    try {
+      await service.syncArtist(artist, {
+        userId: settingsRecord.userId || '',
+        apiKey,
+      });
+
+      const savedPosts = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+      expect(savedPosts).toHaveLength(100);
+
+      const ftsRowsForArtist = mockDb.sqlite
+        .prepare(`
+          SELECT COUNT(*) as count
+          FROM posts_fts
+          WHERE rowid IN (
+            SELECT id FROM posts WHERE artist_id = ?
+          )
+        `)
+        .get(artist.id) as { count: number };
+      expect(ftsRowsForArtist.count).toBe(100);
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
   });
 
   it('should only fetch new posts when lastPostId is set', async () => {
