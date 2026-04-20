@@ -62,7 +62,7 @@
     "desktop"
   ],
   "author": "",
-  "license": "Apache License 2.0",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
     "@eslint/js": "^9.39.1",

@@ -273,6 +273,8 @@ const db = getDb();
 
 Все операции с базой данных доступны через Drizzle ORM с использованием экземпляра базы данных из `getDb()`.
 
+**Примечание о драйвере:** В проекте используется `better-sqlite3` (синхронный драйвер). Запросы на запись (`insert`, `update`, `delete`) должны заканчиваться `.run()`. Запросы на чтение (`db.query...`) выполняются автоматически.
+
 #### Получить всех артистов
 
 Извлекает всех отслеживаемых артистов, отсортированных по имени.
@@ -310,8 +312,8 @@ const newArtist = {
   newPostsCount: 0,
 };
 
-const result = await db.insert(artists).values(newArtist).returning();
-const savedArtist = result[0];
+const result = db.insert(artists).values(newArtist).run();
+const savedArtistId = Number(result.lastInsertRowid);
 ```
 
 #### Удалить артиста
@@ -326,7 +328,7 @@ import { artists } from "./schema";
 import { eq } from "drizzle-orm";
 
 const db = getDb();
-await db.delete(artists).where(eq(artists.id, 123));
+db.delete(artists).where(eq(artists.id, 123)).run();
 ```
 
 #### Получить посты по артисту
@@ -380,7 +382,7 @@ const newPosts: NewPost[] = [
 ];
 
 // Bulk upsert with ON CONFLICT handling
-await db
+db
   .insert(posts)
   .values(newPosts)
   .onConflictDoUpdate({
@@ -390,13 +392,15 @@ await db
       previewUrl: sql`excluded.preview_url`,
       // ... other fields
     },
-  });
+  })
+  .run();
 
 // Update artist's lastPostId
-await db
+db
   .update(artists)
   .set({ lastPostId: Math.max(...newPosts.map((p) => p.postId)) })
-  .where(eq(artists.id, 1));
+  .where(eq(artists.id, 1))
+  .run();
 ```
 
 #### Получить настройки
@@ -434,7 +438,7 @@ import { SecureStorage } from "../services/secure-storage";
 const db = getDb();
 const encryptedKey = SecureStorage.encrypt("your-api-key");
 
-await db
+db
   .insert(settings)
   .values({
     userId: "123456",
@@ -448,7 +452,8 @@ await db
       userId: sql`excluded.user_id`,
       encryptedApiKey: sql`excluded.encrypted_api_key`,
     },
-  });
+  })
+  .run();
 ```
 
 #### Пометить пост как просмотренный
@@ -463,7 +468,7 @@ import { posts } from "./schema";
 import { eq } from "drizzle-orm";
 
 const db = getDb();
-await db.update(posts).set({ isViewed: true }).where(eq(posts.id, 123));
+db.update(posts).set({ isViewed: true }).where(eq(posts.id, 123)).run();
 ```
 
 #### Переключить статус избранного поста
@@ -483,10 +488,11 @@ const post = await db.query.posts.findFirst({
 });
 
 if (post) {
-  await db
+  db
     .update(posts)
     .set({ isFavorited: !post.isFavorited })
-    .where(eq(posts.id, 123));
+    .where(eq(posts.id, 123))
+    .run();
 }
 ```
 
@@ -594,23 +600,24 @@ const artist = await db.query.artists.findFirst({
 **Вставить артиста:**
 
 ```typescript
-const result = await db
+const result = db
   .insert(schema.artists)
   .values(artistData)
-  .returning({ id: schema.artists.id });
+  .run();
 ```
 
 **Обновить артиста:**
 
 ```typescript
-await db
+db
   .update(schema.artists)
   .set({
     lastPostId: newPostId,
     newPostsCount: count,
     lastChecked: new Date(), // Uses timestamp mode
   })
-  .where(eq(schema.artists.id, artistId));
+  .where(eq(schema.artists.id, artistId))
+  .run();
 ```
 
 ## Database Studio
@@ -652,13 +659,15 @@ try {
 
 ### 3. Транзакции
 
+> ⚠️ **Только синхронные транзакции:** В проекте используется better-sqlite3 (синхронный драйвер). Все операции БД внутри транзакции СИНХРОННЫЕ. Никогда не используйте `async`-колбэки или `await` внутри `db.transaction(...)`. Полный набор правил см. в `.cursorrules`.
+
 Для нескольких связанных операций используйте транзакции:
 
 ```typescript
-// Example (to be implemented)
-await db.transaction(async (tx) => {
-  await tx.insert(schema.artists).values(artistData);
-  await tx.insert(schema.posts).values(postData);
+// CORRECT: sync callback, sync operations, mandatory .run()
+db.transaction((tx) => {
+  tx.insert(schema.artists).values(artistData).run();
+  tx.insert(schema.posts).values(postData).run();
 });
 ```
 
