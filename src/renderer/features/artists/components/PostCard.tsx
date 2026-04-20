@@ -14,13 +14,20 @@ interface PostCardProps {
   onToggleFavorite?: (e: React.MouseEvent) => void;
   onToggleViewed?: (e: React.MouseEvent) => void;
   onRemoveFromPlaylist?: () => void;
+  preserveAspect?: boolean;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromPlaylist }) => {
+export const PostCard: React.FC<PostCardProps> = ({
+  post,
+  onClick,
+  onRemoveFromPlaylist,
+  preserveAspect,
+}) => {
   const isVid = isVideoPost(post.fileUrl);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
   // Optimize: subscribe only to viewType, not entire store
   const viewType = useSearchStore((state) => state.viewType);
+  const shouldPreserveAspect = preserveAspect ?? viewType === "grid";
   // Normalize rating to 'e', 'q', 's' safely (handles both 'e' and 'explicit' formats)
   const normalizedRating = post.rating ? post.rating.charAt(0).toLowerCase() as "e" | "q" | "s" : "q";
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
@@ -118,7 +125,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
       className={cn(
         "group relative w-full overflow-hidden rounded-lg border bg-card transition-all cursor-pointer",
         // Grid: fixed aspect ratio, Masonry: natural aspect ratio (height auto)
-        viewType === "grid" ? "aspect-[3/4]" : "",
+        shouldPreserveAspect ? "aspect-[3/4]" : "",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
         "hover:border-primary hover:shadow-md hover:shadow-primary/10",
         "select-none", // Prevent text selection via CSS (user-select: none)
@@ -131,7 +138,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
         <div 
           className={cn(
             "relative w-full overflow-hidden",
-            viewType === "grid" ? "h-full" : ""
+            shouldPreserveAspect ? "h-full" : ""
           )}
           style={{
             filter: shouldBlur
@@ -146,7 +153,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
             loading="lazy"
             className={cn(
               "w-full transition-all duration-300",
-              viewType === "grid" 
+              shouldPreserveAspect
                 ? "h-full object-cover" 
                 : "h-auto",
               // Only scale on hover when video preview is not showing
@@ -169,7 +176,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
               preload="none"
               className={cn(
                 "absolute inset-0 w-full transition-opacity duration-300 z-10",
-                viewType === "grid" 
+                shouldPreserveAspect
                   ? "h-full object-cover" 
                   : "h-auto",
                 // Cross-fade: show video when hovered, hide otherwise
@@ -189,7 +196,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, onRemoveFromP
         <div 
           className={cn(
             "flex justify-center items-center w-full text-xs bg-muted text-muted-foreground",
-            viewType === "grid" ? "h-full" : "min-h-[200px]"
+            shouldPreserveAspect ? "h-full" : "min-h-[200px]"
           )}
           style={{
             filter: shouldBlur

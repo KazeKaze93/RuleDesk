@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo } from "react";
+import React, { forwardRef, useCallback, useMemo } from "react";
 import {
   useInfiniteQuery,
   useQueryClient,
@@ -44,7 +44,7 @@ const GridContainer = forwardRef<
     className={cn(
       viewType === "grid"
         ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "flex flex-wrap gap-4 justify-center p-4 pb-32",
+        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-32",
       className
     )}
     {...props}
@@ -306,6 +306,19 @@ export const Favorites = () => {
     });
   };
 
+  const handleMasonryScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (!hasNextPage || isFetchingNextPage) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+      const LOAD_MORE_THRESHOLD_PX = 300;
+      if (scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX) {
+        void fetchNextPage();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
+
   return (
     <div className="flex flex-col h-full -m-6 bg-background text-foreground">
       {/* Header */}
@@ -355,34 +368,55 @@ export const Favorites = () => {
             </div>
           </div>
         ) : (
-          <VirtuosoGrid
-            style={{ height: "100%" }}
-            totalCount={allPosts.length}
-            endReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
-            increaseViewportBy={600}
-            components={{
-              List: ListComponent,
-              Item: ItemComponent,
-              Footer: () =>
-                isFetchingNextPage ? (
-                  <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          viewType === "masonry" ? (
+            <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
+              <GridContainer viewType="masonry">
+                {allPosts.map((post, index) => (
+                  <div key={post.id} className="w-full mb-4 break-inside-avoid">
+                    <PostCard
+                      post={post}
+                      onClick={() => handlePostClick(index)}
+                      preserveAspect={false}
+                    />
                   </div>
-                ) : null,
-            }}
-            itemContent={(index) => {
-              const post = allPosts[index];
-              if (!post) return null;
+                ))}
+              </GridContainer>
+              {isFetchingNextPage && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+          ) : (
+            <VirtuosoGrid
+              style={{ height: "100%" }}
+              totalCount={allPosts.length}
+              endReached={() => {
+                if (hasNextPage && !isFetchingNextPage) {
+                  fetchNextPage();
+                }
+              }}
+              increaseViewportBy={600}
+              components={{
+                List: ListComponent,
+                Item: ItemComponent,
+                Footer: () =>
+                  isFetchingNextPage ? (
+                    <div className="flex col-span-full justify-center py-4 w-full">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : null,
+              }}
+              itemContent={(index) => {
+                const post = allPosts[index];
+                if (!post) return null;
 
-              return (
-                <PostCard post={post} onClick={() => handlePostClick(index)} />
-              );
-            }}
-          />
+                return (
+                  <PostCard post={post} onClick={() => handlePostClick(index)} />
+                );
+              }}
+            />
+          )
         )}
       </div>
     </div>

@@ -26,7 +26,7 @@ const GridContainer = forwardRef<
     className={cn(
       viewType === "grid"
         ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "flex flex-wrap gap-4 justify-center p-4 pb-32",
+        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-32",
       className
     )}
     {...props}
@@ -231,6 +231,19 @@ export const Browse = () => {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, rawPosts, appendQueueIds]);
 
+  const handleMasonryScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (!hasNextPage || isFetchingNextPage) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+      const LOAD_MORE_THRESHOLD_PX = 300;
+      if (scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX) {
+        void fetchNextPage();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
+
   const {
     downloadAll,
     cancel,
@@ -330,8 +343,26 @@ export const Browse = () => {
               </div>
             )}
           </div>
-        ) : (
-            // Use VirtuosoGrid for both grid and masonry - virtualization is critical for performance
+        ) : viewType === "masonry" ? (
+            <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
+              <GridContainer viewType="masonry">
+                {allPosts.map((post, index) => (
+                  <div key={post.id} className="w-full mb-4 break-inside-avoid">
+                    <PostCard
+                      post={post}
+                      onClick={() => handlePostClick(index)}
+                      preserveAspect={false}
+                    />
+                  </div>
+                ))}
+              </GridContainer>
+              {isFetchingNextPage && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+          ) : (
             <VirtuosoGrid
               style={{ height: "100%" }}
               totalCount={allPosts.length}
@@ -356,8 +387,7 @@ export const Browse = () => {
                 );
               }}
             />
-          )
-        }
+          )}
       </div>
     </div>
   );
