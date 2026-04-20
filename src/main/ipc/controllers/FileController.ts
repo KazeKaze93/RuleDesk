@@ -3,7 +3,9 @@ import { app, shell, dialog, BrowserWindow, type BrowserWindow as BrowserWindowT
 import path from "path";
 import fs from "fs";
 import { Worker } from "worker_threads";
-import { access, mkdir, readFile, realpath, unlink, writeFile } from "fs/promises";
+import { access, mkdir, readFile, realpath, unlink } from "fs/promises";
+import axios, { type AxiosProgressEvent } from "axios";
+import { pipeline } from "stream/promises";
 import log from "electron-log";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
@@ -36,9 +38,6 @@ const DownloadFileSchema = z.object({
 
 const OpenFolderSchema = z.string().min(1);
 
-// Batch download limits (see docs/download-batch-risks.md)
-const BATCH_DOWNLOAD_CONCURRENCY = 3;
-const BATCH_DOWNLOAD_DELAY_MS = 500;
 const BATCH_DOWNLOAD_MAX_FILES = 500;
 
 const DownloadAllItemSchema = z.object({
@@ -127,20 +126,6 @@ export class FileController extends BaseController {
 
   private getQueueFilePath(): string {
     return path.join(app.getPath("userData"), DOWNLOAD_QUEUE_FILE);
-  }
-
-  private async writeQueueFile(data: {
-    items: Array<{ url: string; filename: string }>;
-    doneCount: number;
-    total: number;
-    folder: string;
-    timestamp: number;
-  }): Promise<void> {
-    try {
-      await writeFile(this.getQueueFilePath(), JSON.stringify(data), "utf-8");
-    } catch (e) {
-      log.warn("[FileController] Failed to write queue file:", e);
-    }
   }
 
   private async readQueueFile(): Promise<{
@@ -248,33 +233,6 @@ export class FileController extends BaseController {
       log.warn("[FileController] Failed to get download settings:", e);
       return { duplicateFileBehavior: "skip", downloadFolderStructure: "flat" };
     }
-  }
-
-  /**
-   * Build full file path from root, structure template, and filename.
-   * Filename format: artistId_postId.ext - we extract artistId for {artist_id} structure.
-   * Sanitizes path to prevent traversal outside downloadRoot.
-   */
-  private getFilePath(
-    root: string,
-    filename: string,
-    structure: "flat" | "{artist_id}"
-  ): string {
-    const resolvedRoot = path.resolve(root);
-    let fullPath: string;
-    if (structure === "flat") {
-      fullPath = path.resolve(root, filename);
-    } else {
-      const match = filename.match(/^(\d+)_/);
-      const artistId = match ? match[1] : "unknown";
-      fullPath = path.resolve(root, artistId, filename);
-    }
-    const relative = path.relative(resolvedRoot, fullPath);
-    if (relative.startsWith("..") || path.isAbsolute(relative)) {
-      log.error(`[FileController] Path traversal blocked: ${fullPath} outside ${resolvedRoot}`);
-      throw new Error("Path traversal attempted");
-    }
-    return fullPath;
   }
 
   /**

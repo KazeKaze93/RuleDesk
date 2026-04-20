@@ -3,7 +3,6 @@ import { XMLParser } from "fast-xml-parser";
 import { logger } from "../lib/logger";
 import { selectBestPreview } from "../lib/media-utils";
 import {
-  USER_AGENT,
   REQUEST_TIMEOUT,
   AUTOCOMPLETE_TIMEOUT,
 } from "../config/constants";
@@ -29,6 +28,18 @@ export class Rule34Provider implements IBooruProvider {
   readonly id = "rule34";
   readonly name = "Rule34.xxx";
   private readonly baseUrl = "https://api.rule34.xxx/index.php";
+  private lastRequestAt = 0;
+  private sessionUA: string;
+  private static readonly MIN_INTERVAL_MS = 1200;
+  private static readonly JITTER_MS = 400;
+  private static readonly USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.119 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.118 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13.6; rv:124.0) Gecko/20100101 Firefox/124.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.155 Safari/537.36",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0",
+  ];
 
   /**
    * XML Parser with correct settings for Rule34 API
@@ -42,13 +53,32 @@ export class Rule34Provider implements IBooruProvider {
     textNodeName: "text",          // На всякий случай, если есть текст внутри тегов
   });
 
+  constructor() {
+    const randomIndex = Math.floor(
+      Math.random() * Rule34Provider.USER_AGENTS.length
+    );
+    this.sessionUA = Rule34Provider.USER_AGENTS[randomIndex];
+  }
+
+  private async throttle(): Promise<void> {
+    const now = Date.now();
+    const elapsed = now - this.lastRequestAt;
+    const jitter = Math.random() * Rule34Provider.JITTER_MS;
+    const requiredWait =
+      Rule34Provider.MIN_INTERVAL_MS + jitter - elapsed;
+    if (requiredWait > 0) {
+      await new Promise((r) => setTimeout(r, requiredWait));
+    }
+    this.lastRequestAt = Date.now();
+  }
+
   /**
    * Get standard headers for API requests
    * Prevents API blocking by using consistent User-Agent and headers
    */
   private getHeaders() {
     return {
-      "User-Agent": USER_AGENT || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "User-Agent": this.sessionUA,
       "Accept": "application/json, application/xml, text/html, */*",
       "Accept-Encoding": "identity",
       "Connection": "keep-alive",
@@ -104,6 +134,7 @@ export class Rule34Provider implements IBooruProvider {
   ): Promise<SearchResults[]> {
     if (query.length < 2) return [];
     try {
+      await this.throttle();
       const { data } = await axios.get<R34AutocompleteItem[]>(
         `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
           query
@@ -213,6 +244,8 @@ export class Rule34Provider implements IBooruProvider {
     settings: ProviderSettings,
     isRandom: boolean = false
   ): Promise<BooruPost[]> {
+    await this.throttle();
+
     // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
     // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
     // should be done via API's native sort:random parameter if the provider supports it.

@@ -38,18 +38,17 @@ export const PendingDownloadBanner: React.FC = () => {
     try {
       const result = await window.api.resumePendingDownload();
       if (result.success) {
-        let unsub: () => void;
-        const timeout = setTimeout(() => {
-          setDownloading(false);
-          unsub?.();
-        }, 600_000);
-        unsub = window.api.onDownloadAllProgress((data) => {
+        const unsub = window.api.onDownloadAllProgress((data) => {
           if (data.total > 0 && data.done >= data.total) {
             clearTimeout(timeout);
             setDownloading(false);
             unsub();
           }
         });
+        const timeout = setTimeout(() => {
+          setDownloading(false);
+          unsub();
+        }, 600_000);
       } else {
         setDownloading(false);
       }

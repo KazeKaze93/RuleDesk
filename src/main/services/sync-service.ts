@@ -8,7 +8,7 @@ import type { Artist, NewPost } from "../db/schema";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
 import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
-import type { BooruPost } from "../providers/types";
+import { PAGE_SIZE, type BooruPost } from "../providers/types";
 import { isVideoUrl } from "@shared/utils/media";
 
 // SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
@@ -196,32 +196,18 @@ export class SyncService {
       });
       const settingsData = await this.getDecryptedSettings();
       if (!settingsData?.userId) throw new Error("No API credentials");
-
-      const CONCURRENT_SYNC_LIMIT = 3;
-      const DELAY_BETWEEN_BATCHES = 1500;
-
-      for (let i = 0; i < artistsList.length; i += CONCURRENT_SYNC_LIMIT) {
-        const batch = artistsList.slice(i, i + CONCURRENT_SYNC_LIMIT);
-
-        await Promise.allSettled(
-          batch.map(async (artist) => {
-            try {
-              this.sendEvent("sync:progress", `Checking ${artist.name}...`);
-              await this.syncArtist(artist, settingsData);
-            } catch (error) {
-              const errorMsg = axios.isAxiosError(error)
-                ? `HTTP ${error.response?.status}: ${error.message}`
-                : error instanceof Error
-                ? error.message
-                : "Unknown error";
-              logger.error(`Sync error for ${artist.name}: ${errorMsg}`);
-              this.sendEvent("sync:error", `${artist.name}: ${errorMsg}`);
-            }
-          })
-        );
-
-        if (i + CONCURRENT_SYNC_LIMIT < artistsList.length) {
-          await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES));
+      for (const artist of artistsList) {
+        try {
+          this.sendEvent("sync:progress", `Checking ${artist.name}...`);
+          await this.syncArtist(artist, settingsData);
+        } catch (error) {
+          const errorMsg = axios.isAxiosError(error)
+            ? `HTTP ${error.response?.status}: ${error.message}`
+            : error instanceof Error
+            ? error.message
+            : "Unknown error";
+          logger.error(`Sync error for ${artist.name}: ${errorMsg}`);
+          this.sendEvent("sync:error", `${artist.name}: ${errorMsg}`);
         }
       }
     } catch (error) {
@@ -427,8 +413,8 @@ export class SyncService {
 
         // Commit batch transaction when we have enough pages or reached end
         const shouldCommitBatch = 
-          allPostsToSave.length >= BATCH_SIZE_PAGES * 100 || // 5 pages worth
-          (postsData.length < 100 && allPostsToSave.length > 0) || // End of pagination
+          allPostsToSave.length >= BATCH_SIZE_PAGES * PAGE_SIZE || // 5 pages worth
+          (postsData.length < PAGE_SIZE && allPostsToSave.length > 0) || // End of pagination
           !hasMore; // No more pages
 
         if (shouldCommitBatch && allPostsToSave.length > 0) {
@@ -452,10 +438,10 @@ export class SyncService {
           logger.debug(`SyncService: ${artist.name} - Committed batch of ${newPostsCount} posts`);
         }
 
-        // Continue pagination if we got a full page (100 posts)
-        if (postsData.length < 100) {
+        // Continue pagination if we got a full page (PAGE_SIZE posts)
+        if (postsData.length < PAGE_SIZE) {
           hasMore = false;
-          logger.debug(`SyncService: ${artist.name} - Page ${page} returned ${postsData.length} posts (< 100), stopping pagination`);
+          logger.debug(`SyncService: ${artist.name} - Page ${page} returned ${postsData.length} posts (< ${PAGE_SIZE}), stopping pagination`);
         } else {
           page++;
           logger.debug(`SyncService: ${artist.name} - Page ${page - 1} returned ${postsData.length} posts, continuing to page ${page}`);
