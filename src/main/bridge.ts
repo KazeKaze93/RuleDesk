@@ -1,7 +1,11 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type { Artist, Post, Playlist } from "./db/schema";
 import { IPC_CHANNELS } from "./ipc/channels";
-import type { GetPostsRequest, AddArtistRequest } from "./types/ipc";
+import type {
+  GetPostsRequest,
+  GetPostsCountRequest,
+  AddArtistRequest,
+} from "./types/ipc";
 import type { IpcSettings } from "../shared/schemas/settings";
 import type { PostData } from "../shared/schemas/post";
 import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
@@ -73,7 +77,7 @@ export interface IpcBridge {
 
   // Posts
   getArtistPosts: (params: GetPostsRequest) => Promise<Post[]>;
-  getArtistPostsCount: (artistId?: number) => Promise<number>;
+  getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
   getDownloadItems: (params: GetPostsRequest & { limit?: number }) => Promise<{ items: Array<{ url: string; filename: string }> }>;
   getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) => Promise<number>;
 
@@ -224,8 +228,8 @@ const ipcBridge: IpcBridge = {
 
   getArtistPosts: (params: GetPostsRequest) =>
     ipcRenderer.invoke("db:get-posts", params),
-  getArtistPostsCount: (artistId?: number) =>
-    ipcRenderer.invoke("db:get-posts-count", artistId),
+  getArtistPostsCount: (params: GetPostsCountRequest) =>
+    ipcRenderer.invoke("db:get-posts-count", params),
   getDownloadItems: (params: GetPostsRequest & { limit?: number }) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS, params),
   getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) =>

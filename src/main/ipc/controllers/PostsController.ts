@@ -25,8 +25,10 @@ import type { IpcSafe } from "../../../shared/types/ipc";
 import {
   PostDataSchema,
   GetPostsSchema,
+  GetPostsCountSchema,
   type PostData,
   type GetPostsRequest,
+  type GetPostsCountRequest,
   type PostFilterRequest,
 } from "../../../shared/schemas/post";
 import {
@@ -149,7 +151,7 @@ export class PostsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
-      z.tuple([z.number().int().positive().optional()]),
+      z.tuple([GetPostsCountSchema]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.getPostsCount.bind(this) as (
         event: IpcMainInvokeEvent,
@@ -619,7 +621,7 @@ export class PostsController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: GetPostsParams
   ): Promise<IpcPost[]> {
-    const { artistId, page, filters, limit, isRandom } = params;
+    const { artistId, page, filters, limit, isRandom, sortOrder } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -682,7 +684,13 @@ export class PostsController extends BaseController {
 
         const result = isRandom
           ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
-          : queryBuilder.orderBy(desc(posts.publishedAt)).limit(limit).offset(offset).all();
+          : queryBuilder
+              .orderBy(
+                sortOrder === "asc" ? posts.publishedAt : desc(posts.publishedAt)
+              )
+              .limit(limit)
+              .offset(offset)
+              .all();
 
         log.info(
           `[PostsController] Retrieved ${result.length} posts ${
@@ -725,7 +733,13 @@ export class PostsController extends BaseController {
 
       const result = isRandom
         ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
-        : queryBuilder.orderBy(desc(posts.publishedAt)).limit(limit).offset(offset).all();
+        : queryBuilder
+            .orderBy(
+              sortOrder === "asc" ? posts.publishedAt : desc(posts.publishedAt)
+            )
+            .limit(limit)
+            .offset(offset)
+            .all();
 
       log.info(
         `[PostsController] Retrieved ${result.length} posts ${
@@ -752,11 +766,14 @@ export class PostsController extends BaseController {
    */
   private async getPostsCount(
     _event: IpcMainInvokeEvent,
-    artistId: number | undefined
+    params: GetPostsCountRequest
   ): Promise<number> {
     try {
       const db = this.getDb();
-      const whereClause = artistId ? eq(posts.artistId, artistId) : undefined;
+      const { artistId, filters } = params;
+      const baseConditions = this.buildPostFilterConditions(artistId, filters);
+      const whereClause =
+        baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
       const result = await db
         .select({ value: count() })

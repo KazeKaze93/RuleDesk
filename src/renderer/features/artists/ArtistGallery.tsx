@@ -92,20 +92,27 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     }))
   );
 
-  const { data: totalPosts = 0 } = useQuery({
-    queryKey: ["posts-count", artist.id],
-    queryFn: async () => {
-      const count = await window.api.getArtistPostsCount(artist.id);
-      return count;
-    },
-  });
-
   // Use atomic selectors to prevent unnecessary re-renders
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const aiFilter = useSearchStore((state) => state.filters.aiFilter);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
   const viewType = useSearchStore((state) => state.viewType);
+
+  const { data: totalPosts = 0 } = useQuery({
+    queryKey: ["posts-count", artist.id, aiFilter, mediaType, source],
+    queryFn: async () => {
+      const count = await window.api.getArtistPostsCount({
+        artistId: artist.id,
+        filters: {
+          aiFilter: aiFilter === "all" ? undefined : aiFilter,
+          mediaType: mediaType === "all" ? undefined : mediaType,
+          isFavorited: source === "favorites" ? true : undefined,
+        },
+      });
+      return count;
+    },
+  });
 
   // Use the new infinite scroll hook
   // AI and Media Type filters are now applied at SQL level for better performance
@@ -117,11 +124,12 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     isLoading,
     handleEndReached,
   } = useGalleryInfiniteScroll({
-    queryKey: ["posts", artist.id, aiFilter, mediaType],
+    queryKey: ["posts", artist.id, aiFilter, mediaType, source, sortOrder],
     fetchFn: async (pageParam) => {
       return await window.api.getArtistPosts({
         artistId: artist.id,
         page: pageParam,
+        sortOrder,
         filters: {
           // No tag filtering - show all posts for this artist
           // No tag filter - tag search is not supported in ArtistGallery context
@@ -129,39 +137,13 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           // AI and Media Type filters applied only if not in 'all' mode
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
           mediaType: mediaType === "all" ? undefined : mediaType,
-          // No extra filters until business requirements change; keep this simple
+          isFavorited: source === "favorites" ? true : undefined,
         },
       });
     },
   });
 
-  const allPosts = useMemo(() => {
-    // Single-pass filter: only source filter remains (AI and Media Type are now in SQL)
-    const filtered = rawPosts.filter((post) => {
-      // Filter by source - ArtistGallery shows artist posts (subscriptions) by default
-      if (source === "favorites" && !post.isFavorited) return false;
-      // source === "subscriptions" or "all" - no filter needed (already filtered by artistId)
-      return true;
-    });
-
-    // Sort only if needed
-    return filtered.sort((a, b) => {
-      const dateA =
-        a.publishedAt instanceof Date
-          ? a.publishedAt.getTime()
-          : typeof a.publishedAt === "number"
-          ? a.publishedAt
-          : 0;
-      const dateB =
-        b.publishedAt instanceof Date
-          ? b.publishedAt.getTime()
-          : typeof b.publishedAt === "number"
-          ? b.publishedAt
-          : 0;
-
-      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
-    });
-  }, [rawPosts, sortOrder, source]);
+  const allPosts = useMemo(() => rawPosts, [rawPosts]);
 
   // Create stable List component with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
