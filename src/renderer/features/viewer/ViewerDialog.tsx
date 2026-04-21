@@ -184,7 +184,10 @@ const PostNotFoundFallback = ({
               // SECURITY: Validate queryJson using parsePlaylistQuery utility
               // This prevents crashes from invalid JSON or malicious data
               if (playlist?.isSmart && playlist.queryJson) {
-                const parsedQuery = parsePlaylistQuery(playlist.queryJson);
+                const parsedQuery = parsePlaylistQuery(
+                  playlist.queryJson,
+                  playlist.querySchemaVersion
+                );
                 if (parsedQuery?.provider) {
                   provider = parsedQuery.provider;
                 }

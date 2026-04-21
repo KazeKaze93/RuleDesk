@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  SmartQueryTagSchema,
+  type SmartQueryV1,
+  parseSmartQuery,
+} from "./smart-playlist-query";
 
 /**
  * Smart Playlist Tag Schema
@@ -6,10 +11,7 @@ import { z } from "zod";
  * Tag-centric structure for smart playlists.
  * Tags can be included (AND logic) or excluded (OR logic).
  */
-export const SmartPlaylistTagSchema = z.object({
-  tag: z.string().min(1, "Tag cannot be empty"),
-  type: z.enum(["include", "exclude"]),
-});
+export const SmartPlaylistTagSchema = SmartQueryTagSchema;
 
 export type SmartPlaylistTag = z.infer<typeof SmartPlaylistTagSchema>;
 
@@ -24,11 +26,11 @@ export type SmartPlaylistTag = z.infer<typeof SmartPlaylistTagSchema>;
  * This is critical for shadow insert operations - wrong provider = 404 or invalid data.
  */
 export const SmartPlaylistQuerySchema = z.object({
-  tags: z.array(SmartPlaylistTagSchema).min(1, "At least one tag is required"),
+  tags: z.array(SmartQueryTagSchema).min(1, "At least one tag is required"),
   provider: z.enum(["rule34", "gelbooru"]).optional().default("rule34"),
 });
 
-export type SmartPlaylistQuery = z.infer<typeof SmartPlaylistQuerySchema>;
+export type SmartPlaylistQuery = SmartQueryV1;
 
 /**
  * Create Playlist Schema
@@ -167,16 +169,9 @@ export type ResolvePlaylistPostsRequest = z.infer<typeof ResolvePlaylistPostsSch
  * @param queryJson - JSON string from database (may be empty for manual playlists)
  * @returns Parsed SmartPlaylistQuery or null if invalid/empty
  */
-export function parsePlaylistQuery(queryJson: string | null | undefined): SmartPlaylistQuery | null {
-  if (!queryJson || queryJson.trim() === "") {
-    return null;
-  }
-  
-  try {
-    return JSON.parse(queryJson) as SmartPlaylistQuery;
-  } catch (_error) {
-    // Invalid JSON - return null instead of throwing
-    // This allows graceful handling in UI
-    return null;
-  }
+export function parsePlaylistQuery(
+  queryJson: string | null | undefined,
+  querySchemaVersion = 1
+): SmartPlaylistQuery | null {
+  return parseSmartQuery(queryJson, querySchemaVersion);
 }

@@ -165,7 +165,10 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     // Provider must match the actual source of posts to prevent 404 or invalid data
     let provider: "rule34" | "gelbooru" | undefined = undefined;
     if (playlist.isSmart && playlist.queryJson) {
-      const parsedQuery = parsePlaylistQuery(playlist.queryJson);
+      const parsedQuery = parsePlaylistQuery(
+        playlist.queryJson,
+        playlist.querySchemaVersion
+      );
       provider = parsedQuery?.provider;
     }
     
@@ -648,7 +651,10 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                       setPlaylistType(playlist.isSmart ? "smart" : "manual");
                       if (playlist.isSmart && playlist.queryJson) {
                         // Use shared utility to parse queryJson (Renderer shouldn't know DB format)
-                        const queryJson = parsePlaylistQuery(playlist.queryJson);
+                        const queryJson = parsePlaylistQuery(
+                          playlist.queryJson,
+                          playlist.querySchemaVersion
+                        );
                         setSmartTags(queryJson?.tags || []);
                       } else {
                         setSmartTags([]);

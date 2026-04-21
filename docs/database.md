@@ -255,6 +255,7 @@ Stores playlist/collection information for curated post collections.
 | `name`        | TEXT (NOT NULL)                   | Playlist display name                          |
 | `is_smart`    | INTEGER (BOOLEAN, DEFAULT 0)      | Smart playlist flag (dynamic tag-based queries) |
 | `query_json`  | TEXT (DEFAULT '')                 | JSON-encoded smart playlist query              |
+| `query_schema_version` | INTEGER (NOT NULL, DEFAULT 1) | Version of smart playlist query DSL for safe parsing/migrations |
 | `icon_name`   | TEXT (DEFAULT '')                 | Icon name for playlist display                 |
 | `created_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Creation timestamp (timestamp mode, ms)        |
 
@@ -275,6 +276,7 @@ export const playlists = sqliteTable(
       .notNull()
       .default(false),
     queryJson: text("query_json").default(""),
+    querySchemaVersion: integer("query_schema_version").notNull().default(1),
     iconName: text("icon_name").default(""),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
@@ -286,6 +288,8 @@ export const playlists = sqliteTable(
   })
 );
 ```
+
+Smart playlist queries are versioned. When changing the DSL, increment `query_schema_version` and provide a migrator from version N to N+1 before enabling the new parser in runtime code.
 
 **TypeScript Types:**
 

@@ -154,6 +154,7 @@ export const playlists = sqliteTable(
       .notNull()
       .default(false),
     queryJson: text("query_json").default(""),
+    querySchemaVersion: integer("query_schema_version").notNull().default(1),
     iconName: text("icon_name").default(""),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
