@@ -89,6 +89,8 @@ export function useWorkerFilteredPosts(
               publishedAt,
               createdAt,
               isViewed: workerPost.isViewed,
+              lastViewedAt: null,
+              viewCount: 0,
               isFavorited: workerPost.isFavorited,
             };
           });

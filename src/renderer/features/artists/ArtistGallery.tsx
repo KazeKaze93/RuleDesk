@@ -172,8 +172,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       await window.api.markPostAsViewed(postId);
     },
     onSuccess: (_, postId) => {
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        ["posts", artist.id],
+      queryClient.setQueriesData<InfiniteData<Post[]>>(
+        { queryKey: ["posts", artist.id] },
         (oldData) => {
           if (!oldData) return oldData;
           return {
@@ -253,6 +253,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         tags: undefined, // No tag filtering in artist gallery
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
         mediaType: mediaType === "all" ? undefined : mediaType,
+        source,
+        sortOrder,
       },
       ids: postIds,
       initialIndex: index,

@@ -79,6 +79,9 @@ export class PostsController extends BaseController {
   // Cache FTS table existence check (schema doesn't change at runtime)
   // Initialized once at setup() to avoid blocking synchronous calls
   private ftsTableExistsCache: boolean = false;
+  // Cache optional view metadata columns presence for backward compatibility
+  // Initialized once at setup() to avoid runtime SQL errors on old DBs
+  private viewMetadataColumnsAvailable: boolean = false;
   
   // Cache EXTERNAL_ARTIST_ID existence check (avoids repeated DB queries)
   // Initialized once at first shadowInsertPost call
@@ -121,6 +124,31 @@ export class PostsController extends BaseController {
         error
       );
       this.ftsTableExistsCache = false;
+    }
+  }
+
+  /**
+   * Initialize posts view metadata columns existence check (called once at setup)
+   * Keeps markViewed backward-compatible with databases that haven't applied migration yet.
+   */
+  private initializeViewMetadataColumnsCheck(): void {
+    try {
+      const sqlite = getSqliteInstance();
+      const columns = sqlite
+        .prepare<[], { name: string }>("PRAGMA table_info(posts)")
+        .all();
+      const columnNames = new Set(columns.map((column) => column.name));
+      this.viewMetadataColumnsAvailable =
+        columnNames.has("last_viewed_at") && columnNames.has("view_count");
+      log.info(
+        `[PostsController] View metadata columns available: ${this.viewMetadataColumnsAvailable}`
+      );
+    } catch (error) {
+      log.warn(
+        "[PostsController] Failed to check view metadata columns, using isViewed-only fallback:",
+        error
+      );
+      this.viewMetadataColumnsAvailable = false;
     }
   }
 
@@ -212,6 +240,7 @@ export class PostsController extends BaseController {
 
     // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)
     this.initializeFtsTableCheck();
+    this.initializeViewMetadataColumnsCheck();
 
     log.info("[PostsController] All handlers registered");
   }
@@ -881,6 +910,24 @@ export class PostsController extends BaseController {
       // Decrement artist counter only when state transitions false -> true.
       if (postData) {
         db.transaction((tx) => {
+          // Ensure external placeholder artist exists for FK constraint.
+          // Browse viewed flow may insert external posts before any favorite action.
+          const now = new Date();
+          tx.insert(artists)
+            .values({
+              id: EXTERNAL_ARTIST_ID,
+              name: `Artist ${EXTERNAL_ARTIST_ID}`,
+              tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${EXTERNAL_ARTIST_ID}`,
+              provider: "rule34",
+              type: "tag",
+              apiEndpoint: "",
+              lastPostId: 0,
+              newPostsCount: 0,
+              createdAt: now,
+            })
+            .onConflictDoNothing()
+            .run();
+
           const existingPost = tx
             .select({
               id: posts.id,
@@ -898,14 +945,25 @@ export class PostsController extends BaseController {
             .get();
 
           if (existingPost) {
+            if (this.viewMetadataColumnsAvailable) {
+              tx.update(posts)
+                .set({
+                  isViewed: true,
+                  lastViewedAt: new Date(),
+                  viewCount: sql`${posts.viewCount} + 1`,
+                })
+                .where(eq(posts.id, existingPost.id))
+                .run();
+            } else {
+              tx.update(posts)
+                .set({ isViewed: true })
+                .where(eq(posts.id, existingPost.id))
+                .run();
+            }
+
             if (existingPost.isViewed) {
               return;
             }
-
-            tx.update(posts)
-              .set({ isViewed: true })
-              .where(eq(posts.id, existingPost.id))
-              .run();
 
             tx.update(artists)
               .set({
@@ -916,10 +974,10 @@ export class PostsController extends BaseController {
             return;
           }
 
-          const now = new Date();
+          const insertNow = new Date();
           const publishedAt = postData.publishedAt
             ? new Date(postData.publishedAt)
-            : now;
+            : insertNow;
 
           tx.insert(posts)
             .values({
@@ -933,8 +991,14 @@ export class PostsController extends BaseController {
               tags: postData.tags ?? "",
               mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
               publishedAt: publishedAt,
-              createdAt: now,
+              createdAt: insertNow,
               isViewed: true, // Set to true since we're marking as viewed
+              ...(this.viewMetadataColumnsAvailable
+                ? {
+                    lastViewedAt: insertNow,
+                    viewCount: 1,
+                  }
+                : {}),
               isFavorited: false,
             })
             .run();
@@ -964,14 +1028,25 @@ export class PostsController extends BaseController {
             return false;
           }
 
+          if (this.viewMetadataColumnsAvailable) {
+            tx.update(posts)
+              .set({
+                isViewed: true,
+                lastViewedAt: new Date(),
+                viewCount: sql`${posts.viewCount} + 1`,
+              })
+              .where(eq(posts.id, postId))
+              .run();
+          } else {
+            tx.update(posts)
+              .set({ isViewed: true })
+              .where(eq(posts.id, postId))
+              .run();
+          }
+
           if (post.isViewed) {
             return true;
           }
-
-          tx.update(posts)
-            .set({ isViewed: true })
-            .where(eq(posts.id, postId))
-            .run();
 
           tx.update(artists)
             .set({

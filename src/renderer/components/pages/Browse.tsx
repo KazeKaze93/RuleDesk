@@ -1,5 +1,10 @@
 import React, { useMemo, forwardRef, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { Search, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
@@ -14,6 +19,9 @@ import { useDownloadAll } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { useWorkerFilteredPosts } from "../../hooks/useWorkerFilteredPosts";
 import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
+import type { Post } from "../../../main/db/schema";
+import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
+import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
@@ -85,6 +93,7 @@ const parseTags = (query: string): string[] => {
 // --- Основной компонент ---
 
 export const Browse = () => {
+  const queryClient = useQueryClient();
   // Use individual selectors to prevent unnecessary re-renders
   const query = useSearchStore((state) => state.query);
   const openViewer = useViewerStore((state) => state.open);
@@ -255,6 +264,41 @@ export const Browse = () => {
     canDownload,
   } = useDownloadAll(allPosts);
 
+  const viewMutation = useMutation({
+    mutationFn: async (post: Post) => {
+      const postData =
+        post.artistId === EXTERNAL_ARTIST_ID
+          ? normalizePostToPostData(post)
+          : undefined;
+      await window.api.markPostAsViewed(post.id, postData);
+      return post.id;
+    },
+    onSuccess: (postId) => {
+      queryClient.setQueryData<InfiniteData<Post[]>>(
+        ["search", tags],
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) =>
+              page.map((post) =>
+                post.id === postId ? { ...post, isViewed: true } : post
+              )
+            ),
+          };
+        }
+      );
+    },
+    onError: (err) => {
+      const errorCode = (err as { code?: string })?.code;
+      if (errorCode === "RATE_LIMIT") {
+        return;
+      }
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      log.error("[Browse] Failed to mark post as viewed:", errorMessage);
+    },
+  });
+
   const handlePostClick = (index: number) => {
     const postIds = allPosts.map((p) => p.id);
     const post = allPosts[index];
@@ -262,6 +306,10 @@ export const Browse = () => {
     if (!post) {
       log.warn("[Browse] handlePostClick: post not found at index", index);
       return;
+    }
+
+    if (!post.isViewed) {
+      viewMutation.mutate(post);
     }
 
     // Open viewer with search origin

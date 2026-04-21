@@ -256,8 +256,8 @@ export const Updates = () => {
     },
     onSuccess: (_, postId) => {
       // Update cache for updates feed using helper function
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        ["posts", "updates"],
+      queryClient.setQueriesData<InfiniteData<Post[]>>(
+        { queryKey: ["posts", "updates"] },
         (oldData) =>
           updatePostInInfiniteData(oldData, postId, (post) => ({
             ...post,

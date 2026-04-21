@@ -85,6 +85,8 @@ export const posts = sqliteTable(
     isViewed: integer("is_viewed", { mode: "boolean" })
       .notNull()
       .default(false),
+    lastViewedAt: integer("last_viewed_at", { mode: "timestamp" }),
+    viewCount: integer("view_count").notNull().default(0),
     isFavorited: integer("is_favorited", { mode: "boolean" }) // Добавили поле
       .notNull()
       .default(false),
@@ -94,6 +96,7 @@ export const posts = sqliteTable(
     postIdIdx: index("postIdIdx").on(t.postId),
     artistIdIdx: index("artistIdIdx").on(t.artistId),
     isViewedIdx: index("isViewedIdx").on(t.isViewed),
+    lastViewedAtIdx: index("posts_last_viewed_at_idx").on(t.lastViewedAt),
     publishedAtIdx: index("publishedAtIdx").on(t.publishedAt),
     isFavoritedIdx: index("isFavoritedIdx").on(t.isFavorited),
     // Composite index for common filter combination: artistId + rating + isViewed

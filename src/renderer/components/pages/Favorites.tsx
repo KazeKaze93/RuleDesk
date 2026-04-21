@@ -233,8 +233,8 @@ export const Favorites = () => {
       await window.api.markPostAsViewed(postId);
     },
     onSuccess: (_, postId) => {
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        ["posts", "favorites"],
+      queryClient.setQueriesData<InfiniteData<Post[]>>(
+        { queryKey: ["posts", "favorites"] },
         (oldData) => {
           if (!oldData) return oldData;
           return {
