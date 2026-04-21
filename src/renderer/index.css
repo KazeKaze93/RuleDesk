@@ -6,42 +6,67 @@
 
 @layer base {
   :root {
-    /* Base - Deep Navy/Black */
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* Light theme tokens */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
 
-    /* Surfaces - Layered hierarchy */
-    --card: 222 40% 9%; /* Slightly lighter than bg */
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 222 38% 11%; /* Distinct elevation */
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
 
-    /* Brand / Primary - Vivid Violet/Purple */
     --primary: 262 83% 62%;
     --primary-foreground: 210 40% 98%;
 
-    /* Secondary / Muted - Cool Greys */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 45%;
+
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 13% 88%;
+    --input: 220 13% 88%;
+    --ring: 262 83% 62%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Dark theme tokens */
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 40% 9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 38% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 262 83% 62%;
+    --primary-foreground: 210 40% 98%;
+
     --secondary: 222 28% 16%;
     --secondary-foreground: 210 40% 98%;
 
     --muted: 222 24% 14%;
     --muted-foreground: 215 20% 70%;
 
-    /* Accent - Interactive elements */
     --accent: 262 40% 20%;
     --accent-foreground: 210 40% 98%;
 
-    /* Danger - Red */
     --destructive: 0 70% 45%;
     --destructive-foreground: 210 40% 98%;
 
-    /* Lines / Focus */
     --border: 222 18% 22%;
     --input: 222 18% 22%;
     --ring: 262 83% 62%;
-
-    --radius: 0.75rem;
   }
 }
 

@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const ThemePreferenceSchema = z.enum(["system", "light", "dark"]);
+export type ThemePreference = z.infer<typeof ThemePreferenceSchema>;
+
 /**
  * Validation constants for settings input.
  * These values are based on observed API behavior and reasonable security limits.
@@ -92,6 +95,7 @@ export const IpcSettingsSchema = z.object({
   downloadFolder: z.string().nullable(), // Custom folder for downloads (null = use default)
   duplicateFileBehavior: z.enum(["skip", "overwrite"]).default("skip"),
   downloadFolderStructure: z.enum(["flat", "{artist_id}"]).default("flat"),
+  theme: ThemePreferenceSchema.default("system"),
 });
 
 /**

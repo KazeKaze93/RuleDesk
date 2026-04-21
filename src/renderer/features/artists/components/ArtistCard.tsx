@@ -30,11 +30,11 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
   const getIcon = () => {
     switch (artist.type) {
       case "uploader":
-        return <User className="w-4 h-4 text-purple-400" />;
+        return <User className="w-4 h-4 text-primary" />;
       case "query":
-        return <Search className="w-4 h-4 text-emerald-400" />;
+        return <Search className="w-4 h-4 text-emerald-500" />;
       default:
-        return <Hash className="w-4 h-4 text-blue-400" />;
+        return <Hash className="w-4 h-4 text-blue-500" />;
     }
   };
 
@@ -45,28 +45,28 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
       <div
         className={cn(
           "flex relative justify-between items-center p-1 pr-3 rounded-lg border transition-all group",
-          "bg-slate-900/50 border-slate-800",
-          "hover:bg-slate-900 hover:border-blue-500/50 hover:shadow-md"
+          "bg-card text-card-foreground border-border",
+          "hover:bg-accent/50 hover:border-primary/40 hover:shadow-md"
         )}
       >
         <button
           onClick={handleCardClick}
           className={cn(
             "flex-1 p-3 min-w-0 text-left rounded-l-lg transition-colors",
-            "focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900",
-            "text-white"
+            "focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "text-card-foreground"
           )}
           aria-label={t("artistCard.selectArtist", { name: artist.name })}
         >
           <div className="flex gap-2 items-center mb-1">
             {/* Отображаем иконку типа */}
             {getIcon()}
-            <h3 className="text-lg font-bold truncate transition-colors text-slate-200 group-hover:text-white">
+            <h3 className="text-lg font-bold truncate transition-colors text-card-foreground group-hover:text-foreground">
               {artist.name}
             </h3>
           </div>
 
-          <p className="mt-1 font-mono text-xs truncate text-slate-500">
+          <p className="mt-1 font-mono text-xs truncate text-muted-foreground">
             {postsCount.toLocaleString()} {postsCount === 1 ? "post" : "posts"}
           </p>
         </button>
@@ -75,7 +75,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
           <Button
             variant="ghost"
             size="icon"
-            className="w-8 h-8 text-slate-500 hover:text-red-500 hover:bg-red-950/20"
+            className="w-8 h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             onClick={handleDeleteClick}
             aria-label={t("common.deleteArtist", "Delete Artist")}
             title={t("common.deleteArtist", "Delete Artist")}

@@ -9,8 +9,10 @@ import { encrypt } from "../../lib/crypto";
 import { IPC_CHANNELS } from "../channels";
 import {
   SaveSettingsSchema,
+  ThemePreferenceSchema,
   type IpcSettings,
   type SaveSettings,
+  type ThemePreference,
 } from "../../../shared/schemas/settings";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
@@ -31,6 +33,7 @@ const DEFAULT_IPC_SETTINGS: IpcSettings = {
   downloadFolder: null,
   duplicateFileBehavior: "skip",
   downloadFolderStructure: "flat",
+  theme: "system",
 };
 
 /**
@@ -81,6 +84,7 @@ function mapSettingsToIpc(
       (dbSettings.duplicateFileBehavior as "skip" | "overwrite") || "skip",
     downloadFolderStructure:
       (dbSettings.downloadFolderStructure as "flat" | "{artist_id}") || "flat",
+    theme: (dbSettings.theme as ThemePreference) || "system",
   };
 }
 
@@ -125,6 +129,14 @@ export class SettingsController extends BaseController {
       z.tuple([SaveSettingsSchema]), // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.saveSettings.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+    this.handle(
+      IPC_CHANNELS.SETTINGS.SAVE_THEME,
+      z.tuple([ThemePreferenceSchema]),
+      this.saveTheme.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
       ) => Promise<unknown>
@@ -284,6 +296,7 @@ export class SettingsController extends BaseController {
               // These fields should only be updated by confirmLegal, not by saveSettings
               isAdultVerified: existing.isAdultVerified ?? false,
               tosAcceptedAt: existing.tosAcceptedAt ?? null,
+              theme: existing.theme ?? "system",
             })
             .where(eq(settings.id, targetId))
             .run();
@@ -298,6 +311,7 @@ export class SettingsController extends BaseController {
               isAdultConfirmed: false,
               isAdultVerified: false,
               tosAcceptedAt: null,
+              theme: "system",
             })
             .run();
         }
@@ -337,6 +351,46 @@ export class SettingsController extends BaseController {
       return true;
     } catch (error) {
       log.error("[SettingsController] Failed to save settings:", error);
+      throw error;
+    }
+  }
+
+  private async saveTheme(
+    _event: IpcMainInvokeEvent,
+    theme: ThemePreference
+  ): Promise<boolean> {
+    try {
+      const db = this.getDb();
+      const existing = await db.query.settings.findFirst({
+        where: eq(settings.id, SETTINGS_ID),
+      });
+
+      if (existing) {
+        await db
+          .update(settings)
+          .set({ theme })
+          .where(eq(settings.id, SETTINGS_ID))
+          .run();
+      } else {
+        await db
+          .insert(settings)
+          .values({
+            id: SETTINGS_ID,
+            userId: "",
+            encryptedApiKey: "",
+            isSafeMode: true,
+            isAdultConfirmed: false,
+            isAdultVerified: false,
+            tosAcceptedAt: null,
+            theme,
+          })
+          .run();
+      }
+
+      this.settingsCache = null;
+      return true;
+    } catch (error) {
+      log.error("[SettingsController] Failed to save theme:", error);
       throw error;
     }
   }
@@ -452,6 +506,7 @@ export class SettingsController extends BaseController {
               encryptedApiKey: existing.encryptedApiKey ?? "",
               isSafeMode: existing.isSafeMode ?? true,
               isAdultConfirmed: existing.isAdultConfirmed ?? false,
+              theme: existing.theme ?? "system",
             })
             .where(eq(settings.id, SETTINGS_ID))
             .run();
@@ -466,6 +521,7 @@ export class SettingsController extends BaseController {
               isAdultConfirmed: false,
               isAdultVerified: true,
               tosAcceptedAt: now,
+              theme: "system",
             })
             .run();
         }

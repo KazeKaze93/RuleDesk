@@ -7,6 +7,7 @@ import type {
   AddArtistRequest,
 } from "./types/ipc";
 import type { IpcSettings } from "../shared/schemas/settings";
+import type { ThemePreference } from "../shared/schemas/settings";
 import type { PostData } from "../shared/schemas/post";
 import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
 import type { ProviderId, SearchResults } from "./providers";
@@ -57,13 +58,14 @@ export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
   getDatabaseLocation: () => Promise<string>;
-  getIconPath: () => Promise<string>;
+  getIconPath: (theme?: "light" | "dark") => Promise<string>;
 
   writeToClipboard: (text: string) => Promise<boolean>;
 
   // Settings
   getSettings: () => Promise<IpcSettings | null>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  saveTheme: (theme: ThemePreference) => Promise<boolean>;
   saveDownloadFolder: (path: string | null) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
   logout: () => Promise<void>;
@@ -185,8 +187,8 @@ export interface IpcBridge {
 const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke(IPC_CHANNELS.APP.GET_VERSION),
   getDatabaseLocation: () => ipcRenderer.invoke(IPC_CHANNELS.APP.GET_DB_LOCATION),
-  getIconPath: () => {
-    return ipcRenderer.invoke("app:get-icon-path");
+  getIconPath: (theme) => {
+    return ipcRenderer.invoke("app:get-icon-path", theme);
   },
 
   writeToClipboard: (text) =>
@@ -219,6 +221,8 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER, path),
   saveSettings: (creds) =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE, creds),
+  saveTheme: (theme) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_THEME, theme),
   confirmLegal: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.CONFIRM_LEGAL),
   logout: () => ipcRenderer.invoke("app:logout"),
 

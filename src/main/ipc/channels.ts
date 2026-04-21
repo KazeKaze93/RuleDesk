@@ -11,6 +11,7 @@ export const IPC_CHANNELS = {
   SETTINGS: {
     GET: "app:get-settings-status",
     SAVE: "app:save-settings",
+    SAVE_THEME: "settings:save-theme",
     CONFIRM_LEGAL: "settings:confirm-legal",
     SAVE_DOWNLOAD_FOLDER: "settings:save-download-folder",
     SAVE_DOWNLOAD_SETTINGS: "settings:save-download-settings",

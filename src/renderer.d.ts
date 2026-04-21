@@ -46,16 +46,19 @@ export interface IpcSettings {
   downloadFolder: string | null; // Custom folder for downloads
   duplicateFileBehavior: "skip" | "overwrite";
   downloadFolderStructure: "flat" | "{artist_id}";
+  theme: "system" | "light" | "dark";
 }
 
 export interface IpcApi extends IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
   getDatabaseLocation: () => Promise<string>;
+  getIconPath: (theme?: "light" | "dark") => Promise<string>;
 
   // Settings
   getSettings: () => Promise<IpcSettings | undefined>;
   saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  saveTheme: (theme: "system" | "light" | "dark") => Promise<boolean>;
   saveDownloadFolder: (path: string | null) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
   logout: () => Promise<void>;

@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Label } from "../ui/label";
+import { Button } from "../ui/button";
 import { AddArtistSchema, type AddArtistRequest } from "../../../shared/schemas/artist";
 import type { ProviderId } from "../../../shared/constants";
 
@@ -83,25 +84,27 @@ export function AddArtistModal({
   };
 
   return (
-    <div className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm duration-200 bg-black/60 animate-in fade-in">
-      <div className="flex flex-col w-full max-w-md rounded-xl border shadow-2xl bg-zinc-900 border-zinc-800">
+    <div className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm duration-200 bg-background/70 animate-in fade-in">
+      <div className="flex flex-col w-full max-w-md rounded-xl border shadow-2xl bg-card border-border">
         {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
-          <h2 className="text-lg font-bold text-white">Track New Artist</h2>
-          <button
+        <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-muted/20">
+          <h2 className="text-lg font-bold text-foreground">Track New Artist</h2>
+          <Button
             type="button"
             onClick={handleClose}
-            className="p-1 rounded-full transition-colors hover:bg-zinc-800 text-zinc-400"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full text-muted-foreground"
             aria-label="Close modal"
           >
             <X size={20} />
-          </button>
+          </Button>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
           {/* Provider Selection */}
           <div className="space-y-1.5">
-            <Label htmlFor="provider-select" className="ml-1 text-xs font-medium text-zinc-400">
+            <Label htmlFor="provider-select" className="ml-1 text-xs font-medium text-muted-foreground">
               Provider
             </Label>
             <Controller
@@ -109,10 +112,10 @@ export function AddArtistModal({
               control={control}
               render={({ field }) => (
                 <Select value={field.value} onValueChange={handleProviderChange}>
-                  <SelectTrigger id="provider-select" className="w-full bg-zinc-950 border-zinc-800 text-white">
+                  <SelectTrigger id="provider-select" className="w-full">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                  <SelectContent>
                     <SelectItem value="rule34">Rule34.xxx</SelectItem>
                     <SelectItem value="gelbooru">Gelbooru</SelectItem>
                   </SelectContent>
@@ -140,10 +143,10 @@ export function AddArtistModal({
               />
             </div>
             {errors.tag && (
-              <p className="text-xs text-red-400 ml-1">{errors.tag.message}</p>
+              <p className="text-xs text-destructive ml-1">{errors.tag.message}</p>
             )}
-            <p className="text-[10px] text-zinc-500 ml-1">
-              Searching on <span className="font-medium text-zinc-400">{provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}</span>
+            <p className="text-[10px] text-muted-foreground ml-1">
+              Searching on <span className="font-medium text-foreground">{provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}</span>
             </p>
           </div>
 
@@ -152,13 +155,13 @@ export function AddArtistModal({
           <input type="hidden" {...control.register("type")} />
 
           {/* Submit Button */}
-          <button
+          <Button
             type="submit"
             disabled={isSubmitting || !tag || !!errors.tag}
-            className="px-4 py-3 mt-2 w-full text-sm font-bold text-white bg-blue-600 rounded-lg shadow-lg transition-all hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-blue-500/20"
+            className="mt-2 w-full"
           >
             {isSubmitting ? "Adding..." : "Start Tracking"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>
