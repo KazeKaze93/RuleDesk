@@ -50,8 +50,8 @@ export function BackupControls() {
   };
 
   return (
-    <div className="p-4 rounded-lg border border-slate-700 bg-slate-900 text-slate-100">
-      <h3 className="mb-4 text-lg font-semibold text-slate-200">
+    <div className="p-4 rounded-lg border border-border bg-card text-foreground">
+      <h3 className="mb-4 text-lg font-semibold">
         📦 Database Management
       </h3>
       <div className="flex gap-4">
@@ -61,7 +61,7 @@ export function BackupControls() {
           aria-label="Create a full backup of the database"
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
             isLoading
-              ? "cursor-not-allowed bg-slate-700 text-slate-400"
+              ? "cursor-not-allowed bg-muted text-muted-foreground"
               : "text-white bg-emerald-600 hover:bg-emerald-700"
           }`}
         >
@@ -74,7 +74,7 @@ export function BackupControls() {
           aria-label="Restore database from a backup file"
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
             isLoading
-              ? "cursor-not-allowed bg-slate-700 text-slate-400"
+              ? "cursor-not-allowed bg-muted text-muted-foreground"
               : "text-white bg-red-600 hover:bg-red-700"
           }`}
         >

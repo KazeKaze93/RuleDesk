@@ -128,6 +128,7 @@ export const settings = sqliteTable("settings", {
   downloadFolder: text("download_folder"),
   duplicateFileBehavior: text("duplicate_file_behavior").default("skip"),
   downloadFolderStructure: text("download_folder_structure").default("flat"),
+  theme: text("theme", { enum: ["system", "light", "dark"] }).default("system"),
 });
 
 export const tagMetadata = sqliteTable(

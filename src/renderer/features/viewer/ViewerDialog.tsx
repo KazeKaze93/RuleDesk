@@ -475,7 +475,13 @@ const chunkTags = (tags: string[], chunkSize: number): string[][] => {
   return chunks;
 };
 
-const ViewerMedia = ({ post }: { post: Post }) => {
+const ViewerMedia = ({
+  post,
+  onBackgroundClick,
+}: {
+  post: Post;
+  onBackgroundClick: () => void;
+}) => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
@@ -529,8 +535,17 @@ const ViewerMedia = ({ post }: { post: Post }) => {
   }, []);
 
   const handleContainerClick = (e: React.MouseEvent) => {
-    if (isVideo) {
-      if (e.target instanceof HTMLVideoElement) return;
+    if (!(e.target instanceof HTMLElement)) {
+      return;
+    }
+
+    const clickedMedia = e.target.closest("img,video");
+    if (!clickedMedia) {
+      onBackgroundClick();
+      return;
+    }
+
+    if (isVideo && !(e.target instanceof HTMLVideoElement)) {
       setIsVideoPlaying((v) => !v);
     }
   };
@@ -1071,7 +1086,7 @@ const ViewerContent = ({
         {announcement}
       </div>
       
-      <ViewerMedia post={post} />
+      <ViewerMedia post={post} onBackgroundClick={close} />
 
       <div
         className={cn(
@@ -1199,7 +1214,7 @@ const ViewerContent = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-56 text-white shadow-lg bg-neutral-900 border-white/10"
+              className="w-56 shadow-lg bg-popover text-popover-foreground border-border"
               sideOffset={8}
               align="end"
             >
@@ -1209,7 +1224,7 @@ const ViewerContent = ({
                   Copy...
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
-                  <DropdownMenuSubContent className="w-48 text-white shadow-xl bg-neutral-900 border-white/10">
+                  <DropdownMenuSubContent className="w-48 shadow-xl bg-popover text-popover-foreground border-border">
                     <DropdownMenuItem
                       onClick={() => ctrl.handleCopyText(String(post.postId))}
                     >
@@ -1368,7 +1383,7 @@ const ViewerContent = ({
 
       <button
         className={cn(
-          "absolute left-2 top-1/2 -translate-y-1/2 p-4 text-white/50 hover:text-white transition-colors outline-none",
+          "absolute left-2 top-1/2 -translate-y-1/2 p-4 text-white/70 hover:text-white transition-colors outline-none",
           !controlsVisible && "opacity-0"
         )}
         onClick={(e) => {
@@ -1383,7 +1398,7 @@ const ViewerContent = ({
 
       <button
         className={cn(
-          "absolute right-2 top-1/2 -translate-y-1/2 p-4 text-white/50 hover:text-white transition-colors outline-none",
+          "absolute right-2 top-1/2 -translate-y-1/2 p-4 text-white/70 hover:text-white transition-colors outline-none",
           !controlsVisible && "opacity-0"
         )}
         onClick={(e) => {
@@ -1398,8 +1413,8 @@ const ViewerContent = ({
 
       {/* Playlist Dialog */}
       {showPlaylistDialog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50" onClick={() => setShowPlaylistDialog(false)}>
-          <div className="bg-neutral-900 rounded-lg p-4 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/70" onClick={() => setShowPlaylistDialog(false)}>
+          <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <QuickAddToPlaylistMenu
               post={{ id: post.id, postId: post.postId }}
               trigger={

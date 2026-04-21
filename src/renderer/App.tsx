@@ -12,6 +12,7 @@ import { Favorites } from "./components/pages/Favorites";
 import { Updates } from "./components/pages/Updates";
 import { Browse } from "./components/pages/Browse";
 import { PlaylistsPage } from "./components/pages/PlaylistsPage";
+import { useTheme } from "./hooks/useTheme";
 
 type LegalStatus = "loading" | "confirmed" | "unconfirmed";
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
@@ -22,6 +23,7 @@ interface AppState {
 }
 
 function App() {
+  useTheme();
   const [appState, setAppState] = useState<AppState>({
     legalStatus: "loading",
     authStatus: "loading",

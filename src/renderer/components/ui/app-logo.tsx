@@ -13,6 +13,22 @@ export interface AppLogoProps extends React.ImgHTMLAttributes<HTMLImageElement> 
 export const AppLogo = ({ className, ...props }: AppLogoProps) => {
   const [iconPath, setIconPath] = useState<string>("");
   const isLoadingRef = useRef(false);
+  const [effectiveTheme, setEffectiveTheme] = useState<"light" | "dark">(
+    document.documentElement.classList.contains("dark") ? "dark" : "light"
+  );
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateTheme = () => {
+      setEffectiveTheme(root.classList.contains("dark") ? "dark" : "light");
+    };
+
+    updateTheme();
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     // Prevent multiple simultaneous calls
@@ -37,7 +53,7 @@ export const AppLogo = ({ className, ...props }: AppLogoProps) => {
           return;
         }
         
-        const path = await window.api.getIconPath();
+        const path = await window.api.getIconPath(effectiveTheme);
         
         if (path && typeof path === "string" && path.startsWith("data:image")) {
           setIconPath(path);
@@ -56,7 +72,7 @@ export const AppLogo = ({ className, ...props }: AppLogoProps) => {
 
     // Call immediately - no delay needed
     loadIconPath();
-  }, []);
+  }, [effectiveTheme]);
 
   // Show placeholder while loading or if failed
   if (!iconPath) {

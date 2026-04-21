@@ -23,7 +23,14 @@ export class SystemController extends BaseController {
   public setup(): void {
     this.handle(IPC_CHANNELS.APP.GET_VERSION, z.tuple([]), this.getAppVersion.bind(this));
     this.handle(IPC_CHANNELS.APP.GET_DB_LOCATION, z.tuple([]), this.getDatabaseLocation.bind(this));
-    this.handle("app:get-icon-path", z.tuple([]), this.getIconPath.bind(this));
+    this.handle(
+      "app:get-icon-path",
+      z.tuple([z.enum(["light", "dark"]).optional()]),
+      this.getIconPath.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
     this.handle("app:quit", z.tuple([]), this.quitApp.bind(this));
     this.handle(
       "app:write-to-clipboard",
@@ -56,18 +63,30 @@ export class SystemController extends BaseController {
    *
    * @returns Base64 data URL of icon.png for use in img src
    */
-  private async getIconPath(_event: IpcMainInvokeEvent): Promise<string> {
+  private async getIconPath(
+    _event: IpcMainInvokeEvent,
+    theme?: "light" | "dark"
+  ): Promise<string> {
     log.info("[SystemController] getIconPath called");
     try {
       const isDev = process.env.NODE_ENV === "development";
       
-      let iconPath: string;
-      if (isDev) {
-        iconPath = path.join(process.cwd(), "resources", "icons", "icon.png");
-      } else {
-        // In production, resources folder should be at the app root level
-        iconPath = path.join(app.getAppPath(), "..", "resources", "icons", "icon.png");
-      }
+      const iconsFolder = isDev
+        ? path.join(process.cwd(), "resources", "icons")
+        : path.join(app.getAppPath(), "..", "resources", "icons");
+
+      const candidateFileNames =
+        theme === "dark"
+          ? ["icon-dark.png", "icon.png"]
+          : theme === "light"
+            ? ["icon-light.png", "icon.png"]
+            : ["icon.png"];
+
+      const iconPath =
+        candidateFileNames
+          .map((fileName) => path.join(iconsFolder, fileName))
+          .find((candidatePath) => existsSync(candidatePath)) ??
+        path.join(iconsFolder, "icon.png");
       
       log.info(`[SystemController] Attempting to load icon from: ${iconPath}`);
       

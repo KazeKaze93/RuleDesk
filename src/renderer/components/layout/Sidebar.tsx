@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
-import { AppLogo } from "../ui/app-logo";
 
 const navItems = [
   { to: "/updates", icon: RefreshCw, label: "Updates" },
@@ -96,12 +95,13 @@ export const Sidebar = () => {
   return (
     <aside className="flex sticky top-0 flex-col w-64 h-screen border-r bg-background">
       {/* Logo Area */}
-      <div className="flex items-center px-6 h-14 border-b">
-        <AppLogo className="mr-3 h-12 w-12 flex-shrink-0 transition-all hover:scale-110" />
-        <div className="flex flex-col">
-          <span className="text-lg font-bold tracking-tight">RuleDesk</span>
+      <div className="flex items-center px-6 h-14 border-b bg-transparent">
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-black leading-none tracking-tight">
+            RuleDesk
+          </span>
           {appVersion && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               v{appVersion}
             </span>
           )}

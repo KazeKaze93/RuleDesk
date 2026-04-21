@@ -103,31 +103,31 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="flex flex-col justify-center items-center p-6 min-h-screen text-white bg-slate-950">
-      <div className="p-8 space-y-6 w-full max-w-md rounded-lg border shadow-xl bg-slate-900 border-slate-800">
+    <div className="flex flex-col justify-center items-center p-6 min-h-screen bg-background text-foreground">
+      <div className="p-8 space-y-6 w-full max-w-md rounded-lg border shadow-xl bg-card border-border">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-blue-500">
+          <h1 className="text-2xl font-bold text-primary">
             {t("onboarding.title")}
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-muted-foreground">
             {t("onboarding.description")}
           </p>
         </div>
 
-        <div className="p-4 space-y-2 text-sm rounded border bg-slate-950 border-slate-800">
-          <p className="font-semibold text-slate-300">
+        <div className="p-4 space-y-2 text-sm rounded border bg-muted/40 border-border">
+          <p className="font-semibold text-foreground">
             {t("onboarding.howToGetKeys")}
           </p>
-          <ol className="space-y-1 list-decimal list-inside text-slate-400">
+          <ol className="space-y-1 list-decimal list-inside text-muted-foreground">
             <li>{t("onboarding.step1")}</li>
             <li>{t("onboarding.step2")}</li>
             <li>{t("onboarding.step3")}</li>
           </ol>
-          <div className="pt-2 mt-2 border-t border-slate-800">
-            <span className="text-xs text-slate-500">
+          <div className="pt-2 mt-2 border-t border-border">
+            <span className="text-xs text-muted-foreground">
               {t("onboarding.settingsPageAddress")}
             </span>
-            <code className="block p-2 mt-1 text-xs break-all rounded cursor-text select-all bg-slate-900">
+            <code className="block p-2 mt-1 text-xs break-all rounded cursor-text select-all bg-muted">
               https://rule34.xxx/index.php?page=account&s=options
             </code>
           </div>
@@ -137,17 +137,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <div>
             <label
               htmlFor="user-id-input"
-              className="block mb-1 text-sm font-medium text-slate-400"
+              className="block mb-1 text-sm font-medium text-muted-foreground"
             >
               {t("onboarding.userId")}
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <input
                 id="user-id-input"
                 {...register("userId")}
                 onPaste={handlePaste}
-                className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
+                className="py-2 pr-3 pl-9 w-full rounded border outline-none bg-background border-input focus:ring-2 focus:ring-ring"
                 placeholder={t("onboarding.userIdPlaceholder")}
               />
             </div>
@@ -161,18 +161,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <div>
             <label
               htmlFor="api-key-input"
-              className="block mb-1 text-sm font-medium text-slate-400"
+              className="block mb-1 text-sm font-medium text-muted-foreground"
             >
               {t("onboarding.apiKey")}
             </label>
             <div className="relative">
-              <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <input
                 id="api-key-input"
                 {...register("apiKey")}
                 type="password"
                 onPaste={handlePaste}
-                className="py-2 pr-3 pl-9 w-full text-white rounded border outline-none bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500"
+                className="py-2 pr-3 pl-9 w-full rounded border outline-none bg-background border-input focus:ring-2 focus:ring-ring"
                 placeholder={t("onboarding.apiKeyPlaceholder")}
               />
             </div>
@@ -184,14 +184,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium text-slate-400">
+            <label className="block mb-1 text-sm font-medium text-muted-foreground">
               Verify for
             </label>
             <Select
               value={verifyProviderId}
               onValueChange={(value: ProviderId) => setVerifyProviderId(value)}
             >
-              <SelectTrigger className="w-full text-white bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
               <SelectContent>

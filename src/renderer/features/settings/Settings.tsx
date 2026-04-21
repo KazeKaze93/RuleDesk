@@ -16,9 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { Loader2, Database, Upload, FolderOpen } from "lucide-react";
+import { useTheme } from "../../hooks/useTheme";
 
 export const Settings = () => {
+  const { theme, setTheme, isSaving: isThemeSaving } = useTheme();
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [backupStatus, setBackupStatus] = useState<
@@ -138,6 +141,36 @@ export const Settings = () => {
           Manage your database backups and application preferences.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>
+            Choose how RuleDesk should look.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Label>Theme</Label>
+          <RadioGroup
+            value={theme}
+            onValueChange={(value: "system" | "light" | "dark") => setTheme(value)}
+            disabled={isThemeSaving}
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="system" id="theme-system" />
+              <Label htmlFor="theme-system">System</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="light" id="theme-light" />
+              <Label htmlFor="theme-light">Light</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="dark" id="theme-dark" />
+              <Label htmlFor="theme-dark">Dark</Label>
+            </div>
+          </RadioGroup>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

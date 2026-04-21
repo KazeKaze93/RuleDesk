@@ -56,7 +56,7 @@ export const Tracked = () => {
     return <div className="p-8 text-muted-foreground">Loading artists...</div>;
 
   if (error)
-    return <div className="p-8 text-red-500">Error loading artists</div>;
+    return <div className="p-8 text-destructive">Error loading artists</div>;
 
   return (
     <div className="space-y-6">
@@ -65,7 +65,11 @@ export const Tracked = () => {
           <Users className="w-6 h-6 text-primary" />
           Tracked Artists
         </h1>
-        <Button onClick={() => setIsAddModalOpen(true)} className="gap-2">
+        <Button
+          onClick={() => setIsAddModalOpen(true)}
+          variant="default"
+          className="gap-2"
+        >
           <Plus className="w-4 h-4" />
           Add Source
         </Button>
