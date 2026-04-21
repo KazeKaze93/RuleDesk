@@ -18,7 +18,6 @@ import {
   RemovePostsFromPlaylistSchema,
   GetPlaylistPostsSchema,
   ResolvePlaylistPostsSchema,
-  SmartPlaylistQuerySchema,
   type CreatePlaylistRequest,
   type UpdatePlaylistRequest,
   type AddPostsToPlaylistRequest,
@@ -27,6 +26,10 @@ import {
   type ResolvePlaylistPostsRequest,
   type SmartPlaylistQuery,
 } from "../../../shared/schemas/playlist";
+import {
+  CURRENT_SMART_QUERY_SCHEMA_VERSION,
+  parseSmartQuery,
+} from "../../../shared/schemas/smart-playlist-query";
 import { isVideoUrl } from "@shared/utils/media";
 import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
@@ -682,6 +685,7 @@ export class PlaylistController extends BaseController {
           name: data.name,
           isSmart: data.isSmart ?? true, // Default to Smart Collection
           queryJson: data.queryJson ?? "",
+          querySchemaVersion: CURRENT_SMART_QUERY_SCHEMA_VERSION,
           iconName: data.iconName ?? "",
         })
         .returning()
@@ -701,16 +705,16 @@ export class PlaylistController extends BaseController {
       // Use Zod schema validation to ensure data integrity
       if (playlist.isSmart && playlist.queryJson) {
         try {
-          // SECURITY: Validate queryJson using Zod schema before parsing
-          // This prevents crashes from invalid JSON or malicious data
-          const parseResult = SmartPlaylistQuerySchema.safeParse(JSON.parse(playlist.queryJson));
-          
-          if (parseResult.success) {
+          const parsedQuery = parseSmartQuery(
+            playlist.queryJson,
+            playlist.querySchemaVersion
+          );
+          if (parsedQuery) {
             // SECURITY: Wrap JSON.stringify in try-catch to prevent crashes from circular references or invalid data
             try {
               log.info(
                 `[PlaylistController] Smart playlist ${playlist.id} query_json:`,
-                JSON.stringify(parseResult.data, null, 2)
+                JSON.stringify(parsedQuery, null, 2)
               );
             } catch (stringifyError) {
               // If JSON.stringify fails (circular reference, etc.), log a safe message
@@ -725,8 +729,7 @@ export class PlaylistController extends BaseController {
             }
           } else {
             log.warn(
-              `[PlaylistController] Invalid query_json schema for playlist ${playlist.id}:`,
-              parseResult.error.errors
+              `[PlaylistController] Invalid query_json schema for playlist ${playlist.id} (version ${playlist.querySchemaVersion})`
             );
           }
         } catch (parseError) {
@@ -820,6 +823,7 @@ export class PlaylistController extends BaseController {
       }
       if (data.queryJson !== undefined) {
         updateData.queryJson = data.queryJson;
+        updateData.querySchemaVersion = CURRENT_SMART_QUERY_SCHEMA_VERSION;
       }
       if (data.iconName !== undefined) {
         updateData.iconName = data.iconName;
@@ -1214,31 +1218,26 @@ export class PlaylistController extends BaseController {
         return [];
       }
 
-      // Parse and validate queryJson using Zod schema
-      // SECURITY: Never trust JSON.parse without validation - use Zod schema to ensure data integrity
-      // This prevents crashes from invalid JSON or malicious data in database
+      // Parse and validate queryJson via versioned smart-query resolver
       let query: SmartPlaylistQuery;
-      try {
-        const rawParsed = JSON.parse(playlist.queryJson);
-        const parseResult = SmartPlaylistQuerySchema.safeParse(rawParsed);
-        
-        if (!parseResult.success) {
-          log.error(
-            `[PlaylistController] Invalid query_json schema for smart playlist ${playlistId}:`,
-            parseResult.error.errors
-          );
-          throw new Error(`Invalid query_json schema for smart playlist ${playlistId}: ${parseResult.error.message}`);
-        }
-        
-        query = parseResult.data;
-        log.info(`[PlaylistController] Parsed query_json for smart playlist ${playlistId}:`, JSON.stringify(query));
-      } catch (error) {
+      const parsedQuery = parseSmartQuery(
+        playlist.queryJson,
+        playlist.querySchemaVersion
+      );
+      if (!parsedQuery) {
         log.error(
           `[PlaylistController] Failed to parse query_json for smart playlist ${playlistId}:`,
-          error
+          `version=${playlist.querySchemaVersion}`
         );
-        throw new Error(`Invalid query_json for smart playlist ${playlistId}: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `Invalid query_json for smart playlist ${playlistId} (version ${playlist.querySchemaVersion})`
+        );
       }
+      query = parsedQuery;
+      log.info(
+        `[PlaylistController] Parsed query_json for smart playlist ${playlistId}:`,
+        JSON.stringify(query)
+      );
 
       // Smart playlist: Hybrid Search - always query both local DB and remote API concurrently
       // Step 1: Query local DB using FTS5
