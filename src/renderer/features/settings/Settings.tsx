@@ -37,12 +37,16 @@ export const Settings = () => {
   const [downloadFolderStructure, setDownloadFolderStructure] = useState<
     "flat" | "{artist_id}"
   >("flat");
+  const [databaseLocation, setDatabaseLocation] = useState<string>("");
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
       if (s?.downloadFolder) setDownloadFolder(s.downloadFolder);
       if (s?.duplicateFileBehavior) setDuplicateFileBehavior(s.duplicateFileBehavior);
       if (s?.downloadFolderStructure) setDownloadFolderStructure(s.downloadFolderStructure);
+    });
+    window.api.getDatabaseLocation().then((location) => {
+      setDatabaseLocation(location);
     });
   }, []);
 
@@ -226,6 +230,10 @@ export const Settings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="p-3 rounded-md border bg-muted/40">
+            <p className="text-xs text-muted-foreground">Database location</p>
+            <p className="text-sm break-all">{databaseLocation || "Loading..."}</p>
+          </div>
           <div className="flex flex-col gap-4">
             <div className="flex justify-between items-center p-4 rounded-lg border">
               <div className="space-y-1">

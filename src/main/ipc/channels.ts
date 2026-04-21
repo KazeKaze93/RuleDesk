@@ -1,6 +1,7 @@
 export const IPC_CHANNELS = {
   APP: {
     GET_VERSION: "app:get-version",
+    GET_DB_LOCATION: "app:get-db-location",
     OPEN_EXTERNAL: "app:open-external",
     DOWNLOAD_FILE: "app:download-file",
     WRITE_CLIPBOARD: "app:write-to-clipboard",

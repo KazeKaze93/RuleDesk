@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, Tray, nativeImage, Menu } from "electron";
 import path from "node:path";
 import { mkdirSync, existsSync, writeFileSync } from "fs";
 import log from "electron-log";
+import { execFile } from "node:child_process";
 
 // === Initialize electron-log first ===
 log.initialize();
@@ -83,56 +84,57 @@ import { initializeDatabase, closeDatabase } from "./db/client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
+import { USER_DATA_DIR_NAME } from "./db/paths";
 
 logger.info("🚀 Application starting...");
 
-async function migrateUserData() {
+function runCommand(file: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile(file, args, (error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+async function hideDirectoryOnWindows(dirPath: string): Promise<void> {
+  if (process.platform !== "win32") {
+    return;
+  }
+
   try {
-    const oldUserDataPath = path.join(
-      app.getPath("appData"),
-      "NSFW Booru Client"
-    );
-    const newUserDataPath = path.join(app.getPath("appData"), "RuleDesk");
-
-    try {
-      await fs.access(oldUserDataPath);
-      const oldFolderExists = true;
-
-      let newFolderExists = false;
-      try {
-        await fs.access(newUserDataPath);
-        newFolderExists = true;
-      } catch {
-        // New folder doesn't exist, which is what we want
-      }
-
-      if (oldFolderExists && !newFolderExists) {
-        // Create new folder
-        await fs.mkdir(newUserDataPath, { recursive: true });
-        logger.info(`Created new user data folder: ${newUserDataPath}`);
-
-        const oldDbPath = path.join(oldUserDataPath, "metadata.db");
-        const newDbPath = path.join(newUserDataPath, "metadata.db");
-
-        try {
-          await fs.access(oldDbPath);
-          await fs.copyFile(oldDbPath, newDbPath);
-          logger.info(`Migrated metadata.db from ${oldDbPath} to ${newDbPath}`);
-        } catch (_err) {
-          logger.info(
-            "No metadata.db found in old user data folder, skipping migration"
-          );
-        }
-      }
-    } catch (_err) {
-      logger.info("Old user data folder not found, skipping migration");
-    }
-  } catch (err) {
-    logger.error("Error during user data migration:", err);
+    await fs.writeFile(path.join(dirPath, ".init"), "", { flag: "a" });
+    await runCommand("attrib", ["+H", dirPath]);
+  } catch (error) {
+    logger.warn(`[Main] Failed to set hidden attribute on ${dirPath}:`, error);
   }
 }
 
-migrateUserData();
+function configureUserDataPath(): void {
+  try {
+    if (app.isPackaged) {
+      return;
+    }
+
+    const neutralRoot =
+      process.platform === "win32"
+        ? process.env.LOCALAPPDATA || app.getPath("appData")
+        : app.getPath("appData");
+    const neutralUserDataPath = path.join(neutralRoot, USER_DATA_DIR_NAME);
+
+    mkdirSync(neutralUserDataPath, { recursive: true });
+    app.setPath("userData", neutralUserDataPath);
+    void hideDirectoryOnWindows(neutralUserDataPath);
+    logger.info(`[Main] userData path set to neutral directory: ${neutralUserDataPath}`);
+  } catch (err) {
+    logger.error("[Main] Failed to configure neutral userData path:", err);
+  }
+}
+
+configureUserDataPath();
 
 process.env.USER_DATA_PATH = app.getPath("userData");
 

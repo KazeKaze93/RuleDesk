@@ -51,6 +51,7 @@ export interface IpcSettings {
 export interface IpcApi extends IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
+  getDatabaseLocation: () => Promise<string>;
 
   // Settings
   getSettings: () => Promise<IpcSettings | undefined>;

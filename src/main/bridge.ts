@@ -56,6 +56,7 @@ export interface PostQueryFilters {
 export interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
+  getDatabaseLocation: () => Promise<string>;
   getIconPath: () => Promise<string>;
 
   writeToClipboard: (text: string) => Promise<boolean>;
@@ -182,7 +183,8 @@ export interface IpcBridge {
 }
 
 const ipcBridge: IpcBridge = {
-  getAppVersion: () => ipcRenderer.invoke("app:get-version"),
+  getAppVersion: () => ipcRenderer.invoke(IPC_CHANNELS.APP.GET_VERSION),
+  getDatabaseLocation: () => ipcRenderer.invoke(IPC_CHANNELS.APP.GET_DB_LOCATION),
   getIconPath: () => {
     return ipcRenderer.invoke("app:get-icon-path");
   },
