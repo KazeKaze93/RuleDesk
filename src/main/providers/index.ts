@@ -11,8 +11,14 @@ const providers: Record<ProviderId, IBooruProvider> = {
   "gelbooru": new GelbooruProvider(),
 };
 
+const PROVIDERS = Object.values(providers);
+
 export function getProvider(id: ProviderId): IBooruProvider {
   return providers[id];
+}
+
+export function getAllProviderDomains(): string[] {
+  return [...new Set(PROVIDERS.flatMap((provider) => provider.allowedDomains))];
 }
 
 export type {

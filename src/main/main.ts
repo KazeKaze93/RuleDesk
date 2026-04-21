@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, Tray, nativeImage, Menu } from "electron";
+import { app, BrowserWindow, dialog, Tray, nativeImage, Menu, session } from "electron";
 import path from "node:path";
 import { mkdirSync, existsSync, writeFileSync } from "fs";
 import log from "electron-log";
@@ -85,6 +85,7 @@ import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 import { USER_DATA_DIR_NAME } from "./db/paths";
+import { getAllProviderDomains } from "./providers";
 
 logger.info("🚀 Application starting...");
 
@@ -287,66 +288,58 @@ function createLoadingWindow(): BrowserWindow {
  * 
  * Кешируется один раз при инициализации для избежания оверхеда на каждый запрос.
  */
-let cachedCSPPolicy: string | null = null;
+let isCspHandlerConfigured = false;
 
-function getCSPPolicy(): string {
-  // Return cached policy if already generated
-  if (cachedCSPPolicy !== null) {
-    return cachedCSPPolicy;
-  }
-
-  // CRITICAL: Ensure NODE_ENV is properly set in production builds
-  // In production, NODE_ENV should be 'production' (not 'development' or undefined)
+function buildCspPolicy(): string {
   const isDev = process.env.NODE_ENV === "development";
-  
-  // Additional safety check: if NODE_ENV is not explicitly set, assume production for security
-  // This prevents accidental unsafe-eval in production if NODE_ENV is missing
-  const isProduction = !isDev;
+  const providerDomains = getAllProviderDomains();
+  const providerOrigins = providerDomains.flatMap((domain) => [
+    `https://${domain}`,
+    `http://${domain}`,
+    `https://*.${domain}`,
+    `http://*.${domain}`,
+  ]);
+  const mediaOrigins = ["'self'", "data:", "blob:", ...providerOrigins].join(" ");
+  const connectOrigins = ["'self'", ...providerOrigins];
+  const devOrigins = ["http://localhost:*", "http://127.0.0.1:*"];
+
+  if (isDev) {
+    connectOrigins.push("ws://localhost:*", "ws://127.0.0.1:*", ...devOrigins);
+  }
 
   const scriptSrc = isDev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval';" // HMR требует unsafe-inline/eval
-    : "script-src 'self';"; // Строгая политика в продакшене
+    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${devOrigins.join(" ")}`
+    : "script-src 'self'";
 
-  const connectSrc = isDev
-    ? "connect-src 'self' https://api.rule34.xxx ws: ws://localhost:* http://localhost:*;" // WebSocket для HMR
-    : "connect-src 'self' https://api.rule34.xxx;"; // Только необходимые источники в продакшене
+  const directives = [
+    "default-src 'self'",
+    `img-src ${mediaOrigins}`,
+    `media-src ${mediaOrigins}`,
+    "worker-src 'self' blob:",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    `connect-src ${connectOrigins.join(" ")}`,
+    "font-src 'self' https://fonts.gstatic.com",
+  ];
 
-  // NOTE: For desktop Electron app, 'unsafe-inline' for styles is acceptable
-  // Nonce-based CSP requires nonce injection at HTML build time, which is complex with Vite
-  // Hash-based CSP is also complex as it requires pre-computing hashes of all inline styles
-  // For desktop app (not web), CSS injection risk is lower than in web applications
-  // If you need stricter CSP, consider:
-  // 1. Moving all styles to external CSS files (no inline styles)
-  // 2. Using webRequest.onBeforeRequest to inject nonce into HTML body (complex)
-  // 3. Modifying Vite build to inject nonce into HTML template
-  const styleSrc = "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;";
+  return directives.join("; ");
+}
 
-  cachedCSPPolicy =
-    "default-src 'self'; " +
-    scriptSrc +
-    " " +
-    styleSrc +
-    "img-src 'self' https://*.rule34.xxx https://*.gelbooru.com data: blob:; " + // Картинки с R34 и Gelbooru
-    "media-src 'self' https://*.rule34.xxx https://*.gelbooru.com; " + // Видео только с R34 и Gelbooru (безопасность)
-    connectSrc +
-    " " +
-    "font-src 'self' https://fonts.gstatic.com;"; // Разрешаем загрузку шрифтов с Google Fonts
-
-  // CRITICAL SECURITY: Assert that unsafe-eval is NOT in production build
-  // This prevents accidental inclusion of unsafe-eval in production CSP
-  // Check both isDev flag and actual CSP content for defense in depth
-  if (isProduction && cachedCSPPolicy.includes("unsafe-eval")) {
-    const errorMessage = "SECURITY VIOLATION: unsafe-eval found in production CSP policy!";
-    logger.error(errorMessage, { 
-      cspPolicy: cachedCSPPolicy,
-      nodeEnv: process.env.NODE_ENV,
-      isDev,
-      isProduction,
-    });
-    throw new Error(errorMessage);
+function configureDynamicCspHeaders(): void {
+  if (isCspHandlerConfigured) {
+    return;
   }
 
-  return cachedCSPPolicy;
+  isCspHandlerConfigured = true;
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const csp = buildCspPolicy();
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [csp],
+      },
+    });
+  });
 }
 
 /**
@@ -357,12 +350,9 @@ async function initializeAppAndWindow() {
   let loadingWindow: BrowserWindow | null = null;
 
   try {
-    // Setup Content Security Policy (cached once at initialization)
-    const cspPolicy = getCSPPolicy();
+    configureDynamicCspHeaders();
     const isDev = process.env.NODE_ENV === "development";
-    logger.info(
-      `Main: CSP configured for ${isDev ? "development" : "production"} mode`
-    );
+    logger.info(`Main: CSP configured from provider registry (${isDev ? "development" : "production"} mode)`);
 
     const MIGRATIONS_PATH = getMigrationsPath();
     logger.info(`Main: Migrations Path: ${MIGRATIONS_PATH}`);
@@ -455,50 +445,6 @@ async function initializeAppAndWindow() {
         logger.error(`[Main] Failed to set window icon via setIcon():`, error);
       }
     }
-
-    // Setup Content Security Policy for this specific window (not global)
-    // This is more efficient than using session.defaultSession, as it only applies to this window's requests
-    // CRITICAL: Only apply CSP to our application's requests, not to external resources
-    // This prevents breaking third-party content (WebView, external APIs) while securing our app
-    
-    // Get application path to restrict CSP to app-specific files only
-    // This prevents CSP from affecting other windows, WebView, or external local files
-    const appPath = app.getAppPath();
-    // Normalize path separators for URL pattern (Windows uses \, but URLs use /)
-    const appPathNormalized = appPath.replace(/\\/g, "/");
-    // Escape special characters in path for URL pattern matching
-    const appPathEscaped = appPathNormalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    
-    // CRITICAL: Restrict CSP filter to application-specific paths only
-    // This prevents CSP from affecting other windows, WebView, or external local files
-    // Pattern: file://{appPath}/* for app files, http://localhost for dev server
-    const cspUrlPatterns = [
-      `file://${appPathEscaped}/*`, // Only app-specific local files (not all file:// URLs)
-      "http://localhost/*", // Localhost with path (dev mode with Vite HMR)
-      "http://127.0.0.1/*", // 127.0.0.1 with path (dev mode with Vite HMR)
-    ];
-    
-    // Apply CSP headers to responses
-    mainWindow.webContents.session.webRequest.onHeadersReceived(
-      {
-        urls: cspUrlPatterns,
-      },
-      (details, callback) => {
-        // Preserve existing security headers from server (if any)
-        // Merge our CSP with existing headers (don't overwrite)
-        const existingHeaders = details.responseHeaders || {};
-        const existingCSP = existingHeaders["content-security-policy"] || existingHeaders["Content-Security-Policy"];
-        
-        callback({
-          responseHeaders: {
-            ...existingHeaders,
-            "Content-Security-Policy": existingCSP 
-              ? [`${existingCSP.join(", ")}, ${cspPolicy}`] 
-              : [cspPolicy],
-          },
-        });
-      }
-    );
 
     updaterService.setWindow(mainWindow);
     syncService.setWindow(mainWindow);

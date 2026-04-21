@@ -415,7 +415,7 @@ export class SyncService {
     }
   ): Promise<void> {
     const db = getDb();
-    const sqlite = db.$client ?? getSqliteInstance();
+    const sqlite = getSqliteInstance();
     const { isInitial, currentLastPostId, maxPages } = options;
     
     const syncType = isInitial ? "Initial" : "Incremental";
@@ -650,7 +650,10 @@ export class SyncService {
               `SyncService: Could not recreate ${FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME} (${errorMessage})`
             );
           } else {
-            throw error;
+            logger.error(
+              `SyncService: Failed to recreate ${FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME}`,
+              error
+            );
           }
         }
       }
