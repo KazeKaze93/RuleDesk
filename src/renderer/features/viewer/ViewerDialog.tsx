@@ -53,6 +53,11 @@ import {
 
 import { useQueryClient, InfiniteData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import {
+  TransformWrapper,
+  TransformComponent,
+  type ReactZoomPanPinchRef,
+} from "react-zoom-pan-pinch";
 import type { Post } from "../../../main/db/schema";
 import type { Artist } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
@@ -455,13 +460,27 @@ const useCurrentPost = (
   }, [currentPostId, postsMap]);
 };
 
+const IMAGE_MIN_SCALE = 1;
+const IMAGE_MAX_SCALE = 8;
+const IMAGE_WHEEL_STEP = 0.005;
+const ZOOM_RESET_KEY = "0";
+const RESOLVE_TAGS_BATCH_SIZE = 100;
+let isImagePanningActive = false;
+
+const chunkTags = (tags: string[], chunkSize: number): string[][] => {
+  const chunks: string[][] = [];
+  for (let i = 0; i < tags.length; i += chunkSize) {
+    chunks.push(tags.slice(i, i + chunkSize));
+  }
+  return chunks;
+};
 
 const ViewerMedia = ({ post }: { post: Post }) => {
-  const [isZoomed, setIsZoomed] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [hasTriedFallback, setHasTriedFallback] = useState(false);
+  const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore();
   
   // Reset fallback flag when post changes
@@ -473,6 +492,10 @@ const ViewerMedia = ({ post }: { post: Post }) => {
 
   const isVideo = isVideoPost(post.fileUrl);
 
+  const resetImageZoom = useCallback(() => {
+    transformRef.current?.resetTransform();
+  }, []);
+
   useEffect(() => {
     const handleMediaKeys = (e: KeyboardEvent) => {
       if (e.key === " ") {
@@ -481,19 +504,35 @@ const ViewerMedia = ({ post }: { post: Post }) => {
         }
         e.preventDefault();
         setIsVideoPlaying((v) => !v);
+        return;
+      }
+
+      if (e.key === ZOOM_RESET_KEY && !isVideo) {
+        e.preventDefault();
+        resetImageZoom();
       }
     };
     window.addEventListener("keydown", handleMediaKeys);
     return () => window.removeEventListener("keydown", handleMediaKeys);
+  }, [isVideo, resetImageZoom]);
+
+  useEffect(() => {
+    if (!isVideo) {
+      resetImageZoom();
+    }
+  }, [post.id, isVideo, resetImageZoom]);
+
+  useEffect(() => {
+    return () => {
+      isImagePanningActive = false;
+    };
   }, []);
 
   const handleContainerClick = (e: React.MouseEvent) => {
     if (isVideo) {
       if (e.target instanceof HTMLVideoElement) return;
       setIsVideoPlaying((v) => !v);
-      return;
     }
-    setIsZoomed(!isZoomed);
   };
 
   return (
@@ -572,32 +611,47 @@ const ViewerMedia = ({ post }: { post: Post }) => {
           </div>
         </div>
       ) : (
-        <img
-          key={`${post.id}-${hasTriedFallback}`} // Force re-render when fallback changes, resets state on post change
-          src={isZoomed ? post.fileUrl : (hasTriedFallback ? post.fileUrl : (post.sampleUrl || post.fileUrl))}
-          alt={`Post ${post.id}`}
-          className={cn(
-            "transition-all duration-300 ease-out",
-            isZoomed
-              ? "max-w-none max-h-none cursor-zoom-out"
-              : "object-contain max-w-full max-h-full cursor-zoom-in"
-          )}
-          onError={(e) => {
-            log.error("[ViewerMedia] Image load error:", post.fileUrl);
-            
-            // CRITICAL: Use simple flag to prevent infinite loop
-            // If both sampleUrl and fileUrl fail (404), we'd loop forever without this check
-            // Simple useState flag is more reliable than URL comparison (which has overhead)
-            if (!hasTriedFallback && post.fileUrl) {
-              // Try fileUrl as fallback (only once)
-              setHasTriedFallback(true);
-              e.currentTarget.src = post.fileUrl;
-            } else {
-              // Both URLs failed or already tried - show error
-              setImageError(true);
-            }
+        <TransformWrapper
+          ref={transformRef}
+          initialScale={IMAGE_MIN_SCALE}
+          minScale={IMAGE_MIN_SCALE}
+          maxScale={IMAGE_MAX_SCALE}
+          wheel={{ step: IMAGE_WHEEL_STEP }}
+          doubleClick={{ mode: "reset" }}
+          onPanningStart={() => {
+            isImagePanningActive = true;
           }}
-        />
+          onPanningStop={() => {
+            isImagePanningActive = false;
+          }}
+        >
+          <TransformComponent
+            wrapperClass="w-full h-full"
+            contentClass="w-full h-full flex items-center justify-center"
+          >
+            <img
+              key={`${post.id}-${hasTriedFallback}`} // Force re-render when fallback changes, resets state on post change
+              src={hasTriedFallback ? post.fileUrl : (post.sampleUrl || post.fileUrl)}
+              alt={`Post ${post.id}`}
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                log.error("[ViewerMedia] Image load error:", post.fileUrl);
+                
+                // CRITICAL: Use simple flag to prevent infinite loop
+                // If both sampleUrl and fileUrl fail (404), we'd loop forever without this check
+                // Simple useState flag is more reliable than URL comparison (which has overhead)
+                if (!hasTriedFallback && post.fileUrl) {
+                  // Try fileUrl as fallback (only once)
+                  setHasTriedFallback(true);
+                  e.currentTarget.src = post.fileUrl;
+                } else {
+                  // Both URLs failed or already tried - show error
+                  setImageError(true);
+                }
+              }}
+            />
+          </TransformComponent>
+        </TransformWrapper>
       )}
     </div>
   );
@@ -661,7 +715,12 @@ const TagsDrawer = ({
       if (!tagsString) return [];
       const tagsToAsk = tagsString.split(' ').filter((t: string) => t.length > 0);
       if (tagsToAsk.length === 0) return [];
-      return await window.api.resolveTags(tagsToAsk);
+
+      const tagChunks = chunkTags(tagsToAsk, RESOLVE_TAGS_BATCH_SIZE);
+      const resolvedChunks = await Promise.all(
+        tagChunks.map((chunk) => window.api.resolveTags(chunk))
+      );
+      return resolvedChunks.flat();
     },
     enabled: !!post && !hasKnownArtist && tagsString.length > 0,
     staleTime: Infinity, // Keep in RAM for session
@@ -675,7 +734,12 @@ const TagsDrawer = ({
       if (!tagsString) return [];
       const tagsToAsk = tagsString.split(' ').filter((t: string) => t.length > 0);
       if (tagsToAsk.length === 0) return [];
-      return await window.api.resolveCharacterTags(tagsToAsk);
+
+      const tagChunks = chunkTags(tagsToAsk, RESOLVE_TAGS_BATCH_SIZE);
+      const resolvedChunks = await Promise.all(
+        tagChunks.map((chunk) => window.api.resolveCharacterTags(chunk))
+      );
+      return resolvedChunks.flat();
     },
     enabled: !!post && tagsString.length > 0,
     staleTime: Infinity, // Keep in RAM for session
@@ -689,7 +753,12 @@ const TagsDrawer = ({
       if (!tagsString) return [];
       const tagsToAsk = tagsString.split(' ').filter((t: string) => t.length > 0);
       if (tagsToAsk.length === 0) return [];
-      return await window.api.resolveCopyrightTags(tagsToAsk);
+
+      const tagChunks = chunkTags(tagsToAsk, RESOLVE_TAGS_BATCH_SIZE);
+      const resolvedChunks = await Promise.all(
+        tagChunks.map((chunk) => window.api.resolveCopyrightTags(chunk))
+      );
+      return resolvedChunks.flat();
     },
     enabled: !!post && tagsString.length > 0,
     staleTime: Infinity, // Keep in RAM for session
@@ -1522,10 +1591,16 @@ export const ViewerDialog = () => {
       }
       switch (e.key) {
         case "ArrowRight":
+          if (isImagePanningActive) {
+            return;
+          }
           e.preventDefault();
           next();
           break;
         case "ArrowLeft":
+          if (isImagePanningActive) {
+            return;
+          }
           e.preventDefault();
           prev();
           break;
