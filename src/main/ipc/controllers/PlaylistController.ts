@@ -1219,7 +1219,6 @@ export class PlaylistController extends BaseController {
       }
 
       // Parse and validate queryJson via versioned smart-query resolver
-      let query: SmartPlaylistQuery;
       const parsedQuery = parseSmartQuery(
         playlist.queryJson,
         playlist.querySchemaVersion
@@ -1233,7 +1232,7 @@ export class PlaylistController extends BaseController {
           `Invalid query_json for smart playlist ${playlistId} (version ${playlist.querySchemaVersion})`
         );
       }
-      query = parsedQuery;
+      const query: SmartPlaylistQuery = parsedQuery;
       log.info(
         `[PlaylistController] Parsed query_json for smart playlist ${playlistId}:`,
         JSON.stringify(query)
