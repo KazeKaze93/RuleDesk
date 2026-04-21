@@ -27,6 +27,12 @@ interface R34AutocompleteItem {
 export class Rule34Provider implements IBooruProvider {
   readonly id = "rule34";
   readonly name = "Rule34.xxx";
+  readonly allowedDomains = [
+    "rule34.xxx",
+    "api.rule34.xxx",
+    "img.rule34.xxx",
+    "wimg.rule34.xxx",
+  ];
   private readonly baseUrl = "https://api.rule34.xxx/index.php";
   private lastRequestAt = 0;
   private sessionUA: string;

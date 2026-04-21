@@ -12,6 +12,12 @@ import { z } from "zod";
 export class GelbooruProvider implements IBooruProvider {
   readonly id = "gelbooru";
   readonly name = "Gelbooru";
+  readonly allowedDomains = [
+    "gelbooru.com",
+    "img1.gelbooru.com",
+    "img2.gelbooru.com",
+    "img3.gelbooru.com",
+  ];
   private readonly baseUrl = "https://gelbooru.com/index.php";
 
   getDefaultApiEndpoint(): string {

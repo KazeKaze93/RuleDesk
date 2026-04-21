@@ -20,6 +20,8 @@ export interface ProviderSettings {
 export interface IBooruProvider {
   id: string;
   name: string;
+  /** Domains this provider is allowed to load media/connect from */
+  readonly allowedDomains: string[];
   /** Validates provided credentials against the API */
   checkAuth(settings: ProviderSettings): Promise<boolean>;
   /** Fetches posts based on tags and page */
