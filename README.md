@@ -6,8 +6,6 @@
 
 > A modern, secure desktop companion built on Electron and React/TypeScript for browsing and organizing booru-style imageboard content via its public API. Designed for performance and maintainability.
 
-**🌐 Languages:** [English](README.md) | [Русский](.docs-i18n/ru/README.md)
-
 </div>
 
 ---
@@ -209,7 +207,7 @@ Continuous synchronization while the application is running:
 
 ## ✅ Current Status
 
-The application is stable and production-ready (v4.0.0) with the following features implemented:
+The application is stable and production-ready (see **`package.json`** → `version` for the current release number) with the following features implemented:
 
 ### Infrastructure & Build
 
@@ -256,7 +254,7 @@ The application is stable and production-ready (v4.0.0) with the following featu
 - ✅ **Progressive Image Loading:** 3-layer system (Preview → Sample → Original) for instant viewing
 - ✅ **Virtualization:** `react-virtuoso` implemented for efficient large list rendering
 - ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
-- ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
+- ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Playlists, Tracked, Settings)
 - ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles
 - ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), source (all/favorites/subscriptions), and rating
 - ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending)
@@ -269,7 +267,7 @@ The application is stable and production-ready (v4.0.0) with the following featu
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 - ✅ **Age Gate Component:** Fully implemented with legal confirmation (`AgeGate.tsx` component and `confirmLegal` IPC method)
 - ✅ **Content Security Policy:** Strict CSP with support for Rule34.xxx and Gelbooru.com media sources
-- ⏳ **Safe Mode/NSFW Filter:** Database schema includes `isSafeMode` field, but blur logic not yet implemented in UI components
+- ✅ **Safe Mode / NSFW blur:** When Safe Mode is enabled, gallery cards and the full-screen viewer apply configurable blur to sensitive ratings (`PostCard`, `ViewerDialog`, `safeModeStore`)
 
 ---
 
@@ -336,6 +334,8 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 ### 📋 Planning & Reference
 
 - **[Roadmap](./docs/roadmap.md)** - Development roadmap and planned features
+- **[Features.md](./Features.md)** - Short internal priority list (P1 / P2)
+- **[Product Strategy](./Product_Strategy.md)** - Long-term positioning and research pillars
 - **[Rule34 API Reference](./docs/rule34-api-reference.md)** - Unofficial Rule34.xxx API documentation
 
 **💡 Tip:** If you're new to RuleDesk, start with the [Documentation Index](./docs/index.md) for structured navigation.
@@ -367,8 +367,8 @@ We are moving to Feature Development. Priority tasks:
 - ✅ **Download Handler:** Downloads run in Main Process with progress tracking
 - ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
 - ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
-- ⏳ "Download All" for current filter/artist (planned)
-- ⏳ **Settings:** Allow choosing a default download directory (planned)
+- ✅ **Batch download:** "Download all" flows for galleries and lists (rate-limited; see Settings for folder behavior)
+- ✅ **Settings:** Default download folder and duplicate/structure options in **Settings**
 
 ### C. Playlists / Collections ✅ Implemented
 

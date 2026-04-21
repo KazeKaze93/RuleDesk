@@ -8,14 +8,7 @@ RuleDesk is an open-core desktop product focused on safe, maintainable media wor
 
 ## Strategic Feature Pillars
 
-### 1) Safety and Context Control
-
-- **Panic Button** — **PLANNED (v4.2)**.
-- **Work Mode** — **PLANNED (v4.2)**.
-
-These are high-priority user trust features, but they are not counted as shipped in the current release line.
-
-### 2) Intelligent Curation
+### 1) Intelligent Curation
 
 - **Smart Collections AI** — **RESEARCH** (not release-ready).
   - Requires CLIP/ResNet-class model assets (`~100MB+`).

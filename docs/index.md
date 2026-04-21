@@ -73,6 +73,8 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
   - [Active Roadmap](./roadmap.md#-active-roadmap-priority-tasks) - Current priority tasks
   - [Milestones](./roadmap.md#-milestones) - MVP and future phases
   - [Technical Improvements](./roadmap.md#-technical-improvements-from-audit) - Planned technical enhancements
+- **[Features.md](../Features.md)** (repository root) - Concise feature priority list (P1 / P2)
+- **[Product Strategy](../Product_Strategy.md)** (repository root) - Long-term product positioning and research pillars
 
 ---
 
@@ -159,7 +161,7 @@ README.md (Entry Point)
 └── Documentation → This Index
 
 Architecture Documentation
-├── Security → Contributing Guide (Security section)
+├── Security → .cursorrules / Architecture
 ├── Database → Database Documentation
 └── IPC → API Documentation
 

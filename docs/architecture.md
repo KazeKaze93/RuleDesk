@@ -1606,7 +1606,7 @@ Root:
 ├── docs/                           # Documentation
 │   ├── api.md
 │   ├── architecture.md
-│   ├── contributing.md
+│   ├── index.md
 │   ├── database.md
 │   ├── development.md
 │   ├── roadmap.md

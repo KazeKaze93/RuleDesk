@@ -54,9 +54,6 @@ repomix-output.xml
 repomix-output.txt
 .repomix/
 
-# --- Documentation Translation ---
-.docs-i18n/**/*.hash
-
 # --- Testing ---
 /playwright-report/
 /test-results/
