@@ -7,16 +7,67 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import log from "electron-log";
 import * as schema from "./schema";
 import { logger } from "../lib/logger";
+import { getDatabasePaths, getLegacyDatabasePaths } from "./paths";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
 let dbInstance: AppDatabase | null = null;
 let sqliteInstance: InstanceType<typeof Database> | null = null;
 
+async function moveFileIfExists(sourcePath: string, targetPath: string): Promise<boolean> {
+  try {
+    await fs.promises.access(sourcePath);
+  } catch {
+    return false;
+  }
+
+  await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+  await fs.promises.rename(sourcePath, targetPath);
+  return true;
+}
+
+async function removeDirectoryIfEmpty(dirPath: string): Promise<void> {
+  try {
+    const entries = await fs.promises.readdir(dirPath);
+    if (entries.length === 0) {
+      await fs.promises.rmdir(dirPath);
+    }
+  } catch {
+    // Ignore cleanup errors - non-critical.
+  }
+}
+
+async function migrateLegacyDatabaseIfNeeded(newDbPath: string): Promise<void> {
+  if (fs.existsSync(newDbPath)) {
+    return;
+  }
+
+  const legacyPaths = getLegacyDatabasePaths();
+
+  for (const legacyPath of legacyPaths) {
+    if (!fs.existsSync(legacyPath.dbPath)) {
+      continue;
+    }
+
+    const movedDb = await moveFileIfExists(legacyPath.dbPath, newDbPath);
+    const movedWal = await moveFileIfExists(`${legacyPath.dbPath}-wal`, `${newDbPath}-wal`);
+    const movedShm = await moveFileIfExists(`${legacyPath.dbPath}-shm`, `${newDbPath}-shm`);
+
+    logger.info(
+      `[DB] Migrated legacy database from ${legacyPath.userDataDirName} to new location. ` +
+        `(db:${movedDb}, wal:${movedWal}, shm:${movedShm})`
+    );
+
+    await removeDirectoryIfEmpty(legacyPath.userDataDir);
+    break;
+  }
+}
+
 export async function initializeDatabase(): Promise<AppDatabase> {
   if (dbInstance) return dbInstance;
 
-  const dbPath = path.join(app.getPath("userData"), "metadata.db");
+  const { dbPath } = getDatabasePaths();
+  await migrateLegacyDatabaseIfNeeded(dbPath);
   
   // Determine migrations folder path - handle test environment correctly
   // In test mode, migrations are in project root (not packaged)

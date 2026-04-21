@@ -11,6 +11,7 @@ import { IPC_CHANNELS } from "../channels";
 import { getSqliteInstance, closeDatabase, initializeDatabase } from "../../db/client";
 import { maintenanceQueue } from "../../db/maintenance-queue";
 import type { SyncService } from "../../services/sync-service";
+import { BACKUP_FILE_PREFIX, getDatabasePaths } from "../../db/paths";
 
 /**
  * Maintenance Controller
@@ -130,7 +131,7 @@ export class MaintenanceController extends BaseController {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const backupPath = path.join(
         backupDir,
-        `metadata-backup-${timestamp}.db`
+        `${BACKUP_FILE_PREFIX}-${timestamp}.db`
       );
 
       // Ensure backup directory exists
@@ -242,9 +243,7 @@ export class MaintenanceController extends BaseController {
       closeDatabase();
 
       // Define paths for DB and WAL/SHM files
-      const dbPath = path.join(app.getPath("userData"), "metadata.db");
-      const walPath = `${dbPath}-wal`;
-      const shmPath = `${dbPath}-shm`;
+      const { dbPath, walPath, shmPath } = getDatabasePaths();
       const tempDbPath = `${dbPath}.tmp`;
 
       // Safety rollback: Rename existing files to .bak instead of deleting

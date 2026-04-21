@@ -5,6 +5,8 @@ import { readFileSync, existsSync } from "fs";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { closeDatabase } from "../../db/client";
+import { IPC_CHANNELS } from "../channels";
+import { getDatabasePaths } from "../../db/paths";
 
 /**
  * System Controller
@@ -19,7 +21,8 @@ export class SystemController extends BaseController {
    * Setup IPC handlers for system operations
    */
   public setup(): void {
-    this.handle("app:get-version", z.tuple([]), this.getAppVersion.bind(this));
+    this.handle(IPC_CHANNELS.APP.GET_VERSION, z.tuple([]), this.getAppVersion.bind(this));
+    this.handle(IPC_CHANNELS.APP.GET_DB_LOCATION, z.tuple([]), this.getDatabaseLocation.bind(this));
     this.handle("app:get-icon-path", z.tuple([]), this.getIconPath.bind(this));
     this.handle("app:quit", z.tuple([]), this.quitApp.bind(this));
     this.handle(
@@ -41,6 +44,11 @@ export class SystemController extends BaseController {
     const version = app.getVersion();
     log.info(`[SystemController] Version requested: ${version}`);
     return version;
+  }
+
+  private async getDatabaseLocation(_event: IpcMainInvokeEvent): Promise<string> {
+    const { dbPath } = getDatabasePaths();
+    return dbPath;
   }
 
   /**
