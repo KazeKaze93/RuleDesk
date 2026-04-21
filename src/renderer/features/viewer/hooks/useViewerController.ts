@@ -95,16 +95,17 @@ export function useViewerController({
     // Update all relevant caches optimistically (immediate UI feedback)
     // Update artist gallery cache if post has artistId
     if (post.artistId) {
-      const artistQueryKey = ["posts", post.artistId];
-      queryClient.setQueryData<InfiniteData<Post[]>>(artistQueryKey, (old) =>
+      queryClient.setQueriesData<InfiniteData<Post[]>>(
+        { queryKey: ["posts", post.artistId] },
+        (old) =>
         updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
       );
     }
 
     // Update updates feed cache
-    const updatesQueryKey = ["posts", "updates"];
-    queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) =>
-      updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+    queryClient.setQueriesData<InfiniteData<Post[]>>(
+      { queryKey: ["posts", "updates"] },
+      (old) => updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
     );
 
     // Update search cache (for Browse page) if post is from search
@@ -168,8 +169,9 @@ export function useViewerController({
       // Update all relevant caches using shared utility
       // Update artist gallery cache if post has artistId
       if (post.artistId) {
-        const artistQueryKey = ["posts", post.artistId];
-        queryClient.setQueryData<InfiniteData<Post[]>>(artistQueryKey, (old) =>
+        queryClient.setQueriesData<InfiniteData<Post[]>>(
+          { queryKey: ["posts", post.artistId] },
+          (old) =>
           updatePostInCache(old, post.id, (p) => ({
             ...p,
             isFavorited: newState,
@@ -178,12 +180,13 @@ export function useViewerController({
       }
 
       // Update updates feed cache
-      const updatesQueryKey = ["posts", "updates"];
-      queryClient.setQueryData<InfiniteData<Post[]>>(updatesQueryKey, (old) =>
-        updatePostInCache(old, post.id, (p) => ({
-          ...p,
-          isFavorited: newState,
-        }))
+      queryClient.setQueriesData<InfiniteData<Post[]>>(
+        { queryKey: ["posts", "updates"] },
+        (old) =>
+          updatePostInCache(old, post.id, (p) => ({
+            ...p,
+            isFavorited: newState,
+          }))
       );
 
       // Update search cache (for Browse page) if post is from search
@@ -199,37 +202,38 @@ export function useViewerController({
 
       // Update favorites cache separately
       const favoritesQueryKey = ["posts", "favorites"];
-      const oldFavoritesData =
-        queryClient.getQueryData<InfiniteData<Post[]>>(favoritesQueryKey);
+      const favoritesQueriesData =
+        queryClient.getQueriesData<InfiniteData<Post[]>>({
+          queryKey: favoritesQueryKey,
+        });
+      const oldFavoritesData = favoritesQueriesData[0]?.[1];
 
-      if (oldFavoritesData) {
-        queryClient.setQueryData<InfiniteData<Post[]>>(
-          favoritesQueryKey,
-          (old) => {
-            if (!old) return old;
+      queryClient.setQueriesData<InfiniteData<Post[]>>(
+        { queryKey: favoritesQueryKey },
+        (old) => {
+          if (!old) return old;
 
-            // If removing from favorites, filter out the post
-            if (!newState) {
-              return {
-                ...old,
-                pages: old.pages
-                  .map((page) => page.filter((p) => p.id !== post.id))
-                  .filter((page) => page.length > 0),
-              };
-            }
-
-            // If adding to favorites, update existing post
+          // If removing from favorites, filter out the post
+          if (!newState) {
             return {
               ...old,
-              pages: old.pages.map((page) =>
-                page.map((p) =>
-                  p.id === post.id ? { ...p, isFavorited: newState } : p
-                )
-              ),
+              pages: old.pages
+                .map((page) => page.filter((p) => p.id !== post.id))
+                .filter((page) => page.length > 0),
             };
           }
-        );
-      }
+
+          // If adding to favorites, update existing post
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((p) =>
+                p.id === post.id ? { ...p, isFavorited: newState } : p
+              )
+            ),
+          };
+        }
+      );
 
       // Invalidate favorites query if removing from favorites or post not in cache
       const foundInCache = oldFavoritesData?.pages.some((page) =>

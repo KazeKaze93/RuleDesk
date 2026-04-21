@@ -128,6 +128,8 @@ Caches post metadata for filtering, statistics, and download management. Support
 | `published_at` | INTEGER (NOT NULL)                     | Publication timestamp (timestamp mode, ms)    |
 | `created_at`   | INTEGER (NOT NULL)                     | When added to local database (timestamp ms)   |
 | `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been viewed                  |
+| `last_viewed_at` | INTEGER (NULL)                       | Last time post was viewed (timestamp mode, ms) |
+| `view_count`   | INTEGER (NOT NULL, DEFAULT 0)          | Number of times post was viewed               |
 | `is_favorited` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been favorited               |
 
 **Unique Constraint:** `(artist_id, post_id)` - Prevents duplicate posts per artist.
@@ -137,6 +139,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 - `postIdIdx` - Index on `post_id` for efficient lookups
 - `artistIdIdx` - Index on `artist_id` for artist-based queries
 - `isViewedIdx` - Index on `is_viewed` for view status filtering
+- `posts_last_viewed_at_idx` - Index on `last_viewed_at` for recently viewed sorting
 - `publishedAtIdx` - Index on `published_at` for date-based sorting
 - `isFavoritedIdx` - Index on `is_favorited` for favorites filtering
 - `posts_media_type_idx` - Index on `media_type` for fast image/video filtering
@@ -168,6 +171,8 @@ export const posts = sqliteTable(
     isViewed: integer("is_viewed", { mode: "boolean" })
       .default(false)
       .notNull(),
+    lastViewedAt: integer("last_viewed_at", { mode: "timestamp" }),
+    viewCount: integer("view_count").default(0).notNull(),
     isFavorited: integer("is_favorited", { mode: "boolean" })
       .default(false)
       .notNull(),
@@ -177,6 +182,7 @@ export const posts = sqliteTable(
     postIdIdx: index("postIdIdx").on(table.postId),
     artistIdIdx: index("artistIdIdx").on(table.artistId),
     isViewedIdx: index("isViewedIdx").on(table.isViewed),
+    lastViewedAtIdx: index("posts_last_viewed_at_idx").on(table.lastViewedAt),
     publishedAtIdx: index("publishedAtIdx").on(table.publishedAt),
     isFavoritedIdx: index("isFavoritedIdx").on(table.isFavorited),
     mediaTypeIdx: index("posts_media_type_idx").on(table.mediaType),
@@ -577,7 +583,15 @@ import { posts } from "./schema";
 import { eq } from "drizzle-orm";
 
 const db = getDb();
-db.update(posts).set({ isViewed: true }).where(eq(posts.id, 123)).run();
+db
+  .update(posts)
+  .set({
+    isViewed: true,
+    lastViewedAt: new Date(),
+    viewCount: sql`${posts.viewCount} + 1`,
+  })
+  .where(eq(posts.id, 123))
+  .run();
 ```
 
 #### Toggle Post Favorite

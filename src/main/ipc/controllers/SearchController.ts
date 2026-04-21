@@ -186,6 +186,8 @@ export class SearchController extends BaseController {
       publishedAt: booruPost.createdAt,
       createdAt: booruPost.createdAt,
       isViewed: false,
+      lastViewedAt: null,
+      viewCount: 0,
       isFavorited: false,
     };
   }

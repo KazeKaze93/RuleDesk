@@ -99,6 +99,13 @@
       "when": 1769269367000,
       "tag": "0014_add_theme",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1769269368000,
+      "tag": "0015_add_view_metadata",
+      "breakpoints": true
     }
   ]
 }

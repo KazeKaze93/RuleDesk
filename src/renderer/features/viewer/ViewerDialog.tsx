@@ -384,11 +384,20 @@ const useCurrentPost = (
       }
       case "artist": {
         // CRITICAL: Match query key from ArtistGallery.tsx
-        // QueryKey includes: ["posts", artistId, aiFilter, mediaType]
+        // QueryKey includes: ["posts", artistId, aiFilter, mediaType, source, sortOrder]
         // This ensures cache lookup matches the query key used for fetching artist posts
         const aiFilter = origin.aiFilter ?? "all";
         const mediaType = origin.mediaType ?? "all";
-        return ["posts", origin.artistId, aiFilter, mediaType] as const;
+        const source = origin.source ?? "all";
+        const sortOrder = origin.sortOrder ?? "desc";
+        return [
+          "posts",
+          origin.artistId,
+          aiFilter,
+          mediaType,
+          source,
+          sortOrder,
+        ] as const;
       }
       case "search": {
         return ["search", origin.tags] as const;
