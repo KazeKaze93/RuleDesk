@@ -441,7 +441,7 @@ const posts = await db.query.posts.findMany({
 **Key Points:**
 
 - Database is **never** accessed from Renderer Process (security)
-- All queries are **type-safe** via Drizzle ORM
+- All CRUD queries are **type-safe** via Drizzle ORM; raw SQL is reserved for PRAGMAs, FTS5/trigger management, schema introspection, and performance-critical batch backfills
 - Operations are **synchronous** for performance
 - WAL mode enables **concurrent reads** during writes
 - **Always use `limit`** for SELECT queries to prevent Renderer process overload

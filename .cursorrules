@@ -17,7 +17,7 @@ You do not tolerate sloppy code, "any" types, "as" casting, magic numbers, or pr
 1. **Architecture**:
 
    - **Strict Separation**: Main Process (Backend) vs Renderer (Frontend).
-   - **Database**: Direct, synchronous access via `better-sqlite3` + Drizzle in Main Process. ❌ **NO Worker Threads** for DB operations.
+   - **Database**: Direct, synchronous access via `better-sqlite3` + Drizzle in Main Process. Use Drizzle ORM for CRUD on application tables. Raw SQL via `getSqliteInstance()` is allowed only for SQLite PRAGMAs, FTS5 virtual table/trigger management, schema introspection (`sqlite_master`, `PRAGMA table_info`), and bulk backfill/batch operations where Drizzle overhead is unacceptable. ❌ **NO Worker Threads** for DB operations.
    - **IPC**: Group handlers by domain in `src/main/ipc/handlers`. Use `ipcMain.handle` and `ipcRenderer.invoke`.
    - **Services**: Services (Sync, Updater) must call DB directly, not via IPC/RPC.
 

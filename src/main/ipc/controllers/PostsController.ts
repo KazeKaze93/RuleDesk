@@ -109,6 +109,7 @@ export class PostsController extends BaseController {
     try {
       // Use official getSqliteInstance export (safe, no unsafe casts)
       // Query sqlite_master system table to check if posts_fts exists
+      // Schema introspection: no Drizzle equivalent
       const sqlite = getSqliteInstance();
       const stmt = sqlite.prepare<[], { name: string }>(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
@@ -133,6 +134,7 @@ export class PostsController extends BaseController {
    */
   private initializeViewMetadataColumnsCheck(): void {
     try {
+      // PRAGMA: no Drizzle equivalent
       const sqlite = getSqliteInstance();
       const columns = sqlite
         .prepare<[], { name: string }>("PRAGMA table_info(posts)")
@@ -1091,11 +1093,11 @@ export class PostsController extends BaseController {
     _event: IpcMainInvokeEvent
   ): Promise<{ updatedCount: number }> {
     try {
-      const sqlite = getSqliteInstance();
-      const result = sqlite
-        .prepare(
-          "UPDATE posts SET is_viewed = 1 WHERE is_viewed = 0 OR is_viewed IS NULL"
-        )
+      const db = this.getDb();
+      const result = db
+        .update(posts)
+        .set({ isViewed: true })
+        .where(or(eq(posts.isViewed, false), sql`${posts.isViewed} IS NULL`))
         .run();
 
       const updatedCount = result.changes;
