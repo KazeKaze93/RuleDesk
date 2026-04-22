@@ -85,6 +85,7 @@ export interface IpcBridge {
   getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
+  markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
 
@@ -256,6 +257,8 @@ const ipcBridge: IpcBridge = {
 
   togglePostViewed: (postId) =>
     ipcRenderer.invoke("db:toggle-post-viewed", postId),
+  markAllPostsAsViewed: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.MARK_ALL_VIEWED),
 
   resetPostCache: (postId) => ipcRenderer.invoke("db:reset-post-cache", postId),
 

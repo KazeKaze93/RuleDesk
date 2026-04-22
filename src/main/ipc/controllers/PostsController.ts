@@ -208,6 +208,14 @@ export class PostsController extends BaseController {
       ) => Promise<unknown>
     );
     this.handle(
+      IPC_CHANNELS.DB.MARK_ALL_VIEWED,
+      z.tuple([]),
+      this.markAllViewed.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+    this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
       z.tuple([z.number().int().positive()]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
@@ -1072,6 +1080,30 @@ export class PostsController extends BaseController {
     } catch (error) {
       log.error("[PostsController] Failed to mark post as viewed:", error);
       return false;
+    }
+  }
+
+  /**
+   * Mark all posts as viewed in one batch operation.
+   * Uses synchronous better-sqlite3 statement to avoid async transaction overhead.
+   */
+  private async markAllViewed(
+    _event: IpcMainInvokeEvent
+  ): Promise<{ updatedCount: number }> {
+    try {
+      const sqlite = getSqliteInstance();
+      const result = sqlite
+        .prepare(
+          "UPDATE posts SET is_viewed = 1 WHERE is_viewed = 0 OR is_viewed IS NULL"
+        )
+        .run();
+
+      const updatedCount = result.changes;
+      log.info(`[PostsController] Mark all viewed completed. Updated: ${updatedCount}`);
+      return { updatedCount };
+    } catch (error) {
+      log.error("[PostsController] Failed to mark all posts as viewed:", error);
+      return { updatedCount: 0 };
     }
   }
 

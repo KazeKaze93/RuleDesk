@@ -26,6 +26,7 @@ export const IPC_CHANNELS = {
     GET_POSTS_COUNT: "db:get-posts-count",
     GET_POSTS_COUNT_WITH_FILTERS: "db:get-posts-count-with-filters",
     MARK_VIEWED: "db:mark-post-viewed",
+    MARK_ALL_VIEWED: "db:mark-all-viewed",
     TOGGLE_FAVORITE: "db:toggle-post-favorite",
     SYNC_ALL: "db:sync-all",
     TOGGLE_POST_VIEWED: "db:toggle-post-viewed" as const,

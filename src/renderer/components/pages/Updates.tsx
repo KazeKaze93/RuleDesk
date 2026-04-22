@@ -5,7 +5,7 @@ import {
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
-import { RefreshCw, Loader2 } from "lucide-react";
+import { RefreshCw, Loader2, CheckCheck } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
@@ -16,6 +16,7 @@ import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
 import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../downloads/DownloadAllButton";
+import { Button } from "../ui/button";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -277,6 +278,28 @@ export const Updates = () => {
     },
   });
 
+  const markAllMutation = useMutation({
+    mutationFn: () => window.api.markAllPostsAsViewed(),
+    onSuccess: () => {
+      queryClient.setQueriesData<InfiniteData<Post[]>>(
+        { queryKey: ["posts", "updates"] },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((post) => ({ ...post, isViewed: true }))
+            ),
+          };
+        }
+      );
+    },
+    onError: (err) => {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      log.error("[Updates] Failed to mark all as viewed:", errorMessage);
+    },
+  });
+
   const handleLoadMore = async () => {
     if (hasNextPage && !isFetchingNextPage) {
       log.info("[Updates] Viewer requested more posts. Fetching...");
@@ -382,6 +405,17 @@ export const Updates = () => {
           canDownload={canDownload || allPosts.length > 0}
           totalLabel={downloadTotalCount || allPosts.length}
         />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => markAllMutation.mutate()}
+          disabled={allPosts.length === 0 || markAllMutation.isPending}
+          aria-label="Mark all posts as read"
+          className="ml-2"
+        >
+          <CheckCheck className="w-4 h-4 mr-2" />
+          Mark all read
+        </Button>
       </div>
 
       {/* Grid Content */}
