@@ -355,7 +355,7 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
 ## 🚀 Active Roadmap
 
-We are moving to Feature Development. Priority tasks:
+Current priority is roadmap parity and UX polish on top of already shipped core modules:
 
 ### A. Filters (Advanced Search) ✅ Partially Implemented
 
@@ -372,7 +372,7 @@ We are moving to Feature Development. Priority tasks:
 - ⏳ **Tag Search:** Advanced tag search with FTS5 (implemented in global search; full filter-panel parity in progress)
 - ⏳ **Rating Filter:** Filter by rating (Safe/Questionable/Explicit) - backend support exists, full UI wiring in progress
 
-**Status:** Core filtering functionality is implemented and working. Advanced tag search and rating filtering are planned for future releases.
+**Status:** Core filtering functionality is implemented and working. Remaining work is cross-page parity for advanced controls (rating/date-range and full filter-panel consistency).
 *🟡 PARTIAL — Sync status location differs from spec. Rating/date-range filter controls not fully wired in all pages.*
 
 ### B. Download Manager ✅ Implemented (Core Features)

@@ -637,9 +637,9 @@ const posts = await db.query.posts.findMany({
 
    - **Pages:**
 
-     - **Updates.tsx** - Subscriptions feed (stub - placeholder component)
-     - **Browse.tsx** - All posts view with filtering (stub - placeholder component)
-     - **Favorites.tsx** - Favorites collection (stub - placeholder component)
+    - **Updates.tsx** - Subscriptions feed (implemented, with remaining roadmap parity gaps)
+    - **Browse.tsx** - All posts view with filtering and sorting (implemented)
+    - **Favorites.tsx** - Favorites collection (implemented)
      - **Tracked.tsx** - Artists and tags management (fully implemented)
      - **Settings.tsx** - Application configuration (fully implemented)
      - **ArtistDetails.tsx** - Artist gallery view (fully implemented)
@@ -1684,7 +1684,7 @@ Root:
 - **Virtualization:** `react-virtuoso` for efficient large list rendering
 - **Search Functionality:** Local artist search and remote tag search (multi-provider)
 - **Sidebar Navigation:** Persistent sidebar with main navigation sections
-- **Global Top Bar:** Unified top bar with search, filters, sort controls (UI implemented, backend pending)
+- **Global Top Bar:** Unified top bar with search, filters, sort controls (implemented; full control parity still in progress)
 - **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites
 - **Download Manager:** Download full-resolution files with progress tracking
 - **Favorites System:** Complete implementation with database field and toggle functionality
@@ -1738,10 +1738,10 @@ Root:
 - ✅ **Download Handler:** Downloads run in Main Process with progress tracking
 - ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
 - ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
-- ⏳ "Download All" for current filter/artist (planned)
-- ⏳ **Settings:** Allow choosing a default download directory (planned)
+- ✅ "Download All" for current filter/artist (implemented with rate limits)
+- ✅ **Settings:** Default download directory and related options available
 
-**Status:** ✅ Core download functionality implemented. Individual file downloads work with progress tracking. Batch download and default directory settings are planned for future releases.
+**Status:** ✅ Core download functionality implemented. Individual and batch downloads work with progress tracking, and default directory settings are available.
 
 ### C. Playlists / Collections ✅ Implemented
 

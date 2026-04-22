@@ -24,7 +24,7 @@ Keywords or labels used to categorize and search for posts. Tags describe variou
 - Tags are used for filtering and searching posts
 - Tag normalization automatically strips metadata (e.g., "tag (123)" → "tag")
 
-**Related:** [Database Schema - Posts](./database.md#table-posts), [Tag Normalization](./roadmap.md#data-integrity--sync)
+**Related:** [Database Schema - Posts](./database.md#table-posts), [Roadmap](./roadmap.md#-recent-fixes--current-status-completed)
 
 ---
 
@@ -36,7 +36,7 @@ Content rating classification system used by booru sites to categorize posts by 
 - **Questionable (q):** Questionable content
 - **Explicit (e):** Explicit/NSFW content
 
-**Related:** [Database Schema - Posts](./database.md#table-posts), [Filters](./roadmap.md#a-filters-advanced-search-priority-high--ui-ready-backend-pending)
+**Related:** [Database Schema - Posts](./database.md#table-posts), [Filters](./roadmap.md#-navigation--ux-revamp)
 
 ---
 
@@ -73,7 +73,7 @@ Local storage of post metadata and preview images to enable offline browsing and
 
 A list of tags or content that should be excluded from search results or feeds. Currently not implemented in RuleDesk, but planned for future releases.
 
-**Related:** [Roadmap - Filters](./roadmap.md#a-filters-advanced-search-priority-high--ui-ready-backend-pending)
+**Related:** [Roadmap - Filters](./roadmap.md#-navigation--ux-revamp)
 
 ---
 
@@ -231,7 +231,7 @@ Curated collections of posts independent of Artists/Trackers. Users can create p
 - Filter and sort posts within playlists (FTS5 tag search, rating, media type, AI filter)
 - Smart playlists with dynamic tag-based queries
 
-**Related:** [Roadmap - Playlists](./roadmap.md#c-playlists--collections-priority-medium--implemented), [Database Schema - Playlists](./database.md#table-playlists)
+**Related:** [Roadmap](./roadmap.md#-active-roadmap-priority-tasks), [Database Schema - Playlists](./database.md#table-playlists)
 
 ---
 

@@ -10,7 +10,7 @@
 - [Error Handling](#error-handling)
 - [Security Considerations](#security-considerations)
 - [Implementation Details](#implementation-details)
-- [Future API Extensions](#future-api-extensions)
+- [API Evolution Notes](#api-evolution-notes)
 - [External API Integration](#external-api-integration)
 
 ---
@@ -1891,17 +1891,13 @@ const ipcBridge: IpcBridge = {
 contextBridge.exposeInMainWorld("api", ipcBridge);
 ```
 
-## Future API Extensions
+## API Evolution Notes
 
-Planned API methods (not yet implemented):
+Potential next additions (not committed to a release):
 
 - `updateArtist(artistId: number, data: Partial<Artist>)` - Update artist settings
-- `downloadPost(postId: number)` - Download a post's media file
-- `getSubscriptions()` - Get tag subscriptions
-- `addSubscription(tagString: string)` - Subscribe to a tag combination
-- `deleteSubscription(id: number)` - Remove a subscription
-- `getBackupList()` - List available backup files
-- `deleteBackup(backupPath: string)` - Delete a backup file
+- `getSubscriptions()` / `addSubscription(...)` / `deleteSubscription(...)` - Subscription management
+- `getBackupList()` / `deleteBackup(...)` - Backup lifecycle management
 
 ## External API Integration
 

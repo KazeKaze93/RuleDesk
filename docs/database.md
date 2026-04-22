@@ -680,12 +680,15 @@ Migrations are stored in `drizzle/`:
 ```sql
 CREATE TABLE `artists` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  `username` text NOT NULL,
+  `name` text NOT NULL,
+  `tag` text NOT NULL UNIQUE,
+  `provider` text NOT NULL DEFAULT 'rule34',
+  `type` text NOT NULL DEFAULT 'tag',
   `api_endpoint` text NOT NULL,
   `last_post_id` integer DEFAULT 0 NOT NULL,
   `new_posts_count` integer DEFAULT 0 NOT NULL,
   `last_checked` integer,
-  `created_at` integer DEFAULT (unixepoch()) NOT NULL
+  `created_at` integer NOT NULL
 );
 ```
 
@@ -712,7 +715,7 @@ export default defineConfig({
 
 ```typescript
 const artists = await db.query.artists.findMany({
-  orderBy: [asc(schema.artists.username)],
+  orderBy: [asc(schema.artists.name)],
 });
 ```
 
@@ -803,14 +806,14 @@ db.transaction((tx) => {
 Add indexes for frequently queried columns:
 
 ```typescript
-// Example (to be added)
+// Example
 export const artists = sqliteTable(
   "artists",
   {
     // ... columns
   },
   (table) => ({
-    usernameIdx: index("username_idx").on(table.username),
+    nameIdx: index("artists_name_idx").on(table.name),
   })
 );
 ```

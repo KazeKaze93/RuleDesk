@@ -143,19 +143,14 @@ The artist will appear in your tracked list!
 
 3. The sync runs in the background, so you can continue using the app while it syncs
 
-**Automatic Sync:**
+**Automatic Sync Status:**
 
-You can enable automatic sync in Settings:
+Automatic scheduler options are not available yet:
 
-- **Auto-sync on startup** - Syncs when you open the app
-- **Periodic sync** - Syncs every X minutes while the app is running
+- **Auto-sync on startup** - planned
+- **Periodic sync** - planned
 
-**How to enable:**
-
-1. Go to **Settings** (sidebar)
-2. Scroll to **Sync Settings**
-3. Toggle **"Auto-sync on Startup"** ON
-4. Set **"Periodic Sync Interval"** (e.g., 30 minutes)
+For now, use **Sync All** manually when needed.
 
 ### Viewing Posts
 
@@ -203,7 +198,7 @@ Each post card shows:
 
 **Search posts:**
 
-1. Go to **"Browse"** page (when implemented)
+1. Go to **"Browse"** page
 2. Use the search bar in the top bar
 3. Type tags or keywords
 4. Results will filter automatically
@@ -311,8 +306,8 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 
 ### Sidebar Sections
 
-- **Updates** - See all new posts from your tracked artists (planned)
-- **Browse** - Browse all cached posts with filters (planned)
+- **Updates** - See new posts from your tracked sources
+- **Browse** - Browse cached posts with filters and sorting
 - **Favorites** - Your favorited posts collection
 - **Tracked** - Manage your tracked artists and tags
 - **Settings** - App configuration and preferences
@@ -339,8 +334,7 @@ The **top bar** appears on content pages and provides:
 
 **Global:**
 
-- **Ctrl/Cmd + S** - Sync all (planned)
-- **Ctrl/Cmd + F** - Focus search (planned)
+- Global shortcut mappings may vary by platform/build. Use sidebar and top bar controls as the primary interaction model.
 
 ---
 
