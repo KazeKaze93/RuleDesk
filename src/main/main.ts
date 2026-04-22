@@ -85,6 +85,7 @@ import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 import { SyncScheduler } from "./services/sync-scheduler";
+import { MaintenanceScheduler } from "./services/maintenance-scheduler";
 import { USER_DATA_DIR_NAME } from "./db/paths";
 import { getAllProviderDomains } from "./providers";
 import { eq } from "drizzle-orm";
@@ -146,6 +147,7 @@ process.env.USER_DATA_PATH = app.getPath("userData");
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 const syncScheduler = new SyncScheduler(syncService);
+const maintenanceScheduler = new MaintenanceScheduler();
 container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
 
 // In test mode, skip single instance lock to allow multiple test instances
@@ -538,9 +540,8 @@ async function initializeAppAndWindow() {
           // Create system tray
           createTray(window);
 
-          setTimeout(() => {
-            logger.info("Main: DB maintenance skipped for now (direct DB mode)");
-          }, 3000);
+          maintenanceScheduler.start();
+          logger.info("[Main] Maintenance scheduler started");
         }
       });
     }
@@ -553,6 +554,7 @@ async function initializeAppAndWindow() {
     // Clean up tray and database when app quits
     app.on("before-quit", () => {
       syncScheduler.stop();
+      maintenanceScheduler.stop();
       if (tray) {
         tray.destroy();
         tray = null;
