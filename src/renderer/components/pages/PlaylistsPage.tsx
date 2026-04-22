@@ -25,6 +25,7 @@ import { usePlaylists } from "../../lib/hooks/usePlaylists";
 import { useDownloadAll } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import type { SearchResults } from "../../../main/providers";
+import { hasAiGeneratedTag } from "../../lib/filter-utils";
 
 interface PlaylistsPageProps {
   onBack?: () => void;
@@ -102,6 +103,10 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
   // Build filters for API call from GlobalTopBar filters
   const apiFilters = useMemo(() => {
     const result: { rating?: "s" | "q" | "e"; mediaType?: "all" | "images" | "videos" } = {};
+
+    if (filters.rating === "s" || filters.rating === "q" || filters.rating === "e") {
+      result.rating = filters.rating;
+    }
     
     // Map mediaType filter from GlobalTopBar
     if (filters.mediaType && filters.mediaType !== "all") {
@@ -109,7 +114,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     }
     
     return result;
-  }, [filters.mediaType]);
+  }, [filters.mediaType, filters.rating]);
 
   const {
     data,
@@ -118,7 +123,14 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery<Post[]>({
-    queryKey: ["playlist-posts", playlist.id, filters.mediaType, sortOrder],
+    queryKey: [
+      "playlist-posts",
+      playlist.id,
+      filters.mediaType,
+      filters.rating,
+      filters.aiFilter,
+      sortOrder,
+    ],
     queryFn: async ({ pageParam = 1 }) => {
       return await window.api.resolvePlaylistPosts({
         playlistId: playlist.id,
@@ -137,8 +149,16 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
   });
 
   const allPosts = useMemo(() => {
-    return data?.pages.flat() ?? [];
-  }, [data]);
+    let posts = data?.pages.flat() ?? [];
+
+    if (filters.aiFilter === "hide") {
+      posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
+    } else if (filters.aiFilter === "only") {
+      posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
+    }
+
+    return posts;
+  }, [data, filters.aiFilter]);
 
   const {
     downloadAll,
@@ -177,6 +197,8 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
         kind: "playlist",
         playlistId: playlist.id,
         mediaType: filters.mediaType,
+        rating: filters.rating,
+        aiFilter: filters.aiFilter,
         sortOrder,
         provider, // Pass provider to origin for shadow insert operations
       },

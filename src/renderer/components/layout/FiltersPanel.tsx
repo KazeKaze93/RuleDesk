@@ -7,6 +7,27 @@ import { FilterToggleGroup } from "./filters/FilterToggleGroup";
 import { SourceSwitcher } from "./filters/SourceSwitcher";
 import { Image, Film, RectangleHorizontal, RectangleVertical, Clock, ArrowUpNarrowWide, Eye, X, Grid3x3 } from "lucide-react";
 
+type AiFilterValue = "all" | "hide" | "only";
+type MediaFilterValue = "all" | "images" | "videos";
+type OrientationFilterValue = "all" | "horizontal" | "vertical";
+type SortByFilterValue = "date" | "score";
+type RatingFilterValue = "all" | "s" | "q" | "e";
+
+const isAiFilterValue = (value: string): value is AiFilterValue =>
+  value === "all" || value === "hide" || value === "only";
+
+const isMediaFilterValue = (value: string): value is MediaFilterValue =>
+  value === "all" || value === "images" || value === "videos";
+
+const isOrientationFilterValue = (value: string): value is OrientationFilterValue =>
+  value === "all" || value === "horizontal" || value === "vertical";
+
+const isSortByFilterValue = (value: string): value is SortByFilterValue =>
+  value === "date" || value === "score";
+
+const isRatingFilterValue = (value: string): value is RatingFilterValue =>
+  value === "all" || value === "s" || value === "q" || value === "e";
+
 export const FiltersPanel = () => {
   const filters = useSearchStore((state) => state.filters);
   const setFilters = useSearchStore((state) => state.setFilters);
@@ -29,6 +50,7 @@ export const FiltersPanel = () => {
   const isDirty = useMemo(() => {
     return (
       filters.aiFilter !== "all" ||
+      filters.rating !== "all" ||
       filters.mediaType !== "all" ||
       filters.source !== "all" ||
       filters.orientation !== "all" ||
@@ -51,7 +73,11 @@ export const FiltersPanel = () => {
       <FilterSection label="AI Posts" showSeparator={true}>
         <FilterToggleGroup
           value={filters.aiFilter}
-          onValueChange={(value) => setFilters({ aiFilter: value as "all" | "hide" | "only" })}
+          onValueChange={(value) => {
+            if (isAiFilterValue(value)) {
+              setFilters({ aiFilter: value });
+            }
+          }}
           options={[
             { value: "all", label: "All" },
             { value: "hide", label: "No AI" },
@@ -60,11 +86,33 @@ export const FiltersPanel = () => {
         />
       </FilterSection>
 
+      {/* Rating Filter */}
+      <FilterSection label="Rating" showSeparator={true}>
+        <FilterToggleGroup
+          value={filters.rating}
+          onValueChange={(value) => {
+            if (isRatingFilterValue(value)) {
+              setFilters({ rating: value });
+            }
+          }}
+          options={[
+            { value: "all", label: "All" },
+            { value: "s", label: "Safe" },
+            { value: "q", label: "Questionable" },
+            { value: "e", label: "Explicit" },
+          ]}
+        />
+      </FilterSection>
+
       {/* Media Type */}
       <FilterSection label="Media" showSeparator={true}>
         <FilterToggleGroup
           value={filters.mediaType}
-          onValueChange={(value) => setFilters({ mediaType: value as "all" | "images" | "videos" })}
+          onValueChange={(value) => {
+            if (isMediaFilterValue(value)) {
+              setFilters({ mediaType: value });
+            }
+          }}
           options={[
             { value: "all", label: "All", icon: <Grid3x3 className="w-3.5 h-3.5" /> },
             { value: "images", label: "Images", icon: <Image className="w-3.5 h-3.5" /> },
@@ -77,7 +125,11 @@ export const FiltersPanel = () => {
       <FilterSection label="Format" showSeparator={true}>
         <FilterToggleGroup
           value={filters.orientation}
-          onValueChange={(value) => setFilters({ orientation: value as "all" | "horizontal" | "vertical" })}
+          onValueChange={(value) => {
+            if (isOrientationFilterValue(value)) {
+              setFilters({ orientation: value });
+            }
+          }}
           options={[
             { value: "all", label: "All" },
             { value: "horizontal", label: "Horizontal", icon: <RectangleHorizontal className="w-3.5 h-3.5" />, disabled: true },
@@ -90,7 +142,11 @@ export const FiltersPanel = () => {
       <FilterSection label="Sort" showSeparator={false}>
         <FilterToggleGroup
           value={filters.sortBy}
-          onValueChange={(value) => setFilters({ sortBy: value as "date" | "score" })}
+          onValueChange={(value) => {
+            if (isSortByFilterValue(value)) {
+              setFilters({ sortBy: value });
+            }
+          }}
           options={[
             { value: "date", label: "Latest", icon: <Clock className="w-3.5 h-3.5" /> },
             { value: "score", label: "Top Rated", icon: <ArrowUpNarrowWide className="w-3.5 h-3.5" />, disabled: true },

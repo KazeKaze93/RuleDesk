@@ -118,6 +118,7 @@ export const Browse = () => {
   // Use atomic selectors - faster than useShallow for 3 fields
   // Each selector only re-renders when its specific field changes
   const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const rating = useSearchStore((state) => state.filters.rating);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
 
@@ -181,12 +182,13 @@ export const Browse = () => {
   // Worker-based processing with custom hook to avoid cascade renders
   const filterConfig: WorkerFilterConfig = useMemo(() => ({
     aiFilter,
+    rating,
     mediaType,
     source,
     sortOrder,
     trackedTagsSet: trackedTagsArray,
     tags,
-  }), [aiFilter, mediaType, source, sortOrder, trackedTagsArray, tags]);
+  }), [aiFilter, rating, mediaType, source, sortOrder, trackedTagsArray, tags]);
 
   const { data: allPosts = [], isLoading: workerLoading } = useWorkerFilteredPosts(
     rawPosts,

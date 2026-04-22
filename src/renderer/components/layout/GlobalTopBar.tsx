@@ -37,6 +37,7 @@ export const GlobalTopBar = () => {
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.aiFilter !== "all") count++;
+    if (filters.rating !== "all") count++;
     if (filters.mediaType !== "all") count++;
     if (filters.source !== "all") count++;
     if (filters.orientation !== "all") count++;
