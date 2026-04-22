@@ -17,6 +17,7 @@ export const IPC_CHANNELS = {
     SAVE_DOWNLOAD_SETTINGS: "settings:save-download-settings",
   },
   DB: {
+    GET_STATS: "db:get-stats",
     GET_DOWNLOAD_ITEMS: "db:get-download-items",
     GET_ARTISTS: "db:get-artists",
     ADD_ARTIST: "db:add-artist",

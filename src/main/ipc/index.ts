@@ -11,6 +11,7 @@ import { ViewerController } from "./controllers/ViewerController";
 import { FileController } from "./controllers/FileController";
 import { SearchController } from "./controllers/SearchController";
 import { PlaylistController } from "./controllers/PlaylistController";
+import { StatsController } from "./controllers/StatsController";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
 import { getDb } from "../db/client";
@@ -62,6 +63,9 @@ export function setupIpc(): { maintenanceController: MaintenanceController; file
 
   const playlistController = new PlaylistController();
   playlistController.setup();
+
+  const statsController = new StatsController();
+  statsController.setup();
 
   log.info("[IPC] All controllers initialized successfully");
   

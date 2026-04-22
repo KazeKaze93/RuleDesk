@@ -12,6 +12,7 @@ import { Favorites } from "./components/pages/Favorites";
 import { Updates } from "./components/pages/Updates";
 import { Browse } from "./components/pages/Browse";
 import { PlaylistsPage } from "./components/pages/PlaylistsPage";
+import { StatsPage } from "./components/pages/StatsPage";
 import { useTheme } from "./hooks/useTheme";
 
 type LegalStatus = "loading" | "confirmed" | "unconfirmed";
@@ -237,6 +238,7 @@ function App() {
           <Route path="updates" element={<Updates />} />
           <Route path="favorites" element={<Favorites />} />
           <Route path="playlists" element={<PlaylistsPage />} />
+          <Route path="stats" element={<StatsPage />} />
           <Route path="settings" element={<Settings />} />
           <Route
             path="*"
