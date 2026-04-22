@@ -120,6 +120,13 @@
       "when": 1776854844796,
       "tag": "0017_add_auto_sync_startup",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1776855287553,
+      "tag": "0018_add_sync_interval",
+      "breakpoints": true
     }
   ]
 }

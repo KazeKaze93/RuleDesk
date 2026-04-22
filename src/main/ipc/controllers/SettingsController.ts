@@ -35,6 +35,7 @@ const DEFAULT_IPC_SETTINGS: IpcSettings = {
   downloadFolderStructure: "flat",
   theme: "system",
   autoSyncOnStartup: false,
+  syncIntervalMinutes: 0,
 };
 
 /**
@@ -87,6 +88,7 @@ function mapSettingsToIpc(
       (dbSettings.downloadFolderStructure as "flat" | "{artist_id}") || "flat",
     theme: (dbSettings.theme as ThemePreference) || "system",
     autoSyncOnStartup: !!dbSettings.autoSyncOnStartup,
+    syncIntervalMinutes: dbSettings.syncIntervalMinutes ?? 0,
   };
 }
 
@@ -304,6 +306,7 @@ export class SettingsController extends BaseController {
               tosAcceptedAt: existing.tosAcceptedAt ?? null,
               theme: existing.theme ?? "system",
               autoSyncOnStartup: data.autoSyncOnStartup ?? false,
+              syncIntervalMinutes: data.syncIntervalMinutes ?? 0,
             })
             .where(eq(settings.id, targetId))
             .run();
@@ -320,6 +323,7 @@ export class SettingsController extends BaseController {
               tosAcceptedAt: null,
               theme: "system",
               autoSyncOnStartup: data.autoSyncOnStartup ?? false,
+              syncIntervalMinutes: data.syncIntervalMinutes ?? 0,
             })
             .run();
         }
@@ -355,6 +359,8 @@ export class SettingsController extends BaseController {
 
       // Invalidate cache after saving settings
       this.settingsCache = null;
+      const scheduler = container.resolve(DI_TOKENS.SYNC_SCHEDULER);
+      scheduler.restart(data.syncIntervalMinutes ?? 0);
 
       return true;
     } catch (error) {

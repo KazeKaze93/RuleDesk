@@ -84,10 +84,12 @@ import { initializeDatabase, closeDatabase, getDb } from "./db/client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
+import { SyncScheduler } from "./services/sync-scheduler";
 import { USER_DATA_DIR_NAME } from "./db/paths";
 import { getAllProviderDomains } from "./providers";
 import { eq } from "drizzle-orm";
 import { settings, SETTINGS_ID } from "./db/schema";
+import { container, DI_TOKENS } from "./core/di/Container";
 
 logger.info("🚀 Application starting...");
 
@@ -143,6 +145,8 @@ process.env.USER_DATA_PATH = app.getPath("userData");
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+const syncScheduler = new SyncScheduler(syncService);
+container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
 
 // In test mode, skip single instance lock to allow multiple test instances
 // Each test uses a unique --user-data-dir, so there's no conflict
@@ -517,6 +521,20 @@ async function initializeAppAndWindow() {
             }
           }, 2000); // 2s delay: let UI settle before starting sync
 
+          try {
+            const db = getDb();
+            const currentSettings = db
+              .select()
+              .from(settings)
+              .where(eq(settings.id, SETTINGS_ID))
+              .limit(1)
+              .all()[0];
+            const intervalMinutes = currentSettings?.syncIntervalMinutes ?? 0;
+            syncScheduler.restart(intervalMinutes);
+          } catch (error) {
+            logger.error("[Main] Failed to start sync scheduler:", error);
+          }
+
           // Create system tray
           createTray(window);
 
@@ -534,6 +552,7 @@ async function initializeAppAndWindow() {
 
     // Clean up tray and database when app quits
     app.on("before-quit", () => {
+      syncScheduler.stop();
       if (tray) {
         tray.destroy();
         tray = null;

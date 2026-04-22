@@ -76,6 +76,7 @@ export const SaveSettingsSchema = z.object({
     .refine((val) => val.trim().length > 0, "API key cannot be whitespace only")
     .optional(),
   autoSyncOnStartup: z.boolean().optional(),
+  syncIntervalMinutes: z.number().int().min(0).max(1440).optional(),
 });
 
 /**
@@ -100,6 +101,7 @@ export const IpcSettingsSchema = z.object({
   downloadFolderStructure: z.enum(["flat", "{artist_id}"]).default("flat"),
   theme: ThemePreferenceSchema.default("system"),
   autoSyncOnStartup: z.boolean(),
+  syncIntervalMinutes: z.number().int().min(0),
 });
 
 /**
