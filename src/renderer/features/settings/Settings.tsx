@@ -43,6 +43,7 @@ export const Settings = () => {
   >("flat");
   const [databaseLocation, setDatabaseLocation] = useState<string>("");
   const [autoSyncOnStartup, setAutoSyncOnStartup] = useState(false);
+  const [syncIntervalMinutes, setSyncIntervalMinutes] = useState("0");
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
@@ -51,6 +52,9 @@ export const Settings = () => {
       if (s?.downloadFolderStructure) setDownloadFolderStructure(s.downloadFolderStructure);
       if (s?.autoSyncOnStartup !== undefined) {
         setAutoSyncOnStartup(s.autoSyncOnStartup);
+      }
+      if (s?.syncIntervalMinutes !== undefined) {
+        setSyncIntervalMinutes(String(s.syncIntervalMinutes));
       }
     });
     window.api.getDatabaseLocation().then((location) => {
@@ -264,7 +268,7 @@ export const Settings = () => {
           <CardTitle>Sync</CardTitle>
           <CardDescription>Control startup synchronization behavior.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex justify-between items-start p-4 rounded-lg border">
             <div className="space-y-1 pr-4">
               <Label htmlFor="auto-sync-on-startup" className="text-sm font-medium">
@@ -288,6 +292,40 @@ export const Settings = () => {
                 }
               }}
             />
+          </div>
+          <div className="space-y-2 p-4 rounded-lg border">
+            <Label htmlFor="sync-interval" className="text-sm font-medium">
+              Sync interval
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              How often to automatically sync in the background
+            </p>
+            <Select
+              value={syncIntervalMinutes}
+              onValueChange={async (value) => {
+                const previousValue = syncIntervalMinutes;
+                setSyncIntervalMinutes(value);
+                try {
+                  await window.api.saveSettings({
+                    syncIntervalMinutes: Number(value),
+                  });
+                } catch (error) {
+                  log.error("[Settings] Failed to save sync interval:", error);
+                  setSyncIntervalMinutes(previousValue);
+                }
+              }}
+            >
+              <SelectTrigger id="sync-interval">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Disabled</SelectItem>
+                <SelectItem value="15">Every 15 minutes</SelectItem>
+                <SelectItem value="30">Every 30 minutes</SelectItem>
+                <SelectItem value="60">Every hour</SelectItem>
+                <SelectItem value="120">Every 2 hours</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

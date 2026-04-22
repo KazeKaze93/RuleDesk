@@ -48,6 +48,7 @@ export interface IpcSettings {
   downloadFolderStructure: "flat" | "{artist_id}";
   theme: "system" | "light" | "dark";
   autoSyncOnStartup: boolean;
+  syncIntervalMinutes: number;
 }
 
 export interface IpcApi extends IpcBridge {
@@ -62,6 +63,7 @@ export interface IpcApi extends IpcBridge {
     userId?: string;
     apiKey?: string;
     autoSyncOnStartup?: boolean;
+    syncIntervalMinutes?: number;
   }) => Promise<boolean>;
   saveTheme: (theme: "system" | "light" | "dark") => Promise<boolean>;
   saveDownloadFolder: (path: string | null) => Promise<boolean>;

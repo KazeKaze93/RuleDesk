@@ -135,6 +135,7 @@ export const settings = sqliteTable("settings", {
   autoSyncOnStartup: integer("auto_sync_on_startup", { mode: "boolean" })
     .default(false)
     .notNull(),
+  syncIntervalMinutes: integer("sync_interval_minutes").default(0).notNull(),
 });
 
 export const tagMetadata = sqliteTable(
