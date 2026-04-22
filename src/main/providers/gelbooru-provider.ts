@@ -1,13 +1,14 @@
 import axios from "axios";
 import { logger } from "../lib/logger";
 import { selectBestPreview } from "../lib/media-utils";
-import { USER_AGENT, REQUEST_TIMEOUT } from "../config/constants";
+import { REQUEST_TIMEOUT } from "../config/constants";
 import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
 import type { ArtistType } from "../db/schema";
 import { GelbooruRawPostSchema, type GelbooruRawPost } from "../../shared/schemas/booru";
 import { normalizeRating } from "../../shared/utils/post-normalization";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
+import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
 
 export class GelbooruProvider implements IBooruProvider {
   readonly id = "gelbooru";
@@ -19,6 +20,8 @@ export class GelbooruProvider implements IBooruProvider {
     "img3.gelbooru.com",
   ];
   private readonly baseUrl = "https://gelbooru.com/index.php";
+  private readonly throttle = new ProviderThrottle();
+  private readonly sessionUA = pickRandomUA();
 
   getDefaultApiEndpoint(): string {
     return `${this.baseUrl}?page=dapi&s=post&q=index`;
@@ -49,7 +52,7 @@ export class GelbooruProvider implements IBooruProvider {
 
       const { status, data } = await axios.get(`${this.baseUrl}?${params}`, {
         timeout: REQUEST_TIMEOUT,
-        headers: { "User-Agent": USER_AGENT }
+        headers: { "User-Agent": this.sessionUA }
       });
 
       // Gelbooru sometimes returns empty array or object with post array
@@ -66,7 +69,10 @@ export class GelbooruProvider implements IBooruProvider {
       // Gelbooru uses specific autocomplete endpoint
       const { data } = await axios.get(
         `https://gelbooru.com/index.php?page=autocomplete2&term=${encodeURIComponent(query)}&type=tag_query&limit=20`,
-        { signal }
+        {
+          signal,
+          headers: { "User-Agent": this.sessionUA },
+        }
       );
       
       if (Array.isArray(data)) {
@@ -108,6 +114,8 @@ export class GelbooruProvider implements IBooruProvider {
   }
 
   async fetchPosts(tags: string, page: number, settings: ProviderSettings, isRandom: boolean = false): Promise<BooruPost[]> {
+    await this.throttle.wait();
+
     // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
     // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
     // should be done via API's native sort:random parameter if the provider supports it.
@@ -134,7 +142,7 @@ export class GelbooruProvider implements IBooruProvider {
     try {
       const response = await axios.get(`${this.baseUrl}?${params}`, {
         timeout: REQUEST_TIMEOUT,
-        headers: { "User-Agent": USER_AGENT },
+        headers: { "User-Agent": this.sessionUA },
         validateStatus: (status) => status === 200,
       });
 
