@@ -56,7 +56,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                                                                                                 |
 | **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                                                                          |
 | **🧭 Navigation & Layout**        | 🟡 PARTIAL — Functional sidebar and top bar are implemented, but item labels/structure differ from roadmap spec and some top-bar controls are not fully wired across all pages.                                                                                                                                                                          |
-| **📋 Playlists & Collections**    | Create curated collections of posts independent of Artists/Trackers. Create, rename, and delete playlists. Add posts to playlists via quick menu on Post Cards or in viewer. View playlist galleries with filtering and sorting. Support for smart playlists with tag-based queries.                                                                                                                                  |
+| **📋 Playlists & Collections**    | Create curated collections of posts independent of Artists/Trackers. Create, rename, delete, export, and import playlists. Add posts via quick menu on Post Cards or in viewer. View playlist galleries with filtering/sorting, drag-and-drop reorder for manual playlists, and smart playlists with hybrid local+remote tag queries.                                                                                   |
 | **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                                                                                                          |
 | **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                                                                                                  |
 | **🔌 Multi-Source Ready**         | Provider pattern abstraction for multi-booru support. Current implementations: Rule34.xxx, Gelbooru. `IBooruProvider` interface allows adding new sources (Danbooru, etc.) without core database changes.                                                                                                                                              |
@@ -71,7 +71,7 @@ The application adheres to a strict **Separation of Concerns (SoC)** model:
 
 This is the secure Node.js environment. It handles all I/O, persistence, and secrets.
 
-- **Desktop Runtime:** **Electron** (chosen for `BrowserView`/`Webview` control to support DOM injection).
+- **Desktop Runtime:** **Electron** (desktop runtime for secure Main/Renderer process separation).
 - **Database:** **SQLite** (via `better-sqlite3` driver) with direct synchronous access in Main Process. WAL mode enabled for concurrent reads.
 - **Data Layer:** **Drizzle ORM** (TypeScript type-safety for queries, raw SQL timestamps in milliseconds).
 - **Security:** **Secure Storage** using Electron's `safeStorage` API for encrypting API credentials at rest.
@@ -398,6 +398,9 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 - ✅ **Playlists Page:** Dedicated page in Sidebar with playlist list and gallery views
 - ✅ **Playlist Gallery:** Grid and masonry view modes with filtering, sorting, and search
 - ✅ **Smart Playlists:** Support for dynamic playlists with tag-based queries (auto-fill based on tags)
+- ✅ **Hybrid Smart Search:** Smart collections resolve posts from local DB and remote API, merge, and deduplicate results
+- ✅ **Manual Reordering:** Drag-and-drop post ordering for manual playlists (`position` sort mode)
+- ✅ **Import/Export:** JSON-based playlist transfer (`.ruledesk-playlist.json`) via file dialogs
 - ✅ **FTS5 Integration:** Fast tag searching within playlists using FTS5 full-text search
 - ✅ **IPC Controller:** Full `PlaylistController` implementation with type-safe operations
 

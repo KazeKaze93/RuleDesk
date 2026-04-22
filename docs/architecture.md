@@ -121,8 +121,7 @@ This separation ensures security (Renderer can't access sensitive data) and perf
 
 ### 1. Dual-Module Interface
 
-- **Library Mode:** Works with local SQLite database. Maximum performance, virtualization.
-- **Browser Mode:** Isolated `<webview>` process. Allows users to browse the source (Source) natively. "Bridge" between the site and application is implemented through script injection (DOM scraping + IPC triggers).
+Not planned.
 
 ### 2. Provider Abstraction (Future Proofing)
 
@@ -1773,7 +1772,6 @@ See [Roadmap](./roadmap.md#-security--reliability-hardening) for detailed securi
 1. **Tag Subscriptions:** Subscribe to tag combinations (schema ready)
 2. **Content Script Injection:** DOM enhancements for external sites
 3. **Statistics Dashboard:** Analytics on tracked artists and posts
-4. **Dual-Module System:** Library mode (local database) and Browser mode (embedded webview)
 5. **Multi-Booru Support:** Provider pattern abstraction for multiple booru sources
 
 ### Scalability

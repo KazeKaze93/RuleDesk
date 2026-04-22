@@ -6,6 +6,7 @@
 - [Architecture](#architecture)
 - [IPC Bridge Interface](#ipc-bridge-interface)
 - [API Methods](#api-methods)
+- [Playlists IPC Methods](#playlists-ipc-methods)
 - [Event Listeners](#event-listeners)
 - [Error Handling](#error-handling)
 - [Security Considerations](#security-considerations)
@@ -259,6 +260,21 @@ interface IpcBridge {
   // Backup
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
+
+  // Playlists
+  createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
+  getPlaylists: () => Promise<Playlist[]>;
+  getPlaylist: (playlistId: number) => Promise<Playlist | null>;
+  updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
+  deletePlaylist: (playlistId: number) => Promise<boolean>;
+  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
+  removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
+  reorderPlaylistEntries: (params: ReorderPlaylistEntriesRequest) => Promise<void>;
+  getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
+  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
+  getPlaylistsContainingPost: (postId: number, rule34PostId?: number) => Promise<number[]>;
+  exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
+  importPlaylist: () => Promise<{ success: boolean; playlistId?: number; error?: string }>;
 
   // Updater
   checkForUpdates: () => Promise<void>;
@@ -1393,6 +1409,49 @@ const success = await window.api.openFileInFolder("/path/to/file.jpg");
 
 ---
 
+## Playlists IPC Methods
+
+Playlist APIs are handled by `PlaylistController` and use shared Zod schemas from `src/shared/schemas/playlist.ts`.
+
+- `createPlaylist(data)` -> Create manual or smart playlist
+- `getPlaylists()` / `getPlaylist(playlistId)` -> Read playlists
+- `updatePlaylist(playlistId, data)` / `deletePlaylist(playlistId)` -> Update or delete playlist
+- `addPostsToPlaylist(data)` / `removePostsFromPlaylist(data)` -> Manage manual playlist entries
+- `reorderPlaylistEntries(params)` -> Persist drag-and-drop order for manual playlists
+- `getPlaylistPosts(params)` -> Fetch static playlist posts with filters/sort
+- `resolvePlaylistPosts(params)` -> Resolve static or smart playlist posts
+- `getPlaylistsContainingPost(postId, rule34PostId?)` -> Check membership for local/external posts
+- `exportPlaylist(playlistId)` / `importPlaylist()` -> JSON transfer via native file dialogs
+
+### Smart Playlist Resolution Model
+
+Smart playlists use a hybrid flow:
+
+1. Build include/exclude tag conditions from `queryJson`
+2. Query local cache (FTS5)
+3. Query provider API (Rule34/Gelbooru)
+4. Merge and deduplicate by `postId` (local entries have priority)
+
+This gives fast local results while still surfacing posts not yet cached locally.
+
+**Key channels:**
+
+- `db:create-playlist`
+- `db:get-playlists`
+- `db:get-playlist`
+- `db:update-playlist`
+- `db:delete-playlist`
+- `db:add-posts-to-playlist`
+- `db:remove-posts-from-playlist`
+- `db:reorder-playlist-entries`
+- `db:get-playlist-posts`
+- `db:resolve-playlist-posts`
+- `db:get-playlists-containing-post`
+- `db:export-playlist`
+- `db:import-playlist`
+
+---
+
 ### Event Listeners
 
 The IPC bridge provides several event listeners for real-time updates:
@@ -1674,6 +1733,7 @@ export function setupIpc(): {
 - `MaintenanceController` - Database backup/restore operations
 - `ViewerController` - Viewer-related operations
 - `FileController` - File download and management
+- `PlaylistController` - Playlist CRUD, smart resolve, reorder, import/export
 
 **Channel Constants:**
 

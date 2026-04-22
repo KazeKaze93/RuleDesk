@@ -14,6 +14,7 @@ Welcome to RuleDesk! This guide will help you get started and use all the featur
 - [Features](#features)
   - [Search](#search)
   - [Favorites](#favorites)
+  - [Playlists and Smart Collections](#playlists-and-smart-collections)
   - [Downloading Posts](#downloading-posts)
   - [Filters and Sorting](#filters-and-sorting)
   - [Marking Posts as Viewed](#marking-posts-as-viewed)
@@ -224,6 +225,36 @@ Each post card shows:
 2. Click the star icon again (or press F)
 3. The star will turn gray (unfavorited)
 
+### Playlists and Smart Collections
+
+Use playlists to organize posts outside of tracked artists.
+
+**Manual playlists:**
+
+1. Open **Playlists** in the sidebar
+2. Click **New Playlist**
+3. Select **Manual Playlist**
+4. Open any post and add it via the playlist menu
+
+**Smart collections:**
+
+1. Open **Playlists** -> **New Playlist**
+2. Select **Smart Collection**
+3. Add include/exclude tags
+4. Save - posts are resolved automatically from local cache and provider API
+
+**Reorder manual playlists:**
+
+- Open a manual playlist gallery
+- Drag and drop cards to reorder
+- Order is saved automatically
+
+**Transfer playlists (backup/share):**
+
+- Use **Export Playlist** on a playlist card to save JSON file
+- Use **Import Playlist** in the Playlists header to restore from JSON
+- Smart collection rules are preserved during import/export
+
 ### Downloading Posts
 
 **Download a single post:**
@@ -309,6 +340,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 - **Updates** - See new posts from your tracked sources
 - **Browse** - Browse cached posts with filters and sorting
 - **Favorites** - Your favorited posts collection
+- **Playlists** - Manual playlists and smart collections
 - **Tracked** - Manage your tracked artists and tags
 - **Settings** - App configuration and preferences
 

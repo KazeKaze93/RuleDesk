@@ -249,6 +249,7 @@ Opens web interface at `http://localhost:4983` (default port).
 │   │   │   │   ├── ViewerController.ts
 │   │   │   │   ├── FileController.ts
 │   │   │   │   ├── SearchController.ts
+│   │   │   │   ├── PlaylistController.ts
 │   │   │   │   └── SystemController.ts
 │   │   │   ├── channels.ts            # IPC channel constants
 │   │   │   └── index.ts               # IPC setup and registration

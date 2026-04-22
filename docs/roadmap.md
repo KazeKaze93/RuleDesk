@@ -21,6 +21,7 @@ This document reflects the current roadmap for RuleDesk `v11.x` and is aligned w
 - ✅ Core architecture is stable: Electron Main/Renderer separation, typed IPC, secure credential storage.
 - ✅ Multi-provider support is in production (`Rule34Provider`, `GelbooruProvider`).
 - ✅ Playlists, favorites, downloads, backup/restore, and full-screen viewer are implemented.
+- ✅ Playlists now include import/export, manual drag-and-drop reorder, and smart hybrid local+remote resolution.
 - ✅ Database is optimized for scale: WAL mode, FTS5, composite indexes, and migration workflow.
 
 ---
@@ -49,7 +50,17 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ⏳ Complete overlay parity on all gallery card types.
 - ⏳ True progressive preview -> sample upgrade in gallery cards.
 
-### C. Layout Consistency - Medium Priority
+### C. Playlists & Collections - Implemented, Polish Ongoing
+
+**Current state:** ✅ implemented (core + transfer + ordering)
+
+- ✅ Full CRUD for manual and smart playlists.
+- ✅ Smart playlists use hybrid local DB + remote API query resolution with merge/dedup.
+- ✅ Manual playlists support drag-and-drop ordering (`position`-based sorting).
+- ✅ Playlist transfer is available via export/import (`.ruledesk-playlist.json`).
+- ⏳ Additional UX polish for transfer/error states and empty-state guidance.
+
+### D. Layout Consistency - Medium Priority
 
 **Current state:** 🟡 partially implemented
 
@@ -124,7 +135,6 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 ## 🔮 Long-Term Goals (Future Considerations)
 
 - Multi-booru expansion beyond current providers.
-- Optional dual-mode experience (library + integrated browser workflows).
 - Analytics/statistics dashboard for sync and collection insights.
 
 ---

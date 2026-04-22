@@ -41,6 +41,7 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 - **[API Documentation](./api.md)** - Complete IPC API reference
   - [IPC Bridge Interface](./api.md#ipc-bridge-interface) - Type definitions
   - [API Methods](./api.md#api-methods) - All available IPC methods
+  - [Playlists IPC Methods](./api.md#playlists-ipc-methods) - Playlist CRUD, resolve, reorder, import/export
   - [Event Listeners](./api.md#event-listeners) - Real-time event subscriptions
   - [Error Handling](./api.md#error-handling) - Error handling patterns
 
