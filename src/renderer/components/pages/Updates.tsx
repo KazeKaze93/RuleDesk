@@ -1,12 +1,14 @@
-import React, { forwardRef, useCallback, useMemo } from "react";
+import React, { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import {
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
-import { RefreshCw, Loader2, CheckCheck } from "lucide-react";
+import { RefreshCw, Loader2, CheckCheck, User, ChevronRight } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
+import { useNavigate } from "react-router-dom";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
@@ -17,6 +19,9 @@ import type { Post } from "../../../main/db/schema";
 import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import type { Artist } from "../../../main/db/schema";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -117,9 +122,83 @@ const parseTags = (query: string): string[] => {
     .filter((tag) => tag.length > 0);
 };
 
+const hasErrorCode = (value: unknown): value is { code?: string } => {
+  return typeof value === "object" && value !== null && "code" in value;
+};
+
+const FEED_VIEW = "feed";
+const CREATORS_VIEW = "creators";
+
+type UpdatesView = typeof FEED_VIEW | typeof CREATORS_VIEW;
+
+interface CreatorsViewProps {
+  artists: Artist[];
+  isLoading: boolean;
+  onSyncAll: () => void;
+  onViewArtist: (artist: Artist) => void;
+}
+
+const CreatorsView = ({
+  artists,
+  isLoading,
+  onSyncAll,
+  onViewArtist,
+}: CreatorsViewProps) => {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex justify-between items-center px-6 py-3 border-b">
+        <h3 className="text-lg font-semibold">Creators ({artists.length})</h3>
+        <Button variant="outline" size="sm" onClick={onSyncAll}>
+          <RefreshCw className="mr-2 w-4 h-4" />
+          Sync All
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex flex-1 justify-center items-center">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : artists.length === 0 ? (
+        <div className="flex flex-1 justify-center items-center text-muted-foreground">
+          No tracked artists yet
+        </div>
+      ) : (
+        <div className="overflow-auto flex-1 p-4">
+          <div className="space-y-3">
+            {artists.map((artist) => (
+              <button
+                key={artist.id}
+                onClick={() => onViewArtist(artist)}
+                className="flex items-center gap-3 p-3 w-full text-left rounded-lg border transition-colors bg-card hover:bg-accent hover:border-primary"
+                aria-label={`View ${artist.name} gallery`}
+              >
+                <div className="flex flex-shrink-0 justify-center items-center w-10 h-10 rounded-full bg-primary/10">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{artist.name}</p>
+                  <p className="text-xs truncate text-muted-foreground">{artist.tag}</p>
+                </div>
+                {artist.newPostsCount > 0 && (
+                  <Badge variant="default" className="flex-shrink-0 tabular-nums">
+                    {artist.newPostsCount > 999 ? "999+" : artist.newPostsCount}
+                  </Badge>
+                )}
+                <ChevronRight className="flex-shrink-0 w-4 h-4 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const Updates = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const query = useSearchStore((state) => state.query);
+  const [activeView, setActiveView] = useState<UpdatesView>(FEED_VIEW);
   const tags = useMemo(() => parseTags(query), [query]);
 
   // Use separate selectors instead of destructuring to prevent unnecessary re-renders
@@ -152,13 +231,24 @@ export const Updates = () => {
         // Use lastPageParam + 1 for correct pagination
         // This ensures we use the actual page number from the last request
         return lastPage.length === POSTS_PER_PAGE
-          ? (lastPageParam as number) + 1
+          ? Number(lastPageParam) + 1
           : undefined;
       },
       initialPageParam: 1,
     });
 
   const { aiFilter, mediaType, source } = filters;
+  const { data: artists = [], isLoading: isArtistsLoading } = useQuery({
+    queryKey: ["artists"],
+    queryFn: () => window.api.getTrackedArtists(),
+    enabled: activeView === CREATORS_VIEW,
+  });
+
+  const handleViewChange = (value: string) => {
+    if (value === FEED_VIEW || value === CREATORS_VIEW) {
+      setActiveView(value);
+    }
+  };
 
   const allPosts = useMemo(() => {
     let posts = data?.pages.flatMap((page) => page) || [];
@@ -268,7 +358,7 @@ export const Updates = () => {
     },
     onError: (err) => {
       // Ignore rate limit errors - use typed errorCode, NOT string parsing
-      const errorCode = (err as { code?: string })?.code;
+      const errorCode = hasErrorCode(err) ? err.code : undefined;
       if (errorCode === "RATE_LIMIT") {
         return; // Silently ignore rate limit errors
       }
@@ -370,6 +460,17 @@ export const Updates = () => {
     [hasNextPage, isFetchingNextPage, fetchNextPage]
   );
 
+  useEffect(() => {
+    const unsubscribeSyncEnd = window.api.onSyncEnd(() => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "updates"] });
+      queryClient.invalidateQueries({ queryKey: ["artists"] });
+    });
+
+    return () => {
+      unsubscribeSyncEnd();
+    };
+  }, [queryClient]);
+
   return (
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
       {/* Header */}
@@ -394,33 +495,55 @@ export const Updates = () => {
             )}
           </div>
         </div>
-        <DownloadAllButton
-          onClick={downloadAll}
-          onCancel={cancel}
-          onPause={pause}
-          onResume={resume}
-          isDownloading={isDownloadingAll}
-          isPaused={isPaused}
-          progress={downloadAllProgress}
-          canDownload={canDownload || allPosts.length > 0}
-          totalLabel={downloadTotalCount || allPosts.length}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => markAllMutation.mutate()}
-          disabled={allPosts.length === 0 || markAllMutation.isPending}
-          aria-label="Mark all posts as read"
-          className="ml-2"
-        >
-          <CheckCheck className="w-4 h-4 mr-2" />
-          Mark all read
-        </Button>
+        {activeView === FEED_VIEW && (
+          <div className="flex gap-2 items-center ml-auto">
+            <DownloadAllButton
+              onClick={downloadAll}
+              onCancel={cancel}
+              onPause={pause}
+              onResume={resume}
+              isDownloading={isDownloadingAll}
+              isPaused={isPaused}
+              progress={downloadAllProgress}
+              canDownload={canDownload || allPosts.length > 0}
+              totalLabel={downloadTotalCount || allPosts.length}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => markAllMutation.mutate()}
+              disabled={allPosts.length === 0 || markAllMutation.isPending}
+              aria-label="Mark all posts as read"
+            >
+              <CheckCheck className="mr-2 w-4 h-4" />
+              Mark all read
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Grid Content */}
       <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
+        <div className="px-6 pt-4">
+          <Tabs value={activeView} onValueChange={handleViewChange}>
+            <TabsList>
+              <TabsTrigger value={FEED_VIEW}>Feed</TabsTrigger>
+              <TabsTrigger value={CREATORS_VIEW}>Creators</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        {activeView === CREATORS_VIEW ? (
+          <CreatorsView
+            artists={artists}
+            isLoading={isArtistsLoading}
+            onSyncAll={() => {
+              void window.api.syncAll();
+            }}
+            onViewArtist={(artist) => {
+              navigate(`/artist/${artist.id}`);
+            }}
+          />
+        ) : isLoading && allPosts.length === 0 ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
