@@ -42,6 +42,11 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [sampleLoaded, setSampleLoaded] = useState(false);
   const [sampleSrc, setSampleSrc] = useState<string | null>(null);
   const [videoError, setVideoError] = useState(false);
+  const [isPlaylistMenuOpen, setIsPlaylistMenuOpen] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const cardRef = useRef<HTMLButtonElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -165,6 +170,12 @@ export const PostCard: React.FC<PostCardProps> = ({
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenuPosition({ x: e.clientX, y: e.clientY });
+        setIsPlaylistMenuOpen(true);
+      }}
       aria-label={`View post ${post.id}. Rating: ${post.rating}. ${
         isVid ? "Video" : "Image"
       }.`}
@@ -265,10 +276,10 @@ export const PostCard: React.FC<PostCardProps> = ({
         </div>
       )}
 
-      {/* 1.5. Playlist Menu (Top Right, below video indicator if present) */}
+      {/* 1.5. Playlist actions (Top Right, below video indicator if present) */}
       <div
         className={cn(
-          "absolute right-2 z-20 opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+          "absolute right-2 z-20 flex flex-col gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100",
           isVid ? "top-12" : "top-2"
         )}
         onClick={(e) => e.stopPropagation()}
@@ -281,9 +292,27 @@ export const PostCard: React.FC<PostCardProps> = ({
       >
         <QuickAddToPlaylistMenu
           post={{ id: post.id, postId: post.postId }}
+          open={isPlaylistMenuOpen}
+          onOpenChange={(open) => {
+            setIsPlaylistMenuOpen(open);
+            if (!open) {
+              setContextMenuPosition(null);
+            }
+          }}
+          contentAlign={contextMenuPosition ? "start" : "end"}
+          contentSide={contextMenuPosition ? "bottom" : "bottom"}
+          contentSideOffset={contextMenuPosition ? 0 : 4}
           trigger={
             <span
-              className="inline-flex items-center justify-center rounded-full bg-black/50 p-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer"
+              className={cn(
+                "inline-flex items-center justify-center rounded-full bg-black/50 p-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer",
+                contextMenuPosition && "fixed w-0 h-0 overflow-hidden p-0 opacity-0 pointer-events-none"
+              )}
+              style={
+                contextMenuPosition
+                  ? { left: contextMenuPosition.x, top: contextMenuPosition.y }
+                  : undefined
+              }
               role="button"
               tabIndex={0}
               aria-label="Add to playlist"
@@ -291,6 +320,7 @@ export const PostCard: React.FC<PostCardProps> = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                setContextMenuPosition(null);
               }}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -307,16 +337,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             </span>
           }
         />
-      </div>
-
-      {/* 1.6. Remove from Playlist Button (Top Left, below indicators) */}
-      {onRemoveFromPlaylist && (
-        <div
-          className="absolute left-2 z-20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-          style={{ top: post.isFavorited || post.isViewed ? "3.5rem" : "0.5rem" }}
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
+        {onRemoveFromPlaylist && (
           <span
             className="inline-flex items-center justify-center rounded-full bg-red-500/90 p-1.5 backdrop-blur-sm hover:bg-red-600 transition-colors cursor-pointer"
             role="button"
@@ -342,8 +363,8 @@ export const PostCard: React.FC<PostCardProps> = ({
           >
             <Trash2 className="w-3 h-3 text-white" />
           </span>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 2. Viewed & Favorite Indicator (Top Left/Top Right) */}
       <div className="flex absolute top-2 left-2 z-10 gap-1 items-center">

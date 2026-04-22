@@ -18,12 +18,14 @@ import {
   RemovePostsFromPlaylistSchema,
   GetPlaylistPostsSchema,
   ResolvePlaylistPostsSchema,
+  ReorderPlaylistEntriesSchema,
   type CreatePlaylistRequest,
   type UpdatePlaylistRequest,
   type AddPostsToPlaylistRequest,
   type RemovePostsFromPlaylistRequest,
   type GetPlaylistPostsRequest,
   type ResolvePlaylistPostsRequest,
+  type ReorderPlaylistEntriesRequest,
   type SmartPlaylistQuery,
 } from "../../../shared/schemas/playlist";
 import {
@@ -224,6 +226,15 @@ export class PlaylistController extends BaseController {
       IPC_CHANNELS.DB.GET_PLAYLIST_POSTS,
       z.tuple([GetPlaylistPostsSchema]),
       this.getPlaylistPosts.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.REORDER_PLAYLIST_ENTRIES,
+      z.tuple([ReorderPlaylistEntriesSchema]),
+      this.reorderPlaylistEntries.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
       ) => Promise<unknown>
@@ -1001,7 +1012,7 @@ export class PlaylistController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: GetPlaylistPostsRequest
   ): Promise<IpcPost[]> {
-    const { playlistId, page, filters, limit, isRandom } = params;
+    const { playlistId, page, filters, limit, sortOrder = "desc", isRandom } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -1054,7 +1065,17 @@ export class PlaylistController extends BaseController {
 
       const result = isRandom
         ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
-        : queryBuilder.orderBy(desc(posts.publishedAt)).limit(limit).offset(offset).all();
+        : queryBuilder
+            .orderBy(
+              sortOrder === "position"
+                ? asc(playlistEntries.position)
+                : sortOrder === "asc"
+                  ? asc(posts.publishedAt)
+                  : desc(posts.publishedAt)
+            )
+            .limit(limit)
+            .offset(offset)
+            .all();
 
       log.info(
         `[PlaylistController] Retrieved ${result.length} posts from playlist ${playlistId} (page ${page})`
@@ -1065,6 +1086,29 @@ export class PlaylistController extends BaseController {
       log.error(`[PlaylistController] Failed to get playlist posts for ${playlistId}:`, error);
       throw error;
     }
+  }
+
+  private async reorderPlaylistEntries(
+    _event: IpcMainInvokeEvent,
+    params: ReorderPlaylistEntriesRequest
+  ): Promise<void> {
+    const { playlistId, orderedPostIds } = params;
+    const sqlite = getSqliteInstance();
+
+    const stmt = sqlite.prepare(
+      "UPDATE playlist_entries SET position = ? WHERE playlist_id = ? AND post_id = ?"
+    );
+
+    const updateMany = sqlite.transaction((ids: number[]) => {
+      ids.forEach((postId, index) => {
+        stmt.run(index, playlistId, postId);
+      });
+    });
+
+    updateMany(orderedPostIds);
+    log.info(
+      `[PlaylistController] Reordered ${orderedPostIds.length} entries in playlist ${playlistId}`
+    );
   }
 
   /**
@@ -1203,7 +1247,17 @@ export class PlaylistController extends BaseController {
 
         const result = isRandom
           ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
-          : queryBuilder.orderBy(sortOrder === "asc" ? asc(playlistEntries.addedAt) : desc(playlistEntries.addedAt)).limit(limit).offset(offset).all();
+          : queryBuilder
+              .orderBy(
+                sortOrder === "position"
+                  ? asc(playlistEntries.position)
+                  : sortOrder === "asc"
+                    ? asc(playlistEntries.addedAt)
+                    : desc(playlistEntries.addedAt)
+              )
+              .limit(limit)
+              .offset(offset)
+              .all();
 
         log.info(
           `[PlaylistController] Resolved ${result.length} posts from static playlist ${playlistId} (page ${page})`
@@ -1217,6 +1271,7 @@ export class PlaylistController extends BaseController {
         log.warn(`[PlaylistController] Smart playlist ${playlistId} has no query_json, returning empty result`);
         return [];
       }
+      const smartSortOrder = sortOrder === "position" ? "desc" : sortOrder;
 
       // Parse and validate queryJson via versioned smart-query resolver
       const parsedQuery = parseSmartQuery(
@@ -1318,7 +1373,13 @@ export class PlaylistController extends BaseController {
 
             const result = isRandom
               ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
-              : queryBuilder.orderBy(sortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt)).limit(limit).offset(offset).all();
+              : queryBuilder
+                  .orderBy(
+                    smartSortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt)
+                  )
+                  .limit(limit)
+                  .offset(offset)
+                  .all();
             log.info(
               `[PlaylistController] Local DB query returned ${result.length} posts for smart playlist ${playlistId}`
             );
@@ -1331,7 +1392,15 @@ export class PlaylistController extends BaseController {
         // Remote API query
         (async () => {
           try {
-            return await this.resolveRemotePlaylistPosts(playlistId, query, page, limit, filters, sortOrder, isRandom);
+            return await this.resolveRemotePlaylistPosts(
+              playlistId,
+              query,
+              page,
+              limit,
+              filters,
+              smartSortOrder,
+              isRandom
+            );
           } catch (error) {
             log.error(`[PlaylistController] Remote API query failed for smart playlist ${playlistId}:`, error);
             return []; // Return empty array on error, continue with local results
@@ -1372,7 +1441,7 @@ export class PlaylistController extends BaseController {
       } else {
         // Sort by publishedAt
         mergedPosts.sort((a, b) => {
-          if (sortOrder === "asc") {
+          if (smartSortOrder === "asc") {
             return a.publishedAt - b.publishedAt;
           } else {
             return b.publishedAt - a.publishedAt;

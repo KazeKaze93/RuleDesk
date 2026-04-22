@@ -21,12 +21,22 @@ interface QuickAddToPlaylistMenuProps {
   post: { id: number; postId: number };
   trigger?: React.ReactNode;
   onSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  contentAlign?: "start" | "center" | "end";
+  contentSide?: "top" | "right" | "bottom" | "left";
+  contentSideOffset?: number;
 }
 
 export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   post,
   trigger,
   onSuccess,
+  open,
+  onOpenChange,
+  contentAlign = "end",
+  contentSide = "bottom",
+  contentSideOffset = 4,
 }) => {
   const postId = post.id;
   const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<Set<number>>(new Set());
@@ -35,6 +45,8 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const queryClient = useQueryClient();
+  const effectiveIsMenuOpen = open ?? isMenuOpen;
+  const setEffectiveIsMenuOpen = onOpenChange ?? setIsMenuOpen;
 
   // Fetch all playlists - only when menu is opened (lazy loading)
   const { data: allPlaylists = [], isLoading } = usePlaylists({ enabled: isMenuOpen });
@@ -178,11 +190,20 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   return (
     <>
       {/* modal={false} allows menu to stay open when clicking outside; verify A11y with screen reader */}
-      <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
+      <DropdownMenu
+        open={effectiveIsMenuOpen}
+        onOpenChange={setEffectiveIsMenuOpen}
+        modal={false}
+      >
         <DropdownMenuTrigger asChild>
           {trigger || defaultTrigger}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent
+          align={contentAlign}
+          side={contentSide}
+          sideOffset={contentSideOffset}
+          className="w-56"
+        >
           <DropdownMenuLabel>Add to Playlist</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {isLoading ? (

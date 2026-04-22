@@ -18,6 +18,7 @@ import type {
   RemovePostsFromPlaylistRequest,
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
+  ReorderPlaylistEntriesRequest,
 } from "../shared/schemas/playlist";
 import type { DatabaseStats } from "../shared/schemas/stats";
 
@@ -183,6 +184,7 @@ export interface IpcBridge {
   deletePlaylist: (playlistId: number) => Promise<boolean>;
   addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
   removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
+  reorderPlaylistEntries: (params: ReorderPlaylistEntriesRequest) => Promise<void>;
   getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
   getPlaylistsContainingPost: (postId: number, rule34PostId?: number) => Promise<number[]>;
@@ -391,6 +393,8 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.DB.ADD_POSTS_TO_PLAYLIST, data),
   removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.REMOVE_POSTS_FROM_PLAYLIST, data),
+  reorderPlaylistEntries: (params: ReorderPlaylistEntriesRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.REORDER_PLAYLIST_ENTRIES, params),
   getPlaylistPosts: (params: GetPlaylistPostsRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLIST_POSTS, params),
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) =>

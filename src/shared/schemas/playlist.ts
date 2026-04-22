@@ -124,6 +124,7 @@ export const GetPlaylistPostsSchema = z.object({
     mediaType: z.enum(["all", "images", "videos"]).optional(),
   }).optional(),
   limit: z.number().int().min(1).max(1000).default(50), // Increased max limit to 1000 for larger gallery views
+  sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
   isRandom: z.boolean().optional().default(false),
 });
 
@@ -149,9 +150,16 @@ export const ResolvePlaylistPostsSchema = z.object({
     rating: z.enum(["s", "q", "e"]).optional(),
     mediaType: z.enum(["all", "images", "videos"]).optional(),
   }).optional(),
-  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
+  sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
   isRandom: z.boolean().optional().default(false),
 });
+
+export const ReorderPlaylistEntriesSchema = z.object({
+  playlistId: z.number().int().positive(),
+  orderedPostIds: z.array(z.number().int()).min(1),
+});
+
+export type ReorderPlaylistEntriesRequest = z.infer<typeof ReorderPlaylistEntriesSchema>;
 
 /**
  * Resolve Playlist Posts Request Type

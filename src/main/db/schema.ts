@@ -183,6 +183,7 @@ export const playlistEntries = sqliteTable(
     addedAt: integer("added_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
+    position: integer("position").notNull().default(0),
   },
   (t) => ({
     // Composite primary key: (playlist_id, post_id)
