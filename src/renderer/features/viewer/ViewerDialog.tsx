@@ -703,7 +703,10 @@ const TagsDrawer = ({
   } | null;
 }) => {
   const navigate = useNavigate();
-  const setQuery = useSearchStore((state) => state.setQuery);
+  const addIncludeTag = useSearchStore((state) => state.addIncludeTag);
+  const addExcludeTag = useSearchStore((state) => state.addExcludeTag);
+  const isTagIncluded = useSearchStore((state) => state.isTagIncluded);
+  const isTagExcluded = useSearchStore((state) => state.isTagExcluded);
 
   // Get artist information - always fetch when drawer is open
   const { data: artists } = useQuery<Artist[]>({
@@ -861,10 +864,17 @@ const TagsDrawer = ({
     }))
   );
 
-  const handleTagClick = (tag: string) => {
-    closeViewer(); // Close viewer first
-    onOpenChange(false); // Close drawer
-    setQuery(tag);
+  const handleTagInclude = (tag: string) => {
+    closeViewer();
+    onOpenChange(false);
+    addIncludeTag(tag);
+    navigate("/browse");
+  };
+
+  const handleTagExclude = (tag: string) => {
+    closeViewer();
+    onOpenChange(false);
+    addExcludeTag(tag);
     navigate("/browse");
   };
 
@@ -876,6 +886,9 @@ const TagsDrawer = ({
           <SheetTitle>Post Metadata</SheetTitle>
           <SheetDesc>Post ID: {post.postId}</SheetDesc>
         </SheetHeader>
+        <p className="px-1 pb-2 text-xs text-muted-foreground">
+          Click to include · Right-click to exclude
+        </p>
         <div className="mt-6 space-y-4">
           {post.publishedAt && (
             <div>
@@ -912,8 +925,25 @@ const TagsDrawer = ({
                 {copyrightTags.map((tag, index) => (
                   <button
                     key={`copyright-${tag}-${index}`}
-                    onClick={() => handleTagClick(tag)}
-                    className="block text-sm text-purple-600 hover:underline text-left"
+                    onClick={() => handleTagInclude(tag)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      handleTagExclude(tag);
+                    }}
+                    className={cn(
+                      "block text-sm text-purple-600 hover:underline text-left",
+                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+                      isTagExcluded(tag) &&
+                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+                    )}
+                    title={
+                      isTagExcluded(tag)
+                        ? "Excluded (right-click to toggle)"
+                        : isTagIncluded(tag)
+                          ? "Included (right-click to exclude)"
+                          : "Click to include, right-click to exclude"
+                    }
+                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
                   >
                     {tag}
                   </button>
@@ -933,8 +963,25 @@ const TagsDrawer = ({
                 {characterTags.map((tag, index) => (
                   <button
                     key={`character-${tag}-${index}`}
-                    onClick={() => handleTagClick(tag)}
-                    className="block text-sm text-green-600 hover:underline text-left"
+                    onClick={() => handleTagInclude(tag)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      handleTagExclude(tag);
+                    }}
+                    className={cn(
+                      "block text-sm text-green-600 hover:underline text-left",
+                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+                      isTagExcluded(tag) &&
+                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+                    )}
+                    title={
+                      isTagExcluded(tag)
+                        ? "Excluded (right-click to toggle)"
+                        : isTagIncluded(tag)
+                          ? "Included (right-click to exclude)"
+                          : "Click to include, right-click to exclude"
+                    }
+                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
                   >
                     {tag}
                   </button>
@@ -954,8 +1001,25 @@ const TagsDrawer = ({
                 {artistTags.map((tag, index) => (
                   <button
                     key={`artist-${tag}-${index}`}
-                    onClick={() => handleTagClick(tag)}
-                    className="block text-sm text-red-600 hover:underline text-left"
+                    onClick={() => handleTagInclude(tag)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      handleTagExclude(tag);
+                    }}
+                    className={cn(
+                      "block text-sm text-red-600 hover:underline text-left",
+                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+                      isTagExcluded(tag) &&
+                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+                    )}
+                    title={
+                      isTagExcluded(tag)
+                        ? "Excluded (right-click to toggle)"
+                        : isTagIncluded(tag)
+                          ? "Included (right-click to exclude)"
+                          : "Click to include, right-click to exclude"
+                    }
+                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
                   >
                     {tag}
                   </button>
@@ -982,8 +1046,25 @@ const TagsDrawer = ({
                 itemContent={(_index, tag) => {
                   return (
                     <button
-                      onClick={() => handleTagClick(tag)}
-                      className="w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer text-foreground"
+                      onClick={() => handleTagInclude(tag)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        handleTagExclude(tag);
+                      }}
+                      className={cn(
+                        "w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer text-foreground",
+                        isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+                        isTagExcluded(tag) &&
+                          "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+                      )}
+                      title={
+                        isTagExcluded(tag)
+                          ? "Excluded (right-click to toggle)"
+                          : isTagIncluded(tag)
+                            ? "Included (right-click to exclude)"
+                            : "Click to include, right-click to exclude"
+                      }
+                      aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
                     >
                       {tag}
                     </button>
