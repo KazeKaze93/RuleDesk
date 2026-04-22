@@ -80,12 +80,14 @@ if (app.isPackaged) {
 
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
-import { initializeDatabase, closeDatabase } from "./db/client";
+import { initializeDatabase, closeDatabase, getDb } from "./db/client";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 import { USER_DATA_DIR_NAME } from "./db/paths";
 import { getAllProviderDomains } from "./providers";
+import { eq } from "drizzle-orm";
+import { settings, SETTINGS_ID } from "./db/schema";
 
 logger.info("🚀 Application starting...");
 
@@ -462,10 +464,6 @@ async function initializeAppAndWindow() {
     // Log window URL loading for debugging
     logger.info(`[Main] Loading window URL (test mode: ${isTestMode})`);
 
-    if (process.env.NODE_ENV === "development") {
-      mainWindow.webContents.openDevTools();
-    }
-
     // In test mode, skip ready-to-show listener and initialize IPC immediately
     // ready-to-show may not fire reliably in headless CI environments
     if (isTestMode) {
@@ -499,6 +497,25 @@ async function initializeAppAndWindow() {
           // Initialize IPC architecture (controllers + legacy handlers)
           // setupIpc is called inside registerAllHandlers now
           registerAllHandlers(syncService, updaterService, window);
+
+          // Auto-sync on startup
+          setTimeout(async () => {
+            try {
+              const db = getDb();
+              const currentSettings = await db.query.settings.findFirst({
+                where: eq(settings.id, SETTINGS_ID),
+              });
+
+              if (currentSettings?.autoSyncOnStartup && !syncService.getIsSyncing()) {
+                logger.info("[Main] Auto-sync on startup triggered");
+                syncService.syncAllArtists().catch((error) => {
+                  logger.error("[Main] Auto-sync on startup failed:", error);
+                });
+              }
+            } catch (error) {
+              logger.error("[Main] Failed to check auto-sync setting:", error);
+            }
+          }, 2000); // 2s delay: let UI settle before starting sync
 
           // Create system tray
           createTray(window);

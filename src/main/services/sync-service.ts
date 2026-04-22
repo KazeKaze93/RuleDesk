@@ -137,6 +137,10 @@ export class SyncService {
   private window: BrowserWindow | null = null;
   private isSyncing = false;
 
+  public getIsSyncing(): boolean {
+    return this.isSyncing;
+  }
+
   public setWindow(window: BrowserWindow) {
     this.window = window;
   }

@@ -1,0 +1,1 @@
+ALTER TABLE settings ADD COLUMN auto_sync_on_startup INTEGER NOT NULL DEFAULT 0;

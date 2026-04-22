@@ -132,6 +132,9 @@ export const settings = sqliteTable("settings", {
   duplicateFileBehavior: text("duplicate_file_behavior").default("skip"),
   downloadFolderStructure: text("download_folder_structure").default("flat"),
   theme: text("theme", { enum: ["system", "light", "dark"] }).default("system"),
+  autoSyncOnStartup: integer("auto_sync_on_startup", { mode: "boolean" })
+    .default(false)
+    .notNull(),
 });
 
 export const tagMetadata = sqliteTable(

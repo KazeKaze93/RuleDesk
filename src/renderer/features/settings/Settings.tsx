@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Label } from "../../components/ui/label";
+import { Switch } from "../../components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -41,12 +42,16 @@ export const Settings = () => {
     "flat" | "{artist_id}"
   >("flat");
   const [databaseLocation, setDatabaseLocation] = useState<string>("");
+  const [autoSyncOnStartup, setAutoSyncOnStartup] = useState(false);
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
       if (s?.downloadFolder) setDownloadFolder(s.downloadFolder);
       if (s?.duplicateFileBehavior) setDuplicateFileBehavior(s.duplicateFileBehavior);
       if (s?.downloadFolderStructure) setDownloadFolderStructure(s.downloadFolderStructure);
+      if (s?.autoSyncOnStartup !== undefined) {
+        setAutoSyncOnStartup(s.autoSyncOnStartup);
+      }
     });
     window.api.getDatabaseLocation().then((location) => {
       setDatabaseLocation(location);
@@ -250,6 +255,39 @@ export const Settings = () => {
                 <SelectItem value="{artist_id}">By artist (subfolder per artist)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sync</CardTitle>
+          <CardDescription>Control startup synchronization behavior.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-start p-4 rounded-lg border">
+            <div className="space-y-1 pr-4">
+              <Label htmlFor="auto-sync-on-startup" className="text-sm font-medium">
+                Sync on startup
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Automatically sync all artists when the app opens
+              </p>
+            </div>
+            <Switch
+              id="auto-sync-on-startup"
+              checked={autoSyncOnStartup}
+              onCheckedChange={async (checked) => {
+                const previousValue = autoSyncOnStartup;
+                setAutoSyncOnStartup(checked);
+                try {
+                  await window.api.saveSettings({ autoSyncOnStartup: checked });
+                } catch (error) {
+                  log.error("[Settings] Failed to save auto sync on startup:", error);
+                  setAutoSyncOnStartup(previousValue);
+                }
+              }}
+            />
           </div>
         </CardContent>
       </Card>
