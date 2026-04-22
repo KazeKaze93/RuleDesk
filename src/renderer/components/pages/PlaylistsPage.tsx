@@ -3,7 +3,7 @@ import {
   useQueryClient,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil } from "lucide-react";
+import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil, Download, Upload } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import {
@@ -513,6 +513,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
   const [playlistToEdit, setPlaylistToEdit] = useState<Playlist | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [transferStatus, setTransferStatus] = useState<string>("");
   const queryClient = useQueryClient();
 
   // Use optimized usePlaylists hook with caching
@@ -671,6 +672,43 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     }
   };
 
+  const handleExportPlaylist = async (playlistId: number) => {
+    try {
+      const result = await window.api.exportPlaylist(playlistId);
+      if (result.success && result.path) {
+        setTransferStatus(`Saved to: ${result.path}`);
+        window.setTimeout(() => setTransferStatus(""), 5000);
+        return;
+      }
+
+      if (result.error && result.error !== "Cancelled") {
+        setTransferStatus(`Export failed: ${result.error}`);
+      }
+    } catch (error) {
+      log.error("[PlaylistsPage] Failed to export playlist:", error);
+      setTransferStatus("Export failed");
+    }
+  };
+
+  const handleImportPlaylist = async () => {
+    try {
+      const result = await window.api.importPlaylist();
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ["playlists"] });
+        setTransferStatus("Playlist imported successfully");
+        window.setTimeout(() => setTransferStatus(""), 5000);
+        return;
+      }
+
+      if (result.error && result.error !== "Cancelled") {
+        setTransferStatus(`Import failed: ${result.error}`);
+      }
+    } catch (error) {
+      log.error("[PlaylistsPage] Failed to import playlist:", error);
+      setTransferStatus("Import failed");
+    }
+  };
+
   // If a playlist is selected, show its gallery
   if (selectedPlaylist) {
     return (
@@ -695,11 +733,18 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             )}
             <h1 className="text-xl font-semibold">Playlists</h1>
           </div>
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Playlist
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleImportPlaylist}>
+              <Upload className="mr-2 h-4 w-4" />
+              Import Playlist
+            </Button>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Playlist
+            </Button>
+          </div>
         </div>
+        {transferStatus && <p className="text-sm text-muted-foreground">{transferStatus}</p>}
         
         {/* Playlist Type Filter */}
         <div className="flex items-center gap-2">
@@ -790,6 +835,18 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                   )}
                 </button>
                 <div className="flex gap-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleExportPlaylist(playlist.id);
+                    }}
+                    title="Export playlist"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

@@ -1,4 +1,5 @@
-import { type IpcMainInvokeEvent } from "electron";
+import { dialog, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
+import fs from "fs";
 import log from "electron-log";
 import { z } from "zod";
 import { eq, desc, and, inArray, sql, or, not, asc, type SQL } from "drizzle-orm";
@@ -27,6 +28,7 @@ import {
   type ResolvePlaylistPostsRequest,
   type ReorderPlaylistEntriesRequest,
   type SmartPlaylistQuery,
+  type PlaylistExport,
 } from "../../../shared/schemas/playlist";
 import {
   CURRENT_SMART_QUERY_SCHEMA_VERSION,
@@ -40,6 +42,44 @@ import { settings, SETTINGS_ID } from "../../db/schema";
 import { safeStorage } from "electron";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null;
+}
+
+function isPlaylistExport(value: unknown): value is PlaylistExport {
+  if (!isRecord(value) || value.version !== 1 || typeof value.exportedAt !== "string") {
+    return false;
+  }
+
+  const playlistValue = value.playlist;
+  if (!isRecord(playlistValue)) {
+    return false;
+  }
+
+  if (
+    typeof playlistValue.name !== "string" ||
+    typeof playlistValue.isSmart !== "boolean" ||
+    typeof playlistValue.queryJson !== "string" ||
+    typeof playlistValue.iconName !== "string"
+  ) {
+    return false;
+  }
+
+  const entriesValue = value.entries;
+  if (!Array.isArray(entriesValue)) {
+    return false;
+  }
+
+  return entriesValue.every((entry) => {
+    if (!isRecord(entry)) {
+      return false;
+    }
+    return typeof entry.postId === "number" && Number.isFinite(entry.postId) && Number.isInteger(entry.postId)
+      && typeof entry.addedAt === "number" && Number.isFinite(entry.addedAt);
+  });
+}
 
 /**
  * IPC-safe Playlist type with Date fields converted to numbers (timestamps in milliseconds).
@@ -70,6 +110,12 @@ type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
  * - Get posts in playlist with filters
  */
 export class PlaylistController extends BaseController {
+  private mainWindow: BrowserWindow | null = null;
+
+  public setMainWindow(window: BrowserWindow): void {
+    this.mainWindow = window;
+  }
+
   private getDb(): AppDatabase {
     return container.resolve(DI_TOKENS.DB);
   }
@@ -253,6 +299,24 @@ export class PlaylistController extends BaseController {
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
       z.tuple([z.number().int(), z.number().int().positive().optional()]),
       this.getPlaylistsContainingPost.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.EXPORT_PLAYLIST,
+      z.tuple([z.number().int().positive()]),
+      this.exportPlaylist.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.IMPORT_PLAYLIST,
+      z.tuple([]),
+      this.importPlaylist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
       ) => Promise<unknown>
@@ -1165,6 +1229,143 @@ export class PlaylistController extends BaseController {
     } catch (error) {
       log.error(`[PlaylistController] Failed to get playlists containing post ${postId}:`, error);
       throw error;
+    }
+  }
+
+  private async exportPlaylist(
+    _event: IpcMainInvokeEvent,
+    playlistId: number
+  ): Promise<{ success: boolean; path?: string; error?: string }> {
+    try {
+      const db = this.getDb();
+      const playlist = await db.query.playlists.findFirst({
+        where: (table, operators) => operators.eq(table.id, playlistId),
+      });
+
+      if (!playlist) {
+        throw new Error("Playlist not found");
+      }
+
+      const sqlite = getSqliteInstance();
+      const entriesStatement = sqlite.prepare<[number], { addedAt: number; postId: number }>(
+        `SELECT pe.added_at as addedAt, p.post_id as postId
+         FROM playlist_entries pe
+         JOIN posts p ON p.id = pe.post_id
+         WHERE pe.playlist_id = ?
+         ORDER BY pe.position ASC, pe.added_at ASC`
+      );
+      const entries = entriesStatement.all(playlistId);
+
+      const exportData: PlaylistExport = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        playlist: {
+          name: playlist.name,
+          isSmart: playlist.isSmart,
+          queryJson: playlist.queryJson ?? "",
+          iconName: playlist.iconName ?? "",
+        },
+        entries: entries.map((entry) => ({
+          postId: entry.postId,
+          addedAt: entry.addedAt,
+        })),
+      };
+
+      if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+        throw new Error("No window reference");
+      }
+
+      const defaultFileName = `${playlist.name.replace(/[^a-z0-9]/gi, "_")}.ruledesk-playlist.json`;
+      const { canceled, filePath } = await dialog.showSaveDialog(this.mainWindow, {
+        title: "Export Playlist",
+        defaultPath: defaultFileName,
+        filters: [{ name: "RuleDesk Playlist", extensions: ["json"] }],
+      });
+
+      if (canceled || !filePath) {
+        return { success: false, error: "Cancelled" };
+      }
+
+      await fs.promises.writeFile(filePath, JSON.stringify(exportData, null, 2), "utf-8");
+      log.info(`[PlaylistController] Exported playlist ${playlistId} to ${filePath}`);
+      return { success: true, path: filePath };
+    } catch (error) {
+      log.error("[PlaylistController] Export failed:", error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  private async importPlaylist(
+    _event: IpcMainInvokeEvent
+  ): Promise<{ success: boolean; playlistId?: number; error?: string }> {
+    try {
+      if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+        throw new Error("No window reference");
+      }
+
+      const { canceled, filePaths } = await dialog.showOpenDialog(this.mainWindow, {
+        title: "Import Playlist",
+        filters: [{ name: "RuleDesk Playlist", extensions: ["json"] }],
+        properties: ["openFile"],
+      });
+
+      const selectedFilePath = filePaths[0];
+      if (canceled || !selectedFilePath) {
+        return { success: false, error: "Cancelled" };
+      }
+
+      const raw = await fs.promises.readFile(selectedFilePath, "utf-8");
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return { success: false, error: "Invalid playlist file format" };
+      }
+
+      if (!isPlaylistExport(parsed)) {
+        return { success: false, error: "Invalid playlist file format" };
+      }
+
+      const exportData = parsed;
+      const db = this.getDb();
+      const newPlaylist = db
+        .insert(playlists)
+        .values({
+          name: exportData.playlist.name,
+          isSmart: exportData.playlist.isSmart,
+          queryJson: exportData.playlist.queryJson,
+          querySchemaVersion: CURRENT_SMART_QUERY_SCHEMA_VERSION,
+          iconName: exportData.playlist.iconName,
+          createdAt: new Date(),
+        })
+        .returning()
+        .get();
+
+      if (!newPlaylist) {
+        throw new Error("Failed to create playlist");
+      }
+
+      if (!exportData.playlist.isSmart && exportData.entries.length > 0) {
+        const sqlite = getSqliteInstance();
+        const insertEntry = sqlite.prepare<[number, number, number, number]>(
+          "INSERT OR IGNORE INTO playlist_entries (playlist_id, post_id, added_at, position) " +
+            "SELECT ?, id, ?, ? FROM posts WHERE post_id = ? LIMIT 1"
+        );
+
+        const insertAll = sqlite.transaction((entries: PlaylistExport["entries"]) => {
+          entries.forEach((entry, index) => {
+            insertEntry.run(newPlaylist.id, entry.addedAt, index, entry.postId);
+          });
+        });
+
+        insertAll(exportData.entries);
+      }
+
+      log.info(`[PlaylistController] Imported playlist as id=${newPlaylist.id}`);
+      return { success: true, playlistId: newPlaylist.id };
+    } catch (error) {
+      log.error("[PlaylistController] Import failed:", error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
 

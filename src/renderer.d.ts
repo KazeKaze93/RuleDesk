@@ -151,6 +151,8 @@ export interface IpcApi extends IpcBridge {
   getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
   getPlaylistsContainingPost: (postId: number) => Promise<number[]>;
+  exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
+  importPlaylist: () => Promise<{ success: boolean; playlistId?: number; error?: string }>;
 }
 
 declare global {

@@ -44,6 +44,8 @@ export const IPC_CHANNELS = {
     REORDER_PLAYLIST_ENTRIES: "db:reorder-playlist-entries",
     GET_PLAYLIST_POSTS: "db:get-playlist-posts",
     RESOLVE_PLAYLIST_POSTS: "db:resolve-playlist-posts",
+    EXPORT_PLAYLIST: "db:export-playlist",
+    IMPORT_PLAYLIST: "db:import-playlist",
     GET_PLAYLISTS_CONTAINING_POST: "db:get-playlists-containing-post",
     GET_PLAYLIST_DOWNLOAD_ITEMS: "db:get-playlist-download-items",
   },
