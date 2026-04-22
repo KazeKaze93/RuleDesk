@@ -161,6 +161,21 @@ export const ReorderPlaylistEntriesSchema = z.object({
 
 export type ReorderPlaylistEntriesRequest = z.infer<typeof ReorderPlaylistEntriesSchema>;
 
+export interface PlaylistExport {
+  version: 1;
+  exportedAt: string;
+  playlist: {
+    name: string;
+    isSmart: boolean;
+    queryJson: string;
+    iconName: string;
+  };
+  entries: Array<{
+    postId: number;
+    addedAt: number;
+  }>;
+}
+
 /**
  * Resolve Playlist Posts Request Type
  *

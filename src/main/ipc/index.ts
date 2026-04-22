@@ -25,7 +25,7 @@ import { container, DI_TOKENS } from "../core/di/Container";
  * 
  * @returns Object with controllers that need window reference
  */
-export function setupIpc(): { maintenanceController: MaintenanceController; fileController: FileController } {
+export function setupIpc(): { maintenanceController: MaintenanceController; fileController: FileController; playlistController: PlaylistController } {
   log.info("[IPC] Setting up IPC handlers...");
 
   // Register database in DI container (using type-safe tokens)
@@ -69,7 +69,7 @@ export function setupIpc(): { maintenanceController: MaintenanceController; file
 
   log.info("[IPC] All controllers initialized successfully");
   
-  return { maintenanceController, fileController }; // Return for window injection
+  return { maintenanceController, fileController, playlistController }; // Return for window injection
 }
 
 /**
@@ -89,11 +89,12 @@ export function registerServices(syncService: SyncService): void {
  * @param mainWindow - Main browser window
  */
 export function setControllerWindows(
-  controllers: { maintenanceController: MaintenanceController; fileController: FileController },
+  controllers: { maintenanceController: MaintenanceController; fileController: FileController; playlistController: PlaylistController },
   mainWindow: BrowserWindow
 ): void {
   controllers.maintenanceController.setMainWindow(mainWindow);
   controllers.fileController.setMainWindow(mainWindow);
+  controllers.playlistController.setMainWindow(mainWindow);
   log.info("[IPC] Window references set for controllers");
 }
 
