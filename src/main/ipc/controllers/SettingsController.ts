@@ -6,8 +6,10 @@ import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { encrypt } from "../../lib/crypto";
+import { reloadProxyFromSettings } from "../../lib/proxy";
 import { IPC_CHANNELS } from "../channels";
 import {
+  DEFAULT_IPC_SETTINGS,
   SaveSettingsSchema,
   ThemePreferenceSchema,
   type IpcSettings,
@@ -19,24 +21,6 @@ import type * as schema from "../../db/schema";
 import { z } from "zod";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
-
-/**
- * Default IPC settings used as fallback when no settings exist in database.
- */
-const DEFAULT_IPC_SETTINGS: IpcSettings = {
-  userId: "",
-  hasApiKey: false,
-  isSafeMode: true,
-  isAdultConfirmed: false,
-  isAdultVerified: false,
-  tosAcceptedAt: null,
-  downloadFolder: null,
-  duplicateFileBehavior: "skip",
-  downloadFolderStructure: "flat",
-  theme: "system",
-  autoSyncOnStartup: false,
-  syncIntervalMinutes: 0,
-};
 
 /**
  * Maps Drizzle Settings type to safe IPC format.
@@ -59,6 +43,7 @@ function mapSettingsToIpc(
     hasApiKey: !!(
       dbSettings.encryptedApiKey && dbSettings.encryptedApiKey.trim().length > 0
     ),
+    proxyUrl: dbSettings.proxyUrl ?? null,
     // Convert SQLite integer booleans (0/1) to JavaScript booleans
     // Drizzle with mode: "boolean" already returns boolean, but ensure type safety
     // Schema: isSafeMode has .default(true), isAdultConfirmed has .default(false), isAdultVerified is .notNull()
@@ -305,6 +290,7 @@ export class SettingsController extends BaseController {
             .set({
               userId: finalUserId,
               encryptedApiKey: finalEncryptedKey,
+              proxyUrl: data.proxyUrl ?? null,
               // CRITICAL: Preserve isAdultVerified and tosAcceptedAt when saving auth data
               // These fields should only be updated by confirmLegal, not by saveSettings
               isAdultVerified: existing.isAdultVerified ?? false,
@@ -322,6 +308,7 @@ export class SettingsController extends BaseController {
               id: SETTINGS_ID,
               userId: userId ?? "",
               encryptedApiKey: encryptedKey ?? "",
+              proxyUrl: data.proxyUrl ?? null,
               isSafeMode: true,
               isAdultConfirmed: false,
               isAdultVerified: false,
@@ -366,6 +353,7 @@ export class SettingsController extends BaseController {
       this.settingsCache = null;
       const scheduler = container.resolve(DI_TOKENS.SYNC_SCHEDULER);
       scheduler.restart(saved.syncIntervalMinutes ?? 0);
+      reloadProxyFromSettings();
 
       return true;
     } catch (error) {

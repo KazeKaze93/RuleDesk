@@ -18,6 +18,7 @@ import { normalizeRating } from "../../shared/utils/post-normalization";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
+import { getProxyAgent } from "../lib/proxy";
 
 interface R34AutocompleteItem {
   label: string;
@@ -97,6 +98,7 @@ export class Rule34Provider implements IBooruProvider {
       const { data, status } = await axios.get(`${this.baseUrl}?${params}`, {
         timeout: AUTOCOMPLETE_TIMEOUT,
         headers: this.getHeaders(),
+        httpsAgent: getProxyAgent(),
       });
 
       return status === 200 && Array.isArray(data);
@@ -121,6 +123,7 @@ export class Rule34Provider implements IBooruProvider {
           signal,
           timeout: AUTOCOMPLETE_TIMEOUT,
           headers: this.getHeaders(),
+          httpsAgent: getProxyAgent(),
         }
       );
       if (Array.isArray(data)) {
@@ -240,6 +243,7 @@ export class Rule34Provider implements IBooruProvider {
         headers: this.getHeaders(),
         responseType: "text",
         validateStatus: (status) => status < 500,
+        httpsAgent: getProxyAgent(),
       });
 
       const text = response.data;
@@ -281,6 +285,7 @@ export class Rule34Provider implements IBooruProvider {
           headers: this.getHeaders(),
           responseType: "text",
           validateStatus: (status) => status < 500,
+          httpsAgent: getProxyAgent(),
         });
 
         const xmlText = xmlResponse.data;

@@ -125,6 +125,7 @@
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
     "fast-xml-parser": "^5.3.3",
+    "https-proxy-agent": "^9.0.0",
     "i18next": "^25.7.2",
     "lucide-react": "^0.560.0",
     "react": "^18.2.0",

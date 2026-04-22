@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import {
   Card,
   CardContent,
@@ -47,6 +48,9 @@ export const Settings = () => {
   const [databaseLocation, setDatabaseLocation] = useState<string>("");
   const [autoSyncOnStartup, setAutoSyncOnStartup] = useState(false);
   const [syncIntervalMinutes, setSyncIntervalMinutes] = useState("0");
+  const [proxyUrl, setProxyUrl] = useState<string | null>(null);
+  const [proxyError, setProxyError] = useState<string | null>(null);
+  const [proxyStatus, setProxyStatus] = useState<"idle" | "success" | "error">("idle");
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
@@ -59,6 +63,7 @@ export const Settings = () => {
       if (s?.syncIntervalMinutes !== undefined) {
         setSyncIntervalMinutes(String(s.syncIntervalMinutes));
       }
+      setProxyUrl(s?.proxyUrl ?? null);
     });
     window.api.getDatabaseLocation().then((location) => {
       setDatabaseLocation(location);
@@ -155,6 +160,58 @@ export const Settings = () => {
       setIntegrityResult({ ok: false, details: "Failed to run integrity check." });
     } finally {
       setIsCheckingIntegrity(false);
+    }
+  };
+
+  const validateProxyUrl = (value: string): boolean => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
+  const handleSaveProxy = async (showStatus: boolean) => {
+    const normalized = proxyUrl?.trim() ?? "";
+    if (normalized.length === 0) {
+      try {
+        await window.api.saveSettings({ proxyUrl: null });
+        setProxyUrl(null);
+        setProxyError(null);
+        if (showStatus) {
+          setProxyStatus("success");
+          setTimeout(() => setProxyStatus("idle"), 3000);
+        }
+      } catch (error) {
+        log.error("[Settings] Failed to clear proxy URL:", error);
+        if (showStatus) {
+          setProxyStatus("error");
+          setTimeout(() => setProxyStatus("idle"), 3000);
+        }
+      }
+      return;
+    }
+
+    if (!validateProxyUrl(normalized)) {
+      setProxyError("Please enter a valid HTTP/HTTPS URL.");
+      return;
+    }
+
+    try {
+      await window.api.saveSettings({ proxyUrl: normalized });
+      setProxyUrl(normalized);
+      setProxyError(null);
+      if (showStatus) {
+        setProxyStatus("success");
+        setTimeout(() => setProxyStatus("idle"), 3000);
+      }
+    } catch (error) {
+      log.error("[Settings] Failed to save proxy URL:", error);
+      if (showStatus) {
+        setProxyStatus("error");
+        setTimeout(() => setProxyStatus("idle"), 3000);
+      }
     }
   };
 
@@ -275,6 +332,58 @@ export const Settings = () => {
                 <SelectItem value="{artist_id}">By artist (subfolder per artist)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Connection</CardTitle>
+          <CardDescription>
+            Configure outbound network behavior for providers and downloads.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="proxy-url">Proxy URL</Label>
+            <Input
+              id="proxy-url"
+              placeholder="https://proxy.example.com:8080"
+              value={proxyUrl ?? ""}
+              onChange={(e) => {
+                setProxyUrl(e.target.value || null);
+                setProxyError(null);
+              }}
+              onBlur={() => {
+                void handleSaveProxy(false);
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional. HTTP/HTTPS proxy for all outgoing requests. Leave empty
+              to connect directly.
+            </p>
+            {proxyError && (
+              <p className="text-sm text-red-600 dark:text-red-400">{proxyError}</p>
+            )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleSaveProxy(true)}
+              >
+                Save Proxy
+              </Button>
+              {proxyStatus === "success" && (
+                <span className="text-sm text-green-600 dark:text-green-400">
+                  Proxy settings saved.
+                </span>
+              )}
+              {proxyStatus === "error" && (
+                <span className="text-sm text-red-600 dark:text-red-400">
+                  Failed to save proxy settings.
+                </span>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

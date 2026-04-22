@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings, SETTINGS_ID } from "../../db/schema";
+import { getProxyAgent } from "../../lib/proxy";
 import { IPC_CHANNELS } from "../channels";
 
 const DEFAULT_DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
@@ -577,6 +578,7 @@ export class FileController extends BaseController {
           url: validUrl,
           responseType: "stream",
           signal: abortController.signal, // Critical: allows cancellation
+          httpsAgent: getProxyAgent(),
           headers: {
             "User-Agent":
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
