@@ -227,7 +227,7 @@ export abstract class BaseController {
     handler: (
       event: IpcMainInvokeEvent,
       ...args: unknown[]
-    ) => Promise<unknown>,
+    ) => Promise<unknown> | unknown,
     options?: { isIdempotent?: boolean }
   ): void {
     // Critical: Remove existing handler to prevent "duplicate handler" crash

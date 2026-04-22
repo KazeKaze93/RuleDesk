@@ -56,6 +56,7 @@ export const IPC_CHANNELS = {
   BACKUP: {
     CREATE: "db:create-backup",
     RESTORE: "db:restore-backup",
+    INTEGRITY_CHECK: "backup:integrity-check",
   },
   SYNC: {
     REPAIR: "sync:repair-artist",

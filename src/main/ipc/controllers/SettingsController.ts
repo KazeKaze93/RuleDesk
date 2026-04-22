@@ -296,6 +296,11 @@ export class SettingsController extends BaseController {
 
           // Execute update using Drizzle update - should work in transaction
           // Using explicit .set() for all fields to ensure they are updated
+          const finalAutoSyncOnStartup =
+            data.autoSyncOnStartup ?? existing.autoSyncOnStartup ?? false;
+          const finalSyncIntervalMinutes =
+            data.syncIntervalMinutes ?? existing.syncIntervalMinutes ?? 0;
+
           tx.update(settings)
             .set({
               userId: finalUserId,
@@ -305,8 +310,8 @@ export class SettingsController extends BaseController {
               isAdultVerified: existing.isAdultVerified ?? false,
               tosAcceptedAt: existing.tosAcceptedAt ?? null,
               theme: existing.theme ?? "system",
-              autoSyncOnStartup: data.autoSyncOnStartup ?? false,
-              syncIntervalMinutes: data.syncIntervalMinutes ?? 0,
+              autoSyncOnStartup: finalAutoSyncOnStartup,
+              syncIntervalMinutes: finalSyncIntervalMinutes,
             })
             .where(eq(settings.id, targetId))
             .run();
@@ -360,7 +365,7 @@ export class SettingsController extends BaseController {
       // Invalidate cache after saving settings
       this.settingsCache = null;
       const scheduler = container.resolve(DI_TOKENS.SYNC_SCHEDULER);
-      scheduler.restart(data.syncIntervalMinutes ?? 0);
+      scheduler.restart(saved.syncIntervalMinutes ?? 0);
 
       return true;
     } catch (error) {
