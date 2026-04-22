@@ -83,6 +83,7 @@ export interface IpcApi extends IpcBridge {
   getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
+  markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
 
