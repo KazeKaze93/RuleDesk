@@ -20,6 +20,7 @@ interface PostFilters {
 
 interface SearchState {
   query: string;
+  excludedTags: string[];
   activeTab: TabType | null;
   sortOrder: SortOrder;
   filters: PostFilters;
@@ -27,6 +28,10 @@ interface SearchState {
   isRandom: boolean;
   
   setQuery: (query: string) => void;
+  addIncludeTag: (tag: string) => void;
+  addExcludeTag: (tag: string) => void;
+  isTagIncluded: (tag: string) => boolean;
+  isTagExcluded: (tag: string) => boolean;
   setActiveTab: (tab: TabType | null) => void;
   clearSearch: () => void;
   setSortOrder: (order: SortOrder) => void;
@@ -46,8 +51,12 @@ const DEFAULT_FILTERS: PostFilters = {
   sortBy: "date",
 };
 
+const splitQueryTokens = (query: string): string[] =>
+  query.split(" ").filter((token) => token.length > 0);
+
 export const useSearchStore = create<SearchState>((set) => ({
   query: "",
+  excludedTags: [],
   activeTab: null,
   sortOrder: "desc",
   filters: DEFAULT_FILTERS,
@@ -83,10 +92,81 @@ export const useSearchStore = create<SearchState>((set) => ({
       .replace(/\s+/g, ' '); // Normalize whitespace
     
     // Allow empty string to clear search (don't block it)
-    set({ query: cleaned });
+    set({
+      query: cleaned,
+      excludedTags: splitQueryTokens(cleaned)
+        .filter((token) => token.startsWith("-"))
+        .map((token) => token.slice(1)),
+    });
+  },
+  addIncludeTag: (tag) =>
+    set((state) => {
+      const normalizedTag = tag.trim();
+      if (!normalizedTag) {
+        return state;
+      }
+
+      const includeToken = normalizedTag;
+      const excludeToken = `-${normalizedTag}`;
+      const tokens = splitQueryTokens(state.query).filter(
+        (token) => token !== excludeToken
+      );
+
+      if (!tokens.includes(includeToken)) {
+        tokens.push(includeToken);
+      }
+
+      const nextQuery = tokens.join(" ");
+      return {
+        query: nextQuery,
+        excludedTags: tokens
+          .filter((token) => token.startsWith("-"))
+          .map((token) => token.slice(1)),
+      };
+    }),
+  addExcludeTag: (tag) =>
+    set((state) => {
+      const normalizedTag = tag.trim();
+      if (!normalizedTag) {
+        return state;
+      }
+
+      const includeToken = normalizedTag;
+      const excludeToken = `-${normalizedTag}`;
+      const tokens = splitQueryTokens(state.query).filter(
+        (token) => token !== includeToken
+      );
+
+      if (!tokens.includes(excludeToken)) {
+        tokens.push(excludeToken);
+      }
+
+      const nextQuery = tokens.join(" ");
+      return {
+        query: nextQuery,
+        excludedTags: tokens
+          .filter((token) => token.startsWith("-"))
+          .map((token) => token.slice(1)),
+      };
+    }),
+  isTagIncluded: (tag) => {
+    const normalizedTag = tag.trim();
+    if (!normalizedTag) {
+      return false;
+    }
+    const tokens = splitQueryTokens(useSearchStore.getState().query);
+    return tokens.includes(normalizedTag);
+  },
+  isTagExcluded: (tag) => {
+    const normalizedTag = tag.trim();
+    if (!normalizedTag) {
+      return false;
+    }
+    const tokens = splitQueryTokens(useSearchStore.getState().query);
+    return tokens.includes(`-${normalizedTag}`);
   },
   setActiveTab: (tab) => set({ activeTab: tab }),
-  clearSearch: () => set({ query: "" }),
+  clearSearch: () => set({ query: "", excludedTags: [] }),
   setSortOrder: (order) => set({ sortOrder: order }),
   toggleSortOrder: () => set((state) => ({ 
     sortOrder: state.sortOrder === "desc" ? "asc" : "desc" 
