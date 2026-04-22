@@ -135,6 +135,7 @@
     "react-router-dom": "^7.10.1",
     "react-virtuoso": "^4.17.0",
     "react-zoom-pan-pinch": "^4.0.3",
+    "recharts": "^3.8.1",
     "repomix": "^1.10.2",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.25.76",

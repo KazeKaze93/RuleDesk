@@ -19,6 +19,7 @@ import type {
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
 } from "../shared/schemas/playlist";
+import type { DatabaseStats } from "../shared/schemas/stats";
 
 export type UpdateStatusData = {
   status: string;
@@ -83,6 +84,7 @@ export interface IpcBridge {
   getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
   getDownloadItems: (params: GetPostsRequest & { limit?: number }) => Promise<{ items: Array<{ url: string; filename: string }> }>;
   getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) => Promise<number>;
+  getStats: () => Promise<DatabaseStats>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
   markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
@@ -242,6 +244,7 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS, params),
   getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS, params),
+  getStats: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_STATS),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 

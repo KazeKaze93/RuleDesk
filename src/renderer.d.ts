@@ -16,6 +16,7 @@ import type {
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
 } from "./shared/schemas/playlist";
+import type { DatabaseStats } from "./shared/schemas/stats";
 
 export type SyncErrorCallback = (message: string) => void;
 
@@ -90,6 +91,7 @@ export interface IpcApi extends IpcBridge {
     isRandom?: boolean;
   }) => Promise<Post[]>;
   getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
+  getStats: () => Promise<DatabaseStats>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
   markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;

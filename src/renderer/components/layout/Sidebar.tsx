@@ -8,6 +8,7 @@ import {
   RefreshCw,
   LogOut,
   List,
+  BarChart2,
 } from "lucide-react";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
@@ -18,6 +19,7 @@ const navItems = [
   { to: "/favorites", icon: Heart, label: "Favorites" },
   { to: "/playlists", icon: List, label: "Playlists" },
   { to: "/tracked", icon: Users, label: "Artists" },
+  { to: "/stats", icon: BarChart2, label: "Statistics" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
