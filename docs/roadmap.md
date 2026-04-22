@@ -39,11 +39,13 @@ We have successfully stabilized the application core and implemented major featu
 ### UI/UX
 
 - ✅ Fixed "Soapy/Blurred" Previews: Image rendering quality for previews has been corrected
-- ✅ Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
+- 🟡 Implemented Progressive Image Loading: 3-layer system (Preview → Sample → Original) for instant viewing
+  *Data model (preview/sample/file) exists. Gallery does not perform progressive preview→sample upgrade in cards.*
 - ✅ Basic Gallery grid is functional
 - ✅ AsyncAutocomplete component for artist/tag search with free-text input support
 - ✅ Advanced Filtering System: AI filter, media type filter, source switcher, and sorting implemented
-- ✅ View Modes: Grid and masonry layout options with responsive design
+- 🟡 View Modes: Grid and masonry layout options with responsive design
+  *Toggle exists in UI. Masonry layout not fully implemented — falls back to grid behavior.*
 - ✅ Content Security Policy: Strict CSP with support for Rule34.xxx and Gelbooru.com media sources
 
 ### Testing & Quality
@@ -104,7 +106,8 @@ Post cards with informative overlays:
 - **Viewed Badge** - Indicator for viewed posts
 - **Favorite Badge** - Star icon for favorited posts
 - **Rating Badge** - Visual indicator (Safe/Questionable/Explicit)
-- **Media Type Badge** - Icon for image/video content
+- 🟡 **Media Type Badge** - Icon for image/video content
+  *Video indicator exists. Explicit image badge not implemented.*
 
 ### Progressive Image Loading
 
@@ -123,9 +126,10 @@ Unified feed showing all new posts:
 - **All New Posts** - Combined feed from all tracked sources
 - **Filters** - Apply tags, rating, media type filters
 - **Infinite Scroll** - Progressive loading as user scrolls
-- **Mark as Read** - Batch mark posts as viewed
+- 🟡 **Mark as Read** - Batch mark posts as viewed
+  *Per-post mark-as-viewed works. Batch 'mark all as read' button/IPC NOT implemented.*
 
-### Creators Tab
+### ❌ Creators Tab
 
 List/tile view of creators with new post counts:
 
@@ -163,7 +167,7 @@ Comprehensive database protection:
 - **Backup System** - Manual and automatic pre-maintenance backups
 - **Restore Flow** - Restore from backup with automatic restart
 - **Integrity Check** - Run `PRAGMA integrity_check` and display results
-- **Retention Policy** - Keep last N backups, auto-cleanup old backups
+- ❌ **Retention Policy** - Keep last N backups, auto-cleanup old backups
 
 **Status:** ✅ **Phase 1 COMPLETED:** Manual backup/restore implemented. Future: Auto-backups, integrity check UI, retention policy.
 
@@ -174,7 +178,7 @@ Non-blocking database maintenance:
 - **Maintenance Queue** - All maintenance operations run sequentially via Promise-based queue (`maintenance-queue.ts`)
 - **Non-blocking** - Maintenance operations don't freeze UI (operations are async)
 - **Progress Events** - Real-time progress updates for long operations
-- **Scheduled Runs** - Automatic maintenance on startup or periodic intervals (planned)
+- ❌ **Scheduled Runs** - Automatic maintenance on startup or periodic intervals
 
 **Status:** ✅ **COMPLETED:** Database maintenance operations use sequential queue to prevent race conditions. Future: Scheduled maintenance runs.
 
@@ -184,13 +188,18 @@ Non-blocking database maintenance:
 
 Core features for initial release:
 
-- ⏳ **Navigation & Sidebar** - Persistent sidebar with main sections, sync button, logout (implemented with minor roadmap parity gaps)
-- ⏳ **Global Top Bar** - Search bar, sort dropdown, filters button, view toggle UI (partially implemented; some roadmap controls are still pending)
+- 🟡 **Navigation & Sidebar** - Persistent sidebar with main sections, sync button, logout
+  *Functional but item labels/structure differ from roadmap spec. Tracked vs Artists distinction not explicit.*
+- 🟡 **Global Top Bar** - Search bar, sort dropdown, filters button, view toggle UI
+  *Sync status location differs from spec. Rating/date-range filter controls not fully wired in all pages.*
 - ⏳ **Advanced Filtering** - AI filter, media type filter, source switcher, and sorting (partially implemented; full roadmap parity is pending)
-- ✅ **View Modes** - Grid and masonry layout options (implemented)
-- ⏳ **Viewer Polish** - Full-screen viewer with keyboard shortcuts, download, favorites (partially implemented; tag include/exclude UX is still pending)
-- ⏳ **Progressive Loading** - Preview → Sample → Original (partially implemented; gallery flow is not fully 3-layer yet)
-- ⏳ **Auto-sync Startup** - Toggle for automatic sync on app launch (planned)
+- 🟡 **View Modes** - Grid and masonry layout options
+  *Toggle exists in UI. Masonry layout not fully implemented — falls back to grid behavior.*
+- 🟡 **Viewer Polish** - Full-screen viewer with keyboard shortcuts, download, favorites
+  *Click-to-search works. Right-click exclude and visual include/exclude indicators NOT implemented.*
+- 🟡 **Progressive Loading** - Preview → Sample → Original
+  *Data model (preview/sample/file) exists. Gallery does not perform progressive preview→sample upgrade in cards.*
+- ❌ **Auto-sync Startup** - Toggle for automatic sync on app launch
 - ✅ **Database Architecture** - Direct synchronous access via `better-sqlite3` with WAL mode (completed)
 - ✅ **Media Type Support** - `media_type` column with indexing for efficient filtering (implemented)
 - ✅ **Download Manager** - Individual file downloads with progress tracking (implemented)
@@ -204,12 +213,13 @@ Enhanced features after MVP:
 - ✅ **Favorites System** - Mark and manage favorite posts (implemented)
 - ✅ **Tag Autocomplete** - Local and remote tag search with autocomplete (implemented)
 - ⏳ **Advanced Filtering** - AI filter, media type filter, source switcher, and sorting (partially implemented; full roadmap parity is pending)
-- ✅ **View Modes** - Grid and masonry layout options (implemented)
+- 🟡 **View Modes** - Grid and masonry layout options
+  *Toggle exists in UI. Masonry layout not fully implemented — falls back to grid behavior.*
 - ✅ **Media Type Support** - `media_type` column with indexing for efficient filtering (implemented)
 - ⏳ **Card Overlays** - Viewed, favorite, rating, and media type badges (partially implemented; media type badge coverage is incomplete)
 - ⏳ **Favorites Sync** - Sync account favorites from booru (planned)
 - ✅ **Playlists Groundwork** - Basic playlist tables and UI structure (completed)
-- ⏳ **Periodic Sync** - Configurable interval sync while app running (planned)
+- ❌ **Periodic Sync** - Configurable interval sync while app running
 
 ### Later Phase
 
@@ -255,7 +265,8 @@ Advanced features for future releases:
 
 ### Anti-Bot Measures
 
-- ⏳ **Request Randomization:** Implement User-Agent rotation and request jitters across all providers
+- 🟡 **Request Randomization:** Implement User-Agent rotation and request jitters across all providers
+  *Implemented in Rule34Provider. Not symmetric across all providers.*
   - **Current:** Partially implemented (randomization exists in some providers, but not consistently)
   - **Target:** Consistent randomized User-Agents and variable delays with jitter for every provider
 
@@ -290,9 +301,11 @@ Advanced features for future releases:
 
 **UI:**
 
-- ⏳ **Global Top Bar:** Implemented and used in `AppLayout.tsx`, but full roadmap control parity is still in progress
+- 🟡 **Global Top Bar:** Implemented and used in `AppLayout.tsx`
+  *Sync status location differs from spec. Rating/date-range filter controls not fully wired in all pages.*
 - ⏳ **Filters Panel:** Core filter UI exists (AI, media type, source switcher, sort), but full roadmap parity is still in progress
-- ✅ **View Toggle:** Grid and masonry layout options implemented
+- 🟡 **View Toggle:** Grid and masonry layout options
+  *Toggle exists in UI. Masonry layout not fully implemented — falls back to grid behavior.*
 - ✅ **Search Bar:** Tag search is implemented in Global Top Bar (`TagAutocomplete`) and works for posts
 
 **Functionality:**
