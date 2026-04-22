@@ -13,6 +13,8 @@ import { maintenanceQueue } from "../../db/maintenance-queue";
 import type { SyncService } from "../../services/sync-service";
 import { BACKUP_FILE_PREFIX, getDatabasePaths } from "../../db/paths";
 
+const MAX_BACKUPS_TO_KEEP = 5;
+
 /**
  * Maintenance Controller
  *
@@ -171,6 +173,7 @@ export class MaintenanceController extends BaseController {
         this.mainWindow.flashFrame(false);
       }
 
+        await this.cleanupOldBackups(backupDir);
         log.info(`[MaintenanceController] Backup created at ${backupPath}`);
         return {
           success: true,
@@ -188,6 +191,43 @@ export class MaintenanceController extends BaseController {
         };
       }
     });
+  }
+
+  private async cleanupOldBackups(backupDir: string): Promise<void> {
+    try {
+      const entries = await fs.promises.readdir(backupDir);
+
+      // Find all backup files matching the naming convention
+      const backupFiles = entries
+        .filter((name) => name.startsWith(BACKUP_FILE_PREFIX) && name.endsWith(".db"))
+        .map((name) => ({
+          name,
+          fullPath: path.join(backupDir, name),
+        }))
+        // Sort descending by filename — ISO timestamp in name means lexicographic = chronological
+        .sort((a, b) => b.name.localeCompare(a.name));
+
+      if (backupFiles.length <= MAX_BACKUPS_TO_KEEP) {
+        return; // Nothing to clean up
+      }
+
+      const toDelete = backupFiles.slice(MAX_BACKUPS_TO_KEEP);
+
+      for (const file of toDelete) {
+        try {
+          await fs.promises.rm(file.fullPath, { force: true });
+          log.info(`[MaintenanceController] Deleted old backup: ${file.name}`);
+        } catch (deleteError) {
+          // Non-fatal: log warning but don't fail the whole backup operation
+          log.warn(`[MaintenanceController] Failed to delete old backup ${file.name}:`, deleteError);
+        }
+      }
+
+      log.info(`[MaintenanceController] Retention cleanup: kept ${MAX_BACKUPS_TO_KEEP}, deleted ${toDelete.length}`);
+    } catch (error) {
+      // Non-fatal: retention cleanup failure should never break backup creation
+      log.warn("[MaintenanceController] Backup retention cleanup failed:", error);
+    }
   }
 
   /**
