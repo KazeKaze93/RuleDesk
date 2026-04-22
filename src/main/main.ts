@@ -91,6 +91,7 @@ import { getAllProviderDomains } from "./providers";
 import { eq } from "drizzle-orm";
 import { settings, SETTINGS_ID } from "./db/schema";
 import { container, DI_TOKENS } from "./core/di/Container";
+import { reloadProxyFromSettings } from "./lib/proxy";
 
 logger.info("🚀 Application starting...");
 
@@ -476,6 +477,7 @@ async function initializeAppAndWindow() {
       logger.info("[Main] Test mode: Skipping ready-to-show listener, initializing IPC immediately");
       // Initialize IPC immediately so tests can interact with the app
       registerAllHandlers(syncService, updaterService, mainWindow);
+      reloadProxyFromSettings();
       
       // Log window state for debugging
       logger.info(`[Main] Test mode: Window created, visible: ${mainWindow.isVisible()}, destroyed: ${mainWindow.isDestroyed()}`);
@@ -503,6 +505,7 @@ async function initializeAppAndWindow() {
           // Initialize IPC architecture (controllers + legacy handlers)
           // setupIpc is called inside registerAllHandlers now
           registerAllHandlers(syncService, updaterService, window);
+          reloadProxyFromSettings();
 
           // Auto-sync on startup
           setTimeout(async () => {

@@ -9,6 +9,7 @@ import { normalizeRating } from "../../shared/utils/post-normalization";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
+import { getProxyAgent } from "../lib/proxy";
 
 export class GelbooruProvider implements IBooruProvider {
   readonly id = "gelbooru";
@@ -52,7 +53,8 @@ export class GelbooruProvider implements IBooruProvider {
 
       const { status, data } = await axios.get(`${this.baseUrl}?${params}`, {
         timeout: REQUEST_TIMEOUT,
-        headers: { "User-Agent": this.sessionUA }
+        headers: { "User-Agent": this.sessionUA },
+        httpsAgent: getProxyAgent(),
       });
 
       // Gelbooru sometimes returns empty array or object with post array
@@ -72,6 +74,7 @@ export class GelbooruProvider implements IBooruProvider {
         {
           signal,
           headers: { "User-Agent": this.sessionUA },
+          httpsAgent: getProxyAgent(),
         }
       );
       
@@ -144,6 +147,7 @@ export class GelbooruProvider implements IBooruProvider {
         timeout: REQUEST_TIMEOUT,
         headers: { "User-Agent": this.sessionUA },
         validateStatus: (status) => status === 200,
+        httpsAgent: getProxyAgent(),
       });
 
       // Gelbooru sometimes returns XML instead of JSON when API fails

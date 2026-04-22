@@ -39,6 +39,7 @@ export interface PostQueryFilters {
 export interface IpcSettings {
   userId: string;
   hasApiKey: boolean;
+  proxyUrl: string | null;
   isSafeMode: boolean;
   isAdultConfirmed: boolean;
   isAdultVerified: boolean;
@@ -62,6 +63,7 @@ export interface IpcApi extends IpcBridge {
   saveSettings: (creds: {
     userId?: string;
     apiKey?: string;
+    proxyUrl?: string | null;
     autoSyncOnStartup?: boolean;
     syncIntervalMinutes?: number;
   }) => Promise<boolean>;

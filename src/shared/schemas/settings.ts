@@ -75,6 +75,7 @@ export const SaveSettingsSchema = z.object({
     )
     .refine((val) => val.trim().length > 0, "API key cannot be whitespace only")
     .optional(),
+  proxyUrl: z.string().url().nullable().optional(),
   autoSyncOnStartup: z.boolean().optional(),
   syncIntervalMinutes: z.number().int().min(0).max(1440).optional(),
 });
@@ -92,6 +93,7 @@ export const SaveSettingsSchema = z.object({
 export const IpcSettingsSchema = z.object({
   userId: z.string(),
   hasApiKey: z.boolean(),
+  proxyUrl: z.string().url().nullable(),
   isSafeMode: z.boolean(),
   isAdultConfirmed: z.boolean(),
   isAdultVerified: z.boolean(),
@@ -110,4 +112,20 @@ export const IpcSettingsSchema = z.object({
  */
 export type IpcSettings = z.infer<typeof IpcSettingsSchema>;
 export type SaveSettings = z.infer<typeof SaveSettingsSchema>;
+
+export const DEFAULT_IPC_SETTINGS: IpcSettings = {
+  userId: "",
+  hasApiKey: false,
+  proxyUrl: null,
+  isSafeMode: true,
+  isAdultConfirmed: false,
+  isAdultVerified: false,
+  tosAcceptedAt: null,
+  downloadFolder: null,
+  duplicateFileBehavior: "skip",
+  downloadFolderStructure: "flat",
+  theme: "system",
+  autoSyncOnStartup: false,
+  syncIntervalMinutes: 0,
+};
 
