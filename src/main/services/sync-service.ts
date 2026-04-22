@@ -287,6 +287,7 @@ export class SyncService {
       this.isSyncing = false;
       try {
         const sqlite = getSqliteInstance();
+        // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
         sqlite.exec("PRAGMA wal_checkpoint(TRUNCATE);");
         logger.info("SyncService: WAL checkpoint truncated.");
       } catch (e) {
@@ -445,6 +446,7 @@ export class SyncService {
       logger.info(
         `SyncService: ${artist.name} - disabling initial-sync FTS insert triggers`
       );
+      // FTS5 trigger management: no Drizzle equivalent
       sqlite.exec(`DROP TRIGGER IF EXISTS ${POSTS_FTS_INSERT_TRIGGER_NAME};`);
       sqlite.exec(
         `DROP TRIGGER IF EXISTS ${FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME};`
@@ -631,6 +633,7 @@ export class SyncService {
           `)
           .run(artist.id);
 
+        // FTS5 trigger management: no Drizzle equivalent
         sqlite.exec(`
           CREATE TRIGGER IF NOT EXISTS posts_fts_insert
           AFTER INSERT ON posts BEGIN

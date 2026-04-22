@@ -762,6 +762,19 @@ This opens a web interface at `http://localhost:4983` (default).
 
 ## Best Practices
 
+### 0. Drizzle vs Raw SQL
+
+Use Drizzle ORM for all CRUD operations on application tables (`artists`, `posts`, `settings`, `playlists`, `playlist_entries`).
+
+Raw SQL via `getSqliteInstance()` is acceptable only for:
+
+- SQLite PRAGMAs (for example, `PRAGMA integrity_check`, `PRAGMA wal_checkpoint`)
+- FTS5 virtual table operations and trigger management
+- Schema introspection (`sqlite_master`, `PRAGMA table_info`)
+- Bulk batch operations where Drizzle overhead is unacceptable (for example, backfills)
+
+Never use raw SQL for plain CRUD on application tables where Drizzle is available.
+
 ### 1. Type Safety
 
 Always use Drizzle's inferred types:

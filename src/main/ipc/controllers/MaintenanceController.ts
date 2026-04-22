@@ -169,6 +169,7 @@ export class MaintenanceController extends BaseController {
       }
 
       const sqlite = getSqliteInstance();
+      // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
       const stmt = sqlite.prepare("VACUUM INTO ?");
       stmt.run(backupPath);
 
@@ -455,6 +456,7 @@ export class MaintenanceController extends BaseController {
   ): { ok: boolean; details: string } {
     try {
       const sqlite = getSqliteInstance();
+      // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
       // PRAGMA integrity_check returns rows: [{ integrity_check: "ok" }] if healthy
       // or multiple rows with problem descriptions if corrupted
       const rows = sqlite

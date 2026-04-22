@@ -1655,7 +1655,7 @@ try {
 
 5. **Secure Credentials:** API keys are encrypted at rest using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
 
-6. **Direct Database Access:** Database operations run directly in Main Process via `better-sqlite3` with WAL mode for concurrent reads.
+6. **Direct Database Access:** Database operations run directly in Main Process via `better-sqlite3` with WAL mode for concurrent reads. Use Drizzle ORM for CRUD on application tables; use raw SQL only for PRAGMAs, FTS5/trigger management, schema introspection, and performance-critical batch operations.
 
 ## Implementation Details
 
@@ -1834,7 +1834,7 @@ export const registerIpcHandlers = (
 
   // Backup handlers
   ipcMain.handle("db:create-backup", async () => {
-    // Backup implementation using VACUUM INTO
+    // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
     const sqlite = getSqliteInstance();
     const backupPath = path.join(
       app.getPath("userData"),

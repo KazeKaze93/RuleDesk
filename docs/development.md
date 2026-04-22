@@ -577,7 +577,7 @@ npm run typecheck
 
 ### Database
 
-- Use Drizzle ORM (no raw SQL)
+- Use Drizzle ORM for CRUD on application tables; raw SQL is allowed only for PRAGMAs, FTS5/trigger management, schema introspection, and performance-critical batch operations
 - Type-safe queries
 - Proper error handling
 - Transaction support where needed

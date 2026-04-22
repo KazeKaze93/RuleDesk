@@ -340,6 +340,7 @@ export class PlaylistController extends BaseController {
    */
   private initializeFtsTableCheck(): void {
     try {
+      // Schema introspection: no Drizzle equivalent
       const sqlite = getSqliteInstance();
       const stmt = sqlite.prepare<[], { name: string }>(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
@@ -1157,19 +1158,21 @@ export class PlaylistController extends BaseController {
     params: ReorderPlaylistEntriesRequest
   ): Promise<void> {
     const { playlistId, orderedPostIds } = params;
-    const sqlite = getSqliteInstance();
+    const db = this.getDb();
 
-    const stmt = sqlite.prepare(
-      "UPDATE playlist_entries SET position = ? WHERE playlist_id = ? AND post_id = ?"
-    );
-
-    const updateMany = sqlite.transaction((ids: number[]) => {
-      ids.forEach((postId, index) => {
-        stmt.run(index, playlistId, postId);
+    db.transaction((tx) => {
+      orderedPostIds.forEach((postId, index) => {
+        tx.update(playlistEntries)
+          .set({ position: index })
+          .where(
+            and(
+              eq(playlistEntries.playlistId, playlistId),
+              eq(playlistEntries.postId, postId)
+            )
+          )
+          .run();
       });
     });
-
-    updateMany(orderedPostIds);
     log.info(
       `[PlaylistController] Reordered ${orderedPostIds.length} entries in playlist ${playlistId}`
     );
@@ -1246,15 +1249,16 @@ export class PlaylistController extends BaseController {
         throw new Error("Playlist not found");
       }
 
-      const sqlite = getSqliteInstance();
-      const entriesStatement = sqlite.prepare<[number], { addedAt: number; postId: number }>(
-        `SELECT pe.added_at as addedAt, p.post_id as postId
-         FROM playlist_entries pe
-         JOIN posts p ON p.id = pe.post_id
-         WHERE pe.playlist_id = ?
-         ORDER BY pe.position ASC, pe.added_at ASC`
-      );
-      const entries = entriesStatement.all(playlistId);
+      const entries = db
+        .select({
+          addedAt: playlistEntries.addedAt,
+          postId: posts.postId,
+        })
+        .from(playlistEntries)
+        .innerJoin(posts, eq(posts.id, playlistEntries.postId))
+        .where(eq(playlistEntries.playlistId, playlistId))
+        .orderBy(asc(playlistEntries.position), asc(playlistEntries.addedAt))
+        .all();
 
       const exportData: PlaylistExport = {
         version: 1,
@@ -1267,7 +1271,7 @@ export class PlaylistController extends BaseController {
         },
         entries: entries.map((entry) => ({
           postId: entry.postId,
-          addedAt: entry.addedAt,
+          addedAt: entry.addedAt.getTime(),
         })),
       };
 
@@ -1347,6 +1351,7 @@ export class PlaylistController extends BaseController {
 
       if (!exportData.playlist.isSmart && exportData.entries.length > 0) {
         const sqlite = getSqliteInstance();
+        // Bulk batch insert: raw SQL for performance, Drizzle overhead unacceptable
         const insertEntry = sqlite.prepare<[number, number, number, number]>(
           "INSERT OR IGNORE INTO playlist_entries (playlist_id, post_id, added_at, position) " +
             "SELECT ?, id, ?, ? FROM posts WHERE post_id = ? LIMIT 1"

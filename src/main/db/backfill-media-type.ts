@@ -77,6 +77,7 @@ export async function backfillMediaType(): Promise<void> {
       }
       
       // Update each post in the batch
+      // Bulk batch update: raw SQL for performance, Drizzle overhead unacceptable
       const updateStmt = sqlite.prepare(
         "UPDATE posts SET media_type = ? WHERE id = ?"
       );

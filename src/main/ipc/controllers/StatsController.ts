@@ -23,6 +23,7 @@ export class StatsController extends BaseController {
 
   private getStats(_event: IpcMainInvokeEvent): DatabaseStats {
     const sqlite = getSqliteInstance();
+    // Aggregate queries: raw SQL preferred for readability
 
     const totalArtists = sqlite
       .prepare<[], CountRow>("SELECT COUNT(*) as c FROM artists")

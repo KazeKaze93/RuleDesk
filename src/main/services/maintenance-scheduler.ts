@@ -34,6 +34,7 @@ export class MaintenanceScheduler {
     setImmediate(() => {
       try {
         const sqlite = getSqliteInstance();
+        // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
         sqlite.exec("PRAGMA wal_checkpoint(PASSIVE);");
         sqlite.exec("PRAGMA optimize;");
         log.info(`[MaintenanceScheduler] Maintenance complete (trigger=${trigger})`);
