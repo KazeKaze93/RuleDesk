@@ -41,6 +41,7 @@ export const IPC_CHANNELS = {
     DELETE_PLAYLIST: "db:delete-playlist",
     ADD_POSTS_TO_PLAYLIST: "db:add-posts-to-playlist",
     REMOVE_POSTS_FROM_PLAYLIST: "db:remove-posts-from-playlist",
+    REORDER_PLAYLIST_ENTRIES: "db:reorder-playlist-entries",
     GET_PLAYLIST_POSTS: "db:get-playlist-posts",
     RESOLVE_PLAYLIST_POSTS: "db:resolve-playlist-posts",
     GET_PLAYLISTS_CONTAINING_POST: "db:get-playlists-containing-post",

@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useMemo, useState } from "react";
+import React, { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import {
   useQueryClient,
   useInfiniteQuery,
@@ -6,6 +6,23 @@ import {
 import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "../../components/ui/button";
 import type { Playlist, Post } from "../../../main/db/schema";
 import { cn } from "../../lib/utils";
@@ -85,6 +102,35 @@ interface PlaylistGalleryProps {
   onBack: () => void;
 }
 
+interface SortablePostCardProps {
+  post: Post;
+  onClick: () => void;
+  onRemove?: () => void;
+  preserveAspect?: boolean;
+}
+
+function SortablePostCard({ post, onClick, onRemove, preserveAspect }: SortablePostCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: post.id,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <PostCard
+        post={post}
+        onClick={onClick}
+        preserveAspect={preserveAspect}
+        onRemoveFromPlaylist={onRemove}
+      />
+    </div>
+  );
+}
+
 const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) => {
   // Use atomic selector instead of useShallow for single value
   const openViewer = useViewerStore((state) => state.open);
@@ -159,6 +205,25 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
 
     return posts;
   }, [data, filters.aiFilter]);
+  const [localPosts, setLocalPosts] = useState<Post[]>([]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  useEffect(() => {
+    if (!playlist.isSmart) {
+      setLocalPosts(allPosts);
+    }
+  }, [allPosts, playlist.isSmart]);
+
+  const displayedPosts = playlist.isSmart ? allPosts : localPosts;
 
   const {
     downloadAll,
@@ -169,7 +234,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     isPaused,
     progress: downloadAllProgress,
     canDownload,
-  } = useDownloadAll(allPosts);
+  } = useDownloadAll(displayedPosts);
 
   const handleLoadMore = () => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -179,7 +244,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
 
   const handlePostClick = (index: number) => {
     // For remote posts (id=0), use postId as identifier; for local posts, use id
-    const postIds = allPosts.map((p) => (p.id === 0 && p.postId ? p.postId : p.id));
+    const postIds = displayedPosts.map((p) => (p.id === 0 && p.postId ? p.postId : p.id));
     
     // CRITICAL: Extract provider from playlist queryJson for shadow insert operations
     // Provider must match the actual source of posts to prevent 404 or invalid data
@@ -205,7 +270,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       ids: postIds,
       initialIndex: index,
       listKey: `playlist-${playlist.id}`,
-      hasNextPage: hasNextPage && allPosts.length < (data?.pages.length ?? 0) * 50,
+      hasNextPage: hasNextPage && displayedPosts.length < (data?.pages.length ?? 0) * 50,
       onLoadMore: handleLoadMore,
     });
   };
@@ -235,6 +300,9 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       return;
     }
 
+    const previousPosts = localPosts;
+    setLocalPosts((currentPosts) => currentPosts.filter((post) => post.id !== postId));
+
     try {
       await window.api.removePostsFromPlaylist({
         playlistId: playlist.id,
@@ -248,8 +316,46 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       queryClient.invalidateQueries({ queryKey: ["playlist-entries", postId] });
     } catch (error) {
       log.error("[PlaylistGallery] Failed to remove post from playlist:", error);
+      setLocalPosts(previousPosts);
     }
   };
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      if (playlist.isSmart) {
+        return;
+      }
+
+      const { active, over } = event;
+      if (!over || active.id === over.id) {
+        return;
+      }
+
+      const activeId = Number(active.id);
+      const overId = Number(over.id);
+      const oldIndex = localPosts.findIndex((post) => post.id === activeId);
+      const newIndex = localPosts.findIndex((post) => post.id === overId);
+
+      if (oldIndex < 0 || newIndex < 0) {
+        return;
+      }
+
+      const previousPosts = localPosts;
+      const newOrder = arrayMove(localPosts, oldIndex, newIndex);
+      setLocalPosts(newOrder);
+
+      window.api
+        .reorderPlaylistEntries({
+          playlistId: playlist.id,
+          orderedPostIds: newOrder.map((post) => post.id),
+        })
+        .catch((error: unknown) => {
+          log.error("[PlaylistsPage] Reorder failed:", error);
+          setLocalPosts(previousPosts);
+        });
+    },
+    [localPosts, playlist.id, playlist.isSmart]
+  );
 
   const ListComponent = useMemo(() => createVirtuosoList(viewType), [viewType]);
   const ItemComponent = useMemo(() => createItemContainer(viewType), [viewType]);
@@ -275,9 +381,9 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
                   Smart Collection
                 </p>
               )}
-              {allPosts.length > 0 && (
+              {displayedPosts.length > 0 && (
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Total: {allPosts.length}
+                  Total: {displayedPosts.length}
                 </p>
               )}
             </div>
@@ -293,21 +399,21 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
             isPaused={isPaused}
             progress={downloadAllProgress}
             canDownload={canDownload}
-            totalLabel={allPosts.length}
+            totalLabel={displayedPosts.length}
           />
         </div>
       </div>
 
       {/* Grid Content */}
       <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
+        {isLoading && displayedPosts.length === 0 ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
         ) : viewType === "masonry" ? (
           <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
             <GridContainer viewType="masonry">
-              {allPosts.map((post, index) => (
+              {displayedPosts.map((post, index) => (
                 <div key={`${post.id}-${post.postId ?? index}`} className="w-full mb-4 break-inside-avoid">
                   <PostCard
                     post={post}
@@ -326,10 +432,34 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
               </div>
             )}
           </div>
+        ) : !playlist.isSmart ? (
+          <div className="overflow-auto h-full">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={displayedPosts.map((post) => post.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {displayedPosts.map((post, index) => (
+                    <SortablePostCard
+                      key={post.id}
+                      post={post}
+                      onClick={() => handlePostClick(index)}
+                      onRemove={() => handleRemovePost(post.id)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
         ) : (
           <VirtuosoGrid
             style={{ height: "100%" }}
-            totalCount={allPosts.length}
+            totalCount={displayedPosts.length}
             endReached={handleEndReached}
             increaseViewportBy={600}
             components={{
@@ -343,7 +473,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
                 ) : null,
             }}
             itemContent={(index) => {
-              const post = allPosts[index];
+              const post = displayedPosts[index];
               if (!post) return null;
 
               return (

@@ -15,6 +15,7 @@ import type {
   RemovePostsFromPlaylistRequest,
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
+  ReorderPlaylistEntriesRequest,
 } from "./shared/schemas/playlist";
 import type { DatabaseStats } from "./shared/schemas/stats";
 
@@ -146,6 +147,7 @@ export interface IpcApi extends IpcBridge {
   deletePlaylist: (playlistId: number) => Promise<boolean>;
   addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
   removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
+  reorderPlaylistEntries: (params: ReorderPlaylistEntriesRequest) => Promise<void>;
   getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
   getPlaylistsContainingPost: (postId: number) => Promise<number[]>;
