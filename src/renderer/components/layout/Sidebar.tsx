@@ -23,7 +23,6 @@ const navItems = [
 
 export const Sidebar = () => {
   const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState("12:30");
   const [appVersion, setAppVersion] = useState<string>("");
   const hasFetchedVersionRef = useRef(false);
 
@@ -65,11 +64,6 @@ export const Sidebar = () => {
     try {
       log.info("[Sidebar] Triggering Sync...");
       await window.api.syncAll();
-
-      const now = new Date();
-      setLastSyncTime(
-        `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`
-      );
     } catch (error) {
       log.error("[Sidebar] Sync failed:", error);
     } finally {
@@ -150,12 +144,9 @@ export const Sidebar = () => {
           >
             <RefreshCw className="w-4 h-4" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-medium">Sync Status</span>
-            <span className="text-[10px] text-muted-foreground">
-              {isSyncing ? "Syncing..." : `Last: ${lastSyncTime}`}
-            </span>
-          </div>
+          <span className="text-xs font-medium">
+            {isSyncing ? "Syncing..." : "Sync now"}
+          </span>
         </button>
 
         {/* Log Out Button */}
