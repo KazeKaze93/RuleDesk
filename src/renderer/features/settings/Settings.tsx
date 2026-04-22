@@ -18,13 +18,16 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
-import { Loader2, Database, Upload, FolderOpen } from "lucide-react";
+import { Loader2, Database, Upload, FolderOpen, ShieldCheck } from "lucide-react";
+import { cn } from "../../lib/utils";
 import { useTheme } from "../../hooks/useTheme";
 
 export const Settings = () => {
   const { theme, setTheme, isSaving: isThemeSaving } = useTheme();
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isCheckingIntegrity, setIsCheckingIntegrity] = useState(false);
+  const [integrityResult, setIntegrityResult] = useState<{ ok: boolean; details: string } | null>(null);
   const [backupStatus, setBackupStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
@@ -139,6 +142,19 @@ export const Settings = () => {
       setTimeout(() => setRestoreStatus("idle"), 3000);
     } finally {
       setIsRestoring(false);
+    }
+  };
+
+  const handleIntegrityCheck = async () => {
+    setIsCheckingIntegrity(true);
+    setIntegrityResult(null);
+    try {
+      const result = await window.api.checkDatabaseIntegrity();
+      setIntegrityResult(result);
+    } catch {
+      setIntegrityResult({ ok: false, details: "Failed to run integrity check." });
+    } finally {
+      setIsCheckingIntegrity(false);
     }
   };
 
@@ -404,6 +420,46 @@ export const Settings = () => {
                   <>
                     <Upload className="mr-2 w-4 h-4" />
                     Restore Database
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="flex justify-between items-center p-4 rounded-lg border">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Integrity Check</h3>
+                <p className="text-sm text-muted-foreground">
+                  Verify database file is not corrupted.
+                </p>
+                {integrityResult !== null && (
+                  <p
+                    className={cn(
+                      "text-sm font-medium mt-1 whitespace-pre-wrap",
+                      integrityResult.ok
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    )}
+                  >
+                    {integrityResult.ok
+                      ? "✓ Database integrity OK"
+                      : `Issues found:\n${integrityResult.details}`}
+                  </p>
+                )}
+              </div>
+              <Button
+                onClick={handleIntegrityCheck}
+                disabled={isCheckingIntegrity}
+                variant="outline"
+              >
+                {isCheckingIntegrity ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="mr-2 w-4 h-4" />
+                    Check Integrity
                   </>
                 )}
               </Button>

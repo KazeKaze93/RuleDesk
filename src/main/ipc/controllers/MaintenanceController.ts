@@ -64,6 +64,11 @@ export class MaintenanceController extends BaseController {
       z.tuple([]),
       this.restoreBackup.bind(this)
     );
+    this.handle(
+      IPC_CHANNELS.BACKUP.INTEGRITY_CHECK,
+      z.tuple([]),
+      this.integrityCheck.bind(this)
+    );
 
     log.info("[MaintenanceController] All handlers registered");
   }
@@ -443,6 +448,33 @@ export class MaintenanceController extends BaseController {
         };
       }
     });
+  }
+
+  private integrityCheck(
+    _event: IpcMainInvokeEvent
+  ): { ok: boolean; details: string } {
+    try {
+      const sqlite = getSqliteInstance();
+      // PRAGMA integrity_check returns rows: [{ integrity_check: "ok" }] if healthy
+      // or multiple rows with problem descriptions if corrupted
+      const rows = sqlite
+        .prepare<[], { integrity_check: string }>("PRAGMA integrity_check")
+        .all();
+
+      const isOk = rows.length === 1 && rows[0]?.integrity_check === "ok";
+      const details = rows.map((r) => r.integrity_check).join("\n");
+
+      log.info(
+        `[MaintenanceController] Integrity check result: ${
+          isOk ? "ok" : "ISSUES FOUND"
+        }`
+      );
+
+      return { ok: isOk, details };
+    } catch (error) {
+      log.error("[MaintenanceController] Integrity check failed:", error);
+      throw error;
+    }
   }
 }
 

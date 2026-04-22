@@ -169,6 +169,7 @@ export interface IpcBridge {
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
+  checkDatabaseIntegrity: () => Promise<{ ok: boolean; details: string }>;
 
   verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
 
@@ -370,6 +371,8 @@ const ipcBridge: IpcBridge = {
 
   createBackup: () => ipcRenderer.invoke("db:create-backup"),
   restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
+  checkDatabaseIntegrity: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.BACKUP.INTEGRITY_CHECK),
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) =>
