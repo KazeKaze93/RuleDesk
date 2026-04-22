@@ -61,7 +61,8 @@ export const SaveSettingsSchema = z.object({
     .max(
       VALIDATION_LIMITS.USER_ID_MAX_LENGTH,
       `User ID must not exceed ${VALIDATION_LIMITS.USER_ID_MAX_LENGTH} characters`
-    ),
+    )
+    .optional(),
   apiKey: z
     .string()
     .min(
@@ -72,7 +73,9 @@ export const SaveSettingsSchema = z.object({
       VALIDATION_LIMITS.API_KEY_MAX_LENGTH,
       `API key must not exceed ${VALIDATION_LIMITS.API_KEY_MAX_LENGTH} characters`
     )
-    .refine((val) => val.trim().length > 0, "API key cannot be whitespace only"),
+    .refine((val) => val.trim().length > 0, "API key cannot be whitespace only")
+    .optional(),
+  autoSyncOnStartup: z.boolean().optional(),
 });
 
 /**
@@ -96,6 +99,7 @@ export const IpcSettingsSchema = z.object({
   duplicateFileBehavior: z.enum(["skip", "overwrite"]).default("skip"),
   downloadFolderStructure: z.enum(["flat", "{artist_id}"]).default("flat"),
   theme: ThemePreferenceSchema.default("system"),
+  autoSyncOnStartup: z.boolean(),
 });
 
 /**

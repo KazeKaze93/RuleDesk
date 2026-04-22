@@ -6,7 +6,7 @@ import type {
   GetPostsCountRequest,
   AddArtistRequest,
 } from "./types/ipc";
-import type { IpcSettings } from "../shared/schemas/settings";
+import type { IpcSettings, SaveSettings } from "../shared/schemas/settings";
 import type { ThemePreference } from "../shared/schemas/settings";
 import type { PostData } from "../shared/schemas/post";
 import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
@@ -64,7 +64,7 @@ export interface IpcBridge {
 
   // Settings
   getSettings: () => Promise<IpcSettings | null>;
-  saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  saveSettings: (creds: SaveSettings) => Promise<boolean>;
   saveTheme: (theme: ThemePreference) => Promise<boolean>;
   saveDownloadFolder: (path: string | null) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;

@@ -34,6 +34,7 @@ const DEFAULT_IPC_SETTINGS: IpcSettings = {
   duplicateFileBehavior: "skip",
   downloadFolderStructure: "flat",
   theme: "system",
+  autoSyncOnStartup: false,
 };
 
 /**
@@ -85,6 +86,7 @@ function mapSettingsToIpc(
     downloadFolderStructure:
       (dbSettings.downloadFolderStructure as "flat" | "{artist_id}") || "flat",
     theme: (dbSettings.theme as ThemePreference) || "system",
+    autoSyncOnStartup: !!dbSettings.autoSyncOnStartup,
   };
 }
 
@@ -283,6 +285,10 @@ export class SettingsController extends BaseController {
             encryptedKey !== undefined && encryptedKey.length > 0
               ? encryptedKey
               : existing.encryptedApiKey ?? "";
+          const finalUserId =
+            userId !== undefined && userId.length > 0
+              ? userId
+              : existing.userId ?? "";
           // CRITICAL: Use existing.id instead of SETTINGS_ID to ensure we update the correct record
           const targetId = existing.id;
 
@@ -290,13 +296,14 @@ export class SettingsController extends BaseController {
           // Using explicit .set() for all fields to ensure they are updated
           tx.update(settings)
             .set({
-              userId,
+              userId: finalUserId,
               encryptedApiKey: finalEncryptedKey,
               // CRITICAL: Preserve isAdultVerified and tosAcceptedAt when saving auth data
               // These fields should only be updated by confirmLegal, not by saveSettings
               isAdultVerified: existing.isAdultVerified ?? false,
               tosAcceptedAt: existing.tosAcceptedAt ?? null,
               theme: existing.theme ?? "system",
+              autoSyncOnStartup: data.autoSyncOnStartup ?? false,
             })
             .where(eq(settings.id, targetId))
             .run();
@@ -305,13 +312,14 @@ export class SettingsController extends BaseController {
           tx.insert(settings)
             .values({
               id: SETTINGS_ID,
-              userId,
+              userId: userId ?? "",
               encryptedApiKey: encryptedKey ?? "",
               isSafeMode: true,
               isAdultConfirmed: false,
               isAdultVerified: false,
               tosAcceptedAt: null,
               theme: "system",
+              autoSyncOnStartup: data.autoSyncOnStartup ?? false,
             })
             .run();
         }

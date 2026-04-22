@@ -47,6 +47,7 @@ export interface IpcSettings {
   duplicateFileBehavior: "skip" | "overwrite";
   downloadFolderStructure: "flat" | "{artist_id}";
   theme: "system" | "light" | "dark";
+  autoSyncOnStartup: boolean;
 }
 
 export interface IpcApi extends IpcBridge {
@@ -57,7 +58,11 @@ export interface IpcApi extends IpcBridge {
 
   // Settings
   getSettings: () => Promise<IpcSettings | undefined>;
-  saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  saveSettings: (creds: {
+    userId?: string;
+    apiKey?: string;
+    autoSyncOnStartup?: boolean;
+  }) => Promise<boolean>;
   saveTheme: (theme: "system" | "light" | "dark") => Promise<boolean>;
   saveDownloadFolder: (path: string | null) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
