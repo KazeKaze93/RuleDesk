@@ -184,12 +184,12 @@ Non-blocking database maintenance:
 
 Core features for initial release:
 
-- ✅ **Navigation & Sidebar** - Persistent sidebar with main sections, sync button, logout (implemented)
-- ✅ **Global Top Bar** - Search bar, sort dropdown, filters button, view toggle UI (fully implemented)
-- ✅ **Advanced Filtering** - AI filter, media type filter, source switcher, and sorting (implemented)
+- ⏳ **Navigation & Sidebar** - Persistent sidebar with main sections, sync button, logout (implemented with minor roadmap parity gaps)
+- ⏳ **Global Top Bar** - Search bar, sort dropdown, filters button, view toggle UI (partially implemented; some roadmap controls are still pending)
+- ⏳ **Advanced Filtering** - AI filter, media type filter, source switcher, and sorting (partially implemented; full roadmap parity is pending)
 - ✅ **View Modes** - Grid and masonry layout options (implemented)
-- ✅ **Viewer Polish** - Full-screen viewer with keyboard shortcuts, download, favorites (implemented)
-- ✅ **Progressive Loading** - Preview → Sample → Original (implemented)
+- ⏳ **Viewer Polish** - Full-screen viewer with keyboard shortcuts, download, favorites (partially implemented; tag include/exclude UX is still pending)
+- ⏳ **Progressive Loading** - Preview → Sample → Original (partially implemented; gallery flow is not fully 3-layer yet)
 - ⏳ **Auto-sync Startup** - Toggle for automatic sync on app launch (planned)
 - ✅ **Database Architecture** - Direct synchronous access via `better-sqlite3` with WAL mode (completed)
 - ✅ **Media Type Support** - `media_type` column with indexing for efficient filtering (implemented)
@@ -203,10 +203,10 @@ Enhanced features after MVP:
 
 - ✅ **Favorites System** - Mark and manage favorite posts (implemented)
 - ✅ **Tag Autocomplete** - Local and remote tag search with autocomplete (implemented)
-- ✅ **Advanced Filtering** - AI filter, media type filter, source switcher, and sorting (implemented)
+- ⏳ **Advanced Filtering** - AI filter, media type filter, source switcher, and sorting (partially implemented; full roadmap parity is pending)
 - ✅ **View Modes** - Grid and masonry layout options (implemented)
 - ✅ **Media Type Support** - `media_type` column with indexing for efficient filtering (implemented)
-- ✅ **Card Overlays** - Viewed, favorite, rating, and media type badges (implemented)
+- ⏳ **Card Overlays** - Viewed, favorite, rating, and media type badges (partially implemented; media type badge coverage is incomplete)
 - ⏳ **Favorites Sync** - Sync account favorites from booru (planned)
 - ✅ **Playlists Groundwork** - Basic playlist tables and UI structure (completed)
 - ⏳ **Periodic Sync** - Configurable interval sync while app running (planned)
@@ -244,7 +244,7 @@ Advanced features for future releases:
 ### Portability
 
 - ✅ **Portable Mode:** Support relative database and asset paths
-  - **Status:** ✅ **COMPLETED:** Portable mode automatically detected when running from portable executable
+  - **Status:** ⏳ **PARTIALLY COMPLETED:** Portable path support is implemented, but detection behavior should be validated against portable-only expectations
   - **Implementation:** Database stored in `data/` folder next to executable in portable mode
 
 ### Code Quality
@@ -255,9 +255,9 @@ Advanced features for future releases:
 
 ### Anti-Bot Measures
 
-- ⏳ **Request Randomization:** Implement User-Agent rotation and request jitters
-  - **Current:** Static User-Agent, fixed delays
-  - **Target:** Randomized User-Agents, variable delays with jitter
+- ⏳ **Request Randomization:** Implement User-Agent rotation and request jitters across all providers
+  - **Current:** Partially implemented (randomization exists in some providers, but not consistently)
+  - **Target:** Consistent randomized User-Agents and variable delays with jitter for every provider
 
 ### Database Optimization
 
@@ -274,9 +274,9 @@ Advanced features for future releases:
 
 ### Error Handling
 
-- ⏳ **Standardized IPC Error Responses:** User-friendly error messages
-  - **Current:** Some handlers return raw errors, inconsistent formatting
-  - **Target:** Consistent user-friendly error messages across all IPC handlers
+- ✅ **Standardized IPC Error Responses:** User-friendly error messages
+  - **Current:** Base IPC error handling is standardized and used across controllers
+  - **Target:** Continue polishing message consistency for edge-case handlers
 
 ### Video Performance
 
@@ -290,10 +290,10 @@ Advanced features for future releases:
 
 **UI:**
 
-- ✅ **Global Top Bar:** Fully implemented in `GlobalTopBar.tsx` and used in `AppLayout.tsx`
-- ✅ **Filters Panel:** Complete filter UI with AI filter, media type, source switcher, and sort controls
+- ⏳ **Global Top Bar:** Implemented and used in `AppLayout.tsx`, but full roadmap control parity is still in progress
+- ⏳ **Filters Panel:** Core filter UI exists (AI, media type, source switcher, sort), but full roadmap parity is still in progress
 - ✅ **View Toggle:** Grid and masonry layout options implemented
-- ✅ **Search Bar:** UI ready, advanced tag search integration pending
+- ✅ **Search Bar:** Tag search is implemented in Global Top Bar (`TagAutocomplete`) and works for posts
 
 **Functionality:**
 
@@ -302,8 +302,8 @@ Advanced features for future releases:
 - ✅ **Source Filter:** Filter by source (all/favorites/subscriptions) - fully implemented
 - ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending) - fully implemented
 - ✅ **View Modes:** Grid and masonry layouts - fully implemented
-- ⏳ **Rating Filter:** Filter by rating (Safe/Questionable/Explicit) - UI ready, backend filtering pending
-- ⏳ **Tag Search:** Advanced tag search with FTS5 integration - UI ready, needs filter panel integration
+- ⏳ **Rating Filter:** Filter by rating (Safe/Questionable/Explicit) - backend support exists, full UI integration is pending
+- ⏳ **Tag Search:** Tag search is implemented (UI + backend support), but full advanced-filter panel parity is still in progress
 
 **Implementation Notes:**
 
@@ -312,11 +312,11 @@ Advanced features for future releases:
 - ✅ UI state managed via React Query and Zustand store
 - ✅ `GlobalTopBar` controls connected to filtering logic in `Browse.tsx`, `Updates.tsx`, `Favorites.tsx`, and `ArtistGallery.tsx`
 
-**Status:** Core filtering functionality is implemented and working. Advanced tag search with FTS5 and rating filtering are planned for future releases.
+**Status:** Core filtering functionality is implemented and working. Tag search is available in the global search flow, while full advanced-filter panel parity (including remaining controls) is still in progress.
 
 ---
 
-### B. Download Manager [Priority: High] ✅ Implemented (Partial)
+### B. Download Manager [Priority: High] ✅ Implemented
 
 **Goal:** Allow saving full-resolution files to the local file system (outside the app's internal DB cache).
 
@@ -336,15 +336,15 @@ Advanced features for future releases:
 - Queue management prevents overwhelming the system
 - Download preferences can be stored in settings table (future enhancement)
 
-**Status:** ✅ Core download functionality implemented. Individual file downloads work with progress tracking. Batch download and default directory settings are planned for future releases.
+**Status:** ✅ Core download functionality implemented. Individual and batch downloads work with progress tracking, and default directory settings are available. Full standalone "download manager page" remains a future enhancement.
 
 ---
 
-### C. Playlists / Collections [Priority: Medium] ✅ Implemented
+### C. Playlists / Collections [Priority: Medium] ⏳ Partially Implemented
 
 **Goal:** Create curated collections of posts independent of Artists/Trackers.
 
-#### Phase 1: MVP ✅ **COMPLETED**
+#### Phase 1: MVP ⏳ **PARTIALLY COMPLETED**
 
 1. **Database:**
 
@@ -359,8 +359,8 @@ Advanced features for future releases:
    - ✅ View Playlist: Grid and masonry view modes with filtering and sorting
 
 3. **Logic:**
-   - ✅ Filter inside playlist (FTS5 tag search, rating, media type, AI filter)
-   - ✅ Sort by `addedAt`, `publishedAt`, rating (ascending/descending)
+   - ⏳ Filter inside playlist (media type is implemented; full parity for all advertised filters is still in progress)
+   - ⏳ Sort by `addedAt`, `publishedAt`, rating (ascending/descending) (partially implemented)
    - ✅ Remove post from playlist
    - ✅ Delete/Rename playlist
    - ✅ Create new playlists with custom names and icons
@@ -375,7 +375,7 @@ Advanced features for future releases:
 - ✅ Smart playlist query parsing and resolution
 - ✅ Comprehensive error handling and validation
 
-**Status:** ✅ **COMPLETED:** Core playlist functionality fully implemented. Users can create playlists, add/remove posts, view galleries with filtering and sorting, and manage smart playlists with tag-based queries.
+**Status:** ⏳ **PARTIALLY COMPLETED:** Core playlist functionality is implemented (create/manage playlists, add/remove posts, smart playlists). Full filter/sort parity with all roadmap claims is still in progress.
 
 #### Phase 2: Future Improvements (Not for now)
 
