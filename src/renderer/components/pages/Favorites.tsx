@@ -125,7 +125,7 @@ export const Favorites = () => {
       initialPageParam: 1,
     });
   
-  const { aiFilter, mediaType, source } = filters;
+  const { aiFilter, rating, mediaType, source } = filters;
 
   const allPosts = useMemo(() => {
     let posts = data?.pages.flatMap((page) => page) || [];
@@ -136,6 +136,14 @@ export const Favorites = () => {
       posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
     } else if (aiFilter === "only") {
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
+    }
+
+    // Filter by rating
+    if (rating !== "all") {
+      posts = posts.filter((post) => {
+        const postRating = typeof post.rating === "string" ? post.rating.trim().toLowerCase().charAt(0) : "";
+        return postRating === rating;
+      });
     }
     
     // Filter by media type
@@ -182,7 +190,7 @@ export const Favorites = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, mediaType, source, trackedArtists]);
+  }, [data, sortOrder, aiFilter, rating, mediaType, source, trackedArtists]);
 
   const fetchParams = useMemo(
     () => ({
@@ -190,10 +198,11 @@ export const Favorites = () => {
         isFavorited: true,
         tags: tags.length > 0 ? tags.join(" ") : undefined,
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
+        rating: rating === "all" ? undefined : rating,
         mediaType: mediaType === "all" ? undefined : mediaType,
       },
     }),
-    [tags, aiFilter, mediaType]
+    [tags, aiFilter, rating, mediaType]
   );
   const {
     downloadAll,

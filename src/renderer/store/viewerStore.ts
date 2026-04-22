@@ -10,11 +10,20 @@ export type ViewerOrigin =
       artistId: number;
       tags?: string[];
       aiFilter?: "all" | "hide" | "only";
+      rating?: "all" | "s" | "q" | "e";
       mediaType?: "all" | "images" | "videos";
       source?: "all" | "favorites" | "subscriptions";
       sortOrder?: "asc" | "desc";
     }
-  | { kind: "playlist"; playlistId: number; mediaType?: "all" | "images" | "videos"; sortOrder?: "asc" | "desc"; provider?: "rule34" | "gelbooru" };
+  | {
+      kind: "playlist";
+      playlistId: number;
+      mediaType?: "all" | "images" | "videos";
+      rating?: "all" | "s" | "q" | "e";
+      aiFilter?: "all" | "hide" | "only";
+      sortOrder?: "asc" | "desc";
+      provider?: "rule34" | "gelbooru";
+    };
 
 // Очередь просмотра
 export interface ViewerQueue {

@@ -95,17 +95,19 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   // Use atomic selectors to prevent unnecessary re-renders
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const rating = useSearchStore((state) => state.filters.rating);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
   const viewType = useSearchStore((state) => state.viewType);
 
   const { data: totalPosts = 0 } = useQuery({
-    queryKey: ["posts-count", artist.id, aiFilter, mediaType, source],
+    queryKey: ["posts-count", artist.id, aiFilter, rating, mediaType, source],
     queryFn: async () => {
       const count = await window.api.getArtistPostsCount({
         artistId: artist.id,
         filters: {
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
+          rating: rating === "all" ? undefined : rating,
           mediaType: mediaType === "all" ? undefined : mediaType,
           isFavorited: source === "favorites" ? true : undefined,
         },
@@ -124,7 +126,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     isLoading,
     handleEndReached,
   } = useGalleryInfiniteScroll({
-    queryKey: ["posts", artist.id, aiFilter, mediaType, source, sortOrder],
+    queryKey: ["posts", artist.id, aiFilter, rating, mediaType, source, sortOrder],
     fetchFn: async (pageParam) => {
       return await window.api.getArtistPosts({
         artistId: artist.id,
@@ -136,6 +138,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           tags: undefined,
           // AI and Media Type filters applied only if not in 'all' mode
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
+          rating: rating === "all" ? undefined : rating,
           mediaType: mediaType === "all" ? undefined : mediaType,
           isFavorited: source === "favorites" ? true : undefined,
         },
@@ -252,6 +255,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         artistId: artist.id,
         tags: undefined, // No tag filtering in artist gallery
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
+        rating,
         mediaType: mediaType === "all" ? undefined : mediaType,
         source,
         sortOrder,
@@ -273,11 +277,12 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       isRandom: false,
       filters: {
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
+        rating: rating === "all" ? undefined : rating,
         mediaType: mediaType === "all" ? undefined : mediaType,
         isFavorited: source === "favorites" ? true : undefined,
       },
     }),
-    [artist.id, aiFilter, mediaType, source]
+    [artist.id, aiFilter, rating, mediaType, source]
   );
   const {
     downloadAll,

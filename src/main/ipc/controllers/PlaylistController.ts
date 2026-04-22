@@ -1380,8 +1380,9 @@ export class PlaylistController extends BaseController {
         });
       }
 
-      // Apply pagination (limit and offset)
-      const paginatedPosts = mergedPosts.slice(offset, offset + limit);
+      // Local and remote queries are already paginated for the requested page.
+      // Applying offset again here drops valid results on page > 1.
+      const paginatedPosts = mergedPosts.slice(0, limit);
 
       log.info(
         `[PlaylistController] Hybrid search resolved ${paginatedPosts.length} posts for smart playlist ${playlistId} ` +

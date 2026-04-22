@@ -240,7 +240,14 @@ const PostNotFoundFallback = ({
 
         // Update cache with inserted post (no setTimeout needed - we have the post object)
         if (queue.origin && queue.origin.kind === "playlist") {
-          const queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
+          const queryKey = [
+            "playlist-posts",
+            queue.origin.playlistId,
+            queue.origin.mediaType ?? "all",
+            queue.origin.rating ?? "all",
+            queue.origin.aiFilter ?? "all",
+            queue.origin.sortOrder ?? "desc",
+          ];
           
           // Update cache directly with inserted post
           // Use functional update to ensure we're working with latest cache state
@@ -387,9 +394,10 @@ const useCurrentPost = (
       }
       case "artist": {
         // CRITICAL: Match query key from ArtistGallery.tsx
-        // QueryKey includes: ["posts", artistId, aiFilter, mediaType, source, sortOrder]
+        // QueryKey includes: ["posts", artistId, aiFilter, rating, mediaType, source, sortOrder]
         // This ensures cache lookup matches the query key used for fetching artist posts
         const aiFilter = origin.aiFilter ?? "all";
+        const rating = origin.rating ?? "all";
         const mediaType = origin.mediaType ?? "all";
         const source = origin.source ?? "all";
         const sortOrder = origin.sortOrder ?? "desc";
@@ -397,6 +405,7 @@ const useCurrentPost = (
           "posts",
           origin.artistId,
           aiFilter,
+          rating,
           mediaType,
           source,
           sortOrder,
@@ -409,8 +418,15 @@ const useCurrentPost = (
         return ["search", []] as const;
       }
       case "playlist": {
-        // Match query key from PlaylistGallery: ["playlist-posts", playlistId, mediaType, sortOrder]
-        return ["playlist-posts", origin.playlistId, origin.mediaType ?? "all", origin.sortOrder ?? "desc"] as const;
+        // Match query key from PlaylistGallery
+        return [
+          "playlist-posts",
+          origin.playlistId,
+          origin.mediaType ?? "all",
+          origin.rating ?? "all",
+          origin.aiFilter ?? "all",
+          origin.sortOrder ?? "desc",
+        ] as const;
       }
       default:
         return null;
@@ -1581,20 +1597,25 @@ export const ViewerDialog = () => {
     
     let queryKey: unknown[] = [];
     if (queue.origin.kind === "playlist") {
-      // Match query key from PlaylistGallery: ["playlist-posts", playlistId, mediaType, sortOrder]
-      queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
+      queryKey = [
+        "playlist-posts",
+        queue.origin.playlistId,
+        queue.origin.mediaType ?? "all",
+        queue.origin.rating ?? "all",
+        queue.origin.aiFilter ?? "all",
+        queue.origin.sortOrder ?? "desc",
+      ];
     } else if (queue.origin.kind === "artist") {
       const aiFilter = queue.origin.aiFilter ?? "all";
+      const rating = queue.origin.rating ?? "all";
       const mediaType = queue.origin.mediaType ?? "all";
-      queryKey = ["posts", queue.origin.artistId, aiFilter, mediaType];
+      const source = queue.origin.source ?? "all";
+      const sortOrder = queue.origin.sortOrder ?? "desc";
+      queryKey = ["posts", queue.origin.artistId, aiFilter, rating, mediaType, source, sortOrder];
     } else if (queue.origin.kind === "favorites") {
-      queryKey = queue.origin.tags && queue.origin.tags.length > 0
-        ? ["posts", "favorites", queue.origin.tags]
-        : ["posts", "favorites"];
+      queryKey = ["posts", "favorites", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "updates") {
-      queryKey = queue.origin.tags && queue.origin.tags.length > 0
-        ? ["posts", "updates", queue.origin.tags]
-        : ["posts", "updates"];
+      queryKey = ["posts", "updates", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "search") {
       queryKey = ["search", queue.origin.tags];
     } else {
@@ -1636,30 +1657,35 @@ export const ViewerDialog = () => {
 
     if (!queue.onLoadMore) return;
 
-    // Query keys are consistent with component query keys:
-    // - Artist gallery: ["posts", artistId, aiFilter, mediaType]
-    // - Favorites: ["posts", "favorites", tags] or ["posts", "favorites"]
-    // - Updates: ["posts", "updates", tags] or ["posts", "updates"]
+    // Query keys are consistent with component query keys.
+    // Keep this mapping in sync with page query keys to avoid cache drift.
     // - Search: ["search", tags]
-    // - Playlist: ["playlist-posts", playlistId, mediaType, sortOrder]
+    // - Artist: ["posts", artistId, aiFilter, rating, mediaType, source, sortOrder]
+    // - Favorites/Updates: ["posts", <tab>, tags]
+    // - Playlist: ["playlist-posts", playlistId, mediaType, rating, aiFilter, sortOrder]
     let queryKey: unknown[] = [];
     if (queue.origin.kind === "artist") {
       const aiFilter = queue.origin.aiFilter ?? "all";
+      const rating = queue.origin.rating ?? "all";
       const mediaType = queue.origin.mediaType ?? "all";
-      queryKey = ["posts", queue.origin.artistId, aiFilter, mediaType];
+      const source = queue.origin.source ?? "all";
+      const sortOrder = queue.origin.sortOrder ?? "desc";
+      queryKey = ["posts", queue.origin.artistId, aiFilter, rating, mediaType, source, sortOrder];
     } else if (queue.origin.kind === "favorites") {
-      queryKey = queue.origin.tags && queue.origin.tags.length > 0
-        ? ["posts", "favorites", queue.origin.tags]
-        : ["posts", "favorites"];
+      queryKey = ["posts", "favorites", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "updates") {
-      queryKey = queue.origin.tags && queue.origin.tags.length > 0
-        ? ["posts", "updates", queue.origin.tags]
-        : ["posts", "updates"];
+      queryKey = ["posts", "updates", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "search") {
       queryKey = ["search", queue.origin.tags];
     } else if (queue.origin.kind === "playlist") {
-      // Match query key from PlaylistGallery: ["playlist-posts", playlistId, mediaType, sortOrder]
-      queryKey = ["playlist-posts", queue.origin.playlistId, queue.origin.mediaType ?? "all", queue.origin.sortOrder ?? "desc"];
+      queryKey = [
+        "playlist-posts",
+        queue.origin.playlistId,
+        queue.origin.mediaType ?? "all",
+        queue.origin.rating ?? "all",
+        queue.origin.aiFilter ?? "all",
+        queue.origin.sortOrder ?? "desc",
+      ];
     } else {
       return;
     }

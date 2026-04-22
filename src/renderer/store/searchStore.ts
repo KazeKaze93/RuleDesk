@@ -7,11 +7,13 @@ type MediaType = "all" | "images" | "videos";
 type SourceType = "all" | "favorites" | "subscriptions";
 type ViewType = "grid" | "masonry";
 type AiFilterType = "all" | "hide" | "only";
+type RatingType = "all" | "s" | "q" | "e";
 type OrientationType = "all" | "horizontal" | "vertical";
 type SortByType = "date" | "score";
 
 interface PostFilters {
   aiFilter: AiFilterType;
+  rating: RatingType;
   mediaType: MediaType;
   source: SourceType;
   orientation: OrientationType;
@@ -45,6 +47,7 @@ interface SearchState {
 
 const DEFAULT_FILTERS: PostFilters = {
   aiFilter: "all",
+  rating: "all",
   mediaType: "all",
   source: "all",
   orientation: "all",

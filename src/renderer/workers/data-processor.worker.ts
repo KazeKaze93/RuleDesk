@@ -38,6 +38,7 @@ interface WorkerResponse<T = unknown> {
 // Filter configuration type
 interface FilterConfig {
   aiFilter: "all" | "hide" | "only";
+  rating: "all" | "s" | "q" | "e";
   mediaType: "all" | "images" | "videos";
   source: "all" | "favorites" | "subscriptions";
   sortOrder: "asc" | "desc";
@@ -112,7 +113,7 @@ function filterAndSortPosts(
   posts: WorkerPost[],
   filters: FilterConfig
 ): WorkerPost[] {
-  const { aiFilter, mediaType, source, sortOrder, trackedTagsSet, tags } = filters;
+  const { aiFilter, rating, mediaType, source, sortOrder, trackedTagsSet, tags } = filters;
   
   // Build tracked tags set for efficient lookup
   const trackedSet = trackedTagsSet ? new Set(trackedTagsSet) : new Set<string>();
@@ -123,6 +124,12 @@ function filterAndSortPosts(
     // AI filter
     if (aiFilter === "hide" && hasAiGeneratedTag(post.tags)) return false;
     if (aiFilter === "only" && !hasAiGeneratedTag(post.tags)) return false;
+
+    // Rating filter
+    if (rating !== "all") {
+      const postRating = typeof post.rating === "string" ? post.rating.trim().toLowerCase().charAt(0) : "";
+      if (postRating !== rating) return false;
+    }
     
     // Media type filter
     if (mediaType !== "all") {

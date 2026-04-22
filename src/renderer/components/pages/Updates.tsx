@@ -237,7 +237,7 @@ export const Updates = () => {
       initialPageParam: 1,
     });
 
-  const { aiFilter, mediaType, source } = filters;
+  const { aiFilter, rating, mediaType, source } = filters;
   const { data: artists = [], isLoading: isArtistsLoading } = useQuery({
     queryKey: ["artists"],
     queryFn: () => window.api.getTrackedArtists(),
@@ -259,6 +259,14 @@ export const Updates = () => {
       posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
     } else if (aiFilter === "only") {
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
+    }
+
+    // Filter by rating
+    if (rating !== "all") {
+      posts = posts.filter((post) => {
+        const postRating = typeof post.rating === "string" ? post.rating.trim().toLowerCase().charAt(0) : "";
+        return postRating === rating;
+      });
     }
     
     // Filter by media type
@@ -294,7 +302,7 @@ export const Updates = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, mediaType, source]);
+  }, [data, sortOrder, aiFilter, rating, mediaType, source]);
 
   const fetchParams = useMemo(
     () => ({
@@ -302,11 +310,12 @@ export const Updates = () => {
         sinceTracking: true,
         tags: tags.length > 0 ? tags.join(" ") : undefined,
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
+        rating: rating === "all" ? undefined : rating,
         mediaType: mediaType === "all" ? undefined : mediaType,
         isFavorited: source === "favorites" ? true : undefined,
       },
     }),
-    [tags, aiFilter, mediaType, source]
+    [tags, aiFilter, rating, mediaType, source]
   );
   const {
     downloadAll,
