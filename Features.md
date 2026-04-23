@@ -4,7 +4,7 @@ This file tracks product feature priorities. It is a planning document, not an i
 
 ## 🚧 P1 In Progress (Core UX / Stability)
 
-- **Filters:** **date range**; enable or remove **disabled** `FiltersPanel` options (sort by score / views, orientation); optional Browse **source** UX review.
+- **Filters:** keep panel focused on **AI / media / source** and polish Browse **source** UX/messages.
 - **Nav / layout:** spec alignment (labels), masonry vs `Virtuoso` tradeoffs on very long feeds.
 - Hardening: **user-configurable** backup retention; DX (main process reload in dev); video/GPU tuning if needed.
 

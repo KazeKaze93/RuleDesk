@@ -76,7 +76,16 @@ export function updatePostInAllCaches(
   queryClient: QueryClient,
   post: Post,
   updater: (post: Post) => Post,
-  origin?: { kind: "search"; tags: string[] } | { kind: "artist"; artistId: number } | { kind: "favorites" } | { kind: "updates" } | { kind: "browse"; filters?: string }
+  origin?:
+    | {
+        kind: "search";
+        tags: string[];
+        source?: "all" | "favorites" | "subscriptions";
+      }
+    | { kind: "artist"; artistId: number }
+    | { kind: "favorites" }
+    | { kind: "updates" }
+    | { kind: "browse"; filters?: string }
 ): void {
   // Update artist gallery cache if post has artistId
   if (post.artistId) {
@@ -96,7 +105,7 @@ export function updatePostInAllCaches(
 
   // Update search cache if post is from search
   if (origin?.kind === "search") {
-    const searchQueryKey = ["search", origin.tags];
+    const searchQueryKey = ["search", origin.tags, origin.source ?? "all"];
     queryClient.setQueryData<InfiniteData<Post[]>>(
       searchQueryKey,
       (old) => updatePostInCache(old, post.id, updater)

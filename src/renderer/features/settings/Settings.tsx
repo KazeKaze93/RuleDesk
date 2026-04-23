@@ -68,6 +68,7 @@ export const Settings = () => {
   };
 
   useEffect(() => {
+    const timersRef = statusTimersRef.current;
     window.api.getSettings().then((s) => {
       if (s?.downloadFolder) setDownloadFolder(s.downloadFolder);
       if (s?.duplicateFileBehavior) setDuplicateFileBehavior(s.duplicateFileBehavior);
@@ -85,7 +86,7 @@ export const Settings = () => {
       setDatabaseLocation(location);
     });
     return () => {
-      const activeTimers = Object.values(statusTimersRef.current);
+      const activeTimers = Object.values(timersRef);
       for (const timerId of activeTimers) {
         if (timerId !== undefined) {
           window.clearTimeout(timerId);

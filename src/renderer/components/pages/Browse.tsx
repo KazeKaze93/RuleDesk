@@ -23,6 +23,8 @@ import type { Post } from "../../../main/db/schema";
 import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 
+const POSTS_PER_PAGE = 50;
+
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
@@ -106,6 +108,11 @@ export const Browse = () => {
   const rating = useSearchStore((state) => state.filters.rating);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
+  const orientation = useSearchStore((state) => state.filters.orientation);
+  const dateFrom = useSearchStore((state) => state.filters.dateFrom);
+  const dateTo = useSearchStore((state) => state.filters.dateTo);
+
+  const isRemoteBrowseSource = source === "all";
 
   // Use the new infinite scroll hook
   // For external API (Browse), we need custom getNextPageParam logic
@@ -118,9 +125,29 @@ export const Browse = () => {
     isLoading,
     handleEndReached,
   } = useGalleryInfiniteScroll({
-    queryKey: ["search", tags],
+    queryKey: ["search", tags, source],
     fetchFn: async (pageParam) => {
-      // Always fetch - empty tags array means show all posts (API omits tags parameter)
+      if (source === "favorites") {
+        return await window.api.getArtistPosts({
+          page: pageParam,
+          filters: {
+            isFavorited: true,
+            tags: tags.length > 0 ? tags.join(" ") : undefined,
+          },
+        });
+      }
+
+      if (source === "subscriptions") {
+        return await window.api.getArtistPosts({
+          page: pageParam,
+          filters: {
+            sinceTracking: true,
+            tags: tags.length > 0 ? tags.join(" ") : undefined,
+          },
+        });
+      }
+
+      // source === "all": external API search
       return await window.api.searchBooru({
         tags,
         page: pageParam,
@@ -129,12 +156,12 @@ export const Browse = () => {
     // Custom getNextPageParam for external API: continue loading until empty array
     // Unlike local DB, external API doesn't tell us total count, so we load until empty
     getNextPageParam: (lastPage, allPages) => {
-      // For external API, continue loading if we got any posts
-      // Only stop if lastPage is empty (no more posts available)
-      if (lastPage.length === 0) {
-        return undefined; // No more posts
+      if (!isRemoteBrowseSource) {
+        return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
       }
-      // Continue loading next page - API may return less than 50 but still have more
+      if (lastPage.length === 0) {
+        return undefined;
+      }
       return allPages.length + 1;
     },
   });
@@ -169,17 +196,21 @@ export const Browse = () => {
     aiFilter,
     rating,
     mediaType,
-    source,
+    source: "all",
+    orientation,
+    dateFrom,
+    dateTo,
     sortOrder,
     trackedTagsSet: trackedTagsArray,
     tags,
-  }), [aiFilter, rating, mediaType, source, sortOrder, trackedTagsArray, tags]);
+  }), [aiFilter, rating, mediaType, orientation, dateFrom, dateTo, sortOrder, trackedTagsArray, tags]);
 
   const { data: allPosts = [], isLoading: workerLoading } = useWorkerFilteredPosts(
     rawPosts,
     filterConfig,
     250 // Debounce delay
   );
+  const hasFilteredOutResults = rawPosts.length > 0 && allPosts.length === 0;
 
 
   // Create stable List and Item components with forwardRef and aria-busy
@@ -300,12 +331,12 @@ export const Browse = () => {
     }
 
     // Open viewer with search origin
-    // listKey: "search" matches queryKey ["search", tags] used in ViewerDialog
+    // listKey and origin must match queryKey ["search", tags, source] used in ViewerDialog
     openViewer({
-      origin: { kind: "search", tags },
+      origin: { kind: "search", tags, source },
       ids: postIds,
       initialIndex: index,
-      listKey: "search",
+      listKey: `search-${source}`,
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
     });
@@ -342,7 +373,19 @@ export const Browse = () => {
           </div>
         ) : allPosts.length === 0 ? (
           <div className="flex flex-col gap-4 justify-center items-center h-full px-6">
-            {tags.length > 0 ? (
+            {hasFilteredOutResults ? (
+              <div className="flex flex-col gap-4 items-center max-w-md text-center">
+                <Search className="w-16 h-16 opacity-50 text-muted-foreground" />
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold text-foreground">
+                    No posts match current filters
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Source or media filters excluded all loaded API results. Try switching Source to All.
+                  </p>
+                </div>
+              </div>
+            ) : tags.length > 0 && isRemoteBrowseSource ? (
               <div className="flex flex-col gap-4 items-center max-w-md text-center">
                 <Search className="w-16 h-16 opacity-50 text-muted-foreground" />
                 <div className="space-y-2">
@@ -372,7 +415,7 @@ export const Browse = () => {
                 <div className="text-center">
                   <p className="mb-2 text-lg font-semibold">No posts found</p>
                   <p className="text-sm">
-                    Try different tags or check your spelling.
+                    Try different tags or change the current source filter.
                   </p>
                 </div>
               </div>

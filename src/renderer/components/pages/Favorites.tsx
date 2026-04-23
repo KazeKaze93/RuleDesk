@@ -24,6 +24,29 @@ import { DownloadAllButton } from "../downloads/DownloadAllButton";
 // This matches the default limit in GetPostsSchema
 const POSTS_PER_PAGE = 50;
 
+const matchesOrientation = (
+  post: object,
+  orientation: "all" | "horizontal" | "vertical"
+): boolean => {
+  if (orientation === "all") return true;
+  const width = Reflect.get(post, "width");
+  const height = Reflect.get(post, "height");
+  if (typeof width !== "number" || typeof height !== "number") return true;
+  if (orientation === "horizontal") return width > height;
+  return height > width;
+};
+
+const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
+  if (publishedAt instanceof Date) {
+    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
+  }
+  if (typeof publishedAt === "number") {
+    const parsed = new Date(publishedAt);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
+
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
@@ -120,7 +143,7 @@ export const Favorites = () => {
       initialPageParam: 1,
     });
   
-  const { aiFilter, mediaType, source } = filters;
+  const { aiFilter, mediaType, source, orientation, dateFrom, dateTo } = filters;
   const rating = useSearchStore((state) => state.filters.rating);
 
   const allPosts = useMemo(() => {
@@ -147,6 +170,20 @@ export const Favorites = () => {
       posts = posts.filter((post) => {
         const isVideo = isVideoPost(post.fileUrl);
         return mediaType === "videos" ? isVideo : !isVideo;
+      });
+    }
+
+    if (orientation !== "all") {
+      posts = posts.filter((post) => matchesOrientation(post, orientation));
+    }
+
+    if (dateFrom || dateTo) {
+      posts = posts.filter((post) => {
+        const date = getPublishedDate(post.publishedAt);
+        if (!date) return true;
+        if (dateFrom && date < dateFrom) return false;
+        if (dateTo && date > dateTo) return false;
+        return true;
       });
     }
     
@@ -186,7 +223,7 @@ export const Favorites = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, rating, mediaType, source, trackedArtists]);
+  }, [data, sortOrder, aiFilter, rating, mediaType, source, orientation, dateFrom, dateTo, trackedArtists]);
 
   const fetchParams = useMemo(
     () => ({

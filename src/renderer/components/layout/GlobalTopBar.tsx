@@ -86,10 +86,8 @@ export const GlobalTopBar = () => {
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.aiFilter !== "all") count++;
-    if (filters.rating !== "all") count++;
     if (filters.mediaType !== "all") count++;
     if (filters.source !== "all") count++;
-    if (filters.orientation !== "all") count++;
     return count;
   }, [filters]);
 
@@ -127,18 +125,6 @@ export const GlobalTopBar = () => {
     return activeTab !== null && activeTab !== "settings";
   }, [activeTab, apiQueryString]);
 
-  const handleSearch = () => {
-    // Trigger search update - pages will react to query change via useEffect
-    // The search query is already in the store, pages will refetch automatically
-    // No need to navigate - search works in context of current tab
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
   const handleSortToggle = () => {
     toggleSortOrder();
   };
@@ -151,8 +137,6 @@ export const GlobalTopBar = () => {
       {/* Left: Search */}
       <div className="flex flex-1 gap-2 items-center max-w-md">
         <TagAutocomplete
-          onKeyDown={handleKeyDown}
-          onTagSelect={handleSearch}
           showClearButton={true}
           placeholder="Search posts by tags..."
           className="w-full"
@@ -196,14 +180,6 @@ export const GlobalTopBar = () => {
             </div>
           </PopoverContent>
         </Popover>
-        <Button
-          onClick={handleSearch}
-          size="sm"
-          variant="outline"
-          className="h-9 text-xs"
-        >
-          Search
-        </Button>
       </div>
 
       {/* Right: Actions */}

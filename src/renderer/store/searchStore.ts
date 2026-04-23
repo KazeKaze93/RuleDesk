@@ -16,6 +16,8 @@ interface PostFilters {
   mediaType: MediaType;
   source: SourceType;
   orientation: OrientationType;
+  dateFrom: Date | null;
+  dateTo: Date | null;
 }
 
 export function buildBooruTagListForIpc(
@@ -64,6 +66,8 @@ const DEFAULT_FILTERS: PostFilters = {
   mediaType: "all",
   source: "all",
   orientation: "all",
+  dateFrom: null,
+  dateTo: null,
 };
 
 const MAX_TOKEN_LENGTH = 200;

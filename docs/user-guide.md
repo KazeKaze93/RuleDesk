@@ -301,11 +301,11 @@ The download will start, and you'll see a progress indicator.
 
 ### Filters and Sorting
 
-**Filter posts by rating:**
+**Filter by source:**
 
 1. In views that show the filter panel, open the top bar **Filters** control
-2. Select a rating: **Safe**, **Questionable**, or **Explicit** where available
-3. The list updates to match; not every screen exposes the same filter controls yet (see [Roadmap](./roadmap.md))
+2. Choose **All**, **Favorites**, or **Subscriptions**
+3. Gallery updates automatically
 
 **Filter by media type:**
 
@@ -478,7 +478,7 @@ Settings are split into tabs:
 **Solutions:**
 
 1. Make sure the artist has posts on the website
-2. Check if you're filtering by rating (maybe posts are filtered out)
+2. Check active top-bar filters (AI/media/source) that may hide posts
 3. Try the "Repair" button on the artist card (resyncs from beginning)
 4. Check the sync progress messages for errors
 
@@ -555,7 +555,7 @@ The application uses Electron's `app.getPath("userData")` to determine the datab
 1. **Start small** - Add a few artists first to get familiar
 2. **Sync regularly** - Set up automatic sync for convenience
 3. **Use favorites** - Mark posts you like as you browse
-4. **Filter effectively** - Use rating and tag filters to find what you want
+4. **Filter effectively** - Use AI/media/source filters and tag search to find what you want
 5. **Backup often** - Create backups before major changes
 
 ---

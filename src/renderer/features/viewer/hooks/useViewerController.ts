@@ -110,7 +110,11 @@ export function useViewerController({
 
     // Update search cache (for Browse page) if post is from search
     if (queue?.origin?.kind === "search") {
-      const searchQueryKey = ["search", queue.origin.tags];
+      const searchQueryKey = [
+        "search",
+        queue.origin.tags,
+        queue.origin.source ?? "all",
+      ];
       queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) =>
         updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
       );
@@ -191,7 +195,11 @@ export function useViewerController({
 
       // Update search cache (for Browse page) if post is from search
       if (queue?.origin?.kind === "search") {
-        const searchQueryKey = ["search", queue.origin.tags];
+        const searchQueryKey = [
+          "search",
+          queue.origin.tags,
+          queue.origin.source ?? "all",
+        ];
         queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) =>
           updatePostInCache(old, post.id, (p) => ({
             ...p,

@@ -114,7 +114,7 @@ export type RemovePostsFromPlaylistRequest = z.infer<typeof RemovePostsFromPlayl
  * Get Playlist Posts Schema
  *
  * Single source of truth for GetPlaylistPosts validation and typing.
- * Supports filtering by rating and media type (same filters as regular post queries).
+ * Supports playlist-scoped filtering by rating and media type.
  */
 export const GetPlaylistPostsSchema = z.object({
   playlistId: z.number().int().positive(),
@@ -140,7 +140,7 @@ export type GetPlaylistPostsRequest = z.infer<typeof GetPlaylistPostsSchema>;
  *
  * Single source of truth for ResolvePlaylistPosts validation and typing.
  * Used to resolve posts for both static and smart playlists.
- * Includes global filters (rating, mediaType) for integration with GlobalTopBar.
+ * Includes optional rating and mediaType filters from renderer state.
  */
 export const ResolvePlaylistPostsSchema = z.object({
   playlistId: z.number().int().positive(),

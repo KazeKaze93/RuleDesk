@@ -412,7 +412,7 @@ const useCurrentPost = (
         ] as const;
       }
       case "search": {
-        return ["search", origin.tags] as const;
+        return ["search", origin.tags, origin.source ?? "all"] as const;
       }
       case "browse": {
         return ["search", []] as const;
@@ -1617,7 +1617,7 @@ export const ViewerDialog = () => {
     } else if (queue.origin.kind === "updates") {
       queryKey = ["posts", "updates", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "search") {
-      queryKey = ["search", queue.origin.tags];
+      queryKey = ["search", queue.origin.tags, queue.origin.source ?? "all"];
     } else {
       return undefined;
     }
@@ -1659,7 +1659,7 @@ export const ViewerDialog = () => {
 
     // Query keys are consistent with component query keys.
     // Keep this mapping in sync with page query keys to avoid cache drift.
-    // - Search: ["search", tags]
+    // - Search: ["search", tags, source]
     // - Artist: ["posts", artistId, aiFilter, rating, mediaType, source, sortOrder]
     // - Favorites/Updates: ["posts", <tab>, tags]
     // - Playlist: ["playlist-posts", playlistId, mediaType, rating, aiFilter, sortOrder]
@@ -1676,7 +1676,7 @@ export const ViewerDialog = () => {
     } else if (queue.origin.kind === "updates") {
       queryKey = ["posts", "updates", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "search") {
-      queryKey = ["search", queue.origin.tags];
+      queryKey = ["search", queue.origin.tags, queue.origin.source ?? "all"];
     } else if (queue.origin.kind === "playlist") {
       queryKey = [
         "playlist-posts",

@@ -2,7 +2,11 @@ import { create } from "zustand";
 
 export type ViewerOrigin =
   | { kind: "browse"; filters?: string }
-  | { kind: "search"; tags: string[] }
+  | {
+      kind: "search";
+      tags: string[];
+      source?: "all" | "favorites" | "subscriptions";
+    }
   | { kind: "favorites"; tags?: string[] }
   | { kind: "updates"; tags?: string[] }
   | {

@@ -26,6 +26,29 @@ import type { Artist } from "../../../main/db/schema";
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
 
+const matchesOrientation = (
+  post: object,
+  orientation: "all" | "horizontal" | "vertical"
+): boolean => {
+  if (orientation === "all") return true;
+  const width = Reflect.get(post, "width");
+  const height = Reflect.get(post, "height");
+  if (typeof width !== "number" || typeof height !== "number") return true;
+  if (orientation === "horizontal") return width > height;
+  return height > width;
+};
+
+const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
+  if (publishedAt instanceof Date) {
+    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
+  }
+  if (typeof publishedAt === "number") {
+    const parsed = new Date(publishedAt);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
+
 // --- Helper function for updating InfiniteData cache ---
 /**
  * Updates a single post in InfiniteData cache by postId
@@ -232,7 +255,7 @@ export const Updates = () => {
       initialPageParam: 1,
     });
 
-  const { aiFilter, mediaType, source } = filters;
+  const { aiFilter, mediaType, source, orientation, dateFrom, dateTo } = filters;
   const rating = useSearchStore((state) => state.filters.rating);
   const { data: artists = [], isLoading: isArtistsLoading } = useQuery({
     queryKey: ["artists"],
@@ -272,6 +295,20 @@ export const Updates = () => {
         return mediaType === "videos" ? isVideo : !isVideo;
       });
     }
+
+    if (orientation !== "all") {
+      posts = posts.filter((post) => matchesOrientation(post, orientation));
+    }
+
+    if (dateFrom || dateTo) {
+      posts = posts.filter((post) => {
+        const date = getPublishedDate(post.publishedAt);
+        if (!date) return true;
+        if (dateFrom && date < dateFrom) return false;
+        if (dateTo && date > dateTo) return false;
+        return true;
+      });
+    }
     
     // Filter by source - Updates tab shows subscriptions by default
     if (source === "favorites") {
@@ -298,7 +335,7 @@ export const Updates = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, rating, mediaType, source]);
+  }, [data, sortOrder, aiFilter, rating, mediaType, source, orientation, dateFrom, dateTo]);
 
   const fetchParams = useMemo(
     () => ({

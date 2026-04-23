@@ -1693,7 +1693,7 @@ Root:
 - **Virtualization:** `react-virtuoso` for efficient large list rendering
 - **Search Functionality:** Local artist search and remote tag search (multi-provider)
 - **Sidebar Navigation:** Persistent sidebar with main navigation sections
-- **Global Top Bar:** Unified top bar with search, filters, sort controls (implemented; full control parity still in progress)
+- **Global Top Bar:** Unified top bar with search, filters, sort controls (implemented)
 - **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites
 - **Download Manager:** Download full-resolution files with progress tracking
 - **Favorites System:** Complete implementation with database field and toggle functionality
@@ -1717,7 +1717,7 @@ Root:
 15. ✅ **Download Manager:** Download full-resolution files with progress tracking
 16. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
 17. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
-18. ✅ **Global Top Bar:** Search, `FiltersPanel` (rating, AI, media, source, etc.), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines (date range and some panel options still missing; see [roadmap](./roadmap.md))
+18. ✅ **Global Top Bar:** Search, `FiltersPanel` (AI, media, source), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines.
 19. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 20. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
 21. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
@@ -1731,8 +1731,8 @@ Root:
 
 ### A. Filters (Advanced Search) — ongoing
 
-- ✅ `FiltersPanel` + `searchStore` drive rating, AI, media, source, and more on main surfaces.
-- ⏳ **Date range** and disabled placeholders (e.g. sort by score) — see roadmap.
+- ✅ `FiltersPanel` + `searchStore` drive AI, media, and source filters on main surfaces.
+- ℹ️ Removed panel controls (rating/date range/orientation) are intentionally out of current scope.
 - Full detail: [roadmap — Navigation & UX](./roadmap.md#-navigation--ux-revamp).
 
 ### B. Download Manager ✅ Implemented (Core Features)
@@ -1758,7 +1758,7 @@ Root:
 - ✅ **Playlist Management:** Full CRUD operations via `PlaylistController` (create, read, update, delete playlists)
 - ✅ **Add to Playlist:** Quick add menu (`QuickAddToPlaylistMenu`) on Post Cards and in viewer dialog
 - ✅ **Playlists Page:** Dedicated `PlaylistsPage` component in Sidebar navigation
-- ✅ **Playlist Gallery:** Grid and masonry view modes with filtering (FTS5 tag search, rating, media type, AI filter) and sorting (by `addedAt`, `publishedAt`, rating)
+- ✅ **Playlist Gallery:** Grid and masonry view modes with filtering (FTS5 tag search, media type, AI filter) and date-oriented sorting
 - ✅ **Smart Playlists:** Support for dynamic playlists with tag-based queries (auto-fill based on tags)
 - ✅ **FTS5 Integration:** Fast tag searching within playlists using FTS5 full-text search
 - ✅ **IPC Controller:** Complete `PlaylistController` implementation with type-safe operations and comprehensive error handling

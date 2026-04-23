@@ -5,31 +5,16 @@ import { Separator } from "../ui/separator";
 import { FilterSection } from "./filters/FilterSection";
 import { FilterToggleGroup } from "./filters/FilterToggleGroup";
 import { SourceSwitcher } from "./filters/SourceSwitcher";
-import {
-  Image,
-  Film,
-  RectangleHorizontal,
-  RectangleVertical,
-  X,
-  Grid3x3,
-} from "lucide-react";
+import { Image, Film, X, Grid3x3 } from "lucide-react";
 
 type AiFilterValue = "all" | "hide" | "only";
 type MediaFilterValue = "all" | "images" | "videos";
-type OrientationFilterValue = "all" | "horizontal" | "vertical";
-type RatingFilterValue = "all" | "s" | "q" | "e";
 
 const isAiFilterValue = (value: string): value is AiFilterValue =>
   value === "all" || value === "hide" || value === "only";
 
 const isMediaFilterValue = (value: string): value is MediaFilterValue =>
   value === "all" || value === "images" || value === "videos";
-
-const isOrientationFilterValue = (value: string): value is OrientationFilterValue =>
-  value === "all" || value === "horizontal" || value === "vertical";
-
-const isRatingFilterValue = (value: string): value is RatingFilterValue =>
-  value === "all" || value === "s" || value === "q" || value === "e";
 
 export const FiltersPanel = () => {
   const filters = useSearchStore((state) => state.filters);
@@ -52,10 +37,8 @@ export const FiltersPanel = () => {
   const isDirty = useMemo(() => {
     return (
       filters.aiFilter !== "all" ||
-      filters.rating !== "all" ||
       filters.mediaType !== "all" ||
-      filters.source !== "all" ||
-      filters.orientation !== "all"
+      filters.source !== "all"
     );
   }, [filters]);
 
@@ -85,23 +68,6 @@ export const FiltersPanel = () => {
         />
       </FilterSection>
 
-      <FilterSection label="Rating" showSeparator={true}>
-        <FilterToggleGroup
-          value={filters.rating}
-          onValueChange={(value) => {
-            if (isRatingFilterValue(value)) {
-              setFilters({ rating: value });
-            }
-          }}
-          options={[
-            { value: "all", label: "All" },
-            { value: "s", label: "Safe" },
-            { value: "q", label: "Questionable" },
-            { value: "e", label: "Explicit" },
-          ]}
-        />
-      </FilterSection>
-
       <FilterSection label="Media" showSeparator={true}>
         <FilterToggleGroup
           value={filters.mediaType}
@@ -114,22 +80,6 @@ export const FiltersPanel = () => {
             { value: "all", label: "All", icon: <Grid3x3 className="w-3.5 h-3.5" /> },
             { value: "images", label: "Images", icon: <Image className="w-3.5 h-3.5" /> },
             { value: "videos", label: "Videos", icon: <Film className="w-3.5 h-3.5" /> },
-          ]}
-        />
-      </FilterSection>
-
-      <FilterSection label="Format" showSeparator={false}>
-        <FilterToggleGroup
-          value={filters.orientation}
-          onValueChange={(value) => {
-            if (isOrientationFilterValue(value)) {
-              setFilters({ orientation: value });
-            }
-          }}
-          options={[
-            { value: "all", label: "All" },
-            { value: "horizontal", label: "Horizontal", icon: <RectangleHorizontal className="w-3.5 h-3.5" />, disabled: true },
-            { value: "vertical", label: "Vertical", icon: <RectangleVertical className="w-3.5 h-3.5" />, disabled: true },
           ]}
         />
       </FilterSection>
