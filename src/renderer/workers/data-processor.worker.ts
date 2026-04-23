@@ -41,6 +41,9 @@ interface FilterConfig {
   rating: "all" | "s" | "q" | "e";
   mediaType: "all" | "images" | "videos";
   source: "all" | "favorites" | "subscriptions";
+  orientation: "all" | "horizontal" | "vertical";
+  dateFrom: Date | null;
+  dateTo: Date | null;
   sortOrder: "asc" | "desc";
   trackedTagsSet?: string[]; // Array of tracked tag strings (lowercase)
   tags?: string[]; // Active search tags for source filter
@@ -105,6 +108,33 @@ function getTimestamp(publishedAt: Date | number | null | undefined): number {
   return 0;
 }
 
+function getPublishedDate(
+  publishedAt: Date | number | null | undefined
+): Date | null {
+  if (publishedAt instanceof Date) {
+    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
+  }
+  if (typeof publishedAt === "number") {
+    const parsed = new Date(publishedAt);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+}
+
+function matchesOrientation(
+  post: object,
+  orientation: FilterConfig["orientation"]
+): boolean {
+  if (orientation === "all") return true;
+  const width = Reflect.get(post, "width");
+  const height = Reflect.get(post, "height");
+  if (typeof width !== "number" || typeof height !== "number") {
+    return true;
+  }
+  if (orientation === "horizontal") return width > height;
+  return height > width;
+}
+
 /**
  * Filter and sort posts in a single efficient pass
  * Uses single-pass filter + sort for optimal performance
@@ -113,7 +143,18 @@ function filterAndSortPosts(
   posts: WorkerPost[],
   filters: FilterConfig
 ): WorkerPost[] {
-  const { aiFilter, rating, mediaType, source, sortOrder, trackedTagsSet, tags } = filters;
+  const {
+    aiFilter,
+    rating,
+    mediaType,
+    source,
+    orientation,
+    dateFrom,
+    dateTo,
+    sortOrder,
+    trackedTagsSet,
+    tags,
+  } = filters;
   
   // Build tracked tags set for efficient lookup
   const trackedSet = trackedTagsSet ? new Set(trackedTagsSet) : new Set<string>();
@@ -136,6 +177,16 @@ function filterAndSortPosts(
       const isVideo = isVideoPost(post.fileUrl);
       if (mediaType === "videos" && !isVideo) return false;
       if (mediaType === "images" && isVideo) return false;
+    }
+
+    // Orientation filter
+    if (!matchesOrientation(post, orientation)) return false;
+
+    // Date range filter
+    const publishedDate = getPublishedDate(post.publishedAt);
+    if (publishedDate) {
+      if (dateFrom && publishedDate < dateFrom) return false;
+      if (dateTo && publishedDate > dateTo) return false;
     }
     
     // Source filter - only apply if there's an active search

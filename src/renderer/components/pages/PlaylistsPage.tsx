@@ -48,6 +48,29 @@ interface PlaylistsPageProps {
   onBack?: () => void;
 }
 
+const matchesOrientation = (
+  post: object,
+  orientation: "all" | "horizontal" | "vertical"
+): boolean => {
+  if (orientation === "all") return true;
+  const width = Reflect.get(post, "width");
+  const height = Reflect.get(post, "height");
+  if (typeof width !== "number" || typeof height !== "number") return true;
+  if (orientation === "horizontal") return width > height;
+  return height > width;
+};
+
+const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
+  if (publishedAt instanceof Date) {
+    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
+  }
+  if (typeof publishedAt === "number") {
+    const parsed = new Date(publishedAt);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
+
 // Virtualization components (reused from ArtistGallery pattern)
 const GridContainer = forwardRef<
   HTMLDivElement,
@@ -148,7 +171,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
 
   const ratingLetter = filters.rating;
 
-  // Build filters for API call from GlobalTopBar filters
+  // Build filters for API call from search store state
   const apiFilters = useMemo(() => {
     const result: { rating?: "s" | "q" | "e"; mediaType?: "all" | "images" | "videos" } = {};
 
@@ -156,7 +179,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       result.rating = ratingLetter;
     }
     
-    // Map mediaType filter from GlobalTopBar
+    // Map mediaType filter from current search store state
     if (filters.mediaType && filters.mediaType !== "all") {
       result.mediaType = filters.mediaType;
     }
@@ -205,8 +228,22 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
     }
 
+    if (filters.orientation !== "all") {
+      posts = posts.filter((post) => matchesOrientation(post, filters.orientation));
+    }
+
+    if (filters.dateFrom || filters.dateTo) {
+      posts = posts.filter((post) => {
+        const date = getPublishedDate(post.publishedAt);
+        if (!date) return true;
+        if (filters.dateFrom && date < filters.dateFrom) return false;
+        if (filters.dateTo && date > filters.dateTo) return false;
+        return true;
+      });
+    }
+
     return posts;
-  }, [data, filters.aiFilter]);
+  }, [data, filters.aiFilter, filters.orientation, filters.dateFrom, filters.dateTo]);
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, {

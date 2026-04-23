@@ -43,10 +43,8 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 **Current state:** 🟡 partially implemented
 
 - ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
-- ✅ `FiltersPanel`: rating (S/Q/E), AI, media, source; wired to `searchStore` and post pipelines.
+- ✅ `FiltersPanel`: AI, media, source; wired to `searchStore` and post pipelines.
 - ✅ **Browse → Source (Favorites / Subscriptions):** requires at least one tag in the search box — **intentional** (subscriptions/favorites are interpreted in the context of a tag query against cached + API flows). Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)).
-- ⏳ **Date range** filter (by `publishedAt` / “posted between …”) — not in `searchStore` or UI.
-- ⏳ **Disabled filter placeholders** in panel: **horizontal/vertical** orientation (UI present, not implemented).
 - ✅ Search is chip-based and supports include/exclude, OR-groups, wildcard/fuzzy token forms (`*`, `~`) in query tokens.
 
 ### B. Viewer and Gallery Polish - High Priority
@@ -113,7 +111,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### M2 - UX Parity (In Progress)
 
-- Filter parity: **date range**; enable or remove disabled orientation placeholders; **Settings** page redesign (see [Planned product work](#planned-product-work)).
+- Filter parity: keep panel aligned to **AI/media/source** scope; **Settings** page redesign (see [Planned product work](#planned-product-work)).
 - Gallery/viewer: edge-case polish; core **TagsDrawer** and **PostCard** progressive loading are shipped.
 - Updates feed QoL largely shipped (Creators tab, mark all read); further polish as needed.
 
@@ -169,7 +167,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
-| **Filters** | **Date range** (`published` between). **Orientation** rows in `FiltersPanel` are disabled placeholders — implement or remove. |
+| **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision. |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: sidebar labels/grouping, tooltips, order, small-window density (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | **User setting** for retention (“keep last N” or max MB). |

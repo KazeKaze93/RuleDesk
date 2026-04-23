@@ -1067,7 +1067,7 @@ export class PlaylistController extends BaseController {
    * Get posts in a playlist with filters (rating, media type)
    *
    * Uses JOIN to efficiently retrieve posts with their playlist entries.
-   * Supports filtering by rating and media type (same filters as regular post queries).
+   * Supports playlist-scoped filtering by rating and media type.
    *
    * @param _event - IPC event (unused)
    * @param params - Request parameters (playlistId, page, filters, limit)

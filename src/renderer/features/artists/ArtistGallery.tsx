@@ -25,6 +25,29 @@ interface ArtistGalleryProps {
   onBack: () => void;
 }
 
+const matchesOrientation = (
+  post: object,
+  orientation: "all" | "horizontal" | "vertical"
+): boolean => {
+  if (orientation === "all") return true;
+  const width = Reflect.get(post, "width");
+  const height = Reflect.get(post, "height");
+  if (typeof width !== "number" || typeof height !== "number") return true;
+  if (orientation === "horizontal") return width > height;
+  return height > width;
+};
+
+const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
+  if (publishedAt instanceof Date) {
+    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
+  }
+  if (typeof publishedAt === "number") {
+    const parsed = new Date(publishedAt);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
+
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
@@ -98,6 +121,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const rating = useSearchStore((state) => state.filters.rating);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
+  const orientation = useSearchStore((state) => state.filters.orientation);
+  const dateFrom = useSearchStore((state) => state.filters.dateFrom);
+  const dateTo = useSearchStore((state) => state.filters.dateTo);
   const viewType = useSearchStore((state) => state.viewType);
 
   const { data: totalPosts = 0 } = useQuery({
@@ -146,7 +172,25 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  const allPosts = useMemo(() => rawPosts, [rawPosts]);
+  const allPosts = useMemo(() => {
+    let posts = rawPosts;
+
+    if (orientation !== "all") {
+      posts = posts.filter((post) => matchesOrientation(post, orientation));
+    }
+
+    if (dateFrom || dateTo) {
+      posts = posts.filter((post) => {
+        const date = getPublishedDate(post.publishedAt);
+        if (!date) return true;
+        if (dateFrom && date < dateFrom) return false;
+        if (dateTo && date > dateTo) return false;
+        return true;
+      });
+    }
+
+    return posts;
+  }, [rawPosts, orientation, dateFrom, dateTo]);
 
   // Create stable List component with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
