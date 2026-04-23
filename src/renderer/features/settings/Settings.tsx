@@ -136,7 +136,10 @@ export const Settings = () => {
       const result = await window.api.restoreBackup();
       if (result.success) {
         setRestoreStatus("success");
-        setTimeout(() => setRestoreStatus("idle"), 3000);
+        // Main process reopens the DB; a full renderer reload clears React Query cache and remounts so every tab fetches fresh data
+        window.setTimeout(() => {
+          window.location.reload();
+        }, 500);
       } else {
         setRestoreStatus("error");
         setTimeout(() => setRestoreStatus("idle"), 3000);
