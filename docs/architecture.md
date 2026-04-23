@@ -640,7 +640,7 @@ const posts = await db.query.posts.findMany({
     - **Browse.tsx** - All posts view with filtering and sorting (implemented)
     - **Favorites.tsx** - Favorites collection (implemented)
      - **Tracked.tsx** - Artists and tags management (fully implemented)
-     - **Settings.tsx** - Application configuration (fully implemented)
+    - **Settings.tsx** - Application configuration shell (tabbed IA, fully implemented)
      - **ArtistDetails.tsx** - Artist gallery view (fully implemented)
      - **Onboarding.tsx** - API credentials input form (fully implemented)
 
@@ -666,9 +666,14 @@ const posts = await db.query.posts.findMany({
      - **DeleteArtistDialog.tsx** - Confirmation dialog for artist deletion
      - **UpdateNotification.tsx** - Update notification component
 
-   - **Settings:**
+  - **Settings (`src/renderer/features/settings/`):**
 
-     - **BackupControls.tsx** - Database backup and restore controls
+    - **Settings.tsx** - Tab container and settings orchestration
+    - **SettingsGeneralTab.tsx** - Downloads + proxy configuration
+    - **SettingsSyncTab.tsx** - Startup/interval sync + manual sync trigger
+    - **SettingsAppearanceTab.tsx** - Theme selection (`System` / `Light` / `Dark`)
+    - **SettingsBackupTab.tsx** - Backup, restore, integrity check, retention info
+    - **SettingsAccountTab.tsx** - API key input, visibility toggle, `hasApiKey` status
 
    - **Inputs:**
 
@@ -754,7 +759,7 @@ webPreferences: {
 
 The IPC layer enforces a strict security contract for API credentials:
 
-- **`saveSettings(creds: { userId: string; apiKey: string })`** - Accepts API key in plaintext (unavoidable during onboarding)
+- **`saveSettings(creds)`** - Accepts partial settings updates; API key, when provided, is sent in plaintext from Renderer (unavoidable during input) and encrypted in Main
 - **`getSettings()`** - Returns `IpcSettings` with `hasApiKey: boolean`, **NEVER the actual API key**
 - **API Key Lifecycle:**
   - Entered in Renderer → Sent to Main via IPC → Encrypted in Main → Stored encrypted
@@ -1555,11 +1560,16 @@ src/
 │   │   │   ├── Browse.tsx
 │   │   │   ├── Favorites.tsx
 │   │   │   ├── Onboarding.tsx
-│   │   │   ├── Settings.tsx
 │   │   │   ├── Tracked.tsx
 │   │   │   └── Updates.tsx
-│   │   ├── settings/               # Settings components
-│   │   │   └── BackupControls.tsx
+│   │   ├── features/
+│   │   │   └── settings/           # Settings feature (tabbed UI)
+│   │   │       ├── Settings.tsx
+│   │   │       ├── SettingsGeneralTab.tsx
+│   │   │       ├── SettingsSyncTab.tsx
+│   │   │       ├── SettingsAppearanceTab.tsx
+│   │   │       ├── SettingsBackupTab.tsx
+│   │   │       └── SettingsAccountTab.tsx
 │   │   ├── ui/                     # shadcn/ui components
 │   │   │   ├── alert.tsx
 │   │   │   ├── button.tsx

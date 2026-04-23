@@ -68,3 +68,29 @@ export const TabsTrigger = ({ value, className, children, ...props }: TabsTrigge
     </button>
   );
 };
+
+interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: string;
+}
+
+export const TabsContent = ({ value, className, children, ...props }: TabsContentProps) => {
+  const context = React.useContext(TabsContext);
+  if (!context) {
+    throw new Error("TabsContent must be used inside Tabs");
+  }
+
+  if (context.value !== value) {
+    return null;
+  }
+
+  return (
+    <div
+      role="tabpanel"
+      data-state="active"
+      className={cn("mt-4 outline-none", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};

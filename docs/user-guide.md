@@ -395,45 +395,56 @@ The **top bar** appears on content pages and provides:
 
 Access Settings by clicking **"Settings"** in the sidebar.
 
-### Sync Settings
+Settings are split into tabs:
 
-- **Auto-sync on Startup** - Automatically sync when you open the app
-- **Periodic Sync Interval** - How often to check for new posts (e.g., every 30 minutes)
-- **Rate Limiting** - Adjust delays between API requests (advanced)
+### General
 
-### Storage & Cache
+- **Default download folder** - Choose a folder or reset to default
+- **When file already exists** - Choose `Skip` or `Overwrite`
+- **Folder structure** - `Flat` or `By artist`
+- **Proxy URL** - Optional HTTP/HTTPS proxy for requests/downloads
 
-- **Cache Limit** - Maximum size for cached preview images
-- **Clear Cache** - Remove all cached images (frees up disk space)
-- **Storage Usage** - See how much space the app is using
+### Sync
 
-### Security
+- **Sync on startup** - Run sync automatically when app starts
+- **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
+- **Sync now** - Manual sync trigger directly in Settings
+- **Last sync status** - Human-readable status line in the tab
 
-- **API Key Storage** - Your credentials are encrypted and stored securely
-- **Logout** - Clear your credentials and return to onboarding
+### Appearance
 
-### Database Management
+- **Theme** - `System`, `Light`, `Dark`
 
-- **Create Backup** - Save a backup of your database (recommended before major changes). Older automatic backups in the data folder are rotated (approximately the **last five** files kept).
-- **Restore Backup** - Restore from a previous backup
-- **Integrity Check** - Verify database is not corrupted
-- **Vacuum/Compact** - Optimize database file size
+### Backup
+
+- **Create Backup** - Save a timestamped backup of your database
+- **Restore Backup** - Restore from a backup file (app reloads after success)
+- **Check Integrity** - Verify database is not corrupted
+- **Retention** - Older files are rotated automatically (approximately last **five** kept)
+
+### Account
+
+- **API key field** - Password-style input with show/hide button
+- **API key status** - `Configured` / `Not configured` badge
+- **Save API key** - Update credentials from Settings
+
+### Status badges behavior
+
+- Success/error badges in Settings are temporary and auto-hide after about **5 seconds**.
 
 **How to create a backup:**
 
-1. Go to **Settings**
-2. Scroll to **Database Management**
-3. Click **"Create Backup"**
-4. A backup file will be created with a timestamp
-5. The file location will open automatically
+1. Go to **Settings** → **Backup**
+2. Click **Create Backup**
+3. A timestamped backup file is created
 
 **How to restore a backup:**
 
-1. Go to **Settings** > **Database Management**
-2. Click **"Restore Backup"**
-3. Select your backup file
-4. Confirm the restore
-5. The app will restart automatically
+1. Go to **Settings** → **Backup**
+2. Click **Restore Backup**
+3. Select a backup file
+4. Confirm restore
+5. The app reloads automatically
 
 ---
 
@@ -477,10 +488,10 @@ Access Settings by clicking **"Settings"** in the sidebar.
 
 **Solutions:**
 
-1. Clear the cache (Settings > Storage & Cache > Clear Cache)
+1. Check database location and status in **Settings → Backup**
 2. Reduce the number of tracked artists
 3. Use filters to reduce the number of visible posts
-4. Compact the database (Settings > Database Management > Vacuum/Compact)
+4. Run **Check Integrity** in **Settings → Backup**
 
 ### Can't download files
 
@@ -536,8 +547,8 @@ The application uses Electron's `app.getPath("userData")` to determine the datab
 
 - **Limit tracked artists** - More artists = longer sync times
 - **Use filters** - Filtering reduces the number of posts to render
-- **Clear cache periodically** - Frees up disk space
-- **Compact database** - Keeps database file size optimized
+- **Create backups periodically** - Keeps recovery path simple
+- **Use sync interval carefully** - Lower intervals increase background workload
 
 ### Workflow Suggestions
 

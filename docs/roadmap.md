@@ -161,7 +161,6 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Item | Description |
 |------|-------------|
-| **Settings page — full UI redesign** | Current `Settings.tsx` is a long stack of cards; users report **poor scannability and flow**. **Goal:** full **redesign** (layout, sections, maybe tabs/accordion, density, mobile-friendly spacing) while preserving existing IPC/settings keys. |
 | **Statistics — additional metrics (same feature)** | **No** separate “analytics” product. Keep **one** **Statistics** area (`/stats`, `getStats`, `StatsPage`) and **extend** it with **more aggregate metrics** as needed: e.g. **cache** footprint vs **DB** size, **per-provider** post counts, **storage** by category, simple **top tags** or time-sliced **counts** — all read-only rollups, same page pattern. Implementation = extra SQL/aggregates + IPC fields + UI cards/charts. |
 
 ---
