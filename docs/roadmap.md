@@ -43,11 +43,11 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 **Current state:** 🟡 partially implemented
 
 - ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
-- ✅ `FiltersPanel`: rating (S/Q/E), AI, media, source, sort-by date; wired to `searchStore` and post pipelines.
+- ✅ `FiltersPanel`: rating (S/Q/E), AI, media, source; wired to `searchStore` and post pipelines.
 - ✅ **Browse → Source (Favorites / Subscriptions):** requires at least one tag in the search box — **intentional** (subscriptions/favorites are interpreted in the context of a tag query against cached + API flows). Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)).
 - ⏳ **Date range** filter (by `publishedAt` / “posted between …”) — not in `searchStore` or UI.
-- ⏳ **Disabled filter placeholders** in panel: sort by **score** / “most viewed”, **horizontal/vertical** orientation (UI present, not implemented).
-- ⏳ “One story” between raw tag query string and filter panel in every edge case (mostly aligned; worth regression passes).
+- ⏳ **Disabled filter placeholders** in panel: **horizontal/vertical** orientation (UI present, not implemented).
+- ✅ Search is chip-based and supports include/exclude, OR-groups, wildcard/fuzzy token forms (`*`, `~`) in query tokens.
 
 ### B. Viewer and Gallery Polish - High Priority
 
@@ -113,7 +113,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### M2 - UX Parity (In Progress)
 
-- Filter parity: **date range**; enable or remove disabled sort/orientation placeholders; **search / multi-tag UX** and **Settings** page redesign (see [Planned product work](#planned-product-work)).
+- Filter parity: **date range**; enable or remove disabled orientation placeholders; **Settings** page redesign (see [Planned product work](#planned-product-work)).
 - Gallery/viewer: edge-case polish; core **TagsDrawer** and **PostCard** progressive loading are shipped.
 - Updates feed QoL largely shipped (Creators tab, mark all read); further polish as needed.
 
@@ -161,7 +161,6 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Item | Description |
 |------|-------------|
-| **Multi-tag search (parity with site)** | Today: freeform string in `TagAutocomplete` with **autocomplete for the last token**; users can type several tags separated by space/comma, but the experience is **not** the same as the site’s tag builder (chips, clearer **AND** composition, OR groups, quick add without editing a long string). **Goal:** UX and, if needed, **query semantics** closer to the booru web UI (multi-select, optional explicit operators). |
 | **Settings page — full UI redesign** | Current `Settings.tsx` is a long stack of cards; users report **poor scannability and flow**. **Goal:** full **redesign** (layout, sections, maybe tabs/accordion, density, mobile-friendly spacing) while preserving existing IPC/settings keys. |
 | **Statistics — additional metrics (same feature)** | **No** separate “analytics” product. Keep **one** **Statistics** area (`/stats`, `getStats`, `StatsPage`) and **extend** it with **more aggregate metrics** as needed: e.g. **cache** footprint vs **DB** size, **per-provider** post counts, **storage** by category, simple **top tags** or time-sliced **counts** — all read-only rollups, same page pattern. Implementation = extra SQL/aggregates + IPC fields + UI cards/charts. |
 
@@ -171,8 +170,8 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
-| **Filters** | **Date range** (`published` between). **Sort by score / most viewed** and **orientation** rows in `FiltersPanel` are **disabled placeholders** — implement or remove. |
-| **Search** | **Multi-tag product UX** (see [Planned product work](#planned-product-work)); string model may stay under the hood. |
+| **Filters** | **Date range** (`published` between). **Orientation** rows in `FiltersPanel` are disabled placeholders — implement or remove. |
+| **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: sidebar labels/grouping, tooltips, order, small-window density (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | **User setting** for retention (“keep last N” or max MB). |
 | **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): main **restart in dev**, **shared** validation helpers, **video** tuning. |

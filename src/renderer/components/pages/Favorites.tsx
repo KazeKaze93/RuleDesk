@@ -12,21 +12,12 @@ import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
-import { useSearchStore } from "../../store/searchStore";
+import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import type { Post } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../downloads/DownloadAllButton";
-
-// Helper function to parse tags from query string
-const parseTags = (query: string): string[] => {
-  if (!query.trim()) return [];
-  return query
-    .split(/[,\s]+/)
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-};
 
 // --- Constants ---
 // Should ideally come from a shared constant or backend config
@@ -85,8 +76,12 @@ const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
 
 export const Favorites = () => {
   const queryClient = useQueryClient();
-  const query = useSearchStore((state) => state.query);
-  const tags = useMemo(() => parseTags(query), [query]);
+  const includeTags = useSearchStore((state) => state.includeTags);
+  const excludeTags = useSearchStore((state) => state.excludeTags);
+  const tags = useMemo(
+    () => buildBooruTagListForIpc(includeTags, excludeTags),
+    [includeTags, excludeTags]
+  );
 
   // Use separate selectors instead of destructuring to prevent unnecessary re-renders
   // Each selector only subscribes to its specific value, not the entire store
@@ -125,7 +120,8 @@ export const Favorites = () => {
       initialPageParam: 1,
     });
   
-  const { aiFilter, rating, mediaType, source } = filters;
+  const { aiFilter, mediaType, source } = filters;
+  const rating = useSearchStore((state) => state.filters.rating);
 
   const allPosts = useMemo(() => {
     let posts = data?.pages.flatMap((page) => page) || [];

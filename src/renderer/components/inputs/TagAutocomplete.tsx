@@ -1,272 +1,421 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Input } from "../ui/input";
-import { useRemoteTags } from "../../lib/hooks/useRemoteTags";
-import { cn } from "../../lib/utils";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Search, X } from "lucide-react";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "../ui/popover";
+import {
+  Command,
+  CommandItem,
+  CommandList,
+  CommandEmpty,
+  CommandLoading,
+} from "../ui/command";
+import { useRemoteTags } from "../../lib/hooks/useRemoteTags";
+import {
+  getLastTagForAutocomplete,
+  unclosedParenCount,
+  useTagInput,
+} from "../../lib/hooks/useTagInput";
+import { TagChip } from "./TagChip";
+import { useSearchStore } from "../../store/searchStore";
+import { cn } from "../../lib/utils";
+
+function remoteTagQueryForDraft(d: string): string {
+  const last = getLastTagForAutocomplete(d);
+  if (last.startsWith("-") && !last.trimStart().startsWith("(")) {
+    return last.slice(1).trim();
+  }
+  return last;
+}
 
 interface TagAutocompleteProps {
-  value: string;
-  onChange: (value: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   placeholder?: string;
   className?: string;
-  onTagSelect?: () => void; // Callback when tag is selected from dropdown
-  onClear?: () => void; // Callback when clear button is clicked
-  showClearButton?: boolean; // Whether to show clear button
+  onTagSelect?: () => void;
+  onClear?: () => void;
+  showClearButton?: boolean;
 }
 
 /**
- * TagAutocomplete component for Browse page
- * 
- * Supports multiple tags separated by spaces or commas.
- * Shows autocomplete suggestions for the last tag being typed.
+ * Chip-based tag search: composes Rule34 query via searchStore, with remote autocomplete for the last token.
  */
 export function TagAutocomplete({
-  value,
-  onChange,
   onKeyDown,
-  placeholder = "Search for tags (e.g., 'blue_hair', 'cyberpunk')",
+  placeholder = "Add tags, Enter to search…",
   className,
   onTagSelect,
   onClear,
   showClearButton = false,
 }: TagAutocompleteProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [listOpen, setListOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
 
-  // Extract the last tag being typed (for autocomplete)
-  const getLastTag = (query: string): string => {
-    // Find the last space or comma
-    const lastSpace = query.lastIndexOf(" ");
-    const lastComma = query.lastIndexOf(",");
-    const lastSeparator = Math.max(lastSpace, lastComma);
-    
-    if (lastSeparator === -1) {
-      // No separator found, entire query is the tag
-      return query;
-    }
-    
-    // Return everything after the last separator
-    return query.slice(lastSeparator + 1).trim();
-  };
+  const includeTags = useSearchStore((s) => s.includeTags);
+  const excludeTags = useSearchStore((s) => s.excludeTags);
+  const addIncludeTag = useSearchStore((s) => s.addIncludeTag);
+  const addExcludeTag = useSearchStore((s) => s.addExcludeTag);
+  const removeIncludeTag = useSearchStore((s) => s.removeIncludeTag);
+  const removeExcludeTag = useSearchStore((s) => s.removeExcludeTag);
+  const toggleChipVariant = useSearchStore((s) => s.toggleChipVariant);
+  const clearTagChips = useSearchStore((s) => s.clearTagChips);
 
-  const lastTag = getLastTag(value);
+  const { draft, setDraft, commit } = useTagInput({
+    onCommit: (token) => {
+      const t = token.trim();
+      if (t.length === 0 || t === "-") {
+        return;
+      }
+      if (t.length >= 2 && t.startsWith("(") && t.endsWith(")")) {
+        addIncludeTag(t);
+        onTagSelect?.();
+        return;
+      }
+      if (t.startsWith("-") && t.length > 1) {
+        addExcludeTag(t.slice(1).trim());
+        onTagSelect?.();
+        return;
+      }
+      addIncludeTag(t);
+      onTagSelect?.();
+    },
+  });
+
+  const autocompleteQuery = useMemo(
+    () => remoteTagQueryForDraft(draft),
+    [draft]
+  );
+
+  const hasBarContent =
+    includeTags.length > 0 || excludeTags.length > 0 || draft.length > 0;
+
   const { results, isLoading } = useRemoteTags({
-    query: lastTag,
+    query: autocompleteQuery,
     minQueryLength: 2,
     debounceMs: 300,
     provider: "rule34",
   });
 
-  // Show dropdown when there are results and query is long enough
-  const shouldShowDropdown = isOpen && lastTag.length >= 2 && results.length > 0;
+  const showSuggestions =
+    listOpen &&
+    autocompleteQuery.length >= 2 &&
+    (isLoading || results.length > 0);
 
-  // Handle input change
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    onChange(newValue);
-    
-    // Show dropdown if there's a query
-    if (getLastTag(newValue).length >= 2) {
-      setIsOpen(true);
+  const removeLastChip = useCallback(() => {
+    if (excludeTags.length > 0) {
+      const last = excludeTags[excludeTags.length - 1];
+      if (last) {
+        removeExcludeTag(last);
+      }
+      return;
+    }
+    if (includeTags.length > 0) {
+      const last = includeTags[includeTags.length - 1];
+      if (last) {
+        removeIncludeTag(last);
+      }
+    }
+  }, [excludeTags, includeTags, removeExcludeTag, removeIncludeTag]);
+
+  const handleSelectFromList = useCallback(
+    (tagValue: string) => {
+      const last = getLastTagForAutocomplete(draft);
+      if (last.startsWith("-") && !last.trimStart().startsWith("(")) {
+        addExcludeTag(tagValue);
+      } else {
+        addIncludeTag(tagValue);
+      }
+      setDraft("");
+      setListOpen(false);
       setSelectedIndex(-1);
-    } else {
-      setIsOpen(false);
+      onTagSelect?.();
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
+    },
+    [addExcludeTag, addIncludeTag, draft, onTagSelect, setDraft]
+  );
+
+  const handleEditChip = useCallback(
+    (tag: string, variant: "include" | "exclude") => {
+      if (variant === "exclude") {
+        removeExcludeTag(tag);
+        setDraft(`-${tag}`);
+      } else {
+        removeIncludeTag(tag);
+        setDraft(tag);
+      }
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
+    },
+    [removeExcludeTag, removeIncludeTag, setDraft]
+  );
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showSuggestions && results.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((i) =>
+          i < results.length - 1 ? i + 1 : i
+        );
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((i) => (i > 0 ? i - 1 : -1));
+        return;
+      }
+      if (e.key === "Enter" && selectedIndex >= 0 && selectedIndex < results.length) {
+        e.preventDefault();
+        const item = results[selectedIndex];
+        if (item) {
+          handleSelectFromList(item.value);
+        }
+        return;
+      }
     }
-  };
 
-  // Handle input focus
-  const handleFocus = () => {
-    if (lastTag.length >= 2 && results.length > 0) {
-      setIsOpen(true);
-    }
-  };
-
-  // Handle input blur (close dropdown)
-  // Note: onMouseDown on list items fires before onBlur, so clicks work correctly
-  const handleBlur = () => {
-    setIsOpen(false);
-    setSelectedIndex(-1);
-  };
-
-  // Handle tag selection
-  // Using onMouseDown instead of onClick ensures it fires before onBlur
-  const handleSelectTag = (tagValue: string, e?: React.MouseEvent) => {
-    // Prevent input blur when clicking on list item
-    e?.preventDefault();
-    
-    const lastSpace = value.lastIndexOf(" ");
-    const lastComma = value.lastIndexOf(",");
-    const lastSeparator = Math.max(lastSpace, lastComma);
-    
-    let newValue: string;
-    if (lastSeparator === -1) {
-      // No separator, replace entire query
-      newValue = tagValue;
-    } else {
-      // Replace last tag, keep separators and add space after
-      newValue = value.slice(0, lastSeparator + 1) + tagValue + " ";
-    }
-    
-    onChange(newValue);
-    setIsOpen(false);
-    setSelectedIndex(-1);
-    // Trigger search when tag is selected
-    onTagSelect?.();
-    // Focus input after selection
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
-  };
-
-  // Handle keyboard navigation
-  const handleKeyDownInternal = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!shouldShowDropdown) {
-      onKeyDown?.(e);
+    if (e.key === "Escape" && listOpen) {
+      e.preventDefault();
+      setListOpen(false);
+      setSelectedIndex(-1);
       return;
     }
 
-    switch (e.key) {
-      case "ArrowDown":
+    if (e.key === "Backspace" && draft.length === 0) {
+      e.preventDefault();
+      removeLastChip();
+      return;
+    }
+
+    if (e.key === "Enter") {
+      if (draft.trim().length === 0) {
         e.preventDefault();
-        setSelectedIndex((prev) =>
-          prev < results.length - 1 ? prev + 1 : prev
-        );
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
-        break;
-      case "Enter":
-        if (selectedIndex >= 0 && selectedIndex < results.length) {
-          e.preventDefault();
-          handleSelectTag(results[selectedIndex].value);
-        } else {
-          onKeyDown?.(e);
-        }
-        break;
-      case "Escape":
-        setIsOpen(false);
-        setSelectedIndex(-1);
-        break;
-      default:
+        onTagSelect?.();
         onKeyDown?.(e);
+        return;
+      }
+      e.preventDefault();
+      commit();
+      setListOpen(false);
+      return;
+    }
+
+    if (e.key === ",") {
+      e.preventDefault();
+      commit();
+      return;
+    }
+
+    if (e.key === " ") {
+      if (unclosedParenCount(draft) > 0) {
+        return;
+      }
+      if (draft.trim().length > 0) {
+        e.preventDefault();
+        commit();
+      }
+      return;
+    }
+
+    onKeyDown?.(e);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDraft(e.target.value);
+    if (unclosedParenCount(e.target.value) > 0) {
+      setListOpen(false);
+      return;
+    }
+    if (remoteTagQueryForDraft(e.target.value).length >= 2) {
+      setListOpen(true);
+      setSelectedIndex(-1);
+    } else {
+      setListOpen(false);
     }
   };
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-        setSelectedIndex(-1);
-      }
-    };
+  const handleInputFocus = () => {
+    if (
+      remoteTagQueryForDraft(draft).length >= 2 &&
+      (results.length > 0 || isLoading)
+    ) {
+      setListOpen(true);
+    }
+  };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  const handleInputBlur = () => {
+    setListOpen(false);
+    setSelectedIndex(-1);
+  };
 
   const handleClearClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    onChange("");
+    setDraft("");
+    clearTagChips();
     onClear?.();
     inputRef.current?.focus();
   };
 
+  useEffect(() => {
+    const onDoc = (ev: MouseEvent) => {
+      if (!containerRef.current || !ev.target) {
+        return;
+      }
+      if (!containerRef.current.contains(ev.target as globalThis.Node)) {
+        setListOpen(false);
+        setSelectedIndex(-1);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const handleListPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+  };
+
   return (
     <div ref={containerRef} className={cn("relative flex-1", className)}>
-      <div className="relative">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          ref={inputRef}
-          type="text"
-          placeholder={placeholder}
-          value={value}
-          onChange={handleChange}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDownInternal}
-          className={cn(
-            "flex-1",
-            "pl-8",
-            showClearButton && value && "pr-8"
-          )}
-          autoComplete="off"
-          role="combobox"
-          aria-expanded={shouldShowDropdown}
-          aria-haspopup="listbox"
-          aria-controls="tag-autocomplete-listbox"
-          aria-autocomplete="list"
-        />
-        {showClearButton && value && (
-          <button
-            type="button"
-            onClick={handleClearClick}
-            className="absolute right-2 top-2.5 p-0.5 rounded-sm hover:bg-muted transition-colors"
-            aria-label="Clear search"
-            title="Clear search"
-          >
-            <X className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        )}
-      </div>
-      
-      {shouldShowDropdown && (
-        <div
-          id="tag-autocomplete-listbox"
-          className="absolute z-[1000] mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md"
-          role="listbox"
-        >
-          {isLoading ? (
+      <Popover
+        open={showSuggestions}
+        onOpenChange={(o) => {
+          if (!o) {
+            setListOpen(false);
+            setSelectedIndex(-1);
+          }
+        }}
+      >
+        <PopoverAnchor asChild>
+          <div className="relative w-full min-w-0">
+            <Search
+              className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
             <div
-              className="flex items-center justify-center px-4 py-2 text-sm text-muted-foreground"
-              role="status"
-              aria-live="polite"
+              className={cn(
+                "flex min-h-9 w-full max-w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background py-0.5 pl-8",
+                "focus-within:ring-1 focus-within:ring-ring",
+                showClearButton && hasBarContent && "pr-7"
+              )}
             >
-              <Loader2 className="mr-2 w-4 h-4 animate-spin" aria-hidden="true" />
-              Loading...
-            </div>
-          ) : (
-            <ul className="py-1" role="group">
-              {results.map((result, index) => (
-                <li
-                  key={result.id}
-                  role="option"
-                  aria-selected={index === selectedIndex}
-                  className={cn(
-                    "relative cursor-pointer select-none px-4 py-2 text-sm",
-                    "hover:bg-accent hover:text-accent-foreground",
-                    index === selectedIndex && "bg-accent text-accent-foreground"
-                  )}
-                  onMouseDown={(e) => {
-                    // Set selected index on mouse down to provide visual feedback
-                    // This doesn't interfere with keyboard navigation as it only sets visual state
-                    setSelectedIndex(index);
-                    handleSelectTag(result.value, e);
+              {includeTags.map((tag) => (
+                <TagChip
+                  key={`i:${tag}`}
+                  tag={tag}
+                  variant="include"
+                  onRemove={() => {
+                    removeIncludeTag(tag);
                   }}
-                >
-                  {result.label}
-                  {result.type && (
-                    <span className="ml-2 text-xs text-muted-foreground" aria-label={`Type: ${result.type}`}>
-                      ({result.type})
-                    </span>
-                  )}
-                </li>
+                  onToggleVariant={() => {
+                    toggleChipVariant(tag);
+                  }}
+                  onEdit={() => {
+                    handleEditChip(tag, "include");
+                  }}
+                />
               ))}
-            </ul>
-          )}
-        </div>
-      )}
+              {excludeTags.map((tag) => (
+                <TagChip
+                  key={`e:${tag}`}
+                  tag={tag}
+                  variant="exclude"
+                  onRemove={() => {
+                    removeExcludeTag(tag);
+                  }}
+                  onToggleVariant={() => {
+                    toggleChipVariant(tag);
+                  }}
+                  onEdit={() => {
+                    handleEditChip(tag, "exclude");
+                  }}
+                />
+              ))}
+              <Input
+                ref={inputRef}
+                value={draft}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                className="min-w-[6rem] flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0 h-7 py-0"
+                placeholder={includeTags.length + excludeTags.length > 0 ? "" : placeholder}
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={showSuggestions}
+                aria-haspopup="listbox"
+                aria-controls="tag-search-listbox"
+                aria-autocomplete="list"
+                type="text"
+              />
+            </div>
+            {showClearButton && hasBarContent && (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={handleClearClick}
+                className="absolute right-1 top-1.5 h-6 w-6 p-0 shrink-0"
+                aria-label="Clear search"
+                title="Clear search"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
+          </div>
+        </PopoverAnchor>
+        <PopoverContent
+          id="tag-search-listbox"
+          className="w-[var(--radix-popover-anchor-width)] p-0"
+          align="start"
+          sideOffset={4}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onPointerDown={handleListPointerDown}
+        >
+          <Command shouldFilter={false} className="max-h-64">
+            <CommandList>
+              {isLoading ? (
+                <CommandLoading>
+                  <Loader2
+                    className="mr-2 h-4 w-4 shrink-0 animate-spin"
+                    aria-hidden="true"
+                  />
+                  Loading…
+                </CommandLoading>
+              ) : results.length === 0 ? (
+                <CommandEmpty>No tag suggestions</CommandEmpty>
+              ) : (
+                results.map((result, index) => (
+                  <CommandItem
+                    key={result.id}
+                    value={String(result.id)}
+                    onSelect={() => handleSelectFromList(result.value)}
+                    className={cn(
+                      index === selectedIndex && "bg-accent text-accent-foreground"
+                    )}
+                  >
+                    <span className="truncate">{result.label}</span>
+                    {result.type && (
+                      <span className="ml-2 shrink-0 text-xs text-muted-foreground">
+                        ({result.type})
+                      </span>
+                    )}
+                  </CommandItem>
+                ))
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
-

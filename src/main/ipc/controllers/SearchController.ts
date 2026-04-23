@@ -217,13 +217,41 @@ export class SearchController extends BaseController {
         apiKey: settings?.apiKey || "",
       };
 
-      // Convert tags array to space-separated string (provider expects string)
-      // Use provider.formatTag() for consistent normalization (same as SyncService)
-      // This ensures lowercase conversion and space-to-underscore replacement
-      // Empty array means show all posts (provider will omit tags parameter)
-      let tagsString = tags.length > 0 
-        ? tags.map(tag => provider.formatTag(tag, "tag")).join(" ")
-        : "";
+      // Convert tags array to space-separated string (provider expects string).
+      // Normal tags: formatTag() lowercases and replaces spaces with underscores.
+      // OR-groups `( a ~ b )` need spaces and `~`; we format each operand with
+      // formatTag, then reassemble with Rule34's required spacing.
+      const formatSearchToken = (raw: string): string => {
+        const trimmed = raw.trim();
+        if (
+          trimmed.length >= 2 &&
+          trimmed.startsWith("(") &&
+          trimmed.endsWith(")")
+        ) {
+          const inner = trimmed.slice(1, -1).trim();
+          if (inner.length === 0) {
+            return provider.formatTag(trimmed, "tag");
+          }
+          if (!inner.includes("~")) {
+            return `( ${provider.formatTag(inner, "tag")} )`;
+          }
+          const parts = inner
+            .split("~")
+            .map((p) => p.trim())
+            .filter((p) => p.length > 0);
+          if (parts.length === 0) {
+            return trimmed;
+          }
+          const formatted = parts
+            .map((p) => provider.formatTag(p, "tag"))
+            .join(" ~ ");
+          return `( ${formatted} )`;
+        }
+        return provider.formatTag(raw, "tag");
+      };
+
+      let tagsString =
+        tags.length > 0 ? tags.map((tag) => formatSearchToken(tag)).join(" ") : "";
 
       // Step 1: Primary Search - try original tags
       // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization

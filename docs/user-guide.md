@@ -196,12 +196,39 @@ Each post card shows:
 2. RuleDesk will search the website's tag database
 3. Select a tag from the suggestions
 
-**Search posts:**
+**Search posts (chip-based):**
 
 1. Go to **"Browse"** page
 2. Use the search bar in the top bar
-3. Type tags or keywords
-4. Results will filter automatically
+3. Enter a token and commit it with **Enter**, **comma**, or **space**
+4. Each committed token becomes a chip and is applied to search
+
+**Syntax help popover:**
+
+- Click the **help icon** (`?` / CircleHelp) next to the search input to open the in-app syntax cheat sheet.
+
+**Supported query syntax in the search bar:**
+
+- `tag1 tag2` via two include chips (default AND behavior)
+- `-tag1` (exclude). You can:
+  - type it directly as a token (for example `-blonde_hair`), or
+  - add a normal chip and right-click it to toggle include/exclude
+- `( tag1 ~ tag2 )` as an OR group token (spaces inside parentheses are required)
+- wildcard and fuzzy forms are passed through (examples: `ta*1`, `night~`)
+- supported metatags include examples like:
+  - `user:bob`
+  - `md5:foo` / `md5:foo*`
+  - `parent:1234`
+  - `rating:questionable` / `-rating:questionable`
+  - `score:>=10`, `width:>=1000`, `height:>1000`
+  - `aspectratio:16:9`, `aspectratiof:1.5`
+  - `sourcedomains:example.com`
+
+**Notes:**
+
+- The clear button in the search bar clears tag chips.
+- Click a chip to put it back into the input for editing; right-click still toggles include/exclude.
+- Browse source modes **Favorites** / **Subscriptions** require a non-empty tag query by design.
 
 ### Favorites
 
@@ -288,12 +315,8 @@ The download will start, and you'll see a progress indicator.
 
 **Sort posts:**
 
-1. Click the **"Sort"** dropdown in the top bar
-2. Choose:
-   - **Date Added (Newest)** - Recently synced posts first
-   - **Date Added (Oldest)** - Oldest synced posts first
-   - **Posted Date** - When the post was originally posted
-   - **Rating** - Group by rating
+1. Use the dedicated **date sort** button in the top bar (outside Filters)
+2. Click to toggle between newest-first and oldest-first where sorting is available
 
 **Filter by tags:**
 
