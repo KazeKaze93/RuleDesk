@@ -38,6 +38,12 @@ export function BackupControls() {
       setIsLoading(true);
       const result = await window.api.restoreBackup();
 
+      if (result?.success) {
+        window.setTimeout(() => {
+          window.location.reload();
+        }, 500);
+        return;
+      }
       if (result && !result.success && result.error !== "Canceled by user") {
         alert(`❌ Restore failed: ${result.error}`);
       }

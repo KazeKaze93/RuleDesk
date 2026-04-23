@@ -8,12 +8,26 @@ import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { IPC_CHANNELS } from "../channels";
-import { getSqliteInstance, closeDatabase, initializeDatabase } from "../../db/client";
+import {
+  getDb,
+  getSqliteInstance,
+  closeDatabase,
+  initializeDatabase,
+} from "../../db/client";
 import { maintenanceQueue } from "../../db/maintenance-queue";
 import type { SyncService } from "../../services/sync-service";
 import { BACKUP_FILE_PREFIX, getDatabasePaths } from "../../db/paths";
 
 const MAX_BACKUPS_TO_KEEP = 5;
+
+/**
+ * IPC controllers resolve the DB via DI. After closeDatabase + initializeDatabase the
+ * underlying sqlite/drizzle instances are new, but the container still held the old
+ * (closed) reference — every query would fail until full app restart.
+ */
+function registerDatabaseInContainerAfterReinit(): void {
+  container.register(DI_TOKENS.DB, getDb());
+}
 
 /**
  * Maintenance Controller
@@ -326,23 +340,21 @@ export class MaintenanceController extends BaseController {
             readonly: true,
           });
 
-          // Run integrity check
-          const integrityResult = tempDb.pragma("integrity_check", {
-            simple: false,
-          }) as string | string[];
-
-          // integrity_check returns "ok" if database is valid, or an array of error messages
+          // PRAGMA integrity_check returns rows: [{ integrity_check: "ok" }] when healthy
+          // (better-sqlite3 pragma() with simple:false returns row objects, not string[])
+          const integrityRows = tempDb
+            .prepare("PRAGMA integrity_check")
+            .all() as { integrity_check: string }[];
           const isValid =
-            integrityResult === "ok" ||
-            (Array.isArray(integrityResult) &&
-              integrityResult.length === 1 &&
-              integrityResult[0] === "ok");
+            integrityRows.length === 1 && integrityRows[0]?.integrity_check === "ok";
 
           if (!isValid) {
-            const errorMsg = Array.isArray(integrityResult)
-              ? integrityResult.join("; ")
-              : String(integrityResult);
-            throw new Error(`Database integrity check failed: ${errorMsg}`);
+            const errorMsg = integrityRows
+              .map((r) => r.integrity_check)
+              .join("; ");
+            throw new Error(
+              `Database integrity check failed: ${errorMsg || "unknown result"}`
+            );
           }
 
           log.info("[MaintenanceController] Backup file integrity check passed");
@@ -373,6 +385,7 @@ export class MaintenanceController extends BaseController {
 
         // Step 6: Reinitialize database connection (within queue, safe from concurrent access)
         await initializeDatabase();
+        registerDatabaseInContainerAfterReinit();
 
         // Send loading complete event
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
@@ -412,6 +425,7 @@ export class MaintenanceController extends BaseController {
         // Attempt to reinitialize database with restored files (within queue, safe from concurrent access)
         try {
           await initializeDatabase();
+          registerDatabaseInContainerAfterReinit();
         } catch (initError) {
           log.error("[MaintenanceController] Failed to reinitialize database after rollback:", initError);
         }
@@ -440,6 +454,7 @@ export class MaintenanceController extends BaseController {
         // Attempt to reinitialize database even if restore failed (within queue, safe from concurrent access)
         try {
           await initializeDatabase();
+          registerDatabaseInContainerAfterReinit();
         } catch (initError) {
           log.error("[MaintenanceController] Failed to reinitialize database after restore error:", initError);
         }
