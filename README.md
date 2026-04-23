@@ -354,7 +354,7 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 
 - ✅ **Global top bar** — `GlobalTopBar.tsx` + `FiltersPanel` (rating S/Q/E, AI, media, source, sort-by date where wired)
 - ✅ **AI / media / source** — Backed by `searchStore` and post queries
-- ✅ **Source on Browse** — Favorites/Subscriptions require a tag query when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design--not-backlog))
+- ✅ **Source on Browse** — Favorites/Subscriptions require a tag query when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog))
 - ⏳ **Date range** (posted between) — not in store or UI
 - ⏳ **Disabled panel options** — e.g. sort by score, “most viewed”, horizontal/vertical format (placeholders in `FiltersPanel`)
 - 🟡 **View modes** — Grid (`VirtuosoGrid`) vs masonry (CSS columns); different scaling behavior on huge lists

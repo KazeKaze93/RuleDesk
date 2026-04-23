@@ -964,6 +964,6 @@ Planned database improvements:
   - Full CRUD operations via `PlaylistController`
 - ⏳ **Subscriptions Table:** Tag subscriptions feature planned (schema not yet implemented)
 - ⏳ Post deduplication logic
-- ⏳ Statistics tables for analytics
+- ⏳ Optional extra aggregates to power **Statistics** (`getStats`) if new metrics need persisted rollups
 - ⏳ Export/import functionality
 - ⏳ Database compaction utilities

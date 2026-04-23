@@ -15,7 +15,6 @@ This document reflects the current roadmap for RuleDesk `v12.x` and is aligned w
 - [Long-Term Goals](#-long-term-goals-future-considerations)
 - [Closed by design (not backlog)](#closed-by-design-not-backlog)
 - [Planned product work](#planned-product-work)
-- [Analytics: current vs extended](#analytics-current-vs-extended)
 - [Backlog: not implemented yet](#backlog-not-implemented-yet)
 
 ---
@@ -68,11 +67,11 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ Playlist transfer is available via export/import (`.ruledesk-playlist.json`).
 - ⏳ Additional UX polish for transfer/error states and empty-state guidance.
 
-### D. Layout Consistency
+### D. Navigation, layout, shell
 
-- ✅ **Sidebar + top bar** — shipped (`AppLayout`, `GlobalTopBar`, `SyncStatusBadge`).
-- 🟡 **IA / copy pass (optional):** older docs described a slightly different **information architecture** than what shipped — e.g. sidebar **labels** (“Updates” vs subscription wording), item **order**, “Tracked” vs “Artists”, or where **sync status** sat in an old wireframe. **The running app is the source of truth.** Any “fit to old spec” work is **optional** polish: naming, order, tooltips, discoverability — not missing screens.
-- ✅ **Masonry vs grid — closed** as a gap: two **explicit** view modes (CSS **column** masonry vs **Virtuoso** grid). Different performance tradeoffs on huge feeds; **not** an open backlog item (see [Closed by design](#closed-by-design-not-backlog)).
+- ✅ **App shell** — `AppLayout` with **sidebar** (primary navigation) and **global top bar** (`GlobalTopBar`: search, filters, sort, grid/masonry, `SyncStatusBadge`). Routes and layout are **complete** for the shipped feature set.
+- 🟡 **Optional polish (backlog, not “missing v1”):** clearer **labels** and **grouping** in the sidebar (e.g. Discover vs Library vs System), **tooltips** for dense controls, **order** of items if it improves first-run discoverability, density on small windows. This is **UX refinement** on the current structure — we are **not** tracking alignment to an obsolete written wireframe; the product is what ships in the build.
+- ✅ **Masonry vs grid** — two explicit modes; **closed** as a gap ([Closed by design](#closed-by-design-not-backlog)).
 
 ## 📰 Subscriptions / Updates
 
@@ -164,22 +163,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 |------|-------------|
 | **Multi-tag search (parity with site)** | Today: freeform string in `TagAutocomplete` with **autocomplete for the last token**; users can type several tags separated by space/comma, but the experience is **not** the same as the site’s tag builder (chips, clearer **AND** composition, OR groups, quick add without editing a long string). **Goal:** UX and, if needed, **query semantics** closer to the booru web UI (multi-select, optional explicit operators). |
 | **Settings page — full UI redesign** | Current `Settings.tsx` is a long stack of cards; users report **poor scannability and flow**. **Goal:** full **redesign** (layout, sections, maybe tabs/accordion, density, mobile-friendly spacing) while preserving existing IPC/settings keys. |
-| **Analytics beyond Statistics** | See [Analytics: current vs extended](#analytics-current-vs-extended). |
-
----
-
-## Analytics: current vs extended
-
-**Shipped today (`/stats`, `getStats`, `StatsPage`):** aggregate **local database** metrics — e.g. total artists/posts, viewed/favorited counts, video count, **rating distribution** pie, **DB file size**, simple tabular breakdowns. Snapshot-style; answers “how big is my library.”
-
-**Extended analytics (backlog):** not a second pie chart — **operational** insight, for example:
-
-- **Sync runs:** per-run success/failure, duration, “last good sync” per artist, **error** strings or codes over time.
-- **API / rate limits:** surface **429** or throttle events if we persist them; correlation with `ProviderThrottle`.
-- **Collection health:** growth of DB vs cache size, **orphan** records, post counts by provider.
-- **Export / history:** CSV or time-series for power users; optional **retention** of last N sync events in SQLite.
-
-Requires **new persisted fields or tables** and UI sections; the current Statistics feature stays valid as the **lightweight** dashboard.
+| **Statistics — additional metrics (same feature)** | **No** separate “analytics” product. Keep **one** **Statistics** area (`/stats`, `getStats`, `StatsPage`) and **extend** it with **more aggregate metrics** as needed: e.g. **cache** footprint vs **DB** size, **per-provider** post counts, **storage** by category, simple **top tags** or time-sliced **counts** — all read-only rollups, same page pattern. Implementation = extra SQL/aggregates + IPC fields + UI cards/charts. |
 
 ---
 
@@ -189,10 +173,10 @@ Requires **new persisted fields or tables** and UI sections; the current Statist
 |------|--------------------|
 | **Filters** | **Date range** (`published` between). **Sort by score / most viewed** and **orientation** rows in `FiltersPanel` are **disabled placeholders** — implement or remove. |
 | **Search** | **Multi-tag product UX** (see [Planned product work](#planned-product-work)); string model may stay under the hood. |
-| **Layout / nav** | **Optional** IA/copy pass: labels, order, tooltips (see [Layout Consistency](#d-layout-consistency)). |
+| **Navigation & layout** | **Optional** polish: sidebar labels/grouping, tooltips, order, small-window density (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | **User setting** for retention (“keep last N” or max MB). |
 | **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): main **restart in dev**, **shared** validation helpers, **video** tuning. |
-| **Product** | **Smart Collections AI** (research). **Extended analytics** (table above). |
+| **Product** | **Smart Collections AI** (research). **Statistics** — [additional metrics](#planned-product-work) on the existing page (not a new analytics area). |
 
 **Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.
 
