@@ -1777,7 +1777,7 @@ See [Roadmap](./roadmap.md#-security--reliability-hardening) for detailed securi
 
 1. **Tag Subscriptions:** Subscribe to tag combinations (see `docs/database.md` / schema notes)
 2. **Content Script Injection:** DOM enhancements for external sites
-3. **Statistics page:** optional **extra aggregate metrics** on the same `StatsPage` / `getStats` (e.g. cache vs DB, per-provider counts) — see [roadmap — Planned product work](./roadmap.md#planned-product-work)
+3. **Statistics page:** extended aggregate metrics are shipped on the same `StatsPage` via `getExtendedStats` (totals, rating/media/viewed/favorites pie charts, provider artist split, top artists/tags, DB size). Further additions should stay in the same page/IPC pattern — see [roadmap — Planned product work](./roadmap.md#planned-product-work)
 4. **Multi-Booru Support:** additional providers on top of the existing `IBooruProvider` pattern (Rule34, Gelbooru)
 
 ### Scalability

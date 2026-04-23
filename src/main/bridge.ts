@@ -20,7 +20,7 @@ import type {
   ResolvePlaylistPostsRequest,
   ReorderPlaylistEntriesRequest,
 } from "../shared/schemas/playlist";
-import type { DatabaseStats } from "../shared/schemas/stats";
+import type { ExtendedStats } from "../shared/schemas/stats";
 
 export type UpdateStatusData = {
   status: string;
@@ -85,7 +85,8 @@ export interface IpcBridge {
   getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
   getDownloadItems: (params: GetPostsRequest & { limit?: number }) => Promise<{ items: Array<{ url: string; filename: string }> }>;
   getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) => Promise<number>;
-  getStats: () => Promise<DatabaseStats>;
+  getStats: () => Promise<ExtendedStats>;
+  getExtendedStats: () => Promise<ExtendedStats>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
   markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
@@ -249,6 +250,7 @@ const ipcBridge: IpcBridge = {
   getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS, params),
   getStats: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_STATS),
+  getExtendedStats: () => ipcRenderer.invoke(IPC_CHANNELS.STATS.GET_EXTENDED),
 
   openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
 

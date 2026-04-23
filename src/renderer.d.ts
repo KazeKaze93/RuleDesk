@@ -17,7 +17,7 @@ import type {
   ResolvePlaylistPostsRequest,
   ReorderPlaylistEntriesRequest,
 } from "./shared/schemas/playlist";
-import type { DatabaseStats } from "./shared/schemas/stats";
+import type { ExtendedStats } from "./shared/schemas/stats";
 
 export type SyncErrorCallback = (message: string) => void;
 
@@ -92,7 +92,8 @@ export interface IpcApi extends IpcBridge {
     isRandom?: boolean;
   }) => Promise<Post[]>;
   getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
-  getStats: () => Promise<DatabaseStats>;
+  getStats: () => Promise<ExtendedStats>;
+  getExtendedStats: () => Promise<ExtendedStats>;
 
   togglePostViewed: (postId: number) => Promise<boolean>;
   markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;

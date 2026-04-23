@@ -1,15 +1,15 @@
-export interface DatabaseStats {
+export interface ExtendedStats {
   totalArtists: number;
   totalPosts: number;
-  totalViewed: number;
-  totalFavorited: number;
-  totalVideos: number;
-  totalImages: number;
-  postsByRating: { safe: number; questionable: number; explicit: number };
-  topArtistsByPosts: Array<{
-    name: string;
-    postCount: number;
-    newPostsCount: number;
-  }>;
-  dbFileSizeBytes: number;
+  totalFavorites: number;
+  totalUnviewed: number;
+  ratingCounts: { safe: number; questionable: number; explicit: number };
+  mediaCounts: { images: number; videos: number };
+  providerCounts: { rule34: number; gelbooru: number };
+  topArtists: Array<{ name: string; postCount: number }>;
+  topTags: Array<{ tag: string; count: number }>;
+  postsTimeline: Array<{ month: string; count: number }>;
+  dbSizeBytes: number;
 }
+
+export type DatabaseStats = ExtendedStats;

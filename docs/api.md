@@ -227,6 +227,8 @@ interface IpcBridge {
     page?: number;
   }) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
+  getStats: () => Promise<ExtendedStats>; // backward-compatible alias
+  getExtendedStats: () => Promise<ExtendedStats>;
   markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
   togglePostViewed: (postId: number) => Promise<boolean>;
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
@@ -427,6 +429,24 @@ type IpcSettings = {
   isAdultConfirmed: boolean;
   isAdultVerified: boolean;
   tosAcceptedAt: number | null; // Timestamp in milliseconds
+};
+```
+
+**ExtendedStats Type:**
+
+```typescript
+type ExtendedStats = {
+  totalArtists: number;
+  totalPosts: number;
+  totalFavorites: number;
+  totalUnviewed: number;
+  ratingCounts: { safe: number; questionable: number; explicit: number };
+  mediaCounts: { images: number; videos: number };
+  providerCounts: { rule34: number; gelbooru: number };
+  topArtists: Array<{ name: string; postCount: number }>;
+  topTags: Array<{ tag: string; count: number }>;
+  postsTimeline: Array<{ month: string; count: number }>;
+  dbSizeBytes: number;
 };
 ```
 
@@ -1312,6 +1332,33 @@ console.log(`Artist has ${count} posts`);
 
 ---
 
+### `getExtendedStats()`
+
+Returns extended read-only statistics for the Statistics page (`/stats`).
+
+**Returns:** `Promise<ExtendedStats>`
+
+**Example:**
+
+```typescript
+const stats = await window.api.getExtendedStats();
+console.log(stats.totalPosts, stats.ratingCounts.explicit, stats.dbSizeBytes);
+```
+
+**IPC Channel:** `stats:get-extended`
+
+---
+
+### `getStats()`
+
+Backward-compatible alias for `getExtendedStats()`.
+
+**Returns:** `Promise<ExtendedStats>`
+
+**IPC Channel:** `db:get-stats`
+
+---
+
 ### `togglePostViewed(postId: number)`
 
 Toggles the viewed status of a post.
@@ -1754,6 +1801,7 @@ export function setupIpc(): {
 - `ViewerController` - Viewer-related operations
 - `FileController` - File download and management
 - `PlaylistController` - Playlist CRUD, smart resolve, reorder, import/export
+- `StatsController` - Statistics aggregates for dashboard cards/charts
 
 **Channel Constants:**
 

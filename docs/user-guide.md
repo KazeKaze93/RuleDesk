@@ -20,6 +20,7 @@ Welcome to RuleDesk! This guide will help you get started and use all the featur
   - [Marking Posts as Viewed](#marking-posts-as-viewed)
 - [Navigation](#navigation)
 - [Settings](#settings)
+- [Statistics Dashboard](#statistics-dashboard)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -445,6 +446,35 @@ Settings are split into tabs:
 3. Select a backup file
 4. Confirm restore
 5. The app reloads automatically
+
+---
+
+## Statistics Dashboard
+
+Open **Statistics** from the sidebar to see a quick health overview of your local library.
+
+### What each metric means
+
+- **Artists** - how many tracked artists/sources you currently have.
+- **Posts** - total posts stored in your local cache.
+- **Favorites** - posts marked as favorite.
+- **Unviewed** - posts you have not viewed yet.
+- **Rating Distribution** - split of all posts by rating (`Safe`, `Questionable`, `Explicit`).
+- **Media Type Split** - images vs videos in your local cache.
+- **Viewed vs Unviewed** - what you've already seen vs still new.
+- **Favorites vs Others** - favorited posts vs the rest.
+- **Media and Providers**:
+  - `Images` / `Videos` are post counts.
+  - `rule34 artists` / `gelbooru artists` are artist/source counts (not post counts).
+- **Top Artists** - artists with the most posts in your local cache.
+  - Technical placeholder artist `Artist 0` is excluded from this list.
+- **Top Tags** - most frequent tags across cached posts.
+- **Database Size** - current size of your local database file on disk.
+
+### Notes
+
+- Statistics are local to your app database (not a live remote total from providers).
+- After sync or bulk actions, values update when the page data is refreshed.
 
 ---
 
