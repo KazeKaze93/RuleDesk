@@ -10,9 +10,13 @@ This document reflects the current roadmap for RuleDesk `v12.x` and is aligned w
 - [Subscriptions / Updates](#-subscriptions--updates)
 - [Security & Reliability](#-security--reliability-hardening)
 - [Milestones](#-milestones)
-- [Technical Improvements](#-technical-improvements-from-audit)
+- [Technical Improvements & DX](#-technical-improvements-from-audit--dx)
 - [Architecture Considerations](#-architecture-considerations)
 - [Long-Term Goals](#-long-term-goals-future-considerations)
+- [Closed by design (not backlog)](#closed-by-design-not-backlog)
+- [Planned product work](#planned-product-work)
+- [Analytics: current vs extended](#analytics-current-vs-extended)
+- [Backlog: not implemented yet](#backlog-not-implemented-yet)
 
 ---
 
@@ -41,7 +45,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
 - ✅ `FiltersPanel`: rating (S/Q/E), AI, media, source, sort-by date; wired to `searchStore` and post pipelines.
-- 🟡 On **Browse**, Favorites/Subscriptions source toggles stay disabled until at least one tag is in the search box (`SourceSwitcher` + `hasActiveSearch`) — intentional, but a UX tradeoff.
+- ✅ **Browse → Source (Favorites / Subscriptions):** requires at least one tag in the search box — **intentional** (subscriptions/favorites are interpreted in the context of a tag query against cached + API flows). Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)).
 - ⏳ **Date range** filter (by `publishedAt` / “posted between …”) — not in `searchStore` or UI.
 - ⏳ **Disabled filter placeholders** in panel: sort by **score** / “most viewed”, **horizontal/vertical** orientation (UI present, not implemented).
 - ⏳ “One story” between raw tag query string and filter panel in every edge case (mostly aligned; worth regression passes).
@@ -64,13 +68,11 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ Playlist transfer is available via export/import (`.ruledesk-playlist.json`).
 - ⏳ Additional UX polish for transfer/error states and empty-state guidance.
 
-### D. Layout Consistency - Medium Priority
+### D. Layout Consistency
 
-**Current state:** 🟡 partially implemented
-
-- ✅ Sidebar/top-bar architecture is in place.
-- ⏳ Final label/structure consistency across sections.
-- 🟡 **Masonry** is implemented as CSS **multi-column** flows on several pages; **grid** uses `VirtuosoGrid` — different performance characteristics on huge lists, not a silent “fallback to grid” in the same code path.
+- ✅ **Sidebar + top bar** — shipped (`AppLayout`, `GlobalTopBar`, `SyncStatusBadge`).
+- 🟡 **IA / copy pass (optional):** older docs described a slightly different **information architecture** than what shipped — e.g. sidebar **labels** (“Updates” vs subscription wording), item **order**, “Tracked” vs “Artists”, or where **sync status** sat in an old wireframe. **The running app is the source of truth.** Any “fit to old spec” work is **optional** polish: naming, order, tooltips, discoverability — not missing screens.
+- ✅ **Masonry vs grid — closed** as a gap: two **explicit** view modes (CSS **column** masonry vs **Virtuoso** grid). Different performance tradeoffs on huge feeds; **not** an open backlog item (see [Closed by design](#closed-by-design-not-backlog)).
 
 ## 📰 Subscriptions / Updates
 
@@ -112,7 +114,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### M2 - UX Parity (In Progress)
 
-- Filter parity: **date range**, enabling disabled sort/orientation options, Browse **source** UX.
+- Filter parity: **date range**; enable or remove disabled sort/orientation placeholders; **search / multi-tag UX** and **Settings** page redesign (see [Planned product work](#planned-product-work)).
 - Gallery/viewer: edge-case polish; core **TagsDrawer** and **PostCard** progressive loading are shipped.
 - Updates feed QoL largely shipped (Creators tab, mark all read); further polish as needed.
 
@@ -122,12 +124,13 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ Lightweight automatic DB maintenance (checkpoint + optimize).
 - ✅ Fixed backup file retention (last 5); user-facing retention policy still open.
 
-## 🔧 Technical Improvements (From Audit)
+## 🔧 Technical Improvements (From Audit) & DX
 
-- ✅ Testing architecture (Vitest + Playwright, ABI switching) is operational.
-- ⏳ Main-process auto-restart in development (better DX).
-- ⏳ Centralized reusable validation utilities in Main process.
-- ⏳ Explicit video hardware-acceleration tuning and validation.
+- ✅ **Testing:** Vitest + Playwright, `better-sqlite3` ABI switching for `pretest`/`posttest` — operational.
+- ⏳ **Main process dev experience:** renderer has Vite HMR; **main** still needs a **manual restart** (or a watcher that restarts Electron) when changing IPC, services, or DB code. Improves iteration time for backend-heavy work.
+- ⏳ **Shared validation in Main:** Zod is per-handler; extracting **reusable schemas / helpers** for common IPC patterns reduces drift and duplicate error messages.
+- ⏳ **Video pipeline:** optional flags or validation for **hardware decode**, `<video>` attributes, and platform-specific quirks; today behavior is “works by default” without a formal tuning pass.
+- ⏳ **Tooling / hygiene:** keep `validate` (typecheck, lint, asset checks) green; optional stricter policy on logging and IPC surface over time.
 
 ## 🏗️ Architecture Considerations
 
@@ -138,27 +141,60 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ## 🔮 Long-Term Goals (Future Considerations)
 
-- Multi-booru expansion beyond current providers.
-- Deeper **analytics** (e.g. per-run sync health, history, not only the shipped **Statistics** page that summarizes local DB counts — see `StatsPage`, `getStats`).
+- More **booru providers** (beyond Rule34 + Gelbooru) on `IBooruProvider`.
+- **Smart Collections AI** — research; see `Product_Strategy.md`.
 
 ---
 
-## Not implemented (known gaps)
+## Closed by design (not backlog)
 
-Authoritative source remains the codebase; this list is for planning and doc parity.
+| Topic | Status |
+|-------|--------|
+| **Browse → Source: Favorites / Subscriptions** | Requires a **non-empty tag query** so “favorites” and “subscriptions” are interpreted in context (cached + API). **Working as designed;** not a defect to “fix” unless product explicitly changes the model. |
+| **Masonry vs grid** | Two **first-class** view toggles. No silent fallback; no open “masonry not implemented” item. |
+| **Viewer tags / progressive cards** | Shipped (`TagsDrawer`, `PostCard`). |
 
-| Area | Gap (verified against `main` in repo) |
-|------|----------------------------------------|
-| **Filters** | **Date range** (posted-between) not implemented. **Sort by score / most viewed** and **orientation** (horizontal/vertical) exist in `FiltersPanel` as **disabled** placeholders. On Browse, **Favorites/Subscriptions** require an active tag search (by design). |
-| **Viewer / tags** | — (include/exclude, right-click, and ring styling are implemented in `TagsDrawer` inside `ViewerDialog`.) |
-| **Gallery** | **Progressive stills** implemented in `PostCard` (viewport + load sample). Remaining gaps only if a surface bypasses `PostCard` or for niche media edge cases. |
-| **Layout / nav** | Sidebar/section **labels and structure** vs. older spec; optional UX tweaks. **Sync** is on the top bar (`SyncStatusBadge`). |
-| **Masonry** | **Columns-based** masonry vs **Virtuoso** grid — different performance model on very long feeds. |
-| **Providers** | New booru backends must implement throttling coherently; Rule34 + Gelbooru share `ProviderThrottle`. |
-| **Backups** | **User-configurable** “keep last N” / disk budget (rotation count fixed in main process). |
-| **Developer experience** | Main process **HMR / auto-restart** in dev. |
-| **Engineering** | **Centralized validation helpers** in main; optional **video decode / GPU** tuning. |
-| **Product** | **Smart Collections AI** — research (`Product_Strategy.md`). **Richer sync analytics** than the current **Statistics** page (`/stats`, local aggregates). |
+---
+
+## Planned product work
+
+Items explicitly scheduled for product/engineering (beyond small bugs).
+
+| Item | Description |
+|------|-------------|
+| **Multi-tag search (parity with site)** | Today: freeform string in `TagAutocomplete` with **autocomplete for the last token**; users can type several tags separated by space/comma, but the experience is **not** the same as the site’s tag builder (chips, clearer **AND** composition, OR groups, quick add without editing a long string). **Goal:** UX and, if needed, **query semantics** closer to the booru web UI (multi-select, optional explicit operators). |
+| **Settings page — full UI redesign** | Current `Settings.tsx` is a long stack of cards; users report **poor scannability and flow**. **Goal:** full **redesign** (layout, sections, maybe tabs/accordion, density, mobile-friendly spacing) while preserving existing IPC/settings keys. |
+| **Analytics beyond Statistics** | See [Analytics: current vs extended](#analytics-current-vs-extended). |
+
+---
+
+## Analytics: current vs extended
+
+**Shipped today (`/stats`, `getStats`, `StatsPage`):** aggregate **local database** metrics — e.g. total artists/posts, viewed/favorited counts, video count, **rating distribution** pie, **DB file size**, simple tabular breakdowns. Snapshot-style; answers “how big is my library.”
+
+**Extended analytics (backlog):** not a second pie chart — **operational** insight, for example:
+
+- **Sync runs:** per-run success/failure, duration, “last good sync” per artist, **error** strings or codes over time.
+- **API / rate limits:** surface **429** or throttle events if we persist them; correlation with `ProviderThrottle`.
+- **Collection health:** growth of DB vs cache size, **orphan** records, post counts by provider.
+- **Export / history:** CSV or time-series for power users; optional **retention** of last N sync events in SQLite.
+
+Requires **new persisted fields or tables** and UI sections; the current Statistics feature stays valid as the **lightweight** dashboard.
+
+---
+
+## Backlog: not implemented yet
+
+| Area | What is still open |
+|------|--------------------|
+| **Filters** | **Date range** (`published` between). **Sort by score / most viewed** and **orientation** rows in `FiltersPanel` are **disabled placeholders** — implement or remove. |
+| **Search** | **Multi-tag product UX** (see [Planned product work](#planned-product-work)); string model may stay under the hood. |
+| **Layout / nav** | **Optional** IA/copy pass: labels, order, tooltips (see [Layout Consistency](#d-layout-consistency)). |
+| **Backups** | **User setting** for retention (“keep last N” or max MB). |
+| **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): main **restart in dev**, **shared** validation helpers, **video** tuning. |
+| **Product** | **Smart Collections AI** (research). **Extended analytics** (table above). |
+
+**Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.
 
 ## 📝 Notes
 

@@ -74,7 +74,7 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
   - [Active Roadmap](./roadmap.md#-active-roadmap-priority-tasks) - Current priority tasks
   - [Milestones](./roadmap.md#-milestones) - MVP and future phases
   - [Technical Improvements](./roadmap.md#-technical-improvements-from-audit) - Planned technical enhancements
-  - [Not implemented (known gaps)](./roadmap.md#not-implemented-known-gaps) - What is still missing or partial
+  - [Backlog (not implemented yet)](./roadmap.md#backlog-not-implemented-yet) - Open items and [planned product work](./roadmap.md#planned-product-work)
 - **[Features.md](../Features.md)** (repository root) - Concise feature priority list (P1 / P2)
 - **[Product Strategy](../Product_Strategy.md)** (repository root) - Long-term product positioning and research pillars
 

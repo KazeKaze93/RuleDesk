@@ -121,7 +121,7 @@ A unified Top Bar appears on all content pages providing:
 - **Sort** - Newest/oldest (`sortOrder` on date-oriented lists); extra sort modes in panel may be disabled until implemented
 - **View Toggle** - Switch between grid, list, and masonry layouts
 - **Sync Status** - Real-time sync progress indicator with last sync timestamp
-*🟡 PARTIAL — `SyncStatusBadge` is in the top bar. **Rating** is in the global filters panel; **date-range** and some panel options (e.g. sort by score, orientation) are not implemented yet. On **Browse**, Favorites/Subscriptions sources require an active tag search.*
+*🟡 PARTIAL — `SyncStatusBadge` is in the top bar. **Rating** is in the global filters panel; **date-range** and some panel options (e.g. sort by score, orientation) are not implemented yet. On **Browse**, Favorites/Subscriptions need a tag query **by design** (see [roadmap — closed](./docs/roadmap.md#closed-by-design-not-backlog)).*
 
 ### Viewer Experience
 
@@ -257,7 +257,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - 🟡 **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Playlists, Tracked, Settings)
   *Functional but item labels/structure differ from roadmap spec. Tracked vs Artists distinction not explicit.*
 - 🟡 **Global Top Bar:** Search, `FiltersPanel` (rating, AI, media, source, etc.), sort, view toggle, `SyncStatusBadge`
-  *Remaining: date-range filter; disabled placeholders (e.g. sort by score); Browse source gating for favorites/subscriptions until tags are entered*
+  *Remaining: date-range filter; disabled placeholders (e.g. sort by score). Browse source modes that need tags are [by design](./docs/roadmap.md#closed-by-design-not-backlog).*
 - ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), source (all/favorites/subscriptions), and rating
 - ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending)
 - 🟡 **View Modes:** Grid (virtualized) and masonry (CSS columns) with responsive design
@@ -354,13 +354,13 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 
 - ✅ **Global top bar** — `GlobalTopBar.tsx` + `FiltersPanel` (rating S/Q/E, AI, media, source, sort-by date where wired)
 - ✅ **AI / media / source** — Backed by `searchStore` and post queries
-- 🟡 **Source on Browse** — Favorites/Subscriptions disabled until the user enters at least one tag (`SourceSwitcher`)
+- ✅ **Source on Browse** — Favorites/Subscriptions require a tag query when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design--not-backlog))
 - ⏳ **Date range** (posted between) — not in store or UI
 - ⏳ **Disabled panel options** — e.g. sort by score, “most viewed”, horizontal/vertical format (placeholders in `FiltersPanel`)
 - 🟡 **View modes** — Grid (`VirtuosoGrid`) vs masonry (CSS columns); different scaling behavior on huge lists
 - ✅ **FTS5** — Tag search where integrated in browse/search flows
 
-**Status:** Day-to-day filtering works. Remaining: **date range**, enabling placeholder sort/orientation options, and any spec nitpicks (see [roadmap](./docs/roadmap.md#not-implemented-known-gaps)).
+**Status:** Day-to-day filtering works. Remaining: **date range**, enabling placeholder sort/orientation options, and any spec nitpicks (see [roadmap — backlog](./docs/roadmap.md#backlog-not-implemented-yet)).
 
 ### B. Download Manager ✅ Implemented (Core Features)
 
@@ -401,7 +401,7 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 - ✅ **IPC Architecture** - ✅ **COMPLETED:** Controller-based IPC handlers with `BaseController` for centralized error handling and validation. Type-safe dependency injection via DI Container.
 - ✅ **Portable Mode** - ✅ **COMPLETED:** Automatic detection of portable mode with data folder support.
 
-**📖 For detailed roadmap information, see [Roadmap Documentation](./docs/roadmap.md).** For a concise list of **not yet implemented** items, see [Not implemented (known gaps)](./docs/roadmap.md#not-implemented-known-gaps).
+**📖 For detailed roadmap information, see [Roadmap Documentation](./docs/roadmap.md).** For **backlog** and **planned** work, see [Backlog](./docs/roadmap.md#backlog-not-implemented-yet) and [Planned product work](./docs/roadmap.md#planned-product-work).
 
 ---
 
