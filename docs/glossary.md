@@ -182,7 +182,7 @@ A grid view of posts with preview images, ratings, and metadata. RuleDesk suppor
 
 - **Grid View** - Card-based grid layout
 - **List View** - Compact list layout
-- **Masonry View** - Pinterest-style layout (planned)
+- **Masonry View** - CSS column (Pinterest-style) layout; available where the view toggle is shown (differs from virtualized grid on very large lists)
 
 **Related:** [Artist Gallery](./README.md#-artist-gallery), [Gallery Cards](./README.md#gallery-cards)
 

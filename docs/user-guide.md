@@ -144,14 +144,13 @@ The artist will appear in your tracked list!
 
 3. The sync runs in the background, so you can continue using the app while it syncs
 
-**Automatic Sync Status:**
+**Automatic sync (optional):**
 
-Automatic scheduler options are not available yet:
+1. Open **Settings** (sidebar) → **Sync**
+2. Enable **Sync on startup** if you want a full sync every time the app starts
+3. Set **Sync interval** to run background sync while the app is open (or leave **Disabled** and use **Sync All** in the sidebar when you want)
 
-- **Auto-sync on startup** - planned
-- **Periodic sync** - planned
-
-For now, use **Sync All** manually when needed.
+You can still run **Sync All** manually at any time; automatic runs use the same engine and rate limits.
 
 ### Viewing Posts
 
@@ -277,10 +276,9 @@ The download will start, and you'll see a progress indicator.
 
 **Filter posts by rating:**
 
-1. In any gallery view, look at the top bar
-2. Click the **"Filters"** button
-3. Select a rating: **Safe**, **Questionable**, or **Explicit**
-4. The gallery will update to show only posts with that rating
+1. In views that show the filter panel, open the top bar **Filters** control
+2. Select a rating: **Safe**, **Questionable**, or **Explicit** where available
+3. The list updates to match; not every screen exposes the same filter controls yet (see [Roadmap](./roadmap.md))
 
 **Filter by media type:**
 
@@ -301,9 +299,9 @@ The download will start, and you'll see a progress indicator.
 
 1. Open a post in the viewer
 2. Click the **"Tags"** button (or press **T**) to open the tags drawer
-3. Click on any tag to add it as a filter
-4. Right-click (or hold modifier key) to exclude a tag
-5. The gallery will update to show only posts matching your filters
+3. Click a tag to add it as a search filter (positive tag)
+4. A dedicated **right-click to exclude** flow and always-visible include/exclude indicators are still being polished; use the top bar to adjust complex tag filters
+5. The gallery or browse view updates to match the active search query
 
 **Clear filters:**
 
@@ -325,9 +323,10 @@ The download will start, and you'll see a progress indicator.
 - Viewed posts show a small badge/indicator on the post card
 - This helps you quickly see what's new
 
-**Mark all as viewed:**
+**Mark all as viewed (Updates feed):**
 
-- This feature is planned for future releases
+1. Open **Updates** in the sidebar
+2. In the **Feed** tab, click **Mark all read** in the top bar to mark every post currently shown in the feed as viewed
 
 ---
 
@@ -393,7 +392,7 @@ Access Settings by clicking **"Settings"** in the sidebar.
 
 ### Database Management
 
-- **Create Backup** - Save a backup of your database (recommended before major changes)
+- **Create Backup** - Save a backup of your database (recommended before major changes). Older automatic backups in the data folder are rotated (approximately the **last five** files kept).
 - **Restore Backup** - Restore from a previous backup
 - **Integrity Check** - Verify database is not corrupted
 - **Vacuum/Compact** - Optimize database file size

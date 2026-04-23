@@ -1656,7 +1656,7 @@ Root:
 
 **Database & Schema:**
 
-- **Schema:** Three main tables (`artists`, `posts`, `settings`) with proper relationships and indexes
+- **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata`, `playlists`, `playlist_entries`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit`
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
 - **Provider Support:** Multi-booru support with `provider` field (rule34, gelbooru)
@@ -1665,7 +1665,7 @@ Root:
 **Security & Reliability:**
 
 - **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API (Windows Credential Manager, macOS Keychain, Linux libsecret)
-- **Database Backup/Restore:** Manual backup and restore functionality with integrity checks
+- **Database Backup/Restore:** Manual backup and restore with integrity checks; automatic rotation of timestamped backup files (last five kept in user data)
 - **Context Isolation:** Enabled globally with sandbox mode
 - **CSP:** Strict Content Security Policy in production, relaxed for development (HMR support)
 - **IPC Architecture:** Controller-based IPC handlers with `BaseController` for centralized error handling

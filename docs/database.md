@@ -837,9 +837,10 @@ export const artists = sqliteTable(
 
 The application provides built-in backup functionality:
 
-1. **Manual Backup:** Use `window.api.createBackup()` or the Backup Controls UI component
+1. **Manual Backup:** Use `window.api.createBackup()` or the Backup Controls UI in **Settings**
 2. **Backup Location:** Backups are stored in the user data directory with timestamped filenames
-3. **Backup Format:** Full SQLite database copy
+3. **Backup Format:** Full SQLite database copy (via `VACUUM INTO`)
+4. **Rotation:** After a successful backup, older files matching the backup name prefix are deleted so that about the **last five** backups remain. The count is not user-configurable in the UI.
 
 **Example:**
 

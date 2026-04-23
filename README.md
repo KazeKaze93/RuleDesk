@@ -50,12 +50,12 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🎨 Progressive Image Loading**  | 🟡 PARTIAL — Data model supports Preview/Sample/Original. Gallery cards do not consistently perform progressive preview→sample upgrade.                                                                                                                                                                                                                |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                                                                                     |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
-| **💾 Backup & Restore**           | Manual database backup and restore functionality. Create timestamped backups to protect your data. Restore from backup files with automatic application restart. Backup files are stored in the user data directory.                                                                                                                                   |
+| **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups in the user data directory; after each successful backup, older files are pruned to keep the **last five** copies. Restore replaces the live DB (with checks) and reloads the app.                                                                                                          |
 | **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`). Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
 | **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                                                                           |
 | **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                                                                                                 |
 | **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                                                                          |
-| **🧭 Navigation & Layout**        | 🟡 PARTIAL — Functional sidebar and top bar are implemented, but item labels/structure differ from roadmap spec and some top-bar controls are not fully wired across all pages.                                                                                                                                                                          |
+| **🧭 Navigation & Layout**        | 🟡 PARTIAL — Sidebar and top bar are functional; section labels/structure and some filter controls still differ from the original spec on a few pages.                                                                                                                                                                                                |
 | **📋 Playlists & Collections**    | Create curated collections of posts independent of Artists/Trackers. Create, rename, delete, export, and import playlists. Add posts via quick menu on Post Cards or in viewer. View playlist galleries with filtering/sorting, drag-and-drop reorder for manual playlists, and smart playlists with hybrid local+remote tag queries.                                                                                   |
 | **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                                                                                                          |
 | **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                                                                                                  |
@@ -138,7 +138,7 @@ The full-screen viewer provides a polished media viewing experience:
   - Click tag to add filter (`+tag`)
   - Right-click or modifier key to exclude (`-tag`)
   - Visual indicators for active filters
-*🟡 PARTIAL — Click-to-search works. Right-click exclude and visual include/exclude indicators NOT implemented.*
+*🟡 PARTIAL — Click-to-search works. Right-click exclude and persistent include/exclude filter indicators in the drawer are not fully implemented.*
 
 ### Progressive Image Loading
 
@@ -149,7 +149,7 @@ Optimized image loading strategy for performance:
 - **File URL** - Full-resolution original (loaded only in viewer)
 
 This ensures fast initial page loads while maintaining high-quality viewing experience.
-*🟡 PARTIAL — Data model (preview/sample/file) exists. Gallery does not perform progressive preview→sample upgrade in cards.*
+*🟡 PARTIAL — Data model (preview/sample/file) exists. Gallery cards do not consistently upgrade from preview to sample while scrolling.*
 
 ### Gallery Cards
 
@@ -159,34 +159,29 @@ Post cards in gallery views include informative overlays:
 - **Favorite Badge** - Star icon for favorited posts
 - **Rating Badge** - Visual indicator (Safe/Questionable/Explicit)
 - **Media Type Badge** - Icon indicating image or video content
-*🟡 PARTIAL — Video indicator exists. Explicit image badge not implemented.*
+*✅ Rating label (S/Q/Explicit) appears in the card hover overlay; video type is indicated where applicable.*
 
 ## 🔄 Sync & Background
 
-### ❌ Auto-sync on Startup (NOT DONE)
+### ✅ Auto-sync on startup
 
-Automatic synchronization when the application starts is not implemented yet:
+When enabled in **Settings → Sync**, the app starts a full **Sync All** after the main window is ready (if no sync is already running). Progress uses the same sync pipeline as manual sync.
 
-- **Toggle Setting** - Not implemented
-- **Background Execution** - Not scheduled on startup yet
-- **Progress Indicators** - Not available for startup auto-sync flow
+### ✅ Periodic background sync
 
-### ❌ Periodic Sync (NOT DONE)
+**Settings → Sync → Sync interval** controls how often a background full sync runs (Disabled, 15 / 30 / 60 / 120 minutes). The main process enforces a **minimum interval**; values below that are treated as disabled. Rate limiting and backoff in `SyncService` apply to scheduled runs as well as manual ones.
 
-Continuous synchronization while the application is running is not implemented yet:
+### Maintenance note
 
-- **Configurable Interval** - Not implemented
-- **Smart Rate Limiting** - Exists in sync flow, but no periodic scheduler wiring
-- **Last Sync Status** - No periodic scheduler status flow
-- **Respectful Polling** - Exists in sync flow when manual sync runs
+A lightweight **maintenance scheduler** runs `PRAGMA wal_checkpoint(PASSIVE)` and `PRAGMA optimize` after a short post-startup delay and on a **daily** timer. This is separate from user-initiated VACUUM/backup operations.
 
 ## ⚙️ Settings
 
 ### Sync Settings
 
-- ❌ **Auto-sync on Startup** - Toggle automatic sync when app launches (not done)
-- ❌ **Periodic Sync Interval** - Configure how often to check for new posts (not done)
-- **Rate Limiting** - Adjust delays between API requests
+- **Sync on startup** - Toggle automatic sync when the app opens (**Settings → Sync**)
+- **Sync interval** - Background sync frequency (disabled or 15 / 30 / 60 / 120 minutes)
+- **Rate Limiting** - Adjust delays between API requests (advanced)
 
 ### Storage & Cache
 
@@ -205,11 +200,10 @@ Continuous synchronization while the application is running is not implemented y
 ### Database Management
 
 - **Backup & Restore** - Create timestamped backups and restore from backup files
+- **Automatic backup rotation** - After each successful backup, older files are removed so that approximately the **last five** timestamped backups remain (not configurable in the UI)
 - **Integrity Check** - Run database integrity verification (`PRAGMA integrity_check`)
 - **Vacuum/Compact** - Optimize database file size and performance
-- **Maintenance** - Database maintenance operations use sequential queue to prevent race conditions (non-blocking)
-- ❌ **Backup Retention Policy** - Keep last N backups with automatic cleanup (not done)
-- ❌ **Scheduled Maintenance Runs** - Automatic maintenance on startup/interval (not done)
+- **Maintenance** - User-initiated and bulk DB work goes through a **sequential maintenance queue**; background `wal_checkpoint` + `optimize` also run on a schedule in the main process
 
 ## ✅ Current Status
 
@@ -227,7 +221,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 
 ### Database & Schema
 
-- ✅ **Schema:** Three main tables (`artists`, `posts`, `settings`) with proper relationships
+- ✅ **Schema:** Core tables `artists`, `posts`, `settings`; additional `tag_metadata`, `playlists`, `playlist_entries`, and FTS5 external content for posts
 - ✅ **Migrations:** Fully functional migration system using `drizzle-kit` with idempotent migration handling
 - ✅ **Media Type Support:** `media_type` column in `posts` table for efficient image/video filtering (`image`, `video`)
 - ✅ **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`, `mediaType`
@@ -267,11 +261,9 @@ The application is stable and production-ready (see **`package.json`** → `vers
   *Sync status location differs from spec. Rating/date-range filter controls not fully wired in all pages.*
 - ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), source (all/favorites/subscriptions), and rating
 - ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending)
-- 🟡 **View Modes:** Grid and masonry layout options with responsive design
-  *Toggle exists in UI. Masonry layout not fully implemented — falls back to grid behavior.*
-- 🟡 **Updates Feed: Mark as Read (batch):** Feed supports per-post viewed state updates
-  *Per-post mark-as-viewed works. Batch 'mark all as read' button/IPC NOT implemented.*
-- ❌ **Updates: Creators Tab:** Dedicated creators list/tab in Updates (not done)
+- 🟡 **View Modes:** Grid (virtualized) and masonry (CSS columns) with responsive design
+  *Masonry trades full list virtualization for column layout on very large feeds.*
+- ✅ **Updates feed:** Per-post viewed state, **Mark all read** for the feed, and a **Creators** tab with new-post counts and navigation to artist galleries
 - ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
 - ✅ **Video Support:** `.mp4`, `.webm`, `.mov`, `.avi`, `.mkv`, `.flv`, `.wmv`, `.m4v` video formats supported with native `<video>` element
 - ✅ **Download Manager:** Download full-resolution files with progress tracking and queue management
@@ -372,8 +364,8 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 - ⏳ **Tag Search:** Advanced tag search with FTS5 (implemented in global search; full filter-panel parity in progress)
 - ⏳ **Rating Filter:** Filter by rating (Safe/Questionable/Explicit) - backend support exists, full UI wiring in progress
 
-**Status:** Core filtering functionality is implemented and working. Remaining work is cross-page parity for advanced controls (rating/date-range and full filter-panel consistency).
-*🟡 PARTIAL — Sync status location differs from spec. Rating/date-range filter controls not fully wired in all pages.*
+**Status:** Core filtering is implemented. Remaining work is **cross-page parity** for rating and date-range controls and filter-panel consistency with global tag search.
+*🟡 PARTIAL — Sync status placement and some filter controls still differ from the original spec on a few pages.*
 
 ### B. Download Manager ✅ Implemented (Core Features)
 
@@ -414,7 +406,7 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 - ✅ **IPC Architecture** - ✅ **COMPLETED:** Controller-based IPC handlers with `BaseController` for centralized error handling and validation. Type-safe dependency injection via DI Container.
 - ✅ **Portable Mode** - ✅ **COMPLETED:** Automatic detection of portable mode with data folder support.
 
-**📖 For detailed roadmap information, see [Roadmap Documentation](./docs/roadmap.md).**
+**📖 For detailed roadmap information, see [Roadmap Documentation](./docs/roadmap.md).** For a concise list of **not yet implemented** items, see [Not implemented (known gaps)](./docs/roadmap.md#not-implemented-known-gaps).
 
 ---
 

@@ -4,9 +4,10 @@ This file tracks product feature priorities. It is a planning document, not an i
 
 ## 🚧 P1 In Progress (Core UX / Stability)
 
-- Viewer refactoring and UX consistency improvements.
-- Reliability improvements for sync and error recovery flows.
-- Additional hardening and polishing for release quality.
+- **Viewer & gallery:** tag drawer interactions (include/exclude parity), progressive **preview → sample** in cards where still missing, overlay/layout polish.
+- **Filters & top bar:** rating and date-range wiring on every list; one consistent filter story with global search.
+- **Nav / spec parity:** sidebar labels, sync status placement, masonry vs. virtualization tradeoffs on huge feeds.
+- Hardening: **provider**-level anti-bot parity, optional backup retention settings, DX (main process reload in dev).
 
 ## 🔮 P2 Future (>6 months)
 

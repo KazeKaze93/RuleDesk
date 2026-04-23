@@ -1,6 +1,6 @@
 # 🚀 Roadmap
 
-This document reflects the current roadmap for RuleDesk `v11.x` and is aligned with `README.md`.
+This document reflects the current roadmap for RuleDesk `v12.x` and is aligned with `README.md` and `package.json` (see `version`).
 
 ## 📑 Table of Contents
 
@@ -23,6 +23,9 @@ This document reflects the current roadmap for RuleDesk `v11.x` and is aligned w
 - ✅ Playlists, favorites, downloads, backup/restore, and full-screen viewer are implemented.
 - ✅ Playlists now include import/export, manual drag-and-drop reorder, and smart hybrid local+remote resolution.
 - ✅ Database is optimized for scale: WAL mode, FTS5, composite indexes, and migration workflow.
+- ✅ **Sync automation:** auto-sync on startup, periodic background sync (presets in Settings, minimum interval enforced in `SyncScheduler`), and sync scheduler restart when settings are saved.
+- ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`).
+- ✅ **Backup retention:** after each successful backup, older files are pruned — **last 5** timestamped backups kept (not user-configurable in the UI).
 
 ---
 
@@ -72,18 +75,18 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### Feed Enhancements
 
-**Current state:** 🟡 partially implemented
+**Current state:** 🟡 polish possible, core done
 
 - ✅ Per-post viewed state updates.
-- ⏳ Batch "mark all as read".
-- ⏳ Dedicated creators tab with counters and quick actions.
+- ✅ **Mark all as read** for the current updates feed.
+- ✅ **Creators** tab: list of tracked artists with new-post counts and quick navigation to galleries.
 
 ### Sync Scheduling
 
-**Current state:** ❌ planned
+**Current state:** ✅ implemented
 
-- ❌ Auto-sync on startup.
-- ❌ Periodic sync interval scheduler.
+- ✅ **Auto-sync on startup** (toggle in Settings under Sync).
+- ✅ **Periodic sync** — interval selected in Settings (Disabled, 15 / 30 / 60 / 120 minutes). Values below the minimum in code are treated as disabled.
 
 ## 🛡️ Security & Reliability (Hardening)
 
@@ -96,9 +99,9 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### Next Hardening Steps
 
-- ⏳ Backup retention policy (keep last N backups).
-- ⏳ Scheduled maintenance runs.
+- ⏳ **User-configurable backup retention** (expose “keep last N” or similar; today fixed at 5 in main process).
 - 🟡 Anti-bot randomization parity across all providers.
+- ⏳ Optional: richer scheduled maintenance (user-visible schedule / explicit `VACUUM` policy); today lightweight `wal_checkpoint` + `optimize` runs are automatic.
 
 ## 📋 Milestones
 
@@ -112,11 +115,11 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - Viewer/galleries polish parity.
 - Updates feed quality-of-life improvements.
 
-### M3 - Automation and Reliability (Planned)
+### M3 - Automation and Reliability (Largely Done)
 
-- Auto-sync scheduler.
-- Maintenance automation.
-- Backup retention policy.
+- ✅ Auto-sync on startup and periodic sync scheduler.
+- ✅ Lightweight automatic DB maintenance (checkpoint + optimize).
+- ✅ Fixed backup file retention (last 5); user-facing retention policy still open.
 
 ## 🔧 Technical Improvements (From Audit)
 
@@ -138,6 +141,23 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - Analytics/statistics dashboard for sync and collection insights.
 
 ---
+
+## Not implemented (known gaps)
+
+Authoritative source remains the codebase; this list is for planning and doc parity.
+
+| Area | Gap |
+|------|------|
+| **Viewer / tags** | Right-click exclude in tag drawer; clear include/exclude visual state beyond current click-to-search. |
+| **Gallery** | True progressive **preview → sample** upgrade in cards (data model ready; cards do not always upgrade the loaded image). |
+| **Top bar & filters** | Consistent **rating** and **date-range** filter wiring on every page; full parity with global tag search in filter panels. |
+| **Layout / nav** | Sidebar/section **labels and structure** vs. original spec; **sync status** placement vs. spec. |
+| **Masonry** | Implemented as CSS **columns** on some routes without full grid virtualization—large feeds trade memory/scroll behavior vs. `VirtuosoGrid`. |
+| **Providers** | **Anti-bot / header** behavior aligned across Rule34, Gelbooru, and future sources. |
+| **Backups** | **Configurable** retention count or storage budget (fixed rotation today). |
+| **Developer experience** | Main process **HMR / auto-restart** in dev. |
+| **Engineering** | **Centralized validation helpers** in main; optional **video decode / GPU** tuning. |
+| **Long-term** | More **booru** providers; **analytics** dashboard; **Smart Collections AI** (see `Product_Strategy.md` — research). |
 
 ## 📝 Notes
 
