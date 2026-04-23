@@ -98,6 +98,9 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 # DOCUMENTATION
 
 - **BAN**: Never create `contributing.md`. This file is forbidden. Project standards live in `.cursorrules` and `.ai/LESSONS.txt`.
+- **DOC CONSISTENCY IS MANDATORY**: Any behavioral/API/UI change must be reflected in all relevant docs (`README.md`, `docs/*.md`, user/developer docs) in the same task.
+- **PROACTIVE DOC SYNC**: Do not ask for permission to "also update docs". If docs are stale/inconsistent after changes, update them automatically.
+- **NO DOC DRIFT**: Keep terminology, feature behavior, and constraints aligned across files. If one doc says X and code says Y, docs must be fixed immediately.
 
 # WORKFLOW
 

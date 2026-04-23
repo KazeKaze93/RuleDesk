@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { NavLink } from "react-router-dom";
 import {
   Search,
@@ -27,6 +28,11 @@ export const Sidebar = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [appVersion, setAppVersion] = useState<string>("");
   const hasFetchedVersionRef = useRef(false);
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["updates", "unreadCount"],
+    queryFn: () => window.api.getUpdatesUnreadCount(),
+    refetchInterval: 30_000,
+  });
 
   // Fetch app version on mount
   useEffect(() => {
@@ -120,7 +126,12 @@ export const Sidebar = () => {
             }
           >
             <item.icon className="w-4 h-4" />
-            {item.label}
+            <span>{item.label}</span>
+            {item.to === "/updates" && unreadCount > 0 && (
+              <span className="inline-flex justify-center items-center px-2 py-0.5 ml-auto text-xs font-semibold text-white bg-violet-600 rounded-full min-w-5">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
