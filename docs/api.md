@@ -205,8 +205,14 @@ interface IpcBridge {
   logout: () => Promise<void>;
 
   // Settings
-  getSettings: () => Promise<IpcSettings | null>;
-  saveSettings: (creds: { userId: string; apiKey: string }) => Promise<boolean>;
+  getSettings: () => Promise<IpcSettings | undefined>;
+  saveSettings: (creds: {
+    userId?: string;
+    apiKey?: string;
+    proxyUrl?: string | null;
+    autoSyncOnStartup?: boolean;
+    syncIntervalMinutes?: number;
+  }) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
 
   // Artists
@@ -459,22 +465,31 @@ Retrieves stored settings. **⚠️ SECURITY: API Key is NEVER returned to Rende
 type IpcSettings = {
   userId: string;
   hasApiKey: boolean; // ← Boolean flag, NOT the actual key
+  proxyUrl: string | null;
   isSafeMode: boolean;
   isAdultConfirmed: boolean;
   isAdultVerified: boolean;
   tosAcceptedAt: number | null;
+  downloadFolder: string | null;
+  duplicateFileBehavior: "skip" | "overwrite";
+  downloadFolderStructure: "flat" | "{artist_id}";
+  theme: "system" | "light" | "dark";
+  autoSyncOnStartup: boolean;
+  syncIntervalMinutes: number;
 };
 ```
 
 **Example:**
 
 ```typescript
-import type { IpcSettings } from "../../../shared/schemas/settings";
+import log from "electron-log/renderer";
 
 const settings = await window.api.getSettings();
 if (settings) {
-  console.log("User ID:", settings.userId);
-  console.log("Has API Key:", settings.hasApiKey); // ← Boolean, not the key itself
+  log.info("[Settings] Loaded", {
+    userId: settings.userId,
+    hasApiKey: settings.hasApiKey,
+  });
   // ❌ settings.apiKey does NOT exist - API key is never sent to Renderer
 }
 ```
@@ -507,9 +522,9 @@ return <MainApp />;
 
 ---
 
-### `saveSettings(creds: { userId: string; apiKey: string })`
+### `saveSettings(creds)`
 
-Saves API credentials to the database. The API key is encrypted at rest using Electron's `safeStorage` API before being stored.
+Saves settings to the database. Supports partial updates (credentials, sync options, proxy URL). API key is encrypted at rest using Electron's `safeStorage` API before storage.
 
 **⚠️ SECURITY CONTRACT:**
 
@@ -534,8 +549,11 @@ Saves API credentials to the database. The API key is encrypted at rest using El
 
 **Parameters:**
 
-- `creds.userId: string` - Rule34.xxx User ID
-- `creds.apiKey: string` - Rule34.xxx API Key (will be encrypted before storage)
+- `creds.userId?: string` - Rule34.xxx User ID
+- `creds.apiKey?: string` - Rule34.xxx API Key (encrypted before storage)
+- `creds.proxyUrl?: string | null` - Optional outbound proxy URL
+- `creds.autoSyncOnStartup?: boolean` - Auto-sync startup toggle
+- `creds.syncIntervalMinutes?: number` - Periodic sync interval in minutes
 
 **Returns:** `Promise<boolean>`
 
@@ -546,14 +564,16 @@ Saves API credentials to the database. The API key is encrypted at rest using El
 **Example:**
 
 ```typescript
+import log from "electron-log/renderer";
+
 try {
   await window.api.saveSettings({
     userId: "123456",
     apiKey: "your-api-key-here",
   });
-  console.log("Settings saved");
+  log.info("[Settings] Credentials saved");
 } catch (error) {
-  console.error("Failed to save settings:", error);
+  log.error("[Settings] Failed to save settings:", error);
 }
 ```
 

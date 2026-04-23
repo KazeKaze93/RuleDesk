@@ -108,7 +108,7 @@ The application is organized into the following main sections accessible via the
 - **Playlists (Collections)** - Create and manage curated collections of posts
 - **Statistics** - Local database metrics (counts, rating mix, DB size) via `getStats`
 - **Tracked (Artists/Tags management)** - Manage tracked artists, tags, and subscriptions
-- **Settings** - Configure sync behavior, storage limits, security, and database maintenance
+- **Settings** - Configure downloads, sync behavior, appearance, account key, and backup/restore
 
 ## 🎨 Core UX Principles
 
@@ -178,33 +178,40 @@ A lightweight **maintenance scheduler** runs `PRAGMA wal_checkpoint(PASSIVE)` an
 
 ## ⚙️ Settings
 
-### Sync Settings
+Settings are organized into tabs for faster scanning and lower cognitive load:
 
-- **Sync on startup** - Toggle automatic sync when the app opens (**Settings → Sync**)
-- **Sync interval** - Background sync frequency (disabled or 15 / 30 / 60 / 120 minutes)
-- **Rate Limiting** - Adjust delays between API requests (advanced)
+### General
 
-### Storage & Cache
+- **Default download folder** - Choose or reset destination folder
+- **Duplicate behavior** - `skip` or `overwrite` for existing files
+- **Folder structure** - `flat` or `{artist_id}` subfolder mode
+- **Proxy URL** - Optional HTTP/HTTPS proxy for outbound requests/downloads
 
-- **Cache Limit** - Set maximum cache size (preview/sample images)
-- **Clear Cache** - Manual cache cleanup option
-- **Storage Usage** - Display current cache size and database size
+### Sync
 
-### Security
+- **Sync on startup** - Toggle automatic sync when app opens
+- **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
+- **Sync now** - Manual trigger from Settings with last-run status text
 
-- **API Key Storage** - Secure storage using Electron's `safeStorage` API
-  - API keys are **never** sent to Renderer process
-  - Encrypted at rest using platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
-  - Decryption only occurs in Main Process when needed for API calls
-- **Threat Model** - Stolen database file does not reveal API key in plaintext
+### Appearance
 
-### Database Management
+- **Theme** - `System`, `Light`, `Dark`
 
-- **Backup & Restore** - Create timestamped backups and restore from backup files
-- **Automatic backup rotation** - After each successful backup, older files are removed so that approximately the **last five** timestamped backups remain (not configurable in the UI)
-- **Integrity Check** - Run database integrity verification (`PRAGMA integrity_check`)
-- **Vacuum/Compact** - Optimize database file size and performance
-- **Maintenance** - User-initiated and bulk DB work goes through a **sequential maintenance queue**; background `wal_checkpoint` + `optimize` also run on a schedule in the main process
+### Backup
+
+- **Create backup** - Manual timestamped backup
+- **Restore backup** - Restore from backup file and reload app
+- **Integrity check** - Run `PRAGMA integrity_check`
+- **Automatic backup rotation** - Keep approximately the last **five** backups (not configurable in UI)
+
+### Account
+
+- **API key update** - Password-style input with show/hide toggle
+- **Key status badge** - `Configured` / `Not configured` via safe `hasApiKey` contract
+
+### Feedback timing
+
+- Settings success/error badges auto-hide after ~5 seconds to avoid stale status indicators.
 
 ## ✅ Current Status
 

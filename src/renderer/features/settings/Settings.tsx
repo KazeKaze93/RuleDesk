@@ -1,30 +1,26 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import log from "electron-log/renderer";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import { Label } from "../../components/ui/label";
-import { Switch } from "../../components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
-import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
-import { Loader2, Database, Upload, FolderOpen, ShieldCheck } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { SettingsGeneralTab } from "./SettingsGeneralTab";
+import { SettingsSyncTab } from "./SettingsSyncTab";
+import { SettingsAppearanceTab } from "./SettingsAppearanceTab";
+import { SettingsBackupTab } from "./SettingsBackupTab";
+import { SettingsAccountTab } from "./SettingsAccountTab";
 import { useTheme } from "../../hooks/useTheme";
+
+const STATUS_FEEDBACK_TIMEOUT_MS = 5000;
+type StatusTimerKey =
+  | "backup"
+  | "download-folder"
+  | "restore"
+  | "integrity"
+  | "proxy"
+  | "manual-sync"
+  | "account";
 
 export const Settings = () => {
   const { theme, setTheme, isSaving: isThemeSaving } = useTheme();
+  const [activeTab, setActiveTab] = useState("general");
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isCheckingIntegrity, setIsCheckingIntegrity] = useState(false);
@@ -51,6 +47,25 @@ export const Settings = () => {
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [proxyStatus, setProxyStatus] = useState<"idle" | "success" | "error">("idle");
+  const [isManualSyncRunning, setIsManualSyncRunning] = useState(false);
+  const [manualSyncStatus, setManualSyncStatus] = useState<"idle" | "success" | "error">("idle");
+  const [lastSyncStatusText, setLastSyncStatusText] = useState("Last sync: not started yet");
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<"idle" | "success" | "error">("idle");
+  const statusTimersRef = useRef<Partial<Record<StatusTimerKey, number>>>({});
+
+  const scheduleStatusReset = (key: StatusTimerKey, reset: () => void): void => {
+    const existingTimer = statusTimersRef.current[key];
+    if (existingTimer !== undefined) {
+      window.clearTimeout(existingTimer);
+    }
+    statusTimersRef.current[key] = window.setTimeout(() => {
+      reset();
+      delete statusTimersRef.current[key];
+    }, STATUS_FEEDBACK_TIMEOUT_MS);
+  };
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
@@ -64,10 +79,19 @@ export const Settings = () => {
         setSyncIntervalMinutes(String(s.syncIntervalMinutes));
       }
       setProxyUrl(s?.proxyUrl ?? null);
+      setHasApiKey(s?.hasApiKey ?? false);
     });
     window.api.getDatabaseLocation().then((location) => {
       setDatabaseLocation(location);
     });
+    return () => {
+      const activeTimers = Object.values(statusTimersRef.current);
+      for (const timerId of activeTimers) {
+        if (timerId !== undefined) {
+          window.clearTimeout(timerId);
+        }
+      }
+    };
   }, []);
 
   const handleBackup = async () => {
@@ -78,21 +102,21 @@ export const Settings = () => {
       const result = await window.api.createBackup();
       if (result.success) {
         setBackupStatus("success");
-        setTimeout(() => setBackupStatus("idle"), 3000);
+        scheduleStatusReset("backup", () => setBackupStatus("idle"));
       } else {
         setBackupStatus("error");
-        setTimeout(() => setBackupStatus("idle"), 3000);
+        scheduleStatusReset("backup", () => setBackupStatus("idle"));
       }
     } catch (error) {
       log.error("[Settings] Failed to create backup:", error);
       setBackupStatus("error");
-      setTimeout(() => setBackupStatus("idle"), 3000);
+      scheduleStatusReset("backup", () => setBackupStatus("idle"));
     } finally {
       setIsBackingUp(false);
     }
   };
 
-  const handleSelectDownloadFolder = async () => {
+  const handleSelectDownloadFolder = async (): Promise<void> => {
     try {
       const path = await window.api.selectDownloadFolder();
       if (path) {
@@ -100,35 +124,35 @@ export const Settings = () => {
         if (ok) {
           setDownloadFolder(path);
           setDownloadFolderStatus("success");
-          setTimeout(() => setDownloadFolderStatus("idle"), 3000);
+          scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
         } else {
           setDownloadFolderStatus("error");
-          setTimeout(() => setDownloadFolderStatus("idle"), 3000);
+          scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
         }
       }
     } catch (err) {
       log.error("[Settings] Failed to set download folder:", err);
       setDownloadFolderStatus("error");
-      setTimeout(() => setDownloadFolderStatus("idle"), 3000);
+      scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
     }
   };
 
-  const handleResetDownloadFolder = async () => {
+  const handleResetDownloadFolder = async (): Promise<void> => {
     try {
       const ok = await window.api.saveDownloadFolder(null);
       if (ok) {
         setDownloadFolder(null);
         setDownloadFolderStatus("success");
-        setTimeout(() => setDownloadFolderStatus("idle"), 3000);
+        scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
       }
     } catch (err) {
       log.error("[Settings] Failed to reset download folder:", err);
       setDownloadFolderStatus("error");
-      setTimeout(() => setDownloadFolderStatus("idle"), 3000);
+      scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
     }
   };
 
-  const handleRestore = async () => {
+  const handleRestore = async (): Promise<void> => {
     setIsRestoring(true);
     setRestoreStatus("idle");
 
@@ -142,25 +166,27 @@ export const Settings = () => {
         }, 500);
       } else {
         setRestoreStatus("error");
-        setTimeout(() => setRestoreStatus("idle"), 3000);
+        scheduleStatusReset("restore", () => setRestoreStatus("idle"));
       }
     } catch (error) {
       log.error("[Settings] Failed to restore backup:", error);
       setRestoreStatus("error");
-      setTimeout(() => setRestoreStatus("idle"), 3000);
+      scheduleStatusReset("restore", () => setRestoreStatus("idle"));
     } finally {
       setIsRestoring(false);
     }
   };
 
-  const handleIntegrityCheck = async () => {
+  const handleIntegrityCheck = async (): Promise<void> => {
     setIsCheckingIntegrity(true);
     setIntegrityResult(null);
     try {
       const result = await window.api.checkDatabaseIntegrity();
       setIntegrityResult(result);
+      scheduleStatusReset("integrity", () => setIntegrityResult(null));
     } catch {
       setIntegrityResult({ ok: false, details: "Failed to run integrity check." });
+      scheduleStatusReset("integrity", () => setIntegrityResult(null));
     } finally {
       setIsCheckingIntegrity(false);
     }
@@ -175,7 +201,7 @@ export const Settings = () => {
     }
   };
 
-  const handleSaveProxy = async (showStatus: boolean) => {
+  const handleSaveProxy = async (showStatus: boolean): Promise<void> => {
     const normalized = proxyUrl?.trim() ?? "";
     if (normalized.length === 0) {
       try {
@@ -184,13 +210,13 @@ export const Settings = () => {
         setProxyError(null);
         if (showStatus) {
           setProxyStatus("success");
-          setTimeout(() => setProxyStatus("idle"), 3000);
+          scheduleStatusReset("proxy", () => setProxyStatus("idle"));
         }
       } catch (error) {
         log.error("[Settings] Failed to clear proxy URL:", error);
         if (showStatus) {
           setProxyStatus("error");
-          setTimeout(() => setProxyStatus("idle"), 3000);
+          scheduleStatusReset("proxy", () => setProxyStatus("idle"));
         }
       }
       return;
@@ -207,389 +233,228 @@ export const Settings = () => {
       setProxyError(null);
       if (showStatus) {
         setProxyStatus("success");
-        setTimeout(() => setProxyStatus("idle"), 3000);
+        scheduleStatusReset("proxy", () => setProxyStatus("idle"));
       }
     } catch (error) {
       log.error("[Settings] Failed to save proxy URL:", error);
       if (showStatus) {
         setProxyStatus("error");
-        setTimeout(() => setProxyStatus("idle"), 3000);
+        scheduleStatusReset("proxy", () => setProxyStatus("idle"));
       }
     }
   };
 
+  const handleDuplicateFileBehaviorChange = async (
+    value: "skip" | "overwrite"
+  ): Promise<void> => {
+    const previousValue = duplicateFileBehavior;
+    setDuplicateFileBehavior(value);
+    try {
+      await window.api.saveDownloadSettings({ duplicateFileBehavior: value });
+    } catch (error) {
+      log.error("[Settings] Failed to save duplicate file behavior:", error);
+      setDuplicateFileBehavior(previousValue);
+    }
+  };
+
+  const handleDownloadFolderStructureChange = async (
+    value: "flat" | "{artist_id}"
+  ): Promise<void> => {
+    const previousValue = downloadFolderStructure;
+    setDownloadFolderStructure(value);
+    try {
+      await window.api.saveDownloadSettings({ downloadFolderStructure: value });
+    } catch (error) {
+      log.error("[Settings] Failed to save folder structure:", error);
+      setDownloadFolderStructure(previousValue);
+    }
+  };
+
+  const handleAutoSyncOnStartupChange = async (checked: boolean): Promise<void> => {
+    const previousValue = autoSyncOnStartup;
+    setAutoSyncOnStartup(checked);
+    try {
+      await window.api.saveSettings({ autoSyncOnStartup: checked });
+    } catch (error) {
+      log.error("[Settings] Failed to save auto sync on startup:", error);
+      setAutoSyncOnStartup(previousValue);
+    }
+  };
+
+  const handleSyncIntervalChange = async (value: string): Promise<void> => {
+    const previousValue = syncIntervalMinutes;
+    setSyncIntervalMinutes(value);
+    try {
+      await window.api.saveSettings({
+        syncIntervalMinutes: Number(value),
+      });
+    } catch (error) {
+      log.error("[Settings] Failed to save sync interval:", error);
+      setSyncIntervalMinutes(previousValue);
+    }
+  };
+
+  const handleManualSync = async (): Promise<void> => {
+    setIsManualSyncRunning(true);
+    setManualSyncStatus("idle");
+    try {
+      const result = await window.api.syncAll();
+      if (result) {
+        setManualSyncStatus("success");
+        setLastSyncStatusText(`Last sync: ${new Date().toLocaleString()}`);
+        scheduleStatusReset("manual-sync", () => setManualSyncStatus("idle"));
+      } else {
+        setManualSyncStatus("error");
+        scheduleStatusReset("manual-sync", () => setManualSyncStatus("idle"));
+      }
+    } catch (error) {
+      log.error("[Settings] Failed to run manual sync:", error);
+      setManualSyncStatus("error");
+      scheduleStatusReset("manual-sync", () => setManualSyncStatus("idle"));
+    } finally {
+      setIsManualSyncRunning(false);
+    }
+  };
+
+  const handleSaveApiKey = async (): Promise<void> => {
+    setAccountStatus("idle");
+    try {
+      const trimmedApiKey = apiKey.trim();
+      const saved = await window.api.saveSettings({ apiKey: trimmedApiKey });
+      if (!saved) {
+        setAccountStatus("error");
+        scheduleStatusReset("account", () => setAccountStatus("idle"));
+        return;
+      }
+      setHasApiKey(trimmedApiKey.length > 0);
+      setApiKey("");
+      setAccountStatus("success");
+      scheduleStatusReset("account", () => setAccountStatus("idle"));
+    } catch (error) {
+      log.error("[Settings] Failed to save API key:", error);
+      setAccountStatus("error");
+      scheduleStatusReset("account", () => setAccountStatus("idle"));
+    }
+  };
+
   return (
-    <div className="container py-10 space-y-8 max-w-2xl duration-500 animate-in fade-in">
-      <div>
+    <section className="container max-w-4xl space-y-6 py-8">
+      <section>
         <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
         <p className="text-muted-foreground">
-          Manage your database backups and application preferences.
+          Manage application preferences in focused sections.
         </p>
-      </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-          <CardDescription>
-            Choose how RuleDesk should look.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Label>Theme</Label>
-          <RadioGroup
-            value={theme}
-            onValueChange={(value: "system" | "light" | "dark") => setTheme(value)}
-            disabled={isThemeSaving}
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="system" id="theme-system" />
-              <Label htmlFor="theme-system">System</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="light" id="theme-light" />
-              <Label htmlFor="theme-light">Light</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="dark" id="theme-dark" />
-              <Label htmlFor="theme-dark">Dark</Label>
-            </div>
-          </RadioGroup>
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="flex w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="sync">Sync</TabsTrigger>
+          <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          <TabsTrigger value="backup">Backup</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Downloads</CardTitle>
-          <CardDescription>
-            Choose a default folder for saving downloaded files. If not set,
-            files are saved to your system Downloads folder.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted-foreground truncate max-w-md">
-              {downloadFolder ?? "Default (Downloads/BooruClient)"}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSelectDownloadFolder}
-                variant="outline"
-                size="sm"
-              >
-                <FolderOpen className="mr-2 w-4 h-4" />
-                Choose Folder
-              </Button>
-              {downloadFolder && (
-                <Button
-                  onClick={handleResetDownloadFolder}
-                  variant="ghost"
-                  size="sm"
-                >
-                  Reset to Default
-                </Button>
-              )}
-            </div>
-            {downloadFolderStatus === "success" && (
-              <p className="text-sm text-green-600 dark:text-green-400">
-                Download folder updated.
-              </p>
-            )}
-            {downloadFolderStatus === "error" && (
-              <p className="text-sm text-red-600 dark:text-red-400">
-                Failed to update. Please try again.
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label>When file already exists</Label>
-            <Select
-              value={duplicateFileBehavior}
-              onValueChange={async (v: "skip" | "overwrite") => {
-                setDuplicateFileBehavior(v);
-                await window.api.saveDownloadSettings({ duplicateFileBehavior: v });
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="skip">Skip (keep existing)</SelectItem>
-                <SelectItem value="overwrite">Overwrite</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Folder structure</Label>
-            <Select
-              value={downloadFolderStructure}
-              onValueChange={async (v: "flat" | "{artist_id}") => {
-                setDownloadFolderStructure(v);
-                await window.api.saveDownloadSettings({ downloadFolderStructure: v });
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="flat">Flat (all files in one folder)</SelectItem>
-                <SelectItem value="{artist_id}">By artist (subfolder per artist)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="general">
+          <SettingsGeneralTab
+            downloadFolder={downloadFolder}
+            downloadFolderStatus={downloadFolderStatus}
+            duplicateFileBehavior={duplicateFileBehavior}
+            downloadFolderStructure={downloadFolderStructure}
+            proxyUrl={proxyUrl}
+            proxyError={proxyError}
+            proxyStatus={proxyStatus}
+            onSelectDownloadFolder={() => {
+              void handleSelectDownloadFolder();
+            }}
+            onResetDownloadFolder={() => {
+              void handleResetDownloadFolder();
+            }}
+            onDuplicateFileBehaviorChange={(value) => {
+              void handleDuplicateFileBehaviorChange(value);
+            }}
+            onDownloadFolderStructureChange={(value) => {
+              void handleDownloadFolderStructureChange(value);
+            }}
+            onProxyUrlChange={(value) => {
+              setProxyUrl(value.length > 0 ? value : null);
+              setProxyError(null);
+            }}
+            onProxyBlur={() => {
+              void handleSaveProxy(false);
+            }}
+            onSaveProxy={() => {
+              void handleSaveProxy(true);
+            }}
+          />
+        </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Connection</CardTitle>
-          <CardDescription>
-            Configure outbound network behavior for providers and downloads.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="proxy-url">Proxy URL</Label>
-            <Input
-              id="proxy-url"
-              placeholder="https://proxy.example.com:8080"
-              value={proxyUrl ?? ""}
-              onChange={(e) => {
-                setProxyUrl(e.target.value || null);
-                setProxyError(null);
-              }}
-              onBlur={() => {
-                void handleSaveProxy(false);
-              }}
-            />
-            <p className="text-xs text-muted-foreground">
-              Optional. HTTP/HTTPS proxy for all outgoing requests. Leave empty
-              to connect directly.
-            </p>
-            {proxyError && (
-              <p className="text-sm text-red-600 dark:text-red-400">{proxyError}</p>
-            )}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void handleSaveProxy(true)}
-              >
-                Save Proxy
-              </Button>
-              {proxyStatus === "success" && (
-                <span className="text-sm text-green-600 dark:text-green-400">
-                  Proxy settings saved.
-                </span>
-              )}
-              {proxyStatus === "error" && (
-                <span className="text-sm text-red-600 dark:text-red-400">
-                  Failed to save proxy settings.
-                </span>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="sync">
+          <SettingsSyncTab
+            autoSyncOnStartup={autoSyncOnStartup}
+            syncIntervalMinutes={syncIntervalMinutes}
+            isManualSyncRunning={isManualSyncRunning}
+            manualSyncStatus={manualSyncStatus}
+            lastSyncStatusText={lastSyncStatusText}
+            onAutoSyncChange={(checked) => {
+              void handleAutoSyncOnStartupChange(checked);
+            }}
+            onSyncIntervalChange={(value) => {
+              void handleSyncIntervalChange(value);
+            }}
+            onManualSync={() => {
+              void handleManualSync();
+            }}
+          />
+        </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Sync</CardTitle>
-          <CardDescription>Control startup synchronization behavior.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-between items-start p-4 rounded-lg border">
-            <div className="space-y-1 pr-4">
-              <Label htmlFor="auto-sync-on-startup" className="text-sm font-medium">
-                Sync on startup
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Automatically sync all artists when the app opens
-              </p>
-            </div>
-            <Switch
-              id="auto-sync-on-startup"
-              checked={autoSyncOnStartup}
-              onCheckedChange={async (checked) => {
-                const previousValue = autoSyncOnStartup;
-                setAutoSyncOnStartup(checked);
-                try {
-                  await window.api.saveSettings({ autoSyncOnStartup: checked });
-                } catch (error) {
-                  log.error("[Settings] Failed to save auto sync on startup:", error);
-                  setAutoSyncOnStartup(previousValue);
-                }
-              }}
-            />
-          </div>
-          <div className="space-y-2 p-4 rounded-lg border">
-            <Label htmlFor="sync-interval" className="text-sm font-medium">
-              Sync interval
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              How often to automatically sync in the background
-            </p>
-            <Select
-              value={syncIntervalMinutes}
-              onValueChange={async (value) => {
-                const previousValue = syncIntervalMinutes;
-                setSyncIntervalMinutes(value);
-                try {
-                  await window.api.saveSettings({
-                    syncIntervalMinutes: Number(value),
-                  });
-                } catch (error) {
-                  log.error("[Settings] Failed to save sync interval:", error);
-                  setSyncIntervalMinutes(previousValue);
-                }
-              }}
-            >
-              <SelectTrigger id="sync-interval">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0">Disabled</SelectItem>
-                <SelectItem value="15">Every 15 minutes</SelectItem>
-                <SelectItem value="30">Every 30 minutes</SelectItem>
-                <SelectItem value="60">Every hour</SelectItem>
-                <SelectItem value="120">Every 2 hours</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="appearance">
+          <SettingsAppearanceTab
+            theme={theme}
+            isThemeSaving={isThemeSaving}
+            onThemeChange={(value) => {
+              setTheme(value);
+            }}
+          />
+        </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Database Management</CardTitle>
-          <CardDescription>
-            Create backups of your database or restore from a previous backup.
-            Backups include all your tracked artists, posts, and settings.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-3 rounded-md border bg-muted/40">
-            <p className="text-xs text-muted-foreground">Database location</p>
-            <p className="text-sm break-all">{databaseLocation || "Loading..."}</p>
-          </div>
-          <div className="flex flex-col gap-4">
-            <div className="flex justify-between items-center p-4 rounded-lg border">
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">Backup Database</h3>
-                <p className="text-sm text-muted-foreground">
-                  Create a backup file of your current database. The backup will
-                  be saved and the folder will open automatically.
-                </p>
-              </div>
-              <Button
-                onClick={handleBackup}
-                disabled={isBackingUp}
-                variant="outline"
-              >
-                {isBackingUp ? (
-                  <>
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Database className="mr-2 w-4 h-4" />
-                    Backup Database
-                  </>
-                )}
-              </Button>
-            </div>
+        <TabsContent value="backup">
+          <SettingsBackupTab
+            databaseLocation={databaseLocation}
+            isBackingUp={isBackingUp}
+            isRestoring={isRestoring}
+            isCheckingIntegrity={isCheckingIntegrity}
+            backupStatus={backupStatus}
+            restoreStatus={restoreStatus}
+            integrityResult={integrityResult}
+            onBackup={() => {
+              void handleBackup();
+            }}
+            onRestore={() => {
+              void handleRestore();
+            }}
+            onIntegrityCheck={() => {
+              void handleIntegrityCheck();
+            }}
+          />
+        </TabsContent>
 
-            {backupStatus === "success" && (
-              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
-                Backup created successfully!
-              </div>
-            )}
-            {backupStatus === "error" && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
-                Failed to create backup. Please try again.
-              </div>
-            )}
-
-            <div className="flex justify-between items-center p-4 rounded-lg border">
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">Restore Database</h3>
-                <p className="text-sm text-muted-foreground">
-                  Restore your database from a previous backup file. This will
-                  replace your current database.
-                </p>
-              </div>
-              <Button
-                onClick={handleRestore}
-                disabled={isRestoring}
-                variant="outline"
-              >
-                {isRestoring ? (
-                  <>
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                    Restoring...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 w-4 h-4" />
-                    Restore Database
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <div className="flex justify-between items-center p-4 rounded-lg border">
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium">Integrity Check</h3>
-                <p className="text-sm text-muted-foreground">
-                  Verify database file is not corrupted.
-                </p>
-                {integrityResult !== null && (
-                  <p
-                    className={cn(
-                      "text-sm font-medium mt-1 whitespace-pre-wrap",
-                      integrityResult.ok
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-red-600 dark:text-red-400"
-                    )}
-                  >
-                    {integrityResult.ok
-                      ? "✓ Database integrity OK"
-                      : `Issues found:\n${integrityResult.details}`}
-                  </p>
-                )}
-              </div>
-              <Button
-                onClick={handleIntegrityCheck}
-                disabled={isCheckingIntegrity}
-                variant="outline"
-              >
-                {isCheckingIntegrity ? (
-                  <>
-                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="mr-2 w-4 h-4" />
-                    Check Integrity
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {restoreStatus === "success" && (
-              <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md dark:bg-green-950">
-                Database restored successfully! The page will reload.
-              </div>
-            )}
-            {restoreStatus === "error" && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md dark:bg-red-950">
-                Failed to restore backup. Please try again.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        <TabsContent value="account">
+          <SettingsAccountTab
+            apiKey={apiKey}
+            showApiKey={showApiKey}
+            hasApiKey={hasApiKey}
+            accountStatus={accountStatus}
+            onApiKeyChange={setApiKey}
+            onToggleApiKeyVisibility={() => {
+              setShowApiKey((current) => !current);
+            }}
+            onSaveApiKey={() => {
+              void handleSaveApiKey();
+            }}
+          />
+        </TabsContent>
+      </Tabs>
+    </section>
   );
 };

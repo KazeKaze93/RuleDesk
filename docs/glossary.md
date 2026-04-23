@@ -51,7 +51,7 @@ The process of fetching new posts from booru APIs and updating the local databas
 - Background execution with progress tracking
 - Exponential backoff for error handling
 
-**Related:** [Sync Service](./architecture.md#sync-service), [Synchronization Flow](./architecture.md#synchronization-flow), [Sync Settings](./README.md#sync--background)
+**Related:** [Sync Service](./architecture.md#sync-service), [Synchronization Flow](./architecture.md#synchronization-flow), [Sync Settings](../README.md#-sync--background)
 
 ---
 
@@ -65,7 +65,7 @@ Local storage of post metadata and preview images to enable offline browsing and
 2. **Sample URL** - Medium-resolution sample (loaded in gallery)
 3. **File URL** - Full-resolution original (loaded only in viewer)
 
-**Related:** [Progressive Image Loading](./README.md#progressive-image-loading), [Storage & Cache](./README.md#storage--cache)
+**Related:** [Progressive Image Loading](../README.md#progressive-image-loading), [Settings - General](../README.md#-settings)
 
 ---
 
@@ -85,7 +85,7 @@ The process of monitoring specific artists or uploaders for new posts. RuleDesk 
 - **Uploader:** Track posts uploaded by a specific user
 - **Query:** Track posts matching a custom query
 
-**Related:** [Database Schema - Artists](./database.md#table-artists), [Artist Tracking](./README.md#-artist-tracking)
+**Related:** [Database Schema - Artists](./database.md#table-artists), [Artist Tracking](../README.md#-artist-tracking)
 
 ---
 
@@ -98,7 +98,7 @@ An abstraction layer that allows RuleDesk to support multiple booru sources with
 - Rule34.xxx (`Rule34Provider`)
 - Gelbooru (`GelbooruProvider`)
 
-**Related:** [Architecture - Provider Pattern](./architecture.md#provider-pattern-architecture), [Multi-Booru Support](./README.md#-multi-source-ready)
+**Related:** [Architecture - Provider Pattern](./architecture.md#provider-pattern-architecture), [Multi-Booru Support](../README.md#-multi-source-ready)
 
 ---
 
@@ -158,7 +158,7 @@ A SQLite mode that enables concurrent reads while writes are in progress. RuleDe
 
 Electron's `safeStorage` API used to encrypt sensitive data (API keys) at rest. Encryption uses platform keychains (Windows Credential Manager, macOS Keychain, Linux libsecret).
 
-**Related:** [Security - Credential Security](./architecture.md#credential-security-flow), [Secure Storage](./README.md#security)
+**Related:** [Security - Credential Security](./architecture.md#credential-security-flow), [Secure Storage](../README.md#-settings)
 
 ---
 
@@ -170,7 +170,7 @@ A 3-layer image loading strategy that provides instant visual feedback with smoo
 2. **Sample** - Medium-res sample (gallery)
 3. **Original** - Full-res original (viewer only)
 
-**Related:** [Progressive Image Loading](./README.md#progressive-image-loading), [Cache](#cache)
+**Related:** [Progressive Image Loading](../README.md#progressive-image-loading), [Cache](#cache)
 
 ---
 
@@ -184,7 +184,7 @@ A grid view of posts with preview images, ratings, and metadata. RuleDesk suppor
 - **List View** - Compact list layout
 - **Masonry View** - CSS column (Pinterest-style) layout; available where the view toggle is shown (differs from virtualized grid on very large lists)
 
-**Related:** [Artist Gallery](./README.md#-artist-gallery), [Gallery Cards](./README.md#gallery-cards)
+**Related:** [Artist Gallery](../README.md#-artist-gallery), [Gallery Cards](../README.md#gallery-cards)
 
 ---
 
@@ -199,7 +199,7 @@ A full-screen immersive viewer for viewing posts with keyboard shortcuts, downlo
 - Download and favorites
 - Tags drawer
 
-**Related:** [Viewer Experience](./README.md#viewer-experience), [Full-Screen Viewer](./README.md#-full-screen-viewer)
+**Related:** [Viewer Experience](../README.md#viewer-experience), [Full-Screen Viewer](../README.md#-full-screen-viewer)
 
 ---
 
@@ -207,7 +207,7 @@ A full-screen immersive viewer for viewing posts with keyboard shortcuts, downlo
 
 A system for marking and managing favorite posts. Favorites are stored locally in the database and can be toggled via UI or keyboard shortcut (`F`).
 
-**Related:** [Favorites System](./README.md#-favorites-system), [Database Schema - Posts](./database.md#table-posts)
+**Related:** [Favorites System](../README.md#-favorites-system), [Database Schema - Posts](./database.md#table-posts)
 
 ---
 
@@ -249,7 +249,7 @@ A script that modifies the database schema. RuleDesk uses Drizzle Kit to generat
 
 Manual database backup and restore functionality. Backups are timestamped and stored in the user data directory.
 
-**Related:** [Backup and Recovery](./database.md#backup-and-recovery), [Backup & Restore](./README.md#-backup--restore)
+**Related:** [Backup and Recovery](./database.md#backup-and-recovery), [Backup & Restore](../README.md#-backup--restore)
 
 ---
 
@@ -267,7 +267,7 @@ A SQLite operation (`PRAGMA integrity_check`) that verifies database file integr
 
 Authentication credentials required to access booru APIs. RuleDesk stores API keys encrypted at rest using Electron's `safeStorage` API.
 
-**Related:** [API Authentication](./README.md#-api-authentication), [Secure Storage](#secure-storage)
+**Related:** [API Authentication](../README.md#-api-authentication), [Secure Storage](#secure-storage)
 
 ---
 
