@@ -359,12 +359,18 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 
 ### Sidebar Sections
 
-- **Updates** - See new posts from your tracked sources
+- **Updates** - See new posts from your tracked sources. A purple badge shows unread count and auto-refreshes periodically.
 - **Browse** - Browse cached posts with filters and sorting
 - **Favorites** - Your favorited posts collection
 - **Playlists** - Manual playlists and smart collections
 - **Tracked** - Manage your tracked artists and tags
 - **Settings** - App configuration and preferences
+
+**Unread badge behavior (Updates):**
+
+- The badge appears only when unread count is greater than zero.
+- Opening the **Updates** page marks all cached updates as seen and clears the badge after refresh.
+- Background sync does not auto-mark updates as seen; this happens only on explicit navigation to **Updates**.
 
 ### Top Bar
 

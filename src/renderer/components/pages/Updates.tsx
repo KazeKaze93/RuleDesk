@@ -257,6 +257,30 @@ export const Updates = () => {
 
   const { aiFilter, mediaType, source, orientation, dateFrom, dateTo } = filters;
   const rating = useSearchStore((state) => state.filters.rating);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const markUpdatesAsSeen = async () => {
+      try {
+        await window.api.markAllUpdatesSeen();
+        if (!isMounted) {
+          return;
+        }
+        await queryClient.invalidateQueries({ queryKey: ["updates", "unreadCount"] });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        log.error("[Updates] Failed to mark updates as seen on mount:", errorMessage);
+      }
+    };
+
+    void markUpdatesAsSeen();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [queryClient]);
+
   const { data: artists = [], isLoading: isArtistsLoading } = useQuery({
     queryKey: ["artists"],
     queryFn: () => window.api.getTrackedArtists(),

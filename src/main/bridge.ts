@@ -90,6 +90,8 @@ export interface IpcBridge {
 
   togglePostViewed: (postId: number) => Promise<boolean>;
   markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
+  getUpdatesUnreadCount: () => Promise<number>;
+  markAllUpdatesSeen: () => Promise<boolean>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
 
@@ -269,6 +271,10 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke("db:toggle-post-viewed", postId),
   markAllPostsAsViewed: () =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.MARK_ALL_VIEWED),
+  getUpdatesUnreadCount: () =>
+    ipcRenderer.invoke("updates:getUnreadCount"),
+  markAllUpdatesSeen: () =>
+    ipcRenderer.invoke("updates:markAllSeen"),
 
   resetPostCache: (postId) => ipcRenderer.invoke("db:reset-post-cache", postId),
 

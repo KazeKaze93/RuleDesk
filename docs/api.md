@@ -232,6 +232,8 @@ interface IpcBridge {
   markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
   togglePostViewed: (postId: number) => Promise<boolean>;
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
+  getUpdatesUnreadCount: () => Promise<number>;
+  markAllUpdatesSeen: () => Promise<boolean>;
   resetPostCache: (postId: number) => Promise<boolean>;
 
   // External
@@ -1014,6 +1016,50 @@ if (success) {
 ```
 
 **IPC Channel:** `db:mark-post-viewed`
+
+---
+
+### `getUpdatesUnreadCount()`
+
+Returns the number of unread posts for the **Updates** sidebar badge.
+
+**When to use:** Poll unread count in navigation UI (for example, via TanStack Query with periodic refetch).
+
+**Returns:** `Promise<number>`
+
+**Example:**
+
+```typescript
+const unreadCount = await window.api.getUpdatesUnreadCount();
+if (unreadCount > 0) {
+  log.info(`[Updates] Unread: ${unreadCount}`);
+}
+```
+
+**IPC Channel:** `updates:getUnreadCount`
+
+**Query semantics:** Reads `COUNT(*)` from `posts` where `is_viewed = 0`.
+
+---
+
+### `markAllUpdatesSeen()`
+
+Marks all posts as seen when user explicitly opens the **Updates** page.
+
+**When to use:** On Updates page mount, then invalidate unread-count query key to refresh sidebar badge.
+
+**Returns:** `Promise<boolean>`
+
+**Example:**
+
+```typescript
+await window.api.markAllUpdatesSeen();
+await queryClient.invalidateQueries({ queryKey: ["updates", "unreadCount"] });
+```
+
+**IPC Channel:** `updates:markAllSeen`
+
+**Important:** This method should be triggered by explicit user navigation to Updates, not by background sync.
 
 ---
 
