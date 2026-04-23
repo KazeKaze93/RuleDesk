@@ -159,7 +159,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Item | Description |
 |------|-------------|
-| **Statistics — additional metrics (same feature)** | **No** separate “analytics” product. Keep **one** **Statistics** area (`/stats`, `getStats`, `StatsPage`) and **extend** it with **more aggregate metrics** as needed: e.g. **cache** footprint vs **DB** size, **per-provider** post counts, **storage** by category, simple **top tags** or time-sliced **counts** — all read-only rollups, same page pattern. Implementation = extra SQL/aggregates + IPC fields + UI cards/charts. |
+| **Statistics — additional metrics (same feature)** | **No** separate “analytics” product. Keep **one** **Statistics** area (`/stats`, `getExtendedStats`, `StatsPage`) and extend it incrementally with read-only aggregates/charts. Current shipped set includes totals, rating/media/viewed/favorites pie charts, provider artist split, top artists/tags, and DB size. Future additions can follow the same pattern (extra SQL + IPC fields + UI cards/charts). |
 
 ---
 

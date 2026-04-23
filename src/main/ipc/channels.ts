@@ -81,4 +81,7 @@ export const IPC_CHANNELS = {
     PENDING_DOWNLOAD_STATE_CHANGED: "files:pending-download-state-changed",
     SELECT_DOWNLOAD_FOLDER: "files:select-download-folder",
   },
+  STATS: {
+    GET_EXTENDED: "stats:get-extended",
+  },
 } as const;
