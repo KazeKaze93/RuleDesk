@@ -1,16 +1,22 @@
 import { useMemo } from "react";
-import { useSearchStore } from "../../store/searchStore";
+import { buildApiQueryString, useSearchStore } from "../../store/searchStore";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import { FilterSection } from "./filters/FilterSection";
 import { FilterToggleGroup } from "./filters/FilterToggleGroup";
 import { SourceSwitcher } from "./filters/SourceSwitcher";
-import { Image, Film, RectangleHorizontal, RectangleVertical, Clock, ArrowUpNarrowWide, Eye, X, Grid3x3 } from "lucide-react";
+import {
+  Image,
+  Film,
+  RectangleHorizontal,
+  RectangleVertical,
+  X,
+  Grid3x3,
+} from "lucide-react";
 
 type AiFilterValue = "all" | "hide" | "only";
 type MediaFilterValue = "all" | "images" | "videos";
 type OrientationFilterValue = "all" | "horizontal" | "vertical";
-type SortByFilterValue = "date" | "score";
 type RatingFilterValue = "all" | "s" | "q" | "e";
 
 const isAiFilterValue = (value: string): value is AiFilterValue =>
@@ -22,9 +28,6 @@ const isMediaFilterValue = (value: string): value is MediaFilterValue =>
 const isOrientationFilterValue = (value: string): value is OrientationFilterValue =>
   value === "all" || value === "horizontal" || value === "vertical";
 
-const isSortByFilterValue = (value: string): value is SortByFilterValue =>
-  value === "date" || value === "score";
-
 const isRatingFilterValue = (value: string): value is RatingFilterValue =>
   value === "all" || value === "s" || value === "q" || value === "e";
 
@@ -32,35 +35,32 @@ export const FiltersPanel = () => {
   const filters = useSearchStore((state) => state.filters);
   const setFilters = useSearchStore((state) => state.setFilters);
   const resetFilters = useSearchStore((state) => state.resetFilters);
-  const query = useSearchStore((state) => state.query);
   const activeTab = useSearchStore((state) => state.activeTab);
+  const includeTags = useSearchStore((state) => state.includeTags);
+  const excludeTags = useSearchStore((state) => state.excludeTags);
 
-  // Check if we're on Browse tab with active search (tags)
+  const apiQueryString = useMemo(
+    () => buildApiQueryString(includeTags, excludeTags),
+    [includeTags, excludeTags]
+  );
+
   const hasActiveSearch = useMemo(() => {
     if (activeTab !== "browse") return true;
-    if (!query.trim()) return false;
-    const tags = query
-      .split(/[,\s]+/)
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
-    return tags.length > 0;
-  }, [activeTab, query]);
+    return apiQueryString.trim().length > 0;
+  }, [activeTab, apiQueryString]);
 
-  // Check if filters are dirty (not default)
   const isDirty = useMemo(() => {
     return (
       filters.aiFilter !== "all" ||
       filters.rating !== "all" ||
       filters.mediaType !== "all" ||
       filters.source !== "all" ||
-      filters.orientation !== "all" ||
-      filters.sortBy !== "date"
+      filters.orientation !== "all"
     );
   }, [filters]);
 
   return (
     <div className="space-y-4">
-      {/* Source Switcher - At the top */}
       <FilterSection label="Source" showSeparator={true}>
         <SourceSwitcher
           value={filters.source}
@@ -69,7 +69,6 @@ export const FiltersPanel = () => {
         />
       </FilterSection>
 
-      {/* AI Filter - 3-state ToggleGroup */}
       <FilterSection label="AI Posts" showSeparator={true}>
         <FilterToggleGroup
           value={filters.aiFilter}
@@ -86,7 +85,6 @@ export const FiltersPanel = () => {
         />
       </FilterSection>
 
-      {/* Rating Filter */}
       <FilterSection label="Rating" showSeparator={true}>
         <FilterToggleGroup
           value={filters.rating}
@@ -104,7 +102,6 @@ export const FiltersPanel = () => {
         />
       </FilterSection>
 
-      {/* Media Type */}
       <FilterSection label="Media" showSeparator={true}>
         <FilterToggleGroup
           value={filters.mediaType}
@@ -121,8 +118,7 @@ export const FiltersPanel = () => {
         />
       </FilterSection>
 
-      {/* Format/Orientation */}
-      <FilterSection label="Format" showSeparator={true}>
+      <FilterSection label="Format" showSeparator={false}>
         <FilterToggleGroup
           value={filters.orientation}
           onValueChange={(value) => {
@@ -138,24 +134,6 @@ export const FiltersPanel = () => {
         />
       </FilterSection>
 
-      {/* Sort */}
-      <FilterSection label="Sort" showSeparator={false}>
-        <FilterToggleGroup
-          value={filters.sortBy}
-          onValueChange={(value) => {
-            if (isSortByFilterValue(value)) {
-              setFilters({ sortBy: value });
-            }
-          }}
-          options={[
-            { value: "date", label: "Latest", icon: <Clock className="w-3.5 h-3.5" /> },
-            { value: "score", label: "Top Rated", icon: <ArrowUpNarrowWide className="w-3.5 h-3.5" />, disabled: true },
-            { value: "views", label: "Most Viewed", icon: <Eye className="w-3.5 h-3.5" />, disabled: true },
-          ]}
-        />
-      </FilterSection>
-
-      {/* Footer with Clear Filters */}
       {isDirty && (
         <>
           <Separator className="my-3" />

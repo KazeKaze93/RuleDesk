@@ -9,7 +9,6 @@ type ViewType = "grid" | "masonry";
 type AiFilterType = "all" | "hide" | "only";
 type RatingType = "all" | "s" | "q" | "e";
 type OrientationType = "all" | "horizontal" | "vertical";
-type SortByType = "date" | "score";
 
 interface PostFilters {
   aiFilter: AiFilterType;
@@ -17,25 +16,39 @@ interface PostFilters {
   mediaType: MediaType;
   source: SourceType;
   orientation: OrientationType;
-  sortBy: SortByType;
 }
 
-interface SearchState {
-  query: string;
-  excludedTags: string[];
+export function buildBooruTagListForIpc(
+  includeTags: string[],
+  excludeTags: string[]
+): string[] {
+  return [...includeTags, ...excludeTags.map((t) => `-${t}`)];
+}
+
+export function buildApiQueryString(
+  includeTags: string[],
+  excludeTags: string[]
+): string {
+  return buildBooruTagListForIpc(includeTags, excludeTags).join(" ");
+}
+
+export interface SearchState {
+  includeTags: string[];
+  excludeTags: string[];
   activeTab: TabType | null;
   sortOrder: SortOrder;
   filters: PostFilters;
   viewType: ViewType;
   isRandom: boolean;
-  
-  setQuery: (query: string) => void;
   addIncludeTag: (tag: string) => void;
   addExcludeTag: (tag: string) => void;
+  removeIncludeTag: (tag: string) => void;
+  removeExcludeTag: (tag: string) => void;
+  toggleChipVariant: (tag: string) => void;
   isTagIncluded: (tag: string) => boolean;
   isTagExcluded: (tag: string) => boolean;
   setActiveTab: (tab: TabType | null) => void;
-  clearSearch: () => void;
+  clearTagChips: () => void;
   setSortOrder: (order: SortOrder) => void;
   toggleSortOrder: () => void;
   setFilters: (filters: Partial<PostFilters>) => void;
@@ -51,135 +64,136 @@ const DEFAULT_FILTERS: PostFilters = {
   mediaType: "all",
   source: "all",
   orientation: "all",
-  sortBy: "date",
 };
 
-const splitQueryTokens = (query: string): string[] =>
-  query.split(" ").filter((token) => token.length > 0);
+const MAX_TOKEN_LENGTH = 200;
 
-export const useSearchStore = create<SearchState>((set) => ({
-  query: "",
-  excludedTags: [],
+const normalizeInputTag = (raw: string): string => {
+  if (typeof raw !== "string") {
+    return "";
+  }
+  return raw
+    .trim()
+    .replace(/[^\x20-\x7E\t\n\r]/g, "")
+    .replace(/\s+/g, " ");
+};
+
+const truncateToken = (token: string): string => {
+  if (token.length <= MAX_TOKEN_LENGTH) {
+    return token;
+  }
+  if (token.length > MAX_TOKEN_LENGTH * 2) {
+    log.warn(
+      `[SearchStore] Token extremely long (${token.length} chars), truncating`
+    );
+  }
+  return token.substring(0, MAX_TOKEN_LENGTH);
+};
+
+export const useSearchStore = create<SearchState>((set, get) => ({
+  includeTags: [],
+  excludeTags: [],
   activeTab: null,
   sortOrder: "desc",
   filters: DEFAULT_FILTERS,
   viewType: "grid",
   isRandom: false,
-  
-  setQuery: (query) => {
-    // Basic validation: ensure query is a string and reasonable length
-    // Note: If logs are somehow reaching setQuery, that's a separate architectural issue
-    // This validation is a safety net, not a fix for the root cause
-    if (typeof query !== 'string') {
-      // Silently ignore invalid input - don't pollute logs with expected edge cases
-      return;
-    }
-    
-    // Reasonable limit for tag search (tags are typically short)
-    const MAX_QUERY_LENGTH = 500;
-    if (query.length > MAX_QUERY_LENGTH) {
-      // Log only if significantly over limit (potential issue)
-      if (query.length > MAX_QUERY_LENGTH * 2) {
-        log.warn(`[SearchStore] Query extremely long (${query.length} chars), truncating`);
-      }
-      query = query.substring(0, MAX_QUERY_LENGTH);
-    }
-    
-    // Basic sanitization: remove control characters and normalize whitespace
-    // Use regex replace for better performance (O(n) instead of O(n) split + filter + join)
-    // Allow printable characters (0x20-0x7E) and common whitespace (\t, \n, \r)
-    // Remove control characters: 0x00-0x1F (except 0x09, 0x0A, 0x0D), 0x7F
-    const cleaned = query
-      .trim()
-      .replace(/[^\x20-\x7E\t\n\r]/g, '') // Remove control characters (faster than split/filter/join)
-      .replace(/\s+/g, ' '); // Normalize whitespace
-    
-    // Allow empty string to clear search (don't block it)
-    set({
-      query: cleaned,
-      excludedTags: splitQueryTokens(cleaned)
-        .filter((token) => token.startsWith("-"))
-        .map((token) => token.slice(1)),
-    });
-  },
   addIncludeTag: (tag) =>
     set((state) => {
-      const normalizedTag = tag.trim();
-      if (!normalizedTag) {
+      const t = truncateToken(normalizeInputTag(tag));
+      if (t.length === 0) {
         return state;
       }
-
-      const includeToken = normalizedTag;
-      const excludeToken = `-${normalizedTag}`;
-      const tokens = splitQueryTokens(state.query).filter(
-        (token) => token !== excludeToken
-      );
-
-      if (!tokens.includes(includeToken)) {
-        tokens.push(includeToken);
+      const nextExclude = state.excludeTags.filter((x) => x !== t);
+      if (state.includeTags.includes(t)) {
+        if (nextExclude.length === state.excludeTags.length) {
+          return state;
+        }
+        return { excludeTags: nextExclude };
       }
-
-      const nextQuery = tokens.join(" ");
       return {
-        query: nextQuery,
-        excludedTags: tokens
-          .filter((token) => token.startsWith("-"))
-          .map((token) => token.slice(1)),
+        includeTags: [...state.includeTags, t],
+        excludeTags: nextExclude,
       };
     }),
   addExcludeTag: (tag) =>
     set((state) => {
-      const normalizedTag = tag.trim();
-      if (!normalizedTag) {
+      const t = truncateToken(normalizeInputTag(tag));
+      if (t.length === 0) {
         return state;
       }
-
-      const includeToken = normalizedTag;
-      const excludeToken = `-${normalizedTag}`;
-      const tokens = splitQueryTokens(state.query).filter(
-        (token) => token !== includeToken
-      );
-
-      if (!tokens.includes(excludeToken)) {
-        tokens.push(excludeToken);
+      const nextInclude = state.includeTags.filter((x) => x !== t);
+      if (state.excludeTags.includes(t)) {
+        if (nextInclude.length === state.includeTags.length) {
+          return state;
+        }
+        return { includeTags: nextInclude };
       }
-
-      const nextQuery = tokens.join(" ");
       return {
-        query: nextQuery,
-        excludedTags: tokens
-          .filter((token) => token.startsWith("-"))
-          .map((token) => token.slice(1)),
+        excludeTags: [...state.excludeTags, t],
+        includeTags: nextInclude,
       };
     }),
+  removeIncludeTag: (tag) =>
+    set((state) => ({
+      includeTags: state.includeTags.filter((x) => x !== tag),
+    })),
+  removeExcludeTag: (tag) =>
+    set((state) => ({
+      excludeTags: state.excludeTags.filter((x) => x !== tag),
+    })),
+  toggleChipVariant: (tag) => {
+    const t = tag.trim();
+    if (!t) {
+      return;
+    }
+    set((state) => {
+      if (state.includeTags.includes(t)) {
+        return {
+          includeTags: state.includeTags.filter((x) => x !== t),
+          excludeTags: state.excludeTags.includes(t)
+            ? state.excludeTags
+            : [...state.excludeTags, t],
+        };
+      }
+      if (state.excludeTags.includes(t)) {
+        return {
+          excludeTags: state.excludeTags.filter((x) => x !== t),
+          includeTags: state.includeTags.includes(t)
+            ? state.includeTags
+            : [...state.includeTags, t],
+        };
+      }
+      return state;
+    });
+  },
   isTagIncluded: (tag) => {
-    const normalizedTag = tag.trim();
-    if (!normalizedTag) {
+    const t = normalizeInputTag(tag);
+    if (t.length === 0) {
       return false;
     }
-    const tokens = splitQueryTokens(useSearchStore.getState().query);
-    return tokens.includes(normalizedTag);
+    return get().includeTags.includes(t);
   },
   isTagExcluded: (tag) => {
-    const normalizedTag = tag.trim();
-    if (!normalizedTag) {
+    const t = normalizeInputTag(tag);
+    if (t.length === 0) {
       return false;
     }
-    const tokens = splitQueryTokens(useSearchStore.getState().query);
-    return tokens.includes(`-${normalizedTag}`);
+    return get().excludeTags.includes(t);
   },
   setActiveTab: (tab) => set({ activeTab: tab }),
-  clearSearch: () => set({ query: "", excludedTags: [] }),
+  clearTagChips: () => set({ includeTags: [], excludeTags: [] }),
   setSortOrder: (order) => set({ sortOrder: order }),
-  toggleSortOrder: () => set((state) => ({ 
-    sortOrder: state.sortOrder === "desc" ? "asc" : "desc" 
-  })),
-  setFilters: (newFilters) => set((state) => ({
-    filters: { ...state.filters, ...newFilters }
-  })),
+  toggleSortOrder: () =>
+    set((s) => ({
+      sortOrder: s.sortOrder === "desc" ? "asc" : "desc",
+    })),
+  setFilters: (newFilters) =>
+    set((state) => ({
+      filters: { ...state.filters, ...newFilters },
+    })),
   resetFilters: () => set({ filters: DEFAULT_FILTERS }),
   setViewType: (viewType) => set({ viewType }),
   setIsRandom: (isRandom) => set({ isRandom }),
   toggleIsRandom: () => set((state) => ({ isRandom: !state.isRandom })),
 }));
-

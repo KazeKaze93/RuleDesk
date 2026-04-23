@@ -117,11 +117,12 @@ The application is organized into the following main sections accessible via the
 A unified Top Bar appears on all content pages providing:
 
 - **Search** - Quick search across posts, tags, and artists
+- **Search syntax help** - `CircleHelp` popover next to search input with supported Rule34 syntax examples
 - **Filters** - Rating, AI, media type, source (per `FiltersPanel`); **date range** not implemented yet
 - **Sort** - Newest/oldest (`sortOrder` on date-oriented lists); extra sort modes in panel may be disabled until implemented
 - **View Toggle** - Switch between grid, list, and masonry layouts
 - **Sync Status** - Real-time sync progress indicator with last sync timestamp
-*🟡 PARTIAL — `SyncStatusBadge` is in the top bar. **Rating** is in the global filters panel; **date-range** and some panel options (e.g. sort by score, orientation) are not implemented yet. On **Browse**, Favorites/Subscriptions need a tag query **by design** (see [roadmap — closed](./docs/roadmap.md#closed-by-design-not-backlog)).*
+*🟡 PARTIAL — `SyncStatusBadge` is in the top bar. **Rating** is in the global filters panel; **date-range** and orientation placeholders are not implemented yet. Sorting is handled by the dedicated date sort control in the top bar (outside Filters). On **Browse**, Favorites/Subscriptions need a tag query **by design** (see [roadmap — closed](./docs/roadmap.md#closed-by-design-not-backlog)).*
 
 ### Viewer Experience
 
@@ -256,8 +257,8 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
 - 🟡 **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Playlists, Tracked, Settings)
   *Functional but item labels/structure differ from roadmap spec. Tracked vs Artists distinction not explicit.*
-- 🟡 **Global Top Bar:** Search, `FiltersPanel` (rating, AI, media, source, etc.), sort, view toggle, `SyncStatusBadge`
-  *Remaining: date-range filter; disabled placeholders (e.g. sort by score). Browse source modes that need tags are [by design](./docs/roadmap.md#closed-by-design-not-backlog).*
+- 🟡 **Global Top Bar:** Search (chip-based include/exclude with OR-group tokens), syntax-help popover, `FiltersPanel` (rating, AI, media, source), dedicated date sort control, view toggle, `SyncStatusBadge`
+  *Remaining: date-range filter and orientation placeholders. Browse source modes that need tags are [by design](./docs/roadmap.md#closed-by-design-not-backlog).*
 - ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), source (all/favorites/subscriptions), and rating
 - ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending)
 - 🟡 **View Modes:** Grid (virtualized) and masonry (CSS columns) with responsive design
@@ -352,11 +353,11 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 
 **Goal:** Allow users to refine the gallery view.
 
-- ✅ **Global top bar** — `GlobalTopBar.tsx` + `FiltersPanel` (rating S/Q/E, AI, media, source, sort-by date where wired)
+- ✅ **Global top bar** — `GlobalTopBar.tsx` + `FiltersPanel` (rating S/Q/E, AI, media, source) and separate date sort control
 - ✅ **AI / media / source** — Backed by `searchStore` and post queries
 - ✅ **Source on Browse** — Favorites/Subscriptions require a tag query when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog))
 - ⏳ **Date range** (posted between) — not in store or UI
-- ⏳ **Disabled panel options** — e.g. sort by score, “most viewed”, horizontal/vertical format (placeholders in `FiltersPanel`)
+- ⏳ **Disabled panel options** — horizontal/vertical format (placeholders in `FiltersPanel`)
 - 🟡 **View modes** — Grid (`VirtuosoGrid`) vs masonry (CSS columns); different scaling behavior on huge lists
 - ✅ **FTS5** — Tag search where integrated in browse/search flows
 

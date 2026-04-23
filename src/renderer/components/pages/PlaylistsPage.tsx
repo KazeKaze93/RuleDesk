@@ -146,12 +146,14 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
   );
   const queryClient = useQueryClient();
 
+  const ratingLetter = filters.rating;
+
   // Build filters for API call from GlobalTopBar filters
   const apiFilters = useMemo(() => {
     const result: { rating?: "s" | "q" | "e"; mediaType?: "all" | "images" | "videos" } = {};
 
-    if (filters.rating === "s" || filters.rating === "q" || filters.rating === "e") {
-      result.rating = filters.rating;
+    if (ratingLetter === "s" || ratingLetter === "q" || ratingLetter === "e") {
+      result.rating = ratingLetter;
     }
     
     // Map mediaType filter from GlobalTopBar
@@ -160,7 +162,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     }
     
     return result;
-  }, [filters.mediaType, filters.rating]);
+  }, [filters.mediaType, ratingLetter]);
 
   const {
     data,
@@ -173,7 +175,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       "playlist-posts",
       playlist.id,
       filters.mediaType,
-      filters.rating,
+      ratingLetter,
       filters.aiFilter,
       sortOrder,
     ],
@@ -219,6 +221,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
 
   useEffect(() => {
     if (!playlist.isSmart) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local DnD copy with query results for non-smart playlists
       setLocalPosts(allPosts);
     }
   }, [allPosts, playlist.isSmart]);
@@ -262,7 +265,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
         kind: "playlist",
         playlistId: playlist.id,
         mediaType: filters.mediaType,
-        rating: filters.rating,
+        rating: ratingLetter,
         aiFilter: filters.aiFilter,
         sortOrder,
         provider, // Pass provider to origin for shadow insert operations

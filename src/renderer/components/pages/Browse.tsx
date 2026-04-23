@@ -10,7 +10,7 @@ import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
-import { useSearchStore } from "../../store/searchStore";
+import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { Button } from "../ui/button";
 import { ExternalLink } from "lucide-react";
@@ -75,34 +75,19 @@ const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
   />
 ));
 
-// --- Helper function to parse tags from query string ---
-/**
- * Parses a space-separated or comma-separated tag string into an array
- * Handles both "tag1 tag2 tag3" and "tag1, tag2, tag3" formats
- */
-const parseTags = (query: string): string[] => {
-  if (!query.trim()) return [];
-
-  // Split by comma or space, filter empty strings, trim each tag
-  return query
-    .split(/[,\s]+/)
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-};
-
 // --- Основной компонент ---
 
 export const Browse = () => {
   const queryClient = useQueryClient();
-  // Use individual selectors to prevent unnecessary re-renders
-  const query = useSearchStore((state) => state.query);
+  const includeTags = useSearchStore((state) => state.includeTags);
+  const excludeTags = useSearchStore((state) => state.excludeTags);
   const openViewer = useViewerStore((state) => state.open);
   const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
 
-  // Parse tags directly from query using useMemo (no extra re-render)
-  const tags = useMemo(() => {
-    return parseTags(query);
-  }, [query]);
+  const tags = useMemo(
+    () => buildBooruTagListForIpc(includeTags, excludeTags),
+    [includeTags, excludeTags]
+  );
 
   // Fetch tracked artists for subscriptions filter
   const { data: trackedArtists } = useQuery({

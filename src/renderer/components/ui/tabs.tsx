@@ -23,7 +23,7 @@ export const Tabs = ({ value, onValueChange, children, className }: TabsProps) =
   );
 };
 
-interface TabsListProps extends React.HTMLAttributes<HTMLDivElement> {}
+type TabsListProps = React.HTMLAttributes<HTMLDivElement>;
 
 export const TabsList = ({ className, ...props }: TabsListProps) => {
   return (
