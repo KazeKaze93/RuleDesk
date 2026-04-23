@@ -299,9 +299,8 @@ The download will start, and you'll see a progress indicator.
 
 1. Open a post in the viewer
 2. Click the **"Tags"** button (or press **T**) to open the tags drawer
-3. Click a tag to add it as a search filter (positive tag)
-4. A dedicated **right-click to exclude** flow and always-visible include/exclude indicators are still being polished; use the top bar to adjust complex tag filters
-5. The gallery or browse view updates to match the active search query
+3. **Click** a tag to **include** it in the search query; **right-click** to add an **exclude** (`-tag`); included/excluded tags are highlighted (**green** / **red** rings) in the drawer
+4. The gallery or browse view updates to match the query in the top bar
 
 **Clear filters:**
 

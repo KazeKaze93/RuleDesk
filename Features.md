@@ -4,10 +4,11 @@ This file tracks product feature priorities. It is a planning document, not an i
 
 ## 🚧 P1 In Progress (Core UX / Stability)
 
-- **Viewer & gallery:** tag drawer interactions (include/exclude parity), progressive **preview → sample** in cards where still missing, overlay/layout polish.
-- **Filters & top bar:** rating and date-range wiring on every list; one consistent filter story with global search.
-- **Nav / spec parity:** sidebar labels, sync status placement, masonry vs. virtualization tradeoffs on huge feeds.
-- Hardening: **provider**-level anti-bot parity, optional backup retention settings, DX (main process reload in dev).
+- **Filters:** **date range**; enable or remove **disabled** `FiltersPanel` options (sort by score / views, orientation); optional Browse **source** UX review.
+- **Nav / layout:** spec alignment (labels), masonry vs `Virtuoso` tradeoffs on very long feeds.
+- Hardening: **user-configurable** backup retention; DX (main process reload in dev); video/GPU tuning if needed.
+
+*Shipped recently (do not re-list as missing): viewer tag include/exclude + right-click, `PostCard` preview→sample, `ProviderThrottle` on Rule34+Gelbooru, **Statistics** page, backup rotation, sync schedulers.*
 
 ## 🔮 P2 Future (>6 months)
 

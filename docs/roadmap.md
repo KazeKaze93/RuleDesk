@@ -39,19 +39,20 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 **Current state:** 🟡 partially implemented
 
-- ✅ Global top bar exists and is used across core pages.
-- ✅ AI/media/source filters and sorting are implemented in main flows.
-- ⏳ Full parity of rating/date-range controls across all pages.
-- ⏳ Full tag filter panel parity with existing global tag search behavior.
+- ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
+- ✅ `FiltersPanel`: rating (S/Q/E), AI, media, source, sort-by date; wired to `searchStore` and post pipelines.
+- 🟡 On **Browse**, Favorites/Subscriptions source toggles stay disabled until at least one tag is in the search box (`SourceSwitcher` + `hasActiveSearch`) — intentional, but a UX tradeoff.
+- ⏳ **Date range** filter (by `publishedAt` / “posted between …”) — not in `searchStore` or UI.
+- ⏳ **Disabled filter placeholders** in panel: sort by **score** / “most viewed”, **horizontal/vertical** orientation (UI present, not implemented).
+- ⏳ “One story” between raw tag query string and filter panel in every edge case (mostly aligned; worth regression passes).
 
 ### B. Viewer and Gallery Polish - High Priority
 
-**Current state:** 🟡 partially implemented
+**Current state:** 🟡 polish / edge cases
 
-- ✅ Viewer shortcuts and core interactions are implemented.
-- ⏳ Right-click exclude flow and include/exclude visual indicators in tag drawer.
-- ⏳ Complete overlay parity on all gallery card types.
-- ⏳ True progressive preview -> sample upgrade in gallery cards.
+- ✅ **Tags drawer** (`ViewerDialog` / `TagsDrawer`): click to **include** tag in query, **right-click** to **exclude**; green/red ring styling and `aria-pressed` for include vs exclude state (see `useSearchStore` `addIncludeTag` / `addExcludeTag`).
+- ✅ **Progressive stills in grid:** `PostCard` promotes **preview → sample** when the card enters the viewport (image decode + deduped URLs); videos use separate hover/preview behavior.
+- ⏳ Card/overlay consistency on special surfaces (e.g. playlist-only affordances) if any remain.
 
 ### C. Playlists & Collections - Implemented, Polish Ongoing
 
@@ -69,7 +70,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ Sidebar/top-bar architecture is in place.
 - ⏳ Final label/structure consistency across sections.
-- ⏳ Masonry mode currently falls back to grid behavior in some contexts.
+- 🟡 **Masonry** is implemented as CSS **multi-column** flows on several pages; **grid** uses `VirtuosoGrid` — different performance characteristics on huge lists, not a silent “fallback to grid” in the same code path.
 
 ## 📰 Subscriptions / Updates
 
@@ -99,8 +100,8 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### Next Hardening Steps
 
-- ⏳ **User-configurable backup retention** (expose “keep last N” or similar; today fixed at 5 in main process).
-- 🟡 Anti-bot randomization parity across all providers.
+- ⏳ **User-configurable backup retention** (expose “keep last N” or similar; today fixed at 5 in `MaintenanceController`).
+- ✅ **Shared request pacing / UA rotation** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
 - ⏳ Optional: richer scheduled maintenance (user-visible schedule / explicit `VACUUM` policy); today lightweight `wal_checkpoint` + `optimize` runs are automatic.
 
 ## 📋 Milestones
@@ -111,9 +112,9 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### M2 - UX Parity (In Progress)
 
-- Cross-page filter parity.
-- Viewer/galleries polish parity.
-- Updates feed quality-of-life improvements.
+- Filter parity: **date range**, enabling disabled sort/orientation options, Browse **source** UX.
+- Gallery/viewer: edge-case polish; core **TagsDrawer** and **PostCard** progressive loading are shipped.
+- Updates feed QoL largely shipped (Creators tab, mark all read); further polish as needed.
 
 ### M3 - Automation and Reliability (Largely Done)
 
@@ -138,7 +139,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 ## 🔮 Long-Term Goals (Future Considerations)
 
 - Multi-booru expansion beyond current providers.
-- Analytics/statistics dashboard for sync and collection insights.
+- Deeper **analytics** (e.g. per-run sync health, history, not only the shipped **Statistics** page that summarizes local DB counts — see `StatsPage`, `getStats`).
 
 ---
 
@@ -146,18 +147,18 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 Authoritative source remains the codebase; this list is for planning and doc parity.
 
-| Area | Gap |
-|------|------|
-| **Viewer / tags** | Right-click exclude in tag drawer; clear include/exclude visual state beyond current click-to-search. |
-| **Gallery** | True progressive **preview → sample** upgrade in cards (data model ready; cards do not always upgrade the loaded image). |
-| **Top bar & filters** | Consistent **rating** and **date-range** filter wiring on every page; full parity with global tag search in filter panels. |
-| **Layout / nav** | Sidebar/section **labels and structure** vs. original spec; **sync status** placement vs. spec. |
-| **Masonry** | Implemented as CSS **columns** on some routes without full grid virtualization—large feeds trade memory/scroll behavior vs. `VirtuosoGrid`. |
-| **Providers** | **Anti-bot / header** behavior aligned across Rule34, Gelbooru, and future sources. |
-| **Backups** | **Configurable** retention count or storage budget (fixed rotation today). |
+| Area | Gap (verified against `main` in repo) |
+|------|----------------------------------------|
+| **Filters** | **Date range** (posted-between) not implemented. **Sort by score / most viewed** and **orientation** (horizontal/vertical) exist in `FiltersPanel` as **disabled** placeholders. On Browse, **Favorites/Subscriptions** require an active tag search (by design). |
+| **Viewer / tags** | — (include/exclude, right-click, and ring styling are implemented in `TagsDrawer` inside `ViewerDialog`.) |
+| **Gallery** | **Progressive stills** implemented in `PostCard` (viewport + load sample). Remaining gaps only if a surface bypasses `PostCard` or for niche media edge cases. |
+| **Layout / nav** | Sidebar/section **labels and structure** vs. older spec; optional UX tweaks. **Sync** is on the top bar (`SyncStatusBadge`). |
+| **Masonry** | **Columns-based** masonry vs **Virtuoso** grid — different performance model on very long feeds. |
+| **Providers** | New booru backends must implement throttling coherently; Rule34 + Gelbooru share `ProviderThrottle`. |
+| **Backups** | **User-configurable** “keep last N” / disk budget (rotation count fixed in main process). |
 | **Developer experience** | Main process **HMR / auto-restart** in dev. |
 | **Engineering** | **Centralized validation helpers** in main; optional **video decode / GPU** tuning. |
-| **Long-term** | More **booru** providers; **analytics** dashboard; **Smart Collections AI** (see `Product_Strategy.md` — research). |
+| **Product** | **Smart Collections AI** — research (`Product_Strategy.md`). **Richer sync analytics** than the current **Statistics** page (`/stats`, local aggregates). |
 
 ## 📝 Notes
 

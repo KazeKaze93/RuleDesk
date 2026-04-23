@@ -1707,7 +1707,7 @@ Root:
 15. ✅ **Download Manager:** Download full-resolution files with progress tracking
 16. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
 17. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
-18. ✅ **Global Top Bar:** Unified top bar with search, filters, sort controls (UI implemented, backend filtering pending)
+18. ✅ **Global Top Bar:** Search, `FiltersPanel` (rating, AI, media, source, etc.), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines (date range and some panel options still missing; see [roadmap](./roadmap.md))
 19. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 20. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
 21. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
@@ -1717,17 +1717,13 @@ Root:
 
 ## Active Roadmap (Priority Tasks)
 
-### A. Filters (Advanced Search) 🚧 UI Ready, Backend Pending
+> For the live priority list, see [docs/roadmap.md](./roadmap.md). The subsection below is kept short to avoid duplicating a long spec.
 
-**Goal:** Allow users to refine the gallery view.
+### A. Filters (Advanced Search) — ongoing
 
-- ✅ **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle implemented in `GlobalTopBar.tsx`
-- ⏳ Filter by **Rating** (Safe, Questionable, Explicit) - UI ready, backend filtering pending
-- ⏳ Filter by **Media Type** (Image vs Video) - UI ready, backend filtering pending
-- ⏳ Filter by **Tags** (Local search within downloaded posts) - UI ready, backend filtering pending
-- ⏳ Sort by: Date Added (New/Old), Posted Date - UI ready, backend sorting pending
-
-**Status:** Global Top Bar UI is fully implemented and visible in the application. Backend filtering and sorting logic needs to be connected to the UI controls via IPC handlers and integrated with `ArtistGallery` component.
+- ✅ `FiltersPanel` + `searchStore` drive rating, AI, media, source, and more on main surfaces.
+- ⏳ **Date range** and disabled placeholders (e.g. sort by score) — see roadmap.
+- Full detail: [roadmap — Navigation & UX](./roadmap.md#-navigation--ux-revamp).
 
 ### B. Download Manager ✅ Implemented (Core Features)
 
@@ -1769,10 +1765,10 @@ See [Roadmap](./roadmap.md#-security--reliability-hardening) for detailed securi
 
 ### Future Considerations
 
-1. **Tag Subscriptions:** Subscribe to tag combinations (schema ready)
+1. **Tag Subscriptions:** Subscribe to tag combinations (see `docs/database.md` / schema notes)
 2. **Content Script Injection:** DOM enhancements for external sites
-3. **Statistics Dashboard:** Analytics on tracked artists and posts
-5. **Multi-Booru Support:** Provider pattern abstraction for multiple booru sources
+3. **Deeper analytics:** e.g. sync run history, failure rates (the **Statistics** `StatsPage` + `getStats` already covers local DB aggregate metrics)
+4. **Multi-Booru Support:** additional providers on top of the existing `IBooruProvider` pattern (Rule34, Gelbooru)
 
 ### Scalability
 

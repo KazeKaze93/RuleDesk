@@ -47,7 +47,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling. Real-time sync progress updates via IPC events.                                                                                                                      |
 | **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Direct synchronous access via `better-sqlite3` in Main Process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. WAL mode enabled for concurrent reads.                                                                                                    |
 | **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization.                                                                               |
-| **🎨 Progressive Image Loading**  | 🟡 PARTIAL — Data model supports Preview/Sample/Original. Gallery cards do not consistently perform progressive preview→sample upgrade.                                                                                                                                                                                                                |
+| **🎨 Progressive Image Loading**  | Stills: `PostCard` loads **preview** first, then upgrades to **sample** when the card is in the viewport. Viewer uses file URL for full quality. Video posts use sample/file for hover preview as applicable.                                                                                                                                       |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                                                                                     |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
 | **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups in the user data directory; after each successful backup, older files are pruned to keep the **last five** copies. Restore replaces the live DB (with checks) and reloads the app.                                                                                                          |
@@ -57,6 +57,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                                                                          |
 | **🧭 Navigation & Layout**        | 🟡 PARTIAL — Sidebar and top bar are functional; section labels/structure and some filter controls still differ from the original spec on a few pages.                                                                                                                                                                                                |
 | **📋 Playlists & Collections**    | Create curated collections of posts independent of Artists/Trackers. Create, rename, delete, export, and import playlists. Add posts via quick menu on Post Cards or in viewer. View playlist galleries with filtering/sorting, drag-and-drop reorder for manual playlists, and smart playlists with hybrid local+remote tag queries.                                                                                   |
+| **📊 Statistics**                 | **Statistics** page (`/stats`): local DB totals (artists, posts, viewed/favorited counts, videos), rating distribution chart, DB file size — via `getStats` IPC.                                                                                                                                                                                      |
 | **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                                                                                                          |
 | **🌐 Clean English UI**           | Fully localized English interface using i18next. All UI components and logs use English language for consistency and maintainability.                                                                                                                                                                                                                  |
 | **🔌 Multi-Source Ready**         | Provider pattern abstraction for multi-booru support. Current implementations: Rule34.xxx, Gelbooru. `IBooruProvider` interface allows adding new sources (Danbooru, etc.) without core database changes.                                                                                                                                              |
@@ -105,6 +106,7 @@ The application is organized into the following main sections accessible via the
 - **Browse (All posts)** - Browse all cached posts with advanced filtering and search
 - **Favorites (Account favorites)** - Access your account favorites synced from the booru
 - **Playlists (Collections)** - Create and manage curated collections of posts
+- **Statistics** - Local database metrics (counts, rating mix, DB size) via `getStats`
 - **Tracked (Artists/Tags management)** - Manage tracked artists, tags, and subscriptions
 - **Settings** - Configure sync behavior, storage limits, security, and database maintenance
 
@@ -115,11 +117,11 @@ The application is organized into the following main sections accessible via the
 A unified Top Bar appears on all content pages providing:
 
 - **Search** - Quick search across posts, tags, and artists
-- **Filters** - Rating, media type, tags, date range
-- **Sort** - Sort by date added, posted date, rating, etc.
+- **Filters** - Rating, AI, media type, source (per `FiltersPanel`); **date range** not implemented yet
+- **Sort** - Newest/oldest (`sortOrder` on date-oriented lists); extra sort modes in panel may be disabled until implemented
 - **View Toggle** - Switch between grid, list, and masonry layouts
 - **Sync Status** - Real-time sync progress indicator with last sync timestamp
-*🟡 PARTIAL — Sync status location differs from spec. Rating/date-range filter controls not fully wired in all pages.*
+*🟡 PARTIAL — `SyncStatusBadge` is in the top bar. **Rating** is in the global filters panel; **date-range** and some panel options (e.g. sort by score, orientation) are not implemented yet. On **Browse**, Favorites/Subscriptions sources require an active tag search.*
 
 ### Viewer Experience
 
@@ -134,11 +136,10 @@ The full-screen viewer provides a polished media viewing experience:
   - `V` - Mark as viewed
   - `T` - Toggle tags drawer
 - **Auto-hide Bars** - Top and bottom bars automatically hide after inactivity
-- **Tags Drawer** - Right-side sheet (Slide-over) with clickable tags:
-  - Click tag to add filter (`+tag`)
-  - Right-click or modifier key to exclude (`-tag`)
-  - Visual indicators for active filters
-*🟡 PARTIAL — Click-to-search works. Right-click exclude and persistent include/exclude filter indicators in the drawer are not fully implemented.*
+- **Tags Drawer** - Right-side sheet with tags grouped by type:
+  - **Click** tag to add to search (**include**)
+  - **Right-click** to add **exclude** (`-tag`); state shown with **green** (include) / **red** (exclude) ring styling
+*✅ Implemented in `ViewerDialog` / `TagsDrawer` via `useSearchStore` (`addIncludeTag` / `addExcludeTag`).*
 
 ### Progressive Image Loading
 
@@ -148,8 +149,7 @@ Optimized image loading strategy for performance:
 - **Sample URL** - Medium-resolution sample (loaded in gallery)
 - **File URL** - Full-resolution original (loaded only in viewer)
 
-This ensures fast initial page loads while maintaining high-quality viewing experience.
-*🟡 PARTIAL — Data model (preview/sample/file) exists. Gallery cards do not consistently upgrade from preview to sample while scrolling.*
+This ensures fast initial page loads while maintaining high-quality viewing experience. **Gallery cards** upgrade still images from preview to sample when scrolled into view (`PostCard` viewport + image decode).
 
 ### Gallery Cards
 
@@ -251,14 +251,13 @@ The application is stable and production-ready (see **`package.json`** → `vers
 
 ### UI/UX
 
-- 🟡 **Progressive Image Loading:** 3-layer data model exists (Preview → Sample → Original)
-  *Data model (preview/sample/file) exists. Gallery does not perform progressive preview→sample upgrade in cards.*
+- ✅ **Progressive image loading (stills):** `PostCard` upgrades preview → sample in viewport; original in viewer
 - ✅ **Virtualization:** `react-virtuoso` implemented for efficient large list rendering
 - ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
 - 🟡 **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Playlists, Tracked, Settings)
   *Functional but item labels/structure differ from roadmap spec. Tracked vs Artists distinction not explicit.*
-- 🟡 **Global Top Bar:** Unified top bar with search, filters, sort controls, and view toggles
-  *Sync status location differs from spec. Rating/date-range filter controls not fully wired in all pages.*
+- 🟡 **Global Top Bar:** Search, `FiltersPanel` (rating, AI, media, source, etc.), sort, view toggle, `SyncStatusBadge`
+  *Remaining: date-range filter; disabled placeholders (e.g. sort by score); Browse source gating for favorites/subscriptions until tags are entered*
 - ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), source (all/favorites/subscriptions), and rating
 - ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending)
 - 🟡 **View Modes:** Grid (virtualized) and masonry (CSS columns) with responsive design
@@ -353,19 +352,15 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 
 **Goal:** Allow users to refine the gallery view.
 
-- 🟡 **Global Top Bar UI:** Search bar, filter button, sort dropdown, and view toggle in `GlobalTopBar.tsx`
-  *Sync status location differs from spec. Rating/date-range filter controls not fully wired in all pages.*
-- ✅ **AI Filter:** Filter by AI-generated tags (hide/only/all) - fully implemented with backend support
-- ✅ **Media Type Filter:** Filter by image/video - fully implemented with `media_type` column and backend filtering
-- ✅ **Source Filter:** Filter by source (all/favorites/subscriptions) - fully implemented
-- ✅ **Sorting:** Sort by date added, posted date, and rating (ascending/descending) - fully implemented
-- 🟡 **View Modes:** Grid and masonry layout options
-  *Toggle exists in UI. Masonry layout not fully implemented — falls back to grid behavior.*
-- ⏳ **Tag Search:** Advanced tag search with FTS5 (implemented in global search; full filter-panel parity in progress)
-- ⏳ **Rating Filter:** Filter by rating (Safe/Questionable/Explicit) - backend support exists, full UI wiring in progress
+- ✅ **Global top bar** — `GlobalTopBar.tsx` + `FiltersPanel` (rating S/Q/E, AI, media, source, sort-by date where wired)
+- ✅ **AI / media / source** — Backed by `searchStore` and post queries
+- 🟡 **Source on Browse** — Favorites/Subscriptions disabled until the user enters at least one tag (`SourceSwitcher`)
+- ⏳ **Date range** (posted between) — not in store or UI
+- ⏳ **Disabled panel options** — e.g. sort by score, “most viewed”, horizontal/vertical format (placeholders in `FiltersPanel`)
+- 🟡 **View modes** — Grid (`VirtuosoGrid`) vs masonry (CSS columns); different scaling behavior on huge lists
+- ✅ **FTS5** — Tag search where integrated in browse/search flows
 
-**Status:** Core filtering is implemented. Remaining work is **cross-page parity** for rating and date-range controls and filter-panel consistency with global tag search.
-*🟡 PARTIAL — Sync status placement and some filter controls still differ from the original spec on a few pages.*
+**Status:** Day-to-day filtering works. Remaining: **date range**, enabling placeholder sort/orientation options, and any spec nitpicks (see [roadmap](./docs/roadmap.md#not-implemented-known-gaps)).
 
 ### B. Download Manager ✅ Implemented (Core Features)
 
