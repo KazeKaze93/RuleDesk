@@ -25,6 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "../../components/ui/button";
 import type { Playlist, Post } from "../../../main/db/schema";
+import type { PlaylistWithStats } from "../../../main/bridge";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
@@ -46,6 +47,7 @@ import { toast } from "sonner";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
+import { PlaylistCard } from "../playlists/PlaylistCard";
 
 interface PlaylistsPageProps {
   onBack?: () => void;
@@ -609,7 +611,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
 
 // Main Playlists Page Component
 export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
-  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistWithStats | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -622,9 +624,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
   // Filter state for playlist type
   const [playlistFilter, setPlaylistFilter] = useState<"all" | "smart" | "manual">("all");
   
-  const [playlistToDelete, setPlaylistToDelete] = useState<Playlist | null>(null);
+  const [playlistToDelete, setPlaylistToDelete] = useState<PlaylistWithStats | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [playlistToEdit, setPlaylistToEdit] = useState<Playlist | null>(null);
+  const [playlistToEdit, setPlaylistToEdit] = useState<PlaylistWithStats | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -639,7 +641,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     if (playlistFilter === "all") {
       return playlists;
     }
-    return playlists.filter((playlist: Playlist) => 
+    return playlists.filter((playlist: PlaylistWithStats) => 
       playlistFilter === "smart" ? playlist.isSmart : !playlist.isSmart
     );
   }, [playlists, playlistFilter]);
@@ -787,7 +789,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     }
   };
 
-  const handleExportPlaylist = async (playlist: Playlist) => {
+  const handleExportPlaylist = async (playlist: PlaylistWithStats) => {
     if (exportingPlaylistId !== null) {
       return;
     }
@@ -964,7 +966,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredPlaylists.map((playlist: Playlist) => (
+            {filteredPlaylists.map((playlist: PlaylistWithStats) => (
               <div
                 key={playlist.id}
                 className={cn(
@@ -973,24 +975,10 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                   "relative group"
                 )}
               >
-                <button
-                  onClick={() => setSelectedPlaylist(playlist)}
-                  className="flex flex-col items-start gap-2 w-full text-left"
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    {playlist.isSmart ? (
-                      <Sparkles className="w-5 h-5 text-primary" />
-                    ) : (
-                      <List className="w-5 h-5 text-primary" />
-                    )}
-                    <h3 className="font-semibold flex-1 truncate">{playlist.name}</h3>
-                  </div>
-                  {playlist.isSmart && (
-                    <span className="text-xs text-primary font-medium">
-                      Smart Collection
-                    </span>
-                  )}
-                </button>
+                <PlaylistCard
+                  playlist={playlist}
+                  onOpen={setSelectedPlaylist}
+                />
                 <div className="flex gap-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     variant="ghost"

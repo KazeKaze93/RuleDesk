@@ -47,6 +47,9 @@ export type TrackedArtist = Artist & {
   postsCount: number;
   lastPostAt: number | null;
 };
+export type PlaylistWithStats = Playlist & {
+  postCount: number;
+};
 
 // Re-export IPC DTOs for use in renderer
 // Re-export types from controllers (single source of truth)
@@ -186,7 +189,7 @@ export interface IpcBridge {
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
-  getPlaylists: () => Promise<Playlist[]>;
+  getPlaylists: () => Promise<PlaylistWithStats[]>;
   getPlaylist: (playlistId: number) => Promise<Playlist | null>;
   updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
   deletePlaylist: (playlistId: number) => Promise<boolean>;

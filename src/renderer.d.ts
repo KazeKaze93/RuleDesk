@@ -1,6 +1,7 @@
 import type { Artist, Post, Playlist } from "./main/db/schema";
 import {
   IpcBridge,
+  PlaylistWithStats,
   TrackedArtist,
   UpdateStatusCallback,
   UpdateProgressCallback,
@@ -149,7 +150,7 @@ export interface IpcApi extends IpcBridge {
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
-  getPlaylists: () => Promise<Playlist[]>;
+  getPlaylists: () => Promise<PlaylistWithStats[]>;
   getPlaylist: (playlistId: number) => Promise<Playlist | null>;
   updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
   deletePlaylist: (playlistId: number) => Promise<boolean>;

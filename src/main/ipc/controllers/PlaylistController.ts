@@ -42,6 +42,11 @@ import { settings, SETTINGS_ID } from "../../db/schema";
 import { safeStorage } from "electron";
 import { IdSchema, OptionalIdSchema } from "../../../shared/schemas/ipc";
 import { sanitizeProviderTagToken } from "../../../shared/utils/provider-tag-sanitize";
+import {
+  getManualPlaylistsWithStats,
+  getSmartPlaylists,
+  getSmartPlaylistPostCount,
+} from "../../db/queries/playlists";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 type UnknownRecord = Record<string, unknown>;
@@ -90,6 +95,9 @@ function isPlaylistExport(value: unknown): value is PlaylistExport {
  * Uses shared IpcSafe utility type for automatic Date -> number conversion.
  */
 type IpcPlaylist = IpcSafe<InferSelectModel<typeof playlists>>;
+type IpcPlaylistWithStats = IpcPlaylist & {
+  postCount: number;
+};
 
 /**
  * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
@@ -766,6 +774,7 @@ export class PlaylistController extends BaseController {
           queryJson: data.queryJson ?? "",
           querySchemaVersion: CURRENT_SMART_QUERY_SCHEMA_VERSION,
           iconName: data.iconName ?? "",
+          updatedAt: new Date(),
         })
         .returning()
         .get();
@@ -832,19 +841,62 @@ export class PlaylistController extends BaseController {
    * @param _event - IPC event (unused)
    * @returns Array of playlists
    */
-  private async getPlaylists(_event: IpcMainInvokeEvent): Promise<IpcPlaylist[]> {
+  private async getPlaylists(_event: IpcMainInvokeEvent): Promise<IpcPlaylistWithStats[]> {
     try {
       const db = this.getDb();
+      const manualPlaylists = getManualPlaylistsWithStats(db);
+      const smartPlaylists = getSmartPlaylists(db);
 
-      const result = db
-        .select()
-        .from(playlists)
-        .orderBy(desc(playlists.createdAt))
-        .all();
+      const smartPlaylistsWithStats = smartPlaylists.map((playlist) => {
+        if (!playlist.queryJson || playlist.queryJson.trim() === "") {
+          return { ...playlist, postCount: 0 };
+        }
 
-      log.info(`[PlaylistController] Retrieved ${result.length} playlists`);
+        const parsedQuery = parseSmartQuery(
+          playlist.queryJson,
+          playlist.querySchemaVersion
+        );
+        if (!parsedQuery) {
+          return { ...playlist, postCount: 0 };
+        }
 
-      return toIpcSafe(result) as IpcPlaylist[];
+        const { includeConditions, excludeConditions } =
+          this.buildSmartPlaylistTagConditions(parsedQuery);
+
+        const allConditions: SQL[] = [];
+
+        if (includeConditions.length > 0) {
+          allConditions.push(
+            includeConditions.length === 1
+              ? includeConditions[0]
+              : (and(...includeConditions) as SQL)
+          );
+        }
+
+        if (excludeConditions.length > 0) {
+          const excludeOr = or(...excludeConditions);
+          if (excludeOr) {
+            allConditions.push(not(excludeOr) as SQL);
+          }
+        }
+
+        const whereClause =
+          allConditions.length > 0 ? (and(...allConditions) as SQL) : undefined;
+        const postCount = getSmartPlaylistPostCount(db, whereClause);
+
+        return {
+          ...playlist,
+          postCount,
+        };
+      });
+
+      const result = [...manualPlaylists, ...smartPlaylistsWithStats].sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      );
+
+      log.info(`[PlaylistController] Retrieved ${result.length} playlists with stats`);
+
+      return toIpcSafe(result) as IpcPlaylistWithStats[];
     } catch (error) {
       log.error("[PlaylistController] Failed to get playlists:", error);
       throw error;
@@ -910,6 +962,7 @@ export class PlaylistController extends BaseController {
       if (data.iconName !== undefined) {
         updateData.iconName = data.iconName;
       }
+      updateData.updatedAt = new Date();
 
       if (Object.keys(updateData).length === 0) {
         // No changes, return existing playlist
@@ -1001,6 +1054,10 @@ export class PlaylistController extends BaseController {
           })
           .run();
         entriesCreated = result.changes;
+        tx.update(playlists)
+          .set({ updatedAt: new Date() })
+          .where(inArray(playlists.id, data.playlistIds))
+          .run();
       });
 
       log.info(
@@ -1043,6 +1100,10 @@ export class PlaylistController extends BaseController {
           .run();
 
         entriesRemoved = result.changes;
+        tx.update(playlists)
+          .set({ updatedAt: new Date() })
+          .where(eq(playlists.id, data.playlistId))
+          .run();
       });
 
       log.info(
@@ -1168,6 +1229,10 @@ export class PlaylistController extends BaseController {
             position: sql`excluded.position`,
           },
         })
+        .run();
+      tx.update(playlists)
+        .set({ updatedAt: new Date() })
+        .where(eq(playlists.id, playlistId))
         .run();
     });
     log.info(
@@ -1342,6 +1407,7 @@ export class PlaylistController extends BaseController {
           querySchemaVersion: CURRENT_SMART_QUERY_SCHEMA_VERSION,
           iconName: exportData.playlist.iconName,
           createdAt: new Date(),
+          updatedAt: new Date(),
         })
         .returning()
         .get();

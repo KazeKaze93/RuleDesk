@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Playlist } from "../../../main/db/schema";
+import type { PlaylistWithStats } from "../../../main/bridge";
 
 /**
  * Custom hook for fetching playlists with optimized caching
@@ -14,7 +14,7 @@ import type { Playlist } from "../../../main/db/schema";
  * @returns Query result with playlists array, loading state, and error
  */
 export function usePlaylists(options?: { enabled?: boolean }) {
-  return useQuery<Playlist[]>({
+  return useQuery<PlaylistWithStats[]>({
     queryKey: ["playlists"],
     queryFn: async () => {
       return await window.api.getPlaylists();

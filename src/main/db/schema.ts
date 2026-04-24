@@ -166,9 +166,13 @@ export const playlists = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => ({
     createdAtIdx: index("playlists_createdAt_idx").on(t.createdAt),
+    updatedAtIdx: index("playlists_updatedAt_idx").on(t.updatedAt),
     isSmartIdx: index("playlists_isSmart_idx").on(t.isSmart),
   })
 );
