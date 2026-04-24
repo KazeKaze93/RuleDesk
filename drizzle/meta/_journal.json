@@ -155,6 +155,34 @@
       "when": 1777000001000,
       "tag": "0021_add_posts_rating_index",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1777000002000,
+      "tag": "0022_add_posts_created_at_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1777000003000,
+      "tag": "0023_add_playlists_updated_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1777000004000,
+      "tag": "0024_add_artists_sync_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1777030000000,
+      "tag": "0025_add_tag_blacklist",
+      "breakpoints": true
     }
   ]
 }

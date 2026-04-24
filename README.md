@@ -193,7 +193,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 
 - **Sync on startup** - Toggle automatic sync when app opens
 - **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
-- **Sync now** - Manual trigger from Settings with last-run status text
+- **Sync now** - Manual trigger in the sidebar with live `Last sync` relative time
 
 ### Appearance
 
@@ -204,6 +204,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **Create backup** - Manual timestamped backup
 - **Restore backup** - Restore from backup file and reload app
 - **Integrity check** - Run `PRAGMA integrity_check`
+- **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (evaluated on app startup)
 - **Automatic backup rotation** - Keep approximately the last **five** backups (not configurable in UI)
 
 ### Account

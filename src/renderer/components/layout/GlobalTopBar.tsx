@@ -18,7 +18,6 @@ import {
 import { buildApiQueryString, useSearchStore } from "../../store/searchStore";
 import { TagAutocomplete } from "../inputs/TagAutocomplete";
 import { FiltersPanel } from "./FiltersPanel";
-import { SyncStatusBadge } from "./SyncStatusBadge";
 import { cn } from "../../lib/utils";
 
 interface SyntaxRow {
@@ -267,9 +266,6 @@ export const GlobalTopBar = () => {
           </Button>
         </div>
 
-        <div className="mx-1 w-px h-4 bg-border" />
-
-        <SyncStatusBadge />
       </div>
     </header>
   );

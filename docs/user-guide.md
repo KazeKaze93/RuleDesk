@@ -109,9 +109,9 @@ That's it! You're now ready to use RuleDesk.
 
 **How to add an artist:**
 
-1. Click the **"Tracked"** button in the sidebar (left side of the screen)
+1. Click the **"Artists"** button in the sidebar (left side of the screen)
 
-2. Click the **"Add Source"** button (top right, with a + icon)
+2. Click the **"+ Add Artist"** button (top right)
 
 3. Fill in the form:
 
@@ -157,7 +157,7 @@ You can still run **Sync All** manually at any time; automatic runs use the same
 
 **To view posts from a tracked artist:**
 
-1. Go to **"Tracked"** page
+1. Go to **"Artists"** page
 2. Click on an artist card
 3. You'll see a gallery of all their posts
 
@@ -186,7 +186,7 @@ Each post card shows:
 
 **Search for artists locally:**
 
-1. Go to **"Tracked"** page
+1. Go to **"Artists"** page
 2. Use the search box at the top
 3. Type the artist name or tag
 4. Results appear as you type
@@ -363,7 +363,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 - **Browse** - Browse cached posts with filters and sorting
 - **Favorites** - Your favorited posts collection
 - **Playlists** - Manual playlists and smart collections
-- **Tracked** - Manage your tracked artists and tags
+- **Artists** - Manage your tracked artists and tags
 - **Settings** - App configuration and preferences
 
 **Unread badge behavior (Updates):**
@@ -415,8 +415,8 @@ Settings are split into tabs:
 
 - **Sync on startup** - Run sync automatically when app starts
 - **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
-- **Sync now** - Manual sync trigger directly in Settings
-- **Last sync status** - Human-readable status line in the tab
+- **Sync now** - Manual sync trigger in the sidebar
+- **Last sync status** - Relative timestamp under the sidebar sync button (`never`, `X min ago`, etc.)
 
 ### Appearance
 
@@ -427,6 +427,7 @@ Settings are split into tabs:
 - **Create Backup** - Save a timestamped backup of your database
 - **Restore Backup** - Restore from a backup file (app reloads after success)
 - **Check Integrity** - Verify database is not corrupted
+- **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup)
 - **Retention** - Older files are rotated automatically (approximately last **five** kept)
 
 ### Account

@@ -13,8 +13,13 @@ import {
   SheetTitle,
   SheetDescription as SheetDesc,
 } from "../../components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../components/ui/tooltip";
 import { useShallow } from "zustand/react/shallow";
-import { Virtuoso } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { useViewerStore, ViewerOrigin } from "../../store/viewerStore";
 import { Button } from "../../components/ui/button";
@@ -71,6 +76,8 @@ import { isVideoPost } from "../../lib/filter-utils";
 import { useVideoProxyUrl } from "../../lib/hooks/useVideoProxyUrl";
 import { useViewerController } from "./hooks/useViewerController";
 import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
+
+const VIEWER_TAG_HINT_SEEN_KEY = "hasSeenTagHint";
 
 /**
  * PostNotFoundFallback: Handles shadow insert for remote posts not in cache
@@ -506,6 +513,65 @@ const chunkTags = (tags: string[], chunkSize: number): string[][] => {
   return chunks;
 };
 
+const RULE34_IMAGE_HOSTS = new Set([
+  "rule34.xxx",
+  "wimg.rule34.xxx",
+  "us.rule34.xxx",
+  "img.rule34.xxx",
+  "api-cdn.rule34.xxx",
+]);
+
+const RULE34_CDN_FALLBACK_HOSTS = [
+  "wimg.rule34.xxx",
+  "img.rule34.xxx",
+  "us.rule34.xxx",
+  "api-cdn.rule34.xxx",
+] as const;
+
+const withRule34Host = (urlString: string, targetHost: string): string | null => {
+  try {
+    const url = new URL(urlString);
+    if (!RULE34_IMAGE_HOSTS.has(url.hostname)) {
+      return null;
+    }
+    if (url.hostname === targetHost) {
+      return null;
+    }
+    url.hostname = targetHost;
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
+const buildImageFallbackChain = (post: Post): string[] => {
+  const baseCandidates = [
+    post.sampleUrl?.trim(),
+    post.fileUrl?.trim(),
+    post.previewUrl?.trim(),
+  ].filter((value): value is string => Boolean(value && value.length > 0));
+
+  const uniqueCandidates: string[] = [];
+  const seen = new Set<string>();
+
+  for (const candidate of baseCandidates) {
+    if (!seen.has(candidate)) {
+      seen.add(candidate);
+      uniqueCandidates.push(candidate);
+    }
+
+    for (const host of RULE34_CDN_FALLBACK_HOSTS) {
+      const fallbackUrl = withRule34Host(candidate, host);
+      if (fallbackUrl && !seen.has(fallbackUrl)) {
+        seen.add(fallbackUrl);
+        uniqueCandidates.push(fallbackUrl);
+      }
+    }
+  }
+
+  return uniqueCandidates;
+};
+
 const ViewerMedia = ({
   post,
   onBackgroundClick,
@@ -516,7 +582,9 @@ const ViewerMedia = ({
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [hasTriedFallback, setHasTriedFallback] = useState(false);
+  const imageFallbackChain = useMemo(() => buildImageFallbackChain(post), [post]);
+  const [imageFallbackIndex, setImageFallbackIndex] = useState(0);
+  const [imageSrc, setImageSrc] = useState(imageFallbackChain[0] ?? post.fileUrl);
   const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore(
     useShallow((s) => ({
@@ -659,8 +727,8 @@ const ViewerMedia = ({
               className="mt-4"
               onClick={() => {
                 setImageError(false);
-                setHasTriedFallback(false); // Reset fallback flag on retry
-                // Force reload by changing src (React will re-render img with new src)
+                setImageFallbackIndex(0);
+                setImageSrc(imageFallbackChain[0] ?? post.fileUrl);
               }}
             >
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -688,24 +756,22 @@ const ViewerMedia = ({
             contentClass="w-full h-full flex items-center justify-center"
           >
             <img
-              key={`${post.id}-${hasTriedFallback}`} // Force re-render when fallback changes, resets state on post change
-              src={hasTriedFallback ? post.fileUrl : (post.sampleUrl || post.fileUrl)}
+              key={`${post.id}-${imageFallbackIndex}`}
+              src={imageSrc}
               alt={`Post ${post.id}`}
               className="max-w-full max-h-full object-contain"
               onError={(e) => {
-                log.error("[ViewerMedia] Image load error:", post.fileUrl);
-                
-                // CRITICAL: Use simple flag to prevent infinite loop
-                // If both sampleUrl and fileUrl fail (404), we'd loop forever without this check
-                // Simple useState flag is more reliable than URL comparison (which has overhead)
-                if (!hasTriedFallback && post.fileUrl) {
-                  // Try fileUrl as fallback (only once)
-                  setHasTriedFallback(true);
-                  e.currentTarget.src = post.fileUrl;
-                } else {
-                  // Both URLs failed or already tried - show error
-                  setImageError(true);
+                const failedUrl = e.currentTarget.currentSrc || e.currentTarget.src;
+                log.error("[ViewerMedia] Image load error:", failedUrl);
+
+                const nextIndex = imageFallbackIndex + 1;
+                if (nextIndex < imageFallbackChain.length) {
+                  setImageFallbackIndex(nextIndex);
+                  setImageSrc(imageFallbackChain[nextIndex]);
+                  return;
                 }
+
+                setImageError(true);
               }}
             />
           </TransformComponent>
@@ -734,10 +800,54 @@ const TagsDrawer = ({
   } | null;
 }) => {
   const navigate = useNavigate();
+  const [hasSeenTagHint, setHasSeenTagHint] = useState<boolean>(() => {
+    return window.localStorage.getItem(VIEWER_TAG_HINT_SEEN_KEY) === "true";
+  });
+  const [showTagHintForCurrentOpen, setShowTagHintForCurrentOpen] = useState(false);
+  const [isPostIdCopied, setIsPostIdCopied] = useState(false);
   const addIncludeTag = useSearchStore((state) => state.addIncludeTag);
   const addExcludeTag = useSearchStore((state) => state.addExcludeTag);
   const isTagIncluded = useSearchStore((state) => state.isTagIncluded);
   const isTagExcluded = useSearchStore((state) => state.isTagExcluded);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowTagHintForCurrentOpen(false);
+      return;
+    }
+
+    if (!hasSeenTagHint) {
+      setShowTagHintForCurrentOpen(true);
+      window.localStorage.setItem(VIEWER_TAG_HINT_SEEN_KEY, "true");
+      setHasSeenTagHint(true);
+      return;
+    }
+
+    setShowTagHintForCurrentOpen(false);
+  }, [isOpen, hasSeenTagHint]);
+
+  useEffect(() => {
+    if (!isPostIdCopied) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      setIsPostIdCopied(false);
+    }, 1500);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [isPostIdCopied]);
+
+  const handleCopyPostId = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(String(post.postId));
+      setIsPostIdCopied(true);
+    } catch (error) {
+      log.error("[TagsDrawer] Failed to copy post ID:", error);
+    }
+  };
 
   // Get artist information - always fetch when drawer is open
   const { data: artists } = useQuery<Artist[]>({
@@ -909,17 +1019,81 @@ const TagsDrawer = ({
     navigate("/browse");
   };
 
+  const renderTagActionButton = (
+    tag: string,
+    variant: "link" | "ghost",
+    colorClassName: string,
+    wrapperClassName: string
+  ) => {
+    return (
+      <Button
+        key={tag}
+        type="button"
+        variant={variant}
+        onClick={() => handleTagInclude(tag)}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          handleTagExclude(tag);
+        }}
+        className={cn(
+          wrapperClassName,
+          colorClassName,
+          isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+          isTagExcluded(tag) &&
+            "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+        )}
+        title={
+          isTagExcluded(tag)
+            ? "Excluded (right-click to toggle)"
+            : isTagIncluded(tag)
+              ? "Included (right-click to exclude)"
+              : "Click to include, right-click to exclude"
+        }
+        aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
+      >
+        {tag}
+      </Button>
+    );
+  };
+
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
+      <SheetContent
+        side="right"
+        className="w-full overflow-y-auto sm:max-w-md"
+        style={{ scrollbarGutter: "stable" }}
+      >
         <SheetHeader>
           <SheetTitle>Post Metadata</SheetTitle>
-          <SheetDesc>Post ID: {post.postId}</SheetDesc>
+          <SheetDesc>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void handleCopyPostId();
+                    }}
+                    className="group h-auto px-1 py-0.5 text-xs font-normal text-muted-foreground hover:text-foreground"
+                  >
+                    <span>{isPostIdCopied ? "Copied!" : `Post ID: ${post.postId}`}</span>
+                    <Copy className="ml-1 h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Click to copy</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </SheetDesc>
         </SheetHeader>
-        <p className="px-1 pb-2 text-xs text-muted-foreground">
-          Click to include · Right-click to exclude
-        </p>
+        {showTagHintForCurrentOpen ? (
+          <p className="px-1 pb-2 text-xs text-muted-foreground">
+            Click to include · Right-click to exclude
+          </p>
+        ) : null}
         <div className="mt-6 space-y-4">
           {post.publishedAt && (
             <div>
@@ -954,32 +1128,12 @@ const TagsDrawer = ({
             {copyrightTags.length > 0 ? (
               <div className="space-y-1">
                 {copyrightTags.map((tag) => (
-                  <Button
-                    type="button"
-                    key={tag}
-                    variant="link"
-                    onClick={() => handleTagInclude(tag)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      handleTagExclude(tag);
-                    }}
-                    className={cn(
-                      "h-auto min-h-0 w-full justify-start p-0 text-sm text-purple-600 hover:underline",
-                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
-                      isTagExcluded(tag) &&
-                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
-                    )}
-                    title={
-                      isTagExcluded(tag)
-                        ? "Excluded (right-click to toggle)"
-                        : isTagIncluded(tag)
-                          ? "Included (right-click to exclude)"
-                          : "Click to include, right-click to exclude"
-                    }
-                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-                  >
-                    {tag}
-                  </Button>
+                  renderTagActionButton(
+                    tag,
+                    "link",
+                    "text-purple-600 hover:underline",
+                    "h-auto min-h-0 w-full justify-start p-0 text-sm"
+                  )
                 ))}
               </div>
             ) : (
@@ -994,32 +1148,12 @@ const TagsDrawer = ({
             {characterTags.length > 0 ? (
               <div className="space-y-1">
                 {characterTags.map((tag) => (
-                  <Button
-                    type="button"
-                    key={tag}
-                    variant="link"
-                    onClick={() => handleTagInclude(tag)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      handleTagExclude(tag);
-                    }}
-                    className={cn(
-                      "h-auto min-h-0 w-full justify-start p-0 text-sm text-green-600 hover:underline",
-                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
-                      isTagExcluded(tag) &&
-                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
-                    )}
-                    title={
-                      isTagExcluded(tag)
-                        ? "Excluded (right-click to toggle)"
-                        : isTagIncluded(tag)
-                          ? "Included (right-click to exclude)"
-                          : "Click to include, right-click to exclude"
-                    }
-                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-                  >
-                    {tag}
-                  </Button>
+                  renderTagActionButton(
+                    tag,
+                    "link",
+                    "text-green-600 hover:underline",
+                    "h-auto min-h-0 w-full justify-start p-0 text-sm"
+                  )
                 ))}
               </div>
             ) : (
@@ -1034,17 +1168,42 @@ const TagsDrawer = ({
             {artistTags.length > 0 ? (
               <div className="space-y-1">
                 {artistTags.map((tag) => (
+                  renderTagActionButton(
+                    tag,
+                    "link",
+                    "text-red-600 hover:underline",
+                    "h-auto min-h-0 w-full justify-start p-0 text-sm"
+                  )
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No artist detected
+              </p>
+            )}
+          </div>
+          {/* General Tags Section */}
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">
+              Tags ({generalTags.length})
+            </h3>
+            <div
+              className="max-h-[400px] overflow-y-auto rounded-md border pr-2"
+              style={{ scrollbarGutter: "stable" }}
+            >
+              <div>
+                {generalTags.map((tag) => (
                   <Button
                     type="button"
                     key={tag}
-                    variant="link"
+                    variant="ghost"
                     onClick={() => handleTagInclude(tag)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       handleTagExclude(tag);
                     }}
                     className={cn(
-                      "h-auto min-h-0 w-full justify-start p-0 text-sm text-red-600 hover:underline",
+                      "h-auto min-h-0 w-full justify-start rounded-none px-3 py-2 text-sm text-left font-normal border-b last:border-b-0 hover:bg-muted/50",
                       isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
                       isTagExcluded(tag) &&
                         "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
@@ -1062,54 +1221,6 @@ const TagsDrawer = ({
                   </Button>
                 ))}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No artist detected
-              </p>
-            )}
-          </div>
-          {/* General Tags Section */}
-          <div>
-            <h3 className="mb-2 text-sm font-semibold">
-              Tags ({generalTags.length})
-            </h3>
-            <div className="max-h-[400px] overflow-hidden rounded-md border">
-              <Virtuoso
-                className="h-[400px]"
-                data={generalTags}
-                components={{
-                  Header: undefined,
-                }}
-                itemContent={(_index, tag) => {
-                  return (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => handleTagInclude(tag)}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        handleTagExclude(tag);
-                      }}
-                      className={cn(
-                        "h-auto min-h-0 w-full justify-start rounded-none px-3 py-2 text-sm text-left font-normal border-b last:border-b-0 hover:bg-muted/50",
-                        isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
-                        isTagExcluded(tag) &&
-                          "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
-                      )}
-                      title={
-                        isTagExcluded(tag)
-                          ? "Excluded (right-click to toggle)"
-                          : isTagIncluded(tag)
-                            ? "Included (right-click to exclude)"
-                            : "Click to include, right-click to exclude"
-                      }
-                      aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-                    >
-                      {tag}
-                    </Button>
-                  );
-                }}
-              />
             </div>
           </div>
         </div>

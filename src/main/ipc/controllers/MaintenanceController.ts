@@ -18,12 +18,14 @@ import {
 import { maintenanceQueue } from "../../db/maintenance-queue";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
+import type { BackupService, AutoBackupInterval } from "../../services/backup-service";
 import { BACKUP_FILE_PREFIX, getDatabasePaths } from "../../db/paths";
 import { IdSchema } from "../../../shared/schemas/ipc";
 
 const DEFAULT_BACKUP_RETENTION = 5;
 const MIN_BACKUP_RETENTION = 1;
 const MAX_BACKUP_RETENTION = 20;
+const AutoBackupIntervalSchema = z.enum(["never", "daily", "weekly"]);
 
 /**
  * IPC controllers resolve the DB via DI. After closeDatabase + initializeDatabase the
@@ -77,6 +79,10 @@ export class MaintenanceController extends BaseController {
     return container.resolve(DI_TOKENS.SYNC_SERVICE);
   }
 
+  private getBackupService(): BackupService {
+    return container.resolve(DI_TOKENS.BACKUP_SERVICE);
+  }
+
   /**
    * Setup IPC handlers for maintenance operations
    */
@@ -106,6 +112,17 @@ export class MaintenanceController extends BaseController {
       IPC_CHANNELS.BACKUP.INTEGRITY_CHECK,
       z.tuple([]),
       this.integrityCheck.bind(this)
+    );
+    this.handle(
+      IPC_CHANNELS.BACKUP.GET_SCHEDULE,
+      z.tuple([]),
+      this.getBackupSchedule.bind(this),
+      { isIdempotent: true }
+    );
+    this.handle(
+      IPC_CHANNELS.BACKUP.SET_SCHEDULE,
+      z.tuple([AutoBackupIntervalSchema]),
+      this.setBackupSchedule.bind(this)
     );
 
     log.info("[MaintenanceController] All handlers registered");
@@ -529,6 +546,19 @@ export class MaintenanceController extends BaseController {
       log.error("[MaintenanceController] Integrity check failed:", error);
       throw error;
     }
+  }
+
+  private getBackupSchedule(_event: IpcMainInvokeEvent): AutoBackupInterval {
+    return this.getBackupService().getAutoBackupSchedule();
+  }
+
+  private setBackupSchedule(
+    _event: IpcMainInvokeEvent,
+    ...args: unknown[]
+  ): boolean {
+    const interval = AutoBackupIntervalSchema.parse(args[0]);
+    this.getBackupService().scheduleAutoBackup(interval);
+    return true;
   }
 }
 

@@ -21,6 +21,7 @@ import {
   sanitizeProviderTagQuery,
   sanitizeProviderTagToken,
 } from "../../../shared/utils/provider-tag-sanitize";
+import { getAllBlacklistedTags } from "../../db/queries/blacklist";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -362,6 +363,17 @@ export class SearchController extends BaseController {
         }
       }
       
+      const blacklistedTagSet = new Set(
+        getAllBlacklistedTags()
+          .map((tag) => tag.trim().toLowerCase())
+          .filter((tag) => tag.length > 0)
+      );
+      if (blacklistedTagSet.size > 0) {
+        booruPosts = booruPosts.filter((post) =>
+          !post.tags.some((tag) => blacklistedTagSet.has(tag.trim().toLowerCase()))
+        );
+      }
+
 
       // Extract postIds from API results for local DB lookup
       const postIds = booruPosts.map((booruPost) => booruPost.id);

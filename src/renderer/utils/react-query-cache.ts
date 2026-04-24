@@ -122,3 +122,11 @@ export function updatePostInAllCaches(
   }
 }
 
+export async function invalidateAllPostQueries(queryClient: QueryClient): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["posts"] }),
+    queryClient.invalidateQueries({ queryKey: ["search"] }),
+    queryClient.invalidateQueries({ queryKey: ["playlist-posts"] }),
+  ]);
+}
+

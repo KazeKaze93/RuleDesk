@@ -13,10 +13,12 @@ import { SearchController } from "./controllers/SearchController";
 import { PlaylistController } from "./controllers/PlaylistController";
 import { StatsController } from "./controllers/StatsController";
 import { VideoProxyController } from "./controllers/VideoProxyController";
+import { BlacklistController } from "./controllers/BlacklistController";
 import { registerUpdatesHandlers } from "./handlers/updates";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
 import { VideoProxyServer } from "../services/video-proxy-server";
+import type { BackupService } from "../services/backup-service";
 import { getDb } from "../db/client";
 import { container, DI_TOKENS } from "../core/di/Container";
 
@@ -75,6 +77,9 @@ export function setupIpc(
   const statsController = new StatsController();
   statsController.setup();
 
+  const blacklistController = new BlacklistController();
+  blacklistController.setup();
+
   registerUpdatesHandlers();
 
   log.info("[IPC] All controllers initialized successfully");
@@ -87,8 +92,9 @@ export function setupIpc(
  * 
  * @param syncService - Sync service instance
  */
-export function registerServices(syncService: SyncService): void {
+export function registerServices(syncService: SyncService, backupService: BackupService): void {
   container.register(DI_TOKENS.SYNC_SERVICE, syncService);
+  container.register(DI_TOKENS.BACKUP_SERVICE, backupService);
   log.info("[IPC] SyncService registered in DI container");
 }
 
@@ -112,6 +118,7 @@ export function setControllerWindows(
 // --- Main Registration Function ---
 export const registerAllHandlers = (
   syncService: SyncService,
+  backupService: BackupService,
   _updaterService: UpdaterService,
   mainWindow: BrowserWindow,
   videoProxyServer: VideoProxyServer,
@@ -120,7 +127,7 @@ export const registerAllHandlers = (
 
   // Initialize all controllers
   const controllers = setupIpc(videoProxyServer);
-  registerServices(syncService);
+  registerServices(syncService, backupService);
   setControllerWindows(controllers, mainWindow);
 
   log.info("[IPC] All handlers registered (controllers only - migration complete).");

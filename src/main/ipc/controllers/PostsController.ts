@@ -42,6 +42,7 @@ import { safeStorage } from "electron";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { ShadowInsertRequestSchema } from "../../../shared/schemas/shadow-insert";
 import { IdSchema } from "../../../shared/schemas/ipc";
+import { getAllBlacklistedTags } from "../../db/queries/blacklist";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -617,6 +618,17 @@ export class PostsController extends BaseController {
           eq(posts.mediaType, "image"),
           sql`${posts.mediaType} IS NULL`
         ) as SQL
+      );
+    }
+
+    const blacklistedTags = getAllBlacklistedTags();
+    if (blacklistedTags.length > 0) {
+      conditions.push(
+        sql`NOT EXISTS (
+          SELECT 1
+          FROM tag_blacklist bl
+          WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
+        )` as SQL
       );
     }
 

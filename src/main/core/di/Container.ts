@@ -4,6 +4,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import type { SyncScheduler } from "../../services/sync-scheduler";
+import type { BackupService } from "../../services/backup-service";
 
 // Type aliases for cleaner token definitions
 type AppDatabase = BetterSQLite3Database<typeof schema>;
@@ -21,6 +22,7 @@ export const DI_TOKENS = {
   DB: new Token<AppDatabase>("Database", "SQLite database instance"),
   SYNC_SERVICE: new Token<SyncService>("SyncService", "Artist synchronization service"),
   SYNC_SCHEDULER: new Token<SyncScheduler>("SyncScheduler", "Periodic synchronization scheduler"),
+  BACKUP_SERVICE: new Token<BackupService>("BackupService", "Backup automation service"),
 } as const;
 
 /**

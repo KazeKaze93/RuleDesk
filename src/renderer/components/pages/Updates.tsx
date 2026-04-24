@@ -6,7 +6,7 @@ import {
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
-import { RefreshCw, Loader2, CheckCheck, User, ChevronRight } from "lucide-react";
+import { RefreshCw, Loader2, CheckCheck, User, ChevronRight, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { useNavigate } from "react-router-dom";
 import log from "electron-log/renderer";
@@ -17,12 +17,14 @@ import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import type { Post } from "../../../main/db/schema";
-import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
-import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
-import type { Artist } from "../../../main/db/schema";
+import type { TrackedArtist } from "../../../main/bridge";
+import { useBulkSelect } from "../../hooks/useBulkSelect";
+import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
+import { getBulkSelectId } from "../../lib/bulkSelect";
+import { formatRelativeTime } from "../../lib/formatRelativeTime";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -95,8 +97,8 @@ const GridContainer = forwardRef<
     ref={ref}
     className={cn(
       viewType === "grid"
-        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-32",
+        ? "grid gap-4 p-4 pb-44 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(188px,1fr))]"
+        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
       className
     )}
     {...props}
@@ -147,10 +149,10 @@ const CREATORS_VIEW = "creators";
 type UpdatesView = typeof FEED_VIEW | typeof CREATORS_VIEW;
 
 interface CreatorsViewProps {
-  artists: Artist[];
+  artists: TrackedArtist[];
   isLoading: boolean;
   onSyncAll: () => void;
-  onViewArtist: (artist: Artist) => void;
+  onViewArtist: (artist: TrackedArtist) => void;
 }
 
 const CreatorsView = ({
@@ -192,7 +194,11 @@ const CreatorsView = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{artist.name}</p>
-                  <p className="text-xs truncate text-muted-foreground">{artist.tag}</p>
+                  <p className="text-xs truncate text-muted-foreground">
+                    {`${artist.tag} \u00b7 ${artist.postsCount > 999 ? "999+" : artist.postsCount} posts \u00b7 ${
+                      artist.lastPostAt === null ? "never" : formatRelativeTime(artist.lastPostAt)
+                    }`}
+                  </p>
                 </div>
                 {artist.newPostsCount > 0 && (
                   <Badge variant="default" className="flex-shrink-0 tabular-nums">
@@ -224,6 +230,12 @@ export const Updates = () => {
   // Each selector only subscribes to its specific value, not the entire store
   const openViewer = useViewerStore((state) => state.open);
   const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
+  const isBulkMode = useBulkSelect((state) => state.isBulkMode);
+  const activateBulkMode = useBulkSelect((state) => state.activateBulkMode);
+  const deactivateBulkMode = useBulkSelect((state) => state.deactivate);
+  const selectedIds = useBulkSelect((state) => state.selectedIds);
+  const selectAll = useBulkSelect((state) => state.selectAll);
+  const clearSelection = useBulkSelect((state) => state.clearSelection);
 
   // Use atomic selectors to prevent unnecessary re-renders
   // Each selector only subscribes to its specific value, not the entire store
@@ -282,10 +294,41 @@ export const Updates = () => {
     };
   }, [queryClient]);
 
+  useEffect(() => {
+    return () => {
+      deactivateBulkMode();
+    };
+  }, [deactivateBulkMode]);
+
+  useEffect(() => {
+    if (activeView === CREATORS_VIEW) {
+      deactivateBulkMode();
+    }
+  }, [activeView, deactivateBulkMode]);
+
   const { data: artists = [], isLoading: isArtistsLoading } = useQuery({
     queryKey: ["artists"],
     queryFn: () => window.api.getTrackedArtists(),
     enabled: activeView === CREATORS_VIEW,
+  });
+
+  const { data: totalUnreadCount = 0 } = useQuery({
+    queryKey: ["updates", "totalUnreadCount", tags, aiFilter, rating, mediaType, source],
+    queryFn: () =>
+      window.api.getUpdatesTotalUnreadCount({
+        filters: {
+          sinceTracking: true,
+          tags: tags.length > 0 ? tags.join(" ") : undefined,
+          aiFilter: aiFilter === "all" ? undefined : aiFilter,
+          rating: rating === "all" ? undefined : rating,
+          mediaType: mediaType === "all" ? undefined : mediaType,
+          isFavorited: source === "favorites" ? true : undefined,
+        },
+      }),
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 
   const handleViewChange = (value: string) => {
@@ -361,31 +404,10 @@ export const Updates = () => {
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
   }, [data, sortOrder, aiFilter, rating, mediaType, source, orientation, dateFrom, dateTo]);
-
-  const fetchParams = useMemo(
-    () => ({
-      filters: {
-        sinceTracking: true,
-        tags: tags.length > 0 ? tags.join(" ") : undefined,
-        aiFilter: aiFilter === "all" ? undefined : aiFilter,
-        rating: rating === "all" ? undefined : rating,
-        mediaType: mediaType === "all" ? undefined : mediaType,
-        isFavorited: source === "favorites" ? true : undefined,
-      },
-    }),
-    [tags, aiFilter, rating, mediaType, source]
+  const selectedPosts = useMemo(
+    () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
+    [allPosts, selectedIds]
   );
-  const {
-    downloadAll,
-    cancel,
-    pause,
-    resume,
-    isDownloading: isDownloadingAll,
-    isPaused,
-    progress: downloadAllProgress,
-    canDownload,
-    totalCount: downloadTotalCount,
-  } = useDownloadAllWithFilters(fetchParams);
 
   // Create stable List and Item components with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
@@ -551,30 +573,17 @@ export const Updates = () => {
             <p className="mt-1 text-xs text-muted-foreground">
               Latest posts from tracked artists
             </p>
-            {allPosts.length > 0 && (
-              <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
-                <span className="text-sm font-medium text-muted-foreground">
-                  {downloadTotalCount || allPosts.length}{" "}
-                  {(downloadTotalCount || allPosts.length) === 1 ? "post" : "posts"}
-                  {!downloadTotalCount && hasNextPage ? " +" : ""}
-                </span>
-              </div>
-            )}
+            <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
+              <span className="text-sm font-medium text-muted-foreground">
+                {totalUnreadCount === 0
+                  ? "No new posts"
+                  : `${totalUnreadCount.toLocaleString()} ${totalUnreadCount === 1 ? "new post" : "new posts"}`}
+              </span>
+            </div>
           </div>
         </div>
         {activeView === FEED_VIEW && (
           <div className="flex gap-2 items-center ml-auto">
-            <DownloadAllButton
-              onClick={downloadAll}
-              onCancel={cancel}
-              onPause={pause}
-              onResume={resume}
-              isDownloading={isDownloadingAll}
-              isPaused={isPaused}
-              progress={downloadAllProgress}
-              canDownload={canDownload || allPosts.length > 0}
-              totalLabel={downloadTotalCount || allPosts.length}
-            />
             <Button
               variant="outline"
               size="sm"
@@ -584,6 +593,21 @@ export const Updates = () => {
             >
               <CheckCheck className="mr-2 w-4 h-4" />
               Mark all read
+            </Button>
+            <Button
+              type="button"
+              variant={isBulkMode ? "default" : "outline"}
+              size="icon"
+              aria-label="Toggle bulk selection mode"
+              onClick={() => {
+                if (isBulkMode) {
+                  deactivateBulkMode();
+                  return;
+                }
+                activateBulkMode();
+              }}
+            >
+              <CheckSquare className="h-4 w-4" />
             </Button>
           </div>
         )}
@@ -678,6 +702,20 @@ export const Updates = () => {
           )
         )}
       </div>
+      <BulkActionBar
+        selectedPosts={selectedPosts}
+        onSelectAll={() => {
+          const selectableIds = allPosts.map((post) => getBulkSelectId(post));
+          const isAllSelected =
+            selectableIds.length > 0 &&
+            selectableIds.every((id) => selectedIds.has(id));
+          if (isAllSelected) {
+            clearSelection();
+            return;
+          }
+          selectAll(selectableIds);
+        }}
+      />
     </div>
   );
 };

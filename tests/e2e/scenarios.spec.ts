@@ -52,13 +52,13 @@ test.describe('User Journeys', () => {
     expect(title).toContain('RuleDesk');
 
     // Open Add Modal
-    const addButton = page.getByRole('button', { name: /add source|add artist/i });
+    const addButton = page.getByRole('button', { name: /add artist/i });
     await expect(addButton).toBeVisible();
     await addButton.click();
 
     // Fill Form
     // Wait for modal to appear
-    const dialog = page.locator('text=Track New Artist').first();
+    const dialog = page.locator('text=Add Artist').first();
     await expect(dialog).toBeVisible({ timeout: 5000 });
     
     // Fill the tag input
@@ -206,11 +206,11 @@ test.describe('User Journeys', () => {
       await addFirstButton.click();
       
       // Verify modal opens
-      const dialog = page.locator('text=Track New Artist').first();
+      const dialog = page.locator('text=Add Artist').first();
       await expect(dialog).toBeVisible({ timeout: 5000 });
     } else {
-      // If there are already artists, just verify the "Add Source" button is visible
-      const addButton = page.getByRole('button', { name: /add source|add artist/i });
+      // If there are already artists, just verify the "Add Artist" button is visible
+      const addButton = page.getByRole('button', { name: /add artist/i });
       await expect(addButton).toBeVisible();
     }
   });

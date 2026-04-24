@@ -222,10 +222,10 @@ export async function completeOnboarding(page: Page) {
     await page.waitForTimeout(1000);
     
     // Navigate to Tracked Artists page if we're not already there
-    // The "Add Source" button is on the Tracked Artists page, not the default Browse page
+    // The "Add Artist" button is on the Artists page, not the default Browse page
     const currentUrl = page.url();
     if (!currentUrl.includes('#/tracked')) {
-      // Click on "Artists" link in sidebar to navigate to Tracked Artists page
+      // Click on "Artists" link in sidebar to navigate to Artists page
       const artistsLink = page.getByRole('link', { name: /artists/i });
       const artistsLinkVisible = await artistsLink.isVisible({ timeout: 5000 }).catch(() => false);
       
@@ -241,10 +241,10 @@ export async function completeOnboarding(page: Page) {
   }
 
   // --- 3. Verify Dashboard / Main App ---
-  // Verify we're on the main app by looking for the "Add Source" button
-  // This button appears on the Tracked Artists page
-  const addSourceButton = page.getByRole('button', { name: /add source|add artist/i });
-  await expect(addSourceButton).toBeVisible({ timeout: 15000 });
+  // Verify we're on the main app by looking for the "Add Artist" button
+  // This button appears on the Artists page
+  const addArtistButton = page.getByRole('button', { name: /add artist/i });
+  await expect(addArtistButton).toBeVisible({ timeout: 15000 });
   
   console.log('[E2E] Onboarding completed successfully. Main app is visible.');
 }

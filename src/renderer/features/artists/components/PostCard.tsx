@@ -10,8 +10,15 @@ import { isVideoPost } from "../../../lib/filter-utils";
 import { isVideoUrl } from "../../../../shared/utils/media";
 import { useVideoProxyUrl } from "../../../lib/hooks/useVideoProxyUrl";
 import { QuickAddToPlaylistMenu } from "../../../components/playlists/QuickAddToPlaylistMenu";
+import { Checkbox } from "../../../components/ui/checkbox";
+import { useBulkSelect } from "../../../hooks/useBulkSelect";
+import { getBulkSelectId } from "../../../lib/bulkSelect";
 
 const loadedSampleUrls = new Set<string>();
+const LONG_PRESS_DELAY_MS = 300;
+const POINTER_MOVE_CANCEL_PX = 5;
+
+type PostCardContext = "browse" | "favorites" | "updates" | "playlist";
 
 interface PostCardProps {
   post: Post;
@@ -20,13 +27,40 @@ interface PostCardProps {
   onToggleViewed?: (e: React.MouseEvent) => void;
   onRemoveFromPlaylist?: () => void;
   preserveAspect?: boolean;
+  context?: PostCardContext;
 }
+
+interface PostCardBadgesProps {
+  isFavorited: boolean;
+  isViewed: boolean;
+  context: PostCardContext;
+}
+
+const PostCardBadges: React.FC<PostCardBadgesProps> = ({
+  isFavorited,
+  isViewed,
+  context,
+}) => (
+  <div className="flex absolute top-2 left-2 z-10 gap-1 items-center">
+    {isFavorited && context !== "favorites" && (
+      <div className="p-1 rounded-full shadow-sm bg-red-500/90">
+        <Heart className="w-3 h-3 text-white fill-white" />
+      </div>
+    )}
+    {isViewed && (
+      <div className="p-1 rounded-full shadow-sm bg-primary/90">
+        <Check className="h-3 w-3 stroke-[3] text-primary-foreground" />
+      </div>
+    )}
+  </div>
+);
 
 export const PostCard: React.FC<PostCardProps> = ({
   post,
   onClick,
   onRemoveFromPlaylist,
   preserveAspect,
+  context = "browse",
 }) => {
   const isVid = isVideoPost(post.fileUrl);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore(
@@ -62,6 +96,20 @@ export const PostCard: React.FC<PostCardProps> = ({
   const cardRef = useRef<HTMLButtonElement>(null);
   const contextMenuAnchorRef = useRef<HTMLSpanElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const bulkSelectId = getBulkSelectId(post);
+  const isBulkMode = useBulkSelect((state) => state.isBulkMode);
+  const toggleId = useBulkSelect((state) => state.toggleId);
+  const activateBulkMode = useBulkSelect((state) => state.activateBulkMode);
+  const isSelected = useBulkSelect((state) => state.selectedIds.has(bulkSelectId));
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current !== null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
   // Determine video preview URL: prefer sampleUrl if it's a video, otherwise use fileUrl
   const videoPreviewUrl = isVid
@@ -174,6 +222,12 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   }, [contextMenuPosition]);
 
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer();
+    };
+  }, []);
+
   // Use key prop on video element to reset state when post changes
   // This avoids useEffect setState (which causes cascading renders)
   // The key prop will cause React to unmount/remount the video element when post.id changes,
@@ -194,7 +248,42 @@ export const PostCard: React.FC<PostCardProps> = ({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isBulkMode) {
+          toggleId(bulkSelectId);
+          return;
+        }
         onClick();
+      }}
+      onPointerDown={(event) => {
+        if (event.button !== 0 || isBulkMode) {
+          return;
+        }
+        pointerStartRef.current = { x: event.clientX, y: event.clientY };
+        clearLongPressTimer();
+        longPressTimerRef.current = setTimeout(() => {
+          activateBulkMode();
+          if (!isSelected) {
+            toggleId(bulkSelectId);
+          }
+        }, LONG_PRESS_DELAY_MS);
+      }}
+      onPointerMove={(event) => {
+        if (!pointerStartRef.current || longPressTimerRef.current === null) {
+          return;
+        }
+        const deltaX = Math.abs(event.clientX - pointerStartRef.current.x);
+        const deltaY = Math.abs(event.clientY - pointerStartRef.current.y);
+        if (deltaX > POINTER_MOVE_CANCEL_PX || deltaY > POINTER_MOVE_CANCEL_PX) {
+          clearLongPressTimer();
+        }
+      }}
+      onPointerUp={() => {
+        pointerStartRef.current = null;
+        clearLongPressTimer();
+      }}
+      onPointerCancel={() => {
+        pointerStartRef.current = null;
+        clearLongPressTimer();
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -208,15 +297,31 @@ export const PostCard: React.FC<PostCardProps> = ({
         isVid ? "Video" : "Image"
       }.`}
       className={cn(
-        "group relative w-full overflow-hidden rounded-lg border bg-card transition-all cursor-pointer",
+        "group relative w-full overflow-hidden rounded-[var(--card-radius)] border bg-card transition-all cursor-pointer",
         // Grid: fixed aspect ratio, Masonry: natural aspect ratio (height auto)
-        shouldPreserveAspect ? "aspect-[3/4]" : "",
+        shouldPreserveAspect ? "aspect-[2/3]" : "",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
         "hover:border-primary hover:shadow-md hover:shadow-primary/10",
         "select-none", // Prevent text selection via CSS (user-select: none)
-        post.isViewed && "border-muted-foreground/20"
+        post.isViewed && "border-muted-foreground/20",
+        isBulkMode && isSelected && "ring-2 ring-primary ring-offset-2"
       )}
     >
+      {isBulkMode && (
+        <div className="absolute left-2 top-2 z-30">
+          <Checkbox
+            checked={isSelected}
+            aria-label={`Select post ${post.id}`}
+            className="h-5 w-5 rounded-sm border-white/70 bg-black/60 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=checked]:border-white data-[state=checked]:bg-primary"
+            onCheckedChange={() => {
+              toggleId(bulkSelectId);
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          />
+        </div>
+      )}
       {/* --- Media Layer (Image + Video Preview) --- */}
       {post.previewUrl ? (
         <div
@@ -382,27 +487,18 @@ export const PostCard: React.FC<PostCardProps> = ({
       </div>
 
       {/* 2. Viewed & Favorite Indicator (Top Left/Top Right) */}
-      <div className="flex absolute top-2 left-2 z-10 gap-1 items-center">
-        {/* Индикатор "Избранное" (Если пост отмечен) */}
-        {post.isFavorited && (
-          <div className="p-1 rounded-full shadow-sm bg-red-500/90">
-            <Heart className="w-3 h-3 text-white fill-white" />
-          </div>
-        )}
-        {/* Индикатор "Просмотрено" */}
-        {post.isViewed && (
-          <div className="p-1 rounded-full shadow-sm bg-primary/90">
-            <Check className="h-3 w-3 stroke-[3] text-primary-foreground" />
-          </div>
-        )}
-      </div>
+      <PostCardBadges
+        isFavorited={post.isFavorited}
+        isViewed={post.isViewed}
+        context={context}
+      />
 
       {/* 3. Gradient & Rating (Bottom - visible on hover) */}
-      <div className="flex absolute inset-0 flex-col justify-end p-3 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100 pointer-events-none">
+      <div className="flex absolute inset-0 flex-col justify-end p-[var(--card-padding)] bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100 pointer-events-none">
         <div className="flex justify-between items-end">
           <span
             className={cn(
-              "text-xs font-bold uppercase tracking-wider",
+              "text-[length:var(--card-meta-size)] font-bold uppercase tracking-wider",
               post.rating === "e"
                 ? "text-red-400"
                 : post.rating === "q"

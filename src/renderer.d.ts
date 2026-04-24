@@ -1,6 +1,8 @@
 import type { Artist, Post, Playlist } from "./main/db/schema";
 import {
   IpcBridge,
+  PlaylistWithStats,
+  TrackedArtist,
   UpdateStatusCallback,
   UpdateProgressCallback,
   AddArtistPayload,
@@ -8,6 +10,7 @@ import {
 import type { ShadowInsertRequest } from "./shared/schemas/shadow-insert";
 import type { SearchResults, ProviderId } from "./main/providers";
 import type { PostData, GetPostsCountRequest } from "./shared/schemas/post";
+import type { PostFilterRequest } from "./shared/schemas/post";
 import type {
   CreatePlaylistRequest,
   UpdatePlaylistRequest,
@@ -20,6 +23,7 @@ import type {
 import type { ExtendedStats } from "./shared/schemas/stats";
 
 export type SyncErrorCallback = (message: string) => void;
+export type AutoBackupInterval = "never" | "daily" | "weekly";
 
 export interface BackupResponse {
   success: boolean;
@@ -78,7 +82,7 @@ export interface IpcApi extends IpcBridge {
   openExternal: (url: string) => Promise<void>;
 
   // Artists
-  getTrackedArtists: () => Promise<Artist[]>;
+  getTrackedArtists: () => Promise<TrackedArtist[]>;
   addArtist: (artist: AddArtistPayload) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
@@ -100,6 +104,7 @@ export interface IpcApi extends IpcBridge {
   togglePostViewed: (postId: number) => Promise<boolean>;
   markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
   getUpdatesUnreadCount: () => Promise<number>;
+  getUpdatesTotalUnreadCount: (params: { filters?: PostFilterRequest }) => Promise<number>;
   markAllUpdatesSeen: () => Promise<boolean>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
@@ -136,17 +141,22 @@ export interface IpcApi extends IpcBridge {
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
   resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
+  getBlacklistedTags: () => Promise<string[]>;
+  addTagToBlacklist: (tag: string) => Promise<void>;
+  removeTagFromBlacklist: (tag: string) => Promise<void>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
   checkDatabaseIntegrity: () => Promise<{ ok: boolean; details: string }>;
+  getBackupSchedule: () => Promise<AutoBackupInterval>;
+  setBackupSchedule: (interval: AutoBackupInterval) => Promise<boolean>;
   writeToClipboard: (text: string) => Promise<boolean>;
 
   verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
-  getPlaylists: () => Promise<Playlist[]>;
+  getPlaylists: () => Promise<PlaylistWithStats[]>;
   getPlaylist: (playlistId: number) => Promise<Playlist | null>;
   updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
   deletePlaylist: (playlistId: number) => Promise<boolean>;

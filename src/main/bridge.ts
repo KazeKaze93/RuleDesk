@@ -8,7 +8,7 @@ import type {
 } from "./types/ipc";
 import type { IpcSettings, SaveSettings } from "../shared/schemas/settings";
 import type { ThemePreference } from "../shared/schemas/settings";
-import type { PostData } from "../shared/schemas/post";
+import type { PostData, PostFilterRequest } from "../shared/schemas/post";
 import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
 import type { ProviderId, SearchResults } from "./providers";
 import type {
@@ -31,6 +31,7 @@ export type UpdateStatusData = {
 export type UpdateStatusCallback = (data: UpdateStatusData) => void;
 export type UpdateProgressCallback = (percent: number) => void;
 export type SyncErrorCallback = (message: string) => void;
+export type AutoBackupInterval = "never" | "daily" | "weekly";
 
 export type BackupResponse = {
   success: boolean;
@@ -43,6 +44,13 @@ export type DownloadProgressData = {
   percent: number;
 };
 export type DownloadProgressCallback = (data: DownloadProgressData) => void;
+export type TrackedArtist = Artist & {
+  postsCount: number;
+  lastPostAt: number | null;
+};
+export type PlaylistWithStats = Playlist & {
+  postCount: number;
+};
 
 // Re-export IPC DTOs for use in renderer
 // Re-export types from controllers (single source of truth)
@@ -73,7 +81,7 @@ export interface IpcBridge {
   logout: () => Promise<void>;
 
   // Artists
-  getTrackedArtists: () => Promise<Artist[]>;
+  getTrackedArtists: () => Promise<TrackedArtist[]>;
   addArtist: (artist: AddArtistRequest) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
@@ -91,6 +99,7 @@ export interface IpcBridge {
   togglePostViewed: (postId: number) => Promise<boolean>;
   markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
   getUpdatesUnreadCount: () => Promise<number>;
+  getUpdatesTotalUnreadCount: (params: { filters?: PostFilterRequest }) => Promise<number>;
   markAllUpdatesSeen: () => Promise<boolean>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
@@ -172,16 +181,21 @@ export interface IpcBridge {
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
   resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
+  getBlacklistedTags: () => Promise<string[]>;
+  addTagToBlacklist: (tag: string) => Promise<void>;
+  removeTagFromBlacklist: (tag: string) => Promise<void>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
   checkDatabaseIntegrity: () => Promise<{ ok: boolean; details: string }>;
+  getBackupSchedule: () => Promise<AutoBackupInterval>;
+  setBackupSchedule: (interval: AutoBackupInterval) => Promise<boolean>;
 
   verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
-  getPlaylists: () => Promise<Playlist[]>;
+  getPlaylists: () => Promise<PlaylistWithStats[]>;
   getPlaylist: (playlistId: number) => Promise<Playlist | null>;
   updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
   deletePlaylist: (playlistId: number) => Promise<boolean>;
@@ -225,6 +239,12 @@ const ipcBridge: IpcBridge = {
 
   resolveTagsByType: (tags, type) =>
     ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE, tags, type),
+  getBlacklistedTags: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.BLACKLIST.GET_ALL),
+  addTagToBlacklist: (tag) =>
+    ipcRenderer.invoke(IPC_CHANNELS.BLACKLIST.ADD, tag),
+  removeTagFromBlacklist: (tag) =>
+    ipcRenderer.invoke(IPC_CHANNELS.BLACKLIST.REMOVE, tag),
 
   verifyCredentials: (providerId) =>
     ipcRenderer.invoke(IPC_CHANNELS.APP.VERIFY_CREDS, providerId),
@@ -275,6 +295,8 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.DB.MARK_ALL_VIEWED),
   getUpdatesUnreadCount: () =>
     ipcRenderer.invoke(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT),
+  getUpdatesTotalUnreadCount: (params) =>
+    ipcRenderer.invoke(IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT, params),
   markAllUpdatesSeen: () =>
     ipcRenderer.invoke(IPC_CHANNELS.UPDATES.MARK_ALL_SEEN),
 
@@ -396,6 +418,10 @@ const ipcBridge: IpcBridge = {
   restoreBackup: () => ipcRenderer.invoke(IPC_CHANNELS.BACKUP.RESTORE),
   checkDatabaseIntegrity: () =>
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP.INTEGRITY_CHECK),
+  getBackupSchedule: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.BACKUP.GET_SCHEDULE),
+  setBackupSchedule: (interval) =>
+    ipcRenderer.invoke(IPC_CHANNELS.BACKUP.SET_SCHEDULE, interval),
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) =>

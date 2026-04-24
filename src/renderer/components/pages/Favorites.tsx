@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useMemo } from "react";
+import React, { forwardRef, useCallback, useMemo, useEffect } from "react";
 import {
   useInfiniteQuery,
   useQueryClient,
@@ -6,7 +6,7 @@ import {
   InfiniteData,
   useQuery,
 } from "@tanstack/react-query";
-import { Heart, Loader2 } from "lucide-react";
+import { Heart, Loader2, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
@@ -17,8 +17,10 @@ import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import type { Post } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
-import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
-import { DownloadAllButton } from "../downloads/DownloadAllButton";
+import { Button } from "../ui/button";
+import { useBulkSelect } from "../../hooks/useBulkSelect";
+import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
+import { getBulkSelectId } from "../../lib/bulkSelect";
 
 // --- Constants ---
 // Should ideally come from a shared constant or backend config
@@ -58,8 +60,8 @@ const GridContainer = forwardRef<
     ref={ref}
     className={cn(
       viewType === "grid"
-        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-32",
+        ? "grid gap-4 p-4 pb-44 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(188px,1fr))]"
+        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
       className
     )}
     {...props}
@@ -111,6 +113,18 @@ export const Favorites = () => {
   // Each selector only subscribes to its specific value, not the entire store
   const openViewer = useViewerStore((state) => state.open);
   const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
+  const isBulkMode = useBulkSelect((state) => state.isBulkMode);
+  const activateBulkMode = useBulkSelect((state) => state.activateBulkMode);
+  const deactivateBulkMode = useBulkSelect((state) => state.deactivate);
+  const selectedIds = useBulkSelect((state) => state.selectedIds);
+  const selectAll = useBulkSelect((state) => state.selectAll);
+  const clearSelection = useBulkSelect((state) => state.clearSelection);
+
+  useEffect(() => {
+    return () => {
+      deactivateBulkMode();
+    };
+  }, [deactivateBulkMode]);
 
   // Fetch tracked artists for subscriptions filter
   const { data: trackedArtists } = useQuery({
@@ -225,30 +239,10 @@ export const Favorites = () => {
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
   }, [data, sortOrder, aiFilter, rating, mediaType, source, orientation, dateFrom, dateTo, trackedArtists]);
-
-  const fetchParams = useMemo(
-    () => ({
-      filters: {
-        isFavorited: true,
-        tags: tags.length > 0 ? tags.join(" ") : undefined,
-        aiFilter: aiFilter === "all" ? undefined : aiFilter,
-        rating: rating === "all" ? undefined : rating,
-        mediaType: mediaType === "all" ? undefined : mediaType,
-      },
-    }),
-    [tags, aiFilter, rating, mediaType]
+  const selectedPosts = useMemo(
+    () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
+    [allPosts, selectedIds]
   );
-  const {
-    downloadAll,
-    cancel,
-    pause,
-    resume,
-    isDownloading: isDownloadingAll,
-    isPaused,
-    progress: downloadAllProgress,
-    canDownload,
-    totalCount: downloadTotalCount,
-  } = useDownloadAllWithFilters(fetchParams);
 
   // Create stable List and Item components with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
@@ -362,10 +356,33 @@ export const Favorites = () => {
     [hasNextPage, isFetchingNextPage, fetchNextPage]
   );
 
+  const handleBulkRemove = useCallback(
+    async (posts: Post[]) => {
+      const failedPostIds: number[] = [];
+      for (const post of posts) {
+        if (!post.isFavorited) {
+          continue;
+        }
+        try {
+          await window.api.togglePostFavorite(post.id);
+        } catch {
+          failedPostIds.push(post.id);
+        }
+      }
+      await queryClient.invalidateQueries({ queryKey: ["posts", "favorites"] });
+      if (failedPostIds.length > 0) {
+        log.error(
+          `[Favorites] Bulk remove failed for ${failedPostIds.length} posts: ${failedPostIds.join(", ")}`
+        );
+      }
+    },
+    [queryClient]
+  );
+
   return (
     <div className="flex flex-col h-full -m-6 bg-background text-foreground">
       {/* Header */}
-      <div className="flex z-[5] justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+      <div className="flex z-[5] items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-4 items-center">
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
@@ -375,25 +392,29 @@ export const Favorites = () => {
             {allPosts.length > 0 && (
               <div className="flex gap-2 text-xs text-muted-foreground">
                 <span className="text-sm font-medium text-muted-foreground">
-                  {downloadTotalCount || allPosts.length}{" "}
-                  {(downloadTotalCount || allPosts.length) === 1 ? "post" : "posts"}
-                  {!downloadTotalCount && hasNextPage ? " +" : ""}
+                  {allPosts.length} {allPosts.length === 1 ? "post" : "posts"}
                 </span>
               </div>
             )}
           </div>
         </div>
-        <DownloadAllButton
-          onClick={downloadAll}
-          onCancel={cancel}
-          onPause={pause}
-          onResume={resume}
-          isDownloading={isDownloadingAll}
-          isPaused={isPaused}
-          progress={downloadAllProgress}
-          canDownload={canDownload || allPosts.length > 0}
-          totalLabel={downloadTotalCount || allPosts.length}
-        />
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            type="button"
+            variant={isBulkMode ? "default" : "outline"}
+            size="icon"
+            aria-label="Toggle bulk selection mode"
+            onClick={() => {
+              if (isBulkMode) {
+                deactivateBulkMode();
+                return;
+              }
+              activateBulkMode();
+            }}
+          >
+            <CheckSquare className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Grid Content */}
@@ -420,6 +441,7 @@ export const Favorites = () => {
                       post={post}
                       onClick={() => handlePostClick(index)}
                       preserveAspect={false}
+                      context="favorites"
                     />
                   </div>
                 ))}
@@ -459,6 +481,7 @@ export const Favorites = () => {
                     key={getPostCardKey(post)}
                     post={post}
                     onClick={() => handlePostClick(index)}
+                    context="favorites"
                   />
                 );
               }}
@@ -466,6 +489,21 @@ export const Favorites = () => {
           )
         )}
       </div>
+      <BulkActionBar
+        selectedPosts={selectedPosts}
+        onRemoveSelected={handleBulkRemove}
+        onSelectAll={() => {
+          const selectableIds = allPosts.map((post) => getBulkSelectId(post));
+          const isAllSelected =
+            selectableIds.length > 0 &&
+            selectableIds.every((id) => selectedIds.has(id));
+          if (isAllSelected) {
+            clearSelection();
+            return;
+          }
+          selectAll(selectableIds);
+        }}
+      />
     </div>
   );
 };

@@ -66,9 +66,12 @@ export const IPC_CHANNELS = {
     CREATE: "db:create-backup",
     RESTORE: "db:restore-backup",
     INTEGRITY_CHECK: "backup:integrity-check",
+    SET_SCHEDULE: "backup:setSchedule",
+    GET_SCHEDULE: "backup:getSchedule",
   },
   UPDATES: {
     GET_UNREAD_COUNT: "updates:getUnreadCount",
+    GET_TOTAL_UNREAD_COUNT: "updates:getTotalUnreadCount",
     MARK_ALL_SEEN: "updates:markAllSeen",
   },
   UPDATER: {
@@ -105,5 +108,10 @@ export const IPC_CHANNELS = {
   },
   VIDEO_PROXY: {
     GET_URL: "video-proxy:get-url",
+  },
+  BLACKLIST: {
+    GET_ALL: "blacklist:getAll",
+    ADD: "blacklist:add",
+    REMOVE: "blacklist:remove",
   },
 } as const;

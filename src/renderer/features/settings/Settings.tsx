@@ -6,6 +6,7 @@ import { SettingsSyncTab } from "./SettingsSyncTab";
 import { SettingsAppearanceTab } from "./SettingsAppearanceTab";
 import { SettingsBackupTab } from "./SettingsBackupTab";
 import { SettingsAccountTab } from "./SettingsAccountTab";
+import { SettingsBlacklistTab } from "./SettingsBlacklistTab";
 import { useTheme } from "../../hooks/useTheme";
 
 const STATUS_FEEDBACK_TIMEOUT_MS = 5000;
@@ -15,8 +16,8 @@ type StatusTimerKey =
   | "restore"
   | "integrity"
   | "proxy"
-  | "manual-sync"
   | "account";
+type AutoBackupInterval = "never" | "daily" | "weekly";
 
 export const Settings = () => {
   const { theme, setTheme, isSaving: isThemeSaving } = useTheme();
@@ -45,12 +46,10 @@ export const Settings = () => {
   const [autoSyncOnStartup, setAutoSyncOnStartup] = useState(false);
   const [syncIntervalMinutes, setSyncIntervalMinutes] = useState("0");
   const [backupRetention, setBackupRetention] = useState("5");
+  const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>("never");
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [proxyStatus, setProxyStatus] = useState<"idle" | "success" | "error">("idle");
-  const [isManualSyncRunning, setIsManualSyncRunning] = useState(false);
-  const [manualSyncStatus, setManualSyncStatus] = useState<"idle" | "success" | "error">("idle");
-  const [lastSyncStatusText, setLastSyncStatusText] = useState("Last sync: not started yet");
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
@@ -89,6 +88,14 @@ export const Settings = () => {
     window.api.getDatabaseLocation().then((location) => {
       setDatabaseLocation(location);
     });
+    window.api
+      .getBackupSchedule()
+      .then((interval) => {
+        setAutoBackupInterval(interval);
+      })
+      .catch((error) => {
+        log.error("[Settings] Failed to load backup schedule:", error);
+      });
     return () => {
       const activeTimers = Object.values(timersRef);
       for (const timerId of activeTimers) {
@@ -299,28 +306,6 @@ export const Settings = () => {
     }
   };
 
-  const handleManualSync = async (): Promise<void> => {
-    setIsManualSyncRunning(true);
-    setManualSyncStatus("idle");
-    try {
-      const result = await window.api.syncAll();
-      if (result) {
-        setManualSyncStatus("success");
-        setLastSyncStatusText(`Last sync: ${new Date().toLocaleString()}`);
-        scheduleStatusReset("manual-sync", () => setManualSyncStatus("idle"));
-      } else {
-        setManualSyncStatus("error");
-        scheduleStatusReset("manual-sync", () => setManualSyncStatus("idle"));
-      }
-    } catch (error) {
-      log.error("[Settings] Failed to run manual sync:", error);
-      setManualSyncStatus("error");
-      scheduleStatusReset("manual-sync", () => setManualSyncStatus("idle"));
-    } finally {
-      setIsManualSyncRunning(false);
-    }
-  };
-
   const parseBackupRetention = (value: string): number | null => {
     if (value.trim().length === 0) {
       return null;
@@ -360,6 +345,22 @@ export const Settings = () => {
     void saveBackupRetention(String(normalized));
   };
 
+  const handleAutoBackupIntervalChange = async (
+    value: AutoBackupInterval
+  ): Promise<void> => {
+    const previousValue = autoBackupInterval;
+    setAutoBackupInterval(value);
+    try {
+      const isSaved = await window.api.setBackupSchedule(value);
+      if (!isSaved) {
+        setAutoBackupInterval(previousValue);
+      }
+    } catch (error) {
+      log.error("[Settings] Failed to save auto-backup schedule:", error);
+      setAutoBackupInterval(previousValue);
+    }
+  };
+
   const handleSaveApiKey = async (): Promise<void> => {
     setAccountStatus("idle");
     try {
@@ -397,6 +398,7 @@ export const Settings = () => {
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="backup">Backup</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -437,17 +439,11 @@ export const Settings = () => {
           <SettingsSyncTab
             autoSyncOnStartup={autoSyncOnStartup}
             syncIntervalMinutes={syncIntervalMinutes}
-            isManualSyncRunning={isManualSyncRunning}
-            manualSyncStatus={manualSyncStatus}
-            lastSyncStatusText={lastSyncStatusText}
             onAutoSyncChange={(checked) => {
               void handleAutoSyncOnStartupChange(checked);
             }}
             onSyncIntervalChange={(value) => {
               void handleSyncIntervalChange(value);
-            }}
-            onManualSync={() => {
-              void handleManualSync();
             }}
           />
         </TabsContent>
@@ -472,6 +468,7 @@ export const Settings = () => {
             restoreStatus={restoreStatus}
             integrityResult={integrityResult}
             backupRetention={backupRetention}
+            autoBackupInterval={autoBackupInterval}
             onBackup={() => {
               void handleBackup();
             }}
@@ -483,6 +480,9 @@ export const Settings = () => {
             }}
             onBackupRetentionChange={handleBackupRetentionChange}
             onBackupRetentionBlur={handleBackupRetentionBlur}
+            onAutoBackupIntervalChange={(value) => {
+              void handleAutoBackupIntervalChange(value);
+            }}
           />
         </TabsContent>
 
@@ -500,6 +500,10 @@ export const Settings = () => {
               void handleSaveApiKey();
             }}
           />
+        </TabsContent>
+
+        <TabsContent value="blacklist">
+          <SettingsBlacklistTab />
         </TabsContent>
       </Tabs>
     </section>
