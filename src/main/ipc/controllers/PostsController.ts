@@ -41,6 +41,7 @@ import { getProvider, type ProviderId } from "../../providers";
 import { safeStorage } from "electron";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { ShadowInsertRequestSchema } from "../../../shared/schemas/shadow-insert";
+import { IdSchema } from "../../../shared/schemas/ipc";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -219,7 +220,7 @@ export class PostsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([IdSchema]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.resetPostCache.bind(this) as (
         event: IpcMainInvokeEvent,

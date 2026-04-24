@@ -21,6 +21,7 @@ import {
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
 import { AddArtistSchema, type AddArtistRequest } from "../../../shared/schemas/artist";
+import { IdSchema } from "../../../shared/schemas/ipc";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -83,7 +84,7 @@ export class ArtistsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.DB.DELETE_ARTIST,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([IdSchema]),
       this.deleteArtist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]

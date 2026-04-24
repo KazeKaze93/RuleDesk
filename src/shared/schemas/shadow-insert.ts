@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { IdSchema } from "./ipc";
 
 /**
  * Shadow Insert Request Schema
@@ -7,7 +8,7 @@ import { z } from "zod";
  * Main process will fetch full post data from API to ensure data integrity.
  */
 export const ShadowInsertRequestSchema = z.object({
-  postId: z.number().int().positive(),
+  postId: IdSchema,
   provider: z.enum(["rule34", "gelbooru"]),
 }).strict();
 

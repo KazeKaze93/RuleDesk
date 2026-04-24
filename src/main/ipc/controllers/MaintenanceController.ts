@@ -19,6 +19,7 @@ import { maintenanceQueue } from "../../db/maintenance-queue";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import { BACKUP_FILE_PREFIX, getDatabasePaths } from "../../db/paths";
+import { IdSchema } from "../../../shared/schemas/ipc";
 
 const DEFAULT_BACKUP_RETENTION = 5;
 const MIN_BACKUP_RETENTION = 1;
@@ -86,7 +87,7 @@ export class MaintenanceController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.SYNC.REPAIR,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([IdSchema]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.repairArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
     );
