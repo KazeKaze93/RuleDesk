@@ -2,6 +2,8 @@ import { resolve } from "path";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 export default defineConfig({
   main: {
     resolve: {
@@ -12,6 +14,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       sourcemap: true,
+      watch: isDevelopment ? {} : undefined,
       rollupOptions: {
         input: {
           main: resolve(__dirname, "src/main/main.ts"),
@@ -34,6 +37,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       sourcemap: true,
+      watch: isDevelopment ? {} : undefined,
       lib: {
         entry: "src/main/bridge.ts",
         formats: ["cjs"],
