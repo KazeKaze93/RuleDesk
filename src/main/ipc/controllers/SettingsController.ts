@@ -74,6 +74,7 @@ function mapSettingsToIpc(
     theme: (dbSettings.theme as ThemePreference) || "system",
     autoSyncOnStartup: !!dbSettings.autoSyncOnStartup,
     syncIntervalMinutes: dbSettings.syncIntervalMinutes ?? 0,
+    backupRetention: dbSettings.backupRetention ?? 5,
   };
 }
 
@@ -285,6 +286,8 @@ export class SettingsController extends BaseController {
             data.autoSyncOnStartup ?? existing.autoSyncOnStartup ?? false;
           const finalSyncIntervalMinutes =
             data.syncIntervalMinutes ?? existing.syncIntervalMinutes ?? 0;
+          const finalBackupRetention =
+            data.backupRetention ?? existing.backupRetention ?? 5;
 
           tx.update(settings)
             .set({
@@ -298,6 +301,7 @@ export class SettingsController extends BaseController {
               theme: existing.theme ?? "system",
               autoSyncOnStartup: finalAutoSyncOnStartup,
               syncIntervalMinutes: finalSyncIntervalMinutes,
+              backupRetention: finalBackupRetention,
             })
             .where(eq(settings.id, targetId))
             .run();
@@ -316,6 +320,7 @@ export class SettingsController extends BaseController {
               theme: "system",
               autoSyncOnStartup: data.autoSyncOnStartup ?? false,
               syncIntervalMinutes: data.syncIntervalMinutes ?? 0,
+              backupRetention: data.backupRetention ?? 5,
             })
             .run();
         }

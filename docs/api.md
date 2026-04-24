@@ -498,6 +498,7 @@ type IpcSettings = {
   theme: "system" | "light" | "dark";
   autoSyncOnStartup: boolean;
   syncIntervalMinutes: number;
+  backupRetention: number;
 };
 ```
 
@@ -576,6 +577,7 @@ Saves settings to the database. Supports partial updates (credentials, sync opti
 - `creds.proxyUrl?: string | null` - Optional outbound proxy URL
 - `creds.autoSyncOnStartup?: boolean` - Auto-sync startup toggle
 - `creds.syncIntervalMinutes?: number` - Periodic sync interval in minutes
+- `creds.backupRetention?: number` - Number of backups to keep (1..20)
 
 **Returns:** `Promise<boolean>`
 
@@ -1272,6 +1274,7 @@ if (result.success) {
 **IPC Channel:** `db:create-backup`
 
 **Note:** The backup file is created in the user data directory. The file explorer will open to show the backup location.
+After each successful backup, old backup files are pruned and only the most recent `backupRetention` files are kept.
 
 ---
 

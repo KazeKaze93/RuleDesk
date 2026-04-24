@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
+import { Input } from "../../components/ui/input";
 
 interface SettingsBackupTabProps {
   databaseLocation: string;
@@ -11,9 +12,12 @@ interface SettingsBackupTabProps {
   backupStatus: "idle" | "success" | "error";
   restoreStatus: "idle" | "success" | "error";
   integrityResult: { ok: boolean; details: string } | null;
+  backupRetention: string;
   onBackup: () => void;
   onRestore: () => void;
   onIntegrityCheck: () => void;
+  onBackupRetentionChange: (value: string) => void;
+  onBackupRetentionBlur: () => void;
 }
 
 export const SettingsBackupTab = ({
@@ -24,9 +28,12 @@ export const SettingsBackupTab = ({
   backupStatus,
   restoreStatus,
   integrityResult,
+  backupRetention,
   onBackup,
   onRestore,
   onIntegrityCheck,
+  onBackupRetentionChange,
+  onBackupRetentionBlur,
 }: SettingsBackupTabProps) => {
   return (
     <Card>
@@ -105,9 +112,19 @@ export const SettingsBackupTab = ({
 
         <section className="space-y-1">
           <p className="text-sm font-medium">Retention</p>
-          <p className="text-sm text-muted-foreground">
-            Manual backups are retained until you delete them.
-          </p>
+          <label className="space-y-2">
+            <span className="text-sm text-muted-foreground">Keep last N backups</span>
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={backupRetention}
+              onChange={(event) => {
+                onBackupRetentionChange(event.target.value);
+              }}
+              onBlur={onBackupRetentionBlur}
+            />
+          </label>
         </section>
       </CardContent>
     </Card>

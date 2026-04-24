@@ -44,6 +44,7 @@ export const Settings = () => {
   const [databaseLocation, setDatabaseLocation] = useState<string>("");
   const [autoSyncOnStartup, setAutoSyncOnStartup] = useState(false);
   const [syncIntervalMinutes, setSyncIntervalMinutes] = useState("0");
+  const [backupRetention, setBackupRetention] = useState("5");
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [proxyStatus, setProxyStatus] = useState<"idle" | "success" | "error">("idle");
@@ -78,6 +79,9 @@ export const Settings = () => {
       }
       if (s?.syncIntervalMinutes !== undefined) {
         setSyncIntervalMinutes(String(s.syncIntervalMinutes));
+      }
+      if (s?.backupRetention !== undefined) {
+        setBackupRetention(String(s.backupRetention));
       }
       setProxyUrl(s?.proxyUrl ?? null);
       setHasApiKey(s?.hasApiKey ?? false);
@@ -317,6 +321,45 @@ export const Settings = () => {
     }
   };
 
+  const parseBackupRetention = (value: string): number | null => {
+    if (value.trim().length === 0) {
+      return null;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 20) {
+      return null;
+    }
+
+    return parsed;
+  };
+
+  const saveBackupRetention = async (value: string): Promise<void> => {
+    const parsed = parseBackupRetention(value);
+    if (parsed === null) {
+      return;
+    }
+
+    try {
+      await window.api.saveSettings({ backupRetention: parsed });
+      setBackupRetention(String(parsed));
+    } catch (error) {
+      log.error("[Settings] Failed to save backup retention:", error);
+    }
+  };
+
+  const handleBackupRetentionChange = (value: string): void => {
+    setBackupRetention(value);
+    void saveBackupRetention(value);
+  };
+
+  const handleBackupRetentionBlur = (): void => {
+    const parsed = parseBackupRetention(backupRetention);
+    const normalized = parsed === null ? 5 : parsed;
+    setBackupRetention(String(normalized));
+    void saveBackupRetention(String(normalized));
+  };
+
   const handleSaveApiKey = async (): Promise<void> => {
     setAccountStatus("idle");
     try {
@@ -428,6 +471,7 @@ export const Settings = () => {
             backupStatus={backupStatus}
             restoreStatus={restoreStatus}
             integrityResult={integrityResult}
+            backupRetention={backupRetention}
             onBackup={() => {
               void handleBackup();
             }}
@@ -437,6 +481,8 @@ export const Settings = () => {
             onIntegrityCheck={() => {
               void handleIntegrityCheck();
             }}
+            onBackupRetentionChange={handleBackupRetentionChange}
+            onBackupRetentionBlur={handleBackupRetentionBlur}
           />
         </TabsContent>
 

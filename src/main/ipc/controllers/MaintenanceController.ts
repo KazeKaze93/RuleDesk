@@ -5,6 +5,7 @@ import fs from "fs";
 import Database from "better-sqlite3";
 import log from "electron-log";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { IPC_CHANNELS } from "../channels";
@@ -15,10 +16,13 @@ import {
   initializeDatabase,
 } from "../../db/client";
 import { maintenanceQueue } from "../../db/maintenance-queue";
+import { settings, SETTINGS_ID } from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import { BACKUP_FILE_PREFIX, getDatabasePaths } from "../../db/paths";
 
-const MAX_BACKUPS_TO_KEEP = 5;
+const DEFAULT_BACKUP_RETENTION = 5;
+const MIN_BACKUP_RETENTION = 1;
+const MAX_BACKUP_RETENTION = 20;
 
 /**
  * IPC controllers resolve the DB via DI. After closeDatabase + initializeDatabase the
@@ -47,6 +51,24 @@ export class MaintenanceController extends BaseController {
    */
   public setMainWindow(window: BrowserWindow): void {
     this.mainWindow = window;
+  }
+
+  private getBackupRetention(): number {
+    const db = container.resolve(DI_TOKENS.DB);
+    const currentSettings = db
+      .select({
+        backupRetention: settings.backupRetention,
+      })
+      .from(settings)
+      .where(eq(settings.id, SETTINGS_ID))
+      .limit(1)
+      .all()[0];
+
+    const retention = currentSettings?.backupRetention ?? DEFAULT_BACKUP_RETENTION;
+    return Math.max(
+      MIN_BACKUP_RETENTION,
+      Math.min(MAX_BACKUP_RETENTION, retention)
+    );
   }
 
   private getSyncService(): SyncService {
@@ -215,23 +237,28 @@ export class MaintenanceController extends BaseController {
 
   private async cleanupOldBackups(backupDir: string): Promise<void> {
     try {
+      const backupRetention = this.getBackupRetention();
       const entries = await fs.promises.readdir(backupDir);
+      const escapedBackupPrefix = BACKUP_FILE_PREFIX.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+      );
+      const backupFileRegex = new RegExp(`^${escapedBackupPrefix}-.+\\.db$`);
 
-      // Find all backup files matching the naming convention
+      // Sort ascending so oldest files come first; we keep the newest N.
       const backupFiles = entries
-        .filter((name) => name.startsWith(BACKUP_FILE_PREFIX) && name.endsWith(".db"))
+        .filter((name) => backupFileRegex.test(name))
         .map((name) => ({
           name,
           fullPath: path.join(backupDir, name),
         }))
-        // Sort descending by filename — ISO timestamp in name means lexicographic = chronological
-        .sort((a, b) => b.name.localeCompare(a.name));
+        .sort((a, b) => a.name.localeCompare(b.name));
 
-      if (backupFiles.length <= MAX_BACKUPS_TO_KEEP) {
+      if (backupFiles.length <= backupRetention) {
         return; // Nothing to clean up
       }
 
-      const toDelete = backupFiles.slice(MAX_BACKUPS_TO_KEEP);
+      const toDelete = backupFiles.slice(0, backupFiles.length - backupRetention);
 
       for (const file of toDelete) {
         try {
@@ -243,7 +270,9 @@ export class MaintenanceController extends BaseController {
         }
       }
 
-      log.info(`[MaintenanceController] Retention cleanup: kept ${MAX_BACKUPS_TO_KEEP}, deleted ${toDelete.length}`);
+      log.info(
+        `[MaintenanceController] Retention cleanup: kept ${backupRetention}, deleted ${toDelete.length}`
+      );
     } catch (error) {
       // Non-fatal: retention cleanup failure should never break backup creation
       log.warn("[MaintenanceController] Backup retention cleanup failed:", error);
