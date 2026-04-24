@@ -38,6 +38,8 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "npm run db:rebuild:node && vitest run tests/integration",
     "test:integration:watch": "npm run db:rebuild:node && vitest tests/integration",
+    "test:integration:electron-node": "cross-env ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs run tests/integration",
+    "test:smoke:blacklist:browse": "cross-env ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs run tests/integration/controllers/SearchController.blacklist.test.ts",
     "test:e2e": "cross-env NODE_ENV=test playwright test",
     "test:e2e:headless": "cross-env NODE_ENV=test playwright test",
     "test:verify": "npm run db:rebuild:all && npm run test:run",
