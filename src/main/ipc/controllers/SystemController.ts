@@ -24,16 +24,16 @@ export class SystemController extends BaseController {
     this.handle(IPC_CHANNELS.APP.GET_VERSION, z.tuple([]), this.getAppVersion.bind(this));
     this.handle(IPC_CHANNELS.APP.GET_DB_LOCATION, z.tuple([]), this.getDatabaseLocation.bind(this));
     this.handle(
-      "app:get-icon-path",
+      IPC_CHANNELS.APP.GET_ICON_PATH,
       z.tuple([z.enum(["light", "dark"]).optional()]),
       this.getIconPath.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
       ) => Promise<unknown>
     );
-    this.handle("app:quit", z.tuple([]), this.quitApp.bind(this));
+    this.handle(IPC_CHANNELS.APP.QUIT, z.tuple([]), this.quitApp.bind(this));
     this.handle(
-      "app:write-to-clipboard",
+      IPC_CHANNELS.APP.WRITE_CLIPBOARD,
       z.tuple([z.string().min(1)]),
       // Type assertion is safe: BaseController validates args with Zod schema before calling handler
       this.writeToClipboard.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>

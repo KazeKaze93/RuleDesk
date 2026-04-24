@@ -53,10 +53,13 @@ export function normalizePostToPostData(post: Post): PostData {
   // Post.tags is always string in DB schema, but may be array in API responses
   // This handles both cases safely
   let tags: string | undefined;
-  if (typeof post.tags === "string") {
-    tags = post.tags;
-  } else if (Array.isArray(post.tags)) {
-    tags = (post.tags as string[]).join(" ");
+  const tagField: unknown = post.tags;
+  if (typeof tagField === "string") {
+    tags = tagField;
+  } else if (Array.isArray(tagField)) {
+    if (tagField.every((t): t is string => typeof t === "string")) {
+      tags = tagField.join(" ");
+    }
   }
 
   return {

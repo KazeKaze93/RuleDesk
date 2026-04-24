@@ -1,10 +1,18 @@
 import { ShieldAlert } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { Button } from "../ui/button";
 import { useSafeModeStore } from "../../store/safeModeStore";
 import { cn } from "../../lib/utils";
 
 export const PanicButton = () => {
-  const { panicMode, setSafeMode, enablePanicMode, disablePanicMode } = useSafeModeStore();
+  const { panicMode, setSafeMode, enablePanicMode, disablePanicMode } = useSafeModeStore(
+    useShallow((s) => ({
+      panicMode: s.panicMode,
+      setSafeMode: s.setSafeMode,
+      enablePanicMode: s.enablePanicMode,
+      disablePanicMode: s.disablePanicMode,
+    })),
+  );
 
   const handleToggle = () => {
     if (panicMode) {

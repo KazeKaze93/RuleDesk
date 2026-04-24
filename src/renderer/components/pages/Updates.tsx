@@ -644,7 +644,7 @@ export const Updates = () => {
             </div>
           ) : (
             <VirtuosoGrid
-              style={{ height: "100%" }}
+              className="h-full"
               totalCount={allPosts.length}
               endReached={() => {
                 if (hasNextPage && !isFetchingNextPage) {

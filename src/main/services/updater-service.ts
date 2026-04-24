@@ -2,6 +2,7 @@ import pkg from "electron-updater";
 const { autoUpdater } = pkg;
 import { logger } from "../lib/logger";
 import { BrowserWindow, ipcMain, shell } from "electron";
+import { IPC_CHANNELS } from "../ipc/channels";
 
 const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
 
@@ -33,7 +34,7 @@ export class UpdaterService {
     autoUpdater.on("update-available", (info) => {
       logger.info(`UPDATER: Update available: ${info.version}`);
       // Отправляем версию UI, но не качаем
-      this.sendPayload("updater:status", {
+      this.sendPayload(IPC_CHANNELS.UPDATER.STATUS, {
         status: "available",
         version: info.version,
         isPortable: isPortable,
@@ -51,7 +52,7 @@ export class UpdaterService {
     });
 
     autoUpdater.on("download-progress", (progressObj) => {
-      this.sendPayload("updater:progress", progressObj.percent);
+      this.sendPayload(IPC_CHANNELS.UPDATER.PROGRESS, progressObj.percent);
     });
 
     autoUpdater.on("update-downloaded", (info) => {
@@ -59,11 +60,11 @@ export class UpdaterService {
       this.sendStatus("downloaded");
     });
 
-    ipcMain.handle("app:check-for-updates", async () => {
+    ipcMain.handle(IPC_CHANNELS.APP.CHECK_FOR_UPDATES, async () => {
       return this.checkForUpdates();
     });
 
-    ipcMain.handle("app:start-download", async () => {
+    ipcMain.handle(IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD, async () => {
       if (isPortable) {
         logger.info("UPDATER: Portable detected. Opening GitHub releases.");
         await shell.openExternal(
@@ -76,7 +77,7 @@ export class UpdaterService {
       autoUpdater.downloadUpdate();
     });
 
-    ipcMain.handle("app:quit-and-install", () => {
+    ipcMain.handle(IPC_CHANNELS.APP.QUIT_AND_INSTALL, () => {
       autoUpdater.quitAndInstall();
     });
   }
@@ -88,7 +89,7 @@ export class UpdaterService {
   }
 
   private sendStatus(status: string, message?: string) {
-    this.sendPayload("updater:status", { status, message });
+    this.sendPayload(IPC_CHANNELS.UPDATER.STATUS, { status, message });
   }
 
   public async checkForUpdates() {

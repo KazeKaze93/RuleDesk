@@ -12,6 +12,7 @@ export interface AppLogoProps extends React.ImgHTMLAttributes<HTMLImageElement> 
  */
 export const AppLogo = ({ className, ...props }: AppLogoProps) => {
   const [iconPath, setIconPath] = useState<string>("");
+  const [loadError, setLoadError] = useState(false);
   const isLoadingRef = useRef(false);
   const [effectiveTheme, setEffectiveTheme] = useState<"light" | "dark">(
     document.documentElement.classList.contains("dark") ? "dark" : "light"
@@ -74,9 +75,7 @@ export const AppLogo = ({ className, ...props }: AppLogoProps) => {
     loadIconPath();
   }, [effectiveTheme]);
 
-  // Show placeholder while loading or if failed
   if (!iconPath) {
-    // Return a placeholder div with same dimensions to prevent layout shift
     return (
       <div
         className={cn("flex items-center justify-center bg-muted/20 rounded", className)}
@@ -87,26 +86,30 @@ export const AppLogo = ({ className, ...props }: AppLogoProps) => {
     );
   }
 
+  if (loadError) {
+    return (
+      <div
+        className={cn("flex items-center justify-center bg-muted/20 rounded", className)}
+        aria-label="Logo failed to load"
+        role="img"
+      />
+    );
+  }
+
   return (
     <img
       src={iconPath}
       alt="RuleDesk"
       className={cn(
-        "object-contain",
+        "object-contain [image-rendering:auto]",
         "select-none",
         "pointer-events-none",
         "drop-shadow-sm",
         className
       )}
-      style={{
-        imageRendering: "auto",
-        WebkitImageRendering: "-webkit-optimize-contrast",
-        msImageRendering: "auto",
-      } as React.CSSProperties}
-      onError={(e) => {
+      onError={() => {
         log.error("[AppLogo] Image load error");
-        // Hide broken image
-        e.currentTarget.style.display = "none";
+        setLoadError(true);
       }}
       {...props}
     />

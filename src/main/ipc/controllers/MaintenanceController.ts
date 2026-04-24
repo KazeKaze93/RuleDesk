@@ -124,7 +124,7 @@ export class MaintenanceController extends BaseController {
       syncService.syncAllArtists().catch((error) => {
         log.error("[MaintenanceController] Critical background sync error:", error);
         syncService.sendEvent(
-          "sync:error",
+          IPC_CHANNELS.SYNC.ERROR,
           error instanceof Error ? error.message : "Sync failed."
         );
       });

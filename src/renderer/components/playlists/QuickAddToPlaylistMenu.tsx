@@ -49,7 +49,7 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   const setEffectiveIsMenuOpen = onOpenChange ?? setIsMenuOpen;
 
   // Fetch all playlists - only when menu is opened (lazy loading)
-  const { data: allPlaylists = [], isLoading } = usePlaylists({ enabled: isMenuOpen });
+  const { data: allPlaylists = [], isLoading } = usePlaylists({ enabled: effectiveIsMenuOpen });
   
   // Filter out smart playlists - only show manual playlists
   const playlists = allPlaylists.filter((p: Playlist) => !p.isSmart);
@@ -63,16 +63,16 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
       }
       return await window.api.getPlaylistsContainingPost(postId);
     },
-    enabled: isMenuOpen && playlists.length > 0,
+    enabled: effectiveIsMenuOpen && playlists.length > 0,
   });
 
   // Sync selectedPlaylistIds with server data when it changes. Only sync when not fetching
   // to avoid overwriting optimistic updates during refetch after toggle.
   useEffect(() => {
-    if (isMenuOpen && !isFetching) {
+    if (effectiveIsMenuOpen && !isFetching) {
       setSelectedPlaylistIds(new Set(existingPlaylistIds));
     }
-  }, [isMenuOpen, isFetching, existingPlaylistIds]);
+  }, [effectiveIsMenuOpen, isFetching, existingPlaylistIds]);
 
   const invalidatePostPlaylists = (effectivePostId: number, playlistIds: number[]) => {
     queryClient.invalidateQueries({ queryKey: ["playlist-entries", effectivePostId] });

@@ -10,6 +10,7 @@ import * as schema from "../db/schema";
 import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
 import { PAGE_SIZE, type BooruPost } from "../providers/types";
 import { isVideoUrl } from "@shared/utils/media";
+import { IPC_CHANNELS } from "../ipc/channels";
 
 // SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
 // Each post has ~12 fields for INSERT + ~6 for UPDATE in onConflictDoUpdate
@@ -222,7 +223,7 @@ export class SyncService {
     } catch (error: unknown) {
       if (isCredentialDecryptionError(error)) {
         this.sendEvent(
-          "sync:error",
+          IPC_CHANNELS.SYNC.ERROR,
           "Credentials invalid. Please re-enter API key in settings."
         );
         logger.warn(
@@ -239,7 +240,7 @@ export class SyncService {
     if (this.isSyncing) return;
     this.isSyncing = true;
     logger.info("SyncService: Start Full Sync");
-    this.sendEvent("sync:start");
+    this.sendEvent(IPC_CHANNELS.SYNC.START);
 
     try {
       const db = getDb();
@@ -252,7 +253,7 @@ export class SyncService {
       } catch (error: unknown) {
         if (isCredentialDecryptionError(error)) {
           this.sendEvent(
-            "sync:error",
+            IPC_CHANNELS.SYNC.ERROR,
             "Credentials invalid. Please re-enter API key in settings."
           );
           logger.warn(
@@ -265,7 +266,7 @@ export class SyncService {
       if (!settingsData?.userId) throw new Error("No API credentials");
       for (const artist of artistsList) {
         try {
-          this.sendEvent("sync:progress", `Checking ${artist.name}...`);
+          this.sendEvent(IPC_CHANNELS.SYNC.PROGRESS, `Checking ${artist.name}...`);
           await this.syncArtist(artist, settingsData);
         } catch (error) {
           const errorMsg = axios.isAxiosError(error)
@@ -274,13 +275,13 @@ export class SyncService {
             ? error.message
             : "Unknown error";
           logger.error(`Sync error for ${artist.name}: ${errorMsg}`);
-          this.sendEvent("sync:error", `${artist.name}: ${errorMsg}`);
+          this.sendEvent(IPC_CHANNELS.SYNC.ERROR, `${artist.name}: ${errorMsg}`);
         }
       }
     } catch (error) {
       logger.error("Sync error", error);
       this.sendEvent(
-        "sync:error",
+        IPC_CHANNELS.SYNC.ERROR,
         error instanceof Error ? error.message : "Error"
       );
     } finally {
@@ -293,7 +294,7 @@ export class SyncService {
       } catch (e) {
         logger.warn("SyncService: WAL checkpoint failed", e);
       }
-      this.sendEvent("sync:end");
+      this.sendEvent(IPC_CHANNELS.SYNC.END);
     }
   }
 
@@ -311,7 +312,7 @@ export class SyncService {
       } catch (error: unknown) {
         if (isCredentialDecryptionError(error)) {
           this.sendEvent(
-            "sync:error",
+            IPC_CHANNELS.SYNC.ERROR,
             "Credentials invalid. Please re-enter API key in settings."
           );
           logger.warn(
@@ -323,7 +324,7 @@ export class SyncService {
       }
 
       if (artist && settingsData) {
-        this.sendEvent("sync:repair:start", artist.name);
+        this.sendEvent(IPC_CHANNELS.SYNC.REPAIR_START, artist.name);
         // Repair: reset lastPostId to 0 and sync posts with safety limit
         await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, MAX_PAGES_SAFETY_LIMIT);
       }
@@ -331,7 +332,7 @@ export class SyncService {
       logger.error("Repair error", e);
     } finally {
       this.isSyncing = false;
-      this.sendEvent("sync:repair:end");
+      this.sendEvent(IPC_CHANNELS.SYNC.REPAIR_END);
     }
   }
 
@@ -372,7 +373,7 @@ export class SyncService {
       // Fallback to rule34 instead of throwing - don't kill entire sync process
       providerId = "rule34";
       this.sendEvent(
-        "sync:error",
+        IPC_CHANNELS.SYNC.ERROR,
         `${artist.name}: Invalid provider, using Rule34 fallback`
       );
     } else {

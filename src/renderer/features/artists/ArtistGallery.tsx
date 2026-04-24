@@ -448,7 +448,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           </div>
         ) : (
           <VirtuosoGrid
-            style={{ height: "100%" }}
+            className="h-full"
             totalCount={allPosts.length}
             endReached={handleEndReached}
             increaseViewportBy={600}

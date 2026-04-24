@@ -85,3 +85,11 @@ export const DANGEROUS_URL_PROTOCOLS = [
   "ms-browser-extension:",
 ] as const;
 
+/**
+ * Browser window `CustomEvent` / `addEventListener` names used in the renderer
+ * (not IPC; keep names aligned with Main when dispatching the same string).
+ */
+export const RENDERER_WINDOW_EVENTS = {
+  OPEN_ONBOARDING: "app:open-onboarding",
+} as const;
+

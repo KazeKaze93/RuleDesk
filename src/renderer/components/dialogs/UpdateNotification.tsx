@@ -101,10 +101,20 @@ export const UpdateNotification: React.FC = () => {
 
       {status === "downloading" && (
         <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-          <div
-            className="h-full bg-blue-500 transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
-          />
+          <svg
+            className="block h-1.5 w-full"
+            viewBox="0 0 100 1"
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            <rect
+              x={0}
+              y={0}
+              width={progress}
+              height={1}
+              className="fill-blue-500"
+            />
+          </svg>
         </div>
       )}
 

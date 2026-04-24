@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, X } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
+import { RENDERER_WINDOW_EVENTS } from "@shared/constants";
 
 const CREDENTIALS_KEYWORD = "credentials";
 
@@ -28,7 +29,7 @@ export const CredentialsErrorToast = () => {
   const handleClose = () => setVisible(false);
 
   const handleOpenOnboarding = () => {
-    window.dispatchEvent(new Event("app:open-onboarding"));
+    window.dispatchEvent(new Event(RENDERER_WINDOW_EVENTS.OPEN_ONBOARDING));
     setVisible(false);
   };
 

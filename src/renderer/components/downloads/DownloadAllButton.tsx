@@ -58,10 +58,22 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
                 className="relative overflow-hidden pr-16"
                 disabled
               >
-                <div
-                  className="absolute inset-0 bg-primary/20 transition-all"
-                  style={{ width: `${pct}%` }}
-                />
+                <div className="absolute inset-0">
+                  <svg
+                    className="h-full w-full"
+                    viewBox="0 0 100 1"
+                    preserveAspectRatio="none"
+                    aria-hidden
+                  >
+                    <rect
+                      x={0}
+                      y={0}
+                      width={pct}
+                      height={1}
+                      className="fill-primary/20"
+                    />
+                  </svg>
+                </div>
                 <span className="relative flex items-center gap-2">
                   {isPaused ? (
                     <Pause className="w-4 h-4" />
@@ -105,10 +117,20 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
       </div>
       {isDownloading && progress.total > 0 && (
         <div className="h-1 w-full max-w-[200px] rounded-full bg-muted overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${pct}%` }}
-          />
+          <svg
+            className="block h-1 w-full"
+            viewBox="0 0 100 1"
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            <rect
+              x={0}
+              y={0}
+              width={pct}
+              height={1}
+              className="fill-primary"
+            />
+          </svg>
         </div>
       )}
     </div>

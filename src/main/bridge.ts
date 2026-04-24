@@ -201,18 +201,18 @@ const ipcBridge: IpcBridge = {
   getAppVersion: () => ipcRenderer.invoke(IPC_CHANNELS.APP.GET_VERSION),
   getDatabaseLocation: () => ipcRenderer.invoke(IPC_CHANNELS.APP.GET_DB_LOCATION),
   getIconPath: (theme) => {
-    return ipcRenderer.invoke("app:get-icon-path", theme);
+    return ipcRenderer.invoke(IPC_CHANNELS.APP.GET_ICON_PATH, theme);
   },
 
   writeToClipboard: (text) =>
-    ipcRenderer.invoke("app:write-to-clipboard", text),
+    ipcRenderer.invoke(IPC_CHANNELS.APP.WRITE_CLIPBOARD, text),
 
   // Search remote tags via specified provider (defaults to rule34)
   searchRemoteTags: (query, provider = "rule34") =>
-    ipcRenderer.invoke("api:search-remote-tags", query, provider),
+    ipcRenderer.invoke(IPC_CHANNELS.API.SEARCH_REMOTE, query, provider),
 
   searchBooru: (params) =>
-    ipcRenderer.invoke("booru:search", params),
+    ipcRenderer.invoke(IPC_CHANNELS.API.SEARCH_POSTS, params),
 
   resolveTags: (tags) =>
     ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS, tags),
@@ -227,7 +227,7 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE, tags, type),
 
   verifyCredentials: (providerId) =>
-    ipcRenderer.invoke("app:verify-creds", providerId),
+    ipcRenderer.invoke(IPC_CHANNELS.APP.VERIFY_CREDS, providerId),
 
   getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.GET),
   saveDownloadFolder: (path) =>
@@ -237,18 +237,18 @@ const ipcBridge: IpcBridge = {
   saveTheme: (theme) =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_THEME, theme),
   confirmLegal: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.CONFIRM_LEGAL),
-  logout: () => ipcRenderer.invoke("app:logout"),
+  logout: () => ipcRenderer.invoke(IPC_CHANNELS.APP.LOGOUT),
 
-  getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),
-  addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
-  deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
+  getTrackedArtists: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_ARTISTS),
+  addArtist: (artist) => ipcRenderer.invoke(IPC_CHANNELS.DB.ADD_ARTIST, artist),
+  deleteArtist: (id) => ipcRenderer.invoke(IPC_CHANNELS.DB.DELETE_ARTIST, id),
 
-  searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
+  searchArtists: (query) => ipcRenderer.invoke(IPC_CHANNELS.DB.SEARCH_TAGS, query),
 
   getArtistPosts: (params: GetPostsRequest) =>
-    ipcRenderer.invoke("db:get-posts", params),
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS, params),
   getArtistPostsCount: (params: GetPostsCountRequest) =>
-    ipcRenderer.invoke("db:get-posts-count", params),
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS_COUNT, params),
   getDownloadItems: (params: GetPostsRequest & { limit?: number }) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS, params),
   getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) =>
@@ -256,32 +256,32 @@ const ipcBridge: IpcBridge = {
   getStats: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_STATS),
   getExtendedStats: () => ipcRenderer.invoke(IPC_CHANNELS.STATS.GET_EXTENDED),
 
-  openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
+  openExternal: (url) => ipcRenderer.invoke(IPC_CHANNELS.APP.OPEN_EXTERNAL, url),
 
-  syncAll: () => ipcRenderer.invoke("db:sync-all"),
+  syncAll: () => ipcRenderer.invoke(IPC_CHANNELS.DB.SYNC_ALL),
 
   markPostAsViewed: (postId, postData) =>
-    ipcRenderer.invoke("db:mark-post-viewed", postId, postData),
+    ipcRenderer.invoke(IPC_CHANNELS.DB.MARK_VIEWED, postId, postData),
 
   togglePostFavorite: (postId, postData) =>
-    ipcRenderer.invoke("db:toggle-post-favorite", postId, postData),
+    ipcRenderer.invoke(IPC_CHANNELS.DB.TOGGLE_FAVORITE, postId, postData),
 
   shadowInsertPost: (request: ShadowInsertRequest) =>
-    ipcRenderer.invoke("db:shadow-insert-post", request),
+    ipcRenderer.invoke(IPC_CHANNELS.DB.SHADOW_INSERT_POST, request),
 
   togglePostViewed: (postId) =>
-    ipcRenderer.invoke("db:toggle-post-viewed", postId),
+    ipcRenderer.invoke(IPC_CHANNELS.DB.TOGGLE_POST_VIEWED, postId),
   markAllPostsAsViewed: () =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.MARK_ALL_VIEWED),
   getUpdatesUnreadCount: () =>
-    ipcRenderer.invoke("updates:getUnreadCount"),
+    ipcRenderer.invoke(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT),
   markAllUpdatesSeen: () =>
-    ipcRenderer.invoke("updates:markAllSeen"),
+    ipcRenderer.invoke(IPC_CHANNELS.UPDATES.MARK_ALL_SEEN),
 
-  resetPostCache: (postId) => ipcRenderer.invoke("db:reset-post-cache", postId),
+  resetPostCache: (postId) => ipcRenderer.invoke(IPC_CHANNELS.DB.RESET_POST_CACHE, postId),
 
   downloadFile: (url: string, filename: string) => {
-    return ipcRenderer.invoke("files:download", url, filename);
+    return ipcRenderer.invoke(IPC_CHANNELS.FILES.DOWNLOAD, url, filename);
   },
 
   downloadAll: (items: Array<{ url: string; filename: string }>) =>
@@ -301,13 +301,13 @@ const ipcBridge: IpcBridge = {
   saveDownloadSettings: (data) =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS, data),
   openFileInFolder: (path: string) =>
-    ipcRenderer.invoke("files:open-folder", path),
+    ipcRenderer.invoke(IPC_CHANNELS.FILES.OPEN_FOLDER, path),
 
   selectDownloadFolder: () =>
     ipcRenderer.invoke(IPC_CHANNELS.FILES.SELECT_DOWNLOAD_FOLDER),
 
   onDownloadProgress: (callback) => {
-    const channel = "files:download-progress";
+    const channel = IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS;
     const subscription = (_: IpcRendererEvent, data: DownloadProgressData) =>
       callback(data);
 
@@ -335,59 +335,65 @@ const ipcBridge: IpcBridge = {
   },
 
   repairArtist: (artistId) =>
-    ipcRenderer.invoke("sync:repair-artist", artistId),
+    ipcRenderer.invoke(IPC_CHANNELS.SYNC.REPAIR, artistId),
 
   // Updater Implementation
-  checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
-  quitAndInstall: () => ipcRenderer.invoke("app:quit-and-install"),
-  startDownload: () => ipcRenderer.invoke("app:start-download"),
+  checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.APP.CHECK_FOR_UPDATES),
+  quitAndInstall: () => ipcRenderer.invoke(IPC_CHANNELS.APP.QUIT_AND_INSTALL),
+  startDownload: () => ipcRenderer.invoke(IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD),
 
   onUpdateStatus: (callback) => {
+    const channel = IPC_CHANNELS.UPDATER.STATUS;
     const subscription = (_: IpcRendererEvent, data: UpdateStatusData) =>
       callback(data);
-    ipcRenderer.on("updater:status", subscription);
+    ipcRenderer.on(channel, subscription);
     return () => {
-      ipcRenderer.removeListener("updater:status", subscription);
+      ipcRenderer.removeListener(channel, subscription);
     };
   },
 
   onUpdateProgress: (callback) => {
+    const channel = IPC_CHANNELS.UPDATER.PROGRESS;
     const subscription = (_: IpcRendererEvent, percent: number) =>
       callback(percent);
-    ipcRenderer.on("updater:progress", subscription);
+    ipcRenderer.on(channel, subscription);
     return () => {
-      ipcRenderer.removeListener("updater:progress", subscription);
+      ipcRenderer.removeListener(channel, subscription);
     };
   },
 
   onSyncStart: (callback) => {
     const sub = () => callback();
-    ipcRenderer.on("sync:start", sub);
-    return () => ipcRenderer.removeListener("sync:start", sub);
+    const channel = IPC_CHANNELS.SYNC.START;
+    ipcRenderer.on(channel, sub);
+    return () => ipcRenderer.removeListener(channel, sub);
   },
 
   onSyncEnd: (callback) => {
     const sub = () => callback();
-    ipcRenderer.on("sync:end", sub);
-    return () => ipcRenderer.removeListener("sync:end", sub);
+    const channel = IPC_CHANNELS.SYNC.END;
+    ipcRenderer.on(channel, sub);
+    return () => ipcRenderer.removeListener(channel, sub);
   },
 
   onSyncError: (callback) => {
+    const channel = IPC_CHANNELS.SYNC.ERROR;
     const subscription = (_: IpcRendererEvent, msg: string) => callback(msg);
-    ipcRenderer.on("sync:error", subscription);
+    ipcRenderer.on(channel, subscription);
     return () => {
-      ipcRenderer.removeListener("sync:error", subscription);
+      ipcRenderer.removeListener(channel, subscription);
     };
   },
 
   onSyncProgress: (callback) => {
     const sub = (_: IpcRendererEvent, msg: string) => callback(msg);
-    ipcRenderer.on("sync:progress", sub);
-    return () => ipcRenderer.removeListener("sync:progress", sub);
+    const channel = IPC_CHANNELS.SYNC.PROGRESS;
+    ipcRenderer.on(channel, sub);
+    return () => ipcRenderer.removeListener(channel, sub);
   },
 
-  createBackup: () => ipcRenderer.invoke("db:create-backup"),
-  restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
+  createBackup: () => ipcRenderer.invoke(IPC_CHANNELS.BACKUP.CREATE),
+  restoreBackup: () => ipcRenderer.invoke(IPC_CHANNELS.BACKUP.RESTORE),
   checkDatabaseIntegrity: () =>
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP.INTEGRITY_CHECK),
 

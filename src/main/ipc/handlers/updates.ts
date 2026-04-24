@@ -1,38 +1,38 @@
 import { ipcMain } from "electron";
 import log from "electron-log";
-import { getSqliteInstance } from "../../db/client";
-
-const GET_UNREAD_COUNT_CHANNEL = "updates:getUnreadCount";
-const MARK_ALL_SEEN_CHANNEL = "updates:markAllSeen";
-
-type CountRow = {
-  count: number;
-};
+import { count, eq } from "drizzle-orm";
+import { getDb } from "../../db/client";
+import { maintenanceQueue } from "../../db/maintenance-queue";
+import { posts } from "../../db/schema";
+import { IPC_CHANNELS } from "../channels";
 
 export function registerUpdatesHandlers(): void {
-  ipcMain.handle(GET_UNREAD_COUNT_CHANNEL, () => {
-    try {
-      const sqlite = getSqliteInstance();
-      const statement = sqlite.prepare<[], CountRow>(
-        "SELECT COUNT(*) AS count FROM posts WHERE is_viewed = 0"
-      );
-      const row = statement.get();
-      return row?.count ?? 0;
-    } catch (error) {
-      log.error("[UpdatesHandlers] Failed to get unread count:", error);
-      return 0;
-    }
+  ipcMain.handle(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT, () => {
+    return maintenanceQueue.execute(async () => {
+      try {
+        const row = getDb()
+          .select({ value: count() })
+          .from(posts)
+          .where(eq(posts.isViewed, false))
+          .get();
+        return row?.value ?? 0;
+      } catch (error) {
+        log.error("[UpdatesHandlers] Failed to get unread count:", error);
+        return 0;
+      }
+    });
   });
 
-  ipcMain.handle(MARK_ALL_SEEN_CHANNEL, () => {
-    try {
-      const sqlite = getSqliteInstance();
-      sqlite.prepare("UPDATE posts SET is_viewed = 1").run();
-      return true;
-    } catch (error) {
-      log.error("[UpdatesHandlers] Failed to mark all seen:", error);
-      return false;
-    }
+  ipcMain.handle(IPC_CHANNELS.UPDATES.MARK_ALL_SEEN, () => {
+    return maintenanceQueue.execute(async () => {
+      try {
+        getDb().update(posts).set({ isViewed: true }).run();
+        return true;
+      } catch (error) {
+        log.error("[UpdatesHandlers] Failed to mark all seen:", error);
+        return false;
+      }
+    });
   });
 
   log.info("[UpdatesHandlers] All handlers registered");

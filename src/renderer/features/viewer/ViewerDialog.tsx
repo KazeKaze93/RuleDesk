@@ -61,6 +61,7 @@ import {
 import type { Post } from "../../../main/db/schema";
 import type { Artist } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { normalizeRating } from "../../../shared/utils/post-normalization";
 import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
 import { useSearchStore } from "../../store/searchStore";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../store/safeModeStore";
@@ -516,14 +517,24 @@ const ViewerMedia = ({
   const [videoError, setVideoError] = useState(false);
   const [hasTriedFallback, setHasTriedFallback] = useState(false);
   const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
-  const { safeMode, panicMode, blurAmount } = useSafeModeStore();
-  
+  const { safeMode, panicMode, blurAmount } = useSafeModeStore(
+    useShallow((s) => ({
+      safeMode: s.safeMode,
+      panicMode: s.panicMode,
+      blurAmount: s.blurAmount,
+    })),
+  );
+
   // Reset fallback flag when post changes
   // Use key prop on img element instead of useEffect to avoid cascading renders
   // Key change forces React to remount component, resetting state naturally
-  const normalizedRating: "s" | "q" | "e" = (post.rating === "q" || post.rating === "e") ? post.rating : "s";
+  const normalizedRating = normalizeRating(post.rating);
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
+  const videoBlurClass =
+    shouldBlur && effectiveBlur > 0
+      ? `[filter:blur(${Math.min(100, Math.round(effectiveBlur))}px)]`
+      : undefined;
 
   const isVideo = isVideoPost(post.fileUrl);
   const videoProxySrc = useVideoProxyUrl(
@@ -609,12 +620,7 @@ const ViewerMedia = ({
           </div>
         ) : (
           <div
-            className="flex justify-center items-center w-full h-full"
-            style={{
-              filter: shouldBlur
-                ? `blur(${effectiveBlur}px)`
-                : undefined,
-            }}
+            className={cn("flex justify-center items-center w-full h-full", videoBlurClass)}
           >
             <video
               src={videoProxySrc ?? post.fileUrl}
@@ -1062,7 +1068,7 @@ const TagsDrawer = ({
             </h3>
             <div className="max-h-[400px] overflow-hidden rounded-md border">
               <Virtuoso
-                style={{ height: "400px" }}
+                className="h-[400px]"
                 data={generalTags}
                 components={{
                   Header: undefined,
@@ -1145,13 +1151,13 @@ const ViewerContent = ({
   const handleMarkViewed = useCallback(async () => {
     if (post.isViewed) return;
     // Fire and forget: suppress rate limit errors
-    window.api.markPostAsViewed(post.id).catch((err) => {
-      // Ignore rate limit errors - use typed errorCode, NOT string parsing
-      const errorCode = (err as { code?: string })?.code;
+    window.api.markPostAsViewed(post.id).catch((err: unknown) => {
+      const errorCode = typeof err === "object" && err !== null && "code" in err
+        ? Reflect.get(err, "code")
+        : undefined;
       if (errorCode === "RATE_LIMIT") {
         return; // Silently ignore rate limit errors
       }
-      // Log other errors for debugging
       const errorMessage = err instanceof Error ? err.message : String(err);
       log.error("[ViewerDialog] Failed to mark post as viewed:", errorMessage);
     });
@@ -1303,10 +1309,20 @@ const ViewerContent = ({
             }
           >
             {ctrl.isCurrentlyDownloading && (
-              <div
-                className="absolute inset-0 transition-all duration-100 bg-green-500/50"
-                style={{ width: `${ctrl.downloadProgress}%` }}
-              />
+              <svg
+                className="absolute inset-0 h-full w-full"
+                viewBox="0 0 100 1"
+                preserveAspectRatio="none"
+                aria-hidden
+              >
+                <rect
+                  x={0}
+                  y={0}
+                  width={ctrl.downloadProgress}
+                  height={1}
+                  className="fill-green-500/50"
+                />
+              </svg>
             )}
 
             {ctrl.isCurrentlyDownloading ? (
