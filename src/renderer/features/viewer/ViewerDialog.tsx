@@ -66,6 +66,7 @@ import { useSearchStore } from "../../store/searchStore";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../store/safeModeStore";
 import { cn } from "../../lib/utils";
 import { isVideoPost } from "../../lib/filter-utils";
+import { useVideoProxyUrl } from "../../lib/hooks/useVideoProxyUrl";
 import { useViewerController } from "./hooks/useViewerController";
 import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
 
@@ -525,6 +526,9 @@ const ViewerMedia = ({
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
 
   const isVideo = isVideoPost(post.fileUrl);
+  const videoProxySrc = useVideoProxyUrl(
+    isVideo && post.fileUrl ? post.fileUrl : null,
+  );
 
   const resetImageZoom = useCallback(() => {
     transformRef.current?.resetTransform();
@@ -613,7 +617,7 @@ const ViewerMedia = ({
             }}
           >
             <video
-              src={post.fileUrl}
+              src={videoProxySrc ?? post.fileUrl}
               className="object-contain max-w-full max-h-full outline-none focus:outline-none"
               autoPlay={isVideoPlaying}
               loop

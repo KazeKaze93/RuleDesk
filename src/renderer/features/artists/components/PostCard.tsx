@@ -6,6 +6,7 @@ import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../
 import { useSearchStore } from "../../../store/searchStore";
 import { isVideoPost } from "../../../lib/filter-utils";
 import { isVideoUrl } from "../../../../shared/utils/media";
+import { useVideoProxyUrl } from "../../../lib/hooks/useVideoProxyUrl";
 import { QuickAddToPlaylistMenu } from "../../../components/playlists/QuickAddToPlaylistMenu";
 
 const loadedSampleUrls = new Set<string>();
@@ -54,6 +55,10 @@ export const PostCard: React.FC<PostCardProps> = ({
   const videoPreviewUrl = isVid
     ? (post.sampleUrl && isVideoUrl(post.sampleUrl) ? post.sampleUrl : post.fileUrl)
     : null;
+
+  const videoProxySrc = useVideoProxyUrl(
+    isVid && videoPreviewUrl ? videoPreviewUrl : null,
+  );
 
   // IntersectionObserver: only initialize video when card is in viewport
   useEffect(() => {
@@ -225,7 +230,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             <video
               key={videoKey}
               ref={videoRef}
-              src={videoPreviewUrl}
+              src={videoProxySrc ?? videoPreviewUrl}
               muted
               loop
               playsInline

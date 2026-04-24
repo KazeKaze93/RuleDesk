@@ -84,4 +84,7 @@ export const IPC_CHANNELS = {
   STATS: {
     GET_EXTENDED: "stats:get-extended",
   },
+  VIDEO_PROXY: {
+    GET_URL: "video-proxy:get-url",
+  },
 } as const;

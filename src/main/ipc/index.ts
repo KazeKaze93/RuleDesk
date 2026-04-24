@@ -12,9 +12,11 @@ import { FileController } from "./controllers/FileController";
 import { SearchController } from "./controllers/SearchController";
 import { PlaylistController } from "./controllers/PlaylistController";
 import { StatsController } from "./controllers/StatsController";
+import { VideoProxyController } from "./controllers/VideoProxyController";
 import { registerUpdatesHandlers } from "./handlers/updates";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
+import { VideoProxyServer } from "../services/video-proxy-server";
 import { getDb } from "../db/client";
 import { container, DI_TOKENS } from "../core/di/Container";
 
@@ -26,7 +28,9 @@ import { container, DI_TOKENS } from "../core/di/Container";
  * 
  * @returns Object with controllers that need window reference
  */
-export function setupIpc(): { maintenanceController: MaintenanceController; fileController: FileController; playlistController: PlaylistController } {
+export function setupIpc(
+  videoProxyServer: VideoProxyServer,
+): { maintenanceController: MaintenanceController; fileController: FileController; playlistController: PlaylistController } {
   log.info("[IPC] Setting up IPC handlers...");
 
   // Register database in DI container (using type-safe tokens)
@@ -35,6 +39,9 @@ export function setupIpc(): { maintenanceController: MaintenanceController; file
   log.info("[IPC] Database registered in DI container");
 
   // Register core controllers
+  const videoProxyController = new VideoProxyController(videoProxyServer);
+  videoProxyController.setup();
+
   const systemController = new SystemController();
   systemController.setup();
 
@@ -106,12 +113,13 @@ export function setControllerWindows(
 export const registerAllHandlers = (
   syncService: SyncService,
   _updaterService: UpdaterService,
-  mainWindow: BrowserWindow
+  mainWindow: BrowserWindow,
+  videoProxyServer: VideoProxyServer,
 ) => {
   log.info("[IPC] Registering all handlers...");
 
   // Initialize all controllers
-  const controllers = setupIpc();
+  const controllers = setupIpc(videoProxyServer);
   registerServices(syncService);
   setControllerWindows(controllers, mainWindow);
 
