@@ -12,16 +12,35 @@ import {
   BarChart2,
 } from "lucide-react";
 import log from "electron-log/renderer";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "../../lib/utils";
 
-const navItems = [
-  { to: "/updates", icon: RefreshCw, label: "Updates" },
-  { to: "/browse", icon: Search, label: "Browse" },
-  { to: "/favorites", icon: Heart, label: "Favorites" },
-  { to: "/playlists", icon: List, label: "Playlists" },
-  { to: "/tracked", icon: Users, label: "Artists" },
-  { to: "/stats", icon: BarChart2, label: "Statistics" },
-  { to: "/settings", icon: Settings, label: "Settings" },
+const NAV_ITEM_BASE_CLASS =
+  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors [@media(max-height:599px)]:py-1.5";
+
+const navGroups = [
+  {
+    label: "Discover",
+    items: [
+      { to: "/browse", icon: Search, label: "Browse" },
+      { to: "/updates", icon: RefreshCw, label: "Updates" },
+    ],
+  },
+  {
+    label: "Library",
+    items: [
+      { to: "/favorites", icon: Heart, label: "Favorites" },
+      { to: "/tracked", icon: Users, label: "Tracked Artists" },
+      { to: "/playlists", icon: List, label: "Playlists" },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { to: "/stats", icon: BarChart2, label: "Statistics" },
+      { to: "/settings", icon: Settings, label: "Settings" },
+    ],
+  },
 ];
 
 export const Sidebar = () => {
@@ -111,29 +130,44 @@ export const Sidebar = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-6 space-y-1">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )
-            }
-          >
-            <item.icon className="w-4 h-4" />
-            <span>{item.label}</span>
-            {item.to === "/updates" && unreadCount > 0 && (
-              <span className="inline-flex justify-center items-center px-2 py-0.5 ml-auto text-xs font-semibold text-white bg-violet-600 rounded-full min-w-5">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </NavLink>
-        ))}
+      <nav className="flex-1 px-3 py-4">
+        <div className="space-y-4">
+          {navGroups.map((group) => (
+            <section key={group.label} className="space-y-2">
+              <div className="px-1 space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </p>
+                <Separator />
+              </div>
+
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      cn(
+                        NAV_ITEM_BASE_CLASS,
+                        isActive
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      )
+                    }
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                    {item.to === "/updates" && unreadCount > 0 && (
+                      <span className="inline-flex justify-center items-center px-2 py-0.5 ml-auto text-xs font-semibold text-white bg-violet-600 rounded-full min-w-5">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       </nav>
 
       {/* Sync Status Footer */}
