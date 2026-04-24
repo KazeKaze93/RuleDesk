@@ -297,7 +297,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         isVid ? "Video" : "Image"
       }.`}
       className={cn(
-        "group relative w-full overflow-hidden rounded-lg border bg-card transition-all cursor-pointer",
+        "group relative w-full overflow-hidden rounded-[var(--card-radius)] border bg-card transition-all cursor-pointer",
         // Grid: fixed aspect ratio, Masonry: natural aspect ratio (height auto)
         shouldPreserveAspect ? "aspect-[3/4]" : "",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
@@ -494,11 +494,11 @@ export const PostCard: React.FC<PostCardProps> = ({
       />
 
       {/* 3. Gradient & Rating (Bottom - visible on hover) */}
-      <div className="flex absolute inset-0 flex-col justify-end p-3 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100 pointer-events-none">
+      <div className="flex absolute inset-0 flex-col justify-end p-[var(--card-padding)] bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100 pointer-events-none">
         <div className="flex justify-between items-end">
           <span
             className={cn(
-              "text-xs font-bold uppercase tracking-wider",
+              "text-[length:var(--card-meta-size)] font-bold uppercase tracking-wider",
               post.rating === "e"
                 ? "text-red-400"
                 : post.rating === "q"

@@ -36,6 +36,11 @@
     --ring: 262 83% 62%;
 
     --radius: 0.75rem;
+    --border-radius-lg: var(--radius);
+    --card-padding: 16px;
+    --card-meta-size: 13px;
+    --card-radius: var(--border-radius-lg);
+    --grid-cols: auto-fill;
   }
 
   .dark {

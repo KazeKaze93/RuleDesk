@@ -97,7 +97,7 @@ const GridContainer = forwardRef<
     ref={ref}
     className={cn(
       viewType === "grid"
-        ? "grid grid-cols-2 gap-4 p-4 pb-44 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        ? "grid gap-4 p-4 pb-44 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(160px,1fr))]"
         : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
       className
     )}

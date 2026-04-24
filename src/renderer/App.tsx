@@ -14,6 +14,7 @@ import { Browse } from "./components/pages/Browse";
 import { PlaylistsPage } from "./components/pages/PlaylistsPage";
 import { StatsPage } from "./components/pages/StatsPage";
 import { useTheme } from "./hooks/useTheme";
+import { useApplyAppearance } from "./hooks/useApplyAppearance";
 import { Toaster } from "./components/ui/sonner";
 import { RENDERER_WINDOW_EVENTS } from "@shared/constants";
 
@@ -27,6 +28,7 @@ interface AppState {
 
 function App() {
   useTheme();
+  useApplyAppearance();
   const [appState, setAppState] = useState<AppState>({
     legalStatus: "loading",
     authStatus: "loading",
