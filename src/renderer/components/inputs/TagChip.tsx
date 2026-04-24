@@ -13,6 +13,7 @@ import {
 } from "../ui/dropdown-menu";
 import { cn } from "../../lib/utils";
 import { invalidateAllPostQueries } from "../../utils/react-query-cache";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 export type TagChipVariant = "include" | "exclude";
 
@@ -79,8 +80,7 @@ export function TagChip({
       );
     },
     onError: (error) => {
-      const message =
-        error instanceof Error ? error.message : "Failed to update blacklist";
+      const message = resolveErrorMessage(error, "Failed to update blacklist");
       toast.error(message);
     },
   });

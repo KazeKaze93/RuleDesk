@@ -8,14 +8,15 @@ import {
   getAllBlacklistedTags,
   removeTagFromBlacklist,
 } from "../../db/queries/blacklist";
+import { sanitizeProviderTagToken } from "../../../shared/utils/provider-tag-sanitize";
 
 const blacklistTagSchema = z
   .string()
   .trim()
   .min(1, "Tag cannot be empty")
   .max(128, "Tag is too long")
-  .regex(/^[a-zA-Z0-9:_-]+$/, "Tag contains unsupported characters")
-  .transform((value) => value.toLowerCase());
+  .transform((value) => sanitizeProviderTagToken(value).trim().toLowerCase())
+  .refine((value) => value.length > 0, "Tag cannot be empty");
 
 export class BlacklistController extends BaseController {
   public setup(): void {

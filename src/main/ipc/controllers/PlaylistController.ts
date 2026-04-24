@@ -887,7 +887,7 @@ export class PlaylistController extends BaseController {
             sql`NOT EXISTS (
               SELECT 1
               FROM tag_blacklist bl
-              WHERE instr(' ' || ${posts.tags} || ' ', ' ' || bl.tag || ' ') > 0
+              WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
             )` as SQL
           );
         }
@@ -1176,7 +1176,7 @@ export class PlaylistController extends BaseController {
           sql`NOT EXISTS (
             SELECT 1
             FROM tag_blacklist bl
-            WHERE instr(' ' || ${posts.tags} || ' ', ' ' || bl.tag || ' ') > 0
+            WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
           )` as SQL
         );
       }
@@ -1545,7 +1545,7 @@ export class PlaylistController extends BaseController {
           sql`NOT EXISTS (
             SELECT 1
             FROM tag_blacklist bl
-            WHERE instr(' ' || ${posts.tags} || ' ', ' ' || bl.tag || ' ') > 0
+            WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
           )` as SQL
         );
       }
@@ -1852,12 +1852,24 @@ export class PlaylistController extends BaseController {
       // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
       const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page - 1;
       const booruPosts = await provider.fetchPosts(booruQuery, apiPage, providerSettings, isRandom);
+      const blacklistedTagSet = new Set(
+        getAllBlacklistedTags().map((tag) => tag.trim().toLowerCase()).filter(Boolean)
+      );
       
       log.info(`[PlaylistController] Fetched ${booruPosts.length} posts from remote API for playlist ${playlistId}`);
 
       // Convert BooruPost to IpcPost format and apply filters
       const filteredPosts = booruPosts
         .filter((post) => {
+          if (blacklistedTagSet.size > 0) {
+            const hasBlacklistedTag = post.tags.some((tag) =>
+              blacklistedTagSet.has(tag.trim().toLowerCase())
+            );
+            if (hasBlacklistedTag) {
+              return false;
+            }
+          }
+
           // Apply rating filter
           if (filters?.rating && post.rating !== filters.rating) {
             return false;

@@ -2,7 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Label } from "../../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { Separator } from "../../components/ui/separator";
-import { Switch } from "../../components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { useAppearanceStore, type CardBorderStyle } from "../../store/appearanceStore";
 
@@ -23,10 +22,8 @@ export const SettingsAppearanceTab = ({
   isThemeSaving,
   onThemeChange,
 }: SettingsAppearanceTabProps) => {
-  const compactMode = useAppearanceStore((state) => state.compactMode);
   const cardBorderStyle = useAppearanceStore((state) => state.cardBorderStyle);
   const gridColumns = useAppearanceStore((state) => state.gridColumns);
-  const setCompactMode = useAppearanceStore((state) => state.setCompactMode);
   const setCardBorderStyle = useAppearanceStore((state) => state.setCardBorderStyle);
   const setGridColumns = useAppearanceStore((state) => state.setGridColumns);
 
@@ -90,22 +87,6 @@ export const SettingsAppearanceTab = ({
         <Separator />
 
         <section className="space-y-4">
-          <div className="space-y-2">
-            <Label>Cards</Label>
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="compact-mode" className="font-normal">
-                Compact mode
-              </Label>
-              <Switch
-                id="compact-mode"
-                checked={compactMode}
-                onCheckedChange={setCompactMode}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Reduce post card paddings and metadata text size.
-            </p>
-          </div>
           <div className="space-y-2">
             <Label>Card border style</Label>
             <ToggleGroup

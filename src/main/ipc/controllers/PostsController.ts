@@ -627,7 +627,7 @@ export class PostsController extends BaseController {
         sql`NOT EXISTS (
           SELECT 1
           FROM tag_blacklist bl
-          WHERE instr(' ' || ${posts.tags} || ' ', ' ' || bl.tag || ' ') > 0
+          WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
         )` as SQL
       );
     }

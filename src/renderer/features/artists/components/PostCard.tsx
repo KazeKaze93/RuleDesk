@@ -299,7 +299,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       className={cn(
         "group relative w-full overflow-hidden rounded-[var(--card-radius)] border bg-card transition-all cursor-pointer",
         // Grid: fixed aspect ratio, Masonry: natural aspect ratio (height auto)
-        shouldPreserveAspect ? "aspect-[3/4]" : "",
+        shouldPreserveAspect ? "aspect-[2/3]" : "",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
         "hover:border-primary hover:shadow-md hover:shadow-primary/10",
         "select-none", // Prevent text selection via CSS (user-select: none)

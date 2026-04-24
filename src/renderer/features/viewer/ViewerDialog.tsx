@@ -14,7 +14,6 @@ import {
   SheetDescription as SheetDesc,
 } from "../../components/ui/sheet";
 import { useShallow } from "zustand/react/shallow";
-import { Virtuoso } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { useViewerStore, ViewerOrigin } from "../../store/viewerStore";
 import { Button } from "../../components/ui/button";
@@ -37,7 +36,6 @@ import {
   List,
   Plus,
   Shuffle,
-  Ban,
 } from "lucide-react";
 
 import {
@@ -53,7 +51,7 @@ import {
   DropdownMenuSubContent,
 } from "../../components/ui/dropdown-menu";
 
-import { useQueryClient, InfiniteData, useQuery, useMutation } from "@tanstack/react-query";
+import { useQueryClient, InfiniteData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
   TransformWrapper,
@@ -72,8 +70,6 @@ import { isVideoPost } from "../../lib/filter-utils";
 import { useVideoProxyUrl } from "../../lib/hooks/useVideoProxyUrl";
 import { useViewerController } from "./hooks/useViewerController";
 import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
-import { toast } from "sonner";
-import { invalidateAllPostQueries } from "../../utils/react-query-cache";
 
 /**
  * PostNotFoundFallback: Handles shadow insert for remote posts not in cache
@@ -796,41 +792,10 @@ const TagsDrawer = ({
   } | null;
 }) => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const addIncludeTag = useSearchStore((state) => state.addIncludeTag);
   const addExcludeTag = useSearchStore((state) => state.addExcludeTag);
   const isTagIncluded = useSearchStore((state) => state.isTagIncluded);
   const isTagExcluded = useSearchStore((state) => state.isTagExcluded);
-  const { data: blacklistedTags = [] } = useQuery({
-    queryKey: ["blacklist"],
-    queryFn: () => window.api.getBlacklistedTags(),
-    enabled: isOpen,
-  });
-
-  const toggleBlacklistMutation = useMutation({
-    mutationFn: async (tag: string) => {
-      const normalizedTag = tag.toLowerCase();
-      const isBlacklisted = blacklistedTags.includes(normalizedTag);
-      if (isBlacklisted) {
-        await window.api.removeTagFromBlacklist(normalizedTag);
-        return "removed";
-      }
-      await window.api.addTagToBlacklist(normalizedTag);
-      return "added";
-    },
-    onSuccess: async (state) => {
-      await queryClient.invalidateQueries({ queryKey: ["blacklist"] });
-      await invalidateAllPostQueries(queryClient);
-      toast.success(
-        state === "added" ? "Tag added to blacklist" : "Tag removed from blacklist"
-      );
-    },
-    onError: (error) => {
-      const message =
-        error instanceof Error ? error.message : "Failed to update blacklist";
-      toast.error(message);
-    },
-  });
 
   // Get artist information - always fetch when drawer is open
   const { data: artists } = useQuery<Artist[]>({
@@ -1008,61 +973,46 @@ const TagsDrawer = ({
     colorClassName: string,
     wrapperClassName: string
   ) => {
-    const normalizedTag = tag.toLowerCase();
-    const isBlacklisted = blacklistedTags.includes(normalizedTag);
-
     return (
-      <DropdownMenu key={tag}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant={variant}
-            onClick={() => handleTagInclude(tag)}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              event.currentTarget.click();
-            }}
-            className={cn(
-              wrapperClassName,
-              colorClassName,
-              isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
-              isTagExcluded(tag) &&
-                "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
-            )}
-            title={
-              isTagExcluded(tag)
-                ? "Excluded (right-click to toggle)"
-                : isTagIncluded(tag)
-                  ? "Included (right-click to exclude)"
-                  : "Click to include, right-click to exclude"
-            }
-            aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-          >
-            {tag}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" side="bottom" sideOffset={4}>
-          <DropdownMenuItem onClick={() => handleTagExclude(tag)}>
-            Mark as exclude
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => toggleBlacklistMutation.mutate(tag)}
-            disabled={toggleBlacklistMutation.isPending}
-          >
-            <Ban className="mr-2 h-4 w-4" />
-            {isBlacklisted ? "Remove from blacklist" : "Add to blacklist"}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button
+        key={tag}
+        type="button"
+        variant={variant}
+        onClick={() => handleTagInclude(tag)}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          handleTagExclude(tag);
+        }}
+        className={cn(
+          wrapperClassName,
+          colorClassName,
+          isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+          isTagExcluded(tag) &&
+            "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+        )}
+        title={
+          isTagExcluded(tag)
+            ? "Excluded (right-click to toggle)"
+            : isTagIncluded(tag)
+              ? "Included (right-click to exclude)"
+              : "Click to include, right-click to exclude"
+        }
+        aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
+      >
+        {tag}
+      </Button>
     );
   };
 
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
+      <SheetContent
+        side="right"
+        className="w-full overflow-y-auto sm:max-w-md"
+        style={{ scrollbarGutter: "stable" }}
+      >
         <SheetHeader>
           <SheetTitle>Post Metadata</SheetTitle>
           <SheetDesc>Post ID: {post.postId}</SheetDesc>
@@ -1163,43 +1113,40 @@ const TagsDrawer = ({
             <h3 className="mb-2 text-sm font-semibold">
               Tags ({generalTags.length})
             </h3>
-            <div className="max-h-[400px] overflow-hidden rounded-md border">
-              <Virtuoso
-                className="h-[400px]"
-                data={generalTags}
-                components={{
-                  Header: undefined,
-                }}
-                itemContent={(_index, tag) => {
-                  return (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => handleTagInclude(tag)}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        handleTagExclude(tag);
-                      }}
-                      className={cn(
-                        "h-auto min-h-0 w-full justify-start rounded-none px-3 py-2 text-sm text-left font-normal border-b last:border-b-0 hover:bg-muted/50",
-                        isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
-                        isTagExcluded(tag) &&
-                          "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
-                      )}
-                      title={
-                        isTagExcluded(tag)
-                          ? "Excluded (right-click to toggle)"
-                          : isTagIncluded(tag)
-                            ? "Included (right-click to exclude)"
-                            : "Click to include, right-click to exclude"
-                      }
-                      aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-                    >
-                      {tag}
-                    </Button>
-                  );
-                }}
-              />
+            <div
+              className="max-h-[400px] overflow-y-auto rounded-md border pr-2"
+              style={{ scrollbarGutter: "stable" }}
+            >
+              <div>
+                {generalTags.map((tag) => (
+                  <Button
+                    type="button"
+                    key={tag}
+                    variant="ghost"
+                    onClick={() => handleTagInclude(tag)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      handleTagExclude(tag);
+                    }}
+                    className={cn(
+                      "h-auto min-h-0 w-full justify-start rounded-none px-3 py-2 text-sm text-left font-normal border-b last:border-b-0 hover:bg-muted/50",
+                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+                      isTagExcluded(tag) &&
+                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+                    )}
+                    title={
+                      isTagExcluded(tag)
+                        ? "Excluded (right-click to toggle)"
+                        : isTagIncluded(tag)
+                          ? "Included (right-click to exclude)"
+                          : "Click to include, right-click to exclude"
+                    }
+                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
+                  >
+                    {tag}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
