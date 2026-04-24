@@ -6,7 +6,7 @@ import {
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
-import { RefreshCw, Loader2, CheckCheck, User, ChevronRight } from "lucide-react";
+import { RefreshCw, Loader2, CheckCheck, User, ChevronRight, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { useNavigate } from "react-router-dom";
 import log from "electron-log/renderer";
@@ -17,12 +17,13 @@ import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import type { Post } from "../../../main/db/schema";
-import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
-import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import type { Artist } from "../../../main/db/schema";
+import { useBulkSelect } from "../../hooks/useBulkSelect";
+import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
+import { getBulkSelectId } from "../../lib/bulkSelect";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -95,8 +96,8 @@ const GridContainer = forwardRef<
     ref={ref}
     className={cn(
       viewType === "grid"
-        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-32",
+        ? "grid grid-cols-2 gap-4 p-4 pb-44 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
       className
     )}
     {...props}
@@ -224,6 +225,12 @@ export const Updates = () => {
   // Each selector only subscribes to its specific value, not the entire store
   const openViewer = useViewerStore((state) => state.open);
   const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
+  const isBulkMode = useBulkSelect((state) => state.isBulkMode);
+  const activateBulkMode = useBulkSelect((state) => state.activateBulkMode);
+  const deactivateBulkMode = useBulkSelect((state) => state.deactivate);
+  const selectedIds = useBulkSelect((state) => state.selectedIds);
+  const selectAll = useBulkSelect((state) => state.selectAll);
+  const clearSelection = useBulkSelect((state) => state.clearSelection);
 
   // Use atomic selectors to prevent unnecessary re-renders
   // Each selector only subscribes to its specific value, not the entire store
@@ -281,6 +288,18 @@ export const Updates = () => {
       isMounted = false;
     };
   }, [queryClient]);
+
+  useEffect(() => {
+    return () => {
+      deactivateBulkMode();
+    };
+  }, [deactivateBulkMode]);
+
+  useEffect(() => {
+    if (activeView === CREATORS_VIEW) {
+      deactivateBulkMode();
+    }
+  }, [activeView, deactivateBulkMode]);
 
   const { data: artists = [], isLoading: isArtistsLoading } = useQuery({
     queryKey: ["artists"],
@@ -380,31 +399,10 @@ export const Updates = () => {
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
   }, [data, sortOrder, aiFilter, rating, mediaType, source, orientation, dateFrom, dateTo]);
-
-  const fetchParams = useMemo(
-    () => ({
-      filters: {
-        sinceTracking: true,
-        tags: tags.length > 0 ? tags.join(" ") : undefined,
-        aiFilter: aiFilter === "all" ? undefined : aiFilter,
-        rating: rating === "all" ? undefined : rating,
-        mediaType: mediaType === "all" ? undefined : mediaType,
-        isFavorited: source === "favorites" ? true : undefined,
-      },
-    }),
-    [tags, aiFilter, rating, mediaType, source]
+  const selectedPosts = useMemo(
+    () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
+    [allPosts, selectedIds]
   );
-  const {
-    downloadAll,
-    cancel,
-    pause,
-    resume,
-    isDownloading: isDownloadingAll,
-    isPaused,
-    progress: downloadAllProgress,
-    canDownload,
-    totalCount: downloadTotalCount,
-  } = useDownloadAllWithFilters(fetchParams);
 
   // Create stable List and Item components with forwardRef and aria-busy
   // Must be memoized to prevent Virtuoso from remounting on every render
@@ -581,17 +579,6 @@ export const Updates = () => {
         </div>
         {activeView === FEED_VIEW && (
           <div className="flex gap-2 items-center ml-auto">
-            <DownloadAllButton
-              onClick={downloadAll}
-              onCancel={cancel}
-              onPause={pause}
-              onResume={resume}
-              isDownloading={isDownloadingAll}
-              isPaused={isPaused}
-              progress={downloadAllProgress}
-              canDownload={canDownload || allPosts.length > 0}
-              totalLabel={downloadTotalCount || allPosts.length}
-            />
             <Button
               variant="outline"
               size="sm"
@@ -601,6 +588,21 @@ export const Updates = () => {
             >
               <CheckCheck className="mr-2 w-4 h-4" />
               Mark all read
+            </Button>
+            <Button
+              type="button"
+              variant={isBulkMode ? "default" : "outline"}
+              size="icon"
+              aria-label="Toggle bulk selection mode"
+              onClick={() => {
+                if (isBulkMode) {
+                  deactivateBulkMode();
+                  return;
+                }
+                activateBulkMode();
+              }}
+            >
+              <CheckSquare className="h-4 w-4" />
             </Button>
           </div>
         )}
@@ -695,6 +697,20 @@ export const Updates = () => {
           )
         )}
       </div>
+      <BulkActionBar
+        selectedPosts={selectedPosts}
+        onSelectAll={() => {
+          const selectableIds = allPosts.map((post) => getBulkSelectId(post));
+          const isAllSelected =
+            selectableIds.length > 0 &&
+            selectableIds.every((id) => selectedIds.has(id));
+          if (isAllSelected) {
+            clearSelection();
+            return;
+          }
+          selectAll(selectableIds);
+        }}
+      />
     </div>
   );
 };

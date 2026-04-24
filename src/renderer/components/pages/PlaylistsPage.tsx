@@ -3,7 +3,7 @@ import {
   useQueryClient,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil, Download, Upload } from "lucide-react";
+import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil, Download, Upload, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import {
@@ -40,11 +40,12 @@ import { AsyncAutocomplete } from "../../components/inputs/AsyncAutocomplete";
 import type { SmartPlaylistQuery, SmartPlaylistTag } from "../../../shared/schemas/playlist";
 import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
 import { usePlaylists } from "../../lib/hooks/usePlaylists";
-import { useDownloadAll } from "../../hooks/useDownloadAll";
-import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import type { SearchResults } from "../../../main/providers";
 import { hasAiGeneratedTag } from "../../lib/filter-utils";
 import { toast } from "sonner";
+import { useBulkSelect } from "../../hooks/useBulkSelect";
+import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
+import { getBulkSelectId } from "../../lib/bulkSelect";
 
 interface PlaylistsPageProps {
   onBack?: () => void;
@@ -107,8 +108,8 @@ const GridContainer = forwardRef<
     ref={ref}
     className={cn(
       viewType === "grid"
-        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-32",
+        ? "grid grid-cols-2 gap-4 p-4 pb-44 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
       className
     )}
     {...props}
@@ -184,6 +185,12 @@ function SortablePostCard({ post, onClick, onRemove, preserveAspect }: SortableP
 const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) => {
   // Use atomic selector instead of useShallow for single value
   const openViewer = useViewerStore((state) => state.open);
+  const isBulkMode = useBulkSelect((state) => state.isBulkMode);
+  const activateBulkMode = useBulkSelect((state) => state.activateBulkMode);
+  const deactivateBulkMode = useBulkSelect((state) => state.deactivate);
+  const selectedIds = useBulkSelect((state) => state.selectedIds);
+  const selectAll = useBulkSelect((state) => state.selectAll);
+  const clearSelection = useBulkSelect((state) => state.clearSelection);
 
   // Use useShallow for combined selector to prevent multiple re-renders
   // This ensures all three values are selected atomically, preventing cascading re-renders
@@ -292,18 +299,17 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     }
   }, [allPosts, playlist.isSmart]);
 
-  const displayedPosts = playlist.isSmart ? allPosts : localPosts;
+  useEffect(() => {
+    return () => {
+      deactivateBulkMode();
+    };
+  }, [deactivateBulkMode]);
 
-  const {
-    downloadAll,
-    cancel,
-    pause,
-    resume,
-    isDownloading: isDownloadingAll,
-    isPaused,
-    progress: downloadAllProgress,
-    canDownload,
-  } = useDownloadAll(displayedPosts);
+  const displayedPosts = playlist.isSmart ? allPosts : localPosts;
+  const selectedPosts = useMemo(
+    () => displayedPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
+    [displayedPosts, selectedIds]
+  );
 
   const handleLoadMore = () => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -389,6 +395,25 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     }
   };
 
+  const handleBulkRemove = useCallback(
+    async (posts: Post[]) => {
+      const removableIds = posts.map((post) => post.id).filter((id) => id > 0);
+      if (removableIds.length === 0) {
+        return;
+      }
+      await window.api.removePostsFromPlaylist({
+        playlistId: playlist.id,
+        postIds: removableIds,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["playlist-posts", playlist.id] });
+      await queryClient.invalidateQueries({ queryKey: ["playlist-entries"] });
+      setLocalPosts((currentPosts) =>
+        currentPosts.filter((post) => !removableIds.includes(post.id))
+      );
+    },
+    [playlist.id, queryClient]
+  );
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       if (playlist.isSmart) {
@@ -459,17 +484,21 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
           </div>
         </div>
         <div className="flex gap-2">
-          <DownloadAllButton
-            onClick={downloadAll}
-            onCancel={cancel}
-            onPause={pause}
-            onResume={resume}
-            isDownloading={isDownloadingAll}
-            isPaused={isPaused}
-            progress={downloadAllProgress}
-            canDownload={canDownload}
-            totalLabel={displayedPosts.length}
-          />
+          <Button
+            type="button"
+            variant={isBulkMode ? "default" : "outline"}
+            size="icon"
+            aria-label="Toggle bulk selection mode"
+            onClick={() => {
+              if (isBulkMode) {
+                deactivateBulkMode();
+                return;
+              }
+              activateBulkMode();
+            }}
+          >
+            <CheckSquare className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -512,7 +541,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
                 items={displayedPosts.map((post) => post.id)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <div className="grid grid-cols-2 gap-4 p-4 pb-44 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {displayedPosts.map((post, index) => (
                     <SortablePostCard
                       key={getPostCardKey(post)}
@@ -559,6 +588,21 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
           />
         )}
       </div>
+      <BulkActionBar
+        selectedPosts={selectedPosts}
+        onRemoveSelected={!playlist.isSmart ? handleBulkRemove : undefined}
+        onSelectAll={() => {
+          const selectableIds = displayedPosts.map((post) => getBulkSelectId(post));
+          const isAllSelected =
+            selectableIds.length > 0 &&
+            selectableIds.every((id) => selectedIds.has(id));
+          if (isAllSelected) {
+            clearSelection();
+            return;
+          }
+          selectAll(selectableIds);
+        }}
+      />
     </div>
   );
 };

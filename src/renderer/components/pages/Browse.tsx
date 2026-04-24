@@ -1,11 +1,11 @@
-import React, { useMemo, forwardRef, useCallback } from "react";
+import React, { useMemo, forwardRef, useCallback, useEffect } from "react";
 import {
   useQuery,
   useMutation,
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
@@ -16,13 +16,14 @@ import { getPostCardKey } from "../../lib/postCardKey";
 import { Button } from "../ui/button";
 import { ExternalLink } from "lucide-react";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
-import { useDownloadAll } from "../../hooks/useDownloadAll";
-import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { useWorkerFilteredPosts } from "../../hooks/useWorkerFilteredPosts";
 import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
 import type { Post } from "../../../main/db/schema";
 import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { useBulkSelect } from "../../hooks/useBulkSelect";
+import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
+import { getBulkSelectId } from "../../lib/bulkSelect";
 
 const POSTS_PER_PAGE = 50;
 
@@ -36,8 +37,8 @@ const GridContainer = forwardRef<
     ref={ref}
     className={cn(
       viewType === "grid"
-        ? "grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-32",
+        ? "grid grid-cols-2 gap-4 p-4 pb-44 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
       className
     )}
     {...props}
@@ -86,6 +87,18 @@ export const Browse = () => {
   const excludeTags = useSearchStore((state) => state.excludeTags);
   const openViewer = useViewerStore((state) => state.open);
   const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
+  const isBulkMode = useBulkSelect((state) => state.isBulkMode);
+  const activateBulkMode = useBulkSelect((state) => state.activateBulkMode);
+  const deactivateBulkMode = useBulkSelect((state) => state.deactivate);
+  const selectedIds = useBulkSelect((state) => state.selectedIds);
+  const selectAll = useBulkSelect((state) => state.selectAll);
+  const clearSelection = useBulkSelect((state) => state.clearSelection);
+
+  useEffect(() => {
+    return () => {
+      deactivateBulkMode();
+    };
+  }, [deactivateBulkMode]);
 
   const tags = useMemo(
     () => buildBooruTagListForIpc(includeTags, excludeTags),
@@ -211,6 +224,10 @@ export const Browse = () => {
     filterConfig,
     250 // Debounce delay
   );
+  const selectedPosts = useMemo(
+    () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
+    [allPosts, selectedIds]
+  );
   const hasFilteredOutResults = rawPosts.length > 0 && allPosts.length === 0;
 
 
@@ -271,17 +288,6 @@ export const Browse = () => {
     },
     [hasNextPage, isFetchingNextPage, fetchNextPage]
   );
-
-  const {
-    downloadAll,
-    cancel,
-    pause,
-    resume,
-    isDownloading: isDownloadingAll,
-    isPaused,
-    progress: downloadAllProgress,
-    canDownload,
-  } = useDownloadAll(allPosts);
 
   const viewMutation = useMutation({
     mutationFn: async (post: Post) => {
@@ -347,22 +353,28 @@ export const Browse = () => {
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
       {/* Header */}
       <div className="flex z-[5] flex-col gap-4 px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
-        <div className="flex justify-between items-center">
+        <div className="flex items-center">
           <h2 className="flex gap-2 items-center text-xl font-bold">
             <Search className="w-5 h-5 text-primary" />
             Browse
           </h2>
-          <DownloadAllButton
-            onClick={downloadAll}
-            onCancel={cancel}
-            onPause={pause}
-            onResume={resume}
-            isDownloading={isDownloadingAll}
-            isPaused={isPaused}
-            progress={downloadAllProgress}
-            canDownload={canDownload && tags.length > 0}
-            totalLabel={allPosts.length}
-          />
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              type="button"
+              variant={isBulkMode ? "default" : "outline"}
+              size="icon"
+              aria-label="Toggle bulk selection mode"
+              onClick={() => {
+                if (isBulkMode) {
+                  deactivateBulkMode();
+                  return;
+                }
+                activateBulkMode();
+              }}
+            >
+              <CheckSquare className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -472,6 +484,24 @@ export const Browse = () => {
             />
           )}
       </div>
+      <BulkActionBar
+        selectedPosts={selectedPosts}
+        onSelectAll={
+          tags.length > 0
+            ? () => {
+                const selectableIds = allPosts.map((post) => getBulkSelectId(post));
+                const isAllSelected =
+                  selectableIds.length > 0 &&
+                  selectableIds.every((id) => selectedIds.has(id));
+                if (isAllSelected) {
+                  clearSelection();
+                  return;
+                }
+                selectAll(selectableIds);
+              }
+            : undefined
+        }
+      />
     </div>
   );
 };
