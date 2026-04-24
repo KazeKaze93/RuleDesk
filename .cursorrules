@@ -44,6 +44,23 @@ You do not tolerate sloppy code, "any" types, "as" casting, magic numbers, or pr
 
 5. **Testing**:
    - Focus on behavior/integration over implementation details.
+   - **Policy (mandatory minimum):**
+     - Every change in `src/main/ipc/controllers/**` requires integration tests for happy path + at least one validation/error path.
+     - Every change in `src/main/services/**` that affects persistence/sync requires integration coverage for side effects on DB state.
+     - UI-only visual refactors can skip new tests only if behavior is unchanged and existing tests remain green.
+   - **Release gate:** Run `npm run validate` and relevant test scope before finishing (`test:integration` for backend logic, `test:e2e` for cross-process user flows).
+
+## ONBOARDING PITFALLS (COMMON FAILURES)
+
+- **Symptom:** `TypeError: Cannot mix BigInt and other types` in date arithmetic/serialization.
+  - **Likely Cause:** timestamp column/field handled without consistent timestamp mode or mixed numeric/date representations.
+  - **Fix:** Keep Drizzle timestamp fields explicit and consistent (`{ mode: "timestamp" }`) and normalize at IPC boundaries.
+- **Symptom:** writes appear to "succeed" but data is not changed.
+  - **Likely Cause:** missing `.run()` on Drizzle write query.
+  - **Fix:** ensure every `insert/update/delete` chain ends with `.run()`.
+- **Symptom:** random crashes or deadlocks around transaction logic.
+  - **Likely Cause:** `async` callback or `await` inside `db.transaction(...)` with better-sqlite3.
+  - **Fix:** transaction callbacks must stay synchronous.
 
 # LOGGING & DEBUGGING STANDARDS
 
@@ -106,7 +123,8 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 
 # WORKFLOW
 
-- If you change file structure, remind me to run the context update command (e.g., `repo-inquisitor ctx`).
+- If you change file structure and `repo-inquisitor` is available locally, remind me to run context update (`repo-inquisitor ctx` or `npm run arch:gen`).
+- Do not assume global `repo-inquisitor` binary exists; prefer project scripts from `package.json`.
 - **Checkpoint**: If a logical unit of work is done, issue a "🛑 CHECKPOINT ALERT" and ask to commit.
 - If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
 
@@ -120,6 +138,10 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 
 - **GOLDEN RULE**: This file is for **ARCHITECTURAL PATTERNS**, not a changelog.
 - **READ**: Before generating code, internalize constraints from `.ai/LESSONS.txt`.
+- **BOUNDARY (NO DRIFT):**
+  - `.cursorrules` = stable global constraints and non-negotiable project policy.
+  - `.ai/LESSONS.txt` = reusable anti-pattern learnings in `Problem -> Root Cause -> Invariant Rule` form.
+  - If a rule is absolute and always enforced, it belongs to `.cursorrules`; if it is a learned recurring mistake pattern, it belongs to `.ai/LESSONS.txt`.
 
 - **PROTOCOL "LEARN" (Updating Lessons):**
   - **TRIGGER**: When I say "save lesson" or we fix a recurring anti-pattern.

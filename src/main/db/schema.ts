@@ -58,8 +58,8 @@ export const artists = sqliteTable(
       .$defaultFn(() => new Date()),
   },
   (t) => ({
-    // Note: Expression index for COALESCE(lastChecked, createdAt) is created via migration
-    // See drizzle/0003_add_artists_sort_index.sql
+    // Note: Expression index for COALESCE(lastChecked, createdAt) is created via raw SQL migration
+    // See drizzle/0027_add_artists_coalesce_sort_index.sql
     // Drizzle doesn't support expression indexes directly, so we use raw SQL in migration
     // Individual column indexes are kept for other potential queries
     lastCheckedIdx: index("artists_lastChecked_idx").on(t.lastChecked),
@@ -103,6 +103,7 @@ export const posts = sqliteTable(
     isViewedIdx: index("isViewedIdx").on(t.isViewed),
     lastViewedAtIdx: index("posts_last_viewed_at_idx").on(t.lastViewedAt),
     publishedAtIdx: index("publishedAtIdx").on(t.publishedAt),
+    createdAtIdx: index("idx_posts_created_at").on(t.createdAt),
     isFavoritedIdx: index("isFavoritedIdx").on(t.isFavorited),
     // Composite index for common filter combination: artistId + rating + isViewed
     // Optimizes queries filtering by these columns simultaneously
@@ -202,11 +203,6 @@ export const playlistEntries = sqliteTable(
     // Indexes for fast retrieval
     playlistIdIdx: index("playlist_entries_playlist_id_idx").on(t.playlistId),
     postIdIdx: index("playlist_entries_post_id_idx").on(t.postId),
-    // Composite index for common query: get all posts in a playlist
-    playlistPostIdx: index("playlist_entries_playlist_post_idx").on(
-      t.playlistId,
-      t.postId
-    ),
     addedAtIdx: index("playlist_entries_added_at_idx").on(t.addedAt),
   })
 );
