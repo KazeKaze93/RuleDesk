@@ -84,6 +84,7 @@ import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 import { SyncScheduler } from "./services/sync-scheduler";
 import { MaintenanceScheduler } from "./services/maintenance-scheduler";
+import { BackupService } from "./services/backup-service";
 import { USER_DATA_DIR_NAME } from "./db/paths";
 import { getAllProviderDomains } from "./providers";
 import { eq } from "drizzle-orm";
@@ -160,6 +161,7 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 const syncScheduler = new SyncScheduler(syncService);
 const maintenanceScheduler = new MaintenanceScheduler();
+const backupService = new BackupService(syncService);
 container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
 
 // In test mode, skip single instance lock to allow multiple test instances
@@ -495,8 +497,9 @@ async function initializeAppAndWindow() {
     if (isTestMode) {
       logger.info("[Main] Test mode: Skipping ready-to-show listener, initializing IPC immediately");
       // Initialize IPC immediately so tests can interact with the app
-      registerAllHandlers(syncService, updaterService, mainWindow, videoProxyServer);
+      registerAllHandlers(syncService, backupService, updaterService, mainWindow, videoProxyServer);
       reloadProxyFromSettings();
+      backupService.checkAndRunAutoBackup();
       
       // Log window state for debugging
       logger.info(`[Main] Test mode: Window created, visible: ${mainWindow.isVisible()}, destroyed: ${mainWindow.isDestroyed()}`);
@@ -523,8 +526,9 @@ async function initializeAppAndWindow() {
 
           // Initialize IPC architecture (controllers + legacy handlers)
           // setupIpc is called inside registerAllHandlers now
-          registerAllHandlers(syncService, updaterService, window, videoProxyServer);
+          registerAllHandlers(syncService, backupService, updaterService, window, videoProxyServer);
           reloadProxyFromSettings();
+          backupService.checkAndRunAutoBackup();
 
           // Auto-sync on startup
           setTimeout(async () => {

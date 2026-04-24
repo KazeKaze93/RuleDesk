@@ -31,6 +31,7 @@ export type UpdateStatusData = {
 export type UpdateStatusCallback = (data: UpdateStatusData) => void;
 export type UpdateProgressCallback = (percent: number) => void;
 export type SyncErrorCallback = (message: string) => void;
+export type AutoBackupInterval = "never" | "daily" | "weekly";
 
 export type BackupResponse = {
   success: boolean;
@@ -187,6 +188,8 @@ export interface IpcBridge {
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
   checkDatabaseIntegrity: () => Promise<{ ok: boolean; details: string }>;
+  getBackupSchedule: () => Promise<AutoBackupInterval>;
+  setBackupSchedule: (interval: AutoBackupInterval) => Promise<boolean>;
 
   verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
 
@@ -415,6 +418,10 @@ const ipcBridge: IpcBridge = {
   restoreBackup: () => ipcRenderer.invoke(IPC_CHANNELS.BACKUP.RESTORE),
   checkDatabaseIntegrity: () =>
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP.INTEGRITY_CHECK),
+  getBackupSchedule: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.BACKUP.GET_SCHEDULE),
+  setBackupSchedule: (interval) =>
+    ipcRenderer.invoke(IPC_CHANNELS.BACKUP.SET_SCHEDULE, interval),
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) =>

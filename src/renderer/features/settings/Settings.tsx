@@ -17,6 +17,7 @@ type StatusTimerKey =
   | "integrity"
   | "proxy"
   | "account";
+type AutoBackupInterval = "never" | "daily" | "weekly";
 
 export const Settings = () => {
   const { theme, setTheme, isSaving: isThemeSaving } = useTheme();
@@ -45,6 +46,7 @@ export const Settings = () => {
   const [autoSyncOnStartup, setAutoSyncOnStartup] = useState(false);
   const [syncIntervalMinutes, setSyncIntervalMinutes] = useState("0");
   const [backupRetention, setBackupRetention] = useState("5");
+  const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>("never");
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [proxyStatus, setProxyStatus] = useState<"idle" | "success" | "error">("idle");
@@ -86,6 +88,14 @@ export const Settings = () => {
     window.api.getDatabaseLocation().then((location) => {
       setDatabaseLocation(location);
     });
+    window.api
+      .getBackupSchedule()
+      .then((interval) => {
+        setAutoBackupInterval(interval);
+      })
+      .catch((error) => {
+        log.error("[Settings] Failed to load backup schedule:", error);
+      });
     return () => {
       const activeTimers = Object.values(timersRef);
       for (const timerId of activeTimers) {
@@ -335,6 +345,22 @@ export const Settings = () => {
     void saveBackupRetention(String(normalized));
   };
 
+  const handleAutoBackupIntervalChange = async (
+    value: AutoBackupInterval
+  ): Promise<void> => {
+    const previousValue = autoBackupInterval;
+    setAutoBackupInterval(value);
+    try {
+      const isSaved = await window.api.setBackupSchedule(value);
+      if (!isSaved) {
+        setAutoBackupInterval(previousValue);
+      }
+    } catch (error) {
+      log.error("[Settings] Failed to save auto-backup schedule:", error);
+      setAutoBackupInterval(previousValue);
+    }
+  };
+
   const handleSaveApiKey = async (): Promise<void> => {
     setAccountStatus("idle");
     try {
@@ -442,6 +468,7 @@ export const Settings = () => {
             restoreStatus={restoreStatus}
             integrityResult={integrityResult}
             backupRetention={backupRetention}
+            autoBackupInterval={autoBackupInterval}
             onBackup={() => {
               void handleBackup();
             }}
@@ -453,6 +480,9 @@ export const Settings = () => {
             }}
             onBackupRetentionChange={handleBackupRetentionChange}
             onBackupRetentionBlur={handleBackupRetentionBlur}
+            onAutoBackupIntervalChange={(value) => {
+              void handleAutoBackupIntervalChange(value);
+            }}
           />
         </TabsContent>
 

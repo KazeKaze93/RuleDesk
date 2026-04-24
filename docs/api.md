@@ -1315,6 +1315,30 @@ if (result.success) {
 
 ---
 
+### `getBackupSchedule()`
+
+Returns the current automatic backup schedule.
+
+**Returns:** `Promise<"never" | "daily" | "weekly">`
+
+**IPC Channel:** `backup:getSchedule`
+
+---
+
+### `setBackupSchedule(interval: "never" | "daily" | "weekly")`
+
+Sets automatic backup schedule used by startup auto-backup check.
+
+**Parameters:**
+
+- `interval: "never" | "daily" | "weekly"`
+
+**Returns:** `Promise<boolean>`
+
+**IPC Channel:** `backup:setSchedule`
+
+---
+
 ### `writeToClipboard(text: string)`
 
 Writes text to the system clipboard.

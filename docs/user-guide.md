@@ -415,8 +415,8 @@ Settings are split into tabs:
 
 - **Sync on startup** - Run sync automatically when app starts
 - **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
-- **Sync now** - Manual sync trigger directly in Settings
-- **Last sync status** - Human-readable status line in the tab
+- **Sync now** - Manual sync trigger in the sidebar
+- **Last sync status** - Relative timestamp under the sidebar sync button (`never`, `X min ago`, etc.)
 
 ### Appearance
 
@@ -427,6 +427,7 @@ Settings are split into tabs:
 - **Create Backup** - Save a timestamped backup of your database
 - **Restore Backup** - Restore from a backup file (app reloads after success)
 - **Check Integrity** - Verify database is not corrupted
+- **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup)
 - **Retention** - Older files are rotated automatically (approximately last **five** kept)
 
 ### Account

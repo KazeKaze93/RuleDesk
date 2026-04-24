@@ -3,6 +3,16 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+
+type AutoBackupInterval = "never" | "daily" | "weekly";
 
 interface SettingsBackupTabProps {
   databaseLocation: string;
@@ -13,11 +23,13 @@ interface SettingsBackupTabProps {
   restoreStatus: "idle" | "success" | "error";
   integrityResult: { ok: boolean; details: string } | null;
   backupRetention: string;
+  autoBackupInterval: AutoBackupInterval;
   onBackup: () => void;
   onRestore: () => void;
   onIntegrityCheck: () => void;
   onBackupRetentionChange: (value: string) => void;
   onBackupRetentionBlur: () => void;
+  onAutoBackupIntervalChange: (value: AutoBackupInterval) => void;
 }
 
 export const SettingsBackupTab = ({
@@ -29,11 +41,13 @@ export const SettingsBackupTab = ({
   restoreStatus,
   integrityResult,
   backupRetention,
+  autoBackupInterval,
   onBackup,
   onRestore,
   onIntegrityCheck,
   onBackupRetentionChange,
   onBackupRetentionBlur,
+  onAutoBackupIntervalChange,
 }: SettingsBackupTabProps) => {
   return (
     <Card>
@@ -45,6 +59,25 @@ export const SettingsBackupTab = ({
         <section className="space-y-1 rounded-md border p-3">
           <p className="text-xs text-muted-foreground">Database location</p>
           <p className="text-sm break-all">{databaseLocation || "Loading..."}</p>
+        </section>
+
+        <section className="space-y-2">
+          <Label htmlFor="auto-backup-schedule">Auto-backup</Label>
+          <Select
+            value={autoBackupInterval}
+            onValueChange={(value: AutoBackupInterval) => {
+              onAutoBackupIntervalChange(value);
+            }}
+          >
+            <SelectTrigger id="auto-backup-schedule">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="never">Never</SelectItem>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+            </SelectContent>
+          </Select>
         </section>
 
         <section className="space-y-2">

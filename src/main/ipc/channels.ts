@@ -66,6 +66,8 @@ export const IPC_CHANNELS = {
     CREATE: "db:create-backup",
     RESTORE: "db:restore-backup",
     INTEGRITY_CHECK: "backup:integrity-check",
+    SET_SCHEDULE: "backup:setSchedule",
+    GET_SCHEDULE: "backup:getSchedule",
   },
   UPDATES: {
     GET_UNREAD_COUNT: "updates:getUnreadCount",

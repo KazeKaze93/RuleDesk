@@ -23,6 +23,7 @@ import type {
 import type { ExtendedStats } from "./shared/schemas/stats";
 
 export type SyncErrorCallback = (message: string) => void;
+export type AutoBackupInterval = "never" | "daily" | "weekly";
 
 export interface BackupResponse {
   success: boolean;
@@ -147,6 +148,8 @@ export interface IpcApi extends IpcBridge {
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
   checkDatabaseIntegrity: () => Promise<{ ok: boolean; details: string }>;
+  getBackupSchedule: () => Promise<AutoBackupInterval>;
+  setBackupSchedule: (interval: AutoBackupInterval) => Promise<boolean>;
   writeToClipboard: (text: string) => Promise<boolean>;
 
   verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;

@@ -13,6 +13,12 @@ import {
   SheetTitle,
   SheetDescription as SheetDesc,
 } from "../../components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../components/ui/tooltip";
 import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { useViewerStore, ViewerOrigin } from "../../store/viewerStore";
@@ -70,6 +76,8 @@ import { isVideoPost } from "../../lib/filter-utils";
 import { useVideoProxyUrl } from "../../lib/hooks/useVideoProxyUrl";
 import { useViewerController } from "./hooks/useViewerController";
 import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
+
+const VIEWER_TAG_HINT_SEEN_KEY = "hasSeenTagHint";
 
 /**
  * PostNotFoundFallback: Handles shadow insert for remote posts not in cache
@@ -792,10 +800,54 @@ const TagsDrawer = ({
   } | null;
 }) => {
   const navigate = useNavigate();
+  const [hasSeenTagHint, setHasSeenTagHint] = useState<boolean>(() => {
+    return window.localStorage.getItem(VIEWER_TAG_HINT_SEEN_KEY) === "true";
+  });
+  const [showTagHintForCurrentOpen, setShowTagHintForCurrentOpen] = useState(false);
+  const [isPostIdCopied, setIsPostIdCopied] = useState(false);
   const addIncludeTag = useSearchStore((state) => state.addIncludeTag);
   const addExcludeTag = useSearchStore((state) => state.addExcludeTag);
   const isTagIncluded = useSearchStore((state) => state.isTagIncluded);
   const isTagExcluded = useSearchStore((state) => state.isTagExcluded);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowTagHintForCurrentOpen(false);
+      return;
+    }
+
+    if (!hasSeenTagHint) {
+      setShowTagHintForCurrentOpen(true);
+      window.localStorage.setItem(VIEWER_TAG_HINT_SEEN_KEY, "true");
+      setHasSeenTagHint(true);
+      return;
+    }
+
+    setShowTagHintForCurrentOpen(false);
+  }, [isOpen, hasSeenTagHint]);
+
+  useEffect(() => {
+    if (!isPostIdCopied) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      setIsPostIdCopied(false);
+    }, 1500);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [isPostIdCopied]);
+
+  const handleCopyPostId = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(String(post.postId));
+      setIsPostIdCopied(true);
+    } catch (error) {
+      log.error("[TagsDrawer] Failed to copy post ID:", error);
+    }
+  };
 
   // Get artist information - always fetch when drawer is open
   const { data: artists } = useQuery<Artist[]>({
@@ -1015,11 +1067,33 @@ const TagsDrawer = ({
       >
         <SheetHeader>
           <SheetTitle>Post Metadata</SheetTitle>
-          <SheetDesc>Post ID: {post.postId}</SheetDesc>
+          <SheetDesc>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void handleCopyPostId();
+                    }}
+                    className="group h-auto px-1 py-0.5 text-xs font-normal text-muted-foreground hover:text-foreground"
+                  >
+                    <span>{isPostIdCopied ? "Copied!" : `Post ID: ${post.postId}`}</span>
+                    <Copy className="ml-1 h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Click to copy</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </SheetDesc>
         </SheetHeader>
-        <p className="px-1 pb-2 text-xs text-muted-foreground">
-          Click to include · Right-click to exclude
-        </p>
+        {showTagHintForCurrentOpen ? (
+          <p className="px-1 pb-2 text-xs text-muted-foreground">
+            Click to include · Right-click to exclude
+          </p>
+        ) : null}
         <div className="mt-6 space-y-4">
           {post.publishedAt && (
             <div>
