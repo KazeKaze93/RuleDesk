@@ -43,6 +43,10 @@ export type DownloadProgressData = {
   percent: number;
 };
 export type DownloadProgressCallback = (data: DownloadProgressData) => void;
+export type TrackedArtist = Artist & {
+  postsCount: number;
+  lastPostAt: number | null;
+};
 
 // Re-export IPC DTOs for use in renderer
 // Re-export types from controllers (single source of truth)
@@ -73,7 +77,7 @@ export interface IpcBridge {
   logout: () => Promise<void>;
 
   // Artists
-  getTrackedArtists: () => Promise<Artist[]>;
+  getTrackedArtists: () => Promise<TrackedArtist[]>;
   addArtist: (artist: AddArtistRequest) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 

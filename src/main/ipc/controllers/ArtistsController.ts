@@ -1,10 +1,10 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, or, desc, sql, and, notLike, not } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { artists, posts } from "../../db/schema";
+import { artists } from "../../db/schema";
 import { escapeLikePattern } from "../../db/utils";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
@@ -16,9 +16,9 @@ import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
+import { getTrackedArtistsWithStats } from "../../db/queries/artists";
 import {
   EXTERNAL_ARTIST_ID,
-  EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
 import { AddArtistSchema, type AddArtistRequest } from "../../../shared/schemas/artist";
 import { IdSchema } from "../../../shared/schemas/ipc";
@@ -46,6 +46,7 @@ type IpcArtist = {
     : Artist[K];
 } & {
   postsCount?: number; // Added via JOIN in getArtists to fix N+1 problem
+  lastPostAt?: number | null;
 };
 
 
@@ -128,30 +129,7 @@ export class ArtistsController extends BaseController {
       // Filter out placeholder artists created by togglePostFavorite (tag starts with EXTERNAL_ARTIST_TAG_PREFIX)
       // Also exclude artist with id === EXTERNAL_ARTIST_ID if it exists
       // CRITICAL: Use JOIN to get posts count in single query (fixes N+1 problem)
-      const result = await db
-        .select({
-          id: artists.id,
-          name: artists.name,
-          tag: artists.tag,
-          provider: artists.provider,
-          type: artists.type,
-          apiEndpoint: artists.apiEndpoint,
-          lastPostId: artists.lastPostId,
-          newPostsCount: artists.newPostsCount,
-          lastChecked: artists.lastChecked,
-          createdAt: artists.createdAt,
-          postsCount: sql<number>`COALESCE(COUNT(${posts.id}), 0)`.as("postsCount"),
-        })
-        .from(artists)
-        .leftJoin(posts, eq(artists.id, posts.artistId))
-        .where(
-          and(
-            notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`), // Exclude placeholder artists
-            not(eq(artists.id, EXTERNAL_ARTIST_ID)) // Explicitly exclude EXTERNAL_ARTIST_ID
-          )
-        )
-        .groupBy(artists.id)
-        .orderBy(desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`));
+      const result = getTrackedArtistsWithStats(db);
       
       log.info(
         `[ArtistsController] Retrieved ${result.length} tracked artists (placeholder artists excluded)`

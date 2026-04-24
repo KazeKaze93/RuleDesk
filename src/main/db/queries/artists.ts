@@ -1,0 +1,45 @@
+import { and, desc, eq, not, notLike, sql } from "drizzle-orm";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type * as schema from "../schema";
+import { artists, posts } from "../schema";
+import {
+  EXTERNAL_ARTIST_ID,
+  EXTERNAL_ARTIST_TAG_PREFIX,
+} from "../../../shared/constants";
+
+type AppDatabase = BetterSQLite3Database<typeof schema>;
+type ArtistRow = typeof artists.$inferSelect;
+
+export type TrackedArtistWithStats = ArtistRow & {
+  postsCount: number;
+  lastPostAt: number | null;
+};
+
+export function getTrackedArtistsWithStats(db: AppDatabase): TrackedArtistWithStats[] {
+  return db
+    .select({
+      id: artists.id,
+      name: artists.name,
+      tag: artists.tag,
+      provider: artists.provider,
+      type: artists.type,
+      apiEndpoint: artists.apiEndpoint,
+      lastPostId: artists.lastPostId,
+      newPostsCount: artists.newPostsCount,
+      lastChecked: artists.lastChecked,
+      createdAt: artists.createdAt,
+      postsCount: sql<number>`COALESCE(COUNT(${posts.id}), 0)`.as("postsCount"),
+      lastPostAt: sql<number | null>`MAX(${posts.createdAt})`.as("lastPostAt"),
+    })
+    .from(artists)
+    .leftJoin(posts, eq(artists.id, posts.artistId))
+    .where(
+      and(
+        notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`),
+        not(eq(artists.id, EXTERNAL_ARTIST_ID))
+      )
+    )
+    .groupBy(artists.id)
+    .orderBy(desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`))
+    .all();
+}

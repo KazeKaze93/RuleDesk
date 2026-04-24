@@ -20,7 +20,7 @@ import type { Post } from "../../../main/db/schema";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
-import type { Artist } from "../../../main/db/schema";
+import type { TrackedArtist } from "../../../main/bridge";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
@@ -144,14 +144,42 @@ const hasErrorCode = (value: unknown): value is { code?: string } => {
 
 const FEED_VIEW = "feed";
 const CREATORS_VIEW = "creators";
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+const MONTH_MS = 30 * DAY_MS;
+const UNIX_SECONDS_THRESHOLD = 1_000_000_000_000;
+
+const normalizeTimestampToMs = (ts: number): number => {
+  // SQLite aggregates may return unix seconds for integer timestamp columns.
+  // Normalize to milliseconds before relative formatting.
+  return ts < UNIX_SECONDS_THRESHOLD ? ts * 1000 : ts;
+};
+
+const formatRelativeTime = (ts: number): string => {
+  const normalizedTs = normalizeTimestampToMs(ts);
+  const elapsedMs = Math.max(0, Date.now() - normalizedTs);
+
+  if (elapsedMs < HOUR_MS) {
+    return "<1h ago";
+  }
+  if (elapsedMs < DAY_MS) {
+    return `${Math.floor(elapsedMs / HOUR_MS)}h ago`;
+  }
+  if (elapsedMs < MONTH_MS) {
+    return `${Math.floor(elapsedMs / DAY_MS)}d ago`;
+  }
+
+  const months = Math.floor(elapsedMs / MONTH_MS);
+  return months === 1 ? "1 month ago" : `${months} months ago`;
+};
 
 type UpdatesView = typeof FEED_VIEW | typeof CREATORS_VIEW;
 
 interface CreatorsViewProps {
-  artists: Artist[];
+  artists: TrackedArtist[];
   isLoading: boolean;
   onSyncAll: () => void;
-  onViewArtist: (artist: Artist) => void;
+  onViewArtist: (artist: TrackedArtist) => void;
 }
 
 const CreatorsView = ({
@@ -193,7 +221,11 @@ const CreatorsView = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{artist.name}</p>
-                  <p className="text-xs truncate text-muted-foreground">{artist.tag}</p>
+                  <p className="text-xs truncate text-muted-foreground">
+                    {`${artist.tag} \u00b7 ${artist.postsCount > 999 ? "999+" : artist.postsCount} posts \u00b7 ${
+                      artist.lastPostAt === null ? "never" : formatRelativeTime(artist.lastPostAt)
+                    }`}
+                  </p>
                 </div>
                 {artist.newPostsCount > 0 && (
                   <Badge variant="default" className="flex-shrink-0 tabular-nums">
