@@ -26,6 +26,8 @@ export function getTrackedArtistsWithStats(db: AppDatabase): TrackedArtistWithSt
       apiEndpoint: artists.apiEndpoint,
       lastPostId: artists.lastPostId,
       newPostsCount: artists.newPostsCount,
+      syncStatus: artists.syncStatus,
+      lastError: artists.lastError,
       lastChecked: artists.lastChecked,
       createdAt: artists.createdAt,
       postsCount: sql<number>`COALESCE(COUNT(${posts.id}), 0)`.as("postsCount"),

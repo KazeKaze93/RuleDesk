@@ -169,6 +169,13 @@
       "when": 1777000003000,
       "tag": "0023_add_playlists_updated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1777000004000,
+      "tag": "0024_add_artists_sync_status",
+      "breakpoints": true
     }
   ]
 }

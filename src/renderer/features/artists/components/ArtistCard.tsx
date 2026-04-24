@@ -1,26 +1,41 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Trash2, User, Hash, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Hash,
+  RefreshCw,
+  Search,
+  Trash2,
+  User,
+} from "lucide-react";
 import { Button } from "../../../components/ui/button";
-import type { Artist } from "../../../../main/db/schema";
+import { Badge } from "../../../components/ui/badge";
 import { DeleteArtistDialog } from "../../../components/dialogs/DeleteArtistDialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../../components/ui/tooltip";
 import { cn } from "../../../lib/utils";
+import { formatRelativeTime } from "../../../lib/formatRelativeTime";
+import type { TrackedArtist } from "../../../../main/bridge";
 
 interface ArtistCardProps {
-  artist: Artist;
-  onSelect: (artist: Artist) => void;
+  artist: TrackedArtist;
+  onSelect: (artist: TrackedArtist) => void;
 }
 
 export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
   const { t } = useTranslation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Get posts count for this artist
-  // postsCount comes from JOIN query in ArtistsController.getArtists (fixes N+1 problem)
-  // Trust the schema: if postsCount is in artist object, use it; otherwise default to 0
-  const postsCount = ('postsCount' in artist && typeof artist.postsCount === 'number') 
-    ? artist.postsCount 
-    : 0;
+  const postsCount = artist.postsCount;
+  const lastPostText =
+    artist.lastPostAt !== null
+      ? `Last: ${formatRelativeTime(artist.lastPostAt)}`
+      : "Last: no posts yet";
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -40,11 +55,51 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
 
   const handleCardClick = () => onSelect(artist);
 
+  const renderStatusBadge = () => {
+    if (artist.syncStatus === "syncing") {
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <RefreshCw className="w-3 h-3 animate-spin" />
+          Syncing
+        </Badge>
+      );
+    }
+
+    if (artist.syncStatus === "error") {
+      const badge = (
+        <Badge variant="destructive" className="gap-1">
+          <AlertTriangle className="w-3 h-3" />
+          Error
+        </Badge>
+      );
+
+      if (!artist.lastError) {
+        return badge;
+      }
+
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{badge}</TooltipTrigger>
+          <TooltipContent side="left" className="max-w-64 break-words">
+            {artist.lastError}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <Badge className="gap-1 text-green-700 bg-green-100 border-green-200 hover:bg-green-100">
+        <CheckCircle2 className="w-3 h-3" />
+        Synced
+      </Badge>
+    );
+  };
+
   return (
-    <>
+    <TooltipProvider delayDuration={200}>
       <div
         className={cn(
-          "flex relative justify-between items-center p-1 pr-3 rounded-lg border transition-all group",
+          "flex relative justify-between items-center p-1 pr-3 rounded-lg border transition-all group gap-3",
           "bg-card text-card-foreground border-border",
           "hover:bg-accent/50 hover:border-primary/40 hover:shadow-md"
         )}
@@ -69,9 +124,11 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
           <p className="mt-1 font-mono text-xs truncate text-muted-foreground">
             {postsCount.toLocaleString()} {postsCount === 1 ? "post" : "posts"}
           </p>
+          <p className="mt-1 text-xs truncate text-muted-foreground">{lastPostText}</p>
         </button>
 
-        <div className="flex-shrink-0 pl-4">
+        <div className="flex flex-shrink-0 gap-2 items-center pl-2">
+          {renderStatusBadge()}
           <Button
             variant="ghost"
             size="icon"
@@ -90,6 +147,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
       />
-    </>
+    </TooltipProvider>
   );
 };

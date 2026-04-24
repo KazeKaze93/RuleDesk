@@ -48,6 +48,10 @@ export const artists = sqliteTable(
     apiEndpoint: text("api_endpoint").notNull(),
     lastPostId: integer("last_post_id").notNull().default(0),
     newPostsCount: integer("new_posts_count").notNull().default(0),
+    syncStatus: text("sync_status", { enum: ["idle", "syncing", "error"] })
+      .notNull()
+      .default("idle"),
+    lastError: text("last_error"),
     lastChecked: integer("last_checked", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()

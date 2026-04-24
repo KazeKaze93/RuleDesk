@@ -6,13 +6,15 @@ import log from "electron-log/renderer";
 import { ArtistCard } from "./components/ArtistCard";
 import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
 import { Button } from "../../components/ui/button";
-import type { Artist } from "../../../main/db/schema";
+import { Input } from "../../components/ui/input";
+import type { TrackedArtist } from "../../../main/bridge";
 import type { ProviderId } from "../../../shared/constants";
 
 export const Tracked = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const addModalReturnFocusRef = useRef<HTMLElement | null>(null);
 
   // Fetch artists
@@ -49,9 +51,15 @@ export const Tracked = () => {
   };
 
   // Handler for clicking a card
-  const handleSelectArtist = (artist: Artist) => {
+  const handleSelectArtist = (artist: TrackedArtist) => {
     navigate(`/artist/${artist.id}`);
   };
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredArtists =
+    artists?.filter((artist) =>
+      artist.name.toLowerCase().includes(normalizedQuery)
+    ) ?? [];
 
   if (isLoading)
     return <div className="p-8 text-muted-foreground">Loading artists...</div>;
@@ -93,15 +101,30 @@ export const Tracked = () => {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {artists.map((artist) => (
-            <ArtistCard
-              key={artist.id}
-              artist={artist}
-              onSelect={handleSelectArtist}
-            />
-          ))}
-        </div>
+        <>
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search artists..."
+            aria-label="Search artists by name"
+            className="max-w-sm"
+          />
+          {filteredArtists.length === 0 ? (
+            <div className="flex flex-col justify-center items-center h-64 rounded-lg border-2 border-dashed bg-muted/10 text-muted-foreground">
+              <p>No artists match</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredArtists.map((artist) => (
+                <ArtistCard
+                  key={artist.id}
+                  artist={artist}
+                  onSelect={handleSelectArtist}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <AddArtistModal
