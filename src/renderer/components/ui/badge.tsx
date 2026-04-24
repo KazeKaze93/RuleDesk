@@ -32,5 +32,6 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   );
 }
 
+// react-refresh: CVA `badgeVariants` is co-located with Badge (shadcn pattern; splitting only for HMR is noise).
 // eslint-disable-next-line react-refresh/only-export-components
 export { Badge, badgeVariants };

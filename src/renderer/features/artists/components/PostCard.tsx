@@ -87,9 +87,10 @@ export const PostCard: React.FC<PostCardProps> = ({
     if (!isInViewport || isVid || !post.sampleUrl || post.sampleUrl === post.previewUrl) return;
     if (sampleLoaded) return;
     if (loadedSampleUrls.has(post.sampleUrl)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- cache hit: same tick sync from in-memory set
-      setSampleSrc(post.sampleUrl);
-      setSampleLoaded(true);
+      queueMicrotask(() => {
+        setSampleSrc(post.sampleUrl);
+        setSampleLoaded(true);
+      });
       return;
     }
 
@@ -117,12 +118,6 @@ export const PostCard: React.FC<PostCardProps> = ({
       img.onerror = null;
     };
   }, [isInViewport, isVid, post.sampleUrl, post.previewUrl, sampleLoaded]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset sample state when navigating to a different post
-    setSampleLoaded(false);
-    setSampleSrc(null);
-  }, [post.id]);
 
   // Handle video playback on hover
   useEffect(() => {
@@ -234,7 +229,7 @@ export const PostCard: React.FC<PostCardProps> = ({
               muted
               loop
               playsInline
-              preload="none"
+              preload="metadata"
               className={cn(
                 "absolute inset-0 w-full transition-opacity duration-300 z-10",
                 shouldPreserveAspect

@@ -13,9 +13,7 @@
  *
  * @template T - The type this token represents (used for compile-time type checking)
  */
-// @ts-expect-error - T is used for type inference at compile time, not runtime
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- T is used for type inference
-export class Token<T> {
+export class Token<_T> {
   /**
    * Unique identifier for the token (for debugging and logging)
    */

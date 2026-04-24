@@ -56,7 +56,8 @@ export function useRemoteTags({
       }
 
       // Clear state synchronously (useLayoutEffect is designed for DOM synchronization)
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- useLayoutEffect is designed for synchronous DOM updates
+      // setState: avoid stale search UI when the debounced query becomes too short; must be sync before paint.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       setIsLoading(false);
       setError(null);
@@ -80,10 +81,9 @@ export function useRemoteTags({
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    // Intentional: synchronizing loading state with async fetch operation
-    // This is a valid pattern for async operations in effects - we need to set loading state
-    // before initiating the async call to provide immediate UI feedback
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: synchronizing loading state with async fetch operation
+    // setState: show loading immediately for the in-flight `searchRemoteTags` request
+    // (effect body is the right place; rule would allow only external subscription callbacks).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     setError(null);
 
