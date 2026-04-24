@@ -1,8 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
-import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -14,23 +12,15 @@ import {
 interface SettingsSyncTabProps {
   autoSyncOnStartup: boolean;
   syncIntervalMinutes: string;
-  isManualSyncRunning: boolean;
-  manualSyncStatus: "idle" | "success" | "error";
-  lastSyncStatusText: string;
   onAutoSyncChange: (checked: boolean) => void;
   onSyncIntervalChange: (value: string) => void;
-  onManualSync: () => void;
 }
 
 export const SettingsSyncTab = ({
   autoSyncOnStartup,
   syncIntervalMinutes,
-  isManualSyncRunning,
-  manualSyncStatus,
-  lastSyncStatusText,
   onAutoSyncChange,
   onSyncIntervalChange,
-  onManualSync,
 }: SettingsSyncTabProps) => {
   return (
     <Card>
@@ -67,31 +57,6 @@ export const SettingsSyncTab = ({
               <SelectItem value="120">Every 2 hours</SelectItem>
             </SelectContent>
           </Select>
-        </section>
-
-        <section className="space-y-2 rounded-md border p-4">
-          <Label>Manual sync</Label>
-          <section className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onManualSync}
-              disabled={isManualSyncRunning}
-            >
-              {isManualSyncRunning ? "Syncing..." : "Sync Now"}
-            </Button>
-            {manualSyncStatus === "success" ? (
-              <Badge className="border-green-600/30 bg-green-600/15 text-green-700 dark:text-green-300">
-                Completed
-              </Badge>
-            ) : null}
-            {manualSyncStatus === "error" ? (
-              <Badge className="border-red-600/30 bg-red-600/15 text-red-700 dark:text-red-300">
-                Failed
-              </Badge>
-            ) : null}
-          </section>
-          <p className="text-sm text-muted-foreground">{lastSyncStatusText}</p>
         </section>
       </CardContent>
     </Card>

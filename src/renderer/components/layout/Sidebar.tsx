@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink } from "react-router-dom";
 import {
   Search,
@@ -14,9 +14,12 @@ import {
 import log from "electron-log/renderer";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "../../lib/utils";
+import { formatRelativeTime } from "../../lib/formatRelativeTime";
 
 const NAV_ITEM_BASE_CLASS =
   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors [@media(max-height:599px)]:py-1.5";
+const SYNC_LAST_COMPLETED_QUERY_KEY = ["sync", "lastCompletedAt"];
+const LAST_SYNC_REFRESH_INTERVAL_MS = 60_000;
 
 const navGroups = [
   {
@@ -45,15 +48,51 @@ const navGroups = [
 
 export const Sidebar = () => {
   const [isSyncing, setIsSyncing] = useState(false);
+  const [relativeTimeTick, setRelativeTimeTick] = useState(0);
   const [appVersion, setAppVersion] = useState<string>("");
   const hasFetchedVersionRef = useRef(false);
+  const queryClient = useQueryClient();
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["updates", "unreadCount"],
     queryFn: () => window.api.getUpdatesUnreadCount(),
     refetchInterval: 30_000,
   });
+  const { data: lastSyncTimestamp = null } = useQuery<number | null>({
+    queryKey: SYNC_LAST_COMPLETED_QUERY_KEY,
+    queryFn: async () => null,
+    staleTime: Infinity,
+  });
 
   // Fetch app version on mount
+  useEffect(() => {
+    const unsubscribeStart = window.api.onSyncStart(() => {
+      setIsSyncing(true);
+    });
+
+    const unsubscribeProgress = window.api.onSyncProgress(() => {
+      setIsSyncing(true);
+    });
+
+    const unsubscribeEnd = window.api.onSyncEnd(() => {
+      setIsSyncing(false);
+      queryClient.setQueryData(SYNC_LAST_COMPLETED_QUERY_KEY, Date.now());
+    });
+
+    return () => {
+      unsubscribeStart();
+      unsubscribeProgress();
+      unsubscribeEnd();
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setRelativeTimeTick((tick) => tick + 1);
+    }, LAST_SYNC_REFRESH_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   useEffect(() => {
     // Prevent double execution in React Strict Mode (dev)
     if (hasFetchedVersionRef.current) {
@@ -97,6 +136,13 @@ export const Sidebar = () => {
       setIsSyncing(false);
     }
   };
+
+  const lastSyncText = useMemo(() => {
+    void relativeTimeTick;
+    return lastSyncTimestamp === null
+      ? "Last sync: never"
+      : `Last sync: ${formatRelativeTime(lastSyncTimestamp)}`;
+  }, [lastSyncTimestamp, relativeTimeTick]);
 
   const handleLogout = async () => {
     const confirmed = window.confirm(
@@ -195,6 +241,9 @@ export const Sidebar = () => {
             {isSyncing ? "Syncing..." : "Sync now"}
           </span>
         </button>
+        <p className="pl-1 text-xs text-muted-foreground" aria-live="polite">
+          {lastSyncText}
+        </p>
 
         {/* Log Out Button */}
         <button

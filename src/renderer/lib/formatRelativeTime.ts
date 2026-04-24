@@ -1,3 +1,4 @@
+const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const MONTH_MS = 30 * DAY_MS;
@@ -12,7 +13,8 @@ export const formatRelativeTime = (ts: number): string => {
   const elapsedMs = Math.max(0, Date.now() - normalizedTs);
 
   if (elapsedMs < HOUR_MS) {
-    return "<1h ago";
+    const minutes = Math.max(1, Math.floor(elapsedMs / MINUTE_MS));
+    return `${minutes} min ago`;
   }
   if (elapsedMs < DAY_MS) {
     return `${Math.floor(elapsedMs / HOUR_MS)}h ago`;

@@ -16,7 +16,6 @@ type StatusTimerKey =
   | "restore"
   | "integrity"
   | "proxy"
-  | "manual-sync"
   | "account";
 
 export const Settings = () => {
@@ -49,9 +48,6 @@ export const Settings = () => {
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
   const [proxyError, setProxyError] = useState<string | null>(null);
   const [proxyStatus, setProxyStatus] = useState<"idle" | "success" | "error">("idle");
-  const [isManualSyncRunning, setIsManualSyncRunning] = useState(false);
-  const [manualSyncStatus, setManualSyncStatus] = useState<"idle" | "success" | "error">("idle");
-  const [lastSyncStatusText, setLastSyncStatusText] = useState("Last sync: not started yet");
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
@@ -300,28 +296,6 @@ export const Settings = () => {
     }
   };
 
-  const handleManualSync = async (): Promise<void> => {
-    setIsManualSyncRunning(true);
-    setManualSyncStatus("idle");
-    try {
-      const result = await window.api.syncAll();
-      if (result) {
-        setManualSyncStatus("success");
-        setLastSyncStatusText(`Last sync: ${new Date().toLocaleString()}`);
-        scheduleStatusReset("manual-sync", () => setManualSyncStatus("idle"));
-      } else {
-        setManualSyncStatus("error");
-        scheduleStatusReset("manual-sync", () => setManualSyncStatus("idle"));
-      }
-    } catch (error) {
-      log.error("[Settings] Failed to run manual sync:", error);
-      setManualSyncStatus("error");
-      scheduleStatusReset("manual-sync", () => setManualSyncStatus("idle"));
-    } finally {
-      setIsManualSyncRunning(false);
-    }
-  };
-
   const parseBackupRetention = (value: string): number | null => {
     if (value.trim().length === 0) {
       return null;
@@ -439,17 +413,11 @@ export const Settings = () => {
           <SettingsSyncTab
             autoSyncOnStartup={autoSyncOnStartup}
             syncIntervalMinutes={syncIntervalMinutes}
-            isManualSyncRunning={isManualSyncRunning}
-            manualSyncStatus={manualSyncStatus}
-            lastSyncStatusText={lastSyncStatusText}
             onAutoSyncChange={(checked) => {
               void handleAutoSyncOnStartupChange(checked);
             }}
             onSyncIntervalChange={(value) => {
               void handleSyncIntervalChange(value);
-            }}
-            onManualSync={() => {
-              void handleManualSync();
             }}
           />
         </TabsContent>
