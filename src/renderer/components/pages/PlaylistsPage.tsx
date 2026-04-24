@@ -30,6 +30,7 @@ import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { useShallow } from "zustand/react/shallow";
 import { PostCard } from "../../features/artists/components/PostCard";
+import { getPostCardKey } from "../../lib/postCardKey";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
@@ -284,7 +285,9 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
 
   useEffect(() => {
     if (!playlist.isSmart) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local DnD copy with query results for non-smart playlists
+      // setState-in-effect: `localPosts` is a DnD-mutable copy of React Query `allPosts` and
+      // must be replaced when the server list updates; deriving without local state would drop reorder.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalPosts(allPosts);
     }
   }, [allPosts, playlist.isSmart]);
@@ -480,7 +483,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
           <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
             <GridContainer viewType="masonry">
               {displayedPosts.map((post, index) => (
-                <div key={`${post.id}-${post.postId ?? index}`} className="w-full mb-4 break-inside-avoid">
+                <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
                   <PostCard
                     post={post}
                     onClick={() => handlePostClick(index)}
@@ -512,7 +515,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
                 <div className="grid grid-cols-2 gap-4 p-4 pb-32 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {displayedPosts.map((post, index) => (
                     <SortablePostCard
-                      key={post.id}
+                      key={getPostCardKey(post)}
                       post={post}
                       onClick={() => handlePostClick(index)}
                       onRemove={() => handleRemovePost(post.id)}
@@ -544,6 +547,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
 
               return (
                 <PostCard
+                  key={getPostCardKey(post)}
                   post={post}
                   onClick={() => handlePostClick(index)}
                   onRemoveFromPlaylist={

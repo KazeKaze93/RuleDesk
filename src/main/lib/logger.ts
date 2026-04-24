@@ -1,12 +1,11 @@
 import log from "electron-log";
 import path from "path";
+import { app } from "electron";
 
 let userDataPath = "";
 
 try {
   if (process.type === "browser") {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { app } = require("electron");
     userDataPath = app.getPath("userData");
   } else {
     userDataPath = process.env.USER_DATA_PATH || process.cwd();

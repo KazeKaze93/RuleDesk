@@ -34,8 +34,7 @@ if (isTestMode) {
           : String(error);
         const logEntry = `[${timestamp}] ${type}:\n${errorMessage}\n\n`;
         writeFileSync(crashLogPath, logEntry, { flag: "a", encoding: "utf-8" });
-        // Also log to console for immediate visibility
-        console.error(`[E2E Crash Log] ${type}:`, error);
+        log.error(`[E2E Crash Log] ${type}:`, error);
       } catch {
         // Ignore errors if file can't be written
       }
@@ -51,10 +50,9 @@ if (isTestMode) {
       writeCrashLog("unhandledRejection", reason);
     });
     
-    console.log(`[E2E] Crash logging enabled. Log file: ${crashLogPath}`);
+    log.info(`[E2E] Crash logging enabled. Log file: ${crashLogPath}`);
   } catch (error) {
-    // If crash logging setup fails, log to console
-    console.error("[E2E] Failed to set up crash logging:", error);
+    log.error("[E2E] Failed to set up crash logging:", error);
   }
 }
 
@@ -144,6 +142,12 @@ function configureUserDataPath(): void {
 configureUserDataPath();
 
 process.env.USER_DATA_PATH = app.getPath("userData");
+
+if (process.platform === "linux") {
+  // Enable hardware video decode where supported
+  app.commandLine.appendSwitch("enable-features", "VaapiVideoDecodeLinuxGL");
+}
+app.commandLine.appendSwitch("ignore-gpu-blacklist");
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;

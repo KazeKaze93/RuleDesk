@@ -12,6 +12,7 @@ import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
+import { getPostCardKey } from "../../lib/postCardKey";
 import { Button } from "../ui/button";
 import { ExternalLink } from "lucide-react";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
@@ -425,7 +426,7 @@ export const Browse = () => {
             <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
               <GridContainer viewType="masonry">
                 {allPosts.map((post, index) => (
-                  <div key={post.id} className="w-full mb-4 break-inside-avoid">
+                  <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
                     <PostCard
                       post={post}
                       onClick={() => handlePostClick(index)}
@@ -461,7 +462,11 @@ export const Browse = () => {
                 if (!post) return null;
 
                 return (
-                  <PostCard post={post} onClick={() => handlePostClick(index)} />
+                  <PostCard
+                    key={getPostCardKey(post)}
+                    post={post}
+                    onClick={() => handlePostClick(index)}
+                  />
                 );
               }}
             />

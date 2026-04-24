@@ -14,6 +14,7 @@ import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
+import { getPostCardKey } from "../../lib/postCardKey";
 import type { Post } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { useDownloadAllWithFilters } from "../../hooks/useDownloadAll";
@@ -414,7 +415,7 @@ export const Favorites = () => {
             <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
               <GridContainer viewType="masonry">
                 {allPosts.map((post, index) => (
-                  <div key={post.id} className="w-full mb-4 break-inside-avoid">
+                  <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
                     <PostCard
                       post={post}
                       onClick={() => handlePostClick(index)}
@@ -454,7 +455,11 @@ export const Favorites = () => {
                 if (!post) return null;
 
                 return (
-                  <PostCard post={post} onClick={() => handlePostClick(index)} />
+                  <PostCard
+                    key={getPostCardKey(post)}
+                    post={post}
+                    onClick={() => handlePostClick(index)}
+                  />
                 );
               }}
             />

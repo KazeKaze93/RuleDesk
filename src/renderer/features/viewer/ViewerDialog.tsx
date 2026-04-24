@@ -605,6 +605,7 @@ const ViewerMedia = ({
           </div>
         ) : (
           <div
+            className="flex justify-center items-center w-full h-full"
             style={{
               filter: shouldBlur
                 ? `blur(${effectiveBlur}px)`
@@ -617,6 +618,9 @@ const ViewerMedia = ({
               autoPlay={isVideoPlaying}
               loop
               controls
+              muted
+              playsInline
+              preload="metadata"
               onPlay={() => setIsVideoPlaying(true)}
               onPause={() => setIsVideoPlaying(false)}
               onError={() => {
