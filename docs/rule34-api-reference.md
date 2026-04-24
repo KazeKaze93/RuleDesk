@@ -180,6 +180,17 @@ https://api.rule34.xxx/autocomplete.php?q=char
 
 ## Best Practices and Cautions
 
+### CDN Hostnames and Media URLs
+
+Rule34 serves media files from multiple hostnames that share the same path format. In practice, switching CDN node means replacing only the hostname while keeping the rest of the URL unchanged.
+
+- `rule34.xxx` (default/fallback)
+- `us.rule34.xxx` (USA)
+- `wimg.rule34.xxx` (EU)
+- `api-cdn.rule34.xxx` (API-CDN)
+
+If your client optimizes media delivery by selecting a faster host, keep a safe fallback to `rule34.xxx` and rewrite only media URLs (not API endpoint URLs such as `api.rule34.xxx`).
+
 ### Rate Limiting
 
 - Implement exponential backoff for rate limit errors
