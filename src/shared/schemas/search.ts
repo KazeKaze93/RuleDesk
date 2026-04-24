@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PageSchema, LimitSchema } from "./ipc";
 
 /**
  * Search Posts Schema
@@ -9,8 +10,8 @@ import { z } from "zod";
 export const SearchPostsSchema = z.object({
   tags: z.array(z.string().trim().min(1)),
   // Empty array is allowed - means show all posts (API omits tags parameter)
-  page: z.number().int().positive(),
-  limit: z.number().int().positive().max(100).optional(),
+  page: PageSchema,
+  limit: LimitSchema.max(100).optional(),
   isRandom: z.boolean().optional().default(false),
 });
 

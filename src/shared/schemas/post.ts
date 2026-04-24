@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  IdSchema,
+  OptionalIdSchema,
+  PageSchema,
+  LimitSchema,
+  RatingSchema,
+  MediaTypeSchema,
+} from "./ipc";
 
 /**
  * Post Data Schema
@@ -10,12 +18,12 @@ import { z } from "zod";
  * to markPostAsViewed and togglePostFavorite IPC methods for external posts.
  */
 export const PostDataSchema = z.object({
-  postId: z.number().int().positive(),
+  postId: IdSchema,
   artistId: z.number().int().nonnegative(),
   fileUrl: z.string().min(1),
   previewUrl: z.string().min(1),
   sampleUrl: z.string().optional(),
-  rating: z.enum(["s", "q", "e"]).optional(),
+  rating: RatingSchema.optional(),
   tags: z.string().optional(),
   publishedAt: z.number().int().nonnegative().optional(),
 }).strict(); // Strict mode: reject unknown properties
@@ -41,12 +49,12 @@ export type PostData = z.infer<typeof PostDataSchema>;
 export const PostFilterSchema = z
   .object({
     tags: z.string().optional(),
-    rating: z.enum(["s", "q", "e"]).optional(),
+    rating: RatingSchema.optional(),
     isFavorited: z.boolean().optional(),
     isViewed: z.boolean().optional(),
     sinceTracking: z.boolean().optional(),
     aiFilter: z.enum(["all", "hide", "only"]).optional(),
-    mediaType: z.enum(["all", "images", "videos"]).optional(),
+    mediaType: MediaTypeSchema.optional(),
   })
   .partial();
 
@@ -67,11 +75,11 @@ export type PostFilterRequest = z.infer<typeof PostFilterSchema>;
  * Use this schema in Renderer for form validation before sending to Main process.
  */
 export const GetPostsSchema = z.object({
-  artistId: z.number().int().positive().optional(),
-  page: z.number().int().min(1).default(1),
+  artistId: OptionalIdSchema,
+  page: PageSchema.default(1),
   sortOrder: z.enum(["asc", "desc"]).optional(),
   filters: PostFilterSchema.optional(),
-  limit: z.number().int().min(1).max(100).default(50),
+  limit: LimitSchema.max(100).default(50),
   isRandom: z.boolean().optional().default(false),
 });
 
@@ -84,7 +92,7 @@ export const GetPostsSchema = z.object({
 export type GetPostsRequest = z.infer<typeof GetPostsSchema>;
 
 export const GetPostsCountSchema = z.object({
-  artistId: z.number().int().positive().optional(),
+  artistId: OptionalIdSchema,
   filters: PostFilterSchema.optional(),
 });
 

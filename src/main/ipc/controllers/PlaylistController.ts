@@ -40,6 +40,7 @@ import { getSqliteInstance } from "../../db/client";
 import { getProvider } from "../../providers";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { safeStorage } from "electron";
+import { IdSchema, OptionalIdSchema } from "../../../shared/schemas/ipc";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 type UnknownRecord = Record<string, unknown>;
@@ -225,7 +226,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLIST,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([IdSchema]),
       this.getPlaylist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -234,7 +235,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.UPDATE_PLAYLIST,
-      z.tuple([z.number().int().positive(), UpdatePlaylistSchema]),
+      z.tuple([IdSchema, UpdatePlaylistSchema]),
       this.updatePlaylist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -243,7 +244,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.DELETE_PLAYLIST,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([IdSchema]),
       this.deletePlaylist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -297,7 +298,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
-      z.tuple([z.number().int(), z.number().int().positive().optional()]),
+      z.tuple([z.number().int(), OptionalIdSchema]),
       this.getPlaylistsContainingPost.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -306,7 +307,7 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.EXPORT_PLAYLIST,
-      z.tuple([z.number().int().positive()]),
+      z.tuple([IdSchema]),
       this.exportPlaylist.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]

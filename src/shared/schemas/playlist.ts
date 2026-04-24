@@ -1,5 +1,11 @@
 import { z } from "zod";
 import {
+  IdSchema,
+  PageSchema,
+  LimitSchema,
+  PostFiltersSchema,
+} from "./ipc";
+import {
   SmartQueryTagSchema,
   type SmartQueryV1,
   parseSmartQuery,
@@ -82,7 +88,7 @@ export type UpdatePlaylistRequest = z.infer<typeof UpdatePlaylistSchema>;
  * Supports adding multiple posts to multiple playlists simultaneously.
  */
 export const AddPostsToPlaylistSchema = z.object({
-  playlistIds: z.array(z.number().int().positive()).min(1, "At least one playlist required"),
+  playlistIds: z.array(IdSchema).min(1, "At least one playlist required"),
   postIds: z.array(z.number().int()).min(1, "At least one post required"),
 });
 
@@ -99,7 +105,7 @@ export type AddPostsToPlaylistRequest = z.infer<typeof AddPostsToPlaylistSchema>
  * Single source of truth for removing posts from playlists validation and typing.
  */
 export const RemovePostsFromPlaylistSchema = z.object({
-  playlistId: z.number().int().positive(),
+  playlistId: IdSchema,
   postIds: z.array(z.number().int()).min(1, "At least one post required"),
 });
 
@@ -117,13 +123,10 @@ export type RemovePostsFromPlaylistRequest = z.infer<typeof RemovePostsFromPlayl
  * Supports playlist-scoped filtering by rating and media type.
  */
 export const GetPlaylistPostsSchema = z.object({
-  playlistId: z.number().int().positive(),
-  page: z.number().int().min(1).default(1),
-  filters: z.object({
-    rating: z.enum(["s", "q", "e"]).optional(),
-    mediaType: z.enum(["all", "images", "videos"]).optional(),
-  }).optional(),
-  limit: z.number().int().min(1).max(1000).default(50), // Increased max limit to 1000 for larger gallery views
+  playlistId: IdSchema,
+  page: PageSchema.default(1),
+  filters: PostFiltersSchema.optional(),
+  limit: LimitSchema.max(1000).default(50), // Increased max limit to 1000 for larger gallery views
   sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
   isRandom: z.boolean().optional().default(false),
 });
@@ -143,19 +146,16 @@ export type GetPlaylistPostsRequest = z.infer<typeof GetPlaylistPostsSchema>;
  * Includes optional rating and mediaType filters from renderer state.
  */
 export const ResolvePlaylistPostsSchema = z.object({
-  playlistId: z.number().int().positive(),
-  page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(1000).default(50), // Increased max limit to 1000 for larger gallery views
-  filters: z.object({
-    rating: z.enum(["s", "q", "e"]).optional(),
-    mediaType: z.enum(["all", "images", "videos"]).optional(),
-  }).optional(),
+  playlistId: IdSchema,
+  page: PageSchema.default(1),
+  limit: LimitSchema.max(1000).default(50), // Increased max limit to 1000 for larger gallery views
+  filters: PostFiltersSchema.optional(),
   sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
   isRandom: z.boolean().optional().default(false),
 });
 
 export const ReorderPlaylistEntriesSchema = z.object({
-  playlistId: z.number().int().positive(),
+  playlistId: IdSchema,
   orderedPostIds: z.array(z.number().int()).min(1),
 });
 
