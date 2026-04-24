@@ -193,6 +193,8 @@ export interface IpcBridge {
   getPlaylistsContainingPost: (postId: number, rule34PostId?: number) => Promise<number[]>;
   exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
   importPlaylist: () => Promise<{ success: boolean; playlistId?: number; error?: string }>;
+
+  getVideoProxyUrl: (fileUrl: string) => Promise<string>;
 }
 
 const ipcBridge: IpcBridge = {
@@ -415,6 +417,9 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.DB.EXPORT_PLAYLIST, playlistId),
   importPlaylist: () =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.IMPORT_PLAYLIST),
+
+  getVideoProxyUrl: (fileUrl: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.VIDEO_PROXY.GET_URL, fileUrl),
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);

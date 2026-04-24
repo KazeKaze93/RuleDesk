@@ -286,6 +286,9 @@ interface IpcBridge {
   exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
   importPlaylist: () => Promise<{ success: boolean; playlistId?: number; error?: string }>;
 
+  // Video (localhost proxy; see architecture docs for cache and host allowlist)
+  getVideoProxyUrl: (fileUrl: string) => Promise<string>;
+
   // Updater
   checkForUpdates: () => Promise<void>;
   quitAndInstall: () => Promise<void>;
@@ -333,6 +336,16 @@ return <div>Version: {version}</div>;
 ```
 
 **IPC Channel:** `app:get-version`
+
+---
+
+### `getVideoProxyUrl(fileUrl: string)`
+
+Returns a `http://127.0.0.1` URL served by the main-process `VideoProxyServer` that forwards Range requests to the original HTTPS CDN and caches full responses under `{userData}/video-cache/`. The renderer should use the returned value as the `<video src>` (with a temporary fallback to the direct CDN URL while this promise resolves). Input is validated with `z.string().url()`. Only the same host allowlist enforced by the proxy is permitted; other URLs are rejected with HTTP 400 if passed through the proxy.
+
+**Returns:** `Promise<string>`
+
+**IPC Channel:** `video-proxy:get-url`
 
 ---
 

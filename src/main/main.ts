@@ -90,6 +90,7 @@ import { eq } from "drizzle-orm";
 import { settings, SETTINGS_ID } from "./db/schema";
 import { container, DI_TOKENS } from "./core/di/Container";
 import { reloadProxyFromSettings } from "./lib/proxy";
+import { VideoProxyServer } from "./services/video-proxy-server";
 
 logger.info("🚀 Application starting...");
 
@@ -140,6 +141,12 @@ function configureUserDataPath(): void {
 }
 
 configureUserDataPath();
+
+const videoProxyServer = new VideoProxyServer();
+
+app.on("before-quit", () => {
+  videoProxyServer.stop();
+});
 
 process.env.USER_DATA_PATH = app.getPath("userData");
 
@@ -312,7 +319,14 @@ function buildCspPolicy(): string {
     `https://*.${domain}`,
     `http://*.${domain}`,
   ]);
-  const mediaOrigins = ["'self'", "data:", "blob:", ...providerOrigins].join(" ");
+  const localVideoProxyOrigins = ["http://127.0.0.1:*", "http://localhost:*"];
+  const mediaOrigins = [
+    "'self'",
+    "data:",
+    "blob:",
+    ...providerOrigins,
+    ...localVideoProxyOrigins,
+  ].join(" ");
   const connectOrigins = ["'self'", ...providerOrigins];
   const devOrigins = ["http://localhost:*", "http://127.0.0.1:*"];
 
@@ -363,6 +377,7 @@ async function initializeAppAndWindow() {
   let loadingWindow: BrowserWindow | null = null;
 
   try {
+    await videoProxyServer.start();
     configureDynamicCspHeaders();
     const isDev = process.env.NODE_ENV === "development";
     logger.info(`Main: CSP configured from provider registry (${isDev ? "development" : "production"} mode)`);
@@ -480,7 +495,7 @@ async function initializeAppAndWindow() {
     if (isTestMode) {
       logger.info("[Main] Test mode: Skipping ready-to-show listener, initializing IPC immediately");
       // Initialize IPC immediately so tests can interact with the app
-      registerAllHandlers(syncService, updaterService, mainWindow);
+      registerAllHandlers(syncService, updaterService, mainWindow, videoProxyServer);
       reloadProxyFromSettings();
       
       // Log window state for debugging
@@ -508,7 +523,7 @@ async function initializeAppAndWindow() {
 
           // Initialize IPC architecture (controllers + legacy handlers)
           // setupIpc is called inside registerAllHandlers now
-          registerAllHandlers(syncService, updaterService, window);
+          registerAllHandlers(syncService, updaterService, window, videoProxyServer);
           reloadProxyFromSettings();
 
           // Auto-sync on startup
