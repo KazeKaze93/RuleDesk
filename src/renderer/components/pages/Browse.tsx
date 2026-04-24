@@ -443,7 +443,7 @@ export const Browse = () => {
             </div>
           ) : (
             <VirtuosoGrid
-              style={{ height: "100%" }}
+              className="h-full"
               totalCount={allPosts.length}
               endReached={handleEndReached}
               increaseViewportBy={600}

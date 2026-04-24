@@ -17,6 +17,7 @@ type TopArtistRow = { name: string; postCount: number };
 type TopTagRow = { tag: string; count: number };
 type TimelineRow = { month: string; count: number };
 
+// Query style: Drizzle Builder API only in this controller.
 export class StatsController extends BaseController {
   public setup(): void {
     this.handle(IPC_CHANNELS.STATS.GET_EXTENDED, z.tuple([]), this.getExtendedStats.bind(this), {

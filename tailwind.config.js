@@ -1,7 +1,14 @@
 /** @type {import('tailwindcss').Config} */
+const blurFilterClasses = Array.from(
+  { length: 101 },
+  (_, i) => `[filter:blur(${i}px)]`
+);
+
 module.exports = {
   darkMode: "class",
   content: ["./src/renderer/index.html", "./src/renderer/**/*.{js,ts,jsx,tsx}"],
+  // Dynamic per-pixel blur (safe mode) uses arbitrary [filter:blur(Npx)] — JIT must see classes.
+  safelist: blurFilterClasses,
   theme: {
     container: {
       center: true,

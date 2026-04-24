@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useMemo, useRef } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from "../../components/ui/dialog";
@@ -61,6 +62,7 @@ import {
 import type { Post } from "../../../main/db/schema";
 import type { Artist } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { normalizeRating } from "../../../shared/utils/post-normalization";
 import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
 import { useSearchStore } from "../../store/searchStore";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../store/safeModeStore";
@@ -516,14 +518,24 @@ const ViewerMedia = ({
   const [videoError, setVideoError] = useState(false);
   const [hasTriedFallback, setHasTriedFallback] = useState(false);
   const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
-  const { safeMode, panicMode, blurAmount } = useSafeModeStore();
-  
+  const { safeMode, panicMode, blurAmount } = useSafeModeStore(
+    useShallow((s) => ({
+      safeMode: s.safeMode,
+      panicMode: s.panicMode,
+      blurAmount: s.blurAmount,
+    })),
+  );
+
   // Reset fallback flag when post changes
   // Use key prop on img element instead of useEffect to avoid cascading renders
   // Key change forces React to remount component, resetting state naturally
-  const normalizedRating: "s" | "q" | "e" = (post.rating === "q" || post.rating === "e") ? post.rating : "s";
+  const normalizedRating = normalizeRating(post.rating);
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
+  const videoBlurClass =
+    shouldBlur && effectiveBlur > 0
+      ? `[filter:blur(${Math.min(100, Math.round(effectiveBlur))}px)]`
+      : undefined;
 
   const isVideo = isVideoPost(post.fileUrl);
   const videoProxySrc = useVideoProxyUrl(
@@ -609,12 +621,7 @@ const ViewerMedia = ({
           </div>
         ) : (
           <div
-            className="flex justify-center items-center w-full h-full"
-            style={{
-              filter: shouldBlur
-                ? `blur(${effectiveBlur}px)`
-                : undefined,
-            }}
+            className={cn("flex justify-center items-center w-full h-full", videoBlurClass)}
           >
             <video
               src={videoProxySrc ?? post.fileUrl}
@@ -946,16 +953,18 @@ const TagsDrawer = ({
             <h3 className="mb-2 text-sm font-semibold">Copyright</h3>
             {copyrightTags.length > 0 ? (
               <div className="space-y-1">
-                {copyrightTags.map((tag, index) => (
-                  <button
-                    key={`copyright-${tag}-${index}`}
+                {copyrightTags.map((tag) => (
+                  <Button
+                    type="button"
+                    key={tag}
+                    variant="link"
                     onClick={() => handleTagInclude(tag)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       handleTagExclude(tag);
                     }}
                     className={cn(
-                      "block text-sm text-purple-600 hover:underline text-left",
+                      "h-auto min-h-0 w-full justify-start p-0 text-sm text-purple-600 hover:underline",
                       isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
                       isTagExcluded(tag) &&
                         "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
@@ -970,7 +979,7 @@ const TagsDrawer = ({
                     aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
                   >
                     {tag}
-                  </button>
+                  </Button>
                 ))}
               </div>
             ) : (
@@ -984,16 +993,18 @@ const TagsDrawer = ({
             <h3 className="mb-2 text-sm font-semibold">Character</h3>
             {characterTags.length > 0 ? (
               <div className="space-y-1">
-                {characterTags.map((tag, index) => (
-                  <button
-                    key={`character-${tag}-${index}`}
+                {characterTags.map((tag) => (
+                  <Button
+                    type="button"
+                    key={tag}
+                    variant="link"
                     onClick={() => handleTagInclude(tag)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       handleTagExclude(tag);
                     }}
                     className={cn(
-                      "block text-sm text-green-600 hover:underline text-left",
+                      "h-auto min-h-0 w-full justify-start p-0 text-sm text-green-600 hover:underline",
                       isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
                       isTagExcluded(tag) &&
                         "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
@@ -1008,7 +1019,7 @@ const TagsDrawer = ({
                     aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
                   >
                     {tag}
-                  </button>
+                  </Button>
                 ))}
               </div>
             ) : (
@@ -1022,16 +1033,18 @@ const TagsDrawer = ({
             <h3 className="mb-2 text-sm font-semibold">Artist</h3>
             {artistTags.length > 0 ? (
               <div className="space-y-1">
-                {artistTags.map((tag, index) => (
-                  <button
-                    key={`artist-${tag}-${index}`}
+                {artistTags.map((tag) => (
+                  <Button
+                    type="button"
+                    key={tag}
+                    variant="link"
                     onClick={() => handleTagInclude(tag)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       handleTagExclude(tag);
                     }}
                     className={cn(
-                      "block text-sm text-red-600 hover:underline text-left",
+                      "h-auto min-h-0 w-full justify-start p-0 text-sm text-red-600 hover:underline",
                       isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
                       isTagExcluded(tag) &&
                         "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
@@ -1046,7 +1059,7 @@ const TagsDrawer = ({
                     aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
                   >
                     {tag}
-                  </button>
+                  </Button>
                 ))}
               </div>
             ) : (
@@ -1062,21 +1075,23 @@ const TagsDrawer = ({
             </h3>
             <div className="max-h-[400px] overflow-hidden rounded-md border">
               <Virtuoso
-                style={{ height: "400px" }}
+                className="h-[400px]"
                 data={generalTags}
                 components={{
                   Header: undefined,
                 }}
                 itemContent={(_index, tag) => {
                   return (
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
                       onClick={() => handleTagInclude(tag)}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         handleTagExclude(tag);
                       }}
                       className={cn(
-                        "w-full px-3 py-2 text-sm text-left border-b last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer text-foreground",
+                        "h-auto min-h-0 w-full justify-start rounded-none px-3 py-2 text-sm text-left font-normal border-b last:border-b-0 hover:bg-muted/50",
                         isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
                         isTagExcluded(tag) &&
                           "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
@@ -1091,7 +1106,7 @@ const TagsDrawer = ({
                       aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
                     >
                       {tag}
-                    </button>
+                    </Button>
                   );
                 }}
               />
@@ -1129,6 +1144,7 @@ const ViewerContent = ({
   const ctrl = useViewerController({ post, queue });
   const isDeveloperMode = true;
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
+  const playlistDialogTriggerRef = useRef<HTMLButtonElement | null>(null);
   // Local state for randomization in viewer (not synced with global store)
   const isRandom = (queue && "isRandom" in queue) ? queue.isRandom ?? false : false;
   const setQueueIsRandom = useViewerStore((state) => state.setQueueIsRandom);
@@ -1145,13 +1161,13 @@ const ViewerContent = ({
   const handleMarkViewed = useCallback(async () => {
     if (post.isViewed) return;
     // Fire and forget: suppress rate limit errors
-    window.api.markPostAsViewed(post.id).catch((err) => {
-      // Ignore rate limit errors - use typed errorCode, NOT string parsing
-      const errorCode = (err as { code?: string })?.code;
+    window.api.markPostAsViewed(post.id).catch((err: unknown) => {
+      const errorCode = typeof err === "object" && err !== null && "code" in err
+        ? Reflect.get(err, "code")
+        : undefined;
       if (errorCode === "RATE_LIMIT") {
         return; // Silently ignore rate limit errors
       }
-      // Log other errors for debugging
       const errorMessage = err instanceof Error ? err.message : String(err);
       log.error("[ViewerDialog] Failed to mark post as viewed:", errorMessage);
     });
@@ -1272,6 +1288,7 @@ const ViewerContent = ({
           </Button>
 
           <Button
+            ref={playlistDialogTriggerRef}
             variant="ghost"
             size="icon"
             onClick={(e) => {
@@ -1303,10 +1320,20 @@ const ViewerContent = ({
             }
           >
             {ctrl.isCurrentlyDownloading && (
-              <div
-                className="absolute inset-0 transition-all duration-100 bg-green-500/50"
-                style={{ width: `${ctrl.downloadProgress}%` }}
-              />
+              <svg
+                className="absolute inset-0 h-full w-full"
+                viewBox="0 0 100 1"
+                preserveAspectRatio="none"
+                aria-hidden
+              >
+                <rect
+                  x={0}
+                  y={0}
+                  width={ctrl.downloadProgress}
+                  height={1}
+                  className="fill-green-500/50"
+                />
+              </svg>
             )}
 
             {ctrl.isCurrentlyDownloading ? (
@@ -1498,9 +1525,11 @@ const ViewerContent = ({
         queue={queue}
       />
 
-      <button
+      <Button
+        type="button"
+        variant="ghost"
         className={cn(
-          "absolute left-2 top-1/2 -translate-y-1/2 p-4 text-white/70 hover:text-white transition-colors outline-none",
+          "absolute left-2 top-1/2 h-auto w-auto min-h-0 min-w-0 -translate-y-1/2 p-4 text-white/70 hover:bg-transparent hover:text-white",
           !controlsVisible && "opacity-0"
         )}
         onClick={(e) => {
@@ -1511,11 +1540,13 @@ const ViewerContent = ({
         title="Previous post (Left Arrow)"
       >
         <ChevronLeft className="w-10 h-10 drop-shadow-md" />
-      </button>
+      </Button>
 
-      <button
+      <Button
+        type="button"
+        variant="ghost"
         className={cn(
-          "absolute right-2 top-1/2 -translate-y-1/2 p-4 text-white/70 hover:text-white transition-colors outline-none",
+          "absolute right-2 top-1/2 h-auto w-auto min-h-0 min-w-0 -translate-y-1/2 p-4 text-white/70 hover:bg-transparent hover:text-white",
           !controlsVisible && "opacity-0"
         )}
         onClick={(e) => {
@@ -1526,32 +1557,34 @@ const ViewerContent = ({
         title="Next post (Right Arrow)"
       >
         <ChevronRight className="w-10 h-10 drop-shadow-md" />
-      </button>
+      </Button>
 
-      {/* Playlist Dialog */}
-      {showPlaylistDialog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/70" onClick={() => setShowPlaylistDialog(false)}>
-          <div className="bg-popover text-popover-foreground border border-border rounded-lg p-4 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <QuickAddToPlaylistMenu
-              post={{ id: post.id, postId: post.postId }}
-              trigger={
-                <Button variant="outline" className="w-full mb-4">
-                  <List className="mr-2 h-4 w-4" />
-                  Select Playlists
-                </Button>
-              }
-              onSuccess={() => setShowPlaylistDialog(false)}
-            />
-            <Button
-              variant="ghost"
-              onClick={() => setShowPlaylistDialog(false)}
-              className="w-full mt-2"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      )}
+      <Dialog open={showPlaylistDialog} onOpenChange={setShowPlaylistDialog}>
+        <DialogContent
+          className="z-[200] sm:max-w-md gap-3"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            playlistDialogTriggerRef.current?.focus();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Add to playlist</DialogTitle>
+            <DialogDescription>
+              Choose which playlists to add this post to.
+            </DialogDescription>
+          </DialogHeader>
+          <QuickAddToPlaylistMenu
+            post={{ id: post.id, postId: post.postId }}
+            trigger={
+              <Button variant="outline" className="w-full">
+                <List className="mr-2 h-4 w-4" />
+                Select Playlists
+              </Button>
+            }
+            onSuccess={() => setShowPlaylistDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

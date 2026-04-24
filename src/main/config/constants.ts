@@ -15,3 +15,9 @@ export const REQUEST_TIMEOUT = 15000;
 // Autocomplete timeout in milliseconds
 export const AUTOCOMPLETE_TIMEOUT = 10000;
 
+/**
+ * SQLite busy handler (better-sqlite3 `timeout` option, ms).
+ * Prevents immediate SQLITE_BUSY when two writers contend briefly.
+ */
+export const SQLITE_BUSY_TIMEOUT_MS = 5000;
+

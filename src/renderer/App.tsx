@@ -15,6 +15,7 @@ import { PlaylistsPage } from "./components/pages/PlaylistsPage";
 import { StatsPage } from "./components/pages/StatsPage";
 import { useTheme } from "./hooks/useTheme";
 import { Toaster } from "./components/ui/sonner";
+import { RENDERER_WINDOW_EVENTS } from "@shared/constants";
 
 type LegalStatus = "loading" | "confirmed" | "unconfirmed";
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
@@ -166,9 +167,9 @@ function App() {
       }));
     };
 
-    window.addEventListener("app:open-onboarding", openOnboarding);
+    window.addEventListener(RENDERER_WINDOW_EVENTS.OPEN_ONBOARDING, openOnboarding);
     return () => {
-      window.removeEventListener("app:open-onboarding", openOnboarding);
+      window.removeEventListener(RENDERER_WINDOW_EVENTS.OPEN_ONBOARDING, openOnboarding);
     };
   }, []);
 

@@ -72,6 +72,7 @@ type GetPostsParams = GetPostsRequest;
  * - Get posts count for artist
  * - Mark post as viewed
  */
+// Query style: Drizzle Builder API only in this controller.
 export class PostsController extends BaseController {
   private getDb(): AppDatabase {
     return container.resolve(DI_TOKENS.DB);

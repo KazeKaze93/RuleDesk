@@ -157,8 +157,8 @@ export const GlobalTopBar = () => {
             <div>
               <h4 className="text-sm font-semibold leading-none">Search Syntax</h4>
               <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-0">
-                {[BASIC_SYNTAX_SECTION, METATAGS_SYNTAX_SECTION].map((section, sectionIndex) => (
-                  <div key={section?.title ?? sectionIndex}>
+                {[BASIC_SYNTAX_SECTION, METATAGS_SYNTAX_SECTION].map((section) => (
+                  <div key={section?.title ?? "search-syntax"}>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pb-1 pt-3 first:pt-0">
                       {section?.title ?? ""}
                     </p>

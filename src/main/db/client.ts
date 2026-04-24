@@ -8,6 +8,7 @@ import log from "electron-log";
 import * as schema from "./schema";
 import { logger } from "../lib/logger";
 import { getDatabasePaths, getLegacyDatabasePaths } from "./paths";
+import { SQLITE_BUSY_TIMEOUT_MS } from "../config/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -121,7 +122,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
     verbose: process.env.DEBUG === "true" || process.env.DEBUG_SQLITE === "true"
       ? (message) => log.debug(`[SQLite] ${message}`)
       : undefined,
-    timeout: 5000, // 5 seconds timeout for SQLITE_BUSY (concurrent access)
+    timeout: SQLITE_BUSY_TIMEOUT_MS,
   });
 
   // Configure SQLite for optimal performance and data safety

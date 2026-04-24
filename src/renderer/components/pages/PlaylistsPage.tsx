@@ -527,7 +527,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
           </div>
         ) : (
           <VirtuosoGrid
-            style={{ height: "100%" }}
+            className="h-full"
             totalCount={displayedPosts.length}
             endReached={handleEndReached}
             increaseViewportBy={600}
@@ -1111,7 +1111,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                     <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/50 min-h-[60px]">
                       {smartTags.map((tag, index) => (
                         <Badge
-                          key={`${tag.tag}-${index}`}
+                          key={`${tag.type}-${tag.tag}`}
                           variant={tag.type === "include" ? "default" : "destructive"}
                           className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
                           onClick={() => toggleTagType(index)}
@@ -1290,7 +1290,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                   <div className="flex flex-wrap gap-2 mt-2">
                     {smartTags.map((tag, index) => (
                       <Badge
-                        key={index}
+                        key={`${tag.type}-${tag.tag}`}
                         variant={tag.type === "include" ? "default" : "destructive"}
                         className="cursor-pointer flex items-center gap-1"
                         onClick={() => toggleTagType(index)}

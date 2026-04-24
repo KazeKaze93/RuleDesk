@@ -1,6 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { Play, Check, Heart, List, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { normalizeRating } from "@shared/utils/post-normalization";
 import type { Post } from "../../../../main/db/schema";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../../store/safeModeStore";
 import { useSearchStore } from "../../../store/searchStore";
@@ -27,14 +29,23 @@ export const PostCard: React.FC<PostCardProps> = ({
   preserveAspect,
 }) => {
   const isVid = isVideoPost(post.fileUrl);
-  const { safeMode, panicMode, blurAmount } = useSafeModeStore();
+  const { safeMode, panicMode, blurAmount } = useSafeModeStore(
+    useShallow((s) => ({
+      safeMode: s.safeMode,
+      panicMode: s.panicMode,
+      blurAmount: s.blurAmount,
+    })),
+  );
   // Optimize: subscribe only to viewType, not entire store
   const viewType = useSearchStore((state) => state.viewType);
   const shouldPreserveAspect = preserveAspect ?? viewType === "grid";
-  // Normalize rating to 'e', 'q', 's' safely (handles both 'e' and 'explicit' formats)
-  const normalizedRating = post.rating ? post.rating.charAt(0).toLowerCase() as "e" | "q" | "s" : "q";
+  const normalizedRating = normalizeRating(post.rating);
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
+  const blurFilterClass =
+    shouldBlur && effectiveBlur > 0
+      ? `[filter:blur(${Math.min(100, Math.round(effectiveBlur))}px)]`
+      : undefined;
 
   // Video hover preview state
   const [isHovered, setIsHovered] = useState(false);
@@ -49,6 +60,7 @@ export const PostCard: React.FC<PostCardProps> = ({
     y: number;
   } | null>(null);
   const cardRef = useRef<HTMLButtonElement>(null);
+  const contextMenuAnchorRef = useRef<HTMLSpanElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Determine video preview URL: prefer sampleUrl if it's a video, otherwise use fileUrl
@@ -148,6 +160,20 @@ export const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isHovered, shouldLoadVideo]);
 
+  useLayoutEffect(() => {
+    const el = contextMenuAnchorRef.current;
+    if (!el) {
+      return;
+    }
+    if (contextMenuPosition) {
+      el.style.left = `${contextMenuPosition.x}px`;
+      el.style.top = `${contextMenuPosition.y}px`;
+    } else {
+      el.style.removeProperty("left");
+      el.style.removeProperty("top");
+    }
+  }, [contextMenuPosition]);
+
   // Use key prop on video element to reset state when post changes
   // This avoids useEffect setState (which causes cascading renders)
   // The key prop will cause React to unmount/remount the video element when post.id changes,
@@ -190,20 +216,15 @@ export const PostCard: React.FC<PostCardProps> = ({
         "select-none", // Prevent text selection via CSS (user-select: none)
         post.isViewed && "border-muted-foreground/20"
       )}
-      style={{ pointerEvents: "auto", userSelect: "none" }} // Ensure button is clickable and prevent text selection
     >
       {/* --- Media Layer (Image + Video Preview) --- */}
       {post.previewUrl ? (
-        <div 
+        <div
           className={cn(
             "relative w-full overflow-hidden",
-            shouldPreserveAspect ? "h-full" : ""
+            shouldPreserveAspect ? "h-full" : "",
+            blurFilterClass,
           )}
-          style={{
-            filter: shouldBlur
-              ? `blur(${effectiveBlur}px)`
-              : undefined,
-          }}
         >
           {/* Static Preview Image */}
           <img
@@ -254,16 +275,12 @@ export const PostCard: React.FC<PostCardProps> = ({
           )}
         </div>
       ) : (
-        <div 
+        <div
           className={cn(
             "flex justify-center items-center w-full text-xs bg-muted text-muted-foreground",
-            shouldPreserveAspect ? "h-full" : "min-h-[200px]"
+            shouldPreserveAspect ? "h-full" : "min-h-[200px]",
+            blurFilterClass,
           )}
-          style={{
-            filter: shouldBlur
-              ? `blur(${effectiveBlur}px)`
-              : undefined,
-          }}
         >
           No Preview
         </div>
@@ -306,15 +323,11 @@ export const PostCard: React.FC<PostCardProps> = ({
           contentSideOffset={contextMenuPosition ? 0 : 4}
           trigger={
             <span
+              ref={contextMenuAnchorRef}
               className={cn(
                 "inline-flex items-center justify-center rounded-full bg-black/50 p-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer",
                 contextMenuPosition && "fixed w-0 h-0 overflow-hidden p-0 opacity-0 pointer-events-none"
               )}
-              style={
-                contextMenuPosition
-                  ? { left: contextMenuPosition.x, top: contextMenuPosition.y }
-                  : undefined
-              }
               role="button"
               tabIndex={0}
               aria-label="Add to playlist"
@@ -385,7 +398,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       </div>
 
       {/* 3. Gradient & Rating (Bottom - visible on hover) */}
-      <div style={{ pointerEvents: 'none' }} className="pointer-events-none flex absolute inset-0 flex-col justify-end p-3 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100">
+      <div className="flex absolute inset-0 flex-col justify-end p-3 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100 pointer-events-none">
         <div className="flex justify-between items-end">
           <span
             className={cn(

@@ -6,6 +6,10 @@ import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./ty
 import type { ArtistType } from "../db/schema";
 import { GelbooruRawPostSchema, type GelbooruRawPost } from "../../shared/schemas/booru";
 import { normalizeRating } from "../../shared/utils/post-normalization";
+import {
+  sanitizeProviderTagQuery,
+  sanitizeProviderTagToken,
+} from "../../shared/utils/provider-tag-sanitize";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
@@ -29,8 +33,9 @@ export class GelbooruProvider implements IBooruProvider {
   }
 
   formatTag(tag: string, type: ArtistType): string {
+    const safe = sanitizeProviderTagToken(tag);
     // Gelbooru format is mostly same as R34, usually lowercase with underscores
-    const cleanTag = tag.trim().toLowerCase().replace(/ /g, "_");
+    const cleanTag = safe.trim().toLowerCase().replace(/ /g, "_");
     if (type === "uploader") return `user:${cleanTag}`; // Gelbooru mostly ignores user search in standard API, but we keep format
     return cleanTag;
   }
@@ -66,11 +71,17 @@ export class GelbooruProvider implements IBooruProvider {
   }
 
   async searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]> {
-    if (query.length < 2) return [];
+    const safeQuery = sanitizeProviderTagQuery(query);
+    if (safeQuery.length < 2) return [];
     try {
-      // Gelbooru uses specific autocomplete endpoint
+      const params = new URLSearchParams({
+        page: "autocomplete2",
+        term: safeQuery,
+        type: "tag_query",
+        limit: "20",
+      });
       const { data } = await axios.get(
-        `https://gelbooru.com/index.php?page=autocomplete2&term=${encodeURIComponent(query)}&type=tag_query&limit=20`,
+        `https://gelbooru.com/index.php?${params.toString()}`,
         {
           signal,
           headers: { "User-Agent": this.sessionUA },
@@ -125,7 +136,8 @@ export class GelbooruProvider implements IBooruProvider {
     // If the provider doesn't support native randomization, this pseudo-random approach
     // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
     const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
-    
+
+    const safeTags = sanitizeProviderTagQuery(tags);
     // Gelbooru pages are 0-indexed usually, but let's stick to pid logic
     const params = new URLSearchParams({
       page: "dapi",
@@ -133,7 +145,7 @@ export class GelbooruProvider implements IBooruProvider {
       q: "index",
       limit: "100",
       pid: apiPage.toString(),
-      tags: tags,
+      tags: safeTags,
       json: "1",
     });
 

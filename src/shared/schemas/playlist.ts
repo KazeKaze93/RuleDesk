@@ -89,7 +89,7 @@ export type UpdatePlaylistRequest = z.infer<typeof UpdatePlaylistSchema>;
  */
 export const AddPostsToPlaylistSchema = z.object({
   playlistIds: z.array(IdSchema).min(1, "At least one playlist required"),
-  postIds: z.array(z.number().int()).min(1, "At least one post required"),
+  postIds: z.array(IdSchema).min(1, "At least one post required"),
 });
 
 /**
@@ -106,7 +106,7 @@ export type AddPostsToPlaylistRequest = z.infer<typeof AddPostsToPlaylistSchema>
  */
 export const RemovePostsFromPlaylistSchema = z.object({
   playlistId: IdSchema,
-  postIds: z.array(z.number().int()).min(1, "At least one post required"),
+  postIds: z.array(IdSchema).min(1, "At least one post required"),
 });
 
 /**
@@ -156,7 +156,7 @@ export const ResolvePlaylistPostsSchema = z.object({
 
 export const ReorderPlaylistEntriesSchema = z.object({
   playlistId: IdSchema,
-  orderedPostIds: z.array(z.number().int()).min(1),
+  orderedPostIds: z.array(IdSchema).min(1),
 });
 
 export type ReorderPlaylistEntriesRequest = z.infer<typeof ReorderPlaylistEntriesSchema>;

@@ -14,6 +14,7 @@ import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { getProxyAgent } from "../../lib/proxy";
 import { IPC_CHANNELS } from "../channels";
+import { isResolvedPathWithinBase } from "../../utils/path-within-base";
 
 const DEFAULT_DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 const DOWNLOAD_QUEUE_FILE = "download-queue.json";
@@ -55,6 +56,7 @@ const DownloadAllSchema = z.array(DownloadAllItemSchema).max(BATCH_DOWNLOAD_MAX_
  * - Downloading files with progress tracking
  * - Opening folders in file manager
  */
+// Query style: Drizzle Builder API only in this controller.
 export class FileController extends BaseController {
   private mainWindow: BrowserWindowType | null = null;
   private totalBytes = 0;
@@ -683,6 +685,7 @@ export class FileController extends BaseController {
   ): Promise<boolean> {
     try {
       const downloadRoot = await this.getDownloadRoot();
+      const resolvedRoot = path.resolve(downloadRoot);
       let fullPath = filePathOrName;
 
       if (!path.isAbsolute(filePathOrName)) {
@@ -692,7 +695,7 @@ export class FileController extends BaseController {
       const normalizedPath = path.normalize(fullPath);
 
       // Security check: ensure path is within safe directory (before resolving symlinks)
-      if (!normalizedPath.startsWith(downloadRoot)) {
+      if (!isResolvedPathWithinBase(normalizedPath, resolvedRoot)) {
         log.error(
           `[FileController] SECURITY VIOLATION: Attempt to open path outside safe directory: ${normalizedPath}`
         );
@@ -719,7 +722,7 @@ export class FileController extends BaseController {
 
       // Security check: ensure real path (after symlink resolution) is still within safe directory
       const normalizedRealPath = path.normalize(resolvedPath);
-      if (!normalizedRealPath.startsWith(downloadRoot)) {
+      if (!isResolvedPathWithinBase(normalizedRealPath, resolvedRoot)) {
         log.error(
           `[FileController] SECURITY VIOLATION: Real path outside safe directory: ${normalizedRealPath} (original: ${normalizedPath})`
         );

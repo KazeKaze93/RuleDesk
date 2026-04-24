@@ -7,6 +7,11 @@ export const IPC_CHANNELS = {
     WRITE_CLIPBOARD: "app:write-to-clipboard",
     LOGOUT: "app:logout",
     VERIFY_CREDS: "app:verify-creds",
+    GET_ICON_PATH: "app:get-icon-path",
+    QUIT: "app:quit",
+    CHECK_FOR_UPDATES: "app:check-for-updates",
+    START_UPDATE_DOWNLOAD: "app:start-download",
+    QUIT_AND_INSTALL: "app:quit-and-install",
   },
   SETTINGS: {
     GET: "app:get-settings-status",
@@ -62,8 +67,22 @@ export const IPC_CHANNELS = {
     RESTORE: "db:restore-backup",
     INTEGRITY_CHECK: "backup:integrity-check",
   },
+  UPDATES: {
+    GET_UNREAD_COUNT: "updates:getUnreadCount",
+    MARK_ALL_SEEN: "updates:markAllSeen",
+  },
+  UPDATER: {
+    STATUS: "updater:status",
+    PROGRESS: "updater:progress",
+  },
   SYNC: {
     REPAIR: "sync:repair-artist",
+    START: "sync:start",
+    END: "sync:end",
+    ERROR: "sync:error",
+    PROGRESS: "sync:progress",
+    REPAIR_START: "sync:repair:start",
+    REPAIR_END: "sync:repair:end",
   },
 
   FILES: {

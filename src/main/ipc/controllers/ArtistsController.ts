@@ -60,6 +60,7 @@ type IpcArtist = {
  * - Search remote tags via API (Rule34/Gelbooru)
  */
 export class ArtistsController extends BaseController {
+  // Query style: Drizzle Builder API only in this controller.
   private getDb(): AppDatabase {
     return container.resolve(DI_TOKENS.DB);
   }
@@ -278,13 +279,17 @@ export class ArtistsController extends BaseController {
       const searchPattern = `%${escapedQuery}%`;
 
       // Use sql template with ESCAPE clause for proper LIKE escaping
-      const result = await db.query.artists.findMany({
-        where: or(
-          sql`${artists.tag} LIKE ${searchPattern} ESCAPE '\\'`,
-          sql`${artists.name} LIKE ${searchPattern} ESCAPE '\\'`
-        ),
-        limit: 20,
-      });
+      const result = await db
+        .select()
+        .from(artists)
+        .where(
+          or(
+            sql`${artists.tag} LIKE ${searchPattern} ESCAPE '\\'`,
+            sql`${artists.name} LIKE ${searchPattern} ESCAPE '\\'`
+          )
+        )
+        .limit(20)
+        .all();
       log.info(
         `[ArtistsController] Search "${query}" returned ${result.length} results`
       );

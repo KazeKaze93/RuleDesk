@@ -41,6 +41,7 @@ import { getProvider } from "../../providers";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { safeStorage } from "electron";
 import { IdSchema, OptionalIdSchema } from "../../../shared/schemas/ipc";
+import { sanitizeProviderTagToken } from "../../../shared/utils/provider-tag-sanitize";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 type UnknownRecord = Record<string, unknown>;
@@ -111,6 +112,7 @@ type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
  * - Get posts in playlist with filters
  */
 export class PlaylistController extends BaseController {
+  // Query style: Drizzle Builder API only in this controller.
   private mainWindow: BrowserWindow | null = null;
 
   public setMainWindow(window: BrowserWindow): void {
@@ -192,12 +194,12 @@ export class PlaylistController extends BaseController {
   private buildBooruQueryString(query: SmartPlaylistQuery): string {
     const includeTags = query.tags
       .filter((t) => t.type === "include")
-      .map((t) => t.tag.trim().toLowerCase())
+      .map((t) => sanitizeProviderTagToken(t.tag).trim().toLowerCase())
       .filter(Boolean);
     
     const excludeTags = query.tags
       .filter((t) => t.type === "exclude")
-      .map((t) => `-${t.tag.trim().toLowerCase()}`)
+      .map((t) => `-${sanitizeProviderTagToken(t.tag).trim().toLowerCase()}`)
       .filter(Boolean);
     
     const allTags = [...includeTags, ...excludeTags];
@@ -834,10 +836,11 @@ export class PlaylistController extends BaseController {
     try {
       const db = this.getDb();
 
-      // Use Drizzle Query API for cleaner code and automatic type inference
-      const result = await db.query.playlists.findMany({
-        orderBy: (playlists, { desc }) => [desc(playlists.createdAt)],
-      });
+      const result = db
+        .select()
+        .from(playlists)
+        .orderBy(desc(playlists.createdAt))
+        .all();
 
       log.info(`[PlaylistController] Retrieved ${result.length} playlists`);
 
@@ -862,10 +865,12 @@ export class PlaylistController extends BaseController {
     try {
       const db = this.getDb();
 
-      // Use Drizzle Query API for cleaner code and automatic type inference
-      const result = await db.query.playlists.findFirst({
-        where: (playlists, { eq }) => eq(playlists.id, playlistId),
-      });
+      const result = db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .limit(1)
+        .all()[0];
 
       if (!result) {
         return null;
@@ -982,33 +987,20 @@ export class PlaylistController extends BaseController {
     try {
       const db = this.getDb();
 
-      // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
+      const entriesToInsert = data.playlistIds.flatMap((playlistId) =>
+        data.postIds.map((postId) => ({ playlistId, postId }))
+      );
       let entriesCreated = 0;
 
       db.transaction((tx) => {
-        // Insert entries for each playlist-post combination
-        // Use INSERT OR IGNORE to handle duplicates gracefully (unique constraint)
-        for (const playlistId of data.playlistIds) {
-          for (const postId of data.postIds) {
-            try {
-              tx.insert(playlistEntries)
-                .values({
-                  playlistId,
-                  postId,
-                })
-                .run();
-              entriesCreated++;
-            } catch (error) {
-              // Ignore duplicate entry errors (unique constraint violation)
-              // This is expected when adding a post that's already in the playlist
-              const errorMessage = error instanceof Error ? error.message : String(error);
-              if (!errorMessage.includes("UNIQUE constraint")) {
-                // Re-throw if it's not a duplicate entry error
-                throw error;
-              }
-            }
-          }
-        }
+        const result = tx
+          .insert(playlistEntries)
+          .values(entriesToInsert)
+          .onConflictDoNothing({
+            target: [playlistEntries.playlistId, playlistEntries.postId],
+          })
+          .run();
+        entriesCreated = result.changes;
       });
 
       log.info(
@@ -1161,18 +1153,22 @@ export class PlaylistController extends BaseController {
     const { playlistId, orderedPostIds } = params;
     const db = this.getDb();
 
+    const reorderedEntries = orderedPostIds.map((postId, index) => ({
+      playlistId,
+      postId,
+      position: index,
+    }));
+
     db.transaction((tx) => {
-      orderedPostIds.forEach((postId, index) => {
-        tx.update(playlistEntries)
-          .set({ position: index })
-          .where(
-            and(
-              eq(playlistEntries.playlistId, playlistId),
-              eq(playlistEntries.postId, postId)
-            )
-          )
-          .run();
-      });
+      tx.insert(playlistEntries)
+        .values(reorderedEntries)
+        .onConflictDoUpdate({
+          target: [playlistEntries.playlistId, playlistEntries.postId],
+          set: {
+            position: sql`excluded.position`,
+          },
+        })
+        .run();
     });
     log.info(
       `[PlaylistController] Reordered ${orderedPostIds.length} entries in playlist ${playlistId}`
@@ -1217,10 +1213,11 @@ export class PlaylistController extends BaseController {
           .all();
         result = rows;
       } else {
-        result = await db.query.playlistEntries.findMany({
-          where: (entries, { eq }) => eq(entries.postId, postId),
-          columns: { playlistId: true },
-        });
+        result = db
+          .select({ playlistId: playlistEntries.playlistId })
+          .from(playlistEntries)
+          .where(eq(playlistEntries.postId, postId))
+          .all();
       }
 
       const playlistIds = result.map((r) => r.playlistId);
@@ -1242,9 +1239,12 @@ export class PlaylistController extends BaseController {
   ): Promise<{ success: boolean; path?: string; error?: string }> {
     try {
       const db = this.getDb();
-      const playlist = await db.query.playlists.findFirst({
-        where: (table, operators) => operators.eq(table.id, playlistId),
-      });
+      const playlist = db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .limit(1)
+        .all()[0];
 
       if (!playlist) {
         throw new Error("Playlist not found");
@@ -1351,20 +1351,46 @@ export class PlaylistController extends BaseController {
       }
 
       if (!exportData.playlist.isSmart && exportData.entries.length > 0) {
-        const sqlite = getSqliteInstance();
-        // Bulk batch insert: raw SQL for performance, Drizzle overhead unacceptable
-        const insertEntry = sqlite.prepare<[number, number, number, number]>(
-          "INSERT OR IGNORE INTO playlist_entries (playlist_id, post_id, added_at, position) " +
-            "SELECT ?, id, ?, ? FROM posts WHERE post_id = ? LIMIT 1"
-        );
+        const importedPostIds = exportData.entries.map((entry) => entry.postId);
+        const localPosts = db
+          .select({ id: posts.id, postId: posts.postId })
+          .from(posts)
+          .where(inArray(posts.postId, importedPostIds))
+          .all();
+        const localPostIdMap = new Map(localPosts.map((p) => [p.postId, p.id]));
 
-        const insertAll = sqlite.transaction((entries: PlaylistExport["entries"]) => {
-          entries.forEach((entry, index) => {
-            insertEntry.run(newPlaylist.id, entry.addedAt, index, entry.postId);
-          });
-        });
+        const entriesToInsert = exportData.entries
+          .map((entry, index) => {
+            const localPostId = localPostIdMap.get(entry.postId);
+            if (localPostId === undefined) {
+              return null;
+            }
+            return {
+              playlistId: newPlaylist.id,
+              postId: localPostId,
+              addedAt: new Date(entry.addedAt),
+              position: index,
+            };
+          })
+          .filter(
+            (
+              entry
+            ): entry is {
+              playlistId: number;
+              postId: number;
+              addedAt: Date;
+              position: number;
+            } => entry !== null
+          );
 
-        insertAll(exportData.entries);
+        if (entriesToInsert.length > 0) {
+          db.insert(playlistEntries)
+            .values(entriesToInsert)
+            .onConflictDoNothing({
+              target: [playlistEntries.playlistId, playlistEntries.postId],
+            })
+            .run();
+        }
       }
 
       log.info(`[PlaylistController] Imported playlist as id=${newPlaylist.id}`);
@@ -1397,10 +1423,12 @@ export class PlaylistController extends BaseController {
       const db = this.getDb();
 
       // Get playlist to check if it's smart
-      // Use Drizzle Query API for cleaner code and automatic type inference
-      const playlist = await db.query.playlists.findFirst({
-        where: (playlists, { eq }) => eq(playlists.id, playlistId),
-      });
+      const playlist = db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .limit(1)
+        .all()[0];
 
       if (!playlist) {
         throw new Error(`Playlist ${playlistId} not found`);

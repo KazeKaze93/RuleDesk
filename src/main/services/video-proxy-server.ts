@@ -8,6 +8,7 @@ import { PassThrough } from "node:stream";
 import { app } from "electron";
 import log from "electron-log";
 import type { AddressInfo } from "node:net";
+import { tryParseHttpsUrlHostname } from "../../shared/utils/url-host";
 
 const VIDEO_PATH = "/video";
 const PROXY_HOST = "127.0.0.1";
@@ -29,18 +30,10 @@ function getListeningPort(server: http.Server): number {
 }
 
 function isAllowedCdnUrl(urlString: string): boolean {
-  let parsed: URL;
-  try {
-    parsed = new URL(urlString);
-  } catch {
+  const host = tryParseHttpsUrlHostname(urlString);
+  if (!host) {
     return false;
   }
-
-  if (parsed.protocol !== "https:") {
-    return false;
-  }
-
-  const host = parsed.hostname;
   if (GELBOORU_IMG_HOSTS.has(host)) {
     return true;
   }
