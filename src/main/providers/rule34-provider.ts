@@ -23,6 +23,7 @@ import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
 import { getProxyAgent } from "../lib/proxy";
+import { cdnSelector } from "../services/cdn-selector";
 
 interface R34AutocompleteItem {
   label: string;
@@ -38,6 +39,8 @@ export class Rule34Provider implements IBooruProvider {
     "api.rule34.xxx",
     "img.rule34.xxx",
     "wimg.rule34.xxx",
+    "us.rule34.xxx",
+    "api-cdn.rule34.xxx",
   ];
   private readonly baseUrl = "https://api.rule34.xxx/index.php";
   private readonly throttle = new ProviderThrottle();
@@ -244,13 +247,24 @@ export class Rule34Provider implements IBooruProvider {
     const jsonUrl = this.buildUrl({ tags, page: apiPage, settings, json: 1 });
 
     try {
-      const response = await axios.get<string>(jsonUrl, {
-        timeout: REQUEST_TIMEOUT,
-        headers: this.getHeaders(),
-        responseType: "text",
-        validateStatus: (status) => status < 500,
-        httpsAgent: getProxyAgent(),
-      });
+      const requestStart = Date.now();
+      const response = await axios
+        .get<string>(jsonUrl, {
+          timeout: REQUEST_TIMEOUT,
+          headers: this.getHeaders(),
+          responseType: "text",
+          validateStatus: (status) => status < 500,
+          httpsAgent: getProxyAgent(),
+        })
+        .then((result) => {
+          cdnSelector.reportSuccess();
+          cdnSelector.reportSlowRequest(Date.now() - requestStart);
+          return result;
+        })
+        .catch((error: unknown) => {
+          cdnSelector.reportFailure();
+          throw error;
+        });
 
       const text = response.data;
 
@@ -286,13 +300,24 @@ export class Rule34Provider implements IBooruProvider {
       // Step 2: FALLBACK TO XML
       try {
         const xmlUrl = this.buildUrl({ tags, page: apiPage, settings, json: 0 });
-        const xmlResponse = await axios.get<string>(xmlUrl, {
-          timeout: REQUEST_TIMEOUT,
-          headers: this.getHeaders(),
-          responseType: "text",
-          validateStatus: (status) => status < 500,
-          httpsAgent: getProxyAgent(),
-        });
+        const requestStart = Date.now();
+        const xmlResponse = await axios
+          .get<string>(xmlUrl, {
+            timeout: REQUEST_TIMEOUT,
+            headers: this.getHeaders(),
+            responseType: "text",
+            validateStatus: (status) => status < 500,
+            httpsAgent: getProxyAgent(),
+          })
+          .then((result) => {
+            cdnSelector.reportSuccess();
+            cdnSelector.reportSlowRequest(Date.now() - requestStart);
+            return result;
+          })
+          .catch((error: unknown) => {
+            cdnSelector.reportFailure();
+            throw error;
+          });
 
         const xmlText = xmlResponse.data;
         const posts = this.parsePostXml(xmlText);
@@ -391,9 +416,12 @@ export class Rule34Provider implements IBooruProvider {
       }) || fileUrl; // Fallback to fileUrl if selectBestPreview returns empty
 
     const sampleUrl = String(post.sample_url || fileUrl).trim();
+    const rewrittenFileUrl = cdnSelector.rewriteUrl(fileUrl);
+    const rewrittenSampleUrl = cdnSelector.rewriteUrl(sampleUrl);
 
     // Ensure previewUrl is never empty (critical for UI display)
     const finalPreviewUrl = previewUrl.trim() || fileUrl;
+    const rewrittenPreviewUrl = cdnSelector.rewriteUrl(finalPreviewUrl);
     if (!finalPreviewUrl) return null; // Skip if still empty
 
     // Parse tags: split by space and filter empty strings
@@ -444,9 +472,9 @@ export class Rule34Provider implements IBooruProvider {
     // Build BooruPost object with strict camelCase mapping
     return {
       id: id,
-      fileUrl: fileUrl,
-      previewUrl: finalPreviewUrl,
-      sampleUrl: sampleUrl,
+      fileUrl: rewrittenFileUrl,
+      previewUrl: rewrittenPreviewUrl,
+      sampleUrl: rewrittenSampleUrl,
       tags: tags,
       rating: rating,
       score: isNaN(score) ? 0 : score,
@@ -476,6 +504,10 @@ export class Rule34Provider implements IBooruProvider {
     // selectBestPreview should always return a valid URL if file_url exists
     // But we check anyway for safety - if empty, use file_url as fallback
     const finalPreview = preview && preview.trim() !== "" ? preview : fileUrl;
+    const sampleUrl = (raw.sample_url || raw.file_url).trim();
+    const rewrittenFileUrl = cdnSelector.rewriteUrl(fileUrl);
+    const rewrittenSampleUrl = cdnSelector.rewriteUrl(sampleUrl);
+    const rewrittenPreviewUrl = cdnSelector.rewriteUrl(finalPreview);
 
     if (!finalPreview || finalPreview.trim() === "") {
       logger.warn(
@@ -503,9 +535,9 @@ export class Rule34Provider implements IBooruProvider {
 
     return {
       id: raw.id,
-      fileUrl: fileUrl,
-      sampleUrl: (raw.sample_url || raw.file_url).trim(),
-      previewUrl: finalPreview,
+      fileUrl: rewrittenFileUrl,
+      sampleUrl: rewrittenSampleUrl,
+      previewUrl: rewrittenPreviewUrl,
       tags: raw.tags.split(" ").filter(Boolean),
       rating: rating,
       score: raw.score ?? 0,
