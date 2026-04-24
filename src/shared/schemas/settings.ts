@@ -78,6 +78,7 @@ export const SaveSettingsSchema = z.object({
   proxyUrl: z.string().url().nullable().optional(),
   autoSyncOnStartup: z.boolean().optional(),
   syncIntervalMinutes: z.number().int().min(0).max(1440).optional(),
+  backupRetention: z.number().int().min(1).max(20).optional(),
 });
 
 /**
@@ -104,6 +105,7 @@ export const IpcSettingsSchema = z.object({
   theme: ThemePreferenceSchema.default("system"),
   autoSyncOnStartup: z.boolean(),
   syncIntervalMinutes: z.number().int().min(0),
+  backupRetention: z.number().int().min(1).max(20).default(5),
 });
 
 /**
@@ -127,5 +129,6 @@ export const DEFAULT_IPC_SETTINGS: IpcSettings = {
   theme: "system",
   autoSyncOnStartup: false,
   syncIntervalMinutes: 0,
+  backupRetention: 5,
 };
 

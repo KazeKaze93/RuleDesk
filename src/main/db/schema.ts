@@ -137,6 +137,7 @@ export const settings = sqliteTable("settings", {
     .default(false)
     .notNull(),
   syncIntervalMinutes: integer("sync_interval_minutes").default(0).notNull(),
+  backupRetention: integer("backup_retention").default(5).notNull(),
 });
 
 export const tagMetadata = sqliteTable(

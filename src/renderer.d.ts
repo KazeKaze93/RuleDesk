@@ -52,6 +52,7 @@ export interface IpcSettings {
   theme: "system" | "light" | "dark";
   autoSyncOnStartup: boolean;
   syncIntervalMinutes: number;
+  backupRetention: number;
 }
 
 export interface IpcApi extends IpcBridge {
@@ -68,6 +69,7 @@ export interface IpcApi extends IpcBridge {
     proxyUrl?: string | null;
     autoSyncOnStartup?: boolean;
     syncIntervalMinutes?: number;
+    backupRetention?: number;
   }) => Promise<boolean>;
   saveTheme: (theme: "system" | "light" | "dark") => Promise<boolean>;
   saveDownloadFolder: (path: string | null) => Promise<boolean>;
