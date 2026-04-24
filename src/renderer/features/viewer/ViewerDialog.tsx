@@ -37,6 +37,7 @@ import {
   List,
   Plus,
   Shuffle,
+  Ban,
 } from "lucide-react";
 
 import {
@@ -52,7 +53,7 @@ import {
   DropdownMenuSubContent,
 } from "../../components/ui/dropdown-menu";
 
-import { useQueryClient, InfiniteData, useQuery } from "@tanstack/react-query";
+import { useQueryClient, InfiniteData, useQuery, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
   TransformWrapper,
@@ -71,6 +72,8 @@ import { isVideoPost } from "../../lib/filter-utils";
 import { useVideoProxyUrl } from "../../lib/hooks/useVideoProxyUrl";
 import { useViewerController } from "./hooks/useViewerController";
 import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
+import { toast } from "sonner";
+import { invalidateAllPostQueries } from "../../utils/react-query-cache";
 
 /**
  * PostNotFoundFallback: Handles shadow insert for remote posts not in cache
@@ -506,6 +509,65 @@ const chunkTags = (tags: string[], chunkSize: number): string[][] => {
   return chunks;
 };
 
+const RULE34_IMAGE_HOSTS = new Set([
+  "rule34.xxx",
+  "wimg.rule34.xxx",
+  "us.rule34.xxx",
+  "img.rule34.xxx",
+  "api-cdn.rule34.xxx",
+]);
+
+const RULE34_CDN_FALLBACK_HOSTS = [
+  "wimg.rule34.xxx",
+  "img.rule34.xxx",
+  "us.rule34.xxx",
+  "api-cdn.rule34.xxx",
+] as const;
+
+const withRule34Host = (urlString: string, targetHost: string): string | null => {
+  try {
+    const url = new URL(urlString);
+    if (!RULE34_IMAGE_HOSTS.has(url.hostname)) {
+      return null;
+    }
+    if (url.hostname === targetHost) {
+      return null;
+    }
+    url.hostname = targetHost;
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
+const buildImageFallbackChain = (post: Post): string[] => {
+  const baseCandidates = [
+    post.sampleUrl?.trim(),
+    post.fileUrl?.trim(),
+    post.previewUrl?.trim(),
+  ].filter((value): value is string => Boolean(value && value.length > 0));
+
+  const uniqueCandidates: string[] = [];
+  const seen = new Set<string>();
+
+  for (const candidate of baseCandidates) {
+    if (!seen.has(candidate)) {
+      seen.add(candidate);
+      uniqueCandidates.push(candidate);
+    }
+
+    for (const host of RULE34_CDN_FALLBACK_HOSTS) {
+      const fallbackUrl = withRule34Host(candidate, host);
+      if (fallbackUrl && !seen.has(fallbackUrl)) {
+        seen.add(fallbackUrl);
+        uniqueCandidates.push(fallbackUrl);
+      }
+    }
+  }
+
+  return uniqueCandidates;
+};
+
 const ViewerMedia = ({
   post,
   onBackgroundClick,
@@ -516,7 +578,9 @@ const ViewerMedia = ({
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [hasTriedFallback, setHasTriedFallback] = useState(false);
+  const imageFallbackChain = useMemo(() => buildImageFallbackChain(post), [post]);
+  const [imageFallbackIndex, setImageFallbackIndex] = useState(0);
+  const [imageSrc, setImageSrc] = useState(imageFallbackChain[0] ?? post.fileUrl);
   const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore(
     useShallow((s) => ({
@@ -659,8 +723,8 @@ const ViewerMedia = ({
               className="mt-4"
               onClick={() => {
                 setImageError(false);
-                setHasTriedFallback(false); // Reset fallback flag on retry
-                // Force reload by changing src (React will re-render img with new src)
+                setImageFallbackIndex(0);
+                setImageSrc(imageFallbackChain[0] ?? post.fileUrl);
               }}
             >
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -688,24 +752,22 @@ const ViewerMedia = ({
             contentClass="w-full h-full flex items-center justify-center"
           >
             <img
-              key={`${post.id}-${hasTriedFallback}`} // Force re-render when fallback changes, resets state on post change
-              src={hasTriedFallback ? post.fileUrl : (post.sampleUrl || post.fileUrl)}
+              key={`${post.id}-${imageFallbackIndex}`}
+              src={imageSrc}
               alt={`Post ${post.id}`}
               className="max-w-full max-h-full object-contain"
               onError={(e) => {
-                log.error("[ViewerMedia] Image load error:", post.fileUrl);
-                
-                // CRITICAL: Use simple flag to prevent infinite loop
-                // If both sampleUrl and fileUrl fail (404), we'd loop forever without this check
-                // Simple useState flag is more reliable than URL comparison (which has overhead)
-                if (!hasTriedFallback && post.fileUrl) {
-                  // Try fileUrl as fallback (only once)
-                  setHasTriedFallback(true);
-                  e.currentTarget.src = post.fileUrl;
-                } else {
-                  // Both URLs failed or already tried - show error
-                  setImageError(true);
+                const failedUrl = e.currentTarget.currentSrc || e.currentTarget.src;
+                log.error("[ViewerMedia] Image load error:", failedUrl);
+
+                const nextIndex = imageFallbackIndex + 1;
+                if (nextIndex < imageFallbackChain.length) {
+                  setImageFallbackIndex(nextIndex);
+                  setImageSrc(imageFallbackChain[nextIndex]);
+                  return;
                 }
+
+                setImageError(true);
               }}
             />
           </TransformComponent>
@@ -734,10 +796,41 @@ const TagsDrawer = ({
   } | null;
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const addIncludeTag = useSearchStore((state) => state.addIncludeTag);
   const addExcludeTag = useSearchStore((state) => state.addExcludeTag);
   const isTagIncluded = useSearchStore((state) => state.isTagIncluded);
   const isTagExcluded = useSearchStore((state) => state.isTagExcluded);
+  const { data: blacklistedTags = [] } = useQuery({
+    queryKey: ["blacklist"],
+    queryFn: () => window.api.getBlacklistedTags(),
+    enabled: isOpen,
+  });
+
+  const toggleBlacklistMutation = useMutation({
+    mutationFn: async (tag: string) => {
+      const normalizedTag = tag.toLowerCase();
+      const isBlacklisted = blacklistedTags.includes(normalizedTag);
+      if (isBlacklisted) {
+        await window.api.removeTagFromBlacklist(normalizedTag);
+        return "removed";
+      }
+      await window.api.addTagToBlacklist(normalizedTag);
+      return "added";
+    },
+    onSuccess: async (state) => {
+      await queryClient.invalidateQueries({ queryKey: ["blacklist"] });
+      await invalidateAllPostQueries(queryClient);
+      toast.success(
+        state === "added" ? "Tag added to blacklist" : "Tag removed from blacklist"
+      );
+    },
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : "Failed to update blacklist";
+      toast.error(message);
+    },
+  });
 
   // Get artist information - always fetch when drawer is open
   const { data: artists } = useQuery<Artist[]>({
@@ -909,6 +1002,63 @@ const TagsDrawer = ({
     navigate("/browse");
   };
 
+  const renderTagActionButton = (
+    tag: string,
+    variant: "link" | "ghost",
+    colorClassName: string,
+    wrapperClassName: string
+  ) => {
+    const normalizedTag = tag.toLowerCase();
+    const isBlacklisted = blacklistedTags.includes(normalizedTag);
+
+    return (
+      <DropdownMenu key={tag}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant={variant}
+            onClick={() => handleTagInclude(tag)}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              event.currentTarget.click();
+            }}
+            className={cn(
+              wrapperClassName,
+              colorClassName,
+              isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+              isTagExcluded(tag) &&
+                "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+            )}
+            title={
+              isTagExcluded(tag)
+                ? "Excluded (right-click to toggle)"
+                : isTagIncluded(tag)
+                  ? "Included (right-click to exclude)"
+                  : "Click to include, right-click to exclude"
+            }
+            aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
+          >
+            {tag}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" side="bottom" sideOffset={4}>
+          <DropdownMenuItem onClick={() => handleTagExclude(tag)}>
+            Mark as exclude
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => toggleBlacklistMutation.mutate(tag)}
+            disabled={toggleBlacklistMutation.isPending}
+          >
+            <Ban className="mr-2 h-4 w-4" />
+            {isBlacklisted ? "Remove from blacklist" : "Add to blacklist"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -954,32 +1104,12 @@ const TagsDrawer = ({
             {copyrightTags.length > 0 ? (
               <div className="space-y-1">
                 {copyrightTags.map((tag) => (
-                  <Button
-                    type="button"
-                    key={tag}
-                    variant="link"
-                    onClick={() => handleTagInclude(tag)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      handleTagExclude(tag);
-                    }}
-                    className={cn(
-                      "h-auto min-h-0 w-full justify-start p-0 text-sm text-purple-600 hover:underline",
-                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
-                      isTagExcluded(tag) &&
-                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
-                    )}
-                    title={
-                      isTagExcluded(tag)
-                        ? "Excluded (right-click to toggle)"
-                        : isTagIncluded(tag)
-                          ? "Included (right-click to exclude)"
-                          : "Click to include, right-click to exclude"
-                    }
-                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-                  >
-                    {tag}
-                  </Button>
+                  renderTagActionButton(
+                    tag,
+                    "link",
+                    "text-purple-600 hover:underline",
+                    "h-auto min-h-0 w-full justify-start p-0 text-sm"
+                  )
                 ))}
               </div>
             ) : (
@@ -994,32 +1124,12 @@ const TagsDrawer = ({
             {characterTags.length > 0 ? (
               <div className="space-y-1">
                 {characterTags.map((tag) => (
-                  <Button
-                    type="button"
-                    key={tag}
-                    variant="link"
-                    onClick={() => handleTagInclude(tag)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      handleTagExclude(tag);
-                    }}
-                    className={cn(
-                      "h-auto min-h-0 w-full justify-start p-0 text-sm text-green-600 hover:underline",
-                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
-                      isTagExcluded(tag) &&
-                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
-                    )}
-                    title={
-                      isTagExcluded(tag)
-                        ? "Excluded (right-click to toggle)"
-                        : isTagIncluded(tag)
-                          ? "Included (right-click to exclude)"
-                          : "Click to include, right-click to exclude"
-                    }
-                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-                  >
-                    {tag}
-                  </Button>
+                  renderTagActionButton(
+                    tag,
+                    "link",
+                    "text-green-600 hover:underline",
+                    "h-auto min-h-0 w-full justify-start p-0 text-sm"
+                  )
                 ))}
               </div>
             ) : (
@@ -1034,32 +1144,12 @@ const TagsDrawer = ({
             {artistTags.length > 0 ? (
               <div className="space-y-1">
                 {artistTags.map((tag) => (
-                  <Button
-                    type="button"
-                    key={tag}
-                    variant="link"
-                    onClick={() => handleTagInclude(tag)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      handleTagExclude(tag);
-                    }}
-                    className={cn(
-                      "h-auto min-h-0 w-full justify-start p-0 text-sm text-red-600 hover:underline",
-                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
-                      isTagExcluded(tag) &&
-                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
-                    )}
-                    title={
-                      isTagExcluded(tag)
-                        ? "Excluded (right-click to toggle)"
-                        : isTagIncluded(tag)
-                          ? "Included (right-click to exclude)"
-                          : "Click to include, right-click to exclude"
-                    }
-                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-                  >
-                    {tag}
-                  </Button>
+                  renderTagActionButton(
+                    tag,
+                    "link",
+                    "text-red-600 hover:underline",
+                    "h-auto min-h-0 w-full justify-start p-0 text-sm"
+                  )
                 ))}
               </div>
             ) : (

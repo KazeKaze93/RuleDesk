@@ -180,6 +180,9 @@ export interface IpcBridge {
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
   resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
+  getBlacklistedTags: () => Promise<string[]>;
+  addTagToBlacklist: (tag: string) => Promise<void>;
+  removeTagFromBlacklist: (tag: string) => Promise<void>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
@@ -233,6 +236,12 @@ const ipcBridge: IpcBridge = {
 
   resolveTagsByType: (tags, type) =>
     ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE, tags, type),
+  getBlacklistedTags: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.BLACKLIST.GET_ALL),
+  addTagToBlacklist: (tag) =>
+    ipcRenderer.invoke(IPC_CHANNELS.BLACKLIST.ADD, tag),
+  removeTagFromBlacklist: (tag) =>
+    ipcRenderer.invoke(IPC_CHANNELS.BLACKLIST.REMOVE, tag),
 
   verifyCredentials: (providerId) =>
     ipcRenderer.invoke(IPC_CHANNELS.APP.VERIFY_CREDS, providerId),

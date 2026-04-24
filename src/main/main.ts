@@ -91,7 +91,6 @@ import { settings, SETTINGS_ID } from "./db/schema";
 import { container, DI_TOKENS } from "./core/di/Container";
 import { reloadProxyFromSettings } from "./lib/proxy";
 import { VideoProxyServer } from "./services/video-proxy-server";
-import { cdnSelector } from "./services/cdn-selector";
 
 logger.info("🚀 Application starting...");
 
@@ -378,10 +377,6 @@ async function initializeAppAndWindow() {
   let loadingWindow: BrowserWindow | null = null;
 
   try {
-    cdnSelector.probe().catch((error: unknown) => {
-      log.error("[CdnSelector] Initial probe failed:", error);
-    });
-
     await videoProxyServer.start();
     configureDynamicCspHeaders();
     const isDev = process.env.NODE_ENV === "development";

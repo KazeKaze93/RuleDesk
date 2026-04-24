@@ -107,4 +107,9 @@ export const IPC_CHANNELS = {
   VIDEO_PROXY: {
     GET_URL: "video-proxy:get-url",
   },
+  BLACKLIST: {
+    GET_ALL: "blacklist:getAll",
+    ADD: "blacklist:add",
+    REMOVE: "blacklist:remove",
+  },
 } as const;

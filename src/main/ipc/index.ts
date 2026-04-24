@@ -13,6 +13,7 @@ import { SearchController } from "./controllers/SearchController";
 import { PlaylistController } from "./controllers/PlaylistController";
 import { StatsController } from "./controllers/StatsController";
 import { VideoProxyController } from "./controllers/VideoProxyController";
+import { BlacklistController } from "./controllers/BlacklistController";
 import { registerUpdatesHandlers } from "./handlers/updates";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
@@ -74,6 +75,9 @@ export function setupIpc(
 
   const statsController = new StatsController();
   statsController.setup();
+
+  const blacklistController = new BlacklistController();
+  blacklistController.setup();
 
   registerUpdatesHandlers();
 

@@ -47,6 +47,7 @@ import {
   getSmartPlaylists,
   getSmartPlaylistPostCount,
 } from "../../db/queries/playlists";
+import { getAllBlacklistedTags } from "../../db/queries/blacklist";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 type UnknownRecord = Record<string, unknown>;
@@ -880,6 +881,17 @@ export class PlaylistController extends BaseController {
           }
         }
 
+        const blacklistedTags = getAllBlacklistedTags();
+        if (blacklistedTags.length > 0) {
+          allConditions.push(
+            sql`NOT EXISTS (
+              SELECT 1
+              FROM tag_blacklist bl
+              WHERE instr(' ' || ${posts.tags} || ' ', ' ' || bl.tag || ' ') > 0
+            )` as SQL
+          );
+        }
+
         const whereClause =
           allConditions.length > 0 ? (and(...allConditions) as SQL) : undefined;
         const postCount = getSmartPlaylistPostCount(db, whereClause);
@@ -1155,6 +1167,17 @@ export class PlaylistController extends BaseController {
             eq(posts.mediaType, "image"),
             sql`${posts.mediaType} IS NULL`
           ) as SQL
+        );
+      }
+
+      const blacklistedTags = getAllBlacklistedTags();
+      if (blacklistedTags.length > 0) {
+        conditions.push(
+          sql`NOT EXISTS (
+            SELECT 1
+            FROM tag_blacklist bl
+            WHERE instr(' ' || ${posts.tags} || ' ', ' ' || bl.tag || ' ') > 0
+          )` as SQL
         );
       }
 
@@ -1513,6 +1536,17 @@ export class PlaylistController extends BaseController {
             eq(posts.mediaType, "image"),
             sql`${posts.mediaType} IS NULL`
           ) as SQL
+        );
+      }
+
+      const blacklistedTags = getAllBlacklistedTags();
+      if (blacklistedTags.length > 0) {
+        globalConditions.push(
+          sql`NOT EXISTS (
+            SELECT 1
+            FROM tag_blacklist bl
+            WHERE instr(' ' || ${posts.tags} || ' ', ' ' || bl.tag || ' ') > 0
+          )` as SQL
         );
       }
 

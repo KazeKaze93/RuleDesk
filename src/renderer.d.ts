@@ -140,6 +140,9 @@ export interface IpcApi extends IpcBridge {
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
   resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
+  getBlacklistedTags: () => Promise<string[]>;
+  addTagToBlacklist: (tag: string) => Promise<void>;
+  removeTagFromBlacklist: (tag: string) => Promise<void>;
 
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;

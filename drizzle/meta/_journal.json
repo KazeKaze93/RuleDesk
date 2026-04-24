@@ -176,6 +176,13 @@
       "when": 1777000004000,
       "tag": "0024_add_artists_sync_status",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1777030000000,
+      "tag": "0025_add_tag_blacklist",
+      "breakpoints": true
     }
   ]
 }

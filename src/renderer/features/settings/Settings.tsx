@@ -6,6 +6,7 @@ import { SettingsSyncTab } from "./SettingsSyncTab";
 import { SettingsAppearanceTab } from "./SettingsAppearanceTab";
 import { SettingsBackupTab } from "./SettingsBackupTab";
 import { SettingsAccountTab } from "./SettingsAccountTab";
+import { SettingsBlacklistTab } from "./SettingsBlacklistTab";
 import { useTheme } from "../../hooks/useTheme";
 
 const STATUS_FEEDBACK_TIMEOUT_MS = 5000;
@@ -397,6 +398,7 @@ export const Settings = () => {
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="backup">Backup</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -500,6 +502,10 @@ export const Settings = () => {
               void handleSaveApiKey();
             }}
           />
+        </TabsContent>
+
+        <TabsContent value="blacklist">
+          <SettingsBlacklistTab />
         </TabsContent>
       </Tabs>
     </section>
