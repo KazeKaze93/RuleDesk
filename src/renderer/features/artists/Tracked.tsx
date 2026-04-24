@@ -64,7 +64,7 @@ export const Tracked = () => {
       <div className="flex justify-between items-center">
         <h1 className="flex gap-2 items-center text-2xl font-bold tracking-tight">
           <Users className="w-6 h-6 text-primary" />
-          Tracked Artists
+          Artists
         </h1>
         <Button
           onClick={(e) => {
@@ -75,7 +75,7 @@ export const Tracked = () => {
           className="gap-2"
         >
           <Plus className="w-4 h-4" />
-          Add Source
+          Add Artist
         </Button>
       </div>
 

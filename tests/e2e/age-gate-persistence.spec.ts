@@ -206,7 +206,7 @@ test.describe('Age Gate Persistence', () => {
       
       // Wait for main app UI to appear (replaces setTimeout)
       // Age Gate should NOT be visible, so wait for main app elements instead
-      const mainAppButton = page.getByRole('button', { name: /add source|add artist/i });
+      const mainAppButton = page.getByRole('button', { name: /add artist/i });
       const onboardingInput = page.locator('#user-id-input');
       
       // Wait for either main app or onboarding to appear (Age Gate should be gone)

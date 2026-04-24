@@ -30,7 +30,7 @@ const navGroups = [
     label: "Library",
     items: [
       { to: "/favorites", icon: Heart, label: "Favorites" },
-      { to: "/tracked", icon: Users, label: "Tracked Artists" },
+      { to: "/tracked", icon: Users, label: "Artists" },
       { to: "/playlists", icon: List, label: "Playlists" },
     ],
   },

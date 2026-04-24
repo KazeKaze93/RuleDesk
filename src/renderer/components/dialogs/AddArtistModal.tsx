@@ -114,7 +114,7 @@ export function AddArtistModal({
         <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 space-y-0">
           <div className="flex justify-between items-center gap-2">
             <DialogTitle className="text-lg font-bold text-foreground m-0">
-              Track New Artist
+              Add Artist
             </DialogTitle>
             <Button
               type="button"
