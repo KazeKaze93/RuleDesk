@@ -15,6 +15,10 @@ import {
 import type { ArtistType } from "../db/schema";
 import { R34RawPostSchema, type R34RawPost } from "../../shared/schemas/booru";
 import { normalizeRating } from "../../shared/utils/post-normalization";
+import {
+  sanitizeProviderTagQuery,
+  sanitizeProviderTagToken,
+} from "../../shared/utils/provider-tag-sanitize";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
@@ -69,7 +73,8 @@ export class Rule34Provider implements IBooruProvider {
   }
 
   formatTag(tag: string, type: ArtistType): string {
-    const cleanTag = tag.trim().toLowerCase().replace(/ /g, "_");
+    const safe = sanitizeProviderTagToken(tag);
+    const cleanTag = safe.trim().toLowerCase().replace(/ /g, "_");
     
     // CRITICAL: Rule34 specific logic
     // 'uploader' -> search by who uploaded the file (requires 'user:' prefix)
@@ -112,13 +117,13 @@ export class Rule34Provider implements IBooruProvider {
     query: string,
     signal?: AbortSignal
   ): Promise<SearchResults[]> {
-    if (query.length < 2) return [];
+    const safeQuery = sanitizeProviderTagQuery(query);
+    if (safeQuery.length < 2) return [];
     try {
       await this.throttle.wait();
+      const params = new URLSearchParams({ q: safeQuery });
       const { data } = await axios.get<R34AutocompleteItem[]>(
-        `https://api.rule34.xxx/autocomplete.php?q=${encodeURIComponent(
-          query
-        )}`,
+        `https://api.rule34.xxx/autocomplete.php?${params.toString()}`,
         {
           signal,
           timeout: AUTOCOMPLETE_TIMEOUT,
@@ -160,12 +165,13 @@ export class Rule34Provider implements IBooruProvider {
     params.append("q", "index");
     params.append("json", options.json.toString());
 
+    const tagQuery = sanitizeProviderTagQuery(options.tags);
     if (
-      options.tags &&
-      options.tags.trim() !== "" &&
-      options.tags.trim().toLowerCase() !== "all"
+      tagQuery &&
+      tagQuery.trim() !== "" &&
+      tagQuery.trim().toLowerCase() !== "all"
     ) {
-      params.append("tags", options.tags);
+      params.append("tags", tagQuery);
     }
 
     // FIX: Rule34 uses 0-based pagination for 'pid'.

@@ -26,6 +26,7 @@ const DANGEROUS_PROTOCOLS = [
  * Handles viewer-related IPC operations:
  * - Opening external URLs with security validation
  */
+// Query style: Drizzle Builder API only in this controller.
 export class ViewerController extends BaseController {
   /**
    * Setup IPC handlers for viewer operations

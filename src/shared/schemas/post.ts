@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   IdSchema,
-  OptionalIdSchema,
+  OptionalArtistScopeIdSchema,
   PageSchema,
   LimitSchema,
   RatingSchema,
@@ -20,8 +20,8 @@ import {
 export const PostDataSchema = z.object({
   postId: IdSchema,
   artistId: z.number().int().nonnegative(),
-  fileUrl: z.string().min(1),
-  previewUrl: z.string().min(1),
+  fileUrl: z.string().min(1).url(),
+  previewUrl: z.string().min(1).url(),
   sampleUrl: z.string().optional(),
   rating: RatingSchema.optional(),
   tags: z.string().optional(),
@@ -75,7 +75,7 @@ export type PostFilterRequest = z.infer<typeof PostFilterSchema>;
  * Use this schema in Renderer for form validation before sending to Main process.
  */
 export const GetPostsSchema = z.object({
-  artistId: OptionalIdSchema,
+  artistId: OptionalArtistScopeIdSchema,
   page: PageSchema.default(1),
   sortOrder: z.enum(["asc", "desc"]).optional(),
   filters: PostFilterSchema.optional(),
@@ -92,7 +92,7 @@ export const GetPostsSchema = z.object({
 export type GetPostsRequest = z.infer<typeof GetPostsSchema>;
 
 export const GetPostsCountSchema = z.object({
-  artistId: OptionalIdSchema,
+  artistId: OptionalArtistScopeIdSchema,
   filters: PostFilterSchema.optional(),
 });
 

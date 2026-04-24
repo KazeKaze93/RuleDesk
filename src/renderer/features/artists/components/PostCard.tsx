@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Play, Check, Heart, List, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -60,6 +60,7 @@ export const PostCard: React.FC<PostCardProps> = ({
     y: number;
   } | null>(null);
   const cardRef = useRef<HTMLButtonElement>(null);
+  const contextMenuAnchorRef = useRef<HTMLSpanElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Determine video preview URL: prefer sampleUrl if it's a video, otherwise use fileUrl
@@ -158,6 +159,20 @@ export const PostCard: React.FC<PostCardProps> = ({
       }
     };
   }, [isHovered, shouldLoadVideo]);
+
+  useLayoutEffect(() => {
+    const el = contextMenuAnchorRef.current;
+    if (!el) {
+      return;
+    }
+    if (contextMenuPosition) {
+      el.style.left = `${contextMenuPosition.x}px`;
+      el.style.top = `${contextMenuPosition.y}px`;
+    } else {
+      el.style.removeProperty("left");
+      el.style.removeProperty("top");
+    }
+  }, [contextMenuPosition]);
 
   // Use key prop on video element to reset state when post changes
   // This avoids useEffect setState (which causes cascading renders)
@@ -308,15 +323,11 @@ export const PostCard: React.FC<PostCardProps> = ({
           contentSideOffset={contextMenuPosition ? 0 : 4}
           trigger={
             <span
+              ref={contextMenuAnchorRef}
               className={cn(
                 "inline-flex items-center justify-center rounded-full bg-black/50 p-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer",
                 contextMenuPosition && "fixed w-0 h-0 overflow-hidden p-0 opacity-0 pointer-events-none"
               )}
-              style={
-                contextMenuPosition
-                  ? { left: contextMenuPosition.x, top: contextMenuPosition.y }
-                  : undefined
-              }
               role="button"
               tabIndex={0}
               aria-label="Add to playlist"

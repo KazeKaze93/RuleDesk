@@ -16,6 +16,7 @@ import { getDatabasePaths } from "../../db/paths";
  * - Application lifecycle (quit)
  * - Clipboard operations
  */
+// Query style: Drizzle Builder API only in this controller.
 export class SystemController extends BaseController {
   /**
    * Setup IPC handlers for system operations

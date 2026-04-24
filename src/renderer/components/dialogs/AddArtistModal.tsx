@@ -1,3 +1,4 @@
+import type { MutableRefObject } from "react";
 import { X } from "lucide-react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +14,13 @@ import {
 } from "../ui/select";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../ui/dialog";
 import { AddArtistSchema, type AddArtistRequest } from "../../../shared/schemas/artist";
 import type { ProviderId } from "../../../shared/constants";
 
@@ -25,12 +33,15 @@ interface AddArtistModalProps {
     type: "tag" | "uploader" | "query",
     provider: ProviderId
   ) => void;
+  /** Element to restore focus to when the dialog closes (e.g. the control that opened it). */
+  returnFocusToRef: MutableRefObject<HTMLElement | null>;
 }
 
 export function AddArtistModal({
   isOpen,
   onClose,
   onAdd,
+  returnFocusToRef,
 }: AddArtistModalProps) {
   const {
     control,
@@ -57,13 +68,14 @@ export function AddArtistModal({
   };
 
   // Reset tag when provider changes to avoid cross-provider tag confusion
-  const handleProviderChange = (newProvider: ProviderId) => {
-    setValue("provider", newProvider);
+  const handleProviderChange = (value: string) => {
+    if (value !== "rule34" && value !== "gelbooru") {
+      return;
+    }
+    setValue("provider", value);
     setValue("tag", ""); // Clear input when switching providers
     setValue("name", ""); // Clear name as well
   };
-
-  if (!isOpen) return null;
 
   const onSubmit = (data: AddArtistRequest) => {
     const finalTag = normalizeTag(data.tag);
@@ -84,25 +96,43 @@ export function AddArtistModal({
   };
 
   return (
-    <div className="flex fixed inset-0 z-50 justify-center items-center p-4 backdrop-blur-sm duration-200 bg-background/70 animate-in fade-in">
-      <div className="flex flex-col w-full max-w-md rounded-xl border shadow-2xl bg-card border-border">
-        {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-muted/20">
-          <h2 className="text-lg font-bold text-foreground">Track New Artist</h2>
-          <Button
-            type="button"
-            onClick={handleClose}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-full text-muted-foreground"
-            aria-label="Close modal"
-          >
-            <X size={20} />
-          </Button>
-        </div>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          handleClose();
+        }
+      }}
+    >
+      <DialogContent
+        className="max-w-md sm:max-w-md [&>button]:hidden p-0 gap-0 overflow-hidden"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          returnFocusToRef.current?.focus();
+        }}
+      >
+        <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 space-y-0">
+          <div className="flex justify-between items-center gap-2">
+            <DialogTitle className="text-lg font-bold text-foreground m-0">
+              Track New Artist
+            </DialogTitle>
+            <Button
+              type="button"
+              onClick={handleClose}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 rounded-full text-muted-foreground"
+              aria-label="Close modal"
+            >
+              <X size={20} />
+            </Button>
+          </div>
+          <DialogDescription className="sr-only">
+            Add a new tracked artist or tag source from a Booru provider.
+          </DialogDescription>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
-          {/* Provider Selection */}
           <div className="space-y-1.5">
             <Label htmlFor="provider-select" className="ml-1 text-xs font-medium text-muted-foreground">
               Provider
@@ -124,7 +154,6 @@ export function AddArtistModal({
             />
           </div>
 
-          {/* Tag Input */}
           <div className="space-y-1.5">
             <div className="relative z-20">
               <Controller
@@ -150,11 +179,9 @@ export function AddArtistModal({
             </p>
           </div>
 
-          {/* Hidden fields (synced with tag and provider) */}
           <input type="hidden" {...control.register("name")} />
           <input type="hidden" {...control.register("type")} />
 
-          {/* Submit Button */}
           <Button
             type="submit"
             disabled={isSubmitting || !tag || !!errors.tag}
@@ -163,7 +190,7 @@ export function AddArtistModal({
             {isSubmitting ? "Adding..." : "Start Tracking"}
           </Button>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

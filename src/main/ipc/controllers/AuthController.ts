@@ -20,6 +20,7 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  * - Verify credentials
  * - Logout (clear API key)
  */
+// Query style: Drizzle Builder API only in this controller.
 export class AuthController extends BaseController {
   private getDb(): AppDatabase {
     return container.resolve(DI_TOKENS.DB);

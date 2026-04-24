@@ -7,8 +7,10 @@ import { PageSchema, LimitSchema } from "./ipc";
  * Single source of truth for external Booru API search validation and typing.
  * Used in Main process (SearchController) and Renderer process (type safety).
  */
+const SearchTagTokenSchema = z.string().trim().min(1).max(200);
+
 export const SearchPostsSchema = z.object({
-  tags: z.array(z.string().trim().min(1)),
+  tags: z.array(SearchTagTokenSchema).max(100),
   // Empty array is allowed - means show all posts (API omits tags parameter)
   page: PageSchema,
   limit: LimitSchema.max(100).optional(),

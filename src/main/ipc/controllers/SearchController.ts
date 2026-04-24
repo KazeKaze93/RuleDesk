@@ -17,6 +17,10 @@ import { toIpcSafe } from "../../utils/ipc-serialization";
 import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
 import { XMLParser } from "fast-xml-parser";
 import { isVideoUrl } from "@shared/utils/media";
+import {
+  sanitizeProviderTagQuery,
+  sanitizeProviderTagToken,
+} from "../../../shared/utils/provider-tag-sanitize";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -40,6 +44,14 @@ const R34TagResponseSchema = z.object({
 // Internal type alias
 type SearchPostsParams = z.infer<typeof SearchPostsSchema>;
 
+const ResolveTagsByTypeArgsSchema = z.tuple([
+  z.array(z.string().min(1)).max(100),
+  z.number().int().refine((n): n is TagType => {
+    const allowed = Object.values(TAG_TYPES) as number[];
+    return allowed.includes(n);
+  }, "Invalid tag type"),
+]);
+
 // Use toIpcSafe return type instead of manual type definition
 // This ensures type safety and automatic updates when Post schema changes
 type IpcPost = ReturnType<typeof toIpcSafe<Post>>;
@@ -51,6 +63,7 @@ type IpcPost = ReturnType<typeof toIpcSafe<Post>>;
  * - Search posts by tags (bypasses local database, queries external API directly)
  */
 export class SearchController extends BaseController {
+  // Query style: Drizzle Builder API only in this controller.
   private getDb(): AppDatabase {
     return container.resolve(DI_TOKENS.DB);
   }
@@ -98,21 +111,10 @@ export class SearchController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE,
-      z.tuple([
-        z.array(z.string().min(1)).max(100), // tags
-        z.number().int().refine((val): val is TagType => {
-          // Use TAG_TYPES constants instead of magic numbers
-          // Type guard ensures val is TagType if validation passes
-          const tagTypeValues = Object.values(TAG_TYPES) as number[];
-          return tagTypeValues.includes(val);
-        }, { message: "Invalid tag type. Must be one of TAG_TYPES values." }), // type
-      ]),
-      (event, ...args) => {
-        // BaseController already validated args with Zod schema above
-        // TypeScript doesn't know the validated type, so we extract with type assertion
-        // This is safe because BaseController.parse() guarantees the shape matches the schema
-        const [tags, tagType] = args as [string[], TagType];
-        return this.resolveTagsByType(event, tags, tagType);
+      ResolveTagsByTypeArgsSchema,
+      (event, ...args: unknown[]) => {
+        const parsed = ResolveTagsByTypeArgsSchema.parse(args);
+        return this.resolveTagsByType(event, parsed[0], parsed[1]);
       }
     );
 
@@ -129,9 +131,12 @@ export class SearchController extends BaseController {
   } | null> {
     try {
       const db = this.getDb();
-      const settingsRecord = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
+      const settingsRecord = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
 
       if (!settingsRecord) {
         log.warn("[SearchController] No settings found in database");
@@ -156,6 +161,37 @@ export class SearchController extends BaseController {
     } catch (error) {
       log.error("[SearchController] Error fetching settings:", error);
       return null;
+    }
+  }
+
+  private upsertResolvedTagEntries(
+    db: AppDatabase,
+    entries: Array<{ name: string; type: number }>,
+    cachedMap: Map<string, number>,
+    context: string
+  ): void {
+    if (entries.length === 0) {
+      return;
+    }
+
+    try {
+      db.transaction((tx) => {
+        tx.insert(tagMetadata)
+          .values(entries)
+          .onConflictDoUpdate({
+            target: tagMetadata.name,
+            set: { type: sql`excluded.type` },
+          })
+          .run();
+      });
+      for (const entry of entries) {
+        cachedMap.set(entry.name, entry.type);
+      }
+    } catch (dbErr) {
+      log.error(
+        `[SearchController] Database error during bulk insert (${context}):`,
+        dbErr
+      );
     }
   }
 
@@ -205,6 +241,7 @@ export class SearchController extends BaseController {
     params: SearchPostsParams
   ): Promise<IpcPost[]> {
     const { tags, page, isRandom } = params;
+    const safeInputTags = tags.map((t) => sanitizeProviderTagToken(t));
 
     try {
       // Get provider (default to rule34)
@@ -251,7 +288,10 @@ export class SearchController extends BaseController {
       };
 
       let tagsString =
-        tags.length > 0 ? tags.map((tag) => formatSearchToken(tag)).join(" ") : "";
+        safeInputTags.length > 0
+          ? safeInputTags.map((tag) => formatSearchToken(tag)).join(" ")
+          : "";
+      tagsString = sanitizeProviderTagQuery(tagsString);
 
       // Step 1: Primary Search - try original tags
       // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
@@ -268,8 +308,8 @@ export class SearchController extends BaseController {
       );
 
       // Step 2: Fallback Logic (only if Step 1 returned 0 AND input is a single word)
-      if (booruPosts.length === 0 && tagsString && tags.length === 1) {
-        const originalTag = tags[0].trim();
+      if (booruPosts.length === 0 && tagsString && safeInputTags.length === 1) {
+        const originalTag = safeInputTags[0].trim();
         
         // Attempt A: Autocomplete (Fix Aliases)
         // Use provider abstraction instead of direct URL access
@@ -485,7 +525,13 @@ export class SearchController extends BaseController {
       }
 
       // Normalize tags (lowercase, unique) - process ALL tags, no arbitrary limits
-      const uniqueTags = [...new Set(tags.filter(Boolean).map(t => t.toLowerCase().trim()))];
+      const uniqueTags = [
+        ...new Set(
+          tags
+            .filter(Boolean)
+            .map((t) => sanitizeProviderTagToken(t).toLowerCase().trim())
+        ),
+      ];
       if (uniqueTags.length === 0) {
         return [];
       }
@@ -638,42 +684,7 @@ export class SearchController extends BaseController {
         }
       }
 
-      // Bulk insert all entries at once (fixes N+1 problem)
-      // Use transaction for atomicity (all or nothing)
-      if (allEntries.length > 0) {
-        try {
-          db.transaction((tx) => {
-            // Use bulk insert with onConflictDoUpdate for all entries
-            tx.insert(tagMetadata)
-              .values(allEntries)
-              .onConflictDoUpdate({
-                target: tagMetadata.name,
-                set: { type: sql`excluded.type` }, // Update with real type from API
-              })
-              .run();
-          });
-
-          // Update cache with correct types (only after successful transaction)
-          allEntries.forEach(e => cachedMap.set(e.name, e.type));
-        } catch (dbErr) {
-          log.error(`[SearchController] Database error during bulk insert:`, dbErr);
-          // Fallback: try individual inserts for remaining entries
-          for (const entry of allEntries) {
-            try {
-              db.insert(tagMetadata)
-                .values(entry)
-                .onConflictDoUpdate({
-                  target: tagMetadata.name,
-                  set: { type: sql`excluded.type` },
-                })
-                .run();
-              cachedMap.set(entry.name, entry.type);
-            } catch (individualErr) {
-              log.error(`[SearchController] Database error for tag "${entry.name}":`, individualErr);
-            }
-          }
-        }
-      }
+      this.upsertResolvedTagEntries(db, allEntries, cachedMap, "resolveTags");
 
       // CRITICAL: Return ONLY tags where type === TAG_TYPES.ARTIST
       // This ensures resolvedArtistTags in the frontend actually receives artists
@@ -710,7 +721,13 @@ export class SearchController extends BaseController {
       }
 
       // Normalize tags (lowercase, unique) - process ALL tags, no arbitrary limits
-      const uniqueTags = [...new Set(tags.filter(Boolean).map(t => t.toLowerCase().trim()))];
+      const uniqueTags = [
+        ...new Set(
+          tags
+            .filter(Boolean)
+            .map((t) => sanitizeProviderTagToken(t).toLowerCase().trim())
+        ),
+      ];
       if (uniqueTags.length === 0) {
         return [];
       }
@@ -852,42 +869,12 @@ export class SearchController extends BaseController {
         }
       }
 
-      // Bulk insert all entries at once (fixes N+1 problem)
-      // Use transaction for atomicity (all or nothing)
-      if (allEntries.length > 0) {
-        try {
-          db.transaction((tx) => {
-            // Use bulk insert with onConflictDoUpdate for all entries
-            tx.insert(tagMetadata)
-              .values(allEntries)
-              .onConflictDoUpdate({
-                target: tagMetadata.name,
-                set: { type: sql`excluded.type` }, // Update with real type from API
-              })
-              .run();
-          });
-
-          // Update cache with correct types (only after successful transaction)
-          allEntries.forEach(e => cachedMap.set(e.name, e.type));
-        } catch (dbErr) {
-          log.error(`[SearchController] Database error during bulk insert:`, dbErr);
-          // Fallback: try individual inserts for remaining entries
-          for (const entry of allEntries) {
-            try {
-              db.insert(tagMetadata)
-                .values(entry)
-                .onConflictDoUpdate({
-                  target: tagMetadata.name,
-                  set: { type: sql`excluded.type` },
-                })
-                .run();
-              cachedMap.set(entry.name, entry.type);
-            } catch (individualErr) {
-              log.error(`[SearchController] Database error for tag "${entry.name}":`, individualErr);
-            }
-          }
-        }
-      }
+      this.upsertResolvedTagEntries(
+        db,
+        allEntries,
+        cachedMap,
+        "resolveCharacterTags"
+      );
 
       // CRITICAL: Return ONLY tags where type === TAG_TYPES.CHARACTER
       const characterTags = uniqueTags.filter(tag => {
@@ -927,7 +914,13 @@ export class SearchController extends BaseController {
       }
 
       // Normalize tags (lowercase, unique)
-      const uniqueTags = [...new Set(tags.filter(Boolean).map(t => t.toLowerCase().trim()))];
+      const uniqueTags = [
+        ...new Set(
+          tags
+            .filter(Boolean)
+            .map((t) => sanitizeProviderTagToken(t).toLowerCase().trim())
+        ),
+      ];
       if (uniqueTags.length === 0) {
         return [];
       }
@@ -1058,38 +1051,12 @@ export class SearchController extends BaseController {
         }
       }
 
-      // Bulk insert all entries
-      if (allEntries.length > 0) {
-        try {
-          db.transaction((tx) => {
-            tx.insert(tagMetadata)
-              .values(allEntries)
-              .onConflictDoUpdate({
-                target: tagMetadata.name,
-                set: { type: sql`excluded.type` },
-              })
-              .run();
-          });
-
-          allEntries.forEach(e => cachedMap.set(e.name, e.type));
-        } catch (dbErr) {
-          log.error(`[SearchController] Database error during bulk insert:`, dbErr);
-          for (const entry of allEntries) {
-            try {
-              db.insert(tagMetadata)
-                .values(entry)
-                .onConflictDoUpdate({
-                  target: tagMetadata.name,
-                  set: { type: sql`excluded.type` },
-                })
-                .run();
-              cachedMap.set(entry.name, entry.type);
-            } catch (individualErr) {
-              log.error(`[SearchController] Database error for tag "${entry.name}":`, individualErr);
-            }
-          }
-        }
-      }
+      this.upsertResolvedTagEntries(
+        db,
+        allEntries,
+        cachedMap,
+        "resolveTagsByType"
+      );
 
       // Return only tags that match the specified type
       const filteredTags = uniqueTags.filter(tag => {

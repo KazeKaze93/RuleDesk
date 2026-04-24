@@ -5,6 +5,7 @@ import { BaseController } from "../../core/ipc/BaseController";
 import { VideoProxyServer } from "../../services/video-proxy-server";
 import { IPC_CHANNELS } from "../channels";
 
+// Query style: Drizzle Builder API only in this controller.
 export class VideoProxyController extends BaseController {
   private readonly videoProxyServer: VideoProxyServer;
 

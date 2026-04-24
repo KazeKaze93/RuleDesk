@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Plus, Users } from "lucide-react";
@@ -13,6 +13,7 @@ export const Tracked = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const addModalReturnFocusRef = useRef<HTMLElement | null>(null);
 
   // Fetch artists
   const {
@@ -66,7 +67,10 @@ export const Tracked = () => {
           Tracked Artists
         </h1>
         <Button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={(e) => {
+            addModalReturnFocusRef.current = e.currentTarget;
+            setIsAddModalOpen(true);
+          }}
           variant="default"
           className="gap-2"
         >
@@ -78,7 +82,13 @@ export const Tracked = () => {
       {!artists || artists.length === 0 ? (
         <div className="flex flex-col justify-center items-center h-64 rounded-lg border-2 border-dashed bg-muted/10 text-muted-foreground">
           <p>No tracked sources yet.</p>
-          <Button variant="link" onClick={() => setIsAddModalOpen(true)}>
+          <Button
+            variant="link"
+            onClick={(e) => {
+              addModalReturnFocusRef.current = e.currentTarget;
+              setIsAddModalOpen(true);
+            }}
+          >
             Add your first one
           </Button>
         </div>
@@ -98,6 +108,7 @@ export const Tracked = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={handleAddArtist}
+        returnFocusToRef={addModalReturnFocusRef}
       />
     </div>
   );

@@ -42,6 +42,7 @@ function registerDatabaseInContainerAfterReinit(): void {
  * - Database restore from backup
  * - Sync operations
  */
+// Query style: Drizzle Builder API only in this controller.
 export class MaintenanceController extends BaseController {
   private mainWindow: BrowserWindow | null = null;
 
@@ -310,6 +311,12 @@ export class MaintenanceController extends BaseController {
     return maintenanceQueue.execute(async () => {
       try {
         const backupPath = filePaths[0];
+        if (backupPath.includes("\0")) {
+          return {
+            success: false,
+            error: "Invalid backup path",
+          };
+        }
 
       // Check if backup file exists
       try {

@@ -1,4 +1,5 @@
 import { type IpcMainInvokeEvent } from "electron";
+import path from "node:path";
 import log from "electron-log";
 import type { InferSelectModel } from "drizzle-orm";
 import { eq } from "drizzle-orm";
@@ -21,6 +22,18 @@ import type * as schema from "../../db/schema";
 import { z } from "zod";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
+
+const SaveDownloadFolderArgSchema = z.union([
+  z.null(),
+  z
+    .string()
+    .min(1)
+    .max(4096)
+    .refine((p) => path.isAbsolute(p), {
+      message: "Download folder must be an absolute path",
+    })
+    .refine((p) => !p.includes("\0"), { message: "Invalid path" }),
+]);
 
 /**
  * Maps Drizzle Settings type to safe IPC format.
@@ -88,6 +101,7 @@ function mapSettingsToIpc(
  * - Confirm legal (Age Gate & ToS acceptance)
  */
 export class SettingsController extends BaseController {
+  // Query style: Drizzle Builder API only in this controller.
   private getDb(): AppDatabase {
     return container.resolve(DI_TOKENS.DB);
   }
@@ -140,7 +154,7 @@ export class SettingsController extends BaseController {
     // settings:save-download-folder - saves custom download folder path
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER,
-      z.tuple([z.string().max(4096).nullable()]),
+      z.tuple([SaveDownloadFolderArgSchema]),
       this.saveDownloadFolder.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
@@ -182,9 +196,12 @@ export class SettingsController extends BaseController {
     try {
       const db = this.getDb();
       // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
-      const currentSettings = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
+      const currentSettings = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
 
       let result: IpcSettings;
       if (!currentSettings) {
@@ -336,9 +353,12 @@ export class SettingsController extends BaseController {
       );
 
       // Verify the save worked - use SETTINGS_ID (existing is now set inside transaction)
-      const saved = await db.query.settings.findFirst({
-        where: eq(settings.id, existing?.id ?? SETTINGS_ID),
-      });
+      const saved = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, existing?.id ?? SETTINGS_ID))
+        .limit(1)
+        .all()[0];
 
       if (!saved) {
         throw new Error("Failed to verify settings were saved");
@@ -373,9 +393,12 @@ export class SettingsController extends BaseController {
   ): Promise<boolean> {
     try {
       const db = this.getDb();
-      const existing = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
+      const existing = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
 
       if (existing) {
         await db
@@ -416,9 +439,12 @@ export class SettingsController extends BaseController {
   ): Promise<boolean> {
     try {
       const db = this.getDb();
-      const existing = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
+      const existing = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
       if (!existing) {
         log.warn("[SettingsController] No settings record for download folder, skipping");
         return false;
@@ -446,9 +472,12 @@ export class SettingsController extends BaseController {
   ): Promise<boolean> {
     try {
       const db = this.getDb();
-      const existing = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
+      const existing = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
       if (!existing) {
         log.warn("[SettingsController] No settings record for download settings, skipping");
         return false;
@@ -491,9 +520,12 @@ export class SettingsController extends BaseController {
 
       // Get existing settings BEFORE transaction to preserve userId and encryptedApiKey
       // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
-      const existing = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
+      const existing = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
 
       log.debug(
         `[SettingsController] confirmLegal: existing=${
@@ -542,9 +574,12 @@ export class SettingsController extends BaseController {
       // Get updated settings after transaction commits
       // This is safe because transaction is already committed
       // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
-      const updatedSettings = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
+      const updatedSettings = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
 
       if (!updatedSettings) {
         throw new Error(
