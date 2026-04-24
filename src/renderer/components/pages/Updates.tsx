@@ -288,6 +288,25 @@ export const Updates = () => {
     enabled: activeView === CREATORS_VIEW,
   });
 
+  const { data: totalUnreadCount = 0 } = useQuery({
+    queryKey: ["updates", "totalUnreadCount", tags, aiFilter, rating, mediaType, source],
+    queryFn: () =>
+      window.api.getUpdatesTotalUnreadCount({
+        filters: {
+          sinceTracking: true,
+          tags: tags.length > 0 ? tags.join(" ") : undefined,
+          aiFilter: aiFilter === "all" ? undefined : aiFilter,
+          rating: rating === "all" ? undefined : rating,
+          mediaType: mediaType === "all" ? undefined : mediaType,
+          isFavorited: source === "favorites" ? true : undefined,
+        },
+      }),
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+  });
+
   const handleViewChange = (value: string) => {
     if (value === FEED_VIEW || value === CREATORS_VIEW) {
       setActiveView(value);
@@ -551,15 +570,13 @@ export const Updates = () => {
             <p className="mt-1 text-xs text-muted-foreground">
               Latest posts from tracked artists
             </p>
-            {allPosts.length > 0 && (
-              <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
-                <span className="text-sm font-medium text-muted-foreground">
-                  {downloadTotalCount || allPosts.length}{" "}
-                  {(downloadTotalCount || allPosts.length) === 1 ? "post" : "posts"}
-                  {!downloadTotalCount && hasNextPage ? " +" : ""}
-                </span>
-              </div>
-            )}
+            <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
+              <span className="text-sm font-medium text-muted-foreground">
+                {totalUnreadCount === 0
+                  ? "No new posts"
+                  : `${totalUnreadCount.toLocaleString()} ${totalUnreadCount === 1 ? "new post" : "new posts"}`}
+              </span>
+            </div>
           </div>
         </div>
         {activeView === FEED_VIEW && (

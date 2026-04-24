@@ -69,6 +69,7 @@ export const IPC_CHANNELS = {
   },
   UPDATES: {
     GET_UNREAD_COUNT: "updates:getUnreadCount",
+    GET_TOTAL_UNREAD_COUNT: "updates:getTotalUnreadCount",
     MARK_ALL_SEEN: "updates:markAllSeen",
   },
   UPDATER: {

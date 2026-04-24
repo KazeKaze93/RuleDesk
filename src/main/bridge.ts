@@ -8,7 +8,7 @@ import type {
 } from "./types/ipc";
 import type { IpcSettings, SaveSettings } from "../shared/schemas/settings";
 import type { ThemePreference } from "../shared/schemas/settings";
-import type { PostData } from "../shared/schemas/post";
+import type { PostData, PostFilterRequest } from "../shared/schemas/post";
 import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
 import type { ProviderId, SearchResults } from "./providers";
 import type {
@@ -91,6 +91,7 @@ export interface IpcBridge {
   togglePostViewed: (postId: number) => Promise<boolean>;
   markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
   getUpdatesUnreadCount: () => Promise<number>;
+  getUpdatesTotalUnreadCount: (params: { filters?: PostFilterRequest }) => Promise<number>;
   markAllUpdatesSeen: () => Promise<boolean>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
@@ -275,6 +276,8 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.DB.MARK_ALL_VIEWED),
   getUpdatesUnreadCount: () =>
     ipcRenderer.invoke(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT),
+  getUpdatesTotalUnreadCount: (params) =>
+    ipcRenderer.invoke(IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT, params),
   markAllUpdatesSeen: () =>
     ipcRenderer.invoke(IPC_CHANNELS.UPDATES.MARK_ALL_SEEN),
 

@@ -8,6 +8,7 @@ import {
 import type { ShadowInsertRequest } from "./shared/schemas/shadow-insert";
 import type { SearchResults, ProviderId } from "./main/providers";
 import type { PostData, GetPostsCountRequest } from "./shared/schemas/post";
+import type { PostFilterRequest } from "./shared/schemas/post";
 import type {
   CreatePlaylistRequest,
   UpdatePlaylistRequest,
@@ -100,6 +101,7 @@ export interface IpcApi extends IpcBridge {
   togglePostViewed: (postId: number) => Promise<boolean>;
   markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
   getUpdatesUnreadCount: () => Promise<number>;
+  getUpdatesTotalUnreadCount: (params: { filters?: PostFilterRequest }) => Promise<number>;
   markAllUpdatesSeen: () => Promise<boolean>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
