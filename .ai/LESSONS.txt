@@ -1,0 +1,109 @@
+RuleDesk Engineering Lessons (Canonical, Short Form)
+
+Format: Problem -> Root Cause -> Invariant Rule
+
+1) Hooks Order Violations
+Problem: Runtime errors from conditional hook usage.
+Root Cause: Hooks called inside JSX, branches, or loops.
+Invariant Rule: Call hooks only at the top level of React components and custom hooks.
+
+2) Filter Model Drift
+Problem: UI pages break after filter schema changes.
+Root Cause: Store contract changed but not all consumers were updated.
+Invariant Rule: Any filter contract change requires synchronized updates across store, panels, and all feed pages.
+
+3) Idempotent IPC Under Strict Mode
+Problem: Duplicate startup calls trigger throttling and unstable UX.
+Root Cause: Idempotent handlers were treated the same as mutating handlers.
+Invariant Rule: Mark truly idempotent handlers and use request collapsing for in-flight calls.
+
+4) Virtualized Gallery Holes
+Problem: Large empty scroll area in filtered lists.
+Root Cause: Virtualization total count used raw items while rendering filtered items.
+Invariant Rule: Virtualization `totalCount` must always match the rendered collection length.
+
+5) Retry and Timeout Leaks
+Problem: Delayed callbacks run after unmount and create leaks.
+Root Cause: Retry timers are created without cleanup paths.
+Invariant Rule: Every timeout/interval created in effects must be cleared in cleanup.
+
+6) Error Handler Infinite Loops
+Problem: Image fallback logic loops forever on invalid fallback URLs.
+Root Cause: Fallback retries do not track already-attempted URLs.
+Invariant Rule: Error fallback logic must include a hard termination condition.
+
+7) URL Extension Misdetection
+Problem: Media type detection fails on URLs with query strings.
+Root Cause: Extension checks run on full URL string.
+Invariant Rule: Parse URL pathname first, then detect media extension.
+
+8) Documentation Drift
+Problem: Docs describe behavior that no longer matches implementation.
+Root Cause: Code changes ship without synchronized documentation updates.
+Invariant Rule: Any behavior/API/workflow change must update `README.md`, `docs/*`, and lessons in the same task.
+
+9) Unused Code Debt
+Problem: Dead imports/variables increase noise and hide real issues.
+Root Cause: Refactors are merged without cleanup.
+Invariant Rule: Run `npm run validate` before finishing and remove all unused imports/variables.
+
+See also: ../LESSONS.md (extended examples and historical context).
+## Testing
+
+### Problem: Dual-ABI test setup masks Electron-vs-Node native module incompatibilities
+**Root Cause:** When tests rebuild better-sqlite3 against Node.js ABI, they don't execute under Electron's runtime. Edge cases that manifest only under Electron's event loop, WAL semantics, or sandbox behavior pass tests but fail in production.
+**Invariant Rule:** Integration tests involving native modules (better-sqlite3) should ideally run inside Electron via Playwright/electron-vitest. If staying with dual-ABI for speed, document the gap explicitly and add end-to-end Electron tests for critical DB paths.
+
+## Architecture
+
+### Problem: Custom DI containers are a YAGNI violation for small projects
+**Root Cause:** A full IoC-style abstraction was introduced without real needs for automatic wiring, lifecycle scopes, or module isolation.
+**Invariant Rule:** Prefer typed service registry (Map-backed or object-backed) with compile-time keys. Use a real IoC container only when automatic wiring or scope management is actually needed.
+
+## Performance
+
+## Security
+
+### Problem: Static CSP tied to specific domains does not scale to multi-provider architecture
+**Root Cause:** Security policy duplicated provider-specific domains instead of deriving them from the provider registry.
+**Invariant Rule:** CSP directives that enumerate external domains must be computed from the Provider Registry, never hardcoded in Main or Renderer.
+
+## UI & Styling
+
+### Problem: “Panic mode” implemented with `visibility:hidden` / `opacity` still leaks media in screenshots
+**Root Cause:** OS and third-party screen capture tools read the rendered DOM and resource URLs; CSS-hidden nodes often remain in the accessibility/layout tree with `src` intact.
+**Invariant Rule:** Panic Mode must **wipe `src` on `img`, `video`, and `source` elements** (and restore from a data attribute if needed), not rely on CSS hiding. Screenshot tools capture rendered DOM, not stylesheet intent.
+
+### Problem: CSS `break-inside-avoid` silently ignored in flex containers
+**Root Cause:** `break-inside-avoid` only works with CSS multi-column layout (`columns-N` / `column-count`). In a flex or grid container it has no effect, but browsers don't warn. Masonry implementations that mix flex + break-inside appear to "work" superficially but produce a single-column list.
+**Invariant Rule:** Masonry layouts must use CSS columns explicitly (`columns-2 md:columns-3 ...`) or a bin-packing library (e.g. `masonic`). Combining virtualization with CSS-columns masonry is incompatible; choose one.
+
+## Data Integrity
+
+### Problem: React Query key drift resets optimistic post state
+**Root Cause:** Cache updates used partial keys while active queries used parameterized keys (tags/source/sortOrder), so refreshed data overwrote local viewed/favorited flags.
+**Invariant Rule:** Cache write keys must match read keys exactly. For parameterized feeds, use `setQueriesData({ queryKey: <prefix> })` to update all key variants.
+
+### Problem: Viewer cannot resolve posts from cache after list remount
+**Root Cause:** `ViewerOrigin -> queryKey` mapping and manual cache writes (`setQueryData`) diverged from page query key composition (missing dimensions such as `source`, `sortOrder`, `rating`, `aiFilter`).
+**Invariant Rule:** Query key construction must be isomorphic across page fetch, viewer lookup, queue origin, and cache mutation paths. Any new key dimension (example: `source` in Browse) must be added in one atomic change to: page `useQuery/useInfiniteQuery` key, `ViewerOrigin` shape, viewer key resolver, `openViewer` origin payload/listKey, and every manual cache write key.
+
+### Problem: Migration number collision blocks schema rollout
+**Root Cause:** New migration reused an existing tag (`0014`), so target SQL did not apply in runtime migration flow.
+**Invariant Rule:** Migration tags must be unique and monotonic; verify `drizzle/meta/_journal.json` entry exists before relying on new columns.
+
+### Problem: New schema columns crash old local databases
+**Root Cause:** Runtime logic referenced columns before migration was guaranteed on all user DBs.
+**Invariant Rule:** For rolling schema changes, add startup capability checks (e.g. `PRAGMA table_info`) and fallback code paths until migration adoption is complete.
+
+### Problem: Browse viewed state resets for external posts
+**Root Cause:** External post write path inserted into `posts` with `artist_id=EXTERNAL_ARTIST_ID` without ensuring placeholder artist existed, causing FK write failures and later state rollback on refetch.
+**Invariant Rule:** Every external-post write path (`view`, `favorite`, `shadow insert`) must ensure `EXTERNAL_ARTIST_ID` exists in the same transaction (`onConflictDoNothing`).
+
+### Problem: Delayed-only viewed persistence is lost on fast tab switches
+**Root Cause:** Browse relied on delayed viewer timer; request was canceled before DB write, while UI already showed optimistic viewed state.
+**Invariant Rule:** Persist viewed state immediately on card click in list pages. Viewer delayed mark can be only a backup path, not primary persistence.
+
+### Problem: Freeform JSON in DB columns locks data to the first DSL shape
+**Root Cause:** Smart playlist queries were stored as raw JSON without schema versioning, so parser changes could break old records or misinterpret fields.
+**Invariant Rule:** Any JSON-in-column stored as user data MUST include a version column and be parsed only through a versioned resolver, never through raw JSON.parse.

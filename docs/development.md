@@ -23,6 +23,7 @@ This guide covers the development setup, build process, and common development t
 **📖 Related Documentation:**
 
 - [.cursorrules](../.cursorrules) - Code standards and guidelines
+- [Canonical Lessons](../.ai/LESSONS.txt) - Invariant engineering rules from recurring mistakes
 - [Architecture Documentation](./architecture.md) - System architecture
 - [API Documentation](./api.md) - IPC API reference
 - [Database Documentation](./database.md) - Database operations

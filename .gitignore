@@ -49,7 +49,7 @@ Thumbs.db
 
 # --- AI & Tools ---
 .ai/*
-!.ai/LESSONS.md
+!.ai/LESSONS.txt
 repomix-output.xml
 repomix-output.txt
 .repomix/

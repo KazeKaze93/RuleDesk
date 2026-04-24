@@ -60,6 +60,7 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
   - [Development Scripts](./development.md#development-scripts) - Available npm scripts
   - [Development Workflow](./development.md#development-workflow) - Making changes and adding features
   - [Debugging](./development.md#debugging) - Debugging techniques
+- **[Canonical Lessons](../.ai/LESSONS.txt)** - Compact invariants from recurring mistakes (`Problem -> Root Cause -> Invariant Rule`)
 
 ### External API Reference
 

@@ -98,6 +98,7 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 # DOCUMENTATION
 
 - **BAN**: Never create `contributing.md`. This file is forbidden. Project standards live in `.cursorrules` and `.ai/LESSONS.txt`.
+- **LESSONS SOURCE OF TRUTH**: Use and update **only** `.ai/LESSONS.txt`. Do not create, reference, or update `LESSONS.md`.
 - **DOC CONSISTENCY IS MANDATORY**: Any behavioral/API/UI change must be reflected in all relevant docs (`README.md`, `docs/*.md`, user/developer docs) in the same task.
 - **PROACTIVE DOC SYNC**: Do not ask for permission to "also update docs". If docs are stale/inconsistent after changes, update them automatically.
 - **NO DOC DRIFT**: Keep terminology, feature behavior, and constraints aligned across files. If one doc says X and code says Y, docs must be fixed immediately.
@@ -107,6 +108,12 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 - If you change file structure, remind me to run the context update command (e.g., `repo-inquisitor ctx`).
 - **Checkpoint**: If a logical unit of work is done, issue a "🛑 CHECKPOINT ALERT" and ask to commit.
 - If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
+
+# AUDIT INVARIANTS (DX & RELIABILITY)
+
+- **Main Process Dev Cycle**: Renderer HMR is not enough. Any change in `src/main/**` must be verified after an explicit Electron Main restart.
+- **Shared IPC Validation**: Repeated Zod contracts across handlers must be extracted into shared schemas/helpers to prevent validation drift and inconsistent error messages.
+- **Video Pipeline Hygiene**: For any media/video feature change, validate `<video>` attributes and platform behavior (decode/perf quirks) before considering the task done.
 
 # 🧠 KNOWLEDGE MANAGEMENT (STRICT)
 

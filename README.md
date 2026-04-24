@@ -341,6 +341,7 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 - **[Database Documentation](./docs/database.md)** - Database schema, operations, and best practices
 - **[Development Guide](./docs/development.md)** - Development setup, build process, and workflows
 - **[.cursorrules](./.cursorrules)** - Code standards and development principles
+- **[.ai/LESSONS.txt](./.ai/LESSONS.txt)** - Canonical short lessons (`Problem -> Root Cause -> Invariant Rule`)
 
 ### 📋 Planning & Reference
 
