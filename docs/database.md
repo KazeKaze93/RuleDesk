@@ -19,13 +19,14 @@
 
 ## Overview
 
-The application uses **SQLite** as the local database for storing metadata, tracked artists, posts, and settings. The database is accessed directly in the **Main Process** using **Drizzle ORM** for type-safe queries. WAL (Write-Ahead Logging) mode is enabled for concurrent reads.
+This document is a maintainer-focused database reference. RuleDesk uses **SQLite** as the local database for storing metadata, tracked artists, posts, and settings. The database is accessed directly in the **Main Process** using **Drizzle ORM** for type-safe queries. WAL (Write-Ahead Logging) mode is enabled for concurrent reads.
 
 **📖 Related Documentation:**
 
+- [User Guide](./user-guide.md) - End-user flows that depend on local data
 - [Architecture Documentation](./architecture.md) - Database architecture in system design
 - [API Documentation](./api.md) - IPC methods for database operations
-- [Development Guide](./development.md) - Database scripts and migrations
+- [README](../README.md#-development-setup) - Build, scripts, and local quality checks
 - [Glossary](./glossary.md) - Key terms (WAL Mode, Drizzle ORM, Migration, etc.)
 
 ## Database Location

@@ -99,6 +99,7 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 
 - **BAN**: Never create `contributing.md`. This file is forbidden. Project standards live in `.cursorrules` and `.ai/LESSONS.txt`.
 - **LESSONS SOURCE OF TRUTH**: Use and update **only** `.ai/LESSONS.txt`. Do not create, reference, or update `LESSONS.md`.
+- **LESSONS BOOTSTRAP**: If `.ai/LESSONS.txt` is missing, create it immediately with canonical invariant format before adding or refining lessons.
 - **DOC CONSISTENCY IS MANDATORY**: Any behavioral/API/UI change must be reflected in all relevant docs (`README.md`, `docs/*.md`, user/developer docs) in the same task.
 - **PROACTIVE DOC SYNC**: Do not ask for permission to "also update docs". If docs are stale/inconsistent after changes, update them automatically.
 - **NO DOC DRIFT**: Keep terminology, feature behavior, and constraints aligned across files. If one doc says X and code says Y, docs must be fixed immediately.

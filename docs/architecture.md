@@ -21,13 +21,14 @@
 
 ## Overview
 
-This application follows a strict **Separation of Concerns (SoC)** architecture, dividing responsibilities between the Electron Main Process (secure Node.js environment) and the Renderer Process (sandboxed browser environment).
+This document is a maintainer-focused architecture reference. It describes how RuleDesk enforces strict **Separation of Concerns (SoC)** between the Electron Main Process (secure Node.js environment) and the Renderer Process (sandboxed browser environment).
 
 **📖 Related Documentation:**
 
+- [User Guide](./user-guide.md) - End-user flows and product behavior
 - [API Documentation](./api.md) - IPC API reference
 - [Database Documentation](./database.md) - Database architecture details
-- [Development Guide](./development.md) - Development setup and workflows
+- [README](../README.md#-development-setup) - Build, scripts, and local quality checks
 - [Glossary](./glossary.md) - Key terms (Main Process, Renderer Process, IPC, etc.)
 
 ### Architecture Diagram
@@ -1627,7 +1628,6 @@ Root:
 │   ├── architecture.md
 │   ├── index.md
 │   ├── database.md
-│   ├── development.md
 │   ├── roadmap.md
 │   └── rule34-api-reference.md
 ├── scripts/                        # Build and utility scripts

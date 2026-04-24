@@ -328,8 +328,8 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
 **💡 New to RuleDesk?**
 
-- **End users:** Start with the [User Guide](./docs/user-guide.md) - it covers everything you need to know!
-- **Developers:** Check the [Documentation Index](./docs/index.md) for developer documentation
+- **Start here:** Open the [User Guide](./docs/user-guide.md) for the full end-user walkthrough.
+- **Need a map of docs?** Use the [Documentation Index](./docs/index.md).
 
 ### 👤 User Guides
 
@@ -338,21 +338,20 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 - **[Settings](#-settings)** - Application configuration (this document)
 - **[Sync & Background](#-sync--background)** - Synchronization guide (this document)
 
-### 👨‍💻 Developer Documentation
-
-- **[Architecture Documentation](./docs/architecture.md)** - System architecture, design patterns, and component structure
-- **[API Documentation](./docs/api.md)** - Complete IPC API reference and usage examples
-- **[Database Documentation](./docs/database.md)** - Database schema, operations, and best practices
-- **[Development Guide](./docs/development.md)** - Development setup, build process, and workflows
-- **[.cursorrules](./.cursorrules)** - Code standards and development principles
-- **[.ai/LESSONS.txt](./.ai/LESSONS.txt)** - Canonical short lessons (`Problem -> Root Cause -> Invariant Rule`)
-
 ### 📋 Planning & Reference
 
 - **[Roadmap](./docs/roadmap.md)** - Development roadmap and planned features
 - **[Features.md](./Features.md)** - Short internal priority list (P1 / P2)
 - **[Product Strategy](./Product_Strategy.md)** - Long-term positioning and research pillars
+
+### 🛠️ Maintainer Appendix
+
+- **[Architecture Documentation](./docs/architecture.md)** - System architecture and boundaries
+- **[API Documentation](./docs/api.md)** - IPC API reference and usage patterns
+- **[Database Documentation](./docs/database.md)** - Schema, migrations, and operational notes
 - **[Rule34 API Reference](./docs/rule34-api-reference.md)** - Unofficial Rule34.xxx API documentation
+- **[.cursorrules](./.cursorrules)** - Code standards and development principles
+- **[.ai/LESSONS.txt](./.ai/LESSONS.txt)** - Canonical short lessons (`Problem -> Root Cause -> Invariant Rule`)
 
 **💡 Tip:** If you're new to RuleDesk, start with the [Documentation Index](./docs/index.md) for structured navigation.
 
@@ -486,6 +485,9 @@ npm run typecheck
 
 # Run linter to check code style and potential issues
 npm run lint
+
+# Validate image loading/decoding attributes in renderer
+npm run check:img-attrs
 
 # Run both (validation)
 npm run validate

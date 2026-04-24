@@ -241,7 +241,7 @@ Curated collections of posts independent of Artists/Trackers. Users can create p
 
 A script that modifies the database schema. RuleDesk uses Drizzle Kit to generate and run migrations automatically.
 
-**Related:** [Migrations](./database.md#migrations), [Development - Database Scripts](./development.md#database-scripts)
+**Related:** [Migrations](./database.md#migrations), [Database Documentation](./database.md)
 
 ---
 

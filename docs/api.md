@@ -18,13 +18,13 @@
 
 ## Overview
 
-This document describes the IPC (Inter-Process Communication) API between the Electron Main Process and Renderer Process. All communication is strictly typed using TypeScript interfaces and follows security best practices.
+This document is a maintainer-focused reference for the IPC (Inter-Process Communication) API between the Electron Main Process and Renderer Process. All communication is strictly typed using TypeScript interfaces and follows security best practices.
 
 **📖 Related Documentation:**
 
+- [User Guide](./user-guide.md) - End-user behavior and UI-level workflows
 - [Architecture Documentation](./architecture.md) - System architecture and IPC design
 - [Database Documentation](./database.md) - Database operations and schema
-- [Development Guide](./development.md) - Adding new IPC methods
 - [Glossary](./glossary.md) - Key terms (IPC, Main Process, Renderer Process)
 
 ---

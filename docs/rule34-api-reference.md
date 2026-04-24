@@ -14,9 +14,10 @@
 
 ---
 
-This document provides an unofficial technical overview of the public Rule34.xxx API for developers integrating the API into desktop clients or applications.
+This document is a maintainer-facing technical overview of the public Rule34.xxx API used by RuleDesk and similar desktop clients.
 
 **📖 Related Documentation:**
+- [User Guide](./user-guide.md) - Product-level behavior and user-facing expectations
 - [API Documentation](./api.md) - RuleDesk IPC API reference
 - [Architecture Documentation](./architecture.md) - External API integration
 - [Glossary](./glossary.md) - Key terms (API Key, Rate Limiting, etc.)

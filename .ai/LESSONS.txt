@@ -1,3 +1,13 @@
+RuleDesk Canonical Lessons
+Format: Problem -> Root Cause -> Invariant Rule
+
+1) Transaction async misuse -> better-sqlite3 + Drizzle transactions are synchronous and blocking -> Never use async callbacks or await inside db.transaction(...); perform async I/O before or after transaction boundaries.
+
+2) Query builder not executed -> Drizzle write queries are lazy -> Always terminate insert/update/delete chains with .run() in Main process code.
+
+3) Validation drift across IPC handlers -> Repeated ad-hoc schemas diverge over time -> Extract shared Zod schemas in shared modules and reuse them across handlers.
+
+4) Doc/code divergence -> Behavior changes land without synchronized docs -> Any API/UI/behavior change must include same-task updates to README and relevant docs/* sections.
 RuleDesk Engineering Lessons (Canonical, Short Form)
 
 Format: Problem -> Root Cause -> Invariant Rule

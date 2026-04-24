@@ -21,46 +21,8 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
   - [Basic Usage](./user-guide.md#basic-usage) - Adding artists, syncing, viewing posts
   - [Features](./user-guide.md#features) - Search, favorites, downloads, filters
   - [Troubleshooting](./user-guide.md#troubleshooting) - Common problems and solutions
-- **[README.md - Quick Start](../README.md#-quick-start)** - Quick reference for developers
+- **[README.md - Quick Start](../README.md#-quick-start)** - Fast launch checklist
 - **[README.md - Features](../README.md#-features)** - Complete feature list
-
-### Developer Documentation
-
-**For contributors and developers:**
-
-#### Architecture & Design
-
-- **[Architecture Documentation](./architecture.md)** - System architecture, design patterns, and component structure
-  - [Process Separation](./architecture.md#process-separation) - Main vs Renderer process
-  - [Security Architecture](./architecture.md#security-architecture) - Security layers and context isolation
-  - [Data Flow](./architecture.md#data-flow) - Reading, writing, and synchronization flows
-  - [Component Architecture](./architecture.md#component-architecture) - React component hierarchy
-
-#### API Reference
-
-- **[API Documentation](./api.md)** - Complete IPC API reference
-  - [IPC Bridge Interface](./api.md#ipc-bridge-interface) - Type definitions
-  - [API Methods](./api.md#api-methods) - All available IPC methods
-  - [Playlists IPC Methods](./api.md#playlists-ipc-methods) - Playlist CRUD, resolve, reorder, import/export
-  - [Event Listeners](./api.md#event-listeners) - Real-time event subscriptions
-  - [Error Handling](./api.md#error-handling) - Error handling patterns
-
-#### Database
-
-- **[Database Documentation](./database.md)** - Database schema, operations, and best practices
-  - [Schema](./database.md#schema) - Table definitions and relationships
-  - [Database Architecture](./database.md#database-architecture) - Client architecture and initialization
-  - [Migrations](./database.md#migrations) - Migration generation and execution
-  - [Backup and Recovery](./database.md#backup-and-recovery) - Backup/restore procedures
-
-#### Development
-
-- **[Development Guide](./development.md)** - Development setup, build process, and workflows
-  - [Initial Setup](./development.md#initial-setup) - Prerequisites and installation
-  - [Development Scripts](./development.md#development-scripts) - Available npm scripts
-  - [Development Workflow](./development.md#development-workflow) - Making changes and adding features
-  - [Debugging](./development.md#debugging) - Debugging techniques
-- **[Canonical Lessons](../.ai/LESSONS.txt)** - Compact invariants from recurring mistakes (`Problem -> Root Cause -> Invariant Rule`)
 
 ### External API Reference
 
@@ -86,71 +48,55 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 ### By Role
 
 #### I'm a User
-1. Start with [README.md](../README.md) for overview and quick start
-2. Check [Glossary](./glossary.md) for unfamiliar terms
-3. Read [README.md - Settings](../README.md#-settings) for configuration
-4. See [README.md - Sync & Background](../README.md#-sync--background) for synchronization
-
-#### I'm a Developer
-1. Read [Development Guide](./development.md) for setup
-2. Study [Architecture Documentation](./architecture.md) for system design
-3. Reference [API Documentation](./api.md) for IPC methods
-4. Review [Database Documentation](./database.md) for schema and operations
-5. Follow [.cursorrules](../.cursorrules) for code standards
-
-#### I'm Contributing
-1. Read [.cursorrules](../.cursorrules) for guidelines
-2. Review [Development Guide](./development.md) for workflows
-3. Check [Roadmap](./roadmap.md) for planned features
-4. Study [Architecture Documentation](./architecture.md) for design patterns
+1. Start with [User Guide](./user-guide.md)
+2. Use [README.md - Quick Start](../README.md#-quick-start) for first launch
+3. Configure app via [README.md - Settings](../README.md#-settings)
+4. Check [README.md - Sync & Background](../README.md#-sync--background) for sync behavior
+5. If anything is unclear, open [Glossary](./glossary.md)
 
 ### By Topic
 
-#### Understanding the System
-- [Architecture Overview](./architecture.md#overview) - High-level system design
-- [Process Separation](./architecture.md#process-separation) - Main vs Renderer
-- [Security Architecture](./architecture.md#security-architecture) - Security layers
-- [Database Architecture](./database.md#database-architecture) - Database design
+#### Setup & First Launch
+- [README.md - Quick Start](../README.md#-quick-start) - Launch checklist
+- [User Guide - First Launch](./user-guide.md#first-launch) - Initial onboarding steps
+- [README.md - Settings](../README.md#-settings) - Core configuration
 
-#### Working with the Code
-- [Development Setup](./development.md#initial-setup) - Getting started
-- [Project Structure](./development.md#project-structure) - Code organization
-- [Adding Features](./development.md#2-adding-new-features) - Feature development
-- [Code Standards](../.cursorrules) - Coding guidelines
+#### Daily Usage
+- [User Guide - Basic Usage](./user-guide.md#basic-usage) - Artists, browsing, viewer
+- [README.md - Sync & Background](../README.md#-sync--background) - Sync behavior and timing
+- [README.md - Features](../README.md#-features) - Full capability map
 
-#### Using the API
-- [IPC Bridge Interface](./api.md#ipc-bridge-interface) - Type definitions
-- [API Methods](./api.md#api-methods) - Available methods
-- [Event Listeners](./api.md#event-listeners) - Real-time events
-- [Error Handling](./api.md#error-handling) - Error patterns
-
-#### Database Operations
-- [Schema](./database.md#schema) - Table definitions
-- [Available Methods](./database.md#available-methods-via-drizzle-orm) - Query examples
-- [Migrations](./database.md#migrations) - Schema changes
-- [Backup and Recovery](./database.md#backup-and-recovery) - Data protection
+#### Safety & Troubleshooting
+- [User Guide - Troubleshooting](./user-guide.md#troubleshooting) - Common issues
+- [README.md - License & Legal](../README.md#-license--legal) - Legal boundaries
+- [Glossary](./glossary.md) - Terminology reference
 
 ---
 
 ## 🔗 Quick Links
 
-### Essential Reading
+### End User Essentials
 - [Quick Start Guide](../README.md#-quick-start) - Get started in 5 minutes
-- [Architecture Overview](./architecture.md#overview) - Understand the system
-- [API Reference](./api.md) - Complete IPC API documentation
+- [User Guide](./user-guide.md) - End-to-end usage walkthrough
 - [Glossary](./glossary.md) - Key terms and concepts
 
-### Common Tasks
-- [Adding an IPC Method](./development.md#adding-features) - Extend IPC API
-- [Adding a Database Table](./database.md#schema) - Schema changes
-- [Creating Migrations](./development.md#database-scripts) - Database migrations
-- [Debugging](./development.md#debugging) - Debugging techniques
+### Product & Planning
+- [Roadmap](./roadmap.md) - Priorities and delivery track
+- [Features.md](../Features.md) - Current feature priority short-list
+- [Product Strategy](../Product_Strategy.md) - Long-term direction
 
-### Reference
-- [Type Definitions](./api.md#type-definitions) - TypeScript interfaces
-- [Database Schema](./database.md#schema) - Table structures
-- [IPC Channels](./api.md#implementation-details) - Channel constants
-- [External API](./rule34-api-reference.md) - Rule34.xxx API reference
+---
+
+## 🛠️ Maintainer Appendix
+
+Engineering materials are intentionally grouped here to keep the top-level index user-first.
+
+- [Architecture Documentation](./architecture.md) - System architecture and boundaries
+- [API Documentation](./api.md) - IPC contract and integration details
+- [Database Documentation](./database.md) - Schema, migrations, and operational notes
+- [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
+- [.cursorrules](../.cursorrules) - Engineering standards
+- [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants
 
 ---
 
@@ -158,7 +104,7 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 
 ```
 README.md (Entry Point)
-├── Quick Start → Development Guide
+├── Quick Start → User Guide
 ├── Features → Glossary
 ├── Architecture → Architecture Documentation
 └── Documentation → This Index
@@ -174,11 +120,7 @@ API Documentation
 
 Database Documentation
 ├── Schema → Architecture Documentation
-└── Migrations → Development Guide
-
-Development Guide
-├── Setup → .cursorrules
-└── Workflow → Architecture Documentation
+└── Migrations → README Development Setup
 
 Roadmap
 └── All documents (references features and improvements)
@@ -202,7 +144,8 @@ This documentation is maintained alongside the codebase. When making changes:
 1. **Update relevant docs** - Keep documentation in sync with code changes
 2. **Add cross-references** - Link related sections using markdown links
 3. **Update glossary** - Add new terms to [Glossary](./glossary.md)
-4. **Check links** - Verify all internal links work correctly
+4. **Keep lessons canonical** - Update [`.ai/LESSONS.txt`](../.ai/LESSONS.txt) for reusable engineering invariants
+5. **Check links** - Verify all internal links work correctly
 
 ---
 
