@@ -14,6 +14,7 @@ import { Browse } from "./components/pages/Browse";
 import { PlaylistsPage } from "./components/pages/PlaylistsPage";
 import { StatsPage } from "./components/pages/StatsPage";
 import { useTheme } from "./hooks/useTheme";
+import { Toaster } from "./components/ui/sonner";
 
 type LegalStatus = "loading" | "confirmed" | "unconfirmed";
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
@@ -228,25 +229,28 @@ function App() {
   }
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Browse />} />
-          <Route path="tracked" element={<Tracked />} />
-          <Route path="artist/:id" element={<ArtistDetails />} />
-          <Route path="browse" element={<Browse />} />
-          <Route path="updates" element={<Updates />} />
-          <Route path="favorites" element={<Favorites />} />
-          <Route path="playlists" element={<PlaylistsPage />} />
-          <Route path="stats" element={<StatsPage />} />
-          <Route path="settings" element={<Settings />} />
-          <Route
-            path="*"
-            element={<div className="p-10">Page Not Found (Check URL)</div>}
-          />
-        </Route>
-      </Routes>
-    </Router>
+    <>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Browse />} />
+            <Route path="tracked" element={<Tracked />} />
+            <Route path="artist/:id" element={<ArtistDetails />} />
+            <Route path="browse" element={<Browse />} />
+            <Route path="updates" element={<Updates />} />
+            <Route path="favorites" element={<Favorites />} />
+            <Route path="playlists" element={<PlaylistsPage />} />
+            <Route path="stats" element={<StatsPage />} />
+            <Route path="settings" element={<Settings />} />
+            <Route
+              path="*"
+              element={<div className="p-10">Page Not Found (Check URL)</div>}
+            />
+          </Route>
+        </Routes>
+      </Router>
+      <Toaster />
+    </>
   );
 }
 

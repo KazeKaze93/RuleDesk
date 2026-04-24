@@ -43,10 +43,36 @@ import { useDownloadAll } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import type { SearchResults } from "../../../main/providers";
 import { hasAiGeneratedTag } from "../../lib/filter-utils";
+import { toast } from "sonner";
 
 interface PlaylistsPageProps {
   onBack?: () => void;
 }
+
+const INVALID_PLAYLIST_TOAST = "Invalid playlist file";
+const EMPTY_IMPORTED_PLAYLIST_TOAST = "Playlist imported but contains no posts";
+
+const toErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+
+  return "Unknown error";
+};
+
+const isInvalidPlaylistError = (message: string): boolean => {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("invalid playlist file format") ||
+    normalized.includes("invalid playlist") ||
+    normalized.includes("unexpected token") ||
+    normalized.includes("json")
+  );
+};
 
 const matchesOrientation = (
   post: object,
@@ -553,7 +579,8 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
   const [playlistToEdit, setPlaylistToEdit] = useState<Playlist | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [transferStatus, setTransferStatus] = useState<string>("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [exportingPlaylistId, setExportingPlaylistId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   // Use optimized usePlaylists hook with caching
@@ -712,40 +739,79 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     }
   };
 
-  const handleExportPlaylist = async (playlistId: number) => {
+  const handleExportPlaylist = async (playlist: Playlist) => {
+    if (exportingPlaylistId !== null) {
+      return;
+    }
+
+    setExportingPlaylistId(playlist.id);
+
     try {
-      const result = await window.api.exportPlaylist(playlistId);
+      const result = await window.api.exportPlaylist(playlist.id);
       if (result.success && result.path) {
-        setTransferStatus(`Saved to: ${result.path}`);
-        window.setTimeout(() => setTransferStatus(""), 5000);
+        toast.success("Playlist exported successfully");
         return;
       }
 
       if (result.error && result.error !== "Cancelled") {
-        setTransferStatus(`Export failed: ${result.error}`);
+        toast.error(`Failed to export playlist: ${result.error}`);
       }
     } catch (error) {
       log.error("[PlaylistsPage] Failed to export playlist:", error);
-      setTransferStatus("Export failed");
+      toast.error("Failed to export playlist");
+    } finally {
+      setExportingPlaylistId(null);
     }
   };
 
   const handleImportPlaylist = async () => {
+    if (isImporting) {
+      return;
+    }
+
+    setIsImporting(true);
+
     try {
       const result = await window.api.importPlaylist();
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["playlists"] });
-        setTransferStatus("Playlist imported successfully");
-        window.setTimeout(() => setTransferStatus(""), 5000);
+
+        if (typeof result.playlistId === "number") {
+          const importedPosts = await window.api.getPlaylistPosts({
+            playlistId: result.playlistId,
+            page: 1,
+            limit: 1,
+            isRandom: false,
+            sortOrder: "position",
+          });
+          if (importedPosts.length === 0) {
+            toast.info(EMPTY_IMPORTED_PLAYLIST_TOAST);
+          } else {
+            toast.success("Playlist imported successfully");
+          }
+        } else {
+          toast.success("Playlist imported successfully");
+        }
         return;
       }
 
       if (result.error && result.error !== "Cancelled") {
-        setTransferStatus(`Import failed: ${result.error}`);
+        if (isInvalidPlaylistError(result.error)) {
+          toast.error(INVALID_PLAYLIST_TOAST);
+        } else {
+          toast.error(`Failed to import playlist: ${result.error}`);
+        }
       }
     } catch (error) {
       log.error("[PlaylistsPage] Failed to import playlist:", error);
-      setTransferStatus("Import failed");
+      const message = toErrorMessage(error);
+      if (isInvalidPlaylistError(message)) {
+        toast.error(INVALID_PLAYLIST_TOAST);
+      } else {
+        toast.error("Failed to import playlist");
+      }
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -774,9 +840,13 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             <h1 className="text-xl font-semibold">Playlists</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleImportPlaylist}>
-              <Upload className="mr-2 h-4 w-4" />
-              Import Playlist
+            <Button variant="outline" onClick={handleImportPlaylist} disabled={isImporting}>
+              {isImporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              {isImporting ? "Importing..." : "Import Playlist"}
             </Button>
             <Button onClick={() => setIsDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -784,7 +854,6 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             </Button>
           </div>
         </div>
-        {transferStatus && <p className="text-sm text-muted-foreground">{transferStatus}</p>}
         
         {/* Playlist Type Filter */}
         <div className="flex items-center gap-2">
@@ -881,11 +950,16 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                     className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                     onClick={(e) => {
                       e.stopPropagation();
-                      void handleExportPlaylist(playlist.id);
+                      void handleExportPlaylist(playlist);
                     }}
                     title="Export playlist"
+                    disabled={exportingPlaylistId !== null}
                   >
-                    <Download className="w-4 h-4" />
+                    {exportingPlaylistId === playlist.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
