@@ -582,15 +582,23 @@ const posts = await db.query.posts.findMany({
    - `IBooruProvider` interface for standardized booru operations
    - Implementations: `Rule34Provider`, `GelbooruProvider`
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
+   - Rule34 media URLs (`fileUrl`, `sampleUrl`, `previewUrl`) are rewritten by Main Process CDN selector to the currently selected Rule34 CDN host
 
-8. **Updater Service** (`src/main/services/updater-service.ts`)
+8. **CDN Selector Service** (`src/main/services/cdn-selector.ts`)
+
+   - Probes Rule34 CDN hosts (`rule34.xxx`, `us.rule34.xxx`, `wimg.rule34.xxx`, `api-cdn.rule34.xxx`) on startup using non-blocking `HEAD` checks
+   - Selects the fastest reachable host and keeps `rule34.xxx` as fallback
+   - Triggers re-probe on repeated request failures or slow responses
+   - Rewrites only Rule34 media hosts, leaving non-Rule34 URLs unchanged
+
+9. **Updater Service** (`src/main/services/updater-service.ts`)
 
    - Manages automatic update checking via `electron-updater`
    - Handles update download and installation
    - Emits IPC events for update status and progress
    - User-controlled download (manual download trigger)
 
-9. **Secure Storage** (`src/main/services/secure-storage.ts`)
+10. **Secure Storage** (`src/main/services/secure-storage.ts`)
 
    - Encrypts and decrypts sensitive data using Electron's `safeStorage` API
    - Static class with `encrypt()` and `decrypt()` methods
@@ -598,18 +606,19 @@ const posts = await db.query.posts.findMany({
    - Decryption only occurs in Main Process when needed for API calls
    - Uses platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
 
-10. **Bridge** (`src/main/bridge.ts`)
+11. **Bridge** (`src/main/bridge.ts`)
 
 - Defines the IPC interface
 - Exposed via preload script
 - Type-safe communication contract
 - Event listener management for real-time updates
 
-11. **Main Entry** (`src/main/main.ts`)
+12. **Main Entry** (`src/main/main.ts`)
     - Application initialization
     - Window creation
     - Security configuration
     - Database initialization and migrations
+    - Non-blocking initial Rule34 CDN probe before sync startup
 
 ### Renderer Process (The Face)
 
@@ -1530,6 +1539,7 @@ src/
 │   │   └── index.ts               # Provider registry
 │   ├── services/                  # Background services
 │   │   ├── secure-storage.ts       # Secure storage for API credentials
+│   │   ├── cdn-selector.ts         # Rule34 CDN probe + media URL rewrite
 │   │   ├── sync-service.ts        # Rule34.xxx API synchronization
 │   │   └── updater-service.ts     # Auto-updater service
 │   ├── lib/                       # Utilities

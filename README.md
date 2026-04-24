@@ -48,6 +48,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Direct synchronous access via `better-sqlite3` in Main Process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. WAL mode enabled for concurrent reads.                                                                                                    |
 | **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization.                                                                               |
 | **🎨 Progressive Image Loading**  | Stills: `PostCard` loads **preview** first, then upgrades to **sample** when the card is in the viewport. Viewer uses file URL for full quality. Video posts use sample/file for hover preview as applicable.                                                                                                                                       |
+| **🌍 Rule34 CDN Selection**       | Main Process probes Rule34 CDN hosts on startup (`rule34.xxx`, `us.rule34.xxx`, `wimg.rule34.xxx`, `api-cdn.rule34.xxx`) and rewrites Rule34 media URLs to the fastest reachable host. Probing is non-blocking and safely falls back to `rule34.xxx` if selection has not completed or fails.                                                        |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                                                                                     |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
 | **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups in the user data directory; after each successful backup, older files are pruned to keep the **last five** copies. Restore replaces the live DB (with checks) and reloads the app.                                                                                                          |
@@ -77,6 +78,7 @@ This is the secure Node.js environment. It handles all I/O, persistence, and sec
 - **Data Layer:** **Drizzle ORM** (TypeScript type-safety for queries, raw SQL timestamps in milliseconds).
 - **Security:** **Secure Storage** using Electron's `safeStorage` API for encrypting API credentials at rest.
 - **API:** Custom wrapper based on `axios` with retry and backoff logic.
+- **CDN Routing (Rule34 media):** `CdnSelectorService` probes Rule34 CDN nodes in background and rewrites only Rule34 media URLs (`fileUrl`, `sampleUrl`, `previewUrl`) to the selected host.
 - **Background Jobs:** Node.js timers and asynchronous operations.
 
 ### 2. Renderer (The Face - UI Process)
@@ -278,6 +280,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 - ✅ **Age Gate Component:** Fully implemented with legal confirmation (`AgeGate.tsx` component and `confirmLegal` IPC method)
 - ✅ **Content Security Policy:** Strict CSP with support for Rule34.xxx and Gelbooru.com media sources
+- ✅ **Rule34 CDN Selector:** Startup probe and runtime URL rewrite for Rule34 media with fallback to `rule34.xxx`
 - ✅ **Safe Mode / NSFW blur:** When Safe Mode is enabled, gallery cards and the full-screen viewer apply configurable blur to sensitive ratings (`PostCard`, `ViewerDialog`, `safeModeStore`)
 
 ---

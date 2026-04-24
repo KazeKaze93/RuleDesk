@@ -267,6 +267,7 @@ Opens web interface at `http://localhost:4983` (default port).
 │   │   │   └── index.ts               # Provider registry
 │   │   ├── services/                  # Background services
 │   │   │   ├── secure-storage.ts      # Secure storage for credentials
+│   │   │   ├── cdn-selector.ts        # Rule34 CDN probe and URL rewrite
 │   │   │   ├── sync-service.ts        # API synchronization
 │   │   │   └── updater-service.ts     # Auto-updater
 │   │   ├── lib/                        # Utilities
