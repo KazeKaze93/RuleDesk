@@ -13,6 +13,8 @@ import { QuickAddToPlaylistMenu } from "../../../components/playlists/QuickAddTo
 
 const loadedSampleUrls = new Set<string>();
 
+type PostCardContext = "browse" | "favorites" | "updates" | "playlist";
+
 interface PostCardProps {
   post: Post;
   onClick: () => void;
@@ -20,13 +22,40 @@ interface PostCardProps {
   onToggleViewed?: (e: React.MouseEvent) => void;
   onRemoveFromPlaylist?: () => void;
   preserveAspect?: boolean;
+  context?: PostCardContext;
 }
+
+interface PostCardBadgesProps {
+  isFavorited: boolean;
+  isViewed: boolean;
+  context: PostCardContext;
+}
+
+const PostCardBadges: React.FC<PostCardBadgesProps> = ({
+  isFavorited,
+  isViewed,
+  context,
+}) => (
+  <div className="flex absolute top-2 left-2 z-10 gap-1 items-center">
+    {isFavorited && context !== "favorites" && (
+      <div className="p-1 rounded-full shadow-sm bg-red-500/90">
+        <Heart className="w-3 h-3 text-white fill-white" />
+      </div>
+    )}
+    {isViewed && (
+      <div className="p-1 rounded-full shadow-sm bg-primary/90">
+        <Check className="h-3 w-3 stroke-[3] text-primary-foreground" />
+      </div>
+    )}
+  </div>
+);
 
 export const PostCard: React.FC<PostCardProps> = ({
   post,
   onClick,
   onRemoveFromPlaylist,
   preserveAspect,
+  context = "browse",
 }) => {
   const isVid = isVideoPost(post.fileUrl);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore(
@@ -382,20 +411,11 @@ export const PostCard: React.FC<PostCardProps> = ({
       </div>
 
       {/* 2. Viewed & Favorite Indicator (Top Left/Top Right) */}
-      <div className="flex absolute top-2 left-2 z-10 gap-1 items-center">
-        {/* Индикатор "Избранное" (Если пост отмечен) */}
-        {post.isFavorited && (
-          <div className="p-1 rounded-full shadow-sm bg-red-500/90">
-            <Heart className="w-3 h-3 text-white fill-white" />
-          </div>
-        )}
-        {/* Индикатор "Просмотрено" */}
-        {post.isViewed && (
-          <div className="p-1 rounded-full shadow-sm bg-primary/90">
-            <Check className="h-3 w-3 stroke-[3] text-primary-foreground" />
-          </div>
-        )}
-      </div>
+      <PostCardBadges
+        isFavorited={post.isFavorited}
+        isViewed={post.isViewed}
+        context={context}
+      />
 
       {/* 3. Gradient & Rating (Bottom - visible on hover) */}
       <div className="flex absolute inset-0 flex-col justify-end p-3 bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100 pointer-events-none">

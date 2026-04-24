@@ -420,6 +420,7 @@ export const Favorites = () => {
                       post={post}
                       onClick={() => handlePostClick(index)}
                       preserveAspect={false}
+                      context="favorites"
                     />
                   </div>
                 ))}
@@ -459,6 +460,7 @@ export const Favorites = () => {
                     key={getPostCardKey(post)}
                     post={post}
                     onClick={() => handlePostClick(index)}
+                    context="favorites"
                   />
                 );
               }}
