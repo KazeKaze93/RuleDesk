@@ -3,10 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Plus, Users } from "lucide-react";
 import log from "electron-log/renderer";
-import { ArtistCard } from "./components/ArtistCard";
+import { ArtistListRow } from "./components/ArtistListRow";
 import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { TooltipProvider } from "../../components/ui/tooltip";
 import type { TrackedArtist } from "../../../main/bridge";
 import type { ProviderId } from "../../../shared/constants";
 
@@ -114,15 +115,17 @@ export const Tracked = () => {
               <p>No artists match</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredArtists.map((artist) => (
-                <ArtistCard
-                  key={artist.id}
-                  artist={artist}
-                  onSelect={handleSelectArtist}
-                />
-              ))}
-            </div>
+            <TooltipProvider delayDuration={200}>
+              <div className="w-full max-w-full overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
+                {filteredArtists.map((artist) => (
+                  <ArtistListRow
+                    key={artist.id}
+                    artist={artist}
+                    onSelect={handleSelectArtist}
+                  />
+                ))}
+              </div>
+            </TooltipProvider>
           )}
         </>
       )}
