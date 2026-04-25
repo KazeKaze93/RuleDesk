@@ -423,9 +423,6 @@ export const PostCard: React.FC<PostCardProps> = ({
               setContextMenuPosition(null);
             }
           }}
-          contentAlign={contextMenuPosition ? "start" : "end"}
-          contentSide={contextMenuPosition ? "bottom" : "bottom"}
-          contentSideOffset={contextMenuPosition ? 0 : 4}
           trigger={
             <span
               ref={contextMenuAnchorRef}

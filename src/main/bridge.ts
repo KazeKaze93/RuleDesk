@@ -19,6 +19,10 @@ import type {
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
   ReorderPlaylistEntriesRequest,
+  GetManualPlaylistMembershipForPostsRequest,
+  SyncManualPlaylistMembershipRequest,
+  ClearManualPlaylistRequest,
+  MovePostsBetweenManualPlaylistsRequest,
 } from "../shared/schemas/playlist";
 import type { ExtendedStats } from "../shared/schemas/stats";
 
@@ -205,6 +209,14 @@ export interface IpcBridge {
   getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
   getPlaylistsContainingPost: (postId: number, rule34PostId?: number) => Promise<number[]>;
+  getManualPlaylistMembershipForPosts: (
+    data: GetManualPlaylistMembershipForPostsRequest
+  ) => Promise<{ playlistId: number; matchCount: number }[]>;
+  syncManualPlaylistMembership: (data: SyncManualPlaylistMembershipRequest) => Promise<void>;
+  clearManualPlaylist: (data: ClearManualPlaylistRequest) => Promise<void>;
+  movePostsBetweenManualPlaylists: (
+    data: MovePostsBetweenManualPlaylistsRequest
+  ) => Promise<void>;
   exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
   importPlaylist: () => Promise<{ success: boolean; playlistId?: number; error?: string }>;
 
@@ -445,6 +457,14 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
   getPlaylistsContainingPost: (postId: number, rule34PostId?: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST, postId, rule34PostId),
+  getManualPlaylistMembershipForPosts: (data: GetManualPlaylistMembershipForPostsRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS, data),
+  syncManualPlaylistMembership: (data: SyncManualPlaylistMembershipRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.SYNC_MANUAL_PLAYLIST_MEMBERSHIP, data),
+  clearManualPlaylist: (data: ClearManualPlaylistRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.CLEAR_MANUAL_PLAYLIST, data),
+  movePostsBetweenManualPlaylists: (data: MovePostsBetweenManualPlaylistsRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.DB.MOVE_POSTS_BETWEEN_MANUAL_PLAYLISTS, data),
   exportPlaylist: (playlistId: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.DB.EXPORT_PLAYLIST, playlistId),
   importPlaylist: () =>

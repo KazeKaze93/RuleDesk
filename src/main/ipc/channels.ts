@@ -52,6 +52,10 @@ export const IPC_CHANNELS = {
     EXPORT_PLAYLIST: "db:export-playlist",
     IMPORT_PLAYLIST: "db:import-playlist",
     GET_PLAYLISTS_CONTAINING_POST: "db:get-playlists-containing-post",
+    GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS: "db:get-manual-playlist-membership-for-posts",
+    SYNC_MANUAL_PLAYLIST_MEMBERSHIP: "db:sync-manual-playlist-membership",
+    CLEAR_MANUAL_PLAYLIST: "db:clear-manual-playlist",
+    MOVE_POSTS_BETWEEN_MANUAL_PLAYLISTS: "db:move-posts-between-manual-playlists",
     GET_PLAYLIST_DOWNLOAD_ITEMS: "db:get-playlist-download-items",
   },
   API: {

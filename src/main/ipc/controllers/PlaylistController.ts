@@ -29,6 +29,14 @@ import {
   type ReorderPlaylistEntriesRequest,
   type SmartPlaylistQuery,
   type PlaylistExport,
+  GetManualPlaylistMembershipForPostsSchema,
+  type GetManualPlaylistMembershipForPostsRequest,
+  SyncManualPlaylistMembershipSchema,
+  type SyncManualPlaylistMembershipRequest,
+  ClearManualPlaylistSchema,
+  type ClearManualPlaylistRequest,
+  MovePostsBetweenManualPlaylistsSchema,
+  type MovePostsBetweenManualPlaylistsRequest,
 } from "../../../shared/schemas/playlist";
 import {
   CURRENT_SMART_QUERY_SCHEMA_VERSION,
@@ -311,6 +319,42 @@ export class PlaylistController extends BaseController {
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
       z.tuple([z.number().int(), OptionalIdSchema]),
       this.getPlaylistsContainingPost.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS,
+      GetManualPlaylistMembershipForPostsSchema,
+      this.getManualPlaylistMembershipForPosts.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.SYNC_MANUAL_PLAYLIST_MEMBERSHIP,
+      SyncManualPlaylistMembershipSchema,
+      this.syncManualPlaylistMembership.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.CLEAR_MANUAL_PLAYLIST,
+      ClearManualPlaylistSchema,
+      this.clearManualPlaylist.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.MOVE_POSTS_BETWEEN_MANUAL_PLAYLISTS,
+      MovePostsBetweenManualPlaylistsSchema,
+      this.movePostsBetweenManualPlaylists.bind(this) as (
         event: IpcMainInvokeEvent,
         ...args: unknown[]
       ) => Promise<unknown>
@@ -1127,6 +1171,227 @@ export class PlaylistController extends BaseController {
       log.error("[PlaylistController] Failed to remove posts from playlist:", error);
       throw error;
     }
+  }
+
+  /**
+   * Returns per–manual-playlist counts of how many of the given posts appear in each playlist.
+   */
+  private async getManualPlaylistMembershipForPosts(
+    _event: IpcMainInvokeEvent,
+    data: GetManualPlaylistMembershipForPostsRequest
+  ): Promise<{ playlistId: number; matchCount: number }[]> {
+    try {
+      const db = this.getDb();
+      const rows = db
+        .select({
+          playlistId: playlistEntries.playlistId,
+          matchCount: sql<number>`count(*)`.mapWith(Number),
+        })
+        .from(playlistEntries)
+        .innerJoin(playlists, eq(playlistEntries.playlistId, playlists.id))
+        .where(
+          and(eq(playlists.isSmart, false), inArray(playlistEntries.postId, data.postIds))
+        )
+        .groupBy(playlistEntries.playlistId)
+        .all();
+
+      return rows.map((r) => ({
+        playlistId: r.playlistId,
+        matchCount: r.matchCount,
+      }));
+    } catch (error) {
+      log.error("[PlaylistController] getManualPlaylistMembershipForPosts failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set manual playlist membership for one or more posts: each post appears in exactly the
+   * chosen manual playlists and in no other manual playlist.
+   */
+  private async syncManualPlaylistMembership(
+    _event: IpcMainInvokeEvent,
+    data: SyncManualPlaylistMembershipRequest
+  ): Promise<void> {
+    const db = this.getDb();
+    const desired = new Set(data.manualPlaylistIds);
+    if (desired.size !== data.manualPlaylistIds.length) {
+      throw new Error("Duplicate playlist ids in manualPlaylistIds");
+    }
+
+    const allManualRows = db
+      .select({ id: playlists.id })
+      .from(playlists)
+      .where(eq(playlists.isSmart, false))
+      .all();
+    const allManualIds = allManualRows.map((r) => r.id);
+    const allManualSet = new Set(allManualIds);
+
+    for (const pid of data.manualPlaylistIds) {
+      if (!allManualSet.has(pid)) {
+        throw new Error(`Not a manual playlist: ${pid}`);
+      }
+    }
+
+    const postIdList = [...new Set(data.postIds)];
+    if (postIdList.length !== data.postIds.length) {
+      throw new Error("Duplicate post ids");
+    }
+
+    if (allManualIds.length === 0) {
+      return;
+    }
+
+    const toAdd: { playlistId: number; postId: number }[] = [];
+    const toRemovePlaylistIds: number[] = [];
+
+    for (const playlistId of allManualIds) {
+      if (desired.has(playlistId)) {
+        for (const postId of postIdList) {
+          toAdd.push({ playlistId, postId });
+        }
+      } else {
+        toRemovePlaylistIds.push(playlistId);
+      }
+    }
+
+    db.transaction((tx) => {
+      if (toAdd.length > 0) {
+        tx.insert(playlistEntries)
+          .values(
+            toAdd.map((row) => ({
+              playlistId: row.playlistId,
+              postId: row.postId,
+            }))
+          )
+          .onConflictDoNothing({
+            target: [playlistEntries.playlistId, playlistEntries.postId],
+          })
+          .run();
+      }
+
+      if (toRemovePlaylistIds.length > 0) {
+        tx.delete(playlistEntries)
+          .where(
+            and(
+              inArray(playlistEntries.playlistId, toRemovePlaylistIds),
+              inArray(playlistEntries.postId, postIdList)
+            )
+          )
+          .run();
+      }
+
+      const now = new Date();
+      tx.update(playlists)
+        .set({ updatedAt: now })
+        .where(inArray(playlists.id, allManualIds))
+        .run();
+    });
+
+    log.info(
+      `[PlaylistController] syncManualPlaylistMembership: ${postIdList.length} post(s), ${desired.size} desired playlist(s)`
+    );
+  }
+
+  /**
+   * Remove all post entries from a manual playlist (does not delete the playlist row).
+   */
+  private async clearManualPlaylist(
+    _event: IpcMainInvokeEvent,
+    data: ClearManualPlaylistRequest
+  ): Promise<void> {
+    const db = this.getDb();
+    const [row] = db
+      .select({ id: playlists.id, isSmart: playlists.isSmart })
+      .from(playlists)
+      .where(eq(playlists.id, data.playlistId))
+      .limit(1)
+      .all();
+
+    if (!row) {
+      throw new Error("Playlist not found");
+    }
+    if (row.isSmart) {
+      throw new Error("Clear is only supported for manual playlists");
+    }
+
+    db.transaction((tx) => {
+      tx.delete(playlistEntries)
+        .where(eq(playlistEntries.playlistId, data.playlistId))
+        .run();
+      tx.update(playlists)
+        .set({ updatedAt: new Date() })
+        .where(eq(playlists.id, data.playlistId))
+        .run();
+    });
+
+    log.info(`[PlaylistController] Cleared all posts from manual playlist ${data.playlistId}`);
+  }
+
+  /**
+   * Move posts from one manual playlist to another in one transaction.
+   */
+  private async movePostsBetweenManualPlaylists(
+    _event: IpcMainInvokeEvent,
+    data: MovePostsBetweenManualPlaylistsRequest
+  ): Promise<void> {
+    if (data.fromPlaylistId === data.toPlaylistId) {
+      throw new Error("Source and target playlist must differ");
+    }
+
+    const db = this.getDb();
+    const pair = db
+      .select({ id: playlists.id, isSmart: playlists.isSmart })
+      .from(playlists)
+      .where(inArray(playlists.id, [data.fromPlaylistId, data.toPlaylistId]))
+      .all();
+
+    if (pair.length !== 2) {
+      throw new Error("One or both playlists were not found");
+    }
+    for (const p of pair) {
+      if (p.isSmart) {
+        throw new Error("Move is only supported between manual playlists");
+      }
+    }
+
+    const postIds = [...new Set(data.postIds)];
+    if (postIds.length !== data.postIds.length) {
+      throw new Error("Duplicate post ids");
+    }
+
+    const now = new Date();
+
+    db.transaction((tx) => {
+      const rows = postIds.map((postId) => ({
+        playlistId: data.toPlaylistId,
+        postId,
+      }));
+      tx.insert(playlistEntries)
+        .values(rows)
+        .onConflictDoNothing({
+          target: [playlistEntries.playlistId, playlistEntries.postId],
+        })
+        .run();
+
+      tx.delete(playlistEntries)
+        .where(
+          and(
+            eq(playlistEntries.playlistId, data.fromPlaylistId),
+            inArray(playlistEntries.postId, postIds)
+          )
+        )
+        .run();
+
+      tx.update(playlists)
+        .set({ updatedAt: now })
+        .where(inArray(playlists.id, [data.fromPlaylistId, data.toPlaylistId]))
+        .run();
+    });
+
+    log.info(
+      `[PlaylistController] Moved ${postIds.length} post(s) from ${data.fromPlaylistId} to ${data.toPlaylistId}`
+    );
   }
 
   /**
