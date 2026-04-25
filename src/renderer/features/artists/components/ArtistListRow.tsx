@@ -12,22 +12,20 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
 import { DeleteArtistDialog } from "../../../components/dialogs/DeleteArtistDialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../../../components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../components/ui/tooltip";
 import { cn } from "../../../lib/utils";
 import { formatRelativeTime } from "../../../lib/formatRelativeTime";
 import type { TrackedArtist } from "../../../../main/bridge";
 
-interface ArtistCardProps {
+interface ArtistListRowProps {
   artist: TrackedArtist;
   onSelect: (artist: TrackedArtist) => void;
 }
 
-export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
+export const ArtistListRow: React.FC<ArtistListRowProps> = ({
+  artist,
+  onSelect,
+}) => {
   const { t } = useTranslation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -35,14 +33,14 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
   const lastPostText =
     artist.lastPostAt !== null
       ? `Last: ${formatRelativeTime(artist.lastPostAt)}`
-      : "Last: no posts yet";
+      : "Last: —";
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDeleteDialogOpen(true);
   };
 
-  const getIcon = () => {
+  const getTypeIcon = () => {
     switch (artist.type) {
       case "uploader":
         return <User className="w-4 h-4 text-primary" />;
@@ -53,12 +51,10 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
     }
   };
 
-  const handleCardClick = () => onSelect(artist);
-
   const renderStatusBadge = () => {
     if (artist.syncStatus === "syncing") {
       return (
-        <Badge variant="secondary" className="gap-1">
+        <Badge variant="secondary" className="h-6 shrink-0 gap-1 text-xs">
           <RefreshCw className="w-3 h-3 animate-spin" />
           Syncing
         </Badge>
@@ -67,7 +63,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
 
     if (artist.syncStatus === "error") {
       const badge = (
-        <Badge variant="destructive" className="gap-1">
+        <Badge variant="destructive" className="h-6 shrink-0 gap-1 text-xs">
           <AlertTriangle className="w-3 h-3" />
           Error
         </Badge>
@@ -88,7 +84,7 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
     }
 
     return (
-      <Badge className="gap-1 text-green-700 bg-green-100 border-green-200 hover:bg-green-100">
+      <Badge className="h-6 shrink-0 gap-1 border-green-200 bg-green-100 text-xs text-green-700 hover:bg-green-100">
         <CheckCircle2 className="w-3 h-3" />
         Synced
       </Badge>
@@ -96,48 +92,58 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
   };
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <>
       <div
         className={cn(
-          "flex relative justify-between items-center p-1 pr-3 rounded-lg border transition-all group gap-3",
-          "bg-card text-card-foreground border-border",
-          "hover:bg-accent/50 hover:border-primary/40 hover:shadow-md"
+          "flex w-full min-h-[52px] border-b border-border/80 last:border-b-0",
+          "transition-colors hover:bg-accent/50"
         )}
       >
         <button
-          onClick={handleCardClick}
+          type="button"
+          onClick={() => onSelect(artist)}
           className={cn(
-            "flex-1 p-3 min-w-0 text-left rounded-l-lg transition-colors",
-            "focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            "text-card-foreground"
+            "flex min-h-[52px] min-w-0 flex-1 items-center gap-2 px-3 text-left sm:gap-3",
+            "bg-transparent",
+            "focus:outline-none focus-visible:z-[1] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           )}
           aria-label={t("artistCard.selectArtist", { name: artist.name })}
         >
-          <div className="flex gap-2 items-center mb-1">
-            {/* Отображаем иконку типа */}
-            {getIcon()}
-            <h3 className="text-lg font-bold truncate transition-colors text-card-foreground group-hover:text-foreground">
-              {artist.name}
-            </h3>
+          <div
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10"
+            aria-hidden
+          >
+            {getTypeIcon()}
           </div>
-
-          <p className="mt-1 font-mono text-xs truncate text-muted-foreground">
-            {postsCount.toLocaleString()} {postsCount === 1 ? "post" : "posts"}
-          </p>
-          <p className="mt-1 text-xs truncate text-muted-foreground">{lastPostText}</p>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+            {artist.name}
+          </span>
+          <span
+            className="w-12 flex-shrink-0 text-right text-xs text-muted-foreground tabular-nums sm:w-14"
+            title={`${postsCount} posts`}
+          >
+            {postsCount.toLocaleString()}
+          </span>
+          <span
+            className="w-[6.5rem] flex-shrink-0 truncate text-xs text-muted-foreground sm:w-28 md:w-32"
+            title={lastPostText}
+          >
+            {lastPostText}
+          </span>
+          <div className="flex min-w-0 flex-shrink-0 items-center">
+            {renderStatusBadge()}
+          </div>
         </button>
-
-        <div className="flex flex-shrink-0 gap-2 items-center pl-2">
-          {renderStatusBadge()}
+        <div className="flex flex-shrink-0 items-center pr-1">
           <Button
             variant="ghost"
             size="icon"
-            className="w-8 h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             onClick={handleDeleteClick}
             aria-label={t("common.deleteArtist", "Delete Artist")}
             title={t("common.deleteArtist", "Delete Artist")}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -147,6 +153,6 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onSelect }) => {
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
       />
-    </TooltipProvider>
+    </>
   );
 };
