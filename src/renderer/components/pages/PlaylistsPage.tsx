@@ -3,7 +3,7 @@ import {
   useQueryClient,
   useInfiniteQuery,
 } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil, Download, Upload, CheckSquare } from "lucide-react";
+import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil, Download, Upload, CheckSquare, Eraser } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import {
@@ -36,6 +36,15 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "../../components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { AsyncAutocomplete } from "../../components/inputs/AsyncAutocomplete";
 import type { SmartPlaylistQuery, SmartPlaylistTag } from "../../../shared/schemas/playlist";
@@ -592,6 +601,8 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       </div>
       <BulkActionBar
         selectedPosts={selectedPosts}
+        currentPlaylistId={playlist.id}
+        currentPlaylistIsSmart={playlist.isSmart}
         onRemoveSelected={!playlist.isSmart ? handleBulkRemove : undefined}
         onSelectAll={() => {
           const selectableIds = displayedPosts.map((post) => getBulkSelectId(post));
@@ -625,12 +636,14 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
   const [playlistFilter, setPlaylistFilter] = useState<"all" | "smart" | "manual">("all");
   
   const [playlistToDelete, setPlaylistToDelete] = useState<PlaylistWithStats | null>(null);
+  const [playlistToClear, setPlaylistToClear] = useState<PlaylistWithStats | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [playlistToEdit, setPlaylistToEdit] = useState<PlaylistWithStats | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [exportingPlaylistId, setExportingPlaylistId] = useState<number | null>(null);
+  const [clearingPlaylistId, setClearingPlaylistId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   // Use optimized usePlaylists hook with caching
@@ -786,6 +799,26 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
       log.error("[PlaylistsPage] Failed to delete playlist:", error);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleClearAllPostsInPlaylist = async (pl: PlaylistWithStats): Promise<boolean> => {
+    if (pl.isSmart) {
+      return false;
+    }
+    setClearingPlaylistId(pl.id);
+    try {
+      await window.api.clearManualPlaylist({ playlistId: pl.id });
+      await queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      await queryClient.invalidateQueries({ queryKey: ["playlist-posts", pl.id] });
+      toast.success(`Removed all posts from "${pl.name}"`);
+      return true;
+    } catch (error) {
+      log.error("[PlaylistsPage] Failed to clear playlist posts:", error);
+      toast.error("Failed to clear playlist");
+      return false;
+    } finally {
+      setClearingPlaylistId(null);
     }
   };
 
@@ -978,8 +1011,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                 <PlaylistCard
                   playlist={playlist}
                   onOpen={setSelectedPlaylist}
+                  actionPaddingClassName={playlist.isSmart ? "pr-32" : "pr-40"}
                 />
-                <div className="flex gap-2 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1024,6 +1058,25 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
+                  {!playlist.isSmart && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPlaylistToClear(playlist);
+                      }}
+                      title="Clear all posts from playlist"
+                      disabled={clearingPlaylistId !== null}
+                    >
+                      {clearingPlaylistId === playlist.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Eraser className="w-4 h-4" />
+                      )}
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1042,6 +1095,44 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={!!playlistToClear}
+        onOpenChange={(o) => {
+          if (!o) {
+            setPlaylistToClear(null);
+          }
+        }}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear all posts?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove all posts from {playlistToClear?.name ?? ""}? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearingPlaylistId !== null}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={clearingPlaylistId !== null}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!playlistToClear) {
+                  return;
+                }
+                const pl = playlistToClear;
+                const ok = await handleClearAllPostsInPlaylist(pl);
+                if (ok) {
+                  setPlaylistToClear(null);
+                }
+              }}
+            >
+              {clearingPlaylistId !== null ? "Clearing…" : "Clear all"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Create Playlist Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => {

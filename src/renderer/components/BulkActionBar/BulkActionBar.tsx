@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { Download, ListPlus, Trash2, X, CheckCheck } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Download, ListPlus, MoveRight, Trash2, X, CheckCheck } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import log from "electron-log/renderer";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import type { Post } from "../../../main/db/schema";
+import { AddToPlaylistModal } from "../playlists/AddToPlaylistModal";
 import {
   Dialog,
   DialogContent,
@@ -23,13 +24,6 @@ import {
 } from "../ui/select";
 
 const ESCAPE_KEY = "Escape";
-type PlaylistOption = { id: number; name: string };
-
-interface BulkActionBarProps {
-  selectedPosts: Post[];
-  onRemoveSelected?: (posts: Post[]) => Promise<void>;
-  onSelectAll?: () => void;
-}
 
 const toDownloadItem = (post: Post): { url: string; filename: string } | null => {
   if (!post.fileUrl?.trim()) {
@@ -44,25 +38,65 @@ const toDownloadItem = (post: Post): { url: string; filename: string } | null =>
   };
 };
 
+interface BulkActionBarProps {
+  selectedPosts: Post[];
+  onRemoveSelected?: (posts: Post[]) => Promise<void>;
+  onSelectAll?: () => void;
+  /** When set with a manual playlist, shows "Move to…" in bulk mode */
+  currentPlaylistId?: number;
+  currentPlaylistIsSmart?: boolean;
+}
+
 export const BulkActionBar = ({
   selectedPosts,
   onRemoveSelected,
   onSelectAll,
+  currentPlaylistId,
+  currentPlaylistIsSmart = false,
 }: BulkActionBarProps) => {
   const selectedCount = useBulkSelect((state) => state.selectedIds.size);
   const isBulkMode = useBulkSelect((state) => state.isBulkMode);
   const deactivate = useBulkSelect((state) => state.deactivate);
   const clearSelection = useBulkSelect((state) => state.clearSelection);
   const queryClient = useQueryClient();
-  const [isPlaylistDialogOpen, setIsPlaylistDialogOpen] = useState(false);
-  const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
-  const [playlistId, setPlaylistId] = useState<string>("");
-  const [isSubmittingPlaylist, setIsSubmittingPlaylist] = useState(false);
+  const [isAddPlaylistOpen, setIsAddPlaylistOpen] = useState(false);
+  const [isMoveOpen, setIsMoveOpen] = useState(false);
+  const [moveTargets, setMoveTargets] = useState<{ id: number; name: string }[]>([]);
+  const [targetPlaylistId, setTargetPlaylistId] = useState<string>("");
+  const [isMoveSubmitting, setIsMoveSubmitting] = useState(false);
 
-  const selectedPlaylistName = useMemo(
-    () => playlists.find((item) => item.id === Number(playlistId))?.name ?? "",
-    [playlistId, playlists]
+  const inManualPlaylistView =
+    currentPlaylistId != null &&
+    currentPlaylistId > 0 &&
+    !currentPlaylistIsSmart;
+
+  const otherManualForMove = useMemo(
+    () => moveTargets.find((p) => p.id === Number(targetPlaylistId))?.name ?? "",
+    [moveTargets, targetPlaylistId]
   );
+
+  const openMoveDialog = useCallback(async () => {
+    if (!inManualPlaylistView) {
+      return;
+    }
+    try {
+      const available = await window.api.getPlaylists();
+      const options = available
+        .filter((item) => !item.isSmart && item.id !== currentPlaylistId)
+        .map((item) => ({ id: item.id, name: item.name }));
+      if (options.length === 0) {
+        toast.info("No other manual playlists to move to");
+        return;
+      }
+      setMoveTargets(options);
+      setTargetPlaylistId(String(options[0]!.id));
+      setIsMoveOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.error("[BulkActionBar] Failed to load playlists for move:", message);
+      toast.error("Failed to load playlists");
+    }
+  }, [currentPlaylistId, inManualPlaylistView]);
 
   useEffect(() => {
     if (!isBulkMode) {
@@ -81,9 +115,78 @@ export const BulkActionBar = ({
     };
   }, [deactivate, isBulkMode]);
 
+  // Must run on every render (including when selectedCount === 0); hooks cannot follow a conditional return.
+  const postRefs = useMemo(
+    () => selectedPosts.map((p) => ({ id: p.id, postId: p.postId })),
+    [selectedPosts]
+  );
+
   if (selectedCount === 0) {
     return null;
   }
+
+  const openAddToPlaylist = async () => {
+    try {
+      const available = await window.api.getPlaylists();
+      const hasManual = available.some((item) => !item.isSmart);
+      if (!hasManual) {
+        toast.info("No manual playlists available");
+        return;
+      }
+      setIsAddPlaylistOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.error("[BulkActionBar] Failed to load playlists:", message);
+      toast.error("Failed to load playlists");
+    }
+  };
+
+  const handleMoveConfirm = async () => {
+    if (!inManualPlaylistView) {
+      return;
+    }
+    const to = Number(targetPlaylistId);
+    if (!Number.isFinite(to) || to === currentPlaylistId) {
+      return;
+    }
+    setIsMoveSubmitting(true);
+    try {
+      const resolvedIds: number[] = [];
+      for (const post of selectedPosts) {
+        if (post.id > 0) {
+          resolvedIds.push(post.id);
+          continue;
+        }
+        const inserted = await window.api.shadowInsertPost({
+          postId: post.postId,
+          provider: "rule34",
+        });
+        resolvedIds.push(inserted.id);
+      }
+      if (resolvedIds.length === 0) {
+        toast.info("No posts to move");
+        return;
+      }
+      await window.api.movePostsBetweenManualPlaylists({
+        fromPlaylistId: currentPlaylistId,
+        toPlaylistId: to,
+        postIds: resolvedIds,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      await queryClient.invalidateQueries({ queryKey: ["playlist-posts", currentPlaylistId] });
+      await queryClient.invalidateQueries({ queryKey: ["playlist-posts", to] });
+      await queryClient.invalidateQueries({ queryKey: ["playlist-entries"] });
+      clearSelection();
+      setIsMoveOpen(false);
+      toast.success(`Moved ${resolvedIds.length} posts to "${otherManualForMove}"`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.error("[BulkActionBar] Move failed:", message);
+      toast.error("Failed to move posts");
+    } finally {
+      setIsMoveSubmitting(false);
+    }
+  };
 
   const handleDownloadSelected = async () => {
     const items = selectedPosts
@@ -101,69 +204,6 @@ export const BulkActionBar = ({
       const message = error instanceof Error ? error.message : String(error);
       log.error("[BulkActionBar] Failed to download selected posts:", message);
       toast.error("Failed to start bulk download");
-    }
-  };
-
-  const openAddToPlaylist = async () => {
-    try {
-      const available = await window.api.getPlaylists();
-      const options = available
-        .filter((item) => !item.isSmart)
-        .map((item) => ({ id: item.id, name: item.name }));
-      if (options.length === 0) {
-        toast.info("No manual playlists available");
-        return;
-      }
-      setPlaylists(options);
-      const firstId = options[0]?.id;
-      setPlaylistId(firstId ? String(firstId) : "");
-      setIsPlaylistDialogOpen(true);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      log.error("[BulkActionBar] Failed to load playlists:", message);
-      toast.error("Failed to load playlists");
-    }
-  };
-
-  const handleAddToPlaylist = async () => {
-    const selectedPlaylistId = Number(playlistId);
-    if (!Number.isFinite(selectedPlaylistId)) {
-      return;
-    }
-    setIsSubmittingPlaylist(true);
-    try {
-      const resolvedIds: number[] = [];
-      for (const post of selectedPosts) {
-        if (post.id > 0) {
-          resolvedIds.push(post.id);
-          continue;
-        }
-        const inserted = await window.api.shadowInsertPost({
-          postId: post.postId,
-          provider: "rule34",
-        });
-        resolvedIds.push(inserted.id);
-      }
-      if (resolvedIds.length === 0) {
-        toast.info("No posts to add");
-        return;
-      }
-      await window.api.addPostsToPlaylist({
-        playlistIds: [selectedPlaylistId],
-        postIds: resolvedIds,
-      });
-      await queryClient.invalidateQueries({ queryKey: ["playlists"] });
-      await queryClient.invalidateQueries({ queryKey: ["playlist-posts"] });
-      await queryClient.invalidateQueries({ queryKey: ["playlist-entries"] });
-      clearSelection();
-      setIsPlaylistDialogOpen(false);
-      toast.success(`Added ${resolvedIds.length} posts to "${selectedPlaylistName}"`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      log.error("[BulkActionBar] Failed to add selected posts to playlist:", message);
-      toast.error("Failed to add selected posts to playlist");
-    } finally {
-      setIsSubmittingPlaylist(false);
     }
   };
 
@@ -203,6 +243,18 @@ export const BulkActionBar = ({
               <ListPlus className="h-4 w-4" />
               Add to Playlist
             </Button>
+            {inManualPlaylistView && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => void openMoveDialog()}
+              >
+                <MoveRight className="h-4 w-4" />
+                Move to…
+              </Button>
+            )}
             {onRemoveSelected && (
               <Button
                 type="button"
@@ -227,21 +279,30 @@ export const BulkActionBar = ({
           </div>
         </div>
       </div>
-      <Dialog open={isPlaylistDialogOpen} onOpenChange={setIsPlaylistDialogOpen}>
+      <AddToPlaylistModal
+        posts={postRefs}
+        open={isAddPlaylistOpen}
+        onOpenChange={setIsAddPlaylistOpen}
+        onSuccess={() => {
+          clearSelection();
+        }}
+        title="Add to playlist"
+      />
+      <Dialog open={isMoveOpen} onOpenChange={setIsMoveOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add selected posts to playlist</DialogTitle>
+            <DialogTitle>Move to playlist</DialogTitle>
             <DialogDescription>
-              Selected posts: {selectedCount}
+              Move {selectedCount} selected posts to another manual playlist.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Select value={playlistId} onValueChange={setPlaylistId}>
+            <Select value={targetPlaylistId} onValueChange={setTargetPlaylistId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select playlist" />
               </SelectTrigger>
               <SelectContent>
-                {playlists.map((item) => (
+                {moveTargets.map((item) => (
                   <SelectItem key={item.id} value={String(item.id)}>
                     {item.name}
                   </SelectItem>
@@ -250,15 +311,15 @@ export const BulkActionBar = ({
             </Select>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsPlaylistDialogOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setIsMoveOpen(false)} disabled={isMoveSubmitting}>
               Cancel
             </Button>
             <Button
               type="button"
-              onClick={() => void handleAddToPlaylist()}
-              disabled={isSubmittingPlaylist || playlistId.length === 0}
+              onClick={() => void handleMoveConfirm()}
+              disabled={isMoveSubmitting || targetPlaylistId.length === 0}
             >
-              Add
+              Move
             </Button>
           </DialogFooter>
         </DialogContent>

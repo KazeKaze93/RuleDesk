@@ -2,7 +2,6 @@ import { useEffect, useCallback, useState, useMemo, useRef } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from "../../components/ui/dialog";
@@ -39,7 +38,6 @@ import {
   ExternalLink,
   Eye,
   Loader2,
-  List,
   Plus,
   Shuffle,
 } from "lucide-react";
@@ -75,7 +73,7 @@ import { cn } from "../../lib/utils";
 import { isVideoPost } from "../../lib/filter-utils";
 import { useVideoProxyUrl } from "../../lib/hooks/useVideoProxyUrl";
 import { useViewerController } from "./hooks/useViewerController";
-import { QuickAddToPlaylistMenu } from "../../components/playlists/QuickAddToPlaylistMenu";
+import { AddToPlaylistModal } from "../../components/playlists/AddToPlaylistModal";
 
 const VIEWER_TAG_HINT_SEEN_KEY = "hasSeenTagHint";
 
@@ -1670,32 +1668,16 @@ const ViewerContent = ({
         <ChevronRight className="w-10 h-10 drop-shadow-md" />
       </Button>
 
-      <Dialog open={showPlaylistDialog} onOpenChange={setShowPlaylistDialog}>
-        <DialogContent
-          className="z-[200] sm:max-w-md gap-3"
-          onCloseAutoFocus={(e) => {
-            e.preventDefault();
-            playlistDialogTriggerRef.current?.focus();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Add to playlist</DialogTitle>
-            <DialogDescription>
-              Choose which playlists to add this post to.
-            </DialogDescription>
-          </DialogHeader>
-          <QuickAddToPlaylistMenu
-            post={{ id: post.id, postId: post.postId }}
-            trigger={
-              <Button variant="outline" className="w-full">
-                <List className="mr-2 h-4 w-4" />
-                Select Playlists
-              </Button>
-            }
-            onSuccess={() => setShowPlaylistDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      <AddToPlaylistModal
+        className="z-[200]"
+        posts={[{ id: post.id, postId: post.postId }]}
+        open={showPlaylistDialog}
+        onOpenChange={setShowPlaylistDialog}
+        onSuccess={() => setShowPlaylistDialog(false)}
+        focusReturnRef={playlistDialogTriggerRef}
+        title="Add to playlist"
+        description="Choose which playlists should include this post."
+      />
     </>
   );
 };

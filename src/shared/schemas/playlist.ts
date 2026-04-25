@@ -117,6 +117,44 @@ export const RemovePostsFromPlaylistSchema = z.object({
 export type RemovePostsFromPlaylistRequest = z.infer<typeof RemovePostsFromPlaylistSchema>;
 
 /**
+ * Sync which manual playlists contain the given post(s) in one transaction.
+ * Adds to checked playlists, removes from all other manual playlists.
+ */
+export const SyncManualPlaylistMembershipSchema = z.object({
+  postIds: z.array(IdSchema).min(1, "At least one post required"),
+  manualPlaylistIds: z.array(IdSchema),
+});
+
+export type SyncManualPlaylistMembershipRequest = z.infer<typeof SyncManualPlaylistMembershipSchema>;
+
+/**
+ * How many of the given posts are in each manual playlist (for bulk UI pre-check / indeterminate).
+ */
+export const GetManualPlaylistMembershipForPostsSchema = z.object({
+  postIds: z.array(IdSchema).min(1, "At least one post required"),
+});
+
+export type GetManualPlaylistMembershipForPostsRequest = z.infer<
+  typeof GetManualPlaylistMembershipForPostsSchema
+>;
+
+export const ClearManualPlaylistSchema = z.object({
+  playlistId: IdSchema,
+});
+
+export type ClearManualPlaylistRequest = z.infer<typeof ClearManualPlaylistSchema>;
+
+export const MovePostsBetweenManualPlaylistsSchema = z.object({
+  fromPlaylistId: IdSchema,
+  toPlaylistId: IdSchema,
+  postIds: z.array(IdSchema).min(1, "At least one post required"),
+});
+
+export type MovePostsBetweenManualPlaylistsRequest = z.infer<
+  typeof MovePostsBetweenManualPlaylistsSchema
+>;
+
+/**
  * Get Playlist Posts Schema
  *
  * Single source of truth for GetPlaylistPosts validation and typing.
