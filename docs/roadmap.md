@@ -162,7 +162,6 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Item | Description |
 |------|-------------|
-| **Statistics — additional metrics (same feature)** | **No** separate “analytics” product. Keep **one** **Statistics** area (`/stats`, `getExtendedStats`, `StatsPage`) and extend it incrementally with read-only aggregates/charts. Current shipped set includes totals, rating/media/viewed/favorites pie charts, provider artist split, top artists/tags, and DB size. Future additions can follow the same pattern (extra SQL + IPC fields + UI cards/charts). |
 
 ---
 
@@ -175,7 +174,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | Optional future policy extension (for example cap by total size in MB), while current numeric retention (`keep last N`) is already implemented. |
 | **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): main **restart in dev**, remaining **shared** validation helper consolidation, **video** tuning. |
-| **Product** | **Smart Collections AI** (research). **Statistics** — [additional metrics](#planned-product-work) on the existing page (not a new analytics area). |
+| **Product** | **Smart Collections AI** (research). |
 
 **Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.
 
