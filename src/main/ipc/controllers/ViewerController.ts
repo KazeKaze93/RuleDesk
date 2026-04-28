@@ -19,6 +19,7 @@ const DANGEROUS_PROTOCOLS = [
   "moz-extension:",
   "ms-browser-extension:",
 ] as const;
+const OpenExternalArgSchema = z.string().url().min(1);
 
 /**
  * Viewer Controller
@@ -34,9 +35,8 @@ export class ViewerController extends BaseController {
   public setup(): void {
     this.handle(
       IPC_CHANNELS.APP.OPEN_EXTERNAL,
-      z.string().url().min(1), // Single argument schema
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.openExternal.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      OpenExternalArgSchema, // Single argument schema
+      (event, urlString) => this.openExternal(event, OpenExternalArgSchema.parse(urlString))
     );
 
     log.info("[ViewerController] All handlers registered");

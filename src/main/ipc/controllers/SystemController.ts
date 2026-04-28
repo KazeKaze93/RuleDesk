@@ -7,6 +7,8 @@ import { BaseController } from "../../core/ipc/BaseController";
 import { closeDatabase } from "../../db/client";
 import { IPC_CHANNELS } from "../channels";
 import { getDatabasePaths } from "../../db/paths";
+const GetIconPathArgsSchema = z.tuple([z.enum(["light", "dark"]).optional()]);
+const WriteClipboardArgsSchema = z.tuple([z.string().min(1)]);
 
 /**
  * System Controller
@@ -26,18 +28,20 @@ export class SystemController extends BaseController {
     this.handle(IPC_CHANNELS.APP.GET_DB_LOCATION, z.tuple([]), this.getDatabaseLocation.bind(this));
     this.handle(
       IPC_CHANNELS.APP.GET_ICON_PATH,
-      z.tuple([z.enum(["light", "dark"]).optional()]),
-      this.getIconPath.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      GetIconPathArgsSchema,
+      (event, ...args) => {
+        const [theme] = GetIconPathArgsSchema.parse(args);
+        return this.getIconPath(event, theme);
+      }
     );
     this.handle(IPC_CHANNELS.APP.QUIT, z.tuple([]), this.quitApp.bind(this));
     this.handle(
       IPC_CHANNELS.APP.WRITE_CLIPBOARD,
-      z.tuple([z.string().min(1)]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.writeToClipboard.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      WriteClipboardArgsSchema,
+      (event, ...args) => {
+        const [text] = WriteClipboardArgsSchema.parse(args);
+        return this.writeToClipboard(event, text);
+      }
     );
 
     log.info("[SystemController] All handlers registered");

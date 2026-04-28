@@ -59,6 +59,16 @@ import { getAllBlacklistedTags } from "../../db/queries/blacklist";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 type UnknownRecord = Record<string, unknown>;
+const CreatePlaylistArgsSchema = z.tuple([CreatePlaylistSchema]);
+const IdArgsSchema = z.tuple([IdSchema]);
+const UpdatePlaylistArgsSchema = z.tuple([IdSchema, UpdatePlaylistSchema]);
+const AddPostsToPlaylistArgsSchema = z.tuple([AddPostsToPlaylistSchema]);
+const RemovePostsFromPlaylistArgsSchema = z.tuple([RemovePostsFromPlaylistSchema]);
+const GetPlaylistPostsArgsSchema = z.tuple([GetPlaylistPostsSchema]);
+const ReorderPlaylistEntriesArgsSchema = z.tuple([ReorderPlaylistEntriesSchema]);
+const ResolvePlaylistPostsArgsSchema = z.tuple([ResolvePlaylistPostsSchema]);
+const GetPlaylistsContainingPostArgsSchema = z.tuple([z.number().int(), OptionalIdSchema]);
+const ImportPlaylistArgsSchema = z.tuple([]);
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null;
@@ -229,11 +239,11 @@ export class PlaylistController extends BaseController {
   public setup(): void {
     this.handle(
       IPC_CHANNELS.DB.CREATE_PLAYLIST,
-      z.tuple([CreatePlaylistSchema]),
-      this.createPlaylist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      CreatePlaylistArgsSchema,
+      (event, ...args) => {
+        const [data] = CreatePlaylistArgsSchema.parse(args);
+        return this.createPlaylist(event, data);
+      }
     );
 
     this.handle(
@@ -245,137 +255,138 @@ export class PlaylistController extends BaseController {
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLIST,
-      z.tuple([IdSchema]),
-      this.getPlaylist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      IdArgsSchema,
+      (event, ...args) => {
+        const [playlistId] = IdArgsSchema.parse(args);
+        return this.getPlaylist(event, playlistId);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.UPDATE_PLAYLIST,
-      z.tuple([IdSchema, UpdatePlaylistSchema]),
-      this.updatePlaylist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      UpdatePlaylistArgsSchema,
+      (event, ...args) => {
+        const [playlistId, data] = UpdatePlaylistArgsSchema.parse(args);
+        return this.updatePlaylist(event, playlistId, data);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.DELETE_PLAYLIST,
-      z.tuple([IdSchema]),
-      this.deletePlaylist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      IdArgsSchema,
+      (event, ...args) => {
+        const [playlistId] = IdArgsSchema.parse(args);
+        return this.deletePlaylist(event, playlistId);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.ADD_POSTS_TO_PLAYLIST,
-      z.tuple([AddPostsToPlaylistSchema]),
-      this.addPostsToPlaylist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      AddPostsToPlaylistArgsSchema,
+      (event, ...args) => {
+        const [data] = AddPostsToPlaylistArgsSchema.parse(args);
+        return this.addPostsToPlaylist(event, data);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.REMOVE_POSTS_FROM_PLAYLIST,
-      z.tuple([RemovePostsFromPlaylistSchema]),
-      this.removePostsFromPlaylist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      RemovePostsFromPlaylistArgsSchema,
+      (event, ...args) => {
+        const [data] = RemovePostsFromPlaylistArgsSchema.parse(args);
+        return this.removePostsFromPlaylist(event, data);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLIST_POSTS,
-      z.tuple([GetPlaylistPostsSchema]),
-      this.getPlaylistPosts.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      GetPlaylistPostsArgsSchema,
+      (event, ...args) => {
+        const [params] = GetPlaylistPostsArgsSchema.parse(args);
+        return this.getPlaylistPosts(event, params);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.REORDER_PLAYLIST_ENTRIES,
-      z.tuple([ReorderPlaylistEntriesSchema]),
-      this.reorderPlaylistEntries.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      ReorderPlaylistEntriesArgsSchema,
+      (event, ...args) => {
+        const [params] = ReorderPlaylistEntriesArgsSchema.parse(args);
+        return this.reorderPlaylistEntries(event, params);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS,
-      z.tuple([ResolvePlaylistPostsSchema]),
-      this.resolvePlaylistPosts.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      ResolvePlaylistPostsArgsSchema,
+      (event, ...args) => {
+        const [params] = ResolvePlaylistPostsArgsSchema.parse(args);
+        return this.resolvePlaylistPosts(event, params);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
-      z.tuple([z.number().int(), OptionalIdSchema]),
-      this.getPlaylistsContainingPost.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      GetPlaylistsContainingPostArgsSchema,
+      (event, ...args) => {
+        const [postId, rule34PostId] = GetPlaylistsContainingPostArgsSchema.parse(args);
+        return this.getPlaylistsContainingPost(event, postId, rule34PostId);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS,
       GetManualPlaylistMembershipForPostsSchema,
-      this.getManualPlaylistMembershipForPosts.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      (event, data) =>
+        this.getManualPlaylistMembershipForPosts(
+          event,
+          GetManualPlaylistMembershipForPostsSchema.parse(data)
+        )
     );
 
     this.handle(
       IPC_CHANNELS.DB.SYNC_MANUAL_PLAYLIST_MEMBERSHIP,
       SyncManualPlaylistMembershipSchema,
-      this.syncManualPlaylistMembership.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      (event, data) =>
+        this.syncManualPlaylistMembership(
+          event,
+          SyncManualPlaylistMembershipSchema.parse(data)
+        )
     );
 
     this.handle(
       IPC_CHANNELS.DB.CLEAR_MANUAL_PLAYLIST,
       ClearManualPlaylistSchema,
-      this.clearManualPlaylist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      (event, data) =>
+        this.clearManualPlaylist(event, ClearManualPlaylistSchema.parse(data))
     );
 
     this.handle(
       IPC_CHANNELS.DB.MOVE_POSTS_BETWEEN_MANUAL_PLAYLISTS,
       MovePostsBetweenManualPlaylistsSchema,
-      this.movePostsBetweenManualPlaylists.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      (event, data) =>
+        this.movePostsBetweenManualPlaylists(
+          event,
+          MovePostsBetweenManualPlaylistsSchema.parse(data)
+        )
     );
 
     this.handle(
       IPC_CHANNELS.DB.EXPORT_PLAYLIST,
-      z.tuple([IdSchema]),
-      this.exportPlaylist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      IdArgsSchema,
+      (event, ...args) => {
+        const [playlistId] = IdArgsSchema.parse(args);
+        return this.exportPlaylist(event, playlistId);
+      }
     );
 
     this.handle(
       IPC_CHANNELS.DB.IMPORT_PLAYLIST,
-      z.tuple([]),
-      this.importPlaylist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      ImportPlaylistArgsSchema,
+      (event, ...args) => {
+        ImportPlaylistArgsSchema.parse(args);
+        return this.importPlaylist(event);
+      }
     );
 
     log.info("[PlaylistController] All handlers registered");

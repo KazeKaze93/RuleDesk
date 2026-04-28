@@ -35,6 +35,14 @@ const SaveDownloadFolderArgSchema = z.union([
     })
     .refine((p) => !p.includes("\0"), { message: "Invalid path" }),
 ]);
+const SaveSettingsArgsSchema = z.tuple([SaveSettingsSchema]);
+const SaveThemeArgsSchema = z.tuple([ThemePreferenceSchema]);
+const SaveDownloadFolderArgsSchema = z.tuple([SaveDownloadFolderArgSchema]);
+const SaveDownloadSettingsPayloadSchema = z.object({
+  duplicateFileBehavior: z.enum(["skip", "overwrite"]).optional(),
+  downloadFolderStructure: z.enum(["flat", "{artist_id}"]).optional(),
+});
+const SaveDownloadSettingsArgsSchema = z.tuple([SaveDownloadSettingsPayloadSchema]);
 
 /**
  * Maps Drizzle Settings type to safe IPC format.
@@ -131,20 +139,19 @@ export class SettingsController extends BaseController {
     // This prevents script injection, oversized data, and invalid formats from reaching the database
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE,
-      z.tuple([SaveSettingsSchema]), // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.saveSettings.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      SaveSettingsArgsSchema, // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
+      (event, ...args) => {
+        const [payload] = SaveSettingsArgsSchema.parse(args);
+        return this.saveSettings(event, payload);
+      }
     );
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_THEME,
-      z.tuple([ThemePreferenceSchema]),
-      this.saveTheme.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      SaveThemeArgsSchema,
+      (event, ...args) => {
+        const [theme] = SaveThemeArgsSchema.parse(args);
+        return this.saveTheme(event, theme);
+      }
     );
     // settings:confirm-legal - confirms Age Gate & ToS acceptance
     this.handle(
@@ -160,25 +167,20 @@ export class SettingsController extends BaseController {
     // settings:save-download-folder - saves custom download folder path
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER,
-      z.tuple([SaveDownloadFolderArgSchema]),
-      this.saveDownloadFolder.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      SaveDownloadFolderArgsSchema,
+      (event, ...args) => {
+        const [folderPath] = SaveDownloadFolderArgsSchema.parse(args);
+        return this.saveDownloadFolder(event, folderPath);
+      }
     );
     // settings:save-download-settings - saves duplicate/folder structure
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS,
-      z.tuple([
-        z.object({
-          duplicateFileBehavior: z.enum(["skip", "overwrite"]).optional(),
-          downloadFolderStructure: z.enum(["flat", "{artist_id}"]).optional(),
-        }),
-      ]),
-      this.saveDownloadSettings.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      SaveDownloadSettingsArgsSchema,
+      (event, ...args) => {
+        const [payload] = SaveDownloadSettingsArgsSchema.parse(args);
+        return this.saveDownloadSettings(event, payload);
+      }
     );
 
     log.info("[SettingsController] All handlers registered");

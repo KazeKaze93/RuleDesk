@@ -1,10 +1,8 @@
 import { ipcMain } from "electron";
 import log from "electron-log";
-import { z } from "zod";
 import { SetVacuumScheduleArgsSchema } from "../../../shared/schemas/maintenance";
 import { MaintenanceService } from "../../services/MaintenanceService";
-
-const EMPTY_ARGS_SCHEMA = z.tuple([]);
+import { parseNoArgs, parseSingleArg } from "./ipcArgValidation";
 
 let isRegistered = false;
 
@@ -23,10 +21,7 @@ export function registerMaintenanceHandlers(
   }
 
   ipcMain.handle("maintenance:get-vacuum-status", (_event, ...args: unknown[]) => {
-    const parsed = EMPTY_ARGS_SCHEMA.safeParse(args);
-    if (!parsed.success) {
-      throw new Error("Invalid arguments");
-    }
+    parseNoArgs(args);
 
     try {
       return maintenanceService.getVacuumStatus();
@@ -37,10 +32,7 @@ export function registerMaintenanceHandlers(
   });
 
   ipcMain.handle("maintenance:run-vacuum", (_event, ...args: unknown[]) => {
-    const parsed = EMPTY_ARGS_SCHEMA.safeParse(args);
-    if (!parsed.success) {
-      throw new Error("Invalid arguments");
-    }
+    parseNoArgs(args);
 
     try {
       return maintenanceService.runVacuum();
@@ -51,10 +43,7 @@ export function registerMaintenanceHandlers(
   });
 
   ipcMain.handle("maintenance:get-vacuum-schedule", (_event, ...args: unknown[]) => {
-    const parsed = EMPTY_ARGS_SCHEMA.safeParse(args);
-    if (!parsed.success) {
-      throw new Error("Invalid arguments");
-    }
+    parseNoArgs(args);
 
     try {
       return maintenanceService.getSchedule();
@@ -65,13 +54,10 @@ export function registerMaintenanceHandlers(
   });
 
   ipcMain.handle("maintenance:set-vacuum-schedule", (_event, ...args: unknown[]) => {
-    const parsedTuple = z.tuple([SetVacuumScheduleArgsSchema]).safeParse(args);
-    if (!parsedTuple.success) {
-      throw new Error("Invalid arguments");
-    }
+    const payload = parseSingleArg(SetVacuumScheduleArgsSchema, args);
 
     try {
-      return maintenanceService.setSchedule(parsedTuple.data[0].schedule);
+      return maintenanceService.setSchedule(payload.schedule);
     } catch (error) {
       log.error("[MaintenanceHandlers] set-vacuum-schedule failed:", error);
       throw new Error(sanitizeErrorMessage(error));

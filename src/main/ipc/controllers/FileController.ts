@@ -48,6 +48,13 @@ const DownloadAllItemSchema = z.object({
 });
 
 const DownloadAllSchema = z.array(DownloadAllItemSchema).max(BATCH_DOWNLOAD_MAX_FILES);
+const DownloadFileArgsSchema = z.tuple([
+  DownloadFileSchema.shape.url,
+  DownloadFileSchema.shape.filename,
+]);
+const OpenFolderArgSchema = OpenFolderSchema;
+const EmptyArgsSchema = z.tuple([]);
+const DownloadAllArgsSchema = z.tuple([DownloadAllSchema]);
 
 /**
  * File Controller
@@ -285,28 +292,33 @@ export class FileController extends BaseController {
   public setup(): void {
     this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD,
-      z.tuple([
-        DownloadFileSchema.shape.url, // URL with HTTP/HTTPS validation
-        DownloadFileSchema.shape.filename, // Filename with length and character validation
-      ]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.downloadFile.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      DownloadFileArgsSchema,
+      (event, ...args) => {
+        const [url, filename] = DownloadFileArgsSchema.parse(args);
+        return this.downloadFile(event, url, filename);
+      }
     );
     this.handle(
       IPC_CHANNELS.FILES.OPEN_FOLDER,
-      OpenFolderSchema, // Single argument schema
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.openFolder.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      OpenFolderArgSchema, // Single argument schema
+      (event, filePathOrName) =>
+        this.openFolder(event, OpenFolderArgSchema.parse(filePathOrName))
     );
     this.handle(
       IPC_CHANNELS.FILES.SELECT_DOWNLOAD_FOLDER,
-      z.tuple([]),
-      this.selectDownloadFolder.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      EmptyArgsSchema,
+      (event, ...args) => {
+        EmptyArgsSchema.parse(args);
+        return this.selectDownloadFolder(event);
+      }
     );
     this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD_ALL,
-      z.tuple([DownloadAllSchema]),
-      this.downloadAll.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      DownloadAllArgsSchema,
+      (event, ...args) => {
+        const [items] = DownloadAllArgsSchema.parse(args);
+        return this.downloadAll(event, items);
+      }
     );
     this.handle(
       IPC_CHANNELS.FILES.CANCEL_DOWNLOAD_ALL,
@@ -337,11 +349,11 @@ export class FileController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.FILES.RESUME_PENDING_DOWNLOAD,
-      z.tuple([]),
-      this.resumePendingDownload.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      EmptyArgsSchema,
+      (event, ...args) => {
+        EmptyArgsSchema.parse(args);
+        return this.resumePendingDownload(event);
+      }
     );
     this.handle(
       IPC_CHANNELS.FILES.DISMISS_PENDING_DOWNLOAD,

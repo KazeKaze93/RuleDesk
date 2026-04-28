@@ -25,6 +25,17 @@ import { IdSchema } from "../../../shared/schemas/ipc";
 const DEFAULT_BACKUP_RETENTION = 5;
 const MIN_BACKUP_RETENTION = 1;
 const MAX_BACKUP_RETENTION = 20;
+const MAX_TOTAL_BACKUP_BYTES = (() => {
+  const rawValue = process.env.BACKUP_RETENTION_MAX_TOTAL_MB;
+  if (!rawValue) {
+    return 0;
+  }
+  const parsedMb = Number(rawValue);
+  if (!Number.isFinite(parsedMb) || parsedMb <= 0) {
+    return 0;
+  }
+  return Math.floor(parsedMb * 1024 * 1024);
+})();
 const AutoBackupIntervalSchema = z.enum(["never", "daily", "weekly"]);
 
 /**
@@ -95,8 +106,7 @@ export class MaintenanceController extends BaseController {
     this.handle(
       IPC_CHANNELS.SYNC.REPAIR,
       z.tuple([IdSchema]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.repairArtist.bind(this) as (event: IpcMainInvokeEvent, ...args: unknown[]) => Promise<unknown>
+      (event, ...args) => this.repairArtist(event, IdSchema.parse(args[0]))
     );
     this.handle(
       IPC_CHANNELS.BACKUP.CREATE,
@@ -122,10 +132,8 @@ export class MaintenanceController extends BaseController {
     this.handle(
       IPC_CHANNELS.BACKUP.SET_SCHEDULE,
       z.tuple([AutoBackupIntervalSchema]),
-      this.setBackupSchedule.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown> | unknown
+      (event, ...args) =>
+        this.setBackupSchedule(event, AutoBackupIntervalSchema.parse(args[0]))
     );
 
     log.info("[MaintenanceController] All handlers registered");
@@ -275,14 +283,48 @@ export class MaintenanceController extends BaseController {
           fullPath: path.join(backupDir, name),
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
+      const toDelete = new Set<string>();
 
-      if (backupFiles.length <= backupRetention) {
-        return; // Nothing to clean up
+      if (backupFiles.length > backupRetention) {
+        const retainedByCount = backupFiles.slice(
+          backupFiles.length - backupRetention
+        );
+        for (const file of backupFiles) {
+          if (!retainedByCount.some((kept) => kept.fullPath === file.fullPath)) {
+            toDelete.add(file.fullPath);
+          }
+        }
       }
 
-      const toDelete = backupFiles.slice(0, backupFiles.length - backupRetention);
+      if (MAX_TOTAL_BACKUP_BYTES > 0) {
+        const existingFiles = await Promise.all(
+          backupFiles.map(async (file) => {
+            const stat = await fs.promises.stat(file.fullPath);
+            return {
+              ...file,
+              size: stat.size,
+            };
+          })
+        );
+        const newestFirst = [...existingFiles].sort((a, b) =>
+          b.name.localeCompare(a.name)
+        );
+        let runningTotal = 0;
+        for (const file of newestFirst) {
+          if (toDelete.has(file.fullPath)) {
+            continue;
+          }
+          runningTotal += file.size;
+          if (runningTotal > MAX_TOTAL_BACKUP_BYTES) {
+            toDelete.add(file.fullPath);
+          }
+        }
+      }
 
-      for (const file of toDelete) {
+      for (const file of backupFiles) {
+        if (!toDelete.has(file.fullPath)) {
+          continue;
+        }
         try {
           await fs.promises.rm(file.fullPath, { force: true });
           log.info(`[MaintenanceController] Deleted old backup: ${file.name}`);
@@ -293,7 +335,13 @@ export class MaintenanceController extends BaseController {
       }
 
       log.info(
-        `[MaintenanceController] Retention cleanup: kept ${backupRetention}, deleted ${toDelete.length}`
+        `[MaintenanceController] Retention cleanup: kept ${
+          backupFiles.length - toDelete.size
+        }, deleted ${toDelete.size}${
+          MAX_TOTAL_BACKUP_BYTES > 0
+            ? `, maxTotalBytes=${MAX_TOTAL_BACKUP_BYTES}`
+            : ""
+        }`
       );
     } catch (error) {
       // Non-fatal: retention cleanup failure should never break backup creation

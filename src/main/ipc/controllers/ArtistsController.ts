@@ -28,6 +28,13 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
 // This ensures types always match the schema, even if schema changes
 type Artist = InferSelectModel<typeof artists>;
 type NewArtist = InferInsertModel<typeof artists>;
+const AddArtistArgsSchema = z.tuple([AddArtistSchema]);
+const DeleteArtistArgsSchema = z.tuple([IdSchema]);
+const SearchArtistsArgsSchema = z.tuple([z.string().trim().min(1)]);
+const SearchRemoteTagsArgsSchema = z.tuple([
+  z.string().trim().min(2),
+  z.enum(["rule34", "gelbooru"]).optional(),
+]);
 
 /**
  * IPC-safe Artist type with Date fields converted to numbers (timestamps in milliseconds).
@@ -77,39 +84,35 @@ export class ArtistsController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.DB.ADD_ARTIST,
-      z.tuple([AddArtistSchema]),
-      // Wrapper to match BaseController signature, then call public method
+      AddArtistArgsSchema,
       async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
-        const [data] = args as [AddArtistRequest];
+        const [data] = AddArtistArgsSchema.parse(args);
         return this.handleAddArtist(event, data);
       }
     );
     this.handle(
       IPC_CHANNELS.DB.DELETE_ARTIST,
-      z.tuple([IdSchema]),
-      this.deleteArtist.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      DeleteArtistArgsSchema,
+      (event, ...args) => {
+        const [id] = DeleteArtistArgsSchema.parse(args);
+        return this.deleteArtist(event, id);
+      }
     );
     this.handle(
       IPC_CHANNELS.DB.SEARCH_TAGS,
-      z.tuple([z.string().trim().min(1)]),
-      this.searchArtists.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      SearchArtistsArgsSchema,
+      (event, ...args) => {
+        const [query] = SearchArtistsArgsSchema.parse(args);
+        return this.searchArtists(event, query);
+      }
     );
     this.handle(
       IPC_CHANNELS.API.SEARCH_REMOTE,
-      z.tuple([
-        z.string().trim().min(2),
-        z.enum(["rule34", "gelbooru"]).optional(),
-      ]),
-      this.searchRemoteTags.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      SearchRemoteTagsArgsSchema,
+      (event, ...args) => {
+        const [query, providerId] = SearchRemoteTagsArgsSchema.parse(args);
+        return this.searchRemoteTags(event, query, providerId);
+      }
     );
 
     log.info("[ArtistsController] All handlers registered");
