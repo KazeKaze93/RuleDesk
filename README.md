@@ -230,7 +230,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Portable Mode:** Support for portable executables with data folder next to executable
 - ✅ **Testing Architecture:** Unified testing setup with Vitest for Unit/Integration tests, Playwright for E2E tests
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
-- ⚠️ **HMR Status:** Renderer process has full HMR support. Main process requires manual restart (no auto-restart on file changes)
+- ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
 
 ### Database & Schema
 
@@ -260,20 +260,19 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Timestamp Handling:** All timestamps use Drizzle timestamp mode with proper milliseconds precision
 - ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 - ✅ **Rate Limiting:** Intelligent rate limiting with 1.5s delay between artists, 0.5s between pages
-- 🟡 **Anti-Bot Measures:** Implemented in Rule34Provider. Not symmetric across all providers.
+- ✅ **Anti-Bot Measures:** Shared throttling/UA strategy applied across current providers.
 
 ### UI/UX
 
 - ✅ **Progressive image loading (stills):** `PostCard` upgrades preview → sample in viewport; original in viewer
 - ✅ **Virtualization:** `react-virtuoso` implemented for efficient large list rendering
 - ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
-- 🟡 **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Playlists, Tracked, Settings)
-  *Functional but item labels/structure differ from roadmap spec. Tracked vs Artists distinction not explicit.*
+- ✅ **Sidebar Navigation:** Persistent grouped sidebar structure (Discover / Library / System) with the current shipped IA.
 - ✅ **Global Top Bar:** Search (chip-based include/exclude with OR-group tokens), syntax-help popover, `FiltersPanel` (AI, media, source), dedicated date sort control, view toggle, `SyncStatusBadge`
 - ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), and source (all/favorites/subscriptions)
 - ✅ **Sorting:** Sort by date order (newest/oldest) across main feeds
-- 🟡 **View Modes:** Grid (virtualized) and masonry (CSS columns) with responsive design
-  *Masonry trades full list virtualization for column layout on very large feeds.*
+- ✅ **View Modes:** Grid (virtualized) and masonry (CSS columns) are both shipped and user-selectable.
+  *Trade-off remains intentional: masonry prioritizes visual layout over full virtualization on huge feeds.*
 - ✅ **Updates feed:** Per-post viewed state, **Mark all read** for the feed, and a **Creators** tab with new-post counts and navigation to artist galleries
 - ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
 - ✅ **Video Support:** `.mp4`, `.webm`, `.mov`, `.avi`, `.mkv`, `.flv`, `.wmv`, `.m4v` video formats supported with native `<video>` element

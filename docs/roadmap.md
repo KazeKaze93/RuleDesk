@@ -128,9 +128,9 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 ## 🔧 Technical Improvements (From Audit) & DX
 
 - ✅ **Testing:** Vitest + Playwright, `better-sqlite3` ABI switching for `pretest`/`posttest` — operational.
-- ⏳ **Main process dev experience:** renderer has Vite HMR; **main** still needs a **manual restart** (or a watcher that restarts Electron) when changing IPC, services, or DB code. Improves iteration time for backend-heavy work.
+- ✅ **Main process dev experience:** main sources are watched in development (`electron.vite.config.ts`), closing the previous manual-restart-only loop for routine IPC/service edits.
 - 🟡 **Shared validation in Main:** many IPC contracts are already in `shared/schemas`; remaining repeated per-handler Zod argument tuples/parsing can still be consolidated to reduce drift and duplicate error messages.
-- ⏳ **Video pipeline:** optional flags or validation for **hardware decode**, `<video>` attributes, and platform-specific quirks; today behavior is “works by default” without a formal tuning pass.
+- ✅ **Video pipeline baseline:** hardware decode flags and `<video>` attribute tuning landed; remaining work is regression-driven per platform/device.
 - ⏳ **Tooling / hygiene:** keep `validate` (typecheck, lint, asset checks) green; optional stricter policy on logging and IPC surface over time.
 
 ## 🏗️ Architecture Considerations
@@ -174,7 +174,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | Optional future policy extension (for example cap by total size in MB), while current numeric retention (`keep last N`) is already implemented. |
-| **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): main **restart in dev**, remaining **shared** validation helper consolidation, **video** tuning. |
+| **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): remaining **shared** validation helper consolidation and ongoing tooling hygiene. |
 | **Product** | **Smart Collections AI** (research). |
 
 **Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.

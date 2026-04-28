@@ -1361,7 +1361,7 @@ The project uses **electron-vite** for building both Main and Renderer processes
 - Hot Module Replacement (HMR) for Renderer ✅
 - Fast rebuilds with Vite
 - DevTools enabled in development
-- Main Process: Manual restart required (no auto-restart) ⚠️
+- Main/Preload sources are watched in development for faster iteration ✅
 
 ## State Management
 
@@ -1826,14 +1826,14 @@ Based on a comprehensive technical audit, here's the current implementation stat
 
 ### ⚠️ Partially Implemented
 
-- **Developer HMR:** Renderer process has full HMR support. Main process requires manual restart (no auto-restart on file changes)
+- **Developer HMR:** Renderer HMR and watched Main/Preload rebuild loop are in place
 - **Input Sanitization:** Zod validation per handler (decentralized), no centralized utility
 - **Error Handling:** IPC handlers have try-catch blocks, but some return raw errors instead of user-friendly messages
-- **Modern Video:** Video handling exists, but no explicit hardware acceleration configuration in `webPreferences`
+- **Modern Video:** Baseline tuning is shipped; further platform-specific tuning remains regression-driven
 
 ### ⏳ Missing / Planned
 
-- **Safe Mode / NSFW Filter:** No blur logic or `safeMode` flag in database/settings
+- **Safe Mode / NSFW Filter:** ✅ **COMPLETED:** blur logic and safe mode state are implemented in gallery/viewer flows
 - **Age Gate:** ✅ **COMPLETED:** Age gate component (`AgeGate.tsx`) and `confirmLegal` IPC method implemented
 - **Portable Mode:** Uses absolute paths via `app.getPath("userData")`, no relative path support
 - **Anti-Bot Measures:** Static User-Agent strings, fixed delays (1.5s/0.5s) but no randomization or rotation
