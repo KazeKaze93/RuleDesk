@@ -14,7 +14,11 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       sourcemap: true,
-      watch: isDevelopment ? {} : undefined,
+      watch: isDevelopment
+        ? {
+            include: "src/main/**",
+          }
+        : undefined,
       rollupOptions: {
         input: {
           main: resolve(__dirname, "src/main/main.ts"),
