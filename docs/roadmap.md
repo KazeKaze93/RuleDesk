@@ -40,7 +40,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### A. Filters (Advanced Search) - High Priority
 
-**Current state:** 🟡 partially implemented
+**Current state:** ✅ implemented, ongoing regression/polish
 
 - ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
 - ✅ `FiltersPanel`: AI, media, source; wired to `searchStore` and post pipelines.
@@ -99,7 +99,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### Next Hardening Steps
 
-- ⏳ **User-configurable backup retention** (expose “keep last N” or similar; today fixed at 5 in `MaintenanceController`).
+- ✅ **User-configurable backup retention** is shipped (`settings.backupRetention`, range `1..20`, applied in `MaintenanceController` cleanup).
 - ✅ **Shared request pacing / UA rotation** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
 - ⏳ Optional: richer scheduled maintenance (user-visible schedule / explicit `VACUUM` policy); today lightweight `wal_checkpoint` + `optimize` runs are automatic.
 
@@ -119,7 +119,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ Auto-sync on startup and periodic sync scheduler.
 - ✅ Lightweight automatic DB maintenance (checkpoint + optimize).
-- ✅ Fixed backup file retention (last 5); user-facing retention policy still open.
+- ✅ Backup file retention is configurable in Settings (`backupRetention`, bounded `1..20`) and enforced after each successful backup.
 
 ## 🔧 Technical Improvements (From Audit) & DX
 
@@ -170,7 +170,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision. |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: sidebar labels/grouping, tooltips, order, small-window density (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
-| **Backups** | **User setting** for retention (“keep last N” or max MB). |
+| **Backups** | Optional future policy extension (for example cap by total size in MB), while current numeric retention (`keep last N`) is already implemented. |
 | **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): main **restart in dev**, **shared** validation helpers, **video** tuning. |
 | **Product** | **Smart Collections AI** (research). **Statistics** — [additional metrics](#planned-product-work) on the existing page (not a new analytics area). |
 

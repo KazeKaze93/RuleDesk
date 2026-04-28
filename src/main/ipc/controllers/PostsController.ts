@@ -1108,11 +1108,17 @@ export class PostsController extends BaseController {
   ): Promise<{ updatedCount: number }> {
     try {
       const db = this.getDb();
-      const result = db
-        .update(posts)
-        .set({ isViewed: true })
-        .where(or(eq(posts.isViewed, false), sql`${posts.isViewed} IS NULL`))
-        .run();
+      const result = db.transaction((tx) => {
+        const updatedPosts = tx
+          .update(posts)
+          .set({ isViewed: true })
+          .where(or(eq(posts.isViewed, false), sql`${posts.isViewed} IS NULL`))
+          .run();
+
+        // Keep creators counters consistent with feed-wide "mark all read".
+        tx.update(artists).set({ newPostsCount: 0 }).run();
+        return updatedPosts;
+      });
 
       const updatedCount = result.changes;
       log.info(`[PostsController] Mark all viewed completed. Updated: ${updatedCount}`);

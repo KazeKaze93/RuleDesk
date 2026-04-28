@@ -1,28 +1,87 @@
+import type { ClipboardEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
+import { parseCredentialsFromText } from "../../lib/parseCredentialsFromText";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 
 interface SettingsAccountTabProps {
+  provider: ProviderId;
+  pendingProvider: ProviderId | null;
+  userId?: string;
   apiKey: string;
   showApiKey: boolean;
   hasApiKey: boolean;
   accountStatus: "idle" | "success" | "error";
+  isDevMode: boolean;
   onApiKeyChange: (value: string) => void;
+  onUserIdChange?: (value: string) => void;
   onToggleApiKeyVisibility: () => void;
   onSaveApiKey: () => void;
+  onProviderSelect: (value: ProviderId) => void;
+  onProviderChangeConfirm: () => void;
+  onProviderChangeCancel: () => void;
+  onResetOnboarding: () => void;
+  showUserIdField?: boolean;
 }
 
 export const SettingsAccountTab = ({
+  provider,
+  pendingProvider,
+  userId = "",
   apiKey,
   showApiKey,
   hasApiKey,
   accountStatus,
+  isDevMode,
   onApiKeyChange,
+  onUserIdChange,
   onToggleApiKeyVisibility,
   onSaveApiKey,
+  onProviderSelect,
+  onProviderChangeConfirm,
+  onProviderChangeCancel,
+  onResetOnboarding,
+  showUserIdField = true,
 }: SettingsAccountTabProps) => {
+  const normalizedUserId = userId.trim();
+  const isUserIdInvalid =
+    normalizedUserId.length > 0 && !/^\d+$/.test(normalizedUserId);
+
+  const handleCredentialsPaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = event.clipboardData.getData("text");
+    const credentials = parseCredentialsFromText(pastedText);
+    if (!credentials.userId && !credentials.apiKey) {
+      return;
+    }
+    event.preventDefault();
+    if (credentials.userId) {
+      onUserIdChange?.(credentials.userId);
+    }
+    if (credentials.apiKey) {
+      onApiKeyChange(credentials.apiKey);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -44,19 +103,61 @@ export const SettingsAccountTab = ({
         </section>
 
         <section className="space-y-2">
+          <Label htmlFor="provider-select">Provider</Label>
+          <Select
+            value={provider}
+            onValueChange={(value: ProviderId) => onProviderSelect(value)}
+          >
+            <SelectTrigger id="provider-select">
+              <SelectValue placeholder="Select provider" />
+            </SelectTrigger>
+            <SelectContent>
+              {PROVIDER_IDS.map((providerId) => (
+                <SelectItem key={providerId} value={providerId}>
+                  {providerId}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </section>
+
+        {showUserIdField ? (
+          <section className="space-y-2">
+            <Label htmlFor="user-id">User ID</Label>
+            <Input
+              id="user-id"
+              type="text"
+              value={userId}
+              onChange={(event) => onUserIdChange?.(event.target.value)}
+              onPaste={handleCredentialsPaste}
+              placeholder="Enter User ID"
+            />
+            {isUserIdInvalid ? (
+              <p className="text-xs text-red-500">User ID must contain digits only.</p>
+            ) : null}
+          </section>
+        ) : null}
+
+        <section className="space-y-2">
           <Label htmlFor="api-key">API key</Label>
           <Input
             id="api-key"
             type={showApiKey ? "text" : "password"}
             value={apiKey}
             onChange={(event) => onApiKeyChange(event.target.value)}
+            onPaste={handleCredentialsPaste}
             placeholder="Enter new API key"
           />
           <section className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={onToggleApiKeyVisibility}>
               {showApiKey ? "Hide" : "Show"}
             </Button>
-            <Button type="button" size="sm" onClick={onSaveApiKey}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={onSaveApiKey}
+              disabled={isUserIdInvalid}
+            >
               Save API Key
             </Button>
             {accountStatus === "success" ? (
@@ -71,7 +172,28 @@ export const SettingsAccountTab = ({
             ) : null}
           </section>
         </section>
+        {isDevMode ? (
+          <section className="pt-2 border-t">
+            <Button type="button" variant="destructive" size="sm" onClick={onResetOnboarding}>
+              Reset onboarding
+            </Button>
+          </section>
+        ) : null}
       </CardContent>
+      <AlertDialog open={pendingProvider !== null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch provider?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Switching provider will clear all cached data. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={onProviderChangeCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onProviderChangeConfirm}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

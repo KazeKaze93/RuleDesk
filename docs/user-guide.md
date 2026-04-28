@@ -229,6 +229,7 @@ Each post card shows:
 
 - The clear button in the search bar clears tag chips.
 - Click a chip to put it back into the input for editing; right-click still toggles include/exclude.
+- The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
 - Browse source modes **Favorites** / **Subscriptions** require a non-empty tag query by design.
 
 ### Favorites
@@ -377,6 +378,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 The **top bar** appears on content pages and provides:
 
 - **Search box** - Search for artists, tags, or posts
+- **Search box behavior** - Uses available width on the left side of the top bar; chips can wrap to a second row when needed
 - **Filters button** - Open filters panel
 - **Sort dropdown** - Change sorting order
 - **View toggle** - Switch between grid/list views
@@ -428,7 +430,7 @@ Settings are split into tabs:
 - **Restore Backup** - Restore from a backup file (app reloads after success)
 - **Check Integrity** - Verify database is not corrupted
 - **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup)
-- **Retention** - Older files are rotated automatically (approximately last **five** kept)
+- **Retention** - Older files are rotated automatically according to `Retention` value (`backupRetention`, range `1..20`)
 
 ### Account
 

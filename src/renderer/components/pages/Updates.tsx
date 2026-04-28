@@ -17,10 +17,10 @@ import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import type { Post } from "../../../main/db/schema";
+import type { TrackedArtist } from "../../../main/bridge";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
-import type { TrackedArtist } from "../../../main/bridge";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
@@ -106,25 +106,28 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-// ItemContainer will be created dynamically based on viewType
-const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      viewType === "grid" 
-        ? "w-full aspect-[2/3]" 
-        : "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
-      className
-    )}
-    {...props}
-  />
-));
+const GridItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  )
+);
+GridItemContainer.displayName = "GridItemContainer";
 
-// VirtuosoList component factory
-const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
+const MasonryItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
+        className
+      )}
+      {...props}
+    />
+  )
+);
+MasonryItemContainer.displayName = "MasonryItemContainer";
+
+const GridVirtuosoList = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
 >(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
@@ -133,9 +136,24 @@ const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
     ref={ref}
     className={className}
     aria-busy={ariaBusy}
-    viewType={viewType}
+    viewType="grid"
   />
 ));
+GridVirtuosoList.displayName = "GridVirtuosoList";
+
+const MasonryVirtuosoList = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType="masonry"
+  />
+));
+MasonryVirtuosoList.displayName = "MasonryVirtuosoList";
 
 // --- Основной компонент ---
 
@@ -268,7 +286,7 @@ export const Updates = () => {
       initialPageParam: 1,
     });
 
-  const { aiFilter, mediaType, source, orientation, dateFrom, dateTo } = filters;
+  const { aiFilter, mediaType, orientation, dateFrom, dateTo } = filters;
   const rating = useSearchStore((state) => state.filters.rating);
 
   useEffect(() => {
@@ -313,7 +331,7 @@ export const Updates = () => {
   });
 
   const { data: totalUnreadCount = 0 } = useQuery({
-    queryKey: ["updates", "totalUnreadCount", tags, aiFilter, rating, mediaType, source],
+    queryKey: ["updates", "totalUnreadCount", tags, aiFilter, rating, mediaType],
     queryFn: () =>
       window.api.getUpdatesTotalUnreadCount({
         filters: {
@@ -322,7 +340,6 @@ export const Updates = () => {
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
           rating: rating === "all" ? undefined : rating,
           mediaType: mediaType === "all" ? undefined : mediaType,
-          isFavorited: source === "favorites" ? true : undefined,
         },
       }),
     staleTime: Number.POSITIVE_INFINITY,
@@ -378,16 +395,6 @@ export const Updates = () => {
       });
     }
     
-    // Filter by source - Updates tab shows subscriptions by default
-    if (source === "favorites") {
-      // Show only favorited posts from subscriptions
-      posts = posts.filter((post) => post.isFavorited === true);
-    } else if (source === "subscriptions") {
-      // Already showing subscriptions, no filter needed
-    } else if (source === "all") {
-      // Show all posts (no filter)
-    }
-    
     // Sort by publishedAt (date of post creation)
     return [...posts].sort((a, b) => {
       const dateA = a.publishedAt instanceof Date 
@@ -403,32 +410,15 @@ export const Updates = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, rating, mediaType, source, orientation, dateFrom, dateTo]);
+  }, [data, sortOrder, aiFilter, rating, mediaType, orientation, dateFrom, dateTo]);
   const selectedPosts = useMemo(
     () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
     [allPosts, selectedIds]
   );
 
-  // Create stable List and Item components with forwardRef and aria-busy
-  // Must be memoized to prevent Virtuoso from remounting on every render
-  const { ListComponent, ItemComponent } = useMemo(() => {
-    const VirtuosoList = createVirtuosoList(viewType);
-    const List = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-      (props, ref) => (
-        <VirtuosoList
-          {...props}
-          ref={ref}
-          aria-busy={isLoading || isFetchingNextPage}
-        />
-      )
-    );
-    List.displayName = "UpdatesList";
-    
-    const Item = createItemContainer(viewType);
-    Item.displayName = "UpdatesItem";
-    
-    return { ListComponent: List, ItemComponent: Item };
-  }, [isLoading, isFetchingNextPage, viewType]);
+  const listAriaBusy = isLoading || isFetchingNextPage;
+  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
+  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -472,6 +462,14 @@ export const Updates = () => {
           };
         }
       );
+      queryClient.setQueryData<TrackedArtist[]>(["artists"], (oldArtists) => {
+        if (!oldArtists) return oldArtists;
+        return oldArtists.map((artist) => ({
+          ...artist,
+          newPostsCount: 0,
+        }));
+      });
+      queryClient.invalidateQueries({ queryKey: ["artists"] });
     },
     onError: (err) => {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -669,6 +667,7 @@ export const Updates = () => {
           ) : (
             <VirtuosoGrid
               className="h-full"
+              aria-busy={listAriaBusy}
               totalCount={allPosts.length}
               endReached={() => {
                 if (hasNextPage && !isFetchingNextPage) {

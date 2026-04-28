@@ -51,12 +51,12 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🌍 Rule34 CDN Selection**       | Main Process probes Rule34 CDN hosts on startup (`rule34.xxx`, `us.rule34.xxx`, `wimg.rule34.xxx`, `api-cdn.rule34.xxx`) and rewrites Rule34 media URLs to the fastest reachable host. Probing is non-blocking and safely falls back to `rule34.xxx` if selection has not completed or fails.                                                        |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                                                                                     |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
-| **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups in the user data directory; after each successful backup, older files are pruned to keep the **last five** copies. Restore replaces the live DB (with checks) and reloads the app.                                                                                                          |
+| **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups in the user data directory; retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup. Restore replaces the live DB (with checks) and reloads the app.                                                                               |
 | **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`). Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
 | **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                                                                           |
 | **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                                                                                                 |
 | **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                                                                          |
-| **🧭 Navigation & Layout**        | 🟡 PARTIAL — Sidebar and top bar are functional; section labels/structure and some filter controls still differ from the original spec on a few pages. `Updates` sidebar item includes an unread badge (polling-based) that clears when the user explicitly opens Updates.                                                                              |
+| **🧭 Navigation & Layout**        | ✅ Implemented — Sidebar and global top bar are used across core pages. `Updates` sidebar item includes an unread badge (polling-based) that clears when the user explicitly opens Updates. Optional IA polish (labels/grouping/density) remains a UX refinement task, not a missing core feature.                                                  |
 | **📋 Playlists & Collections**    | Create curated collections of posts independent of Artists/Trackers. Create, rename, delete, export, and import playlists. Add posts via quick menu on Post Cards or in viewer. View playlist galleries with filtering/sorting, drag-and-drop reorder for manual playlists, and smart playlists with hybrid local+remote tag queries.                                                                                   |
 | **📊 Statistics**                 | **Statistics** page (`/stats`): extended aggregates via `getExtendedStats` IPC — totals (artists/posts/favorites/unviewed), rating/media/viewed/favorites pie charts, provider split (`rule34 artists`, `gelbooru artists`), top artists/tags, and DB file size. Service placeholder `Artist 0` is excluded from Top Artists.                       |
 | **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                                                                                                          |
@@ -122,9 +122,9 @@ A unified Top Bar appears on all content pages providing:
 - **Search syntax help** - `CircleHelp` popover next to search input with supported Rule34 syntax examples
 - **Filters** - AI, media type, source (per `FiltersPanel`)
 - **Sort** - Newest/oldest (`sortOrder` on date-oriented lists)
-- **View Toggle** - Switch between grid, list, and masonry layouts
+- **View Toggle** - Switch between grid and masonry layouts
 - **Sync Status** - Real-time sync progress indicator with last sync timestamp
-*✅ `SyncStatusBadge` is in the top bar. Sorting is handled by the dedicated date sort control in the top bar (outside Filters).*
+*✅ `SyncStatusBadge` is in the top bar. Sorting is handled by the dedicated date sort control in the top bar (outside Filters). Search stretches across the available left section and chip rows can expand to a second line when needed.*
 
 ### Viewer Experience
 
@@ -205,7 +205,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **Restore backup** - Restore from backup file and reload app
 - **Integrity check** - Run `PRAGMA integrity_check`
 - **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (evaluated on app startup)
-- **Automatic backup rotation** - Keep approximately the last **five** backups (not configurable in UI)
+- **Automatic backup rotation** - Keep the last `N` backups (`backupRetention`, configurable in UI, range `1..20`)
 
 ### Account
 
@@ -298,8 +298,10 @@ The application is stable and production-ready (see **`package.json`** → `vers
 2. **Onboarding:**
 
    - Launch the application
-   - Enter your User ID and API Key in the onboarding screen
-   - Click "Save and Login"
+   - Confirm legal age / ToS in the mandatory Age Gate
+   - Option A: enter User ID + API Key and click "Save and Login"
+   - Option B: click "Skip for now" to continue in Browse-only mode
+   - Add API key later in `Settings -> Account` to unlock Updates, Favorites, Playlists, and Artists
 
 3. **Add Artists:**
 

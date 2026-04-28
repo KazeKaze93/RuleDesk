@@ -15,6 +15,7 @@ import type { Post } from "../../db/schema";
 import { SearchPostsSchema } from "../../../shared/schemas/search";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
+import type { ProviderId } from "../../providers";
 import { XMLParser } from "fast-xml-parser";
 import { isVideoUrl } from "@shared/utils/media";
 import {
@@ -129,6 +130,7 @@ export class SearchController extends BaseController {
   private async getDecryptedSettings(): Promise<{
     userId: string;
     apiKey: string;
+    provider: ProviderId;
   } | null> {
     try {
       const db = this.getDb();
@@ -158,6 +160,7 @@ export class SearchController extends BaseController {
       return {
         userId: settingsRecord.userId || "",
         apiKey: realApiKey,
+        provider: (settingsRecord.provider as ProviderId | undefined) ?? "rule34",
       };
     } catch (error) {
       log.error("[SearchController] Error fetching settings:", error);
@@ -245,15 +248,19 @@ export class SearchController extends BaseController {
     const safeInputTags = tags.map((t) => sanitizeProviderTagToken(t));
 
     try {
-      // Get provider (default to rule34)
-      const provider = getProvider("rule34");
-
       // Get decrypted settings for authentication
       const settings = await this.getDecryptedSettings();
+      const providerId = settings?.provider ?? "rule34";
+      const provider = getProvider(providerId);
       const providerSettings = {
         userId: settings?.userId || "",
         apiKey: settings?.apiKey || "",
       };
+      log.debug("[SearchController] searchBooru provider settings loaded", {
+        providerId,
+        hasApiKey: providerSettings.apiKey.trim().length > 0,
+        hasUserId: providerSettings.userId.trim().length > 0,
+      });
 
       // Convert tags array to space-separated string (provider expects string).
       // Normal tags: formatTag() lowercases and replaces spaces with underscores.

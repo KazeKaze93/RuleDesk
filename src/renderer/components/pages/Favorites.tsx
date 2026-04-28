@@ -4,7 +4,6 @@ import {
   useQueryClient,
   useMutation,
   InfiniteData,
-  useQuery,
 } from "@tanstack/react-query";
 import { Heart, Loader2, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
@@ -16,7 +15,6 @@ import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import type { Post } from "../../../main/db/schema";
-import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { Button } from "../ui/button";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
@@ -126,12 +124,6 @@ export const Favorites = () => {
     };
   }, [deactivateBulkMode]);
 
-  // Fetch tracked artists for subscriptions filter
-  const { data: trackedArtists } = useQuery({
-    queryKey: ["artists"],
-    queryFn: () => window.api.getTrackedArtists(),
-  });
-
   // Use atomic selectors to prevent unnecessary re-renders
   // Each selector only subscribes to its specific value, not the entire store
   // This is more efficient than useShallow when fields are used in different parts of the tree
@@ -158,7 +150,7 @@ export const Favorites = () => {
       initialPageParam: 1,
     });
   
-  const { aiFilter, mediaType, source, orientation, dateFrom, dateTo } = filters;
+  const { aiFilter, mediaType, orientation, dateFrom, dateTo } = filters;
   const rating = useSearchStore((state) => state.filters.rating);
 
   const allPosts = useMemo(() => {
@@ -202,27 +194,6 @@ export const Favorites = () => {
       });
     }
     
-    // Filter by source - Favorites tab shows favorites by default
-    if (source === "favorites") {
-      // Already showing favorites, no filter needed
-    } else if (source === "subscriptions") {
-      // Show only favorites from tracked artists
-      if (trackedArtists && trackedArtists.length > 0) {
-        const trackedArtistIds = new Set(trackedArtists.map((artist) => artist.id));
-        posts = posts.filter((post) => {
-          // Exclude external posts (EXTERNAL_ARTIST_ID = 0)
-          if (post.artistId === EXTERNAL_ARTIST_ID) return false;
-          // Check if post belongs to tracked artist
-          return trackedArtistIds.has(post.artistId);
-        });
-      } else {
-        // No tracked artists, show nothing
-        posts = [];
-      }
-    } else if (source === "all") {
-      // Show all favorites (no filter)
-    }
-    
     // Sort by publishedAt (date of post creation)
     return [...posts].sort((a, b) => {
       const dateA = a.publishedAt instanceof Date 
@@ -238,7 +209,7 @@ export const Favorites = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, rating, mediaType, source, orientation, dateFrom, dateTo, trackedArtists]);
+  }, [data, sortOrder, aiFilter, rating, mediaType, orientation, dateFrom, dateTo]);
   const selectedPosts = useMemo(
     () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
     [allPosts, selectedIds]

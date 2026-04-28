@@ -82,6 +82,7 @@ export interface IpcBridge {
   saveTheme: (theme: ThemePreference) => Promise<boolean>;
   saveDownloadFolder: (path: string | null) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
+  resetOnboarding: () => Promise<boolean>;
   logout: () => Promise<void>;
 
   // Artists
@@ -269,6 +270,8 @@ const ipcBridge: IpcBridge = {
   saveTheme: (theme) =>
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_THEME, theme),
   confirmLegal: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.CONFIRM_LEGAL),
+  resetOnboarding: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.RESET_ONBOARDING),
   logout: () => ipcRenderer.invoke(IPC_CHANNELS.APP.LOGOUT),
 
   getTrackedArtists: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_ARTISTS),

@@ -110,7 +110,7 @@ export function TagChip({
       }}
     >
       <div
-        className="inline-flex max-w-full items-center gap-0.5"
+        className="inline-flex max-w-full items-center gap-0.5 whitespace-nowrap"
         onContextMenu={(event) => {
           event.preventDefault();
           event.stopPropagation();

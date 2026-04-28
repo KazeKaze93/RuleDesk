@@ -43,7 +43,9 @@ export interface PostQueryFilters {
 }
 
 export interface IpcSettings {
+  hasSettingsRecord: boolean;
   userId: string;
+  provider: ProviderId;
   hasApiKey: boolean;
   proxyUrl: string | null;
   isSafeMode: boolean;
@@ -74,10 +76,12 @@ export interface IpcApi extends IpcBridge {
     autoSyncOnStartup?: boolean;
     syncIntervalMinutes?: number;
     backupRetention?: number;
+    provider?: ProviderId;
   }) => Promise<boolean>;
   saveTheme: (theme: "system" | "light" | "dark") => Promise<boolean>;
   saveDownloadFolder: (path: string | null) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
+  resetOnboarding: () => Promise<boolean>;
   logout: () => Promise<void>;
   openExternal: (url: string) => Promise<void>;
 

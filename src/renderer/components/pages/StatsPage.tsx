@@ -10,22 +10,34 @@ import {
   Heart,
   EyeOff,
 } from "lucide-react";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Bar,
+} from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
 
 const PIE_COLORS = {
-  safe: "#22c55e",
-  questionable: "#eab308",
-  explicit: "#ef4444",
+  safe: "hsl(var(--primary))",
+  questionable: "hsl(var(--accent-foreground))",
+  explicit: "hsl(var(--destructive))",
 };
 
 const STATUS_COLORS = {
-  primary: "#3b82f6",
-  secondary: "#94a3b8",
-  accent: "#f59e0b",
-  muted: "#64748b",
+  primary: "hsl(var(--primary))",
+  secondary: "hsl(var(--secondary-foreground))",
+  accent: "hsl(var(--accent-foreground))",
+  muted: "hsl(var(--muted-foreground))",
 };
 
 const formatDbSize = (bytes: number): string =>
@@ -177,6 +189,23 @@ export const StatsPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Posts Timeline (Last 12 Months)</CardTitle>
+        </CardHeader>
+        <CardContent className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={stats.postsTimeline}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Bar dataKey="count" fill={STATUS_COLORS.primary} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 };
