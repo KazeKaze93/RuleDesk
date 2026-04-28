@@ -253,6 +253,20 @@ Manual database backup and restore functionality. Backups are timestamped and st
 
 ---
 
+### VACUUM (SQLite)
+
+A SQLite maintenance command that rewrites and compacts the database file, reclaiming unused space.
+
+**RuleDesk usage:**
+
+- Manual trigger from Settings (`Run VACUUM now`)
+- User-visible status (last run timestamp/result/error)
+- Policy stored in `settings` (`manual`, `weekly`, `monthly`)
+
+**Related:** [User-visible DB Maintenance](./database.md#user-visible-db-maintenance-vacuum), [Settings](../README.md#-settings)
+
+---
+
 ### Integrity Check
 
 A SQLite operation (`PRAGMA integrity_check`) that verifies database file integrity. RuleDesk runs integrity checks before restore operations.

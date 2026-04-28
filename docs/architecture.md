@@ -682,7 +682,8 @@ const posts = await db.query.posts.findMany({
     - **SettingsGeneralTab.tsx** - Downloads + proxy configuration
     - **SettingsSyncTab.tsx** - Startup/interval sync + manual sync trigger
     - **SettingsAppearanceTab.tsx** - Theme selection (`System` / `Light` / `Dark`)
-    - **SettingsBackupTab.tsx** - Backup, restore, integrity check, retention info
+    - **SettingsBackupTab.tsx** - Backup, restore, integrity check, retention, and maintenance section
+    - **DatabaseMaintenanceCard.tsx** - User-visible VACUUM status, schedule, and manual run
     - **SettingsAccountTab.tsx** - API key input, visibility toggle, `hasApiKey` status
 
    - **Inputs:**
@@ -694,7 +695,7 @@ const posts = await db.query.posts.findMany({
 3. **IPC Client** (`window.api`)
    - Typed interface to Main process
    - All communication goes through this bridge
-   - Methods: getSettings, saveSettings, confirmLegal, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, getArtistPostsCount, syncAll, openExternal, searchArtists, searchRemoteTags, searchBooru, resolveTags, resolveCharacterTags, resolveCopyrightTags, resolveTagsByType, markPostAsViewed, togglePostViewed, togglePostFavorite, downloadFile, openFileInFolder, createBackup, restoreBackup, writeToClipboard, verifyCredentials, logout, resetPostCache, repairArtist, checkForUpdates, quitAndInstall, startDownload
+  - Methods: getSettings, saveSettings, confirmLegal, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, getArtistPostsCount, syncAll, openExternal, searchArtists, searchRemoteTags, searchBooru, resolveTags, resolveCharacterTags, resolveCopyrightTags, resolveTagsByType, markPostAsViewed, togglePostViewed, togglePostFavorite, downloadFile, openFileInFolder, createBackup, restoreBackup, getVacuumStatus, runVacuum, getVacuumSchedule, setVacuumSchedule, writeToClipboard, verifyCredentials, logout, resetPostCache, repairArtist, checkForUpdates, quitAndInstall, startDownload
 
 ## Security Architecture
 
@@ -1686,6 +1687,7 @@ Root:
 
 - **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API (Windows Credential Manager, macOS Keychain, Linux libsecret)
 - **Database Backup/Restore:** Manual backup and restore with integrity checks; automatic rotation of timestamped backup files using configurable `backupRetention` (`1..20`)
+- **DB Maintenance (VACUUM):** User-visible status, manual trigger, and persisted schedule (`manual`, `weekly`, `monthly`)
 - **Context Isolation:** Enabled globally with sandbox mode
 - **CSP:** Strict Content Security Policy in production, relaxed for development (HMR support)
 - **IPC Architecture:** Controller-based IPC handlers with `BaseController` for centralized error handling

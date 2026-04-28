@@ -270,6 +270,23 @@ interface IpcBridge {
   // Backup
   createBackup: () => Promise<BackupResponse>;
   restoreBackup: () => Promise<BackupResponse>;
+  getVacuumStatus: () => Promise<{
+    lastVacuumAt: number | null;
+    lastRunStatus: "never" | "success" | "error";
+    lastError: string | null;
+    isRunning: boolean;
+  }>;
+  runVacuum: () => Promise<{
+    success: boolean;
+    startedAt: number;
+    finishedAt?: number;
+    durationMs?: number;
+    error?: string;
+  }>;
+  getVacuumSchedule: () => Promise<"manual" | "weekly" | "monthly">;
+  setVacuumSchedule: (args: {
+    schedule: "manual" | "weekly" | "monthly";
+  }) => Promise<boolean>;
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
@@ -1339,6 +1356,48 @@ Sets automatic backup schedule used by startup auto-backup check.
 
 ---
 
+### `getVacuumStatus()`
+
+Returns the current user-visible VACUUM telemetry from Settings state.
+
+**Returns:**
+`Promise<{ lastVacuumAt: number | null; lastRunStatus: "never" | "success" | "error"; lastError: string | null; isRunning: boolean }>`
+
+**IPC Channel:** `maintenance:get-vacuum-status`
+
+---
+
+### `runVacuum()`
+
+Runs SQLite `VACUUM;` in Main Process (blocking operation) and updates last-run metadata in `settings`.
+
+**Returns:**
+`Promise<{ success: boolean; startedAt: number; finishedAt?: number; durationMs?: number; error?: string }>`
+
+**IPC Channel:** `maintenance:run-vacuum`
+
+---
+
+### `getVacuumSchedule()`
+
+Returns the VACUUM schedule policy.
+
+**Returns:** `Promise<"manual" | "weekly" | "monthly">`
+
+**IPC Channel:** `maintenance:get-vacuum-schedule`
+
+---
+
+### `setVacuumSchedule(args: { schedule: "manual" | "weekly" | "monthly" })`
+
+Sets the VACUUM schedule policy.
+
+**Returns:** `Promise<boolean>`
+
+**IPC Channel:** `maintenance:set-vacuum-schedule`
+
+---
+
 ### `writeToClipboard(text: string)`
 
 Writes text to the system clipboard.
@@ -1909,201 +1968,16 @@ export const IPC_CHANNELS = {
 } as const;
 ```
 
-**Legacy Handler Registration (Deprecated):**
+### Handler/Bridge Source of Truth
 
-The old handler-based approach has been migrated to controllers. This example shows the deprecated pattern for reference only:
+To avoid drift, this document no longer keeps long legacy snippets for handler registration or preload wiring.
 
-```typescript
-// ⚠️ DEPRECATED: This code is for reference only. Current implementation uses controllers.
-export const registerIpcHandlers = (
-  syncService: SyncService,
-  updaterService: UpdaterService,
-  mainWindow: BrowserWindow
-) => {
-  // App handlers
-  ipcMain.handle("app:get-version", handleGetAppVersion);
-  ipcMain.handle("app:get-settings", async () => {
-    // Gets settings and decrypts API key using SecureStorage
-    const db = getDb();
-    const settings = await db.query.settings.findFirst();
-    // ... decryption logic using SecureStorage.decrypt()
-  });
-  ipcMain.handle("app:save-settings", async (_event, { userId, apiKey }) => {
-    // Encrypts API key using SecureStorage before saving
-    const encryptedKey = SecureStorage.encrypt(apiKey);
-    const db = getDb();
-    await db
-      .insert(settings)
-      .values({ userId, encryptedApiKey: encryptedKey })
-      .onConflictDoUpdate({
-        target: settings.id,
-        set: { userId, encryptedApiKey: encryptedKey },
-      });
-  });
-  ipcMain.handle("app:open-external", async (_event, urlString: string) => {
-    // Security validation and shell.openExternal
-  });
+- **IPC handler registration:** `src/main/ipc/index.ts`
+- **Maintenance handlers:** `src/main/ipc/handlers/maintenanceHandlers.ts`
+- **Channel constants:** `src/main/ipc/channels.ts`
+- **Renderer bridge (`window.api`):** `src/main/bridge.ts`
 
-  // Database handlers (direct access in Main Process)
-  ipcMain.handle("db:get-artists", async () => {
-    const db = getDb();
-    return await db.query.artists.findMany({
-      orderBy: [asc(artists.name)],
-    });
-  });
-  ipcMain.handle("db:add-artist", async (_event, payload: unknown) => {
-    // Zod validation
-    const artistData = AddArtistSchema.parse(payload);
-    const db = getDb();
-    const result = await db.insert(artists).values(artistData).returning();
-    return result[0];
-  });
-  ipcMain.handle("db:delete-artist", async (_event, id: unknown) => {
-    const validId = DeleteArtistSchema.parse(id);
-    const db = getDb();
-    await db.delete(artists).where(eq(artists.id, validId));
-  });
-  ipcMain.handle("db:get-posts", async (_event, payload: unknown) => {
-    // Zod validation
-    const { artistId, page, limit } = GetPostsSchema.parse(payload);
-    const offset = (page - 1) * limit;
-    const db = getDb();
-    return await db.query.posts.findMany({
-      where: eq(posts.artistId, artistId),
-      orderBy: [desc(posts.postId)],
-      limit,
-      offset,
-    });
-  });
-  ipcMain.handle("db:mark-post-viewed", async (_event, postId: unknown) => {
-    const validId = MarkViewedSchema.parse(postId);
-    const db = getDb();
-    await db.update(posts).set({ isViewed: true }).where(eq(posts.id, validId));
-  });
-  ipcMain.handle("db:search-tags", async (_event, query: unknown) => {
-    const validQuery = SearchTagsSchema.parse(query);
-    const db = getDb();
-    // Search implementation using Drizzle queries
-  });
-
-  // Backup handlers
-  ipcMain.handle("db:create-backup", async () => {
-    // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
-    const sqlite = getSqliteInstance();
-    const backupPath = path.join(
-      app.getPath("userData"),
-      `metadata-backup-${timestamp}.db`
-    );
-    const stmt = sqlite.prepare("VACUUM INTO ?");
-    stmt.run(backupPath);
-    shell.showItemInFolder(backupPath);
-    return { success: true, path: backupPath };
-  });
-  ipcMain.handle("db:restore-backup", async () => {
-    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
-      filters: [{ name: "SQLite DB", extensions: ["db", "sqlite"] }],
-    });
-    // Restore implementation with integrity checks
-    mainWindow.reload();
-    return { success: true };
-  });
-
-  // Remote search
-  ipcMain.handle("api:search-remote-tags", async (_event, query: unknown) => {
-    // Calls Rule34.xxx autocomplete API
-  });
-
-  // Sync handlers
-  ipcMain.handle("db:sync-all", async () => {
-    syncService.syncAllArtists();
-  });
-  ipcMain.handle("sync:repair-artist", async (_event, artistId: number) => {
-    await syncService.repairArtist(artistId);
-    return { success: true };
-  });
-
-  // Updater handlers
-  ipcMain.handle("app:check-for-updates", () => {
-    updaterService.checkForUpdates();
-  });
-  // ... other updater handlers
-};
-```
-
-### Preload Script (Bridge)
-
-The bridge is exposed in `src/main/bridge.ts`:
-
-```typescript
-const ipcBridge: IpcBridge = {
-  getAppVersion: () => ipcRenderer.invoke("app:get-version"),
-
-  getSettings: () => ipcRenderer.invoke("app:get-settings"),
-  saveSettings: (creds) => ipcRenderer.invoke("app:save-settings", creds),
-
-  getTrackedArtists: () => ipcRenderer.invoke("db:get-artists"),
-  addArtist: (artist) => ipcRenderer.invoke("db:add-artist", artist),
-  deleteArtist: (id) => ipcRenderer.invoke("db:delete-artist", id),
-  searchArtists: (query) => ipcRenderer.invoke("db:search-tags", query),
-
-  getArtistPosts: ({ artistId, page }) =>
-    ipcRenderer.invoke("db:get-posts", { artistId, page }),
-  markPostAsViewed: (postId) =>
-    ipcRenderer.invoke("db:mark-post-viewed", postId),
-
-  openExternal: (url) => ipcRenderer.invoke("app:open-external", url),
-  searchRemoteTags: (query) =>
-    ipcRenderer.invoke("api:search-remote-tags", query),
-
-  syncAll: () => ipcRenderer.invoke("db:sync-all"),
-  repairArtist: (artistId) =>
-    ipcRenderer.invoke("sync:repair-artist", artistId),
-
-  createBackup: () => ipcRenderer.invoke("db:create-backup"),
-  restoreBackup: () => ipcRenderer.invoke("db:restore-backup"),
-
-  // Updater methods
-  checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
-  quitAndInstall: () => ipcRenderer.invoke("app:quit-and-install"),
-  startDownload: () => ipcRenderer.invoke("app:start-download"),
-
-  // Event listeners
-  onUpdateStatus: (callback) => {
-    const subscription = (_: IpcRendererEvent, data: UpdateStatusData) =>
-      callback(data);
-    ipcRenderer.on("updater:status", subscription);
-    return () => ipcRenderer.removeListener("updater:status", subscription);
-  },
-  onUpdateProgress: (callback) => {
-    const subscription = (_: IpcRendererEvent, percent: number) =>
-      callback(percent);
-    ipcRenderer.on("updater:progress", subscription);
-    return () => ipcRenderer.removeListener("updater:progress", subscription);
-  },
-  onSyncStart: (callback) => {
-    const sub = () => callback();
-    ipcRenderer.on("sync:start", sub);
-    return () => ipcRenderer.removeListener("sync:start", sub);
-  },
-  onSyncEnd: (callback) => {
-    const sub = () => callback();
-    ipcRenderer.on("sync:end", sub);
-    return () => ipcRenderer.removeListener("sync:end", sub);
-  },
-  onSyncProgress: (callback) => {
-    const sub = (_: IpcRendererEvent, msg: string) => callback(msg);
-    ipcRenderer.on("sync:progress", sub);
-    return () => ipcRenderer.removeListener("sync:progress", sub);
-  },
-  onSyncError: (callback) => {
-    const subscription = (_: IpcRendererEvent, msg: string) => callback(msg);
-    ipcRenderer.on("sync:error", subscription);
-    return () => ipcRenderer.removeListener("sync:error", subscription);
-  },
-};
-
-contextBridge.exposeInMainWorld("api", ipcBridge);
-```
+Use these files as the canonical implementation reference for exact `ipcMain.handle` and `ipcRenderer.invoke` wiring.
 
 ## API Evolution Notes
 

@@ -431,6 +431,7 @@ Settings are split into tabs:
 - **Check Integrity** - Verify database is not corrupted
 - **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup)
 - **Retention** - Older files are rotated automatically according to `Retention` value (`backupRetention`, range `1..20`)
+- **Database Maintenance (VACUUM)** - See last VACUUM run status/time, run VACUUM manually, and choose maintenance schedule (`Manual`, `Weekly`, `Monthly`)
 
 ### Account
 
@@ -531,6 +532,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 2. Reduce the number of tracked artists
 3. Use filters to reduce the number of visible posts
 4. Run **Check Integrity** in **Settings → Backup**
+5. Run **Run VACUUM now** in **Settings → Backup** (Database Maintenance section)
 
 ### Can't download files
 

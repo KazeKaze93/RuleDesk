@@ -220,6 +220,10 @@ Stores application settings including API credentials and user preferences.
 | `is_adult_confirmed` | INTEGER (BOOLEAN, DEFAULT 0)           | Adult confirmation flag (18+ confirmation)   |
 | `is_adult_verified`  | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Adult verification flag (legal confirmation) |
 | `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | Terms of Service acceptance timestamp        |
+| `vacuum_schedule`    | TEXT (DEFAULT 'manual')                | User-visible VACUUM policy (`manual`, `weekly`, `monthly`) |
+| `last_vacuum_at`     | INTEGER (NULL)                         | Timestamp of last VACUUM run (ms)            |
+| `last_vacuum_status` | TEXT (NULL)                            | Last VACUUM result (`success`/`error`)       |
+| `last_vacuum_error`  | TEXT (NULL)                            | Last VACUUM error text (sanitized)           |
 
 **Schema Definition:**
 
@@ -871,6 +875,16 @@ If the database becomes corrupted and you need to restore manually:
 4. Restart the application (migrations will run automatically)
 
 **Note:** The restore process includes automatic integrity checks using `PRAGMA integrity_check` before replacing the database. If integrity check fails, the restore is rolled back and original database is preserved.
+
+### User-visible DB Maintenance (VACUUM)
+
+The application also exposes VACUUM maintenance controls in Settings:
+
+1. **Manual run:** `window.api.runVacuum()` executes `VACUUM;` in Main Process.
+2. **Status:** `window.api.getVacuumStatus()` returns last run time/result/error and in-memory `isRunning`.
+3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`.
+
+**Important:** `VACUUM` is blocking for SQLite and runs only in Main Process (never in Renderer/worker threads).
 
 ## Performance Considerations
 

@@ -1,6 +1,6 @@
 # 🚀 Roadmap
 
-This document reflects the current roadmap for RuleDesk `v12.x` and is aligned with `README.md` and `package.json` (see `version`).
+This document reflects the current roadmap for RuleDesk `v16.x` and is aligned with `README.md` and `package.json` (see `version`).
 
 ## 📑 Table of Contents
 
@@ -28,7 +28,8 @@ This document reflects the current roadmap for RuleDesk `v12.x` and is aligned w
 - ✅ Database is optimized for scale: WAL mode, FTS5, composite indexes, and migration workflow.
 - ✅ **Sync automation:** auto-sync on startup, periodic background sync (presets in Settings, minimum interval enforced in `SyncScheduler`), and sync scheduler restart when settings are saved.
 - ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`).
-- ✅ **Backup retention:** after each successful backup, older files are pruned — **last 5** timestamped backups kept (not user-configurable in the UI).
+- ✅ **Backup retention:** after each successful backup, older files are pruned based on `backupRetention` from Settings (`1..20`).
+- ✅ **User-visible DB maintenance:** Settings now exposes VACUUM status (last run timestamp/status/error), manual trigger, and schedule (`manual` / `weekly` / `monthly`).
 
 ---
 
@@ -103,7 +104,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ **User-configurable backup retention** is shipped (`settings.backupRetention`, range `1..20`, applied in `MaintenanceController` cleanup).
 - ✅ **Shared request pacing / UA rotation** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
-- ⏳ Optional: richer scheduled maintenance (user-visible schedule / explicit `VACUUM` policy); today lightweight `wal_checkpoint` + `optimize` runs are automatic.
+- ✅ Explicit VACUUM policy is shipped (manual run + persisted schedule + last-run telemetry in Settings).
 
 ## 📋 Milestones
 
