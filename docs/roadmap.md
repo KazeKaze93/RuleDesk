@@ -55,7 +55,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **Progressive stills in grid:** `PostCard` promotes **preview → sample** when the card enters the viewport (image decode + deduped URLs); videos use separate hover/preview behavior.
 - ⏳ Card/overlay consistency on special surfaces (e.g. playlist-only affordances) if any remain.
 
-### C. Playlists & Collections - Implemented, Polish Ongoing
+### C. Playlists & Collections - Implemented, Minor Polish
 
 **Current state:** ✅ implemented (core + transfer + ordering)
 
@@ -63,12 +63,14 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ Smart playlists use hybrid local DB + remote API query resolution with merge/dedup.
 - ✅ Manual playlists support drag-and-drop ordering (`position`-based sorting).
 - ✅ Playlist transfer is available via export/import (`.ruledesk-playlist.json`).
-- ⏳ Additional UX polish for transfer/error states and empty-state guidance.
+- ✅ Transfer/error flows and empty-state guidance are implemented (import/export outcomes and empty list states in UI).
+- ⏳ Minor visual/interaction polish may continue as routine UX refinement.
 
 ### D. Navigation, layout, shell
 
 - ✅ **App shell** — `AppLayout` with **sidebar** (primary navigation) and **global top bar** (`GlobalTopBar`: search, filters, sort, grid/masonry, `SyncStatusBadge`). Routes and layout are **complete** for the shipped feature set.
-- 🟡 **Optional polish (backlog, not “missing v1”):** clearer **labels** and **grouping** in the sidebar (e.g. Discover vs Library vs System), **tooltips** for dense controls, **order** of items if it improves first-run discoverability, density on small windows. This is **UX refinement** on the current structure — we are **not** tracking alignment to an obsolete written wireframe; the product is what ships in the build.
+- ✅ Sidebar information architecture includes grouped sections (**Discover / Library / System**).
+- 🟡 **Optional polish (backlog, not “missing v1”):** additional tooltips for dense controls, item order tweaks for first-run discoverability, and density tuning on small windows. This is **UX refinement** on the current structure — we are **not** tracking alignment to an obsolete written wireframe; the product is what ships in the build.
 - ✅ **Masonry vs grid** — two explicit modes; **closed** as a gap ([Closed by design](#closed-by-design-not-backlog)).
 
 ## 📰 Subscriptions / Updates
@@ -111,7 +113,8 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### M2 - UX Parity (In Progress)
 
-- Filter parity: keep panel aligned to **AI/media/source** scope; **Settings** page redesign (see [Planned product work](#planned-product-work)).
+- ✅ Filter panel is aligned to **AI/media/source** scope.
+- ⏳ Settings page redesign (see [Planned product work](#planned-product-work)) remains product-driven.
 - Gallery/viewer: edge-case polish; core **TagsDrawer** and **PostCard** progressive loading are shipped.
 - Updates feed QoL largely shipped (Creators tab, mark all read); further polish as needed.
 
@@ -125,7 +128,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ **Testing:** Vitest + Playwright, `better-sqlite3` ABI switching for `pretest`/`posttest` — operational.
 - ⏳ **Main process dev experience:** renderer has Vite HMR; **main** still needs a **manual restart** (or a watcher that restarts Electron) when changing IPC, services, or DB code. Improves iteration time for backend-heavy work.
-- ⏳ **Shared validation in Main:** Zod is per-handler; extracting **reusable schemas / helpers** for common IPC patterns reduces drift and duplicate error messages.
+- 🟡 **Shared validation in Main:** many IPC contracts are already in `shared/schemas`; remaining repeated per-handler Zod argument tuples/parsing can still be consolidated to reduce drift and duplicate error messages.
 - ⏳ **Video pipeline:** optional flags or validation for **hardware decode**, `<video>` attributes, and platform-specific quirks; today behavior is “works by default” without a formal tuning pass.
 - ⏳ **Tooling / hygiene:** keep `validate` (typecheck, lint, asset checks) green; optional stricter policy on logging and IPC surface over time.
 
@@ -167,11 +170,11 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
-| **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision. |
+| **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
-| **Navigation & layout** | **Optional** polish: sidebar labels/grouping, tooltips, order, small-window density (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
+| **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | Optional future policy extension (for example cap by total size in MB), while current numeric retention (`keep last N`) is already implemented. |
-| **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): main **restart in dev**, **shared** validation helpers, **video** tuning. |
+| **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): main **restart in dev**, remaining **shared** validation helper consolidation, **video** tuning. |
 | **Product** | **Smart Collections AI** (research). **Statistics** — [additional metrics](#planned-product-work) on the existing page (not a new analytics area). |
 
 **Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.
