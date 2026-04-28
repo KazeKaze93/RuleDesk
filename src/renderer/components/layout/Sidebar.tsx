@@ -18,7 +18,7 @@ import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { useSearchStore } from "../../store/searchStore";
 
 const NAV_ITEM_BASE_CLASS =
-  "flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition-colors [@media(max-height:599px)]:py-2";
+  "flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition-colors [@media(max-height:700px)]:py-2.5 [@media(max-height:599px)]:py-2";
 const SYNC_LAST_COMPLETED_QUERY_KEY = ["sync", "lastCompletedAt"];
 const LAST_SYNC_REFRESH_INTERVAL_MS = 60_000;
 
@@ -191,7 +191,7 @@ export const Sidebar = () => {
 
       <div className="flex flex-col flex-1 min-h-0">
         {/* Navigation */}
-        <nav className="overflow-y-auto flex-1 px-3 py-4" aria-label="Основная навигация">
+        <nav className="overflow-y-auto flex-1 px-3 py-4 [@media(max-height:700px)]:py-3" aria-label="Основная навигация">
           <div className="space-y-4">
             {navGroups.map((group) => (
               <section key={group.label} className="space-y-2">
@@ -225,7 +225,7 @@ export const Sidebar = () => {
         </nav>
 
         {/* Sync Status Footer */}
-        <div className="p-4 space-y-2 border-t bg-muted/20 shrink-0">
+        <div className="p-4 space-y-2 border-t bg-muted/20 shrink-0 [@media(max-height:700px)]:p-3">
           <button
             onClick={handleSync}
             disabled={isSyncing}

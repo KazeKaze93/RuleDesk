@@ -17,6 +17,7 @@ const blacklistTagSchema = z
   .max(128, "Tag is too long")
   .transform((value) => sanitizeProviderTagToken(value).trim().toLowerCase())
   .refine((value) => value.length > 0, "Tag cannot be empty");
+const BlacklistTagArgsSchema = z.tuple([blacklistTagSchema]);
 
 export class BlacklistController extends BaseController {
   public setup(): void {
@@ -28,19 +29,19 @@ export class BlacklistController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.BLACKLIST.ADD,
-      z.tuple([blacklistTagSchema]),
-      this.add.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      BlacklistTagArgsSchema,
+      (event, ...args) => {
+        const [tag] = BlacklistTagArgsSchema.parse(args);
+        return this.add(event, tag);
+      }
     );
     this.handle(
       IPC_CHANNELS.BLACKLIST.REMOVE,
-      z.tuple([blacklistTagSchema]),
-      this.remove.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      BlacklistTagArgsSchema,
+      (event, ...args) => {
+        const [tag] = BlacklistTagArgsSchema.parse(args);
+        return this.remove(event, tag);
+      }
     );
 
     log.info("[BlacklistController] All handlers registered");

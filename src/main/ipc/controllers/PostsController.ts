@@ -69,6 +69,23 @@ type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
 
 // Internal types (not exported - use types from src/main/types/ipc.ts instead)
 type GetPostsParams = GetPostsRequest;
+const GetPostsArgsSchema = z.tuple([GetPostsSchema]);
+const GetDownloadItemsArgsSchema = z.tuple([
+  GetPostsSchema.extend({
+    limit: z.number().int().min(1).max(500).default(500),
+  }),
+]);
+const GetPostsCountArgsSchema = z.tuple([GetPostsCountSchema]);
+const GetPostsCountWithFiltersArgsSchema = z.tuple([
+  GetPostsSchema.pick({ artistId: true, filters: true }),
+]);
+const PostActionArgsSchema = z.tuple([
+  z.number().int(),
+  PostDataSchema.optional(),
+]);
+const MarkAllViewedArgsSchema = z.tuple([]);
+const ResetPostCacheArgsSchema = z.tuple([IdSchema]);
+const ShadowInsertPostArgsSchema = z.tuple([ShadowInsertRequestSchema]);
 
 /**
  * Posts Controller
@@ -168,92 +185,76 @@ export class PostsController extends BaseController {
   public setup(): void {
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS,
-      z.tuple([GetPostsSchema]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.getPosts.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      GetPostsArgsSchema,
+      (event, ...args) => {
+        const [params] = GetPostsArgsSchema.parse(args);
+        return this.getPosts(event, params);
+      }
     );
     this.handle(
       IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS,
-      z.tuple([
-        GetPostsSchema.extend({
-          limit: z.number().int().min(1).max(500).default(500),
-        }),
-      ]),
-      this.getDownloadItems.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      GetDownloadItemsArgsSchema,
+      (event, ...args) => {
+        const [params] = GetDownloadItemsArgsSchema.parse(args);
+        return this.getDownloadItems(event, params);
+      }
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
-      z.tuple([GetPostsCountSchema]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.getPostsCount.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      GetPostsCountArgsSchema,
+      (event, ...args) => {
+        const [params] = GetPostsCountArgsSchema.parse(args);
+        return this.getPostsCount(event, params);
+      }
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS,
-      z.tuple([GetPostsSchema.pick({ artistId: true, filters: true })]),
-      this.getPostsCountWithFilters.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>,
+      GetPostsCountWithFiltersArgsSchema,
+      (event, ...args) => {
+        const [params] = GetPostsCountWithFiltersArgsSchema.parse(args);
+        return this.getPostsCountWithFilters(event, params);
+      },
       { isIdempotent: true }
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
-      z.tuple([
-        z.number().int(), // Allow negative IDs for external posts from Browse
-        PostDataSchema.optional(),
-      ]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.markViewed.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      PostActionArgsSchema, // Allow negative IDs for external posts from Browse
+      (event, ...args) => {
+        const [postId, postData] = PostActionArgsSchema.parse(args);
+        return this.markViewed(event, postId, postData);
+      }
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_ALL_VIEWED,
-      z.tuple([]),
-      this.markAllViewed.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      MarkAllViewedArgsSchema,
+      (event, ...args) => {
+        MarkAllViewedArgsSchema.parse(args);
+        return this.markAllViewed(event);
+      }
     );
     this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
-      z.tuple([IdSchema]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.resetPostCache.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      ResetPostCacheArgsSchema,
+      (event, ...args) => {
+        const [postId] = ResetPostCacheArgsSchema.parse(args);
+        return this.resetPostCache(event, postId);
+      }
     );
     this.handle(
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
-      z.tuple([
-        z.number().int(), // Allow negative IDs for external posts from Browse
-        PostDataSchema.optional(),
-      ]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.toggleFavorite.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      PostActionArgsSchema, // Allow negative IDs for external posts from Browse
+      (event, ...args) => {
+        const [postId, postData] = PostActionArgsSchema.parse(args);
+        return this.toggleFavorite(event, postId, postData);
+      }
     );
     this.handle(
       IPC_CHANNELS.DB.SHADOW_INSERT_POST,
-      z.tuple([ShadowInsertRequestSchema]),
-      // Type assertion is safe: BaseController validates args with Zod schema before calling handler
-      this.shadowInsertPost.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      ShadowInsertPostArgsSchema,
+      (event, ...args) => {
+        const [request] = ShadowInsertPostArgsSchema.parse(args);
+        return this.shadowInsertPost(event, request);
+      }
     );
 
     // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)

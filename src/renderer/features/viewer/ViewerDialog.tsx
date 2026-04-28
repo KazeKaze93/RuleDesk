@@ -1900,10 +1900,56 @@ export const ViewerDialog = () => {
     [isOpen, next, prev, close, isTagsDrawerOpen, toggleTagsDrawer]
   );
 
+  const handleSideMouseExit = useCallback(() => {
+    if (!isOpen) {
+      return;
+    }
+    if (isTagsDrawerOpen) {
+      toggleTagsDrawer();
+      return;
+    }
+    close();
+  }, [isOpen, isTagsDrawerOpen, toggleTagsDrawer, close]);
+
   useEffect(() => {
     window.addEventListener("keydown", handleNavigationKeys);
     return () => window.removeEventListener("keydown", handleNavigationKeys);
   }, [handleNavigationKeys]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const isSideButton = (button: number): boolean => button === 3 || button === 4;
+
+    const blockSideButtons = (event: MouseEvent) => {
+      if (!isSideButton(event.button)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    const handleSideButtons = (event: MouseEvent) => {
+      if (!isSideButton(event.button)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      handleSideMouseExit();
+    };
+
+    window.addEventListener("mousedown", blockSideButtons, { capture: true });
+    window.addEventListener("mouseup", handleSideButtons, { capture: true });
+    window.addEventListener("auxclick", handleSideButtons, { capture: true });
+
+    return () => {
+      window.removeEventListener("mousedown", blockSideButtons, true);
+      window.removeEventListener("mouseup", handleSideButtons, true);
+      window.removeEventListener("auxclick", handleSideButtons, true);
+    };
+  }, [isOpen, handleSideMouseExit]);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;

@@ -10,6 +10,7 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import type { ProviderId } from "../../providers";
+const VerifyCredsArgsSchema = z.tuple([z.enum(["rule34", "gelbooru"]).optional()]);
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -36,11 +37,11 @@ export class AuthController extends BaseController {
   public setup(): void {
     this.handle(
       IPC_CHANNELS.APP.VERIFY_CREDS,
-      z.tuple([z.enum(["rule34", "gelbooru"]).optional()]),
-      this.verifyCredentials.bind(this) as (
-        event: IpcMainInvokeEvent,
-        ...args: unknown[]
-      ) => Promise<unknown>
+      VerifyCredsArgsSchema,
+      (event, ...args) => {
+        const [providerId] = VerifyCredsArgsSchema.parse(args);
+        return this.verifyCredentials(event, providerId);
+      }
     );
     this.handle(
       IPC_CHANNELS.APP.LOGOUT,

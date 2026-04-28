@@ -42,4 +42,43 @@ describe("parseTagFilterQuery", () => {
       },
     ]);
   });
+
+  it("parses OR groups with leading/trailing spaces", () => {
+    const parsed = parseTagFilterQuery("  cat|dog*|night~  ");
+    expect(parsed).toEqual([
+      {
+        exclude: false,
+        terms: [
+          { value: "cat", mode: "exact" },
+          { value: "dog*", mode: "wildcard" },
+          { value: "night", mode: "fuzzy" },
+        ],
+      },
+    ]);
+  });
+
+  it("combines include and exclude groups in one query", () => {
+    const parsed = parseTagFilterQuery("cat -dog -(wolf|fox) hero*");
+    expect(parsed).toEqual([
+      {
+        exclude: false,
+        terms: [{ value: "cat", mode: "exact" }],
+      },
+      {
+        exclude: true,
+        terms: [{ value: "dog", mode: "exact" }],
+      },
+      {
+        exclude: true,
+        terms: [
+          { value: "wolf", mode: "exact" },
+          { value: "fox", mode: "exact" },
+        ],
+      },
+      {
+        exclude: false,
+        terms: [{ value: "hero*", mode: "wildcard" }],
+      },
+    ]);
+  });
 });
