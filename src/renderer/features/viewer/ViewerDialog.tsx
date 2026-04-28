@@ -1248,6 +1248,7 @@ const ViewerContent = ({
 }) => {
   const ctrl = useViewerController({ post, queue });
   const isDeveloperMode = true;
+  const isPlaylistSurface = queue?.origin?.kind === "playlist";
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   const playlistDialogTriggerRef = useRef<HTMLButtonElement | null>(null);
   // Local state for randomization in viewer (not synced with global store)
@@ -1392,20 +1393,22 @@ const ViewerContent = ({
             <Shuffle className={cn("w-5 h-5", isRandom && "fill-current")} />
           </Button>
 
-          <Button
-            ref={playlistDialogTriggerRef}
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowPlaylistDialog(true);
-            }}
-            className="text-white rounded-full hover:bg-white/10"
-            aria-label="Add to Playlist"
-            title="Add to Playlist"
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
+          {!isPlaylistSurface && (
+            <Button
+              ref={playlistDialogTriggerRef}
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPlaylistDialog(true);
+              }}
+              className="text-white rounded-full hover:bg-white/10"
+              aria-label="Add to Playlist"
+              title="Add to Playlist"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          )}
 
           <Button
             variant="ghost"
@@ -1951,7 +1954,7 @@ export const ViewerDialog = () => {
         <div className="flex relative z-10 flex-col justify-center items-center w-full h-full">
           {post ? (
             <ViewerContent
-              key={post.id}
+              key={post.id > 0 ? post.id : post.postId}
               post={post}
               queue={queue}
               close={close}
@@ -1969,7 +1972,7 @@ export const ViewerDialog = () => {
               infiniteData={infiniteData}
               onPostFound={(foundPost) => (
                 <ViewerContent
-                  key={foundPost.id}
+                  key={foundPost.id > 0 ? foundPost.id : foundPost.postId}
                   post={foundPost}
                   queue={queue}
                   close={close}
