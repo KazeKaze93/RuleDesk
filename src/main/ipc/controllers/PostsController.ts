@@ -43,6 +43,11 @@ import { settings, SETTINGS_ID } from "../../db/schema";
 import { ShadowInsertRequestSchema } from "../../../shared/schemas/shadow-insert";
 import { IdSchema } from "../../../shared/schemas/ipc";
 import { getAllBlacklistedTags } from "../../db/queries/blacklist";
+import { escapeLikePattern } from "../../db/utils";
+import {
+  parseTagFilterQuery,
+  type ParsedSearchTerm,
+} from "./posts-tag-query";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -311,93 +316,6 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Sanitize FTS5 search query to prevent SQL injection and syntax errors
-   *
-   * SECURITY: Strict whitelist approach - only allow alphanumeric characters,
-   * spaces, hyphens, underscores, and * at end of words for prefix search.
-   * All FTS5 operators (:, NEAR, AND, OR, NOT, etc.) are completely blocked.
-   *
-   * @param query - FTS5 query string (user input from Renderer)
-   * @returns Sanitized query string safe for FTS5 MATCH
-   * @throws {Error} If query contains invalid characters or becomes empty after sanitization
-   */
-  private sanitizeFts5Query(query: string): string {
-    // SECURITY: Strict whitelist validation - reject any input not matching pattern
-    // Only allow: alphanumeric, spaces, hyphens, underscores, and * at end of words
-    // Pattern: ^[a-zA-Z0-9_* ]+$ with additional validation for * placement
-    // This prevents FTS5 injection via Unicode tricks or operator sequences
-
-    // Trim and validate non-empty
-    const trimmed = query.trim();
-    if (trimmed.length === 0) {
-      throw new Error(
-        "FTS5 query is empty. Please provide valid search terms."
-      );
-    }
-
-    // CRITICAL: Strict whitelist regex - reject anything not matching
-    // Allow: a-z, A-Z, 0-9, _, -, space, and * (but validate * placement)
-    const strictWhitelistRegex = /^[a-zA-Z0-9_* -]+$/;
-    if (!strictWhitelistRegex.test(trimmed)) {
-      throw new Error(
-        `Invalid FTS5 query: "${query}". Only alphanumeric characters, spaces, hyphens, underscores, and trailing asterisks are allowed.`
-      );
-    }
-
-    // Split by spaces to handle multiple tags
-    const words = trimmed.split(/\s+/).filter(Boolean);
-
-    if (words.length === 0) {
-      throw new Error(
-        "FTS5 query is empty. Please provide valid search terms."
-      );
-    }
-
-    // Validate and sanitize each word
-    // CRITICAL: * can only appear at the end of a word (prefix search)
-    // Reject * in middle or beginning, or multiple * characters
-    const sanitizedWords = words.map((word) => {
-      // Check if * appears anywhere except at the end
-      const starIndex = word.indexOf("*");
-      if (starIndex !== -1 && starIndex !== word.length - 1) {
-        throw new Error(
-          `Invalid search term: "${word}". Asterisk (*) can only appear at the end of a word for prefix search.`
-        );
-      }
-
-      // Check for multiple asterisks
-      const starCount = (word.match(/\*/g) || []).length;
-      if (starCount > 1) {
-        throw new Error(
-          `Invalid search term: "${word}". Only one asterisk (*) allowed at the end of a word.`
-        );
-      }
-
-      // Remove * for base validation, then add back if it was trailing
-      const hasTrailingStar = word.endsWith("*");
-      const baseWord = hasTrailingStar ? word.slice(0, -1) : word;
-
-      if (baseWord.trim().length === 0) {
-        throw new Error(
-          `Invalid search term: "${word}". Search term cannot be empty or only asterisk.`
-        );
-      }
-
-      return hasTrailingStar ? `${baseWord.trim()}*` : baseWord.trim();
-    });
-
-    // Join words with spaces and wrap in quotes for FTS5 literal phrase search
-    const sanitized = sanitizedWords.join(" ");
-
-    // Escape double quotes by doubling them (FTS5 escaping rule)
-    const escaped = sanitized.replace(/"/g, '""');
-
-    // Wrap in double quotes to make FTS5 treat it as a literal phrase
-    // This prevents FTS5 from interpreting any remaining characters as operators
-    return `"${escaped}"`;
-  }
-
-  /**
    * Build FTS5 OR query from array of tags
    * SECURITY: Validates and sanitizes each tag before constructing query
    * This is safer than manual string concatenation with join(" OR ")
@@ -447,37 +365,58 @@ export class PostsController extends BaseController {
    * @returns Drizzle SQL condition for tag filtering using FTS5 or LIKE
    */
   private createTagFilterCondition(tagFilter: string): SQL {
-    const ftsTableExists = this.checkFtsTableExists();
-
-    if (ftsTableExists) {
-      // Use FTS5 for fast full-text search
-      // Sanitize FTS5 query to prevent syntax errors from special characters
-      // Wrap in quotes and escape internal quotes so FTS5 treats input as literal
-      const sanitized = this.sanitizeFts5Query(tagFilter);
-
-      // Use EXISTS with FTS5 JOIN pattern for better performance than IN (SELECT ...)
-      // This allows SQLite optimizer to use FTS5 index efficiently
-      // CRITICAL: Never use sql.raw() with user input - this prevents SQL injection
-      // Drizzle's sql template automatically parameterizes the value
-      return sql`EXISTS (
-        SELECT 1 FROM posts_fts 
-        WHERE posts_fts.rowid = ${posts.id} 
-          AND posts_fts MATCH ${sanitized}
-      )`;
-    } else {
-      // CRITICAL: Do NOT use LIKE %...% fallback - it causes Main Process freeze on large databases
-      // LIKE %...% with leading wildcard disables indexes and causes Full Table Scan
-      // On 100k+ records, this will freeze the entire Electron app
-      // If FTS5 table doesn't exist, throw error instead of killing the app
-      log.error(
-        `[PostsController] FTS5 table does not exist for tag filtering. ` +
-        `LIKE %...% fallback would freeze Main Process on large databases. ` +
-        `Please ensure FTS5 migration (0006_add_fts5_search.sql) completed successfully.`
-      );
-      // Return condition that matches nothing (empty result) instead of freezing
-      // This is safer than LIKE %...% which would freeze the app
-      return sql`1 = 0`;
+    const parsedTokens = parseTagFilterQuery(tagFilter);
+    if (parsedTokens.length === 0) {
+      return sql`1 = 1`;
     }
+
+    const tokenConditions: SQL[] = [];
+    for (const token of parsedTokens) {
+      const termConditions = token.terms
+        .map((term) => this.createSearchTermCondition(term))
+        .filter((condition): condition is SQL => Boolean(condition));
+
+      if (termConditions.length === 0) {
+        continue;
+      }
+
+      const tokenCondition =
+        termConditions.length === 1
+          ? termConditions[0]
+          : (or(...termConditions) as SQL);
+
+      tokenConditions.push(token.exclude ? not(tokenCondition) : tokenCondition);
+    }
+
+    if (tokenConditions.length === 0) {
+      return sql`1 = 1`;
+    }
+
+    return tokenConditions.length === 1
+      ? tokenConditions[0]
+      : (and(...tokenConditions) as SQL);
+  }
+
+  private createSearchTermCondition(term: ParsedSearchTerm): SQL | null {
+    const normalizedValue = term.value.trim();
+    if (normalizedValue.length === 0) {
+      return null;
+    }
+
+    if (term.mode === "exact") {
+      return sql`instr(' ' || lower(${posts.tags}) || ' ', ' ' || ${normalizedValue} || ' ') > 0`;
+    }
+
+    if (term.mode === "wildcard") {
+      const likePattern = `%${escapeLikePattern(normalizedValue).replace(
+        /\*/g,
+        "%"
+      )}%`;
+      return sql`lower(${posts.tags}) LIKE ${likePattern} ESCAPE '\\'`;
+    }
+
+    const fuzzyPattern = `%${escapeLikePattern(normalizedValue)}%`;
+    return sql`lower(${posts.tags}) LIKE ${fuzzyPattern} ESCAPE '\\'`;
   }
 
   /**

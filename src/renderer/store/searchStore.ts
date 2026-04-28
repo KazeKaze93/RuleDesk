@@ -94,6 +94,43 @@ const truncateToken = (token: string): string => {
   return token.substring(0, MAX_TOKEN_LENGTH);
 };
 
+export function parseSearchQuery(query: string): {
+  includeTags: string[];
+  excludeTags: string[];
+} {
+  const includeTags: string[] = [];
+  const excludeTags: string[] = [];
+  const rawTokens = query
+    .split(/\s+/)
+    .map((token) => normalizeInputTag(token))
+    .filter((token) => token.length > 0);
+
+  for (const rawToken of rawTokens) {
+    if (rawToken === "-") {
+      continue;
+    }
+    if (rawToken.startsWith("-")) {
+      const normalizedExclude = truncateToken(
+        normalizeInputTag(rawToken.slice(1))
+      );
+      if (
+        normalizedExclude.length > 0 &&
+        !excludeTags.includes(normalizedExclude)
+      ) {
+        excludeTags.push(normalizedExclude);
+      }
+      continue;
+    }
+
+    const normalizedInclude = truncateToken(normalizeInputTag(rawToken));
+    if (normalizedInclude.length > 0 && !includeTags.includes(normalizedInclude)) {
+      includeTags.push(normalizedInclude);
+    }
+  }
+
+  return { includeTags, excludeTags };
+}
+
 export const useSearchStore = create<SearchState>((set, get) => ({
   includeTags: [],
   excludeTags: [],
@@ -104,7 +141,26 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   isRandom: false,
   addIncludeTag: (tag) =>
     set((state) => {
-      const t = truncateToken(normalizeInputTag(tag));
+      const normalized = normalizeInputTag(tag);
+      if (normalized.startsWith("-") && normalized.length > 1) {
+        const excludeTag = truncateToken(normalizeInputTag(normalized.slice(1)));
+        if (excludeTag.length === 0) {
+          return state;
+        }
+        const nextInclude = state.includeTags.filter((x) => x !== excludeTag);
+        if (state.excludeTags.includes(excludeTag)) {
+          if (nextInclude.length === state.includeTags.length) {
+            return state;
+          }
+          return { includeTags: nextInclude };
+        }
+        return {
+          excludeTags: [...state.excludeTags, excludeTag],
+          includeTags: nextInclude,
+        };
+      }
+
+      const t = truncateToken(normalizeInputTag(normalized));
       if (t.length === 0) {
         return state;
       }
@@ -122,7 +178,11 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     }),
   addExcludeTag: (tag) =>
     set((state) => {
-      const t = truncateToken(normalizeInputTag(tag));
+      const normalized = normalizeInputTag(tag);
+      const normalizedWithoutPrefix = normalized.startsWith("-")
+        ? normalizeInputTag(normalized.slice(1))
+        : normalized;
+      const t = truncateToken(normalizeInputTag(normalizedWithoutPrefix));
       if (t.length === 0) {
         return state;
       }
