@@ -697,7 +697,8 @@ const ViewerMedia = ({
               controls
               muted
               playsInline
-              preload="metadata"
+              poster={post.previewUrl}
+              preload="auto"
               onPlay={() => setIsVideoPlaying(true)}
               onPause={() => setIsVideoPlaying(false)}
               onError={() => {
