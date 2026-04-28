@@ -414,46 +414,48 @@ export const PostCard: React.FC<PostCardProps> = ({
           }
         }}
       >
-        <QuickAddToPlaylistMenu
-          post={{ id: post.id, postId: post.postId }}
-          open={isPlaylistMenuOpen}
-          onOpenChange={(open) => {
-            setIsPlaylistMenuOpen(open);
-            if (!open) {
-              setContextMenuPosition(null);
-            }
-          }}
-          trigger={
-            <span
-              ref={contextMenuAnchorRef}
-              className={cn(
-                "inline-flex items-center justify-center rounded-full bg-black/50 p-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer",
-                contextMenuPosition && "fixed w-0 h-0 overflow-hidden p-0 opacity-0 pointer-events-none"
-              )}
-              role="button"
-              tabIndex={0}
-              aria-label="Add to playlist"
-              title="Add to playlist"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
+        {context !== "playlist" && (
+          <QuickAddToPlaylistMenu
+            post={{ id: post.id, postId: post.postId }}
+            open={isPlaylistMenuOpen}
+            onOpenChange={(open) => {
+              setIsPlaylistMenuOpen(open);
+              if (!open) {
                 setContextMenuPosition(null);
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+              }
+            }}
+            trigger={
+              <span
+                ref={contextMenuAnchorRef}
+                className={cn(
+                  "inline-flex items-center justify-center rounded-full bg-black/50 p-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer",
+                  contextMenuPosition && "fixed w-0 h-0 overflow-hidden p-0 opacity-0 pointer-events-none"
+                )}
+                role="button"
+                tabIndex={0}
+                aria-label="Add to playlist"
+                title="Add to playlist"
+                onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                }
-              }}
-            >
-              <List className="w-3 h-3 text-white" />
-            </span>
-          }
-        />
+                  setContextMenuPosition(null);
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                }}
+              >
+                <List className="w-3 h-3 text-white" />
+              </span>
+            }
+          />
+        )}
         {onRemoveFromPlaylist && (
           <span
             className="inline-flex items-center justify-center rounded-full bg-red-500/90 p-1.5 backdrop-blur-sm hover:bg-red-600 transition-colors cursor-pointer"

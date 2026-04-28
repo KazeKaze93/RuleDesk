@@ -110,6 +110,28 @@ const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
   return null;
 };
 
+const shouldIncludePostInPlaylistQueue = (
+  post: Post,
+  filters: {
+    aiFilter: "all" | "hide" | "only";
+    orientation: "all" | "horizontal" | "vertical";
+    dateFrom: Date | null;
+    dateTo: Date | null;
+  }
+): boolean => {
+  if (filters.aiFilter === "hide" && hasAiGeneratedTag(post.tags)) return false;
+  if (filters.aiFilter === "only" && !hasAiGeneratedTag(post.tags)) return false;
+  if (!matchesOrientation(post, filters.orientation)) return false;
+  if (filters.dateFrom || filters.dateTo) {
+    const date = getPublishedDate(post.publishedAt);
+    if (date) {
+      if (filters.dateFrom && date < filters.dateFrom) return false;
+      if (filters.dateTo && date > filters.dateTo) return false;
+    }
+  }
+  return true;
+};
+
 // Virtualization components (reused from ArtistGallery pattern)
 const GridContainer = forwardRef<
   HTMLDivElement,
@@ -119,7 +141,7 @@ const GridContainer = forwardRef<
     ref={ref}
     className={cn(
       viewType === "grid"
-        ? "grid grid-cols-2 gap-4 p-4 pb-44 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        ? "grid gap-4 p-4 pb-44 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(188px,1fr))]"
         : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
       className
     )}
@@ -187,6 +209,7 @@ function SortablePostCard({ post, onClick, onRemove, preserveAspect }: SortableP
         post={post}
         onClick={onClick}
         preserveAspect={preserveAspect}
+        context="playlist"
         onRemoveFromPlaylist={onRemove}
       />
     </div>
@@ -196,6 +219,7 @@ function SortablePostCard({ post, onClick, onRemove, preserveAspect }: SortableP
 const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) => {
   // Use atomic selector instead of useShallow for single value
   const openViewer = useViewerStore((state) => state.open);
+  const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
   const isBulkMode = useBulkSelect((state) => state.isBulkMode);
   const activateBulkMode = useBulkSelect((state) => state.activateBulkMode);
   const deactivateBulkMode = useBulkSelect((state) => state.deactivate);
@@ -324,7 +348,23 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
 
   const handleLoadMore = () => {
     if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
+      void fetchNextPage().then((result) => {
+        const newPage = result.data?.pages[result.data.pages.length - 1];
+        if (!newPage || newPage.length === 0) return;
+        const filteredIds = newPage
+          .filter((post) =>
+            shouldIncludePostInPlaylistQueue(post, {
+              aiFilter: filters.aiFilter,
+              orientation: filters.orientation,
+              dateFrom: filters.dateFrom,
+              dateTo: filters.dateTo,
+            })
+          )
+          .map((post) => (post.id === 0 && post.postId ? post.postId : post.id));
+        if (filteredIds.length > 0) {
+          appendQueueIds(filteredIds);
+        }
+      });
     }
   };
 
@@ -528,6 +568,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
                     post={post}
                     onClick={() => handlePostClick(index)}
                     preserveAspect={false}
+                    context="playlist"
                     onRemoveFromPlaylist={
                       !playlist.isSmart ? () => handleRemovePost(post.id) : undefined
                     }
@@ -590,6 +631,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
                   key={getPostCardKey(post)}
                   post={post}
                   onClick={() => handlePostClick(index)}
+                  context="playlist"
                   onRemoveFromPlaylist={
                     !playlist.isSmart ? () => handleRemovePost(post.id) : undefined
                   }

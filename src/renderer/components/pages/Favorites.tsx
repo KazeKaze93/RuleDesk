@@ -48,6 +48,45 @@ const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
   return null;
 };
 
+const shouldIncludePostInFavoritesQueue = (
+  post: Post,
+  filters: {
+    aiFilter: "all" | "hide" | "only";
+    rating: "all" | "s" | "q" | "e";
+    mediaType: "all" | "images" | "videos";
+    orientation: "all" | "horizontal" | "vertical";
+    dateFrom: Date | null;
+    dateTo: Date | null;
+  }
+): boolean => {
+  if (filters.aiFilter === "hide" && hasAiGeneratedTag(post.tags)) return false;
+  if (filters.aiFilter === "only" && !hasAiGeneratedTag(post.tags)) return false;
+
+  if (filters.rating !== "all") {
+    const postRating =
+      typeof post.rating === "string" ? post.rating.trim().toLowerCase().charAt(0) : "";
+    if (postRating !== filters.rating) return false;
+  }
+
+  if (filters.mediaType !== "all") {
+    const isVideo = isVideoPost(post.fileUrl);
+    if (filters.mediaType === "videos" && !isVideo) return false;
+    if (filters.mediaType === "images" && isVideo) return false;
+  }
+
+  if (!matchesOrientation(post, filters.orientation)) return false;
+
+  if (filters.dateFrom || filters.dateTo) {
+    const date = getPublishedDate(post.publishedAt);
+    if (date) {
+      if (filters.dateFrom && date < filters.dateFrom) return false;
+      if (filters.dateTo && date > filters.dateTo) return false;
+    }
+  }
+
+  return true;
+};
+
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
@@ -278,7 +317,18 @@ export const Favorites = () => {
         const newPage = result.data.pages[result.data.pages.length - 1];
 
         if (newPage && newPage.length > 0) {
-          const newIds = newPage.map((p) => p.id);
+          const newIds = newPage
+            .filter((post) =>
+              shouldIncludePostInFavoritesQueue(post, {
+                aiFilter,
+                rating,
+                mediaType,
+                orientation,
+                dateFrom,
+                dateTo,
+              })
+            )
+            .map((p) => p.id);
           log.info(
             `[Favorites] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
           );
