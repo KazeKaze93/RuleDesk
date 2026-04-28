@@ -35,6 +35,12 @@ import { getPostCardKey } from "../../lib/postCardKey";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "../../components/ui/dialog";
 import {
   AlertDialog,
@@ -535,21 +541,28 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            type="button"
-            variant={isBulkMode ? "default" : "outline"}
-            size="icon"
-            aria-label="Toggle bulk selection mode"
-            onClick={() => {
-              if (isBulkMode) {
-                deactivateBulkMode();
-                return;
-              }
-              activateBulkMode();
-            }}
-          >
-            <CheckSquare className="h-4 w-4" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant={isBulkMode ? "default" : "outline"}
+                  size="icon"
+                  aria-label="Toggle bulk selection mode"
+                  onClick={() => {
+                    if (isBulkMode) {
+                      deactivateBulkMode();
+                      return;
+                    }
+                    activateBulkMode();
+                  }}
+                >
+                  <CheckSquare className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Bulk selection</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 

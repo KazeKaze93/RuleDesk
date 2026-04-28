@@ -3,8 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink } from "react-router-dom";
 import {
   Search,
-  Heart,
   Users,
+  Heart,
   Settings,
   RefreshCw,
   LogOut,
@@ -18,7 +18,7 @@ import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { useSearchStore } from "../../store/searchStore";
 
 const NAV_ITEM_BASE_CLASS =
-  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors [@media(max-height:599px)]:py-1.5";
+  "flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition-colors [@media(max-height:599px)]:py-2";
 const SYNC_LAST_COMPLETED_QUERY_KEY = ["sync", "lastCompletedAt"];
 const LAST_SYNC_REFRESH_INTERVAL_MS = 60_000;
 
@@ -33,8 +33,8 @@ const navGroups = [
   {
     label: "Library",
     items: [
-      { to: "/favorites", icon: Heart, label: "Favorites" },
       { to: "/tracked", icon: Users, label: "Artists" },
+      { to: "/favorites", icon: Heart, label: "Favorites" },
       { to: "/playlists", icon: List, label: "Playlists" },
     ],
   },
@@ -66,7 +66,6 @@ export const Sidebar = () => {
   const clearTagChips = useSearchStore((state) => state.clearTagChips);
   const resetFilters = useSearchStore((state) => state.resetFilters);
 
-  // Fetch app version on mount
   useEffect(() => {
     const unsubscribeStart = window.api.onSyncStart(() => {
       setIsSyncing(true);
@@ -166,101 +165,101 @@ export const Sidebar = () => {
     }
   };
 
+  const navItemClassName = (isActive: boolean) =>
+    cn(
+      NAV_ITEM_BASE_CLASS,
+      isActive
+        ? "bg-accent text-accent-foreground"
+        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+    );
+
   return (
-    <aside className="flex sticky top-0 flex-col w-64 h-screen border-r bg-background">
+    <aside className="flex sticky top-0 flex-col w-56 h-screen border-r bg-background overflow-hidden">
       {/* Logo Area */}
-      <div className="flex items-center px-6 h-14 border-b bg-transparent">
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-black leading-none tracking-tight">
+      <div className="flex items-center justify-between px-4 h-14 border-b bg-transparent">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <span className="text-4xl font-black leading-none tracking-tight truncate">
             RuleDesk
           </span>
           {appVersion && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground shrink-0">
               v{appVersion}
             </span>
           )}
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4">
-        <div className="space-y-4">
-          {navGroups.map((group) => (
-            <section key={group.label} className="space-y-2">
-              <div className="px-1 space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {group.label}
-                </p>
-                <Separator />
-              </div>
+      <div className="flex flex-col flex-1 min-h-0">
+        {/* Navigation */}
+        <nav className="overflow-y-auto flex-1 px-3 py-4" aria-label="Основная навигация">
+          <div className="space-y-4">
+            {navGroups.map((group) => (
+              <section key={group.label} className="space-y-2">
+                <div className="px-1 space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {group.label}
+                  </p>
+                  <Separator />
+                </div>
 
-              <div className="space-y-1">
-                {group.items.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    className={({ isActive }) =>
-                      cn(
-                        NAV_ITEM_BASE_CLASS,
-                        isActive
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                      )
-                    }
-                  >
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                    {item.to === "/updates" && unreadCount > 0 && (
-                      <span className="inline-flex justify-center items-center px-2 py-0.5 ml-auto text-xs font-semibold text-white bg-violet-600 rounded-full min-w-5">
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </span>
-                    )}
-                  </NavLink>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      </nav>
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={({ isActive }) => navItemClassName(isActive)}
+                    >
+                      <item.icon className="w-4 h-4 shrink-0" />
+                      <span>{item.label}</span>
+                      {item.to === "/updates" && unreadCount > 0 && (
+                        <span className="inline-flex justify-center items-center px-2 py-0.5 ml-auto text-xs font-semibold text-white bg-violet-600 rounded-full min-w-5">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </nav>
 
-      {/* Sync Status Footer */}
-      <div className="p-4 space-y-2 border-t bg-muted/20">
-        <button
-          onClick={handleSync}
-          disabled={isSyncing}
-          className={cn(
-            "flex gap-3 items-center p-1 -ml-1 w-full text-left rounded-md transition-all hover:bg-background/50",
-            isSyncing
-              ? "opacity-70 cursor-wait"
-              : "cursor-pointer hover:opacity-100"
-          )}
-          title="Click to sync all artists"
-        >
-          <div
+        {/* Sync Status Footer */}
+        <div className="p-4 space-y-2 border-t bg-muted/20 shrink-0">
+          <button
+            onClick={handleSync}
+            disabled={isSyncing}
             className={cn(
-              "p-2 rounded-full bg-background border shadow-sm",
-              isSyncing && "animate-spin text-primary border-primary"
+              "flex gap-3 items-center w-full text-left rounded-md transition-all hover:bg-background/50 p-1 -ml-1",
+              isSyncing
+                ? "opacity-70 cursor-wait"
+                : "cursor-pointer hover:opacity-100"
             )}
           >
-            <RefreshCw className="w-4 h-4" />
+            <div
+              className={cn(
+                "p-2 rounded-full bg-background border shadow-sm",
+                isSyncing && "animate-spin text-primary border-primary"
+              )}
+            >
+              <RefreshCw className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-medium">
+              {isSyncing ? "Syncing..." : "Sync now"}
+            </span>
+          </button>
+          <p className="pl-1 text-xs text-muted-foreground" aria-live="polite">
+            {lastSyncText}
+          </p>
+          <button
+            onClick={handleLogout}
+            className="flex gap-3 items-center p-2 -ml-1 w-full text-left rounded-md transition-all text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            title="Log out"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="text-sm font-medium">Log Out</span>
+          </button>
           </div>
-          <span className="text-xs font-medium">
-            {isSyncing ? "Syncing..." : "Sync now"}
-          </span>
-        </button>
-        <p className="pl-1 text-xs text-muted-foreground" aria-live="polite">
-          {lastSyncText}
-        </p>
-
-        {/* Log Out Button */}
-        <button
-          onClick={handleLogout}
-          className="flex gap-3 items-center p-2 -ml-1 w-full text-left rounded-md transition-all text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          title="Log out"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="text-sm font-medium">Log Out</span>
-        </button>
       </div>
     </aside>
   );
