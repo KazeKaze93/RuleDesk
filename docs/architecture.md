@@ -124,11 +124,11 @@ This separation ensures security (Renderer can't access sensitive data) and perf
 
 Not planned.
 
-### 2. Provider Abstraction (Future Proofing)
+### 2. Provider Abstraction (Current Architecture)
 
-- In the future, `SyncService` will no longer be tightly coupled to Rule34.
-- Introduces `BooruProvider` interface (methods: `getPosts`, `getArtistInfo`, `search`).
-- Current implementation will become `Rule34Provider`. This allows adding new sources without rewriting the core database.
+- `SyncService` already uses provider-based dispatch (`artist.provider`) instead of a Rule34-only path.
+- `IBooruProvider` defines shared operations (auth, posts fetch, tag search, formatting).
+- Current implementations: `Rule34Provider`, `GelbooruProvider`; the same interface allows adding new sources without rewriting core DB logic.
 
 ## High-Level Architecture
 
@@ -1685,7 +1685,7 @@ Root:
 **Security & Reliability:**
 
 - **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API (Windows Credential Manager, macOS Keychain, Linux libsecret)
-- **Database Backup/Restore:** Manual backup and restore with integrity checks; automatic rotation of timestamped backup files (last five kept in user data)
+- **Database Backup/Restore:** Manual backup and restore with integrity checks; automatic rotation of timestamped backup files using configurable `backupRetention` (`1..20`)
 - **Context Isolation:** Enabled globally with sandbox mode
 - **CSP:** Strict Content Security Policy in production, relaxed for development (HMR support)
 - **IPC Architecture:** Controller-based IPC handlers with `BaseController` for centralized error handling

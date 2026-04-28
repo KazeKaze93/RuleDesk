@@ -205,7 +205,7 @@ interface IpcBridge {
   logout: () => Promise<void>;
 
   // Settings
-  getSettings: () => Promise<IpcSettings | undefined>;
+  getSettings: () => Promise<IpcSettings | null>;
   saveSettings: (creds: {
     userId?: string;
     apiKey?: string;
@@ -492,7 +492,7 @@ Retrieves stored settings. **⚠️ SECURITY: API Key is NEVER returned to Rende
   - Never decrypted for Renderer
   - Only decrypted in Main Process when needed for API calls (in SyncService)
 
-**Returns:** `Promise<IpcSettings | undefined>`
+**Returns:** `Promise<IpcSettings | null>`
 
 **IpcSettings Type:**
 
@@ -536,7 +536,7 @@ if (settings) {
 // In App.tsx - check if user needs onboarding
 import type { IpcSettings } from "../../../shared/schemas/settings";
 
-const { data: settings } = useQuery<IpcSettings | undefined>({
+const { data: settings } = useQuery<IpcSettings | null>({
   queryKey: ["settings"],
   queryFn: () => window.api.getSettings(),
 });
@@ -554,7 +554,7 @@ if (!settings || !settings.hasApiKey) {
 return <MainApp />;
 ```
 
-**IPC Channel:** `app:get-settings`
+**IPC Channel:** `app:get-settings-status`
 
 ---
 
