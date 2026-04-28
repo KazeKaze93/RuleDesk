@@ -14,6 +14,12 @@ import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import { Button } from "../ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 import { ExternalLink } from "lucide-react";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 import { useWorkerFilteredPosts } from "../../hooks/useWorkerFilteredPosts";
@@ -359,21 +365,28 @@ export const Browse = () => {
             Browse
           </h2>
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              type="button"
-              variant={isBulkMode ? "default" : "outline"}
-              size="icon"
-              aria-label="Toggle bulk selection mode"
-              onClick={() => {
-                if (isBulkMode) {
-                  deactivateBulkMode();
-                  return;
-                }
-                activateBulkMode();
-              }}
-            >
-              <CheckSquare className="h-4 w-4" />
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant={isBulkMode ? "default" : "outline"}
+                    size="icon"
+                    aria-label="Toggle bulk selection mode"
+                    onClick={() => {
+                      if (isBulkMode) {
+                        deactivateBulkMode();
+                        return;
+                      }
+                      activateBulkMode();
+                    }}
+                  >
+                    <CheckSquare className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Bulk selection</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </div>

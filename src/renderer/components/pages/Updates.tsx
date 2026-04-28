@@ -21,6 +21,12 @@ import type { TrackedArtist } from "../../../main/bridge";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
@@ -592,21 +598,28 @@ export const Updates = () => {
               <CheckCheck className="mr-2 w-4 h-4" />
               Mark all read
             </Button>
-            <Button
-              type="button"
-              variant={isBulkMode ? "default" : "outline"}
-              size="icon"
-              aria-label="Toggle bulk selection mode"
-              onClick={() => {
-                if (isBulkMode) {
-                  deactivateBulkMode();
-                  return;
-                }
-                activateBulkMode();
-              }}
-            >
-              <CheckSquare className="h-4 w-4" />
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant={isBulkMode ? "default" : "outline"}
+                    size="icon"
+                    aria-label="Toggle bulk selection mode"
+                    onClick={() => {
+                      if (isBulkMode) {
+                        deactivateBulkMode();
+                        return;
+                      }
+                      activateBulkMode();
+                    }}
+                  >
+                    <CheckSquare className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Bulk selection</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         )}
       </div>
