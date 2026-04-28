@@ -98,26 +98,13 @@ export class SearchController extends BaseController {
     this.handle(
       IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS,
       z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
-      (event, ...args) => {
-        // Validate args with Zod instead of unsafe casting
-        const schema = z.tuple([z.array(z.string().min(1)).max(100)]);
-        const result = schema.safeParse(args);
-        if (!result.success) {
-          log.error("[SearchController] Invalid args for RESOLVE_COPYRIGHT_TAGS:", result.error);
-          return Promise.resolve([]);
-        }
-        const [tags] = result.data;
-        return this.resolveTagsByType(event, tags, TAG_TYPES.COPYRIGHT);
-      }
+      this.resolveCopyrightTags.bind(this)
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE,
       ResolveTagsByTypeArgsSchema,
-      (event, ...args: unknown[]) => {
-        const parsed = ResolveTagsByTypeArgsSchema.parse(args);
-        return this.resolveTagsByType(event, parsed[0], parsed[1]);
-      }
+      this.resolveTagsByTypeHandler.bind(this)
     );
 
   }
@@ -1089,6 +1076,21 @@ export class SearchController extends BaseController {
       log.error(`[SearchController] Failed to resolve tags by type ${tagType}:`, error);
       return [];
     }
+  }
+
+  private resolveCopyrightTags(
+    event: IpcMainInvokeEvent,
+    tags: string[]
+  ): Promise<string[]> {
+    return this.resolveTagsByType(event, tags, TAG_TYPES.COPYRIGHT);
+  }
+
+  private resolveTagsByTypeHandler(
+    event: IpcMainInvokeEvent,
+    tags: string[],
+    tagType: TagType
+  ): Promise<string[]> {
+    return this.resolveTagsByType(event, tags, tagType);
   }
 }
 

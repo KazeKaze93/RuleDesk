@@ -554,9 +554,8 @@ export class MaintenanceController extends BaseController {
 
   private setBackupSchedule(
     _event: IpcMainInvokeEvent,
-    ...args: unknown[]
+    interval: AutoBackupInterval
   ): boolean {
-    const interval = AutoBackupIntervalSchema.parse(args[0]);
     this.getBackupService().scheduleAutoBackup(interval);
     return true;
   }
