@@ -393,6 +393,7 @@ The **top bar** appears on content pages and provides:
 - **F** - Toggle favorite
 - **V** - Mark as viewed
 - **T** - Toggle tags drawer
+- **Mouse side buttons (Back/Forward)** - Captured by viewer; trigger viewer exit flow instead of navigating background pages
 
 **Global:**
 

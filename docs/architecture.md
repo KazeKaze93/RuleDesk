@@ -1827,7 +1827,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 ### ⚠️ Partially Implemented
 
 - **Developer HMR:** Renderer HMR and watched Main/Preload rebuild loop are in place
-- **Input Sanitization:** Zod validation per handler (decentralized), no centralized utility
+- **Input Sanitization:** Zod validation is enforced at IPC boundaries. Shared wrapper/tuple patterns are now used across controllers to reduce registration drift.
 - **Error Handling:** IPC handlers have try-catch blocks, but some return raw errors instead of user-friendly messages
 - **Modern Video:** Baseline tuning is shipped; further platform-specific tuning remains regression-driven
 
@@ -1839,6 +1839,6 @@ Based on a comprehensive technical audit, here's the current implementation stat
 - **Anti-Bot Measures:** Static User-Agent strings, fixed delays (1.5s/0.5s) but no randomization or rotation
 - **DB Optimization (FTS5):** ✅ FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
 - **Composite Indexes:** ✅ Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries
-- **Centralized Validation:** No shared validation utility (`src/main/lib/validation.ts`)
+- **Centralized Validation:** No single monolithic validation module by design; current direction is shared schemas + typed controller wrappers at IPC boundaries.
 
 See [Roadmap](./roadmap.md#-technical-improvements-from-audit) for detailed implementation plans.

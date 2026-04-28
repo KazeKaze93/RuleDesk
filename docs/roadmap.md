@@ -130,6 +130,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **Testing:** Vitest + Playwright, `better-sqlite3` ABI switching for `pretest`/`posttest` — operational.
 - ✅ **Main process dev experience:** main sources are watched in development (`electron.vite.config.ts`), closing the previous manual-restart-only loop for routine IPC/service edits.
 - 🟡 **Shared validation in Main:** many IPC contracts are already in `shared/schemas`; remaining repeated per-handler Zod argument tuples/parsing can still be consolidated to reduce drift and duplicate error messages.
+- ✅ **Shared validation in Main:** IPC controller registration was normalized to typed wrapper handlers (no legacy `bind(this) as` casts in controllers). Shared tuple parsing helpers are used in handler modules where appropriate.
 - ✅ **Video pipeline baseline:** hardware decode flags and `<video>` attribute tuning landed; remaining work is regression-driven per platform/device.
 - ⏳ **Tooling / hygiene:** keep `validate` (typecheck, lint, asset checks) green; optional stricter policy on logging and IPC surface over time.
 
@@ -173,7 +174,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
-| **Backups** | Optional future policy extension (for example cap by total size in MB), while current numeric retention (`keep last N`) is already implemented. |
+| **Backups** | `keep last N` is implemented; optional **total-size cap** is also supported via `BACKUP_RETENTION_MAX_TOTAL_MB` env for deployments that need hard storage ceilings. UI exposure for this cap remains optional future UX work. |
 | **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): remaining **shared** validation helper consolidation and ongoing tooling hygiene. |
 | **Product** | **Smart Collections AI** (research). |
 

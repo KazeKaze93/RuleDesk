@@ -846,6 +846,7 @@ The application provides built-in backup functionality:
 2. **Backup Location:** Backups are stored in the user data directory with timestamped filenames
 3. **Backup Format:** Full SQLite database copy (via `VACUUM INTO`)
 4. **Rotation:** After a successful backup, older files matching the backup name prefix are deleted so only the most recent `backupRetention` copies remain. `backupRetention` is stored in `settings` and clamped to `1..20` by Main Process validation.
+5. **Optional total-size cap (env):** If `BACKUP_RETENTION_MAX_TOTAL_MB` is set to a positive number, backup cleanup additionally prunes oldest files until total backup size is under the configured threshold.
 
 **Example:**
 
