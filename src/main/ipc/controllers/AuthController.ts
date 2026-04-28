@@ -84,7 +84,8 @@ export class AuthController extends BaseController {
       await db
         .update(settings)
         .set({ encryptedApiKey: "" })
-        .where(eq(settings.id, SETTINGS_ID));
+        .where(eq(settings.id, SETTINGS_ID))
+        .run();
       
       log.info("[AuthController] User logged out (API key cleared)");
       return true;

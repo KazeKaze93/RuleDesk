@@ -15,6 +15,7 @@ import log from "electron-log/renderer";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "../../lib/utils";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
+import { useSearchStore } from "../../store/searchStore";
 
 const NAV_ITEM_BASE_CLASS =
   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors [@media(max-height:599px)]:py-1.5";
@@ -62,6 +63,8 @@ export const Sidebar = () => {
     queryFn: async () => null,
     staleTime: Infinity,
   });
+  const clearTagChips = useSearchStore((state) => state.clearTagChips);
+  const resetFilters = useSearchStore((state) => state.resetFilters);
 
   // Fetch app version on mount
   useEffect(() => {
@@ -152,6 +155,10 @@ export const Sidebar = () => {
 
     try {
       await window.api.logout();
+      clearTagChips();
+      resetFilters();
+      queryClient.clear();
+      await queryClient.invalidateQueries({ queryKey: ["settings"] });
       window.location.reload();
     } catch (error) {
       log.error("[Sidebar] Failed to logout:", error);

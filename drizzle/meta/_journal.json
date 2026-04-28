@@ -183,6 +183,20 @@
       "when": 1777030000000,
       "tag": "0025_add_tag_blacklist",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1777030001000,
+      "tag": "0026_add_settings_provider",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1777030002000,
+      "tag": "0027_fix_new_posts_count_consistency",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { KeyRound, User } from "lucide-react";
 import { credsBaseSchema, CredsFormValues } from "@/schemas/form-schemas";
 import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { parseCredentialsFromText } from "@/lib/parseCredentialsFromText";
 import {
   Select,
   SelectContent,
@@ -19,25 +22,6 @@ import {
 interface OnboardingProps {
   onComplete: () => void;
 }
-
-// Parse URL parameters from pasted text
-const parseCredentialsFromText = (text: string): { userId?: string; apiKey?: string } => {
-  const result: { userId?: string; apiKey?: string } = {};
-  
-  // Try to match user_id parameter (supports both user_id and user_id)
-  const userIdMatch = text.match(/[?&]user_id=([^&\s]+)/i);
-  if (userIdMatch) {
-    result.userId = decodeURIComponent(userIdMatch[1]);
-  }
-  
-  // Try to match api_key parameter (supports both api_key and api_key)
-  const apiKeyMatch = text.match(/[?&]api_key=([^&\s]+)/i);
-  if (apiKeyMatch) {
-    result.apiKey = decodeURIComponent(apiKeyMatch[1]);
-  }
-  
-  return result;
-};
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const { t } = useTranslation();
@@ -102,6 +86,20 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     }
   };
 
+  const handleSkip = async () => {
+    try {
+      setVerificationError("");
+      await window.api.saveSettings({
+        provider: verifyProviderId,
+        userId: "",
+      });
+      onComplete();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Unknown save error.";
+      log.error(`[Onboarding] Skip authorization error: ${message}`);
+    }
+  };
+
   return (
     <div className="flex flex-col justify-center items-center p-6 min-h-screen bg-background text-foreground">
       <div className="p-8 space-y-6 w-full max-w-md rounded-lg border shadow-xl bg-card border-border">
@@ -135,19 +133,21 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label
+            <Label
               htmlFor="user-id-input"
-              className="block mb-1 text-sm font-medium text-muted-foreground"
+              className="block mb-1 text-muted-foreground"
             >
               {t("onboarding.userId")}
-            </label>
+            </Label>
             <div className="relative">
               <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
+              <Input
                 id="user-id-input"
-                {...register("userId")}
+                {...register("userId", {
+                  onChange: () => setVerificationError(""),
+                })}
                 onPaste={handlePaste}
-                className="py-2 pr-3 pl-9 w-full rounded border outline-none bg-background border-input focus:ring-2 focus:ring-ring"
+                className="pl-9"
                 placeholder={t("onboarding.userIdPlaceholder")}
               />
             </div>
@@ -159,20 +159,25 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
 
           <div>
-            <label
+            <Label
               htmlFor="api-key-input"
-              className="block mb-1 text-sm font-medium text-muted-foreground"
+              className="block mb-1 text-muted-foreground"
             >
               {t("onboarding.apiKey")}
-            </label>
+            </Label>
+            <p className="mb-2 text-xs text-muted-foreground">
+              Optional — skip to use Browse only. API key enables Updates, Favorites, Playlists, and Artists.
+            </p>
             <div className="relative">
               <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
+              <Input
                 id="api-key-input"
-                {...register("apiKey")}
+                {...register("apiKey", {
+                  onChange: () => setVerificationError(""),
+                })}
                 type="password"
                 onPaste={handlePaste}
-                className="py-2 pr-3 pl-9 w-full rounded border outline-none bg-background border-input focus:ring-2 focus:ring-ring"
+                className="pl-9"
                 placeholder={t("onboarding.apiKeyPlaceholder")}
               />
             </div>
@@ -184,12 +189,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium text-muted-foreground">
+            <Label className="block mb-1 text-muted-foreground">
               Verify for
-            </label>
+            </Label>
             <Select
               value={verifyProviderId}
-              onValueChange={(value: ProviderId) => setVerifyProviderId(value)}
+              onValueChange={(value: ProviderId) => {
+                setVerifyProviderId(value);
+                setVerificationError("");
+              }}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select provider" />
@@ -217,6 +225,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             {isSubmitting
               ? t("onboarding.saving")
               : t("onboarding.saveAndLogin")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              void handleSkip();
+            }}
+            disabled={isSubmitting}
+            aria-label="Skip onboarding for now"
+          >
+            Skip for now
           </Button>
         </form>
       </div>

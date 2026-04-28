@@ -78,6 +78,20 @@ function bulkUpsertPosts(
   }
 }
 
+function countArtistPosts(
+  tx: BetterSQLite3Database<typeof schema>,
+  artistId: number
+): number {
+  const row = tx
+    .select({
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(posts)
+    .where(eq(posts.artistId, artistId))
+    .all()[0];
+  return row?.count ?? 0;
+}
+
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
@@ -522,24 +536,30 @@ export class SyncService {
             !hasMore; // No more pages
 
           if (shouldCommitBatch && allPostsToSave.length > 0) {
+            let insertedInBatch = 0;
             // Single transaction for entire batch
             db.transaction((tx) => {
+              const postsCountBefore = countArtistPosts(tx, artist.id);
               bulkUpsertPosts(allPostsToSave, tx);
+              const postsCountAfter = countArtistPosts(tx, artist.id);
+              insertedInBatch = Math.max(0, postsCountAfter - postsCountBefore);
 
               tx.update(artists)
                 .set({
                   lastPostId: batchHighestPostId,
-                  newPostsCount: sql`${artists.newPostsCount} + ${allPostsToSave.length}`,
+                  newPostsCount: sql`${artists.newPostsCount} + ${insertedInBatch}`,
                   lastChecked: new Date(),
                 })
                 .where(eq(artists.id, artist.id))
                 .run();
             });
 
-            newPostsCount += allPostsToSave.length;
+            newPostsCount += insertedInBatch;
             allPostsToSave.length = 0; // Clear batch
             
-            logger.debug(`SyncService: ${artist.name} - Committed batch of ${newPostsCount} posts`);
+            logger.debug(
+              `SyncService: ${artist.name} - Committed batch of ${insertedInBatch} new posts`
+            );
           }
 
           // Continue pagination if we got a full page (PAGE_SIZE posts)
@@ -556,9 +576,12 @@ export class SyncService {
 
           if (allPostsToSave.length > 0) {
             try {
-              const partialSize = allPostsToSave.length;
+              let partialSize = 0;
               db.transaction((tx) => {
+                const postsCountBefore = countArtistPosts(tx, artist.id);
                 bulkUpsertPosts(allPostsToSave, tx);
+                const postsCountAfter = countArtistPosts(tx, artist.id);
+                partialSize = Math.max(0, postsCountAfter - postsCountBefore);
 
                 tx.update(artists)
                   .set({
@@ -588,21 +611,27 @@ export class SyncService {
       
       // Commit any remaining posts in batch
       if (allPostsToSave.length > 0) {
+        let insertedInFinalBatch = 0;
         db.transaction((tx) => {
+          const postsCountBefore = countArtistPosts(tx, artist.id);
           bulkUpsertPosts(allPostsToSave, tx);
+          const postsCountAfter = countArtistPosts(tx, artist.id);
+          insertedInFinalBatch = Math.max(0, postsCountAfter - postsCountBefore);
 
           tx.update(artists)
             .set({
               lastPostId: batchHighestPostId,
-              newPostsCount: sql`${artists.newPostsCount} + ${allPostsToSave.length}`,
+              newPostsCount: sql`${artists.newPostsCount} + ${insertedInFinalBatch}`,
               lastChecked: new Date(),
             })
             .where(eq(artists.id, artist.id))
             .run();
         });
 
-        newPostsCount += allPostsToSave.length;
-        logger.debug(`SyncService: ${artist.name} - Committed final batch of ${allPostsToSave.length} posts`);
+        newPostsCount += insertedInFinalBatch;
+        logger.debug(
+          `SyncService: ${artist.name} - Committed final batch of ${insertedInFinalBatch} new posts`
+        );
       }
 
       // Final update of lastChecked even if no new posts were found

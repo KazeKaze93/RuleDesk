@@ -801,28 +801,24 @@ const TagsDrawer = ({
   const [hasSeenTagHint, setHasSeenTagHint] = useState<boolean>(() => {
     return window.localStorage.getItem(VIEWER_TAG_HINT_SEEN_KEY) === "true";
   });
-  const [showTagHintForCurrentOpen, setShowTagHintForCurrentOpen] = useState(false);
   const [isPostIdCopied, setIsPostIdCopied] = useState(false);
   const addIncludeTag = useSearchStore((state) => state.addIncludeTag);
   const addExcludeTag = useSearchStore((state) => state.addExcludeTag);
   const isTagIncluded = useSearchStore((state) => state.isTagIncluded);
   const isTagExcluded = useSearchStore((state) => state.isTagExcluded);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setShowTagHintForCurrentOpen(false);
-      return;
-    }
+  const showTagHintForCurrentOpen = isOpen && !hasSeenTagHint;
 
-    if (!hasSeenTagHint) {
-      setShowTagHintForCurrentOpen(true);
-      window.localStorage.setItem(VIEWER_TAG_HINT_SEEN_KEY, "true");
-      setHasSeenTagHint(true);
-      return;
-    }
-
-    setShowTagHintForCurrentOpen(false);
-  }, [isOpen, hasSeenTagHint]);
+  const handleDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && !hasSeenTagHint) {
+        window.localStorage.setItem(VIEWER_TAG_HINT_SEEN_KEY, "true");
+        setHasSeenTagHint(true);
+      }
+      onOpenChange(open);
+    },
+    [hasSeenTagHint, onOpenChange]
+  );
 
   useEffect(() => {
     if (!isPostIdCopied) {
@@ -1057,7 +1053,7 @@ const TagsDrawer = ({
 
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <Sheet open={isOpen} onOpenChange={handleDrawerOpenChange}>
       <SheetContent
         side="right"
         className="w-full overflow-y-auto sm:max-w-md"

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PROVIDER_IDS } from "../constants";
 
 export const ThemePreferenceSchema = z.enum(["system", "light", "dark"]);
 export type ThemePreference = z.infer<typeof ThemePreferenceSchema>;
@@ -79,6 +80,7 @@ export const SaveSettingsSchema = z.object({
   autoSyncOnStartup: z.boolean().optional(),
   syncIntervalMinutes: z.number().int().min(0).max(1440).optional(),
   backupRetention: z.number().int().min(1).max(20).optional(),
+  provider: z.enum(PROVIDER_IDS).optional(),
 });
 
 /**
@@ -92,7 +94,9 @@ export const SaveSettingsSchema = z.object({
  * Both Main (validation) and Renderer (typing) use this schema.
  */
 export const IpcSettingsSchema = z.object({
+  hasSettingsRecord: z.boolean(),
   userId: z.string(),
+  provider: z.enum(PROVIDER_IDS),
   hasApiKey: z.boolean(),
   proxyUrl: z.string().url().nullable(),
   isSafeMode: z.boolean(),
@@ -116,7 +120,9 @@ export type IpcSettings = z.infer<typeof IpcSettingsSchema>;
 export type SaveSettings = z.infer<typeof SaveSettingsSchema>;
 
 export const DEFAULT_IPC_SETTINGS: IpcSettings = {
+  hasSettingsRecord: false,
   userId: "",
+  provider: "rule34",
   hasApiKey: false,
   proxyUrl: null,
   isSafeMode: true,

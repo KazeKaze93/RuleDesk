@@ -20,6 +20,7 @@ import {
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { z } from "zod";
+import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -47,12 +48,15 @@ const SaveDownloadFolderArgSchema = z.union([
  * @returns IPC-safe settings object (typed as IpcSettings)
  */
 function mapSettingsToIpc(
-  dbSettings: InferSelectModel<typeof settings>
+  dbSettings: InferSelectModel<typeof settings>,
+  hasSettingsRecord: boolean
 ): IpcSettings {
   // Map database representation to IPC format
   // TypeScript ensures type safety - no runtime validation needed
   return {
+    hasSettingsRecord,
     userId: dbSettings.userId ?? "",
+    provider: (dbSettings.provider as ProviderId) ?? "rule34",
     hasApiKey: !!(
       dbSettings.encryptedApiKey && dbSettings.encryptedApiKey.trim().length > 0
     ),
@@ -106,9 +110,6 @@ export class SettingsController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
-  // Cache settings to avoid DB queries on every call (settings change rarely)
-  // Cache is invalidated only when settings are saved (no TTL - settings don't change externally)
-  private settingsCache: IpcSettings | null = null;
 
   /**
    * Setup IPC handlers for settings operations
@@ -151,6 +152,11 @@ export class SettingsController extends BaseController {
       z.tuple([]),
       this.confirmLegal.bind(this)
     );
+    this.handle(
+      IPC_CHANNELS.SETTINGS.RESET_ONBOARDING,
+      z.tuple([]),
+      this.resetOnboarding.bind(this)
+    );
     // settings:save-download-folder - saves custom download folder path
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER,
@@ -188,11 +194,6 @@ export class SettingsController extends BaseController {
    * @returns Settings object with all fields including Age Gate & ToS status
    */
   private async getSettings(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
-    // Return cached value if available (cache is invalidated only on save)
-    if (this.settingsCache !== null) {
-      return this.settingsCache;
-    }
-
     try {
       const db = this.getDb();
       // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
@@ -214,11 +215,8 @@ export class SettingsController extends BaseController {
       } else {
         // Use Drizzle's inferred type directly (no redundant validation)
         // mapSettingsToIpc handles mapping and validation internally
-        result = mapSettingsToIpc(currentSettings);
+        result = mapSettingsToIpc(currentSettings, true);
       }
-
-      // Update cache (no timestamp - cache is invalidated only on save)
-      this.settingsCache = result;
 
       return result;
     } catch (error) {
@@ -239,7 +237,7 @@ export class SettingsController extends BaseController {
     _event: IpcMainInvokeEvent,
     data: SaveSettings
   ): Promise<boolean> {
-    const { userId, apiKey } = data;
+    const { userId, apiKey, provider } = data;
 
     try {
       const db = this.getDb();
@@ -294,6 +292,10 @@ export class SettingsController extends BaseController {
             userId !== undefined && userId.length > 0
               ? userId
               : existing.userId ?? "";
+          const finalProvider =
+            provider !== undefined && PROVIDER_IDS.includes(provider)
+              ? provider
+              : ((existing.provider as ProviderId | undefined) ?? "rule34");
           // CRITICAL: Use existing.id instead of SETTINGS_ID to ensure we update the correct record
           const targetId = existing.id;
 
@@ -309,6 +311,7 @@ export class SettingsController extends BaseController {
           tx.update(settings)
             .set({
               userId: finalUserId,
+              provider: finalProvider,
               encryptedApiKey: finalEncryptedKey,
               proxyUrl: data.proxyUrl ?? null,
               // CRITICAL: Preserve isAdultVerified and tosAcceptedAt when saving auth data
@@ -328,6 +331,7 @@ export class SettingsController extends BaseController {
             .values({
               id: SETTINGS_ID,
               userId: userId ?? "",
+              provider: provider ?? "rule34",
               encryptedApiKey: encryptedKey ?? "",
               proxyUrl: data.proxyUrl ?? null,
               isSafeMode: true,
@@ -374,8 +378,6 @@ export class SettingsController extends BaseController {
         }`
       );
 
-      // Invalidate cache after saving settings
-      this.settingsCache = null;
       const scheduler = container.resolve(DI_TOKENS.SYNC_SCHEDULER);
       scheduler.restart(saved.syncIntervalMinutes ?? 0);
       reloadProxyFromSettings();
@@ -422,7 +424,6 @@ export class SettingsController extends BaseController {
           .run();
       }
 
-      this.settingsCache = null;
       return true;
     } catch (error) {
       log.error("[SettingsController] Failed to save theme:", error);
@@ -454,7 +455,6 @@ export class SettingsController extends BaseController {
         .set({ downloadFolder: folderPath || null })
         .where(eq(settings.id, SETTINGS_ID))
         .run();
-      this.settingsCache = null;
       log.debug(`[SettingsController] Download folder saved: ${folderPath ?? "default"}`);
       return true;
     } catch (error) {
@@ -491,7 +491,6 @@ export class SettingsController extends BaseController {
       }
       if (Object.keys(updates).length > 0) {
         await db.update(settings).set(updates).where(eq(settings.id, SETTINGS_ID)).run();
-        this.settingsCache = null;
         log.debug(`[SettingsController] Download settings saved:`, updates);
       }
       return true;
@@ -550,6 +549,7 @@ export class SettingsController extends BaseController {
               encryptedApiKey: existing.encryptedApiKey ?? "",
               isSafeMode: existing.isSafeMode ?? true,
               isAdultConfirmed: existing.isAdultConfirmed ?? false,
+              provider: existing.provider ?? "rule34",
               theme: existing.theme ?? "system",
             })
             .where(eq(settings.id, SETTINGS_ID))
@@ -561,6 +561,7 @@ export class SettingsController extends BaseController {
               id: SETTINGS_ID,
               userId: "",
               encryptedApiKey: "",
+              provider: "rule34",
               isSafeMode: true,
               isAdultConfirmed: false,
               isAdultVerified: true,
@@ -589,14 +590,22 @@ export class SettingsController extends BaseController {
 
       // Use Drizzle's inferred type directly (no redundant validation)
       // mapSettingsToIpc handles mapping and validation internally
-      const result = mapSettingsToIpc(updatedSettings);
-
-      // Invalidate cache after confirming legal (settings changed)
-      this.settingsCache = null;
+      const result = mapSettingsToIpc(updatedSettings, true);
 
       return result;
     } catch (error) {
       log.error("[SettingsController] Failed to confirm legal:", error);
+      throw error;
+    }
+  }
+
+  private async resetOnboarding(_event: IpcMainInvokeEvent): Promise<boolean> {
+    try {
+      const db = this.getDb();
+      db.delete(settings).where(eq(settings.id, SETTINGS_ID)).run();
+      return true;
+    } catch (error) {
+      log.error("[SettingsController] Failed to reset onboarding:", error);
       throw error;
     }
   }

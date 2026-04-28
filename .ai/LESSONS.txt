@@ -72,6 +72,10 @@ See also: ../LESSONS.md (extended examples and historical context).
 
 ## Performance
 
+### Problem: forwardRef factory declared inside render remounts virtualized lists
+**Root Cause:** Creating `forwardRef` component types inside component render (or `useMemo`) produces a new React component identity on each render, so React/Virtuoso remounts list internals.
+**Invariant Rule:** Define all `forwardRef` component types at module scope only; inside render choose between pre-defined components, never create new component types.
+
 ## Security
 
 ### Problem: Static CSP tied to specific domains does not scale to multi-provider architecture
@@ -88,7 +92,15 @@ See also: ../LESSONS.md (extended examples and historical context).
 **Root Cause:** `break-inside-avoid` only works with CSS multi-column layout (`columns-N` / `column-count`). In a flex or grid container it has no effect, but browsers don't warn. Masonry implementations that mix flex + break-inside appear to "work" superficially but produce a single-column list.
 **Invariant Rule:** Masonry layouts must use CSS columns explicitly (`columns-2 md:columns-3 ...`) or a bin-packing library (e.g. `masonic`). Combining virtualization with CSS-columns masonry is incompatible; choose one.
 
+### Problem: Validation errors remain visible after context-changing input updates
+**Root Cause:** Error state is persisted independently from form inputs, and no reset is performed when provider/credentials change the validation context.
+**Invariant Rule:** Reset related error state on any input that changes validation context (e.g. provider select, credential fields) to avoid stale feedback.
+
 ## Data Integrity
+
+### Problem: Zustand derived toggles flip incorrectly under rapid updates
+**Root Cause:** Direct captures like `set({ compactMode: !compactMode })` use stale closure values and can race with concurrent updates.
+**Invariant Rule:** For every state update derived from previous state, always use functional setters (`set((state) => ({ ... }))`).
 
 ### Problem: React Query key drift resets optimistic post state
 **Root Cause:** Cache updates used partial keys while active queries used parameterized keys (tags/source/sortOrder), so refreshed data overwrote local viewed/favorited flags.

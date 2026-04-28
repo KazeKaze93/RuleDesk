@@ -298,8 +298,10 @@ The application is stable and production-ready (see **`package.json`** → `vers
 2. **Onboarding:**
 
    - Launch the application
-   - Enter your User ID and API Key in the onboarding screen
-   - Click "Save and Login"
+   - Confirm legal age / ToS in the mandatory Age Gate
+   - Option A: enter User ID + API Key and click "Save and Login"
+   - Option B: click "Skip for now" to continue in Browse-only mode
+   - Add API key later in `Settings -> Account` to unlock Updates, Favorites, Playlists, and Artists
 
 3. **Add Artists:**
 

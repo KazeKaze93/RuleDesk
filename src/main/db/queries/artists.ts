@@ -25,7 +25,17 @@ export function getTrackedArtistsWithStats(db: AppDatabase): TrackedArtistWithSt
       type: artists.type,
       apiEndpoint: artists.apiEndpoint,
       lastPostId: artists.lastPostId,
-      newPostsCount: artists.newPostsCount,
+      newPostsCount: sql<number>`
+        COALESCE(
+          SUM(
+            CASE
+              WHEN ${posts.isViewed} = 0 OR ${posts.isViewed} IS NULL THEN 1
+              ELSE 0
+            END
+          ),
+          0
+        )
+      `.as("newPostsCount"),
       syncStatus: artists.syncStatus,
       lastError: artists.lastError,
       lastChecked: artists.lastChecked,

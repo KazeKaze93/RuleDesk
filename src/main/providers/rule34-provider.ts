@@ -190,6 +190,12 @@ export class Rule34Provider implements IBooruProvider {
       params.append("user_id", options.settings.userId);
       params.append("api_key", options.settings.apiKey);
     }
+    logger.debug("[Rule34Provider] buildUrl auth params", {
+      hasApiKey: (options.settings.apiKey ?? "").trim().length > 0,
+      hasUserId: (options.settings.userId ?? "").trim().length > 0,
+      includesApiKeyParam: params.has("api_key"),
+      includesUserIdParam: params.has("user_id"),
+    });
 
     return `${this.baseUrl}?${params}`;
   }
