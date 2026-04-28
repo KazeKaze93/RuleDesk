@@ -7,6 +7,7 @@ import { artists, posts } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import { z } from "zod";
 import { PostFilterSchema } from "../../../shared/schemas/post";
+import { createValidatedHandler } from "./createValidatedHandler";
 import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
@@ -84,48 +85,55 @@ export function registerUpdatesHandlers(): void {
     });
   });
 
-  ipcMain.handle(IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT, (_event, rawParams: unknown) => {
-    return maintenanceQueue.execute(() => {
-      try {
-        const params = TotalUnreadCountParamsSchema.parse(rawParams);
-        const filters = params.filters;
-        const baseConditions = buildUpdatesUnreadConditions(filters);
-        const whereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined;
+  ipcMain.handle(
+    IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT,
+    createValidatedHandler(
+      IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT,
+      TotalUnreadCountParamsSchema,
+      (_event, params) => {
+        return maintenanceQueue.execute(() => {
+          try {
+            const filters = params.filters;
+            const baseConditions = buildUpdatesUnreadConditions(filters);
+            const whereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
-        if (filters?.sinceTracking === true) {
-          const joinConditions = and(
-            eq(posts.artistId, artists.id),
-            gte(posts.publishedAt, artists.createdAt),
-            not(eq(posts.artistId, EXTERNAL_ARTIST_ID)),
-            notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`)
-          );
-          const finalWhereClause = whereClause
-            ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
-            : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
+            if (filters?.sinceTracking === true) {
+              const joinConditions = and(
+                eq(posts.artistId, artists.id),
+                gte(posts.publishedAt, artists.createdAt),
+                not(eq(posts.artistId, EXTERNAL_ARTIST_ID)),
+                notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`)
+              );
+              const finalWhereClause = whereClause
+                ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
+                : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
 
-          const row = getDb()
-            .select({ value: count() })
-            .from(posts)
-            .innerJoin(artists, joinConditions)
-            .where(finalWhereClause)
-            .get();
+              const row = getDb()
+                .select({ value: count() })
+                .from(posts)
+                .innerJoin(artists, joinConditions)
+                .where(finalWhereClause)
+                .get();
 
-          return Promise.resolve(row?.value ?? 0);
-        }
+              return Promise.resolve(row?.value ?? 0);
+            }
 
-        const row = getDb()
-          .select({ value: count() })
-          .from(posts)
-          .where(whereClause)
-          .get();
+            const row = getDb()
+              .select({ value: count() })
+              .from(posts)
+              .where(whereClause)
+              .get();
 
-        return Promise.resolve(row?.value ?? 0);
-      } catch (error) {
-        log.error("[UpdatesHandlers] Failed to get total unread count:", error);
-        return Promise.resolve(0);
-      }
-    });
-  });
+            return Promise.resolve(row?.value ?? 0);
+          } catch (error) {
+            log.error("[UpdatesHandlers] Failed to get total unread count:", error);
+            return Promise.resolve(0);
+          }
+        });
+      },
+      () => Promise.resolve(0)
+    )
+  );
 
   log.info("[UpdatesHandlers] All handlers registered");
 }
