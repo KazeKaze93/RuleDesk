@@ -124,7 +124,7 @@ A unified Top Bar appears on all content pages providing:
 - **Sort** - Newest/oldest (`sortOrder` on date-oriented lists)
 - **View Toggle** - Switch between grid and masonry layouts
 - **Sync Status** - Real-time sync progress indicator with last sync timestamp
-*✅ `SyncStatusBadge` is in the top bar. Sorting is handled by the dedicated date sort control in the top bar (outside Filters).*
+*✅ `SyncStatusBadge` is in the top bar. Sorting is handled by the dedicated date sort control in the top bar (outside Filters). Search stretches across the available left section and chip rows can expand to a second line when needed.*
 
 ### Viewer Experience
 

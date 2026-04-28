@@ -302,7 +302,7 @@ export function TagAutocomplete({
             />
             <div
               className={cn(
-                "flex min-h-9 w-full max-w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background py-0.5 pl-8",
+                "no-scrollbar flex min-h-9 max-h-[4.5rem] w-full max-w-full flex-wrap items-center gap-1 overflow-y-auto rounded-md border border-input bg-background py-0.5 pl-8",
                 "focus-within:ring-1 focus-within:ring-ring",
                 showClearButton && hasBarContent && "pr-7"
               )}
@@ -346,7 +346,7 @@ export function TagAutocomplete({
                 onKeyDown={handleKeyDown}
                 onFocus={handleInputFocus}
                 onBlur={handleInputBlur}
-                className="min-w-[6rem] flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0 h-7 py-0"
+                className="h-7 min-w-[8rem] flex-1 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0"
                 placeholder={includeTags.length + excludeTags.length > 0 ? "" : placeholder}
                 autoComplete="off"
                 role="combobox"

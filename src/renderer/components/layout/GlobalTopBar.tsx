@@ -132,9 +132,9 @@ export const GlobalTopBar = () => {
   const SortIcon = sortOrder === "desc" ? ArrowDownNarrowWide : ArrowUpNarrowWide;
 
   return (
-    <header className="h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 flex items-center justify-between sticky top-0 z-10">
+    <header className="min-h-14 border-b bg-background/95 px-6 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between sticky top-0 z-10">
       {/* Left: Search */}
-      <div className="flex flex-1 gap-2 items-center max-w-md">
+      <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
         <TagAutocomplete
           showClearButton={true}
           placeholder="Search posts by tags..."
