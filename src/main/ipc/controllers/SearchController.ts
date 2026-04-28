@@ -98,13 +98,19 @@ export class SearchController extends BaseController {
     this.handle(
       IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS,
       z.tuple([z.array(z.string().min(1)).max(100)]), // Limit to 100 tags to prevent DoS
-      this.resolveCopyrightTags.bind(this)
+      this.resolveCopyrightTags.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE,
       ResolveTagsByTypeArgsSchema,
-      this.resolveTagsByTypeHandler.bind(this)
+      this.resolveTagsByTypeHandler.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown>
     );
 
   }

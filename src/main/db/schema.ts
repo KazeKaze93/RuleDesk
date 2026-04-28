@@ -144,6 +144,10 @@ export const settings = sqliteTable("settings", {
     .notNull(),
   syncIntervalMinutes: integer("sync_interval_minutes").default(0).notNull(),
   backupRetention: integer("backup_retention").default(5).notNull(),
+  vacuumSchedule: text("vacuum_schedule").default("manual"),
+  lastVacuumAt: integer("last_vacuum_at"),
+  lastVacuumStatus: text("last_vacuum_status"),
+  lastVacuumError: text("last_vacuum_error"),
 });
 
 export const tagMetadata = sqliteTable(

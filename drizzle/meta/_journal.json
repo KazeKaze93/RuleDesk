@@ -197,6 +197,13 @@
       "when": 1777030002000,
       "tag": "0027_fix_new_posts_count_consistency",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1777405165438,
+      "tag": "0029_sparkling_boomer",
+      "breakpoints": true
     }
   ]
 }
