@@ -4,6 +4,8 @@ import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import log from "electron-log/renderer";
 import {
   Select,
   SelectContent,
@@ -11,6 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import { DatabaseMaintenanceCard } from "./components/DatabaseMaintenanceCard";
+import type {
+  RunVacuumResponse,
+  VacuumSchedule,
+  VacuumStatusResponse,
+} from "../../../shared/schemas/maintenance";
 
 type AutoBackupInterval = "never" | "daily" | "weekly";
 
@@ -49,6 +57,46 @@ export const SettingsBackupTab = ({
   onBackupRetentionBlur,
   onAutoBackupIntervalChange,
 }: SettingsBackupTabProps) => {
+  const queryClient = useQueryClient();
+  const vacuumStatusQuery = useQuery<VacuumStatusResponse>({
+    queryKey: ["maintenance", "vacuum-status"],
+    queryFn: () => window.api.getVacuumStatus(),
+    refetchInterval: (query) =>
+      query.state.data?.isRunning === true ? 5000 : false,
+  });
+  const vacuumScheduleQuery = useQuery<VacuumSchedule>({
+    queryKey: ["maintenance", "vacuum-schedule"],
+    queryFn: () => window.api.getVacuumSchedule(),
+  });
+  const runVacuumMutation = useMutation<RunVacuumResponse>({
+    mutationFn: () => window.api.runVacuum(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["maintenance", "vacuum-status"],
+      });
+    },
+    onError: (error) => {
+      log.error("[SettingsBackupTab] Failed to run VACUUM:", error);
+    },
+  });
+  const setVacuumScheduleMutation = useMutation<boolean, Error, VacuumSchedule>({
+    mutationFn: (schedule) => window.api.setVacuumSchedule({ schedule }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["maintenance", "vacuum-schedule"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["maintenance", "vacuum-status"],
+      });
+    },
+    onError: (error) => {
+      log.error("[SettingsBackupTab] Failed to set VACUUM schedule:", error);
+    },
+  });
+
+  const vacuumStatus = vacuumStatusQuery.data;
+  const selectedSchedule = vacuumScheduleQuery.data ?? "manual";
+
   return (
     <Card>
       <CardHeader>
@@ -159,6 +207,24 @@ export const SettingsBackupTab = ({
             />
           </label>
         </section>
+
+        <Separator />
+
+        <DatabaseMaintenanceCard
+          lastVacuumAt={vacuumStatus?.lastVacuumAt ?? null}
+          lastVacuumStatus={vacuumStatus?.lastRunStatus ?? "never"}
+          lastVacuumError={vacuumStatus?.lastError ?? null}
+          vacuumSchedule={selectedSchedule}
+          isVacuumRunning={
+            vacuumStatus?.isRunning === true || runVacuumMutation.isPending
+          }
+          onRunVacuum={() => {
+            runVacuumMutation.mutate();
+          }}
+          onVacuumScheduleChange={(value) => {
+            setVacuumScheduleMutation.mutate(value);
+          }}
+        />
       </CardContent>
     </Card>
   );

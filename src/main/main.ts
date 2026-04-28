@@ -92,6 +92,8 @@ import { settings, SETTINGS_ID } from "./db/schema";
 import { container, DI_TOKENS } from "./core/di/Container";
 import { reloadProxyFromSettings } from "./lib/proxy";
 import { VideoProxyServer } from "./services/video-proxy-server";
+import { MaintenanceService } from "./services/MaintenanceService";
+import { registerMaintenanceHandlers } from "./ipc/handlers/maintenanceHandlers";
 
 logger.info("🚀 Application starting...");
 
@@ -162,6 +164,7 @@ let tray: Tray | null = null;
 const syncScheduler = new SyncScheduler(syncService);
 const maintenanceScheduler = new MaintenanceScheduler();
 const backupService = new BackupService(syncService);
+const maintenanceService = new MaintenanceService();
 container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
 
 // In test mode, skip single instance lock to allow multiple test instances
@@ -498,6 +501,7 @@ async function initializeAppAndWindow() {
       logger.info("[Main] Test mode: Skipping ready-to-show listener, initializing IPC immediately");
       // Initialize IPC immediately so tests can interact with the app
       registerAllHandlers(syncService, backupService, updaterService, mainWindow, videoProxyServer);
+      registerMaintenanceHandlers(maintenanceService);
       reloadProxyFromSettings();
       backupService.checkAndRunAutoBackup();
       
@@ -527,6 +531,7 @@ async function initializeAppAndWindow() {
           // Initialize IPC architecture (controllers + legacy handlers)
           // setupIpc is called inside registerAllHandlers now
           registerAllHandlers(syncService, backupService, updaterService, window, videoProxyServer);
+          registerMaintenanceHandlers(maintenanceService);
           reloadProxyFromSettings();
           backupService.checkAndRunAutoBackup();
 

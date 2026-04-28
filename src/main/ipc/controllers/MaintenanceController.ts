@@ -122,7 +122,10 @@ export class MaintenanceController extends BaseController {
     this.handle(
       IPC_CHANNELS.BACKUP.SET_SCHEDULE,
       z.tuple([AutoBackupIntervalSchema]),
-      this.setBackupSchedule.bind(this)
+      this.setBackupSchedule.bind(this) as (
+        event: IpcMainInvokeEvent,
+        ...args: unknown[]
+      ) => Promise<unknown> | unknown
     );
 
     log.info("[MaintenanceController] All handlers registered");

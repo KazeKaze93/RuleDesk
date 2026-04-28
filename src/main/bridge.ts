@@ -25,6 +25,12 @@ import type {
   MovePostsBetweenManualPlaylistsRequest,
 } from "../shared/schemas/playlist";
 import type { ExtendedStats } from "../shared/schemas/stats";
+import type {
+  RunVacuumResponse,
+  SetVacuumScheduleArgs,
+  VacuumSchedule,
+  VacuumStatusResponse,
+} from "../shared/schemas/maintenance";
 
 export type UpdateStatusData = {
   status: string;
@@ -195,6 +201,10 @@ export interface IpcBridge {
   checkDatabaseIntegrity: () => Promise<{ ok: boolean; details: string }>;
   getBackupSchedule: () => Promise<AutoBackupInterval>;
   setBackupSchedule: (interval: AutoBackupInterval) => Promise<boolean>;
+  getVacuumStatus: () => Promise<VacuumStatusResponse>;
+  runVacuum: () => Promise<RunVacuumResponse>;
+  getVacuumSchedule: () => Promise<VacuumSchedule>;
+  setVacuumSchedule: (args: SetVacuumScheduleArgs) => Promise<boolean>;
 
   verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
 
@@ -437,6 +447,11 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP.GET_SCHEDULE),
   setBackupSchedule: (interval) =>
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP.SET_SCHEDULE, interval),
+  getVacuumStatus: () => ipcRenderer.invoke("maintenance:get-vacuum-status"),
+  runVacuum: () => ipcRenderer.invoke("maintenance:run-vacuum"),
+  getVacuumSchedule: () => ipcRenderer.invoke("maintenance:get-vacuum-schedule"),
+  setVacuumSchedule: (args) =>
+    ipcRenderer.invoke("maintenance:set-vacuum-schedule", args),
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) =>
