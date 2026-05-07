@@ -440,6 +440,8 @@ Settings are split into tabs:
 - **API key status** - `Configured` / `Not configured` badge
 - **Save API key** - Update credentials from Settings
 
+**Important (portable):** API key is encrypted with OS-level security and bound to the current user on the current machine. If you move the app folder to another computer or another account, the key cannot be decrypted and must be entered again in **Settings -> Account**.
+
 ### Status badges behavior
 
 - Success/error badges in Settings are temporary and auto-hide after about **5 seconds**.

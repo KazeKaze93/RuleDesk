@@ -8,9 +8,9 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
+import { registerDatabaseInContainerAfterReinit } from "../../core/di/databaseRegistration";
 import { IPC_CHANNELS } from "../channels";
 import {
-  getDb,
   getSqliteInstance,
   closeDatabase,
   initializeDatabase,
@@ -37,15 +37,6 @@ const MAX_TOTAL_BACKUP_BYTES = (() => {
   return Math.floor(parsedMb * 1024 * 1024);
 })();
 const AutoBackupIntervalSchema = z.enum(["never", "daily", "weekly"]);
-
-/**
- * IPC controllers resolve the DB via DI. After closeDatabase + initializeDatabase the
- * underlying sqlite/drizzle instances are new, but the container still held the old
- * (closed) reference — every query would fail until full app restart.
- */
-function registerDatabaseInContainerAfterReinit(): void {
-  container.register(DI_TOKENS.DB, getDb());
-}
 
 /**
  * Maintenance Controller
