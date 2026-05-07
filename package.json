@@ -200,7 +200,7 @@
       "provider": "github",
       "owner": "KazeKaze93",
       "repo": "ruledesk",
-      "releaseType": "draft"
+      "releaseType": "release"
     },
     "win": {
       "target": [
@@ -211,7 +211,6 @@
           ]
         }
       ],
-      "artifactName": "RuleDesk-Setup-${version}.${ext}",
       "icon": "resources/icon.ico"
     },
     "portable": {

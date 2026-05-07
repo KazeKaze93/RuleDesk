@@ -116,11 +116,12 @@ jobs:
         run: npm ci
 
       - name: Build Application
+        run: npm run build
+
+      - name: Package Portable
+        run: npx electron-builder --win portable --publish never
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npm run build
-          npx electron-builder --publish never
 
       - name: Create Release & Upload Assets
         uses: softprops/action-gh-release@v2
@@ -130,7 +131,6 @@ jobs:
           prerelease: false
           make_latest: true
           files: |
-            dist/*.exe
-            dist/latest.yml
+            release/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

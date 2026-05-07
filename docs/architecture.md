@@ -1515,22 +1515,31 @@ src/
 │   ├── db/                        # Database layer
 │   │   ├── client.ts              # Database client (initialization, getDb, getSqliteInstance)
 │   │   ├── maintenance-queue.ts   # Maintenance operation queue (sequential execution)
+│   │   ├── paths.ts               # DB/userData path constants (data.bin, .rdcache, backup prefix)
 │   │   ├── schema.ts              # Drizzle ORM schema definitions
+│   │   └── backfill-media-type.ts # Background media_type backfill
 │   ├── ipc/                       # IPC (Inter-Process Communication)
 │   │   ├── controllers/           # IPC Controllers (domain-based)
 │   │   │   ├── ArtistsController.ts
+│   │   │   ├── BlacklistController.ts
 │   │   │   ├── PostsController.ts
+│   │   │   ├── PlaylistController.ts
+│   │   │   ├── SearchController.ts
 │   │   │   ├── SettingsController.ts
 │   │   │   ├── AuthController.ts
 │   │   │   ├── MaintenanceController.ts
 │   │   │   ├── ViewerController.ts
 │   │   │   ├── FileController.ts
+│   │   │   ├── StatsController.ts
+│   │   │   ├── VideoProxyController.ts
 │   │   │   └── SystemController.ts
+│   │   ├── handlers/              # Legacy/aux IPC handlers
 │   │   ├── channels.ts            # IPC channel constants
 │   │   └── index.ts               # IPC setup and registration
 │   ├── core/                      # Core infrastructure
 │   │   ├── di/                    # Dependency Injection
 │   │   │   ├── Container.ts       # DI Container (Singleton)
+│   │   │   ├── databaseRegistration.ts # Re-register DB in DI after DB reinit
 │   │   │   └── Token.ts           # Type-safe DI tokens
 │   │   └── ipc/                    # IPC infrastructure
 │   │       └── BaseController.ts   # Base controller with error handling
@@ -1542,10 +1551,19 @@ src/
 │   ├── services/                  # Background services
 │   │   ├── secure-storage.ts       # Secure storage for API credentials
 │   │   ├── cdn-selector.ts         # Rule34 CDN probe + media URL rewrite
-│   │   ├── sync-service.ts        # Rule34.xxx API synchronization
-│   │   └── updater-service.ts     # Auto-updater service
+│   │   ├── sync-service.ts         # API synchronization
+│   │   ├── sync-scheduler.ts       # Periodic sync scheduler
+│   │   ├── backup-service.ts       # Auto-backup service
+│   │   ├── maintenance-scheduler.ts # Daily checkpoint/optimize scheduler
+│   │   ├── MaintenanceService.ts   # User-triggered VACUUM status/run logic
+│   │   ├── updater-service.ts      # Auto-updater service
+│   │   └── video-proxy-server.ts   # Local video proxy
+│   ├── workers/                   # Worker threads
+│   │   ├── downloadWorker.ts       # Batch download worker
+│   │   └── vacuumWorker.ts         # VACUUM worker
 │   ├── lib/                       # Utilities
-│   │   └── logger.ts             # Logging utility
+│   │   ├── logger.ts              # Logging utility
+│   │   └── proxy.ts               # Proxy config helpers
 │   ├── bridge.ts                  # IPC bridge interface definition
 │   ├── main.d.ts                  # Main process type definitions
 │   └── main.ts                    # Main process entry point
@@ -1557,10 +1575,6 @@ src/
 │   │   │   ├── DeleteArtistDialog.tsx
 │   │   │   ├── Onboarding.tsx
 │   │   │   └── UpdateNotification.tsx
-│   │   ├── gallery/               # Gallery components
-│   │   │   ├── ArtistCard.tsx
-│   │   │   ├── ArtistGallery.tsx
-│   │   │   └── PostCard.tsx
 │   │   ├── inputs/                # Input components
 │   │   │   └── AsyncAutocomplete.tsx
 │   │   ├── layout/                 # Layout components
@@ -1568,32 +1582,20 @@ src/
 │   │   │   ├── GlobalTopBar.tsx
 │   │   │   └── Sidebar.tsx
 │   │   ├── pages/                  # Page components
-│   │   │   ├── ArtistDetails.tsx
 │   │   │   ├── Browse.tsx
 │   │   │   ├── Favorites.tsx
-│   │   │   ├── Onboarding.tsx
-│   │   │   ├── Tracked.tsx
-│   │   │   └── Updates.tsx
-│   │   ├── features/
-│   │   │   └── settings/           # Settings feature (tabbed UI)
-│   │   │       ├── Settings.tsx
-│   │   │       ├── SettingsGeneralTab.tsx
-│   │   │       ├── SettingsSyncTab.tsx
-│   │   │       ├── SettingsAppearanceTab.tsx
-│   │   │       ├── SettingsBackupTab.tsx
-│   │   │       └── SettingsAccountTab.tsx
+│   │   │   ├── PlaylistsPage.tsx
+│   │   │   ├── StatsPage.tsx
+│   │   │   ├── Updates.tsx
+│   │   │   └── ...
 │   │   ├── ui/                     # shadcn/ui components
-│   │   │   ├── alert.tsx
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   ├── dropdown-menu.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── label.tsx
-│   │   │   ├── select.tsx
-│   │   │   └── separator.tsx
-│   │   └── viewer/                 # Viewer components
-│   │       └── ViewerDialog.tsx
+│   │   │   └── ...
+│   ├── features/                  # Feature modules
+│   │   ├── artists/               # Artist details/tracked/gallery/post card
+│   │   ├── onboarding/
+│   │   ├── settings/
+│   │   └── viewer/
+│   ├── hooks/                     # App-level hooks
 │   ├── i18n/                       # Internationalization
 │   │   └── index.ts
 │   ├── lib/                        # Utilities
@@ -1615,8 +1617,10 @@ src/
 │   ├── main.tsx                    # Renderer entry point
 │   └── renderer.d.ts               # Renderer type definitions
 │
-└── preload/                        # Preload scripts (generated by electron-vite)
-    └── bridge.cjs                  # Compiled preload script
+└── shared/                         # Shared contracts (schemas/constants/types)
+    ├── schemas/
+    ├── constants.ts
+    └── types.ts
 
 Root:
 ├── drizzle/                        # Database migrations
@@ -1673,7 +1677,7 @@ Root:
 - **Electron Version:** 39.2.7 with latest security features
 - **Build System:** electron-vite for optimal build performance
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
-- **Portable Mode:** Automatic detection and support for portable executables
+- **Portable Mode:** Automatic detection and support for portable executables (`app.isPackaged` -> `app.setPath("userData", <exe_dir>/data)`)
 
 **Database & Schema:**
 
@@ -1733,7 +1737,7 @@ Root:
 19. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 20. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
 21. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
-22. ✅ **Portable Mode:** Automatic detection and support for portable executables
+22. ✅ **Portable Mode:** Automatic detection and support for portable executables (`app.isPackaged` -> `app.setPath("userData", <exe_dir>/data)`)
 23. ✅ **IPC Controllers:** Controller-based architecture with `BaseController` and dependency injection
 24. ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 
@@ -1835,7 +1839,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 
 - **Safe Mode / NSFW Filter:** ✅ **COMPLETED:** blur logic and safe mode state are implemented in gallery/viewer flows
 - **Age Gate:** ✅ **COMPLETED:** Age gate component (`AgeGate.tsx`) and `confirmLegal` IPC method implemented
-- **Portable Mode:** Uses absolute paths via `app.getPath("userData")`, no relative path support
+- **Portable Mode:** ✅ Implemented via `app.isPackaged` + `app.setPath("userData", path.join(path.dirname(process.execPath), "data"))`
 - **Anti-Bot Measures:** Static User-Agent strings, fixed delays (1.5s/0.5s) but no randomization or rotation
 - **DB Optimization (FTS5):** ✅ FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
 - **Composite Indexes:** ✅ Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries
