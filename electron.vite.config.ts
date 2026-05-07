@@ -23,6 +23,7 @@ export default defineConfig({
         input: {
           main: resolve(__dirname, "src/main/main.ts"),
           "workers/downloadWorker": resolve(__dirname, "src/main/workers/downloadWorker.ts"),
+          "workers/vacuumWorker": resolve(__dirname, "src/main/workers/vacuumWorker.ts"),
         },
         output: {
           dir: "out/main",

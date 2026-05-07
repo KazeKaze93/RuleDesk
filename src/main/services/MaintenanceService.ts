@@ -1,7 +1,15 @@
 import log from "electron-log";
+import path from "path";
+import { Worker } from "worker_threads";
 import { eq } from "drizzle-orm";
-import { getDb, getSqliteInstance } from "../db/client";
+import {
+  closeDatabase,
+  getDatabasePaths,
+  getDb,
+  initializeDatabase,
+} from "../db/client";
 import { settings, SETTINGS_ID } from "../db/schema";
+import { registerDatabaseInContainerAfterReinit } from "../core/di/databaseRegistration";
 import type {
   RunVacuumResponse,
   VacuumSchedule,
@@ -12,6 +20,52 @@ type VacuumDbStatus = "success" | "error";
 
 export class MaintenanceService {
   private isRunning = false;
+
+  private runVacuumWorker(
+    dbPath: string
+  ): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve, reject) => {
+      const workerPath = path.join(__dirname, "workers", "vacuumWorker.cjs");
+      const worker = new Worker(workerPath, { workerData: { dbPath } });
+      let settled = false;
+
+      const resolveOnce = (result: { success: boolean; error?: string }) => {
+        if (!settled) {
+          settled = true;
+          resolve(result);
+        }
+      };
+
+      const rejectOnce = (error: Error) => {
+        if (!settled) {
+          settled = true;
+          reject(error);
+        }
+      };
+
+      worker.once("message", (message: { success?: boolean; error?: string }) => {
+        if (message.success) {
+          resolveOnce({ success: true });
+          return;
+        }
+
+        resolveOnce({
+          success: false,
+          error: message.error ?? "VACUUM failed in worker",
+        });
+      });
+
+      worker.once("error", (error) => {
+        rejectOnce(error);
+      });
+
+      worker.once("exit", (code) => {
+        if (!settled && code !== 0) {
+          rejectOnce(new Error(`VACUUM worker exited with code ${code}`));
+        }
+      });
+    });
+  }
 
   private ensureSettingsRecord(): void {
     const db = getDb();
@@ -64,7 +118,7 @@ export class MaintenanceService {
     };
   }
 
-  public runVacuum(): RunVacuumResponse {
+  public async runVacuum(): Promise<RunVacuumResponse> {
     const startedAt = Date.now();
 
     if (this.isRunning) {
@@ -78,52 +132,64 @@ export class MaintenanceService {
     this.ensureSettingsRecord();
     this.isRunning = true;
 
+    let success = false;
+    let errorMessage: string | null = null;
+
     try {
-      const sqlite = getSqliteInstance();
-      sqlite.exec("VACUUM;");
+      const { dbPath } = getDatabasePaths();
+      closeDatabase();
 
-      const finishedAt = Date.now();
-      getDb()
-        .update(settings)
-        .set({
-          lastVacuumAt: finishedAt,
-          lastVacuumStatus: "success",
-          lastVacuumError: null,
-        })
-        .where(eq(settings.id, SETTINGS_ID))
-        .run();
+      const workerResult = await this.runVacuumWorker(dbPath);
+      success = workerResult.success;
+      errorMessage = workerResult.error ?? null;
+    } catch (error) {
+      success = false;
+      errorMessage = error instanceof Error ? error.message : "VACUUM failed";
+      log.error("[MaintenanceService] VACUUM worker execution failed:", error);
+    }
 
+    try {
+      await initializeDatabase();
+      registerDatabaseInContainerAfterReinit();
+    } catch (error) {
+      success = false;
+      const reinitErrorMessage =
+        error instanceof Error ? error.message : "Database reinitialization failed";
+      errorMessage = errorMessage
+        ? `${errorMessage}; reinit failed: ${reinitErrorMessage}`
+        : `Database reinitialization failed: ${reinitErrorMessage}`;
+      log.error("[MaintenanceService] Failed to reinitialize database after VACUUM:", error);
+    }
+
+    const finishedAt = Date.now();
+    this.isRunning = false;
+
+    getDb()
+      .update(settings)
+      .set({
+        lastVacuumAt: finishedAt,
+        lastVacuumStatus: success ? "success" : ("error" satisfies VacuumDbStatus),
+        lastVacuumError: success ? null : errorMessage ?? "VACUUM failed",
+      })
+      .where(eq(settings.id, SETTINGS_ID))
+      .run();
+
+    if (success) {
       return {
         success: true,
         startedAt,
         finishedAt,
         durationMs: finishedAt - startedAt,
       };
-    } catch (error) {
-      const finishedAt = Date.now();
-      const message = error instanceof Error ? error.message : "VACUUM failed";
-
-      getDb()
-        .update(settings)
-        .set({
-          lastVacuumAt: finishedAt,
-          lastVacuumStatus: "error" satisfies VacuumDbStatus,
-          lastVacuumError: message,
-        })
-        .where(eq(settings.id, SETTINGS_ID))
-        .run();
-
-      log.error("[MaintenanceService] VACUUM failed:", error);
-      return {
-        success: false,
-        startedAt,
-        finishedAt,
-        durationMs: finishedAt - startedAt,
-        error: message,
-      };
-    } finally {
-      this.isRunning = false;
     }
+
+    return {
+      success: false,
+      startedAt,
+      finishedAt,
+      durationMs: finishedAt - startedAt,
+      error: errorMessage ?? "VACUUM failed",
+    };
   }
 
   public getSchedule(): VacuumSchedule {

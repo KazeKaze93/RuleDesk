@@ -29,17 +29,8 @@ Welcome to RuleDesk! This guide will help you get started and use all the featur
 
 ### Windows
 
-1. Download the installer from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
-2. Run the installer (`.exe` file)
-3. Follow the installation wizard
-4. RuleDesk will be installed in your Programs folder
-
-**Portable Version (Optional):**
-
-If you prefer a portable version that doesn't require installation:
-
-1. Download the portable `.exe` file
-2. Extract it to any folder
+1. Download the portable `.exe` file from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
+2. Place it in any folder
 3. Run `RuleDesk.exe` directly
 4. Your data will be stored in a `data/` folder next to the executable
 
@@ -440,6 +431,8 @@ Settings are split into tabs:
 - **API key status** - `Configured` / `Not configured` badge
 - **Save API key** - Update credentials from Settings
 
+**Important (portable):** API key is encrypted with OS-level security and bound to the current user on the current machine. If you move the app folder to another computer or another account, the key cannot be decrypted and must be entered again in **Settings -> Account**.
+
 ### Status badges behavior
 
 - Success/error badges in Settings are temporary and auto-hide after about **5 seconds**.
@@ -564,13 +557,13 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 
 The application uses Electron's `app.getPath("userData")` to determine the database location. This ensures compatibility across different installation methods and operating systems.
 
-**Standard locations (managed by Electron):**
-- **Windows:** `%APPDATA%/RuleDesk/metadata.db` (typically `C:\Users\YourName\AppData\Roaming\RuleDesk\`)
-- **macOS:** `~/Library/Application Support/RuleDesk/metadata.db`
-- **Linux:** `~/.config/RuleDesk/metadata.db`
+**Standard locations (managed by Electron in development/unpackaged mode):**
+- **Windows:** `%LOCALAPPDATA%/.rdcache/data.bin`
+- **macOS:** `~/Library/Application Support/.rdcache/data.bin`
+- **Linux:** `~/.config/.rdcache/data.bin`
 
 **Portable mode:**
-- **Portable:** `data/metadata.db` (next to executable, if running from portable executable)
+- **Portable:** `<exe_dir>/data/data.bin` (because `userData` is redirected to `<exe_dir>/data/`)
 
 **Note:** The exact path may vary. The application automatically detects the correct location using Electron's built-in path management. You don't need to manually locate the database file unless troubleshooting.
 

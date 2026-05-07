@@ -450,11 +450,11 @@ The application stores configuration in SQLite database:
 
 - **API Credentials:** Stored securely with encryption using Electron's `safeStorage` API. API keys are encrypted at rest and only decrypted in Main Process when needed for API calls.
 - **Database Location:**
-  - **Portable Mode:** If running from a portable executable, database is stored in `data/` folder next to the executable
-  - **Standard Mode:** Electron user data directory (automatically managed)
-    - Windows: `%APPDATA%/RuleDesk/metadata.db`
-    - macOS: `~/Library/Application Support/RuleDesk/metadata.db`
-    - Linux: `~/.config/RuleDesk/metadata.db`
+  - **Portable Mode:** `<exe_dir>/data/data.bin` (because `userData` is redirected to `<exe_dir>/data`)
+  - **Development/Unpackaged Mode:** Electron user data directory (automatically managed)
+    - Windows: `%LOCALAPPDATA%/.rdcache/data.bin`
+    - macOS: `~/Library/Application Support/.rdcache/data.bin`
+    - Linux: `~/.config/.rdcache/data.bin`
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 - **No Environment Variables Required:** All configuration is handled through the UI
 
@@ -476,7 +476,7 @@ The built binaries will be available in the `release/` directory. The exact outp
 
 **Build Targets:**
 
-- **Windows:** NSIS installer and portable executable (x64)
+- **Windows:** Portable executable (x64)
 - **macOS:** DMG package
 - **Linux:** AppImage
 
@@ -595,9 +595,8 @@ npm run db:studio
 
 ### Database Location
 
-- **Development:** Database stored in Electron user data directory
-- **Production (Standard):** Electron user data directory
-- **Production (Portable):** `data/` folder next to executable
+- **Development/Unpackaged:** Electron user data directory (`.rdcache/data.bin`)
+- **Production (Portable):** `<exe_dir>/data/data.bin`
 
 **📖 For detailed database information, see [Database Documentation](./docs/database.md).**
 

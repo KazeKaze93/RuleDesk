@@ -529,3 +529,5 @@ export function closeDatabase(): void {
     logger.info("[DB] Database closed.");
   }
 }
+
+export { getDatabasePaths };

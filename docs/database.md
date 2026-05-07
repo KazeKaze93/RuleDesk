@@ -33,15 +33,16 @@ This document is a maintainer-focused database reference. RuleDesk uses **SQLite
 
 The database file location depends on the application mode:
 
-**Standard Mode (Installed):**
+**Standard Mode (Development / unpackaged run):**
 
-- **Windows:** `%APPDATA%/RuleDesk/metadata.db`
-- **macOS:** `~/Library/Application Support/RuleDesk/metadata.db`
-- **Linux:** `~/.config/RuleDesk/metadata.db`
+- **Windows:** `%LOCALAPPDATA%/.rdcache/data.bin`
+- **macOS:** `~/Library/Application Support/.rdcache/data.bin`
+- **Linux:** `~/.config/.rdcache/data.bin`
 
-**Portable Mode (Portable Executable):**
+**Portable Mode (Packaged executable):**
 
-- Database is stored in `data/metadata.db` next to the executable
+- `userData` is redirected to `<exe_dir>/data/`
+- Database is stored as `<exe_dir>/data/data.bin`
 
 **Implementation:**
 
@@ -52,8 +53,8 @@ if (app.isPackaged) {
   app.setPath("userData", portableDataPath);
 }
 
-// Database initialization (in db/client.ts)
-const dbPath = path.join(app.getPath("userData"), "metadata.db");
+// Database path resolution (in db/paths.ts)
+const dbPath = path.join(app.getPath("userData"), "data.bin");
 ```
 
 ## Schema
@@ -72,6 +73,8 @@ Stores information about tracked artists/users.
 | `api_endpoint`    | TEXT (NOT NULL)                   | Base API endpoint URL                       |
 | `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)     | ID of the last seen post                    |
 | `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)     | Count of new, unviewed posts                |
+| `sync_status`     | TEXT (NOT NULL, DEFAULT 'idle')   | Current sync state (`idle`, `syncing`, `error`) |
+| `last_error`      | TEXT (NULL)                       | Last sync error message                     |
 | `last_checked`    | INTEGER (NULL)                    | Timestamp of last API poll (timestamp mode) |
 | `created_at`      | INTEGER (NOT NULL)                | Creation timestamp (timestamp mode, ms)     |
 
@@ -215,11 +218,20 @@ Stores application settings including API credentials and user preferences.
 | -------------------- | -------------------------------------- | -------------------------------------------- |
 | `id`                 | INTEGER (PK, AutoIncrement)            | Primary key                                  |
 | `user_id`            | TEXT (DEFAULT '')                      | Booru User ID (provider-specific)            |
+| `provider`           | TEXT (NOT NULL, DEFAULT 'rule34')      | Active provider ID (`rule34`, `gelbooru`)    |
 | `encrypted_api_key`  | TEXT (DEFAULT '')                      | Encrypted API key (encrypted at rest)        |
+| `proxy_url`          | TEXT (NULL)                            | Optional proxy URL                            |
 | `is_safe_mode`       | INTEGER (BOOLEAN, DEFAULT 1)           | Safe mode flag (blur NSFW content)           |
 | `is_adult_confirmed` | INTEGER (BOOLEAN, DEFAULT 0)           | Adult confirmation flag (18+ confirmation)   |
 | `is_adult_verified`  | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Adult verification flag (legal confirmation) |
 | `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | Terms of Service acceptance timestamp        |
+| `download_folder`    | TEXT (NULL)                            | Default download folder                       |
+| `duplicate_file_behavior` | TEXT (DEFAULT 'skip')            | Duplicate file behavior                       |
+| `download_folder_structure` | TEXT (DEFAULT 'flat')          | Download folder structure                     |
+| `theme`              | TEXT (DEFAULT 'system')                | Theme selection                               |
+| `auto_sync_on_startup` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Run sync on startup                        |
+| `sync_interval_minutes` | INTEGER (NOT NULL, DEFAULT 0)       | Periodic sync interval in minutes             |
+| `backup_retention`   | INTEGER (NOT NULL, DEFAULT 5)          | Number of backups to keep                     |
 | `vacuum_schedule`    | TEXT (DEFAULT 'manual')                | User-visible VACUUM policy (`manual`, `weekly`, `monthly`) |
 | `last_vacuum_at`     | INTEGER (NULL)                         | Timestamp of last VACUUM run (ms)            |
 | `last_vacuum_status` | TEXT (NULL)                            | Last VACUUM result (`success`/`error`)       |
@@ -231,7 +243,9 @@ Stores application settings including API credentials and user preferences.
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id").default(""),
+  provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
   encryptedApiKey: text("encrypted_api_key").default(""),
+  proxyUrl: text("proxy_url"),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
   isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
     false
@@ -240,6 +254,19 @@ export const settings = sqliteTable("settings", {
     .default(false)
     .notNull(),
   tosAcceptedAt: integer("tos_accepted_at", { mode: "timestamp" }),
+  downloadFolder: text("download_folder"),
+  duplicateFileBehavior: text("duplicate_file_behavior").default("skip"),
+  downloadFolderStructure: text("download_folder_structure").default("flat"),
+  theme: text("theme", { enum: ["system", "light", "dark"] }).default("system"),
+  autoSyncOnStartup: integer("auto_sync_on_startup", { mode: "boolean" })
+    .default(false)
+    .notNull(),
+  syncIntervalMinutes: integer("sync_interval_minutes").default(0).notNull(),
+  backupRetention: integer("backup_retention").default(5).notNull(),
+  vacuumSchedule: text("vacuum_schedule").default("manual"),
+  lastVacuumAt: integer("last_vacuum_at"),
+  lastVacuumStatus: text("last_vacuum_status"),
+  lastVacuumError: text("last_vacuum_error"),
 });
 ```
 
@@ -263,10 +290,12 @@ Stores playlist/collection information for curated post collections.
 | `query_schema_version` | INTEGER (NOT NULL, DEFAULT 1) | Version of smart playlist query DSL for safe parsing/migrations |
 | `icon_name`   | TEXT (DEFAULT '')                 | Icon name for playlist display                 |
 | `created_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Creation timestamp (timestamp mode, ms)        |
+| `updated_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Update timestamp (timestamp mode, ms)          |
 
 **Indexes:**
 
 - `playlists_createdAt_idx` - Index on `created_at` for sorting
+- `playlists_updatedAt_idx` - Index on `updated_at` for sorting
 - `playlists_isSmart_idx` - Index on `is_smart` for filtering smart playlists
 
 **Schema Definition:**
@@ -286,9 +315,13 @@ export const playlists = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => ({
     createdAtIdx: index("playlists_createdAt_idx").on(t.createdAt),
+    updatedAtIdx: index("playlists_updatedAt_idx").on(t.updatedAt),
     isSmartIdx: index("playlists_isSmart_idx").on(t.isSmart),
   })
 );
@@ -312,6 +345,7 @@ Junction table linking playlists to posts. Uses composite primary key to prevent
 | `playlist_id` | INTEGER (NOT NULL, FK)            | Foreign key to `playlists.id` (CASCADE DELETE) |
 | `post_id`     | INTEGER (NOT NULL, FK)            | Foreign key to `posts.id` (CASCADE DELETE)     |
 | `added_at`    | INTEGER (TIMESTAMP, NOT NULL)     | Timestamp when post was added (timestamp mode, ms) |
+| `position`    | INTEGER (NOT NULL, DEFAULT 0)     | Manual ordering position                         |
 
 **Primary Key:**
 
@@ -339,6 +373,7 @@ export const playlistEntries = sqliteTable(
     addedAt: integer("added_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
+    position: integer("position").notNull().default(0),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.playlistId, t.postId] }),
@@ -660,7 +695,7 @@ This creates a new migration file in the `drizzle/` directory.
 
 ### Running Migrations
 
-Migrations are automatically run on application startup via `src/main/db/migrate.ts`.
+Migrations are automatically run on application startup via `initializeDatabase()` in `src/main/db/client.ts`.
 
 **Manual execution:**
 
@@ -709,7 +744,7 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "sqlite",
   dbCredentials: {
-    url: "./metadata.db",
+    url: "./<local-migration-db-file>",
   },
 });
 ```
@@ -844,6 +879,8 @@ The application provides built-in backup functionality:
 
 1. **Manual Backup:** Use `window.api.createBackup()` or the Backup Controls UI in **Settings**
 2. **Backup Location:** Backups are stored in the user data directory with timestamped filenames
+   - Manual backup pattern: `.ruledesk-backup-<timestamp>.db`
+   - Auto-backup pattern: `data.backup.YYYY-MM-DD.bin`
 3. **Backup Format:** Full SQLite database copy (via `VACUUM INTO`)
 4. **Rotation:** After a successful backup, older files matching the backup name prefix are deleted so only the most recent `backupRetention` copies remain. `backupRetention` is stored in `settings` and clamped to `1..20` by Main Process validation.
 5. **Optional total-size cap (env):** If `BACKUP_RETENTION_MAX_TOTAL_MB` is set to a positive number, backup cleanup additionally prunes oldest files until total backup size is under the configured threshold.
@@ -872,7 +909,7 @@ If the database becomes corrupted and you need to restore manually:
 
 1. Stop the application
 2. Locate the backup file (in user data directory)
-3. Copy the backup file to replace `metadata.db`
+3. Copy the backup file to replace `data.bin`
 4. Restart the application (migrations will run automatically)
 
 **Note:** The restore process includes automatic integrity checks using `PRAGMA integrity_check` before replacing the database. If integrity check fails, the restore is rolled back and original database is preserved.
@@ -881,11 +918,11 @@ If the database becomes corrupted and you need to restore manually:
 
 The application also exposes VACUUM maintenance controls in Settings:
 
-1. **Manual run:** `window.api.runVacuum()` executes `VACUUM;` in Main Process.
+1. **Manual run:** `window.api.runVacuum()` executes `VACUUM;` in a dedicated worker thread.
 2. **Status:** `window.api.getVacuumStatus()` returns last run time/result/error and in-memory `isRunning`.
 3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`.
 
-**Important:** `VACUUM` is blocking for SQLite and runs only in Main Process (never in Renderer/worker threads).
+**Important:** `VACUUM` remains blocking for SQLite itself, but is isolated from the UI/IPC loop by running in a worker thread.
 
 ## Performance Considerations
 

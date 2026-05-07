@@ -31,11 +31,11 @@ export function registerMaintenanceHandlers(
     }
   });
 
-  ipcMain.handle("maintenance:run-vacuum", (_event, ...args: unknown[]) => {
+  ipcMain.handle("maintenance:run-vacuum", async (_event, ...args: unknown[]) => {
     parseNoArgs(args);
 
     try {
-      return maintenanceService.runVacuum();
+      return await maintenanceService.runVacuum();
     } catch (error) {
       log.error("[MaintenanceHandlers] run-vacuum failed:", error);
       throw new Error(sanitizeErrorMessage(error));
