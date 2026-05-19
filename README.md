@@ -509,7 +509,7 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests. **Playwright** covers E2E flows.
+**Vitest** covers unit, integration, and property-based tests (**140 tests** across 20 files as of v16.2.x post-audit). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
 
 ```bash
 # Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron
@@ -535,10 +535,20 @@ npm run test:e2e
 
 | Directory | Purpose |
 |-----------|---------|
-| `tests/unit/` | Hooks, utilities, filter/layout logic |
+| `tests/unit/` | Hooks, utilities, filter/layout logic, DI, credential decrypt |
 | `tests/integration/` | IPC controllers and services with in-memory SQLite |
 | `tests/property/` | Property-based / fuzzing tests (`fast-check`) |
 | `tests/e2e/` | Playwright user workflows |
+
+**Post-audit Vitest additions (v16.2.x):**
+
+| File | Area |
+|------|------|
+| `tests/unit/utils/decrypted-credentials.test.ts` | No ciphertext fallback on decrypt failure |
+| `tests/unit/core/di-container.test.ts` | DI `Map` keyed by `token.id` |
+| `tests/unit/hooks/useWorkerFilteredPosts.test.ts` | `mapWorkerPostToPost` field preservation |
+| `tests/integration/controllers/ArtistsController.limit.test.ts` | `MAX_TRACKED_ARTISTS` (5000) cap |
+| `tests/integration/services/SyncService.queue.test.ts` | `runExclusive` serializes sync vs repair |
 
 **Dual ABI for `better-sqlite3`:**
 

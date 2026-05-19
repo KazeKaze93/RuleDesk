@@ -27,6 +27,15 @@ Vitest tests for gallery logic, filters, layout, and shared utilities. Property-
 
 - **`filter-utils.test.ts`** — AI tag detection, video file detection
 - **`posts-tag-query.test.ts`** — tag query helpers
+- **`utils/decrypted-credentials.test.ts`** — `getDecryptedCredentialsStrict`, `CredentialDecryptionError` (no ciphertext fallback)
+
+### Core (Main)
+
+- **`core/di-container.test.ts`** — `Container` keyed by `token.id`; re-entrant circular detection
+
+### Worker mapping
+
+- **`hooks/useWorkerFilteredPosts.test.ts`** — `mapWorkerPostToPost()` preserves `mediaType`, `viewCount`, `lastViewedAt`
 
 ### Property (`tests/property/fuzzing.test.ts`)
 
@@ -61,5 +70,9 @@ npm run test:coverage
 - Prefer testing pure logic without React rendering
 - Mock Electron/native deps where needed
 - AAA pattern (Arrange, Act, Assert)
+
+For integration IPC/SQLite tests (artist limit, sync queue), see [`tests/integration/README.md`](../integration/README.md).
+
+For the full suite inventory (**140** tests), see [`TEST_COVERAGE.md`](./TEST_COVERAGE.md).
 
 For E2E workflows, see `tests/e2e/README.md` and Playwright specs.

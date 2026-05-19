@@ -34,7 +34,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | File | Tests | Area |
 |------|-------|------|
 | `controllers/ArtistsController.limit.test.ts` | 1 | `MAX_TRACKED_ARTISTS` truncation |
-| `services/SyncService.queue.test.ts` | 1 | `runExclusive` repair queue |
+| `services/SyncService.queue.test.ts` | 1 | `runExclusive` — repair’s `syncArtist` runs only after full sync completes (timing assertion, not just call order) |
 
 ## Running tests
 

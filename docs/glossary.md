@@ -211,6 +211,16 @@ A system for marking and managing favorite posts. Favorites are stored locally i
 
 ---
 
+### Tracked Artists / `MAX_TRACKED_ARTISTS`
+
+Artists (tags, uploaders, or query subscriptions) stored in the local `artists` table and surfaced via `getTrackedArtists()` IPC.
+
+**Cap:** IPC returns at most **5000** rows (`MAX_TRACKED_ARTISTS` in `src/shared/constants.ts`). Larger libraries are truncated with a Main-process warning — not a silent full export.
+
+**Related:** [API — getTrackedArtists](./api.md#gettrackedartists), [Database — Get All Artists](./database.md#get-all-artists)
+
+---
+
 ### Subscriptions
 
 Tag-based subscriptions for tracking specific tag combinations. Currently planned but not yet implemented.

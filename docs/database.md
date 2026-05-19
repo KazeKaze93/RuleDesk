@@ -436,19 +436,17 @@ All database operations are accessed through Drizzle ORM using the database inst
 
 #### Get All Artists
 
-Retrieves all tracked artists, ordered by name.
+Retrieves tracked artists for IPC/UI via `getTrackedArtistsWithStats()` in `src/main/db/queries/artists.ts` (newest activity first).
 
-**Example:**
+**Limit:** At most `MAX_TRACKED_ARTISTS` (**5000**, `src/shared/constants.ts`). If the DB has more rows, the query applies `.limit(5000)` and Main logs a warning — the UI must not assume an unbounded subscription list.
+
+**Example (query helper):**
 
 ```typescript
-import { getDb } from "./db/client";
-import { artists } from "./schema";
-import { asc } from "drizzle-orm";
+import { getTrackedArtistsWithStats } from "./queries/artists";
 
-const db = getDb();
-const artistsList = await db.query.artists.findMany({
-  orderBy: [asc(artists.name)],
-});
+const artistsList = getTrackedArtistsWithStats();
+// length <= MAX_TRACKED_ARTISTS
 ```
 
 #### Add Artist
@@ -564,7 +562,7 @@ db
 
 #### Get Settings
 
-Retrieves stored settings. API key is encrypted and should be decrypted in Main Process.
+Retrieves stored settings. API key is encrypted at rest; decrypt only in Main via `SecureStorage` / `getDecryptedCredentialsStrict()` — never return ciphertext or plaintext to Renderer.
 
 **Example:**
 

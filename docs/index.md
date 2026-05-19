@@ -97,15 +97,17 @@ Engineering materials are intentionally grouped here to keep the top-level index
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
 - [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, CI/CD
 - [Unit test guide](../tests/unit/README.md) - Vitest unit/property test layout
+- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (**140** Vitest tests across 20 files)
+- [Integration test notes](../tests/integration/README.md) - IPC + SQLite integration tests
 - [.cursorrules](../.cursorrules) - Engineering standards
-- [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants
+- [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants (do not add root `LESSONS.md`)
 
 ### Quality gates (local & CI)
 
 | Step | Command |
 |------|---------|
 | Typecheck + lint + img policy | `npm run validate` |
-| All Vitest suites | `npm test` |
+| All Vitest suites (140 tests) | `npm test` |
 | Pre-PR full gate | `npm run test:verify` |
 | Architecture audit (Node) | `npm run arch:audit` |
 | Architecture police (Python 3.11+) | `npm run arch:police` |
@@ -164,5 +166,5 @@ This documentation is maintained alongside the codebase. When making changes:
 
 ---
 
-**Last Updated:** May 2026 — CI, testing, and dependency audit docs aligned with v16.2.x toolchain.
+**Last Updated:** May 2026 — v16.2.x post-audit: credentials helper, DI token.id keys, sync queue, artist cap, worker mapping, expanded Vitest coverage (see [TEST_COVERAGE.md](../tests/unit/TEST_COVERAGE.md)).
 
