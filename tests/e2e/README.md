@@ -40,6 +40,19 @@ npm run test:e2e:headless
 
 **Note:** E2E tests run in headless mode by default. This is optimal for CI/CD. Use headed mode only for local debugging.
 
+## CI
+
+GitHub Actions runs E2E after the **quality** job (`validate`, `arch:police`, `arch:audit`, `npm test`, production audit). Steps: `npm ci` → `db:rebuild` → `build` → Playwright Chromium → `npm run test:e2e` under `xvfb-run` on Ubuntu.
+
+**Secrets** (repository Settings → Actions):
+
+- `TEST_USER_ID` — Rule34 API user id for live auth flows
+- `TEST_API_KEY` — Rule34 API key
+
+Without these secrets, tests that require real credentials will fail in CI with an explicit error.
+
+Tagged releases (`v*`) wait for both **quality** and **e2e** before the Windows portable build.
+
 ## Test Structure
 
 - `global-setup.ts` - Ensures the app is built before tests run

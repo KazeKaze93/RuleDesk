@@ -62,7 +62,7 @@ test.describe('User Journeys', () => {
     await expect(dialog).toBeVisible({ timeout: 5000 });
     
     // Fill the tag input
-    // AsyncAutocomplete uses @headlessui/react Combobox
+    // AsyncAutocomplete uses a custom dropdown (no Headless UI)
     // The input has placeholder "Search on Rule34.xxx..." or "Search on Gelbooru..."
     const tagInput = page.locator('input[placeholder*="Search on"]').first();
     await expect(tagInput).toBeVisible({ timeout: 3000 });

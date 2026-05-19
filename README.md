@@ -226,11 +226,11 @@ The application is stable and production-ready (see **`package.json`** → `vers
 
 ### Infrastructure & Build
 
-- ✅ **Electron Version:** 39.2.7 with latest security features
+- ✅ **Electron Version:** 39.8.x with latest security patches
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
 - ✅ **Portable Mode:** Support for portable executables with data folder next to executable
-- ✅ **Testing Architecture:** Unified testing setup with Vitest for Unit/Integration tests, Playwright for E2E tests
+- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate`, `arch:audit`, and `npm test` on every push/PR
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
 
@@ -425,9 +425,10 @@ This project uses **electron-vite** as the build tool for both the Electron Main
 
 ### Prerequisites
 
-- **Node.js:** v18 or higher
-- **npm:** v9 or higher (or yarn)
+- **Node.js:** v20 LTS (matches CI)
+- **npm:** v9 or higher
 - **Git:** For version control
+- **Python 3.11+** (optional, local only): required for `arch:police` and `arch:stats` (Inquisitor); CI installs Python automatically
 
 ### Installation
 
@@ -482,58 +483,79 @@ The built binaries will be available in the `release/` directory. The exact outp
 
 ### Quality Checks
 
-Run the following commands to ensure code quality:
-
 ```bash
-# Type checking
+# Typecheck + ESLint + renderer <img> loading/decoding policy
+npm run validate
+
+# Individual steps (if needed)
 npm run typecheck
-
-# Run linter to check code style and potential issues
 npm run lint
-
-# Validate image loading/decoding attributes in renderer
 npm run check:img-attrs
 
-# Run both (validation)
-npm run validate
+# Architecture tooling (Node-based)
+npm run arch:audit    # dead-code / unused export scan
+npm run arch:deps     # dependency usage report
+
+# Architecture tooling (Python-based; needs Python 3.11+ locally)
+npm run arch:police
+npm run arch:stats
+
+# Production dependency audit (high severity and above)
+npm audit --omit=dev --audit-level=high
+
+# Full local gate before a PR (validate + all Vitest suites + Electron ABI restore)
+npm run test:verify
 ```
 
 ### Testing
 
-The project uses **Vitest** for unit and integration tests, and **Playwright** for E2E tests.
+**Vitest** covers unit, integration, and property-based tests. **Playwright** covers E2E flows.
 
 ```bash
-# Run all tests (automatically rebuilds better-sqlite3 for Node.js, then rebuilds for Electron after)
+# Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron
 npm test
 
-# Run tests in watch mode
+# Same Vitest run without posttest Electron rebuild (still rebuilds Node first)
+npm run test:run
+
+# Watch / UI / coverage (each rebuilds better-sqlite3 for Node before running)
 npm run test:watch
+npm run test:ui
+npm run test:coverage
 
-# Run only integration tests (autonomous, rebuilds for Node.js automatically)
+# Targeted suites
 npm run test:integration
-
-# Run integration tests in watch mode (for TDD)
 npm run test:integration:watch
 
-# Run E2E tests
+# E2E (requires build + Playwright browsers)
 npm run test:e2e
-
-# Generate coverage report
-npm run test:coverage
 ```
 
-**Testing Architecture:**
+**Test layout:**
 
-- **Unit Tests:** Located in `tests/unit/` - Test individual components, hooks, and utilities
-- **Integration Tests:** Located in `tests/integration/` - Test IPC controllers and services with real database
-- **E2E Tests:** Located in `tests/e2e/` - Test full user workflows with Playwright
+| Directory | Purpose |
+|-----------|---------|
+| `tests/unit/` | Hooks, utilities, filter/layout logic |
+| `tests/integration/` | IPC controllers and services with in-memory SQLite |
+| `tests/property/` | Property-based / fuzzing tests (`fast-check`) |
+| `tests/e2e/` | Playwright user workflows |
 
-**Dual ABI Support:**
+**Dual ABI for `better-sqlite3`:**
 
-The testing setup automatically handles switching between Node.js and Electron ABI for `better-sqlite3`:
-- `pretest` hook rebuilds for Node.js before tests
-- `posttest` hook rebuilds for Electron after tests
-- This ensures `npm test` works seamlessly, and `npm run dev` works immediately after
+Vitest runs under **Node.js**; the packaged app uses **Electron**. Native module ABI must match the runtime:
+
+- `pretest` / `test:run` / `test:watch` / `test:coverage` → `npm run db:rebuild:node` before Vitest
+- `posttest` (on `npm test` only) → `npm run db:rebuild` so `npm run dev` works immediately after
+
+If integration tests fail with `NODE_MODULE_VERSION` mismatch, run `npm run db:rebuild:node` and retry.
+
+### CI/CD
+
+GitHub Actions workflow (`.github/workflows/ci.yml`):
+
+1. **Quality** — `npm run validate`, `arch:police`, `arch:audit`, `npm test`, `npm audit --omit=dev --audit-level=high`
+2. **E2E** — build app, run Playwright (needs `TEST_USER_ID` / `TEST_API_KEY` secrets for live API tests)
+3. **Release** (tags only) — Windows portable build after quality + e2e pass
 
 ## 📜 License & Legal
 

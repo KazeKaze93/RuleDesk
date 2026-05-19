@@ -306,6 +306,22 @@ An error handling strategy that increases wait time between retry attempts. Rule
 
 ---
 
+### validate (npm script)
+
+Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-attrs`. Same command runs in CI before tests.
+
+**Related:** [README — Quality Checks](../README.md#quality-checks)
+
+---
+
+### test:verify (npm script)
+
+Full maintainer gate before a PR: `validate` → all Vitest suites (unit, integration, property) → restore `better-sqlite3` for Electron.
+
+**Related:** [README — Testing](../README.md#testing), [Architecture — Testing & CI](./architecture.md#testing--ci)
+
+---
+
 ## See Also
 
 - [Documentation Index](./index.md) - Complete documentation navigation

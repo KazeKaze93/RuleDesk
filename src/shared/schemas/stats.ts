@@ -11,5 +11,3 @@ export interface ExtendedStats {
   postsTimeline: Array<{ month: string; count: number }>;
   dbSizeBytes: number;
 }
-
-export type DatabaseStats = ExtendedStats;

@@ -127,12 +127,13 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ## 🔧 Technical Improvements (From Audit) & DX
 
-- ✅ **Testing:** Vitest + Playwright, `better-sqlite3` ABI switching for `pretest`/`posttest` — operational.
+- ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; `test:run` / watch / coverage rebuild `better-sqlite3` for Node before running; `npm test` restores Electron ABI via `posttest`.
+- ✅ **CI:** `validate`, `arch:police`, `arch:audit`, `npm test`, and production `npm audit --omit=dev --audit-level=high` on every push/PR; release tags wait for quality + e2e.
+- ✅ **Dependencies:** Removed unused UI packages; `repomix` / Inquisitor moved to devDependencies; security bumps (Electron 39.8.x, drizzle-orm 0.45+, axios, dompurify, react-router-dom).
 - ✅ **Main process dev experience:** main sources are watched in development (`electron.vite.config.ts`), closing the previous manual-restart-only loop for routine IPC/service edits.
-- 🟡 **Shared validation in Main:** many IPC contracts are already in `shared/schemas`; remaining repeated per-handler Zod argument tuples/parsing can still be consolidated to reduce drift and duplicate error messages.
-- ✅ **Shared validation in Main:** IPC controller registration was normalized to typed wrapper handlers (no legacy `bind(this) as` casts in controllers). Shared tuple parsing helpers are used in handler modules where appropriate.
+- ✅ **Shared validation in Main:** IPC controller registration uses typed wrapper handlers; shared tuple parsing helpers in handler modules where appropriate.
 - ✅ **Video pipeline baseline:** hardware decode flags and `<video>` attribute tuning landed; remaining work is regression-driven per platform/device.
-- ⏳ **Tooling / hygiene:** keep `validate` (typecheck, lint, asset checks) green; optional stricter policy on logging and IPC surface over time.
+- ⏳ **Tooling / hygiene:** keep `validate` green; optional stricter policy on logging and IPC surface over time. Remaining dev-only audit noise (electron-builder / Inquisitor transitive deps) is tracked separately from production `npm audit`.
 
 ## 🏗️ Architecture Considerations
 

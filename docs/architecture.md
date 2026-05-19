@@ -1363,6 +1363,22 @@ The project uses **electron-vite** for building both Main and Renderer processes
 - DevTools enabled in development
 - Main/Preload sources are watched in development for faster iteration ✅
 
+### Testing & CI
+
+**Vitest** (`vitest.config.ts`) — `tests/unit/`, `tests/integration/`, `tests/property/`; Node environment; `better-sqlite3` externalized.
+
+**Playwright** — `tests/e2e/`; requires `npm run build` and Chromium; live API tests need `TEST_USER_ID` / `TEST_API_KEY` in CI secrets.
+
+**Native module ABI:** Vitest uses Node; the app uses Electron. Scripts call `db:rebuild:node` before Vitest and `db:rebuild` after `npm test` so local dev keeps working.
+
+**CI pipeline** (`.github/workflows/ci.yml`):
+
+1. `validate` → `arch:police` → `arch:audit` → `npm test` → `npm audit --omit=dev --audit-level=high`
+2. E2E on built artifact
+3. Tagged releases: portable Windows build after quality + e2e
+
+**Local maintainer gate:** `npm run test:verify` (= validate + all Vitest + Electron rebuild).
+
 ## State Management
 
 ### Renderer State
@@ -1674,7 +1690,7 @@ Root:
 
 **Infrastructure & Build:**
 
-- **Electron Version:** 39.2.7 with latest security features
+- **Electron Version:** 39.8.x with latest security patches
 - **Build System:** electron-vite for optimal build performance
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 - **Portable Mode:** Automatic detection and support for portable executables (`app.isPackaged` -> `app.setPath("userData", <exe_dir>/data)`)
@@ -1682,7 +1698,8 @@ Root:
 **Database & Schema:**
 
 - **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata`, `playlists`, `playlist_entries`, and FTS5 for post tags
-- **Migrations:** Fully functional migration system using `drizzle-kit`
+- **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
+- **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `arch:audit`, `npm test`, and production `npm audit`
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
 - **Provider Support:** Multi-booru support with `provider` field (rule34, gelbooru)
 - **Artist Types:** Support for `tag`, `uploader`, and `query` types

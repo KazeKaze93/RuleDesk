@@ -95,8 +95,23 @@ Engineering materials are intentionally grouped here to keep the top-level index
 - [API Documentation](./api.md) - IPC contract and integration details
 - [Database Documentation](./database.md) - Schema, migrations, and operational notes
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
+- [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, CI/CD
+- [Unit test guide](../tests/unit/README.md) - Vitest unit/property test layout
 - [.cursorrules](../.cursorrules) - Engineering standards
 - [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants
+
+### Quality gates (local & CI)
+
+| Step | Command |
+|------|---------|
+| Typecheck + lint + img policy | `npm run validate` |
+| All Vitest suites | `npm test` |
+| Pre-PR full gate | `npm run test:verify` |
+| Architecture audit (Node) | `npm run arch:audit` |
+| Architecture police (Python 3.11+) | `npm run arch:police` |
+| Production dependency audit | `npm audit --omit=dev --audit-level=high` |
+
+CI (`.github/workflows/ci.yml`) runs **validate**, **arch:police**, **arch:audit**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass.
 
 ---
 
@@ -149,5 +164,5 @@ This documentation is maintained alongside the codebase. When making changes:
 
 ---
 
-**Last Updated:** See git history for latest changes.
+**Last Updated:** May 2026 — CI, testing, and dependency audit docs aligned with v16.2.x toolchain.
 

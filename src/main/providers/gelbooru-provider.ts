@@ -163,7 +163,9 @@ export class GelbooruProvider implements IBooruProvider {
       });
 
       // Gelbooru sometimes returns XML instead of JSON when API fails
-      const contentType = response.headers["content-type"] || "";
+      const rawContentType = response.headers["content-type"];
+      const contentType =
+        typeof rawContentType === "string" ? rawContentType : "";
       if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
         logger.warn(`[Gelbooru] Unexpected Content-Type: ${contentType}. Expected JSON.`);
         return [];

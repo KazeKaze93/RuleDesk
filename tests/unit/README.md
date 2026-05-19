@@ -1,134 +1,65 @@
-# Unit Tests for Gallery Implementation
+# Unit & Property Tests
 
-This directory contains unit tests for the recent gallery refactoring work, including infinite scroll, layout switching, and filter components.
+Vitest tests for gallery logic, filters, layout, and shared utilities. Property-based fuzzing lives in `tests/property/`.
 
-## Test Coverage
+## Layout
 
-### ✅ Hooks
+| Path | Focus |
+|------|--------|
+| `tests/unit/` | Unit tests (hooks, components logic, utilities) |
+| `tests/property/` | Property-based tests (`fast-check`) — e.g. `escapeLikePattern`, Zod schemas |
+| `tests/integration/` | IPC controllers & services (see integration folder) |
 
-- **`useGalleryInfiniteScroll.test.ts`** - Tests for the reusable infinite scroll hook
-  - Default pagination logic (Local DB - stops when < 50 posts)
-  - Custom pagination logic (External API - continues until empty array)
-  - Edge cases and multiple pages
+## Coverage highlights
 
-### ✅ Components
+### Hooks
 
-#### Filters
+- **`useGalleryInfiniteScroll.test.ts`** — pagination for local DB vs external API
 
-- **`SourceSwitcher.test.ts`** - Tests for source filter toggle group
+### Components
 
-  - Value handling (all, favorites, subscriptions)
-  - Disabled state logic
-  - CSS classes and styling
+- **`SourceSwitcher.test.ts`**, **`FilterToggleGroup.test.ts`** — filter toggles
+- **`GridContainer.test.ts`**, **`PostCard/viewType.test.ts`** — grid vs masonry
+- **`IntersectionObserver.test.ts`** — infinite-scroll sentinel
+- **`VirtuosoGrid-totalCount.test.ts`** — virtualized grid sizing
 
-- **`FilterToggleGroup.test.ts`** - Tests for filter toggle group component
-  - Option handling (string/array values)
-  - Disabled options with tooltips
-  - Icon handling
+### Utilities
 
-#### Layout
+- **`filter-utils.test.ts`** — AI tag detection, video file detection
+- **`posts-tag-query.test.ts`** — tag query helpers
 
-- **`GridContainer.test.ts`** - Tests for grid/masonry container logic
+### Property (`tests/property/fuzzing.test.ts`)
 
-  - Grid viewType CSS classes
-  - Masonry viewType CSS classes (flexbox)
-  - Responsive width calculations
-  - ItemContainer classes
+- SQL `LIKE` escaping invariants
+- `AddArtistSchema` / provider / artist-type validation under random input
 
-- **`PostCard/viewType.test.ts`** - Tests for PostCard viewType adaptation
-  - Grid viewType styling (aspect-[3/4], object-cover)
-  - Masonry viewType styling (natural aspect ratio)
-  - ViewType switching logic
-
-#### Infinite Scroll
-
-- **`IntersectionObserver.test.ts`** - Tests for IntersectionObserver configuration
-  - Observer configuration (threshold, rootMargin)
-  - Callback logic (intersecting, hasNextPage, isFetchingNextPage checks)
-  - Observer cleanup and memory management
-  - ViewType change handling
-
-### ✅ Utilities
-
-- **`filter-utils.test.ts`** - Tests for filter utility functions
-  - `hasAiGeneratedTag` - AI tag detection
-  - `isVideoPost` - Video file detection
-
-## Running Tests
-
-### Run all unit tests
+## Running tests
 
 ```bash
-npm test -- tests/unit --run
-```
+# Full Vitest suite (unit + integration + property)
+npm test
 
-### Run specific test file
-
-```bash
-npm test -- tests/unit/lib/filter-utils.test.ts --run
-```
-
-### Run tests in watch mode
-
-```bash
+# Unit tests only
 npm test -- tests/unit
-```
 
-### Run with coverage
+# Property tests only
+npm test -- tests/property
 
-```bash
+# Single file
+npm test -- tests/unit/lib/filter-utils.test.ts
+
+# Watch / coverage (rebuilds better-sqlite3 for Node first)
+npm run test:watch
 npm run test:coverage
 ```
 
-## Test Structure
+`npm run test:run` is equivalent to the Vitest portion of `npm test` but skips the posttest Electron rebuild.
 
-Tests follow the existing project patterns:
+## Conventions
 
-- Use Vitest (no @testing-library/react dependency)
-- Test logic directly without React rendering where possible
-- Mock dependencies (electron-log, React hooks, etc.)
-- Follow AAA pattern (Arrange, Act, Assert)
+- Vitest **node** environment (see `vitest.config.ts`)
+- Prefer testing pure logic without React rendering
+- Mock Electron/native deps where needed
+- AAA pattern (Arrange, Act, Assert)
 
-## What's Tested
-
-### Infinite Scroll Logic
-
-- ✅ Default pagination (stops when page < 50 posts) - for Local DB
-- ✅ Custom pagination (continues until empty array) - for External API
-- ✅ Multiple pages handling
-- ✅ Edge cases (empty pages, exact 50 posts)
-
-### Layout Switching
-
-- ✅ Grid vs Masonry CSS classes
-- ✅ Responsive width calculations
-- ✅ PostCard styling based on viewType
-
-### Filter Components
-
-- ✅ Value handling and type conversion
-- ✅ Disabled state logic
-- ✅ CSS classes and styling
-
-### IntersectionObserver
-
-- ✅ Configuration (threshold: 0.1, rootMargin: '400px')
-- ✅ Callback conditions (intersecting + hasNextPage + !isFetchingNextPage)
-- ✅ Cleanup on viewType change
-- ✅ Memory leak prevention
-
-## Notes
-
-- Tests use Vitest's `node` environment (not `jsdom`)
-- React components are tested through logic verification, not rendering
-- For full component integration tests, consider E2E tests with Playwright
-- All tests pass with current implementation ✅
-
-## Future Improvements
-
-For more comprehensive testing, consider:
-
-1. Adding `@testing-library/react` for component rendering tests
-2. Setting up `jsdom` environment for DOM-related tests
-3. Creating integration tests for full component interactions
-4. Adding visual regression tests for layout changes
+For E2E workflows, see `tests/e2e/README.md` and Playwright specs.

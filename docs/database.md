@@ -739,15 +739,27 @@ CREATE TABLE `artists` (
 **File:** `drizzle.config.ts`
 
 ```typescript
+import { defineConfig } from "drizzle-kit";
+
 export default defineConfig({
   schema: "./src/main/db/schema.ts",
   out: "./drizzle",
   dialect: "sqlite",
   dbCredentials: {
-    url: "./<local-migration-db-file>",
+    url: "./metadata.db",
   },
 });
 ```
+
+**CLI scripts** (see `package.json`):
+
+| Script | Command |
+|--------|---------|
+| Generate migration from schema diff | `npm run db:generate` |
+| Push schema to local DB (manual) | `npm run db:migrate` |
+| Drizzle Studio | `npm run db:studio` |
+
+Runtime migrations still run automatically on startup via `initializeDatabase()` in `src/main/db/client.ts`.
 
 ### Query Examples
 

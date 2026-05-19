@@ -19,7 +19,11 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
     // Architecture strictness: separate E2E (Playwright) from Unit/Integration (Vitest)
-    include: ['tests/unit/**/*.{test,spec}.ts', 'tests/integration/**/*.{test,spec}.ts'],
+    include: [
+      'tests/unit/**/*.{test,spec}.ts',
+      'tests/integration/**/*.{test,spec}.ts',
+      'tests/property/**/*.{test,spec}.ts',
+    ],
     exclude: ['**/node_modules/**', '**/dist/**', '**/out/**', 'tests/e2e/**'],
     
     // Node environment for Main Process testing (native modules work here)
