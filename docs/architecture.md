@@ -437,7 +437,7 @@ const posts = await db.query.posts.findMany({
 **IPC Methods with Built-in Limits:**
 
 - `getArtistPosts()` - Returns max 50 posts per page
-- `getTrackedArtists()` - Should be limited if you expect 1000+ artists (currently no limit, but artists table is typically small)
+- `getTrackedArtists()` - Capped at `MAX_TRACKED_ARTISTS` (5000); warns in main log if truncated
 
 **Key Points:**
 
@@ -480,11 +480,11 @@ const posts = await db.query.posts.findMany({
 
 3. **Sync Service** (`src/main/services/sync-service.ts`)
 
-   - Handles Rule34.xxx API synchronization
+   - Multi-provider API synchronization (`artist.provider`)
    - Implements rate limiting and pagination
    - Maps API responses to database schema
    - Updates artist post counts
-   - Provides repair/resync functionality for artists
+   - `syncAllArtists()` and `repairArtist()` run through `runExclusive()` — concurrent calls queue instead of silent no-op
    - Emits IPC events for sync progress tracking
 
 4. **IPC Controllers** (`src/main/ipc/controllers/`)
@@ -553,8 +553,17 @@ const posts = await db.query.posts.findMany({
    **Default Limits:**
 
    - Posts: 50 per page (max 1000 per query)
-   - Artists: No limit (typically small, but consider adding if > 1000 expected)
+   - Artists: `MAX_TRACKED_ARTISTS` (5000) on `getTrackedArtists()` — logs a warning if truncated
    - Settings: Single record (no limit needed)
+
+   **Gallery view modes (grid vs masonry):**
+
+   | Mode | DOM cost | Virtualization |
+   |------|----------|----------------|
+   | **Grid** | O(visible) — `VirtuosoGrid` renders only viewport rows | Yes |
+   | **Masonry** | O(n) — CSS `columns` layout; all loaded posts stay in the DOM | No (intentional trade-off) |
+
+   Masonry is suitable for moderate lists. With 2000+ posts, prefer **grid** mode for scroll performance.
 
    **Performance Guidelines:**
 
@@ -566,9 +575,10 @@ const posts = await db.query.posts.findMany({
 5. **Dependency Injection Container** (`src/main/core/di/Container.ts`)
 
    - Type-safe DI container with Token-based registration
+   - Internal `Map` keyed by **`token.id` string** (stable across hot reload; not object identity)
    - Singleton pattern for service management
    - Circular dependency detection
-   - Services: Database, SyncService, SecureStorage
+   - Services: Database, SyncService, BackupService, SyncScheduler
 
 6. **Maintenance Queue** (`src/main/db/maintenance-queue.ts`)
 
@@ -599,11 +609,11 @@ const posts = await db.query.posts.findMany({
    - Emits IPC events for update status and progress
    - User-controlled download (manual download trigger)
 
-10. **Secure Storage** (`src/main/services/secure-storage.ts`)
+10. **Secure Storage** (`src/main/services/secure-storage.ts`) and **credential helpers** (`src/main/utils/decrypted-credentials.ts`)
 
-   - Encrypts and decrypts sensitive data using Electron's `safeStorage` API
-   - Static class with `encrypt()` and `decrypt()` methods
-   - Used for API credentials encryption at rest
+   - `SecureStorage.encrypt()` / `decrypt()` — static wrappers around Electron `safeStorage`; `decrypt()` returns `null` on failure (never raw ciphertext)
+   - `getDecryptedCredentialsFromRecord()` — shared by IPC controllers; returns `null` if decryption fails
+   - `getDecryptedCredentialsStrict()` — used by `SyncService`; throws `CredentialDecryptionError` instead of falling back to stored ciphertext
    - Decryption only occurs in Main Process when needed for API calls
    - Uses platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
 
@@ -843,7 +853,7 @@ sequenceDiagram
      - ✅ Returns: Other settings flags (safe mode, adult confirmation, etc.)
      - ❌ **NEVER returns:** `apiKey` (encrypted or decrypted)
    - Renderer receives `IpcSettings` type which has **no `apiKey` field**
-   - API key is only decrypted in Main Process when needed for API calls (e.g., in `SyncService`)
+   - API key is only decrypted in Main Process when needed for API calls (via `decrypted-credentials` helpers, never inline catch-and-fallback to `encryptedApiKey`)
 
 **Security Contract:**
 

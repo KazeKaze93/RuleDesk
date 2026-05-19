@@ -14,6 +14,7 @@ import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import { Button } from "../ui/button";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import {
   Tooltip,
   TooltipContent,
@@ -52,27 +53,28 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-// ItemContainer will be created dynamically based on viewType
-const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      viewType === "grid" 
-        ? "w-full aspect-[2/3]" 
-        : "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
-      className
-    )}
-    {...props}
-  />
-));
+const GridItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  )
+);
+GridItemContainer.displayName = "BrowseGridItemContainer";
 
-// VirtuosoList component - must be stable across renders to preserve Virtuoso optimizations
-// This component is used directly in VirtuosoGrid.components.List
-// Note: VirtuosoGrid passes ref to List component, so we must use forwardRef
-const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
+const MasonryItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
+        className
+      )}
+      {...props}
+    />
+  )
+);
+MasonryItemContainer.displayName = "BrowseMasonryItemContainer";
+
+const GridVirtuosoList = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
 >(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
@@ -81,9 +83,24 @@ const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
     ref={ref}
     className={className}
     aria-busy={ariaBusy}
-    viewType={viewType}
+    viewType="grid"
   />
 ));
+GridVirtuosoList.displayName = "BrowseGridVirtuosoList";
+
+const MasonryVirtuosoList = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType="masonry"
+  />
+));
+MasonryVirtuosoList.displayName = "BrowseMasonryVirtuosoList";
 
 // --- Основной компонент ---
 
@@ -128,7 +145,6 @@ export const Browse = () => {
   const rating = useSearchStore((state) => state.filters.rating);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
-  const orientation = useSearchStore((state) => state.filters.orientation);
   const dateFrom = useSearchStore((state) => state.filters.dateFrom);
   const dateTo = useSearchStore((state) => state.filters.dateTo);
 
@@ -217,15 +233,18 @@ export const Browse = () => {
     rating,
     mediaType,
     source: "all",
-    orientation,
     dateFrom,
     dateTo,
     sortOrder,
     trackedTagsSet: trackedTagsArray,
     tags,
-  }), [aiFilter, rating, mediaType, orientation, dateFrom, dateTo, sortOrder, trackedTagsArray, tags]);
+  }), [aiFilter, rating, mediaType, dateFrom, dateTo, sortOrder, trackedTagsArray, tags]);
 
-  const { data: allPosts = [], isLoading: workerLoading } = useWorkerFilteredPosts(
+  const {
+    data: allPosts = [],
+    isLoading: workerLoading,
+    error: workerError,
+  } = useWorkerFilteredPosts(
     rawPosts,
     filterConfig,
     250 // Debounce delay
@@ -237,26 +256,9 @@ export const Browse = () => {
   const hasFilteredOutResults = rawPosts.length > 0 && allPosts.length === 0;
 
 
-  // Create stable List and Item components with forwardRef and aria-busy
-  // Must be memoized to prevent Virtuoso from remounting on every render
-  const { ListComponent, ItemComponent } = useMemo(() => {
-    const VirtuosoList = createVirtuosoList(viewType);
-    const List = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-      (props, ref) => (
-        <VirtuosoList
-          {...props}
-          ref={ref}
-          aria-busy={isLoading || isFetchingNextPage}
-        />
-      )
-    );
-    List.displayName = "BrowseList";
-    
-    const Item = createItemContainer(viewType);
-    Item.displayName = "BrowseItem";
-    
-    return { ListComponent: List, ItemComponent: Item };
-  }, [isLoading, isFetchingNextPage, viewType]);
+  const listAriaBusy = isLoading || isFetchingNextPage || workerLoading;
+  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
+  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   const handleLoadMore = useCallback(async () => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -392,8 +394,16 @@ export const Browse = () => {
       </div>
 
       {/* Grid Content */}
-      <div className="flex-1 min-h-0">
-        {(isLoading || workerLoading) && allPosts.length === 0 ? (
+      <div className="flex flex-col flex-1 min-h-0">
+        {workerError ? (
+          <Alert variant="destructive" className="mx-6 mt-4 shrink-0">
+            <AlertTitle>Could not filter posts</AlertTitle>
+            <AlertDescription>
+              {workerError.message}. Try reloading the page or reducing the number of loaded posts.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {(isLoading || workerLoading) && allPosts.length === 0 && !workerError ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
@@ -469,6 +479,7 @@ export const Browse = () => {
           ) : (
             <VirtuosoGrid
               className="h-full"
+              aria-busy={listAriaBusy}
               totalCount={allPosts.length}
               endReached={handleEndReached}
               increaseViewportBy={600}

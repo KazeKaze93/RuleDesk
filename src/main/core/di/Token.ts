@@ -27,7 +27,7 @@ export class Token<_T> {
   /**
    * Create a new type-safe token
    *
-   * @param id - Unique identifier (should match DI_KEYS for consistency)
+   * @param id - Unique identifier (stable string used as the container Map key)
    * @param description - Optional description for better error messages
    */
   constructor(id: string, description?: string) {

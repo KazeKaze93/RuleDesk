@@ -41,7 +41,6 @@ interface FilterConfig {
   rating: "all" | "s" | "q" | "e";
   mediaType: "all" | "images" | "videos";
   source: "all" | "favorites" | "subscriptions";
-  orientation: "all" | "horizontal" | "vertical";
   dateFrom: Date | null;
   dateTo: Date | null;
   sortOrder: "asc" | "desc";
@@ -121,20 +120,6 @@ function getPublishedDate(
   return null;
 }
 
-function matchesOrientation(
-  post: object,
-  orientation: FilterConfig["orientation"]
-): boolean {
-  if (orientation === "all") return true;
-  const width = Reflect.get(post, "width");
-  const height = Reflect.get(post, "height");
-  if (typeof width !== "number" || typeof height !== "number") {
-    return true;
-  }
-  if (orientation === "horizontal") return width > height;
-  return height > width;
-}
-
 /**
  * Filter and sort posts in a single efficient pass
  * Uses single-pass filter + sort for optimal performance
@@ -148,7 +133,6 @@ function filterAndSortPosts(
     rating,
     mediaType,
     source,
-    orientation,
     dateFrom,
     dateTo,
     sortOrder,
@@ -178,9 +162,6 @@ function filterAndSortPosts(
       if (mediaType === "videos" && !isVideo) return false;
       if (mediaType === "images" && isVideo) return false;
     }
-
-    // Orientation filter
-    if (!matchesOrientation(post, orientation)) return false;
 
     // Date range filter
     const publishedDate = getPublishedDate(post.publishedAt);

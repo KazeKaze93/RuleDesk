@@ -6,6 +6,7 @@ import {
 import { useDebounce } from "../lib/hooks/useDebounce";
 import type { Post } from "../../main/db/schema";
 import log from "electron-log/renderer";
+import { isVideoUrl } from "../../shared/utils/media";
 
 /**
  * Custom hook for worker-based post filtering
@@ -74,6 +75,18 @@ export function useWorkerFilteredPosts(
               : workerPost.createdAt
               ? new Date(workerPost.createdAt)
               : new Date();
+            const lastViewedAt =
+              workerPost.lastViewedAt instanceof Date
+                ? workerPost.lastViewedAt
+                : workerPost.lastViewedAt
+                ? new Date(workerPost.lastViewedAt)
+                : null;
+            const mediaType =
+              workerPost.mediaType === "image" || workerPost.mediaType === "video"
+                ? workerPost.mediaType
+                : isVideoUrl(workerPost.fileUrl)
+                ? "video"
+                : "image";
 
             return {
               id: workerPost.id,
@@ -85,12 +98,13 @@ export function useWorkerFilteredPosts(
               title: workerPost.title ?? "",
               rating: workerPost.rating ?? "",
               tags: workerPost.tags,
-              mediaType: null, // Worker doesn't process mediaType, will be inferred from fileUrl if needed
+              mediaType,
               publishedAt,
               createdAt,
               isViewed: workerPost.isViewed,
-              lastViewedAt: null,
-              viewCount: 0,
+              lastViewedAt,
+              viewCount:
+                typeof workerPost.viewCount === "number" ? workerPost.viewCount : 0,
               isFavorited: workerPost.isFavorited,
             };
           });

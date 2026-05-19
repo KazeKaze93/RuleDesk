@@ -26,15 +26,6 @@ export const DI_TOKENS = {
 } as const;
 
 /**
- * Legacy string keys (deprecated, use DI_TOKENS instead)
- * @deprecated Use DI_TOKENS for type-safe dependency injection
- */
-export const DI_KEYS = {
-  DB: "Database",
-  SYNC_SERVICE: "SyncService",
-} as const;
-
-/**
  * Note: Runtime type checking removed
  * 
  * typeof check is useless for objects (always returns "object").
@@ -43,6 +34,10 @@ export const DI_KEYS = {
  * 
  * If runtime validation is truly needed, implement proper instanceof checks with constructor injection.
  */
+
+function resolveServiceId(tokenOrId: Token<unknown> | string): string {
+  return tokenOrId instanceof Token ? tokenOrId.id : tokenOrId;
+}
 
 /**
  * Type-safe Dependency Injection Container (Singleton)
@@ -59,7 +54,8 @@ export const DI_KEYS = {
  */
 export class Container {
   private static instance: Container | null = null;
-  private readonly services: Map<string | Token<unknown>, unknown> = new Map();
+  /** Map keyed by token.id string — stable across module reload / new Token instances */
+  private readonly services: Map<string, unknown> = new Map();
   private readonly resolutionStack: Set<string> = new Set();
 
   /**
@@ -87,13 +83,13 @@ export class Container {
    * @throws {Error} If id is empty or instance type doesn't match token
    */
   public register<T>(tokenOrId: Token<T> | string, instance: T): void {
-    const id = tokenOrId instanceof Token ? tokenOrId.id : tokenOrId;
+    const id = resolveServiceId(tokenOrId);
 
     if (!id || id.trim().length === 0) {
       throw new Error("[Container] Service ID cannot be empty");
     }
 
-    if (this.services.has(tokenOrId)) {
+    if (this.services.has(id)) {
       log.warn(
         `[Container] Service "${tokenOrId instanceof Token ? tokenOrId.toString() : id}" is being overwritten. Potential issue?`
       );
@@ -113,7 +109,7 @@ export class Container {
       // For now, TypeScript compile-time checks + runtime null checks are sufficient
     }
 
-    this.services.set(tokenOrId, instance);
+    this.services.set(id, instance);
     log.info(
       `[Container] Registered service: ${tokenOrId instanceof Token ? tokenOrId.toString() : id}`
     );
@@ -127,7 +123,7 @@ export class Container {
    * @throws {Error} If service is not found, circular dependency detected, or type mismatch
    */
   public resolve<T>(tokenOrId: Token<T> | string): T {
-    const id = tokenOrId instanceof Token ? tokenOrId.id : tokenOrId;
+    const id = resolveServiceId(tokenOrId);
 
     // Check for circular dependencies
     if (this.resolutionStack.has(id)) {
@@ -137,7 +133,7 @@ export class Container {
       throw new Error(error);
     }
 
-    if (!this.services.has(tokenOrId)) {
+    if (!this.services.has(id)) {
       const error = `[Container] Service "${tokenOrId instanceof Token ? tokenOrId.toString() : id}" not found. Did you forget to register it?`;
       log.error(error);
       throw new Error(error);
@@ -146,7 +142,7 @@ export class Container {
     // Track resolution stack for cycle detection
     this.resolutionStack.add(id);
     try {
-      const service = this.services.get(tokenOrId);
+      const service = this.services.get(id);
       
       // Runtime validation: ensure service is not null/undefined
       if (service === null || service === undefined) {
@@ -169,7 +165,7 @@ export class Container {
    * @returns true if service exists, false otherwise
    */
   public has(tokenOrId: Token<unknown> | string): boolean {
-    return this.services.has(tokenOrId);
+    return this.services.has(resolveServiceId(tokenOrId));
   }
 
   /**
@@ -184,7 +180,7 @@ export class Container {
   /**
    * Get all registered service IDs (for debugging)
    */
-  public getRegisteredServices(): (string | Token<unknown>)[] {
+  public getRegisteredServices(): string[] {
     return Array.from(this.services.keys());
   }
 }

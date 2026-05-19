@@ -35,18 +35,6 @@ import { formatRelativeTime } from "../../lib/formatRelativeTime";
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
 
-const matchesOrientation = (
-  post: object,
-  orientation: "all" | "horizontal" | "vertical"
-): boolean => {
-  if (orientation === "all") return true;
-  const width = Reflect.get(post, "width");
-  const height = Reflect.get(post, "height");
-  if (typeof width !== "number" || typeof height !== "number") return true;
-  if (orientation === "horizontal") return width > height;
-  return height > width;
-};
-
 const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
   if (publishedAt instanceof Date) {
     return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
@@ -292,7 +280,7 @@ export const Updates = () => {
       initialPageParam: 1,
     });
 
-  const { aiFilter, mediaType, orientation, dateFrom, dateTo } = filters;
+  const { aiFilter, mediaType, dateFrom, dateTo } = filters;
   const rating = useSearchStore((state) => state.filters.rating);
 
   useEffect(() => {
@@ -387,10 +375,6 @@ export const Updates = () => {
       });
     }
 
-    if (orientation !== "all") {
-      posts = posts.filter((post) => matchesOrientation(post, orientation));
-    }
-
     if (dateFrom || dateTo) {
       posts = posts.filter((post) => {
         const date = getPublishedDate(post.publishedAt);
@@ -416,7 +400,7 @@ export const Updates = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, rating, mediaType, orientation, dateFrom, dateTo]);
+  }, [data, sortOrder, aiFilter, rating, mediaType, dateFrom, dateTo]);
   const selectedPosts = useMemo(
     () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
     [allPosts, selectedIds]

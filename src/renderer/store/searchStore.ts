@@ -8,14 +8,11 @@ type SourceType = "all" | "favorites" | "subscriptions";
 type ViewType = "grid" | "masonry";
 type AiFilterType = "all" | "hide" | "only";
 type RatingType = "all" | "s" | "q" | "e";
-type OrientationType = "all" | "horizontal" | "vertical";
-
 interface PostFilters {
   aiFilter: AiFilterType;
   rating: RatingType;
   mediaType: MediaType;
   source: SourceType;
-  orientation: OrientationType;
   dateFrom: Date | null;
   dateTo: Date | null;
 }
@@ -65,7 +62,6 @@ const DEFAULT_FILTERS: PostFilters = {
   rating: "all",
   mediaType: "all",
   source: "all",
-  orientation: "all",
   dateFrom: null,
   dateTo: null,
 };

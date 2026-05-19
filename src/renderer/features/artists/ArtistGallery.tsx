@@ -26,18 +26,6 @@ interface ArtistGalleryProps {
   onBack: () => void;
 }
 
-const matchesOrientation = (
-  post: object,
-  orientation: "all" | "horizontal" | "vertical"
-): boolean => {
-  if (orientation === "all") return true;
-  const width = Reflect.get(post, "width");
-  const height = Reflect.get(post, "height");
-  if (typeof width !== "number" || typeof height !== "number") return true;
-  if (orientation === "horizontal") return width > height;
-  return height > width;
-};
-
 const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
   if (publishedAt instanceof Date) {
     return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
@@ -68,35 +56,47 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-const createItemContainer = (viewType: "grid" | "masonry") =>
-  forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-    ({ className, ...props }, ref) => (
-      <div
-        ref={ref}
-        className={cn(
-          viewType === "grid"
-            ? "w-full aspect-[2/3]"
-            : "w-full mb-4 break-inside-avoid",
-          className
-        )}
-        {...props}
-      />
-    )
-  );
+const GridItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  )
+);
+GridItemContainer.displayName = "ArtistGalleryGridItemContainer";
 
-const createVirtuosoList = (viewType: "grid" | "masonry") =>
-  forwardRef<
-    HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
-  >(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-    <GridContainer
-      {...props}
-      ref={ref}
-      className={className}
-      aria-busy={ariaBusy}
-      viewType={viewType}
-    />
-  ));
+const MasonryItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("w-full mb-4 break-inside-avoid", className)} {...props} />
+  )
+);
+MasonryItemContainer.displayName = "ArtistGalleryMasonryItemContainer";
+
+const GridVirtuosoList = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType="grid"
+  />
+));
+GridVirtuosoList.displayName = "ArtistGalleryGridVirtuosoList";
+
+const MasonryVirtuosoList = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType="masonry"
+  />
+));
+MasonryVirtuosoList.displayName = "ArtistGalleryMasonryVirtuosoList";
 
 // --- Основной компонент ---
 
@@ -122,7 +122,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const rating = useSearchStore((state) => state.filters.rating);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
-  const orientation = useSearchStore((state) => state.filters.orientation);
   const dateFrom = useSearchStore((state) => state.filters.dateFrom);
   const dateTo = useSearchStore((state) => state.filters.dateTo);
   const viewType = useSearchStore((state) => state.viewType);
@@ -176,10 +175,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const allPosts = useMemo(() => {
     let posts = rawPosts;
 
-    if (orientation !== "all") {
-      posts = posts.filter((post) => matchesOrientation(post, orientation));
-    }
-
     if (dateFrom || dateTo) {
       posts = posts.filter((post) => {
         const date = getPublishedDate(post.publishedAt);
@@ -191,29 +186,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     }
 
     return posts;
-  }, [rawPosts, orientation, dateFrom, dateTo]);
+  }, [rawPosts, dateFrom, dateTo]);
 
-  // Create stable List component with forwardRef and aria-busy
-  // Must be memoized to prevent Virtuoso from remounting on every render
-  const { ListComponent, ItemComponent } = useMemo(() => {
-    const VirtuosoList = createVirtuosoList(viewType);
-    const List = forwardRef<
-      HTMLDivElement,
-      React.HTMLAttributes<HTMLDivElement>
-    >((props, ref) => (
-      <VirtuosoList
-        {...props}
-        ref={ref}
-        aria-busy={isLoading || isFetchingNextPage}
-      />
-    ));
-    List.displayName = "ArtistGalleryList";
-
-    const Item = createItemContainer(viewType);
-    Item.displayName = "ArtistGalleryItem";
-
-    return { ListComponent: List, ItemComponent: Item };
-  }, [isLoading, isFetchingNextPage, viewType]);
+  const listAriaBusy = isLoading || isFetchingNextPage;
+  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
+  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -449,6 +426,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         ) : (
           <VirtuosoGrid
             className="h-full"
+            aria-busy={listAriaBusy}
             totalCount={allPosts.length}
             endReached={handleEndReached}
             increaseViewportBy={600}

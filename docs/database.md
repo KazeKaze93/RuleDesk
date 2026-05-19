@@ -243,7 +243,7 @@ Stores application settings including API credentials and user preferences.
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id").default(""),
-  provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
+  provider: text("provider", { enum: PROVIDER_IDS }).notNull().default("rule34"),
   encryptedApiKey: text("encrypted_api_key").default(""),
   proxyUrl: text("proxy_url"),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),

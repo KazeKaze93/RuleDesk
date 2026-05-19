@@ -17,9 +17,6 @@ import {
 // Re-export for backward compatibility
 export { ARTIST_TYPES, type ArtistType };
 
-// Provider constants for Drizzle schema (must match shared/constants.ts)
-export const PROVIDER_IDS_SCHEMA = PROVIDER_IDS;
-
 // Tag type constants for type safety (matches Rule34 API tag types)
 export const TAG_TYPES = {
   GENERAL: 0,
@@ -41,7 +38,7 @@ export const artists = sqliteTable(
     name: text("name").notNull(),
     tag: text("tag").notNull().unique(),
     // Provider ID with enum constraint
-    provider: text("provider", { enum: PROVIDER_IDS_SCHEMA })
+    provider: text("provider", { enum: PROVIDER_IDS })
       .notNull()
       .default("rule34"),
     type: text("type", { enum: ARTIST_TYPES }).notNull(),
@@ -124,7 +121,7 @@ export const posts = sqliteTable(
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id").default(""),
-  provider: text("provider", { enum: PROVIDER_IDS_SCHEMA }).notNull().default("rule34"),
+  provider: text("provider", { enum: PROVIDER_IDS }).notNull().default("rule34"),
   encryptedApiKey: text("encrypted_api_key").default(""),
   proxyUrl: text("proxy_url"),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),

@@ -10,7 +10,6 @@ export interface WorkerFilterConfig {
   rating: "all" | "s" | "q" | "e";
   mediaType: "all" | "images" | "videos";
   source: "all" | "favorites" | "subscriptions";
-  orientation: "all" | "horizontal" | "vertical";
   dateFrom: Date | null;
   dateTo: Date | null;
   sortOrder: "asc" | "desc";
