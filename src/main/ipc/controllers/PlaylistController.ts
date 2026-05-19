@@ -47,7 +47,7 @@ import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants"
 import { getSqliteInstance } from "../../db/client";
 import { getProvider } from "../../providers";
 import { settings, SETTINGS_ID } from "../../db/schema";
-import { safeStorage } from "electron";
+import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
 import { IdSchema, OptionalIdSchema } from "../../../shared/schemas/ipc";
 import { sanitizeProviderTagToken } from "../../../shared/utils/provider-tag-sanitize";
 import {
@@ -187,22 +187,13 @@ export class PlaylistController extends BaseController {
         return null;
       }
 
-      // Decrypt API key using Electron's safeStorage
-      let apiKey = record.encryptedApiKey;
-      if (apiKey && safeStorage.isEncryptionAvailable()) {
-        try {
-          const buff = Buffer.from(apiKey, "base64");
-          apiKey = safeStorage.decryptString(buff);
-        } catch (e) {
-          log.warn("[PlaylistController] Failed to decrypt API Key.", e);
-          apiKey = record.encryptedApiKey;
-        }
+      const credentials = getDecryptedCredentialsFromRecord(record);
+      if (!credentials) {
+        log.warn("[PlaylistController] Failed to decrypt API key");
+        return null;
       }
 
-      return {
-        userId: record.userId,
-        apiKey: apiKey,
-      };
+      return credentials;
     } catch (error) {
       log.error("[PlaylistController] Failed to get decrypted settings:", error);
       return null;

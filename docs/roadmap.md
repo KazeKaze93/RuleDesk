@@ -30,6 +30,7 @@ This document reflects the current roadmap for RuleDesk `v16.x` and is aligned w
 - ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`).
 - ✅ **Backup retention:** after each successful backup, older files are pruned based on `backupRetention` from Settings (`1..20`).
 - ✅ **User-visible DB maintenance:** Settings now exposes VACUUM status (last run timestamp/status/error), manual trigger, and schedule (`manual` / `weekly` / `monthly`).
+- ✅ **Post-audit hardening (v16.2.x):** shared credential decrypt helper (no ciphertext fallback on IPC paths), `SyncService.runExclusive` queue for sync/repair, `MAX_TRACKED_ARTISTS` (5000) cap, stable Virtuoso list components, Browse worker error UI, worker `mapWorkerPostToPost` field preservation, DI container keyed by `token.id`, orientation filter removed (dead code). See [Architecture](./architecture.md) and [TEST_COVERAGE.md](../tests/unit/TEST_COVERAGE.md).
 
 ---
 
@@ -133,6 +134,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **Main process dev experience:** main sources are watched in development (`electron.vite.config.ts`), closing the previous manual-restart-only loop for routine IPC/service edits.
 - ✅ **Shared validation in Main:** IPC controller registration uses typed wrapper handlers; shared tuple parsing helpers in handler modules where appropriate.
 - ✅ **Video pipeline baseline:** hardware decode flags and `<video>` attribute tuning landed; remaining work is regression-driven per platform/device.
+- ✅ **Post-audit regression tests:** Vitest coverage for decrypt fail-safe, DI token keys, artist list cap, sync/repair serialization, and worker post mapping (140 tests total).
 - ⏳ **Tooling / hygiene:** keep `validate` green; optional stricter policy on logging and IPC surface over time. Remaining dev-only audit noise (electron-builder / Inquisitor transitive deps) is tracked separately from production `npm audit`.
 
 ## 🏗️ Architecture Considerations

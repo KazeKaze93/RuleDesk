@@ -437,7 +437,7 @@ const posts = await db.query.posts.findMany({
 **IPC Methods with Built-in Limits:**
 
 - `getArtistPosts()` - Returns max 50 posts per page
-- `getTrackedArtists()` - Should be limited if you expect 1000+ artists (currently no limit, but artists table is typically small)
+- `getTrackedArtists()` - Capped at `MAX_TRACKED_ARTISTS` (5000); warns in main log if truncated
 
 **Key Points:**
 
@@ -480,11 +480,11 @@ const posts = await db.query.posts.findMany({
 
 3. **Sync Service** (`src/main/services/sync-service.ts`)
 
-   - Handles Rule34.xxx API synchronization
+   - Multi-provider API synchronization (`artist.provider`)
    - Implements rate limiting and pagination
    - Maps API responses to database schema
    - Updates artist post counts
-   - Provides repair/resync functionality for artists
+   - `syncAllArtists()` and `repairArtist()` run through `runExclusive()` — a promise-chain mutex: if one operation is in flight, the next **waits** until it finishes (no silent drop). Covered by `tests/integration/services/SyncService.queue.test.ts` (timing: repair’s `syncArtist` runs only after full sync completes).
    - Emits IPC events for sync progress tracking
 
 4. **IPC Controllers** (`src/main/ipc/controllers/`)
@@ -553,8 +553,17 @@ const posts = await db.query.posts.findMany({
    **Default Limits:**
 
    - Posts: 50 per page (max 1000 per query)
-   - Artists: No limit (typically small, but consider adding if > 1000 expected)
+   - Artists: `MAX_TRACKED_ARTISTS` (5000) on `getTrackedArtists()` — logs a warning if truncated
    - Settings: Single record (no limit needed)
+
+   **Gallery view modes (grid vs masonry):**
+
+   | Mode | DOM cost | Virtualization |
+   |------|----------|----------------|
+   | **Grid** | O(visible) — `VirtuosoGrid` renders only viewport rows | Yes |
+   | **Masonry** | O(n) — CSS `columns` layout; all loaded posts stay in the DOM | No (intentional trade-off) |
+
+   Masonry is suitable for moderate lists. With 2000+ posts, prefer **grid** mode for scroll performance.
 
    **Performance Guidelines:**
 
@@ -566,9 +575,11 @@ const posts = await db.query.posts.findMany({
 5. **Dependency Injection Container** (`src/main/core/di/Container.ts`)
 
    - Type-safe DI container with Token-based registration
+   - Internal `Map` keyed by **`token.id` string** (stable across hot reload; not object identity). Two `new Token('Database')` instances resolve the same service if registered once.
    - Singleton pattern for service management
-   - Circular dependency detection
-   - Services: Database, SyncService, SecureStorage
+   - **Circular dependency detection** via `resolutionStack` during `resolve()` — catches **re-entrant** resolve of the same token id (e.g. `resolve('A')` while `resolve('A')` is still on the stack). Does **not** detect lazy getter cycles `A→B→A` after the outer `resolve` returns; that would require a full call-tree stack and is intentionally out of scope.
+   - Services: Database, SyncService, BackupService, SyncScheduler
+   - Unit tests: `tests/unit/core/di-container.test.ts`
 
 6. **Maintenance Queue** (`src/main/db/maintenance-queue.ts`)
 
@@ -599,22 +610,32 @@ const posts = await db.query.posts.findMany({
    - Emits IPC events for update status and progress
    - User-controlled download (manual download trigger)
 
-10. **Secure Storage** (`src/main/services/secure-storage.ts`)
+10. **Secure Storage** (`src/main/services/secure-storage.ts`) and **credential helpers** (`src/main/utils/decrypted-credentials.ts`)
 
-   - Encrypts and decrypts sensitive data using Electron's `safeStorage` API
-   - Static class with `encrypt()` and `decrypt()` methods
-   - Used for API credentials encryption at rest
+   - `SecureStorage.encrypt()` / `decrypt()` — static wrappers around Electron `safeStorage`; `decrypt()` returns `null` on failure (never raw ciphertext)
+   - `getDecryptedCredentialsFromRecord()` — shared by IPC controllers; returns `null` if decryption fails
+   - `getDecryptedCredentialsStrict()` — used by `SyncService`; throws `CredentialDecryptionError` instead of falling back to stored ciphertext
    - Decryption only occurs in Main Process when needed for API calls
    - Uses platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
+   - Unit tests: `tests/unit/utils/decrypted-credentials.test.ts`
 
-11. **Bridge** (`src/main/bridge.ts`)
+11. **Browse client-side filtering (Web Worker)** (`src/renderer/workers/data-processor.worker.ts`)
+
+   - **Browse** offloads filter + sort to a Web Worker (`useWorkerFilteredPosts` + `useWorkerProcessor`) so the UI thread does not scan 10k+ posts on every filter change.
+   - Worker output is mapped back via `mapWorkerPostToPost()` in `src/renderer/lib/map-worker-post.ts` (preserves `mediaType`, `viewCount`, `lastViewedAt`; infers `mediaType` from `fileUrl` when missing).
+   - Filter config is debounced (~250 ms); raw post pages are not debounced (scroll/load latency).
+   - Worker errors surface in Browse as a destructive `Alert` (empty list alone is not sufficient feedback).
+   - **Removed:** orientation filter (no UI; dead code removed from store, worker, and gallery pages).
+   - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts` (`mapWorkerPostToPost`).
+
+12. **Bridge** (`src/main/bridge.ts`)
 
 - Defines the IPC interface
 - Exposed via preload script
 - Type-safe communication contract
 - Event listener management for real-time updates
 
-12. **Main Entry** (`src/main/main.ts`)
+13. **Main Entry** (`src/main/main.ts`)
     - Application initialization
     - Window creation
     - Security configuration
@@ -843,7 +864,7 @@ sequenceDiagram
      - ✅ Returns: Other settings flags (safe mode, adult confirmation, etc.)
      - ❌ **NEVER returns:** `apiKey` (encrypted or decrypted)
    - Renderer receives `IpcSettings` type which has **no `apiKey` field**
-   - API key is only decrypted in Main Process when needed for API calls (e.g., in `SyncService`)
+   - API key is only decrypted in Main Process when needed for API calls (via `decrypted-credentials` helpers, never inline catch-and-fallback to `encryptedApiKey`)
 
 **Security Contract:**
 
@@ -904,13 +925,7 @@ sequenceDiagram
 
 5. **Validation** - The IPC handler validates the request (though `getTrackedArtists` has no parameters, validation still runs for consistency).
 
-6. **Database query** - The handler executes a Drizzle query:
-
-   ```typescript
-   const artists = await db.query.artists.findMany({
-     orderBy: [asc(artists.name)],
-   });
-   ```
+6. **Database query** - The handler calls `getTrackedArtistsWithStats()` (newest activity first), capped at `MAX_TRACKED_ARTISTS` (**5000**). If the DB has more subscriptions, the list is truncated and Main logs a warning.
 
 7. **Response** - The array of artists flows back:
 
@@ -918,7 +933,7 @@ sequenceDiagram
 
 8. **Caching** - React Query automatically caches the result. If the user navigates away and comes back, the data is served from cache (instant load).
 
-9. **UI update** - React re-renders with the artists data, displaying them in a grid.
+9. **UI update** - React re-renders with the artists data, displaying them in a grid (at most 5000 artists from IPC).
 
 **Why React Query?**
 

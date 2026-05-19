@@ -25,8 +25,10 @@ export const WorkerPostSchema = z
     createdAt: z.union([z.date(), z.number().int(), z.null()]),
     isViewed: z.boolean(),
     isFavorited: z.boolean(),
+    lastViewedAt: z.union([z.date(), z.number().int(), z.null()]).optional(),
+    viewCount: z.number().int().optional(),
   })
-  .passthrough(); // Allow extra fields (like mediaType) that Worker doesn't use but Post has
+  .passthrough();
 
 /**
  * Post type for Web Worker context

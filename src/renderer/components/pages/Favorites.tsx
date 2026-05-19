@@ -31,18 +31,6 @@ import { getBulkSelectId } from "../../lib/bulkSelect";
 // This matches the default limit in GetPostsSchema
 const POSTS_PER_PAGE = 50;
 
-const matchesOrientation = (
-  post: object,
-  orientation: "all" | "horizontal" | "vertical"
-): boolean => {
-  if (orientation === "all") return true;
-  const width = Reflect.get(post, "width");
-  const height = Reflect.get(post, "height");
-  if (typeof width !== "number" || typeof height !== "number") return true;
-  if (orientation === "horizontal") return width > height;
-  return height > width;
-};
-
 const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
   if (publishedAt instanceof Date) {
     return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
@@ -60,7 +48,6 @@ const shouldIncludePostInFavoritesQueue = (
     aiFilter: "all" | "hide" | "only";
     rating: "all" | "s" | "q" | "e";
     mediaType: "all" | "images" | "videos";
-    orientation: "all" | "horizontal" | "vertical";
     dateFrom: Date | null;
     dateTo: Date | null;
   }
@@ -79,8 +66,6 @@ const shouldIncludePostInFavoritesQueue = (
     if (filters.mediaType === "videos" && !isVideo) return false;
     if (filters.mediaType === "images" && isVideo) return false;
   }
-
-  if (!matchesOrientation(post, filters.orientation)) return false;
 
   if (filters.dateFrom || filters.dateTo) {
     const date = getPublishedDate(post.publishedAt);
@@ -112,23 +97,28 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-const createItemContainer = (viewType: "grid" | "masonry") => forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      viewType === "grid" 
-        ? "w-full aspect-[2/3]" 
-        : "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
-      className
-    )}
-    {...props}
-  />
-));
+const GridItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  )
+);
+GridItemContainer.displayName = "FavoritesGridItemContainer";
 
-const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
+const MasonryItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
+        className
+      )}
+      {...props}
+    />
+  )
+);
+MasonryItemContainer.displayName = "FavoritesMasonryItemContainer";
+
+const GridVirtuosoList = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
 >(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
@@ -137,9 +127,24 @@ const createVirtuosoList = (viewType: "grid" | "masonry") => forwardRef<
     ref={ref}
     className={className}
     aria-busy={ariaBusy}
-    viewType={viewType}
+    viewType="grid"
   />
 ));
+GridVirtuosoList.displayName = "FavoritesGridVirtuosoList";
+
+const MasonryVirtuosoList = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType="masonry"
+  />
+));
+MasonryVirtuosoList.displayName = "FavoritesMasonryVirtuosoList";
 
 // --- Основной компонент ---
 
@@ -195,7 +200,7 @@ export const Favorites = () => {
       initialPageParam: 1,
     });
   
-  const { aiFilter, mediaType, orientation, dateFrom, dateTo } = filters;
+  const { aiFilter, mediaType, dateFrom, dateTo } = filters;
   const rating = useSearchStore((state) => state.filters.rating);
 
   const allPosts = useMemo(() => {
@@ -225,10 +230,6 @@ export const Favorites = () => {
       });
     }
 
-    if (orientation !== "all") {
-      posts = posts.filter((post) => matchesOrientation(post, orientation));
-    }
-
     if (dateFrom || dateTo) {
       posts = posts.filter((post) => {
         const date = getPublishedDate(post.publishedAt);
@@ -254,32 +255,15 @@ export const Favorites = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, rating, mediaType, orientation, dateFrom, dateTo]);
+  }, [data, sortOrder, aiFilter, rating, mediaType, dateFrom, dateTo]);
   const selectedPosts = useMemo(
     () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
     [allPosts, selectedIds]
   );
 
-  // Create stable List and Item components with forwardRef and aria-busy
-  // Must be memoized to prevent Virtuoso from remounting on every render
-  const { ListComponent, ItemComponent } = useMemo(() => {
-    const VirtuosoList = createVirtuosoList(viewType);
-    const List = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-      (props, ref) => (
-        <VirtuosoList
-          {...props}
-          ref={ref}
-          aria-busy={isLoading || isFetchingNextPage}
-        />
-      )
-    );
-    List.displayName = "FavoritesList";
-    
-    const Item = createItemContainer(viewType);
-    Item.displayName = "FavoritesItem";
-    
-    return { ListComponent: List, ItemComponent: Item };
-  }, [isLoading, isFetchingNextPage, viewType]);
+  const listAriaBusy = isLoading || isFetchingNextPage;
+  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
+  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -329,7 +313,6 @@ export const Favorites = () => {
                 aiFilter,
                 rating,
                 mediaType,
-                orientation,
                 dateFrom,
                 dateTo,
               })
@@ -489,6 +472,7 @@ export const Favorites = () => {
           ) : (
             <VirtuosoGrid
               className="h-full"
+              aria-busy={listAriaBusy}
               totalCount={allPosts.length}
               endReached={() => {
                 if (hasNextPage && !isFetchingNextPage) {

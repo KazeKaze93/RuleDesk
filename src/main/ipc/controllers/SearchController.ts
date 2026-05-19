@@ -1,5 +1,4 @@
 import { type IpcMainInvokeEvent } from "electron";
-import { safeStorage } from "electron";
 import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
@@ -23,6 +22,7 @@ import {
   sanitizeProviderTagToken,
 } from "../../../shared/utils/provider-tag-sanitize";
 import { getAllBlacklistedTags } from "../../db/queries/blacklist";
+import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -147,21 +147,22 @@ export class SearchController extends BaseController {
         return null;
       }
 
-      let realApiKey = settingsRecord.encryptedApiKey || "";
-      if (realApiKey && safeStorage.isEncryptionAvailable()) {
-        try {
-          const buff = Buffer.from(realApiKey, "base64");
-          realApiKey = safeStorage.decryptString(buff);
-        } catch (e) {
-          log.warn("[SearchController] Failed to decrypt API Key.", e);
-          realApiKey = settingsRecord.encryptedApiKey || "";
-        }
+      const credentials = getDecryptedCredentialsFromRecord(settingsRecord);
+      if (!credentials) {
+        log.warn("[SearchController] Failed to decrypt API key");
+        return null;
       }
 
+      const providerValue = settingsRecord.provider;
+      const provider: ProviderId =
+        providerValue === "rule34" || providerValue === "gelbooru"
+          ? providerValue
+          : "rule34";
+
       return {
-        userId: settingsRecord.userId || "",
-        apiKey: realApiKey,
-        provider: (settingsRecord.provider as ProviderId | undefined) ?? "rule34",
+        userId: credentials.userId,
+        apiKey: credentials.apiKey,
+        provider,
       };
     } catch (error) {
       log.error("[SearchController] Error fetching settings:", error);

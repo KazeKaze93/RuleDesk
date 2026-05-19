@@ -1,7 +1,11 @@
-import { BrowserWindow, safeStorage } from "electron";
+import { BrowserWindow } from "electron";
 import { logger } from "../lib/logger";
 import { getDb, getSqliteInstance } from "../db/client";
 import { artists, settings, posts, SETTINGS_ID } from "../db/schema";
+import {
+  getDecryptedCredentialsStrict,
+  isCredentialDecryptionError,
+} from "../utils/decrypted-credentials";
 import { eq, sql } from "drizzle-orm";
 import axios from "axios";
 import type { Artist, NewPost } from "../db/schema";
@@ -26,30 +30,7 @@ const MAX_PAGES_SAFETY_LIMIT = 1000;
 const POSTS_FTS_INSERT_TRIGGER_NAME = "posts_fts_insert";
 const FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME = "fts5_cache_invalidate_insert";
 
-type CredentialErrorCode = "KEYCHAIN_UNAVAILABLE" | "DECRYPT_FAILED";
 type DecryptedSettings = { userId: string; apiKey: string };
-
-class CredentialDecryptionError extends Error {
-  public readonly code: CredentialErrorCode;
-
-  constructor(code: CredentialErrorCode, message: string) {
-    super(message);
-    this.name = "CredentialDecryptionError";
-    this.code = code;
-  }
-}
-
-const isCredentialDecryptionError = (
-  error: unknown
-): error is CredentialDecryptionError => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-  return (
-    error instanceof CredentialDecryptionError ||
-    error.name === "CredentialDecryptionError"
-  );
-};
 
 function bulkUpsertPosts(
   postsToSave: NewPost[],
@@ -151,9 +132,29 @@ async function retryWithBackoff<T>(
 export class SyncService {
   private window: BrowserWindow | null = null;
   private isSyncing = false;
+  /** Serializes syncAllArtists / repairArtist — queued calls run after the active one finishes */
+  private syncChain: Promise<void> = Promise.resolve();
 
   public getIsSyncing(): boolean {
     return this.isSyncing;
+  }
+
+  private runExclusive<T>(task: () => Promise<T>): Promise<T> {
+    const run = async (): Promise<T> => {
+      this.isSyncing = true;
+      try {
+        return await task();
+      } finally {
+        this.isSyncing = false;
+      }
+    };
+
+    const result = this.syncChain.then(run);
+    this.syncChain = result.then(
+      () => undefined,
+      () => undefined
+    );
+    return result;
   }
 
   public setWindow(window: BrowserWindow) {
@@ -177,36 +178,7 @@ export class SyncService {
       return null;
     }
 
-    const storedApiKey = settingsRecord.encryptedApiKey || "";
-    if (!storedApiKey) {
-      return {
-        userId: settingsRecord.userId || "",
-        apiKey: "",
-      };
-    }
-
-    if (!safeStorage.isEncryptionAvailable()) {
-      throw new CredentialDecryptionError(
-        "KEYCHAIN_UNAVAILABLE",
-        "OS keychain unavailable; cannot decrypt API key."
-      );
-    }
-
-    try {
-      const decryptedApiKey = safeStorage.decryptString(
-        Buffer.from(storedApiKey, "base64")
-      );
-      return {
-        userId: settingsRecord.userId || "",
-        apiKey: decryptedApiKey,
-      };
-    } catch (error: unknown) {
-      logger.warn("SyncService: Failed to decrypt API Key.", error);
-      throw new CredentialDecryptionError(
-        "DECRYPT_FAILED",
-        "Failed to decrypt API key; credentials may be from another OS user or corrupted."
-      );
-    }
+    return getDecryptedCredentialsStrict(settingsRecord);
   }
 
   public async checkCredentials(providerId: ProviderId = "rule34"): Promise<boolean> {
@@ -251,8 +223,7 @@ export class SyncService {
   }
 
   public async syncAllArtists() {
-    if (this.isSyncing) return;
-    this.isSyncing = true;
+    return this.runExclusive(async () => {
     logger.info("SyncService: Start Full Sync");
     this.sendEvent(IPC_CHANNELS.SYNC.START);
 
@@ -299,7 +270,6 @@ export class SyncService {
         error instanceof Error ? error.message : "Error"
       );
     } finally {
-      this.isSyncing = false;
       try {
         const sqlite = getSqliteInstance();
         // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
@@ -310,11 +280,11 @@ export class SyncService {
       }
       this.sendEvent(IPC_CHANNELS.SYNC.END);
     }
+    });
   }
 
   public async repairArtist(artistId: number) {
-    if (this.isSyncing) return;
-    this.isSyncing = true;
+    return this.runExclusive(async () => {
     try {
       const db = getDb();
       const artist = await db.query.artists.findFirst({
@@ -345,9 +315,9 @@ export class SyncService {
     } catch (e) {
       logger.error("Repair error", e);
     } finally {
-      this.isSyncing = false;
       this.sendEvent(IPC_CHANNELS.SYNC.REPAIR_END);
     }
+    });
   }
 
   /**

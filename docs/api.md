@@ -368,7 +368,9 @@ Returns a `http://127.0.0.1` URL served by the main-process `VideoProxyServer` t
 
 ### `getTrackedArtists()`
 
-Retrieves all tracked artists from the local database.
+Retrieves tracked artists from the local database (newest activity first).
+
+**Limit:** Returns at most `MAX_TRACKED_ARTISTS` (5000). If the user has more subscriptions, the list is truncated and Main logs a warning — UI should not assume a complete unbounded list.
 
 **When to use:** Load the list of tracked artists for display in the Tracked page, sidebar, or artist selection dropdown.
 

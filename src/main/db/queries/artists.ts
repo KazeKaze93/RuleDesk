@@ -5,7 +5,9 @@ import { artists, posts } from "../schema";
 import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
+  MAX_TRACKED_ARTISTS,
 } from "../../../shared/constants";
+import log from "electron-log";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 type ArtistRow = typeof artists.$inferSelect;
@@ -16,7 +18,7 @@ export type TrackedArtistWithStats = ArtistRow & {
 };
 
 export function getTrackedArtistsWithStats(db: AppDatabase): TrackedArtistWithStats[] {
-  return db
+  const rows = db
     .select({
       id: artists.id,
       name: artists.name,
@@ -53,5 +55,14 @@ export function getTrackedArtistsWithStats(db: AppDatabase): TrackedArtistWithSt
     )
     .groupBy(artists.id)
     .orderBy(desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`))
+    .limit(MAX_TRACKED_ARTISTS)
     .all();
+
+  if (rows.length >= MAX_TRACKED_ARTISTS) {
+    log.warn(
+      `[artists] getTrackedArtistsWithStats hit limit (${MAX_TRACKED_ARTISTS}); results may be truncated`
+    );
+  }
+
+  return rows;
 }

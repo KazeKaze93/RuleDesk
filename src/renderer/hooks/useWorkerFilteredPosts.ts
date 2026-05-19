@@ -6,6 +6,7 @@ import {
 import { useDebounce } from "../lib/hooks/useDebounce";
 import type { Post } from "../../main/db/schema";
 import log from "electron-log/renderer";
+import { mapWorkerPostToPost } from "../lib/map-worker-post";
 
 /**
  * Custom hook for worker-based post filtering
@@ -62,38 +63,7 @@ export function useWorkerFilteredPosts(
           // PERFORMANCE: Date mapping happens in main thread (unavoidable - postMessage can't transfer Date)
           // However, this O(n) operation is much faster than O(n*m) filtering done in Worker
           // Optimize by using direct property access and minimal Date object creation
-          const mappedPosts: Post[] = result.map((workerPost): Post => {
-            // Optimize Date conversion: check type once, use ternary for minimal branching
-            const publishedAt = workerPost.publishedAt instanceof Date
-              ? workerPost.publishedAt
-              : workerPost.publishedAt
-              ? new Date(workerPost.publishedAt)
-              : new Date();
-            const createdAt = workerPost.createdAt instanceof Date
-              ? workerPost.createdAt
-              : workerPost.createdAt
-              ? new Date(workerPost.createdAt)
-              : new Date();
-
-            return {
-              id: workerPost.id,
-              postId: workerPost.postId,
-              artistId: workerPost.artistId,
-              fileUrl: workerPost.fileUrl,
-              previewUrl: workerPost.previewUrl,
-              sampleUrl: workerPost.sampleUrl,
-              title: workerPost.title ?? "",
-              rating: workerPost.rating ?? "",
-              tags: workerPost.tags,
-              mediaType: null, // Worker doesn't process mediaType, will be inferred from fileUrl if needed
-              publishedAt,
-              createdAt,
-              isViewed: workerPost.isViewed,
-              lastViewedAt: null,
-              viewCount: 0,
-              isFavorited: workerPost.isFavorited,
-            };
-          });
+          const mappedPosts: Post[] = result.map(mapWorkerPostToPost);
           setFilteredPosts(mappedPosts);
           setError(null); // Clear error on success
         }

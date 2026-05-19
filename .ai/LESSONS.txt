@@ -57,7 +57,32 @@ Problem: Dead imports/variables increase noise and hide real issues.
 Root Cause: Refactors are merged without cleanup.
 Invariant Rule: Run `npm run validate` before finishing and remove all unused imports/variables.
 
-See also: ../LESSONS.md (extended examples and historical context).
+## Security (credentials)
+
+### Problem: API decrypt failure sends ciphertext to Booru APIs
+**Root Cause:** Inline `safeStorage.decryptString` catch blocks fell back to `settings.encryptedApiKey` (base64 ciphertext).
+**Invariant Rule:** Use `SecureStorage.decrypt()` or `getDecryptedCredentialsFromRecord()`; on failure return `null` or throw `CredentialDecryptionError`. Never pass stored ciphertext to providers or logs as if it were the key.
+
+## Renderer / Workers
+
+### Problem: Browse media-type filter breaks after worker pass
+**Root Cause:** `useWorkerFilteredPosts` remapped worker output with `mediaType: null` and dropped `viewCount` / `lastViewedAt`.
+**Invariant Rule:** Worker round-trip must preserve DB fields; infer `mediaType` from `fileUrl` only when the field is absent.
+
+### Problem: Heavy Zod validation blocks UI on large post lists
+**Root Cause:** `Zod.parse()` on 10k+ posts in the renderer main thread before `postMessage`.
+**Invariant Rule:** Do not validate full post arrays in the renderer thread; trust IPC + worker, or validate inside the worker if required.
+
+### Problem: Worker filter spam on rapid slider changes
+**Root Cause:** Every filter keystroke/toggle immediately posted full arrays to the worker.
+**Invariant Rule:** Debounce filter config sent to the worker (~250ms); do not debounce `rawPosts` (scroll/load latency).
+
+## Gallery performance
+
+### Problem: Masonry mode degrades to full DOM for all loaded posts
+**Root Cause:** CSS `columns` layout is incompatible with Virtuoso virtualization; masonry path renders every loaded post.
+**Invariant Rule:** Document and treat masonry as O(n) DOM. Grid mode is O(visible) via VirtuosoGrid. Warn users or cap loaded pages in masonry for large feeds.
+
 ## Testing
 
 ### Problem: Dual-ABI test setup masks Electron-vs-Node native module incompatibilities

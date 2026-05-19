@@ -48,6 +48,12 @@ export const ARTIST_TYPES = ["tag", "uploader", "query"] as const;
 export type ArtistType = typeof ARTIST_TYPES[number];
 
 /**
+ * Maximum tracked artists returned by getTrackedArtists IPC.
+ * Protects renderer memory when subscriptions/playlists grow large.
+ */
+export const MAX_TRACKED_ARTISTS = 5000;
+
+/**
  * Maximum Random Pages
  *
  * Maximum number of pages to use for pseudo-random fallback when provider

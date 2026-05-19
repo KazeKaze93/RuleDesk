@@ -93,18 +93,6 @@ const isInvalidPlaylistError = (message: string): boolean => {
   );
 };
 
-const matchesOrientation = (
-  post: object,
-  orientation: "all" | "horizontal" | "vertical"
-): boolean => {
-  if (orientation === "all") return true;
-  const width = Reflect.get(post, "width");
-  const height = Reflect.get(post, "height");
-  if (typeof width !== "number" || typeof height !== "number") return true;
-  if (orientation === "horizontal") return width > height;
-  return height > width;
-};
-
 const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
   if (publishedAt instanceof Date) {
     return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
@@ -120,14 +108,12 @@ const shouldIncludePostInPlaylistQueue = (
   post: Post,
   filters: {
     aiFilter: "all" | "hide" | "only";
-    orientation: "all" | "horizontal" | "vertical";
     dateFrom: Date | null;
     dateTo: Date | null;
   }
 ): boolean => {
   if (filters.aiFilter === "hide" && hasAiGeneratedTag(post.tags)) return false;
   if (filters.aiFilter === "only" && !hasAiGeneratedTag(post.tags)) return false;
-  if (!matchesOrientation(post, filters.orientation)) return false;
   if (filters.dateFrom || filters.dateTo) {
     const date = getPublishedDate(post.publishedAt);
     if (date) {
@@ -156,35 +142,47 @@ const GridContainer = forwardRef<
 ));
 GridContainer.displayName = "GridContainer";
 
-const createItemContainer = (viewType: "grid" | "masonry") =>
-  forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-    ({ className, ...props }, ref) => (
-      <div
-        ref={ref}
-        className={cn(
-          viewType === "grid"
-            ? "w-full aspect-[2/3]"
-            : "w-full mb-4 break-inside-avoid",
-          className
-        )}
-        {...props}
-      />
-    )
-  );
+const GridItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+  )
+);
+GridItemContainer.displayName = "PlaylistGridItemContainer";
 
-const createVirtuosoList = (viewType: "grid" | "masonry") =>
-  forwardRef<
-    HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
-  >(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-    <GridContainer
-      {...props}
-      ref={ref}
-      className={className}
-      aria-busy={ariaBusy}
-      viewType={viewType}
-    />
-  ));
+const MasonryItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("w-full mb-4 break-inside-avoid", className)} {...props} />
+  )
+);
+MasonryItemContainer.displayName = "PlaylistMasonryItemContainer";
+
+const GridVirtuosoList = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType="grid"
+  />
+));
+GridVirtuosoList.displayName = "PlaylistGridVirtuosoList";
+
+const MasonryVirtuosoList = forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
+>(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
+  <GridContainer
+    {...props}
+    ref={ref}
+    className={className}
+    aria-busy={ariaBusy}
+    viewType="masonry"
+  />
+));
+MasonryVirtuosoList.displayName = "PlaylistMasonryVirtuosoList";
 
 // Playlist Gallery Component (similar to ArtistGallery)
 interface PlaylistGalleryProps {
@@ -303,10 +301,6 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
     }
 
-    if (filters.orientation !== "all") {
-      posts = posts.filter((post) => matchesOrientation(post, filters.orientation));
-    }
-
     if (filters.dateFrom || filters.dateTo) {
       posts = posts.filter((post) => {
         const date = getPublishedDate(post.publishedAt);
@@ -318,7 +312,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     }
 
     return posts;
-  }, [data, filters.aiFilter, filters.orientation, filters.dateFrom, filters.dateTo]);
+  }, [data, filters.aiFilter, filters.dateFrom, filters.dateTo]);
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -361,7 +355,6 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
           .filter((post) =>
             shouldIncludePostInPlaylistQueue(post, {
               aiFilter: filters.aiFilter,
-              orientation: filters.orientation,
               dateFrom: filters.dateFrom,
               dateTo: filters.dateTo,
             })
@@ -508,8 +501,9 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     [localPosts, playlist.id, playlist.isSmart]
   );
 
-  const ListComponent = useMemo(() => createVirtuosoList(viewType), [viewType]);
-  const ItemComponent = useMemo(() => createItemContainer(viewType), [viewType]);
+  const listAriaBusy = isLoading || isFetchingNextPage;
+  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
+  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   return (
     <div className="flex flex-col h-full">
@@ -622,6 +616,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
         ) : (
           <VirtuosoGrid
             className="h-full"
+            aria-busy={listAriaBusy}
             totalCount={displayedPosts.length}
             endReached={handleEndReached}
             increaseViewportBy={600}
