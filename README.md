@@ -475,9 +475,12 @@ npx electron-builder
 
 The built binaries will be available in the `release/` directory. The exact output location may vary depending on your Electron builder configuration.
 
-**Build Targets:**
+**Build Target (Windows):**
 
-- **Windows:** Portable executable (x64)
+- `RuleDesk-<version>-win.zip` — extract and run `RuleDesk.exe`
+
+**Other platforms:**
+
 - **macOS:** DMG package
 - **Linux:** AppImage
 

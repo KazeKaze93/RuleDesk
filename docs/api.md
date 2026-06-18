@@ -242,7 +242,12 @@ interface IpcBridge {
     query: string,
     provider?: ProviderId
   ) => Promise<SearchResults[]>;
-  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+  searchBooru: (params: {
+    tags: string[];
+    page: number;
+    isRandom?: boolean;
+    limit?: number;
+  }) => Promise<Post[]>;
   resolveTags: (tags: string[]) => Promise<string[]>;
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
@@ -1146,7 +1151,7 @@ results.forEach((result) => {
 
 ---
 
-### `searchBooru(params: { tags: string[]; page: number })`
+### `searchBooru(params: { tags: string[]; page: number; isRandom?: boolean; limit?: number })`
 
 Searches for posts on the booru API using specified tags and page number.
 
@@ -1158,6 +1163,8 @@ Searches for posts on the booru API using specified tags and page number.
 
 - `params.tags: string[]` - Array of tags to search for
 - `params.page: number` - Page number for pagination
+- `params.isRandom?: boolean` - Use pseudo-random page selection (default: `false`)
+- `params.limit?: number` - Posts per page (default: `50`, max: `100`)
 
 **Returns:** `Promise<Post[]>`
 
@@ -1167,6 +1174,7 @@ Searches for posts on the booru API using specified tags and page number.
 const posts = await window.api.searchBooru({
   tags: ["blue_hair", "solo"],
   page: 1,
+  limit: 50,
 });
 console.log(`Found ${posts.length} posts`);
 ```

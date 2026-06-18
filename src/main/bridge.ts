@@ -186,7 +186,12 @@ export interface IpcBridge {
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
-  searchBooru: (params: { tags: string[]; page: number; isRandom?: boolean }) => Promise<Post[]>;
+  searchBooru: (params: {
+    tags: string[];
+    page: number;
+    isRandom?: boolean;
+    limit?: number;
+  }) => Promise<Post[]>;
 
   resolveTags: (tags: string[]) => Promise<string[]>;
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;

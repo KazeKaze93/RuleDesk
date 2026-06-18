@@ -56,25 +56,7 @@ if (isTestMode) {
   }
 }
 
-// === PORTABLE MODE LOGIC ===
-
-// === PORTABLE MODE LOGIC ===
-if (app.isPackaged) {
-  const portableDataPath = path.join(path.dirname(process.execPath), "data");
-
-  try {
-    mkdirSync(portableDataPath, { recursive: true });
-
-    app.setPath("userData", portableDataPath);
-
-    log.info(`[PortableMode] Active. Path: ${portableDataPath}`);
-  } catch (e) {
-    log.error(
-      "[PortableMode] Failed to init data folder. Fallback to default.",
-      e
-    );
-  }
-}
+import { getAppIconPath, getAppIconsDirectory } from "./lib/app-resources";
 
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
@@ -124,7 +106,7 @@ async function hideDirectoryOnWindows(dirPath: string): Promise<void> {
 
 function configureUserDataPath(): void {
   try {
-    if (app.isPackaged) {
+    if (isTestMode) {
       return;
     }
 
@@ -213,98 +195,129 @@ function getMigrationsPath(): string {
  * In production, uses the resources folder relative to the app path.
  */
 function getIconPath(): string {
-  const isDev = process.env.NODE_ENV === "development";
-  const iconsFolder = isDev
-    ? path.join(process.cwd(), "resources", "icons")
-    : path.join(__dirname, "../../resources/icons");
-
-  // Use PNG - nativeImage handles it better than ICO
-  // For Windows taskbar, the .ico from package.json build config will be used automatically
-  return path.join(iconsFolder, "icon.png");
+  return getAppIconPath("icon.png");
 }
 
-/**
- * Gets the path to the tray icon.
- * Uses .png for all platforms as nativeImage handles it better than .ico
- */
 function getTrayIconPath(): string {
-  const isDev = process.env.NODE_ENV === "development";
-  const iconsFolder = isDev
-    ? path.join(process.cwd(), "resources", "icons")
-    : path.join(__dirname, "../../resources/icons");
-
-  // Use PNG for tray - nativeImage handles PNG better than ICO
-  return path.join(iconsFolder, "icon.png");
+  return getAppIconPath("icon.png");
 }
 
-/**
- * Создает простое окно загрузки для отображения во время миграций БД
- */
-function createLoadingWindow(): BrowserWindow {
-  const loadingWindow = new BrowserWindow({
-    width: 400,
-    height: 200,
-    frame: false,
-    transparent: true,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    resizable: false,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true, // CRITICAL: Enable sandbox for Electron 39+ security
-    },
+function loadWindowIcon(): {
+  windowIcon: Electron.NativeImage | null;
+  windowIconPath: string;
+} {
+  const windowIconPath = getIconPath();
+  let windowIcon: Electron.NativeImage | null = null;
+
+  if (!existsSync(windowIconPath)) {
+    logger.error(`[Main] Window icon file not found: ${windowIconPath}`);
+  } else {
+    try {
+      windowIcon = nativeImage.createFromPath(windowIconPath);
+      if (windowIcon.isEmpty()) {
+        logger.error(`[Main] Failed to load window icon from: ${windowIconPath}`);
+        windowIcon = null;
+      }
+    } catch (error) {
+      logger.error("[Main] Error loading window icon:", error);
+      windowIcon = null;
+    }
+  }
+
+  return { windowIcon, windowIconPath };
+}
+
+function loadRendererUrl(window: BrowserWindow): Promise<void> {
+  if (process.env["ELECTRON_RENDERER_URL"]) {
+    return window.loadURL(process.env["ELECTRON_RENDERER_URL"]);
+  }
+  return window.loadFile(path.join(__dirname, "../renderer/index.html"));
+}
+
+function createMainWindowShowController(window: BrowserWindow): {
+  ensureVisible: () => void;
+} {
+  let hasShown = false;
+  let deferredTasksScheduled = false;
+
+  const showWindow = (): void => {
+    if (hasShown || window.isDestroyed()) {
+      return;
+    }
+    hasShown = true;
+    window.show();
+    window.focus();
+
+    if (!deferredTasksScheduled) {
+      deferredTasksScheduled = true;
+      scheduleDeferredStartupTasks(window);
+    }
+  };
+
+  // Must attach before any await — ready-to-show can fire during DB init / loadFile.
+  window.once("ready-to-show", showWindow);
+  window.webContents.once("did-finish-load", () => {
+    setImmediate(() => {
+      if (!hasShown && !window.isDestroyed()) {
+        showWindow();
+      }
+    });
   });
 
-  loadingWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body {
-          margin: 0;
-          padding: 0;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
-          background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
-          color: white;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-        .container {
-          text-align: center;
-        }
-        .spinner {
-          border: 3px solid rgba(255,255,255,0.1);
-          border-top: 3px solid #3b82f6;
-          border-radius: 50%;
-          width: 40px;
-          height: 40px;
-          animation: spin 1s linear infinite;
-          margin: 0 auto 20px;
-        }
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .text {
-          font-size: 14px;
-          opacity: 0.9;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="spinner"></div>
-        <div class="text">Initializing database...</div>
-      </div>
-    </body>
-    </html>
-  `)}`);
+  return {
+    ensureVisible: showWindow,
+  };
+}
 
-  loadingWindow.center();
-  return loadingWindow;
+function scheduleDeferredStartupTasks(window: BrowserWindow): void {
+  setTimeout(() => {
+    updaterService.checkForUpdates();
+  }, 3000);
+
+  void videoProxyServer.start().catch((error) => {
+    logger.error("[Main] Video proxy failed to start:", error);
+  });
+
+  setTimeout(() => {
+    backupService.checkAndRunAutoBackup();
+  }, 5000);
+
+  setTimeout(async () => {
+    try {
+      const db = getDb();
+      const currentSettings = await db.query.settings.findFirst({
+        where: eq(settings.id, SETTINGS_ID),
+      });
+
+      if (currentSettings?.autoSyncOnStartup && !syncService.getIsSyncing()) {
+        logger.info("[Main] Auto-sync on startup triggered");
+        syncService.syncAllArtists().catch((error) => {
+          logger.error("[Main] Auto-sync on startup failed:", error);
+        });
+      }
+    } catch (error) {
+      logger.error("[Main] Failed to check auto-sync setting:", error);
+    }
+  }, 2000);
+
+  setTimeout(() => {
+    try {
+      const db = getDb();
+      const currentSettings = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
+      const intervalMinutes = currentSettings?.syncIntervalMinutes ?? 0;
+      syncScheduler.restart(intervalMinutes);
+      createTray(window);
+      maintenanceScheduler.start();
+      logger.info("[Main] Deferred startup tasks completed (scheduler)");
+    } catch (error) {
+      logger.error("[Main] Failed deferred startup tasks:", error);
+    }
+  }, 1500);
 }
 
 /**
@@ -379,74 +392,13 @@ function configureDynamicCspHeaders(): void {
  * Отвечает за инициализацию Worker и создание главного окна.
  */
 async function initializeAppAndWindow() {
-  let loadingWindow: BrowserWindow | null = null;
-
   try {
-    await videoProxyServer.start();
     configureDynamicCspHeaders();
     const isDev = process.env.NODE_ENV === "development";
     logger.info(`Main: CSP configured from provider registry (${isDev ? "development" : "production"} mode)`);
+    logger.info(`Main: Migrations Path: ${getMigrationsPath()}`);
 
-    const MIGRATIONS_PATH = getMigrationsPath();
-    logger.info(`Main: Migrations Path: ${MIGRATIONS_PATH}`);
-
-    // Show loading window during database initialization (skip in test mode)
-    if (!isTestMode) {
-      loadingWindow = createLoadingWindow();
-      loadingWindow.show();
-    }
-
-    // Initialize database asynchronously (migrations may take time)
-    // Add extra logging around database initialization to catch silent crashes in CI
-    logger.info("[Main] Starting database initialization...");
-    try {
-      await initializeDatabase();
-      logger.info("✅ Main: Database initialized and ready.");
-    } catch (error) {
-      logger.error("[Main] FATAL: Database initialization failed:", error);
-      // Re-throw to be caught by outer try-catch
-      throw error;
-    }
-    
-    // Start background backfill for media_type column (non-blocking)
-    // This runs after migrations to avoid blocking app startup
-    import("./db/backfill-media-type").then(({ backfillMediaType }) => {
-      // Run backfill asynchronously without blocking UI
-      backfillMediaType().catch((error) => {
-        logger.error("[Main] Background media_type backfill failed:", error);
-      });
-    });
-
-    // Close loading window
-    if (loadingWindow && !loadingWindow.isDestroyed()) {
-      loadingWindow.close();
-      loadingWindow = null;
-    }
-
-    // Get icon path and load using nativeImage for better compatibility
-    const windowIconPath = getIconPath();
-    logger.info(`[Main] Window icon path: ${windowIconPath}`);
-    
-    let windowIcon: Electron.NativeImage | null = null;
-    
-    // Check if icon file exists and load it
-    if (!existsSync(windowIconPath)) {
-      logger.error(`[Main] Window icon file not found: ${windowIconPath}`);
-    } else {
-      try {
-        windowIcon = nativeImage.createFromPath(windowIconPath);
-        if (windowIcon.isEmpty()) {
-          logger.error(`[Main] Failed to load window icon from: ${windowIconPath}`);
-          windowIcon = null;
-        } else {
-          const iconSize = windowIcon.getSize();
-          logger.info(`[Main] Window icon loaded successfully, size: ${iconSize.width}x${iconSize.height}px`);
-        }
-      } catch (error) {
-        logger.error(`[Main] Error loading window icon:`, error);
-        windowIcon = null;
-      }
-    }
+    const { windowIcon, windowIconPath } = loadWindowIcon();
 
     mainWindow = new BrowserWindow({
       width: 1200,
@@ -468,6 +420,7 @@ async function initializeAppAndWindow() {
 
     // Log window creation for debugging (especially in test mode)
     logger.info(`[Main] Window created (show: ${isTestMode}, test mode: ${isTestMode})`);
+    logger.info(`[Main] Icons directory: ${getAppIconsDirectory()}`);
 
     // Set icon again after window creation to ensure it's applied (Windows sometimes needs this)
     if (windowIcon && !windowIcon.isEmpty()) {
@@ -482,99 +435,43 @@ async function initializeAppAndWindow() {
     updaterService.setWindow(mainWindow);
     syncService.setWindow(mainWindow);
 
+    const windowShowController = isTestMode
+      ? null
+      : createMainWindowShowController(mainWindow);
+
     mainWindow.webContents.on("did-finish-load", () => {
       logger.info("Renderer loaded");
     });
 
-    if (process.env["ELECTRON_RENDERER_URL"]) {
-      mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
-    } else {
-      mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
-    }
+    logger.info("[Main] Starting parallel UI load and database initialization...");
+    const rendererLoadPromise = loadRendererUrl(mainWindow);
+    const dbInitPromise = initializeDatabase();
 
-    // Log window URL loading for debugging
-    logger.info(`[Main] Loading window URL (test mode: ${isTestMode})`);
+    await dbInitPromise;
+    logger.info("✅ Main: Database initialized and ready.");
 
-    // In test mode, skip ready-to-show listener and initialize IPC immediately
-    // ready-to-show may not fire reliably in headless CI environments
+    registerAllHandlers(syncService, backupService, updaterService, mainWindow, videoProxyServer);
+    registerMaintenanceHandlers(maintenanceService);
+    reloadProxyFromSettings();
+
+    import("./db/backfill-media-type").then(({ backfillMediaType }) => {
+      backfillMediaType().catch((error) => {
+        logger.error("[Main] Background media_type backfill failed:", error);
+      });
+    });
+
+    await rendererLoadPromise;
+    logger.info(`[Main] Renderer load finished (test mode: ${isTestMode})`);
+
     if (isTestMode) {
-      logger.info("[Main] Test mode: Skipping ready-to-show listener, initializing IPC immediately");
-      // Initialize IPC immediately so tests can interact with the app
-      registerAllHandlers(syncService, backupService, updaterService, mainWindow, videoProxyServer);
-      registerMaintenanceHandlers(maintenanceService);
-      reloadProxyFromSettings();
+      await videoProxyServer.start();
       backupService.checkAndRunAutoBackup();
-      
-      // Log window state for debugging
-      logger.info(`[Main] Test mode: Window created, visible: ${mainWindow.isVisible()}, destroyed: ${mainWindow.isDestroyed()}`);
-      
-      // Ensure window is visible (it should already be with show: true, but double-check)
-      mainWindow.webContents.once("did-finish-load", () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          logger.info(`[Main] Test mode: did-finish-load fired, window visible: ${mainWindow.isVisible()}`);
-          if (!mainWindow.isVisible()) {
-            mainWindow.show();
-            logger.info("[Main] Test mode: Window shown explicitly after did-finish-load");
-          }
-          logger.info("[Main] Test mode: Window ready for Playwright");
-        }
-      });
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+        mainWindow.show();
+      }
+      logger.info(`[Main] Test mode: Window visible: ${mainWindow.isVisible()}`);
     } else {
-      // Normal mode: wait for ready-to-show event
-      mainWindow.once("ready-to-show", () => {
-        const window = mainWindow;
-
-        if (window) {
-          window.show();
-          updaterService.checkForUpdates();
-
-          // Initialize IPC architecture (controllers + legacy handlers)
-          // setupIpc is called inside registerAllHandlers now
-          registerAllHandlers(syncService, backupService, updaterService, window, videoProxyServer);
-          registerMaintenanceHandlers(maintenanceService);
-          reloadProxyFromSettings();
-          backupService.checkAndRunAutoBackup();
-
-          // Auto-sync on startup
-          setTimeout(async () => {
-            try {
-              const db = getDb();
-              const currentSettings = await db.query.settings.findFirst({
-                where: eq(settings.id, SETTINGS_ID),
-              });
-
-              if (currentSettings?.autoSyncOnStartup && !syncService.getIsSyncing()) {
-                logger.info("[Main] Auto-sync on startup triggered");
-                syncService.syncAllArtists().catch((error) => {
-                  logger.error("[Main] Auto-sync on startup failed:", error);
-                });
-              }
-            } catch (error) {
-              logger.error("[Main] Failed to check auto-sync setting:", error);
-            }
-          }, 2000); // 2s delay: let UI settle before starting sync
-
-          try {
-            const db = getDb();
-            const currentSettings = db
-              .select()
-              .from(settings)
-              .where(eq(settings.id, SETTINGS_ID))
-              .limit(1)
-              .all()[0];
-            const intervalMinutes = currentSettings?.syncIntervalMinutes ?? 0;
-            syncScheduler.restart(intervalMinutes);
-          } catch (error) {
-            logger.error("[Main] Failed to start sync scheduler:", error);
-          }
-
-          // Create system tray
-          createTray(window);
-
-          maintenanceScheduler.start();
-          logger.info("[Main] Maintenance scheduler started");
-        }
-      });
+      windowShowController?.ensureVisible();
     }
 
     mainWindow.on("closed", () => {
@@ -596,11 +493,6 @@ async function initializeAppAndWindow() {
       closeDatabase();
     });
   } catch (e) {
-    // Close loading window if it's still open
-    if (loadingWindow && !loadingWindow.isDestroyed()) {
-      loadingWindow.close();
-    }
-
     logger.error("FATAL: Failed to initialize application or database.", e);
     
     // Don't show error dialog in headless/test mode (blocks process in CI)
@@ -706,15 +598,11 @@ function createTray(_window: BrowserWindow): void {
       {
         label: "Quit",
         click: () => {
-          // Destroy tray first
           if (tray) {
             tray.destroy();
             tray = null;
           }
-          // CRITICAL: Close database connection before quitting to prevent data corruption
-          // SQLite requires explicit close() to ensure all transactions are committed
           closeDatabase();
-          // Then quit the app
           app.quit();
         },
       },

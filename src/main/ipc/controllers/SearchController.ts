@@ -246,22 +246,27 @@ export class SearchController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: SearchPostsParams
   ): Promise<IpcPost[]> {
-    const { tags, page, isRandom } = params;
+    const { tags, page, isRandom, limit = 50 } = params;
     const safeInputTags = tags.map((t) => sanitizeProviderTagToken(t));
 
     try {
       // Get decrypted settings for authentication
       const settings = await this.getDecryptedSettings();
-      const providerId = settings?.provider ?? "rule34";
+      if (!settings?.apiKey?.trim() || !settings.userId?.trim()) {
+        throw new Error(
+          "API credentials are missing or could not be decrypted. Open Settings and sign in again."
+        );
+      }
+      const providerId = settings.provider ?? "rule34";
       const provider = getProvider(providerId);
       const providerSettings = {
-        userId: settings?.userId || "",
-        apiKey: settings?.apiKey || "",
+        userId: settings.userId,
+        apiKey: settings.apiKey,
       };
       log.debug("[SearchController] searchBooru provider settings loaded", {
         providerId,
-        hasApiKey: providerSettings.apiKey.trim().length > 0,
-        hasUserId: providerSettings.userId.trim().length > 0,
+        hasApiKey: true,
+        hasUserId: true,
       });
 
       // Convert tags array to space-separated string (provider expects string).
@@ -314,7 +319,8 @@ export class SearchController extends BaseController {
         tagsString,
         apiPage,
         providerSettings,
-        isRandom
+        isRandom,
+        limit
       );
 
       // Step 2: Fallback Logic (only if Step 1 returned 0 AND input is a single word)
@@ -337,7 +343,8 @@ export class SearchController extends BaseController {
                 suggestionString,
                 apiPage,
                 providerSettings,
-                isRandom
+                isRandom,
+                limit
               );
               
               if (booruPosts.length > 0) {
@@ -360,7 +367,8 @@ export class SearchController extends BaseController {
               formattedUserTag,
               apiPage,
               providerSettings,
-              isRandom
+              isRandom,
+              limit
             );
             
             if (booruPosts.length > 0) {

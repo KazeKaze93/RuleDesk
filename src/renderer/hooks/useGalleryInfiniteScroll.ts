@@ -37,6 +37,7 @@ export function useGalleryInfiniteScroll<TPost, TQueryKey extends unknown[] = un
 }) {
   // Debounce ref to prevent duplicate fetch calls
   const endReachedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const endReachedInFlightRef = useRef(false);
 
   // Infinite query with proper pagination
   const {
@@ -45,7 +46,9 @@ export function useGalleryInfiniteScroll<TPost, TQueryKey extends unknown[] = un
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isError,
     error,
+    refetch,
   } = useInfiniteQuery({
     queryKey,
     queryFn: async ({ pageParam = 1 }) => {
@@ -61,23 +64,34 @@ export function useGalleryInfiniteScroll<TPost, TQueryKey extends unknown[] = un
 
   // Handle end reached with debounce to prevent rate limit errors
   const handleEndReached = useCallback(() => {
+    if (endReachedInFlightRef.current) {
+      return;
+    }
+
     // Clear any pending timeout
     if (endReachedTimeoutRef.current) {
       clearTimeout(endReachedTimeoutRef.current);
     }
 
+    endReachedInFlightRef.current = true;
+
     // Debounce the fetch to prevent duplicate calls
     endReachedTimeoutRef.current = setTimeout(() => {
-      if (hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
       endReachedTimeoutRef.current = null;
+      if (hasNextPage && !isFetchingNextPage) {
+        void fetchNextPage().finally(() => {
+          endReachedInFlightRef.current = false;
+        });
+        return;
+      }
+      endReachedInFlightRef.current = false;
     }, debounceDelay);
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, debounceDelay]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
+      endReachedInFlightRef.current = false;
       if (endReachedTimeoutRef.current) {
         clearTimeout(endReachedTimeoutRef.current);
       }
@@ -98,7 +112,9 @@ export function useGalleryInfiniteScroll<TPost, TQueryKey extends unknown[] = un
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isError,
     error,
+    refetch,
     handleEndReached,
   };
 }

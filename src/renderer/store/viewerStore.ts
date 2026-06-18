@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { Post } from "../../main/db/schema";
 
 export type ViewerOrigin =
   | { kind: "browse"; filters?: string }
@@ -39,6 +40,10 @@ export interface ViewerQueue {
   hasNextPage?: boolean;
   onLoadMore?: () => void | Promise<void>;
   isRandom?: boolean; // Store isRandom state in queue for viewer navigation
+  // Snapshot of the posts that were visible when the viewer opened.
+  // Used as a fallback when the React Query cache lookup misses, so a post
+  // the user just clicked can never render the "not found in cache" dead-end.
+  posts?: Post[];
 }
 
 interface ViewerState {
@@ -87,12 +92,13 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
     });
   },
 
-  close: () =>
+  close: () => {
     set({
       isOpen: false,
       queue: null,
       currentPostId: null,
-    }),
+    });
+  },
 
   next: () => {
     const { queue, currentIndex } = get();

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
-import { parseCredentialsFromText } from "../../lib/parseCredentialsFromText";
+import { normalizeCredentialsInput } from "../../lib/parseCredentialsFromText";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,19 +67,33 @@ export const SettingsAccountTab = ({
   const isUserIdInvalid =
     normalizedUserId.length > 0 && !/^\d+$/.test(normalizedUserId);
 
-  const handleCredentialsPaste = (event: ClipboardEvent<HTMLInputElement>) => {
-    const pastedText = event.clipboardData.getData("text");
-    const credentials = parseCredentialsFromText(pastedText);
+  const applyParsedCredentials = (text: string): boolean => {
+    const credentials = normalizeCredentialsInput({ apiKey: text, userId });
     if (!credentials.userId && !credentials.apiKey) {
-      return;
+      return false;
     }
-    event.preventDefault();
     if (credentials.userId) {
       onUserIdChange?.(credentials.userId);
     }
     if (credentials.apiKey) {
       onApiKeyChange(credentials.apiKey);
     }
+    return true;
+  };
+
+  const handleCredentialsPaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = event.clipboardData.getData("text");
+    if (!applyParsedCredentials(pastedText)) {
+      return;
+    }
+    event.preventDefault();
+  };
+
+  const handleApiKeyChange = (value: string) => {
+    if (applyParsedCredentials(value)) {
+      return;
+    }
+    onApiKeyChange(value);
   };
 
   return (
@@ -137,6 +151,11 @@ export const SettingsAccountTab = ({
             ) : null}
           </section>
         ) : null}
+        {!showUserIdField && normalizedUserId ? (
+          <p className="text-xs text-muted-foreground">
+            Detected User ID: <span className="font-mono text-foreground">{normalizedUserId}</span>
+          </p>
+        ) : null}
 
         <section className="space-y-2">
           <Label htmlFor="api-key">API key</Label>
@@ -144,9 +163,9 @@ export const SettingsAccountTab = ({
             id="api-key"
             type={showApiKey ? "text" : "password"}
             value={apiKey}
-            onChange={(event) => onApiKeyChange(event.target.value)}
+            onChange={(event) => handleApiKeyChange(event.target.value)}
             onPaste={handleCredentialsPaste}
-            placeholder="Enter new API key"
+            placeholder="api_key=...&user_id=... or API key only"
           />
           <section className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={onToggleApiKeyVisibility}>
@@ -156,7 +175,10 @@ export const SettingsAccountTab = ({
               type="button"
               size="sm"
               onClick={onSaveApiKey}
-              disabled={isUserIdInvalid}
+              disabled={
+                isUserIdInvalid ||
+                (!showUserIdField && normalizedUserId.length === 0 && apiKey.trim().length > 0)
+              }
             >
               Save API Key
             </Button>

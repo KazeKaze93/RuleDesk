@@ -57,11 +57,6 @@ import {
 
 import { useQueryClient, InfiniteData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import {
-  TransformWrapper,
-  TransformComponent,
-  type ReactZoomPanPinchRef,
-} from "react-zoom-pan-pinch";
 import type { Post } from "../../../main/db/schema";
 import type { Artist } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
@@ -70,6 +65,7 @@ import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
 import { useSearchStore } from "../../store/searchStore";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../store/safeModeStore";
 import { cn } from "../../lib/utils";
+import { releaseRadixModalLock } from "../../lib/radix-modal-lock";
 import { isVideoPost } from "../../lib/filter-utils";
 import { useVideoProxyUrl } from "../../lib/hooks/useVideoProxyUrl";
 import { useViewerController } from "./hooks/useViewerController";
@@ -496,12 +492,7 @@ const useCurrentPost = (
   }, [currentPostId, postsMap]);
 };
 
-const IMAGE_MIN_SCALE = 1;
-const IMAGE_MAX_SCALE = 8;
-const IMAGE_WHEEL_STEP = 0.005;
-const ZOOM_RESET_KEY = "0";
 const RESOLVE_TAGS_BATCH_SIZE = 100;
-let isImagePanningActive = false;
 
 const chunkTags = (tags: string[], chunkSize: number): string[][] => {
   const chunks: string[][] = [];
@@ -542,32 +533,34 @@ const withRule34Host = (urlString: string, targetHost: string): string | null =>
   }
 };
 
-const buildImageFallbackChain = (post: Post): string[] => {
-  const baseCandidates = [
-    post.sampleUrl?.trim(),
-    post.fileUrl?.trim(),
-    post.previewUrl?.trim(),
-  ].filter((value): value is string => Boolean(value && value.length > 0));
-
-  const uniqueCandidates: string[] = [];
-  const seen = new Set<string>();
-
-  for (const candidate of baseCandidates) {
-    if (!seen.has(candidate)) {
-      seen.add(candidate);
-      uniqueCandidates.push(candidate);
-    }
-
-    for (const host of RULE34_CDN_FALLBACK_HOSTS) {
-      const fallbackUrl = withRule34Host(candidate, host);
-      if (fallbackUrl && !seen.has(fallbackUrl)) {
-        seen.add(fallbackUrl);
-        uniqueCandidates.push(fallbackUrl);
-      }
+const appendUrlWithCdnMirrors = (
+  chain: string[],
+  seen: Set<string>,
+  url: string | undefined
+): void => {
+  const trimmed = url?.trim();
+  if (!trimmed || seen.has(trimmed)) {
+    return;
+  }
+  seen.add(trimmed);
+  chain.push(trimmed);
+  for (const host of RULE34_CDN_FALLBACK_HOSTS) {
+    const fallbackUrl = withRule34Host(trimmed, host);
+    if (fallbackUrl && !seen.has(fallbackUrl)) {
+      seen.add(fallbackUrl);
+      chain.push(fallbackUrl);
     }
   }
+};
 
-  return uniqueCandidates;
+/** Prefer full file_url; sample/preview are cropped thumbnails — use only as fallback. */
+const buildImageFallbackChain = (post: Post): string[] => {
+  const chain: string[] = [];
+  const seen = new Set<string>();
+  appendUrlWithCdnMirrors(chain, seen, post.fileUrl);
+  appendUrlWithCdnMirrors(chain, seen, post.sampleUrl);
+  appendUrlWithCdnMirrors(chain, seen, post.previewUrl);
+  return chain;
 };
 
 const ViewerMedia = ({
@@ -583,7 +576,6 @@ const ViewerMedia = ({
   const imageFallbackChain = useMemo(() => buildImageFallbackChain(post), [post]);
   const [imageFallbackIndex, setImageFallbackIndex] = useState(0);
   const [imageSrc, setImageSrc] = useState(imageFallbackChain[0] ?? post.fileUrl);
-  const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
   const { safeMode, panicMode, blurAmount } = useSafeModeStore(
     useShallow((s) => ({
       safeMode: s.safeMode,
@@ -608,10 +600,6 @@ const ViewerMedia = ({
     isVideo && post.fileUrl ? post.fileUrl : null,
   );
 
-  const resetImageZoom = useCallback(() => {
-    transformRef.current?.resetTransform();
-  }, []);
-
   useEffect(() => {
     const handleMediaKeys = (e: KeyboardEvent) => {
       if (e.key === " ") {
@@ -620,29 +608,15 @@ const ViewerMedia = ({
         }
         e.preventDefault();
         setIsVideoPlaying((v) => !v);
-        return;
-      }
-
-      if (e.key === ZOOM_RESET_KEY && !isVideo) {
-        e.preventDefault();
-        resetImageZoom();
       }
     };
     window.addEventListener("keydown", handleMediaKeys);
     return () => window.removeEventListener("keydown", handleMediaKeys);
-  }, [isVideo, resetImageZoom]);
-
-  useEffect(() => {
-    if (!isVideo) {
-      resetImageZoom();
-    }
-  }, [post.id, isVideo, resetImageZoom]);
-
-  useEffect(() => {
-    return () => {
-      isImagePanningActive = false;
-    };
   }, []);
+
+  // No reset effect needed: ViewerContent is keyed by post id at the call site,
+  // so ViewerMedia remounts on post change and the initial useState/useMemo above
+  // already derive fresh fallback state from the new post.
 
   const handleContainerClick = (e: React.MouseEvent) => {
     if (!(e.target instanceof HTMLElement)) {
@@ -662,7 +636,7 @@ const ViewerMedia = ({
 
   return (
     <div
-      className="flex relative justify-center items-center pb-20 w-full h-full cursor-default overflow-auto"
+      className="flex relative justify-center items-center pb-20 w-full h-full min-h-0 cursor-default overflow-hidden"
       onClick={handleContainerClick}
     >
       {isVideo ? (
@@ -695,7 +669,6 @@ const ViewerMedia = ({
               autoPlay={isVideoPlaying}
               loop
               controls
-              muted
               playsInline
               poster={post.previewUrl}
               preload="auto"
@@ -736,45 +709,28 @@ const ViewerMedia = ({
           </div>
         </div>
       ) : (
-        <TransformWrapper
-          ref={transformRef}
-          initialScale={IMAGE_MIN_SCALE}
-          minScale={IMAGE_MIN_SCALE}
-          maxScale={IMAGE_MAX_SCALE}
-          wheel={{ step: IMAGE_WHEEL_STEP }}
-          doubleClick={{ mode: "reset" }}
-          onPanningStart={() => {
-            isImagePanningActive = true;
-          }}
-          onPanningStop={() => {
-            isImagePanningActive = false;
-          }}
-        >
-          <TransformComponent
-            wrapperClass="w-full h-full"
-            contentClass="w-full h-full flex items-center justify-center"
-          >
-            <img
-              key={`${post.id}-${imageFallbackIndex}`}
-              src={imageSrc}
-              alt={`Post ${post.id}`}
-              className="max-w-full max-h-full object-contain"
-              onError={(e) => {
-                const failedUrl = e.currentTarget.currentSrc || e.currentTarget.src;
-                log.error("[ViewerMedia] Image load error:", failedUrl);
+        <div className="flex items-center justify-center w-full h-full min-h-0 px-4 box-border">
+          <img
+            key={`${post.id}-${imageFallbackIndex}`}
+            src={imageSrc}
+            alt={`Post ${post.id}`}
+            referrerPolicy="no-referrer"
+            className="block max-w-full max-h-[calc(100dvh-6rem)] w-auto h-auto object-contain select-none"
+            onError={(e) => {
+              const failedUrl = e.currentTarget.currentSrc || e.currentTarget.src;
+              log.error("[ViewerMedia] Image load error:", failedUrl);
 
-                const nextIndex = imageFallbackIndex + 1;
-                if (nextIndex < imageFallbackChain.length) {
-                  setImageFallbackIndex(nextIndex);
-                  setImageSrc(imageFallbackChain[nextIndex]);
-                  return;
-                }
+              const nextIndex = imageFallbackIndex + 1;
+              if (nextIndex < imageFallbackChain.length) {
+                setImageFallbackIndex(nextIndex);
+                setImageSrc(imageFallbackChain[nextIndex]);
+                return;
+              }
 
-                setImageError(true);
-              }}
-            />
-          </TransformComponent>
-        </TransformWrapper>
+              setImageError(true);
+            }}
+          />
+        </div>
       )}
     </div>
   );
@@ -1721,8 +1677,19 @@ export const ViewerDialog = () => {
     }))
   );
 
-  const post = useCurrentPost(currentPostId, queue?.origin);
+  const cachedPost = useCurrentPost(currentPostId, queue?.origin);
   const queryClient = useQueryClient();
+
+  // Fallback to the snapshot captured when the viewer opened. This guarantees a
+  // post the user just clicked is always renderable, even if the React Query
+  // cache lookup misses (e.g. key drift), instead of showing "not found in cache".
+  const post = useMemo(() => {
+    if (cachedPost) return cachedPost;
+    if (currentPostId === null || !queue?.posts) return undefined;
+    return queue.posts.find(
+      (p) => p.id === currentPostId || p.postId === currentPostId
+    );
+  }, [cachedPost, currentPostId, queue]);
 
   // Get infiniteData for fallback lookup (for remote posts)
   // React Compiler: Use queue directly instead of queue?.origin to match inferred dependencies
@@ -1859,16 +1826,10 @@ export const ViewerDialog = () => {
       }
       switch (e.key) {
         case "ArrowRight":
-          if (isImagePanningActive) {
-            return;
-          }
           e.preventDefault();
           next();
           break;
         case "ArrowLeft":
-          if (isImagePanningActive) {
-            return;
-          }
           e.preventDefault();
           prev();
           break;
@@ -1973,11 +1934,30 @@ export const ViewerDialog = () => {
     };
   }, [isOpen, setControlsVisible]);
 
-  // Guard: only render when store says dialog should be open
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) {
+      releaseRadixModalLock();
+      const frameId = requestAnimationFrame(() => {
+        releaseRadixModalLock();
+      });
+      return () => {
+        cancelAnimationFrame(frameId);
+      };
+    }
+    return undefined;
+  }, [isOpen]);
 
+  useEffect(() => {
+    return () => {
+      releaseRadixModalLock();
+    };
+  }, []);
+
+  // modal={false}: avoid Radix setting body { pointer-events: none }, which leaked
+  // when Discover gallery pages remounted many Dialog layers via PostCard.
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+    <Dialog modal={false} open={isOpen} onOpenChange={(open) => !open && close()}>
+      {isOpen ? (
       <DialogContent
         className="
           fixed inset-0 left-0 top-0 translate-x-0 translate-y-0
@@ -2040,6 +2020,7 @@ export const ViewerDialog = () => {
           )}
         </div>
       </DialogContent>
+      ) : null}
     </Dialog>
   );
 };

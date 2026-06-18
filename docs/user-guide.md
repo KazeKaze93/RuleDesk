@@ -29,10 +29,11 @@ Welcome to RuleDesk! This guide will help you get started and use all the featur
 
 ### Windows
 
-1. Download the portable `.exe` file from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
-2. Place it in any folder
-3. Run `RuleDesk.exe` directly
-4. Your data will be stored in a `data/` folder next to the executable
+1. Download `RuleDesk-<version>-win.zip` from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
+2. Extract the archive
+3. Run `RuleDesk.exe`
+
+Application data is stored in the same location as the dev build (`%LOCALAPPDATA%/.rdcache` on Windows). Updates: use **Download** in the in-app notification to open the latest release on GitHub.
 
 ### macOS
 

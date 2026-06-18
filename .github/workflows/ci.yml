@@ -121,8 +121,8 @@ jobs:
       - name: Build Application
         run: npm run build
 
-      - name: Package Portable
-        run: npx electron-builder --win portable --publish never
+      - name: Package Windows (zip)
+        run: npm run dist:win
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -134,6 +134,6 @@ jobs:
           prerelease: false
           make_latest: true
           files: |
-            release/*.exe
+            release/RuleDesk-*-win.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

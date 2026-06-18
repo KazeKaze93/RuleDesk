@@ -20,6 +20,7 @@ import { Toaster } from "./components/ui/sonner";
 import { RENDERER_WINDOW_EVENTS } from "@shared/constants";
 import { SettingsAccountTab } from "./features/settings/SettingsAccountTab";
 import { useSearchStore } from "./store/searchStore";
+import { normalizeCredentialsInput } from "./lib/parseCredentialsFromText";
 
 const AccountGate = ({
   provider,
@@ -27,8 +28,10 @@ const AccountGate = ({
   pendingProvider,
   onProviderChangeConfirm,
   onProviderChangeCancel,
+  userId,
   apiKey,
   onApiKeyChange,
+  onUserIdChange,
   showApiKey,
   onToggleApiKeyVisibility,
   onSaveApiKey,
@@ -40,8 +43,10 @@ const AccountGate = ({
   pendingProvider: ProviderId | null;
   onProviderChangeConfirm: () => void;
   onProviderChangeCancel: () => void;
+  userId: string;
   apiKey: string;
   onApiKeyChange: (value: string) => void;
+  onUserIdChange: (value: string) => void;
   showApiKey: boolean;
   onToggleApiKeyVisibility: () => void;
   onSaveApiKey: () => void;
@@ -60,12 +65,14 @@ const AccountGate = ({
         <SettingsAccountTab
           provider={provider}
           pendingProvider={pendingProvider}
+          userId={userId}
           apiKey={apiKey}
           showApiKey={showApiKey}
           hasApiKey={false}
           accountStatus={accountStatus}
           isDevMode={false}
           onApiKeyChange={onApiKeyChange}
+          onUserIdChange={onUserIdChange}
           onToggleApiKeyVisibility={onToggleApiKeyVisibility}
           onSaveApiKey={onSaveApiKey}
           onProviderSelect={onProviderSelect}
@@ -88,6 +95,7 @@ function App() {
   const [forceAccountGate, setForceAccountGate] = useState(false);
   const [pendingProvider, setPendingProvider] = useState<ProviderId | null>(null);
   const [apiKey, setApiKey] = useState("");
+  const [gateUserId, setGateUserId] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [accountStatus, setAccountStatus] = useState<"idle" | "success" | "error">("idle");
   const { data: settings, isLoading: isSettingsLoading } = useQuery({
@@ -137,11 +145,17 @@ function App() {
   const handleSaveApiKey = async () => {
     setAccountStatus("idle");
     try {
-      const trimmedApiKey = apiKey.trim();
-      const trimmedUserId = settings.userId.trim();
+      const normalized = normalizeCredentialsInput({
+        userId: gateUserId || settings.userId,
+        apiKey,
+      });
+      if (!normalized.apiKey || !normalized.userId) {
+        setAccountStatus("error");
+        return;
+      }
       const saved = await window.api.saveSettings({
-        userId: trimmedUserId,
-        apiKey: trimmedApiKey,
+        userId: normalized.userId,
+        apiKey: normalized.apiKey,
         provider: activeProvider,
       });
       if (!saved) {
@@ -149,6 +163,7 @@ function App() {
         return;
       }
       setApiKey("");
+      setGateUserId("");
       setForceAccountGate(false);
       clearTagChips();
       resetFilters();
@@ -195,8 +210,10 @@ function App() {
           void handleProviderChangeConfirm();
         }}
         onProviderChangeCancel={() => setPendingProvider(null)}
+        userId={gateUserId || settings.userId}
         apiKey={apiKey}
         onApiKeyChange={setApiKey}
+        onUserIdChange={setGateUserId}
         showApiKey={showApiKey}
         onToggleApiKeyVisibility={() => setShowApiKey((current) => !current)}
         onSaveApiKey={() => {

@@ -7,6 +7,7 @@ import { SettingsSyncTab } from "./SettingsSyncTab";
 import { SettingsAppearanceTab } from "./SettingsAppearanceTab";
 import { SettingsBackupTab } from "./SettingsBackupTab";
 import { SettingsAccountTab } from "./SettingsAccountTab";
+import { normalizeCredentialsInput } from "../../lib/parseCredentialsFromText";
 import { SettingsBlacklistTab } from "./SettingsBlacklistTab";
 import { useTheme } from "../../hooks/useTheme";
 import type { ProviderId } from "../../../shared/constants";
@@ -372,18 +373,25 @@ export const Settings = () => {
   const handleSaveApiKey = async (): Promise<void> => {
     setAccountStatus("idle");
     try {
-      const trimmedApiKey = apiKey.trim();
-      const trimmedUserId = userId.trim();
+      const normalized = normalizeCredentialsInput({
+        userId,
+        apiKey,
+      });
+      if (!normalized.apiKey) {
+        setAccountStatus("error");
+        scheduleStatusReset("account", () => setAccountStatus("idle"));
+        return;
+      }
       const saved = await window.api.saveSettings({
-        userId: trimmedUserId,
-        apiKey: trimmedApiKey,
+        userId: normalized.userId ?? userId.trim(),
+        apiKey: normalized.apiKey,
       });
       if (!saved) {
         setAccountStatus("error");
         scheduleStatusReset("account", () => setAccountStatus("idle"));
         return;
       }
-      setHasApiKey(trimmedApiKey.length > 0);
+      setHasApiKey(true);
       setApiKey("");
       await queryClient.invalidateQueries({ queryKey: ["settings"] });
       setAccountStatus("success");

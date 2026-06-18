@@ -7,6 +7,7 @@ import { BaseController } from "../../core/ipc/BaseController";
 import { closeDatabase } from "../../db/client";
 import { IPC_CHANNELS } from "../channels";
 import { getDatabasePaths } from "../../db/paths";
+import { getAppIconsDirectory } from "../../lib/app-resources";
 const GetIconPathArgsSchema = z.tuple([z.enum(["light", "dark"]).optional()]);
 const WriteClipboardArgsSchema = z.tuple([z.string().min(1)]);
 
@@ -74,11 +75,7 @@ export class SystemController extends BaseController {
   ): Promise<string> {
     log.info("[SystemController] getIconPath called");
     try {
-      const isDev = process.env.NODE_ENV === "development";
-      
-      const iconsFolder = isDev
-        ? path.join(process.cwd(), "resources", "icons")
-        : path.join(app.getAppPath(), "..", "resources", "icons");
+      const iconsFolder = getAppIconsDirectory();
 
       const candidateFileNames =
         theme === "dark"

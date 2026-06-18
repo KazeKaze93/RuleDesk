@@ -159,6 +159,7 @@ export class Rule34Provider implements IBooruProvider {
     page: number;
     settings: ProviderSettings;
     json: 0 | 1;
+    limit: number;
   }): string {
     const params = new URLSearchParams();
 
@@ -180,10 +181,7 @@ export class Rule34Provider implements IBooruProvider {
     // If UI sends page 1, we must send pid=0.
     const pid = options.page > 0 ? options.page - 1 : 0;
     
-    // Rule34 LIMIT is hardcapped at 1000 for standard API,
-    // but typical browsing is lower. API ignores 'limit' param in some endpoints
-    // if not strictly passed, but we keep it for consistency.
-    params.append("limit", "1000");
+    params.append("limit", String(Math.min(1000, Math.max(1, options.limit))));
     params.append("pid", pid.toString());
 
     if (options.settings.userId && options.settings.apiKey) {
@@ -237,7 +235,8 @@ export class Rule34Provider implements IBooruProvider {
     tags: string,
     page: number,
     settings: ProviderSettings,
-    isRandom: boolean = false
+    isRandom: boolean = false,
+    limit: number = 50
   ): Promise<BooruPost[]> {
     await this.throttle.wait();
 
@@ -247,9 +246,10 @@ export class Rule34Provider implements IBooruProvider {
     // If the provider doesn't support native randomization, this pseudo-random approach
     // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
     const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
+    const pageLimit = Math.min(1000, Math.max(1, limit));
     
     // Step 1: Try JSON first
-    const jsonUrl = this.buildUrl({ tags, page: apiPage, settings, json: 1 });
+    const jsonUrl = this.buildUrl({ tags, page: apiPage, settings, json: 1, limit: pageLimit });
 
     try {
       const response = await axios
@@ -295,7 +295,7 @@ export class Rule34Provider implements IBooruProvider {
 
       // Step 2: FALLBACK TO XML
       try {
-        const xmlUrl = this.buildUrl({ tags, page: apiPage, settings, json: 0 });
+        const xmlUrl = this.buildUrl({ tags, page: apiPage, settings, json: 0, limit: pageLimit });
         const xmlResponse = await axios
           .get<string>(xmlUrl, {
             timeout: REQUEST_TIMEOUT,

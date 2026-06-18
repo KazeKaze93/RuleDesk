@@ -31,8 +31,27 @@ import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
+import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
 
 const POSTS_PER_PAGE = 50;
+
+const getPostTimestamp = (post: Post): number => {
+  const publishedAt = post.publishedAt;
+  if (publishedAt instanceof Date) {
+    return publishedAt.getTime();
+  }
+  if (typeof publishedAt === "number") {
+    return publishedAt;
+  }
+  const parsed = new Date(publishedAt);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+};
+
+const sortPostsByOrder = (posts: Post[], sortOrder: "asc" | "desc"): Post[] =>
+  [...posts].sort((a, b) => {
+    const diff = getPostTimestamp(b) - getPostTimestamp(a);
+    return sortOrder === "desc" ? diff : -diff;
+  });
 
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
@@ -105,6 +124,7 @@ MasonryVirtuosoList.displayName = "BrowseMasonryVirtuosoList";
 // --- Основной компонент ---
 
 export const Browse = () => {
+  useReleaseRadixModalLockOnMount();
   const queryClient = useQueryClient();
   const includeTags = useSearchStore((state) => state.includeTags);
   const excludeTags = useSearchStore((state) => state.excludeTags);
@@ -149,6 +169,14 @@ export const Browse = () => {
   const dateTo = useSearchStore((state) => state.filters.dateTo);
 
   const isRemoteBrowseSource = source === "all";
+  const usesDefaultRemoteFilters =
+    isRemoteBrowseSource &&
+    tags.length === 0 &&
+    aiFilter === "all" &&
+    rating === "all" &&
+    mediaType === "all" &&
+    !dateFrom &&
+    !dateTo;
 
   // Use the new infinite scroll hook
   // For external API (Browse), we need custom getNextPageParam logic
@@ -159,6 +187,9 @@ export const Browse = () => {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isError: isSearchError,
+    error: searchError,
+    refetch: refetchSearch,
     handleEndReached,
   } = useGalleryInfiniteScroll({
     queryKey: ["search", tags, source],
@@ -187,20 +218,24 @@ export const Browse = () => {
       return await window.api.searchBooru({
         tags,
         page: pageParam,
+        limit: POSTS_PER_PAGE,
       });
     },
-    // Custom getNextPageParam for external API: continue loading until empty array
-    // Unlike local DB, external API doesn't tell us total count, so we load until empty
     getNextPageParam: (lastPage, allPages) => {
-      if (!isRemoteBrowseSource) {
-        return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
-      }
       if (lastPage.length === 0) {
+        return undefined;
+      }
+      if (lastPage.length < POSTS_PER_PAGE) {
         return undefined;
       }
       return allPages.length + 1;
     },
   });
+
+  const sortedRawPosts = useMemo(
+    () => sortPostsByOrder(rawPosts, sortOrder),
+    [rawPosts, sortOrder]
+  );
 
   // Build tracked tags array for subscriptions filter (worker needs array, not Set)
   const trackedTagsArray = useMemo(() => {
@@ -232,29 +267,52 @@ export const Browse = () => {
     aiFilter,
     rating,
     mediaType,
-    source: "all",
+    source,
     dateFrom,
     dateTo,
     sortOrder,
     trackedTagsSet: trackedTagsArray,
     tags,
-  }), [aiFilter, rating, mediaType, dateFrom, dateTo, sortOrder, trackedTagsArray, tags]);
+  }), [aiFilter, rating, mediaType, source, dateFrom, dateTo, sortOrder, trackedTagsArray, tags]);
 
   const {
-    data: allPosts = [],
+    data: workerPosts = [],
     isLoading: workerLoading,
     error: workerError,
   } = useWorkerFilteredPosts(
-    rawPosts,
+    usesDefaultRemoteFilters ? [] : rawPosts,
     filterConfig,
     250 // Debounce delay
   );
-  const selectedPosts = useMemo(
-    () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
-    [allPosts, selectedIds]
-  );
-  const hasFilteredOutResults = rawPosts.length > 0 && allPosts.length === 0;
 
+  const displayPosts = useMemo(() => {
+    if (usesDefaultRemoteFilters) {
+      return sortedRawPosts;
+    }
+    if (workerPosts.length > 0) {
+      return workerPosts;
+    }
+    if ((workerLoading || workerError) && rawPosts.length > 0) {
+      return sortedRawPosts;
+    }
+    return workerPosts;
+  }, [
+    usesDefaultRemoteFilters,
+    sortedRawPosts,
+    workerPosts,
+    workerLoading,
+    workerError,
+    rawPosts.length,
+  ]);
+
+  const selectedPosts = useMemo(
+    () => displayPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
+    [displayPosts, selectedIds]
+  );
+  const hasFilteredOutResults =
+    rawPosts.length > 0 && displayPosts.length === 0 && !usesDefaultRemoteFilters;
+  const searchErrorMessage =
+    searchError instanceof Error ? searchError.message : String(searchError ?? "");
 
   const listAriaBusy = isLoading || isFetchingNextPage || workerLoading;
   const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
@@ -308,7 +366,7 @@ export const Browse = () => {
     },
     onSuccess: (postId) => {
       queryClient.setQueryData<InfiniteData<Post[]>>(
-        ["search", tags],
+        ["search", tags, source],
         (oldData) => {
           if (!oldData) return oldData;
           return {
@@ -333,8 +391,8 @@ export const Browse = () => {
   });
 
   const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
-    const post = allPosts[index];
+    const postIds = displayPosts.map((p) => p.id);
+    const post = displayPosts[index];
 
     if (!post) {
       log.warn("[Browse] handlePostClick: post not found at index", index);
@@ -354,6 +412,7 @@ export const Browse = () => {
       listKey: `search-${source}`,
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
+      posts: displayPosts,
     });
   };
 
@@ -395,19 +454,32 @@ export const Browse = () => {
 
       {/* Grid Content */}
       <div className="flex flex-col flex-1 min-h-0">
-        {workerError ? (
+        {isSearchError ? (
           <Alert variant="destructive" className="mx-6 mt-4 shrink-0">
-            <AlertTitle>Could not filter posts</AlertTitle>
-            <AlertDescription>
-              {workerError.message}. Try reloading the page or reducing the number of loaded posts.
+            <AlertTitle>Could not load Browse</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>{searchErrorMessage}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void refetchSearch()}>
+                Retry
+              </Button>
             </AlertDescription>
           </Alert>
         ) : null}
-        {(isLoading || workerLoading) && allPosts.length === 0 && !workerError ? (
+        {workerError && !usesDefaultRemoteFilters ? (
+          <Alert variant="destructive" className="mx-6 mt-4 shrink-0">
+            <AlertTitle>Could not filter posts</AlertTitle>
+            <AlertDescription>
+              {workerError.message}. Showing unfiltered results when available.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {(isLoading || (!usesDefaultRemoteFilters && workerLoading)) &&
+        displayPosts.length === 0 &&
+        !isSearchError ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-        ) : allPosts.length === 0 ? (
+        ) : displayPosts.length === 0 && !isSearchError ? (
           <div className="flex flex-col gap-4 justify-center items-center h-full px-6">
             {hasFilteredOutResults ? (
               <div className="flex flex-col gap-4 items-center max-w-md text-center">
@@ -451,7 +523,9 @@ export const Browse = () => {
                 <div className="text-center">
                   <p className="mb-2 text-lg font-semibold">No posts found</p>
                   <p className="text-sm">
-                    Try different tags or change the current source filter.
+                    {source !== "all"
+                      ? `Source is "${source}". Open Filters and set Source to "All" for live API Browse.`
+                      : "Try different tags or change the current filters."}
                   </p>
                 </div>
               </div>
@@ -460,7 +534,7 @@ export const Browse = () => {
         ) : viewType === "masonry" ? (
             <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
               <GridContainer viewType="masonry">
-                {allPosts.map((post, index) => (
+                {displayPosts.map((post, index) => (
                   <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
                     <PostCard
                       post={post}
@@ -480,7 +554,7 @@ export const Browse = () => {
             <VirtuosoGrid
               className="h-full"
               aria-busy={listAriaBusy}
-              totalCount={allPosts.length}
+              totalCount={displayPosts.length}
               endReached={handleEndReached}
               increaseViewportBy={600}
               components={{
@@ -494,7 +568,7 @@ export const Browse = () => {
                   ) : null,
               }}
               itemContent={(index) => {
-                const post = allPosts[index];
+                const post = displayPosts[index];
                 if (!post) return null;
 
                 return (
@@ -513,7 +587,7 @@ export const Browse = () => {
         onSelectAll={
           tags.length > 0
             ? () => {
-                const selectableIds = allPosts.map((post) => getBulkSelectId(post));
+                const selectableIds = displayPosts.map((post) => getBulkSelectId(post));
                 const isAllSelected =
                   selectableIds.length > 0 &&
                   selectableIds.every((id) => selectedIds.has(id));

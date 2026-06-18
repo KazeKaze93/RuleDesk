@@ -140,7 +140,12 @@ export interface IpcApi extends IpcBridge {
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
-  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+  searchBooru: (params: {
+    tags: string[];
+    page: number;
+    isRandom?: boolean;
+    limit?: number;
+  }) => Promise<Post[]>;
 
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;

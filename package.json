@@ -52,7 +52,8 @@
     "arch:review": "inquisitor review",
     "arch:gen": "inquisitor ctx",
     "// RELEASE": "---",
-    "dist": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --win zip",
+    "dist:win": "npm run build && electron-builder --win zip --publish never",
     "release:minor": "npm version minor && git push --follow-tags",
     "release:patch": "npm version patch && git push --follow-tags",
     "release:major": "npm version major && git push --follow-tags"
@@ -189,6 +190,10 @@
       {
         "from": "drizzle",
         "to": "drizzle"
+      },
+      {
+        "from": "resources/icons",
+        "to": "icons"
       }
     ],
     "asar": true,
@@ -201,17 +206,11 @@
     "win": {
       "target": [
         {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
+          "target": "zip",
+          "arch": ["x64"]
         }
       ],
       "icon": "resources/icon.ico"
-    },
-    "portable": {
-      "artifactName": "RuleDesk-Portable-${version}.exe",
-      "requestExecutionLevel": "user"
     },
     "mac": {
       "target": "dmg",
@@ -220,14 +219,6 @@
     "linux": {
       "target": "AppImage",
       "icon": "resources/icons"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "perMachine": false,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "deleteAppDataOnUninstall": false
     },
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**"

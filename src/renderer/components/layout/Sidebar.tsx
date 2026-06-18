@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { NavLink } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Search,
   Users,
@@ -14,6 +14,7 @@ import {
 import log from "electron-log/renderer";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "../../lib/utils";
+import { releaseRadixModalLock } from "../../lib/radix-modal-lock";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { useSearchStore } from "../../store/searchStore";
 
@@ -47,11 +48,17 @@ const navGroups = [
   },
 ];
 
+const isNavRouteActive = (pathname: string, to: string): boolean => {
+  if (to === "/browse") {
+    return pathname === "/" || pathname === "/browse";
+  }
+  return pathname === to || pathname.startsWith(`${to}/`);
+};
+
 export const Sidebar = () => {
+  const location = useLocation();
   const [isSyncing, setIsSyncing] = useState(false);
   const [relativeTimeTick, setRelativeTimeTick] = useState(0);
-  const [appVersion, setAppVersion] = useState<string>("");
-  const hasFetchedVersionRef = useRef(false);
   const queryClient = useQueryClient();
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["updates", "unreadCount"],
@@ -93,36 +100,6 @@ export const Sidebar = () => {
     }, LAST_SYNC_REFRESH_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
-    // Prevent double execution in React Strict Mode (dev)
-    if (hasFetchedVersionRef.current) {
-      return;
-    }
-    hasFetchedVersionRef.current = true;
-
-    const fetchVersion = async () => {
-      try {
-        const version = await window.api.getAppVersion();
-        setAppVersion(version);
-      } catch (error) {
-        // Don't log rate limit errors as errors - use typed errorCode, NOT string parsing
-        const errorCode = (error as { code?: string })?.code;
-        if (errorCode === "RATE_LIMIT") {
-          log.debug("[Sidebar] Rate limit on version fetch, skipping");
-          return;
-        }
-        log.error("[Sidebar] Failed to fetch app version:", error);
-      }
-    };
-
-    // Add small delay to avoid rate limit conflicts with App.tsx
-    const timeoutId = setTimeout(() => {
-      fetchVersion();
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
   }, []);
 
   const handleSync = async () => {
@@ -173,25 +150,26 @@ export const Sidebar = () => {
         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
     );
 
+  const handleNavClick = () => {
+    releaseRadixModalLock();
+  };
+
   return (
-    <aside className="flex sticky top-0 flex-col w-56 h-screen border-r bg-background overflow-hidden">
+    <>
+    <aside className="pointer-events-auto fixed inset-y-0 left-0 z-[200] flex w-56 flex-col h-screen border-r bg-background overflow-hidden">
       {/* Logo Area */}
-      <div className="flex items-center justify-between px-4 h-14 border-b bg-transparent">
-        <div className="flex items-baseline gap-2 min-w-0">
-          <span className="text-4xl font-black leading-none tracking-tight truncate">
-            RuleDesk
-          </span>
-          {appVersion && (
-            <span className="text-xs text-muted-foreground shrink-0">
-              v{appVersion}
-            </span>
-          )}
-        </div>
+      <div className="flex items-center px-4 h-14 border-b bg-transparent shrink-0">
+        <span className="text-4xl font-black leading-none tracking-tight">
+          RuleDesk
+        </span>
       </div>
 
       <div className="flex flex-col flex-1 min-h-0">
         {/* Navigation */}
-        <nav className="overflow-y-auto flex-1 px-3 py-4 [@media(max-height:700px)]:py-3" aria-label="Основная навигация">
+        <nav
+          className="relative z-10 overflow-y-auto flex-1 px-3 py-4 [@media(max-height:700px)]:py-3"
+          aria-label="Основная навигация"
+        >
           <div className="space-y-4">
             {navGroups.map((group) => (
               <section key={group.label} className="space-y-2">
@@ -203,21 +181,25 @@ export const Sidebar = () => {
                 </div>
 
                 <div className="space-y-1">
-                  {group.items.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      className={({ isActive }) => navItemClassName(isActive)}
-                    >
-                      <item.icon className="w-4 h-4 shrink-0" />
-                      <span>{item.label}</span>
-                      {item.to === "/updates" && unreadCount > 0 && (
-                        <span className="inline-flex justify-center items-center px-2 py-0.5 ml-auto text-xs font-semibold text-white bg-violet-600 rounded-full min-w-5">
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </span>
-                      )}
-                    </NavLink>
-                  ))}
+                  {group.items.map((item) => {
+                    const isActive = isNavRouteActive(location.pathname, item.to);
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={handleNavClick}
+                        className={navItemClassName(isActive)}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span>{item.label}</span>
+                        {item.to === "/updates" && unreadCount > 0 && (
+                          <span className="inline-flex justify-center items-center px-2 py-0.5 ml-auto text-xs font-semibold text-white bg-violet-600 rounded-full min-w-5">
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
                 </div>
               </section>
             ))}
@@ -225,7 +207,7 @@ export const Sidebar = () => {
         </nav>
 
         {/* Sync Status Footer */}
-        <div className="p-4 space-y-2 border-t bg-muted/20 shrink-0 [@media(max-height:700px)]:p-3">
+        <div className="relative z-10 p-4 space-y-2 border-t bg-muted/20 shrink-0 [@media(max-height:700px)]:p-3">
           <button
             onClick={handleSync}
             disabled={isSyncing}
@@ -262,5 +244,8 @@ export const Sidebar = () => {
           </div>
       </div>
     </aside>
+    {/* Reserves horizontal space while the rail stays fixed above content */}
+    <div className="w-56 shrink-0" aria-hidden="true" />
+    </>
   );
 };
