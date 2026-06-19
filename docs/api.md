@@ -117,6 +117,23 @@ const { data, fetchNextPage, hasNextPage } = useInfiniteQuery<Post[]>({
 const allPosts: Post[] = data?.pages.flatMap((page: Post[]) => page) || [];
 ```
 
+#### Pattern 2b: Browse remote search (offset + cursor)
+
+**Scenario:** Infinite scroll on the Browse page against the live booru API (`searchBooru`). Rule34 offset pagination is capped at four pages; deeper scroll uses cursor pagination via `beforePostId` / `nextBeforePostId`.
+
+Prefer `useGalleryInfiniteScroll` + `getSearchBrowseNextPageParam` (see `src/renderer/components/pages/Browse.tsx`) instead of hand-rolling page numbers:
+
+```typescript
+import { getSearchBrowseNextPageParam } from "@/renderer/utils/react-query-cache";
+import type { BrowseSearchPageParam } from "@/shared/schemas/search";
+
+// pageParam: number (pages 1–4) | { beforePostId: number } (page 5+)
+getNextPageParam: (lastPage, allPages) =>
+  getSearchBrowseNextPageParam(lastPage, allPages, 50);
+```
+
+Pagination decisions use **`apiFetchedCount`** (raw API batch size before blacklist), not filtered `posts.length`.
+
 #### Pattern 3: Event Listeners
 
 **Scenario:** Listen to real-time events (sync progress, downloads, etc.).
@@ -225,7 +242,7 @@ interface IpcBridge {
   getArtistPosts: (params: {
     artistId: number;
     page?: number;
-  }) => Promise<{ posts: Post[]; hasMore: boolean; apiFetchedCount?: number }>;
+  }) => Promise<Post[]>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
   getStats: () => Promise<ExtendedStats>; // backward-compatible alias
   getExtendedStats: () => Promise<ExtendedStats>;
@@ -1175,15 +1192,38 @@ Searches for posts on the booru API using specified tags and page number.
 
 **Returns:** `Promise<{ posts: Post[]; hasMore: boolean; apiFetchedCount?: number; nextBeforePostId?: number }>` — `hasMore` and `apiFetchedCount` reflect the raw API page size before blacklist filtering. Pagination must use `apiFetchedCount`, not filtered `posts.length`. `nextBeforePostId` is the minimum post id in the raw API batch (cursor for the next page).
 
-**Example:**
+**Browse pagination (Rule34):**
+
+| Phase | `pageParam` / IPC | API behavior |
+| ----- | ----------------- | ------------ |
+| Pages 1–4 | `page: 1` … `page: 4` | Normal offset (`pid` 0–3), 50 posts per page |
+| Page 5+ | `beforePostId: N`, `page: 1` | Appends `id:<N>` to tags, `pid=0` |
+
+Client helper: `getSearchBrowseNextPageParam()` in `src/renderer/utils/react-query-cache.ts`.
+
+**Example (first page):**
 
 ```typescript
-const { posts, hasMore } = await window.api.searchBooru({
+const { posts, hasMore, apiFetchedCount, nextBeforePostId } =
+  await window.api.searchBooru({
+    tags: ["blue_hair", "solo"],
+    page: 1,
+    limit: 50,
+  });
+console.log(
+  `Visible ${posts.length}, API batch ${apiFetchedCount}, hasMore=${hasMore}, cursor=${nextBeforePostId}`
+);
+```
+
+**Example (cursor page):**
+
+```typescript
+await window.api.searchBooru({
   tags: ["blue_hair", "solo"],
   page: 1,
+  beforePostId: nextBeforePostId,
   limit: 50,
 });
-console.log(`Found ${posts.length} posts, hasMore=${hasMore}`);
 ```
 
 **IPC Channel:** `booru:search`
@@ -2006,15 +2046,20 @@ Potential next additions (not committed to a release):
 
 ## External API Integration
 
-The application integrates with **Rule34.xxx API**. Integration is handled in the Main process via `SyncService` (`src/main/services/sync-service.ts`) and is not directly exposed via IPC for security reasons.
+The application integrates with **Rule34.xxx API**. Integration is handled in the Main process via `SyncService` and `SearchController`, and is not directly exposed as raw HTTP from the Renderer (Browse uses IPC `searchBooru`).
 
-**Features:**
+**SyncService (tracked artists):**
 
 - **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
-- **Pagination:** Handles Rule34.xxx pagination (up to 1000 posts per page)
+- **Pagination:** Incremental fetch by `lastPostId` (not deep offset scroll)
 - **Error Handling:** Graceful handling of API errors and network failures
-- **Incremental Sync:** Only fetches posts newer than `lastPostId`
 - **Authentication:** Uses User ID and API Key from settings
+
+**Browse (`searchBooru`):**
+
+- **Page size:** 50 posts per IPC call (`limit`, max 100)
+- **Rule34 deep scroll:** offset pages 1–4, then cursor via meta-tag `id:<postId>` (`beforePostId` / `nextBeforePostId`)
+- **Blacklist:** Tag blacklist applied in Main after API fetch; pagination uses raw `apiFetchedCount`
 
 **API Endpoint:** `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index`
 

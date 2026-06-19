@@ -29,6 +29,7 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 - **[Rule34 API Reference](./rule34-api-reference.md)** - Unofficial Rule34.xxx API documentation
   - [API Keys](./rule34-api-reference.md#api-keys) - Requesting and managing API keys
   - [Endpoints](./rule34-api-reference.md#endpoints) - Available API endpoints
+  - [Pagination beyond the offset cap](./rule34-api-reference.md#pagination-beyond-the-offset-cap) - Browse cursor pagination (`id:<postId>`)
   - [Best Practices](./rule34-api-reference.md#best-practices-and-cautions) - Rate limiting, caching, security
 
 ### Planning & Roadmap

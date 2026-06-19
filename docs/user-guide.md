@@ -222,7 +222,8 @@ Each post card shows:
 - The clear button in the search bar clears tag chips.
 - Click a chip to put it back into the input for editing; right-click still toggles include/exclude.
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
-- Browse source modes **Favorites** / **Subscriptions** require a non-empty tag query by design.
+- **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically).
+- Browse source modes **Favorites** / **Subscriptions** query your **local cache** and require a non-empty tag query by design.
 
 ### Favorites
 
@@ -298,7 +299,7 @@ The download will start, and you'll see a progress indicator.
 **Filter by source:**
 
 1. In views that show the filter panel, open the top bar **Filters** control
-2. Choose **All**, **Favorites**, or **Subscriptions**
+2. Choose **All** (live booru API), **Favorites** (local cache), or **Subscriptions** (local cache, tracked artists/tags)
 3. Gallery updates automatically
 
 **Filter by media type:**
@@ -353,7 +354,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 ### Sidebar Sections
 
 - **Updates** - See new posts from your tracked sources. A purple badge shows unread count and auto-refreshes periodically.
-- **Browse** - Browse cached posts with filters and sorting
+- **Browse** - Search the live booru (Source: All) or filter cached posts (Favorites / Subscriptions); infinite scroll, filters, and sorting
 - **Favorites** - Your favorited posts collection
 - **Playlists** - Manual playlists and smart collections
 - **Artists** - Manage your tracked artists and tags
@@ -416,6 +417,11 @@ Settings are split into tabs:
 ### Appearance
 
 - **Theme** - `System`, `Light`, `Dark`
+
+### Blacklist
+
+- **Tag blacklist** - Hide posts that contain specific tags from Browse and local galleries
+- Tags are stored locally; pagination still uses the raw API batch size before filtering
 
 ### Backup
 
@@ -516,6 +522,17 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 2. Check active top-bar filters (AI/media/source) that may hide posts
 3. Try the "Repair" button on the artist card (resyncs from beginning)
 4. Check the sync progress messages for errors
+
+### Browse stopped loading more posts
+
+**Problem:** Scrolling Browse (Source: **All**) no longer loads new posts.
+
+**Solutions:**
+
+1. Confirm API credentials in **Settings → Account**
+2. Clear restrictive filters (AI, media, rating, date) — client-side filters only apply to already loaded pages
+3. If using **Favorites** / **Subscriptions**, add at least one tag in the search bar (required by design)
+4. Check for a red error banner on Browse (network or API failure)
 
 ### App is slow
 

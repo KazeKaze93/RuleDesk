@@ -504,7 +504,7 @@ const posts = await db.query.posts.findMany({
    - `ViewerController.ts` - Viewer-related operations
    - `FileController.ts` - File download and management
    - `SystemController.ts` - System-level operations (version, clipboard, etc.)
-   - `SearchController.ts` - Booru search and tag resolution operations (`searchBooru`, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
+   - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
 
    **BaseController** (`src/main/core/ipc/BaseController.ts`):
 
@@ -619,14 +619,17 @@ const posts = await db.query.posts.findMany({
    - Uses platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
    - Unit tests: `tests/unit/utils/decrypted-credentials.test.ts`
 
-11. **Browse client-side filtering (Web Worker)** (`src/renderer/workers/data-processor.worker.ts`)
+11. **Browse** (`src/renderer/components/pages/Browse.tsx`, `SearchController.search`, `src/renderer/utils/react-query-cache.ts`)
 
-   - **Browse** offloads filter + sort to a Web Worker (`useWorkerFilteredPosts` + `useWorkerProcessor`) so the UI thread does not scan 10k+ posts on every filter change.
+   - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`, infinite scroll through `useGalleryInfiniteScroll`.
+   - **Rule34 deep pagination:** offset pages 1–4 (`RULE34_MAX_OFFSET_PAGES`), then cursor via meta-tag `id:<postId>` (`beforePostId` / `nextBeforePostId`); `getSearchBrowseNextPageParam()` drives React Query `pageParam`.
+   - **Local source modes:** Favorites / Subscriptions use cached DB posts via `getArtistPosts` (page numbers only).
+   - **Client-side filter/sort:** when non-default filters are active, `useWorkerFilteredPosts` offloads filter + sort to a Web Worker (`data-processor.worker.ts`) so the UI thread does not scan large loaded lists on every filter change.
    - Worker output is mapped back via `mapWorkerPostToPost()` in `src/renderer/lib/map-worker-post.ts` (preserves `mediaType`, `viewCount`, `lastViewedAt`; infers `mediaType` from `fileUrl` when missing).
    - Filter config is debounced (~250 ms); raw post pages are not debounced (scroll/load latency).
    - Worker errors surface in Browse as a destructive `Alert` (empty list alone is not sufficient feedback).
    - **Removed:** orientation filter (no UI; dead code removed from store, worker, and gallery pages).
-   - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts` (`mapWorkerPostToPost`).
+   - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts`, `tests/unit/utils/react-query-cache.test.ts`.
 
 12. **Bridge** (`src/main/bridge.ts`)
 
@@ -668,7 +671,7 @@ const posts = await db.query.posts.findMany({
    - **Pages:**
 
     - **Updates.tsx** - Subscriptions feed (implemented, with remaining roadmap parity gaps)
-    - **Browse.tsx** - All posts view with filtering and sorting (implemented)
+    - **Browse.tsx** - Live booru search (Source: All) with infinite scroll, filters, and sorting; Favorites/Subscriptions modes query the local cache (implemented)
     - **Favorites.tsx** - Favorites collection (implemented)
      - **Tracked.tsx** - Artists and tags management (fully implemented)
     - **Settings.tsx** - Application configuration shell (tabbed IA, fully implemented)
@@ -1319,10 +1322,14 @@ External API calls are abstracted through the **Provider Pattern** (`src/main/pr
 3. **SyncService Integration:**
    - Uses provider pattern to fetch posts
    - **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
-   - **Pagination:** Handles booru-specific pagination (up to 1000 posts per page)
-   - **Incremental Sync:** Only fetches posts newer than `lastPostId`
+   - **Pagination:** Incremental sync by `lastPostId` (not deep offset into historical pages)
    - **Error Handling:** Graceful handling of API errors and network failures
    - **Authentication:** Uses User ID and API Key from settings table
+
+4. **Browse search (`SearchController.search`):**
+   - **Page size:** 50 posts per request (configurable `limit`, max 100)
+   - **Rule34 offset cap:** pages 1–4 via `pid`; page 5+ via meta-tag cursor `id:<postId>` with `pid=0`
+   - **Response metadata:** `hasMore`, `apiFetchedCount`, `nextBeforePostId` for infinite scroll (blacklist applied after fetch)
 
 ### Download Flow
 
@@ -1751,27 +1758,28 @@ Root:
 1. ✅ **Sync Service:** Dedicated service for multi-booru API synchronization with progress tracking
 2. ✅ **Settings Management:** Secure storage of API credentials with encryption using Electron's `safeStorage` API
 3. ✅ **Artist Tracking:** Support for tag-based tracking with autocomplete search and tag normalization (multi-provider)
-4. ✅ **Post Gallery:** Grid view of cached posts with preview images and pagination
-5. ✅ **Progressive Image Loading:** 3-layer loading system (Preview → Sample → Original) for instant viewing
-6. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
-7. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
-8. ✅ **Event System:** Real-time IPC events for sync progress, update status, and download progress
-9. ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
-10. ✅ **Secure Storage:** API credentials encrypted at rest using Electron's `safeStorage` API
-11. ✅ **Backup/Restore:** Manual database backup and restore functionality with integrity checks and timestamped backups
-12. ✅ **Search Functionality:** Local artist search and remote tag search via booru autocomplete API (multi-provider)
-13. ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
-14. ✅ **Favorites System:** Mark and manage favorite posts with toggle functionality
-15. ✅ **Download Manager:** Download full-resolution files with progress tracking
-16. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
-17. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
-18. ✅ **Global Top Bar:** Search, `FiltersPanel` (AI, media, source), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines.
-19. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
-20. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
-21. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
-22. ✅ **Portable Mode:** Automatic detection and support for portable executables (`app.isPackaged` -> `app.setPath("userData", <exe_dir>/data)`)
-23. ✅ **IPC Controllers:** Controller-based architecture with `BaseController` and dependency injection
-24. ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
+4. ✅ **Post Gallery:** Grid view of cached artist posts with preview images and pagination
+5. ✅ **Browse:** Live booru search with infinite scroll (Rule34 cursor pagination after offset cap)
+6. ✅ **Progressive Image Loading:** 3-layer loading system (Preview → Sample → Original) for instant viewing
+7. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
+8. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
+9. ✅ **Event System:** Real-time IPC events for sync progress, update status, and download progress
+10. ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
+11. ✅ **Secure Storage:** API credentials encrypted at rest using Electron's `safeStorage` API
+12. ✅ **Backup/Restore:** Manual database backup and restore functionality with integrity checks and timestamped backups
+13. ✅ **Search Functionality:** Local artist search, remote tag search, and Browse `searchBooru` with deep pagination (multi-provider)
+14. ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
+15. ✅ **Favorites System:** Mark and manage favorite posts with toggle functionality
+16. ✅ **Download Manager:** Download full-resolution files with progress tracking
+17. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
+18. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
+19. ✅ **Global Top Bar:** Search, `FiltersPanel` (AI, media, source), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines.
+20. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
+21. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
+22. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
+23. ✅ **Portable Mode:** Automatic detection and support for portable executables (`app.isPackaged` -> `app.setPath("userData", <exe_dir>/data)`)
+24. ✅ **IPC Controllers:** Controller-based architecture with `BaseController` and dependency injection
+25. ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 
 ## Active Roadmap (Priority Tasks)
 
