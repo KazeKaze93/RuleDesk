@@ -118,13 +118,14 @@ describe("SearchController blacklist integration", () => {
       isRandom: false,
     });
 
-    expect(Array.isArray(result)).toBe(true);
-    if (!Array.isArray(result)) {
-      throw new Error("Search result must be an array");
-    }
-    expect(result).toHaveLength(1);
+    expect(result).toBeDefined();
+    expect(typeof result).toBe("object");
+    expect(result && "posts" in result).toBe(true);
+    expect(Array.isArray(result.posts)).toBe(true);
+    expect(result.posts).toHaveLength(1);
+    expect(result.hasMore).toBe(false);
 
-    const post = result[0];
+    const post = result.posts[0];
     expect(post).toBeDefined();
     expect(typeof post).toBe("object");
     expect(post && "postId" in post).toBe(true);

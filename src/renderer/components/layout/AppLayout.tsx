@@ -34,7 +34,6 @@ export const AppLayout = () => {
       // Sync writes new posts into DB, so all post-based feeds must refresh.
       // Smart playlists are dynamic queries over posts, so they must be invalidated too.
       void queryClient.invalidateQueries({ queryKey: ["posts"] });
-      void queryClient.invalidateQueries({ queryKey: ["search"] });
       void queryClient.invalidateQueries({ queryKey: ["playlist-posts"] });
       void queryClient.invalidateQueries({ queryKey: ["playlists"] });
       void queryClient.invalidateQueries({ queryKey: ["artists"] });

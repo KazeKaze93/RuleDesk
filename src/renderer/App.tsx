@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 import log from "electron-log/renderer";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -233,25 +233,23 @@ function App() {
 
   return (
     <>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Browse />} />
-            <Route path="tracked" element={<Tracked />} />
-            <Route path="artist/:id" element={<ArtistDetails />} />
-            <Route path="browse" element={<Browse />} />
-            <Route path="updates" element={<Updates />} />
-            <Route path="favorites" element={<Favorites />} />
-            <Route path="playlists" element={<PlaylistsPage />} />
-            <Route path="stats" element={<StatsPage />} />
-            <Route path="settings" element={<Settings />} />
-            <Route
-              path="*"
-              element={<div className="p-10">Page Not Found (Check URL)</div>}
-            />
-          </Route>
-        </Routes>
-      </Router>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Browse />} />
+          <Route path="tracked" element={<Tracked />} />
+          <Route path="artist/:id" element={<ArtistDetails />} />
+          <Route path="browse" element={<Browse />} />
+          <Route path="updates" element={<Updates />} />
+          <Route path="favorites" element={<Favorites />} />
+          <Route path="playlists" element={<PlaylistsPage />} />
+          <Route path="stats" element={<StatsPage />} />
+          <Route path="settings" element={<Settings />} />
+          <Route
+            path="*"
+            element={<div className="p-10">Page Not Found (Check URL)</div>}
+          />
+        </Route>
+      </Routes>
       <Toaster />
     </>
   );

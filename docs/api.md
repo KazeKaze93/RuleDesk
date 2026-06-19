@@ -225,7 +225,7 @@ interface IpcBridge {
   getArtistPosts: (params: {
     artistId: number;
     page?: number;
-  }) => Promise<Post[]>;
+  }) => Promise<{ posts: Post[]; hasMore: boolean; apiFetchedCount?: number }>;
   getArtistPostsCount: (artistId?: number) => Promise<number>;
   getStats: () => Promise<ExtendedStats>; // backward-compatible alias
   getExtendedStats: () => Promise<ExtendedStats>;
@@ -247,7 +247,13 @@ interface IpcBridge {
     page: number;
     isRandom?: boolean;
     limit?: number;
-  }) => Promise<Post[]>;
+    beforePostId?: number;
+  }) => Promise<{
+    posts: Post[];
+    hasMore: boolean;
+    apiFetchedCount?: number;
+    nextBeforePostId?: number;
+  }>;
   resolveTags: (tags: string[]) => Promise<string[]>;
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
@@ -1151,7 +1157,7 @@ results.forEach((result) => {
 
 ---
 
-### `searchBooru(params: { tags: string[]; page: number; isRandom?: boolean; limit?: number })`
+### `searchBooru(params: { tags: string[]; page: number; isRandom?: boolean; limit?: number; beforePostId?: number })`
 
 Searches for posts on the booru API using specified tags and page number.
 
@@ -1162,21 +1168,22 @@ Searches for posts on the booru API using specified tags and page number.
 **Parameters:**
 
 - `params.tags: string[]` - Array of tags to search for
-- `params.page: number` - Page number for pagination
+- `params.page: number` - Page number for pagination (1-based). Ignored when `beforePostId` is set (cursor mode uses `pid=0`).
 - `params.isRandom?: boolean` - Use pseudo-random page selection (default: `false`)
 - `params.limit?: number` - Posts per page (default: `50`, max: `100`)
+- `params.beforePostId?: number` - Rule34 cursor: append meta-tag `id:<N>` and fetch with `pid=0` for posts older than the offset cap (Browse uses this after four offset pages).
 
-**Returns:** `Promise<Post[]>`
+**Returns:** `Promise<{ posts: Post[]; hasMore: boolean; apiFetchedCount?: number; nextBeforePostId?: number }>` — `hasMore` and `apiFetchedCount` reflect the raw API page size before blacklist filtering. Pagination must use `apiFetchedCount`, not filtered `posts.length`. `nextBeforePostId` is the minimum post id in the raw API batch (cursor for the next page).
 
 **Example:**
 
 ```typescript
-const posts = await window.api.searchBooru({
+const { posts, hasMore } = await window.api.searchBooru({
   tags: ["blue_hair", "solo"],
   page: 1,
   limit: 50,
 });
-console.log(`Found ${posts.length} posts`);
+console.log(`Found ${posts.length} posts, hasMore=${hasMore}`);
 ```
 
 **IPC Channel:** `booru:search`

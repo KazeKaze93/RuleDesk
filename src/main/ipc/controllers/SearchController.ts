@@ -11,7 +11,11 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import type { BooruPost } from "../../providers/types";
 import type { Post } from "../../db/schema";
-import { SearchPostsSchema } from "../../../shared/schemas/search";
+import {
+  SearchPostsSchema,
+  formatRule34BeforePostIdTag,
+  type SearchBooruPageResult,
+} from "../../../shared/schemas/search";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
 import type { ProviderId } from "../../providers";
@@ -58,7 +62,6 @@ const ResolveTagsByTypeArgsSchema = z.tuple([
 
 // Use toIpcSafe return type instead of manual type definition
 // This ensures type safety and automatic updates when Post schema changes
-type IpcPost = ReturnType<typeof toIpcSafe<Post>>;
 
 /**
  * Search Controller
@@ -239,14 +242,14 @@ export class SearchController extends BaseController {
    *
    * @param _event - IPC event (unused)
    * @param params - Search parameters: tags (array), page, limit (optional)
-   * @returns Array of posts in Post format
+   * @returns Page of posts plus hasMore flag (based on raw API page size, before blacklist)
    * @throws {Error} If API request fails
    */
   private async search(
     _event: IpcMainInvokeEvent,
     params: SearchPostsParams
-  ): Promise<IpcPost[]> {
-    const { tags, page, isRandom, limit = 50 } = params;
+  ): Promise<SearchBooruPageResult> {
+    const { tags, page, isRandom, limit = 50, beforePostId } = params;
     const safeInputTags = tags.map((t) => sanitizeProviderTagToken(t));
 
     try {
@@ -308,13 +311,26 @@ export class SearchController extends BaseController {
           : "";
       tagsString = sanitizeProviderTagQuery(tagsString);
 
+      const useCursorPagination =
+        beforePostId != null && providerId === "rule34" && !isRandom;
+
+      if (useCursorPagination) {
+        const cursorTag = formatRule34BeforePostIdTag(beforePostId);
+        tagsString =
+          tagsString.length > 0 ? `${tagsString} ${cursorTag}` : cursorTag;
+      }
+
       // Step 1: Primary Search - try original tags
       // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
       // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
       // should be done via API's native sort:random parameter if the provider supports it.
       // If the provider doesn't support native randomization, this pseudo-random approach
       // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
-      const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
+      const apiPage = useCursorPagination
+        ? 1
+        : isRandom
+          ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1
+          : page;
       let booruPosts = await provider.fetchPosts(
         tagsString,
         apiPage,
@@ -324,7 +340,12 @@ export class SearchController extends BaseController {
       );
 
       // Step 2: Fallback Logic (only if Step 1 returned 0 AND input is a single word)
-      if (booruPosts.length === 0 && tagsString && safeInputTags.length === 1) {
+      if (
+        booruPosts.length === 0 &&
+        tagsString &&
+        safeInputTags.length === 1 &&
+        !useCursorPagination
+      ) {
         const originalTag = safeInputTags[0].trim();
         
         // Attempt A: Autocomplete (Fix Aliases)
@@ -378,8 +399,42 @@ export class SearchController extends BaseController {
             // Uploader retry failed, continue
           }
         }
+
+        // Attempt C: Rule34 artist meta tags (e.g. sodaglow vs sodaglow_artist)
+        if (
+          booruPosts.length === 0 &&
+          originalTag.toLowerCase().endsWith("_artist") &&
+          originalTag.length > "_artist".length
+        ) {
+          const strippedTag = originalTag.slice(0, -"_artist".length);
+          try {
+            const formatted = provider.formatTag(strippedTag, "tag");
+            booruPosts = await provider.fetchPosts(
+              formatted,
+              apiPage,
+              providerSettings,
+              isRandom,
+              limit
+            );
+            if (booruPosts.length > 0) {
+              tagsString = formatted;
+            }
+          } catch (_artistStripError) {
+            // Strip fallback failed, continue
+          }
+        }
       }
       
+      const apiFetchedCount = booruPosts.length;
+      const hasMore = apiFetchedCount >= limit;
+      const nextBeforePostId =
+        apiFetchedCount > 0
+          ? booruPosts.reduce(
+              (min, post) => (post.id < min ? post.id : min),
+              booruPosts[0].id
+            )
+          : undefined;
+
       const blacklistedTagSet = new Set(
         getAllBlacklistedTags()
           .map((tag) => tag.trim().toLowerCase())
@@ -452,9 +507,20 @@ export class SearchController extends BaseController {
         return dateB - dateA; // Descending order (newest first)
       });
 
-      // Convert Date objects to numbers for Electron 39+ IPC serialization
-      // toIpcSafe correctly infers the return type, no cast needed
-      return toIpcSafe(enrichedPosts);
+      // Untagged page-1 with zero API rows: return empty page (do not throw — avoids
+      // poisoning React Query and transient red error banners on throttle blips).
+      if (page === 1 && safeInputTags.length === 0 && apiFetchedCount === 0) {
+        log.warn(
+          "[SearchController] Browse API returned no posts for untagged page 1"
+        );
+      }
+
+      return {
+        posts: toIpcSafe(enrichedPosts),
+        hasMore,
+        apiFetchedCount,
+        nextBeforePostId,
+      };
     } catch (error) {
       log.error("[SearchController] Failed to search posts:", error);
       // Re-throw original error to preserve stack trace and context

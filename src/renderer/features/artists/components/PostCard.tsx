@@ -339,7 +339,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       {post.previewUrl ? (
         <div
           className={cn(
-            "relative w-full overflow-hidden",
+            "relative w-full overflow-hidden bg-muted",
             shouldPreserveAspect ? "h-full" : "",
             blurFilterClass,
           )}
@@ -353,7 +353,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             className={cn(
               "w-full transition-all duration-500",
               shouldPreserveAspect
-                ? "h-full object-cover" 
+                ? "h-full object-contain"
                 : "h-auto",
               // Only scale on hover when video preview is not showing
               !showVideoPreview && "group-hover:scale-105",
@@ -377,7 +377,7 @@ export const PostCard: React.FC<PostCardProps> = ({
               className={cn(
                 "absolute inset-0 w-full transition-opacity duration-300 z-10",
                 shouldPreserveAspect
-                  ? "h-full object-cover" 
+                  ? "h-full object-contain"
                   : "h-auto",
                 // Cross-fade: show video when hovered, hide otherwise
                 showVideoPreview ? "opacity-100" : "opacity-0 pointer-events-none"

@@ -9,6 +9,7 @@ import { Search, Loader2, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
+import { resolveErrorMessage } from "../../utils/error-message";
 import { useViewerStore } from "../../store/viewerStore";
 import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
@@ -28,30 +29,24 @@ import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
 import type { Post } from "../../../main/db/schema";
 import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import type { SearchBooruPageResult, BrowseSearchPageParam } from "../../../shared/schemas/search";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
+import { getSearchBrowseNextPageParam, isSearchGalleryPage } from "../../utils/react-query-cache";
 
 const POSTS_PER_PAGE = 50;
+const BROWSE_SEARCH_STALE_TIME_MS = 5 * 60 * 1000;
+const BROWSE_SEARCH_GC_TIME_MS = 30 * 60 * 1000;
 
-const getPostTimestamp = (post: Post): number => {
-  const publishedAt = post.publishedAt;
-  if (publishedAt instanceof Date) {
-    return publishedAt.getTime();
-  }
-  if (typeof publishedAt === "number") {
-    return publishedAt;
-  }
-  const parsed = new Date(publishedAt);
-  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-};
+type BrowseGalleryPage = SearchBooruPageResult<Post>;
 
-const sortPostsByOrder = (posts: Post[], sortOrder: "asc" | "desc"): Post[] =>
-  [...posts].sort((a, b) => {
-    const diff = getPostTimestamp(b) - getPostTimestamp(a);
-    return sortOrder === "desc" ? diff : -diff;
-  });
+function isBrowseCursorPageParam(
+  pageParam: BrowseSearchPageParam
+): pageParam is { beforePostId: number } {
+  return typeof pageParam === "object" && "beforePostId" in pageParam;
+}
 
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
@@ -182,60 +177,90 @@ export const Browse = () => {
   // For external API (Browse), we need custom getNextPageParam logic
   // because API may return less than 50 posts but still have more pages
   const {
-    allPosts: rawPosts,
+    allPosts: rawPostsFromQuery,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isFetching,
     isError: isSearchError,
     error: searchError,
     refetch: refetchSearch,
     handleEndReached,
-  } = useGalleryInfiniteScroll({
+    handleAtBottomStateChange,
+  } = useGalleryInfiniteScroll<
+    BrowseGalleryPage,
+    Post,
+    unknown[],
+    BrowseSearchPageParam
+  >({
     queryKey: ["search", tags, source],
+    flattenPage: (page) => page.posts,
     fetchFn: async (pageParam) => {
       if (source === "favorites") {
-        return await window.api.getArtistPosts({
-          page: pageParam,
+        const page =
+          typeof pageParam === "number" ? pageParam : 1;
+        const posts = await window.api.getArtistPosts({
+          page,
           filters: {
             isFavorited: true,
             tags: tags.length > 0 ? tags.join(" ") : undefined,
           },
         });
+        return {
+          posts,
+          hasMore: posts.length >= POSTS_PER_PAGE,
+        };
       }
 
       if (source === "subscriptions") {
-        return await window.api.getArtistPosts({
-          page: pageParam,
+        const page =
+          typeof pageParam === "number" ? pageParam : 1;
+        const posts = await window.api.getArtistPosts({
+          page,
           filters: {
             sinceTracking: true,
             tags: tags.length > 0 ? tags.join(" ") : undefined,
           },
         });
+        return {
+          posts,
+          hasMore: posts.length >= POSTS_PER_PAGE,
+        };
       }
 
-      // source === "all": external API search
+      if (isBrowseCursorPageParam(pageParam)) {
+        return await window.api.searchBooru({
+          tags,
+          page: 1,
+          beforePostId: pageParam.beforePostId,
+          limit: POSTS_PER_PAGE,
+        });
+      }
+
       return await window.api.searchBooru({
         tags,
         page: pageParam,
         limit: POSTS_PER_PAGE,
       });
     },
-    getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length === 0) {
-        return undefined;
-      }
-      if (lastPage.length < POSTS_PER_PAGE) {
-        return undefined;
-      }
-      return allPages.length + 1;
-    },
+    getNextPageParam: (lastPage, allPages) =>
+      getSearchBrowseNextPageParam(lastPage, allPages, POSTS_PER_PAGE),
+    staleTime: BROWSE_SEARCH_STALE_TIME_MS,
+    gcTime: BROWSE_SEARCH_GC_TIME_MS,
+    refetchOnReconnect: false,
   });
 
-  const sortedRawPosts = useMemo(
-    () => sortPostsByOrder(rawPosts, sortOrder),
-    [rawPosts, sortOrder]
-  );
+  const rawPosts = useMemo(() => {
+    const seenPostIds = new Set<number>();
+    return rawPostsFromQuery.filter((post) => {
+      if (seenPostIds.has(post.postId)) {
+        return false;
+      }
+      seenPostIds.add(post.postId);
+      return true;
+    });
+  }, [rawPostsFromQuery]);
 
   // Build tracked tags array for subscriptions filter (worker needs array, not Set)
   const trackedTagsArray = useMemo(() => {
@@ -280,29 +305,29 @@ export const Browse = () => {
     isLoading: workerLoading,
     error: workerError,
   } = useWorkerFilteredPosts(
-    usesDefaultRemoteFilters ? [] : rawPosts,
+    rawPosts,
     filterConfig,
-    250 // Debounce delay
+    250,
+    !usesDefaultRemoteFilters
   );
 
   const displayPosts = useMemo(() => {
     if (usesDefaultRemoteFilters) {
-      return sortedRawPosts;
+      return rawPosts;
     }
     if (workerPosts.length > 0) {
       return workerPosts;
     }
     if ((workerLoading || workerError) && rawPosts.length > 0) {
-      return sortedRawPosts;
+      return rawPosts;
     }
     return workerPosts;
   }, [
     usesDefaultRemoteFilters,
-    sortedRawPosts,
+    rawPosts,
     workerPosts,
     workerLoading,
     workerError,
-    rawPosts.length,
   ]);
 
   const selectedPosts = useMemo(
@@ -311,8 +336,11 @@ export const Browse = () => {
   );
   const hasFilteredOutResults =
     rawPosts.length > 0 && displayPosts.length === 0 && !usesDefaultRemoteFilters;
-  const searchErrorMessage =
-    searchError instanceof Error ? searchError.message : String(searchError ?? "");
+  const isFatalSearchError = isSearchError && rawPosts.length === 0;
+  const searchErrorMessage = resolveErrorMessage(
+    searchError,
+    "Failed to load posts."
+  );
 
   const listAriaBusy = isLoading || isFetchingNextPage || workerLoading;
   const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
@@ -325,12 +353,10 @@ export const Browse = () => {
       if (result.data) {
         const newPage = result.data.pages[result.data.pages.length - 1];
 
-        if (newPage && newPage.length > 0) {
-          // Get existing post IDs to avoid duplicates
+        if (newPage && isSearchGalleryPage(newPage) && newPage.posts.length > 0) {
           const existingPostIds = new Set(rawPosts.map((p) => p.id));
 
-          // Filter out posts that are already in the list
-          const newIds = newPage
+          const newIds = newPage.posts
             .map((p) => p.id)
             .filter((id) => !existingPostIds.has(id));
 
@@ -348,11 +374,19 @@ export const Browse = () => {
 
       const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
       const LOAD_MORE_THRESHOLD_PX = 300;
-      if (scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX) {
-        void fetchNextPage();
+      const nearBottom =
+        scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX;
+      handleAtBottomStateChange(nearBottom);
+      if (nearBottom) {
+        handleEndReached();
       }
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage]
+    [
+      hasNextPage,
+      isFetchingNextPage,
+      handleEndReached,
+      handleAtBottomStateChange,
+    ]
   );
 
   const viewMutation = useMutation({
@@ -365,17 +399,18 @@ export const Browse = () => {
       return post.id;
     },
     onSuccess: (postId) => {
-      queryClient.setQueryData<InfiniteData<Post[]>>(
+      queryClient.setQueryData<InfiniteData<BrowseGalleryPage>>(
         ["search", tags, source],
         (oldData) => {
           if (!oldData) return oldData;
           return {
             ...oldData,
-            pages: oldData.pages.map((page) =>
-              page.map((post) =>
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              posts: page.posts.map((post) =>
                 post.id === postId ? { ...post, isViewed: true } : post
-              )
-            ),
+              ),
+            })),
           };
         }
       );
@@ -454,11 +489,22 @@ export const Browse = () => {
 
       {/* Grid Content */}
       <div className="flex flex-col flex-1 min-h-0">
-        {isSearchError ? (
+        {isFatalSearchError ? (
           <Alert variant="destructive" className="mx-6 mt-4 shrink-0">
             <AlertTitle>Could not load Browse</AlertTitle>
             <AlertDescription className="space-y-3">
               <p>{searchErrorMessage}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void refetchSearch()}>
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {isSearchError && !isFatalSearchError ? (
+          <Alert className="mx-6 mt-4 shrink-0">
+            <AlertTitle>Could not refresh results</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>{searchErrorMessage}. Showing previously loaded posts.</p>
               <Button type="button" variant="outline" size="sm" onClick={() => void refetchSearch()}>
                 Retry
               </Button>
@@ -473,13 +519,15 @@ export const Browse = () => {
             </AlertDescription>
           </Alert>
         ) : null}
-        {(isLoading || (!usesDefaultRemoteFilters && workerLoading)) &&
+        {(isLoading ||
+          isFetching ||
+          (!usesDefaultRemoteFilters && workerLoading)) &&
         displayPosts.length === 0 &&
-        !isSearchError ? (
+        !isFatalSearchError ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-        ) : displayPosts.length === 0 && !isSearchError ? (
+        ) : displayPosts.length === 0 && !isFatalSearchError && !isFetching ? (
           <div className="flex flex-col gap-4 justify-center items-center h-full px-6">
             {hasFilteredOutResults ? (
               <div className="flex flex-col gap-4 items-center max-w-md text-center">
@@ -501,7 +549,8 @@ export const Browse = () => {
                     API returned no results
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    This tag likely exists on the website but is not yet available in the API.
+                    No posts matched this tag in the API. Try the website link or
+                    check spelling — some artist tags use a different name on Rule34.
                   </p>
                 </div>
                 <Button
@@ -556,6 +605,7 @@ export const Browse = () => {
               aria-busy={listAriaBusy}
               totalCount={displayPosts.length}
               endReached={handleEndReached}
+              atBottomStateChange={handleAtBottomStateChange}
               increaseViewportBy={600}
               components={{
                 List: ListComponent,

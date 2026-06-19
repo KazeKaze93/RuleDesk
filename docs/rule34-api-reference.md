@@ -229,7 +229,7 @@ If your client optimizes media delivery by selecting a faster host, keep a safe 
 
 ### Performance Considerations
 
-- Use pagination (`pid` parameter) for large result sets
+- Use pagination (`pid` parameter) for the first four pages (pid 0–3). Beyond that, Rule34 DAPI often returns empty results; use the meta-tag cursor `id:<postId>` with `pid=0` instead (RuleDesk Browse does this automatically after page 4).
 - Respect the 1000 post limit per request
 - Consider parallel requests for independent data (with rate limiting)
 - Optimize tag queries to reduce response size

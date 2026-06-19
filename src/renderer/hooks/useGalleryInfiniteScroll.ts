@@ -5,105 +5,172 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 const POSTS_PER_PAGE = 50;
 const DEBOUNCE_DELAY = 150; // ms
 
+type GalleryInfiniteScrollQueryOptions = {
+  staleTime?: number;
+  gcTime?: number;
+  refetchOnMount?: boolean | "always";
+  refetchOnReconnect?: boolean;
+  refetchOnWindowFocus?: boolean;
+};
+
 /**
  * Generic hook for infinite scroll with pagination
- * 
+ *
  * @template TPost - The post type
  * @template TQueryKey - The query key type for react-query
- * 
+ *
  * @param options - Configuration options
  * @param options.queryKey - React Query key array
  * @param options.fetchFn - Function to fetch a page of posts
  * @param options.enabled - Whether the query should be enabled (default: true)
  * @param options.postsPerPage - Number of posts per page (default: 50)
  * @param options.debounceDelay - Debounce delay in ms (default: 150)
- * 
+ *
  * @returns Object containing query data and handlers
  */
-export function useGalleryInfiniteScroll<TPost, TQueryKey extends unknown[] = unknown[]>({
+export function useGalleryInfiniteScroll<
+  TPage,
+  TItem = TPage extends (infer U)[] ? U : never,
+  TQueryKey extends unknown[] = unknown[],
+  TPageParam = number,
+>({
   queryKey,
   fetchFn,
   enabled = true,
   postsPerPage = POSTS_PER_PAGE,
   debounceDelay = DEBOUNCE_DELAY,
   getNextPageParam,
+  flattenPage,
+  initialPageParam = 1 as TPageParam,
+  staleTime,
+  gcTime,
+  refetchOnMount,
+  refetchOnReconnect,
+  refetchOnWindowFocus,
 }: {
   queryKey: TQueryKey;
-  fetchFn: (pageParam: number) => Promise<TPost[]>;
+  fetchFn: (pageParam: TPageParam) => Promise<TPage>;
   enabled?: boolean;
   postsPerPage?: number;
   debounceDelay?: number;
-  getNextPageParam?: (lastPage: TPost[], allPages: TPost[][]) => number | undefined;
-}) {
-  // Debounce ref to prevent duplicate fetch calls
+  getNextPageParam?: (
+    lastPage: TPage,
+    allPages: TPage[]
+  ) => TPageParam | undefined;
+  flattenPage?: (page: TPage) => TItem[];
+  initialPageParam?: TPageParam;
+} & GalleryInfiniteScrollQueryOptions) {
   const endReachedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const endReachedInFlightRef = useRef(false);
+  const hasNextPageRef = useRef(false);
+  const isFetchingNextPageRef = useRef(false);
+  const atBottomRef = useRef(false);
+  const allPostsLengthRef = useRef(0);
 
-  // Infinite query with proper pagination
   const {
     data,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isFetching,
+    isRefetching,
     isError,
     error,
     refetch,
   } = useInfiniteQuery({
     queryKey,
-    queryFn: async ({ pageParam = 1 }) => {
-      return await fetchFn(pageParam);
+    queryFn: async ({ pageParam = initialPageParam }) => {
+      return await fetchFn(pageParam as TPageParam);
     },
-    getNextPageParam: getNextPageParam || ((lastPage, allPages) => {
-      // Default: Return next page number only if last page returned full limit
-      return lastPage.length === postsPerPage ? allPages.length + 1 : undefined;
-    }),
-    initialPageParam: 1,
+    getNextPageParam:
+      getNextPageParam ??
+      ((lastPage, allPages) => {
+        const items = flattenPage
+          ? flattenPage(lastPage)
+          : (lastPage as unknown as TItem[]);
+        return (
+          items.length === postsPerPage ? (allPages.length + 1) : undefined
+        ) as TPageParam | undefined;
+      }),
+    initialPageParam,
     enabled,
+    staleTime,
+    gcTime,
+    refetchOnMount,
+    refetchOnReconnect,
+    refetchOnWindowFocus,
+    placeholderData: (previousData) => previousData,
   });
 
-  // Handle end reached with debounce to prevent rate limit errors
-  const handleEndReached = useCallback(() => {
-    if (endReachedInFlightRef.current) {
-      return;
-    }
+  useEffect(() => {
+    hasNextPageRef.current = Boolean(hasNextPage);
+  }, [hasNextPage]);
 
-    // Clear any pending timeout
+  useEffect(() => {
+    isFetchingNextPageRef.current = isFetchingNextPage;
+  }, [isFetchingNextPage]);
+
+  const scheduleLoadMore = useCallback(() => {
     if (endReachedTimeoutRef.current) {
       clearTimeout(endReachedTimeoutRef.current);
     }
 
-    endReachedInFlightRef.current = true;
-
-    // Debounce the fetch to prevent duplicate calls
     endReachedTimeoutRef.current = setTimeout(() => {
       endReachedTimeoutRef.current = null;
-      if (hasNextPage && !isFetchingNextPage) {
-        void fetchNextPage().finally(() => {
-          endReachedInFlightRef.current = false;
-        });
-        return;
+      if (hasNextPageRef.current && !isFetchingNextPageRef.current) {
+        void fetchNextPage();
       }
-      endReachedInFlightRef.current = false;
     }, debounceDelay);
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, debounceDelay]);
+  }, [fetchNextPage, debounceDelay]);
 
-  // Cleanup timeout on unmount
+  const handleEndReached = useCallback(() => {
+    scheduleLoadMore();
+  }, [scheduleLoadMore]);
+
+  const handleAtBottomStateChange = useCallback(
+    (atBottom: boolean) => {
+      atBottomRef.current = atBottom;
+      if (atBottom) {
+        scheduleLoadMore();
+      }
+    },
+    [scheduleLoadMore]
+  );
+
   useEffect(() => {
     return () => {
-      endReachedInFlightRef.current = false;
       if (endReachedTimeoutRef.current) {
         clearTimeout(endReachedTimeoutRef.current);
       }
     };
   }, []);
 
-  // Flatten all pages into a single array
-  // CRITICAL: Wrap in useMemo to prevent recalculation on every render
-  // For large datasets (100+ pages), flatMap can be expensive
-  const allPosts = useMemo(() => {
-    return data?.pages.flat() ?? [];
-  }, [data]);
+  const allPosts = useMemo((): TItem[] => {
+    if (!data?.pages) {
+      return [];
+    }
+    return data.pages.flatMap((page) =>
+      flattenPage
+        ? flattenPage(page as TPage)
+        : (page as unknown as TItem[])
+    );
+  }, [data, flattenPage]);
+
+  // Virtuoso endReached does not always refire when totalCount grows while pinned at bottom.
+  useEffect(() => {
+    const prevLength = allPostsLengthRef.current;
+    const nextLength = allPosts.length;
+    allPostsLengthRef.current = nextLength;
+
+    if (
+      nextLength > prevLength &&
+      atBottomRef.current &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
+      scheduleLoadMore();
+    }
+  }, [allPosts.length, hasNextPage, isFetchingNextPage, scheduleLoadMore]);
 
   return {
     data,
@@ -112,9 +179,12 @@ export function useGalleryInfiniteScroll<TPost, TQueryKey extends unknown[] = un
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isFetching,
+    isRefetching,
     isError,
     error,
     refetch,
     handleEndReached,
+    handleAtBottomStateChange,
   };
 }

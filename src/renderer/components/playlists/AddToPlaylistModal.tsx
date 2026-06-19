@@ -47,6 +47,7 @@ export interface AddToPlaylistModalProps {
   title?: string;
   description?: string;
   className?: string;
+  overlayClassName?: string;
 }
 
 /**
@@ -61,6 +62,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
   title = "Add to playlist",
   description,
   className,
+  overlayClassName,
 }) => {
   const [resolvedPostIds, setResolvedPostIds] = useState<number[]>([]);
   const [isResolvingPosts, setIsResolvingPosts] = useState(false);
@@ -339,6 +341,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        overlayClassName={overlayClassName}
         className={cn("sm:max-w-md gap-3", className)}
         onCloseAutoFocus={(e) => {
           if (focusReturnRef?.current) {

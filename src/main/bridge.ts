@@ -10,6 +10,7 @@ import type { IpcSettings, SaveSettings } from "../shared/schemas/settings";
 import type { ThemePreference } from "../shared/schemas/settings";
 import type { PostData, PostFilterRequest } from "../shared/schemas/post";
 import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
+import type { SearchBooruPageResult } from "../shared/schemas/search";
 import type { ProviderId, SearchResults } from "./providers";
 import type {
   CreatePlaylistRequest,
@@ -191,7 +192,8 @@ export interface IpcBridge {
     page: number;
     isRandom?: boolean;
     limit?: number;
-  }) => Promise<Post[]>;
+    beforePostId?: number;
+  }) => Promise<SearchBooruPageResult<Post>>;
 
   resolveTags: (tags: string[]) => Promise<string[]>;
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;

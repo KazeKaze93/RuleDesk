@@ -5,7 +5,8 @@ import type { Post } from "../../../../main/db/schema";
 import type { ViewerOrigin } from "../../../store/viewerStore";
 import { normalizePostToPostData } from "../../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../../shared/constants";
-import { updatePostInCache } from "../../../utils/react-query-cache";
+import { updatePostInCache, updatePostInSearchCache } from "../../../utils/react-query-cache";
+import type { SearchBooruPageResult } from "../../../../shared/schemas/search";
 
 interface ViewerQueue {
   ids: number[];
@@ -115,8 +116,9 @@ export function useViewerController({
         queue.origin.tags,
         queue.origin.source ?? "all",
       ];
-      queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) =>
-        updatePostInCache(old, post.id, (p) => ({ ...p, isViewed: true }))
+      queryClient.setQueryData<InfiniteData<SearchBooruPageResult<Post>>>(
+        searchQueryKey,
+        (old) => updatePostInSearchCache(old, post.id, (p) => ({ ...p, isViewed: true }))
       );
     }
 
@@ -200,11 +202,13 @@ export function useViewerController({
           queue.origin.tags,
           queue.origin.source ?? "all",
         ];
-        queryClient.setQueryData<InfiniteData<Post[]>>(searchQueryKey, (old) =>
-          updatePostInCache(old, post.id, (p) => ({
-            ...p,
-            isFavorited: newState,
-          }))
+        queryClient.setQueryData<InfiniteData<SearchBooruPageResult<Post>>>(
+          searchQueryKey,
+          (old) =>
+            updatePostInSearchCache(old, post.id, (p) => ({
+              ...p,
+              isFavorited: newState,
+            }))
         );
       }
 
