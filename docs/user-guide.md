@@ -438,7 +438,7 @@ Settings are split into tabs:
 - **API key status** - `Configured` / `Not configured` badge
 - **Save API key** - Update credentials from Settings
 
-**Important (portable):** API key is encrypted with OS-level security and bound to the current user on the current machine. If you move the app folder to another computer or another account, the key cannot be decrypted and must be entered again in **Settings -> Account**.
+**Important:** API key is encrypted with OS-level security and bound to the current user on the current machine. If you move to another computer or another Windows account, the key cannot be decrypted and must be entered again in **Settings -> Account**.
 
 ### Status badges behavior
 
@@ -573,17 +573,18 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 
 **Database locations:**
 
-The application uses Electron's `app.getPath("userData")` to determine the database location. This ensures compatibility across different installation methods and operating systems.
+The application redirects `userData` to a neutral `.rdcache` directory. Development and packaged builds use the same paths on a given machine:
 
-**Standard locations (managed by Electron in development/unpackaged mode):**
-- **Windows:** `%LOCALAPPDATA%/.rdcache/data.bin`
-- **macOS:** `~/Library/Application Support/.rdcache/data.bin`
-- **Linux:** `~/.config/.rdcache/data.bin`
+- **Windows:**
+  - Database: `%LOCALAPPDATA%\.rdcache\data.bin`
+  - Logs: `%LOCALAPPDATA%\.rdcache\logs\app.log`
+  - Backup schedule: `%LOCALAPPDATA%\.rdcache\backup-settings.json`
+- **macOS:** `~/Library/Application Support/.rdcache/`
+- **Linux:** `~/.config/.rdcache/`
 
-**Portable mode:**
-- **Portable:** `<exe_dir>/data/data.bin` (because `userData` is redirected to `<exe_dir>/data/`)
+**Note:** Data is not stored next to `RuleDesk.exe`. You can move or replace the app folder freely; local database, logs, and settings stay under `.rdcache` until you delete that directory.
 
-**Note:** The exact path may vary. The application automatically detects the correct location using Electron's built-in path management. You don't need to manually locate the database file unless troubleshooting.
+**Legacy (pre-fix builds):** `%APPDATA%\RuleDesk\` may still contain old `logs/` and `backup-settings.json`. New builds copy them into `.rdcache` on first launch when targets are missing.
 
 ---
 

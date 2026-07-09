@@ -45,13 +45,20 @@ const StoreConstructor: BackupStoreConstructor =
     ? (storeModule as BackupStoreConstructor)
     : (storeModuleDefault as BackupStoreConstructor);
 
-const store = new StoreConstructor({
-  name: "backup-settings",
-  defaults: {
-    autoBackupInterval: "never",
-    lastAutoBackupAt: null,
-  },
-});
+let store: BackupStoreContract | null = null;
+
+function getBackupStore(): BackupStoreContract {
+  if (!store) {
+    store = new StoreConstructor({
+      name: "backup-settings",
+      defaults: {
+        autoBackupInterval: "never",
+        lastAutoBackupAt: null,
+      },
+    });
+  }
+  return store;
+}
 
 const getDateStamp = (date: Date): string => {
   const year = date.getFullYear();
@@ -68,22 +75,23 @@ export class BackupService {
   }
 
   public scheduleAutoBackup(interval: AutoBackupInterval): void {
-    store.set("autoBackupInterval", interval);
+    getBackupStore().set("autoBackupInterval", interval);
     log.info(`[BackupService] Auto-backup interval set to "${interval}"`);
   }
 
   public getAutoBackupSchedule(): AutoBackupInterval {
-    return store.get("autoBackupInterval");
+    return getBackupStore().get("autoBackupInterval");
   }
 
   public checkAndRunAutoBackup(): void {
-    const interval = store.get("autoBackupInterval");
+    const backupStore = getBackupStore();
+    const interval = backupStore.get("autoBackupInterval");
     if (interval === "never") {
       return;
     }
 
     const intervalMs = AUTO_BACKUP_INTERVAL_MS[interval];
-    const lastAutoBackupAt = store.get("lastAutoBackupAt");
+    const lastAutoBackupAt = backupStore.get("lastAutoBackupAt");
     const now = Date.now();
     const elapsedMs = lastAutoBackupAt === null ? Number.POSITIVE_INFINITY : now - lastAutoBackupAt;
 
@@ -103,7 +111,7 @@ export class BackupService {
 
     try {
       fs.copyFileSync(dbPath, backupPath);
-      store.set("lastAutoBackupAt", now);
+      backupStore.set("lastAutoBackupAt", now);
       this.cleanupOldAutoBackups(dbDirectory);
       log.info(`[BackupService] Auto-backup created at ${backupPath}`);
     } catch (error) {

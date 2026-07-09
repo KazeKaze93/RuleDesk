@@ -229,7 +229,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Electron Version:** 39.8.x with latest security patches
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
-- ✅ **Portable Mode:** Support for portable executables with data folder next to executable
+- ✅ **User Data Path:** Neutral `.rdcache` directory for dev and packaged builds (same location on a given machine)
 - ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate` and `npm test` on every push/PR
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
@@ -252,7 +252,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Input Validation:** Zod validation implemented per IPC handler via `BaseController`
 - ✅ **Context Isolation:** Enabled globally with sandbox mode for maximum security
 - ✅ **CSP (Content Security Policy):** Strict CSP in production, relaxed for development (HMR support)
-- ✅ **Portable Mode:** Fully implemented - automatically detects portable mode and uses `data/` folder
+- ✅ **User Data Path:** Packaged and dev builds use `%LOCALAPPDATA%/.rdcache` on Windows (not a folder next to the executable)
 - ✅ **Age Gate:** Age gate component implemented with legal confirmation (`confirmLegal` method)
 
 ### Data Integrity & Sync
@@ -413,8 +413,6 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 - ✅ **Encrypt / Secure Storage for API Credentials** - ✅ **COMPLETED:** Using Electron's `safeStorage` API for encryption. API keys encrypted at rest, never exposed to Renderer process.
 - ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented with integrity checks and timestamped backups.
 - ✅ **IPC Architecture** - ✅ **COMPLETED:** Controller-based IPC handlers with `BaseController` for centralized error handling and validation. Type-safe dependency injection via DI Container.
-- ✅ **Portable Mode** - ✅ **COMPLETED:** Automatic detection of portable mode with data folder support.
-
 **📖 For detailed roadmap information, see [Roadmap Documentation](./docs/roadmap.md).** For **backlog** and **planned** work, see [Backlog](./docs/roadmap.md#backlog-not-implemented-yet) and [Planned product work](./docs/roadmap.md#planned-product-work).
 
 ---
@@ -449,12 +447,11 @@ npm run dev
 The application stores configuration in SQLite database:
 
 - **API Credentials:** Stored securely with encryption using Electron's `safeStorage` API. API keys are encrypted at rest and only decrypted in Main Process when needed for API calls.
-- **Database Location:**
-  - **Portable Mode:** `<exe_dir>/data/data.bin` (because `userData` is redirected to `<exe_dir>/data`)
-  - **Development/Unpackaged Mode:** Electron user data directory (automatically managed)
-    - Windows: `%LOCALAPPDATA%/.rdcache/data.bin`
-    - macOS: `~/Library/Application Support/.rdcache/data.bin`
-    - Linux: `~/.config/.rdcache/data.bin`
+- **Database Location** (development and packaged builds use the same neutral path):
+  - Windows: `%LOCALAPPDATA%\.rdcache\data.bin`
+  - Logs: `%LOCALAPPDATA%\.rdcache\logs\app.log`
+  - macOS: `~/Library/Application Support/.rdcache/data.bin`
+  - Linux: `~/.config/.rdcache/data.bin`
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 - **No Environment Variables Required:** All configuration is handled through the UI
 
@@ -559,7 +556,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`):
 
 1. **Quality** — `npm run validate`, `npm test`, `npm audit --omit=dev --audit-level=high`
 2. **E2E** — build app, run Playwright (needs `TEST_USER_ID` / `TEST_API_KEY` secrets for live API tests)
-3. **Release** (tags only) — Windows portable build after quality + e2e pass
+3. **Release** (tags only) — Windows zip build (`RuleDesk-*-win.zip`) after quality + e2e pass
 
 ## 📜 License & Legal
 
@@ -621,8 +618,7 @@ npm run db:studio
 
 ### Database Location
 
-- **Development/Unpackaged:** Electron user data directory (`.rdcache/data.bin`)
-- **Production (Portable):** `<exe_dir>/data/data.bin`
+- **All builds:** neutral user data directory (`.rdcache/` — `data.bin`, `logs/app.log`, `backup-settings.json`; see paths above)
 
 **📖 For detailed database information, see [Database Documentation](./docs/database.md).**
 

@@ -1397,7 +1397,7 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 1. `validate` → `npm test` → `npm audit --omit=dev --audit-level=high`
 2. E2E on built artifact
-3. Tagged releases: portable Windows build after quality + e2e
+3. Tagged releases: Windows zip build (`RuleDesk-*-win.zip`) after quality + e2e
 
 **Local maintainer gate:** `npm run test:verify` (= validate + all Vitest + Electron rebuild).
 
@@ -1715,7 +1715,7 @@ Root:
 - **Electron Version:** 39.8.x with latest security patches
 - **Build System:** electron-vite for optimal build performance
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
-- **Portable Mode:** Automatic detection and support for portable executables (`app.isPackaged` -> `app.setPath("userData", <exe_dir>/data)`)
+- **User Data Path:** Neutral `.rdcache` directory for dev and packaged builds (`bootstrap-user-data.ts` runs before logger and electron-store)
 
 **Database & Schema:**
 
@@ -1777,7 +1777,7 @@ Root:
 20. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 21. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
 22. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
-23. ✅ **Portable Mode:** Automatic detection and support for portable executables (`app.isPackaged` -> `app.setPath("userData", <exe_dir>/data)`)
+23. ✅ **User Data Path:** Neutral `.rdcache` directory for dev and packaged builds
 24. ✅ **IPC Controllers:** Controller-based architecture with `BaseController` and dependency injection
 25. ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 
@@ -1879,7 +1879,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 
 - **Safe Mode / NSFW Filter:** ✅ **COMPLETED:** blur logic and safe mode state are implemented in gallery/viewer flows
 - **Age Gate:** ✅ **COMPLETED:** Age gate component (`AgeGate.tsx`) and `confirmLegal` IPC method implemented
-- **Portable Mode:** ✅ Implemented via `app.isPackaged` + `app.setPath("userData", path.join(path.dirname(process.execPath), "data"))`
+- **User Data Path:** ✅ Neutral `.rdcache` via `bootstrap-user-data.ts` (not next to the executable)
 - **Anti-Bot Measures:** Static User-Agent strings, fixed delays (1.5s/0.5s) but no randomization or rotation
 - **DB Optimization (FTS5):** ✅ FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
 - **Composite Indexes:** ✅ Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries

@@ -1,6 +1,7 @@
+import "./bootstrap-user-data";
 import { app, BrowserWindow, dialog, Tray, nativeImage, Menu, session } from "electron";
 import path from "node:path";
-import { mkdirSync, existsSync, writeFileSync } from "fs";
+import { existsSync, writeFileSync } from "fs";
 import log from "electron-log";
 import { execFile } from "node:child_process";
 
@@ -67,7 +68,6 @@ import { syncService } from "./services/sync-service";
 import { SyncScheduler } from "./services/sync-scheduler";
 import { MaintenanceScheduler } from "./services/maintenance-scheduler";
 import { BackupService } from "./services/backup-service";
-import { USER_DATA_DIR_NAME } from "./db/paths";
 import { getAllProviderDomains } from "./providers";
 import { eq } from "drizzle-orm";
 import { settings, SETTINGS_ID } from "./db/schema";
@@ -104,36 +104,16 @@ async function hideDirectoryOnWindows(dirPath: string): Promise<void> {
   }
 }
 
-function configureUserDataPath(): void {
-  try {
-    if (isTestMode) {
-      return;
-    }
-
-    const neutralRoot =
-      process.platform === "win32"
-        ? process.env.LOCALAPPDATA || app.getPath("appData")
-        : app.getPath("appData");
-    const neutralUserDataPath = path.join(neutralRoot, USER_DATA_DIR_NAME);
-
-    mkdirSync(neutralUserDataPath, { recursive: true });
-    app.setPath("userData", neutralUserDataPath);
-    void hideDirectoryOnWindows(neutralUserDataPath);
-    logger.info(`[Main] userData path set to neutral directory: ${neutralUserDataPath}`);
-  } catch (err) {
-    logger.error("[Main] Failed to configure neutral userData path:", err);
-  }
+if (!isTestMode) {
+  logger.info(`[Main] userData path: ${app.getPath("userData")}`);
+  void hideDirectoryOnWindows(app.getPath("userData"));
 }
-
-configureUserDataPath();
 
 const videoProxyServer = new VideoProxyServer();
 
 app.on("before-quit", () => {
   videoProxyServer.stop();
 });
-
-process.env.USER_DATA_PATH = app.getPath("userData");
 
 if (process.platform === "linux") {
   // Enable hardware video decode where supported
