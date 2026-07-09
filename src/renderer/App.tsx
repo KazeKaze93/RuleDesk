@@ -21,6 +21,7 @@ import { RENDERER_WINDOW_EVENTS } from "@shared/constants";
 import { SettingsAccountTab } from "./features/settings/SettingsAccountTab";
 import { useSearchStore } from "./store/searchStore";
 import { normalizeCredentialsInput } from "./lib/parseCredentialsFromText";
+import { Button } from "./components/ui/button";
 
 const AccountGate = ({
   provider,
@@ -98,7 +99,13 @@ function App() {
   const [gateUserId, setGateUserId] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [accountStatus, setAccountStatus] = useState<"idle" | "success" | "error">("idle");
-  const { data: settings, isLoading: isSettingsLoading } = useQuery({
+  const {
+    data: settings,
+    isLoading: isSettingsLoading,
+    isError: isSettingsError,
+    error: settingsError,
+    refetch: refetchSettings,
+  } = useQuery({
     queryKey: ["settings"],
     queryFn: () => window.api.getSettings(),
     staleTime: Number.POSITIVE_INFINITY,
@@ -116,10 +123,36 @@ function App() {
   }, []);
 
   // Loading state: waiting for settings to load
-  if (isSettingsLoading || !settings) {
+  if (isSettingsLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (isSettingsError || !settings) {
+    const settingsErrorMessage =
+      settingsError instanceof Error
+        ? settingsError.message
+        : "Could not load application settings.";
+    return (
+      <div className="flex flex-col gap-4 justify-center items-center h-screen px-6 text-center">
+        <p className="text-lg font-semibold text-foreground">
+          Could not start RuleDesk
+        </p>
+        <p className="max-w-md text-sm text-muted-foreground">
+          {settingsErrorMessage}
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            void refetchSettings();
+          }}
+        >
+          Retry
+        </Button>
       </div>
     );
   }

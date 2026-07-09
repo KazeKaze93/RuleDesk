@@ -41,6 +41,19 @@ export function toProviderSearchSerializableError(
   return ProviderSearchErrorPayloadSchema.parse(payload);
 }
 
+/** IPC-safe throw: Error.message survives Electron invoke; fields are enumerable for renderer parse. */
+export function throwProviderSearchIpcError(error: ProviderSearchError): never {
+  const payload = toProviderSearchSerializableError(error);
+  const ipcError = new Error(payload.message);
+  Object.assign(ipcError, {
+    name: payload.name,
+    code: payload.code,
+    providerKind: payload.providerKind,
+    retryAfterMs: payload.retryAfterMs,
+  });
+  throw ipcError;
+}
+
 export function providerSearchErrorFromUnknown(
   error: unknown
 ): ProviderSearchError {

@@ -13,7 +13,7 @@ export default defineConfig({
     },
     plugins: [externalizeDepsPlugin()],
     build: {
-      sourcemap: true,
+      sourcemap: isDevelopment,
       watch: isDevelopment
         ? {
             include: "src/main/**",
@@ -41,7 +41,7 @@ export default defineConfig({
     },
     plugins: [externalizeDepsPlugin()],
     build: {
-      sourcemap: true,
+      sourcemap: isDevelopment,
       watch: isDevelopment ? {} : undefined,
       lib: {
         entry: "src/main/bridge.ts",
@@ -63,7 +63,7 @@ export default defineConfig({
       },
     },
     build: {
-      sourcemap: true,
+      sourcemap: isDevelopment,
       rollupOptions: {
         input: "src/renderer/index.html",
       },

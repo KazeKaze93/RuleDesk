@@ -627,16 +627,18 @@ const posts = await db.query.posts.findMany({
    - **Client-side filter/sort:** when non-default filters are active, `useWorkerFilteredPosts` offloads filter + sort to a Web Worker (`data-processor.worker.ts`) so the UI thread does not scan large loaded lists on every filter change.
    - Worker output is mapped back via `mapWorkerPostToPost()` in `src/renderer/lib/map-worker-post.ts` (preserves `mediaType`, `viewCount`, `lastViewedAt`; infers `mediaType` from `fileUrl` when missing).
    - Filter config is debounced (~250 ms); raw post pages are not debounced (scroll/load latency).
-   - Worker errors surface in Browse as a destructive `Alert` (empty list alone is not sufficient feedback).
+   - **Provider search failures** (auth, rate limit, network, parse): `Rule34Provider` throws typed `ProviderSearchError`; `SearchController` rethrows via `throwProviderSearchIpcError()` (enumerable `code` / `providerKind` on `Error`, no `stack` or raw API body to renderer). Renderer parses with `parseProviderSearchErrorPayload()` in `src/shared/utils/provider-search-ipc.ts` and shows `BrowseErrorState` (centered empty-state layout; auth → **Open Settings**).
+   - **Worker filter/sort failures** (client-side only): partial failure uses a neutral `Alert` above loaded posts; fatal query failure uses `BrowseErrorState`.
+   - **Preload constraint:** `src/main/bridge.ts` must stay thin — do **not** import shared Zod/schemas in preload (breaks `contextBridge.exposeInMainWorld` → perpetual Loading).
    - **Removed:** orientation filter (no UI; dead code removed from store, worker, and gallery pages).
    - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts`, `tests/unit/utils/react-query-cache.test.ts`.
 
-12. **Bridge** (`src/main/bridge.ts`)
+12. **Bridge** (`src/main/bridge.ts`, built to `out/preload/bridge.cjs`)
 
-- Defines the IPC interface
-- Exposed via preload script
-- Type-safe communication contract
-- Event listener management for real-time updates
+- Defines the IPC interface exposed as `window.api`
+- Preload forwards `ipcRenderer.invoke` / event subscriptions only — no business logic, no shared-schema imports
+- Type-safe communication contract (TypeScript types on both sides)
+- Provider-search error normalization happens in Main (`throwProviderSearchIpcError`) and Renderer (`parseProviderSearchErrorPayload`), not in preload
 
 13. **Main Entry** (`src/main/main.ts`)
     - Application initialization
@@ -1323,7 +1325,7 @@ External API calls are abstracted through the **Provider Pattern** (`src/main/pr
    - Uses provider pattern to fetch posts
    - **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
    - **Pagination:** Incremental sync by `lastPostId` (not deep offset into historical pages)
-   - **Error Handling:** Graceful handling of API errors and network failures
+   - **Error Handling:** `auth` / `rate_limit` provider errors during pagination propagate to `SYNC.ERROR`; `network` / `parse` and transient 5xx stop the current artist gracefully without marking sync failed
    - **Authentication:** Uses User ID and API Key from settings table
 
 4. **Browse search (`SearchController.search`):**
@@ -1397,7 +1399,11 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 1. `validate` → `npm test` → `npm audit --omit=dev --audit-level=high`
 2. E2E on built artifact
-3. Tagged releases: Windows zip build (`RuleDesk-*-win.zip`) after quality + e2e
+3. Tagged releases (parallel native runners after quality + e2e):
+   - **Windows:** `RuleDesk-*-win.zip` (`windows-latest`)
+   - **Linux:** `RuleDesk-*.AppImage` (`ubuntu-latest`, `libfuse2` for AppImage)
+   - **macOS:** not published (no signed/notarized CI pipeline; build from source locally if needed)
+   - Each packaging job runs `npm run check:release-artifacts` before upload (no `.map`, tests, `.env`, fixture secrets, or `sourceMappingURL` in `out/**`)
 
 **Local maintainer gate:** `npm run test:verify` (= validate + all Vitest + Electron rebuild).
 
@@ -1872,7 +1878,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 
 - **Developer HMR:** Renderer HMR and watched Main/Preload rebuild loop are in place
 - **Input Sanitization:** Zod validation is enforced at IPC boundaries. Shared wrapper/tuple patterns are now used across controllers to reduce registration drift.
-- **Error Handling:** IPC handlers have try-catch blocks, but some return raw errors instead of user-friendly messages
+- **Error Handling:** Provider search and sync auth paths return user-facing messages; other IPC domains still rely on generic `Error.message` at the boundary
 - **Modern Video:** Baseline tuning is shipped; further platform-specific tuning remains regression-driven
 
 ### ⏳ Missing / Planned

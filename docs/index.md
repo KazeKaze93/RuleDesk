@@ -98,7 +98,7 @@ Engineering materials are intentionally grouped here to keep the top-level index
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
 - [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, CI/CD
 - [Unit test guide](../tests/unit/README.md) - Vitest unit/property test layout
-- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (**140** Vitest tests across 20 files)
+- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (**171** Vitest tests across 25 files)
 - [Integration test notes](../tests/integration/README.md) - IPC + SQLite integration tests
 - [.cursorrules](../.cursorrules) - Engineering standards
 - [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants (do not add root `LESSONS.md`)
@@ -108,11 +108,11 @@ Engineering materials are intentionally grouped here to keep the top-level index
 | Step | Command |
 |------|---------|
 | Typecheck + lint + img policy | `npm run validate` |
-| All Vitest suites (140 tests) | `npm test` |
+| All Vitest suites (171 tests) | `npm test` |
 | Pre-PR full gate | `npm run test:verify` |
 | Production dependency audit | `npm audit --omit=dev --audit-level=high` |
 
-CI (`.github/workflows/ci.yml`) runs **validate**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass.
+CI (`.github/workflows/ci.yml`) runs **validate**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass, then publish **Windows zip** and **Linux AppImage** (macOS binaries are not distributed — see [user guide — Installation](./user-guide.md#installation)).
 
 ---
 

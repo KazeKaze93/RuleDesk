@@ -27,6 +27,16 @@ Welcome to RuleDesk! This guide will help you get started and use all the featur
 
 ## Installation
 
+### Official release binaries
+
+Tagged [Releases](https://github.com/KazeKaze93/ruledesk/releases) ship **pre-built binaries for Windows and Linux only**. CI builds each platform on its native runner so the native `better-sqlite3` module matches the target OS.
+
+| Platform | Release artifact | Status |
+|----------|------------------|--------|
+| **Windows** | `RuleDesk-<version>-win.zip` | ✅ Published on every `v*` tag |
+| **Linux (x64)** | `RuleDesk-<version>.AppImage` | ✅ Published on every `v*` tag |
+| **macOS** | — | ❌ Not distributed (see below) |
+
 ### Windows
 
 1. Download `RuleDesk-<version>-win.zip` from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
@@ -35,18 +45,30 @@ Welcome to RuleDesk! This guide will help you get started and use all the featur
 
 Application data is stored in the same location as the dev build (`%LOCALAPPDATA%/.rdcache` on Windows). Updates: use **Download** in the in-app notification to open the latest release on GitHub.
 
-### macOS
-
-1. Download the `.dmg` file from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
-2. Open the `.dmg` file
-3. Drag RuleDesk to your Applications folder
-4. Open RuleDesk from Applications (you may need to allow it in System Preferences > Security)
-
 ### Linux
 
-1. Download the `.AppImage` file from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
+1. Download the `RuleDesk-<version>.AppImage` file from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
 2. Make it executable: `chmod +x RuleDesk-*.AppImage`
 3. Run it: `./RuleDesk-*.AppImage`
+
+**Notes:**
+
+- AppImage bundles the app; no system-wide install is required.
+- Some distributions need FUSE (`libfuse2`) to run AppImages. If launch fails, install your distro's `libfuse2` / `fuse` package and retry.
+- Application data: `~/.config/.rdcache/` (same as a local dev build on Linux).
+
+### macOS — not distributed
+
+macOS **`.dmg` installers are not published**. Reasons:
+
+- Apple **code signing and notarization** are required for a smooth “open from Downloads” experience on modern macOS.
+- That needs a paid Apple Developer account, signing certificates, and extra CI secrets/maintenance.
+
+The Electron app can still be built from source on a Mac (`npm install && npm run dev`, or `electron-builder --mac` locally), but **GitHub Releases do not include a macOS binary**. Use Windows or Linux releases, or build from source.
+
+### Build from source (any OS)
+
+Clone the repo, run `npm install`, then `npm run dev`. See [README — Development Setup](https://github.com/KazeKaze93/ruledesk#-development-setup) for the full gate (`validate`, tests, native rebuild notes).
 
 ---
 
@@ -223,6 +245,7 @@ Each post card shows:
 - Click a chip to put it back into the input for editing; right-click still toggles include/exclude.
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
 - **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically).
+- **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings** when credentials are invalid).
 - Browse source modes **Favorites** / **Subscriptions** query your **local cache** and require a non-empty tag query by design.
 
 ### Favorites
@@ -532,7 +555,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 1. Confirm API credentials in **Settings → Account**
 2. Clear restrictive filters (AI, media, rating, date) — client-side filters only apply to already loaded pages
 3. If using **Favorites** / **Subscriptions**, add at least one tag in the search bar (required by design)
-4. Check for a red error banner on Browse (network or API failure)
+4. If Browse shows a centered error screen (not the empty “no posts” state), use **Retry** or **Open Settings** for auth failures — messages distinguish invalid API credentials, rate limits, and network errors
 
 ### App is slow
 

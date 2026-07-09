@@ -17,6 +17,7 @@ import {
   shouldRetryBrowseSearch,
   toBrowseSearchError,
 } from "../../utils/provider-search-error";
+import { BrowseErrorState } from "../browse/BrowseErrorState";
 import { useViewerStore } from "../../store/viewerStore";
 import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
@@ -352,16 +353,14 @@ export const Browse = () => {
   const isFatalSearchError = isSearchError && rawPosts.length === 0;
   const browseSearchError = toBrowseSearchError(searchError);
   const browseSearchErrorPresentation = browseSearchError
-    ? getBrowseSearchErrorPresentation(browseSearchError.kind)
+    ? getBrowseSearchErrorPresentation(
+        browseSearchError.kind,
+        browseSearchError.retryAfterMs
+      )
     : null;
-  const searchErrorMessage = browseSearchErrorPresentation
+  const partialSearchErrorMessage = browseSearchErrorPresentation
     ? browseSearchErrorPresentation.description
     : resolveErrorMessage(searchError, "Failed to load posts.");
-  const searchErrorTitle = browseSearchErrorPresentation
-    ? browseSearchErrorPresentation.title
-    : "Could not load Browse";
-  const showSearchRetryButton =
-    browseSearchErrorPresentation?.showRetry ?? true;
 
   const listAriaBusy = isLoading || isFetchingNextPage || workerLoading;
   const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
@@ -511,24 +510,24 @@ export const Browse = () => {
       {/* Grid Content */}
       <div className="flex flex-col flex-1 min-h-0">
         {isFatalSearchError ? (
-          <Alert variant="destructive" className="mx-6 mt-4 shrink-0">
-            <AlertTitle>{searchErrorTitle}</AlertTitle>
-            <AlertDescription className="space-y-3">
-              <p>{searchErrorMessage}</p>
-              {showSearchRetryButton ? (
-                <Button type="button" variant="outline" size="sm" onClick={() => void refetchSearch()}>
-                  Retry
-                </Button>
-              ) : null}
-            </AlertDescription>
-          </Alert>
+          <BrowseErrorState
+            kind={browseSearchError?.kind ?? "generic"}
+            retryAfterMs={browseSearchError?.retryAfterMs}
+            genericDescription={partialSearchErrorMessage}
+            onRetry={() => void refetchSearch()}
+          />
         ) : null}
         {isSearchError && !isFatalSearchError ? (
           <Alert className="mx-6 mt-4 shrink-0">
             <AlertTitle>Could not refresh results</AlertTitle>
             <AlertDescription className="space-y-3">
-              <p>{searchErrorMessage}. Showing previously loaded posts.</p>
-              <Button type="button" variant="outline" size="sm" onClick={() => void refetchSearch()}>
+              <p>{partialSearchErrorMessage}. Showing previously loaded posts.</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void refetchSearch()}
+              >
                 Retry
               </Button>
             </AlertDescription>

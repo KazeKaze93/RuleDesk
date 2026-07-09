@@ -1228,7 +1228,15 @@ await window.api.searchBooru({
 
 **IPC Channel:** `booru:search`
 
-**Errors:** On provider failures the channel rejects with a `ProviderSearchError` payload (`providerKind`: `auth` | `rate_limit` | `network` | `parse`, safe `message`, optional `retryAfterMs`). Browse maps these to error UI states; only a successful `{ posts: [] }` shows the empty-state screen. Raw API bodies are logged in main only (truncated), never sent to the renderer.
+**Errors:** On provider failures `SearchController` calls `throwProviderSearchIpcError()` — an `Error` whose `message` is user-safe and whose enumerable fields match `ProviderSearchErrorPayload` (`name`, `code`, `providerKind`, optional `retryAfterMs`). **No** `stack`, `originalError`, or raw API body crosses IPC. Preload does not parse or reshape these errors.
+
+Renderer flow:
+
+1. React Query `queryFn` rejects with Electron’s wrapped invoke error.
+2. `parseProviderSearchErrorPayload()` in `src/shared/utils/provider-search-ipc.ts` strips the IPC prefix, tolerates JSON bodies and `[object Object]` messages, and validates via `ProviderSearchErrorPayloadSchema`.
+3. `BrowseErrorState` maps `providerKind` to title, icon, and actions (`auth` → **Open Settings**; others → **Retry** when applicable).
+
+Only a successful `{ posts: [] }` shows the empty-state screen. Raw API bodies are logged in main only (truncated).
 
 ---
 
@@ -1909,15 +1917,28 @@ unsubscribe();
 
 ## Error Handling
 
-All IPC methods can throw errors. Always wrap calls in try-catch blocks:
+All IPC methods can throw errors. Always wrap calls in try-catch blocks or let React Query surface `error` from `queryFn`.
+
+### Provider search (`booru:search`)
+
+| Layer | Responsibility |
+|-------|----------------|
+| `Rule34Provider.fetchPosts` | Throws `ProviderSearchError` with `kind` (`auth`, `rate_limit`, `network`, `parse`); XML fallback only on `parse`, never on auth/429 |
+| `throwProviderSearchIpcError` (main) | Serializes to IPC-safe `Error` + enumerable payload fields |
+| `parseProviderSearchErrorPayload` (shared) | Normalizes Electron invoke wrapper → typed payload for UI |
+| `BrowseErrorState` (renderer) | User-facing centered error state (not a destructive banner) |
+
+Sync pagination uses the same provider errors: `auth` / `rate_limit` abort sync with `SYNC.ERROR`; `network` / `parse` stop the current artist without failing the whole job.
+
+### General IPC errors
 
 ```typescript
 try {
   const result = await window.api.addArtist(artistData);
 } catch (error) {
-  // Handle error appropriately
+  // Prefer shared parsers per domain; never assume error.stack is available in renderer
   if (error instanceof Error) {
-    console.error(error.message);
+    log.error(error.message);
   }
 }
 ```

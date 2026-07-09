@@ -51,7 +51,7 @@ GitHub Actions runs E2E after the **quality** job (`validate`, `npm test`, produ
 
 Without these secrets, tests that require real credentials will fail in CI with an explicit error.
 
-Tagged releases (`v*`) wait for both **quality** and **e2e** before the Windows zip build.
+Tagged releases (`v*`) wait for both **quality** and **e2e** before Windows zip and Linux AppImage packaging jobs run.
 
 ## Test Structure
 

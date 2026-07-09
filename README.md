@@ -471,14 +471,17 @@ npx electron-builder
 
 The built binaries will be available in the `release/` directory. The exact output location may vary depending on your Electron builder configuration.
 
-**Build Target (Windows):**
+**Official release artifacts** (GitHub Releases on `v*` tags; see [user guide — Installation](./docs/user-guide.md#installation)):
 
-- `RuleDesk-<version>-win.zip` — extract and run `RuleDesk.exe`
+| Platform | Artifact | CI |
+|----------|----------|-----|
+| Windows | `RuleDesk-<version>-win.zip` — extract and run `RuleDesk.exe` | ✅ |
+| Linux x64 | `RuleDesk-<version>.AppImage` — `chmod +x` and run | ✅ |
+| macOS | — | ❌ Not shipped (Apple signing/notarization not set up; build from source on a Mac if needed) |
 
-**Other platforms:**
+Local packaging scripts: `npm run dist:win`, `npm run dist:linux` (after `npm run build`). `npm run dist` defaults to Windows zip on the current machine.
 
-- **macOS:** DMG package
-- **Linux:** AppImage
+**Release hygiene:** Production builds disable source maps (`electron.vite.config.ts`). `electron-builder` excludes `.env*`, databases, logs, tests, `.cursorrules`, `.ai/`, and `*.map` from `app.asar`. CI runs `npm run check:release-artifacts` on every packaged build before upload. User API keys are never bundled — they are entered at runtime and stored encrypted in the local user data directory (`.rdcache`), not in the installer.
 
 ### Quality Checks
 
@@ -500,7 +503,7 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests (**140 tests** across 20 files as of v16.2.x post-audit). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
+**Vitest** covers unit, integration, and property-based tests (**171 tests** across 25 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
 
 ```bash
 # Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron
@@ -531,15 +534,19 @@ npm run test:e2e
 | `tests/property/` | Property-based / fuzzing tests (`fast-check`) |
 | `tests/e2e/` | Playwright user workflows |
 
-**Post-audit Vitest additions (v16.2.x):**
+**Notable Vitest coverage:**
 
 | File | Area |
 |------|------|
 | `tests/unit/utils/decrypted-credentials.test.ts` | No ciphertext fallback on decrypt failure |
 | `tests/unit/core/di-container.test.ts` | DI `Map` keyed by `token.id` |
 | `tests/unit/hooks/useWorkerFilteredPosts.test.ts` | `mapWorkerPostToPost` field preservation |
+| `tests/unit/shared/provider-search-ipc-payload.test.ts` | Electron IPC error wrapper → typed provider payload |
+| `tests/unit/providers/rule34-provider-fetch-posts.test.ts` | Auth/429/network/parse vs genuine empty results |
+| `tests/unit/services/tag-resolve-coordinator.test.ts` | Tag resolve dedup, rate-limit backoff, negative cache |
 | `tests/integration/controllers/ArtistsController.limit.test.ts` | `MAX_TRACKED_ARTISTS` (5000) cap |
 | `tests/integration/services/SyncService.queue.test.ts` | `runExclusive` serializes sync vs repair |
+| `tests/integration/services/SyncService.test.ts` | Auth provider errors → `SYNC.ERROR` |
 
 **Dual ABI for `better-sqlite3`:**
 
@@ -556,7 +563,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`):
 
 1. **Quality** — `npm run validate`, `npm test`, `npm audit --omit=dev --audit-level=high`
 2. **E2E** — build app, run Playwright (needs `TEST_USER_ID` / `TEST_API_KEY` secrets for live API tests)
-3. **Release** (tags only) — Windows zip build (`RuleDesk-*-win.zip`) after quality + e2e pass
+3. **Release** (tags only) — Windows zip + Linux AppImage (parallel jobs), merged into one GitHub Release after quality + e2e pass
 
 ## 📜 License & Legal
 

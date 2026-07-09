@@ -31,7 +31,7 @@ import type { ProviderSettings } from "../../providers/types";
 import {
   isProviderSearchError,
   ProviderSearchError,
-  toProviderSearchSerializableError,
+  throwProviderSearchIpcError,
 } from "../../providers/provider-search-errors";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
@@ -286,7 +286,7 @@ export class SearchController extends BaseController {
       // Get decrypted settings for authentication
       const settings = await this.getDecryptedSettings();
       if (!settings?.apiKey?.trim() || !settings.userId?.trim()) {
-        throw toProviderSearchSerializableError(
+        throwProviderSearchIpcError(
           new ProviderSearchError(
             "auth",
             "API credentials are missing or could not be decrypted. Open Settings → Account and sign in again."
@@ -567,7 +567,7 @@ export class SearchController extends BaseController {
           `[SearchController] Provider search failed (${error.kind}):`,
           error.message
         );
-        throw toProviderSearchSerializableError(error);
+        throwProviderSearchIpcError(error);
       }
       log.error("[SearchController] Failed to search posts:", error);
       throw error;

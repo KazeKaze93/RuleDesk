@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { ProviderSearchError } from "@/main/providers/provider-search-errors";
 import { toProviderSearchSerializableError } from "@/main/providers/provider-search-errors";
-import { parseProviderSearchErrorPayload } from "@/renderer/utils/provider-search-error";
+import {
+  BrowseSearchError,
+  toBrowseSearchError,
+} from "@/renderer/utils/provider-search-error";
+import { parseProviderSearchErrorPayload } from "@/shared/utils/provider-search-ipc";
 
 describe("provider search IPC payload hygiene", () => {
   it("toProviderSearchSerializableError omits stack and originalError", () => {
@@ -84,5 +88,50 @@ describe("provider search IPC payload hygiene", () => {
     expect(parsed?.message).toBe(
       "Rule34 is rate-limiting requests. Wait a moment, then use Retry."
     );
+  });
+
+  it("parseProviderSearchErrorPayload handles JSON-serialized IPC message body", () => {
+    const payload = {
+      name: "ProviderSearchError",
+      message:
+        "Rule34 rejected the API credentials. Open Settings → Account and sign in again.",
+      code: "AUTH_ERROR",
+      providerKind: "auth",
+    };
+    const ipcError = new Error(
+      `Error invoking remote method 'booru:search': ${JSON.stringify(payload)}`
+    );
+
+    const parsed = parseProviderSearchErrorPayload(ipcError);
+
+    expect(parsed?.providerKind).toBe("auth");
+    expect(parsed?.code).toBe("AUTH_ERROR");
+  });
+
+  it("toBrowseSearchError preserves BrowseSearchError from queryFn", () => {
+    const typed = new BrowseSearchError({
+      name: "ProviderSearchError",
+      message:
+        "Rule34 is rate-limiting requests. Wait a moment, then use Retry.",
+      code: "RATE_LIMIT",
+      providerKind: "rate_limit",
+    });
+
+    expect(toBrowseSearchError(typed)).toBe(typed);
+  });
+
+  it("toBrowseSearchError reads kind field from re-thrown normalized errors", () => {
+    const ipcError = new Error(
+      "Rule34 is rate-limiting requests. Wait a moment, then use Retry."
+    );
+    Object.assign(ipcError, {
+      name: "ProviderSearchError",
+      code: "RATE_LIMIT",
+      kind: "rate_limit",
+    });
+
+    const parsed = toBrowseSearchError(ipcError);
+
+    expect(parsed?.kind).toBe("rate_limit");
   });
 });
