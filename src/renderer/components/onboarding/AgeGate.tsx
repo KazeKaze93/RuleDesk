@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import log from "electron-log/renderer";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,15 +68,12 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="sr-only">
+        <DialogHeader>
           <DialogTitle>Age Verification & Terms</DialogTitle>
         </DialogHeader>
         <div className="p-1">
           <Card className="w-full">
-            <CardHeader>
-              <CardTitle>Age Verification & Terms</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-6">
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Warning: NSFW Content</AlertTitle>

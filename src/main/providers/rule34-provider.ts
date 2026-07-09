@@ -23,6 +23,16 @@ import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
 import { getProxyAgent } from "../lib/proxy";
+import { ProviderSearchError, isProviderSearchError } from "./provider-search-errors";
+import {
+  assertRule34NotBlockedResponse,
+  isAxiosTransportFailure,
+  isRule34PostsXml,
+  logRule34ResponseBodySnippet,
+  toRule34HttpResponseFromAxiosError,
+  toRule34HttpResponseFromAxiosSuccess,
+  type Rule34HttpResponse,
+} from "./rule34-post-response";
 
 interface R34AutocompleteItem {
   label: string;
@@ -68,6 +78,15 @@ export class Rule34Provider implements IBooruProvider {
       "Accept-Encoding": "identity",
       "Connection": "keep-alive",
     };
+  }
+
+  /** Shared throttle for post search and tag metadata lookups. */
+  getRequestThrottle(): ProviderThrottle {
+    return this.throttle;
+  }
+
+  getRequestHeaders(): Record<string, string> {
+    return this.getHeaders();
   }
 
   getDefaultApiEndpoint(): string {
@@ -159,6 +178,7 @@ export class Rule34Provider implements IBooruProvider {
     page: number;
     settings: ProviderSettings;
     json: 0 | 1;
+    limit: number;
   }): string {
     const params = new URLSearchParams();
 
@@ -180,10 +200,7 @@ export class Rule34Provider implements IBooruProvider {
     // If UI sends page 1, we must send pid=0.
     const pid = options.page > 0 ? options.page - 1 : 0;
     
-    // Rule34 LIMIT is hardcapped at 1000 for standard API,
-    // but typical browsing is lower. API ignores 'limit' param in some endpoints
-    // if not strictly passed, but we keep it for consistency.
-    params.append("limit", "1000");
+    params.append("limit", String(Math.min(1000, Math.max(1, options.limit))));
     params.append("pid", pid.toString());
 
     if (options.settings.userId && options.settings.apiKey) {
@@ -237,95 +254,166 @@ export class Rule34Provider implements IBooruProvider {
     tags: string,
     page: number,
     settings: ProviderSettings,
-    isRandom: boolean = false
+    isRandom: boolean = false,
+    limit: number = 50
   ): Promise<BooruPost[]> {
     await this.throttle.wait();
 
-    // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
-    // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
-    // should be done via API's native sort:random parameter if the provider supports it.
-    // If the provider doesn't support native randomization, this pseudo-random approach
-    // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
-    const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
-    
-    // Step 1: Try JSON first
-    const jsonUrl = this.buildUrl({ tags, page: apiPage, settings, json: 1 });
+    const apiPage = isRandom
+      ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1
+      : page;
+    const pageLimit = Math.min(1000, Math.max(1, limit));
+
+    let jsonFailure: ProviderSearchError | null = null;
 
     try {
-      const response = await axios
-        .get<string>(jsonUrl, {
-          timeout: REQUEST_TIMEOUT,
-          headers: this.getHeaders(),
-          responseType: "text",
-          validateStatus: (status) => status < 500,
-          httpsAgent: getProxyAgent(),
-        })
-        .then((result) => result);
-
-      const text = response.data;
-
-      // CRITICAL: Check for "Empty Response" bug
-      if (!text || text.trim().length === 0) {
-        throw new Error("Empty response from JSON API");
-      }
-
-      // Try parsing JSON
-      const json = JSON.parse(text);
-      if (!Array.isArray(json)) {
-        throw new Error("API returned non-array JSON");
-      }
-
-      const posts = this.normalizePosts(json);
-      
-      // If isRandom is true, shuffle the results array
-      if (isRandom && posts.length > 1) {
-        for (let i = posts.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [posts[i], posts[j]] = [posts[j], posts[i]];
-        }
-      }
-      
-      return posts;
+      const jsonResponse = await this.requestPostSearchResponse({
+        tags,
+        page: apiPage,
+        settings,
+        json: 1,
+        limit: pageLimit,
+      });
+      assertRule34NotBlockedResponse(jsonResponse);
+      const posts = this.parseJsonPostSearchResponse(jsonResponse.text, tags);
+      return this.maybeShufflePosts(posts, isRandom);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      logger.warn(
-        `[Rule34Provider] JSON API failed for tags "${tags}". Error: ${errorMessage}. Retrying with XML...`
-      );
-
-      // Step 2: FALLBACK TO XML
-      try {
-        const xmlUrl = this.buildUrl({ tags, page: apiPage, settings, json: 0 });
-        const xmlResponse = await axios
-          .get<string>(xmlUrl, {
-            timeout: REQUEST_TIMEOUT,
-            headers: this.getHeaders(),
-            responseType: "text",
-            validateStatus: (status) => status < 500,
-            httpsAgent: getProxyAgent(),
-          })
-          .then((result) => result);
-
-        const xmlText = xmlResponse.data;
-        const posts = this.parsePostXml(xmlText);
-        
-        // If isRandom is true, shuffle the results array
-        if (isRandom && posts.length > 1) {
-          for (let i = posts.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [posts[i], posts[j]] = [posts[j], posts[i]];
-          }
+      if (isProviderSearchError(error)) {
+        if (
+          error.kind === "rate_limit" ||
+          error.kind === "auth" ||
+          error.kind === "network"
+        ) {
+          throw error;
         }
-        
-        logger.warn(
-          `[Rule34Provider] Recovered ${posts.length} posts via XML fallback.`
-        );
-        return posts;
-      } catch (xmlError) {
-        logger.error("[Rule34Provider] XML Fallback failed:", xmlError);
-        return [];
+        jsonFailure = error;
+      } else if (isAxiosTransportFailure(error)) {
+        throw new ProviderSearchError("network");
+      } else {
+        jsonFailure = new ProviderSearchError("parse");
       }
     }
+
+    logger.warn(
+      `[Rule34Provider] JSON API failed for tags "${tags}"${
+        jsonFailure ? ` (${jsonFailure.message})` : ""
+      }. Retrying with XML...`
+    );
+
+    try {
+      const xmlResponse = await this.requestPostSearchResponse({
+        tags,
+        page: apiPage,
+        settings,
+        json: 0,
+        limit: pageLimit,
+      });
+      assertRule34NotBlockedResponse(xmlResponse);
+      const posts = this.parseXmlPostSearchResponse(xmlResponse.text);
+      logger.warn(
+        `[Rule34Provider] Recovered ${posts.length} posts via XML fallback.`
+      );
+      return this.maybeShufflePosts(posts, isRandom);
+    } catch (error) {
+      if (isProviderSearchError(error)) {
+        throw error;
+      }
+      if (isAxiosTransportFailure(error)) {
+        throw new ProviderSearchError("network");
+      }
+      throw jsonFailure ?? new ProviderSearchError("parse");
+    }
+  }
+
+  private maybeShufflePosts(
+    posts: BooruPost[],
+    isRandom: boolean
+  ): BooruPost[] {
+    if (!isRandom || posts.length <= 1) {
+      return posts;
+    }
+    const shuffled = [...posts];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  private async requestPostSearchResponse(options: {
+    tags: string;
+    page: number;
+    settings: ProviderSettings;
+    json: 0 | 1;
+    limit: number;
+  }): Promise<Rule34HttpResponse> {
+    const url = this.buildUrl(options);
+    try {
+      const response = await axios.get<string>(url, {
+        timeout: REQUEST_TIMEOUT,
+        headers: this.getHeaders(),
+        responseType: "text",
+        validateStatus: (status) => status < 500,
+        httpsAgent: getProxyAgent(),
+      });
+      return toRule34HttpResponseFromAxiosSuccess({
+        status: response.status,
+        headers: response.headers,
+        data: response.data ?? "",
+      });
+    } catch (error) {
+      const httpResponse = toRule34HttpResponseFromAxiosError(error);
+      if (httpResponse) {
+        return httpResponse;
+      }
+      throw error;
+    }
+  }
+
+  private parseJsonPostSearchResponse(text: string, tags: string): BooruPost[] {
+    if (!text || text.trim().length === 0) {
+      logRule34ResponseBodySnippet(
+        `Empty JSON response for tags "${tags}"`,
+        text
+      );
+      throw new ProviderSearchError("parse");
+    }
+
+    let json: unknown;
+    try {
+      json = JSON.parse(text);
+    } catch (parseError) {
+      logRule34ResponseBodySnippet(
+        `Invalid JSON for tags "${tags}"`,
+        text
+      );
+      logger.warn("[Rule34Provider] JSON parse failed:", parseError);
+      throw new ProviderSearchError("parse");
+    }
+
+    if (!Array.isArray(json)) {
+      logRule34ResponseBodySnippet(
+        `Non-array JSON for tags "${tags}"`,
+        text
+      );
+      throw new ProviderSearchError("parse");
+    }
+
+    return this.normalizePosts(json);
+  }
+
+  private parseXmlPostSearchResponse(text: string): BooruPost[] {
+    if (!text || text.trim().length === 0) {
+      logRule34ResponseBodySnippet("Empty XML response", text);
+      throw new ProviderSearchError("parse");
+    }
+
+    const posts = this.parsePostXml(text);
+    if (posts.length === 0 && !isRule34PostsXml(text)) {
+      logRule34ResponseBodySnippet("Unrecognized XML/HTML response", text);
+      throw new ProviderSearchError("parse");
+    }
+    return posts;
   }
 
   /**

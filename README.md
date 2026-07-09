@@ -53,7 +53,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
 | **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups in the user data directory; retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup. Restore replaces the live DB (with checks) and reloads the app.                                                                               |
 | **🧹 DB Maintenance (VACUUM)**    | User-visible maintenance card in Settings: shows last VACUUM run, allows manual `Run VACUUM now`, and supports schedule policy (`manual`, `weekly`, `monthly`). Lightweight auto-maintenance (`wal_checkpoint` + `optimize`) remains automatic in Main process.                                                                                     |
-| **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`). Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
+| **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`) with infinite scroll on Browse. Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
 | **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                                                                           |
 | **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                                                                                                 |
 | **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                                                                          |
@@ -106,7 +106,7 @@ This is the sandboxed browser environment. It handles presentation.
 The application is organized into the following main sections accessible via the Sidebar:
 
 - **Updates (Subscriptions)** - View new posts from tracked artists and tag subscriptions
-- **Browse (All posts)** - Browse all cached posts with advanced filtering and search
+- **Browse (All posts)** - Search the live booru API with chip-based tags, infinite scroll, and advanced filters; Favorites/Subscriptions modes search the local cache
 - **Favorites (Account favorites)** - Access your account favorites synced from the booru
 - **Playlists (Collections)** - Create and manage curated collections of posts
 - **Statistics** - Extended local metrics and distribution charts via `getExtendedStats` (counts, pie charts, top artists/tags, provider artist split, DB size)
@@ -229,8 +229,8 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Electron Version:** 39.8.x with latest security patches
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
-- ✅ **Portable Mode:** Support for portable executables with data folder next to executable
-- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate`, `arch:audit`, and `npm test` on every push/PR
+- ✅ **User Data Path:** Neutral `.rdcache` directory for dev and packaged builds (same location on a given machine)
+- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate` and `npm test` on every push/PR
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
 
@@ -252,7 +252,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Input Validation:** Zod validation implemented per IPC handler via `BaseController`
 - ✅ **Context Isolation:** Enabled globally with sandbox mode for maximum security
 - ✅ **CSP (Content Security Policy):** Strict CSP in production, relaxed for development (HMR support)
-- ✅ **Portable Mode:** Fully implemented - automatically detects portable mode and uses `data/` folder
+- ✅ **User Data Path:** Packaged and dev builds use `%LOCALAPPDATA%/.rdcache` on Windows (not a folder next to the executable)
 - ✅ **Age Gate:** Age gate component implemented with legal confirmation (`confirmLegal` method)
 
 ### Data Integrity & Sync
@@ -413,8 +413,6 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 - ✅ **Encrypt / Secure Storage for API Credentials** - ✅ **COMPLETED:** Using Electron's `safeStorage` API for encryption. API keys encrypted at rest, never exposed to Renderer process.
 - ✅ **Database Backup / Restore System** - ✅ **COMPLETED:** Manual backup and restore functionality implemented with integrity checks and timestamped backups.
 - ✅ **IPC Architecture** - ✅ **COMPLETED:** Controller-based IPC handlers with `BaseController` for centralized error handling and validation. Type-safe dependency injection via DI Container.
-- ✅ **Portable Mode** - ✅ **COMPLETED:** Automatic detection of portable mode with data folder support.
-
 **📖 For detailed roadmap information, see [Roadmap Documentation](./docs/roadmap.md).** For **backlog** and **planned** work, see [Backlog](./docs/roadmap.md#backlog-not-implemented-yet) and [Planned product work](./docs/roadmap.md#planned-product-work).
 
 ---
@@ -428,7 +426,6 @@ This project uses **electron-vite** as the build tool for both the Electron Main
 - **Node.js:** v20 LTS (matches CI)
 - **npm:** v9 or higher
 - **Git:** For version control
-- **Python 3.11+** (optional, local only): required for `arch:police` and `arch:stats` (Inquisitor); CI installs Python automatically
 
 ### Installation
 
@@ -450,12 +447,11 @@ npm run dev
 The application stores configuration in SQLite database:
 
 - **API Credentials:** Stored securely with encryption using Electron's `safeStorage` API. API keys are encrypted at rest and only decrypted in Main Process when needed for API calls.
-- **Database Location:**
-  - **Portable Mode:** `<exe_dir>/data/data.bin` (because `userData` is redirected to `<exe_dir>/data`)
-  - **Development/Unpackaged Mode:** Electron user data directory (automatically managed)
-    - Windows: `%LOCALAPPDATA%/.rdcache/data.bin`
-    - macOS: `~/Library/Application Support/.rdcache/data.bin`
-    - Linux: `~/.config/.rdcache/data.bin`
+- **Database Location** (development and packaged builds use the same neutral path):
+  - Windows: `%LOCALAPPDATA%\.rdcache\data.bin`
+  - Logs: `%LOCALAPPDATA%\.rdcache\logs\app.log`
+  - macOS: `~/Library/Application Support/.rdcache/data.bin`
+  - Linux: `~/.config/.rdcache/data.bin`
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 - **No Environment Variables Required:** All configuration is handled through the UI
 
@@ -475,11 +471,17 @@ npx electron-builder
 
 The built binaries will be available in the `release/` directory. The exact output location may vary depending on your Electron builder configuration.
 
-**Build Targets:**
+**Official release artifacts** (GitHub Releases on `v*` tags; see [user guide — Installation](./docs/user-guide.md#installation)):
 
-- **Windows:** Portable executable (x64)
-- **macOS:** DMG package
-- **Linux:** AppImage
+| Platform | Artifact | CI |
+|----------|----------|-----|
+| Windows | `RuleDesk-<version>-win.zip` — extract and run `RuleDesk.exe` | ✅ |
+| Linux x64 | `RuleDesk-<version>.AppImage` — `chmod +x` and run | ✅ |
+| macOS | — | ❌ Not shipped (Apple signing/notarization not set up; build from source on a Mac if needed) |
+
+Local packaging scripts: `npm run dist:win`, `npm run dist:linux` (after `npm run build`). `npm run dist` defaults to Windows zip on the current machine.
+
+**Release hygiene:** Production builds disable source maps (`electron.vite.config.ts`). `electron-builder` excludes `.env*`, databases, logs, tests, `.cursorrules`, `.ai/`, and `*.map` from `app.asar`. CI runs `npm run check:release-artifacts` on every packaged build before upload. User API keys are never bundled — they are entered at runtime and stored encrypted in the local user data directory (`.rdcache`), not in the installer.
 
 ### Quality Checks
 
@@ -492,14 +494,6 @@ npm run typecheck
 npm run lint
 npm run check:img-attrs
 
-# Architecture tooling (Node-based)
-npm run arch:audit    # dead-code / unused export scan
-npm run arch:deps     # dependency usage report
-
-# Architecture tooling (Python-based; needs Python 3.11+ locally)
-npm run arch:police
-npm run arch:stats
-
 # Production dependency audit (high severity and above)
 npm audit --omit=dev --audit-level=high
 
@@ -509,7 +503,7 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests (**140 tests** across 20 files as of v16.2.x post-audit). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
+**Vitest** covers unit, integration, and property-based tests (**171 tests** across 25 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
 
 ```bash
 # Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron
@@ -540,15 +534,19 @@ npm run test:e2e
 | `tests/property/` | Property-based / fuzzing tests (`fast-check`) |
 | `tests/e2e/` | Playwright user workflows |
 
-**Post-audit Vitest additions (v16.2.x):**
+**Notable Vitest coverage:**
 
 | File | Area |
 |------|------|
 | `tests/unit/utils/decrypted-credentials.test.ts` | No ciphertext fallback on decrypt failure |
 | `tests/unit/core/di-container.test.ts` | DI `Map` keyed by `token.id` |
 | `tests/unit/hooks/useWorkerFilteredPosts.test.ts` | `mapWorkerPostToPost` field preservation |
+| `tests/unit/shared/provider-search-ipc-payload.test.ts` | Electron IPC error wrapper → typed provider payload |
+| `tests/unit/providers/rule34-provider-fetch-posts.test.ts` | Auth/429/network/parse vs genuine empty results |
+| `tests/unit/services/tag-resolve-coordinator.test.ts` | Tag resolve dedup, rate-limit backoff, negative cache |
 | `tests/integration/controllers/ArtistsController.limit.test.ts` | `MAX_TRACKED_ARTISTS` (5000) cap |
 | `tests/integration/services/SyncService.queue.test.ts` | `runExclusive` serializes sync vs repair |
+| `tests/integration/services/SyncService.test.ts` | Auth provider errors → `SYNC.ERROR` |
 
 **Dual ABI for `better-sqlite3`:**
 
@@ -563,9 +561,9 @@ If integration tests fail with `NODE_MODULE_VERSION` mismatch, run `npm run db:r
 
 GitHub Actions workflow (`.github/workflows/ci.yml`):
 
-1. **Quality** — `npm run validate`, `arch:police`, `arch:audit`, `npm test`, `npm audit --omit=dev --audit-level=high`
+1. **Quality** — `npm run validate`, `npm test`, `npm audit --omit=dev --audit-level=high`
 2. **E2E** — build app, run Playwright (needs `TEST_USER_ID` / `TEST_API_KEY` secrets for live API tests)
-3. **Release** (tags only) — Windows portable build after quality + e2e pass
+3. **Release** (tags only) — Windows zip + Linux AppImage (parallel jobs), merged into one GitHub Release after quality + e2e pass
 
 ## 📜 License & Legal
 
@@ -627,8 +625,7 @@ npm run db:studio
 
 ### Database Location
 
-- **Development/Unpackaged:** Electron user data directory (`.rdcache/data.bin`)
-- **Production (Portable):** `<exe_dir>/data/data.bin`
+- **All builds:** neutral user data directory (`.rdcache/` — `data.bin`, `logs/app.log`, `backup-settings.json`; see paths above)
 
 **📖 For detailed database information, see [Database Documentation](./docs/database.md).**
 

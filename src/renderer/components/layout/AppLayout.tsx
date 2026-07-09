@@ -1,6 +1,8 @@
 import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { releaseRadixModalLock } from "@/lib/radix-modal-lock";
+import { useViewerStore } from "@/store/viewerStore";
 import { Sidebar } from "./Sidebar";
 import { GlobalTopBar } from "./GlobalTopBar";
 import { PanicButton } from "./PanicButton";
@@ -10,13 +12,28 @@ import { CredentialsErrorToast } from "../dialogs/CredentialsErrorToast";
 
 export const AppLayout = () => {
   const queryClient = useQueryClient();
+  const location = useLocation();
+
+  useEffect(() => {
+    releaseRadixModalLock();
+  }, []);
+
+  useEffect(() => {
+    useViewerStore.getState().close();
+    releaseRadixModalLock();
+    const frameId = requestAnimationFrame(() => {
+      releaseRadixModalLock();
+    });
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     const unsubscribeSyncEnd = window.api.onSyncEnd(() => {
       // Sync writes new posts into DB, so all post-based feeds must refresh.
       // Smart playlists are dynamic queries over posts, so they must be invalidated too.
       void queryClient.invalidateQueries({ queryKey: ["posts"] });
-      void queryClient.invalidateQueries({ queryKey: ["search"] });
       void queryClient.invalidateQueries({ queryKey: ["playlist-posts"] });
       void queryClient.invalidateQueries({ queryKey: ["playlists"] });
       void queryClient.invalidateQueries({ queryKey: ["artists"] });
@@ -34,7 +51,7 @@ export const AppLayout = () => {
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="relative z-0 flex flex-col flex-1 min-w-0">
         <PendingDownloadBanner />
         <GlobalTopBar />
 

@@ -27,6 +27,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "check:img-attrs": "node scripts/check-img-loading-decoding.mjs",
+    "check:release-artifacts": "node scripts/check-release-artifacts.mjs",
     "validate": "npm run typecheck && npm run lint && npm run check:img-attrs",
     "// TESTING": "---",
     "pretest": "npm run db:rebuild:node",
@@ -43,16 +44,10 @@
     "test:e2e": "cross-env NODE_ENV=test playwright test",
     "test:e2e:headless": "cross-env NODE_ENV=test playwright test",
     "test:verify": "npm run validate && npm run db:rebuild:node && vitest run && npm run db:rebuild",
-    "// ARCHITECTURE & INQUISITOR": "---",
-    "arch:stats": "inquisitor analyze .",
-    "arch:police": "inquisitor police ./src",
-    "arch:audit": "inquisitor audit ./src",
-    "arch:deps": "inquisitor detox",
-    "arch:viz": "inquisitor viz",
-    "arch:review": "inquisitor review",
-    "arch:gen": "inquisitor ctx",
     "// RELEASE": "---",
-    "dist": "npm run build && electron-builder",
+    "dist": "npm run build && electron-builder --win zip",
+    "dist:win": "npm run build && electron-builder --win zip --publish never",
+    "dist:linux": "npm run build && electron-builder --linux AppImage --publish never",
     "release:minor": "npm version minor && git push --follow-tags",
     "release:patch": "npm version patch && git push --follow-tags",
     "release:major": "npm version major && git push --follow-tags"
@@ -69,7 +64,6 @@
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
     "@eslint/js": "^9.39.1",
-    "@kazekaze93/repo-inquisitor": "github:KazeKaze93/repo-inquisitor",
     "@playwright/test": "^1.57.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/dompurify": "^3.0.5",
@@ -127,7 +121,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "dompurify": "^3.3.3",
+    "dompurify": "^3.4.11",
     "drizzle-orm": "^0.45.2",
     "electron-log": "^5.4.3",
     "electron-store": "^11.0.2",
@@ -158,12 +152,19 @@
     "files": [
       "out/**/*",
       "!**/.env",
+      "!**/.env.*",
       "package.json",
       "!**/settings.json",
       "!**/*.log",
       "!**/*.db",
       "!**/*.db-journal",
       "!**/*.map",
+      "!**/tests/**",
+      "!**/playwright-report/**",
+      "!**/test-results/**",
+      "!**/*.pem",
+      "!**/*.p12",
+      "!**/*.key",
       "!**/scripts/**",
       "!**/.github/**",
       "!**/*.ts",
@@ -189,6 +190,10 @@
       {
         "from": "drizzle",
         "to": "drizzle"
+      },
+      {
+        "from": "resources/icons",
+        "to": "icons"
       }
     ],
     "asar": true,
@@ -201,17 +206,11 @@
     "win": {
       "target": [
         {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
+          "target": "zip",
+          "arch": ["x64"]
         }
       ],
       "icon": "resources/icon.ico"
-    },
-    "portable": {
-      "artifactName": "RuleDesk-Portable-${version}.exe",
-      "requestExecutionLevel": "user"
     },
     "mac": {
       "target": "dmg",
@@ -220,14 +219,6 @@
     "linux": {
       "target": "AppImage",
       "icon": "resources/icons"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "perMachine": false,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "deleteAppDataOnUninstall": false
     },
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**"

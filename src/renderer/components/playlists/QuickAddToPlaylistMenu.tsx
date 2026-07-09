@@ -50,12 +50,14 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   return (
     <>
       {withOpen}
-      <AddToPlaylistModal
-        posts={[post]}
-        open={effectiveOpen}
-        onOpenChange={setEffectiveOpen}
-        onSuccess={onSuccess}
-      />
+      {effectiveOpen ? (
+        <AddToPlaylistModal
+          posts={[post]}
+          open={effectiveOpen}
+          onOpenChange={setEffectiveOpen}
+          onSuccess={onSuccess}
+        />
+      ) : null}
     </>
   );
 };

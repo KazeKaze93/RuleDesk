@@ -7,6 +7,136 @@
 
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import type { Post } from "../../main/db/schema";
+import { RULE34_MAX_OFFSET_PAGES } from "../../shared/constants";
+import type {
+  BrowseSearchPageParam,
+  SearchBooruPageResult,
+} from "../../shared/schemas/search";
+
+type SearchGalleryPage = SearchBooruPageResult<Post>;
+type InfinitePostPage = Post[] | SearchGalleryPage;
+
+export function isSearchGalleryPage(page: unknown): page is SearchGalleryPage {
+  return (
+    typeof page === "object" &&
+    page !== null &&
+    "posts" in page &&
+    Array.isArray((page as SearchGalleryPage).posts)
+  );
+}
+
+/** Raw API page size before blacklist; falls back to visible posts for legacy pages. */
+export function getBrowsePageApiCount(page: SearchGalleryPage): number {
+  if (typeof page.apiFetchedCount === "number") {
+    return page.apiFetchedCount;
+  }
+  return page.posts.length;
+}
+
+/** Next page param for Browse infinite query; tolerates legacy Post[] cache pages. */
+export function getSearchBrowseNextPageParam(
+  lastPage: InfinitePostPage,
+  allPages: InfinitePostPage[],
+  postsPerPage: number
+): BrowseSearchPageParam | undefined {
+  if (isSearchGalleryPage(lastPage)) {
+    const apiCount = getBrowsePageApiCount(lastPage);
+
+    if (apiCount === 0) {
+      return undefined;
+    }
+
+    const canContinue =
+      lastPage.hasMore === true ||
+      (lastPage.hasMore === false && apiCount >= postsPerPage);
+
+    if (!canContinue) {
+      return undefined;
+    }
+
+    if (allPages.length < RULE34_MAX_OFFSET_PAGES) {
+      return allPages.length + 1;
+    }
+
+    if (typeof lastPage.nextBeforePostId === "number") {
+      return { beforePostId: lastPage.nextBeforePostId };
+    }
+
+    return undefined;
+  }
+
+  if (Array.isArray(lastPage)) {
+    if (lastPage.length === 0 || lastPage.length < postsPerPage) {
+      return undefined;
+    }
+    if (allPages.length < RULE34_MAX_OFFSET_PAGES) {
+      return allPages.length + 1;
+    }
+    return undefined;
+  }
+
+  return undefined;
+}
+
+export function searchBrowseHasNextPage(
+  data: InfiniteData<InfinitePostPage> | undefined,
+  postsPerPage: number
+): boolean {
+  if (!data?.pages.length) {
+    return false;
+  }
+  const lastPage = data.pages[data.pages.length - 1];
+  return (
+    getSearchBrowseNextPageParam(lastPage, data.pages, postsPerPage) !== undefined
+  );
+}
+
+export function flattenInfinitePostPages(
+  infiniteData: InfiniteData<InfinitePostPage> | undefined
+): Post[] {
+  if (!infiniteData) {
+    return [];
+  }
+  return infiniteData.pages.flatMap((page) =>
+    isSearchGalleryPage(page) ? page.posts : page
+  );
+}
+
+export function updatePostInSearchCache(
+  oldData: InfiniteData<SearchGalleryPage> | undefined,
+  postId: number,
+  updater: (post: Post) => Post
+): InfiniteData<SearchGalleryPage> | undefined {
+  if (!oldData) {
+    return oldData;
+  }
+
+  let pageIndex = -1;
+  for (let i = 0; i < oldData.pages.length; i++) {
+    if (oldData.pages[i].posts.some((post) => post.id === postId)) {
+      pageIndex = i;
+      break;
+    }
+  }
+
+  if (pageIndex === -1) {
+    return oldData;
+  }
+
+  return {
+    ...oldData,
+    pages: oldData.pages.map((page, index) =>
+      index === pageIndex
+        ? {
+            ...page,
+            posts: page.posts.map((post) =>
+              post.id === postId ? updater(post) : post
+            ),
+          }
+        : page
+    ),
+  };
+}
 
 /**
  * Update a single post in InfiniteData cache by post ID
@@ -106,9 +236,9 @@ export function updatePostInAllCaches(
   // Update search cache if post is from search
   if (origin?.kind === "search") {
     const searchQueryKey = ["search", origin.tags, origin.source ?? "all"];
-    queryClient.setQueryData<InfiniteData<Post[]>>(
+    queryClient.setQueryData<InfiniteData<SearchGalleryPage>>(
       searchQueryKey,
-      (old) => updatePostInCache(old, post.id, updater)
+      (old) => updatePostInSearchCache(old, post.id, updater)
     );
   }
 

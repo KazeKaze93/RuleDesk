@@ -57,12 +57,8 @@ import {
 
 import { useQueryClient, InfiniteData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import {
-  TransformWrapper,
-  TransformComponent,
-  type ReactZoomPanPinchRef,
-} from "react-zoom-pan-pinch";
 import type { Post } from "../../../main/db/schema";
+import type { SearchBooruPageResult } from "../../../shared/schemas/search";
 import type { Artist } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { normalizeRating } from "../../../shared/utils/post-normalization";
@@ -70,10 +66,23 @@ import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
 import { useSearchStore } from "../../store/searchStore";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../store/safeModeStore";
 import { cn } from "../../lib/utils";
+import {
+  flattenInfinitePostPages,
+  isSearchGalleryPage,
+  searchBrowseHasNextPage,
+} from "../../utils/react-query-cache";
+import { releaseRadixModalLock } from "../../lib/radix-modal-lock";
 import { isVideoPost } from "../../lib/filter-utils";
 import { useVideoProxyUrl } from "../../lib/hooks/useVideoProxyUrl";
 import { useViewerController } from "./hooks/useViewerController";
 import { AddToPlaylistModal } from "../../components/playlists/AddToPlaylistModal";
+import {
+  VIEWER_SHELL_Z,
+  VIEWER_OVERLAY_Z,
+  viewerOverlayClass,
+} from "./viewer-layers";
+
+const BROWSE_POSTS_PER_PAGE = 50;
 
 const VIEWER_TAG_HINT_SEEN_KEY = "hasSeenTagHint";
 
@@ -98,7 +107,7 @@ const PostNotFoundFallback = ({
     origin: ViewerOrigin | undefined;
     totalGlobalCount?: number;
   };
-  infiniteData?: InfiniteData<Post[]>;
+  infiniteData?: InfiniteData<Post[] | SearchBooruPageResult<Post>>;
   onPostFound: (post: Post) => React.ReactNode;
   onClose: () => void;
 }) => {
@@ -129,8 +138,8 @@ const PostNotFoundFallback = ({
       return;
     }
 
-    const allPosts = infiniteData.pages.flat();
-    const foundPost = allPosts.find((p) => 
+    const allPosts = flattenInfinitePostPages(infiniteData);
+    const foundPost = allPosts.find((p) =>
       p.id === currentPostId || (p.id === 0 && p.postId === currentPostId)
     );
 
@@ -444,17 +453,25 @@ const useCurrentPost = (
   // Use useQuery with enabled: false for reactive cache access
   // This ensures component re-renders when cache data changes (e.g., post marked as viewed)
   // initialData is set from cache, and useQuery will reactively update when cache changes
-  const { data: infiniteData } = useQuery<InfiniteData<Post[]>>({
+  const { data: infiniteData } = useQuery<
+    InfiniteData<Post[] | SearchBooruPageResult<Post>>
+  >({
     queryKey: queryKey ?? ["__invalid__"],
     queryFn: async () => {
-      // This should never be called since enabled: false
-      // But TypeScript requires a valid queryFn
-      const cached = queryKey ? queryClient.getQueryData<InfiniteData<Post[]>>(queryKey) : undefined;
+      const cached = queryKey
+        ? queryClient.getQueryData<
+            InfiniteData<Post[] | SearchBooruPageResult<Post>>
+          >(queryKey)
+        : undefined;
       if (!cached) throw new Error("useCurrentPost: No cached data available");
       return cached;
     },
     enabled: queryKey !== null && currentPostId !== null,
-    initialData: queryKey ? queryClient.getQueryData<InfiniteData<Post[]>>(queryKey) : undefined,
+    initialData: queryKey
+      ? queryClient.getQueryData<
+          InfiniteData<Post[] | SearchBooruPageResult<Post>>
+        >(queryKey)
+      : undefined,
     staleTime: Infinity, // Never refetch, only use cache
     gcTime: Infinity, // Keep in cache forever
   });
@@ -471,7 +488,8 @@ const useCurrentPost = (
     // Use both id and postId as keys to support remote posts (id=0)
     const map = new Map<number, Post>();
     for (const page of infiniteData.pages) {
-      for (const post of page) {
+      const posts = isSearchGalleryPage(page) ? page.posts : page;
+      for (const post of posts) {
         map.set(post.id, post);
         // For remote posts (id=0), also index by postId for lookup
         if (post.id === 0 && post.postId) {
@@ -496,12 +514,7 @@ const useCurrentPost = (
   }, [currentPostId, postsMap]);
 };
 
-const IMAGE_MIN_SCALE = 1;
-const IMAGE_MAX_SCALE = 8;
-const IMAGE_WHEEL_STEP = 0.005;
-const ZOOM_RESET_KEY = "0";
 const RESOLVE_TAGS_BATCH_SIZE = 100;
-let isImagePanningActive = false;
 
 const chunkTags = (tags: string[], chunkSize: number): string[][] => {
   const chunks: string[][] = [];
@@ -542,32 +555,43 @@ const withRule34Host = (urlString: string, targetHost: string): string | null =>
   }
 };
 
-const buildImageFallbackChain = (post: Post): string[] => {
-  const baseCandidates = [
-    post.sampleUrl?.trim(),
-    post.fileUrl?.trim(),
-    post.previewUrl?.trim(),
-  ].filter((value): value is string => Boolean(value && value.length > 0));
-
-  const uniqueCandidates: string[] = [];
-  const seen = new Set<string>();
-
-  for (const candidate of baseCandidates) {
-    if (!seen.has(candidate)) {
-      seen.add(candidate);
-      uniqueCandidates.push(candidate);
-    }
-
-    for (const host of RULE34_CDN_FALLBACK_HOSTS) {
-      const fallbackUrl = withRule34Host(candidate, host);
-      if (fallbackUrl && !seen.has(fallbackUrl)) {
-        seen.add(fallbackUrl);
-        uniqueCandidates.push(fallbackUrl);
-      }
+const appendUrlWithCdnMirrors = (
+  chain: string[],
+  seen: Set<string>,
+  url: string | undefined
+): void => {
+  const trimmed = url?.trim();
+  if (!trimmed || seen.has(trimmed)) {
+    return;
+  }
+  seen.add(trimmed);
+  chain.push(trimmed);
+  for (const host of RULE34_CDN_FALLBACK_HOSTS) {
+    const fallbackUrl = withRule34Host(trimmed, host);
+    if (fallbackUrl && !seen.has(fallbackUrl)) {
+      seen.add(fallbackUrl);
+      chain.push(fallbackUrl);
     }
   }
+};
 
-  return uniqueCandidates;
+const VIEWER_DIALOG_CONTENT_CLASS = cn(
+  VIEWER_SHELL_Z,
+  "fixed inset-0 left-0 top-0 translate-x-0 translate-y-0",
+  "flex flex-col",
+  "w-screen h-screen max-w-none",
+  "p-0 m-0 gap-0",
+  "border-none bg-transparent shadow-none outline-none",
+  "sm:rounded-none",
+  "[&>button]:hidden"
+);
+
+/** Full-resolution file_url variants only — never sample/preview (those are cropped thumbnails). */
+const buildViewerFullImageChain = (post: Post): string[] => {
+  const chain: string[] = [];
+  const seen = new Set<string>();
+  appendUrlWithCdnMirrors(chain, seen, post.fileUrl);
+  return chain;
 };
 
 const ViewerMedia = ({
@@ -580,10 +604,10 @@ const ViewerMedia = ({
   const [isVideoPlaying, setIsVideoPlaying] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const imageFallbackChain = useMemo(() => buildImageFallbackChain(post), [post]);
-  const [imageFallbackIndex, setImageFallbackIndex] = useState(0);
-  const [imageSrc, setImageSrc] = useState(imageFallbackChain[0] ?? post.fileUrl);
-  const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
+  const isVideo = isVideoPost(post.fileUrl);
+  const fullImageChain = useMemo(() => buildViewerFullImageChain(post), [post]);
+  const [fileUrlIndex, setFileUrlIndex] = useState(0);
+  const imageDisplaySrc = fullImageChain[fileUrlIndex] ?? post.fileUrl;
   const { safeMode, panicMode, blurAmount } = useSafeModeStore(
     useShallow((s) => ({
       safeMode: s.safeMode,
@@ -603,14 +627,9 @@ const ViewerMedia = ({
       ? `[filter:blur(${Math.min(100, Math.round(effectiveBlur))}px)]`
       : undefined;
 
-  const isVideo = isVideoPost(post.fileUrl);
   const videoProxySrc = useVideoProxyUrl(
     isVideo && post.fileUrl ? post.fileUrl : null,
   );
-
-  const resetImageZoom = useCallback(() => {
-    transformRef.current?.resetTransform();
-  }, []);
 
   useEffect(() => {
     const handleMediaKeys = (e: KeyboardEvent) => {
@@ -620,29 +639,15 @@ const ViewerMedia = ({
         }
         e.preventDefault();
         setIsVideoPlaying((v) => !v);
-        return;
-      }
-
-      if (e.key === ZOOM_RESET_KEY && !isVideo) {
-        e.preventDefault();
-        resetImageZoom();
       }
     };
     window.addEventListener("keydown", handleMediaKeys);
     return () => window.removeEventListener("keydown", handleMediaKeys);
-  }, [isVideo, resetImageZoom]);
-
-  useEffect(() => {
-    if (!isVideo) {
-      resetImageZoom();
-    }
-  }, [post.id, isVideo, resetImageZoom]);
-
-  useEffect(() => {
-    return () => {
-      isImagePanningActive = false;
-    };
   }, []);
+
+  // No reset effect needed: ViewerContent is keyed by post id at the call site,
+  // so ViewerMedia remounts on post change and the initial useState/useMemo above
+  // already derive fresh fallback state from the new post.
 
   const handleContainerClick = (e: React.MouseEvent) => {
     if (!(e.target instanceof HTMLElement)) {
@@ -662,7 +667,7 @@ const ViewerMedia = ({
 
   return (
     <div
-      className="flex relative justify-center items-center pb-20 w-full h-full cursor-default overflow-auto"
+      className="flex relative justify-center items-center pb-20 w-full h-full min-h-0 cursor-default overflow-auto"
       onClick={handleContainerClick}
     >
       {isVideo ? (
@@ -695,7 +700,6 @@ const ViewerMedia = ({
               autoPlay={isVideoPlaying}
               loop
               controls
-              muted
               playsInline
               poster={post.previewUrl}
               preload="auto"
@@ -726,8 +730,7 @@ const ViewerMedia = ({
               className="mt-4"
               onClick={() => {
                 setImageError(false);
-                setImageFallbackIndex(0);
-                setImageSrc(imageFallbackChain[0] ?? post.fileUrl);
+                setFileUrlIndex(0);
               }}
             >
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -736,45 +739,27 @@ const ViewerMedia = ({
           </div>
         </div>
       ) : (
-        <TransformWrapper
-          ref={transformRef}
-          initialScale={IMAGE_MIN_SCALE}
-          minScale={IMAGE_MIN_SCALE}
-          maxScale={IMAGE_MAX_SCALE}
-          wheel={{ step: IMAGE_WHEEL_STEP }}
-          doubleClick={{ mode: "reset" }}
-          onPanningStart={() => {
-            isImagePanningActive = true;
-          }}
-          onPanningStop={() => {
-            isImagePanningActive = false;
-          }}
-        >
-          <TransformComponent
-            wrapperClass="w-full h-full"
-            contentClass="w-full h-full flex items-center justify-center"
-          >
-            <img
-              key={`${post.id}-${imageFallbackIndex}`}
-              src={imageSrc}
-              alt={`Post ${post.id}`}
-              className="max-w-full max-h-full object-contain"
-              onError={(e) => {
-                const failedUrl = e.currentTarget.currentSrc || e.currentTarget.src;
-                log.error("[ViewerMedia] Image load error:", failedUrl);
+        <div className="flex items-center justify-center w-full h-full min-h-0 p-4 box-border">
+          <img
+            key={`${post.id}-${fileUrlIndex}-${imageDisplaySrc}`}
+            src={imageDisplaySrc}
+            alt={`Post ${post.id}`}
+            referrerPolicy="no-referrer"
+            className="block object-contain select-none w-auto h-auto max-w-[min(100vw,100%)] max-h-[min(calc(100dvh-8rem),100%)]"
+            onError={(e) => {
+              const failedUrl = e.currentTarget.currentSrc || e.currentTarget.src;
+              log.error("[ViewerMedia] Image load error:", failedUrl);
 
-                const nextIndex = imageFallbackIndex + 1;
-                if (nextIndex < imageFallbackChain.length) {
-                  setImageFallbackIndex(nextIndex);
-                  setImageSrc(imageFallbackChain[nextIndex]);
-                  return;
-                }
+              const nextIndex = fileUrlIndex + 1;
+              if (nextIndex < fullImageChain.length) {
+                setFileUrlIndex(nextIndex);
+                return;
+              }
 
-                setImageError(true);
-              }}
-            />
-          </TransformComponent>
-        </TransformWrapper>
+              setImageError(true);
+            }}
+          />
+        </div>
       )}
     </div>
   );
@@ -805,6 +790,8 @@ const TagsDrawer = ({
   const [isPostIdCopied, setIsPostIdCopied] = useState(false);
   const addIncludeTag = useSearchStore((state) => state.addIncludeTag);
   const addExcludeTag = useSearchStore((state) => state.addExcludeTag);
+  const clearTagChips = useSearchStore((state) => state.clearTagChips);
+  const setFilters = useSearchStore((state) => state.setFilters);
   const isTagIncluded = useSearchStore((state) => state.isTagIncluded);
   const isTagExcluded = useSearchStore((state) => state.isTagExcluded);
 
@@ -1003,6 +990,8 @@ const TagsDrawer = ({
   const handleTagInclude = (tag: string) => {
     closeViewer();
     onOpenChange(false);
+    clearTagChips();
+    setFilters({ source: "all" });
     addIncludeTag(tag);
     navigate("/browse");
   };
@@ -1010,6 +999,8 @@ const TagsDrawer = ({
   const handleTagExclude = (tag: string) => {
     closeViewer();
     onOpenChange(false);
+    clearTagChips();
+    setFilters({ source: "all" });
     addExcludeTag(tag);
     navigate("/browse");
   };
@@ -1054,10 +1045,14 @@ const TagsDrawer = ({
 
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleDrawerOpenChange}>
+    <Sheet open={isOpen} onOpenChange={handleDrawerOpenChange} modal>
       <SheetContent
         side="right"
-        className="w-full overflow-y-auto sm:max-w-md"
+        overlayClassName={cn(VIEWER_OVERLAY_Z, "bg-black/80")}
+        className={cn(
+          VIEWER_OVERLAY_Z,
+          "w-full overflow-y-auto sm:max-w-md"
+        )}
         style={{ scrollbarGutter: "stable" }}
       >
         <SheetHeader>
@@ -1079,7 +1074,9 @@ const TagsDrawer = ({
                     <Copy className="ml-1 h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Click to copy</TooltipContent>
+                <TooltipContent className={viewerOverlayClass()}>
+                  Click to copy
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </SheetDesc>
@@ -1330,7 +1327,7 @@ const ViewerContent = ({
 
       <div
         className={cn(
-          "fixed top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-4 bg-gradient-to-b from-black/80 to-transparent transition-transform duration-300",
+          "absolute top-0 left-0 right-0 h-16 z-20 flex items-center justify-between px-4 bg-gradient-to-b from-black/80 to-transparent transition-transform duration-300",
           !controlsVisible && "-translate-y-full"
         )}
       >
@@ -1467,7 +1464,10 @@ const ViewerContent = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-56 shadow-lg bg-popover text-popover-foreground border-border"
+              className={cn(
+                viewerOverlayClass(),
+                "w-56 shadow-lg bg-popover text-popover-foreground border-border"
+              )}
               sideOffset={8}
               align="end"
             >
@@ -1477,7 +1477,12 @@ const ViewerContent = ({
                   Copy...
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
-                  <DropdownMenuSubContent className="w-48 shadow-xl bg-popover text-popover-foreground border-border">
+                  <DropdownMenuSubContent
+                    className={cn(
+                      viewerOverlayClass(),
+                      "w-48 shadow-xl bg-popover text-popover-foreground border-border"
+                    )}
+                  >
                     <DropdownMenuItem
                       onClick={() => ctrl.handleCopyText(String(post.postId))}
                     >
@@ -1559,7 +1564,7 @@ const ViewerContent = ({
 
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 h-20 z-50 flex items-center justify-between px-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-transform duration-300",
+          "absolute bottom-0 left-0 right-0 h-20 z-20 flex items-center justify-between px-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-transform duration-300",
           !controlsVisible && "translate-y-full"
         )}
       >
@@ -1669,7 +1674,8 @@ const ViewerContent = ({
       </Button>
 
       <AddToPlaylistModal
-        className="z-[200]"
+        overlayClassName={cn(VIEWER_OVERLAY_Z, "bg-black/80")}
+        className={cn(VIEWER_OVERLAY_Z, "sm:max-w-md gap-3")}
         posts={[{ id: post.id, postId: post.postId }]}
         open={showPlaylistDialog}
         onOpenChange={setShowPlaylistDialog}
@@ -1721,8 +1727,19 @@ export const ViewerDialog = () => {
     }))
   );
 
-  const post = useCurrentPost(currentPostId, queue?.origin);
+  const cachedPost = useCurrentPost(currentPostId, queue?.origin);
   const queryClient = useQueryClient();
+
+  // Fallback to the snapshot captured when the viewer opened. This guarantees a
+  // post the user just clicked is always renderable, even if the React Query
+  // cache lookup misses (e.g. key drift), instead of showing "not found in cache".
+  const post = useMemo(() => {
+    if (cachedPost) return cachedPost;
+    if (currentPostId === null || !queue?.posts) return undefined;
+    return queue.posts.find(
+      (p) => p.id === currentPostId || p.postId === currentPostId
+    );
+  }, [cachedPost, currentPostId, queue]);
 
   // Get infiniteData for fallback lookup (for remote posts)
   // React Compiler: Use queue directly instead of queue?.origin to match inferred dependencies
@@ -1756,8 +1773,20 @@ export const ViewerDialog = () => {
       return undefined;
     }
     
-    return queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
+    return queryClient.getQueryData<
+      InfiniteData<Post[] | SearchBooruPageResult<Post>>
+    >(queryKey);
   }, [queue, queryClient]);
+
+  const liveHasNextPage = useMemo(() => {
+    if (!queue) {
+      return false;
+    }
+    if (queue.origin?.kind === "search" && infiniteData) {
+      return searchBrowseHasNextPage(infiniteData, BROWSE_POSTS_PER_PAGE);
+    }
+    return queue.hasNextPage ?? false;
+  }, [queue, infiniteData]);
 
   useEffect(() => {
     if (!isOpen || !queue || !queue.origin) return;
@@ -1768,7 +1797,7 @@ export const ViewerDialog = () => {
     const isNearEnd = currentIndex >= loadedCount - threshold;
     const hasReachedLimit =
       (queue.totalGlobalCount && loadedCount >= queue.totalGlobalCount) ||
-      !queue.hasNextPage;
+      !liveHasNextPage;
 
     if (isNearEnd && !hasReachedLimit) {
       if (queue.onLoadMore) {
@@ -1779,7 +1808,7 @@ export const ViewerDialog = () => {
         return;
       }
     }
-  }, [isOpen, queue, currentIndex]);
+  }, [isOpen, queue, currentIndex, liveHasNextPage]);
 
   const artistId =
     queue?.origin?.kind === "artist" ? queue.origin.artistId : null;
@@ -1824,11 +1853,12 @@ export const ViewerDialog = () => {
       return;
     }
 
-    const infiniteData =
-      queryClient.getQueryData<InfiniteData<Post[]>>(queryKey);
+    const infiniteData = queryClient.getQueryData<
+      InfiniteData<Post[] | SearchBooruPageResult<Post>>
+    >(queryKey);
 
     if (infiniteData) {
-      const allLoadedPosts = infiniteData.pages.flatMap((page) => page);
+      const allLoadedPosts = flattenInfinitePostPages(infiniteData);
       const loadedPostIds = new Set(queue.ids);
       const newPosts = allLoadedPosts.filter((p) => !loadedPostIds.has(p.id));
 
@@ -1859,16 +1889,10 @@ export const ViewerDialog = () => {
       }
       switch (e.key) {
         case "ArrowRight":
-          if (isImagePanningActive) {
-            return;
-          }
           e.preventDefault();
           next();
           break;
         case "ArrowLeft":
-          if (isImagePanningActive) {
-            return;
-          }
           e.preventDefault();
           prev();
           break;
@@ -1973,32 +1997,53 @@ export const ViewerDialog = () => {
     };
   }, [isOpen, setControlsVisible]);
 
-  // Guard: only render when store says dialog should be open
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) {
+      releaseRadixModalLock();
+      const frameId = requestAnimationFrame(() => {
+        releaseRadixModalLock();
+      });
+      return () => {
+        cancelAnimationFrame(frameId);
+      };
+    }
+    return undefined;
+  }, [isOpen]);
 
+  useEffect(() => {
+    return () => {
+      releaseRadixModalLock();
+    };
+  }, []);
+
+  // modal={true}: block background clicks/focus; releaseRadixModalLock on close prevents body lock leak.
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+    <Dialog
+      modal
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          releaseRadixModalLock();
+          close();
+        }
+      }}
+    >
+      {isOpen ? (
       <DialogContent
-        className="
-          fixed inset-0 left-0 top-0 translate-x-0 translate-y-0
-          z-50 flex flex-col
-          w-screen h-screen max-w-none
-          p-0 m-0 gap-0
-          border-none bg-transparent shadow-none outline-none
-          sm:rounded-none
-          [&>button]:hidden
-        "
+        overlayClassName={cn(VIEWER_SHELL_Z, "bg-black/80")}
+        className={VIEWER_DIALOG_CONTENT_CLASS}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
       >
-        {/* Accessibility: Title and Description must be direct children of DialogContent */}
         <DialogTitle className="sr-only">Image Viewer</DialogTitle>
         <DialogDescription className="sr-only">
           View and navigate through posts. Use arrow keys to navigate, Escape to
           close.
         </DialogDescription>
 
-        <div className="absolute inset-0 backdrop-blur-md pointer-events-none bg-black/60" />
+        <div className="absolute inset-0 pointer-events-none backdrop-blur-md bg-black/60" />
 
-        <div className="flex relative z-10 flex-col justify-center items-center w-full h-full">
+        <div className="relative z-10 flex flex-col justify-center items-center w-full h-full pointer-events-auto">
           {post ? (
             <ViewerContent
               key={post.id > 0 ? post.id : post.postId}
@@ -2040,6 +2085,7 @@ export const ViewerDialog = () => {
           )}
         </div>
       </DialogContent>
+      ) : null}
     </Dialog>
   );
 };

@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 import log from "electron-log/renderer";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +20,9 @@ import { Toaster } from "./components/ui/sonner";
 import { RENDERER_WINDOW_EVENTS } from "@shared/constants";
 import { SettingsAccountTab } from "./features/settings/SettingsAccountTab";
 import { useSearchStore } from "./store/searchStore";
+import { normalizeCredentialsInput } from "./lib/parseCredentialsFromText";
+import { Button } from "./components/ui/button";
+import type { IpcSettings } from "@shared/schemas/settings";
 
 const AccountGate = ({
   provider,
@@ -27,8 +30,10 @@ const AccountGate = ({
   pendingProvider,
   onProviderChangeConfirm,
   onProviderChangeCancel,
+  userId,
   apiKey,
   onApiKeyChange,
+  onUserIdChange,
   showApiKey,
   onToggleApiKeyVisibility,
   onSaveApiKey,
@@ -40,8 +45,10 @@ const AccountGate = ({
   pendingProvider: ProviderId | null;
   onProviderChangeConfirm: () => void;
   onProviderChangeCancel: () => void;
+  userId: string;
   apiKey: string;
   onApiKeyChange: (value: string) => void;
+  onUserIdChange: (value: string) => void;
   showApiKey: boolean;
   onToggleApiKeyVisibility: () => void;
   onSaveApiKey: () => void;
@@ -60,19 +67,21 @@ const AccountGate = ({
         <SettingsAccountTab
           provider={provider}
           pendingProvider={pendingProvider}
+          userId={userId}
           apiKey={apiKey}
           showApiKey={showApiKey}
           hasApiKey={false}
           accountStatus={accountStatus}
           isDevMode={false}
           onApiKeyChange={onApiKeyChange}
+          onUserIdChange={onUserIdChange}
           onToggleApiKeyVisibility={onToggleApiKeyVisibility}
           onSaveApiKey={onSaveApiKey}
           onProviderSelect={onProviderSelect}
           onProviderChangeConfirm={onProviderChangeConfirm}
           onProviderChangeCancel={onProviderChangeCancel}
           onResetOnboarding={onResetOnboarding}
-          showUserIdField={false}
+          showUserIdField
         />
       </div>
     </div>
@@ -88,9 +97,16 @@ function App() {
   const [forceAccountGate, setForceAccountGate] = useState(false);
   const [pendingProvider, setPendingProvider] = useState<ProviderId | null>(null);
   const [apiKey, setApiKey] = useState("");
+  const [gateUserId, setGateUserId] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [accountStatus, setAccountStatus] = useState<"idle" | "success" | "error">("idle");
-  const { data: settings, isLoading: isSettingsLoading } = useQuery({
+  const {
+    data: settings,
+    isLoading: isSettingsLoading,
+    isError: isSettingsError,
+    error: settingsError,
+    refetch: refetchSettings,
+  } = useQuery({
     queryKey: ["settings"],
     queryFn: () => window.api.getSettings(),
     staleTime: Number.POSITIVE_INFINITY,
@@ -108,10 +124,36 @@ function App() {
   }, []);
 
   // Loading state: waiting for settings to load
-  if (isSettingsLoading || !settings) {
+  if (isSettingsLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (isSettingsError || !settings) {
+    const settingsErrorMessage =
+      settingsError instanceof Error
+        ? settingsError.message
+        : "Could not load application settings.";
+    return (
+      <div className="flex flex-col gap-4 justify-center items-center h-screen px-6 text-center">
+        <p className="text-lg font-semibold text-foreground">
+          Could not start RuleDesk
+        </p>
+        <p className="max-w-md text-sm text-muted-foreground">
+          {settingsErrorMessage}
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            void refetchSettings();
+          }}
+        >
+          Retry
+        </Button>
       </div>
     );
   }
@@ -137,11 +179,17 @@ function App() {
   const handleSaveApiKey = async () => {
     setAccountStatus("idle");
     try {
-      const trimmedApiKey = apiKey.trim();
-      const trimmedUserId = settings.userId.trim();
+      const normalized = normalizeCredentialsInput({
+        userId: gateUserId || settings.userId,
+        apiKey,
+      });
+      if (!normalized.apiKey || !normalized.userId) {
+        setAccountStatus("error");
+        return;
+      }
       const saved = await window.api.saveSettings({
-        userId: trimmedUserId,
-        apiKey: trimmedApiKey,
+        userId: normalized.userId,
+        apiKey: normalized.apiKey,
         provider: activeProvider,
       });
       if (!saved) {
@@ -149,10 +197,22 @@ function App() {
         return;
       }
       setApiKey("");
+      setGateUserId("");
       setForceAccountGate(false);
       clearTagChips();
       resetFilters();
+      queryClient.setQueryData<IpcSettings>(["settings"], (current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          userId: normalized.userId ?? current.userId,
+          hasApiKey: true,
+        };
+      });
       await queryClient.invalidateQueries({ queryKey: ["settings"] });
+      await queryClient.refetchQueries({ queryKey: ["settings"] });
       await queryClient.invalidateQueries({ queryKey: ["search"] });
       setAccountStatus("success");
     } catch (error) {
@@ -195,8 +255,10 @@ function App() {
           void handleProviderChangeConfirm();
         }}
         onProviderChangeCancel={() => setPendingProvider(null)}
+        userId={gateUserId || settings.userId}
         apiKey={apiKey}
         onApiKeyChange={setApiKey}
+        onUserIdChange={setGateUserId}
         showApiKey={showApiKey}
         onToggleApiKeyVisibility={() => setShowApiKey((current) => !current)}
         onSaveApiKey={() => {
@@ -216,25 +278,23 @@ function App() {
 
   return (
     <>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Browse />} />
-            <Route path="tracked" element={<Tracked />} />
-            <Route path="artist/:id" element={<ArtistDetails />} />
-            <Route path="browse" element={<Browse />} />
-            <Route path="updates" element={<Updates />} />
-            <Route path="favorites" element={<Favorites />} />
-            <Route path="playlists" element={<PlaylistsPage />} />
-            <Route path="stats" element={<StatsPage />} />
-            <Route path="settings" element={<Settings />} />
-            <Route
-              path="*"
-              element={<div className="p-10">Page Not Found (Check URL)</div>}
-            />
-          </Route>
-        </Routes>
-      </Router>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Browse />} />
+          <Route path="tracked" element={<Tracked />} />
+          <Route path="artist/:id" element={<ArtistDetails />} />
+          <Route path="browse" element={<Browse />} />
+          <Route path="updates" element={<Updates />} />
+          <Route path="favorites" element={<Favorites />} />
+          <Route path="playlists" element={<PlaylistsPage />} />
+          <Route path="stats" element={<StatsPage />} />
+          <Route path="settings" element={<Settings />} />
+          <Route
+            path="*"
+            element={<div className="p-10">Page Not Found (Check URL)</div>}
+          />
+        </Route>
+      </Routes>
       <Toaster />
     </>
   );

@@ -42,7 +42,7 @@ npm run test:e2e:headless
 
 ## CI
 
-GitHub Actions runs E2E after the **quality** job (`validate`, `arch:police`, `arch:audit`, `npm test`, production audit). Steps: `npm ci` → `db:rebuild` → `build` → Playwright Chromium → `npm run test:e2e` under `xvfb-run` on Ubuntu.
+GitHub Actions runs E2E after the **quality** job (`validate`, `npm test`, production audit). Steps: `npm ci` → `db:rebuild` → `build` → Playwright Chromium → `npm run test:e2e` under `xvfb-run` on Ubuntu.
 
 **Secrets** (repository Settings → Actions):
 
@@ -51,7 +51,9 @@ GitHub Actions runs E2E after the **quality** job (`validate`, `arch:police`, `a
 
 Without these secrets, tests that require real credentials will fail in CI with an explicit error.
 
-Tagged releases (`v*`) wait for both **quality** and **e2e** before the Windows portable build.
+**Onboarding selectors:** Age Gate uses `#age-confirm` / `#tos-accept`. Account credentials are saved in E2E via `window.api.saveSettings` (IPC) with trimmed `TEST_USER_ID` / `TEST_API_KEY`, then the page reloads. In `NODE_ENV=test`, main process uses a reversible test credential encoding when Linux headless CI has no OS keychain (`safeStorage` unavailable).
+
+Tagged releases (`v*`) wait for both **quality** and **e2e** before Windows zip and Linux AppImage packaging jobs run.
 
 ## Test Structure
 

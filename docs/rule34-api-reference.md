@@ -69,7 +69,7 @@ When using the Rule34.xxx API or serving content from their CDN, you must comply
 | Parameter | Type    | Description                   | Constraints                                                        |
 | --------- | ------- | ----------------------------- | ------------------------------------------------------------------ |
 | `limit`   | integer | Number of posts to retrieve   | Hard limit: 1000 posts per request                                 |
-| `pid`     | integer | Page number                   | -                                                                  |
+| `pid`     | integer | Page number (0-based in requests) | **Offset cap:** reliable results for pid 0–3 only (~4 pages at typical `limit`). Higher pid often returns empty. |
 | `tags`    | string  | Tag combination to search for | Any tag combination that works on the website, including meta-tags |
 | `cid`     | integer | Change ID of the post         | Unix timestamp (may have duplicates if updated simultaneously)     |
 | `id`      | integer | Post ID                       | -                                                                  |
@@ -81,7 +81,26 @@ When using the Rule34.xxx API or serving content from their CDN, you must comply
 - Tag combinations follow the same rules as the website search
 - See the cheatsheet for information on meta-tags
 
-**Example:**
+#### Pagination beyond the offset cap
+
+Rule34 DAPI stops returning useful results after roughly **four offset pages** (`pid` 0–3). This is an API limitation, not a client bug.
+
+**RuleDesk Browse strategy (Rule34 provider):**
+
+1. **Pages 1–4** — normal offset pagination (`page` 1→4, `limit` 50 → `pid` 0–3).
+2. **Page 5+** — cursor pagination: append meta-tag `id:<postId>` to the tag query, keep `pid=0`, pass the minimum post id from the previous batch as `beforePostId` via IPC (`searchBooru`).
+
+**Example cursor request** (posts older than id 1234567):
+
+```
+https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=blue_hair+id:%3C1234567&limit=50&pid=0&json=1
+```
+
+(`%3C` is URL-encoded `<`.)
+
+Implementation: `SearchController.search`, `getSearchBrowseNextPageParam` in `src/renderer/utils/react-query-cache.ts`, constant `RULE34_MAX_OFFSET_PAGES` in `src/shared/constants.ts`.
+
+**Example (offset page):**
 
 ```
 https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=tag1+tag2&limit=100&json=1
@@ -229,10 +248,11 @@ If your client optimizes media delivery by selecting a faster host, keep a safe 
 
 ### Performance Considerations
 
-- Use pagination (`pid` parameter) for large result sets
-- Respect the 1000 post limit per request
-- Consider parallel requests for independent data (with rate limiting)
-- Optimize tag queries to reduce response size
+- **Sync / artist repair:** use `pid` offset pagination with conservative `limit` (RuleDesk sync uses incremental `lastPostId`, not deep offset).
+- **Browse (deep scroll):** first four pages via `pid`; then meta-tag cursor `id:<postId>` with `pid=0` (handled automatically in Browse).
+- Respect the **1000 post limit per request** (`limit` parameter).
+- Consider parallel requests for independent data (with rate limiting).
+- Optimize tag queries to reduce response size.
 
 ### Security
 

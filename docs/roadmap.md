@@ -129,13 +129,14 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 ## 🔧 Technical Improvements (From Audit) & DX
 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; `test:run` / watch / coverage rebuild `better-sqlite3` for Node before running; `npm test` restores Electron ABI via `posttest`.
-- ✅ **CI:** `validate`, `arch:police`, `arch:audit`, `npm test`, and production `npm audit --omit=dev --audit-level=high` on every push/PR; release tags wait for quality + e2e.
-- ✅ **Dependencies:** Removed unused UI packages; `repomix` / Inquisitor moved to devDependencies; security bumps (Electron 39.8.x, drizzle-orm 0.45+, axios, dompurify, react-router-dom).
+- ✅ **CI:** `validate`, `npm test`, and production `npm audit --omit=dev --audit-level=high` on every push/PR; release tags wait for quality + e2e, then publish Windows zip + Linux AppImage (macOS binaries not distributed).
+- ✅ **Dependencies:** Removed unused UI packages; `repomix` in devDependencies; security bumps (Electron 39.8.x, drizzle-orm 0.45+, axios, dompurify, react-router-dom).
 - ✅ **Main process dev experience:** main sources are watched in development (`electron.vite.config.ts`), closing the previous manual-restart-only loop for routine IPC/service edits.
 - ✅ **Shared validation in Main:** IPC controller registration uses typed wrapper handlers; shared tuple parsing helpers in handler modules where appropriate.
 - ✅ **Video pipeline baseline:** hardware decode flags and `<video>` attribute tuning landed; remaining work is regression-driven per platform/device.
-- ✅ **Post-audit regression tests:** Vitest coverage for decrypt fail-safe, DI token keys, artist list cap, sync/repair serialization, and worker post mapping (140 tests total).
-- ⏳ **Tooling / hygiene:** keep `validate` green; optional stricter policy on logging and IPC surface over time. Remaining dev-only audit noise (electron-builder / Inquisitor transitive deps) is tracked separately from production `npm audit`.
+- ✅ **Post-audit regression tests:** Vitest coverage for decrypt fail-safe, DI token keys, artist list cap, sync/repair serialization, worker post mapping, provider search IPC payload parsing, Rule34 fetch error classification, and tag-resolve dedup (171 tests total).
+- ✅ **Provider search errors:** Typed provider failures, IPC-safe serialization, `BrowseErrorState` UI, sync auth → `SYNC.ERROR` (no silent empty Browse on auth/429).
+- ⏳ **Tooling / hygiene:** keep `validate` green; optional stricter policy on logging and IPC surface over time. Remaining dev-only audit noise (electron-builder transitive deps) is tracked separately from production `npm audit`.
 
 ## 🏗️ Architecture Considerations
 

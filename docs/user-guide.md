@@ -27,25 +27,48 @@ Welcome to RuleDesk! This guide will help you get started and use all the featur
 
 ## Installation
 
+### Official release binaries
+
+Tagged [Releases](https://github.com/KazeKaze93/ruledesk/releases) ship **pre-built binaries for Windows and Linux only**. CI builds each platform on its native runner so the native `better-sqlite3` module matches the target OS.
+
+| Platform | Release artifact | Status |
+|----------|------------------|--------|
+| **Windows** | `RuleDesk-<version>-win.zip` | ✅ Published on every `v*` tag |
+| **Linux (x64)** | `RuleDesk-<version>.AppImage` | ✅ Published on every `v*` tag |
+| **macOS** | — | ❌ Not distributed (see below) |
+
 ### Windows
 
-1. Download the portable `.exe` file from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
-2. Place it in any folder
-3. Run `RuleDesk.exe` directly
-4. Your data will be stored in a `data/` folder next to the executable
+1. Download `RuleDesk-<version>-win.zip` from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
+2. Extract the archive
+3. Run `RuleDesk.exe`
 
-### macOS
-
-1. Download the `.dmg` file from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
-2. Open the `.dmg` file
-3. Drag RuleDesk to your Applications folder
-4. Open RuleDesk from Applications (you may need to allow it in System Preferences > Security)
+Application data is stored in the same location as the dev build (`%LOCALAPPDATA%/.rdcache` on Windows). Updates: use **Download** in the in-app notification to open the latest release on GitHub.
 
 ### Linux
 
-1. Download the `.AppImage` file from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
+1. Download the `RuleDesk-<version>.AppImage` file from the [Releases page](https://github.com/KazeKaze93/ruledesk/releases)
 2. Make it executable: `chmod +x RuleDesk-*.AppImage`
 3. Run it: `./RuleDesk-*.AppImage`
+
+**Notes:**
+
+- AppImage bundles the app; no system-wide install is required.
+- Some distributions need FUSE (`libfuse2`) to run AppImages. If launch fails, install your distro's `libfuse2` / `fuse` package and retry.
+- Application data: `~/.config/.rdcache/` (same as a local dev build on Linux).
+
+### macOS — not distributed
+
+macOS **`.dmg` installers are not published**. Reasons:
+
+- Apple **code signing and notarization** are required for a smooth “open from Downloads” experience on modern macOS.
+- That needs a paid Apple Developer account, signing certificates, and extra CI secrets/maintenance.
+
+The Electron app can still be built from source on a Mac (`npm install && npm run dev`, or `electron-builder --mac` locally), but **GitHub Releases do not include a macOS binary**. Use Windows or Linux releases, or build from source.
+
+### Build from source (any OS)
+
+Clone the repo, run `npm install`, then `npm run dev`. See [README — Development Setup](https://github.com/KazeKaze93/ruledesk#-development-setup) for the full gate (`validate`, tests, native rebuild notes).
 
 ---
 
@@ -221,7 +244,9 @@ Each post card shows:
 - The clear button in the search bar clears tag chips.
 - Click a chip to put it back into the input for editing; right-click still toggles include/exclude.
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
-- Browse source modes **Favorites** / **Subscriptions** require a non-empty tag query by design.
+- **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically).
+- **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings** when credentials are invalid).
+- Browse source modes **Favorites** / **Subscriptions** query your **local cache** and require a non-empty tag query by design.
 
 ### Favorites
 
@@ -297,7 +322,7 @@ The download will start, and you'll see a progress indicator.
 **Filter by source:**
 
 1. In views that show the filter panel, open the top bar **Filters** control
-2. Choose **All**, **Favorites**, or **Subscriptions**
+2. Choose **All** (live booru API), **Favorites** (local cache), or **Subscriptions** (local cache, tracked artists/tags)
 3. Gallery updates automatically
 
 **Filter by media type:**
@@ -352,7 +377,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 ### Sidebar Sections
 
 - **Updates** - See new posts from your tracked sources. A purple badge shows unread count and auto-refreshes periodically.
-- **Browse** - Browse cached posts with filters and sorting
+- **Browse** - Search the live booru (Source: All) or filter cached posts (Favorites / Subscriptions); infinite scroll, filters, and sorting
 - **Favorites** - Your favorited posts collection
 - **Playlists** - Manual playlists and smart collections
 - **Artists** - Manage your tracked artists and tags
@@ -416,6 +441,11 @@ Settings are split into tabs:
 
 - **Theme** - `System`, `Light`, `Dark`
 
+### Blacklist
+
+- **Tag blacklist** - Hide posts that contain specific tags from Browse and local galleries
+- Tags are stored locally; pagination still uses the raw API batch size before filtering
+
 ### Backup
 
 - **Create Backup** - Save a timestamped backup of your database
@@ -431,7 +461,7 @@ Settings are split into tabs:
 - **API key status** - `Configured` / `Not configured` badge
 - **Save API key** - Update credentials from Settings
 
-**Important (portable):** API key is encrypted with OS-level security and bound to the current user on the current machine. If you move the app folder to another computer or another account, the key cannot be decrypted and must be entered again in **Settings -> Account**.
+**Important:** API key is encrypted with OS-level security and bound to the current user on the current machine. If you move to another computer or another Windows account, the key cannot be decrypted and must be entered again in **Settings -> Account**.
 
 ### Status badges behavior
 
@@ -516,6 +546,17 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 3. Try the "Repair" button on the artist card (resyncs from beginning)
 4. Check the sync progress messages for errors
 
+### Browse stopped loading more posts
+
+**Problem:** Scrolling Browse (Source: **All**) no longer loads new posts.
+
+**Solutions:**
+
+1. Confirm API credentials in **Settings → Account**
+2. Clear restrictive filters (AI, media, rating, date) — client-side filters only apply to already loaded pages
+3. If using **Favorites** / **Subscriptions**, add at least one tag in the search bar (required by design)
+4. If Browse shows a centered error screen (not the empty “no posts” state), use **Retry** or **Open Settings** for auth failures — messages distinguish invalid API credentials, rate limits, and network errors
+
 ### App is slow
 
 **Problem:** App feels sluggish, especially with many posts.
@@ -555,17 +596,18 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 
 **Database locations:**
 
-The application uses Electron's `app.getPath("userData")` to determine the database location. This ensures compatibility across different installation methods and operating systems.
+The application redirects `userData` to a neutral `.rdcache` directory. Development and packaged builds use the same paths on a given machine:
 
-**Standard locations (managed by Electron in development/unpackaged mode):**
-- **Windows:** `%LOCALAPPDATA%/.rdcache/data.bin`
-- **macOS:** `~/Library/Application Support/.rdcache/data.bin`
-- **Linux:** `~/.config/.rdcache/data.bin`
+- **Windows:**
+  - Database: `%LOCALAPPDATA%\.rdcache\data.bin`
+  - Logs: `%LOCALAPPDATA%\.rdcache\logs\app.log`
+  - Backup schedule: `%LOCALAPPDATA%\.rdcache\backup-settings.json`
+- **macOS:** `~/Library/Application Support/.rdcache/`
+- **Linux:** `~/.config/.rdcache/`
 
-**Portable mode:**
-- **Portable:** `<exe_dir>/data/data.bin` (because `userData` is redirected to `<exe_dir>/data/`)
+**Note:** Data is not stored next to `RuleDesk.exe`. You can move or replace the app folder freely; local database, logs, and settings stay under `.rdcache` until you delete that directory.
 
-**Note:** The exact path may vary. The application automatically detects the correct location using Electron's built-in path management. You don't need to manually locate the database file unless troubleshooting.
+**Legacy (pre-fix builds):** `%APPDATA%\RuleDesk\` may still contain old `logs/` and `backup-settings.json`. New builds copy them into `.rdcache` on first launch when targets are missing.
 
 ---
 

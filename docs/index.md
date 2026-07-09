@@ -29,6 +29,7 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 - **[Rule34 API Reference](./rule34-api-reference.md)** - Unofficial Rule34.xxx API documentation
   - [API Keys](./rule34-api-reference.md#api-keys) - Requesting and managing API keys
   - [Endpoints](./rule34-api-reference.md#endpoints) - Available API endpoints
+  - [Pagination beyond the offset cap](./rule34-api-reference.md#pagination-beyond-the-offset-cap) - Browse cursor pagination (`id:<postId>`)
   - [Best Practices](./rule34-api-reference.md#best-practices-and-cautions) - Rate limiting, caching, security
 
 ### Planning & Roadmap
@@ -97,7 +98,7 @@ Engineering materials are intentionally grouped here to keep the top-level index
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
 - [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, CI/CD
 - [Unit test guide](../tests/unit/README.md) - Vitest unit/property test layout
-- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (**140** Vitest tests across 20 files)
+- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (**171** Vitest tests across 25 files)
 - [Integration test notes](../tests/integration/README.md) - IPC + SQLite integration tests
 - [.cursorrules](../.cursorrules) - Engineering standards
 - [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants (do not add root `LESSONS.md`)
@@ -107,13 +108,11 @@ Engineering materials are intentionally grouped here to keep the top-level index
 | Step | Command |
 |------|---------|
 | Typecheck + lint + img policy | `npm run validate` |
-| All Vitest suites (140 tests) | `npm test` |
+| All Vitest suites (171 tests) | `npm test` |
 | Pre-PR full gate | `npm run test:verify` |
-| Architecture audit (Node) | `npm run arch:audit` |
-| Architecture police (Python 3.11+) | `npm run arch:police` |
 | Production dependency audit | `npm audit --omit=dev --audit-level=high` |
 
-CI (`.github/workflows/ci.yml`) runs **validate**, **arch:police**, **arch:audit**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass.
+CI (`.github/workflows/ci.yml`) runs **validate**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass, then publish **Windows zip** and **Linux AppImage** (macOS binaries are not distributed — see [user guide — Installation](./user-guide.md#installation)).
 
 ---
 

@@ -504,7 +504,7 @@ const posts = await db.query.posts.findMany({
    - `ViewerController.ts` - Viewer-related operations
    - `FileController.ts` - File download and management
    - `SystemController.ts` - System-level operations (version, clipboard, etc.)
-   - `SearchController.ts` - Booru search and tag resolution operations (`searchBooru`, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
+   - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
 
    **BaseController** (`src/main/core/ipc/BaseController.ts`):
 
@@ -619,21 +619,26 @@ const posts = await db.query.posts.findMany({
    - Uses platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
    - Unit tests: `tests/unit/utils/decrypted-credentials.test.ts`
 
-11. **Browse client-side filtering (Web Worker)** (`src/renderer/workers/data-processor.worker.ts`)
+11. **Browse** (`src/renderer/components/pages/Browse.tsx`, `SearchController.search`, `src/renderer/utils/react-query-cache.ts`)
 
-   - **Browse** offloads filter + sort to a Web Worker (`useWorkerFilteredPosts` + `useWorkerProcessor`) so the UI thread does not scan 10k+ posts on every filter change.
+   - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`, infinite scroll through `useGalleryInfiniteScroll`.
+   - **Rule34 deep pagination:** offset pages 1–4 (`RULE34_MAX_OFFSET_PAGES`), then cursor via meta-tag `id:<postId>` (`beforePostId` / `nextBeforePostId`); `getSearchBrowseNextPageParam()` drives React Query `pageParam`.
+   - **Local source modes:** Favorites / Subscriptions use cached DB posts via `getArtistPosts` (page numbers only).
+   - **Client-side filter/sort:** when non-default filters are active, `useWorkerFilteredPosts` offloads filter + sort to a Web Worker (`data-processor.worker.ts`) so the UI thread does not scan large loaded lists on every filter change.
    - Worker output is mapped back via `mapWorkerPostToPost()` in `src/renderer/lib/map-worker-post.ts` (preserves `mediaType`, `viewCount`, `lastViewedAt`; infers `mediaType` from `fileUrl` when missing).
    - Filter config is debounced (~250 ms); raw post pages are not debounced (scroll/load latency).
-   - Worker errors surface in Browse as a destructive `Alert` (empty list alone is not sufficient feedback).
+   - **Provider search failures** (auth, rate limit, network, parse): `Rule34Provider` throws typed `ProviderSearchError`; `SearchController` rethrows via `throwProviderSearchIpcError()` (enumerable `code` / `providerKind` on `Error`, no `stack` or raw API body to renderer). Renderer parses with `parseProviderSearchErrorPayload()` in `src/shared/utils/provider-search-ipc.ts` and shows `BrowseErrorState` (centered empty-state layout; auth → **Open Settings**).
+   - **Worker filter/sort failures** (client-side only): partial failure uses a neutral `Alert` above loaded posts; fatal query failure uses `BrowseErrorState`.
+   - **Preload constraint:** `src/main/bridge.ts` must stay thin — do **not** import shared Zod/schemas in preload (breaks `contextBridge.exposeInMainWorld` → perpetual Loading).
    - **Removed:** orientation filter (no UI; dead code removed from store, worker, and gallery pages).
-   - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts` (`mapWorkerPostToPost`).
+   - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts`, `tests/unit/utils/react-query-cache.test.ts`.
 
-12. **Bridge** (`src/main/bridge.ts`)
+12. **Bridge** (`src/main/bridge.ts`, built to `out/preload/bridge.cjs`)
 
-- Defines the IPC interface
-- Exposed via preload script
-- Type-safe communication contract
-- Event listener management for real-time updates
+- Defines the IPC interface exposed as `window.api`
+- Preload forwards `ipcRenderer.invoke` / event subscriptions only — no business logic, no shared-schema imports
+- Type-safe communication contract (TypeScript types on both sides)
+- Provider-search error normalization happens in Main (`throwProviderSearchIpcError`) and Renderer (`parseProviderSearchErrorPayload`), not in preload
 
 13. **Main Entry** (`src/main/main.ts`)
     - Application initialization
@@ -668,7 +673,7 @@ const posts = await db.query.posts.findMany({
    - **Pages:**
 
     - **Updates.tsx** - Subscriptions feed (implemented, with remaining roadmap parity gaps)
-    - **Browse.tsx** - All posts view with filtering and sorting (implemented)
+    - **Browse.tsx** - Live booru search (Source: All) with infinite scroll, filters, and sorting; Favorites/Subscriptions modes query the local cache (implemented)
     - **Favorites.tsx** - Favorites collection (implemented)
      - **Tracked.tsx** - Artists and tags management (fully implemented)
     - **Settings.tsx** - Application configuration shell (tabbed IA, fully implemented)
@@ -1319,10 +1324,14 @@ External API calls are abstracted through the **Provider Pattern** (`src/main/pr
 3. **SyncService Integration:**
    - Uses provider pattern to fetch posts
    - **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
-   - **Pagination:** Handles booru-specific pagination (up to 1000 posts per page)
-   - **Incremental Sync:** Only fetches posts newer than `lastPostId`
-   - **Error Handling:** Graceful handling of API errors and network failures
+   - **Pagination:** Incremental sync by `lastPostId` (not deep offset into historical pages)
+   - **Error Handling:** `auth` / `rate_limit` provider errors during pagination propagate to `SYNC.ERROR`; `network` / `parse` and transient 5xx stop the current artist gracefully without marking sync failed
    - **Authentication:** Uses User ID and API Key from settings table
+
+4. **Browse search (`SearchController.search`):**
+   - **Page size:** 50 posts per request (configurable `limit`, max 100)
+   - **Rule34 offset cap:** pages 1–4 via `pid`; page 5+ via meta-tag cursor `id:<postId>` with `pid=0`
+   - **Response metadata:** `hasMore`, `apiFetchedCount`, `nextBeforePostId` for infinite scroll (blacklist applied after fetch)
 
 ### Download Flow
 
@@ -1388,9 +1397,13 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 **CI pipeline** (`.github/workflows/ci.yml`):
 
-1. `validate` → `arch:police` → `arch:audit` → `npm test` → `npm audit --omit=dev --audit-level=high`
+1. `validate` → `npm test` → `npm audit --omit=dev --audit-level=high`
 2. E2E on built artifact
-3. Tagged releases: portable Windows build after quality + e2e
+3. Tagged releases (parallel native runners after quality + e2e):
+   - **Windows:** `RuleDesk-*-win.zip` (`windows-latest`)
+   - **Linux:** `RuleDesk-*.AppImage` (`ubuntu-latest`, `libfuse2` for AppImage)
+   - **macOS:** not published (no signed/notarized CI pipeline; build from source locally if needed)
+   - Each packaging job runs `npm run check:release-artifacts` before upload (no `.map`, tests, `.env`, fixture secrets, or `sourceMappingURL` in `out/**`)
 
 **Local maintainer gate:** `npm run test:verify` (= validate + all Vitest + Electron rebuild).
 
@@ -1708,13 +1721,13 @@ Root:
 - **Electron Version:** 39.8.x with latest security patches
 - **Build System:** electron-vite for optimal build performance
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
-- **Portable Mode:** Automatic detection and support for portable executables (`app.isPackaged` -> `app.setPath("userData", <exe_dir>/data)`)
+- **User Data Path:** Neutral `.rdcache` directory for dev and packaged builds (`bootstrap-user-data.ts` runs before logger and electron-store)
 
 **Database & Schema:**
 
 - **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata`, `playlists`, `playlist_entries`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
-- **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `arch:audit`, `npm test`, and production `npm audit`
+- **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `npm test`, and production `npm audit`
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
 - **Provider Support:** Multi-booru support with `provider` field (rule34, gelbooru)
 - **Artist Types:** Support for `tag`, `uploader`, and `query` types
@@ -1751,27 +1764,28 @@ Root:
 1. ✅ **Sync Service:** Dedicated service for multi-booru API synchronization with progress tracking
 2. ✅ **Settings Management:** Secure storage of API credentials with encryption using Electron's `safeStorage` API
 3. ✅ **Artist Tracking:** Support for tag-based tracking with autocomplete search and tag normalization (multi-provider)
-4. ✅ **Post Gallery:** Grid view of cached posts with preview images and pagination
-5. ✅ **Progressive Image Loading:** 3-layer loading system (Preview → Sample → Original) for instant viewing
-6. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
-7. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
-8. ✅ **Event System:** Real-time IPC events for sync progress, update status, and download progress
-9. ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
-10. ✅ **Secure Storage:** API credentials encrypted at rest using Electron's `safeStorage` API
-11. ✅ **Backup/Restore:** Manual database backup and restore functionality with integrity checks and timestamped backups
-12. ✅ **Search Functionality:** Local artist search and remote tag search via booru autocomplete API (multi-provider)
-13. ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
-14. ✅ **Favorites System:** Mark and manage favorite posts with toggle functionality
-15. ✅ **Download Manager:** Download full-resolution files with progress tracking
-16. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
-17. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
-18. ✅ **Global Top Bar:** Search, `FiltersPanel` (AI, media, source), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines.
-19. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
-20. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
-21. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
-22. ✅ **Portable Mode:** Automatic detection and support for portable executables (`app.isPackaged` -> `app.setPath("userData", <exe_dir>/data)`)
-23. ✅ **IPC Controllers:** Controller-based architecture with `BaseController` and dependency injection
-24. ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
+4. ✅ **Post Gallery:** Grid view of cached artist posts with preview images and pagination
+5. ✅ **Browse:** Live booru search with infinite scroll (Rule34 cursor pagination after offset cap)
+6. ✅ **Progressive Image Loading:** 3-layer loading system (Preview → Sample → Original) for instant viewing
+7. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
+8. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
+9. ✅ **Event System:** Real-time IPC events for sync progress, update status, and download progress
+10. ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
+11. ✅ **Secure Storage:** API credentials encrypted at rest using Electron's `safeStorage` API
+12. ✅ **Backup/Restore:** Manual database backup and restore functionality with integrity checks and timestamped backups
+13. ✅ **Search Functionality:** Local artist search, remote tag search, and Browse `searchBooru` with deep pagination (multi-provider)
+14. ✅ **Mark as Viewed:** Ability to mark posts as viewed for better organization
+15. ✅ **Favorites System:** Mark and manage favorite posts with toggle functionality
+16. ✅ **Download Manager:** Download full-resolution files with progress tracking
+17. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
+18. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
+19. ✅ **Global Top Bar:** Search, `FiltersPanel` (AI, media, source), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines.
+20. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
+21. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
+22. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
+23. ✅ **User Data Path:** Neutral `.rdcache` directory for dev and packaged builds
+24. ✅ **IPC Controllers:** Controller-based architecture with `BaseController` and dependency injection
+25. ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 
 ## Active Roadmap (Priority Tasks)
 
@@ -1864,14 +1878,14 @@ Based on a comprehensive technical audit, here's the current implementation stat
 
 - **Developer HMR:** Renderer HMR and watched Main/Preload rebuild loop are in place
 - **Input Sanitization:** Zod validation is enforced at IPC boundaries. Shared wrapper/tuple patterns are now used across controllers to reduce registration drift.
-- **Error Handling:** IPC handlers have try-catch blocks, but some return raw errors instead of user-friendly messages
+- **Error Handling:** Provider search and sync auth paths return user-facing messages; other IPC domains still rely on generic `Error.message` at the boundary
 - **Modern Video:** Baseline tuning is shipped; further platform-specific tuning remains regression-driven
 
 ### ⏳ Missing / Planned
 
 - **Safe Mode / NSFW Filter:** ✅ **COMPLETED:** blur logic and safe mode state are implemented in gallery/viewer flows
 - **Age Gate:** ✅ **COMPLETED:** Age gate component (`AgeGate.tsx`) and `confirmLegal` IPC method implemented
-- **Portable Mode:** ✅ Implemented via `app.isPackaged` + `app.setPath("userData", path.join(path.dirname(process.execPath), "data"))`
+- **User Data Path:** ✅ Neutral `.rdcache` via `bootstrap-user-data.ts` (not next to the executable)
 - **Anti-Bot Measures:** Static User-Agent strings, fixed delays (1.5s/0.5s) but no randomization or rotation
 - **DB Optimization (FTS5):** ✅ FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
 - **Composite Indexes:** ✅ Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries

@@ -252,7 +252,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     set((state) => ({
       filters: { ...state.filters, ...newFilters },
     })),
-  resetFilters: () => set({ filters: DEFAULT_FILTERS }),
+  resetFilters: () => set({ filters: { ...DEFAULT_FILTERS } }),
   setViewType: (viewType) => set({ viewType }),
   setIsRandom: (isRandom) => set({ isRandom }),
   toggleIsRandom: () => set((state) => ({ isRandom: !state.isRandom })),

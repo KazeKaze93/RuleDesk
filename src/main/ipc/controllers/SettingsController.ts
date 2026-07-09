@@ -21,6 +21,8 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { z } from "zod";
 import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
+import { normalizeCredentialsInput } from "../../../shared/utils/parse-credentials";
+import { getDecryptedCredentialsFromRecord, hasConfiguredApiKey } from "../../utils/decrypted-credentials";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -61,13 +63,20 @@ function mapSettingsToIpc(
 ): IpcSettings {
   // Map database representation to IPC format
   // TypeScript ensures type safety - no runtime validation needed
+  const credentials = getDecryptedCredentialsFromRecord({
+    userId: dbSettings.userId,
+    encryptedApiKey: dbSettings.encryptedApiKey,
+  });
+
   return {
     hasSettingsRecord,
     userId: dbSettings.userId ?? "",
     provider: (dbSettings.provider as ProviderId) ?? "rule34",
-    hasApiKey: !!(
-      dbSettings.encryptedApiKey && dbSettings.encryptedApiKey.trim().length > 0
-    ),
+    // True when a key is stored; decrypt must succeed for API calls, not for gate dismissal.
+    hasApiKey: hasConfiguredApiKey({
+      encryptedApiKey: dbSettings.encryptedApiKey,
+      credentials,
+    }),
     proxyUrl: dbSettings.proxyUrl ?? null,
     // Convert SQLite integer booleans (0/1) to JavaScript booleans
     // Drizzle with mode: "boolean" already returns boolean, but ensure type safety
@@ -239,7 +248,19 @@ export class SettingsController extends BaseController {
     _event: IpcMainInvokeEvent,
     data: SaveSettings
   ): Promise<boolean> {
-    const { userId, apiKey, provider } = data;
+    const normalized = normalizeCredentialsInput({
+      userId: data.userId,
+      apiKey: data.apiKey,
+    });
+    const userId = normalized.userId;
+    const apiKey = normalized.apiKey;
+    const { provider } = data;
+
+    if (apiKey && !userId) {
+      throw new Error(
+        "User ID is required. Paste credentials as api_key=...&user_id=... or enter User ID separately."
+      );
+    }
 
     try {
       const db = this.getDb();

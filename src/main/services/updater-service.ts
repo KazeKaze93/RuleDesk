@@ -4,7 +4,7 @@ import { logger } from "../lib/logger";
 import { BrowserWindow, ipcMain, shell } from "electron";
 import { IPC_CHANNELS } from "../ipc/channels";
 
-const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
+const RELEASES_URL = "https://github.com/KazeKaze93/ruledesk/releases/latest";
 
 export class UpdaterService {
   private window: BrowserWindow | null = null;
@@ -33,11 +33,9 @@ export class UpdaterService {
 
     autoUpdater.on("update-available", (info) => {
       logger.info(`UPDATER: Update available: ${info.version}`);
-      // Отправляем версию UI, но не качаем
       this.sendPayload(IPC_CHANNELS.UPDATER.STATUS, {
         status: "available",
         version: info.version,
-        isPortable: isPortable,
       });
     });
 
@@ -51,40 +49,29 @@ export class UpdaterService {
       this.sendStatus("error", err.message);
     });
 
-    autoUpdater.on("download-progress", (progressObj) => {
-      this.sendPayload(IPC_CHANNELS.UPDATER.PROGRESS, progressObj.percent);
-    });
-
-    autoUpdater.on("update-downloaded", (info) => {
-      logger.info(`UPDATER: Downloaded ${info.version}`);
-      this.sendStatus("downloaded");
-    });
-
     ipcMain.handle(IPC_CHANNELS.APP.CHECK_FOR_UPDATES, async () => {
       return this.checkForUpdates();
     });
 
     ipcMain.handle(IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD, async () => {
-      if (isPortable) {
-        logger.info("UPDATER: Portable detected. Opening GitHub releases.");
-        await shell.openExternal(
-          "https://github.com/KazeKaze93/ruledesk/releases/latest"
-        );
-        return;
-      }
-
-      logger.info("UPDATER: User requested download starting...");
-      autoUpdater.downloadUpdate();
+      logger.info("UPDATER: Opening GitHub releases for manual ZIP update.");
+      await shell.openExternal(RELEASES_URL);
     });
 
-    ipcMain.handle(IPC_CHANNELS.APP.QUIT_AND_INSTALL, () => {
-      autoUpdater.quitAndInstall();
+    ipcMain.handle(IPC_CHANNELS.APP.QUIT_AND_INSTALL, async () => {
+      logger.info("UPDATER: Opening GitHub releases (no in-app installer for ZIP build).");
+      await shell.openExternal(RELEASES_URL);
     });
   }
 
-  private sendPayload(channel: string, data: unknown) {
-    if (this.window && !this.window.isDestroyed()) {
-      this.window.webContents.send(channel, data);
+  public async checkForUpdates(): Promise<void> {
+    if (process.env.NODE_ENV === "development") {
+      return;
+    }
+    try {
+      await autoUpdater.checkForUpdates();
+    } catch (error) {
+      logger.error("UPDATER: checkForUpdates failed:", error);
     }
   }
 
@@ -92,11 +79,9 @@ export class UpdaterService {
     this.sendPayload(IPC_CHANNELS.UPDATER.STATUS, { status, message });
   }
 
-  public async checkForUpdates() {
-    try {
-      await autoUpdater.checkForUpdates();
-    } catch (e) {
-      logger.error("UPDATER: Check failed", e);
+  private sendPayload(channel: string, payload: unknown) {
+    if (this.window && !this.window.isDestroyed()) {
+      this.window.webContents.send(channel, payload);
     }
   }
 }

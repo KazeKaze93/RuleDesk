@@ -6,6 +6,11 @@ import os from 'os';
 import { fileURLToPath } from 'url';
 import { waitForWindow } from './utils/window-helpers';
 import { waitForAppReady } from './utils/app-ready';
+import {
+  isAccountGateVisible,
+  isAgeGateVisible,
+  isMainAppShellVisible,
+} from './utils/onboarding';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -59,6 +64,18 @@ async function launchAppWithUserData(userDataDir: string) {
   return app;
 }
 
+async function getFirstWindowPage(app: Awaited<ReturnType<typeof launchAppWithUserData>>): Promise<Page> {
+  await new Promise(resolve => setTimeout(resolve, 5000));
+
+  const timeout = process.env.CI === 'true' ? 60000 : 30000;
+  try {
+    return await app.firstWindow({ timeout });
+  } catch (error) {
+    console.warn('firstWindow failed, using retry helper...', error);
+    return waitForWindow(app, timeout);
+  }
+}
+
 test.describe('Age Gate Persistence', () => {
   let userDataDir: string;
 
@@ -81,157 +98,67 @@ test.describe('Age Gate Persistence', () => {
   });
 
   test('should show Age Gate on first launch', async () => {
-    // First launch: Age Gate should be visible
     const app = await launchAppWithUserData(userDataDir);
     
     try {
-      // Wait for app to initialize (database migrations, etc.)
-      // Give it more time in CI/headless mode
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // Get the first window (with increased timeout for CI)
-      // In headless mode, windows may take longer to appear
-      const timeout = process.env.CI === 'true' ? 60000 : 30000;
-      let page: Page;
-      try {
-        page = await app.firstWindow({ timeout });
-      } catch (error) {
-        // If firstWindow fails, use retry helper
-        console.warn('firstWindow failed, using retry helper...', error);
-        page = await waitForWindow(app, timeout);
-      }
-      
-      // Wait for Age Gate UI elements to appear (replaces setTimeout)
-      const ageGateTitle = page.getByText('Age Verification & Terms');
-      const ageCheckbox = page.locator('#age-confirm');
-      
-      // Wait for app to be fully ready (DOM + React hydration)
+      const page = await getFirstWindowPage(app);
       await waitForAppReady(page, 30000);
-      
-      // Wait for either element to appear (Age Gate is visible)
-      await Promise.race([
-        ageGateTitle.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-        ageCheckbox.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-      ]);
-      
-      // Check if Age Gate is visible
-      const isAgeGateVisible = await ageGateTitle.isVisible().catch(() => false) || 
-                               await ageCheckbox.isVisible().catch(() => false);
-      
-      expect(isAgeGateVisible).toBe(true);
+
+      const ageCheckbox = page.locator('#age-confirm');
+      await expect(ageCheckbox).toBeVisible({ timeout: 10000 });
       console.log('[E2E] Age Gate is visible on first launch (expected)');
     } finally {
       await app.close();
-      // Wait for app to fully close
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   });
 
   test('should NOT show Age Gate on second launch after confirmation', async () => {
-    // Step 1: First launch - confirm Age Gate
     let app = await launchAppWithUserData(userDataDir);
     
     try {
-      // Wait for app to initialize (database migrations, etc.)
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // Get the first window (with increased timeout for CI)
-      const timeout = process.env.CI === 'true' ? 60000 : 30000;
-      let page: Page;
-      try {
-        page = await app.firstWindow({ timeout });
-      } catch (error) {
-        console.warn('firstWindow failed, using retry helper...', error);
-        page = await waitForWindow(app, timeout);
-      }
-      
+      const page = await getFirstWindowPage(app);
       await waitForAppReady(page, 30000);
-      
-      // Wait for Age Gate UI elements to appear (replaces setTimeout)
-      const ageGateTitle = page.getByText('Age Verification & Terms');
-      const ageCheckbox = page.locator('#age-confirm');
-      
-      // Wait for either element to appear (Age Gate is visible)
-      await Promise.race([
-        ageGateTitle.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-        ageCheckbox.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-      ]);
-      
-      const isAgeGateVisible = await ageGateTitle.isVisible().catch(() => false) || 
-                               await ageCheckbox.isVisible().catch(() => false);
-      
-      if (isAgeGateVisible) {
+
+      if (await isAgeGateVisible(page)) {
         console.log('[E2E] Age Gate detected. Confirming...');
-        
-        // Check the checkboxes
-        await ageCheckbox.check();
-        const tosCheckbox = page.locator('#tos-accept');
-        await tosCheckbox.check();
-        
-        // Click confirm button
-        const confirmButton = page.getByRole('button', { name: /enter ruleDesk|enter|confirm|continue/i });
+
+        await page.locator('#age-confirm').check();
+        await page.locator('#tos-accept').check();
+
+        const confirmButton = page.getByRole('button', { name: /enter ruledesk/i });
         await expect(confirmButton).toBeEnabled({ timeout: 3000 });
         await confirmButton.click();
-        
-        // Wait for Age Gate to disappear
-        await expect(ageGateTitle).not.toBeVisible({ timeout: 10000 });
+
+        await expect(page.locator('#age-confirm')).not.toBeVisible({ timeout: 10000 });
         await page.waitForTimeout(2000);
-        
+
         console.log('[E2E] Age Gate confirmed successfully');
       }
     } finally {
       await app.close();
-      // Wait a bit for app to fully close and release file locks
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    // Step 2: Second launch - Age Gate should NOT be visible
     app = await launchAppWithUserData(userDataDir);
     
     try {
-      // Wait for app to initialize (database migrations, etc.)
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // Get the first window (with increased timeout for CI)
-      const timeout = process.env.CI === 'true' ? 60000 : 30000;
-      let page: Page;
-      try {
-        page = await app.firstWindow({ timeout });
-      } catch (error) {
-        console.warn('firstWindow failed, using retry helper...', error);
-        page = await waitForWindow(app, timeout);
-      }
-      
+      const page = await getFirstWindowPage(app);
       await waitForAppReady(page, 30000);
-      
-      // Wait for main app UI to appear (replaces setTimeout)
-      // Age Gate should NOT be visible, so wait for main app elements instead
-      const mainAppButton = page.getByRole('button', { name: /add artist/i });
-      const onboardingInput = page.locator('#user-id-input');
-      
-      // Wait for either main app or onboarding to appear (Age Gate should be gone)
+
       await Promise.race([
-        mainAppButton.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-        onboardingInput.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        page.getByRole('heading', { name: /sign in to ruledesk/i }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        page.getByRole('link', { name: /^artists$/i }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        page.locator('#api-key').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
       ]);
-      
-      // Check if Age Gate is visible (it should NOT be)
-      const ageGateTitle = page.getByText('Age Verification & Terms');
-      const ageCheckbox = page.locator('#age-confirm');
-      
-      const isAgeGateVisible = await ageGateTitle.isVisible({ timeout: 2000 }).catch(() => false) || 
-                               await ageCheckbox.isVisible({ timeout: 2000 }).catch(() => false);
-      
-      expect(isAgeGateVisible).toBe(false);
+
+      expect(await isAgeGateVisible(page)).toBe(false);
       console.log('[E2E] Age Gate is NOT visible on second launch (expected - persistence works!)');
-      
-      // Verify we're on the main app or onboarding (but NOT Age Gate)
-      // Either we see the main app (if auth is configured) or onboarding (if not)
-      const isMainApp = await mainAppButton.isVisible({ timeout: 2000 }).catch(() => false);
-      const isOnboarding = await onboardingInput.isVisible({ timeout: 2000 }).catch(() => false);
-      
-      // We should be either on main app OR onboarding, but NOT on Age Gate
-      expect(isMainApp || isOnboarding).toBe(true);
+
+      const isAccountGate = await isAccountGateVisible(page);
+      const isMainApp = await isMainAppShellVisible(page);
+
+      expect(isMainApp || isAccountGate).toBe(true);
       console.log('[E2E] App navigated past Age Gate correctly');
     } finally {
       await app.close();

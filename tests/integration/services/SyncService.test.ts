@@ -5,6 +5,8 @@ import { artists, posts, settings, SETTINGS_ID } from '@/main/db/schema';
 import { eq } from 'drizzle-orm';
 import { getProvider } from '@/main/providers';
 import type { BooruPost } from '@/main/providers/types';
+import { ProviderSearchError } from '@/main/providers/provider-search-errors';
+import { IPC_CHANNELS } from '@/main/ipc/channels';
 
 // Mock Electron BEFORE imports
 vi.mock('electron', () => ({
@@ -473,6 +475,34 @@ describe('SyncService Integration', () => {
 
       expect(updatedArtist?.lastPostId).toBe(200);
     } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('should surface auth provider errors via SYNC.ERROR instead of silent success', async () => {
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi
+      .spyOn(provider, 'fetchPosts')
+      .mockRejectedValue(new ProviderSearchError('auth'));
+
+    const sendEventSpy = vi
+      .spyOn(service, 'sendEvent')
+      .mockImplementation(() => undefined);
+
+    try {
+      await service.syncAllArtists();
+
+      expect(fetchPostsSpy).toHaveBeenCalled();
+      expect(sendEventSpy).toHaveBeenCalledWith(
+        IPC_CHANNELS.SYNC.ERROR,
+        expect.stringContaining('Test Artist')
+      );
+      expect(sendEventSpy).toHaveBeenCalledWith(
+        IPC_CHANNELS.SYNC.ERROR,
+        expect.stringContaining('Settings')
+      );
+    } finally {
+      sendEventSpy.mockRestore();
       fetchPostsSpy.mockRestore();
     }
   });

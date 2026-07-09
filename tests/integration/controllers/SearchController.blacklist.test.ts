@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { container, DI_TOKENS } from "@/main/core/di/Container";
+import { settings, SETTINGS_ID } from "@/main/db/schema";
 import type Database from "better-sqlite3";
 
 let activeSqlite: Database.Database | null = null;
@@ -17,8 +18,8 @@ vi.mock("@/main/db/client", () => ({
 vi.mock("electron", () => ({
   app: { getPath: () => "/tmp" },
   safeStorage: {
-    isEncryptionAvailable: () => false,
-    decryptString: vi.fn(),
+    isEncryptionAvailable: () => true,
+    decryptString: vi.fn((buffer: Buffer) => buffer.toString()),
   },
   ipcMain: {
     handle: vi.fn(),
@@ -62,11 +63,20 @@ describe("SearchController blacklist integration", () => {
   let mockDb: ReturnType<typeof createMockDb>;
   let controller: SearchController;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
     container.register(DI_TOKENS.DB, mockDb.db);
+    await mockDb.db.insert(settings).values({
+      id: SETTINGS_ID,
+      userId: "12345",
+      encryptedApiKey: Buffer.from("test-api-key").toString("base64"),
+      provider: "rule34",
+      isSafeMode: false,
+      isAdultConfirmed: true,
+      isAdultVerified: true,
+    });
     controller = new SearchController();
     fetchPostsMock.mockReset();
   });
@@ -118,13 +128,14 @@ describe("SearchController blacklist integration", () => {
       isRandom: false,
     });
 
-    expect(Array.isArray(result)).toBe(true);
-    if (!Array.isArray(result)) {
-      throw new Error("Search result must be an array");
-    }
-    expect(result).toHaveLength(1);
+    expect(result).toBeDefined();
+    expect(typeof result).toBe("object");
+    expect(result && "posts" in result).toBe(true);
+    expect(Array.isArray(result.posts)).toBe(true);
+    expect(result.posts).toHaveLength(1);
+    expect(result.hasMore).toBe(false);
 
-    const post = result[0];
+    const post = result.posts[0];
     expect(post).toBeDefined();
     expect(typeof post).toBe("object");
     expect(post && "postId" in post).toBe(true);

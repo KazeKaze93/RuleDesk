@@ -2,7 +2,7 @@
 
 ## Overview
 
-Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. As of the v16.2.x post-audit suite, the default `npm test` run executes **140 tests** across **20 files** (unit + integration + property).
+Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **171 tests** across **25 files** (unit + integration + property).
 
 ## Test files (unit)
 
@@ -12,6 +12,8 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `hooks/useWorkerFilteredPosts.test.ts` | 7 | Worker post → Post field mapping |
 | `lib/filter-utils.test.ts` | 29 | AI tags, video detection |
 | `utils/decrypted-credentials.test.ts` | 7 | API key decrypt fail-safe |
+| `utils/parse-credentials.test.ts` | 6 | Credential paste parsing |
+| `utils/react-query-cache.test.ts` | 7 | Browse pagination / cursor helpers |
 | `core/di-container.test.ts` | 6 | DI token.id Map keys |
 | `components/filters/SourceSwitcher.test.ts` | 8 | Source filter |
 | `components/filters/FilterToggleGroup.test.ts` | 8 | Toggle group |
@@ -21,20 +23,28 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `components/VirtuosoGrid-totalCount.test.ts` | 5 | Virtualized grid |
 | `controllers/posts-tag-query.test.ts` | 5 | Tag query helpers |
 | `store/searchStore.test.ts` | 3 | Search store |
+| `shared/provider-search-ipc-payload.test.ts` | 8 | Provider IPC error parsing |
+| `providers/rule34-provider-fetch-posts.test.ts` | 5 | fetchPosts error classification |
+| `services/tag-resolve-coordinator.test.ts` | 3 | Tag resolve dedup / rate limit |
 
 ## Other Vitest suites
 
 | Suite | Location | Tests (approx.) |
 |-------|----------|-----------------|
-| Integration | `tests/integration/` | 16 |
+| Integration | `tests/integration/` | 22 |
 | Property / fuzzing | `tests/property/fuzzing.test.ts` | 12 |
+| Helpers | `tests/helpers/mock-db.test.ts`, `tests/utils/db.test.ts` | — |
 
-### Post-audit integration additions
+### Integration highlights
 
-| File | Tests | Area |
-|------|-------|------|
-| `controllers/ArtistsController.limit.test.ts` | 1 | `MAX_TRACKED_ARTISTS` truncation |
-| `services/SyncService.queue.test.ts` | 1 | `runExclusive` — repair’s `syncArtist` runs only after full sync completes (timing assertion, not just call order) |
+| File | Area |
+|------|------|
+| `controllers/ArtistsController.limit.test.ts` | `MAX_TRACKED_ARTISTS` truncation |
+| `controllers/ArtistsController.test.ts` | Add/update artist IPC |
+| `controllers/SearchController.blacklist.test.ts` | Browse blacklist filtering |
+| `controllers/SettingsController.test.ts` | Partial settings save |
+| `services/SyncService.queue.test.ts` | `runExclusive` — repair after full sync |
+| `services/SyncService.test.ts` | Sync pagination, graceful errors, auth → `SYNC.ERROR` |
 
 ## Running tests
 

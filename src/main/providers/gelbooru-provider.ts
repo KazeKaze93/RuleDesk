@@ -127,7 +127,13 @@ export class GelbooruProvider implements IBooruProvider {
     }
   }
 
-  async fetchPosts(tags: string, page: number, settings: ProviderSettings, isRandom: boolean = false): Promise<BooruPost[]> {
+  async fetchPosts(
+    tags: string,
+    page: number,
+    settings: ProviderSettings,
+    isRandom: boolean = false,
+    limit: number = 100
+  ): Promise<BooruPost[]> {
     await this.throttle.wait();
 
     // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
@@ -136,6 +142,7 @@ export class GelbooruProvider implements IBooruProvider {
     // If the provider doesn't support native randomization, this pseudo-random approach
     // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
     const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page;
+    const pageLimit = Math.min(1000, Math.max(1, limit));
 
     const safeTags = sanitizeProviderTagQuery(tags);
     // Gelbooru pages are 0-indexed usually, but let's stick to pid logic
@@ -143,7 +150,7 @@ export class GelbooruProvider implements IBooruProvider {
       page: "dapi",
       s: "post",
       q: "index",
-      limit: "100",
+      limit: String(pageLimit),
       pid: apiPage.toString(),
       tags: safeTags,
       json: "1",

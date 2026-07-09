@@ -31,6 +31,7 @@ import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
+import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -228,6 +229,7 @@ const CreatorsView = ({
 };
 
 export const Updates = () => {
+  useReleaseRadixModalLockOnMount();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const includeTags = useSearchStore((state) => state.includeTags);

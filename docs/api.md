@@ -117,6 +117,23 @@ const { data, fetchNextPage, hasNextPage } = useInfiniteQuery<Post[]>({
 const allPosts: Post[] = data?.pages.flatMap((page: Post[]) => page) || [];
 ```
 
+#### Pattern 2b: Browse remote search (offset + cursor)
+
+**Scenario:** Infinite scroll on the Browse page against the live booru API (`searchBooru`). Rule34 offset pagination is capped at four pages; deeper scroll uses cursor pagination via `beforePostId` / `nextBeforePostId`.
+
+Prefer `useGalleryInfiniteScroll` + `getSearchBrowseNextPageParam` (see `src/renderer/components/pages/Browse.tsx`) instead of hand-rolling page numbers:
+
+```typescript
+import { getSearchBrowseNextPageParam } from "@/renderer/utils/react-query-cache";
+import type { BrowseSearchPageParam } from "@/shared/schemas/search";
+
+// pageParam: number (pages 1–4) | { beforePostId: number } (page 5+)
+getNextPageParam: (lastPage, allPages) =>
+  getSearchBrowseNextPageParam(lastPage, allPages, 50);
+```
+
+Pagination decisions use **`apiFetchedCount`** (raw API batch size before blacklist), not filtered `posts.length`.
+
 #### Pattern 3: Event Listeners
 
 **Scenario:** Listen to real-time events (sync progress, downloads, etc.).
@@ -242,7 +259,18 @@ interface IpcBridge {
     query: string,
     provider?: ProviderId
   ) => Promise<SearchResults[]>;
-  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+  searchBooru: (params: {
+    tags: string[];
+    page: number;
+    isRandom?: boolean;
+    limit?: number;
+    beforePostId?: number;
+  }) => Promise<{
+    posts: Post[];
+    hasMore: boolean;
+    apiFetchedCount?: number;
+    nextBeforePostId?: number;
+  }>;
   resolveTags: (tags: string[]) => Promise<string[]>;
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
@@ -1146,7 +1174,7 @@ results.forEach((result) => {
 
 ---
 
-### `searchBooru(params: { tags: string[]; page: number })`
+### `searchBooru(params: { tags: string[]; page: number; isRandom?: boolean; limit?: number; beforePostId?: number })`
 
 Searches for posts on the booru API using specified tags and page number.
 
@@ -1157,21 +1185,58 @@ Searches for posts on the booru API using specified tags and page number.
 **Parameters:**
 
 - `params.tags: string[]` - Array of tags to search for
-- `params.page: number` - Page number for pagination
+- `params.page: number` - Page number for pagination (1-based). Ignored when `beforePostId` is set (cursor mode uses `pid=0`).
+- `params.isRandom?: boolean` - Use pseudo-random page selection (default: `false`)
+- `params.limit?: number` - Posts per page (default: `50`, max: `100`)
+- `params.beforePostId?: number` - Rule34 cursor: append meta-tag `id:<N>` and fetch with `pid=0` for posts older than the offset cap (Browse uses this after four offset pages).
 
-**Returns:** `Promise<Post[]>`
+**Returns:** `Promise<{ posts: Post[]; hasMore: boolean; apiFetchedCount?: number; nextBeforePostId?: number }>` — `hasMore` and `apiFetchedCount` reflect the raw API page size before blacklist filtering. Pagination must use `apiFetchedCount`, not filtered `posts.length`. `nextBeforePostId` is the minimum post id in the raw API batch (cursor for the next page).
 
-**Example:**
+**Browse pagination (Rule34):**
+
+| Phase | `pageParam` / IPC | API behavior |
+| ----- | ----------------- | ------------ |
+| Pages 1–4 | `page: 1` … `page: 4` | Normal offset (`pid` 0–3), 50 posts per page |
+| Page 5+ | `beforePostId: N`, `page: 1` | Appends `id:<N>` to tags, `pid=0` |
+
+Client helper: `getSearchBrowseNextPageParam()` in `src/renderer/utils/react-query-cache.ts`.
+
+**Example (first page):**
 
 ```typescript
-const posts = await window.api.searchBooru({
+const { posts, hasMore, apiFetchedCount, nextBeforePostId } =
+  await window.api.searchBooru({
+    tags: ["blue_hair", "solo"],
+    page: 1,
+    limit: 50,
+  });
+console.log(
+  `Visible ${posts.length}, API batch ${apiFetchedCount}, hasMore=${hasMore}, cursor=${nextBeforePostId}`
+);
+```
+
+**Example (cursor page):**
+
+```typescript
+await window.api.searchBooru({
   tags: ["blue_hair", "solo"],
   page: 1,
+  beforePostId: nextBeforePostId,
+  limit: 50,
 });
-console.log(`Found ${posts.length} posts`);
 ```
 
 **IPC Channel:** `booru:search`
+
+**Errors:** On provider failures `SearchController` calls `throwProviderSearchIpcError()` — an `Error` whose `message` is user-safe and whose enumerable fields match `ProviderSearchErrorPayload` (`name`, `code`, `providerKind`, optional `retryAfterMs`). **No** `stack`, `originalError`, or raw API body crosses IPC. Preload does not parse or reshape these errors.
+
+Renderer flow:
+
+1. React Query `queryFn` rejects with Electron’s wrapped invoke error.
+2. `parseProviderSearchErrorPayload()` in `src/shared/utils/provider-search-ipc.ts` strips the IPC prefix, tolerates JSON bodies and `[object Object]` messages, and validates via `ProviderSearchErrorPayloadSchema`.
+3. `BrowseErrorState` maps `providerKind` to title, icon, and actions (`auth` → **Open Settings**; others → **Retry** when applicable).
+
+Only a successful `{ posts: [] }` shows the empty-state screen. Raw API bodies are logged in main only (truncated).
 
 ---
 
@@ -1193,10 +1258,18 @@ Resolves tags to their canonical form using the booru API. Returns artist tags (
 
 ```typescript
 const artistTags = await window.api.resolveTags(["tag1", "tag2", "tag3"]);
-console.log("Artist tags:", artistTags);
 ```
 
 **IPC Channel:** `booru:resolve-tags`
+
+**Main-process behavior (tag resolve storm mitigation):**
+
+- Reads/writes persistent cache table `tag_metadata` before calling Rule34 tag DAPI.
+- Missing tags are fetched one at a time via `name=` (not batched `names=`).
+- All tag lookups share the same `ProviderThrottle` instance as `fetchPosts`.
+- Concurrent IPC calls for the same tag share one in-flight promise (cross-call dedup).
+- HTTP 429 is retried with `Retry-After` or exponential backoff; rate-limited tags are **not** written to `tag_metadata`.
+- Confirmed empty API responses are negatively cached in memory (24h TTL) to avoid hammering nonexistent tags.
 
 ---
 
@@ -1844,15 +1917,28 @@ unsubscribe();
 
 ## Error Handling
 
-All IPC methods can throw errors. Always wrap calls in try-catch blocks:
+All IPC methods can throw errors. Always wrap calls in try-catch blocks or let React Query surface `error` from `queryFn`.
+
+### Provider search (`booru:search`)
+
+| Layer | Responsibility |
+|-------|----------------|
+| `Rule34Provider.fetchPosts` | Throws `ProviderSearchError` with `kind` (`auth`, `rate_limit`, `network`, `parse`); XML fallback only on `parse`, never on auth/429 |
+| `throwProviderSearchIpcError` (main) | Serializes to IPC-safe `Error` + enumerable payload fields |
+| `parseProviderSearchErrorPayload` (shared) | Normalizes Electron invoke wrapper → typed payload for UI |
+| `BrowseErrorState` (renderer) | User-facing centered error state (not a destructive banner) |
+
+Sync pagination uses the same provider errors: `auth` / `rate_limit` abort sync with `SYNC.ERROR`; `network` / `parse` stop the current artist without failing the whole job.
+
+### General IPC errors
 
 ```typescript
 try {
   const result = await window.api.addArtist(artistData);
 } catch (error) {
-  // Handle error appropriately
+  // Prefer shared parsers per domain; never assume error.stack is available in renderer
   if (error instanceof Error) {
-    console.error(error.message);
+    log.error(error.message);
   }
 }
 ```
@@ -1991,15 +2077,20 @@ Potential next additions (not committed to a release):
 
 ## External API Integration
 
-The application integrates with **Rule34.xxx API**. Integration is handled in the Main process via `SyncService` (`src/main/services/sync-service.ts`) and is not directly exposed via IPC for security reasons.
+The application integrates with **Rule34.xxx API**. Integration is handled in the Main process via `SyncService` and `SearchController`, and is not directly exposed as raw HTTP from the Renderer (Browse uses IPC `searchBooru`).
 
-**Features:**
+**SyncService (tracked artists):**
 
 - **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
-- **Pagination:** Handles Rule34.xxx pagination (up to 1000 posts per page)
+- **Pagination:** Incremental fetch by `lastPostId` (not deep offset scroll)
 - **Error Handling:** Graceful handling of API errors and network failures
-- **Incremental Sync:** Only fetches posts newer than `lastPostId`
 - **Authentication:** Uses User ID and API Key from settings
+
+**Browse (`searchBooru`):**
+
+- **Page size:** 50 posts per IPC call (`limit`, max 100)
+- **Rule34 deep scroll:** offset pages 1–4, then cursor via meta-tag `id:<postId>` (`beforePostId` / `nextBeforePostId`)
+- **Blacklist:** Tag blacklist applied in Main after API fetch; pagination uses raw `apiFetchedCount`
 
 **API Endpoint:** `https://api.rule34.xxx/index.php?page=dapi&s=post&q=index`
 

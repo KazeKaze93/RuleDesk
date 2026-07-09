@@ -71,6 +71,12 @@ export const MAX_TRACKED_ARTISTS = 5000;
 export const MAX_RANDOM_PAGES = 20;
 
 /**
+ * Rule34 DAPI offset cap: pid 0–3 (pages 1–4) return results; higher pid often returns empty.
+ * Browse continues with meta-tag cursor `id:<minPostId>` and pid=0.
+ */
+export const RULE34_MAX_OFFSET_PAGES = 4;
+
+/**
  * Dangerous URL Protocols
  *
  * List of URL protocols that should be blocked for security reasons.

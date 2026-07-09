@@ -31,31 +31,16 @@ This document is a maintainer-focused database reference. RuleDesk uses **SQLite
 
 ## Database Location
 
-The database file location depends on the application mode:
+Development and packaged builds use the same neutral `userData` directory (not a folder next to the executable):
 
-**Standard Mode (Development / unpackaged run):**
+- **Windows:** `%LOCALAPPDATA%\.rdcache\`
+  - Database: `data.bin`
+  - Logs: `logs\app.log`
+  - Backup schedule sidecar: `backup-settings.json`
+- **macOS:** `~/Library/Application Support/.rdcache/`
+- **Linux:** `~/.config/.rdcache/`
 
-- **Windows:** `%LOCALAPPDATA%/.rdcache/data.bin`
-- **macOS:** `~/Library/Application Support/.rdcache/data.bin`
-- **Linux:** `~/.config/.rdcache/data.bin`
-
-**Portable Mode (Packaged executable):**
-
-- `userData` is redirected to `<exe_dir>/data/`
-- Database is stored as `<exe_dir>/data/data.bin`
-
-**Implementation:**
-
-```typescript
-// Portable mode detection (in main.ts)
-if (app.isPackaged) {
-  const portableDataPath = path.join(path.dirname(process.execPath), "data");
-  app.setPath("userData", portableDataPath);
-}
-
-// Database path resolution (in db/paths.ts)
-const dbPath = path.join(app.getPath("userData"), "data.bin");
-```
+**Implementation:** `src/main/bootstrap-user-data.ts` runs before logger and `electron-store` so all paths resolve under `.rdcache`.
 
 ## Schema
 
@@ -412,7 +397,7 @@ All database operations are performed directly in the **Main Process** using syn
 - Manages database initialization and migrations
 - Provides `getDb()` and `getSqliteInstance()` functions
 - Automatic migration execution on startup
-- Portable mode support (automatic detection)
+- Neutral `userData` path (`.rdcache`) for dev and packaged builds
 
 ### Initialization
 

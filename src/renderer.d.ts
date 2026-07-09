@@ -8,6 +8,7 @@ import {
   AddArtistPayload,
 } from "./main/bridge";
 import type { ShadowInsertRequest } from "./shared/schemas/shadow-insert";
+import type { SearchBooruPageResult } from "./shared/schemas/search";
 import type { SearchResults, ProviderId } from "./main/providers";
 import type { PostData, GetPostsCountRequest } from "./shared/schemas/post";
 import type { PostFilterRequest } from "./shared/schemas/post";
@@ -140,7 +141,13 @@ export interface IpcApi extends IpcBridge {
 
   searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
 
-  searchBooru: (params: { tags: string[]; page: number }) => Promise<Post[]>;
+  searchBooru: (params: {
+    tags: string[];
+    page: number;
+    isRandom?: boolean;
+    limit?: number;
+    beforePostId?: number;
+  }) => Promise<SearchBooruPageResult<Post>>;
 
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;

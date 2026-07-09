@@ -8,6 +8,7 @@ import {
 } from "../utils/decrypted-credentials";
 import { eq, sql } from "drizzle-orm";
 import axios from "axios";
+import { isProviderSearchError } from "../providers/provider-search-errors";
 import type { Artist, NewPost } from "../db/schema";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
@@ -85,6 +86,18 @@ async function retryWithBackoff<T>(
       return await fn();
     } catch (error) {
       lastError = error;
+      if (isProviderSearchError(error)) {
+        if (error.kind === "rate_limit" && attempt < maxRetries) {
+          const delay =
+            error.retryAfterMs ?? baseDelay * Math.pow(2, attempt);
+          logger.warn(
+            `SyncService: Provider rate limit for ${contextName}; retrying in ${delay}ms`
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        throw error;
+      }
       if (!axios.isAxiosError(error)) {
         if (attempt === maxRetries) throw error;
         const delay = baseDelay * Math.pow(2, attempt);
@@ -254,7 +267,9 @@ export class SyncService {
           this.sendEvent(IPC_CHANNELS.SYNC.PROGRESS, `Checking ${artist.name}...`);
           await this.syncArtist(artist, settingsData);
         } catch (error) {
-          const errorMsg = axios.isAxiosError(error)
+          const errorMsg = isProviderSearchError(error)
+            ? error.message
+            : axios.isAxiosError(error)
             ? `HTTP ${error.response?.status}: ${error.message}`
             : error instanceof Error
             ? error.message
@@ -285,11 +300,15 @@ export class SyncService {
 
   public async repairArtist(artistId: number) {
     return this.runExclusive(async () => {
+    let artistName = "Artist";
     try {
       const db = getDb();
       const artist = await db.query.artists.findFirst({
         where: eq(artists.id, artistId),
       });
+      if (artist) {
+        artistName = artist.name;
+      }
       let settingsData: DecryptedSettings | null;
       try {
         settingsData = await this.getDecryptedSettings();
@@ -313,6 +332,12 @@ export class SyncService {
         await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, MAX_PAGES_SAFETY_LIMIT);
       }
     } catch (e) {
+      if (isProviderSearchError(e)) {
+        this.sendEvent(
+          IPC_CHANNELS.SYNC.ERROR,
+          `${artistName}: ${e.message}`
+        );
+      }
       logger.error("Repair error", e);
     } finally {
       this.sendEvent(IPC_CHANNELS.SYNC.REPAIR_END);
@@ -575,7 +600,13 @@ export class SyncService {
             }
           }
 
-          throw e;
+          if (isProviderSearchError(e)) {
+            if (e.kind === "auth" || e.kind === "rate_limit") {
+              throw e;
+            }
+          } else if (!axios.isAxiosError(e)) {
+            throw e;
+          }
         }
       }
       

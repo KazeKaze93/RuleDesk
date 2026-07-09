@@ -9,6 +9,15 @@ import { Search, Loader2, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
+import { resolveErrorMessage } from "../../utils/error-message";
+import {
+  assertBrowseSearchError,
+  getBrowseSearchErrorPresentation,
+  getBrowseSearchRetryDelayMs,
+  shouldRetryBrowseSearch,
+  toBrowseSearchError,
+} from "../../utils/provider-search-error";
+import { BrowseErrorState } from "../browse/BrowseErrorState";
 import { useViewerStore } from "../../store/viewerStore";
 import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
@@ -28,11 +37,24 @@ import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
 import type { Post } from "../../../main/db/schema";
 import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import type { SearchBooruPageResult, BrowseSearchPageParam } from "../../../shared/schemas/search";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
+import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
+import { getSearchBrowseNextPageParam, isSearchGalleryPage } from "../../utils/react-query-cache";
 
 const POSTS_PER_PAGE = 50;
+const BROWSE_SEARCH_STALE_TIME_MS = 5 * 60 * 1000;
+const BROWSE_SEARCH_GC_TIME_MS = 30 * 60 * 1000;
+
+type BrowseGalleryPage = SearchBooruPageResult<Post>;
+
+function isBrowseCursorPageParam(
+  pageParam: BrowseSearchPageParam
+): pageParam is { beforePostId: number } {
+  return typeof pageParam === "object" && "beforePostId" in pageParam;
+}
 
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
@@ -105,6 +127,7 @@ MasonryVirtuosoList.displayName = "BrowseMasonryVirtuosoList";
 // --- Основной компонент ---
 
 export const Browse = () => {
+  useReleaseRadixModalLockOnMount();
   const queryClient = useQueryClient();
   const includeTags = useSearchStore((state) => state.includeTags);
   const excludeTags = useSearchStore((state) => state.excludeTags);
@@ -149,58 +172,109 @@ export const Browse = () => {
   const dateTo = useSearchStore((state) => state.filters.dateTo);
 
   const isRemoteBrowseSource = source === "all";
+  const usesDefaultRemoteFilters =
+    isRemoteBrowseSource &&
+    tags.length === 0 &&
+    aiFilter === "all" &&
+    rating === "all" &&
+    mediaType === "all" &&
+    !dateFrom &&
+    !dateTo;
 
   // Use the new infinite scroll hook
   // For external API (Browse), we need custom getNextPageParam logic
   // because API may return less than 50 posts but still have more pages
   const {
-    allPosts: rawPosts,
+    allPosts: rawPostsFromQuery,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isFetching,
+    isError: isSearchError,
+    error: searchError,
+    refetch: refetchSearch,
     handleEndReached,
-  } = useGalleryInfiniteScroll({
+    handleAtBottomStateChange,
+  } = useGalleryInfiniteScroll<
+    BrowseGalleryPage,
+    Post,
+    unknown[],
+    BrowseSearchPageParam
+  >({
     queryKey: ["search", tags, source],
+    flattenPage: (page) => page.posts,
     fetchFn: async (pageParam) => {
       if (source === "favorites") {
-        return await window.api.getArtistPosts({
-          page: pageParam,
+        const page =
+          typeof pageParam === "number" ? pageParam : 1;
+        const posts = await window.api.getArtistPosts({
+          page,
           filters: {
             isFavorited: true,
             tags: tags.length > 0 ? tags.join(" ") : undefined,
           },
         });
+        return {
+          posts,
+          hasMore: posts.length >= POSTS_PER_PAGE,
+        };
       }
 
       if (source === "subscriptions") {
-        return await window.api.getArtistPosts({
-          page: pageParam,
+        const page =
+          typeof pageParam === "number" ? pageParam : 1;
+        const posts = await window.api.getArtistPosts({
+          page,
           filters: {
             sinceTracking: true,
             tags: tags.length > 0 ? tags.join(" ") : undefined,
           },
         });
+        return {
+          posts,
+          hasMore: posts.length >= POSTS_PER_PAGE,
+        };
       }
 
-      // source === "all": external API search
-      return await window.api.searchBooru({
-        tags,
-        page: pageParam,
-      });
-    },
-    // Custom getNextPageParam for external API: continue loading until empty array
-    // Unlike local DB, external API doesn't tell us total count, so we load until empty
-    getNextPageParam: (lastPage, allPages) => {
-      if (!isRemoteBrowseSource) {
-        return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
+      try {
+        if (isBrowseCursorPageParam(pageParam)) {
+          return await window.api.searchBooru({
+            tags,
+            page: 1,
+            beforePostId: pageParam.beforePostId,
+            limit: POSTS_PER_PAGE,
+          });
+        }
+
+        return await window.api.searchBooru({
+          tags,
+          page: pageParam,
+          limit: POSTS_PER_PAGE,
+        });
+      } catch (error) {
+        assertBrowseSearchError(error);
       }
-      if (lastPage.length === 0) {
-        return undefined;
-      }
-      return allPages.length + 1;
     },
+    getNextPageParam: (lastPage, allPages) =>
+      getSearchBrowseNextPageParam(lastPage, allPages, POSTS_PER_PAGE),
+    staleTime: BROWSE_SEARCH_STALE_TIME_MS,
+    gcTime: BROWSE_SEARCH_GC_TIME_MS,
+    refetchOnReconnect: false,
+    retry: isRemoteBrowseSource ? shouldRetryBrowseSearch : undefined,
+    retryDelay: isRemoteBrowseSource ? getBrowseSearchRetryDelayMs : undefined,
   });
+
+  const rawPosts = useMemo(() => {
+    const seenPostIds = new Set<number>();
+    return rawPostsFromQuery.filter((post) => {
+      if (seenPostIds.has(post.postId)) {
+        return false;
+      }
+      seenPostIds.add(post.postId);
+      return true;
+    });
+  }, [rawPostsFromQuery]);
 
   // Build tracked tags array for subscriptions filter (worker needs array, not Set)
   const trackedTagsArray = useMemo(() => {
@@ -232,29 +306,61 @@ export const Browse = () => {
     aiFilter,
     rating,
     mediaType,
-    source: "all",
+    source,
     dateFrom,
     dateTo,
     sortOrder,
     trackedTagsSet: trackedTagsArray,
     tags,
-  }), [aiFilter, rating, mediaType, dateFrom, dateTo, sortOrder, trackedTagsArray, tags]);
+  }), [aiFilter, rating, mediaType, source, dateFrom, dateTo, sortOrder, trackedTagsArray, tags]);
 
   const {
-    data: allPosts = [],
+    data: workerPosts = [],
     isLoading: workerLoading,
     error: workerError,
   } = useWorkerFilteredPosts(
     rawPosts,
     filterConfig,
-    250 // Debounce delay
+    250,
+    !usesDefaultRemoteFilters
   );
-  const selectedPosts = useMemo(
-    () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
-    [allPosts, selectedIds]
-  );
-  const hasFilteredOutResults = rawPosts.length > 0 && allPosts.length === 0;
 
+  const displayPosts = useMemo(() => {
+    if (usesDefaultRemoteFilters) {
+      return rawPosts;
+    }
+    if (workerPosts.length > 0) {
+      return workerPosts;
+    }
+    if ((workerLoading || workerError) && rawPosts.length > 0) {
+      return rawPosts;
+    }
+    return workerPosts;
+  }, [
+    usesDefaultRemoteFilters,
+    rawPosts,
+    workerPosts,
+    workerLoading,
+    workerError,
+  ]);
+
+  const selectedPosts = useMemo(
+    () => displayPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
+    [displayPosts, selectedIds]
+  );
+  const hasFilteredOutResults =
+    rawPosts.length > 0 && displayPosts.length === 0 && !usesDefaultRemoteFilters;
+  const isFatalSearchError = isSearchError && rawPosts.length === 0;
+  const browseSearchError = toBrowseSearchError(searchError);
+  const browseSearchErrorPresentation = browseSearchError
+    ? getBrowseSearchErrorPresentation(
+        browseSearchError.kind,
+        browseSearchError.retryAfterMs
+      )
+    : null;
+  const partialSearchErrorMessage = browseSearchErrorPresentation
+    ? browseSearchErrorPresentation.description
+    : resolveErrorMessage(searchError, "Failed to load posts.");
 
   const listAriaBusy = isLoading || isFetchingNextPage || workerLoading;
   const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
@@ -267,12 +373,10 @@ export const Browse = () => {
       if (result.data) {
         const newPage = result.data.pages[result.data.pages.length - 1];
 
-        if (newPage && newPage.length > 0) {
-          // Get existing post IDs to avoid duplicates
+        if (newPage && isSearchGalleryPage(newPage) && newPage.posts.length > 0) {
           const existingPostIds = new Set(rawPosts.map((p) => p.id));
 
-          // Filter out posts that are already in the list
-          const newIds = newPage
+          const newIds = newPage.posts
             .map((p) => p.id)
             .filter((id) => !existingPostIds.has(id));
 
@@ -290,11 +394,19 @@ export const Browse = () => {
 
       const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
       const LOAD_MORE_THRESHOLD_PX = 300;
-      if (scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX) {
-        void fetchNextPage();
+      const nearBottom =
+        scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX;
+      handleAtBottomStateChange(nearBottom);
+      if (nearBottom) {
+        handleEndReached();
       }
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage]
+    [
+      hasNextPage,
+      isFetchingNextPage,
+      handleEndReached,
+      handleAtBottomStateChange,
+    ]
   );
 
   const viewMutation = useMutation({
@@ -307,17 +419,18 @@ export const Browse = () => {
       return post.id;
     },
     onSuccess: (postId) => {
-      queryClient.setQueryData<InfiniteData<Post[]>>(
-        ["search", tags],
+      queryClient.setQueryData<InfiniteData<BrowseGalleryPage>>(
+        ["search", tags, source],
         (oldData) => {
           if (!oldData) return oldData;
           return {
             ...oldData,
-            pages: oldData.pages.map((page) =>
-              page.map((post) =>
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              posts: page.posts.map((post) =>
                 post.id === postId ? { ...post, isViewed: true } : post
-              )
-            ),
+              ),
+            })),
           };
         }
       );
@@ -333,8 +446,8 @@ export const Browse = () => {
   });
 
   const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
-    const post = allPosts[index];
+    const postIds = displayPosts.map((p) => p.id);
+    const post = displayPosts[index];
 
     if (!post) {
       log.warn("[Browse] handlePostClick: post not found at index", index);
@@ -354,6 +467,7 @@ export const Browse = () => {
       listKey: `search-${source}`,
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
+      posts: displayPosts,
     });
   };
 
@@ -395,19 +509,47 @@ export const Browse = () => {
 
       {/* Grid Content */}
       <div className="flex flex-col flex-1 min-h-0">
-        {workerError ? (
-          <Alert variant="destructive" className="mx-6 mt-4 shrink-0">
-            <AlertTitle>Could not filter posts</AlertTitle>
-            <AlertDescription>
-              {workerError.message}. Try reloading the page or reducing the number of loaded posts.
+        {isFatalSearchError ? (
+          <BrowseErrorState
+            kind={browseSearchError?.kind ?? "generic"}
+            retryAfterMs={browseSearchError?.retryAfterMs}
+            genericDescription={partialSearchErrorMessage}
+            onRetry={() => void refetchSearch()}
+          />
+        ) : null}
+        {isSearchError && !isFatalSearchError ? (
+          <Alert className="mx-6 mt-4 shrink-0">
+            <AlertTitle>Could not refresh results</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>{partialSearchErrorMessage}. Showing previously loaded posts.</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void refetchSearch()}
+              >
+                Retry
+              </Button>
             </AlertDescription>
           </Alert>
         ) : null}
-        {(isLoading || workerLoading) && allPosts.length === 0 && !workerError ? (
+        {workerError && !usesDefaultRemoteFilters ? (
+          <Alert variant="destructive" className="mx-6 mt-4 shrink-0">
+            <AlertTitle>Could not filter posts</AlertTitle>
+            <AlertDescription>
+              {workerError.message}. Showing unfiltered results when available.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {(isLoading ||
+          isFetching ||
+          (!usesDefaultRemoteFilters && workerLoading)) &&
+        displayPosts.length === 0 &&
+        !isFatalSearchError ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-        ) : allPosts.length === 0 ? (
+        ) : displayPosts.length === 0 && !isFatalSearchError && !isFetching ? (
           <div className="flex flex-col gap-4 justify-center items-center h-full px-6">
             {hasFilteredOutResults ? (
               <div className="flex flex-col gap-4 items-center max-w-md text-center">
@@ -429,7 +571,8 @@ export const Browse = () => {
                     API returned no results
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    This tag likely exists on the website but is not yet available in the API.
+                    No posts matched this tag in the API. Try the website link or
+                    check spelling — some artist tags use a different name on Rule34.
                   </p>
                 </div>
                 <Button
@@ -451,7 +594,9 @@ export const Browse = () => {
                 <div className="text-center">
                   <p className="mb-2 text-lg font-semibold">No posts found</p>
                   <p className="text-sm">
-                    Try different tags or change the current source filter.
+                    {source !== "all"
+                      ? `Source is "${source}". Open Filters and set Source to "All" for live API Browse.`
+                      : "Try different tags or change the current filters."}
                   </p>
                 </div>
               </div>
@@ -460,7 +605,7 @@ export const Browse = () => {
         ) : viewType === "masonry" ? (
             <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
               <GridContainer viewType="masonry">
-                {allPosts.map((post, index) => (
+                {displayPosts.map((post, index) => (
                   <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
                     <PostCard
                       post={post}
@@ -480,8 +625,9 @@ export const Browse = () => {
             <VirtuosoGrid
               className="h-full"
               aria-busy={listAriaBusy}
-              totalCount={allPosts.length}
+              totalCount={displayPosts.length}
               endReached={handleEndReached}
+              atBottomStateChange={handleAtBottomStateChange}
               increaseViewportBy={600}
               components={{
                 List: ListComponent,
@@ -494,7 +640,7 @@ export const Browse = () => {
                   ) : null,
               }}
               itemContent={(index) => {
-                const post = allPosts[index];
+                const post = displayPosts[index];
                 if (!post) return null;
 
                 return (
@@ -513,7 +659,7 @@ export const Browse = () => {
         onSelectAll={
           tags.length > 0
             ? () => {
-                const selectableIds = allPosts.map((post) => getBulkSelectId(post));
+                const selectableIds = displayPosts.map((post) => getBulkSelectId(post));
                 const isAllSelected =
                   selectableIds.length > 0 &&
                   selectableIds.every((id) => selectedIds.has(id));

@@ -93,7 +93,7 @@ export const PostCard: React.FC<PostCardProps> = ({
     x: number;
     y: number;
   } | null>(null);
-  const cardRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const contextMenuAnchorRef = useRef<HTMLSpanElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -242,12 +242,25 @@ export const PostCard: React.FC<PostCardProps> = ({
     !videoError;
 
   return (
-    <button
+    <div
       ref={cardRef}
-      type="button"
+      role="button"
+      tabIndex={0}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (isBulkMode) {
+          toggleId(bulkSelectId);
+          return;
+        }
+        onClick();
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
         if (isBulkMode) {
           toggleId(bulkSelectId);
           return;
@@ -326,7 +339,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       {post.previewUrl ? (
         <div
           className={cn(
-            "relative w-full overflow-hidden",
+            "relative w-full overflow-hidden bg-muted",
             shouldPreserveAspect ? "h-full" : "",
             blurFilterClass,
           )}
@@ -340,7 +353,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             className={cn(
               "w-full transition-all duration-500",
               shouldPreserveAspect
-                ? "h-full object-cover" 
+                ? "h-full object-contain"
                 : "h-auto",
               // Only scale on hover when video preview is not showing
               !showVideoPreview && "group-hover:scale-105",
@@ -364,7 +377,7 @@ export const PostCard: React.FC<PostCardProps> = ({
               className={cn(
                 "absolute inset-0 w-full transition-opacity duration-300 z-10",
                 shouldPreserveAspect
-                  ? "h-full object-cover" 
+                  ? "h-full object-contain"
                   : "h-auto",
                 // Cross-fade: show video when hovered, hide otherwise
                 showVideoPreview ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -513,6 +526,6 @@ export const PostCard: React.FC<PostCardProps> = ({
           </span>
         </div>
       </div>
-    </button>
+    </div>
   );
 };

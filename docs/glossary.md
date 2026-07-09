@@ -71,9 +71,9 @@ Local storage of post metadata and preview images to enable offline browsing and
 
 ### Blacklist
 
-A list of tags or content that should be excluded from search results or feeds. Currently not implemented in RuleDesk, but planned for future releases.
+A list of tags excluded from gallery and search results after fetch. Configured in **Settings → Blacklist**; enforced in Main (`SearchController`, `PostsController`) so hidden tags do not affect pagination math (`apiFetchedCount` is measured before blacklist filtering).
 
-**Related:** [Roadmap - Filters](./roadmap.md#-navigation--ux-revamp)
+**Related:** [Settings - Blacklist](./user-guide.md#blacklist), [searchBooru](./api.md#searchbooru)
 
 ---
 
@@ -99,6 +99,14 @@ An abstraction layer that allows RuleDesk to support multiple booru sources with
 - Gelbooru (`GelbooruProvider`)
 
 **Related:** [Architecture - Provider Pattern](./architecture.md#provider-pattern-architecture), [Multi-Booru Support](../README.md#-multi-source-ready)
+
+---
+
+### Browse
+
+The **Browse** page searches the live booru API (Source: **All**) or filters posts from the local cache (Source: **Favorites** / **Subscriptions**). Infinite scroll loads 50 posts per batch; on Rule34, RuleDesk continues past the API offset cap using cursor pagination (`id:<postId>`).
+
+**Related:** [User Guide - Search](./user-guide.md#search), [Rule34 pagination](./rule34-api-reference.md#pagination-beyond-the-offset-cap), [searchBooru](./api.md#searchbooru)
 
 ---
 

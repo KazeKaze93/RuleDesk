@@ -22,7 +22,8 @@ import { mapWorkerPostToPost } from "../lib/map-worker-post";
 export function useWorkerFilteredPosts(
   rawPosts: Post[],
   filters: WorkerFilterConfig,
-  debounceDelay: number = 250
+  debounceDelay: number = 250,
+  enabled: boolean = true
 ) {
   const { processData, loading: workerLoading } = useWorkerProcessor();
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
@@ -37,12 +38,16 @@ export function useWorkerFilteredPosts(
   // Use rawPosts directly (no debounce) to avoid UI lag during scrolling
   // Only debounce filters to prevent spam on rapid filter changes
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     cancelledRef.current = false;
 
     const processInWorker = async () => {
       if (rawPosts.length === 0) {
         if (!cancelledRef.current) {
-          setFilteredPosts([]);
+          setFilteredPosts((prev) => (prev.length === 0 ? prev : []));
         }
         return;
       }
@@ -84,11 +89,11 @@ export function useWorkerFilteredPosts(
     return () => {
       cancelledRef.current = true;
     };
-  }, [rawPosts, debouncedFilters, processData]);
+  }, [rawPosts, debouncedFilters, processData, enabled]);
 
   return {
     data: filteredPosts,
-    isLoading: workerLoading,
-    error, // Expose error for UI feedback (Toast/Alert)
+    isLoading: enabled ? workerLoading : false,
+    error,
   };
 }

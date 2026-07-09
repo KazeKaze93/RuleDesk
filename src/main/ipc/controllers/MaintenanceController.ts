@@ -20,6 +20,12 @@ import { settings, SETTINGS_ID } from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import type { BackupService, AutoBackupInterval } from "../../services/backup-service";
 import { BACKUP_FILE_PREFIX, getDatabasePaths } from "../../db/paths";
+import {
+  getBackupSidecarPath,
+  logRestoredSettingsSnapshot,
+  restoreBackupSidecar,
+  writeBackupSidecar,
+} from "../../lib/backup-sidecar";
 import { IdSchema } from "../../../shared/schemas/ipc";
 
 const DEFAULT_BACKUP_RETENTION = 5;
@@ -236,6 +242,7 @@ export class MaintenanceController extends BaseController {
         this.mainWindow.flashFrame(false);
       }
 
+        writeBackupSidecar(backupPath);
         await this.cleanupOldBackups(backupDir);
         log.info(`[MaintenanceController] Backup created at ${backupPath}`);
         return {
@@ -318,6 +325,7 @@ export class MaintenanceController extends BaseController {
         }
         try {
           await fs.promises.rm(file.fullPath, { force: true });
+          await fs.promises.rm(getBackupSidecarPath(file.fullPath), { force: true });
           log.info(`[MaintenanceController] Deleted old backup: ${file.name}`);
         } catch (deleteError) {
           // Non-fatal: log warning but don't fail the whole backup operation
@@ -482,6 +490,8 @@ export class MaintenanceController extends BaseController {
         // Step 6: Reinitialize database connection (within queue, safe from concurrent access)
         await initializeDatabase();
         registerDatabaseInContainerAfterReinit();
+        restoreBackupSidecar(backupPath);
+        logRestoredSettingsSnapshot();
 
         // Send loading complete event
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
