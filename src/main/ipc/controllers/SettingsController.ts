@@ -22,7 +22,7 @@ import type * as schema from "../../db/schema";
 import { z } from "zod";
 import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
 import { normalizeCredentialsInput } from "../../../shared/utils/parse-credentials";
-import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
+import { getDecryptedCredentialsFromRecord, hasConfiguredApiKey } from "../../utils/decrypted-credentials";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -72,8 +72,11 @@ function mapSettingsToIpc(
     hasSettingsRecord,
     userId: dbSettings.userId ?? "",
     provider: (dbSettings.provider as ProviderId) ?? "rule34",
-    // Only true when the key decrypts and is non-empty (avoids empty Browse with a broken vault).
-    hasApiKey: !!(credentials?.apiKey?.trim()),
+    // True when a key is stored; decrypt must succeed for API calls, not for gate dismissal.
+    hasApiKey: hasConfiguredApiKey({
+      encryptedApiKey: dbSettings.encryptedApiKey,
+      credentials,
+    }),
     proxyUrl: dbSettings.proxyUrl ?? null,
     // Convert SQLite integer booleans (0/1) to JavaScript booleans
     // Drizzle with mode: "boolean" already returns boolean, but ensure type safety

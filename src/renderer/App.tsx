@@ -212,6 +212,7 @@ function App() {
         };
       });
       await queryClient.invalidateQueries({ queryKey: ["settings"] });
+      await queryClient.refetchQueries({ queryKey: ["settings"] });
       await queryClient.invalidateQueries({ queryKey: ["search"] });
       setAccountStatus("success");
     } catch (error) {

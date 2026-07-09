@@ -1,23 +1,24 @@
 import { Page, expect } from '@playwright/test';
+import { waitForAppReady } from './app-ready';
 
 const AGE_GATE_CHECKBOX = '#age-confirm';
 const ACCOUNT_GATE_HEADING = /sign in to ruledesk/i;
-const ACCOUNT_GATE_USER_ID = '#user-id';
-const ACCOUNT_GATE_API_KEY = '#api-key';
+const MAIN_APP_ARTISTS_LINK = /^artists$/i;
 
-async function fillControlledInput(
-  page: Page,
-  selector: string,
-  value: string,
-  options?: { verifyValue?: boolean }
-): Promise<void> {
-  const input = page.locator(selector);
-  await input.click();
-  await input.fill('');
-  await input.pressSequentially(value, { delay: 10 });
-  if (options?.verifyValue !== false) {
-    await expect(input).toHaveValue(value, { timeout: 5000 });
+function readTestCredentials(): { userId: string; apiKey: string } {
+  const userId = process.env.TEST_USER_ID?.trim();
+  const apiKey = process.env.TEST_API_KEY?.trim();
+
+  if (!userId || !apiKey) {
+    throw new Error(
+      '⛔️ E2E FATAL: TEST_USER_ID or TEST_API_KEY are missing in .env or CI secrets. Cannot proceed with real auth.\n' +
+        'Please create .env file with:\n' +
+        'TEST_USER_ID=your_real_user_id\n' +
+        'TEST_API_KEY=your_real_api_key'
+    );
   }
+
+  return { userId, apiKey };
 }
 
 async function acceptAgeGateIfVisible(page: Page): Promise<void> {
@@ -56,73 +57,51 @@ async function acceptAgeGateIfVisible(page: Page): Promise<void> {
   await page.waitForTimeout(1000);
 }
 
-async function waitForAccountGateDismiss(page: Page): Promise<void> {
+async function waitForMainAppShell(page: Page): Promise<void> {
   const accountGateHeading = page.getByRole('heading', { name: ACCOUNT_GATE_HEADING });
-  const artistsLink = page.getByRole('link', { name: /^artists$/i });
+  const artistsLink = page.getByRole('link', { name: MAIN_APP_ARTISTS_LINK });
 
-  await expect
-    .poll(async () => {
-      const gateVisible = await accountGateHeading.isVisible().catch(() => false);
-      const mainVisible = await artistsLink.isVisible().catch(() => false);
-      return !gateVisible || mainVisible;
-    }, { timeout: 30000 })
-    .toBe(true);
+  await expect(accountGateHeading).not.toBeVisible({ timeout: 30000 });
+  await expect(artistsLink).toBeVisible({ timeout: 30000 });
+}
 
-  const saveFailed = page.getByText('Save failed');
-  if (await saveFailed.isVisible({ timeout: 1000 }).catch(() => false)) {
-    throw new Error('[E2E] Account gate reported Save failed after submitting credentials');
-  }
-
-  await expect(accountGateHeading).not.toBeVisible({ timeout: 5000 });
+async function saveCredentialsViaIpc(page: Page, userId: string, apiKey: string): Promise<void> {
+  await page.evaluate(
+    async ({ userId, apiKey }) => {
+      const saved = await window.api.saveSettings({
+        userId,
+        apiKey,
+        provider: 'rule34',
+      });
+      if (!saved) {
+        throw new Error('saveSettings returned false');
+      }
+    },
+    { userId, apiKey }
+  );
 }
 
 async function completeAccountGateIfVisible(page: Page): Promise<void> {
-  const accountGateHeading = page.getByRole('heading', { name: ACCOUNT_GATE_HEADING });
-  const apiKeyInput = page.locator(ACCOUNT_GATE_API_KEY);
-  const isAccountGateVisible =
-    (await accountGateHeading.isVisible({ timeout: 5000 }).catch(() => false)) ||
-    (await apiKeyInput.isVisible({ timeout: 5000 }).catch(() => false));
+  const accountGateVisible = await isAccountGateVisible(page);
 
-  if (!isAccountGateVisible) {
+  if (!accountGateVisible) {
     return;
   }
 
-  console.log('[E2E] Account gate detected. Saving API credentials...');
+  console.log('[E2E] Account gate detected. Saving API credentials via IPC...');
 
   if (page.isClosed()) {
     throw new Error('[E2E] Page closed before account gate handling');
   }
 
-  const userId = process.env.TEST_USER_ID;
-  const apiKey = process.env.TEST_API_KEY;
+  const { userId, apiKey } = readTestCredentials();
+  await saveCredentialsViaIpc(page, userId, apiKey);
 
-  if (!userId || !apiKey) {
-    throw new Error(
-      '⛔️ E2E FATAL: TEST_USER_ID or TEST_API_KEY are missing in .env or CI secrets. Cannot proceed with real auth.\n' +
-        'Please create .env file with:\n' +
-        'TEST_USER_ID=your_real_user_id\n' +
-        'TEST_API_KEY=your_real_api_key'
-    );
-  }
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAppReady(page, 30000);
 
-  await fillControlledInput(page, ACCOUNT_GATE_USER_ID, userId);
-  await fillControlledInput(page, ACCOUNT_GATE_API_KEY, apiKey, { verifyValue: false });
-
-  const saveButton = page.getByRole('button', { name: /save api key/i });
-  await expect(saveButton).toBeEnabled({ timeout: 5000 });
-  await saveButton.click();
-
-  await waitForAccountGateDismiss(page);
-
-  const sidebar = page.locator('aside, nav[class*="sidebar"], [role="navigation"]');
-  const topBar = page.locator('header, [role="banner"]');
-
-  await Promise.race([
-    sidebar.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {}),
-    topBar.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {}),
-  ]);
-
-  await page.waitForTimeout(1000);
+  await acceptAgeGateIfVisible(page);
+  await waitForMainAppShell(page);
 }
 
 async function navigateToArtistsPage(page: Page): Promise<void> {
@@ -131,7 +110,7 @@ async function navigateToArtistsPage(page: Page): Promise<void> {
     return;
   }
 
-  const artistsLink = page.getByRole('link', { name: /^artists$/i });
+  const artistsLink = page.getByRole('link', { name: MAIN_APP_ARTISTS_LINK });
   await expect(artistsLink).toBeVisible({ timeout: 15000 });
   await artistsLink.click();
   await expect(addArtistButton).toBeVisible({ timeout: 15000 });
@@ -145,6 +124,7 @@ export async function completeOnboarding(page: Page): Promise<void> {
     throw new Error('[E2E] Page is closed before onboarding can start');
   }
 
+  await waitForAppReady(page, 30000);
   await acceptAgeGateIfVisible(page);
   await completeAccountGateIfVisible(page);
   await navigateToArtistsPage(page);
@@ -154,7 +134,7 @@ export async function completeOnboarding(page: Page): Promise<void> {
 
 export async function isAccountGateVisible(page: Page): Promise<boolean> {
   const accountGateHeading = page.getByRole('heading', { name: ACCOUNT_GATE_HEADING });
-  const apiKeyInput = page.locator(ACCOUNT_GATE_API_KEY);
+  const apiKeyInput = page.locator('#api-key');
   return (
     (await accountGateHeading.isVisible({ timeout: 2000 }).catch(() => false)) ||
     (await apiKeyInput.isVisible({ timeout: 2000 }).catch(() => false))
@@ -166,7 +146,7 @@ export async function isAgeGateVisible(page: Page): Promise<boolean> {
 }
 
 export async function isMainAppShellVisible(page: Page): Promise<boolean> {
-  const artistsLink = page.getByRole('link', { name: /^artists$/i });
+  const artistsLink = page.getByRole('link', { name: MAIN_APP_ARTISTS_LINK });
   const addArtistButton = page.getByRole('button', { name: /add artist/i });
   return (
     (await artistsLink.isVisible({ timeout: 2000 }).catch(() => false)) ||

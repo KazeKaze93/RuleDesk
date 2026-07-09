@@ -33,6 +33,7 @@ import {
   decryptStoredApiKey,
   getDecryptedCredentialsFromRecord,
   getDecryptedCredentialsStrict,
+  hasConfiguredApiKey,
 } from "@/main/utils/decrypted-credentials";
 
 describe("decrypted-credentials", () => {
@@ -90,6 +91,35 @@ describe("decrypted-credentials", () => {
       });
 
       expect(result?.apiKey).not.toBe(corruptedBase64);
+    });
+  });
+
+  describe("hasConfiguredApiKey", () => {
+    it("returns true when encrypted key exists but decrypt fails", () => {
+      expect(
+        hasConfiguredApiKey({
+          encryptedApiKey: corruptedBase64,
+          credentials: null,
+        })
+      ).toBe(true);
+    });
+
+    it("returns false when no encrypted key and no decrypted api key", () => {
+      expect(
+        hasConfiguredApiKey({
+          encryptedApiKey: "",
+          credentials: { userId: "123", apiKey: "" },
+        })
+      ).toBe(false);
+    });
+
+    it("returns true when decrypted api key is non-empty", () => {
+      expect(
+        hasConfiguredApiKey({
+          encryptedApiKey: corruptedBase64,
+          credentials: { userId: "123", apiKey: "secret-key" },
+        })
+      ).toBe(true);
     });
   });
 

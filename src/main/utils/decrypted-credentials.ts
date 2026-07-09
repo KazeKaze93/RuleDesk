@@ -76,6 +76,24 @@ export function getDecryptedCredentialsFromRecord(record: {
 }
 
 /**
+ * Whether settings represent a configured API key for gate/routing purposes.
+ * A non-empty encrypted key counts even when decrypt fails in the current session.
+ */
+export function hasConfiguredApiKey(record: {
+  encryptedApiKey: string | null;
+  credentials: DecryptedCredentials | null;
+}): boolean {
+  const storedKey = record.encryptedApiKey?.trim() ?? "";
+  if (!storedKey) {
+    return !!(record.credentials?.apiKey?.trim());
+  }
+  if (record.credentials === null) {
+    return true;
+  }
+  return !!record.credentials.apiKey.trim();
+}
+
+/**
  * Like getDecryptedCredentialsFromRecord but throws CredentialDecryptionError
  * when the OS keychain is unavailable or decryption fails (SyncService path).
  */
