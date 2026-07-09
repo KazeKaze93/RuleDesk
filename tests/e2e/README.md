@@ -51,6 +51,8 @@ GitHub Actions runs E2E after the **quality** job (`validate`, `npm test`, produ
 
 Without these secrets, tests that require real credentials will fail in CI with an explicit error.
 
+**Onboarding selectors:** E2E helpers target the current `AccountGate` UI (`#api-key`, **Save API Key**) rather than the legacy `#user-id-input` / `#api-key-input` form. Age Gate uses `#age-confirm` / `#tos-accept` (single dialog title — no duplicate heading).
+
 Tagged releases (`v*`) wait for both **quality** and **e2e** before Windows zip and Linux AppImage packaging jobs run.
 
 ## Test Structure

@@ -17,6 +17,7 @@ export async function waitForAppReady(page: Page, timeout: number = 30000): Prom
   const selectors = [
     '#root',           // Main React root
     '#age-confirm',   // Age Gate checkbox (first launch)
+    '#api-key',       // Account gate API key field
     '[data-testid="app"]', // If we add test IDs
   ];
   
