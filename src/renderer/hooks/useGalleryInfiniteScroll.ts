@@ -11,6 +11,8 @@ type GalleryInfiniteScrollQueryOptions = {
   refetchOnMount?: boolean | "always";
   refetchOnReconnect?: boolean;
   refetchOnWindowFocus?: boolean;
+  retry?: boolean | number | ((failureCount: number, error: unknown) => boolean);
+  retryDelay?: number | ((attempt: number, error: unknown) => number);
 };
 
 /**
@@ -47,6 +49,8 @@ export function useGalleryInfiniteScroll<
   refetchOnMount,
   refetchOnReconnect,
   refetchOnWindowFocus,
+  retry,
+  retryDelay,
 }: {
   queryKey: TQueryKey;
   fetchFn: (pageParam: TPageParam) => Promise<TPage>;
@@ -99,6 +103,8 @@ export function useGalleryInfiniteScroll<
     refetchOnMount,
     refetchOnReconnect,
     refetchOnWindowFocus,
+    retry,
+    retryDelay,
     placeholderData: (previousData) => previousData,
   });
 

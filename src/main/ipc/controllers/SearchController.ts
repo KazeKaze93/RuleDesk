@@ -28,6 +28,11 @@ import { getAllBlacklistedTags } from "../../db/queries/blacklist";
 import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
 import { resolveTagMetadataWave } from "../../services/tag-resolve-coordinator";
 import type { ProviderSettings } from "../../providers/types";
+import {
+  isProviderSearchError,
+  ProviderSearchError,
+  toProviderSearchSerializableError,
+} from "../../providers/provider-search-errors";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -281,8 +286,11 @@ export class SearchController extends BaseController {
       // Get decrypted settings for authentication
       const settings = await this.getDecryptedSettings();
       if (!settings?.apiKey?.trim() || !settings.userId?.trim()) {
-        throw new Error(
-          "API credentials are missing or could not be decrypted. Open Settings and sign in again."
+        throw toProviderSearchSerializableError(
+          new ProviderSearchError(
+            "auth",
+            "API credentials are missing or could not be decrypted. Open Settings → Account and sign in again."
+          )
         );
       }
       const providerId = settings.provider ?? "rule34";
@@ -398,7 +406,10 @@ export class SearchController extends BaseController {
               }
             }
           }
-        } catch (_autocompleteError) {
+        } catch (autocompleteError) {
+          if (isProviderSearchError(autocompleteError)) {
+            throw autocompleteError;
+          }
           // Autocomplete check failed, continue with other fallback attempts
         }
 
@@ -420,8 +431,10 @@ export class SearchController extends BaseController {
             if (booruPosts.length > 0) {
               tagsString = formattedUserTag; // Update for logging
             }
-          } catch (_userSearchError) {
-            // Uploader retry failed, continue
+          } catch (userSearchError) {
+            if (isProviderSearchError(userSearchError)) {
+              throw userSearchError;
+            }
           }
         }
 
@@ -444,8 +457,10 @@ export class SearchController extends BaseController {
             if (booruPosts.length > 0) {
               tagsString = formatted;
             }
-          } catch (_artistStripError) {
-            // Strip fallback failed, continue
+          } catch (artistStripError) {
+            if (isProviderSearchError(artistStripError)) {
+              throw artistStripError;
+            }
           }
         }
       }
@@ -547,8 +562,14 @@ export class SearchController extends BaseController {
         nextBeforePostId,
       };
     } catch (error) {
+      if (isProviderSearchError(error)) {
+        log.warn(
+          `[SearchController] Provider search failed (${error.kind}):`,
+          error.message
+        );
+        throw toProviderSearchSerializableError(error);
+      }
       log.error("[SearchController] Failed to search posts:", error);
-      // Re-throw original error to preserve stack trace and context
       throw error;
     }
   }

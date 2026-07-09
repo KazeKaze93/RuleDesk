@@ -8,6 +8,7 @@ import {
 } from "../utils/decrypted-credentials";
 import { eq, sql } from "drizzle-orm";
 import axios from "axios";
+import { isProviderSearchError } from "../providers/provider-search-errors";
 import type { Artist, NewPost } from "../db/schema";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
@@ -85,6 +86,18 @@ async function retryWithBackoff<T>(
       return await fn();
     } catch (error) {
       lastError = error;
+      if (isProviderSearchError(error)) {
+        if (error.kind === "rate_limit" && attempt < maxRetries) {
+          const delay =
+            error.retryAfterMs ?? baseDelay * Math.pow(2, attempt);
+          logger.warn(
+            `SyncService: Provider rate limit for ${contextName}; retrying in ${delay}ms`
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        throw error;
+      }
       if (!axios.isAxiosError(error)) {
         if (attempt === maxRetries) throw error;
         const delay = baseDelay * Math.pow(2, attempt);
@@ -575,7 +588,9 @@ export class SyncService {
             }
           }
 
-          throw e;
+          if (!isProviderSearchError(e) && !axios.isAxiosError(e)) {
+            throw e;
+          }
         }
       }
       

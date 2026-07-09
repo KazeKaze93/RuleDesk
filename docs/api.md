@@ -1228,6 +1228,8 @@ await window.api.searchBooru({
 
 **IPC Channel:** `booru:search`
 
+**Errors:** On provider failures the channel rejects with a `ProviderSearchError` payload (`providerKind`: `auth` | `rate_limit` | `network` | `parse`, safe `message`, optional `retryAfterMs`). Browse maps these to error UI states; only a successful `{ posts: [] }` shows the empty-state screen. Raw API bodies are logged in main only (truncated), never sent to the renderer.
+
 ---
 
 ### `resolveTags(tags: string[])`

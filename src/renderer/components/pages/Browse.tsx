@@ -10,6 +10,13 @@ import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { cn } from "../../lib/utils";
 import { resolveErrorMessage } from "../../utils/error-message";
+import {
+  assertBrowseSearchError,
+  getBrowseSearchErrorPresentation,
+  getBrowseSearchRetryDelayMs,
+  shouldRetryBrowseSearch,
+  toBrowseSearchError,
+} from "../../utils/provider-search-error";
 import { useViewerStore } from "../../store/viewerStore";
 import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
@@ -229,26 +236,32 @@ export const Browse = () => {
         };
       }
 
-      if (isBrowseCursorPageParam(pageParam)) {
+      try {
+        if (isBrowseCursorPageParam(pageParam)) {
+          return await window.api.searchBooru({
+            tags,
+            page: 1,
+            beforePostId: pageParam.beforePostId,
+            limit: POSTS_PER_PAGE,
+          });
+        }
+
         return await window.api.searchBooru({
           tags,
-          page: 1,
-          beforePostId: pageParam.beforePostId,
+          page: pageParam,
           limit: POSTS_PER_PAGE,
         });
+      } catch (error) {
+        assertBrowseSearchError(error);
       }
-
-      return await window.api.searchBooru({
-        tags,
-        page: pageParam,
-        limit: POSTS_PER_PAGE,
-      });
     },
     getNextPageParam: (lastPage, allPages) =>
       getSearchBrowseNextPageParam(lastPage, allPages, POSTS_PER_PAGE),
     staleTime: BROWSE_SEARCH_STALE_TIME_MS,
     gcTime: BROWSE_SEARCH_GC_TIME_MS,
     refetchOnReconnect: false,
+    retry: isRemoteBrowseSource ? shouldRetryBrowseSearch : undefined,
+    retryDelay: isRemoteBrowseSource ? getBrowseSearchRetryDelayMs : undefined,
   });
 
   const rawPosts = useMemo(() => {
@@ -337,10 +350,18 @@ export const Browse = () => {
   const hasFilteredOutResults =
     rawPosts.length > 0 && displayPosts.length === 0 && !usesDefaultRemoteFilters;
   const isFatalSearchError = isSearchError && rawPosts.length === 0;
-  const searchErrorMessage = resolveErrorMessage(
-    searchError,
-    "Failed to load posts."
-  );
+  const browseSearchError = toBrowseSearchError(searchError);
+  const browseSearchErrorPresentation = browseSearchError
+    ? getBrowseSearchErrorPresentation(browseSearchError.kind)
+    : null;
+  const searchErrorMessage = browseSearchErrorPresentation
+    ? browseSearchErrorPresentation.description
+    : resolveErrorMessage(searchError, "Failed to load posts.");
+  const searchErrorTitle = browseSearchErrorPresentation
+    ? browseSearchErrorPresentation.title
+    : "Could not load Browse";
+  const showSearchRetryButton =
+    browseSearchErrorPresentation?.showRetry ?? true;
 
   const listAriaBusy = isLoading || isFetchingNextPage || workerLoading;
   const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
@@ -491,12 +512,14 @@ export const Browse = () => {
       <div className="flex flex-col flex-1 min-h-0">
         {isFatalSearchError ? (
           <Alert variant="destructive" className="mx-6 mt-4 shrink-0">
-            <AlertTitle>Could not load Browse</AlertTitle>
+            <AlertTitle>{searchErrorTitle}</AlertTitle>
             <AlertDescription className="space-y-3">
               <p>{searchErrorMessage}</p>
-              <Button type="button" variant="outline" size="sm" onClick={() => void refetchSearch()}>
-                Retry
-              </Button>
+              {showSearchRetryButton ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => void refetchSearch()}>
+                  Retry
+                </Button>
+              ) : null}
             </AlertDescription>
           </Alert>
         ) : null}
