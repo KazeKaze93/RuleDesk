@@ -1395,7 +1395,7 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 **CI pipeline** (`.github/workflows/ci.yml`):
 
-1. `validate` → `arch:police` → `arch:audit` → `npm test` → `npm audit --omit=dev --audit-level=high`
+1. `validate` → `npm test` → `npm audit --omit=dev --audit-level=high`
 2. E2E on built artifact
 3. Tagged releases: portable Windows build after quality + e2e
 
@@ -1721,7 +1721,7 @@ Root:
 
 - **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata`, `playlists`, `playlist_entries`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
-- **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `arch:audit`, `npm test`, and production `npm audit`
+- **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `npm test`, and production `npm audit`
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
 - **Provider Support:** Multi-booru support with `provider` field (rule34, gelbooru)
 - **Artist Types:** Support for `tag`, `uploader`, and `query` types

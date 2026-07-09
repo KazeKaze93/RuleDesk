@@ -230,7 +230,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
 - ✅ **Portable Mode:** Support for portable executables with data folder next to executable
-- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate`, `arch:audit`, and `npm test` on every push/PR
+- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate` and `npm test` on every push/PR
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
 
@@ -428,7 +428,6 @@ This project uses **electron-vite** as the build tool for both the Electron Main
 - **Node.js:** v20 LTS (matches CI)
 - **npm:** v9 or higher
 - **Git:** For version control
-- **Python 3.11+** (optional, local only): required for `arch:police` and `arch:stats` (Inquisitor); CI installs Python automatically
 
 ### Installation
 
@@ -495,14 +494,6 @@ npm run typecheck
 npm run lint
 npm run check:img-attrs
 
-# Architecture tooling (Node-based)
-npm run arch:audit    # dead-code / unused export scan
-npm run arch:deps     # dependency usage report
-
-# Architecture tooling (Python-based; needs Python 3.11+ locally)
-npm run arch:police
-npm run arch:stats
-
 # Production dependency audit (high severity and above)
 npm audit --omit=dev --audit-level=high
 
@@ -566,7 +557,7 @@ If integration tests fail with `NODE_MODULE_VERSION` mismatch, run `npm run db:r
 
 GitHub Actions workflow (`.github/workflows/ci.yml`):
 
-1. **Quality** — `npm run validate`, `arch:police`, `arch:audit`, `npm test`, `npm audit --omit=dev --audit-level=high`
+1. **Quality** — `npm run validate`, `npm test`, `npm audit --omit=dev --audit-level=high`
 2. **E2E** — build app, run Playwright (needs `TEST_USER_ID` / `TEST_API_KEY` secrets for live API tests)
 3. **Release** (tags only) — Windows portable build after quality + e2e pass
 

@@ -42,7 +42,7 @@ npm run test:e2e:headless
 
 ## CI
 
-GitHub Actions runs E2E after the **quality** job (`validate`, `arch:police`, `arch:audit`, `npm test`, production audit). Steps: `npm ci` → `db:rebuild` → `build` → Playwright Chromium → `npm run test:e2e` under `xvfb-run` on Ubuntu.
+GitHub Actions runs E2E after the **quality** job (`validate`, `npm test`, production audit). Steps: `npm ci` → `db:rebuild` → `build` → Playwright Chromium → `npm run test:e2e` under `xvfb-run` on Ubuntu.
 
 **Secrets** (repository Settings → Actions):
 

@@ -110,11 +110,9 @@ Engineering materials are intentionally grouped here to keep the top-level index
 | Typecheck + lint + img policy | `npm run validate` |
 | All Vitest suites (140 tests) | `npm test` |
 | Pre-PR full gate | `npm run test:verify` |
-| Architecture audit (Node) | `npm run arch:audit` |
-| Architecture police (Python 3.11+) | `npm run arch:police` |
 | Production dependency audit | `npm audit --omit=dev --audit-level=high` |
 
-CI (`.github/workflows/ci.yml`) runs **validate**, **arch:police**, **arch:audit**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass.
+CI (`.github/workflows/ci.yml`) runs **validate**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass.
 
 ---
 

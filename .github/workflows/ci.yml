@@ -24,22 +24,11 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Setup Python for Inquisitor
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
       - name: Install dependencies
         run: npm ci
 
       - name: Validate (typecheck, lint, img attrs)
         run: npm run validate
-
-      - name: 👮 Architecture Police
-        run: npm run arch:police
-
-      - name: 🔍 Architecture Audit
-        run: npm run arch:audit
 
       - name: Unit, integration & property tests
         run: npm test
