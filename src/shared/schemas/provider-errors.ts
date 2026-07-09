@@ -27,17 +27,22 @@ export type ProviderErrorKind = z.infer<typeof ProviderErrorKindSchema>;
  * Reuses the BaseController SerializableError shape (name, message, code)
  * with an explicit providerKind discriminator for Browse UI.
  */
-export const ProviderSearchErrorPayloadSchema = z.object({
-  name: z.literal("ProviderSearchError"),
-  message: z.string().min(1),
-  code: ProviderSearchErrorCodeSchema,
-  providerKind: ProviderErrorKindSchema,
-  retryAfterMs: z.number().int().nonnegative().optional(),
-});
+export const ProviderSearchErrorPayloadSchema = z
+  .object({
+    name: z.literal("ProviderSearchError"),
+    message: z.string().min(1),
+    code: ProviderSearchErrorCodeSchema,
+    providerKind: ProviderErrorKindSchema,
+    retryAfterMs: z.number().int().nonnegative().optional(),
+  })
+  .strict();
 
-export type ProviderSearchErrorPayload = z.infer<
+/** IPC-safe fields only — explicitly excludes stack and originalError. */
+export type ProviderSearchIpcPayload = z.infer<
   typeof ProviderSearchErrorPayloadSchema
 >;
+
+export type ProviderSearchErrorPayload = ProviderSearchIpcPayload;
 
 const PROVIDER_KIND_TO_CODE: Record<
   ProviderErrorKind,

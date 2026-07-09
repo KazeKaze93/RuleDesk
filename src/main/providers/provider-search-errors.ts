@@ -1,10 +1,9 @@
-import type {
-  ProviderErrorKind,
-  ProviderSearchErrorPayload,
-} from "../../shared/schemas/provider-errors";
 import {
   providerKindToErrorCode,
   PROVIDER_SEARCH_USER_MESSAGES,
+  ProviderSearchErrorPayloadSchema,
+  type ProviderErrorKind,
+  type ProviderSearchErrorPayload,
 } from "../../shared/schemas/provider-errors";
 
 export class ProviderSearchError extends Error {
@@ -32,13 +31,14 @@ export function isProviderSearchError(
 export function toProviderSearchSerializableError(
   error: ProviderSearchError
 ): ProviderSearchErrorPayload {
-  return {
-    name: "ProviderSearchError",
+  const payload = {
+    name: "ProviderSearchError" as const,
     message: error.message,
     code: providerKindToErrorCode(error.kind),
     providerKind: error.kind,
     retryAfterMs: error.retryAfterMs,
   };
+  return ProviderSearchErrorPayloadSchema.parse(payload);
 }
 
 export function providerSearchErrorFromUnknown(
