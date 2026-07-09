@@ -52,19 +52,16 @@ test.describe('User Journeys', () => {
     expect(title).toContain('RuleDesk');
 
     // Open Add Modal
-    const addButton = page.getByRole('button', { name: /add artist/i });
+    const addButton = page.getByRole('button', { name: /^add artist$/i });
     await expect(addButton).toBeVisible();
     await addButton.click();
 
-    // Fill Form
-    // Wait for modal to appear
-    const dialog = page.locator('text=Add Artist').first();
-    await expect(dialog).toBeVisible({ timeout: 5000 });
+    // Scope to the modal — do not use bare text=Add Artist (matches the page button too).
+    const addArtistDialog = page.getByRole('dialog', { name: /add artist/i });
+    await expect(addArtistDialog).toBeVisible({ timeout: 5000 });
     
     // Fill the tag input
-    // AsyncAutocomplete uses a custom dropdown (no Headless UI)
-    // The input has placeholder "Search on Rule34.xxx..." or "Search on Gelbooru..."
-    const tagInput = page.locator('input[placeholder*="Search on"]').first();
+    const tagInput = addArtistDialog.locator('input[placeholder*="Search on"]');
     await expect(tagInput).toBeVisible({ timeout: 3000 });
     
     // Use a real tag for realism (sakimichan is a popular artist tag)
@@ -82,7 +79,7 @@ test.describe('User Journeys', () => {
     await page.waitForTimeout(800);
     
     // Option 1: Try to select from dropdown if it appears (user clicks on suggestion)
-    const dropdownOption = page.locator('[role="option"]').first();
+    const dropdownOption = addArtistDialog.locator('[role="option"]').first();
     const hasDropdown = await dropdownOption.isVisible({ timeout: 2000 }).catch(() => false);
     
     if (hasDropdown) {
@@ -125,7 +122,7 @@ test.describe('User Journeys', () => {
     // Check if the submit button is enabled (which means form has a valid tag value)
     if (inputValue.length === 0) {
       console.log('[E2E] Input appears empty, checking if form state has value via submit button state');
-      const submitButton = page.getByRole('button', { name: 'Start Tracking' });
+      const submitButton = addArtistDialog.getByRole('button', { name: 'Start Tracking' });
       const isEnabled = await submitButton.isEnabled({ timeout: 2000 }).catch(() => false);
       
       if (isEnabled) {
@@ -148,7 +145,7 @@ test.describe('User Journeys', () => {
     // Find the submit button - it should be visible in the modal
     // The button text is "Start Tracking" (from AddArtistModal.tsx line 170)
     // Use a more reliable selector - find by text within the form
-    const submitButton = page.getByRole('button', { name: 'Start Tracking' });
+    const submitButton = addArtistDialog.getByRole('button', { name: 'Start Tracking' });
     
     // Check if button exists and is visible
     await expect(submitButton).toBeVisible({ timeout: 3000 });
@@ -156,7 +153,7 @@ test.describe('User Journeys', () => {
     // Wait for button to be enabled
     // Button is disabled if: isSubmitting || !tag || !!errors.tag
     // Check for validation errors first
-    const errorText = page.locator('.text-red-400, .text-red-500').first();
+    const errorText = addArtistDialog.locator('.text-destructive, .text-red-400, .text-red-500').first();
     const hasError = await errorText.isVisible().catch(() => false);
     if (hasError) {
       const errorMessage = await errorText.textContent();
@@ -182,11 +179,8 @@ test.describe('User Journeys', () => {
       throw new Error(`Form submission failed with error: ${errorText}`);
     }
 
-    // Verify
-    // Dialog should close (wait longer for async operation to complete)
-    await expect(dialog).not.toBeVisible({ timeout: 15000 });
-    
-    // Artist should appear in the list (the tag will be normalized, so we check for partial match)
+    // Verify modal closed and artist appears in the list
+    await expect(addArtistDialog).toBeHidden({ timeout: 15000 });
     await expect(page.getByText(testTag, { exact: false })).toBeVisible({ timeout: 15000 });
   });
 
@@ -205,12 +199,11 @@ test.describe('User Journeys', () => {
       await expect(addFirstButton).toBeVisible();
       await addFirstButton.click();
       
-      // Verify modal opens
-      const dialog = page.locator('text=Add Artist').first();
-      await expect(dialog).toBeVisible({ timeout: 5000 });
+      // Verify modal opens (dialog role, not the page header button)
+      await expect(page.getByRole('dialog', { name: /add artist/i })).toBeVisible({ timeout: 5000 });
     } else {
       // If there are already artists, just verify the "Add Artist" button is visible
-      const addButton = page.getByRole('button', { name: /add artist/i });
+      const addButton = page.getByRole('button', { name: /^add artist$/i });
       await expect(addButton).toBeVisible();
     }
   });
