@@ -1,7 +1,24 @@
 import { Page, expect } from '@playwright/test';
 
 const AGE_GATE_CHECKBOX = '#age-confirm';
+const ACCOUNT_GATE_HEADING = /sign in to ruledesk/i;
+const ACCOUNT_GATE_USER_ID = '#user-id';
 const ACCOUNT_GATE_API_KEY = '#api-key';
+
+async function fillControlledInput(
+  page: Page,
+  selector: string,
+  value: string,
+  options?: { verifyValue?: boolean }
+): Promise<void> {
+  const input = page.locator(selector);
+  await input.click();
+  await input.fill('');
+  await input.pressSequentially(value, { delay: 10 });
+  if (options?.verifyValue !== false) {
+    await expect(input).toHaveValue(value, { timeout: 5000 });
+  }
+}
 
 async function acceptAgeGateIfVisible(page: Page): Promise<void> {
   const ageCheckbox = page.locator(AGE_GATE_CHECKBOX);
@@ -39,12 +56,32 @@ async function acceptAgeGateIfVisible(page: Page): Promise<void> {
   await page.waitForTimeout(1000);
 }
 
+async function waitForAccountGateDismiss(page: Page): Promise<void> {
+  const accountGateHeading = page.getByRole('heading', { name: ACCOUNT_GATE_HEADING });
+  const artistsLink = page.getByRole('link', { name: /^artists$/i });
+
+  await expect
+    .poll(async () => {
+      const gateVisible = await accountGateHeading.isVisible().catch(() => false);
+      const mainVisible = await artistsLink.isVisible().catch(() => false);
+      return !gateVisible || mainVisible;
+    }, { timeout: 30000 })
+    .toBe(true);
+
+  const saveFailed = page.getByText('Save failed');
+  if (await saveFailed.isVisible({ timeout: 1000 }).catch(() => false)) {
+    throw new Error('[E2E] Account gate reported Save failed after submitting credentials');
+  }
+
+  await expect(accountGateHeading).not.toBeVisible({ timeout: 5000 });
+}
+
 async function completeAccountGateIfVisible(page: Page): Promise<void> {
+  const accountGateHeading = page.getByRole('heading', { name: ACCOUNT_GATE_HEADING });
   const apiKeyInput = page.locator(ACCOUNT_GATE_API_KEY);
-  const accountGateHeading = page.getByRole('heading', { name: /sign in to ruledesk/i });
   const isAccountGateVisible =
-    (await apiKeyInput.isVisible({ timeout: 5000 }).catch(() => false)) ||
-    (await accountGateHeading.isVisible({ timeout: 5000 }).catch(() => false));
+    (await accountGateHeading.isVisible({ timeout: 5000 }).catch(() => false)) ||
+    (await apiKeyInput.isVisible({ timeout: 5000 }).catch(() => false));
 
   if (!isAccountGateVisible) {
     return;
@@ -68,13 +105,14 @@ async function completeAccountGateIfVisible(page: Page): Promise<void> {
     );
   }
 
-  await apiKeyInput.fill(`api_key=${apiKey}&user_id=${userId}`, { timeout: 5000 });
+  await fillControlledInput(page, ACCOUNT_GATE_USER_ID, userId);
+  await fillControlledInput(page, ACCOUNT_GATE_API_KEY, apiKey, { verifyValue: false });
 
   const saveButton = page.getByRole('button', { name: /save api key/i });
   await expect(saveButton).toBeEnabled({ timeout: 5000 });
   await saveButton.click();
 
-  await expect(apiKeyInput).not.toBeVisible({ timeout: 20000 });
+  await waitForAccountGateDismiss(page);
 
   const sidebar = page.locator('aside, nav[class*="sidebar"], [role="navigation"]');
   const topBar = page.locator('header, [role="banner"]');
@@ -101,16 +139,6 @@ async function navigateToArtistsPage(page: Page): Promise<void> {
 
 /**
  * Completes the onboarding flow (Age Gate + API credentials)
- *
- * This helper:
- * 1. Handles Age Gate if present
- * 2. Handles AccountGate (API credentials) if present
- * 3. Uses real credentials from environment variables (TEST_USER_ID, TEST_API_KEY)
- * 4. Throws error if credentials are missing when account gate is shown
- * 5. Navigates to Artists and verifies the Add Artist button
- *
- * @param page - Playwright Page object
- * @throws {Error} If TEST_USER_ID or TEST_API_KEY are missing when auth is required
  */
 export async function completeOnboarding(page: Page): Promise<void> {
   if (page.isClosed()) {
@@ -125,11 +153,11 @@ export async function completeOnboarding(page: Page): Promise<void> {
 }
 
 export async function isAccountGateVisible(page: Page): Promise<boolean> {
+  const accountGateHeading = page.getByRole('heading', { name: ACCOUNT_GATE_HEADING });
   const apiKeyInput = page.locator(ACCOUNT_GATE_API_KEY);
-  const accountGateHeading = page.getByRole('heading', { name: /sign in to ruledesk/i });
   return (
-    (await apiKeyInput.isVisible({ timeout: 2000 }).catch(() => false)) ||
-    (await accountGateHeading.isVisible({ timeout: 2000 }).catch(() => false))
+    (await accountGateHeading.isVisible({ timeout: 2000 }).catch(() => false)) ||
+    (await apiKeyInput.isVisible({ timeout: 2000 }).catch(() => false))
   );
 }
 

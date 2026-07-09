@@ -22,6 +22,7 @@ import { SettingsAccountTab } from "./features/settings/SettingsAccountTab";
 import { useSearchStore } from "./store/searchStore";
 import { normalizeCredentialsInput } from "./lib/parseCredentialsFromText";
 import { Button } from "./components/ui/button";
+import type { IpcSettings } from "@shared/schemas/settings";
 
 const AccountGate = ({
   provider,
@@ -80,7 +81,7 @@ const AccountGate = ({
           onProviderChangeConfirm={onProviderChangeConfirm}
           onProviderChangeCancel={onProviderChangeCancel}
           onResetOnboarding={onResetOnboarding}
-          showUserIdField={false}
+          showUserIdField
         />
       </div>
     </div>
@@ -200,6 +201,16 @@ function App() {
       setForceAccountGate(false);
       clearTagChips();
       resetFilters();
+      queryClient.setQueryData<IpcSettings>(["settings"], (current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          userId: normalized.userId ?? current.userId,
+          hasApiKey: true,
+        };
+      });
       await queryClient.invalidateQueries({ queryKey: ["settings"] });
       await queryClient.invalidateQueries({ queryKey: ["search"] });
       setAccountStatus("success");
