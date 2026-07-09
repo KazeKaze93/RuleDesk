@@ -1248,10 +1248,18 @@ Resolves tags to their canonical form using the booru API. Returns artist tags (
 
 ```typescript
 const artistTags = await window.api.resolveTags(["tag1", "tag2", "tag3"]);
-console.log("Artist tags:", artistTags);
 ```
 
 **IPC Channel:** `booru:resolve-tags`
+
+**Main-process behavior (tag resolve storm mitigation):**
+
+- Reads/writes persistent cache table `tag_metadata` before calling Rule34 tag DAPI.
+- Missing tags are fetched one at a time via `name=` (not batched `names=`).
+- All tag lookups share the same `ProviderThrottle` instance as `fetchPosts`.
+- Concurrent IPC calls for the same tag share one in-flight promise (cross-call dedup).
+- HTTP 429 is retried with `Retry-After` or exponential backoff; rate-limited tags are **not** written to `tag_metadata`.
+- Confirmed empty API responses are negatively cached in memory (24h TTL) to avoid hammering nonexistent tags.
 
 ---
 

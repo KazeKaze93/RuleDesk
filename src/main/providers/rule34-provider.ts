@@ -70,6 +70,15 @@ export class Rule34Provider implements IBooruProvider {
     };
   }
 
+  /** Shared throttle for post search and tag metadata lookups. */
+  getRequestThrottle(): ProviderThrottle {
+    return this.throttle;
+  }
+
+  getRequestHeaders(): Record<string, string> {
+    return this.getHeaders();
+  }
+
   getDefaultApiEndpoint(): string {
     return `${this.baseUrl}?page=dapi&s=post&q=index`;
   }
