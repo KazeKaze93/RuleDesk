@@ -66,19 +66,43 @@ async function waitForMainAppShell(page: Page): Promise<void> {
 }
 
 async function saveCredentialsViaIpc(page: Page, userId: string, apiKey: string): Promise<void> {
-  await page.evaluate(
-    async ({ userId, apiKey }) => {
-      const saved = await window.api.saveSettings({
-        userId,
-        apiKey,
-        provider: 'rule34',
-      });
-      if (!saved) {
-        throw new Error('saveSettings returned false');
-      }
-    },
-    { userId, apiKey }
-  );
+  if (!/^\d+$/.test(userId)) {
+    throw new Error(
+      `[E2E] TEST_USER_ID must be a numeric Rule34 user id (got "${userId.slice(0, 8)}...")`
+    );
+  }
+
+  try {
+    await page.evaluate(
+      async ({ userId, apiKey }) => {
+        try {
+          const saved = await window.api.saveSettings({
+            userId,
+            apiKey,
+            provider: "rule34",
+          });
+          if (!saved) {
+            throw new Error("saveSettings returned false");
+          }
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            throw new Error(error.message);
+          }
+          if (typeof error === "object" && error !== null && "message" in error) {
+            const message = Reflect.get(error, "message");
+            if (typeof message === "string" && message.length > 0) {
+              throw new Error(message);
+            }
+          }
+          throw new Error(`saveSettings failed: ${String(error)}`);
+        }
+      },
+      { userId, apiKey }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`[E2E] saveSettings IPC failed: ${message}`);
+  }
 }
 
 async function completeAccountGateIfVisible(page: Page): Promise<void> {
