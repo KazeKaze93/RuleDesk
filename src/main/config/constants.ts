@@ -21,3 +21,12 @@ export const AUTOCOMPLETE_TIMEOUT = 10000;
  */
 export const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
+/** Soft cap for on-disk video proxy cache under userData/video-cache. */
+export const VIDEO_CACHE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+
+/** Age after which orphaned `*.bin.tmp-*` files are deleted during eviction. */
+export const VIDEO_CACHE_SWEEP_ORPHAN_TMP_AGE_MS = 60 * 60 * 1000;
+
+/** Deferred one-shot eviction after VideoProxyServer.start(). */
+export const VIDEO_CACHE_EVICT_AFTER_START_MS = 15_000;
+
