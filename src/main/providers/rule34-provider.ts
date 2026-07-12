@@ -22,9 +22,9 @@ import {
 } from "../../shared/utils/provider-tag-sanitize";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
-import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
-import { getProxyAgent } from "../lib/proxy";
+import { ProviderThrottle, pickRandomUA, ProviderRateLimitGateError } from "./provider-throttle";
 import { ProviderSearchError, isProviderSearchError } from "./provider-search-errors";
+import { getProxyAgent } from "../lib/proxy";
 import {
   assertRule34NotBlockedResponse,
   isAxiosTransportFailure,
@@ -135,6 +135,23 @@ export class Rule34Provider implements IBooruProvider {
     }
   }
 
+  private async waitForUserSlot(): Promise<void> {
+    try {
+      await this.throttle.wait("user");
+    } catch (error) {
+      if (error instanceof ProviderRateLimitGateError) {
+        throw new ProviderSearchError("rate_limit", undefined, error.retryAfterMs);
+      }
+      throw error;
+    }
+  }
+
+  private notifyIfRateLimited(error: unknown): void {
+    if (isProviderSearchError(error) && error.kind === "rate_limit") {
+      this.throttle.notifyRateLimited(error.retryAfterMs);
+    }
+  }
+
   async searchTags(
     query: string,
     signal?: AbortSignal
@@ -142,7 +159,7 @@ export class Rule34Provider implements IBooruProvider {
     const safeQuery = sanitizeProviderTagQuery(query);
     if (safeQuery.length < 2) return [];
     try {
-      await this.throttle.wait();
+      await this.waitForUserSlot();
       const params = new URLSearchParams({ q: safeQuery });
       const { data } = await axios.get<R34AutocompleteItem[]>(
         `https://api.rule34.xxx/autocomplete.php?${params.toString()}`,
@@ -165,6 +182,9 @@ export class Rule34Provider implements IBooruProvider {
     } catch (error) {
       if (axios.isCancel(error)) {
         return []; // Request was cancelled, return empty array
+      }
+      if (error instanceof ProviderSearchError) {
+        throw error;
       }
       logger.error("[Rule34Provider] Autocomplete failed", error);
       return [];
@@ -258,7 +278,7 @@ export class Rule34Provider implements IBooruProvider {
     isRandom: boolean,
     limit: number
   ): Promise<BooruPost[]> {
-    await this.throttle.wait();
+    await this.waitForUserSlot();
 
     const apiPage = isRandom
       ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1
@@ -279,6 +299,7 @@ export class Rule34Provider implements IBooruProvider {
       const posts = this.parseJsonPostSearchResponse(jsonResponse.text, tags);
       return this.maybeShufflePosts(posts, isRandom);
     } catch (error) {
+      this.notifyIfRateLimited(error);
       if (isProviderSearchError(error)) {
         if (
           error.kind === "rate_limit" ||
@@ -316,6 +337,7 @@ export class Rule34Provider implements IBooruProvider {
       );
       return this.maybeShufflePosts(posts, isRandom);
     } catch (error) {
+      this.notifyIfRateLimited(error);
       if (isProviderSearchError(error)) {
         throw error;
       }

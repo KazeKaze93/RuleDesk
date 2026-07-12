@@ -34,6 +34,8 @@ vi.mock("@/main/providers", () => ({
     id: "rule34",
     getRequestThrottle: () => ({
       wait: vi.fn().mockResolvedValue(undefined),
+      notifyRateLimited: vi.fn(),
+      resetRateLimitGateForTests: vi.fn(),
     }),
     getRequestHeaders: () => ({
       "User-Agent": "test",

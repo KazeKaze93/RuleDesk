@@ -198,6 +198,10 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 **Root Cause:** A full IoC-style abstraction (cycle detection, factory theater) was introduced without automatic wiring or scopes; instance-Map `resolve` never runs user code, so circular-dependency stacks are dead.
 **Invariant Rule:** Prefer a slim typed instance registry (`Container` + `DI_TOKENS`, keyed by `token.id`). No cycle detection without lazy factories. Use a real IoC container only when automatic wiring or scope management is actually needed.
 
+### Problem: Background API consumers burned the budget for user actions, and 429 state lived in one consumer
+**Root Cause:** Shared `ProviderThrottle` had no priorities (FIFO/racing sleeps); tag-resolve kept `globalRateLimitUntilMs` locally so Sync/Browse ignored an already-known host 429.
+**Invariant Rule:** A shared API budget has exactly two priorities (`user` / `background`) and one circuit-breaker per host that every consumer writes and reads. Local copies of rate-limit state are forbidden (same split-brain class as duplicated crypto helpers).
+
 ### Problem: Re-opening the window stacks duplicate `before-quit` listeners
 **Root Cause:** `app.on("before-quit", …)` was registered inside `initializeAppAndWindow()`, which tray Show/click/`activate` can call again after the window was destroyed.
 **Invariant Rule:** Register process-lifetime Electron listeners (`before-quit`, CSP setup flags, etc.) once at module scope (or behind a one-shot guard). Window recreation may re-run IPC setup (`removeHandler` first) but must not re-bind app-level quit handlers.

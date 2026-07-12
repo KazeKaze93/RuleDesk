@@ -7,7 +7,10 @@ import {
   TAG_RESOLVE_REQUEST_TIMEOUT_MS,
 } from "../config/tag-resolve-constants";
 import type { ProviderSettings } from "./types";
-import type { ProviderThrottle } from "./provider-throttle";
+import {
+  ProviderRateLimitGateError,
+  type ProviderThrottle,
+} from "./provider-throttle";
 
 const R34TagResponseSchema = z
   .object({
@@ -149,7 +152,14 @@ export async function fetchRule34TagMetadata(
   throttle: ProviderThrottle,
   headers: Record<string, string>
 ): Promise<Rule34TagMetadataLookupResult> {
-  await throttle.wait();
+  try {
+    await throttle.wait("background");
+  } catch (error) {
+    if (error instanceof ProviderRateLimitGateError) {
+      throw new Rule34TagRateLimitError(error.retryAfterMs);
+    }
+    throw error;
+  }
 
   const params = new URLSearchParams({
     page: "dapi",
@@ -189,6 +199,7 @@ export async function fetchRule34TagMetadata(
     const retryAfterMs = Number.isFinite(retryAfterSeconds)
       ? retryAfterSeconds * 1000
       : undefined;
+    throttle.notifyRateLimited(retryAfterMs);
     throw new Rule34TagRateLimitError(retryAfterMs ?? 0);
   }
 
