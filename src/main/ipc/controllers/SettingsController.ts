@@ -20,7 +20,7 @@ import {
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
 import { z } from "zod";
-import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
+import { PROVIDER_IDS } from "../../../shared/constants";
 import { normalizeCredentialsInput } from "../../../shared/utils/parse-credentials";
 import { getDecryptedCredentialsFromRecord, hasConfiguredApiKey } from "../../utils/decrypted-credentials";
 
@@ -71,7 +71,7 @@ function mapSettingsToIpc(
   return {
     hasSettingsRecord,
     userId: dbSettings.userId ?? "",
-    provider: (dbSettings.provider as ProviderId) ?? "rule34",
+    provider: z.enum(PROVIDER_IDS).safeParse(dbSettings.provider).data ?? "rule34",
     // True when a key is stored; decrypt must succeed for API calls, not for gate dismissal.
     hasApiKey: hasConfiguredApiKey({
       encryptedApiKey: dbSettings.encryptedApiKey,
@@ -102,10 +102,10 @@ function mapSettingsToIpc(
     })(),
     downloadFolder: dbSettings.downloadFolder ?? null,
     duplicateFileBehavior:
-      (dbSettings.duplicateFileBehavior as "skip" | "overwrite") || "skip",
+      z.enum(["skip", "overwrite"]).safeParse(dbSettings.duplicateFileBehavior).data ?? "skip",
     downloadFolderStructure:
-      (dbSettings.downloadFolderStructure as "flat" | "{artist_id}") || "flat",
-    theme: (dbSettings.theme as ThemePreference) || "system",
+      z.enum(["flat", "{artist_id}"]).safeParse(dbSettings.downloadFolderStructure).data ?? "flat",
+    theme: ThemePreferenceSchema.safeParse(dbSettings.theme).data ?? "system",
     autoSyncOnStartup: !!dbSettings.autoSyncOnStartup,
     syncIntervalMinutes: dbSettings.syncIntervalMinutes ?? 0,
     backupRetention: dbSettings.backupRetention ?? 5,
@@ -318,7 +318,7 @@ export class SettingsController extends BaseController {
           const finalProvider =
             provider !== undefined && PROVIDER_IDS.includes(provider)
               ? provider
-              : ((existing.provider as ProviderId | undefined) ?? "rule34");
+              : (z.enum(PROVIDER_IDS).safeParse(existing.provider).data ?? "rule34");
           // CRITICAL: Use existing.id instead of SETTINGS_ID to ensure we update the correct record
           const targetId = existing.id;
 

@@ -3,9 +3,15 @@ import { ToggleGroup, ToggleGroupItem } from "../../ui/toggle-group";
 import { Users, Heart, Grid3x3 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 
+type SourceValue = "all" | "favorites" | "subscriptions";
+
+function isSourceValue(v: string): v is SourceValue {
+  return v === "all" || v === "favorites" || v === "subscriptions";
+}
+
 interface SourceSwitcherProps {
-  value: "all" | "favorites" | "subscriptions";
-  onValueChange: (value: "all" | "favorites" | "subscriptions") => void;
+  value: SourceValue;
+  onValueChange: (value: SourceValue) => void;
   hasActiveSearch: boolean;
 }
 
@@ -20,7 +26,7 @@ export const SourceSwitcher: React.FC<SourceSwitcherProps> = ({
       value={value}
       onValueChange={(val) => {
         const stringVal = typeof val === "string" ? val : val[0] || "";
-        if (stringVal) onValueChange(stringVal as "all" | "favorites" | "subscriptions");
+        if (stringVal && isSourceValue(stringVal)) onValueChange(stringVal);
       }}
       size="sm"
       variant="outline"

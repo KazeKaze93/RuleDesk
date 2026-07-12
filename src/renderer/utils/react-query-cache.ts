@@ -21,7 +21,7 @@ export function isSearchGalleryPage(page: unknown): page is SearchGalleryPage {
     typeof page === "object" &&
     page !== null &&
     "posts" in page &&
-    Array.isArray((page as SearchGalleryPage).posts)
+    Array.isArray(page.posts)
   );
 }
 

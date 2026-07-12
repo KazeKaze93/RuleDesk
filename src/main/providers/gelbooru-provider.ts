@@ -15,6 +15,20 @@ import { z } from "zod";
 import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
 import { getProxyAgent } from "../lib/proxy";
 
+type GelbooruTagItem = {
+  value: string;
+  label: string;
+  category?: unknown;
+  type?: unknown;
+};
+
+function isGelbooruTagItem(item: unknown): item is GelbooruTagItem {
+  if (typeof item !== "object" || item === null) return false;
+  const v = Reflect.get(item, "value");
+  const l = Reflect.get(item, "label");
+  return typeof v === "string" && typeof l === "string";
+}
+
 export class GelbooruProvider implements IBooruProvider {
   readonly id = "gelbooru";
   readonly name = "Gelbooru";
@@ -93,25 +107,14 @@ export class GelbooruProvider implements IBooruProvider {
         // Gelbooru format: [{"value":"tag_name","label":"tag_name (123)","type":"0"}]
         const results: SearchResults[] = [];
         for (const item of data) {
-          if (
-            typeof item === "object" &&
-            item !== null &&
-            "value" in item &&
-            "label" in item &&
-            typeof (item as { value: unknown }).value === "string" &&
-            typeof (item as { label: unknown }).label === "string"
-          ) {
-            const typed = item as {
-              value: string;
-              label: string;
-              category?: string;
-              type?: string;
-            };
+          if (isGelbooruTagItem(item)) {
             results.push({
-              id: typed.value,
-              label: typed.label,
-              value: typed.value,
-              type: typed.category || typed.type,
+              id: item.value,
+              label: item.label,
+              value: item.value,
+              type: typeof item.category === "string" ? item.category
+                  : typeof item.type === "string" ? item.type
+                  : undefined,
             });
           }
         }
@@ -189,9 +192,7 @@ export class GelbooruProvider implements IBooruProvider {
       if (Array.isArray(data)) {
         rawPosts = data;
       } else if (data && typeof data === "object" && data !== null && "post" in data) {
-        // Type guard: check if data has 'post' property
-        const dataWithPost = data as { post: unknown };
-        const postData = dataWithPost.post;
+        const postData: unknown = data.post;
         if (Array.isArray(postData)) {
           rawPosts = postData;
         } else if (postData && typeof postData === "object") {

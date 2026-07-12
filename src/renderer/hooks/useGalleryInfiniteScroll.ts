@@ -43,7 +43,7 @@ export function useGalleryInfiniteScroll<
   debounceDelay = DEBOUNCE_DELAY,
   getNextPageParam,
   flattenPage,
-  initialPageParam = 1 as TPageParam,
+  initialPageParam,
   staleTime,
   gcTime,
   refetchOnMount,
@@ -62,7 +62,7 @@ export function useGalleryInfiniteScroll<
     allPages: TPage[]
   ) => TPageParam | undefined;
   flattenPage?: (page: TPage) => TItem[];
-  initialPageParam?: TPageParam;
+  initialPageParam: TPageParam;
 } & GalleryInfiniteScrollQueryOptions) {
   const endReachedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasNextPageRef = useRef(false);
@@ -83,7 +83,9 @@ export function useGalleryInfiniteScroll<
     refetch,
   } = useInfiniteQuery({
     queryKey,
-    queryFn: async ({ pageParam = initialPageParam }) => {
+    queryFn: async ({ pageParam }) => {
+      // boundary: TanStack Query generic inference — pageParam is unknown for unresolved TPageParam
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: TanStack Query generic inference
       return await fetchFn(pageParam as TPageParam);
     },
     getNextPageParam:
@@ -91,9 +93,15 @@ export function useGalleryInfiniteScroll<
       ((lastPage, allPages) => {
         const items = flattenPage
           ? flattenPage(lastPage)
-          : (lastPage as unknown as TItem[]);
+          : Array.isArray(lastPage)
+            ? // boundary: TanStack Query generic inference — default path assumes TPage is TItem[]
+              (lastPage as TItem[])
+            : [];
+        // Default pagination uses sequential numeric page indices.
+        // boundary: TanStack Query generic inference — default TPageParam is number
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: TanStack Query generic inference
         return (
-          items.length === postsPerPage ? (allPages.length + 1) : undefined
+          items.length === postsPerPage ? allPages.length + 1 : undefined
         ) as TPageParam | undefined;
       }),
     initialPageParam,
@@ -157,8 +165,11 @@ export function useGalleryInfiniteScroll<
     }
     return data.pages.flatMap((page) =>
       flattenPage
-        ? flattenPage(page as TPage)
-        : (page as unknown as TItem[])
+        ? flattenPage(page)
+        : Array.isArray(page)
+          ? // boundary: TanStack Query generic inference — default path assumes TPage is TItem[]
+            (page as TItem[])
+          : []
     );
   }, [data, flattenPage]);
 

@@ -34,16 +34,23 @@ type BackupStoreConstructor = new (options: {
   defaults: BackupStoreSchema;
 }) => BackupStoreContract;
 
+function isBackupStoreConstructor(v: unknown): v is BackupStoreConstructor {
+  return typeof v === "function";
+}
+
 const require = createRequire(import.meta.url);
-const storeModule = require("electron-store");
-const storeModuleDefault =
+const storeModule: unknown = require("electron-store");
+const storeModuleDefault: unknown =
   typeof storeModule === "object" && storeModule !== null && "default" in storeModule
     ? storeModule.default
     : null;
-const StoreConstructor: BackupStoreConstructor =
-  typeof storeModule === "function"
-    ? (storeModule as BackupStoreConstructor)
-    : (storeModuleDefault as BackupStoreConstructor);
+const resolvedConstructor = isBackupStoreConstructor(storeModule)
+  ? storeModule
+  : storeModuleDefault;
+if (!isBackupStoreConstructor(resolvedConstructor)) {
+  throw new Error("[backup-service] electron-store module did not export a constructor");
+}
+const StoreConstructor: BackupStoreConstructor = resolvedConstructor;
 
 let store: BackupStoreContract | null = null;
 

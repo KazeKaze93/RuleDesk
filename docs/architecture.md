@@ -514,6 +514,7 @@ const posts = await db.query.posts.findMany({
    - Prevents duplicate handler registration errors
    - **Request collapsing** (idempotent handlers): in-flight calls with the same channel + full canonical args hash share one Promise; different payloads never share results
    - **Call spacing** (non-idempotent handlers): rapid repeat calls on one channel are delayed (~100ms), not rejected
+   - **Type assertions:** `as` forbidden except documented boundary allowlist in `.cursorrules` / `.ai/LESSONS.txt` (enforced by `@typescript-eslint/no-unsafe-type-assertion` on `src/**`)
 
    **⚠️ CRITICAL: Always Use Limits in Database Queries**
 

@@ -64,6 +64,8 @@ async function runWorker(): Promise<void> {
     duplicateFileBehavior,
     downloadFolderStructure,
     queueFilePath,
+  // boundary: worker message — workerData payload after trust/Zod
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: worker message
   } = workerData as WorkerData;
 
   let aborted = false;

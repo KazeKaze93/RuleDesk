@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { z } from "zod";
 import { Download, RefreshCw, X, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 
-type UpdateStatus =
-  | "idle"
-  | "checking"
-  | "available"
-  | "not-available"
-  | "downloading"
-  | "downloaded"
-  | "error";
+const UpdateStatusSchema = z.enum(["idle", "checking", "available", "not-available", "downloading", "downloaded", "error"]);
+type UpdateStatus = z.infer<typeof UpdateStatusSchema>;
 
 export const UpdateNotification: React.FC = () => {
   const { t } = useTranslation();
@@ -27,7 +22,9 @@ export const UpdateNotification: React.FC = () => {
         return;
       }
 
-      setStatus(data.status as UpdateStatus);
+      const parsed = UpdateStatusSchema.safeParse(data.status);
+      if (!parsed.success) return;
+      setStatus(parsed.data);
       if (data.version) setVersion(data.version);
 
       setVisible(true);

@@ -17,7 +17,7 @@ export default tseslint.config(
     ],
   },
 
-  // 2. Базовая конфигурация
+  // 2. Базовая конфигурация (без type-aware rules — tsconfig include: src only)
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -38,7 +38,6 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
-      // Настройка строгости для TypeScript
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": [
         "warn",
@@ -48,6 +47,36 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+      // Prefer `as` over angle-bracket assertions (object-literal ban is src-only below)
+      "@typescript-eslint/consistent-type-assertions": [
+        "error",
+        {
+          assertionStyle: "as",
+        },
+      ],
+    },
+  },
+
+  // 3. Type-aware assertion enforcement (src only — matches tsconfig include)
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["**/*.d.ts"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      "@typescript-eslint/consistent-type-assertions": [
+        "error",
+        {
+          assertionStyle: "as",
+          objectLiteralTypeAssertions: "never",
+        },
+      ],
+      // Ban narrowing type assertions; boundary casts use // boundary: + eslint-disable-next-line
+      "@typescript-eslint/no-unsafe-type-assertion": "error",
     },
   }
 );

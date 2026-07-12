@@ -25,6 +25,7 @@ import {
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
+import { getErrorCode } from "../../../shared/utils/type-guards";
 
 // --- Constants ---
 // Should ideally come from a shared constant or backend config
@@ -287,7 +288,7 @@ export const Favorites = () => {
     },
     onError: (err) => {
       // Ignore rate limit errors - use typed errorCode, NOT string parsing
-      const errorCode = (err as { code?: string })?.code;
+      const errorCode = getErrorCode(err);
       if (errorCode === "RATE_LIMIT") {
         return; // Silently ignore rate limit errors
       }

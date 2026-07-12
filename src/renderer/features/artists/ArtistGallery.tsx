@@ -20,6 +20,7 @@ import { getPostCardKey } from "../../lib/postCardKey";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 import { useDownloadAllFromBackend } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../../components/downloads/DownloadAllButton";
+import { getErrorCode } from "../../../shared/utils/type-guards";
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -153,6 +154,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     handleEndReached,
   } = useGalleryInfiniteScroll({
     queryKey: ["posts", artist.id, aiFilter, rating, mediaType, source, sortOrder],
+    initialPageParam: 1,
     fetchFn: async (pageParam) => {
       return await window.api.getArtistPosts({
         artistId: artist.id,
@@ -215,7 +217,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
     onError: (err) => {
       // Ignore rate limit errors - use typed errorCode, NOT string parsing
-      const errorCode = (err as { code?: string })?.code;
+      const errorCode = getErrorCode(err);
       if (errorCode === "RATE_LIMIT") {
         return; // Silently ignore rate limit errors
       }

@@ -9,6 +9,7 @@ import * as schema from "./schema";
 import { logger } from "../lib/logger";
 import { getDatabasePaths, getLegacyDatabasePaths } from "./paths";
 import { SQLITE_BUSY_TIMEOUT_MS } from "../config/constants";
+import { getErrorCode } from "../../shared/utils/type-guards";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -148,6 +149,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
   }
 
   sqliteInstance = sqlite;
+  // boundary: better-sqlite3 raw row — drizzle() generic schema typing to AppDatabase
   dbInstance = drizzle(sqlite, { schema }) as AppDatabase;
 
   try {
@@ -157,6 +159,8 @@ export async function initializeDatabase(): Promise<AppDatabase> {
     // Migration 0006_add_fts5_search.sql performs INSERT INTO posts_fts SELECT ...
     // This can block Main Process for 30+ seconds on databases with 500k+ records
     try {
+      // boundary: better-sqlite3 raw row — prepare().get() row typing
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: better-sqlite3 raw row
       const postCount = sqlite
         .prepare("SELECT COUNT(*) as count FROM posts")
         .get() as { count: number } | undefined;
@@ -347,6 +351,8 @@ export async function initializeDatabase(): Promise<AppDatabase> {
                   
                   // Initialize the single row with count from posts_fts (if table exists)
                   try {
+                    // boundary: better-sqlite3 raw row — prepare().get() row typing
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: better-sqlite3 raw row
                     const countResult = sqliteInstance
                       .prepare("SELECT COUNT(*) as count FROM posts_fts")
                       .get() as { count: number } | undefined;
@@ -417,9 +423,8 @@ export async function initializeDatabase(): Promise<AppDatabase> {
                   .run(entry.tag, Date.now());
               }
             } catch (migrationError: unknown) {
-              const error = migrationError as Error & { code?: string; message?: string };
-              const errorMessage = error.message || String(error);
-              const errorCode = error.code || "";
+              const errorMessage = migrationError instanceof Error ? migrationError.message : String(migrationError);
+              const errorCode = getErrorCode(migrationError) ?? "";
               
               // If it's a duplicate column/table/index error, log and mark as executed
               // (DB was created without migrations or from different schema)

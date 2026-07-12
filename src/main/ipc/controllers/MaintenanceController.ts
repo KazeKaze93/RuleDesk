@@ -18,6 +18,7 @@ import {
 import { maintenanceQueue } from "../../db/maintenance-queue";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
+import { isErrnoException } from "../../../shared/utils/type-guards";
 import type { BackupService, AutoBackupInterval } from "../../services/backup-service";
 import { BACKUP_FILE_PREFIX, getDatabasePaths } from "../../db/paths";
 import {
@@ -422,7 +423,7 @@ export class MaintenanceController extends BaseController {
           await fs.promises.access(source);
           await fs.promises.rename(source, target);
         } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          if (!isErrnoException(error) || error.code !== "ENOENT") {
             throw error;
           }
         }
@@ -446,6 +447,8 @@ export class MaintenanceController extends BaseController {
 
           // PRAGMA integrity_check returns rows: [{ integrity_check: "ok" }] when healthy
           // (better-sqlite3 pragma() with simple:false returns row objects, not string[])
+          // boundary: better-sqlite3 raw row
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: better-sqlite3 raw row
           const integrityRows = tempDb
             .prepare("PRAGMA integrity_check")
             .all() as { integrity_check: string }[];
@@ -477,7 +480,7 @@ export class MaintenanceController extends BaseController {
             await fs.promises.access(bakPath);
             await fs.promises.rm(bakPath, { force: true });
           } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+            if (isErrnoException(error) && error.code !== "ENOENT") {
               log.warn(`[MaintenanceController] Failed to delete backup file ${bakPath}:`, error);
             }
           }

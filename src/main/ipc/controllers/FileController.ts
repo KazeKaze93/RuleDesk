@@ -15,6 +15,7 @@ import { settings, SETTINGS_ID } from "../../db/schema";
 import { getProxyAgent } from "../../lib/proxy";
 import { IPC_CHANNELS } from "../channels";
 import { isResolvedPathWithinBase } from "../../utils/path-within-base";
+import { isErrnoException } from "../../../shared/utils/type-guards";
 
 const DEFAULT_DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 const DOWNLOAD_QUEUE_FILE = "download-queue.json";
@@ -164,7 +165,7 @@ export class FileController extends BaseController {
       await unlink(p);
       this.notifyPendingDownloadStateChanged();
     } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
+      if (isErrnoException(e) && e.code !== "ENOENT") {
         log.warn("[FileController] Failed to delete queue file:", e);
       }
     }
@@ -235,9 +236,9 @@ export class FileController extends BaseController {
         .get();
       return {
         duplicateFileBehavior:
-          (row?.duplicateFileBehavior as "skip" | "overwrite") || "skip",
+          z.enum(["skip", "overwrite"]).safeParse(row?.duplicateFileBehavior).data ?? "skip",
         downloadFolderStructure:
-          (row?.downloadFolderStructure as "flat" | "{artist_id}") || "flat",
+          z.enum(["flat", "{artist_id}"]).safeParse(row?.downloadFolderStructure).data ?? "flat",
       };
     } catch (e) {
       log.warn("[FileController] Failed to get download settings:", e);
@@ -656,7 +657,7 @@ export class FileController extends BaseController {
             await access(filePath);
             await unlink(filePath);
           } catch (unlinkError) {
-            if ((unlinkError as NodeJS.ErrnoException).code !== "ENOENT") {
+            if (isErrnoException(unlinkError) && unlinkError.code !== "ENOENT") {
               log.warn("[FileController] Failed to clean up partial file:", unlinkError);
             }
           }

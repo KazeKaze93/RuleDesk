@@ -23,7 +23,7 @@ class MaintenanceQueue {
     const previousOperation = this.queue;
     
     // Create new promise that waits for previous operation and then executes current one
-    const currentOperation = previousOperation
+    const currentOperation: Promise<T> = previousOperation
       .then(async () => {
         this.isLocked = true;
         log.debug("[MaintenanceQueue] Operation started");
@@ -35,7 +35,7 @@ class MaintenanceQueue {
           log.debug("[MaintenanceQueue] Operation completed");
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         this.isLocked = false;
         log.error("[MaintenanceQueue] Operation failed:", error);
         throw error;
@@ -44,7 +44,7 @@ class MaintenanceQueue {
     // Update queue to include current operation
     this.queue = currentOperation;
 
-    return currentOperation as Promise<T>;
+    return currentOperation;
   }
 
   /**

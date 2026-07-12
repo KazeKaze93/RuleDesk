@@ -7,6 +7,7 @@ import {
   type ProviderErrorKind,
   type ProviderSearchErrorPayload,
 } from "../schemas/provider-errors";
+import { isRecord } from "./type-guards";
 
 const IPC_INVOKE_PREFIX = /^Error invoking remote method '[^']+':\s*/;
 
@@ -30,12 +31,10 @@ function stripIpcMessagePrefix(message: string): string {
 }
 
 function inferKindFromUserMessage(message: string): ProviderErrorKind | null {
-  const entries = Object.entries(PROVIDER_SEARCH_USER_MESSAGES) as Array<
-    [ProviderErrorKind, string]
-  >;
-  for (const [kind, text] of entries) {
-    if (message === text) {
-      return kind;
+  for (const key of Object.keys(PROVIDER_SEARCH_USER_MESSAGES)) {
+    const kind = ProviderErrorKindSchema.safeParse(key);
+    if (kind.success && PROVIDER_SEARCH_USER_MESSAGES[kind.data] === message) {
+      return kind.data;
     }
   }
   return null;
@@ -74,8 +73,8 @@ function tryParseJsonProviderPayload(
   }
   try {
     const parsed: unknown = JSON.parse(trimmed);
-    if (typeof parsed === "object" && parsed !== null) {
-      return parsed as Record<string, unknown>;
+    if (isRecord(parsed)) {
+      return parsed;
     }
   } catch {
     return null;

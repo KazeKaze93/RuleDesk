@@ -44,8 +44,7 @@ const ResolveTagsArgsSchema = z.tuple([z.array(z.string().min(1)).max(100)]);
 const ResolveTagsByTypeArgsSchema = z.tuple([
   z.array(z.string().min(1)).max(100),
   z.number().int().refine((n): n is TagType => {
-    const allowed = Object.values(TAG_TYPES) as number[];
-    return allowed.includes(n);
+    return Object.values(TAG_TYPES).some((v) => v === n);
   }, "Invalid tag type"),
 ]);
 

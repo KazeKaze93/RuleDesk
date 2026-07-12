@@ -1,16 +1,18 @@
 /**
  * IPC Serialization Utilities
- * 
+ *
  * Converts database objects to IPC-safe format by recursively transforming Date objects to numbers.
  * Required for Electron 39+ IPC serialization compatibility (V8 Structured Clone Algorithm).
- * 
+ *
  * Performance: This function is synchronous and performs recursive object traversal.
  * For large datasets (1000+ records), consider batching or using Worker threads.
  * However, for typical IPC responses (50-100 records per request), this is acceptable.
- * 
+ *
  * Security: Uses proper type guards and runtime checks instead of `as any` to prevent
  * unexpected data types from being serialized through IPC.
  */
+
+import type { IpcSafe } from "../../shared/types/ipc";
 
 /**
  * Type guard to check if value is a Date object.
@@ -48,56 +50,42 @@ function isSerializablePrimitive(
   );
 }
 
+type ToIpcSafeResult<T> = T extends Date
+  ? number
+  : T extends (infer U)[]
+    ? ToIpcSafeResult<U>[]
+    : T extends object
+      ? IpcSafe<T>
+      : T;
+
 /**
  * Recursively converts Date objects to numbers (timestamps in milliseconds) for IPC serialization.
  * Handles objects, arrays, and nested structures with proper type guards and runtime checks.
- * 
- * Type-safe: Uses TypeScript's type system with proper type guards instead of `as any`.
- * Runtime-safe: Validates data types at runtime to prevent unexpected values from being serialized.
- * 
+ *
  * @param data - Data to convert (object, array, or primitive)
  * @returns IPC-safe data with Date objects converted to numbers
  * @throws {TypeError} If data contains non-serializable types (functions, symbols, etc.)
- * 
- * @example
- * ```typescript
- * const dbPost = { id: 1, publishedAt: new Date(), createdAt: new Date() };
- * const ipcPost = toIpcSafe(dbPost); // { id: 1, publishedAt: 1234567890, createdAt: 1234567890 }
- * 
- * const dbArtists = [{ id: 1, createdAt: new Date() }, { id: 2, createdAt: new Date() }];
- * const ipcArtists = toIpcSafe(dbArtists); // Array with Date converted to numbers
- * ```
  */
-export function toIpcSafe<T>(data: T): T extends Date
-  ? number
-  : T extends (infer U)[]
-  ? U extends Date
-    ? number[]
-    : ReturnType<typeof toIpcSafe<U>>[]
-  : T extends object
-  ? {
-      [K in keyof T]: T[K] extends Date
-        ? number
-        : T[K] extends Date | null
-        ? number | null
-        : ReturnType<typeof toIpcSafe<T[K]>>
-    }
-  : T {
+export function toIpcSafe<T>(data: T): ToIpcSafeResult<T> {
   // Handle Date objects
   if (isDate(data)) {
-    return data.getTime() as ReturnType<typeof toIpcSafe<T>>;
+    // boundary: toIpcSafe Date → number branch of conditional return type
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    return data.getTime() as ToIpcSafeResult<T>;
   }
 
   // Handle null/undefined (already serializable)
   if (data === null || data === undefined) {
-    return data as ReturnType<typeof toIpcSafe<T>>;
+    // boundary: toIpcSafe nullish passthrough
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    return data as ToIpcSafeResult<T>;
   }
 
   // Handle arrays
   if (Array.isArray(data)) {
-    return data.map((item) => toIpcSafe(item)) as ReturnType<
-      typeof toIpcSafe<T>
-    >;
+    // boundary: toIpcSafe array map preserves ToIpcSafeResult element typing
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    return data.map((item) => toIpcSafe(item)) as ToIpcSafeResult<T>;
   }
 
   // Handle plain objects
@@ -106,26 +94,24 @@ export function toIpcSafe<T>(data: T): T extends Date
     for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
         const value = data[key];
-        // Convert Date to number, or recursively process nested structures
         result[key] = isDate(value) ? value.getTime() : toIpcSafe(value);
       }
     }
-    return result as ReturnType<typeof toIpcSafe<T>>;
+    // boundary: toIpcSafe plain-object rebuild matches IpcSafe<T>
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    return result as ToIpcSafeResult<T>;
   }
 
   // Handle serializable primitives (string, number, boolean)
   if (isSerializablePrimitive(data)) {
-    return data as ReturnType<typeof toIpcSafe<T>>;
+    // boundary: toIpcSafe primitive passthrough
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    return data as ToIpcSafeResult<T>;
   }
 
   // Reject non-serializable types (functions, symbols, BigInt, etc.)
-  // This prevents unexpected data from being sent through IPC
   throw new TypeError(
     `Cannot serialize non-serializable type: ${typeof data}. ` +
       `IPC can only serialize: string, number, boolean, null, undefined, Date, arrays, and plain objects.`
   );
 }
-
-
-
-

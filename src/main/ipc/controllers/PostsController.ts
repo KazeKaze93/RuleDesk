@@ -384,7 +384,7 @@ export class PostsController extends BaseController {
       const tokenCondition =
         termConditions.length === 1
           ? termConditions[0]
-          : (or(...termConditions) as SQL);
+          : (or(...termConditions) ?? termConditions[0]);
 
       tokenConditions.push(token.exclude ? not(tokenCondition) : tokenCondition);
     }
@@ -393,9 +393,10 @@ export class PostsController extends BaseController {
       return sql`1 = 1`;
     }
 
-    return tokenConditions.length === 1
-      ? tokenConditions[0]
-      : (and(...tokenConditions) as SQL);
+    if (tokenConditions.length === 1) {
+      return tokenConditions[0];
+    }
+    return and(...tokenConditions) ?? tokenConditions[0];
   }
 
   private createSearchTermCondition(term: ParsedSearchTerm): SQL | null {
@@ -505,7 +506,7 @@ export class PostsController extends BaseController {
                   WHERE posts_fts.rowid = ${posts.id} 
                     AND posts_fts MATCH ${ftsQuery}
                 )`
-              ) as SQL
+              )
             );
           } else {
             // Only AI posts: FTS5 match
@@ -514,7 +515,7 @@ export class PostsController extends BaseController {
                 SELECT 1 FROM posts_fts 
                 WHERE posts_fts.rowid = ${posts.id} 
                   AND posts_fts MATCH ${ftsQuery}
-              )` as SQL
+              )`
             );
           }
         }
@@ -534,11 +535,13 @@ export class PostsController extends BaseController {
           (pattern) => sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
         );
         if (aiConditions.length > 0) {
-          const aiOrCondition = or(...aiConditions) as SQL;
-          if (filters.aiFilter === "hide") {
-            conditions.push(not(aiOrCondition));
-          } else {
-            conditions.push(aiOrCondition);
+          const aiOrCondition = or(...aiConditions);
+          if (aiOrCondition) {
+            if (filters.aiFilter === "hide") {
+              conditions.push(not(aiOrCondition));
+            } else {
+              conditions.push(aiOrCondition);
+            }
           }
         }
       }
@@ -553,12 +556,8 @@ export class PostsController extends BaseController {
       conditions.push(eq(posts.mediaType, "video"));
     } else if (filters?.mediaType === "images") {
       // Images OR NULL (NULL treated as image during backfill)
-      conditions.push(
-        or(
-          eq(posts.mediaType, "image"),
-          sql`${posts.mediaType} IS NULL`
-        ) as SQL
-      );
+      const imageOrNull = or(eq(posts.mediaType, "image"), sql`${posts.mediaType} IS NULL`);
+      if (imageOrNull) conditions.push(imageOrNull);
     }
 
     const blacklistedTags = getAllBlacklistedTags();
@@ -568,7 +567,7 @@ export class PostsController extends BaseController {
           SELECT 1
           FROM tag_blacklist bl
           WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
-        )` as SQL
+        )`
       );
     }
 
@@ -666,10 +665,13 @@ export class PostsController extends BaseController {
             title: posts.title,
             rating: posts.rating,
             tags: posts.tags,
+            mediaType: posts.mediaType,
             publishedAt: posts.publishedAt,
             createdAt: posts.createdAt,
             isViewed: posts.isViewed,
             isFavorited: posts.isFavorited,
+            lastViewedAt: posts.lastViewedAt,
+            viewCount: posts.viewCount,
           })
           .from(posts)
           .innerJoin(artists, joinConditions)
@@ -692,7 +694,7 @@ export class PostsController extends BaseController {
         );
 
         // Convert Date objects to numbers for Electron 39+ IPC serialization
-        return toIpcSafe(result) as IpcPost[];
+        return toIpcSafe(result);
       }
 
       // Standard query path (no sinceTracking filter)
@@ -716,10 +718,13 @@ export class PostsController extends BaseController {
           title: posts.title,
           rating: posts.rating,
           tags: posts.tags,
+          mediaType: posts.mediaType,
           publishedAt: posts.publishedAt,
           createdAt: posts.createdAt,
           isViewed: posts.isViewed,
           isFavorited: posts.isFavorited,
+          lastViewedAt: posts.lastViewedAt,
+          viewCount: posts.viewCount,
         })
         .from(posts)
         .where(whereClause);
@@ -742,7 +747,7 @@ export class PostsController extends BaseController {
 
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       // Uses universal toIpcSafe utility to avoid code duplication
-      return toIpcSafe(result) as IpcPost[];
+      return toIpcSafe(result);
     } catch (error) {
       log.error("[PostsController] Failed to get posts:", error);
       // Re-throw original error to preserve stack trace and context
@@ -1134,9 +1139,8 @@ export class PostsController extends BaseController {
             newPostPostId: number;
             newFavoriteState: boolean;
           };
-      let result: ToggleFavoriteResult | null = null;
 
-      db.transaction((tx) => {
+      const result = db.transaction((tx): ToggleFavoriteResult => {
         // Use shared helper method to find post
         const existingPost = this.findPostInTransaction(tx, postId, postData);
 
@@ -1155,132 +1159,115 @@ export class PostsController extends BaseController {
             `[PostsController] Post ${existingPost.id} (postId: ${existingPost.postId}) favorite toggled in transaction`
           );
 
-          result = {
+          return {
             existingPostId: existingPost.id,
             existingPostPostId: existingPost.postId,
             newFavoriteState: newState,
           };
-        } else {
-          // Post doesn't exist - can only add to favorites (not remove)
-          // For toggle operation, if post doesn't exist, we're adding it to favorites (isFavorite = true)
-          // Validate that postData is provided for network posts (Browse tab)
-          if (!postData) {
-            throw new Error(
-              `Post with id ${postId} not found. For external posts from Browse, postData must be provided when adding to favorites.`
-            );
-          }
+        }
 
-          // Validate required fields for NOT NULL constraints
-          // Schema requires: fileUrl (NOT NULL), previewUrl (NOT NULL), tags (NOT NULL)
-          if (!postData.fileUrl || postData.fileUrl.trim() === "") {
-            throw new Error(
-              `Post data validation failed: fileUrl is required and cannot be empty (NOT NULL constraint)`
-            );
-          }
-          if (!postData.previewUrl || postData.previewUrl.trim() === "") {
-            throw new Error(
-              `Post data validation failed: previewUrl is required and cannot be empty (NOT NULL constraint)`
-            );
-          }
+        // Post doesn't exist - can only add to favorites (not remove)
+        // Validate that postData is provided for network posts (Browse tab)
+        if (!postData) {
+          throw new Error(
+            `Post with id ${postId} not found. For external posts from Browse, postData must be provided when adding to favorites.`
+          );
+        }
 
-          // CRITICAL: Check if artist exists before inserting post (FOREIGN KEY constraint)
-          // SECURITY: For external posts from Browse, always use EXTERNAL_ARTIST_ID
-          // Never trust artistId from Renderer - it could be hijacked to target existing artists
-          const targetArtistId = EXTERNAL_ARTIST_ID;
+        // Validate required fields for NOT NULL constraints
+        // Schema requires: fileUrl (NOT NULL), previewUrl (NOT NULL), tags (NOT NULL)
+        if (!postData.fileUrl || postData.fileUrl.trim() === "") {
+          throw new Error(
+            `Post data validation failed: fileUrl is required and cannot be empty (NOT NULL constraint)`
+          );
+        }
+        if (!postData.previewUrl || postData.previewUrl.trim() === "") {
+          throw new Error(
+            `Post data validation failed: previewUrl is required and cannot be empty (NOT NULL constraint)`
+          );
+        }
 
-          // Use synchronous select query inside transaction
-          // Drizzle with better-sqlite3 executes queries synchronously inside transactions
-          const existingArtist = tx
-            .select()
-            .from(artists)
-            .where(eq(artists.id, targetArtistId))
-            .limit(1)
-            .get();
+        // CRITICAL: Check if artist exists before inserting post (FOREIGN KEY constraint)
+        // SECURITY: For external posts from Browse, always use EXTERNAL_ARTIST_ID
+        // Never trust artistId from Renderer - it could be hijacked to target existing artists
+        const targetArtistId = EXTERNAL_ARTIST_ID;
 
-          if (!existingArtist) {
-            // Artist doesn't exist - create placeholder artist to satisfy FOREIGN KEY constraint
-            // Use explicit id (SQLite allows this even with autoIncrement by using INSERT with explicit id)
-            const now = new Date();
-            tx.insert(artists)
-              .values({
-                id: targetArtistId, // Explicit ID for placeholder artist
-                name: `Artist ${targetArtistId}`,
-                tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${targetArtistId}`, // Unique tag for placeholder
-                provider: "rule34", // Default provider
-                type: "tag", // Default type
-                apiEndpoint: "", // Safe default (required field)
-                lastPostId: 0,
-                newPostsCount: 0,
-                createdAt: now,
-              })
-              .run();
+        // Use synchronous select query inside transaction
+        // Drizzle with better-sqlite3 executes queries synchronously inside transactions
+        const existingArtist = tx
+          .select()
+          .from(artists)
+          .where(eq(artists.id, targetArtistId))
+          .limit(1)
+          .get();
 
-            log.debug(
-              `[PostsController] Created placeholder artist ${targetArtistId} for external post in transaction`
-            );
-          }
-
-          // Create post with isFavorited = true (since we're adding to favorites via toggle)
+        if (!existingArtist) {
+          // Artist doesn't exist - create placeholder artist to satisfy FOREIGN KEY constraint
           const now = new Date();
-          const publishedAt = postData.publishedAt
-            ? new Date(postData.publishedAt)
-            : now;
-
-          tx.insert(posts)
+          tx.insert(artists)
             .values({
-              postId: postData.postId,
-              artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-              fileUrl: postData.fileUrl,
-              previewUrl: postData.previewUrl,
-              sampleUrl: postData.sampleUrl ?? "",
-              title: "",
-              rating: postData.rating ?? "",
-              tags: postData.tags ?? "", // NOT NULL constraint - empty string is valid
-              mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
-              publishedAt: publishedAt,
+              id: targetArtistId, // Explicit ID for placeholder artist
+              name: `Artist ${targetArtistId}`,
+              tag: `${EXTERNAL_ARTIST_TAG_PREFIX}${targetArtistId}`, // Unique tag for placeholder
+              provider: "rule34", // Default provider
+              type: "tag", // Default type
+              apiEndpoint: "", // Safe default (required field)
+              lastPostId: 0,
+              newPostsCount: 0,
               createdAt: now,
-              isViewed: false,
-              isFavorited: true, // Set to true since we're adding to favorites
             })
             .run();
 
           log.debug(
-            `[PostsController] Created new post (postId: ${postData.postId}) and set as favorited in transaction`
+            `[PostsController] Created placeholder artist ${targetArtistId} for external post in transaction`
           );
-
-          result = {
-            newPostPostId: postData.postId,
-            newFavoriteState: true, // New posts are always favorited when created via toggle
-          };
         }
+
+        // Create post with isFavorited = true (since we're adding to favorites via toggle)
+        const now = new Date();
+        const publishedAt = postData.publishedAt
+          ? new Date(postData.publishedAt)
+          : now;
+
+        tx.insert(posts)
+          .values({
+            postId: postData.postId,
+            artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
+            fileUrl: postData.fileUrl,
+            previewUrl: postData.previewUrl,
+            sampleUrl: postData.sampleUrl ?? "",
+            title: "",
+            rating: postData.rating ?? "",
+            tags: postData.tags ?? "", // NOT NULL constraint - empty string is valid
+            mediaType: isVideoUrl(postData.fileUrl) ? "video" : "image",
+            publishedAt: publishedAt,
+            createdAt: now,
+            isViewed: false,
+            isFavorited: true, // Set to true since we're adding to favorites
+          })
+          .run();
+
+        log.debug(
+          `[PostsController] Created new post (postId: ${postData.postId}) and set as favorited in transaction`
+        );
+
+        return {
+          newPostPostId: postData.postId,
+          newFavoriteState: true, // New posts are always favorited when created via toggle
+        };
       });
 
-      if (!result) {
-        throw new Error(
-          `Post with id ${postId} not found or not updated. For external posts from Browse, postData must be provided.`
+      if ("existingPostId" in result) {
+        log.info(
+          `[PostsController] Post ${result.existingPostId} (postId: ${result.existingPostPostId}) favorite toggled to ${result.newFavoriteState}`
         );
+        return result.newFavoriteState;
       }
 
-      if ("existingPostId" in result) {
-        const r = result as {
-          existingPostId: number;
-          existingPostPostId: number;
-          newFavoriteState: boolean;
-        };
-        log.info(
-          `[PostsController] Post ${r.existingPostId} (postId: ${r.existingPostPostId}) favorite toggled to ${r.newFavoriteState}`
-        );
-        return r.newFavoriteState;
-      } else {
-        const r = result as {
-          newPostPostId: number;
-          newFavoriteState: boolean;
-        };
-        log.info(
-          `[PostsController] Post new (postId: ${r.newPostPostId}) favorite toggled to ${r.newFavoriteState}`
-        );
-        return r.newFavoriteState;
-      }
+      log.info(
+        `[PostsController] Post new (postId: ${result.newPostPostId}) favorite toggled to ${result.newFavoriteState}`
+      );
+      return result.newFavoriteState;
     } catch (error) {
       log.error("[PostsController] Failed to toggle favorite:", error);
       // Re-throw original error to preserve stack trace and context
@@ -1440,7 +1427,7 @@ export class PostsController extends BaseController {
 
       if (existingPost) {
         log.debug(`[PostsController] Shadow insert: Post already exists (id: ${existingPost.id}, postId: ${request.postId})`);
-        return toIpcSafe(existingPost) as IpcPost;
+        return toIpcSafe(existingPost);
       }
 
       // Step 2: Fetch post data from API (Main process controls data source)
@@ -1576,7 +1563,7 @@ export class PostsController extends BaseController {
       }
 
       // Step 6: Return IPC-safe Post object
-      return toIpcSafe(insertedPost) as IpcPost;
+      return toIpcSafe(insertedPost);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       log.error(`[PostsController] Failed to shadow insert post (postId: ${request.postId}):`, {
