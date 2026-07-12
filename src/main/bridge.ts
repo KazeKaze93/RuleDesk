@@ -80,6 +80,7 @@ export interface IpcBridge {
   getAppVersion: () => Promise<string>;
   getDatabaseLocation: () => Promise<string>;
   getIconPath: (theme?: "light" | "dark") => Promise<string>;
+  wipeAllData: () => Promise<void>;
 
   writeToClipboard: (text: string) => Promise<boolean>;
 
@@ -247,6 +248,7 @@ const ipcBridge: IpcBridge = {
   getIconPath: (theme) => {
     return ipcRenderer.invoke(IPC_CHANNELS.APP.GET_ICON_PATH, theme);
   },
+  wipeAllData: () => ipcRenderer.invoke(IPC_CHANNELS.APP.WIPE_ALL_DATA),
 
   writeToClipboard: (text) =>
     ipcRenderer.invoke(IPC_CHANNELS.APP.WRITE_CLIPBOARD, text),

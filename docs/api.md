@@ -376,11 +376,23 @@ const { data: version } = useQuery<string>({
   queryKey: ["app-version"],
   queryFn: () => window.api.getAppVersion(),
 });
-
-return <div>Version: {version}</div>;
 ```
 
-**IPC Channel:** `app:get-version`
+### `wipeAllData()`
+
+Deletes all application data under `userData` (`.rdcache`), then exits the process.
+
+**IPC Channel:** `system:wipe-all-data`  
+**Args:** none (`z.tuple([])`)  
+**Order:** `closeDatabase()` → stop video proxy → delete children of `userData` (paths validated with `isResolvedPathWithinBase`) → `app.exit(0)`.
+
+Does **not** delete the user's media download folder outside `.rdcache`. On partial delete failure, throws a user-facing error and does not exit.
+
+**Returns:** `Promise<void>` (normally does not resolve — process exits)
+
+```typescript
+await window.api.wipeAllData();
+```
 
 ---
 

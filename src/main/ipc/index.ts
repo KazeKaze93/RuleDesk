@@ -44,7 +44,7 @@ export function setupIpc(
   const videoProxyController = new VideoProxyController(videoProxyServer);
   videoProxyController.setup();
 
-  const systemController = new SystemController();
+  const systemController = new SystemController(videoProxyServer);
   systemController.setup();
 
   const artistsController = new ArtistsController();
