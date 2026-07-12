@@ -36,7 +36,7 @@ export async function backfillMediaType(): Promise<void> {
   try {
     // Check how many posts need backfill
     // boundary: better-sqlite3 raw row — prepare().get() row typing
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: better-sqlite3 raw row
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
     const countResult = sqlite
       .prepare("SELECT COUNT(*) as count FROM posts WHERE media_type IS NULL")
       .get() as { count: number } | undefined;
@@ -67,7 +67,7 @@ export async function backfillMediaType(): Promise<void> {
       // CRITICAL: This is synchronous and blocks Event Loop
       // Small BATCH_SIZE (150) minimizes blocking time
       // boundary: better-sqlite3 raw row
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: better-sqlite3 raw row
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
       const batch = sqlite
         .prepare(
           `SELECT id, file_url FROM posts 

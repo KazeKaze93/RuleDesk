@@ -448,7 +448,7 @@ export class MaintenanceController extends BaseController {
           // PRAGMA integrity_check returns rows: [{ integrity_check: "ok" }] when healthy
           // (better-sqlite3 pragma() with simple:false returns row objects, not string[])
           // boundary: better-sqlite3 raw row
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: better-sqlite3 raw row
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
           const integrityRows = tempDb
             .prepare("PRAGMA integrity_check")
             .all() as { integrity_check: string }[];

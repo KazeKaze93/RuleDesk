@@ -204,7 +204,7 @@ self.addEventListener("message", (event: MessageEvent<WorkerRequest>) => {
     switch (action) {
       case "FILTER_AND_SORT": {
         // boundary: worker message
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: worker message
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: worker message
         const { posts, filters } = payload as FilterAndSortPayload;
         
         // PERFORMANCE: Skip Zod validation in Worker - data comes from trusted Main process

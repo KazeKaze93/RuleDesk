@@ -68,7 +68,7 @@ export class Container {
     }
     const service = this.services.get(id);
     // boundary: DI registry erasure
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: DI registry erasure
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: DI registry erasure
     return service as T;
   }
 
