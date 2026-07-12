@@ -87,6 +87,7 @@ This is the secure Node.js environment. It handles all I/O, persistence, and sec
 This is the sandboxed browser environment. It handles presentation.
 
 - **Frontend:** **React + TypeScript**
+- **Locale:** **English-only** — user-facing copy is inline string literals (or a local named constant when the same text is used in 3+ places). No i18n libraries.
 - **Styling:** **Tailwind CSS + shadcn/ui** (modern UI, good baseline A11y).
 - **State Management:** **Zustand** (minimalistic state layer, aligned with KISS/YAGNI).
 - **Data Fetching:** **TanStack Query (React Query)** (caching, loading states, API boundary).
@@ -111,7 +112,7 @@ The application is organized into the following main sections accessible via the
 - **Playlists (Collections)** - Create and manage curated collections of posts
 - **Statistics** - Extended local metrics and distribution charts via `getExtendedStats` (counts, pie charts, top artists/tags, provider artist split, DB size)
 - **Tracked (Artists/Tags management)** - Manage tracked artists, tags, and subscriptions
-- **Settings** - Configure downloads, sync behavior, appearance, account key, and backup/restore
+- **Settings** - Configure downloads, sync, appearance, account, backup/restore, and Danger-zone wipe
 
 ## 🎨 Core UX Principles
 
@@ -190,6 +191,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **Duplicate behavior** - `skip` or `overwrite` for existing files
 - **Folder structure** - `flat` or `{artist_id}` subfolder mode
 - **Proxy URL** - Optional HTTP/HTTPS proxy for outbound requests/downloads
+- **Danger zone — Delete all data** - Confirmed wipe of everything under `.rdcache` (database, `video-cache/`, logs, in-app backups, Electron cache), then quit. Does **not** delete the separate media download folder. Prefer this over uninstall alone (uninstall leaves `.rdcache`).
 
 ### Sync
 
@@ -230,7 +232,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
 - ✅ **User Data Path:** Neutral `.rdcache` directory for dev and packaged builds (same location on a given machine)
-- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate` and `npm test` on every push/PR
+- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate`, `docs:api` freshness, and `npm test` on every push/PR
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
 
@@ -247,9 +249,10 @@ The application is stable and production-ready (see **`package.json`** → `vers
 
 ### Security & Reliability
 
-- ✅ **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API (Windows Credential Manager, macOS Keychain, Linux libsecret). Credentials encrypted at rest, decryption only in Main Process
-- ✅ **Database Backup/Restore:** Manual backup and restore functionality implemented with integrity checks. Create timestamped backups and restore from files
-- ✅ **Input Validation:** Zod validation implemented per IPC handler via `BaseController`
+- ✅ **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API via **`SecureStorage` only** (no parallel crypto helpers). Credentials encrypted at rest; decryption only in Main Process
+- ✅ **Database Backup/Restore:** Manual backup and restore with integrity checks; configurable retention
+- ✅ **Wipe all data:** Settings → General → Danger zone deletes `.rdcache` contents and quits
+- ✅ **Input Validation:** Zod validation per IPC handler via `BaseController` (collapse for idempotent; spacing for mutate)
 - ✅ **Context Isolation:** Enabled globally with sandbox mode for maximum security
 - ✅ **CSP (Content Security Policy):** Strict CSP in production, relaxed for development (HMR support)
 - ✅ **User Data Path:** Packaged and dev builds use `%LOCALAPPDATA%/.rdcache` on Windows (not a folder next to the executable)
@@ -263,6 +266,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 - ✅ **Rate Limiting:** Intelligent rate limiting with 1.5s delay between artists, 0.5s between pages
 - ✅ **Anti-Bot Measures:** Shared throttling/UA strategy applied across current providers.
+- ⚠️ **Open P0:** video-cache file integrity (atomic writes) and sync `lastPostId` cursor integrity — see [Roadmap](./docs/roadmap.md#open-p0-audit--not-yet-shipped)
 
 ### UI/UX
 
@@ -490,6 +494,9 @@ Local packaging scripts: `npm run dist:win`, `npm run dist:linux` (after `npm ru
 # Typecheck + ESLint + renderer <img> loading/decoding policy
 npm run validate
 
+# Regenerate IPC channel reference (commit docs/api.md if it changes)
+npm run docs:api
+
 # Individual steps (if needed)
 npm run typecheck
 npm run lint
@@ -504,7 +511,7 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests (**171 tests** across 25 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
+**Vitest** covers unit, integration, and property-based tests (**183 tests** across 27 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
 
 ```bash
 # Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron
@@ -563,7 +570,7 @@ If integration tests fail with `NODE_MODULE_VERSION` mismatch, run `npm run db:r
 
 GitHub Actions workflow (`.github/workflows/ci.yml`):
 
-1. **Quality** — `npm run validate`, `npm test`, `npm audit --omit=dev --audit-level=high`
+1. **Quality** — `npm run validate`, `npm run docs:api` + freshness check on `docs/api.md`, `npm test`, `npm audit --omit=dev --audit-level=high`
 2. **E2E** — build app, run Playwright (needs `TEST_USER_ID` / `TEST_API_KEY` secrets for live API tests)
 3. **Release** (tags only) — Windows zip + Linux AppImage (parallel jobs), merged into one GitHub Release after quality + e2e pass
 

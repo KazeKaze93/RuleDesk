@@ -429,6 +429,7 @@ Settings are split into tabs:
 - **When file already exists** - Choose `Skip` or `Overwrite`
 - **Folder structure** - `Flat` or `By artist`
 - **Proxy URL** - Optional HTTP/HTTPS proxy for requests/downloads
+- **Danger zone** - **Delete all data…** (checkbox + confirm). Closes the DB, stops the video proxy, deletes the contents of `.rdcache`, and quits. Media downloads outside `.rdcache` are not removed.
 
 ### Sync
 
@@ -556,6 +557,25 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 2. Clear restrictive filters (AI, media, rating, date) — client-side filters only apply to already loaded pages
 3. If using **Favorites** / **Subscriptions**, add at least one tag in the search bar (required by design)
 4. If Browse shows a centered error screen (not the empty “no posts” state), use **Retry** or **Open Settings** for auth failures — messages distinguish invalid API credentials, rate limits, and network errors
+
+### Video playback glitches / stuck loading
+
+**Problem:** A video fails to play, stalls, or shows a broken frame after a previous interrupt.
+
+**Solutions:**
+
+1. Retry opening the post (proxy may fall back to the direct CDN URL while resolving)
+2. If problems persist across many videos, manually delete the `video-cache` folder under `.rdcache` and restart — or use **Settings → General → Danger zone → Delete all data** as a last resort (wipes all of `.rdcache`)
+3. Known limitation: cache writes are not yet atomic — a mid-download abort can leave a bad file that looks like a cache hit (open P0 — see [roadmap](./roadmap.md#open-p0-audit--not-yet-shipped))
+
+### Artist sync seems to skip newer posts
+
+**Problem:** After an interrupted or failed sync, later syncs miss posts that should appear.
+
+**Solutions:**
+
+1. Use **Repair** on the artist (resync from the beginning)
+2. Known limitation: `lastPostId` can advance on incomplete sync batches (open P0 — see [roadmap](./roadmap.md#open-p0-audit--not-yet-shipped))
 
 ### App is slow
 

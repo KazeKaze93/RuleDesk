@@ -116,7 +116,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 ### M2 - UX Parity (In Progress)
 
 - ✅ Filter panel is aligned to **AI/media/source** scope.
-- ⏳ Settings page redesign (see [Planned product work](#planned-product-work)) remains product-driven.
+- ✅ Settings tabbed IA shipped (General / Sync / Appearance / Backup / Account), including Danger-zone wipe.
 - Gallery/viewer: edge-case polish; core **TagsDrawer** and **PostCard** progressive loading are shipped.
 - Updates feed QoL largely shipped (Creators tab, mark all read); further polish as needed.
 
@@ -128,15 +128,32 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ## 🔧 Technical Improvements (From Audit) & DX
 
-- ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; `test:run` / watch / coverage rebuild `better-sqlite3` for Node before running; `npm test` restores Electron ABI via `posttest`.
-- ✅ **CI:** `validate`, `npm test`, and production `npm audit --omit=dev --audit-level=high` on every push/PR; release tags wait for quality + e2e, then publish Windows zip + Linux AppImage (macOS binaries not distributed).
-- ✅ **Dependencies:** Removed unused UI packages; `repomix` in devDependencies; security bumps (Electron 39.8.x, drizzle-orm 0.45+, axios, dompurify, react-router-dom).
-- ✅ **Main process dev experience:** main sources are watched in development (`electron.vite.config.ts`), closing the previous manual-restart-only loop for routine IPC/service edits.
-- ✅ **Shared validation in Main:** IPC controller registration uses typed wrapper handlers; shared tuple parsing helpers in handler modules where appropriate.
-- ✅ **Video pipeline baseline:** hardware decode flags and `<video>` attribute tuning landed; remaining work is regression-driven per platform/device.
-- ✅ **Post-audit regression tests:** Vitest coverage for decrypt fail-safe, DI token keys, artist list cap, sync/repair serialization, worker post mapping, provider search IPC payload parsing, Rule34 fetch error classification, and tag-resolve dedup (171 tests total).
-- ✅ **Provider search errors:** Typed provider failures, IPC-safe serialization, `BrowseErrorState` UI, sync auth → `SYNC.ERROR` (no silent empty Browse on auth/429).
-- ⏳ **Tooling / hygiene:** keep `validate` green; optional stricter policy on logging and IPC surface over time. Remaining dev-only audit noise (electron-builder transitive deps) is tracked separately from production `npm audit`.
+### Shipped (Jul 2026 — PRs #105–#112)
+
+- ✅ **IPC collapse + throttle** (#105): idempotent handlers collapse by full canonical args hash; mutating handlers space calls (~100ms sleep), never reject with rate-limit errors.
+- ✅ **Type assertion policy** (#106): ESLint `no-unsafe-type-assertion` on `src/**`; closed `as` boundary allowlist in `.cursorrules` / LESSONS 3b.
+- ✅ **Crypto unify** (#107): single `SecureStorage` path; `src/main/lib/crypto.ts` removed.
+- ✅ **DI container slim** (#108): typed instance registry keyed by `token.id` (no dead cycle-detection theater).
+- ✅ **Main lifecycle + repo hygiene** (#109): one-shot `before-quit`; idempotent DB close; `coverage/` untracked.
+- ✅ **Wipe all data** (#110): `system:wipe-all-data` + Settings → General → Danger zone.
+- ✅ **Generated IPC docs** (#111): `npm run docs:api` → `docs/api.md`; CI freshness check; narrative in `docs/api-guide.md`.
+- ✅ **English-only UI** (#112): removed `i18next` / `react-i18next` / locale packs; inline literals (+ local constants at 3+ uses).
+
+### Baseline DX (earlier)
+
+- ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.
+- ✅ **CI:** `validate` → `docs:api` freshness → `npm test` → production `npm audit --omit=dev --audit-level=high`; release tags wait for quality + e2e, then Windows zip + Linux AppImage.
+- ✅ **Post-audit regression tests:** **183** Vitest tests across **27** files (includes collapse/throttle + `SecureStorage` suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md)).
+- ✅ **Main process HMR/watch**, shared Zod IPC helpers, provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
+
+### Open P0 (audit — not yet shipped)
+
+| Item | Hazard | Target branch (planned) |
+|------|--------|-------------------------|
+| **Video cache integrity** | Partial/corrupt files under `video-cache/` can be served as hits | `fix/video-cache-integrity` |
+| **Sync cursor integrity** | `lastPostId` may advance on incomplete sync → skipped posts | sync-cursor integrity fix |
+
+- ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.
 
 ## 🏗️ Architecture Considerations
 
@@ -175,11 +192,12 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
+| **P0 integrity** | Video-cache atomic writes; sync `lastPostId` only after complete durable batches (see [Open P0](#open-p0-audit--not-yet-shipped)). |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | `keep last N` is implemented; optional **total-size cap** is also supported via `BACKUP_RETENTION_MAX_TOTAL_MB` env for deployments that need hard storage ceilings. UI exposure for this cap remains optional future UX work. |
-| **Engineering** | [Technical Improvements & DX](#-technical-improvements-from-audit--dx): remaining **shared** validation helper consolidation and ongoing tooling hygiene. |
+| **Engineering** | Ongoing tooling hygiene; remaining shared validation consolidation as needed. |
 | **Product** | **Smart Collections AI** (research). |
 
 **Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.

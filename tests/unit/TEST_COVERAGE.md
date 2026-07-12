@@ -2,7 +2,7 @@
 
 ## Overview
 
-Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **171 tests** across **25 files** (unit + integration + property).
+Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **183 tests** across **27 files** (unit + integration + property). Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
 
 ## Test files (unit)
 
@@ -11,10 +11,11 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `hooks/useGalleryInfiniteScroll.test.ts` | 7 | Infinite scroll pagination |
 | `hooks/useWorkerFilteredPosts.test.ts` | 7 | Worker post → Post field mapping |
 | `lib/filter-utils.test.ts` | 29 | AI tags, video detection |
-| `utils/decrypted-credentials.test.ts` | 7 | API key decrypt fail-safe |
+| `utils/decrypted-credentials.test.ts` | 10 | API key decrypt fail-safe |
 | `utils/parse-credentials.test.ts` | 6 | Credential paste parsing |
-| `utils/react-query-cache.test.ts` | 7 | Browse pagination / cursor helpers |
-| `core/di-container.test.ts` | 6 | DI token.id Map keys |
+| `utils/react-query-cache.test.ts` | 8 | Browse pagination / cursor helpers |
+| `core/di-container.test.ts` | 6 | Slim DI registry (`token.id` Map keys) |
+| `core/BaseController.collapse-throttle.test.ts` | 6 | Idempotent collapse (full-args hash) + mutate spacing |
 | `components/filters/SourceSwitcher.test.ts` | 8 | Source filter |
 | `components/filters/FilterToggleGroup.test.ts` | 8 | Toggle group |
 | `components/layout/GridContainer.test.ts` | 8 | Grid/masonry layout |
@@ -26,14 +27,14 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `shared/provider-search-ipc-payload.test.ts` | 8 | Provider IPC error parsing |
 | `providers/rule34-provider-fetch-posts.test.ts` | 5 | fetchPosts error classification |
 | `services/tag-resolve-coordinator.test.ts` | 3 | Tag resolve dedup / rate limit |
+| `services/secure-storage.test.ts` | 3 | `SecureStorage` encrypt/decrypt (sole crypto path) |
 
 ## Other Vitest suites
 
-| Suite | Location | Tests (approx.) |
-|-------|----------|-----------------|
-| Integration | `tests/integration/` | 22 |
+| Suite | Location | Tests |
+|-------|----------|-------|
+| Integration | `tests/integration/` | 16 |
 | Property / fuzzing | `tests/property/fuzzing.test.ts` | 12 |
-| Helpers | `tests/helpers/mock-db.test.ts`, `tests/utils/db.test.ts` | — |
 
 ### Integration highlights
 
@@ -64,9 +65,11 @@ npm run test:verify                   # validate + all tests + ABI restore
 - Integration tests use in-memory SQLite (`tests/helpers/mock-db.ts`)
 - Property tests guard schema and SQL escaping invariants
 - Post-audit: pure `mapWorkerPostToPost()` in `src/renderer/lib/map-worker-post.ts` (tested without Web Worker)
+- Crypto tested via `SecureStorage` only (`src/main/lib/crypto.ts` removed)
 
 ## Future improvements
 
 1. Component rendering tests with `@testing-library/react` (optional)
 2. Broader IPC contract tests via shared Zod schemas
 3. Visual regression for masonry/grid layouts (Playwright)
+4. Coverage for video-cache atomic writes and sync-cursor integrity once those P0 fixes land
