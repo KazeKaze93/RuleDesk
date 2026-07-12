@@ -225,7 +225,7 @@ Let's trace what happens when a user clicks "Add Artist":
 
 5. **Dependency Injection** - The controller needs services (like the database). It asks the DI Container to resolve dependencies. The container provides singleton instances of services.
 
-6. **Service Layer** - The controller calls the appropriate service method (e.g., `dbService.addArtist()`). Services contain the business logic.
+6. **Service Layer** - The controller performs the business logic / Drizzle write (e.g., insert artist via `getDb()`). Dedicated services exist where needed (`SyncService`, `BackupService`, etc.).
 
 7. **Database** - The service uses Drizzle ORM to execute a type-safe query: `db.insert(artists).values(artistData)`. SQLite stores the data.
 
@@ -429,8 +429,8 @@ const posts = await db.query.posts.findMany({
 
 **Best Practices:**
 
-- **Default limit:** 50 records per page (used in `getArtistPosts`)
-- **Maximum limit:** Never exceed 1000 records in a single query
+- **Default limit:** 50 records per page (used in `getArtistPosts` / `GetPostsSchema`)
+- **Maximum limit:** `GetPostsSchema` caps `limit` at **100** (`src/shared/schemas/post.ts`)
 - **Pagination:** Use `offset` and `limit` for pagination
 - **Infinite scroll:** Use `useInfiniteQuery` with page-based pagination
 - **Count queries:** Use separate count queries (`getArtistPostsCount`) instead of `array.length`
@@ -476,8 +476,8 @@ const posts = await db.query.posts.findMany({
 
    - Drizzle ORM schema definitions for all tables
    - Type-safe table definitions with proper indexes
-   - Tables: `artists`, `posts`, `settings`
-   - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost`
+   - Tables: `artists`, `posts`, `settings`, `tag_metadata`, `playlists`, `playlist_entries`; plus `tag_blacklist` (migration + raw SQL, not in Drizzle schema)
+   - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost` (and playlist / tag_metadata types)
 
 3. **Sync Service** (`src/main/services/sync-service.ts`)
 
@@ -507,6 +507,9 @@ const posts = await db.query.posts.findMany({
    - `SystemController.ts` - System-level ops (version, clipboard, icon path, quit, **`wipeAllData`**)
    - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
    - `PlaylistController.ts` - Playlist CRUD, smart queries, import/export
+   - `StatsController.ts` - Extended stats for `/stats`
+   - `BlacklistController.ts` - Tag blacklist CRUD
+   - `VideoProxyController.ts` - Local video proxy URL / cache control
 
    **BaseController** (`src/main/core/ipc/BaseController.ts`):
 
@@ -557,7 +560,7 @@ const posts = await db.query.posts.findMany({
 
    **Default Limits:**
 
-   - Posts: 50 per page (max 1000 per query)
+   - Posts (`getArtistPosts` / `GetPostsSchema`): 50 per page (max **100** per query)
    - Artists: `MAX_TRACKED_ARTISTS` (5000) on `getTrackedArtists()` — logs a warning if truncated
    - Settings: Single record (no limit needed)
 
@@ -573,7 +576,7 @@ const posts = await db.query.posts.findMany({
    **Performance Guidelines:**
 
    - **Heavy queries** (full table scans, complex WHERE clauses) → Always use pagination
-   - **Indexed queries** (WHERE on indexed columns) → Can handle larger limits (up to 1000)
+   - **IPC post list queries** → Respect `GetPostsSchema` max **100**
    - **Unindexed queries** → Must use strict limits (50-100) to prevent blocking
    - **WAL mode** → Required for concurrent reads (enabled automatically)
 
@@ -683,12 +686,9 @@ const posts = await db.query.posts.findMany({
 
    - **Pages:**
 
-    - **Updates.tsx** - Subscriptions feed (implemented, with remaining roadmap parity gaps)
-    - **Browse.tsx** - Live booru search (Source: All) with infinite scroll, filters, and sorting; Favorites/Subscriptions modes query the local cache (implemented)
-    - **Favorites.tsx** - Favorites collection (implemented)
-    - **Tracked.tsx** - Artists and tags management (fully implemented)
-    - **Settings.tsx** - Application configuration shell (tabbed IA, fully implemented)
-    - **ArtistDetails.tsx** - Artist gallery view (fully implemented)
+    - **Updates.tsx** / **Browse.tsx** / **Favorites.tsx** / **PlaylistsPage.tsx** / **StatsPage.tsx** — `src/renderer/components/pages/`
+    - **Tracked.tsx** / **ArtistDetails.tsx** / **ArtistGallery.tsx** — `src/renderer/features/artists/`
+    - **Settings.tsx** — `src/renderer/features/settings/Settings.tsx` (tabbed IA)
     - **Onboarding.tsx** - API credentials input form (`src/renderer/features/onboarding/Onboarding.tsx`)
 
   - **Layout:**
@@ -1033,10 +1033,9 @@ sequenceDiagram
 
    **Path B: Validation Succeeds**
 
-   - Controller calls service: `dbService.addArtist(validatedData)`
-   - Service executes Drizzle insert:
+   - Controller inserts via Drizzle on `getDb()` (no separate `dbService` layer):
      ```typescript
-     await db
+     db
        .insert(artists)
        .values({
          name: "example_artist",
@@ -1151,8 +1150,10 @@ sequenceDiagram
    c. **Fetches posts from API** - Makes HTTP request to Rule34.xxx API:
 
    ```
-   GET https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=tag_name&limit=1000
+   GET https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=tag_name&limit=100
    ```
+
+   (`PAGE_SIZE` = 100 in `src/main/providers/types.ts`)
 
    d. **Maps API response** - Converts API JSON format to database schema format.
 
@@ -1674,12 +1675,12 @@ src/
 └── shared/                         # Shared contracts (schemas/constants/types)
     ├── schemas/
     ├── constants.ts
-    └── types.ts
+    └── types/                      # Shared TypeScript types
 
 Root:
 ├── drizzle/                        # Database migrations
 │   ├── *.sql                       # SQL migration files (tracked in git)
-│   └── meta/                       # Migration metadata (ignored by git)
+│   └── meta/                       # Migration journal + snapshots (tracked in git)
 │       ├── _journal.json           # Migration journal
 │       └── *_snapshot.json         # Schema snapshots
 ├── docs/                           # Documentation
@@ -1693,11 +1694,10 @@ Root:
 │   └── rule34-api-reference.md
 ├── scripts/                        # Build and utility scripts
 │   ├── generate-api-docs.mjs       # IPC docs generator
-│   ├── ai_reviewer.py
-│   └── system_prompt.md
+│   ├── check-img-loading-decoding.mjs
+│   └── check-release-artifacts.mjs
 ├── .github/                        # GitHub workflows
 │   └── workflows/
-│       ├── ai-review.yml
 │       └── ci.yml
 ├── electron.vite.config.ts         # Electron-Vite configuration
 ├── drizzle.config.ts               # Drizzle ORM configuration
@@ -1738,7 +1738,7 @@ Root:
 
 **Database & Schema:**
 
-- **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `playlists`, `playlist_entries`, and FTS5 for post tags
+- **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
 - **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `npm test`, and production `npm audit`
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
@@ -1759,7 +1759,7 @@ Root:
 - **Tag Normalization:** Automatic stripping of metadata from tag names (e.g., "tag (123)" → "tag")
 - **Sync Service:** Handles `ON CONFLICT` correctly with proper upsert logic
 - **Provider Pattern:** Multi-booru support via `IBooruProvider` interface
-- **Rate Limiting:** Intelligent rate limiting with configurable delays
+- **Rate Limiting:** Shared `ProviderThrottle` (~1200ms + 0–400ms jitter per request)
 
 **UI/UX:**
 
@@ -1791,7 +1791,7 @@ Root:
 15. ✅ **Favorites System:** Mark and manage favorite posts with toggle functionality
 16. ✅ **Download Manager:** Download full-resolution files with progress tracking
 17. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
-18. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Updates, Browse, Favorites, Tracked, Settings)
+18. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Browse, Updates, Artists, Favorites, Playlists, Statistics, Settings)
 19. ✅ **Global Top Bar:** Search, `FiltersPanel` (AI, media, source), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines.
 20. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 21. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard

@@ -116,7 +116,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 ### M2 - UX Parity (In Progress)
 
 - ✅ Filter panel is aligned to **AI/media/source** scope.
-- ✅ Settings tabbed IA shipped (General / Sync / Appearance / Backup / Account), including Danger-zone wipe.
+- ✅ Settings tabbed IA shipped (General / Sync / Appearance / Backup / Account / Blacklist), including Danger-zone wipe.
 - Gallery/viewer: edge-case polish; core **TagsDrawer** and **PostCard** progressive loading are shipped.
 - Updates feed QoL largely shipped (Creators tab, mark all read); further polish as needed.
 
@@ -164,7 +164,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.
 - ✅ **CI:** `validate` → `docs:api` freshness → `npm test` → production `npm audit --omit=dev --audit-level=high`; release tags wait for quality + e2e, then Windows zip + Linux AppImage.
-- ✅ **Post-audit regression tests:** **197** Vitest tests across **28** files (includes collapse/throttle + `SecureStorage` + video-proxy suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md)).
+- ✅ **Post-audit regression tests:** **209** Vitest tests across **30** files (includes collapse/throttle + `SecureStorage` + video-proxy suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md); inventory file may lag — trust `npm test` count).
 - ✅ **Main process HMR/watch**, shared Zod IPC helpers, provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
 
 - ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.

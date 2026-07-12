@@ -55,7 +55,7 @@ Stores information about tracked artists/users.
 | `name`            | TEXT (NOT NULL)                   | Artist display name                         |
 | `tag`             | TEXT (NOT NULL, UNIQUE)           | Tag or username for tracking                |
 | `provider`        | TEXT (NOT NULL, DEFAULT 'rule34') | Provider ID: "rule34" or "gelbooru"         |
-| `type`            | TEXT (NOT NULL, DEFAULT 'tag')    | Type: "tag", "uploader", or "query"         |
+| `type`            | TEXT (NOT NULL)                   | Type: "tag", "uploader", or "query"         |
 | `api_endpoint`    | TEXT (NOT NULL)                   | Base API endpoint URL                       |
 | `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)     | ID of the last seen post                    |
 | `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)     | Count of new, unviewed posts                |
@@ -136,6 +136,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 
 - `postIdIdx` - Index on `post_id` for efficient lookups
 - `artistIdIdx` - Index on `artist_id` for artist-based queries
+- `posts_rating_idx` - Index on `rating` for rating filters
 - `isViewedIdx` - Index on `is_viewed` for view status filtering
 - `posts_last_viewed_at_idx` - Index on `last_viewed_at` for recently viewed sorting
 - `publishedAtIdx` - Index on `published_at` for date-based sorting
@@ -415,6 +416,22 @@ export type NewPlaylistEntry = typeof playlistEntries.$inferInsert;
 
 - Deleting a playlist automatically deletes all associated `playlist_entries` records
 - Deleting a post automatically removes it from all playlists (via cascade delete)
+
+### Table: `tag_blacklist`
+
+Local tag blocklist (Settings → Blacklist). Not modeled in Drizzle `schema.ts`; created by migration `drizzle/0025_add_tag_blacklist.sql` and accessed via raw SQL in `src/main/db/queries/blacklist.ts`.
+
+| Column       | Type                        | Description                          |
+| ------------ | --------------------------- | ------------------------------------ |
+| `id`         | INTEGER (PK, AutoIncrement) | Primary key                          |
+| `tag`        | TEXT (NOT NULL, UNIQUE)     | Normalized tag (lowercase, trimmed)  |
+| `created_at` | INTEGER (NOT NULL)          | Insert time (`unixepoch()` default)  |
+
+**Limits:** Maximum **100** tags (`MAX_BLACKLIST_TAGS` in `blacklist.ts`). Soft-deleted from feeds in Main after fetch / in local queries.
+
+**Indexes:**
+
+- `idx_blacklist_tag` — UNIQUE on `tag`
 
 All database operations are performed directly in the **Main Process** using synchronous access via `better-sqlite3`. WAL (Write-Ahead Logging) mode is enabled to allow concurrent reads while writes are in progress.
 
@@ -722,12 +739,11 @@ npm run db:migrate
 Migrations are stored in `drizzle/`:
 
 - **SQL files:** `drizzle/*.sql` - **Tracked in git** (included in repository and build)
-- **Metadata:** `drizzle/meta/` - **Ignored by git** (local development files)
+- **Metadata:** `drizzle/meta/` - **Tracked in git** (required for drizzle-kit journal / snapshots)
   - `meta/_journal.json` - Migration journal
   - `meta/*_snapshot.json` - Schema snapshots
-- **Migrations config:** `drizzle/migrations.json` - **Ignored by git** (generated file)
 
-**Note:** Only SQL migration files are tracked in version control. Meta files and migration configuration are generated locally and should not be committed.
+**Note:** Commit both SQL migrations and `drizzle/meta/` updates after `npm run db:generate`. There is no `drizzle/migrations.json` in this repo.
 
 **Example Migration:**
 
@@ -737,7 +753,7 @@ CREATE TABLE `artists` (
   `name` text NOT NULL,
   `tag` text NOT NULL UNIQUE,
   `provider` text NOT NULL DEFAULT 'rule34',
-  `type` text NOT NULL DEFAULT 'tag',
+  `type` text NOT NULL,
   `api_endpoint` text NOT NULL,
   `last_post_id` integer DEFAULT 0 NOT NULL,
   `new_posts_count` integer DEFAULT 0 NOT NULL,
@@ -847,10 +863,12 @@ Always use Drizzle's inferred types:
 
 ```typescript
 // Good
-const artist: Artist = await dbService.getTrackedArtists()[0];
+const artists = getDb().query.artists.findMany();
+const artist: Artist = artists[0];
 
 // Bad
-const artist: any = await dbService.getTrackedArtists()[0];
+const artists = getDb().query.artists.findMany();
+const artist: any = artists[0];
 ```
 
 ### 2. Error Handling
@@ -859,7 +877,7 @@ Always handle database errors:
 
 ```typescript
 try {
-  const artist = await dbService.addArtist(data);
+  getDb().insert(artists).values(data).run();
 } catch (error) {
   logger.error("Database error:", error);
   throw error;
