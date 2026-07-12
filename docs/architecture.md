@@ -1614,7 +1614,7 @@ src/
 │   │   ├── maintenance-scheduler.ts # Daily checkpoint/optimize scheduler
 │   │   ├── MaintenanceService.ts   # User-triggered VACUUM status/run logic
 │   │   ├── updater-service.ts      # Auto-updater service
-│   │   ├── tag-resolve-coordinator.ts # Tag metadata resolve dedup / rate limit
+│   │   ├── tag-resolve-coordinator.ts # Tag metadata resolve: found/not_found persist, unresolved not cached
 │   │   └── video-proxy-server.ts   # Local video proxy + disk cache
 │   ├── workers/                   # Worker threads
 │   │   ├── downloadWorker.ts       # Batch download worker
@@ -1738,7 +1738,7 @@ Root:
 
 **Database & Schema:**
 
-- **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata`, `playlists`, `playlist_entries`, and FTS5 for post tags
+- **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `playlists`, `playlist_entries`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
 - **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `npm test`, and production `npm audit`
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`

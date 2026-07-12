@@ -3,7 +3,11 @@ import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { settings, SETTINGS_ID, posts, tagMetadata, TAG_TYPES, type TagType } from "../../db/schema";
+import { settings, SETTINGS_ID, posts, TAG_TYPES, type TagType } from "../../db/schema";
+import {
+  loadTagMetadataCache,
+  resolveTagMetadataWave,
+} from "../../services/tag-resolve-coordinator";
 import { eq, inArray, and } from "drizzle-orm";
 import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
@@ -26,7 +30,6 @@ import {
 } from "../../../shared/utils/provider-tag-sanitize";
 import { getAllBlacklistedTags } from "../../db/queries/blacklist";
 import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
-import { resolveTagMetadataWave } from "../../services/tag-resolve-coordinator";
 import type { ProviderSettings } from "../../providers/types";
 import {
   isProviderSearchError,
@@ -171,19 +174,6 @@ export class SearchController extends BaseController {
     ];
   }
 
-  private loadCachedTagMap(
-    db: AppDatabase,
-    uniqueTags: string[]
-  ): Map<string, number> {
-    const cachedTags = db
-      .select()
-      .from(tagMetadata)
-      .where(inArray(tagMetadata.name, uniqueTags))
-      .all();
-
-    return new Map(cachedTags.map((t) => [t.name, t.type]));
-  }
-
   private toProviderSettings(
     settings: NonNullable<Awaited<ReturnType<SearchController["getDecryptedSettings"]>>>
   ): ProviderSettings {
@@ -209,25 +199,25 @@ export class SearchController extends BaseController {
       }
 
       const db = this.getDb();
-      const cachedMap = this.loadCachedTagMap(db, uniqueTags);
+      const cache = loadTagMetadataCache(db, uniqueTags);
 
       const settings = await this.getDecryptedSettings();
       if (!settings) {
         log.warn(
           `[SearchController] Cannot resolve tags (${context}): no settings available`
         );
-        return uniqueTags.filter((tag) => cachedMap.get(tag) === tagType);
+        return uniqueTags.filter((tag) => cache.foundTypes.get(tag) === tagType);
       }
 
       await resolveTagMetadataWave(
         db,
         uniqueTags,
-        cachedMap,
+        cache,
         this.toProviderSettings(settings),
         context
       );
 
-      return uniqueTags.filter((tag) => cachedMap.get(tag) === tagType);
+      return uniqueTags.filter((tag) => cache.foundTypes.get(tag) === tagType);
     } catch (error) {
       log.error(`[SearchController] Failed to resolve tags (${context}):`, error);
       return [];
