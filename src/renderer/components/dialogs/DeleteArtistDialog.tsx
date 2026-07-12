@@ -1,6 +1,5 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 import { Loader2, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -13,6 +12,9 @@ import {
 } from "../ui/dialog";
 import type { Artist } from "../../../main/db/schema";
 
+/** Shared label for delete-artist actions (dialog title + list-row affordances). */
+export const DELETE_ARTIST_LABEL = "Delete Artist";
+
 interface DeleteArtistDialogProps {
   artist: Artist;
   isOpen: boolean;
@@ -24,7 +26,6 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
   isOpen,
   onOpenChange,
 }) => {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -38,13 +39,13 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
   });
 
   const getErrorMessage = (error: typeof mutation.error): string => {
-    if (!error) return t("common.unknownError", "Unknown error occurred");
+    if (!error) return "Unknown error occurred";
 
     if (error instanceof Error) {
       return error.message;
     }
 
-    return t("common.unknownError", "Unknown error occurred");
+    return "Unknown error occurred";
   };
 
   return (
@@ -58,14 +59,10 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex gap-2 items-center text-red-500">
             <Trash2 className="w-5 h-5" />
-            {t("deleteArtist.title", "Delete Artist")}
+            {DELETE_ARTIST_LABEL}
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            {t(
-              "deleteArtist.description",
-              "Are you sure you want to delete {{name}}? All posts will be removed.",
-              { name: artist.name }
-            )}
+            {`Are you sure you want to delete ${artist.name}? All posts will be removed.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -91,7 +88,7 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
             disabled={mutation.isPending}
             className="border-slate-700 hover:bg-slate-800 text-slate-200"
           >
-            {t("common.cancel", "Cancel")}
+            Cancel
           </Button>
           <Button
             variant="destructive"
@@ -102,7 +99,7 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
             {mutation.isPending ? (
               <Loader2 className="mr-2 w-4 h-4 animate-spin" />
             ) : (
-              t("common.delete", "Delete")
+              "Delete"
             )}
           </Button>
         </DialogFooter>

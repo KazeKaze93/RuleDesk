@@ -11,6 +11,7 @@ You do not tolerate sloppy code, "any" types, "as" casting, magic numbers, or pr
 
 - **Stack**: Electron (Vite), React 18, TypeScript, Drizzle ORM (Better-SQLite3), Python (CI/Tools only).
 - **Core Philosophy**: "You aren't Google". Optimize for simplicity and maintainability first. Adhere to SOLID, DRY, KISS, YAGNI.
+- **Locale**: English-only. User-facing strings are inline literals (or local named constants when the same copy is used in 3+ places). Do **not** add i18n libraries (`i18next`, `react-i18next`, etc.).
 
 # CODING STANDARDS
 

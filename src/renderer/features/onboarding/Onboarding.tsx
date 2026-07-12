@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z, ZodIssueOptionalMessage, ErrorMapCtx } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslation } from "react-i18next";
 import log from "electron-log/renderer";
 import { Button } from "@/components/ui/button";
 import { KeyRound, User } from "lucide-react";
@@ -24,7 +23,6 @@ interface OnboardingProps {
 }
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
-  const { t } = useTranslation();
   const [verifyProviderId, setVerifyProviderId] = useState<ProviderId>("rule34");
   const [verificationError, setVerificationError] = useState<string>("");
 
@@ -40,10 +38,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       errorMap: (issue: ZodIssueOptionalMessage, ctx: ErrorMapCtx) => {
         if (issue.code === z.ZodIssueCode.too_small) {
           if (issue.path[0] === "userId") {
-            return { message: t("validation.userIdRequired") };
+            // Missing locale key historically; keep prior runtime message (the key path).
+            return { message: "validation.userIdRequired" };
           }
           if (issue.path[0] === "apiKey") {
-            return { message: t("validation.apiKeyRequired") };
+            return { message: "validation.apiKeyRequired" };
           }
         }
         return { message: ctx.defaultError };
@@ -105,25 +104,25 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       <div className="p-8 space-y-6 w-full max-w-md rounded-lg border shadow-xl bg-card border-border">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-primary">
-            {t("onboarding.title")}
+            Rule34 Authorization
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {t("onboarding.description")}
+            API keys are required for the parser to work.
           </p>
         </div>
 
         <div className="p-4 space-y-2 text-sm rounded border bg-muted/40 border-border">
           <p className="font-semibold text-foreground">
-            {t("onboarding.howToGetKeys")}
+            How to get keys:
           </p>
           <ol className="space-y-1 list-decimal list-inside text-muted-foreground">
-            <li>{t("onboarding.step1")}</li>
-            <li>{t("onboarding.step2")}</li>
-            <li>{t("onboarding.step3")}</li>
+            <li>Log into your account on rule34.xxx</li>
+            <li>Go to My Account → Options</li>
+            <li>Find the API Access section</li>
           </ol>
           <div className="pt-2 mt-2 border-t border-border">
             <span className="text-xs text-muted-foreground">
-              {t("onboarding.settingsPageAddress")}
+              Settings page address (copy):
             </span>
             <code className="block p-2 mt-1 text-xs break-all rounded cursor-text select-all bg-muted">
               https://rule34.xxx/index.php?page=account&s=options
@@ -137,7 +136,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               htmlFor="user-id-input"
               className="block mb-1 text-muted-foreground"
             >
-              {t("onboarding.userId")}
+              User ID
             </Label>
             <div className="relative">
               <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -148,7 +147,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 })}
                 onPaste={handlePaste}
                 className="pl-9"
-                placeholder={t("onboarding.userIdPlaceholder")}
+                placeholder="For example: 123456"
               />
             </div>
             {errors.userId && (
@@ -163,7 +162,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               htmlFor="api-key-input"
               className="block mb-1 text-muted-foreground"
             >
-              {t("onboarding.apiKey")}
+              API Key
             </Label>
             <p className="mb-2 text-xs text-muted-foreground">
               Optional — skip to use Browse only. API key enables Updates, Favorites, Playlists, and Artists.
@@ -178,7 +177,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 type="password"
                 onPaste={handlePaste}
                 className="pl-9"
-                placeholder={t("onboarding.apiKeyPlaceholder")}
+                placeholder="Your secret key"
               />
             </div>
             {errors.apiKey && (
@@ -220,11 +219,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             type="submit"
             className="w-full"
             disabled={isSubmitting}
-            aria-label={t("onboarding.saveAndLogin")}
+            aria-label="Save and Login"
           >
-            {isSubmitting
-              ? t("onboarding.saving")
-              : t("onboarding.saveAndLogin")}
+            {isSubmitting ? "Saving..." : "Save and Login"}
           </Button>
           <Button
             type="button"
@@ -243,7 +240,3 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     </div>
   );
 };
-
-
-
-

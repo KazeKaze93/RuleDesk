@@ -5,7 +5,6 @@ import {
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { useShallow } from "zustand/react/shallow";
@@ -105,7 +104,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   artist,
   onBack,
 }) => {
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
   // ArtistGallery should show ALL posts for the artist, not filtered by global search query
   // The global search query is only for Browse tab, not for Tracked Artists
@@ -322,7 +320,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const handleRepairSync = async () => {
     if (isLoading) return;
     if (
-      !confirm(t("artistGallery.repairConfirm", { artistName: artist.name }))
+      !confirm(
+        `Are you sure you want to run a repair sync for ${artist.name}? This may take time and update old entries.`
+      )
     ) {
       return;
     }
@@ -346,7 +346,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             variant="ghost"
             size="sm"
             onClick={onBack}
-            aria-label={t("artistGallery.backToArtists")}
+            aria-label="Back to artists list"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -378,12 +378,10 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             variant="outline"
             size="sm"
             onClick={handleRepairSync}
-            title={t("artistGallery.repairTitle")}
+            title="Resynchronize first pages to update low-quality previews"
           >
             <Wrench className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">
-              {t("artistGallery.repair")}
-            </span>
+            <span className="hidden sm:inline">Repair</span>
           </Button>
           <Button
             variant="outline"
@@ -395,7 +393,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             }
           >
             <ExternalLink className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t("artistGallery.web")}</span>
+            <span className="hidden sm:inline">Web</span>
           </Button>
         </div>
       </div>

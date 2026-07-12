@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { Download, RefreshCw, X, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -9,7 +8,6 @@ const UpdateStatusSchema = z.enum(["idle", "checking", "available", "not-availab
 type UpdateStatus = z.infer<typeof UpdateStatusSchema>;
 
 export const UpdateNotification: React.FC = () => {
-  const { t } = useTranslation();
   const [status, setStatus] = useState<UpdateStatus>("idle");
   const [progress, setProgress] = useState(0);
   const [version, setVersion] = useState("");
@@ -71,26 +69,21 @@ export const UpdateNotification: React.FC = () => {
 
           <div>
             <h4 className="text-sm font-semibold">
-              {status === "available" &&
-                t("updateNotification.updateAvailable", { version })}
-              {status === "downloading" &&
-                t("updateNotification.downloadingUpdate")}
-              {status === "downloaded" &&
-                t("updateNotification.readyToInstall")}
-              {status === "error" && t("updateNotification.updateFailed")}
+              {status === "available" && `Update v${version} available`}
+              {status === "downloading" && "Downloading update..."}
+              {status === "downloaded" && "Ready to install"}
+              {status === "error" && "Update failed"}
             </h4>
             <p className="text-xs text-slate-400 mt-0.5">
-              {status === "downloading" &&
-                t("updateNotification.percentCompleted", { progress })}
-              {status === "downloaded" &&
-                t("updateNotification.restartRequired")}
+              {status === "downloading" && `${progress}% completed`}
+              {status === "downloaded" && "Restart required"}
             </p>
           </div>
         </div>
         <button
           onClick={handleClose}
           className="text-slate-500 hover:text-slate-300"
-          aria-label={t("updateNotification.closeNotification")}
+          aria-label="Close notification"
         >
           <X className="w-4 h-4" />
         </button>
@@ -124,7 +117,7 @@ export const UpdateNotification: React.FC = () => {
               onClick={handleDownload}
               className="w-full bg-blue-600 hover:bg-blue-500"
             >
-              {t("updateNotification.download")}
+              Download
             </Button>
             <Button
               size="sm"
@@ -132,7 +125,7 @@ export const UpdateNotification: React.FC = () => {
               onClick={handleClose}
               className="w-full border-slate-700 hover:bg-slate-800"
             >
-              {t("updateNotification.later")}
+              Later
             </Button>
           </>
         )}
@@ -143,7 +136,7 @@ export const UpdateNotification: React.FC = () => {
             onClick={handleInstall}
             className="w-full bg-green-600 hover:bg-green-500"
           >
-            {t("updateNotification.restartAndInstall")}
+            Restart & Install
           </Button>
         )}
       </div>
