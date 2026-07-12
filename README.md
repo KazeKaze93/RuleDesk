@@ -44,11 +44,11 @@ This project is **unofficial** and **not affiliated** with any external website 
 | :-------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials encrypted using Electron's `safeStorage` API and stored securely. Decryption only happens in Main Process when needed for API calls.                                                                                                                          |
 | **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports tag-based tracking with autocomplete search (local and remote Rule34.xxx API). Tag normalization automatically strips metadata like "(123)" from tag names.                                                                                                |
-| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with rate limiting (1.5s delay between artists, 0.5s between pages). Implements exponential backoff and proper error handling. Real-time sync progress updates via IPC events.                                                                                                                      |
+| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with shared `ProviderThrottle` pacing (~1200ms minimum + 0–400ms jitter per request) and exponential backoff on retries. Real-time sync progress updates via IPC events.                                                                                                                      |
 | **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Direct synchronous access via `better-sqlite3` in Main Process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. WAL mode enabled for concurrent reads.                                                                                                    |
 | **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization.                                                                               |
 | **🎨 Progressive Image Loading**  | Stills: `PostCard` loads **preview** first, then upgrades to **sample** when the card is in the viewport. Viewer uses file URL for full quality. Video posts use sample/file for hover preview as applicable.                                                                                                                                       |
-| **🌍 Rule34 CDN Selection**       | Main Process probes Rule34 CDN hosts on startup (`rule34.xxx`, `us.rule34.xxx`, `wimg.rule34.xxx`, `api-cdn.rule34.xxx`) and rewrites Rule34 media URLs to the fastest reachable host. Probing is non-blocking and safely falls back to `rule34.xxx` if selection has not completed or fails.                                                        |
+| **🌍 Rule34 CDN host fallback**   | Viewer builds an alternate-host URL chain for Rule34 media (`wimg.rule34.xxx`, `img.rule34.xxx`, `us.rule34.xxx`, `api-cdn.rule34.xxx`) when the primary host fails (`ViewerDialog`). No Main-process CDN probe/rewrite service.                                                                                                                        |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                                                                                     |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
 | **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups in the user data directory; retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup. Restore replaces the live DB (with checks) and reloads the app.                                                                               |
@@ -79,7 +79,7 @@ This is the secure Node.js environment. It handles all I/O, persistence, and sec
 - **Data Layer:** **Drizzle ORM** (TypeScript type-safety for queries, raw SQL timestamps in milliseconds).
 - **Security:** **Secure Storage** using Electron's `safeStorage` API for encrypting API credentials at rest.
 - **API:** Custom wrapper based on `axios` with retry and backoff logic.
-- **CDN Routing (Rule34 media):** `CdnSelectorService` probes Rule34 CDN nodes in background and rewrites only Rule34 media URLs (`fileUrl`, `sampleUrl`, `previewUrl`) to the selected host.
+- **CDN host fallback (Rule34 media):** Renderer `ViewerDialog` retries Rule34 media URLs across known alternate hosts when a host fails; Main does not rewrite URLs at fetch time.
 - **Background Jobs:** Node.js timers and asynchronous operations.
 
 ### 2. Renderer (The Face - UI Process)
@@ -175,7 +175,7 @@ When enabled in **Settings → Sync**, the app starts a full **Sync All** after 
 
 ### ✅ Periodic background sync
 
-**Settings → Sync → Sync interval** controls how often a background full sync runs (Disabled, 15 / 30 / 60 / 120 minutes). The main process enforces a **minimum interval**; values below that are treated as disabled. Rate limiting and backoff in `SyncService` apply to scheduled runs as well as manual ones.
+**Settings → Sync → Sync interval** controls how often a background full sync runs (Disabled, 15 / 30 / 60 / 120 minutes). The main process enforces a **minimum interval of 5 minutes** (`MIN_INTERVAL_MINUTES` in `SyncScheduler`); values below that are treated as disabled. Rate limiting and backoff in `SyncService` / `ProviderThrottle` apply to scheduled runs as well as manual ones.
 
 ### Maintenance note
 
@@ -202,6 +202,10 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 ### Appearance
 
 - **Theme** - `System`, `Light`, `Dark`
+
+### Blacklist
+
+- **Tag blacklist** - Hide posts containing listed tags from Browse and local galleries (enforced in Main after fetch)
 
 ### Backup
 
@@ -264,8 +268,8 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Sync Service:** Handles `ON CONFLICT` correctly and populates the gallery with proper upsert logic
 - ✅ **Timestamp Handling:** All timestamps use Drizzle timestamp mode with proper milliseconds precision
 - ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
-- ✅ **Rate Limiting:** Intelligent rate limiting with 1.5s delay between artists, 0.5s between pages
-- ✅ **Anti-Bot Measures:** Shared throttling/UA strategy applied across current providers.
+- ✅ **Rate Limiting:** Shared `ProviderThrottle` (~1200ms + 0–400ms jitter per request) across providers
+- ✅ **Anti-Bot Measures:** Session User-Agent from a shared pool (`pickRandomUA`) plus jittered request pacing.
 - ✅ **Sync integrity:** `lastPostId` advances only after complete pagination; unfinished runs set `lastSyncIncomplete`. Video-cache writes are atomic (tmp+rename) with size-capped eviction — see [Roadmap](./docs/roadmap.md).
 
 ### UI/UX
@@ -288,7 +292,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 - ✅ **Age Gate Component:** Fully implemented with legal confirmation (`AgeGate.tsx` component and `confirmLegal` IPC method)
 - ✅ **Content Security Policy:** Strict CSP with support for Rule34.xxx and Gelbooru.com media sources
-- ✅ **Rule34 CDN Selector:** Startup probe and runtime URL rewrite for Rule34 media with fallback to `rule34.xxx`
+- ✅ **Rule34 CDN host fallback:** Viewer retries Rule34 media across alternate hosts when a host fails
 - ✅ **Safe Mode / NSFW blur:** When Safe Mode is enabled, gallery cards and the full-screen viewer apply configurable blur to sensitive ratings (`PostCard`, `ViewerDialog`, `safeModeStore`)
 
 ---
@@ -511,7 +515,7 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests (**183 tests** across 27 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
+**Vitest** covers unit, integration, and property-based tests (**196 tests** across 28 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
 
 ```bash
 # Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron

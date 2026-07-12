@@ -604,14 +604,13 @@ const posts = await db.query.posts.findMany({
    - `IBooruProvider` interface for standardized booru operations
    - Implementations: `Rule34Provider`, `GelbooruProvider`
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
-   - Rule34 media URLs (`fileUrl`, `sampleUrl`, `previewUrl`) are rewritten by Main Process CDN selector to the currently selected Rule34 CDN host
+   - Shared request pacing via `ProviderThrottle` (~1200ms + jitter) and session UA via `pickRandomUA()`
 
-9. **CDN Selector Service** (`src/main/services/cdn-selector.ts`)
+9. **Video Proxy Service** (`src/main/services/video-proxy-server.ts`)
 
-   - Probes Rule34 CDN hosts (`rule34.xxx`, `us.rule34.xxx`, `wimg.rule34.xxx`, `api-cdn.rule34.xxx`) on startup using non-blocking `HEAD` checks
-   - Selects the fastest reachable host and keeps `rule34.xxx` as fallback
-   - Triggers re-probe on repeated request failures or slow responses
-   - Rewrites only Rule34 media hosts, leaving non-Rule34 URLs unchanged
+   - Local HTTP proxy for video playback with on-disk `video-cache/` under `.rdcache`
+   - Atomic cache writes (tmp+rename), abort cleanup, eviction capped by `VIDEO_CACHE_MAX_BYTES` (2 GiB) in `src/main/config/constants.ts`
+   - Allowlists Rule34 media hosts; does not rewrite stored post URLs at sync time
 
 10. **Updater Service** (`src/main/services/updater-service.ts`)
 
@@ -655,7 +654,6 @@ const posts = await db.query.posts.findMany({
     - Window creation
     - Security configuration
     - Database initialization and migrations
-    - Non-blocking initial Rule34 CDN probe before sync startup
 
 ### Renderer Process (The Face)
 
@@ -686,22 +684,22 @@ const posts = await db.query.posts.findMany({
     - **Updates.tsx** - Subscriptions feed (implemented, with remaining roadmap parity gaps)
     - **Browse.tsx** - Live booru search (Source: All) with infinite scroll, filters, and sorting; Favorites/Subscriptions modes query the local cache (implemented)
     - **Favorites.tsx** - Favorites collection (implemented)
-     - **Tracked.tsx** - Artists and tags management (fully implemented)
+    - **Tracked.tsx** - Artists and tags management (fully implemented)
     - **Settings.tsx** - Application configuration shell (tabbed IA, fully implemented)
-     - **ArtistDetails.tsx** - Artist gallery view (fully implemented)
-     - **Onboarding.tsx** - API credentials input form (fully implemented)
+    - **ArtistDetails.tsx** - Artist gallery view (fully implemented)
+    - **Onboarding.tsx** - API credentials input form (`src/renderer/features/onboarding/Onboarding.tsx`)
 
-   - **Layout:**
+  - **Layout:**
 
-     - **AppLayout.tsx** - Main application layout with sidebar and global top bar
-     - **Sidebar.tsx** - Persistent sidebar navigation with sync button and logout
-     - **GlobalTopBar.tsx** - Unified top bar with search bar, sort dropdown, filters button, and view toggle (UI implemented, backend filtering pending)
+    - **AppLayout.tsx** - Main application layout with sidebar and global top bar
+    - **Sidebar.tsx** - Persistent sidebar navigation with sync button and logout
+    - **GlobalTopBar.tsx** - Unified top bar with search, `FiltersPanel`, sort, view toggle, and `SyncStatusBadge` (wired to `searchStore` / gallery pipelines)
 
-   - **Gallery:**
+  - **Gallery:**
 
-     - **ArtistCard.tsx** - Artist card component
-     - **ArtistGallery.tsx** - Grid view of posts for an artist
-     - **PostCard.tsx** - Individual post card component
+    - **ArtistListRow.tsx** - Artist row component (`src/renderer/features/artists/components/ArtistListRow.tsx`)
+    - **ArtistGallery.tsx** - Grid view of posts for an artist
+    - **PostCard.tsx** - Individual post card component
 
    - **Viewer:**
 
@@ -712,13 +710,15 @@ const posts = await db.query.posts.findMany({
      - **AddArtistModal.tsx** - Modal for adding new artists
      - **DeleteArtistDialog.tsx** - Confirmation dialog for artist deletion
      - **UpdateNotification.tsx** - Update notification component
+     - **AgeGate.tsx** - Age gate (`src/renderer/components/onboarding/AgeGate.tsx`)
 
   - **Settings (`src/renderer/features/settings/`):**
 
     - **Settings.tsx** - Tab container and settings orchestration
     - **SettingsGeneralTab.tsx** - Downloads, proxy, and Danger zone (`wipeAllData`)
-    - **SettingsSyncTab.tsx** - Startup/interval sync + manual sync trigger
+    - **SettingsSyncTab.tsx** - Startup/interval sync (manual Sync All remains in the sidebar)
     - **SettingsAppearanceTab.tsx** - Theme selection (`System` / `Light` / `Dark`)
+    - **SettingsBlacklistTab.tsx** - Tag blacklist management
     - **SettingsBackupTab.tsx** - Backup, restore, integrity check, retention, and maintenance section
     - **DatabaseMaintenanceCard.tsx** - User-visible VACUUM status, schedule, and manual run
     - **SettingsAccountTab.tsx** - API key input, visibility toggle, `hasApiKey` status
@@ -1113,7 +1113,7 @@ sequenceDiagram
         Rule34API-->>SyncService: JSON Posts
 
         SyncService->>SyncService: Map API Response
-        SyncService->>SyncService: Rate Limit (1.5s delay)
+        SyncService->>SyncService: ProviderThrottle wait (~1.2s + jitter)
 
         SyncService->>DB: INSERT/UPDATE Posts (Bulk Upsert)
         SyncService->>DB: UPDATE Artist (lastPostId)
@@ -1154,7 +1154,7 @@ sequenceDiagram
 
    d. **Maps API response** - Converts API JSON format to database schema format.
 
-   e. **Rate limiting** - Waits 1.5 seconds before processing next artist (prevents API abuse).
+   e. **Rate limiting** - `ProviderThrottle.wait()` before each provider request (~1200ms + 0–400ms jitter).
 
    f. **Bulk upsert** - Saves posts to database using `ON CONFLICT` handling (updates existing, inserts new):
 
@@ -1230,10 +1230,11 @@ useEffect(() => {
 
 **Performance considerations:**
 
-- **Rate limiting** - 1.5s delay between artists prevents API bans
-- **Bulk operations** - Posts are inserted in batches (200 per batch) for efficiency
+- **Rate limiting** - Shared `ProviderThrottle` (~1200ms + jitter) prevents API bans
+- **Bulk operations** - Posts are inserted in chunks of `CHUNK_SIZE` (75) to stay under SQLite variable limits
 - **Incremental sync** - Only fetches posts newer than `lastPostId` (not all posts)
 - **Background execution** - Sync doesn't block UI or other operations
+<!-- TODO(doc-sync): verify against src/main/providers/types.ts:6 and sync-service.ts:564 — PAGE_SIZE=100 vs fetchPosts default limit=50 -->
 
 ## Database Architecture
 
@@ -1334,8 +1335,9 @@ External API calls are abstracted through the **Provider Pattern** (`src/main/pr
 
 3. **SyncService Integration:**
    - Uses provider pattern to fetch posts
-   - **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
+   - **Rate Limiting:** Shared `ProviderThrottle` (~1200ms + 0–400ms jitter per request)
    - **Pagination:** Incremental sync by `lastPostId` (not deep offset into historical pages)
+   <!-- TODO(doc-sync): verify against src/main/providers/types.ts:6 and sync-service.ts:564 — PAGE_SIZE=100 vs fetchPosts default limit=50 -->
    - **Error Handling:** `auth` / `rate_limit` provider errors during pagination propagate to `SYNC.ERROR`; `network` / `parse` and transient 5xx stop the current artist gracefully without marking sync failed
    - **Authentication:** Uses User ID and API Key from settings table
 
@@ -1605,14 +1607,14 @@ src/
 │   │   └── index.ts               # Provider registry
 │   ├── services/                  # Background services
 │   │   ├── secure-storage.ts       # Secure storage for API credentials
-│   │   ├── cdn-selector.ts         # Rule34 CDN probe + media URL rewrite
 │   │   ├── sync-service.ts         # API synchronization
 │   │   ├── sync-scheduler.ts       # Periodic sync scheduler
 │   │   ├── backup-service.ts       # Auto-backup service
 │   │   ├── maintenance-scheduler.ts # Daily checkpoint/optimize scheduler
 │   │   ├── MaintenanceService.ts   # User-triggered VACUUM status/run logic
 │   │   ├── updater-service.ts      # Auto-updater service
-│   │   └── video-proxy-server.ts   # Local video proxy
+│   │   ├── tag-resolve-coordinator.ts # Tag metadata resolve dedup / rate limit
+│   │   └── video-proxy-server.ts   # Local video proxy + disk cache
 │   ├── workers/                   # Worker threads
 │   │   ├── downloadWorker.ts       # Batch download worker
 │   │   └── vacuumWorker.ts         # VACUUM worker
@@ -1628,8 +1630,9 @@ src/
 │   │   ├── dialogs/               # Dialog components
 │   │   │   ├── AddArtistModal.tsx
 │   │   │   ├── DeleteArtistDialog.tsx
-│   │   │   ├── Onboarding.tsx
 │   │   │   └── UpdateNotification.tsx
+│   │   ├── onboarding/            # Age gate
+│   │   │   └── AgeGate.tsx
 │   │   ├── inputs/                # Input components
 │   │   │   └── AsyncAutocomplete.tsx
 │   │   ├── layout/                 # Layout components
@@ -1879,7 +1882,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 ### ✅ Fully Implemented
 
 - **Virtualization:** `react-virtuoso` implemented for efficient large list rendering (`ArtistGallery.tsx`)
-- **Video Support:** `.mp4` and `.webm` formats handled with native `<video>` element
+- **Video Support:** Extensions from `src/shared/utils/media.ts` (`.mp4`, `.webm`, `.mov`, `.avi`, `.mkv`, `.flv`, `.wmv`, `.m4v`) with native `<video>` element
 - **Input Validation:** Zod validation implemented per IPC handler
 - **Error Handling:** Try-catch blocks in IPC handlers with error logging
 
@@ -1890,14 +1893,14 @@ Based on a comprehensive technical audit, here's the current implementation stat
 - **Error Handling:** Provider search and sync auth paths return user-facing messages; other IPC domains still rely on generic `Error.message` at the boundary
 - **Modern Video:** Baseline tuning is shipped; further platform-specific tuning remains regression-driven
 
-### ⏳ Missing / Planned
+### Shipped (formerly listed under Missing / Planned)
 
-- **Safe Mode / NSFW Filter:** ✅ **COMPLETED:** blur logic and safe mode state are implemented in gallery/viewer flows
-- **Age Gate:** ✅ **COMPLETED:** Age gate component (`AgeGate.tsx`) and `confirmLegal` IPC method implemented
-- **User Data Path:** ✅ Neutral `.rdcache` via `bootstrap-user-data.ts` (not next to the executable)
-- **Anti-Bot Measures:** Static User-Agent strings, fixed delays (1.5s/0.5s) but no randomization or rotation
-- **DB Optimization (FTS5):** ✅ FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
-- **Composite Indexes:** ✅ Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries
+- **Safe Mode / NSFW Filter:** blur logic and safe mode state in gallery/viewer (`safeModeStore`, `PanicButton`, `PostCard`, `ViewerDialog`)
+- **Age Gate:** `src/renderer/components/onboarding/AgeGate.tsx` and `confirmLegal` IPC method
+- **User Data Path:** Neutral `.rdcache` via `bootstrap-user-data.ts` (not next to the executable)
+- **Anti-Bot Measures:** Shared `ProviderThrottle` (~1200ms + jitter) and session UA rotation via `pickRandomUA()` across current providers
+- **DB Optimization (FTS5):** FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
+- **Composite Indexes:** Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries
 - **Centralized Validation:** No single monolithic validation module by design; current direction is shared schemas + typed controller wrappers at IPC boundaries.
 
 See [Roadmap](./roadmap.md#-technical-improvements-from-audit) for detailed implementation plans.
