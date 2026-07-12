@@ -29,12 +29,15 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-describe("crypto encrypt (test runtime)", () => {
+describe("SecureStorage.encrypt", () => {
   const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {
     vi.resetModules();
     mockIsEncryptionAvailable.mockReturnValue(false);
+    mockEncryptString.mockImplementation(() => {
+      throw new Error("encrypt failed");
+    });
     process.env.NODE_ENV = "test";
   });
 
@@ -42,14 +45,28 @@ describe("crypto encrypt (test runtime)", () => {
     process.env.NODE_ENV = originalNodeEnv;
   });
 
-  it("uses test credential encoding when safeStorage is unavailable", async () => {
-    const { encrypt } = await import("@/main/lib/crypto");
+  it("returns empty string for empty plaintext", async () => {
+    const { SecureStorage } = await import("@/main/services/secure-storage");
+    expect(SecureStorage.encrypt("")).toBe("");
+  });
+
+  it("uses test credential encoding when safeStorage is unavailable in test runtime", async () => {
+    const { SecureStorage } = await import("@/main/services/secure-storage");
     const { decodeTestCredential } = await import(
       "@/main/lib/test-credential-cipher"
     );
 
-    const encoded = encrypt("secret-api-key");
+    const encoded = SecureStorage.encrypt("secret-api-key");
     expect(encoded.startsWith("rd-test:v1:")).toBe(true);
     expect(decodeTestCredential(encoded)).toBe("secret-api-key");
+  });
+
+  it("throws when safeStorage is unavailable outside test runtime", async () => {
+    process.env.NODE_ENV = "production";
+    const { SecureStorage } = await import("@/main/services/secure-storage");
+
+    expect(() => SecureStorage.encrypt("secret-api-key")).toThrow(
+      /Encryption is not available/i
+    );
   });
 });

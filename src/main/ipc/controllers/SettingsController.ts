@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { settings, SETTINGS_ID } from "../../db/schema";
-import { encrypt } from "../../lib/crypto";
+import { SecureStorage } from "../../services/secure-storage";
 import { reloadProxyFromSettings } from "../../lib/proxy";
 import { IPC_CHANNELS } from "../channels";
 import {
@@ -274,7 +274,7 @@ export class SettingsController extends BaseController {
       let encryptedKey: string | undefined;
       if (apiKey) {
         try {
-          encryptedKey = encrypt(apiKey);
+          encryptedKey = SecureStorage.encrypt(apiKey);
           log.debug(
             `[SettingsController] API key encrypted successfully, length=${encryptedKey.length}`
           );
