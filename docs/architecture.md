@@ -504,8 +504,9 @@ const posts = await db.query.posts.findMany({
    - `MaintenanceController.ts` - Database backup/restore operations
    - `ViewerController.ts` - Viewer-related operations
    - `FileController.ts` - File download and management
-   - `SystemController.ts` - System-level operations (version, clipboard, etc.)
+   - `SystemController.ts` - System-level ops (version, clipboard, icon path, quit, **`wipeAllData`**)
    - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
+   - `PlaylistController.ts` - Playlist CRUD, smart queries, import/export
 
    **BaseController** (`src/main/core/ipc/BaseController.ts`):
 
@@ -580,18 +581,24 @@ const posts = await db.query.posts.findMany({
 
    - Slim typed instance registry (`Container` + `DI_TOKENS`) — stores instances, not factories
    - Internal `Map` keyed by **`token.id` string** (stable across hot reload; not object identity). Two `new Token('Database')` instances resolve the same service if registered once.
+   - No cycle-detection / factory theater — YAGNI for this app size
    - Singleton pattern for service management
    - Services: Database, SyncService, BackupService, SyncScheduler
    - Unit tests: `tests/unit/core/di-container.test.ts`
 
-6. **Maintenance Queue** (`src/main/db/maintenance-queue.ts`)
+6. **App lifecycle (Main)**
+
+   - Process-lifetime listeners such as `before-quit` are registered **once** at module scope (not inside window recreate paths)
+   - `closeDatabase` is idempotent; tray Show / `activate` may recreate the window and re-bind IPC (`removeHandler` first) without stacking quit handlers
+
+7. **Maintenance Queue** (`src/main/db/maintenance-queue.ts`)
 
    - Sequential execution queue for database maintenance operations
    - Prevents race conditions and "Database is closed" errors
    - Promise-based queue ensures operations complete before next starts
    - Used for backup, restore, and database close operations
 
-7. **Booru Providers** (`src/main/providers/`)
+8. **Booru Providers** (`src/main/providers/`)
 
    - Provider pattern abstraction for multi-booru support
    - `IBooruProvider` interface for standardized booru operations
@@ -599,30 +606,30 @@ const posts = await db.query.posts.findMany({
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
    - Rule34 media URLs (`fileUrl`, `sampleUrl`, `previewUrl`) are rewritten by Main Process CDN selector to the currently selected Rule34 CDN host
 
-8. **CDN Selector Service** (`src/main/services/cdn-selector.ts`)
+9. **CDN Selector Service** (`src/main/services/cdn-selector.ts`)
 
    - Probes Rule34 CDN hosts (`rule34.xxx`, `us.rule34.xxx`, `wimg.rule34.xxx`, `api-cdn.rule34.xxx`) on startup using non-blocking `HEAD` checks
    - Selects the fastest reachable host and keeps `rule34.xxx` as fallback
    - Triggers re-probe on repeated request failures or slow responses
    - Rewrites only Rule34 media hosts, leaving non-Rule34 URLs unchanged
 
-9. **Updater Service** (`src/main/services/updater-service.ts`)
+10. **Updater Service** (`src/main/services/updater-service.ts`)
 
    - Manages automatic update checking via `electron-updater`
    - Handles update download and installation
    - Emits IPC events for update status and progress
    - User-controlled download (manual download trigger)
 
-10. **Secure Storage** (`src/main/services/secure-storage.ts`) and **credential helpers** (`src/main/utils/decrypted-credentials.ts`)
+11. **Secure Storage** (`src/main/services/secure-storage.ts`) and **credential helpers** (`src/main/utils/decrypted-credentials.ts`)
 
-   - `SecureStorage.encrypt()` / `decrypt()` — static wrappers around Electron `safeStorage`; `decrypt()` returns `null` on failure (never raw ciphertext)
+   - `SecureStorage.encrypt()` / `decrypt()` — static wrappers around Electron `safeStorage`; `decrypt()` returns `null` on failure (never raw ciphertext). **Sole** crypto path — do not reintroduce parallel helpers.
    - `getDecryptedCredentialsFromRecord()` — shared by IPC controllers; returns `null` if decryption fails
    - `getDecryptedCredentialsStrict()` — used by `SyncService`; throws `CredentialDecryptionError` instead of falling back to stored ciphertext
    - Decryption only occurs in Main Process when needed for API calls
    - Uses platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
-   - Unit tests: `tests/unit/utils/decrypted-credentials.test.ts`
+   - Unit tests: `tests/unit/utils/decrypted-credentials.test.ts`, `tests/unit/services/secure-storage.test.ts`
 
-11. **Browse** (`src/renderer/components/pages/Browse.tsx`, `SearchController.search`, `src/renderer/utils/react-query-cache.ts`)
+12. **Browse** (`src/renderer/components/pages/Browse.tsx`, `SearchController.search`, `src/renderer/utils/react-query-cache.ts`)
 
    - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`, infinite scroll through `useGalleryInfiniteScroll`.
    - **Rule34 deep pagination:** offset pages 1–4 (`RULE34_MAX_OFFSET_PAGES`), then cursor via meta-tag `id:<postId>` (`beforePostId` / `nextBeforePostId`); `getSearchBrowseNextPageParam()` drives React Query `pageParam`.
@@ -636,14 +643,14 @@ const posts = await db.query.posts.findMany({
    - **Removed:** orientation filter (no UI; dead code removed from store, worker, and gallery pages).
    - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts`, `tests/unit/utils/react-query-cache.test.ts`.
 
-12. **Bridge** (`src/main/bridge.ts`, built to `out/preload/bridge.cjs`)
+13. **Bridge** (`src/main/bridge.ts`, built to `out/preload/bridge.cjs`)
 
 - Defines the IPC interface exposed as `window.api`
 - Preload forwards `ipcRenderer.invoke` / event subscriptions only — no business logic, no shared-schema imports
 - Type-safe communication contract (TypeScript types on both sides)
 - Provider-search error normalization happens in Main (`throwProviderSearchIpcError`) and Renderer (`parseProviderSearchErrorPayload`), not in preload
 
-13. **Main Entry** (`src/main/main.ts`)
+14. **Main Entry** (`src/main/main.ts`)
     - Application initialization
     - Window creation
     - Security configuration
@@ -660,6 +667,7 @@ const posts = await db.query.posts.findMany({
 - User interactions
 - State management
 - Data presentation
+- **English-only UI copy** — inline literals (or local constants at 3+ call sites); no `i18next` / locale packs under `src/renderer/`
 
 **Key Components:**
 
@@ -708,7 +716,7 @@ const posts = await db.query.posts.findMany({
   - **Settings (`src/renderer/features/settings/`):**
 
     - **Settings.tsx** - Tab container and settings orchestration
-    - **SettingsGeneralTab.tsx** - Downloads + proxy configuration
+    - **SettingsGeneralTab.tsx** - Downloads, proxy, and Danger zone (`wipeAllData`)
     - **SettingsSyncTab.tsx** - Startup/interval sync + manual sync trigger
     - **SettingsAppearanceTab.tsx** - Theme selection (`System` / `Light` / `Dark`)
     - **SettingsBackupTab.tsx** - Backup, restore, integrity check, retention, and maintenance section
@@ -724,7 +732,7 @@ const posts = await db.query.posts.findMany({
 3. **IPC Client** (`window.api`)
    - Typed interface to Main process
    - All communication goes through this bridge
-  - Methods: getSettings, saveSettings, confirmLegal, getTrackedArtists, addArtist, deleteArtist, getArtistPosts, getArtistPostsCount, syncAll, openExternal, searchArtists, searchRemoteTags, searchBooru, resolveTags, resolveCharacterTags, resolveCopyrightTags, resolveTagsByType, markPostAsViewed, togglePostViewed, togglePostFavorite, downloadFile, openFileInFolder, createBackup, restoreBackup, getVacuumStatus, runVacuum, getVacuumSchedule, setVacuumSchedule, writeToClipboard, verifyCredentials, logout, resetPostCache, repairArtist, checkForUpdates, quitAndInstall, startDownload
+   - Channel inventory is generated into [`docs/api.md`](./api.md) via `npm run docs:api` — do not maintain a hand-copied method list here. Notable domains: settings/auth, artists/posts, search/tags, playlists, backup/VACUUM, updates, `getVideoProxyUrl`, `wipeAllData` (`system:wipe-all-data`).
 
 ## Security Architecture
 
@@ -1164,6 +1172,8 @@ sequenceDiagram
 
    g. **Updates artist** - Updates artist's `lastPostId` and `newPostsCount`.
 
+   ⚠️ **Known integrity gap (open P0):** `lastPostId` may advance mid-pagination or after a partial error commit. An interrupted sync can leave a cursor ahead of fully persisted posts and skip gaps on the next run. Do not document “cursor = fully synced watermark” until the sync-cursor integrity fix lands.
+
    h. **Progress event** - Emits IPC event: `emit('sync:progress', 'Syncing artist_name...')`
 
 5. **UI updates in real-time** - React component listens to progress events:
@@ -1400,7 +1410,7 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 **CI pipeline** (`.github/workflows/ci.yml`):
 
-1. `validate` → `npm test` → `npm audit --omit=dev --audit-level=high`
+1. `validate` → `docs:api` freshness (`git diff --exit-code docs/api.md`) → `npm test` → `npm audit --omit=dev --audit-level=high`
 2. E2E on built artifact
 3. Tagged releases (parallel native runners after quality + e2e):
    - **Windows:** `RuleDesk-*-win.zip` (`windows-latest`)

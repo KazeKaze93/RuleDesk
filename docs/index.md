@@ -100,9 +100,9 @@ Engineering materials are intentionally grouped here to keep the top-level index
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
 - [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, CI/CD
 - [Unit test guide](../tests/unit/README.md) - Vitest unit/property test layout
-- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (**171** Vitest tests across 25 files)
+- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (**183** Vitest tests across 27 files)
 - [Integration test notes](../tests/integration/README.md) - IPC + SQLite integration tests
-- [.cursorrules](../.cursorrules) - Engineering standards
+- [.cursorrules](../.cursorrules) - Engineering standards (includes English-only UI copy; no i18n stack)
 - [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants (do not add root `LESSONS.md`)
 
 ### Quality gates (local & CI)
@@ -111,7 +111,7 @@ Engineering materials are intentionally grouped here to keep the top-level index
 |------|---------|
 | Typecheck + lint + img policy | `npm run validate` |
 | IPC API docs freshness | `npm run docs:api` (CI: then `git diff --exit-code docs/api.md`) |
-| All Vitest suites (171 tests) | `npm test` |
+| All Vitest suites (183 tests) | `npm test` |
 | Pre-PR full gate | `npm run test:verify` |
 | Production dependency audit | `npm audit --omit=dev --audit-level=high` |
 
@@ -169,8 +169,10 @@ This documentation is maintained alongside the codebase. When making changes:
 3. **Update glossary** - Add new terms to [Glossary](./glossary.md)
 4. **Keep lessons canonical** - Update [`.ai/LESSONS.txt`](../.ai/LESSONS.txt) for reusable engineering invariants
 5. **Check links** - Verify all internal links work correctly
+6. **IPC reference** - After channel/handler changes, run `npm run docs:api` and commit `docs/api.md` (do not hand-edit)
+7. **UI copy** - App is English-only; do not reintroduce i18n libraries or locale JSON packs
 
 ---
 
-**Last Updated:** May 2026 — v16.2.x post-audit: credentials helper, DI token.id keys, sync queue, artist cap, worker mapping, expanded Vitest coverage (see [TEST_COVERAGE.md](../tests/unit/TEST_COVERAGE.md)).
+**Last Updated:** July 2026 — Docs sync for audit series PRs #105–#112 (IPC collapse/throttle, `as` policy, SecureStorage-only crypto, slim DI, lifecycle hygiene, wipe-all-data, generated `docs/api.md`, English-only UI) + honest open P0s (video-cache integrity, sync cursor). Vitest **183** / **27** files.
 

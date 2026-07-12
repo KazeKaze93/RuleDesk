@@ -130,9 +130,33 @@ The secure Node.js environment in Electron that handles all I/O, persistence, an
 
 ### Renderer Process
 
-The sandboxed browser environment in Electron that handles UI rendering and user interactions. The Renderer Process communicates with the Main Process via IPC.
+The sandboxed browser environment in Electron that handles UI rendering and user interactions. The Renderer Process communicates with the Main Process via IPC. UI copy is **English-only** (inline literals / local constants) — there is no i18n layer under `src/renderer/`.
 
 **Related:** [Architecture - Renderer Process](./architecture.md#renderer-process-the-face)
+
+---
+
+### Wipe all data
+
+Settings → General → **Danger zone** → confirmed delete of everything under the user data directory (`.rdcache`), including the database, `video-cache/`, logs, and in-app backups, then app quit. Does not delete the separate media download folder. IPC: `system:wipe-all-data` / `wipeAllData`.
+
+**Related:** [User Guide — Settings](./user-guide.md#settings), [API Reference](./api.md)
+
+---
+
+### Video proxy / video-cache
+
+Main-process `VideoProxyServer` serves local `http://127.0.0.1` URLs for `<video>` playback and stores files under `{userData}/video-cache/`. **Integrity of cache files is an open P0** (partial files may be treated as hits until atomic write lands).
+
+**Related:** [API Guide — getVideoProxyUrl](./api-guide.md#getvideoproxyurlfileurl-string), [Roadmap — Open P0](./roadmap.md#open-p0-audit--not-yet-shipped)
+
+---
+
+### Sync cursor (`lastPostId`)
+
+Per-artist watermark used for incremental sync. **Open P0:** advancing the cursor on incomplete pagination/error paths can skip posts. Treat as “best effort” until the integrity fix ships.
+
+**Related:** [Architecture — Sync](./architecture.md), [Roadmap — Open P0](./roadmap.md#open-p0-audit--not-yet-shipped)
 
 ---
 
@@ -326,9 +350,17 @@ An error handling strategy that increases wait time between retry attempts. Rule
 
 ### validate (npm script)
 
-Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-attrs`. Same command runs in CI before tests.
+Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-attrs`. CI runs this before `docs:api` freshness and tests.
 
 **Related:** [README — Quality Checks](../README.md#quality-checks)
+
+---
+
+### docs:api (npm script)
+
+Regenerates the IPC channel reference (`docs/api.md`) from `channels.ts` and handler registrations. Hand-editing `api.md` is forbidden; CI fails if the file is stale.
+
+**Related:** [API Reference](./api.md), [API Guide](./api-guide.md), [README — Quality Checks](../README.md#quality-checks)
 
 ---
 

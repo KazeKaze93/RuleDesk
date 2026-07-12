@@ -914,11 +914,11 @@ If the database becomes corrupted and you need to restore manually:
 
 The application also exposes VACUUM maintenance controls in Settings:
 
-1. **Manual run:** `window.api.runVacuum()` executes `VACUUM;` in a dedicated worker thread.
+1. **Manual run:** `window.api.runVacuum()` executes `VACUUM;` in a dedicated **maintenance worker** (`vacuumWorker.ts`). This is the **only** intentional DB-related worker-thread exception: interactive CRUD stays on the Main thread via synchronous `better-sqlite3` + Drizzle; VACUUM is offloaded so the UI/IPC loop is not blocked for the duration of a full vacuum.
 2. **Status:** `window.api.getVacuumStatus()` returns last run time/result/error and in-memory `isRunning`.
 3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`.
 
-**Important:** `VACUUM` remains blocking for SQLite itself, but is isolated from the UI/IPC loop by running in a worker thread.
+**Important:** `VACUUM` remains blocking for SQLite itself, but is isolated from the UI/IPC loop by the maintenance worker. Do not use worker threads for ordinary CRUD — that remains forbidden (see `.cursorrules`).
 
 ## Performance Considerations
 
