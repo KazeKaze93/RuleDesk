@@ -2,7 +2,7 @@
 
 ## Overview
 
-Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **196 tests** across **28 files** (unit + integration + property). Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
+Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **197 tests** across **28 files** (unit + integration + property). Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
 
 ## Test files (unit)
 
@@ -34,7 +34,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 
 | Suite | Location | Tests |
 |-------|----------|-------|
-| Integration | `tests/integration/` | 21 |
+| Integration | `tests/integration/` | 22 |
 | Property / fuzzing | `tests/property/fuzzing.test.ts` | 12 |
 
 ### Integration highlights

@@ -1,16 +1,6 @@
-RuleDesk Canonical Lessons
+RuleDesk Engineering Lessons (Canonical)
 Format: Problem -> Root Cause -> Invariant Rule
-
-1) Transaction async misuse -> better-sqlite3 + Drizzle transactions are synchronous and blocking -> Never use async callbacks or await inside db.transaction(...); perform async I/O before or after transaction boundaries.
-
-2) Query builder not executed -> Drizzle write queries are lazy -> Always terminate insert/update/delete chains with .run() in Main process code.
-
-3) Validation drift across IPC handlers -> Repeated ad-hoc schemas diverge over time -> Extract shared Zod schemas in shared modules and reuse them across handlers.
-
-4) Doc/code divergence -> Behavior changes land without synchronized docs -> Any API/UI/behavior change must include same-task updates to README and relevant docs/* sections.
-RuleDesk Engineering Lessons (Canonical, Short Form)
-
-Format: Problem -> Root Cause -> Invariant Rule
+Numbered entries keep their historical IDs (referenced elsewhere); new entries are titled under category headers. Operative rules (allowlists, ESLint configs) live in `.cursorrules` — entries here reference them, never copy them.
 
 1) Hooks Order Violations
 Problem: Runtime errors from conditional hook usage.
@@ -27,13 +17,18 @@ Problem: Duplicate startup calls trigger throttling and unstable UX; partial col
 Root Cause: Idempotent handlers were treated like mutating ones, or collapse keys used only `id`/`type` and ignored other fields.
 Invariant Rule: Mark truly idempotent handlers; collapse in-flight calls by hashing the full canonical args; space mutating calls with delay (never reject).
 
+3a) Shared IPC Validation
+Problem: Repeated ad-hoc Zod schemas diverge across handlers over time.
+Root Cause: Contracts copy-pasted per handler instead of shared.
+Invariant Rule: Extract shared Zod schemas into shared modules and reuse them across handlers.
+
 3b) Type Assertion Policy
-Problem: Project rules banned all `as` casts while the codebase kept assertions — Cursor treated the rule as decorative when the gate only banned narrowing (`no-unsafe-type-assertion`).
+Problem: Project rules banned all `as` casts while the codebase kept assertions — the rule read as decorative when the gate only banned narrowing.
 Root Cause: Policy text required a full allowlist gate, but CI only enforced unsafe narrowing; `// boundary:` comments without `eslint-disable` were not forced.
-Invariant Rule: `as` is forbidden except `as const` and the closed boundary list: (1) `container.resolve` DI Map return; (2) better-sqlite3 raw `.prepare().get()`/`.all()` rows (includes drizzle instance typing); (3) Web Worker `workerData`/message payloads after Zod or trusted IPC handoff; (4) internals of `toIpcSafe` conditional return branches; (5) TanStack Query generic inference gaps (`pageParam` / default page flatten). Every allowed assertion MUST have `// boundary: <reason>` and `eslint-disable-next-line` for every rule that fires (`no-restricted-syntax`; also `@typescript-eslint/no-unsafe-type-assertion` when it reports). Gate: `no-restricted-syntax` on `TSAsExpression` excluding `as const`, plus `no-unsafe-type-assertion`. Fix types upstream or use Zod.parse — do not cast.
+Invariant Rule: `as` is forbidden except `as const` and the closed boundary allowlist defined in `.cursorrules` (single source of truth — do not restate the list here). Every allowed assertion carries `// boundary: <reason>` + `eslint-disable-next-line` for every firing rule. Gate: `no-restricted-syntax` on `TSAsExpression` (excluding `as const`) plus `no-unsafe-type-assertion`. Fix types upstream or use Zod.parse — do not cast.
 
 3c) Syntax Policy Inventory Must Use AST
-Problem: Policy-violation counts from `grep`/`rg` for ` as ` were inflated by an order of magnitude and drove wrong “partial gate” conclusions.
+Problem: Policy-violation counts from `grep`/`rg` for ` as ` were inflated by an order of magnitude and drove wrong "partial gate" conclusions.
 Root Cause: Regex matches `import * as X`, SQL `AS alias`, and English prose, not TypeScript `TSAsExpression` nodes.
 Invariant Rule: Inventory of syntactic constructs (type assertions, etc.) MUST use AST (ESLint selector / parser). Grep totals are not decision inputs.
 
@@ -67,91 +62,25 @@ Problem: Dead imports/variables increase noise and hide real issues.
 Root Cause: Refactors are merged without cleanup.
 Invariant Rule: Run `npm run validate` before finishing and remove all unused imports/variables.
 
-## Security (credentials)
+## IPC & Errors
 
-### Problem: API decrypt failure sends ciphertext to Booru APIs
-**Root Cause:** Inline `safeStorage.decryptString` catch blocks fell back to `settings.encryptedApiKey` (base64 ciphertext).
-**Invariant Rule:** Use `SecureStorage.decrypt()` or `getDecryptedCredentialsFromRecord()`; on failure return `null` or throw `CredentialDecryptionError`. Never pass stored ciphertext to providers or logs as if it were the key.
+### Problem: Custom Error fields silently stripped across the IPC boundary
+**Root Cause:** Electron `ipcMain.handle` / `ipcRenderer.invoke` serialize rejections through structured clone semantics — custom Error properties (`providerKind`, `kind`, `code`, `retryAfterMs`) are dropped; only `message` survives reliably. Mocked-IPC unit tests cannot see this: mocks pass objects by reference.
+**Invariant Rule:** Typed error payloads crossing IPC must be JSON-encoded into `error.message` in Main, normalized in preload, and parsed in the shared layer (`provider-search-ipc.ts` pattern). Never rely on custom Error fields surviving `invoke`. Any branch changing IPC error shapes requires live Electron verification before merge (see `.cursorrules` — LIVE ELECTRON VERIFICATION).
 
-### Problem: Split-brain encrypt/decrypt after duplicated crypto helpers
-**Root Cause:** `lib/crypto.ts` and `services/secure-storage.ts` copied the same safeStorage + test-fallback logic; Settings encrypted via one module while decrypt went through the other.
-**Invariant Rule:** Cryptographic helpers exist in one module (`SecureStorage`); duplicating security code is forbidden.
-
-## Renderer / Workers
-
-### Problem: Browse media-type filter breaks after worker pass
-**Root Cause:** `useWorkerFilteredPosts` remapped worker output with `mediaType: null` and dropped `viewCount` / `lastViewedAt`.
-**Invariant Rule:** Worker round-trip must preserve DB fields; infer `mediaType` from `fileUrl` only when the field is absent.
-
-### Problem: Heavy Zod validation blocks UI on large post lists
-**Root Cause:** `Zod.parse()` on 10k+ posts in the renderer main thread before `postMessage`.
-**Invariant Rule:** Do not validate full post arrays in the renderer thread; trust IPC + worker, or validate inside the worker if required.
-
-### Problem: Worker filter spam on rapid slider changes
-**Root Cause:** Every filter keystroke/toggle immediately posted full arrays to the worker.
-**Invariant Rule:** Debounce filter config sent to the worker (~250ms); do not debounce `rawPosts` (scroll/load latency).
-
-## Gallery performance
-
-### Problem: Masonry mode degrades to full DOM for all loaded posts
-**Root Cause:** CSS `columns` layout is incompatible with Virtuoso virtualization; masonry path renders every loaded post.
-**Invariant Rule:** Document and treat masonry as O(n) DOM. Grid mode is O(visible) via VirtuosoGrid. Warn users or cap loaded pages in masonry for large feeds.
-
-## Testing
-
-### Problem: Dual-ABI test setup masks Electron-vs-Node native module incompatibilities
-**Root Cause:** When tests rebuild better-sqlite3 against Node.js ABI, they don't execute under Electron's runtime. Edge cases that manifest only under Electron's event loop, WAL semantics, or sandbox behavior pass tests but fail in production.
-**Invariant Rule:** Integration tests involving native modules (better-sqlite3) should ideally run inside Electron via Playwright/electron-vitest. If staying with dual-ABI for speed, document the gap explicitly and add end-to-end Electron tests for critical DB paths.
-
-## Architecture
-
-### Problem: Unused infrastructure (i18n with a single locale)
-**Root Cause:** i18next/react-i18next were added “for growth” with only `en`, while much UI already used hardcoded English and several `t()` keys never existed in `translation.json`.
-**Invariant Rule:** Infrastructure layers are added only under a confirmed product requirement; speculative layers are removed. The app is English-only — user-facing strings are inline literals or local constants (3+ uses), not an i18n stack.
-
-### Problem: Agent reports a finished branch that does not exist on remote (or under-reports the diff)
-**Root Cause:** Chat “готово” / checkpoint text is not bound to a verifiable git artifact; planned branch names (e.g. audit P0 `fix/video-cache-integrity`, `fix/sync-cursor-integrity`) can be remembered and later treated as done without `checkout -b`, commit, or push — while later work (#105–#112) proceeds. Checkpoint-only “коммитить?” also fails if never reached. Separately, completion reports often list only the prompt’s “затронутые файлы” and omit same-task doc-sync / wiring (LESSONS #8), so reviewers miss real surface area until the PR diff.
-**Invariant Rule:** Definition of Done for any Cursor feature prompt = branch **pushed** to origin **and** the final report includes:
-1. Literal output of `git log origin/<branch> -1 --oneline`
-2. Literal output of `git status -sb` (or the `git push` result showing the remote ref)
-3. **Full actual diff inventory** — every path touched in the commit(s) / working tree for the task (e.g. from `git diff --name-only origin/<base>...HEAD` or `git show --name-only --pretty=format:`), not only the prompt’s planned file list. Doc-sync and incidental wiring count; call them out explicitly.
-A report without (1)–(3) is an **incomplete task**, not a done one. Do not claim a branch “landed” from memory, conversation summary, or docs span alone — verify with `git ls-remote --heads origin <branch>` / code criteria.
-
-### Problem: Custom DI containers are a YAGNI violation for small projects
-**Root Cause:** A full IoC-style abstraction (cycle detection, factory theater) was introduced without automatic wiring or scopes; instance-Map `resolve` never runs user code, so circular-dependency stacks are dead.
-**Invariant Rule:** Prefer a slim typed instance registry (`Container` + `DI_TOKENS`, keyed by `token.id`). No cycle detection without lazy factories. Use a real IoC container only when automatic wiring or scope management is actually needed.
-
-### Problem: Re-opening the window stacks duplicate `before-quit` listeners
-**Root Cause:** `app.on("before-quit", …)` was registered inside `initializeAppAndWindow()`, which tray Show/click/`activate` can call again after the window was destroyed.
-**Invariant Rule:** Register process-lifetime Electron listeners (`before-quit`, CSP setup flags, etc.) once at module scope (or behind a one-shot guard). Window recreation may re-run IPC setup (`removeHandler` first) but must not re-bind app-level quit handlers.
-
-## Performance
-
-### Problem: forwardRef factory declared inside render remounts virtualized lists
-**Root Cause:** Creating `forwardRef` component types inside component render (or `useMemo`) produces a new React component identity on each render, so React/Virtuoso remounts list internals.
-**Invariant Rule:** Define all `forwardRef` component types at module scope only; inside render choose between pre-defined components, never create new component types.
-
-## Security
-
-### Problem: Static CSP tied to specific domains does not scale to multi-provider architecture
-**Root Cause:** Security policy duplicated provider-specific domains instead of deriving them from the provider registry.
-**Invariant Rule:** CSP directives that enumerate external domains must be computed from the Provider Registry, never hardcoded in Main or Renderer.
-
-## UI & Styling
-
-### Problem: “Panic mode” implemented with `visibility:hidden` / `opacity` still leaks media in screenshots
-**Root Cause:** OS and third-party screen capture tools read the rendered DOM and resource URLs; CSS-hidden nodes often remain in the accessibility/layout tree with `src` intact.
-**Invariant Rule:** Panic Mode must **wipe `src` on `img`, `video`, and `source` elements** (and restore from a data attribute if needed), not rely on CSS hiding. Screenshot tools capture rendered DOM, not stylesheet intent.
-
-### Problem: CSS `break-inside-avoid` silently ignored in flex containers
-**Root Cause:** `break-inside-avoid` only works with CSS multi-column layout (`columns-N` / `column-count`). In a flex or grid container it has no effect, but browsers don't warn. Masonry implementations that mix flex + break-inside appear to "work" superficially but produce a single-column list.
-**Invariant Rule:** Masonry layouts must use CSS columns explicitly (`columns-2 md:columns-3 ...`) or a bin-packing library (e.g. `masonic`). Combining virtualization with CSS-columns masonry is incompatible; choose one.
-
-### Problem: Validation errors remain visible after context-changing input updates
-**Root Cause:** Error state is persisted independently from form inputs, and no reset is performed when provider/credentials change the validation context.
-**Invariant Rule:** Reset related error state on any input that changes validation context (e.g. provider select, credential fields) to avoid stale feedback.
+### Problem: Provider errors returned as empty results create silent failure loops
+**Root Cause:** Handlers returned `[]` on provider failure instead of throwing; the UI interpreted emptiness as "no data", retried, and amplified into a 429 storm.
+**Invariant Rule:** Errors must surface, not swallow. On provider/IPC failure throw a typed error (`ProviderSearchError` with kind); never map failure to an empty-success shape. Rate-limit responses must propagate `retryAfterMs` and back off globally, not per-call.
 
 ## Data Integrity
+
+### Problem: Sync cursor advanced past unfetched pages, permanently skipping posts
+**Root Cause:** `lastPostId` was written in mid-batch and error-path commits while pagination was still in flight; a failure mid-pagination left older pages unfetched but below the new cursor — invisible, permanent data loss reported as "partial success".
+**Invariant Rule:** A pagination/sync cursor advances in exactly ONE code path, guarded by a completion flag that is set only at natural termination points at the END of a fully successful iteration (short page after commit; known-territory reached) — never at the top of the loop, never in catch. Incomplete runs must be persisted as visible state (`lastSyncIncomplete`) and must not update `lastChecked`. Completion flags set before the work they attest to are bugs waiting for an exception.
+
+### Problem: Cache files written directly to their final path get served truncated
+**Root Cause:** Streaming writes went straight to the final cache path and hit-checks used `existsSync`; concurrent readers saw in-progress files as complete, and client aborts left permanently truncated files that were served forever.
+**Invariant Rule:** Any on-disk cache written from a stream uses atomic write: unique `*.tmp-<uuid>` + `rename` only after the full upstream `end` AND writer `finish`; every abort/error path unlinks the tmp. Hit-check via `stat` (regular file, size > 0), never bare `existsSync`. Every cache needs a size cap + eviction wired into maintenance; unbounded caches are a bug.
 
 ### Problem: Zustand derived toggles flip incorrectly under rapid updates
 **Root Cause:** Direct captures like `set({ compactMode: !compactMode })` use stale closure values and can race with concurrent updates.
@@ -184,3 +113,91 @@ A report without (1)–(3) is an **incomplete task**, not a done one. Do not cla
 ### Problem: Freeform JSON in DB columns locks data to the first DSL shape
 **Root Cause:** Smart playlist queries were stored as raw JSON without schema versioning, so parser changes could break old records or misinterpret fields.
 **Invariant Rule:** Any JSON-in-column stored as user data MUST include a version column and be parsed only through a versioned resolver, never through raw JSON.parse.
+
+## Security (credentials)
+
+### Problem: API decrypt failure sends ciphertext to Booru APIs
+**Root Cause:** Inline `safeStorage.decryptString` catch blocks fell back to `settings.encryptedApiKey` (base64 ciphertext).
+**Invariant Rule:** Use `SecureStorage.decrypt()` or `getDecryptedCredentialsFromRecord()`; on failure return `null` or throw `CredentialDecryptionError`. Never pass stored ciphertext to providers or logs as if it were the key.
+
+### Problem: Split-brain encrypt/decrypt after duplicated crypto helpers
+**Root Cause:** `lib/crypto.ts` and `services/secure-storage.ts` copied the same safeStorage + test-fallback logic; Settings encrypted via one module while decrypt went through the other.
+**Invariant Rule:** Cryptographic helpers exist in one module (`SecureStorage`); duplicating security code is forbidden.
+
+## Security
+
+### Problem: Static CSP tied to specific domains does not scale to multi-provider architecture
+**Root Cause:** Security policy duplicated provider-specific domains instead of deriving them from the provider registry.
+**Invariant Rule:** CSP directives that enumerate external domains must be computed from the Provider Registry, never hardcoded in Main or Renderer.
+
+## Renderer / Workers
+
+### Problem: Browse media-type filter breaks after worker pass
+**Root Cause:** `useWorkerFilteredPosts` remapped worker output with `mediaType: null` and dropped `viewCount` / `lastViewedAt`.
+**Invariant Rule:** Worker round-trip must preserve DB fields; infer `mediaType` from `fileUrl` only when the field is absent.
+
+### Problem: Heavy Zod validation blocks UI on large post lists
+**Root Cause:** `Zod.parse()` on 10k+ posts in the renderer main thread before `postMessage`.
+**Invariant Rule:** Do not validate full post arrays in the renderer thread; trust IPC + worker, or validate inside the worker if required.
+
+### Problem: Worker filter spam on rapid slider changes
+**Root Cause:** Every filter keystroke/toggle immediately posted full arrays to the worker.
+**Invariant Rule:** Debounce filter config sent to the worker (~250ms); do not debounce `rawPosts` (scroll/load latency).
+
+## Gallery performance
+
+### Problem: Masonry mode degrades to full DOM for all loaded posts
+**Root Cause:** CSS `columns` layout is incompatible with Virtuoso virtualization; masonry path renders every loaded post.
+**Invariant Rule:** Document and treat masonry as O(n) DOM. Grid mode is O(visible) via VirtuosoGrid. Warn users or cap loaded pages in masonry for large feeds.
+
+## Performance
+
+### Problem: forwardRef factory declared inside render remounts virtualized lists
+**Root Cause:** Creating `forwardRef` component types inside component render (or `useMemo`) produces a new React component identity on each render, so React/Virtuoso remounts list internals.
+**Invariant Rule:** Define all `forwardRef` component types at module scope only; inside render choose between pre-defined components, never create new component types.
+
+## UI & Styling
+
+### Problem: "Panic mode" implemented with `visibility:hidden` / `opacity` still leaks media in screenshots
+**Root Cause:** OS and third-party screen capture tools read the rendered DOM and resource URLs; CSS-hidden nodes often remain in the accessibility/layout tree with `src` intact.
+**Invariant Rule:** Panic Mode must **wipe `src` on `img`, `video`, and `source` elements** (and restore from a data attribute if needed), not rely on CSS hiding. Screenshot tools capture rendered DOM, not stylesheet intent.
+
+### Problem: CSS `break-inside-avoid` silently ignored in flex containers
+**Root Cause:** `break-inside-avoid` only works with CSS multi-column layout (`columns-N` / `column-count`). In a flex or grid container it has no effect, but browsers don't warn. Masonry implementations that mix flex + break-inside appear to "work" superficially but produce a single-column list.
+**Invariant Rule:** Masonry layouts must use CSS columns explicitly (`columns-2 md:columns-3 ...`) or a bin-packing library (e.g. `masonic`). Combining virtualization with CSS-columns masonry is incompatible; choose one.
+
+### Problem: Validation errors remain visible after context-changing input updates
+**Root Cause:** Error state is persisted independently from form inputs, and no reset is performed when provider/credentials change the validation context.
+**Invariant Rule:** Reset related error state on any input that changes validation context (e.g. provider select, credential fields) to avoid stale feedback.
+
+## Testing
+
+### Problem: Dual-ABI test setup masks Electron-vs-Node native module incompatibilities
+**Root Cause:** When tests rebuild better-sqlite3 against Node.js ABI, they don't execute under Electron's runtime. Edge cases that manifest only under Electron's event loop, WAL semantics, or sandbox behavior pass tests but fail in production.
+**Invariant Rule:** Integration tests involving native modules (better-sqlite3) should ideally run inside Electron via Playwright/electron-vitest. If staying with dual-ABI for speed, document the gap explicitly and add end-to-end Electron tests for critical DB paths.
+
+## Architecture & Agent Workflow
+
+### Problem: Unused infrastructure (i18n with a single locale)
+**Root Cause:** i18next/react-i18next were added "for growth" with only `en`, while much UI already used hardcoded English and several `t()` keys never existed in `translation.json`.
+**Invariant Rule:** Infrastructure layers are added only under a confirmed product requirement; speculative layers are removed. The app is English-only — user-facing strings are inline literals or local constants (3+ uses), not an i18n stack.
+
+### Problem: Agent reports a finished branch that does not exist on remote (or under-reports the diff)
+**Root Cause:** Chat "готово" / checkpoint text is not bound to a verifiable git artifact; planned branch names can be remembered and later treated as done without `checkout -b`, commit, or push. Separately, completion reports often list only the prompt's "затронутые файлы" and omit same-task doc-sync / wiring, so reviewers miss real surface area until the PR diff.
+**Invariant Rule:** Definition of Done for any Cursor feature prompt = branch **pushed** to origin **and** the final report includes:
+1. Literal output of `git log origin/<branch> -1 --oneline`
+2. Literal output of `git status -sb` (or the `git push` result showing the remote ref)
+3. **Full actual diff inventory** — every path touched (e.g. `git diff --name-only origin/<base>...HEAD`), not only the prompt's planned file list. Doc-sync and incidental wiring count; call them out explicitly.
+A report without (1)–(3) is an **incomplete task**. Do not claim a branch "landed" from memory, conversation summary, or docs narrative — verify with `git ls-remote --heads origin <branch>` / code criteria.
+
+### Problem: Part of a prompt batch was never started, and the gap went unnoticed
+**Root Cause:** N prompts issued into chat with no dispatcher-side status tracking; execution began mid-queue, the two skipped P0 prompts left no git trace, and later doc narrative ("video-cache through i18n") fabricated a memory of a full run.
+**Invariant Rule:** Every prompt batch is registered as a tracking table in `docs/roadmap.md` (branch -> PR -> status: issued / started / merged / cancelled). A batch is closed only when every row is `merged` or explicitly `cancelled` with a reason. "A prompt exists in chat" is not a status. Narrative text must never contradict the table.
+
+### Problem: Custom DI containers are a YAGNI violation for small projects
+**Root Cause:** A full IoC-style abstraction (cycle detection, factory theater) was introduced without automatic wiring or scopes; instance-Map `resolve` never runs user code, so circular-dependency stacks are dead.
+**Invariant Rule:** Prefer a slim typed instance registry (`Container` + `DI_TOKENS`, keyed by `token.id`). No cycle detection without lazy factories. Use a real IoC container only when automatic wiring or scope management is actually needed.
+
+### Problem: Re-opening the window stacks duplicate `before-quit` listeners
+**Root Cause:** `app.on("before-quit", …)` was registered inside `initializeAppAndWindow()`, which tray Show/click/`activate` can call again after the window was destroyed.
+**Invariant Rule:** Register process-lifetime Electron listeners (`before-quit`, CSP setup flags, etc.) once at module scope (or behind a one-shot guard). Window recreation may re-run IPC setup (`removeHandler` first) but must not re-bind app-level quit handlers.

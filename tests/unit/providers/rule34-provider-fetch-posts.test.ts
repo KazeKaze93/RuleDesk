@@ -46,7 +46,7 @@ describe("Rule34Provider.fetchPosts error classification", () => {
       data: `${RULE34_MISSING_AUTHENTICATION_MARKER}. Register for an account.`,
     });
 
-    await expect(provider.fetchPosts("test_tag", 1, settings)).rejects.toMatchObject({
+    await expect(provider.fetchPosts("test_tag", 1, settings, false, 50)).rejects.toMatchObject({
       kind: "auth",
     });
 
@@ -60,7 +60,7 @@ describe("Rule34Provider.fetchPosts error classification", () => {
       data: "",
     });
 
-    await expect(provider.fetchPosts("test_tag", 1, settings)).rejects.toMatchObject({
+    await expect(provider.fetchPosts("test_tag", 1, settings, false, 50)).rejects.toMatchObject({
       kind: "rate_limit",
       retryAfterMs: 12_000,
     });
@@ -81,7 +81,7 @@ describe("Rule34Provider.fetchPosts error classification", () => {
         data: "<html>still cloudflare</html>",
       });
 
-    await expect(provider.fetchPosts("test_tag", 1, settings)).rejects.toMatchObject({
+    await expect(provider.fetchPosts("test_tag", 1, settings, false, 50)).rejects.toMatchObject({
       kind: "parse",
     });
 
@@ -95,7 +95,7 @@ describe("Rule34Provider.fetchPosts error classification", () => {
       data: "[]",
     });
 
-    await expect(provider.fetchPosts("missing_tag", 1, settings)).resolves.toEqual(
+    await expect(provider.fetchPosts("missing_tag", 1, settings, false, 50)).resolves.toEqual(
       []
     );
 
@@ -107,7 +107,7 @@ describe("Rule34Provider.fetchPosts error classification", () => {
     timeoutError.code = "ECONNABORTED";
     axiosGetMock.mockRejectedValueOnce(timeoutError);
 
-    await expect(provider.fetchPosts("test_tag", 1, settings)).rejects.toMatchObject({
+    await expect(provider.fetchPosts("test_tag", 1, settings, false, 50)).rejects.toMatchObject({
       kind: "network",
     });
 

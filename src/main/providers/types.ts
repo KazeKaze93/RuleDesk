@@ -24,13 +24,13 @@ export interface IBooruProvider {
   readonly allowedDomains: string[];
   /** Validates provided credentials against the API */
   checkAuth(settings: ProviderSettings): Promise<boolean>;
-  /** Fetches posts based on tags and page */
+  /** Fetches posts based on tags and page. Callers must pass an explicit page size. */
   fetchPosts(
     tags: string,
     page: number,
     settings: ProviderSettings,
-    isRandom?: boolean,
-    limit?: number
+    isRandom: boolean,
+    limit: number
   ): Promise<BooruPost[]>;
   /** Search for tags (autocomplete) with optional AbortSignal for cancellation */
   searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]>;

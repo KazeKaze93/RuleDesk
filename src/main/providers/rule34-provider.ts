@@ -255,8 +255,8 @@ export class Rule34Provider implements IBooruProvider {
     tags: string,
     page: number,
     settings: ProviderSettings,
-    isRandom: boolean = false,
-    limit: number = 50
+    isRandom: boolean,
+    limit: number
   ): Promise<BooruPost[]> {
     await this.throttle.wait();
 

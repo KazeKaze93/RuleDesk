@@ -156,14 +156,15 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 | 8 | `feat/settings-wipe-all-data` | [#110](https://github.com/KazeKaze93/RuleDesk/pull/110) | ✅ merged |
 | 9 | `dx/ipc-docs-generation` | [#111](https://github.com/KazeKaze93/RuleDesk/pull/111) | ✅ merged |
 | 10 | `chore/i18n-removal` | [#112](https://github.com/KazeKaze93/RuleDesk/pull/112) | ✅ merged |
+| 11 | `chore/as-assertion-gate-alignment` | [#116](https://github.com/KazeKaze93/RuleDesk/pull/116) | ✅ merged |
 
-Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one missed first run and one sync-cursor follow-up).
+Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one missed first run and one sync-cursor follow-up). Follow-up gate alignment is #116.
 
 ### Baseline DX (earlier)
 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.
 - ✅ **CI:** `validate` → `docs:api` freshness → `npm test` → production `npm audit --omit=dev --audit-level=high`; release tags wait for quality + e2e, then Windows zip + Linux AppImage.
-- ✅ **Post-audit regression tests:** **196** Vitest tests across **28** files (includes collapse/throttle + `SecureStorage` + video-proxy suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md)).
+- ✅ **Post-audit regression tests:** **197** Vitest tests across **28** files (includes collapse/throttle + `SecureStorage` + video-proxy suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md)).
 - ✅ **Main process HMR/watch**, shared Zod IPC helpers, provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
 
 - ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.
@@ -210,6 +211,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | `keep last N` is implemented; optional **total-size cap** is also supported via `BACKUP_RETENTION_MAX_TOTAL_MB` env for deployments that need hard storage ceilings. UI exposure for this cap remains optional future UX work. |
 | **Engineering** | Ongoing tooling hygiene; remaining shared validation consolidation as needed. |
+| **Media filters (P3)** | Browse worker video regex (`mp4\|webm\|mov` in `data-processor.worker.ts`) is narrower than canonical `VIDEO_EXTENSIONS` in `src/shared/utils/media.ts` — align when touching the worker. |
 | **Product** | **Smart Collections AI** (research). |
 
 **Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.

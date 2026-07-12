@@ -5,6 +5,7 @@ import { artists, posts, settings, SETTINGS_ID } from '@/main/db/schema';
 import { eq } from 'drizzle-orm';
 import { getProvider } from '@/main/providers';
 import type { BooruPost } from '@/main/providers/types';
+import { PAGE_SIZE } from '@/main/providers/types';
 import { ProviderSearchError } from '@/main/providers/provider-search-errors';
 import { IPC_CHANNELS } from '@/main/ipc/channels';
 
@@ -955,6 +956,120 @@ describe('SyncService Integration', () => {
       );
     } finally {
       sendEventSpy.mockRestore();
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('should paginate initial sync across multiple full PAGE_SIZE pages', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    await mockDb.db
+      .update(artists)
+      .set({ lastPostId: 0, lastSyncIncomplete: false, lastChecked: null })
+      .where(eq(artists.id, artist.id));
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const createPosts = (startId: number, count: number): BooruPost[] =>
+      Array.from({ length: count }, (_, index) => {
+        const id = startId + index;
+        return {
+          id,
+          fileUrl: `https://cdn.example.com/${id}.jpg`,
+          previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+          sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+          tags: ['artist_name', `tag_${id}`],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 1000,
+          height: 1000,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        };
+      });
+
+    const SHORT_LAST_PAGE = 40;
+    const EXPECTED_TOTAL = PAGE_SIZE * 2 + SHORT_LAST_PAGE;
+
+    const provider = getProvider('rule34');
+    // Simulates Rule34's old silent default (50): without an explicit PAGE_SIZE limit,
+    // page 0 returns 50 items and sync wrongly treats that as end-of-pagination.
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async (_tags, page, _settings, _isRandom, limit) => {
+        if (limit !== PAGE_SIZE) {
+          if (page === 0) {
+            return createPosts(1, 50);
+          }
+          return [];
+        }
+        if (page === 0) {
+          return createPosts(1, PAGE_SIZE);
+        }
+        if (page === 1) {
+          return createPosts(PAGE_SIZE + 1, PAGE_SIZE);
+        }
+        if (page === 2) {
+          return createPosts(PAGE_SIZE * 2 + 1, SHORT_LAST_PAGE);
+        }
+        return [];
+      }
+    );
+
+    try {
+      const artistBefore = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      if (!artistBefore) {
+        throw new Error('Artist missing');
+      }
+
+      await service.syncArtist(artistBefore, {
+        userId: settingsRecord.userId || '',
+        apiKey,
+      });
+
+      const savedPosts = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+      expect(savedPosts).toHaveLength(EXPECTED_TOTAL);
+
+      expect(fetchPostsSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        0,
+        expect.objectContaining({
+          userId: expect.any(String),
+          apiKey: expect.any(String),
+        }),
+        false,
+        PAGE_SIZE
+      );
+      expect(fetchPostsSpy).toHaveBeenCalledTimes(3);
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      expect(updatedArtist?.lastPostId).toBe(EXPECTED_TOTAL);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(false);
+      expect(updatedArtist?.lastChecked).not.toBeNull();
+    } finally {
       fetchPostsSpy.mockRestore();
     }
   });

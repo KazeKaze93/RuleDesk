@@ -478,10 +478,16 @@ export class SyncService {
 
           const postsData = await retryWithBackoff(
             () =>
-              provider.fetchPosts(tagsQuery, page, {
-                userId: settings.userId,
-                apiKey: settings.apiKey,
-              }),
+              provider.fetchPosts(
+                tagsQuery,
+                page,
+                {
+                  userId: settings.userId,
+                  apiKey: settings.apiKey,
+                },
+                false,
+                PAGE_SIZE
+              ),
             3,
             2000,
             artist.name

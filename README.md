@@ -515,7 +515,7 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests (**196 tests** across 28 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
+**Vitest** covers unit, integration, and property-based tests (**197 tests** across 28 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
 
 ```bash
 # Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron
