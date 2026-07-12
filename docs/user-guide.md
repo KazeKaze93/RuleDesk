@@ -380,6 +380,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 - **Browse** - Search the live booru (Source: All) or filter cached posts (Favorites / Subscriptions); infinite scroll, filters, and sorting
 - **Favorites** - Your favorited posts collection
 - **Playlists** - Manual playlists and smart collections
+- **Statistics** - Local library aggregates and charts (`/stats`)
 - **Artists** - Manage your tracked artists and tags
 - **Settings** - App configuration and preferences
 
@@ -449,6 +450,7 @@ Settings are split into tabs:
 ### Blacklist
 
 - **Tag blacklist** - Hide posts that contain specific tags from Browse and local galleries
+- Maximum **100** tags
 - Tags are stored locally; pagination still uses the raw API batch size before filtering
 
 ### Backup
@@ -462,6 +464,8 @@ Settings are split into tabs:
 
 ### Account
 
+- **Provider** - Choose `rule34` or `gelbooru` (changing provider invalidates feed query caches and saves the selection)
+- **User ID** - Shown when the selected provider needs it
 - **API key field** - Password-style input with show/hide button
 - **API key status** - `Configured` / `Not configured` badge
 - **Save API key** - Update credentials from Settings

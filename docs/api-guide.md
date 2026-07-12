@@ -245,7 +245,7 @@ interface IpcBridge {
     artistId: number;
     page?: number;
   }) => Promise<Post[]>;
-  getArtistPostsCount: (artistId?: number) => Promise<number>;
+  getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
   getStats: () => Promise<ExtendedStats>; // backward-compatible alias
   getExtendedStats: () => Promise<ExtendedStats>;
   markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
@@ -277,6 +277,9 @@ interface IpcBridge {
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
   resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
+  getBlacklistedTags: () => Promise<string[]>;
+  addTagToBlacklist: (tag: string) => Promise<void>;
+  removeTagFromBlacklist: (tag: string) => Promise<void>;
 
   // Sync
   syncAll: () => Promise<boolean>;
@@ -1547,20 +1550,21 @@ await window.api.logout();
 
 ---
 
-### `getArtistPostsCount(artistId?: number)`
+### `getArtistPostsCount(params: GetPostsCountRequest)`
 
-Gets the total count of posts for an artist or all posts if no artistId is provided.
+Gets the total count of posts for an artist (or all posts when `artistId` is omitted), optionally filtered.
 
 **Parameters:**
 
-- `artistId?: number` - Optional artist ID. If omitted, returns count of all posts.
+- `params.artistId?: number` - Optional artist ID. If omitted, counts across posts in scope.
+- `params.filters?: PostFilter` - Optional post filters.
 
 **Returns:** `Promise<number>`
 
 **Example:**
 
 ```typescript
-const count = await window.api.getArtistPostsCount(123);
+const count = await window.api.getArtistPostsCount({ artistId: 123 });
 console.log(`Artist has ${count} posts`);
 ```
 
@@ -2026,25 +2030,23 @@ const syncService = container.resolve(DI_TOKENS.SYNC_SERVICE);
 Controllers are registered in `setupIpc()` function:
 
 ```typescript
-export function setupIpc(): {
+export function setupIpc(
+  videoProxyServer: VideoProxyServer,
+): {
   maintenanceController: MaintenanceController;
   fileController: FileController;
+  playlistController: PlaylistController;
 } {
-  const systemController = new SystemController();
-  systemController.setup();
+  // Controllers registered here (System, Artists, Posts, Settings, Auth,
+  // Maintenance, Viewer, File, Search, Playlist, Stats, Blacklist, VideoProxy, …)
 
-  const artistsController = new ArtistsController();
-  artistsController.setup();
-
-  // ... other controllers
-
-  return { maintenanceController, fileController };
+  return { maintenanceController, fileController, playlistController };
 }
 ```
 
 **Available Controllers:**
 
-- `SystemController` - System-level operations (version, clipboard, etc.)
+- `SystemController` - System-level operations (version, clipboard, wipe-all-data, etc.)
 - `ArtistsController` - Artist management operations
 - `PostsController` - Post-related operations
 - `SettingsController` - Settings management
@@ -2052,8 +2054,11 @@ export function setupIpc(): {
 - `MaintenanceController` - Database backup/restore operations
 - `ViewerController` - Viewer-related operations
 - `FileController` - File download and management
+- `SearchController` - Booru search and tag resolution
 - `PlaylistController` - Playlist CRUD, smart resolve, reorder, import/export
 - `StatsController` - Statistics aggregates for dashboard cards/charts
+- `BlacklistController` - Tag blacklist CRUD
+- `VideoProxyController` - Local video proxy / cache control
 
 **Channel Constants:**
 
@@ -2100,7 +2105,7 @@ The application integrates with **Rule34.xxx API**. Integration is handled in th
 
 **SyncService (tracked artists):**
 
-- **Rate Limiting:** 1.5 second delay between artists, 0.5 second between pages
+- **Rate Limiting:** Shared `ProviderThrottle` (~1200ms minimum + 0–400ms jitter per request); sync retries use exponential backoff (base ~2000ms) on rate limits
 - **Pagination:** Incremental fetch by `lastPostId` (not deep offset scroll)
 - **Error Handling:** Graceful handling of API errors and network failures
 - **Authentication:** Uses User ID and API Key from settings

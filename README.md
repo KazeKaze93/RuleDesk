@@ -205,7 +205,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 
 ### Blacklist
 
-- **Tag blacklist** - Hide posts containing listed tags from Browse and local galleries (enforced in Main after fetch)
+- **Tag blacklist** - Hide posts containing listed tags from Browse and local galleries (enforced in Main after fetch). Maximum **100** tags (`MAX_BLACKLIST_TAGS`)
 
 ### Backup
 
@@ -219,6 +219,8 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 
 ### Account
 
+- **Provider** - `rule34` or `gelbooru`; changing provider invalidates React Query feed caches and persists the selection
+- **User ID** - Required for providers that use it (shown when applicable)
 - **API key update** - Password-style input with show/hide toggle
 - **Key status badge** - `Configured` / `Not configured` via safe `hasApiKey` contract
 
@@ -242,7 +244,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 
 ### Database & Schema
 
-- ✅ **Schema:** Core tables `artists`, `posts`, `settings`; additional `tag_metadata`, `playlists`, `playlist_entries`, and FTS5 external content for posts
+- ✅ **Schema:** Core tables `artists`, `posts`, `settings`; additional `tag_metadata`, `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 external content for posts
 - ✅ **Migrations:** Fully functional migration system using `drizzle-kit` with idempotent migration handling
 - ✅ **Media Type Support:** `media_type` column in `posts` table for efficient image/video filtering (`image`, `video`)
 - ✅ **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`, `mediaType`
@@ -515,7 +517,7 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests (**197 tests** across 28 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
+**Vitest** covers unit, integration, and property-based tests (**209 tests** across 30 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
 
 ```bash
 # Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron

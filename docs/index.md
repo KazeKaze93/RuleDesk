@@ -100,7 +100,7 @@ Engineering materials are intentionally grouped here to keep the top-level index
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
 - [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, CI/CD
 - [Unit test guide](../tests/unit/README.md) - Vitest unit/property test layout
-- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (**197** Vitest tests across 28 files)
+- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (**209** Vitest tests across 30 files)
 - [Integration test notes](../tests/integration/README.md) - IPC + SQLite integration tests
 - [.cursorrules](../.cursorrules) - Engineering standards (includes English-only UI copy; no i18n stack)
 - [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants (do not add root `LESSONS.md`)
@@ -111,7 +111,7 @@ Engineering materials are intentionally grouped here to keep the top-level index
 |------|---------|
 | Typecheck + lint + img policy | `npm run validate` |
 | IPC API docs freshness | `npm run docs:api` (CI: then `git diff --exit-code docs/api.md`) |
-| All Vitest suites (197 tests) | `npm test` |
+| All Vitest suites (209 tests) | `npm test` |
 | Pre-PR full gate | `npm run test:verify` |
 | Production dependency audit | `npm audit --omit=dev --audit-level=high` |
 
@@ -174,5 +174,5 @@ This documentation is maintained alongside the codebase. When making changes:
 
 ---
 
-**Last Updated:** July 2026 — Audit v17 pack complete: PRs #105–#115 (including P0 video-cache #114 and sync-cursor #115). See [roadmap — branch tracking](./roadmap.md#-technical-improvements-from-audit--dx). Vitest **197** / **28** files.
+**Last Updated:** July 2026 — Audit v17 pack complete: PRs #105–#115 (including P0 video-cache #114 and sync-cursor #115). See [roadmap — branch tracking](./roadmap.md#-technical-improvements-from-audit--dx). Vitest **209** / **30** files (`npm run test:run`).
 
