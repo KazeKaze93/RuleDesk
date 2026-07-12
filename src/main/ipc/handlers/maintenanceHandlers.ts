@@ -4,8 +4,6 @@ import { SetVacuumScheduleArgsSchema } from "../../../shared/schemas/maintenance
 import { MaintenanceService } from "../../services/MaintenanceService";
 import { parseNoArgs, parseSingleArg } from "./ipcArgValidation";
 
-let isRegistered = false;
-
 function sanitizeErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
@@ -16,8 +14,15 @@ function sanitizeErrorMessage(error: unknown): string {
 export function registerMaintenanceHandlers(
   maintenanceService: MaintenanceService
 ): void {
-  if (isRegistered) {
-    return;
+  const channels = [
+    "maintenance:get-vacuum-status",
+    "maintenance:run-vacuum",
+    "maintenance:get-vacuum-schedule",
+    "maintenance:set-vacuum-schedule",
+  ] as const;
+
+  for (const channel of channels) {
+    ipcMain.removeHandler(channel);
   }
 
   ipcMain.handle("maintenance:get-vacuum-status", (_event, ...args: unknown[]) => {
@@ -64,6 +69,5 @@ export function registerMaintenanceHandlers(
     }
   });
 
-  isRegistered = true;
   log.info("[MaintenanceHandlers] Registered");
 }

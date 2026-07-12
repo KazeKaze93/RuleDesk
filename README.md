@@ -516,6 +516,7 @@ npm run test:run
 npm run test:watch
 npm run test:ui
 npm run test:coverage
+# Coverage HTML/JSON under coverage/ is gitignored — regenerate locally, do not commit
 
 # Targeted suites
 npm run test:integration

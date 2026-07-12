@@ -111,10 +111,6 @@ if (!isTestMode) {
 
 const videoProxyServer = new VideoProxyServer();
 
-app.on("before-quit", () => {
-  videoProxyServer.stop();
-});
-
 if (process.platform === "linux") {
   // Enable hardware video decode where supported
   app.commandLine.appendSwitch("enable-features", "VaapiVideoDecodeLinuxGL");
@@ -128,6 +124,19 @@ const maintenanceScheduler = new MaintenanceScheduler();
 const backupService = new BackupService(syncService);
 const maintenanceService = new MaintenanceService();
 container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
+
+// Single before-quit handler (module load once). Must not live inside initializeAppAndWindow —
+// tray re-open would stack duplicate listeners and call closeDatabase N times.
+app.on("before-quit", () => {
+  videoProxyServer.stop();
+  syncScheduler.stop();
+  maintenanceScheduler.stop();
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
+  closeDatabase();
+});
 
 // In test mode, skip single instance lock to allow multiple test instances
 // Each test uses a unique --user-data-dir, so there's no conflict
@@ -457,20 +466,6 @@ async function initializeAppAndWindow() {
     mainWindow.on("closed", () => {
       mainWindow = null;
       // Don't destroy tray on window close - allow app to run in background
-    });
-
-    // Clean up tray and database when app quits
-    app.on("before-quit", () => {
-      syncScheduler.stop();
-      maintenanceScheduler.stop();
-      if (tray) {
-        tray.destroy();
-        tray = null;
-      }
-      // CRITICAL: Close database connection before quitting to prevent data corruption
-      // SQLite requires explicit close() to ensure all transactions are committed
-      // and WAL file is properly synchronized
-      closeDatabase();
     });
   } catch (e) {
     logger.error("FATAL: Failed to initialize application or database.", e);

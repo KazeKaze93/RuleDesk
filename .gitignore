@@ -57,6 +57,7 @@ repomix-output.txt
 # --- Testing ---
 /playwright-report/
 /test-results/
+/coverage/
 
 # --- Documentation ---
 LESSONS.md
