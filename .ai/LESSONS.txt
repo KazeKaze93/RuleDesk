@@ -104,6 +104,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** A full IoC-style abstraction (cycle detection, factory theater) was introduced without automatic wiring or scopes; instance-Map `resolve` never runs user code, so circular-dependency stacks are dead.
 **Invariant Rule:** Prefer a slim typed instance registry (`Container` + `DI_TOKENS`, keyed by `token.id`). No cycle detection without lazy factories. Use a real IoC container only when automatic wiring or scope management is actually needed.
 
+### Problem: Re-opening the window stacks duplicate `before-quit` listeners
+**Root Cause:** `app.on("before-quit", …)` was registered inside `initializeAppAndWindow()`, which tray Show/click/`activate` can call again after the window was destroyed.
+**Invariant Rule:** Register process-lifetime Electron listeners (`before-quit`, CSP setup flags, etc.) once at module scope (or behind a one-shot guard). Window recreation may re-run IPC setup (`removeHandler` first) but must not re-bind app-level quit handlers.
+
 ## Performance
 
 ### Problem: forwardRef factory declared inside render remounts virtualized lists

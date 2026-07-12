@@ -527,12 +527,14 @@ export function getSqliteInstance(): InstanceType<typeof Database> {
 }
 
 export function closeDatabase(): void {
-  if (sqliteInstance) {
-    sqliteInstance.close();
-    sqliteInstance = null;
-    dbInstance = null;
-    logger.info("[DB] Database closed.");
+  // Idempotent: safe when already closed (before-quit + tray Quit, or repeated quit paths)
+  if (!sqliteInstance) {
+    return;
   }
+  sqliteInstance.close();
+  sqliteInstance = null;
+  dbInstance = null;
+  logger.info("[DB] Database closed.");
 }
 
 export { getDatabasePaths };

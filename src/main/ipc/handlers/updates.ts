@@ -58,6 +58,10 @@ const buildUpdatesUnreadConditions = (filters: z.infer<typeof PostFilterSchema> 
 };
 
 export function registerUpdatesHandlers(): void {
+  ipcMain.removeHandler(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT);
+  ipcMain.removeHandler(IPC_CHANNELS.UPDATES.MARK_ALL_SEEN);
+  ipcMain.removeHandler(IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT);
+
   ipcMain.handle(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT, () => {
     return maintenanceQueue.execute(() => {
       try {
