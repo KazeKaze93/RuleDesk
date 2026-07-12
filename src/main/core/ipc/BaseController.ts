@@ -379,8 +379,7 @@ export abstract class BaseController {
 
                 // Strict validation: Check argument count BEFORE parsing
                 if (isTuple) {
-                  const tupleSchema = schema as z.AnyZodTuple;
-                  const expectedCount = tupleSchema.items.length;
+                  const expectedCount = schema.items.length;
                   if (args.length !== expectedCount) {
                     const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
                     log.error(
@@ -415,7 +414,7 @@ export abstract class BaseController {
                 // Normalize schema and validate
                 const normalizedSchema = isTuple
                   ? schema
-                  : z.tuple([schema as z.ZodTypeAny]);
+                  : z.tuple([schema]);
                 
                 // Use z.infer to extract types from schema for proper type safety
                 // This eliminates the need for 'as unknown[]' type assertion
@@ -425,7 +424,7 @@ export abstract class BaseController {
                 try {
                   validatedArgs = normalizedSchema.parse(args, {
                     errorMap: sanitizedErrorMap,
-                  }) as ValidatedArgs;
+                  });
                 } catch (validationError) {
                   if (validationError instanceof z.ZodError) {
                     // Build detailed error message with path information
@@ -558,10 +557,7 @@ export abstract class BaseController {
           // Strict validation: Check argument count BEFORE parsing
           // This prevents silent failures when Renderer sends wrong number of arguments
           if (isTuple) {
-            // Use proper Zod type checking: ZodTuple has items property
-            // Cast to z.AnyZodTuple for type-safe access to items.length
-            const tupleSchema = schema as z.AnyZodTuple;
-            const expectedCount = tupleSchema.items.length;
+            const expectedCount = schema.items.length;
             if (args.length !== expectedCount) {
               const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
               // Security: Log only error details, not sanitized args (may still leak info)
@@ -621,7 +617,7 @@ export abstract class BaseController {
           // Normalize schema: if single ZodType (not tuple), wrap in tuple for validation
           const normalizedSchema = isTuple
             ? schema
-            : z.tuple([schema as z.ZodTypeAny]);
+            : z.tuple([schema]);
 
           // Use z.infer to extract types from schema instead of as unknown[]
           // This provides proper type safety without type assertions
@@ -631,7 +627,7 @@ export abstract class BaseController {
           try {
             validatedArgs = normalizedSchema.parse(args, {
               errorMap: sanitizedErrorMap,
-            }) as ValidatedArgs;
+            });
           } catch (validationError) {
             if (validationError instanceof z.ZodError) {
               // Build detailed error message with path information

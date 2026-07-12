@@ -2,6 +2,8 @@ import React, { forwardRef, useCallback, useEffect, useMemo, useState } from "re
 import {
   useQueryClient,
   useInfiniteQuery,
+  type InfiniteData,
+  type QueryKey,
 } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil, Download, Upload, CheckSquare, Eraser } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
@@ -266,7 +268,7 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-  } = useInfiniteQuery<Post[]>({
+  } = useInfiniteQuery<Post[], Error, InfiniteData<Post[]>, QueryKey, number>({
     queryKey: [
       "playlist-posts",
       playlist.id,
@@ -275,10 +277,11 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       filters.aiFilter,
       sortOrder,
     ],
-    queryFn: async ({ pageParam = 1 }) => {
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
       return await window.api.resolvePlaylistPosts({
         playlistId: playlist.id,
-        page: pageParam as number,
+        page: pageParam,
         limit: 50,
         filters: Object.keys(apiFilters).length > 0 ? apiFilters : undefined,
         sortOrder,
@@ -289,7 +292,6 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       if (lastPage.length < 50) return undefined;
       return allPages.length + 1;
     },
-    initialPageParam: 1,
   });
 
   const allPosts = useMemo(() => {
@@ -730,10 +732,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
           }))
         : [];
       
+      const queryObj: SmartPlaylistQuery = { tags: normalizedTags, provider: "rule34" };
       const queryJson = playlistType === "smart" 
-        ? JSON.stringify({ 
-            tags: normalizedTags,
-          } as SmartPlaylistQuery)
+        ? JSON.stringify(queryObj)
         : "";
       
       await window.api.createPlaylist({
@@ -807,10 +808,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
           }))
         : [];
       
+      const queryObj: SmartPlaylistQuery = { tags: normalizedTags, provider: "rule34" };
       const queryJson = playlistType === "smart" 
-        ? JSON.stringify({ 
-            tags: normalizedTags,
-          } as SmartPlaylistQuery)
+        ? JSON.stringify(queryObj)
         : "";
       
       await window.api.updatePlaylist(playlistToEdit.id, {

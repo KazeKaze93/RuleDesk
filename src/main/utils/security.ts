@@ -80,9 +80,7 @@ export function sanitizeFileName(fileName: string): string {
   // Note: For NSFW Booru client, we only allow media files for security.
   // Non-media extensions are replaced with .bin to prevent execution of malicious files.
   // If you need to support other file types (e.g., .txt, .json), add them to ALLOWED_EXTENSIONS.
-  const safeExt = ALLOWED_EXTENSIONS.includes(
-    ext as (typeof ALLOWED_EXTENSIONS)[number]
-  )
+  const safeExt = ALLOWED_EXTENSIONS.some((v) => v === ext)
     ? ext
     : ".bin"; // Replace unsafe extensions with .bin (prevents execution)
 

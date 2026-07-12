@@ -1974,6 +1974,7 @@ All IPC operations are handled through domain-specific controllers that extend `
   - Prevents duplicate handler registration errors
   - Request collapsing for idempotent handlers (key = channel + hash of full stable-serialized args)
   - Soft throttle for mutating handlers (delay spacing, never `Rate limit exceeded` reject)
+  - Type assertion policy: `as` only at documented boundaries (see `.cursorrules` / LESSONS 3b); ESLint enforces via `no-unsafe-type-assertion` on `src/**`
 
 **Controller Setup:**
 

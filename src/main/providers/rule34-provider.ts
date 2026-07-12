@@ -2,6 +2,7 @@ import axios from "axios";
 import { XMLParser } from "fast-xml-parser";
 import { logger } from "../lib/logger";
 import { selectBestPreview } from "../lib/media-utils";
+import { isRecord } from "../../shared/utils/type-guards";
 import {
   REQUEST_TIMEOUT,
   AUTOCOMPLETE_TIMEOUT,
@@ -446,7 +447,7 @@ export class Rule34Provider implements IBooruProvider {
       // Map each raw post to BooruPost format
       const mappedPosts = postsRaw
         .map((raw: unknown) => this.mapPostFromXml(raw))
-        .filter((p: BooruPost | null) => p !== null) as BooruPost[];
+        .filter((p: BooruPost | null): p is BooruPost => p !== null);
 
       return mappedPosts;
     } catch (error) {
@@ -463,10 +464,8 @@ export class Rule34Provider implements IBooruProvider {
    * @returns BooruPost object or null if invalid
    */
   private mapPostFromXml(raw: unknown): BooruPost | null {
-    if (!raw || typeof raw !== "object") return null;
-
-    // Type guard: ensure raw is a record with string keys
-    const post = raw as Record<string, unknown>;
+    if (!isRecord(raw)) return null;
+    const post = raw;
 
     // With attributeNamePrefix: "", attributes are accessible directly
     // No need for "@_" prefix - access post.id, post.file_url, etc.

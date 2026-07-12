@@ -154,9 +154,9 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
 
   const { data: singleContaining = [], isFetching: isFetchingSingle } = useQuery({
     queryKey: ["manual-plist-single", sortedKey] as const,
-    queryFn: async () => {
+    queryFn: async (): Promise<number[]> => {
       if (isBulk || n !== 1) {
-        return [] as number[];
+        return [];
       }
       const only = resolvedPostIds[0];
       if (only == null) {
@@ -169,9 +169,9 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
 
   const { data: bulkRows = [], isFetching: isFetchingBulk } = useQuery({
     queryKey: ["manual-plist-bulk", sortedKey] as const,
-    queryFn: async () => {
+    queryFn: async (): Promise<{ playlistId: number; matchCount: number }[]> => {
       if (!isBulk || n < 1) {
-        return [] as { playlistId: number; matchCount: number }[];
+        return [];
       }
       return await window.api.getManualPlaylistMembershipForPosts({
         postIds: resolvedPostIds,

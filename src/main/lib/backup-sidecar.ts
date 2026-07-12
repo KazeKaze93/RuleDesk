@@ -2,10 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { app } from "electron";
 import log from "electron-log";
+import { z } from "zod";
 import { eq } from "drizzle-orm";
 import type { AutoBackupInterval } from "../services/backup-service";
 import { settings, SETTINGS_ID } from "../db/schema";
 import { getDb } from "../db/client";
+import { isErrnoException } from "../../shared/utils/type-guards";
 
 export const BACKUP_SIDECAR_SUFFIX = ".settings.json";
 
@@ -28,21 +30,24 @@ function readBackupScheduleFromDisk(): BackupSidecarV1["backupSchedule"] {
     lastAutoBackupAt: null,
   };
 
+  const BackupScheduleSchema = z.object({
+    autoBackupInterval: z.enum(["never", "daily", "weekly"]).optional(),
+    lastAutoBackupAt: z.number().nullable().optional(),
+  });
+
   const configPath = getElectronStoreConfigPath("backup-settings");
   try {
     const raw = fs.readFileSync(configPath, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<{
-      autoBackupInterval?: AutoBackupInterval;
-      lastAutoBackupAt?: number | null;
-    }>;
+    const parsed = BackupScheduleSchema.safeParse(JSON.parse(raw));
+    const data = parsed.success ? parsed.data : {};
 
     return {
-      autoBackupInterval: parsed.autoBackupInterval ?? defaults.autoBackupInterval,
+      autoBackupInterval: data.autoBackupInterval ?? defaults.autoBackupInterval,
       lastAutoBackupAt:
-        typeof parsed.lastAutoBackupAt === "number" ? parsed.lastAutoBackupAt : null,
+        typeof data.lastAutoBackupAt === "number" ? data.lastAutoBackupAt : null,
     };
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+    if (isErrnoException(error) && error.code !== "ENOENT") {
       log.warn("[BackupSidecar] Failed to read backup schedule file:", error);
     }
     return defaults;
@@ -71,13 +76,23 @@ export function restoreBackupSidecar(backupDbPath: string): boolean {
     return false;
   }
 
+  const BackupSidecarSchema = z.object({
+    version: z.literal(1),
+    exportedAt: z.string(),
+    backupSchedule: z.object({
+      autoBackupInterval: z.enum(["never", "daily", "weekly"]),
+      lastAutoBackupAt: z.number().nullable(),
+    }),
+  });
+
   try {
     const raw = fs.readFileSync(sidecarPath, "utf-8");
-    const parsed = JSON.parse(raw) as BackupSidecarV1;
-    if (parsed.version !== 1 || !parsed.backupSchedule) {
+    const parseResult = BackupSidecarSchema.safeParse(JSON.parse(raw));
+    if (!parseResult.success) {
       log.warn("[BackupSidecar] Unsupported sidecar version, skipping restore");
       return false;
     }
+    const parsed = parseResult.data;
 
     const configPath = getElectronStoreConfigPath("backup-settings");
     fs.mkdirSync(path.dirname(configPath), { recursive: true });

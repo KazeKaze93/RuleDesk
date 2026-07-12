@@ -141,7 +141,7 @@ export class ArtistsController extends BaseController {
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       // Uses universal toIpcSafe utility to avoid code duplication
       // Note: postsCount is already a number, so it will pass through toIpcSafe unchanged
-      return toIpcSafe(result) as IpcArtist[];
+      return toIpcSafe(result);
     } catch (error) {
       log.error("[ArtistsController] Failed to get artists:", error);
       throw new Error("Failed to fetch artists");
@@ -201,7 +201,7 @@ export class ArtistsController extends BaseController {
       log.info(`[ArtistsController] Artist added/updated: ${inserted.name}`);
 
       // Convert Date objects to numbers for Electron 39+ IPC serialization
-      return toIpcSafe(inserted) as IpcArtist;
+      return toIpcSafe(inserted);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       log.error("[ArtistsController] Failed to add artist:", error);
@@ -276,7 +276,7 @@ export class ArtistsController extends BaseController {
       );
 
       // Convert Date objects to numbers for Electron 39+ IPC serialization
-      return toIpcSafe(result) as IpcArtist[];
+      return toIpcSafe(result);
     } catch (error) {
       log.error("[ArtistsController] Search failed:", error);
       return [];

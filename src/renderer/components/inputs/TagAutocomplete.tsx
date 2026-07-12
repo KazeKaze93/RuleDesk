@@ -267,10 +267,10 @@ export function TagAutocomplete({
 
   useEffect(() => {
     const onDoc = (ev: MouseEvent) => {
-      if (!containerRef.current || !ev.target) {
+      if (!containerRef.current || !(ev.target instanceof Node)) {
         return;
       }
-      if (!containerRef.current.contains(ev.target as globalThis.Node)) {
+      if (!containerRef.current.contains(ev.target)) {
         setListOpen(false);
         setSelectedIndex(-1);
       }

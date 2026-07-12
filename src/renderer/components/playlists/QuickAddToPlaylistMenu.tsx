@@ -39,12 +39,19 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
 
   const raw = trigger ?? defaultTrigger;
   const withOpen = isValidElement(raw)
-    ? cloneElement(raw, {
-        onClick: (e: React.MouseEvent) => {
-          (raw.props as { onClick?: (e: React.MouseEvent) => void }).onClick?.(e);
-          setEffectiveOpen(true);
-        },
-      } as { onClick: (e: React.MouseEvent) => void })
+    ? cloneElement(raw, (() => {
+        const existingOnClick: unknown =
+          typeof raw.props === "object" && raw.props !== null
+            ? Reflect.get(raw.props, "onClick")
+            : undefined;
+        const extraProps: { onClick: (e: React.MouseEvent) => void } = {
+          onClick: (e: React.MouseEvent) => {
+            if (typeof existingOnClick === "function") existingOnClick(e);
+            setEffectiveOpen(true);
+          },
+        };
+        return extraProps;
+      })())
     : raw;
 
   return (

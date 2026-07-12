@@ -37,6 +37,7 @@ import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
 import type { Post } from "../../../main/db/schema";
 import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { getErrorCode } from "../../../shared/utils/type-guards";
 import type { SearchBooruPageResult, BrowseSearchPageParam } from "../../../shared/schemas/search";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
@@ -203,6 +204,7 @@ export const Browse = () => {
     BrowseSearchPageParam
   >({
     queryKey: ["search", tags, source],
+    initialPageParam: 1,
     flattenPage: (page) => page.posts,
     fetchFn: async (pageParam) => {
       if (source === "favorites") {
@@ -436,7 +438,7 @@ export const Browse = () => {
       );
     },
     onError: (err) => {
-      const errorCode = (err as { code?: string })?.code;
+      const errorCode = getErrorCode(err);
       if (errorCode === "RATE_LIMIT") {
         return;
       }

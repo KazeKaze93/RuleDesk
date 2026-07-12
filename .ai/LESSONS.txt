@@ -27,6 +27,11 @@ Problem: Duplicate startup calls trigger throttling and unstable UX; partial col
 Root Cause: Idempotent handlers were treated like mutating ones, or collapse keys used only `id`/`type` and ignored other fields.
 Invariant Rule: Mark truly idempotent handlers; collapse in-flight calls by hashing the full canonical args; space mutating calls with delay (never reject).
 
+3b) Type Assertion Policy
+Problem: Project rules banned all `as` casts while the codebase kept 100+ assertions — Cursor treated the rule as decorative.
+Root Cause: No enforced allowlist and no ESLint gate for narrowing assertions.
+Invariant Rule: `as` is forbidden except the closed boundary list: (1) `container.resolve` DI Map return; (2) better-sqlite3 raw `.prepare().get()`/`.all()` rows (includes drizzle instance typing); (3) Web Worker `workerData`/message payloads after Zod or trusted IPC handoff; (4) internals of `toIpcSafe` conditional return branches; (5) TanStack Query generic inference gaps (`pageParam` / default page flatten). Every allowed assertion MUST have `// boundary: <reason>` on the preceding line (and `eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion` when that rule fires). Fix types upstream or use Zod.parse — do not cast.
+
 4) Virtualized Gallery Holes
 Problem: Large empty scroll area in filtered lists.
 Root Cause: Virtualization total count used raw items while rendering filtered items.

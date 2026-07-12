@@ -5,6 +5,7 @@ import type { Post } from "../../../../main/db/schema";
 import type { ViewerOrigin } from "../../../store/viewerStore";
 import { normalizePostToPostData } from "../../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../../shared/constants";
+import { getErrorCode } from "../../../../shared/utils/type-guards";
 import { updatePostInCache, updatePostInSearchCache } from "../../../utils/react-query-cache";
 import type { SearchBooruPageResult } from "../../../../shared/schemas/search";
 
@@ -80,7 +81,7 @@ export function useViewerController({
       // Fire and forget: suppress rate limit errors, they are expected during fast scrolling
       window.api.markPostAsViewed(post.id, postData).catch((err) => {
         // Ignore rate limit errors - use typed errorCode, NOT string parsing
-        const errorCode = (err as { code?: string })?.code;
+        const errorCode = getErrorCode(err);
         if (errorCode === "RATE_LIMIT") {
           return; // Silently ignore rate limit errors
         }

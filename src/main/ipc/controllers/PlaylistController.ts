@@ -875,7 +875,7 @@ export class PlaylistController extends BaseController {
         }
       }
 
-      return toIpcSafe(playlist) as IpcPlaylist;
+      return toIpcSafe(playlist);
     } catch (error) {
       log.error("[PlaylistController] Failed to create playlist:", error);
       throw error;
@@ -913,17 +913,18 @@ export class PlaylistController extends BaseController {
         const allConditions: SQL[] = [];
 
         if (includeConditions.length > 0) {
-          allConditions.push(
-            includeConditions.length === 1
-              ? includeConditions[0]
-              : (and(...includeConditions) as SQL)
-          );
+          if (includeConditions.length === 1) {
+            allConditions.push(includeConditions[0]);
+          } else {
+            const combined = and(...includeConditions);
+            if (combined) allConditions.push(combined);
+          }
         }
 
         if (excludeConditions.length > 0) {
           const excludeOr = or(...excludeConditions);
           if (excludeOr) {
-            allConditions.push(not(excludeOr) as SQL);
+            allConditions.push(not(excludeOr));
           }
         }
 
@@ -934,12 +935,11 @@ export class PlaylistController extends BaseController {
               SELECT 1
               FROM tag_blacklist bl
               WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
-            )` as SQL
+            )`
           );
         }
 
-        const whereClause =
-          allConditions.length > 0 ? (and(...allConditions) as SQL) : undefined;
+        const whereClause = allConditions.length > 0 ? and(...allConditions) : undefined;
         const postCount = getSmartPlaylistPostCount(db, whereClause);
 
         return {
@@ -954,7 +954,7 @@ export class PlaylistController extends BaseController {
 
       log.info(`[PlaylistController] Retrieved ${result.length} playlists with stats`);
 
-      return toIpcSafe(result) as IpcPlaylistWithStats[];
+      return toIpcSafe(result);
     } catch (error) {
       log.error("[PlaylistController] Failed to get playlists:", error);
       throw error;
@@ -986,7 +986,7 @@ export class PlaylistController extends BaseController {
         return null;
       }
 
-      return toIpcSafe(result) as IpcPlaylist;
+      return toIpcSafe(result);
     } catch (error) {
       log.error(`[PlaylistController] Failed to get playlist ${playlistId}:`, error);
       throw error;
@@ -1044,7 +1044,7 @@ export class PlaylistController extends BaseController {
 
       log.info(`[PlaylistController] Updated playlist: ${playlistId}`);
 
-      return toIpcSafe(result[0]) as IpcPlaylist;
+      return toIpcSafe(result[0]);
     } catch (error) {
       log.error(`[PlaylistController] Failed to update playlist ${playlistId}:`, error);
       throw error;
@@ -1429,12 +1429,8 @@ export class PlaylistController extends BaseController {
         conditions.push(eq(posts.mediaType, "video"));
       } else if (filters?.mediaType === "images") {
         // Images OR NULL (NULL treated as image during backfill)
-        conditions.push(
-          or(
-            eq(posts.mediaType, "image"),
-            sql`${posts.mediaType} IS NULL`
-          ) as SQL
-        );
+        const imageOrNull = or(eq(posts.mediaType, "image"), sql`${posts.mediaType} IS NULL`);
+        if (imageOrNull) conditions.push(imageOrNull);
       }
 
       const blacklistedTags = getAllBlacklistedTags();
@@ -1444,7 +1440,7 @@ export class PlaylistController extends BaseController {
             SELECT 1
             FROM tag_blacklist bl
             WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
-          )` as SQL
+          )`
         );
       }
 
@@ -1467,6 +1463,8 @@ export class PlaylistController extends BaseController {
           createdAt: posts.createdAt,
           isViewed: posts.isViewed,
           isFavorited: posts.isFavorited,
+          lastViewedAt: posts.lastViewedAt,
+          viewCount: posts.viewCount,
         })
         .from(playlistEntries)
         .innerJoin(posts, eq(playlistEntries.postId, posts.id))
@@ -1490,7 +1488,7 @@ export class PlaylistController extends BaseController {
         `[PlaylistController] Retrieved ${result.length} posts from playlist ${playlistId} (page ${page})`
       );
 
-      return toIpcSafe(result) as IpcPost[];
+      return toIpcSafe(result);
     } catch (error) {
       log.error(`[PlaylistController] Failed to get playlist posts for ${playlistId}:`, error);
       throw error;
@@ -1798,12 +1796,8 @@ export class PlaylistController extends BaseController {
       if (filters?.mediaType === "videos") {
         globalConditions.push(eq(posts.mediaType, "video"));
       } else if (filters?.mediaType === "images") {
-        globalConditions.push(
-          or(
-            eq(posts.mediaType, "image"),
-            sql`${posts.mediaType} IS NULL`
-          ) as SQL
-        );
+        const imageOrNull = or(eq(posts.mediaType, "image"), sql`${posts.mediaType} IS NULL`);
+        if (imageOrNull) globalConditions.push(imageOrNull);
       }
 
       const blacklistedTags = getAllBlacklistedTags();
@@ -1813,7 +1807,7 @@ export class PlaylistController extends BaseController {
             SELECT 1
             FROM tag_blacklist bl
             WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
-          )` as SQL
+          )`
         );
       }
 
@@ -1842,6 +1836,8 @@ export class PlaylistController extends BaseController {
             createdAt: posts.createdAt,
             isViewed: posts.isViewed,
             isFavorited: posts.isFavorited,
+            lastViewedAt: posts.lastViewedAt,
+            viewCount: posts.viewCount,
           })
           .from(playlistEntries)
           .innerJoin(posts, eq(playlistEntries.postId, posts.id))
@@ -1865,7 +1861,7 @@ export class PlaylistController extends BaseController {
           `[PlaylistController] Resolved ${result.length} posts from static playlist ${playlistId} (page ${page})`
         );
 
-        return toIpcSafe(result) as IpcPost[];
+        return toIpcSafe(result);
       }
 
       // Smart playlist: parse query_json and build dynamic query
@@ -1926,17 +1922,18 @@ export class PlaylistController extends BaseController {
         if (includeConditions.length === 1) {
           allConditions.push(includeConditions[0]);
         } else {
-          allConditions.push(and(...includeConditions) as SQL);
+          const combined = and(...includeConditions);
+          if (combined) allConditions.push(combined);
         }
       }
 
       if (excludeConditions.length > 0) {
         if (excludeConditions.length === 1) {
-          allConditions.push(not(excludeConditions[0]) as SQL);
+          allConditions.push(not(excludeConditions[0]));
         } else {
           const orCondition = or(...excludeConditions);
           if (orCondition) {
-            allConditions.push(not(orCondition) as SQL);
+            allConditions.push(not(orCondition));
           }
         }
       }
@@ -1969,6 +1966,8 @@ export class PlaylistController extends BaseController {
                 createdAt: posts.createdAt,
                 isViewed: posts.isViewed,
                 isFavorited: posts.isFavorited,
+                lastViewedAt: posts.lastViewedAt,
+                viewCount: posts.viewCount,
               })
               .from(posts)
               .where(whereClause);
@@ -1985,7 +1984,7 @@ export class PlaylistController extends BaseController {
             log.info(
               `[PlaylistController] Local DB query returned ${result.length} posts for smart playlist ${playlistId}`
             );
-            return toIpcSafe(result) as IpcPost[];
+            return toIpcSafe(result);
           } catch (error) {
             log.error(`[PlaylistController] Local DB query failed for smart playlist ${playlistId}:`, error);
             return []; // Return empty array on error, continue with remote results
@@ -2155,7 +2154,7 @@ export class PlaylistController extends BaseController {
           
           return true;
         })
-        .map((post) => {
+        .map((post): IpcPost => {
           const isVideo = isVideoUrl(post.fileUrl);
           return {
             id: 0, // Remote posts don't have local DB ID
@@ -2172,7 +2171,9 @@ export class PlaylistController extends BaseController {
             createdAt: post.createdAt.getTime(),
             isViewed: false, // Remote posts are never viewed locally
             isFavorited: false, // Remote posts are never favorited locally
-          } as IpcPost;
+            lastViewedAt: null,
+            viewCount: 0,
+          };
         });
 
       // Sort or shuffle posts based on isRandom flag

@@ -203,15 +203,15 @@ self.addEventListener("message", (event: MessageEvent<WorkerRequest>) => {
   try {
     switch (action) {
       case "FILTER_AND_SORT": {
+        // boundary: worker message
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: worker message
         const { posts, filters } = payload as FilterAndSortPayload;
         
         // PERFORMANCE: Skip Zod validation in Worker - data comes from trusted Main process
         // Zod.parse() on 20k+ posts wastes 80% of Worker time on redundant validation
         // Main process already validates data before sending to Renderer
         // Trust your own IPC layer - don't validate twice
-        const validatedPosts = posts as WorkerPost[];
-        
-        const result = filterAndSortPosts(validatedPosts, filters);
+        const result = filterAndSortPosts(posts, filters);
         
         const response: WorkerResponse<WorkerPost[]> = {
           id,

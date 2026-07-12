@@ -89,10 +89,10 @@ export function AsyncAutocomplete({
   const handleBlurInternal = (e: React.FocusEvent<HTMLInputElement>) => {
     // Check if focus is moving to an element within the container
     // relatedTarget is the element receiving focus (if any)
-    const relatedTarget = e.relatedTarget as Node | null;
+    const relatedTarget = e.relatedTarget;
     
     // If focus is moving to an element inside the container, don't close dropdown
-    if (relatedTarget && containerRef.current?.contains(relatedTarget)) {
+    if (relatedTarget instanceof Node && containerRef.current?.contains(relatedTarget)) {
       return;
     }
     
@@ -160,7 +160,8 @@ export function AsyncAutocomplete({
     const handleClickOutside = (event: MouseEvent) => {
       if (
         containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        event.target instanceof Node &&
+        !containerRef.current.contains(event.target)
       ) {
         setIsOpen(false);
         setSelectedIndex(-1);

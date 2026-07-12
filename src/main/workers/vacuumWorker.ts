@@ -6,6 +6,8 @@ interface VacuumWorkerData {
 }
 
 function runVacuumInWorker(): void {
+  // boundary: worker message — workerData payload after trust/Zod
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: worker message
   const { dbPath } = workerData as VacuumWorkerData;
   let db: Database.Database | null = null;
 

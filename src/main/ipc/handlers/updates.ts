@@ -34,7 +34,8 @@ const buildUpdatesUnreadConditions = (filters: z.infer<typeof PostFilterSchema> 
   if (filters?.mediaType === "videos") {
     conditions.push(eq(posts.mediaType, "video"));
   } else if (filters?.mediaType === "images") {
-    conditions.push(or(eq(posts.mediaType, "image"), sql`${posts.mediaType} IS NULL`) as SQL);
+    const imageOrNull = or(eq(posts.mediaType, "image"), sql`${posts.mediaType} IS NULL`);
+    if (imageOrNull) conditions.push(imageOrNull);
   }
 
   if (filters?.tags && filters.tags.trim().length > 0) {

@@ -151,6 +151,8 @@ export class Container {
         );
       }
 
+      // boundary: container.resolve — DI Map stores as unknown, cast is the resolve contract
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: container.resolve
       return service as T;
     } finally {
       // Remove from stack after resolution (allows same service to be resolved again)
