@@ -114,6 +114,14 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** Smart playlist queries were stored as raw JSON without schema versioning, so parser changes could break old records or misinterpret fields.
 **Invariant Rule:** Any JSON-in-column stored as user data MUST include a version column and be parsed only through a versioned resolver, never through raw JSON.parse.
 
+### Problem: Negative cache died with the process while rate-limit failures risked being cached as absent
+**Root Cause:** Tag resolve outcomes collapsed to found/miss; confirmed empty API responses lived only in an in-memory Map (TTL), and unresolved failures (429/network) could be confused with not_found if classification stayed binary.
+**Invariant Rule:** Cacheable outcomes of external lookups distinguish `not_found` (persist with TTL in the same table as hits) from `unresolved` (do not persist as absence). Never mix the two — mixing permanently corrupts categorization. One source of truth for negative state (SQLite), no split-brain RAM Map alongside it.
+
+### Problem: Raw-SQL maintenance deleted every fresh not_found row within seconds of startup
+**Root Cause:** Drizzle `mode: "timestamp"` stores seconds while maintenance DELETE compared `resolved_at` to a `Date.now()`-based millisecond cutoff — seconds are always below that cutoff, so the first tick wiped the entire negative cache.
+**Invariant Rule:** Timestamp columns touched by raw SQL use `mode: "timestamp_ms"` with an explicit unit comment in the schema. Any raw-SQL time comparison MUST have a test that writes via the ORM path and asserts the row survives/expires against the production DELETE helper — never a hand-copied SQL string alone.
+
 ## Security (credentials)
 
 ### Problem: API decrypt failure sends ciphertext to Booru APIs

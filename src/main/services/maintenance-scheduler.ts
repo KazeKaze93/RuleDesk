@@ -1,5 +1,6 @@
 import log from "electron-log";
 import { getSqliteInstance } from "../db/client";
+import { deleteExpiredNotFoundTagMetadata } from "../db/queries/tag-metadata";
 import type { VideoProxyServer } from "./video-proxy-server";
 
 const STARTUP_DELAY_MS = 10_000;
@@ -43,6 +44,14 @@ export class MaintenanceScheduler {
         // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
         sqlite.exec("PRAGMA wal_checkpoint(PASSIVE);");
         sqlite.exec("PRAGMA optimize;");
+
+        const deletedExpiredNotFound = deleteExpiredNotFoundTagMetadata(sqlite);
+        if (deletedExpiredNotFound > 0) {
+          log.info(
+            `[MaintenanceScheduler] Deleted ${deletedExpiredNotFound} expired not_found tag_metadata rows`
+          );
+        }
+
         log.info(`[MaintenanceScheduler] Maintenance complete (trigger=${trigger})`);
       } catch (error) {
         log.error("[MaintenanceScheduler] Maintenance failed:", error);

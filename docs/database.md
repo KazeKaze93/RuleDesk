@@ -271,6 +271,28 @@ export type Settings = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;
 ```
 
+### Table: `tag_metadata`
+
+Persistent cache for Rule34 tag type resolution (viewer TagsDrawer / resolve IPC). One row per tag name.
+
+| Column         | Type                              | Description                                                                 |
+| -------------- | --------------------------------- | --------------------------------------------------------------------------- |
+| `name`         | TEXT (PK, NOT NULL)               | Tag string (lowercase provider form)                                        |
+| `type`         | INTEGER (NOT NULL)                | Rule34 tag type for `found` rows; placeholder (`0`) when `status=not_found` |
+| `status`       | TEXT (NOT NULL, DEFAULT `found`)  | `found` or `not_found` — never store unresolved (429/network) as `not_found` |
+| `resolved_at`  | INTEGER (TIMESTAMP_MS, NOT NULL)  | When this outcome was written (**milliseconds**); TTL gate for `not_found`  |
+
+
+**Semantics:**
+
+- `found` — API returned the tag; used for categorization.
+- `not_found` — API answered successfully with empty/miss; TTL `TAG_RESOLVE_NOT_FOUND_TTL_MS` (7 days). Expired rows are treated as cache-miss (re-resolve); maintenance DELETEs them.
+- Unresolved failures are **not** written — they remain candidates for the next session.
+
+**Indexes:**
+
+- `tag_metadata_type_idx` — Index on `type` for filtering (e.g. all artists)
+
 ### Table: `playlists`
 
 Stores playlist/collection information for curated post collections.

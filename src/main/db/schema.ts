@@ -28,6 +28,10 @@ export const TAG_TYPES = {
 
 export type TagType = (typeof TAG_TYPES)[keyof typeof TAG_TYPES];
 
+/** Cache outcome for tag_metadata rows (unresolved API failures are never stored). */
+export const TAG_METADATA_STATUSES = ["found", "not_found"] as const;
+export type TagMetadataStatus = (typeof TAG_METADATA_STATUSES)[number];
+
 // Settings ID constant for single profile design
 export const SETTINGS_ID = 1;
 
@@ -156,6 +160,13 @@ export const tagMetadata = sqliteTable(
   {
     name: text("name").primaryKey(),
     type: integer("type").notNull(), // Use TAG_TYPES constants: 0=General, 1=Artist, 3=Copyright, 4=Character, 5=Meta
+    status: text("status", { enum: TAG_METADATA_STATUSES })
+      .notNull()
+      .default("found"),
+    // Units: milliseconds since epoch. Raw SQL (maintenance DELETE) compares with Date.now()-based cutoffs.
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => ({
     typeIdx: index("tag_metadata_type_idx").on(t.type), // Index for filtering by type (e.g., all artists)

@@ -1283,8 +1283,9 @@ const artistTags = await window.api.resolveTags(["tag1", "tag2", "tag3"]);
 - Missing tags are fetched one at a time via `name=` (not batched `names=`).
 - All tag lookups share the same `ProviderThrottle` instance as `fetchPosts`.
 - Concurrent IPC calls for the same tag share one in-flight promise (cross-call dedup).
-- HTTP 429 is retried with `Retry-After` or exponential backoff; rate-limited tags are **not** written to `tag_metadata`.
-- Confirmed empty API responses are negatively cached in memory (24h TTL) to avoid hammering nonexistent tags.
+- HTTP 429 is retried with `Retry-After` or exponential backoff; rate-limited / network failures are **unresolved** — not written to `tag_metadata` (must not be confused with `not_found`).
+- Confirmed empty API responses (`not_found`) are persisted in `tag_metadata` with `status='not_found'` and `resolved_at` in **milliseconds** (`mode: "timestamp_ms"`, TTL `TAG_RESOLVE_NOT_FOUND_TTL_MS`, 7 days). Expired rows are cache-misses; maintenance DELETEs them via `deleteExpiredNotFoundTagMetadata`.
+
 
 ---
 

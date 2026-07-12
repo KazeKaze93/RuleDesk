@@ -1,8 +1,8 @@
 import log from "electron-log";
-import { sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../db/schema";
-import { tagMetadata } from "../db/schema";
+import { TAG_TYPES, tagMetadata } from "../db/schema";
 import { getProvider } from "../providers";
 import type { IBooruProvider, ProviderSettings } from "../providers/types";
 import type { ProviderThrottle } from "../providers/provider-throttle";
@@ -17,7 +17,7 @@ import {
   TAG_RESOLVE_DEFAULT_RETRY_AFTER_MS,
   TAG_RESOLVE_MAX_RATE_LIMIT_RETRIES,
   TAG_RESOLVE_MAX_RETRY_AFTER_MS,
-  TAG_RESOLVE_NEGATIVE_CACHE_TTL_MS,
+  TAG_RESOLVE_NOT_FOUND_TTL_MS,
 } from "../config/tag-resolve-constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
@@ -32,9 +32,18 @@ type TagResolveWaveStats = {
   rateLimitedCount: number;
 };
 
+/** Session view of tag_metadata for one resolve wave (single SQLite source of truth). */
+export type TagMetadataCacheState = {
+  foundTypes: Map<string, number>;
+  /** Confirmed not_found within TTL — skip API; drawer leaves tag uncategorized. */
+  activeNotFound: Set<string>;
+};
+
 const inFlightLookups = new Map<string, Promise<TagLookupResult>>();
-const negativeCacheUntil = new Map<string, number>();
 let last429BurstLogAtMs = 0;
+
+/** Placeholder type for not_found rows; status is the authority. */
+const NOT_FOUND_TYPE_PLACEHOLDER = TAG_TYPES.GENERAL;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -91,23 +100,43 @@ function recordRateLimitBurst(retryAfterMs: number, attempt: number): void {
   }
 }
 
-function isNegativeCacheActive(tagName: string): boolean {
-  const until = negativeCacheUntil.get(tagName);
-  if (until === undefined) {
-    return false;
-  }
-  if (until <= Date.now()) {
-    negativeCacheUntil.delete(tagName);
-    return false;
-  }
-  return true;
+function isActiveNotFound(resolvedAt: Date, nowMs: number): boolean {
+  return nowMs - resolvedAt.getTime() < TAG_RESOLVE_NOT_FOUND_TTL_MS;
 }
 
-function rememberNegativeCache(tagName: string): void {
-  negativeCacheUntil.set(
-    tagName,
-    Date.now() + TAG_RESOLVE_NEGATIVE_CACHE_TTL_MS
-  );
+/**
+ * Single read of tag_metadata for the requested names.
+ * found → foundTypes; not_found within TTL → activeNotFound; expired not_found → miss.
+ */
+export function loadTagMetadataCache(
+  db: AppDatabase,
+  uniqueTags: string[],
+  nowMs: number = Date.now()
+): TagMetadataCacheState {
+  const foundTypes = new Map<string, number>();
+  const activeNotFound = new Set<string>();
+
+  if (uniqueTags.length === 0) {
+    return { foundTypes, activeNotFound };
+  }
+
+  const rows = db
+    .select()
+    .from(tagMetadata)
+    .where(inArray(tagMetadata.name, uniqueTags))
+    .all();
+
+  for (const row of rows) {
+    if (row.status === "found") {
+      foundTypes.set(row.name, row.type);
+      continue;
+    }
+    if (row.status === "not_found" && isActiveNotFound(row.resolvedAt, nowMs)) {
+      activeNotFound.add(row.name);
+    }
+  }
+
+  return { foundTypes, activeNotFound };
 }
 
 async function lookupTagFromApi(
@@ -149,10 +178,6 @@ async function lookupTagCoordinated(
   settings: ProviderSettings,
   stats: TagResolveWaveStats
 ): Promise<TagLookupResult> {
-  if (isNegativeCacheActive(tagName)) {
-    return { status: "not_found" };
-  }
-
   const existing = inFlightLookups.get(tagName);
   if (existing) {
     stats.inFlightHits += 1;
@@ -162,11 +187,7 @@ async function lookupTagCoordinated(
   const lookupPromise = (async (): Promise<TagLookupResult> => {
     stats.apiCalls += 1;
     try {
-      const result = await lookupTagFromApi(tagName, settings);
-      if (result.status === "not_found") {
-        rememberNegativeCache(tagName);
-      }
-      return result;
+      return await lookupTagFromApi(tagName, settings);
     } catch (error) {
       if (error instanceof Rule34TagRateLimitError) {
         stats.rateLimitedCount += 1;
@@ -184,34 +205,82 @@ async function lookupTagCoordinated(
   }
 }
 
-function upsertTagMetadataEntries(
+function upsertFoundEntries(
   db: AppDatabase,
   entries: Rule34TagMetadataEntry[],
-  cachedMap: Map<string, number>
+  foundTypes: Map<string, number>
 ): void {
   if (entries.length === 0) {
     return;
   }
 
+  const resolvedAt = new Date();
+  const values = entries.map((entry) => ({
+    name: entry.name,
+    type: entry.type,
+    status: "found" as const,
+    resolvedAt,
+  }));
+
   db.transaction((tx) => {
     tx.insert(tagMetadata)
-      .values(entries)
+      .values(values)
       .onConflictDoUpdate({
         target: tagMetadata.name,
-        set: { type: sql`excluded.type` },
+        set: {
+          type: sql`excluded.type`,
+          status: sql`excluded.status`,
+          resolvedAt: sql`excluded.resolved_at`,
+        },
       })
       .run();
   });
 
   for (const entry of entries) {
-    cachedMap.set(entry.name, entry.type);
+    foundTypes.set(entry.name, entry.type);
+  }
+}
+
+function upsertNotFoundEntries(
+  db: AppDatabase,
+  tagNames: string[],
+  activeNotFound: Set<string>
+): void {
+  if (tagNames.length === 0) {
+    return;
+  }
+
+  const resolvedAt = new Date();
+  const values = tagNames.map((name) => ({
+    name,
+    type: NOT_FOUND_TYPE_PLACEHOLDER,
+    status: "not_found" as const,
+    resolvedAt,
+  }));
+
+  db.transaction((tx) => {
+    tx.insert(tagMetadata)
+      .values(values)
+      .onConflictDoUpdate({
+        target: tagMetadata.name,
+        set: {
+          type: sql`excluded.type`,
+          status: sql`excluded.status`,
+          resolvedAt: sql`excluded.resolved_at`,
+        },
+      })
+      .run();
+  });
+
+  for (const name of tagNames) {
+    activeNotFound.add(name);
   }
 }
 
 export async function resolveTagMetadataWave(
   db: AppDatabase,
   uniqueTags: string[],
-  cachedMap: Map<string, number>,
+  cache: TagMetadataCacheState,
   settings: ProviderSettings,
   context: string
 ): Promise<TagResolveWaveStats> {
@@ -223,12 +292,11 @@ export async function resolveTagMetadataWave(
     rateLimitedCount: 0,
   };
 
+  const { foundTypes, activeNotFound } = cache;
+
   const missingTags = uniqueTags.filter((tag) => {
-    if (cachedMap.has(tag)) {
+    if (foundTypes.has(tag) || activeNotFound.has(tag)) {
       stats.tagMetadataHits += 1;
-      return false;
-    }
-    if (isNegativeCacheActive(tag)) {
       return false;
     }
     return true;
@@ -265,8 +333,21 @@ export async function resolveTagMetadataWave(
   const resolvedEntries = lookupResults.flatMap((item) =>
     item.result?.status === "found" ? [item.result.entry] : []
   );
+  const notFoundNames = lookupResults.flatMap((item) =>
+    item.result?.status === "not_found" ? [item.tagName] : []
+  );
+  const unresolvedNames = lookupResults.flatMap((item) =>
+    item.result === null ? [item.tagName] : []
+  );
 
-  upsertTagMetadataEntries(db, resolvedEntries, cachedMap);
+  upsertFoundEntries(db, resolvedEntries, foundTypes);
+  upsertNotFoundEntries(db, notFoundNames, activeNotFound);
+
+  for (const tagName of unresolvedNames) {
+    log.debug(
+      `[TagResolve] ${context}: unresolved "${tagName}" (not persisted as not_found)`
+    );
+  }
 
   log.info(
     `[TagResolve] ${context}: requested=${stats.requested} tag_metadata=${stats.tagMetadataHits} in_flight=${stats.inFlightHits} api_calls=${stats.apiCalls} rate_limited=${stats.rateLimitedCount}`
@@ -278,7 +359,6 @@ export async function resolveTagMetadataWave(
 /** Test-only reset of module-level coordination state. */
 export function resetTagResolveCoordinatorForTests(): void {
   inFlightLookups.clear();
-  negativeCacheUntil.clear();
   last429BurstLogAtMs = 0;
   try {
     getRule34TagProvider().getRequestThrottle().resetRateLimitGateForTests();

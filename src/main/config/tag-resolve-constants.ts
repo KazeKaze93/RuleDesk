@@ -1,5 +1,8 @@
-/** In-memory TTL for tags confirmed absent from Rule34 tag DAPI (well-formed empty). */
-export const TAG_RESOLVE_NEGATIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/**
+ * SQLite TTL for confirmed not_found tag_metadata rows.
+ * Expired rows are treated as cache-misses (re-resolve); maintenance DELETEs them.
+ */
+export const TAG_RESOLVE_NOT_FOUND_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** HTTP timeout for a single tag metadata lookup. */
 export const TAG_RESOLVE_REQUEST_TIMEOUT_MS = 10_000;
