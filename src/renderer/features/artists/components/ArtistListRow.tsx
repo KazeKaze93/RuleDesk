@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -11,7 +10,10 @@ import {
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
-import { DeleteArtistDialog } from "../../../components/dialogs/DeleteArtistDialog";
+import {
+  DELETE_ARTIST_LABEL,
+  DeleteArtistDialog,
+} from "../../../components/dialogs/DeleteArtistDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../components/ui/tooltip";
 import { cn } from "../../../lib/utils";
 import { formatRelativeTime } from "../../../lib/formatRelativeTime";
@@ -26,7 +28,6 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
   artist,
   onSelect,
 }) => {
-  const { t } = useTranslation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const postsCount = artist.postsCount;
@@ -107,7 +108,7 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
             "bg-transparent",
             "focus:outline-none focus-visible:z-[1] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           )}
-          aria-label={t("artistCard.selectArtist", { name: artist.name })}
+          aria-label={`Select ${artist.name}`}
         >
           <div
             className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10"
@@ -140,8 +141,8 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             onClick={handleDeleteClick}
-            aria-label={t("common.deleteArtist", "Delete Artist")}
-            title={t("common.deleteArtist", "Delete Artist")}
+            aria-label={DELETE_ARTIST_LABEL}
+            title={DELETE_ARTIST_LABEL}
           >
             <Trash2 className="h-4 w-4" />
           </Button>

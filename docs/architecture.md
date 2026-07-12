@@ -1643,17 +1643,12 @@ src/
 │   │   ├── settings/
 │   │   └── viewer/
 │   ├── hooks/                     # App-level hooks
-│   ├── i18n/                       # Internationalization
-│   │   └── index.ts
 │   ├── lib/                        # Utilities
 │   │   ├── hooks/                  # Custom React hooks
 │   │   │   └── useDebounce.ts
 │   │   ├── artist-utils.ts
 │   │   ├── tag-utils.ts
 │   │   └── utils.ts
-│   ├── locales/                    # Translation files
-│   │   └── en/
-│   │       └── translation.json
 │   ├── schemas/                    # Form validation schemas
 │   │   └── form-schemas.ts
 │   ├── store/                       # State management (Zustand)
