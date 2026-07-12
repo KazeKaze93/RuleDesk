@@ -1170,9 +1170,7 @@ sequenceDiagram
      });
    ```
 
-   g. **Updates artist** - Updates artist's `lastPostId` and `newPostsCount`.
-
-   ⚠️ **Known integrity gap (open P0):** `lastPostId` may advance mid-pagination or after a partial error commit. An interrupted sync can leave a cursor ahead of fully persisted posts and skip gaps on the next run. Do not document “cursor = fully synced watermark” until the sync-cursor integrity fix lands.
+   g. **Updates artist** - Mid-batch and error paths update `newPostsCount` (and may set `lastSyncIncomplete`) without moving `lastPostId`. After natural pagination end (`postsData.length < PAGE_SIZE`), a single commit writes `lastPostId`, `lastChecked`, and clears `lastSyncIncomplete`.
 
    h. **Progress event** - Emits IPC event: `emit('sync:progress', 'Syncing artist_name...')`
 

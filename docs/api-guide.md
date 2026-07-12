@@ -471,6 +471,7 @@ type Artist = {
   apiEndpoint: string;
   lastPostId: number;
   newPostsCount: number;
+  lastSyncIncomplete: boolean;
   lastChecked: number | null;
   createdAt: number;
 };

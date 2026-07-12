@@ -148,11 +148,10 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### Open P0 (audit — remaining)
 
-| Item | Hazard | Target branch |
-|------|--------|---------------|
-| **Sync cursor integrity** | `lastPostId` may advance on incomplete sync → skipped posts | `fix/sync-cursor-integrity` |
+None — video-cache and sync-cursor integrity shipped.
 
 - ✅ **Video cache integrity** (`fix/video-cache-integrity`): atomic tmp+rename, abort cleanup, `VIDEO_CACHE_MAX_BYTES` eviction via maintenance tick + deferred start sweep.
+- ✅ **Sync cursor integrity** (`fix/sync-cursor-integrity`): `lastPostId` / `lastChecked` only after natural pagination end; partial post commits keep data; `lastSyncIncomplete` marks unfinished runs; axios network failures rethrow as `ProviderSearchError("network")`.
 
 - ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.
 
@@ -193,7 +192,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
-| **P0 integrity** | Sync `lastPostId` only after complete durable batches (video-cache atomic writes shipped). |
+| **P0 integrity** | Shipped: video-cache atomic writes + sync cursor only after complete pagination (`lastSyncIncomplete` for unfinished runs). |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |

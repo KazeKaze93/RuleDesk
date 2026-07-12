@@ -49,6 +49,10 @@ export const artists = sqliteTable(
       .notNull()
       .default("idle"),
     lastError: text("last_error"),
+    /** 1 when pagination did not finish; cursor must not advance until cleared. */
+    lastSyncIncomplete: integer("last_sync_incomplete", { mode: "boolean" })
+      .notNull()
+      .default(false),
     lastChecked: integer("last_checked", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()

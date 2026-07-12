@@ -154,9 +154,9 @@ Main-process `VideoProxyServer` serves local `http://127.0.0.1` URLs for `<video
 
 ### Sync cursor (`lastPostId`)
 
-Per-artist watermark used for incremental sync. **Open P0:** advancing the cursor on incomplete pagination/error paths can skip posts. Treat as “best effort” until the integrity fix ships.
+Per-artist watermark for incremental sync (`id:>lastPostId`). Advanced **only** after pagination completes naturally (`postsData.length < PAGE_SIZE`). Mid-batch and error partial commits persist posts and `newPostsCount` but never move the cursor. Incomplete runs set `lastSyncIncomplete` so the next sync can refill gaps.
 
-**Related:** [Architecture — Sync](./architecture.md), [Roadmap — Open P0](./roadmap.md#open-p0-audit--not-yet-shipped)
+**Related:** [Architecture — Sync](./architecture.md), [Roadmap](./roadmap.md)
 
 ---
 

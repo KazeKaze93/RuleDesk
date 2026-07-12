@@ -575,7 +575,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 **Solutions:**
 
 1. Use **Repair** on the artist (resync from the beginning)
-2. Known limitation: `lastPostId` can advance on incomplete sync batches (open P0 — see [roadmap](./roadmap.md#open-p0-audit--not-yet-shipped))
+2. Incomplete runs set `lastSyncIncomplete` and leave `lastPostId` unchanged so the next sync can refill gaps. If gaps persist after a successful complete sync, use Repair.
 
 ### App is slow
 

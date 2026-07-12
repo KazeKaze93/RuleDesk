@@ -8,7 +8,10 @@ import {
 } from "../utils/decrypted-credentials";
 import { eq, sql } from "drizzle-orm";
 import axios from "axios";
-import { isProviderSearchError } from "../providers/provider-search-errors";
+import {
+  isProviderSearchError,
+  ProviderSearchError,
+} from "../providers/provider-search-errors";
 import type { Artist, NewPost } from "../db/schema";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
@@ -445,6 +448,7 @@ export class SyncService {
     let hasMore = true;
     let newPostsCount = 0;
     let batchHighestPostId = isInitial ? 0 : currentLastPostId;
+    let paginationCompleted = false;
     
     // Batch posts for transaction - collect multiple pages before committing
     // This reduces transaction overhead (better-sqlite3 blocks DB on write)
@@ -482,6 +486,10 @@ export class SyncService {
             2000,
             artist.name
           );
+
+          if (postsData.length < PAGE_SIZE) {
+            paginationCompleted = true;
+          }
 
           // Filter posts: initial sync saves all, incremental only saves new ones
           const newPosts = isInitial 
@@ -532,7 +540,7 @@ export class SyncService {
 
           if (shouldCommitBatch && allPostsToSave.length > 0) {
             let insertedInBatch = 0;
-            // Single transaction for entire batch
+            // Mid-batch / in-loop commits never advance the sync cursor.
             db.transaction((tx) => {
               const postsCountBefore = countArtistPosts(tx, artist.id);
               bulkUpsertPosts(allPostsToSave, tx);
@@ -541,9 +549,7 @@ export class SyncService {
 
               tx.update(artists)
                 .set({
-                  lastPostId: batchHighestPostId,
                   newPostsCount: sql`${artists.newPostsCount} + ${insertedInBatch}`,
-                  lastChecked: new Date(),
                 })
                 .where(eq(artists.id, artist.id))
                 .run();
@@ -569,48 +575,63 @@ export class SyncService {
           logger.error(`Sync error for ${artist.name}`, e);
           hasMore = false;
 
-          if (allPostsToSave.length > 0) {
-            try {
-              let partialSize = 0;
-              db.transaction((tx) => {
+          try {
+            let partialSize = 0;
+            db.transaction((tx) => {
+              if (allPostsToSave.length > 0) {
                 const postsCountBefore = countArtistPosts(tx, artist.id);
                 bulkUpsertPosts(allPostsToSave, tx);
                 const postsCountAfter = countArtistPosts(tx, artist.id);
                 partialSize = Math.max(0, postsCountAfter - postsCountBefore);
+              }
 
+              if (partialSize > 0) {
                 tx.update(artists)
                   .set({
-                    lastPostId: batchHighestPostId,
                     newPostsCount: sql`${artists.newPostsCount} + ${partialSize}`,
-                    lastChecked: new Date(),
+                    lastSyncIncomplete: true,
                   })
                   .where(eq(artists.id, artist.id))
                   .run();
-              });
+              } else {
+                tx.update(artists)
+                  .set({ lastSyncIncomplete: true })
+                  .where(eq(artists.id, artist.id))
+                  .run();
+              }
+            });
 
+            if (partialSize > 0) {
               newPostsCount += partialSize;
               logger.warn(
                 `SyncService: Partial commit of ${partialSize} posts after error for ${artist.name}`
               );
-            } catch (commitErr) {
-              logger.error(
-                `SyncService: Partial commit failed for ${artist.name}`,
-                commitErr
-              );
             }
+            allPostsToSave.length = 0;
+          } catch (commitErr) {
+            logger.error(
+              `SyncService: Partial commit failed for ${artist.name}`,
+              commitErr
+            );
           }
 
           if (isProviderSearchError(e)) {
-            if (e.kind === "auth" || e.kind === "rate_limit") {
+            if (
+              e.kind === "auth" ||
+              e.kind === "rate_limit" ||
+              e.kind === "network"
+            ) {
               throw e;
             }
-          } else if (!axios.isAxiosError(e)) {
+          } else if (axios.isAxiosError(e)) {
+            throw new ProviderSearchError("network");
+          } else {
             throw e;
           }
         }
       }
       
-      // Commit any remaining posts in batch
+      // Commit any remaining posts in batch (cursor still deferred)
       if (allPostsToSave.length > 0) {
         let insertedInFinalBatch = 0;
         db.transaction((tx) => {
@@ -620,26 +641,43 @@ export class SyncService {
           insertedInFinalBatch = Math.max(0, postsCountAfter - postsCountBefore);
 
           tx.update(artists)
-            .set({
-              lastPostId: batchHighestPostId,
-              newPostsCount: sql`${artists.newPostsCount} + ${insertedInFinalBatch}`,
-              lastChecked: new Date(),
-            })
+            .set(
+              paginationCompleted
+                ? {
+                    newPostsCount: sql`${artists.newPostsCount} + ${insertedInFinalBatch}`,
+                  }
+                : {
+                    newPostsCount: sql`${artists.newPostsCount} + ${insertedInFinalBatch}`,
+                    lastSyncIncomplete: true,
+                  }
+            )
             .where(eq(artists.id, artist.id))
             .run();
         });
 
         newPostsCount += insertedInFinalBatch;
+        allPostsToSave.length = 0;
         logger.debug(
           `SyncService: ${artist.name} - Committed final batch of ${insertedInFinalBatch} new posts`
         );
       }
 
-      // Final update of lastChecked even if no new posts were found
-      if (newPostsCount === 0) {
+      // Sole cursor write path: only after natural pagination end.
+      if (paginationCompleted) {
         db.transaction((tx) => {
           tx.update(artists)
-            .set({ lastChecked: new Date() })
+            .set({
+              lastPostId: batchHighestPostId,
+              lastChecked: new Date(),
+              lastSyncIncomplete: false,
+            })
+            .where(eq(artists.id, artist.id))
+            .run();
+        });
+      } else {
+        db.transaction((tx) => {
+          tx.update(artists)
+            .set({ lastSyncIncomplete: true })
             .where(eq(artists.id, artist.id))
             .run();
         });
@@ -648,7 +686,8 @@ export class SyncService {
       const previousLastPostId = isInitial ? artist.lastPostId : currentLastPostId;
       logger.info(
         `${syncType} sync finished for ${artist.name}. Added: ${newPostsCount} posts. ` +
-        `Final lastPostId: ${batchHighestPostId} (was: ${previousLastPostId})`
+        `Final lastPostId: ${paginationCompleted ? batchHighestPostId : previousLastPostId} ` +
+        `(was: ${previousLastPostId}, paginationCompleted: ${paginationCompleted})`
       );
     } finally {
       if (isInitial) {
