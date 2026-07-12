@@ -67,6 +67,7 @@ export interface IpcApi extends IpcBridge {
   getAppVersion: () => Promise<string>;
   getDatabaseLocation: () => Promise<string>;
   getIconPath: (theme?: "light" | "dark") => Promise<string>;
+  wipeAllData: () => Promise<void>;
 
   // Settings
   getSettings: () => Promise<IpcSettings | undefined>;

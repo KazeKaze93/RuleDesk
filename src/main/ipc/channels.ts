@@ -12,6 +12,7 @@ export const IPC_CHANNELS = {
     CHECK_FOR_UPDATES: "app:check-for-updates",
     START_UPDATE_DOWNLOAD: "app:start-download",
     QUIT_AND_INSTALL: "app:quit-and-install",
+    WIPE_ALL_DATA: "system:wipe-all-data",
   },
   SETTINGS: {
     GET: "app:get-settings-status",

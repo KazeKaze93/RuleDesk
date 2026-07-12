@@ -607,6 +607,8 @@ The application redirects `userData` to a neutral `.rdcache` directory. Developm
 
 **Note:** Data is not stored next to `RuleDesk.exe`. You can move or replace the app folder freely; local database, logs, and settings stay under `.rdcache` until you delete that directory.
 
+**Delete all data (in-app):** Settings → General → **Danger zone** → **Delete all data…**. Confirm with the checkbox, then confirm. The app closes the database, stops the video proxy, deletes everything inside `.rdcache` (database + WAL/SHM, `video-cache/`, logs, `backup-settings.json`, in-app `.ruledesk-backup-*.db` files, download queue, Electron cache files), and quits. Your separate media download folder is not deleted. After restart you go through the age gate / onboarding again. Prefer this over uninstalling the `.exe` alone — uninstall does not remove `.rdcache`.
+
 **Legacy (pre-fix builds):** `%APPDATA%\RuleDesk\` may still contain old `logs/` and `backup-settings.json`. New builds copy them into `.rdcache` on first launch when targets are missing.
 
 ---

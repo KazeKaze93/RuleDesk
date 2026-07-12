@@ -1,13 +1,16 @@
 import { app, clipboard, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import path from "node:path";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, promises as fs } from "fs";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { closeDatabase } from "../../db/client";
 import { IPC_CHANNELS } from "../channels";
 import { getDatabasePaths } from "../../db/paths";
 import { getAppIconsDirectory } from "../../lib/app-resources";
+import { isResolvedPathWithinBase } from "../../utils/path-within-base";
+import type { VideoProxyServer } from "../../services/video-proxy-server";
+
 const GetIconPathArgsSchema = z.tuple([z.enum(["light", "dark"]).optional()]);
 const WriteClipboardArgsSchema = z.tuple([z.string().min(1)]);
 
@@ -16,14 +19,17 @@ const WriteClipboardArgsSchema = z.tuple([z.string().min(1)]);
  *
  * Handles system-level IPC operations:
  * - Application version info
- * - Application lifecycle (quit)
+ * - Application lifecycle (quit, wipe all local data)
  * - Clipboard operations
  */
-// Query style: Drizzle Builder API only in this controller.
 export class SystemController extends BaseController {
-  /**
-   * Setup IPC handlers for system operations
-   */
+  private readonly videoProxyServer: VideoProxyServer;
+
+  constructor(videoProxyServer: VideoProxyServer) {
+    super();
+    this.videoProxyServer = videoProxyServer;
+  }
+
   public setup(): void {
     this.handle(IPC_CHANNELS.APP.GET_VERSION, z.tuple([]), this.getAppVersion.bind(this));
     this.handle(IPC_CHANNELS.APP.GET_DB_LOCATION, z.tuple([]), this.getDatabaseLocation.bind(this));
@@ -37,6 +43,11 @@ export class SystemController extends BaseController {
     );
     this.handle(IPC_CHANNELS.APP.QUIT, z.tuple([]), this.quitApp.bind(this));
     this.handle(
+      IPC_CHANNELS.APP.WIPE_ALL_DATA,
+      z.tuple([]),
+      this.wipeAllData.bind(this)
+    );
+    this.handle(
       IPC_CHANNELS.APP.WRITE_CLIPBOARD,
       WriteClipboardArgsSchema,
       (event, ...args) => {
@@ -48,11 +59,6 @@ export class SystemController extends BaseController {
     log.info("[SystemController] All handlers registered");
   }
 
-  /**
-   * Get application version
-   *
-   * @returns Application version string from package.json
-   */
   private async getAppVersion(_event: IpcMainInvokeEvent): Promise<string> {
     const version = app.getVersion();
     log.info(`[SystemController] Version requested: ${version}`);
@@ -64,11 +70,6 @@ export class SystemController extends BaseController {
     return dbPath;
   }
 
-  /**
-   * Get application icon as base64 data URL
-   *
-   * @returns Base64 data URL of icon.png for use in img src
-   */
   private async getIconPath(
     _event: IpcMainInvokeEvent,
     theme?: "light" | "dark"
@@ -89,29 +90,30 @@ export class SystemController extends BaseController {
           .map((fileName) => path.join(iconsFolder, fileName))
           .find((candidatePath) => existsSync(candidatePath)) ??
         path.join(iconsFolder, "icon.png");
-      
+
       log.info(`[SystemController] Attempting to load icon from: ${iconPath}`);
-      
-      // Check if file exists before reading
+
       if (!existsSync(iconPath)) {
         const errorMsg = `Icon file not found at: ${iconPath}`;
         log.error(`[SystemController] ${errorMsg}`);
         throw new Error(errorMsg);
       }
-      
-      // Read file and convert to base64 data URL
+
       const iconBuffer = readFileSync(iconPath);
       const fileSizeKB = Math.round(iconBuffer.length / 1024);
-      
-      // Check file size - warn if too large (may cause performance issues)
+
       if (iconBuffer.length > 1024 * 1024) {
-        log.warn(`[SystemController] Icon file is large (${fileSizeKB}KB), may cause performance issues`);
+        log.warn(
+          `[SystemController] Icon file is large (${fileSizeKB}KB), may cause performance issues`
+        );
       }
-      
+
       const base64 = iconBuffer.toString("base64");
       const dataUrl = `data:image/png;base64,${base64}`;
-      
-      log.info(`[SystemController] Icon loaded successfully from: ${iconPath} (${fileSizeKB}KB, ${dataUrl.length} chars in data URL)`);
+
+      log.info(
+        `[SystemController] Icon loaded successfully from: ${iconPath} (${fileSizeKB}KB, ${dataUrl.length} chars in data URL)`
+      );
       return dataUrl;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -121,36 +123,67 @@ export class SystemController extends BaseController {
         stack: errorStack,
         error: String(error),
       });
-      // Re-throw error so BaseController can serialize it properly
       throw new Error(`Failed to load icon: ${errorMessage}`);
     }
   }
 
-  /**
-   * Quit the application
-   *
-   * ⚠️ Note: This will trigger app lifecycle events (before-quit, will-quit, quit)
-   * Make sure all cleanup handlers are properly registered before calling this.
-   * 
-   * CRITICAL: Closes database connection before quitting to prevent data corruption.
-   *
-   * @returns void (application will quit before return)
-   */
   private async quitApp(_event: IpcMainInvokeEvent): Promise<void> {
     log.info("[SystemController] Application quit requested");
-    // CRITICAL: Close database connection before quitting to prevent data corruption
-    // SQLite requires explicit close() to ensure all transactions are committed
     closeDatabase();
     app.quit();
   }
 
   /**
-   * Write text to system clipboard
-   *
-   * @param _event - IPC event (unused)
-   * @param text - Text to write to clipboard (validated: min 1 char)
-   * @returns true if operation succeeded, false otherwise
+   * Deletes all application data under userData (.rdcache), then exits.
+   * Order: close DB → stop video proxy → delete children of userData → app.exit(0).
+   * User download folders and backups outside userData are not touched.
    */
+  private async wipeAllData(_event: IpcMainInvokeEvent): Promise<void> {
+    const userDataDir = path.resolve(app.getPath("userData"));
+    log.warn(`[SystemController] Wipe all data requested for: ${userDataDir}`);
+
+    closeDatabase();
+    this.videoProxyServer.stop();
+
+    let entries: string[];
+    try {
+      entries = await fs.readdir(userDataDir);
+    } catch (error) {
+      log.error("[SystemController] Failed to list userData for wipe:", error);
+      throw new Error("Could not read application data folder.");
+    }
+
+    const failures: string[] = [];
+
+    for (const name of entries) {
+      const fullPath = path.resolve(userDataDir, name);
+      if (!isResolvedPathWithinBase(fullPath, userDataDir)) {
+        log.error(
+          `[SystemController] Refusing wipe path outside userData: ${fullPath}`
+        );
+        failures.push(name);
+        continue;
+      }
+
+      try {
+        await fs.rm(fullPath, { recursive: true, force: true });
+        log.info(`[SystemController] Wiped: ${name}`);
+      } catch (error) {
+        log.error(`[SystemController] Failed to wipe "${name}":`, error);
+        failures.push(name);
+      }
+    }
+
+    if (failures.length > 0) {
+      throw new Error(
+        `Could not delete: ${failures.join(", ")}. Close other apps using these files and try again.`
+      );
+    }
+
+    log.warn("[SystemController] Wipe complete — exiting");
+    app.exit(0);
+  }
+
   private async writeToClipboard(
     _event: IpcMainInvokeEvent,
     text: string
@@ -167,12 +200,8 @@ export class SystemController extends BaseController {
     }
   }
 
-  /**
-   * Override sanitizeArgs to prevent logging sensitive clipboard data
-   */
   protected sanitizeArgs(args: unknown[]): unknown[] {
     return args.map((arg) => {
-      // Mask clipboard content in logs
       if (typeof arg === "string" && arg.length > 0) {
         return `<string:${arg.length}chars>`;
       }
