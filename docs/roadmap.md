@@ -128,7 +128,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ## 🔧 Technical Improvements (From Audit) & DX
 
-### Shipped (Jul 2026 — PRs #105–#112)
+### Shipped (Jul 2026 — audit v17 PRs #105–#115)
 
 - ✅ **IPC collapse + throttle** (#105): idempotent handlers collapse by full canonical args hash; mutating handlers space calls (~100ms sleep), never reject with rate-limit errors.
 - ✅ **Type assertion policy** (#106): ESLint `no-unsafe-type-assertion` on `src/**`; closed `as` boundary allowlist in `.cursorrules` / LESSONS 3b.
@@ -138,6 +138,26 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **Wipe all data** (#110): `system:wipe-all-data` + Settings → General → Danger zone.
 - ✅ **Generated IPC docs** (#111): `npm run docs:api` → `docs/api.md`; CI freshness check; narrative in `docs/api-guide.md`.
 - ✅ **English-only UI** (#112): removed `i18next` / `react-i18next` / locale packs; inline literals (+ local constants at 3+ uses).
+- ✅ **Docs sync #105–#112** (#113): post-audit documentation alignment.
+- ✅ **Video cache integrity** (#114): atomic tmp+rename, abort cleanup, `VIDEO_CACHE_MAX_BYTES` eviction.
+- ✅ **Sync cursor integrity** (#115): `lastPostId` / `lastChecked` only after natural pagination end; `lastSyncIncomplete`; network errors rethrow as `ProviderSearchError("network")`.
+
+### Audit v17 — branch tracking (complete)
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| 1 | `fix/video-cache-integrity` | [#114](https://github.com/KazeKaze93/RuleDesk/pull/114) | ✅ merged |
+| 2 | `fix/sync-cursor-integrity` | [#115](https://github.com/KazeKaze93/RuleDesk/pull/115) | ✅ merged |
+| 3 | `fix/ipc-collapse-and-throttle` | [#105](https://github.com/KazeKaze93/RuleDesk/pull/105) | ✅ merged |
+| 4 | `chore/type-assertion-policy` | [#106](https://github.com/KazeKaze93/RuleDesk/pull/106) | ✅ merged (allowlist + ESLint; residual casts remain under policy) |
+| 5 | `refactor/crypto-module-unify` | [#107](https://github.com/KazeKaze93/RuleDesk/pull/107) | ✅ merged |
+| 6 | `refactor/di-container-slim` | [#108](https://github.com/KazeKaze93/RuleDesk/pull/108) | ✅ merged |
+| 7 | `chore/main-lifecycle-and-repo-hygiene` | [#109](https://github.com/KazeKaze93/RuleDesk/pull/109) | ✅ merged |
+| 8 | `feat/settings-wipe-all-data` | [#110](https://github.com/KazeKaze93/RuleDesk/pull/110) | ✅ merged |
+| 9 | `dx/ipc-docs-generation` | [#111](https://github.com/KazeKaze93/RuleDesk/pull/111) | ✅ merged |
+| 10 | `chore/i18n-removal` | [#112](https://github.com/KazeKaze93/RuleDesk/pull/112) | ✅ merged |
+
+Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one missed first run and one sync-cursor follow-up).
 
 ### Baseline DX (earlier)
 
@@ -145,13 +165,6 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **CI:** `validate` → `docs:api` freshness → `npm test` → production `npm audit --omit=dev --audit-level=high`; release tags wait for quality + e2e, then Windows zip + Linux AppImage.
 - ✅ **Post-audit regression tests:** **183** Vitest tests across **27** files (includes collapse/throttle + `SecureStorage` suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md)).
 - ✅ **Main process HMR/watch**, shared Zod IPC helpers, provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
-
-### Open P0 (audit — remaining)
-
-None — video-cache and sync-cursor integrity shipped.
-
-- ✅ **Video cache integrity** (`fix/video-cache-integrity`): atomic tmp+rename, abort cleanup, `VIDEO_CACHE_MAX_BYTES` eviction via maintenance tick + deferred start sweep.
-- ✅ **Sync cursor integrity** (`fix/sync-cursor-integrity`): `lastPostId` / `lastChecked` only after natural pagination end; partial post commits keep data; `lastSyncIncomplete` marks unfinished runs; axios network failures rethrow as `ProviderSearchError("network")`.
 
 - ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.
 
@@ -192,7 +205,6 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
-| **P0 integrity** | Shipped: video-cache atomic writes + sync cursor only after complete pagination (`lastSyncIncomplete` for unfinished runs). |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |

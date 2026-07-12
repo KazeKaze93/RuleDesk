@@ -174,5 +174,5 @@ This documentation is maintained alongside the codebase. When making changes:
 
 ---
 
-**Last Updated:** July 2026 — Docs sync for audit series PRs #105–#112 (IPC collapse/throttle, `as` policy, SecureStorage-only crypto, slim DI, lifecycle hygiene, wipe-all-data, generated `docs/api.md`, English-only UI) + honest open P0s (video-cache integrity, sync cursor). Vitest **183** / **27** files.
+**Last Updated:** July 2026 — Audit v17 pack complete: PRs #105–#115 (including P0 video-cache #114 and sync-cursor #115). See [roadmap — branch tracking](./roadmap.md#-technical-improvements-from-audit--dx). Vitest **183** / **27** files.
 
