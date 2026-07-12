@@ -266,7 +266,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 - ✅ **Rate Limiting:** Intelligent rate limiting with 1.5s delay between artists, 0.5s between pages
 - ✅ **Anti-Bot Measures:** Shared throttling/UA strategy applied across current providers.
-- ⚠️ **Open P0:** video-cache file integrity (atomic writes) and sync `lastPostId` cursor integrity — see [Roadmap](./docs/roadmap.md#open-p0-audit--not-yet-shipped)
+- ⚠️ **Open P0:** sync `lastPostId` cursor integrity — see [Roadmap](./docs/roadmap.md#open-p0-audit--remaining). Video-cache writes are atomic (tmp+rename) with size-capped eviction.
 
 ### UI/UX
 

@@ -120,7 +120,7 @@ app.commandLine.appendSwitch("ignore-gpu-blacklist");
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 const syncScheduler = new SyncScheduler(syncService);
-const maintenanceScheduler = new MaintenanceScheduler();
+const maintenanceScheduler = new MaintenanceScheduler(videoProxyServer);
 const backupService = new BackupService(syncService);
 const maintenanceService = new MaintenanceService();
 container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);

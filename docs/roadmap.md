@@ -146,12 +146,13 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **Post-audit regression tests:** **183** Vitest tests across **27** files (includes collapse/throttle + `SecureStorage` suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md)).
 - ✅ **Main process HMR/watch**, shared Zod IPC helpers, provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
 
-### Open P0 (audit — not yet shipped)
+### Open P0 (audit — remaining)
 
-| Item | Hazard | Target branch (planned) |
-|------|--------|-------------------------|
-| **Video cache integrity** | Partial/corrupt files under `video-cache/` can be served as hits | `fix/video-cache-integrity` |
-| **Sync cursor integrity** | `lastPostId` may advance on incomplete sync → skipped posts | sync-cursor integrity fix |
+| Item | Hazard | Target branch |
+|------|--------|---------------|
+| **Sync cursor integrity** | `lastPostId` may advance on incomplete sync → skipped posts | `fix/sync-cursor-integrity` |
+
+- ✅ **Video cache integrity** (`fix/video-cache-integrity`): atomic tmp+rename, abort cleanup, `VIDEO_CACHE_MAX_BYTES` eviction via maintenance tick + deferred start sweep.
 
 - ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.
 
@@ -192,7 +193,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
-| **P0 integrity** | Video-cache atomic writes; sync `lastPostId` only after complete durable batches (see [Open P0](#open-p0-audit--not-yet-shipped)). |
+| **P0 integrity** | Sync `lastPostId` only after complete durable batches (video-cache atomic writes shipped). |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |

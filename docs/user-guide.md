@@ -566,7 +566,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 
 1. Retry opening the post (proxy may fall back to the direct CDN URL while resolving)
 2. If problems persist across many videos, manually delete the `video-cache` folder under `.rdcache` and restart — or use **Settings → General → Danger zone → Delete all data** as a last resort (wipes all of `.rdcache`)
-3. Known limitation: cache writes are not yet atomic — a mid-download abort can leave a bad file that looks like a cache hit (open P0 — see [roadmap](./roadmap.md#open-p0-audit--not-yet-shipped))
+3. Known limitation: if playback still fails after an interrupt, clear `video-cache` under `.rdcache` (or use Danger zone wipe). Cache writes are atomic (tmp + rename); incomplete downloads should not become hits.
 
 ### Artist sync seems to skip newer posts
 

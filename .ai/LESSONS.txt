@@ -104,6 +104,14 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** i18next/react-i18next were added “for growth” with only `en`, while much UI already used hardcoded English and several `t()` keys never existed in `translation.json`.
 **Invariant Rule:** Infrastructure layers are added only under a confirmed product requirement; speculative layers are removed. The app is English-only — user-facing strings are inline literals or local constants (3+ uses), not an i18n stack.
 
+### Problem: Agent reports a finished branch that does not exist on remote (or under-reports the diff)
+**Root Cause:** Chat “готово” / checkpoint text is not bound to a verifiable git artifact; planned branch names (e.g. audit P0 `fix/video-cache-integrity`, `fix/sync-cursor-integrity`) can be remembered and later treated as done without `checkout -b`, commit, or push — while later work (#105–#112) proceeds. Checkpoint-only “коммитить?” also fails if never reached. Separately, completion reports often list only the prompt’s “затронутые файлы” and omit same-task doc-sync / wiring (LESSONS #8), so reviewers miss real surface area until the PR diff.
+**Invariant Rule:** Definition of Done for any Cursor feature prompt = branch **pushed** to origin **and** the final report includes:
+1. Literal output of `git log origin/<branch> -1 --oneline`
+2. Literal output of `git status -sb` (or the `git push` result showing the remote ref)
+3. **Full actual diff inventory** — every path touched in the commit(s) / working tree for the task (e.g. from `git diff --name-only origin/<base>...HEAD` or `git show --name-only --pretty=format:`), not only the prompt’s planned file list. Doc-sync and incidental wiring count; call them out explicitly.
+A report without (1)–(3) is an **incomplete task**, not a done one. Do not claim a branch “landed” from memory, conversation summary, or docs span alone — verify with `git ls-remote --heads origin <branch>` / code criteria.
+
 ### Problem: Custom DI containers are a YAGNI violation for small projects
 **Root Cause:** A full IoC-style abstraction (cycle detection, factory theater) was introduced without automatic wiring or scopes; instance-Map `resolve` never runs user code, so circular-dependency stacks are dead.
 **Invariant Rule:** Prefer a slim typed instance registry (`Container` + `DI_TOKENS`, keyed by `token.id`). No cycle detection without lazy factories. Use a real IoC container only when automatic wiring or scope management is actually needed.

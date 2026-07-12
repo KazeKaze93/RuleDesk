@@ -400,9 +400,7 @@ await window.api.wipeAllData();
 
 ### `getVideoProxyUrl(fileUrl: string)`
 
-Returns a `http://127.0.0.1` URL served by the main-process `VideoProxyServer` that forwards Range requests to the original HTTPS CDN and writes cache files under `{userData}/video-cache/`. The renderer should use the returned value as the `<video src>` (with a temporary fallback to the direct CDN URL while this promise resolves). Input is validated with `z.string().url()`. Only the same host allowlist enforced by the proxy is permitted; other URLs are rejected with HTTP 400 if passed through the proxy.
-
-⚠️ **Known integrity gap (open P0):** cache writes are not yet atomic (tmp + rename). A client abort or mid-write failure can leave a partial/corrupt file that later `existsSync` hits treat as a valid cache. Until `fix/video-cache-integrity` lands, do not assume every file under `video-cache/` is a complete response.
+Returns a `http://127.0.0.1` URL served by the main-process `VideoProxyServer` that forwards Range requests to the original HTTPS CDN and writes complete responses under `{userData}/video-cache/` via **atomic tmp + rename** (incomplete/aborted downloads never become cache hits). Cache size is bounded by `VIDEO_CACHE_MAX_BYTES` with eviction from the maintenance scheduler and a deferred sweep after proxy `start()`. The renderer should use the returned value as the `<video src>` (with a temporary fallback to the direct CDN URL while this promise resolves). Input is validated with `z.string().url()`. Only the same host allowlist enforced by the proxy is permitted; other URLs are rejected with HTTP 400 if passed through the proxy.
 
 **Returns:** `Promise<string>`
 
