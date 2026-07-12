@@ -62,7 +62,7 @@ export abstract class BaseController {
 
   // Request Collapsing: For idempotent handlers, reuse in-flight Promise to prevent duplicate work
   // Map<key, { promise: Promise<unknown>, createdAt: number, timeoutId: NodeJS.Timeout }>
-  // CRITICAL: Key must include args hash, otherwise getUser(1) and getUser(2) would share Promise
+  // Key = channel + fastHash(stableStringify(args)) so different payloads never share a Promise
   // MEMORY LEAK PREVENTION: Each promise has its own setTimeout to ensure cleanup even if IPC stops
   private static readonly requestCollapseMap = new Map<
     string,
@@ -78,97 +78,87 @@ export abstract class BaseController {
   private static readonly REQUEST_COLLAPSE_TIMEOUT_MS = 30000; // 30 seconds
 
   /**
-   * Generate stable key for Request Collapsing from channel + args
-   * PERFORMANCE: Uses only critical identifiers (id, type) instead of full serialization
-   * This prevents Main Process blocking on large objects (e.g., 20k+ post arrays)
-   * 
-   * CRITICAL: Returns null if args cannot be safely collapsed (prevents data leakage)
-   * If two different calls with different complex objects get same key, they would share Promise
-   * 
-   * Strategy:
-   * - Empty args: use channel only
-   * - Single arg with id/type: use those fields
-   * - Arrays: use length + first element id (if available)
-   * - Complex objects without id/type: return null (disable collapsing)
-   * 
-   * @returns Collapse key string, or null if collapsing is unsafe
+   * Canonical JSON with sorted object keys (arrays keep order).
+   * Returns null for values that cannot be represented safely (undefined, NaN, functions, etc.).
+   */
+  private static stableStringify(value: unknown): string | null {
+    if (value === undefined) {
+      return null;
+    }
+    if (value === null) {
+      return "null";
+    }
+
+    const valueType = typeof value;
+    if (valueType === "string") {
+      return JSON.stringify(value);
+    }
+    if (valueType === "boolean") {
+      return value ? "true" : "false";
+    }
+    if (valueType === "number") {
+      if (!Number.isFinite(value)) {
+        return null;
+      }
+      return JSON.stringify(value);
+    }
+    if (
+      valueType === "bigint" ||
+      valueType === "symbol" ||
+      valueType === "function"
+    ) {
+      return null;
+    }
+
+    if (Array.isArray(value)) {
+      const parts: string[] = [];
+      for (const item of value) {
+        const itemJson = this.stableStringify(item);
+        if (itemJson === null) {
+          return null;
+        }
+        parts.push(itemJson);
+      }
+      return `[${parts.join(",")}]`;
+    }
+
+    if (valueType === "object") {
+      const proto = Object.getPrototypeOf(value);
+      if (proto !== Object.prototype && proto !== null) {
+        return null;
+      }
+
+      const keys = Object.keys(value).sort();
+      const parts: string[] = [];
+      for (const key of keys) {
+        const propJson = this.stableStringify(Reflect.get(value, key));
+        if (propJson === null) {
+          return null;
+        }
+        parts.push(`${JSON.stringify(key)}:${propJson}`);
+      }
+      return `{${parts.join(",")}}`;
+    }
+
+    return null;
+  }
+
+  /**
+   * Collapse key from channel + full canonical args hash.
+   * Returns null when args cannot be serialized (collapsing disabled, no warn).
    */
   private static getCollapseKey(channel: string, args: unknown[]): string | null {
-    // Empty args - most common case (e.g., getSettings)
-    if (args.length === 0) {
-      return channel;
+    const canonical = this.stableStringify(args);
+    if (canonical === null) {
+      return null;
     }
-
-    // Single argument - extract id or type if available
-    if (args.length === 1) {
-      const arg = args[0];
-      if (arg === null || arg === undefined) {
-        return `${channel}:null`;
-      }
-      
-      // Check for common identifier fields
-      if (typeof arg === "object" && arg !== null) {
-        const obj = arg as Record<string, unknown>;
-        if ("id" in obj && typeof obj.id === "number") {
-          return `${channel}:id=${obj.id}`;
-        }
-        if ("type" in obj && typeof obj.type === "string") {
-          return `${channel}:type=${obj.type}`;
-        }
-        // CRITICAL: Do NOT return default key for complex objects
-        // Returning ":complex" would cause data leakage - different objects would share Promise
-        // Disable collapsing for complex objects without id/type
-        log.warn(
-          `[IPC] Complex argument object for idempotent channel "${channel}" without id/type. ` +
-          `Request Collapsing disabled to prevent data leakage. Consider using non-idempotent handler or pass hash from Renderer.`
-        );
-        return null; // Disable collapsing - prevents data leakage
-      }
-      
-      // Primitive values
-      const argString = String(arg);
-      
-      // CRITICAL: Hash long arguments to prevent data leakage in static map
-      // Simple rule: hash everything longer than 16 characters
-      // No guessing about "sensitive data" - just hash long strings
-      // This prevents tokens, long tags, or other long data from being stored in memory forever
-      // PERFORMANCE: Use fast non-cryptographic hash (djb2) instead of SHA-256
-      // djb2 is O(n) but much faster and sufficient for collision-resistant key generation
-      if (argString.length > 16) {
-        const hash = this.fastHash(argString);
-        return `${channel}:hash=${hash}`;
-      }
-      
-      return `${channel}:${argString}`;
-    }
-
-    // Multiple arguments - use first arg id + count
-    const firstArg = args[0];
-    if (
-      typeof firstArg === "object" &&
-      firstArg !== null &&
-      "id" in firstArg &&
-      typeof (firstArg as Record<string, unknown>).id === "number"
-    ) {
-      return `${channel}:id=${(firstArg as Record<string, unknown>).id}:count=${args.length}`;
-    }
-
-    // CRITICAL: Do NOT return default key for multiple args without IDs
-    // Returning ":multi:count=N" would cause data leakage - different arg sets would share Promise
-    log.warn(
-      `[IPC] Multiple arguments for idempotent channel "${channel}" without id/type. ` +
-      `Request Collapsing disabled to prevent data leakage. Consider using non-idempotent handler.`
-    );
-    return null; // Disable collapsing - prevents data leakage
+    return `${channel}:${this.fastHash(canonical)}`;
   }
 
   /**
    * Fast non-cryptographic hash (djb2 algorithm)
-   * Used for hashing IPC keys to prevent data leakage without blocking Main Process
-   * 
-   * PERFORMANCE: O(n) time complexity, much faster than SHA-256
-   * Collision resistance is sufficient for IPC key generation (not security-critical)
-   * 
+   * Used for hashing IPC collapse keys without blocking Main Process
+   *
    * @param str - String to hash
    * @returns 16-character hex hash
    */
@@ -183,9 +173,8 @@ export abstract class BaseController {
     return Math.abs(hash).toString(16).substring(0, 16);
   }
 
-  // Minimum time between calls for the same channel (milliseconds)
-  // Prevents renderer from spamming IPC calls
-  private static readonly THROTTLE_MS = 100; // 100ms = max 10 calls per second per channel
+  // Minimum spacing between non-idempotent calls on the same channel (delay, never reject)
+  private static readonly THROTTLE_MS = 100;
 
   // TTL for throttle map entries (1 hour) - prevents memory leak from dynamic channel names
   private static readonly THROTTLE_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -244,10 +233,6 @@ export abstract class BaseController {
       channel,
       async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
         try {
-          // Throttling: Prevent DoS attacks by limiting call frequency per channel
-          // If rate limit exceeded, throw error immediately instead of creating promise queue
-          const now = Date.now();
-
           // Cleanup old entries to prevent memory leak (TTL-based cleanup)
           // Use call counter instead of random for predictable cleanup behavior
           // Perform cleanup asynchronously to avoid blocking Main Process Event Loop
@@ -285,7 +270,7 @@ export abstract class BaseController {
               const stuckKeys: string[] = [];
               for (const [key, entry] of BaseController.requestCollapseMap.entries()) {
                 const age = now - entry.createdAt;
-                if (age > BaseController.REQUEST_COLLAPSE_TIMEOUT_MS) {
+                if (age >= BaseController.REQUEST_COLLAPSE_TIMEOUT_MS) {
                   stuckKeys.push(key);
                 }
               }
@@ -307,22 +292,16 @@ export abstract class BaseController {
 
           const isIdempotent = options?.isIdempotent === true;
 
-          // Request Collapsing: For idempotent handlers, reuse in-flight Promise
-          // This prevents duplicate work when multiple calls arrive simultaneously (e.g., React Strict Mode)
-          // CRITICAL: For idempotent handlers, Request Collapsing replaces throttling
-          // Throttling is not needed because collapsing prevents duplicate work
-          // CRITICAL: Key includes args hash to prevent data leakage (getUser(1) vs getUser(2))
+          // Request Collapsing: reuse in-flight Promise for identical (channel + args) on idempotent handlers
+          // Collapsing replaces per-call throttling for idempotent channels
           if (isIdempotent) {
-            // Generate collapse key from channel + args (prevents different args from sharing Promise)
-            // Returns null if args cannot be safely collapsed (prevents data leakage)
             const collapseKey = BaseController.getCollapseKey(channel, args);
-            
-            // If collapsing is unsafe (complex args without id/type), disable it
+
+            // Unserializable args → no collapsing; fall through to throttled execution
             if (collapseKey === null) {
               log.debug(
-                `[IPC] Request collapsing disabled for idempotent channel "${channel}" - complex args without id/type`
+                `[IPC] Request collapsing disabled for idempotent channel "${channel}" - args not serializable`
               );
-              // Fall through to normal execution (no collapsing, but still idempotent)
             } else {
               // Check for existing Promise FIRST (before creating new one)
               const existingEntry =
@@ -330,7 +309,7 @@ export abstract class BaseController {
               if (existingEntry) {
                 // MEMORY LEAK PREVENTION: Check if promise is stuck (>30s)
                 const age = Date.now() - existingEntry.createdAt;
-                if (age > BaseController.REQUEST_COLLAPSE_TIMEOUT_MS) {
+                if (age >= BaseController.REQUEST_COLLAPSE_TIMEOUT_MS) {
                   // Promise is stuck - remove it to prevent memory leak
                   log.warn(
                     `[IPC] Removing stuck promise for channel "${channel}" with key "${collapseKey}" ` +
@@ -364,7 +343,7 @@ export abstract class BaseController {
               const createdAt = Date.now();
               const timeoutId = setTimeout(() => {
                 const entry = BaseController.requestCollapseMap.get(collapseKey);
-                if (entry && Date.now() - entry.createdAt > BaseController.REQUEST_COLLAPSE_TIMEOUT_MS) {
+                if (entry && Date.now() - entry.createdAt >= BaseController.REQUEST_COLLAPSE_TIMEOUT_MS) {
                   log.warn(
                     `[IPC] Timeout cleanup: removing stuck promise for channel "${channel}" ` +
                     `with key "${collapseKey}" (age: ${Date.now() - entry.createdAt}ms)`
@@ -544,34 +523,25 @@ export abstract class BaseController {
             }
           }
 
-          // Non-idempotent handlers: execute directly with throttling
-          // Throttling: Only apply to non-idempotent requests
-          const lastCall = BaseController.throttleMap.get(channel);
-          const timeSinceLastCall =
-            lastCall !== undefined ? now - lastCall : Infinity;
-
-          if (
-            lastCall !== undefined &&
-            timeSinceLastCall < BaseController.THROTTLE_MS
-          ) {
-            const waitTime = BaseController.THROTTLE_MS - (now - lastCall);
-            log.warn(
-              `[IPC] Rate limit exceeded for channel "${channel}" - too frequent (must wait ${waitTime}ms)`
+          // Spacing for non-idempotent (and unserializable idempotent) calls: delay, never reject
+          while (true) {
+            const lastCall = BaseController.throttleMap.get(channel);
+            if (lastCall === undefined) {
+              break;
+            }
+            const elapsed = Date.now() - lastCall;
+            if (elapsed >= BaseController.THROTTLE_MS) {
+              break;
+            }
+            const waitTime = BaseController.THROTTLE_MS - elapsed;
+            log.debug(
+              `[IPC] Throttling channel "${channel}" - waiting ${waitTime}ms`
             );
-            const rateLimitError: SerializableError = {
-              message: `Rate limit exceeded. Please wait ${waitTime}ms before retrying.`,
-              stack: undefined,
-              name: "RateLimitError",
-              originalError: undefined,
-              code: ErrorCode.RATE_LIMIT, // Typed error code for reliable error handling
-            };
-            throw rateLimitError;
+            await new Promise<void>((resolve) => {
+              setTimeout(resolve, waitTime);
+            });
           }
-
-          // Update throttle timestamp only if we're actually processing the request
           BaseController.throttleMap.set(channel, Date.now());
-
-          // Continue with validation and execution (code continues below)
 
           // Security: Log only channel name and argument count, not actual arguments
           // This prevents leaking user data, file paths, or other sensitive information
@@ -745,8 +715,7 @@ export abstract class BaseController {
           log.debug(`[IPC] Request completed: ${channel}`);
           return result;
         } catch (error: unknown) {
-          // Skip error handling if it's already a serialized error (ValidationError, RateLimitError, etc.)
-          // Check for SerializableError structure: has name, message, and code properties
+          // Skip re-serialization for already-serialized IPC errors (ValidationError, etc.)
           if (
             typeof error === "object" &&
             error !== null &&
@@ -754,8 +723,6 @@ export abstract class BaseController {
             "message" in error &&
             "code" in error
           ) {
-            // Already serialized (ValidationError, RateLimitError, or other SerializableError)
-            // Just re-throw it as-is without re-serialization
             throw error;
           }
 

@@ -1972,6 +1972,8 @@ All IPC operations are handled through domain-specific controllers that extend `
   - Automatic input validation using Zod schemas
   - Type-safe handler registration
   - Prevents duplicate handler registration errors
+  - Request collapsing for idempotent handlers (key = channel + hash of full stable-serialized args)
+  - Soft throttle for mutating handlers (delay spacing, never `Rate limit exceeded` reject)
 
 **Controller Setup:**
 

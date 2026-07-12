@@ -512,6 +512,8 @@ const posts = await db.query.posts.findMany({
    - Automatic input validation using Zod schemas
    - Type-safe handler registration
    - Prevents duplicate handler registration errors
+   - **Request collapsing** (idempotent handlers): in-flight calls with the same channel + full canonical args hash share one Promise; different payloads never share results
+   - **Call spacing** (non-idempotent handlers): rapid repeat calls on one channel are delayed (~100ms), not rejected
 
    **⚠️ CRITICAL: Always Use Limits in Database Queries**
 

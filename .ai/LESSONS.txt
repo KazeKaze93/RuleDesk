@@ -23,9 +23,9 @@ Root Cause: Store contract changed but not all consumers were updated.
 Invariant Rule: Any filter contract change requires synchronized updates across store, panels, and all feed pages.
 
 3) Idempotent IPC Under Strict Mode
-Problem: Duplicate startup calls trigger throttling and unstable UX.
-Root Cause: Idempotent handlers were treated the same as mutating handlers.
-Invariant Rule: Mark truly idempotent handlers and use request collapsing for in-flight calls.
+Problem: Duplicate startup calls trigger throttling and unstable UX; partial collapse keys leak wrong results across concurrent calls.
+Root Cause: Idempotent handlers were treated like mutating ones, or collapse keys used only `id`/`type` and ignored other fields.
+Invariant Rule: Mark truly idempotent handlers; collapse in-flight calls by hashing the full canonical args; space mutating calls with delay (never reject).
 
 4) Virtualized Gallery Holes
 Problem: Large empty scroll area in filtered lists.
