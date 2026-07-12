@@ -70,21 +70,21 @@ export function toIpcSafe<T>(data: T): ToIpcSafeResult<T> {
   // Handle Date objects
   if (isDate(data)) {
     // boundary: toIpcSafe Date → number branch of conditional return type
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: toIpcSafe
     return data.getTime() as ToIpcSafeResult<T>;
   }
 
   // Handle null/undefined (already serializable)
   if (data === null || data === undefined) {
     // boundary: toIpcSafe nullish passthrough
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: toIpcSafe
     return data as ToIpcSafeResult<T>;
   }
 
   // Handle arrays
   if (Array.isArray(data)) {
     // boundary: toIpcSafe array map preserves ToIpcSafeResult element typing
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: toIpcSafe
     return data.map((item) => toIpcSafe(item)) as ToIpcSafeResult<T>;
   }
 
@@ -98,14 +98,14 @@ export function toIpcSafe<T>(data: T): ToIpcSafeResult<T> {
       }
     }
     // boundary: toIpcSafe plain-object rebuild matches IpcSafe<T>
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: toIpcSafe
     return result as ToIpcSafeResult<T>;
   }
 
   // Handle serializable primitives (string, number, boolean)
   if (isSerializablePrimitive(data)) {
     // boundary: toIpcSafe primitive passthrough
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: toIpcSafe
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: toIpcSafe
     return data as ToIpcSafeResult<T>;
   }
 

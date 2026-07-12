@@ -28,9 +28,14 @@ Root Cause: Idempotent handlers were treated like mutating ones, or collapse key
 Invariant Rule: Mark truly idempotent handlers; collapse in-flight calls by hashing the full canonical args; space mutating calls with delay (never reject).
 
 3b) Type Assertion Policy
-Problem: Project rules banned all `as` casts while the codebase kept 100+ assertions — Cursor treated the rule as decorative.
-Root Cause: No enforced allowlist and no ESLint gate for narrowing assertions.
-Invariant Rule: `as` is forbidden except the closed boundary list: (1) `container.resolve` DI Map return; (2) better-sqlite3 raw `.prepare().get()`/`.all()` rows (includes drizzle instance typing); (3) Web Worker `workerData`/message payloads after Zod or trusted IPC handoff; (4) internals of `toIpcSafe` conditional return branches; (5) TanStack Query generic inference gaps (`pageParam` / default page flatten). Every allowed assertion MUST have `// boundary: <reason>` on the preceding line (and `eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion` when that rule fires). Fix types upstream or use Zod.parse — do not cast.
+Problem: Project rules banned all `as` casts while the codebase kept assertions — Cursor treated the rule as decorative when the gate only banned narrowing (`no-unsafe-type-assertion`).
+Root Cause: Policy text required a full allowlist gate, but CI only enforced unsafe narrowing; `// boundary:` comments without `eslint-disable` were not forced.
+Invariant Rule: `as` is forbidden except `as const` and the closed boundary list: (1) `container.resolve` DI Map return; (2) better-sqlite3 raw `.prepare().get()`/`.all()` rows (includes drizzle instance typing); (3) Web Worker `workerData`/message payloads after Zod or trusted IPC handoff; (4) internals of `toIpcSafe` conditional return branches; (5) TanStack Query generic inference gaps (`pageParam` / default page flatten). Every allowed assertion MUST have `// boundary: <reason>` and `eslint-disable-next-line` for every rule that fires (`no-restricted-syntax`; also `@typescript-eslint/no-unsafe-type-assertion` when it reports). Gate: `no-restricted-syntax` on `TSAsExpression` excluding `as const`, plus `no-unsafe-type-assertion`. Fix types upstream or use Zod.parse — do not cast.
+
+3c) Syntax Policy Inventory Must Use AST
+Problem: Policy-violation counts from `grep`/`rg` for ` as ` were inflated by an order of magnitude and drove wrong “partial gate” conclusions.
+Root Cause: Regex matches `import * as X`, SQL `AS alias`, and English prose, not TypeScript `TSAsExpression` nodes.
+Invariant Rule: Inventory of syntactic constructs (type assertions, etc.) MUST use AST (ESLint selector / parser). Grep totals are not decision inputs.
 
 4) Virtualized Gallery Holes
 Problem: Large empty scroll area in filtered lists.

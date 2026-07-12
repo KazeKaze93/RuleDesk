@@ -75,8 +75,19 @@ export default tseslint.config(
           objectLiteralTypeAssertions: "never",
         },
       ],
-      // Ban narrowing type assertions; boundary casts use // boundary: + eslint-disable-next-line
+      // Narrowing-only safety net (kept); full policy gate is no-restricted-syntax below.
       "@typescript-eslint/no-unsafe-type-assertion": "error",
+      // Policy gate: every `as` except `as const` requires // boundary: + eslint-disable-next-line
+      // (selector verified: as const uses TSTypeReference typeName.name === "const")
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            'TSAsExpression:not(:has(> TSTypeReference[typeName.name="const"]))',
+          message:
+            '`as` type assertions are forbidden except the closed boundary allowlist in .cursorrules. Allowed sites need `// boundary: <reason>` and `eslint-disable-next-line` for every rule that fires (`no-restricted-syntax`; also `@typescript-eslint/no-unsafe-type-assertion` when it reports). Prefer upstream types or Zod.parse. `as const` is allowed.',
+        },
+      ],
     },
   }
 );

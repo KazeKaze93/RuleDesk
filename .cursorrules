@@ -37,7 +37,7 @@ You do not tolerate sloppy code, "any" types, "as" casting, magic numbers, or pr
 4. **TypeScript & Code Quality**:
 
    - **Strict Types**: NO `any`. Use `unknown` with narrowing.
-   - **No Unsafe Casting**: `as` is forbidden except the closed **boundary** list below. Every allowed assertion MUST have `// boundary: <reason>` on the preceding line (and `eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion` when that rule fires). Fix types upstream or use Zod.parse — do not cast.
+   - **No Unsafe Casting**: `as` is forbidden except the closed **boundary** list below (and except `as const`). Enforcement: ESLint `no-restricted-syntax` on `TSAsExpression` (excluding `as const`) plus `@typescript-eslint/no-unsafe-type-assertion` for narrowing. Every allowed assertion MUST have `// boundary: <reason>` on the preceding line and `eslint-disable-next-line` listing every rule that fires for that site (`no-restricted-syntax`, and `@typescript-eslint/no-unsafe-type-assertion` when it reports). Fix types upstream or use Zod.parse — do not cast.
      - **Boundary allowlist:** (1) `container.resolve` return from the DI Map; (2) better-sqlite3 raw `.prepare().get()` / `.all()` rows (includes drizzle instance typing); (3) Web Worker `workerData` / message payloads after Zod validation or trusted IPC handoff; (4) internals of `toIpcSafe` conditional return branches; (5) TanStack Query generic inference gaps (`pageParam` / default page flatten).
    - **No Magic**: NO Magic Numbers or Magic Strings. Extract constants.
    - **Definitions**: Use `type` for fixed definitions, `interface` for extendable structures.

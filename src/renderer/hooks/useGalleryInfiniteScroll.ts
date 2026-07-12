@@ -85,7 +85,7 @@ export function useGalleryInfiniteScroll<
     queryKey,
     queryFn: async ({ pageParam }) => {
       // boundary: TanStack Query generic inference — pageParam is unknown for unresolved TPageParam
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: TanStack Query generic inference
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: TanStack Query generic inference
       return await fetchFn(pageParam as TPageParam);
     },
     getNextPageParam:
@@ -95,11 +95,12 @@ export function useGalleryInfiniteScroll<
           ? flattenPage(lastPage)
           : Array.isArray(lastPage)
             ? // boundary: TanStack Query generic inference — default path assumes TPage is TItem[]
+              // eslint-disable-next-line no-restricted-syntax -- boundary: TanStack Query generic inference
               (lastPage as TItem[])
             : [];
         // Default pagination uses sequential numeric page indices.
         // boundary: TanStack Query generic inference — default TPageParam is number
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: TanStack Query generic inference
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: TanStack Query generic inference
         return (
           items.length === postsPerPage ? allPages.length + 1 : undefined
         ) as TPageParam | undefined;
@@ -168,6 +169,7 @@ export function useGalleryInfiniteScroll<
         ? flattenPage(page)
         : Array.isArray(page)
           ? // boundary: TanStack Query generic inference — default path assumes TPage is TItem[]
+            // eslint-disable-next-line no-restricted-syntax -- boundary: TanStack Query generic inference
             (page as TItem[])
           : []
     );

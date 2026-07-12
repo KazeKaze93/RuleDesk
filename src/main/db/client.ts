@@ -150,6 +150,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
 
   sqliteInstance = sqlite;
   // boundary: better-sqlite3 raw row — drizzle() generic schema typing to AppDatabase
+  // eslint-disable-next-line no-restricted-syntax -- boundary: better-sqlite3 / drizzle instance typing
   dbInstance = drizzle(sqlite, { schema }) as AppDatabase;
 
   try {
@@ -160,7 +161,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
     // This can block Main Process for 30+ seconds on databases with 500k+ records
     try {
       // boundary: better-sqlite3 raw row — prepare().get() row typing
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: better-sqlite3 raw row
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
       const postCount = sqlite
         .prepare("SELECT COUNT(*) as count FROM posts")
         .get() as { count: number } | undefined;
@@ -352,7 +353,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
                   // Initialize the single row with count from posts_fts (if table exists)
                   try {
                     // boundary: better-sqlite3 raw row — prepare().get() row typing
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- boundary: better-sqlite3 raw row
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
                     const countResult = sqliteInstance
                       .prepare("SELECT COUNT(*) as count FROM posts_fts")
                       .get() as { count: number } | undefined;
