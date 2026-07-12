@@ -1234,7 +1234,7 @@ useEffect(() => {
 - **Bulk operations** - Posts are inserted in chunks of `CHUNK_SIZE` (75) to stay under SQLite variable limits
 - **Incremental sync** - Only fetches posts newer than `lastPostId` (not all posts)
 - **Background execution** - Sync doesn't block UI or other operations
-<!-- TODO(doc-sync): verify against src/main/providers/types.ts:6 and sync-service.ts:564 — PAGE_SIZE=100 vs fetchPosts default limit=50 -->
+- **Page size** - Sync calls `fetchPosts(..., PAGE_SIZE)` with the same `PAGE_SIZE` (100) used for the pagination stop condition (`postsData.length < PAGE_SIZE`)
 
 ## Database Architecture
 
@@ -1336,8 +1336,7 @@ External API calls are abstracted through the **Provider Pattern** (`src/main/pr
 3. **SyncService Integration:**
    - Uses provider pattern to fetch posts
    - **Rate Limiting:** Shared `ProviderThrottle` (~1200ms + 0–400ms jitter per request)
-   - **Pagination:** Incremental sync by `lastPostId` (not deep offset into historical pages)
-   <!-- TODO(doc-sync): verify against src/main/providers/types.ts:6 and sync-service.ts:564 — PAGE_SIZE=100 vs fetchPosts default limit=50 -->
+   - **Pagination:** Incremental sync by `lastPostId`; each page requests `limit: PAGE_SIZE` (100) and stops when `postsData.length < PAGE_SIZE`
    - **Error Handling:** `auth` / `rate_limit` provider errors during pagination propagate to `SYNC.ERROR`; `network` / `parse` and transient 5xx stop the current artist gracefully without marking sync failed
    - **Authentication:** Uses User ID and API Key from settings table
 

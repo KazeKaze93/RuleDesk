@@ -1448,7 +1448,8 @@ export class PostsController extends BaseController {
           userId: apiSettings.userId,
           apiKey: apiSettings.apiKey,
         },
-        false // Not random
+        false,
+        50 // Preserve prior Rule34 default; single-id lookup does not need a full sync page
       );
 
       if (!booruPosts || booruPosts.length === 0) {

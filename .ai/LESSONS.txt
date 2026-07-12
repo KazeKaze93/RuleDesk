@@ -110,12 +110,13 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Invariant Rule:** Infrastructure layers are added only under a confirmed product requirement; speculative layers are removed. The app is English-only — user-facing strings are inline literals or local constants (3+ uses), not an i18n stack.
 
 ### Problem: Agent reports a finished branch that does not exist on remote (or under-reports the diff)
-**Root Cause:** Chat “готово” / checkpoint text is not bound to a verifiable git artifact; planned branch names (e.g. audit P0 `fix/video-cache-integrity`, `fix/sync-cursor-integrity`) can be remembered and later treated as done without `checkout -b`, commit, or push — while later work (#105–#112) proceeds. Checkpoint-only “коммитить?” also fails if never reached. Separately, completion reports often list only the prompt’s “затронутые файлы” and omit same-task doc-sync / wiring (LESSONS #8), so reviewers miss real surface area until the PR diff.
+**Root Cause:** Chat “готово” / checkpoint text is not bound to a verifiable git artifact; planned branch names (e.g. audit P0 `fix/video-cache-integrity`, `fix/sync-cursor-integrity`) can be remembered and later treated as done without `checkout -b`, commit, or push — while later work (#105–#112) proceeds. Checkpoint-only “коммитить?” also fails if never reached. Separately, completion reports often list only the prompt’s “затронутые файлы” and omit same-task doc-sync / wiring (LESSONS #8), so reviewers miss real surface area until the PR diff. Pushing (or configuring a feature branch to track `origin/master`) before the user confirms a CHECKPOINT makes the remote irreversible without coordination.
 **Invariant Rule:** Definition of Done for any Cursor feature prompt = branch **pushed** to origin **and** the final report includes:
 1. Literal output of `git log origin/<branch> -1 --oneline`
 2. Literal output of `git status -sb` (or the `git push` result showing the remote ref)
 3. **Full actual diff inventory** — every path touched in the commit(s) / working tree for the task (e.g. from `git diff --name-only origin/<base>...HEAD` or `git show --name-only --pretty=format:`), not only the prompt’s planned file list. Doc-sync and incidental wiring count; call them out explicitly.
 A report without (1)–(3) is an **incomplete task**, not a done one. Do not claim a branch “landed” from memory, conversation summary, or docs span alone — verify with `git ls-remote --heads origin <branch>` / code criteria.
+**Also:** Never `git push` (to any remote ref, especially `master`/`main`) before the user confirms the CHECKPOINT. Never create a working branch that tracks `origin/master` (`checkout -b feat origin/master` sets upstream to master — a later bare `git push` updates master). Use an untracked local branch, then `git push -u origin HEAD` to the feature ref only after checkpoint approval.
 
 ### Problem: Custom DI containers are a YAGNI violation for small projects
 **Root Cause:** A full IoC-style abstraction (cycle detection, factory theater) was introduced without automatic wiring or scopes; instance-Map `resolve` never runs user code, so circular-dependency stacks are dead.
@@ -152,6 +153,10 @@ A report without (1)–(3) is an **incomplete task**, not a done one. Do not cla
 **Invariant Rule:** Reset related error state on any input that changes validation context (e.g. provider select, credential fields) to avoid stale feedback.
 
 ## Data Integrity
+
+### Problem: Sync pagination stop compared against PAGE_SIZE while fetch used a silent provider default
+**Root Cause:** Page size lived in two unrelated places — sync stop used `PAGE_SIZE` (100), Rule34 `fetchPosts` defaulted to 50, Gelbooru to 100 — so a full Rule34 page looked “short” and initial sync advanced the cursor after 50 posts forever.
+**Invariant Rule:** Page size is passed explicitly by every `fetchPosts` caller and is the single constant shared by the request and the pagination stop condition. Silent `limit` defaults in providers are forbidden.
 
 ### Problem: Zustand derived toggles flip incorrectly under rapid updates
 **Root Cause:** Direct captures like `set({ compactMode: !compactMode })` use stale closure values and can race with concurrent updates.

@@ -134,8 +134,8 @@ export class GelbooruProvider implements IBooruProvider {
     tags: string,
     page: number,
     settings: ProviderSettings,
-    isRandom: boolean = false,
-    limit: number = 100
+    isRandom: boolean,
+    limit: number
   ): Promise<BooruPost[]> {
     await this.throttle.wait();
 
