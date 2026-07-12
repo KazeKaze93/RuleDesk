@@ -108,7 +108,7 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
             "bg-transparent",
             "focus:outline-none focus-visible:z-[1] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           )}
-          aria-label="artistCard.selectArtist"
+          aria-label={`Select ${artist.name}`}
         >
           <div
             className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10"

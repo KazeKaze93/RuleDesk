@@ -38,11 +38,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       errorMap: (issue: ZodIssueOptionalMessage, ctx: ErrorMapCtx) => {
         if (issue.code === z.ZodIssueCode.too_small) {
           if (issue.path[0] === "userId") {
-            // Missing locale key historically; keep prior runtime message (the key path).
-            return { message: "validation.userIdRequired" };
+            return { message: "User ID is required" };
           }
           if (issue.path[0] === "apiKey") {
-            return { message: "validation.apiKeyRequired" };
+            return { message: "API key is required" };
           }
         }
         return { message: ctx.defaultError };
