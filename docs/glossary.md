@@ -73,7 +73,7 @@ Local storage of post metadata and preview images to enable offline browsing and
 
 A list of tags excluded from gallery and search results after fetch. Configured in **Settings → Blacklist**; enforced in Main (`SearchController`, `PostsController`) so hidden tags do not affect pagination math (`apiFetchedCount` is measured before blacklist filtering).
 
-**Related:** [Settings - Blacklist](./user-guide.md#blacklist), [searchBooru](./api.md#searchbooru)
+**Related:** [Settings - Blacklist](./user-guide.md#blacklist), [searchBooru](./api-guide.md#searchbooru)
 
 ---
 
@@ -106,7 +106,7 @@ An abstraction layer that allows RuleDesk to support multiple booru sources with
 
 The **Browse** page searches the live booru API (Source: **All**) or filters posts from the local cache (Source: **Favorites** / **Subscriptions**). Infinite scroll loads 50 posts per batch; on Rule34, RuleDesk continues past the API offset cap using cursor pagination (`id:<postId>`).
 
-**Related:** [User Guide - Search](./user-guide.md#search), [Rule34 pagination](./rule34-api-reference.md#pagination-beyond-the-offset-cap), [searchBooru](./api.md#searchbooru)
+**Related:** [User Guide - Search](./user-guide.md#search), [Rule34 pagination](./rule34-api-reference.md#pagination-beyond-the-offset-cap), [searchBooru](./api-guide.md#searchbooru)
 
 ---
 
@@ -116,7 +116,7 @@ The **Browse** page searches the live booru API (Source: **All**) or filters pos
 
 The communication mechanism between Electron's Main Process and Renderer Process. RuleDesk uses a controller-based IPC architecture with type-safe interfaces.
 
-**Related:** [IPC Architecture](./api.md#architecture), [IPC Bridge Interface](./api.md#ipc-bridge-interface)
+**Related:** [IPC Architecture](./api-guide.md#architecture), [IPC Bridge Interface](./api-guide.md#ipc-bridge-interface)
 
 ---
 
@@ -225,7 +225,7 @@ Artists (tags, uploaders, or query subscriptions) stored in the local `artists` 
 
 **Cap:** IPC returns at most **5000** rows (`MAX_TRACKED_ARTISTS` in `src/shared/constants.ts`). Larger libraries are truncated with a Main-process warning — not a silent full export.
 
-**Related:** [API — getTrackedArtists](./api.md#gettrackedartists), [Database — Get All Artists](./database.md#get-all-artists)
+**Related:** [API — getTrackedArtists](./api-guide.md#gettrackedartists), [Database — Get All Artists](./database.md#get-all-artists)
 
 ---
 
@@ -312,7 +312,7 @@ A mechanism to prevent API abuse by limiting request frequency. RuleDesk impleme
 - 1.5s delay between artists
 - 0.5s delay between pages
 
-**Related:** [Sync Service](./architecture.md#sync-service), [Rate Limiting](./api.md#external-api-integration)
+**Related:** [Sync Service](./architecture.md#sync-service), [Rate Limiting](./api-guide.md#external-api-integration)
 
 ---
 
@@ -344,5 +344,6 @@ Full maintainer gate before a PR: `validate` → all Vitest suites (unit, integr
 
 - [Documentation Index](./index.md) - Complete documentation navigation
 - [Architecture Overview](./architecture.md) - System architecture and design
-- [API Reference](./api.md) - IPC API documentation
+- [API Reference](./api.md) - Generated IPC channel table
+- [API Guide](./api-guide.md) - IPC usage documentation
 - [Database Documentation](./database.md) - Database schema and operations

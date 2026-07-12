@@ -18,7 +18,8 @@ This document is a maintainer-facing technical overview of the public Rule34.xxx
 
 **📖 Related Documentation:**
 - [User Guide](./user-guide.md) - Product-level behavior and user-facing expectations
-- [API Documentation](./api.md) - RuleDesk IPC API reference
+- [API Reference (generated)](./api.md) - RuleDesk IPC channel table
+- [API Guide](./api-guide.md) - RuleDesk IPC usage patterns
 - [Architecture Documentation](./architecture.md) - External API integration
 - [Glossary](./glossary.md) - Key terms (API Key, Rate Limiting, etc.)
 

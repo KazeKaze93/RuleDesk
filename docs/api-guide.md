@@ -1,4 +1,6 @@
-# API Documentation
+# API Guide (IPC usage & narrative)
+
+> **Note:** Machine-readable IPC channel tables are generated into [`api.md`](./api.md) via `npm run docs:api`. Do not hand-edit that file. This guide keeps usage patterns, examples, and security narrative. Optional per-channel notes: [`api-notes/`](./api-notes/).
 
 ## 📑 Table of Contents
 

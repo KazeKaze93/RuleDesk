@@ -93,7 +93,9 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 Engineering materials are intentionally grouped here to keep the top-level index user-first.
 
 - [Architecture Documentation](./architecture.md) - System architecture and boundaries
-- [API Documentation](./api.md) - IPC contract and integration details
+- [API Reference (generated)](./api.md) - IPC channel table from `channels.ts` + handlers (`npm run docs:api`)
+- [API Guide](./api-guide.md) - IPC usage patterns, examples, security narrative
+- [API channel notes](./api-notes/) - Optional human notes merged into the generated reference
 - [Database Documentation](./database.md) - Schema, migrations, and operational notes
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
 - [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, CI/CD
@@ -108,11 +110,12 @@ Engineering materials are intentionally grouped here to keep the top-level index
 | Step | Command |
 |------|---------|
 | Typecheck + lint + img policy | `npm run validate` |
+| IPC API docs freshness | `npm run docs:api` (CI: then `git diff --exit-code docs/api.md`) |
 | All Vitest suites (171 tests) | `npm test` |
 | Pre-PR full gate | `npm run test:verify` |
 | Production dependency audit | `npm audit --omit=dev --audit-level=high` |
 
-CI (`.github/workflows/ci.yml`) runs **validate**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass, then publish **Windows zip** and **Linux AppImage** (macOS binaries are not distributed — see [user guide — Installation](./user-guide.md#installation)).
+CI (`.github/workflows/ci.yml`) runs **validate**, **docs:api freshness**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass, then publish **Windows zip** and **Linux AppImage** (macOS binaries are not distributed — see [user guide — Installation](./user-guide.md#installation)).
 
 ---
 
@@ -128,9 +131,13 @@ README.md (Entry Point)
 Architecture Documentation
 ├── Security → .cursorrules / Architecture
 ├── Database → Database Documentation
-└── IPC → API Documentation
+└── IPC → API Reference (generated) + API Guide
 
-API Documentation
+API Reference (docs/api.md, generated)
+├── Channel notes → docs/api-notes/
+└── Narrative → API Guide (docs/api-guide.md)
+
+API Guide
 ├── Implementation → Architecture Documentation
 └── External API → Rule34 API Reference
 

@@ -25,7 +25,8 @@ This document is a maintainer-focused database reference. RuleDesk uses **SQLite
 
 - [User Guide](./user-guide.md) - End-user flows that depend on local data
 - [Architecture Documentation](./architecture.md) - Database architecture in system design
-- [API Documentation](./api.md) - IPC methods for database operations
+- [API Reference (generated)](./api.md) - IPC channel table
+- [API Guide](./api-guide.md) - IPC usage / DB-related method narrative
 - [README](../README.md#-development-setup) - Build, scripts, and local quality checks
 - [Glossary](./glossary.md) - Key terms (WAL Mode, Drizzle ORM, Migration, etc.)
 
