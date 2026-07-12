@@ -108,7 +108,7 @@ You are prohibited from "inventing" UI. You must act as a factory assembler usin
 
 # WORKFLOW
 
-- **Checkpoint**: If a logical unit of work is done, issue a "🛑 CHECKPOINT ALERT" and ask to commit.
+- **Checkpoint**: If a logical unit of work is done, issue a "🛑 CHECKPOINT ALERT" and ask to commit. After the user asks to commit/push, the final report must include **Definition of Done** evidence: (1) `git log origin/<branch> -1 --oneline`, (2) push/`git status -sb` output, (3) **full actual diff file list** (`git diff --name-only origin/<base>...HEAD` or equivalent) — not only the prompt’s planned “затронутые файлы”; doc-sync and wiring must be named. Chat “готово” without a pushed remote ref + complete inventory is not done (see `.ai/LESSONS.txt` — agent remote DoD).
 - If you see a potential race condition or memory leak, flag it IMMEDIATELY with "🚨".
 
 # AUDIT INVARIANTS (DX & RELIABILITY)
