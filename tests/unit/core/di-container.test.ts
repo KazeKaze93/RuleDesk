@@ -53,25 +53,19 @@ describe("Container", () => {
     );
   });
 
-  it("throws on re-entrant resolve of the same token (resolutionStack)", () => {
-    // Detects direct re-entry: resolve("A") while resolve("A") is still on the stack.
-    // Does not catch lazy A→B→A getter cycles after the outer resolve returns.
-    const token = new Token<string>("Circular");
-    container.register(token, "value");
-
-    const internal = container as unknown as { resolutionStack: Set<string> };
-    internal.resolutionStack.add("Circular");
-
-    expect(() => container.resolve(token)).toThrow(
-      /Circular dependency detected/i
-    );
-  });
-
   it("throws after clear() removed all registrations", () => {
     const token = new Token<string>("Database");
     container.register(token, "value");
     container.clear();
 
     expect(() => container.resolve(token)).toThrow(/not found/i);
+  });
+
+  it("rejects null/undefined registration", () => {
+    const token = new Token<string>("Database");
+    expect(() => {
+      // @ts-expect-error intentional invalid registration
+      container.register(token, null);
+    }).toThrow(/null\/undefined/i);
   });
 });

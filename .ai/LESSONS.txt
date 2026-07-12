@@ -101,8 +101,8 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 ## Architecture
 
 ### Problem: Custom DI containers are a YAGNI violation for small projects
-**Root Cause:** A full IoC-style abstraction was introduced without real needs for automatic wiring, lifecycle scopes, or module isolation.
-**Invariant Rule:** Prefer typed service registry (Map-backed or object-backed) with compile-time keys. Use a real IoC container only when automatic wiring or scope management is actually needed.
+**Root Cause:** A full IoC-style abstraction (cycle detection, factory theater) was introduced without automatic wiring or scopes; instance-Map `resolve` never runs user code, so circular-dependency stacks are dead.
+**Invariant Rule:** Prefer a slim typed instance registry (`Container` + `DI_TOKENS`, keyed by `token.id`). No cycle detection without lazy factories. Use a real IoC container only when automatic wiring or scope management is actually needed.
 
 ## Performance
 

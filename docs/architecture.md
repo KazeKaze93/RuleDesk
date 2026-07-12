@@ -577,10 +577,9 @@ const posts = await db.query.posts.findMany({
 
 5. **Dependency Injection Container** (`src/main/core/di/Container.ts`)
 
-   - Type-safe DI container with Token-based registration
+   - Slim typed instance registry (`Container` + `DI_TOKENS`) — stores instances, not factories
    - Internal `Map` keyed by **`token.id` string** (stable across hot reload; not object identity). Two `new Token('Database')` instances resolve the same service if registered once.
    - Singleton pattern for service management
-   - **Circular dependency detection** via `resolutionStack` during `resolve()` — catches **re-entrant** resolve of the same token id (e.g. `resolve('A')` while `resolve('A')` is still on the stack). Does **not** detect lazy getter cycles `A→B→A` after the outer `resolve` returns; that would require a full call-tree stack and is intentionally out of scope.
    - Services: Database, SyncService, BackupService, SyncScheduler
    - Unit tests: `tests/unit/core/di-container.test.ts`
 
