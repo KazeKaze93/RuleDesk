@@ -382,8 +382,8 @@ describe('SyncService Integration', () => {
       ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
       : settingsRecord.encryptedApiKey || '';
 
-    // Act - Sync should handle error gracefully
-    // SyncService has retry logic, so it might not throw immediately
+    // Act - HTTP 500 becomes a provider parse/network failure after retries.
+    // Cursor must stay put; incomplete flag must be visible (no silent "success" watermark).
     await service.syncArtist(artist, {
       userId: settingsRecord.userId || '',
       apiKey,
@@ -396,6 +396,12 @@ describe('SyncService Integration', () => {
       .where(eq(posts.artistId, artist.id));
     
     expect(savedPosts).toHaveLength(0);
+
+    const updatedArtist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.id, artist.id),
+    });
+    expect(updatedArtist?.lastPostId).toBe(0);
+    expect(updatedArtist?.lastSyncIncomplete).toBe(true);
   });
 
   it('should preserve accumulated posts when a later page fails', async () => {
@@ -448,7 +454,7 @@ describe('SyncService Integration', () => {
           return createPage(101);
         }
         if (page === 2) {
-          throw new Error('Provider page 3 failure');
+          throw new ProviderSearchError('network', 'Provider page 3 failure');
         }
         return [];
       }
@@ -460,7 +466,13 @@ describe('SyncService Integration', () => {
           userId: settingsRecord.userId || '',
           apiKey,
         })
-      ).rejects.toThrow('Provider page 3 failure');
+      ).rejects.toSatisfy((error: unknown) => {
+        return (
+          error instanceof ProviderSearchError &&
+          error.kind === 'network' &&
+          error.message === 'Provider page 3 failure'
+        );
+      });
 
       const savedPosts = await mockDb.db
         .select()
@@ -473,7 +485,447 @@ describe('SyncService Integration', () => {
         where: eq(artists.id, artist.id),
       });
 
-      expect(updatedArtist?.lastPostId).toBe(200);
+      // Cursor must not advance on incomplete pagination — resume can refill gaps
+      expect(updatedArtist?.lastPostId).toBe(0);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+      expect(updatedArtist?.lastChecked).toBeNull();
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('should not advance cursor after mid-batch commit when a later page fails', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const createPage = (startId: number): BooruPost[] =>
+      Array.from({ length: 100 }, (_, index) => {
+        const id = startId + index;
+        return {
+          id,
+          fileUrl: `https://cdn.example.com/${id}.jpg`,
+          previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+          sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+          tags: ['artist_name', `tag_${id}`],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 1000,
+          height: 1000,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        };
+      });
+
+    const provider = getProvider('rule34');
+    // 5 full pages → mid-batch commit at 500 posts; page 5 throws
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async (_tags, page) => {
+        if (page >= 0 && page <= 4) {
+          return createPage(page * 100 + 1);
+        }
+        if (page === 5) {
+          throw new ProviderSearchError('network', 'Provider failure after mid-batch');
+        }
+        return [];
+      }
+    );
+
+    try {
+      await expect(
+        service.syncArtist(artist, {
+          userId: settingsRecord.userId || '',
+          apiKey,
+        })
+      ).rejects.toSatisfy((error: unknown) => {
+        return (
+          error instanceof ProviderSearchError &&
+          error.message === 'Provider failure after mid-batch'
+        );
+      });
+
+      const savedPosts = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+
+      expect(savedPosts).toHaveLength(500);
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+
+      expect(updatedArtist?.lastPostId).toBe(0);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+      expect(updatedArtist?.newPostsCount).toBe(500);
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('should resume and complete pagination after a mid-run failure without skipping pages', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    // Incremental path (avoids initial-sync FTS rebuild edge cases under abort+retry)
+    await mockDb.db
+      .update(artists)
+      .set({ lastPostId: 50 })
+      .where(eq(artists.id, artist.id));
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const createPage = (startId: number, count = 100): BooruPost[] =>
+      Array.from({ length: count }, (_, index) => {
+        const id = startId + index;
+        return {
+          id,
+          fileUrl: `https://cdn.example.com/${id}.jpg`,
+          previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+          sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+          tags: ['artist_name', `tag_${id}`],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 1000,
+          height: 1000,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        };
+      });
+
+    const provider = getProvider('rule34');
+    let failOnce = true;
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async (_tags, page) => {
+        if (page === 0) {
+          return createPage(51);
+        }
+        if (page === 1 && failOnce) {
+          failOnce = false;
+          throw new ProviderSearchError('network', 'Transient page 2 failure');
+        }
+        if (page === 1) {
+          return createPage(151);
+        }
+        if (page === 2) {
+          return createPage(251, 50);
+        }
+        return [];
+      }
+    );
+
+    try {
+      const artistBefore = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      if (!artistBefore) {
+        throw new Error('Artist missing before sync');
+      }
+
+      await expect(
+        service.syncArtist(artistBefore, {
+          userId: settingsRecord.userId || '',
+          apiKey,
+        })
+      ).rejects.toSatisfy((error: unknown) => {
+        return (
+          error instanceof ProviderSearchError &&
+          error.message === 'Transient page 2 failure'
+        );
+      });
+
+      let updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      expect(updatedArtist?.lastPostId).toBe(50);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+
+      const afterFailure = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+      expect(afterFailure).toHaveLength(100);
+
+      updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      if (!updatedArtist) {
+        throw new Error('Artist missing after failure');
+      }
+
+      await service.syncArtist(updatedArtist, {
+        userId: settingsRecord.userId || '',
+        apiKey,
+      });
+
+      const afterResume = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+      expect(afterResume).toHaveLength(250);
+
+      const finalArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      expect(finalArtist?.lastPostId).toBe(300);
+      expect(finalArtist?.lastSyncIncomplete).toBe(false);
+      expect(finalArtist?.lastChecked).not.toBeNull();
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('should treat a full page of already-known posts as completed incremental sync', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    await mockDb.db
+      .update(artists)
+      .set({ lastPostId: 500, lastSyncIncomplete: false, lastChecked: null })
+      .where(eq(artists.id, artist.id));
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const createPage = (startId: number): BooruPost[] =>
+      Array.from({ length: 100 }, (_, index) => {
+        const id = startId + index;
+        return {
+          id,
+          fileUrl: `https://cdn.example.com/${id}.jpg`,
+          previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+          sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+          tags: ['artist_name', `tag_${id}`],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 1000,
+          height: 1000,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        };
+      });
+
+    const provider = getProvider('rule34');
+    // Full PAGE_SIZE of posts all ≤ lastPostId → newPosts empty, still completed
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockResolvedValue(
+      createPage(401)
+    );
+
+    try {
+      const artistBefore = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      if (!artistBefore) {
+        throw new Error('Artist missing');
+      }
+
+      await service.syncArtist(artistBefore, {
+        userId: settingsRecord.userId || '',
+        apiKey,
+      });
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+
+      expect(updatedArtist?.lastPostId).toBe(500);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(false);
+      expect(updatedArtist?.lastChecked).not.toBeNull();
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('should not mark pagination complete if the short last page fails after fetch', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    await mockDb.db
+      .update(artists)
+      .set({ lastPostId: 50 })
+      .where(eq(artists.id, artist.id));
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const createPost = (id: number): BooruPost => ({
+      id,
+      fileUrl: `https://cdn.example.com/${id}.jpg`,
+      previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+      sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+      tags: ['artist_name', `tag_${id}`],
+      rating: 's',
+      score: 0,
+      source: '',
+      width: 1000,
+      height: 1000,
+      createdAt: new Date('2025-01-01T00:00:00.000Z'),
+    });
+
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async (_tags, page) => {
+        if (page === 0) {
+          return Array.from({ length: 100 }, (_, index) =>
+            createPost(51 + index)
+          );
+        }
+        if (page === 1) {
+          // Short last page: fetch succeeded; processing throws before completion flag
+          const boomPost = createPost(151);
+          Object.defineProperty(boomPost, 'fileUrl', {
+            configurable: true,
+            get(): string {
+              throw new Error('Processing failure on short last page');
+            },
+          });
+          return [boomPost, createPost(152)];
+        }
+        return [];
+      }
+    );
+
+    try {
+      const artistBefore = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      if (!artistBefore) {
+        throw new Error('Artist missing');
+      }
+
+      await expect(
+        service.syncArtist(artistBefore, {
+          userId: settingsRecord.userId || '',
+          apiKey,
+        })
+      ).rejects.toThrow('Processing failure on short last page');
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+
+      expect(updatedArtist?.lastPostId).toBe(50);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+
+      const savedPosts = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+      // Page 0 buffered then partial-committed; last short page never entered the batch
+      expect(savedPosts).toHaveLength(100);
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('should rethrow axios network errors instead of silent success', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const axios = await import('axios');
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(async () => {
+      throw new axios.AxiosError('Network down', 'ERR_NETWORK');
+    });
+
+    try {
+      await expect(
+        service.syncArtist(artist, {
+          userId: settingsRecord.userId || '',
+          apiKey,
+        })
+      ).rejects.toSatisfy((error: unknown) => {
+        return (
+          error instanceof ProviderSearchError && error.kind === 'network'
+        );
+      });
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      expect(updatedArtist?.lastPostId).toBe(0);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(true);
     } finally {
       fetchPostsSpy.mockRestore();
     }
