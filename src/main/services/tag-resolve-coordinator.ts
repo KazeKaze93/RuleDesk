@@ -34,7 +34,6 @@ type TagResolveWaveStats = {
 
 const inFlightLookups = new Map<string, Promise<TagLookupResult>>();
 const negativeCacheUntil = new Map<string, number>();
-let globalRateLimitUntilMs = 0;
 let last429BurstLogAtMs = 0;
 
 function sleep(ms: number): Promise<void> {
@@ -78,19 +77,10 @@ function resolveRetryAfterMs(retryAfterMs: number, attempt: number): number {
   return Math.min(exponentialBackoff, TAG_RESOLVE_MAX_RETRY_AFTER_MS);
 }
 
-async function waitForGlobalRateLimit(): Promise<void> {
-  const waitMs = globalRateLimitUntilMs - Date.now();
-  if (waitMs > 0) {
-    await sleep(waitMs);
-  }
-}
-
 function recordRateLimitBurst(retryAfterMs: number, attempt: number): void {
   const delayMs = resolveRetryAfterMs(retryAfterMs, attempt);
-  globalRateLimitUntilMs = Math.max(
-    globalRateLimitUntilMs,
-    Date.now() + delayMs
-  );
+  // Shared host gate — never keep a parallel local copy of rate-limit state.
+  getRule34TagProvider().getRequestThrottle().notifyRateLimited(delayMs);
 
   const now = Date.now();
   if (now - last429BurstLogAtMs >= TAG_RESOLVE_429_BURST_LOG_WINDOW_MS) {
@@ -132,7 +122,6 @@ async function lookupTagFromApi(
     attempt += 1
   ) {
     try {
-      await waitForGlobalRateLimit();
       return await fetchRule34TagMetadata(
         tagName,
         settings,
@@ -290,6 +279,10 @@ export async function resolveTagMetadataWave(
 export function resetTagResolveCoordinatorForTests(): void {
   inFlightLookups.clear();
   negativeCacheUntil.clear();
-  globalRateLimitUntilMs = 0;
   last429BurstLogAtMs = 0;
+  try {
+    getRule34TagProvider().getRequestThrottle().resetRateLimitGateForTests();
+  } catch {
+    // Provider may be mocked without a real throttle in some tests.
+  }
 }

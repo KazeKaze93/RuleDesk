@@ -605,6 +605,8 @@ const posts = await db.query.posts.findMany({
    - Implementations: `Rule34Provider`, `GelbooruProvider`
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
    - Shared request pacing via `ProviderThrottle` (~1200ms + jitter) and session UA via `pickRandomUA()`
+   - **Priorities:** `user` (Sync `fetchPosts`, Browse/search `fetchPosts`, autocomplete) drains before `background` (tag-resolve). Same min-interval; order only.
+   - **Host 429 gate:** any consumer calls `notifyRateLimited(retryAfterMs?)`; all waiters honor it (`background` fails fast, `user` waits up to `USER_GATE_WAIT_CEILING_MS` then fails with typed rate_limit)
 
 9. **Video Proxy Service** (`src/main/services/video-proxy-server.ts`)
 
@@ -1897,7 +1899,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 - **Safe Mode / NSFW Filter:** blur logic and safe mode state in gallery/viewer (`safeModeStore`, `PanicButton`, `PostCard`, `ViewerDialog`)
 - **Age Gate:** `src/renderer/components/onboarding/AgeGate.tsx` and `confirmLegal` IPC method
 - **User Data Path:** Neutral `.rdcache` via `bootstrap-user-data.ts` (not next to the executable)
-- **Anti-Bot Measures:** Shared `ProviderThrottle` (~1200ms + jitter) and session UA rotation via `pickRandomUA()` across current providers
+- **Anti-Bot Measures:** Shared `ProviderThrottle` (~1200ms + jitter) and session UA rotation via `pickRandomUA()` across current providers. One throttle instance per provider host serializes Sync/Browse/autocomplete (`user` priority) ahead of tag-resolve (`background`). A single host 429 gate (`notifyRateLimited`) is written by any consumer and checked by every `wait()` — local rate-limit copies are forbidden.
 - **DB Optimization (FTS5):** FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
 - **Composite Indexes:** Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries
 - **Centralized Validation:** No single monolithic validation module by design; current direction is shared schemas + typed controller wrappers at IPC boundaries.

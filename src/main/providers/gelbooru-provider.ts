@@ -12,7 +12,8 @@ import {
 } from "../../shared/utils/provider-tag-sanitize";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
-import { ProviderThrottle, pickRandomUA } from "./provider-throttle";
+import { ProviderThrottle, pickRandomUA, ProviderRateLimitGateError } from "./provider-throttle";
+import { ProviderSearchError } from "./provider-search-errors";
 import { getProxyAgent } from "../lib/proxy";
 
 type GelbooruTagItem = {
@@ -137,7 +138,14 @@ export class GelbooruProvider implements IBooruProvider {
     isRandom: boolean,
     limit: number
   ): Promise<BooruPost[]> {
-    await this.throttle.wait();
+    try {
+      await this.throttle.wait("user");
+    } catch (error) {
+      if (error instanceof ProviderRateLimitGateError) {
+        throw new ProviderSearchError("rate_limit", undefined, error.retryAfterMs);
+      }
+      throw error;
+    }
 
     // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
     // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
