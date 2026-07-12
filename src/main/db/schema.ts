@@ -163,7 +163,8 @@ export const tagMetadata = sqliteTable(
     status: text("status", { enum: TAG_METADATA_STATUSES })
       .notNull()
       .default("found"),
-    resolvedAt: integer("resolved_at", { mode: "timestamp" })
+    // Units: milliseconds since epoch. Raw SQL (maintenance DELETE) compares with Date.now()-based cutoffs.
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
   },

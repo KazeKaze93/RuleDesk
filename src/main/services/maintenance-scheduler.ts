@@ -1,7 +1,7 @@
 import log from "electron-log";
 import { getSqliteInstance } from "../db/client";
+import { deleteExpiredNotFoundTagMetadata } from "../db/queries/tag-metadata";
 import type { VideoProxyServer } from "./video-proxy-server";
-import { TAG_RESOLVE_NOT_FOUND_TTL_MS } from "../config/tag-resolve-constants";
 
 const STARTUP_DELAY_MS = 10_000;
 const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -45,17 +45,10 @@ export class MaintenanceScheduler {
         sqlite.exec("PRAGMA wal_checkpoint(PASSIVE);");
         sqlite.exec("PRAGMA optimize;");
 
-        const expiredNotFoundCutoffMs =
-          Date.now() - TAG_RESOLVE_NOT_FOUND_TTL_MS;
-        const deletedExpiredNotFound = sqlite
-          .prepare(
-            `DELETE FROM tag_metadata
-             WHERE status = 'not_found' AND resolved_at < ?`
-          )
-          .run(expiredNotFoundCutoffMs);
-        if (deletedExpiredNotFound.changes > 0) {
+        const deletedExpiredNotFound = deleteExpiredNotFoundTagMetadata(sqlite);
+        if (deletedExpiredNotFound > 0) {
           log.info(
-            `[MaintenanceScheduler] Deleted ${deletedExpiredNotFound.changes} expired not_found tag_metadata rows`
+            `[MaintenanceScheduler] Deleted ${deletedExpiredNotFound} expired not_found tag_metadata rows`
           );
         }
 

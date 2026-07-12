@@ -280,7 +280,8 @@ Persistent cache for Rule34 tag type resolution (viewer TagsDrawer / resolve IPC
 | `name`         | TEXT (PK, NOT NULL)               | Tag string (lowercase provider form)                                        |
 | `type`         | INTEGER (NOT NULL)                | Rule34 tag type for `found` rows; placeholder (`0`) when `status=not_found` |
 | `status`       | TEXT (NOT NULL, DEFAULT `found`)  | `found` or `not_found` — never store unresolved (429/network) as `not_found` |
-| `resolved_at`  | INTEGER (TIMESTAMP, NOT NULL)     | When this outcome was written (ms); TTL gate for `not_found`                |
+| `resolved_at`  | INTEGER (TIMESTAMP_MS, NOT NULL)  | When this outcome was written (**milliseconds**); TTL gate for `not_found`  |
+
 
 **Semantics:**
 

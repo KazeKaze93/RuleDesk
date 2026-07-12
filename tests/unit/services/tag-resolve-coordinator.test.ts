@@ -57,6 +57,7 @@ import {
   resetTagResolveCoordinatorForTests,
   resolveTagMetadataWave,
 } from "@/main/services/tag-resolve-coordinator";
+import { deleteExpiredNotFoundTagMetadata } from "@/main/db/queries/tag-metadata";
 
 describe("tag-resolve-coordinator", () => {
   let mockDb: ReturnType<typeof createMockDb>;
@@ -261,5 +262,46 @@ describe("tag-resolve-coordinator", () => {
     const row = mockDb.db.select().from(tagMetadata).all()[0];
     expect(row?.status).toBe("found");
     expect(row?.resolvedAt).toBeInstanceOf(Date);
+  });
+
+  it("maintenance DELETE keeps fresh Drizzle not_found and removes expired (ms units aligned)", async () => {
+    fetchRule34TagMetadataMock.mockResolvedValue({ status: "not_found" });
+
+    const freshCache = loadTagMetadataCache(mockDb.db, ["fresh_miss"]);
+    await resolveTagMetadataWave(
+      mockDb.db,
+      ["fresh_miss"],
+      freshCache,
+      { userId: "1", apiKey: "key" },
+      "test-maintenance-fresh"
+    );
+
+    const rawFresh = mockDb.sqlite
+      .prepare("SELECT resolved_at FROM tag_metadata WHERE name = ?")
+      .get("fresh_miss") as { resolved_at: number } | undefined;
+    expect(rawFresh?.resolved_at).toBeGreaterThan(1_000_000_000_000);
+
+    const deletedFresh = deleteExpiredNotFoundTagMetadata(mockDb.sqlite);
+    expect(deletedFresh).toBe(0);
+    expect(
+      mockDb.db.select().from(tagMetadata).all().some((row) => row.name === "fresh_miss")
+    ).toBe(true);
+
+    const expiredAt = new Date(Date.now() - TAG_RESOLVE_NOT_FOUND_TTL_MS - 60_000);
+    mockDb.db
+      .insert(tagMetadata)
+      .values({
+        name: "expired_miss",
+        type: TAG_TYPES.GENERAL,
+        status: "not_found",
+        resolvedAt: expiredAt,
+      })
+      .run();
+
+    const deletedExpired = deleteExpiredNotFoundTagMetadata(mockDb.sqlite);
+    expect(deletedExpired).toBe(1);
+    const remaining = mockDb.db.select().from(tagMetadata).all();
+    expect(remaining.some((row) => row.name === "fresh_miss")).toBe(true);
+    expect(remaining.some((row) => row.name === "expired_miss")).toBe(false);
   });
 });
