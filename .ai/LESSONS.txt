@@ -68,6 +68,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** Inline `safeStorage.decryptString` catch blocks fell back to `settings.encryptedApiKey` (base64 ciphertext).
 **Invariant Rule:** Use `SecureStorage.decrypt()` or `getDecryptedCredentialsFromRecord()`; on failure return `null` or throw `CredentialDecryptionError`. Never pass stored ciphertext to providers or logs as if it were the key.
 
+### Problem: Split-brain encrypt/decrypt after duplicated crypto helpers
+**Root Cause:** `lib/crypto.ts` and `services/secure-storage.ts` copied the same safeStorage + test-fallback logic; Settings encrypted via one module while decrypt went through the other.
+**Invariant Rule:** Cryptographic helpers exist in one module (`SecureStorage`); duplicating security code is forbidden.
+
 ## Renderer / Workers
 
 ### Problem: Browse media-type filter breaks after worker pass
