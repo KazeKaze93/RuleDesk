@@ -85,11 +85,10 @@ function mapSettingsToIpc(
     isSafeMode: !!dbSettings.isSafeMode, // .default(true) in schema - Drizzle ensures value exists
     isAdultConfirmed: !!dbSettings.isAdultConfirmed, // .default(false) in schema - Drizzle ensures value exists
     isAdultVerified: !!dbSettings.isAdultVerified, // .notNull() in schema - always present
-    // Convert Date to number for IPC serialization
-    // Drizzle with mode: "timestamp" returns Date | null
-    // But we need to handle edge cases where it might be a number (timestamp) or null
-    // CRITICAL: Drizzle with mode: "timestamp" stores as integer (milliseconds) in SQLite
-    // and returns Date object when reading, but we need to handle all cases
+    // Convert Date to number for IPC serialization.
+    // Drizzle mode: "timestamp" stores unix seconds in SQLite and returns Date | null on read.
+    // IPC layer converts Date → ms via getTime(). A raw integer from SQLite would be seconds —
+    // do not treat it as milliseconds (that reproduces the Stats timeline unit bug class).
     tosAcceptedAt: (() => {
       const value = dbSettings.tosAcceptedAt;
       if (value instanceof Date) {

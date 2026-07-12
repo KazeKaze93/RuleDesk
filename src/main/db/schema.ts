@@ -150,6 +150,7 @@ export const settings = sqliteTable("settings", {
   syncIntervalMinutes: integer("sync_interval_minutes").default(0).notNull(),
   backupRetention: integer("backup_retention").default(5).notNull(),
   vacuumSchedule: text("vacuum_schedule").default("manual"),
+  // Units: milliseconds since epoch (written as Date.now()); bare integer, no Drizzle mode — do not add raw-SQL time comparisons without matching ms
   lastVacuumAt: integer("last_vacuum_at"),
   lastVacuumStatus: text("last_vacuum_status"),
   lastVacuumError: text("last_vacuum_error"),
