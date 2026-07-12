@@ -9,7 +9,7 @@ Vitest tests that exercise **Main-process** IPC controllers and services against
 | `tests/integration/controllers/` | IPC handler wiring + validation |
 | `tests/integration/services/` | Service-layer behavior (sync, backup, etc.) |
 
-## Post-audit additions (v16.2.x)
+## Post-audit additions (v17.x)
 
 | File | What it proves |
 |------|----------------|

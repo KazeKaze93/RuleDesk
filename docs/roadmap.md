@@ -1,6 +1,6 @@
 # 🚀 Roadmap
 
-This document reflects the current roadmap for RuleDesk `v16.x` and is aligned with `README.md` and `package.json` (see `version`).
+This document reflects the current roadmap for RuleDesk `v17.x` and is aligned with `README.md` and `package.json` (see `version`).
 
 ## 📑 Table of Contents
 
@@ -30,7 +30,7 @@ This document reflects the current roadmap for RuleDesk `v16.x` and is aligned w
 - ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`).
 - ✅ **Backup retention:** after each successful backup, older files are pruned based on `backupRetention` from Settings (`1..20`).
 - ✅ **User-visible DB maintenance:** Settings now exposes VACUUM status (last run timestamp/status/error), manual trigger, and schedule (`manual` / `weekly` / `monthly`).
-- ✅ **Post-audit hardening (v16.2.x):** shared credential decrypt helper (no ciphertext fallback on IPC paths), `SyncService.runExclusive` queue for sync/repair, `MAX_TRACKED_ARTISTS` (5000) cap, stable Virtuoso list components, Browse worker error UI, worker `mapWorkerPostToPost` field preservation, DI container keyed by `token.id`, orientation filter removed (dead code). See [Architecture](./architecture.md) and [TEST_COVERAGE.md](../tests/unit/TEST_COVERAGE.md).
+- ✅ **Post-audit hardening (v17.x):** shared credential decrypt helper (no ciphertext fallback on IPC paths), `SyncService.runExclusive` queue for sync/repair, `MAX_TRACKED_ARTISTS` (5000) cap, stable Virtuoso list components, Browse worker error UI, worker `mapWorkerPostToPost` field preservation, DI container keyed by `token.id`, orientation filter removed (dead code). See [Architecture](./architecture.md) and [TEST_COVERAGE.md](../tests/unit/TEST_COVERAGE.md).
 
 ---
 
@@ -90,7 +90,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 **Current state:** ✅ implemented
 
 - ✅ **Auto-sync on startup** (toggle in Settings under Sync).
-- ✅ **Periodic sync** — interval selected in Settings (Disabled, 15 / 30 / 60 / 120 minutes). Values below the minimum in code are treated as disabled.
+- ✅ **Periodic sync** — interval selected in Settings (Disabled, 15 / 30 / 60 / 120 minutes). Values below the code minimum (`MIN_INTERVAL_MINUTES = 5`) are treated as disabled.
 
 ## 🛡️ Security & Reliability (Hardening)
 
@@ -163,7 +163,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.
 - ✅ **CI:** `validate` → `docs:api` freshness → `npm test` → production `npm audit --omit=dev --audit-level=high`; release tags wait for quality + e2e, then Windows zip + Linux AppImage.
-- ✅ **Post-audit regression tests:** **183** Vitest tests across **27** files (includes collapse/throttle + `SecureStorage` suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md)).
+- ✅ **Post-audit regression tests:** **196** Vitest tests across **28** files (includes collapse/throttle + `SecureStorage` + video-proxy suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md)).
 - ✅ **Main process HMR/watch**, shared Zod IPC helpers, provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
 
 - ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.

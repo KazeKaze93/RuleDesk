@@ -2,7 +2,7 @@
 
 ## Overview
 
-Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **183 tests** across **27 files** (unit + integration + property). Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
+Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **196 tests** across **28 files** (unit + integration + property). Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
 
 ## Test files (unit)
 
@@ -28,12 +28,13 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `providers/rule34-provider-fetch-posts.test.ts` | 5 | fetchPosts error classification |
 | `services/tag-resolve-coordinator.test.ts` | 3 | Tag resolve dedup / rate limit |
 | `services/secure-storage.test.ts` | 3 | `SecureStorage` encrypt/decrypt (sole crypto path) |
+| `services/video-proxy-server.test.ts` | 8 | Video proxy allowlist / cache / eviction |
 
 ## Other Vitest suites
 
 | Suite | Location | Tests |
 |-------|----------|-------|
-| Integration | `tests/integration/` | 16 |
+| Integration | `tests/integration/` | 21 |
 | Property / fuzzing | `tests/property/fuzzing.test.ts` | 12 |
 
 ### Integration highlights
@@ -72,4 +73,3 @@ npm run test:verify                   # validate + all tests + ABI restore
 1. Component rendering tests with `@testing-library/react` (optional)
 2. Broader IPC contract tests via shared Zod schemas
 3. Visual regression for masonry/grid layouts (Playwright)
-4. Coverage for video-cache atomic writes and sync-cursor integrity once those P0 fixes land

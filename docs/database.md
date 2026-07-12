@@ -61,6 +61,7 @@ Stores information about tracked artists/users.
 | `new_posts_count` | INTEGER (NOT NULL, DEFAULT 0)     | Count of new, unviewed posts                |
 | `sync_status`     | TEXT (NOT NULL, DEFAULT 'idle')   | Current sync state (`idle`, `syncing`, `error`) |
 | `last_error`      | TEXT (NULL)                       | Last sync error message                     |
+| `last_sync_incomplete` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | 1 when pagination did not finish; cursor must not advance until cleared |
 | `last_checked`    | INTEGER (NULL)                    | Timestamp of last API poll (timestamp mode) |
 | `created_at`      | INTEGER (NOT NULL)                | Creation timestamp (timestamp mode, ms)     |
 
@@ -80,6 +81,10 @@ export const artists = sqliteTable(
     apiEndpoint: text("api_endpoint").notNull(),
     lastPostId: integer("last_post_id").default(0).notNull(),
     newPostsCount: integer("new_posts_count").default(0).notNull(),
+    syncStatus: text("sync_status", { enum: ["idle", "syncing", "error"] })
+      .notNull()
+      .default("idle"),
+    lastError: text("last_error"),
     lastSyncIncomplete: integer("last_sync_incomplete", { mode: "boolean" })
       .notNull()
       .default(false),
@@ -942,7 +947,7 @@ The application also exposes VACUUM maintenance controls in Settings:
    - `synchronous = NORMAL` for optimal performance with WAL mode
    - `temp_store = MEMORY` for faster temporary table operations
    - Memory-mapped I/O (configurable via `SQLITE_MMAP_SIZE` env var, default 64MB)
-5. **Batch Operations:** Bulk upsert operations process posts in chunks (200 posts per chunk) to avoid SQLite variable limit
+5. **Batch Operations:** Bulk upsert operations process posts in chunks (`CHUNK_SIZE` = 75) to avoid SQLite variable limit
 6. **Query Optimization:**
    - Use Drizzle's query builder efficiently with proper indexes
    - FTS5 queries use EXISTS with JOIN pattern for optimal performance

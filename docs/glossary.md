@@ -46,7 +46,7 @@ The process of fetching new posts from booru APIs and updating the local databas
 
 **Features:**
 
-- Rate limiting (1.5s delay between artists, 0.5s between pages)
+- Rate limiting (`ProviderThrottle`: ~1200ms minimum + 0–400ms jitter per request)
 - Incremental sync (only fetches posts newer than `lastPostId`)
 - Background execution with progress tracking
 - Exponential backoff for error handling
@@ -333,8 +333,8 @@ A mechanism to prevent API abuse by limiting request frequency. RuleDesk impleme
 
 **Current Limits:**
 
-- 1.5s delay between artists
-- 0.5s delay between pages
+- Shared `ProviderThrottle` default: ~1200ms minimum interval + 0–400ms jitter per request
+- Sync retry backoff base: 2000ms (`SyncService`)
 
 **Related:** [Sync Service](./architecture.md#sync-service), [Rate Limiting](./api-guide.md#external-api-integration)
 

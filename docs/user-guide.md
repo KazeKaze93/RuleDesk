@@ -397,8 +397,12 @@ The **top bar** appears on content pages and provides:
 - **Search box behavior** - Uses available width on the left side of the top bar; chips can wrap to a second row when needed
 - **Filters button** - Open filters panel
 - **Sort dropdown** - Change sorting order
-- **View toggle** - Switch between grid/list views
+- **View toggle** - Switch between grid and masonry views
 - **Sync status** - See last sync time and progress
+
+### Safe Mode
+
+Use the **Safe Mode** control in the app shell (`PanicButton`) to blur sensitive ratings on gallery cards and in the full-screen viewer. Blur amount and panic state live in `safeModeStore` and apply in `PostCard` / `ViewerDialog`.
 
 ### Keyboard Shortcuts
 
