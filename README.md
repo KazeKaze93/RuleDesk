@@ -352,7 +352,8 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 ### 🛠️ Maintainer Appendix
 
 - **[Architecture Documentation](./docs/architecture.md)** - System architecture and boundaries
-- **[API Documentation](./docs/api.md)** - IPC API reference and usage patterns
+- **[API Reference](./docs/api.md)** - Generated IPC channel table (`npm run docs:api`)
+- **[API Guide](./docs/api-guide.md)** - IPC usage patterns, examples, security narrative
 - **[Database Documentation](./docs/database.md)** - Schema, migrations, and operational notes
 - **[Rule34 API Reference](./docs/rule34-api-reference.md)** - Unofficial Rule34.xxx API documentation
 - **[.cursorrules](./.cursorrules)** - Code standards and development principles

@@ -1,0 +1,6 @@
+{
+  "system:wipe-all-data": "Deletes all children of userData (.rdcache), then app.exit(0). Order: closeDatabase → stop video proxy → rm → exit. Does not touch download folders outside userData.",
+  "app:get-settings-status": "Returns IPC-safe settings (no API key plaintext). Idempotent; cached until save.",
+  "db:get-posts": "Paginated posts with filters. Always limited — see MAX page size in PostsController.",
+  "booru:search": "Provider search; auth/rate_limit errors surface as typed IPC errors to Browse UI."
+}

@@ -30,6 +30,11 @@ jobs:
       - name: Validate (typecheck, lint, img attrs)
         run: npm run validate
 
+      - name: IPC API docs freshness
+        run: |
+          npm run docs:api
+          git diff --exit-code docs/api.md
+
       - name: Unit, integration & property tests
         run: npm test
 

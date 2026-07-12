@@ -26,7 +26,8 @@ This document is a maintainer-focused architecture reference. It describes how R
 **📖 Related Documentation:**
 
 - [User Guide](./user-guide.md) - End-user flows and product behavior
-- [API Documentation](./api.md) - IPC API reference
+- [API Reference (generated)](./api.md) - IPC channel table (`npm run docs:api`)
+- [API Guide](./api-guide.md) - IPC usage patterns and examples
 - [Database Documentation](./database.md) - Database architecture details
 - [README](../README.md#-development-setup) - Build, scripts, and local quality checks
 - [Glossary](./glossary.md) - Key terms (Main Process, Renderer Process, IPC, etc.)
@@ -1675,13 +1676,16 @@ Root:
 │       ├── _journal.json           # Migration journal
 │       └── *_snapshot.json         # Schema snapshots
 ├── docs/                           # Documentation
-│   ├── api.md
+│   ├── api.md                      # Generated IPC reference (do not hand-edit)
+│   ├── api-guide.md                # IPC narrative / examples
+│   ├── api-notes/                  # Optional channel notes for the generator
 │   ├── architecture.md
 │   ├── index.md
 │   ├── database.md
 │   ├── roadmap.md
 │   └── rule34-api-reference.md
 ├── scripts/                        # Build and utility scripts
+│   ├── generate-api-docs.mjs       # IPC docs generator
 │   ├── ai_reviewer.py
 │   └── system_prompt.md
 ├── .github/                        # GitHub workflows

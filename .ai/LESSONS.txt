@@ -53,9 +53,9 @@ Root Cause: Extension checks run on full URL string.
 Invariant Rule: Parse URL pathname first, then detect media extension.
 
 8) Documentation Drift
-Problem: Docs describe behavior that no longer matches implementation.
-Root Cause: Code changes ship without synchronized documentation updates.
-Invariant Rule: Any behavior/API/workflow change must update `README.md`, `docs/*`, and lessons in the same task.
+Problem: Docs describe behavior that no longer matches implementation; hand-maintained IPC tables drift from controllers.
+Root Cause: Code changes ship without synchronized documentation updates; large manual api.md cannot stay in sync with channels.ts.
+Invariant Rule: Any behavior/API/workflow change must update `README.md`, `docs/*`, and lessons in the same task. The IPC channel reference (`docs/api.md`) is **generated** via `npm run docs:api` from `channels.ts` + handler registrations — hand-editing it is forbidden; regenerate after IPC changes and keep narrative in `docs/api-guide.md` / `docs/api-notes/`.
 
 9) Unused Code Debt
 Problem: Dead imports/variables increase noise and hide real issues.

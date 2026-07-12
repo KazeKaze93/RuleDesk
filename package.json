@@ -28,6 +28,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "check:img-attrs": "node scripts/check-img-loading-decoding.mjs",
     "check:release-artifacts": "node scripts/check-release-artifacts.mjs",
+    "docs:api": "node scripts/generate-api-docs.mjs",
     "validate": "npm run typecheck && npm run lint && npm run check:img-attrs",
     "// TESTING": "---",
     "pretest": "npm run db:rebuild:node",
