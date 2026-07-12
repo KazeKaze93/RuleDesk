@@ -120,7 +120,7 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ### Problem: Raw-SQL maintenance deleted every fresh not_found row within seconds of startup
 **Root Cause:** Drizzle `mode: "timestamp"` stores seconds while maintenance DELETE compared `resolved_at` to a `Date.now()`-based millisecond cutoff — seconds are always below that cutoff, so the first tick wiped the entire negative cache.
-**Invariant Rule:** Timestamp columns touched by raw SQL use `mode: "timestamp_ms"` with an explicit unit comment in the schema. Any raw-SQL time comparison MUST have a test that writes via the ORM path and asserts the row survives/expires against the production DELETE helper — never a hand-copied SQL string alone.
+**Invariant Rule:** Timestamp columns touched by raw SQL use `mode: "timestamp_ms"` with an explicit unit comment in the schema when the column is authored as ms; otherwise raw SQL must match the column's actual unit (`timestamp` = seconds). Any raw-SQL time comparison — DELETE **and** SELECT/aggregations — MUST have a test that writes via the ORM path and asserts against the production query helper, never a hand-copied SQL string alone.
 
 ## Security (credentials)
 

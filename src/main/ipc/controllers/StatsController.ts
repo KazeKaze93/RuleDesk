@@ -5,6 +5,7 @@ import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { getSqliteInstance } from "../../db/client";
 import { getDatabasePaths } from "../../db/paths";
+import { buildPostsTimeline } from "../../db/queries/stats";
 import { IPC_CHANNELS } from "../channels";
 import type { ExtendedStats } from "../../../shared/schemas/stats";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
@@ -15,7 +16,6 @@ type MediaRow = { mediaType: string | null; c: number };
 type ProviderRow = { provider: string; c: number };
 type TopArtistRow = { name: string; postCount: number };
 type TopTagRow = { tag: string; count: number };
-type TimelineRow = { month: string; count: number };
 
 // Query style: Drizzle Builder API only in this controller.
 export class StatsController extends BaseController {
@@ -118,19 +118,7 @@ export class StatsController extends BaseController {
       `)
       .all();
 
-    const timelineRows = sqlite
-      .prepare<[], TimelineRow>(`
-        SELECT
-          strftime('%Y-%m', datetime(created_at / 1000, 'unixepoch')) as month,
-          COUNT(*) as count
-        FROM posts
-        WHERE created_at >= CAST(strftime('%s', 'now', 'start of month', '-11 months') AS INTEGER) * 1000
-        GROUP BY month
-        ORDER BY month ASC
-      `)
-      .all();
-
-    const postsTimeline = this.fillMissingMonths(timelineRows);
+    const postsTimeline = buildPostsTimeline(sqlite);
 
     const { dbPath } = getDatabasePaths();
     let dbSizeBytes = 0;
@@ -153,23 +141,5 @@ export class StatsController extends BaseController {
       postsTimeline,
       dbSizeBytes,
     };
-  }
-
-  private fillMissingMonths(rows: TimelineRow[]): Array<{ month: string; count: number }> {
-    const timelineMap = new Map<string, number>();
-    rows.forEach((row) => {
-      timelineMap.set(row.month, row.count);
-    });
-
-    const now = new Date();
-    const months: Array<{ month: string; count: number }> = [];
-    for (let offset = 11; offset >= 0; offset -= 1) {
-      const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const monthKey = `${year}-${month}`;
-      months.push({ month: monthKey, count: timelineMap.get(monthKey) ?? 0 });
-    }
-    return months;
   }
 }
