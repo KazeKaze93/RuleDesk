@@ -487,17 +487,14 @@ export class SyncService {
             artist.name
           );
 
-          if (postsData.length < PAGE_SIZE) {
-            paginationCompleted = true;
-          }
-
           // Filter posts: initial sync saves all, incremental only saves new ones
           const newPosts = isInitial 
             ? postsData 
             : postsData.filter((p) => p.id > currentLastPostId);
 
-          // Stop if no new posts found
+          // Stop if no new posts found — known territory reached (incremental complete)
           if (newPosts.length === 0) {
+            paginationCompleted = true;
             hasMore = false;
             break;
           }
@@ -565,6 +562,7 @@ export class SyncService {
 
           // Continue pagination if we got a full page (PAGE_SIZE posts)
           if (postsData.length < PAGE_SIZE) {
+            paginationCompleted = true;
             hasMore = false;
             logger.debug(`SyncService: ${artist.name} - Page ${page} returned ${postsData.length} posts (< ${PAGE_SIZE}), stopping pagination`);
           } else {
