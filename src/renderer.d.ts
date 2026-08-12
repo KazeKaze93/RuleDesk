@@ -1,15 +1,16 @@
-import type { Artist, Post, Playlist } from "./main/db/schema";
+import type { Artist, Post, Playlist } from "./shared/types/db";
 import {
   IpcBridge,
   PlaylistWithStats,
   TrackedArtist,
   UpdateStatusCallback,
   UpdateProgressCallback,
-  AddArtistPayload,
 } from "./main/bridge";
+import type { AddArtistRequest } from "./shared/schemas/artist";
 import type { ShadowInsertRequest } from "./shared/schemas/shadow-insert";
 import type { SearchBooruPageResult } from "./shared/schemas/search";
-import type { SearchResults, ProviderId } from "./main/providers";
+import type { SearchResults } from "./shared/types/providers";
+import type { ProviderId } from "./shared/constants";
 import type { PostData, GetPostsCountRequest } from "./shared/schemas/post";
 import type { PostFilterRequest } from "./shared/schemas/post";
 import type {
@@ -89,7 +90,7 @@ export interface IpcApi extends IpcBridge {
 
   // Artists
   getTrackedArtists: () => Promise<TrackedArtist[]>;
-  addArtist: (artist: AddArtistPayload) => Promise<Artist | undefined>;
+  addArtist: (artist: AddArtistRequest) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<void>;
 
   // Search

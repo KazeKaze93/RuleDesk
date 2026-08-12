@@ -8,7 +8,7 @@ import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { TooltipProvider } from "../../components/ui/tooltip";
-import type { TrackedArtist } from "../../../main/bridge";
+import type { TrackedArtist } from "@shared/types/bridge";
 import type { ProviderId } from "../../../shared/constants";
 
 export const Tracked = () => {

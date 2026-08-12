@@ -57,9 +57,8 @@ import {
 
 import { useQueryClient, InfiniteData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import type { Post } from "../../../main/db/schema";
+import type { Artist, Post } from "@shared/types/db";
 import type { SearchBooruPageResult } from "../../../shared/schemas/search";
-import type { Artist } from "../../../main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { normalizeRating } from "../../../shared/utils/post-normalization";
 import { parsePlaylistQuery } from "../../../shared/schemas/playlist";

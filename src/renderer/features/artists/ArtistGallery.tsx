@@ -10,7 +10,7 @@ import { VirtuosoGrid } from "react-virtuoso";
 import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
-import type { Artist, Post } from "../../../main/db/schema";
+import type { Artist, Post } from "@shared/types/db";
 import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";

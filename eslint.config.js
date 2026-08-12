@@ -89,5 +89,36 @@ export default tseslint.config(
         },
       ],
     },
+  },
+
+  // 4. Renderer must not import from Main (including type-only).
+  // Accidental value imports of schema/providers pull Drizzle / better-sqlite3
+  // into the browser bundle. Use @shared/types/* and @shared/schemas/*.
+  // src/renderer.d.ts is outside this glob (src/renderer.d.ts ≠ src/renderer/**);
+  // it may reference the preload contract in src/main/bridge.ts.
+  // src/main/bridge.ts is Main — this rule does not apply to it.
+  {
+    files: ["src/renderer/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/main",
+                "**/main/*",
+                "**/main/**",
+                "@/main",
+                "@/main/*",
+                "@/main/**",
+              ],
+              message:
+                "Renderer must not import from src/main/** (including type-only). Use @shared/types/db, @shared/types/bridge, @shared/types/providers, or @shared/schemas/*. A value import of main/db/schema or main/providers pulls Drizzle/better-sqlite3 into the browser bundle.",
+            },
+          ],
+        },
+      ],
+    },
   }
 );

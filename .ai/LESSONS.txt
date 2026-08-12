@@ -202,6 +202,14 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ## Architecture & Agent Workflow
 
+### Problem: Type-only renderer imports from main/ still risk bundling Node natives
+**Root Cause:** Type-only imports are erased at compile time, so the Main/Renderer module boundary was discipline-only. A later value import of the same module (table, enum, constant) pulls Drizzle and better-sqlite3 into the renderer bundle; that fails at runtime in the packaged app, not at typecheck.
+**Invariant Rule:** `src/renderer/**` must not import from `src/main/**`, including type-only. DB row types are `export type` re-exports from `src/shared/types/db.ts` (source of truth stays `src/main/db/schema.ts` `$inferSelect`). IPC extras (`TrackedArtist`, `PlaylistWithStats`) from `src/shared/types/bridge.ts`. Provider DTOs (`SearchResults`) from `src/shared/types/providers.ts` (re-export `providers/types.ts`, not the runtime registry). Enforced by ESLint `no-restricted-imports` on `src/renderer/**`. `src/main/bridge.ts` may import schema (preload lives in Main). `src/renderer.d.ts` is outside that glob and may reference the preload contract.
+
+### Problem: Green typecheck misses dead imports in project .d.ts files
+**Root Cause:** `tsconfig.json` sets `skipLibCheck: true`. TypeScript then skips **all** `.d.ts` files, not only `node_modules` — including `src/renderer.d.ts` and any other ambient declarations in the repo. A removed export (`AddArtistPayload` deleted from `bridge.ts` in Dec 2025) stayed imported in `renderer.d.ts` for months with `npm run typecheck` still green. Turning `skipLibCheck` off globally is not a substitute: `drizzle-orm` and other package `.d.ts` fail that pass on their own.
+**Invariant Rule:** A green `npm run typecheck` is not full declaration coverage. Project `.d.ts` outside `node_modules` (`src/renderer.d.ts`, `src/main/main.d.ts`, …) are a known CI blind spot unless a **separate** targeted check exists (do not flip `skipLibCheck` off for the whole program). Dead imports / stale names in those files must be reviewed as ambient contracts, not assumed typechecked. ESLint on `src/renderer/**` also does not cover `src/renderer.d.ts` (different path).
+
 ### Problem: Unused infrastructure (i18n with a single locale)
 **Root Cause:** i18next/react-i18next were added "for growth" with only `en`, while much UI already used hardcoded English and several `t()` keys never existed in `translation.json`.
 **Invariant Rule:** Infrastructure layers are added only under a confirmed product requirement; speculative layers are removed. The app is English-only — user-facing strings are inline literals or local constants (3+ uses), not an i18n stack.

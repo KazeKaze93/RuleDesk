@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import log from "electron-log/renderer";
-import type { Post } from "../../main/db/schema";
-import type { GetPostsRequest } from "../../main/types/ipc";
+import type { Post } from "@shared/types/db";
+import type { GetPostsRequest } from "@shared/schemas/post";
 import { useDownloadStore } from "../store/downloadStore";
 import { getErrorCode } from "../../shared/utils/type-guards";
 

@@ -3,7 +3,7 @@ import { Plus, Loader2 } from "lucide-react";
 import log from "electron-log/renderer";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePlaylists } from "../../lib/hooks/usePlaylists";
-import type { Playlist } from "../../../main/db/schema";
+import type { Playlist } from "@shared/types/db";
 import {
   Dialog,
   DialogContent,

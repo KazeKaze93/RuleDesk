@@ -1,4 +1,4 @@
-import type { Post } from "../../main/db/schema";
+import type { Post } from "@shared/types/db";
 
 /** Stable React `key` for list / virtualized PostCard (remote posts use `id === 0`). */
 export function getPostCardKey(post: Pick<Post, "id" | "postId">): string {

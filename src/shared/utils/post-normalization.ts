@@ -1,4 +1,4 @@
-import type { Post } from "../../main/db/schema";
+import type { Post } from "../types/db";
 import type { PostData } from "../schemas/post";
 
 /**

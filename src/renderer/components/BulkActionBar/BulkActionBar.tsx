@@ -5,7 +5,7 @@ import log from "electron-log/renderer";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
-import type { Post } from "../../../main/db/schema";
+import type { Post } from "@shared/types/db";
 import { AddToPlaylistModal } from "../playlists/AddToPlaylistModal";
 import {
   Dialog,

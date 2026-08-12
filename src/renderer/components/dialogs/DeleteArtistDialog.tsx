@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import type { Artist } from "../../../main/db/schema";
+import type { Artist } from "@shared/types/db";
 
 /** Shared label for delete-artist actions (dialog title + list-row affordances). */
 export const DELETE_ARTIST_LABEL = "Delete Artist";

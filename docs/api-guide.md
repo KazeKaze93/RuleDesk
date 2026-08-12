@@ -52,7 +52,7 @@ The recommended way to use IPC methods in React components is with **TanStack Qu
 
 ```typescript
 import { useQuery } from "@tanstack/react-query";
-import type { Artist } from "../../../main/db/schema";
+import type { Artist } from "@shared/types/db";
 
 const { data, isLoading, error } = useQuery<Artist[]>({
   queryKey: ["artists"],
@@ -64,7 +64,7 @@ const { data, isLoading, error } = useQuery<Artist[]>({
 
 ```typescript
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Artist, NewArtist } from "../../../main/db/schema";
+import type { Artist, NewArtist } from "@shared/types/db";
 
 const queryClient = useQueryClient();
 
@@ -84,7 +84,7 @@ const mutation = useMutation<Artist | undefined, Error, NewArtist>({
 **Scenario:** Component needs to load data when it mounts.
 
 ```typescript
-import type { Artist } from "../../../main/db/schema";
+import type { Artist } from "@shared/types/db";
 
 const MyComponent = () => {
   const { data, isLoading } = useQuery<Artist[]>({
@@ -105,7 +105,7 @@ const MyComponent = () => {
 
 ```typescript
 import { useInfiniteQuery } from "@tanstack/react-query";
-import type { Post } from "../../../main/db/schema";
+import type { Post } from "@shared/types/db";
 
 const { data, fetchNextPage, hasNextPage } = useInfiniteQuery<Post[]>({
   queryKey: ["posts", artistId],
@@ -157,7 +157,7 @@ useEffect(() => {
 
 ```typescript
 import { useMutation } from "@tanstack/react-query";
-import type { Artist, NewArtist } from "../../../main/db/schema";
+import type { Artist, NewArtist } from "@shared/types/db";
 
 const mutation = useMutation<Artist | undefined, Error, NewArtist>({
   mutationFn: (data: NewArtist) => window.api.addArtist(data),
@@ -438,7 +438,7 @@ artists.forEach((artist) => {
 
 ```typescript
 // In Tracked.tsx component
-import type { Artist } from "../../../main/db/schema";
+import type { Artist } from "@shared/types/db";
 
 const {
   data: artists,
@@ -683,7 +683,7 @@ try {
 
 ```typescript
 // In Onboarding.tsx component
-import type { Settings } from "../../../main/db/schema";
+import type { Settings } from "@shared/types/db";
 
 const onSubmit = async (data: CredsFormValues) => {
   try {
@@ -792,8 +792,8 @@ try {
 
 ```typescript
 // In Tracked.tsx component
-import type { Artist, NewArtist } from "../../../main/db/schema";
-import type { ProviderId } from "../../../main/providers";
+import type { Artist, NewArtist } from "@shared/types/db";
+import type { ProviderId } from "@shared/constants";
 
 const handleAddArtist = async (
   name: string,
@@ -897,7 +897,7 @@ console.log(`Found ${posts.length} posts`);
 ```typescript
 // In ArtistGallery.tsx component
 import { useInfiniteQuery } from "@tanstack/react-query";
-import type { Post } from "../../../main/db/schema";
+import type { Post } from "@shared/types/db";
 
 const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
   useInfiniteQuery<Post[]>({

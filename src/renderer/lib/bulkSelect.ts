@@ -1,4 +1,4 @@
-import type { Post } from "../../main/db/schema";
+import type { Post } from "@shared/types/db";
 
 export const getBulkSelectId = (post: Post): number => {
   if (post.id > 0) {
