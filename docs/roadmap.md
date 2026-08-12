@@ -218,6 +218,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | `keep last N` is implemented; optional **total-size cap** is also supported via `BACKUP_RETENTION_MAX_TOTAL_MB` env for deployments that need hard storage ceilings. UI exposure for this cap remains optional future UX work. |
 | **Engineering** | Ongoing tooling hygiene; remaining shared validation consolidation as needed. |
+| **Testing** | Assert host-gate feedback: `vi.spyOn(ProviderThrottle.prototype, "notifyRateLimited")` in both `rule34-provider-fetch-posts.test.ts` and `gelbooru-provider-fetch-posts.test.ts` on HTTP 429 (coverage gap noted after [#126](https://github.com/KazeKaze93/RuleDesk/pull/126); reject `kind` alone is insufficient). |
 | **Media filters (P3)** | Browse worker video regex (`mp4\|webm\|mov` in `data-processor.worker.ts`) is narrower than canonical `VIDEO_EXTENSIONS` in `src/shared/utils/media.ts` — align when touching the worker. |
 | **Product** | **Smart Collections AI** (research). |
 
