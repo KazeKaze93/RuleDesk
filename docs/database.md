@@ -21,6 +21,8 @@
 
 This document is a maintainer-focused database reference. RuleDesk uses **SQLite** as the local database for storing metadata, tracked artists, posts, and settings. The database is accessed directly in the **Main Process** using **Drizzle ORM** for type-safe queries. WAL (Write-Ahead Logging) mode is enabled for concurrent reads.
 
+**Timestamp units (critical for raw SQL):** Drizzle `mode: "timestamp"` stores **Unix seconds** in SQLite; `mode: "timestamp_ms"` stores **milliseconds**. IPC may expose `Date.getTime()` (ms) after serialization — that is the wire format, not the on-disk unit. Raw SQL cutoffs must match the column’s storage unit (`Date.now()` only against ms columns).
+
 **📖 Related Documentation:**
 
 - [User Guide](./user-guide.md) - End-user flows that depend on local data
@@ -62,8 +64,8 @@ Stores information about tracked artists/users.
 | `sync_status`     | TEXT (NOT NULL, DEFAULT 'idle')   | Current sync state (`idle`, `syncing`, `error`) |
 | `last_error`      | TEXT (NULL)                       | Last sync error message                     |
 | `last_sync_incomplete` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | 1 when pagination did not finish; cursor must not advance until cleared |
-| `last_checked`    | INTEGER (NULL)                    | Timestamp of last API poll (timestamp mode) |
-| `created_at`      | INTEGER (NOT NULL)                | Creation timestamp (timestamp mode, ms)     |
+| `last_checked`    | INTEGER (NULL)                    | Last API poll (`mode: "timestamp"` = **seconds**) |
+| `created_at`      | INTEGER (NOT NULL)                | Creation time (`mode: "timestamp"` = **seconds**) |
 
 **Schema Definition:**
 
@@ -123,10 +125,10 @@ Caches post metadata for filtering, statistics, and download management. Support
 | `rating`       | TEXT                                   | Content rating (safe, questionable, explicit) |
 | `tags`         | TEXT                                   | Space-separated tags                          |
 | `media_type`   | TEXT (NULL)                            | Media type: "image" or "video" (indexed)     |
-| `published_at` | INTEGER (NOT NULL)                     | Publication timestamp (timestamp mode, ms)    |
-| `created_at`   | INTEGER (NOT NULL)                     | When added to local database (timestamp ms)   |
+| `published_at` | INTEGER (NOT NULL)                     | Publication time (`mode: "timestamp"` = **seconds**) |
+| `created_at`   | INTEGER (NOT NULL)                     | Local insert time (`mode: "timestamp"` = **seconds**) |
 | `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been viewed                  |
-| `last_viewed_at` | INTEGER (NULL)                       | Last time post was viewed (timestamp mode, ms) |
+| `last_viewed_at` | INTEGER (NULL)                       | Last view (`mode: "timestamp"` = **seconds**) |
 | `view_count`   | INTEGER (NOT NULL, DEFAULT 0)          | Number of times post was viewed               |
 | `is_favorited` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been favorited               |
 
@@ -219,7 +221,7 @@ Stores application settings including API credentials and user preferences.
 | `is_safe_mode`       | INTEGER (BOOLEAN, DEFAULT 1)           | Safe mode flag (blur NSFW content)           |
 | `is_adult_confirmed` | INTEGER (BOOLEAN, DEFAULT 0)           | Adult confirmation flag (18+ confirmation)   |
 | `is_adult_verified`  | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Adult verification flag (legal confirmation) |
-| `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | Terms of Service acceptance timestamp        |
+| `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | ToS acceptance (`mode: "timestamp"` = **seconds**; IPC exposes ms) |
 | `download_folder`    | TEXT (NULL)                            | Default download folder                       |
 | `duplicate_file_behavior` | TEXT (DEFAULT 'skip')            | Duplicate file behavior                       |
 | `download_folder_structure` | TEXT (DEFAULT 'flat')          | Download folder structure                     |
@@ -228,7 +230,7 @@ Stores application settings including API credentials and user preferences.
 | `sync_interval_minutes` | INTEGER (NOT NULL, DEFAULT 0)       | Periodic sync interval in minutes             |
 | `backup_retention`   | INTEGER (NOT NULL, DEFAULT 5)          | Number of backups to keep                     |
 | `vacuum_schedule`    | TEXT (DEFAULT 'manual')                | User-visible VACUUM policy (`manual`, `weekly`, `monthly`) |
-| `last_vacuum_at`     | INTEGER (NULL)                         | Timestamp of last VACUUM run (ms)            |
+| `last_vacuum_at`     | INTEGER (NULL)                         | Last VACUUM run (**milliseconds** via `Date.now()`; bare int, no Drizzle mode) |
 | `last_vacuum_status` | TEXT (NULL)                            | Last VACUUM result (`success`/`error`)       |
 | `last_vacuum_error`  | TEXT (NULL)                            | Last VACUUM error text (sanitized)           |
 
@@ -306,8 +308,8 @@ Stores playlist/collection information for curated post collections.
 | `query_json`  | TEXT (DEFAULT '')                 | JSON-encoded smart playlist query              |
 | `query_schema_version` | INTEGER (NOT NULL, DEFAULT 1) | Version of smart playlist query DSL for safe parsing/migrations |
 | `icon_name`   | TEXT (DEFAULT '')                 | Icon name for playlist display                 |
-| `created_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Creation timestamp (timestamp mode, ms)        |
-| `updated_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Update timestamp (timestamp mode, ms)          |
+| `created_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Creation time (`mode: "timestamp"` = **seconds**) |
+| `updated_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Update time (`mode: "timestamp"` = **seconds**)   |
 
 **Indexes:**
 
@@ -361,7 +363,7 @@ Junction table linking playlists to posts. Uses composite primary key to prevent
 | ------------- | --------------------------------- | ---------------------------------------------- |
 | `playlist_id` | INTEGER (NOT NULL, FK)            | Foreign key to `playlists.id` (CASCADE DELETE) |
 | `post_id`     | INTEGER (NOT NULL, FK)            | Foreign key to `posts.id` (CASCADE DELETE)     |
-| `added_at`    | INTEGER (TIMESTAMP, NOT NULL)     | Timestamp when post was added (timestamp mode, ms) |
+| `added_at`    | INTEGER (TIMESTAMP, NOT NULL)     | When post was added (`mode: "timestamp"` = **seconds**) |
 | `position`    | INTEGER (NOT NULL, DEFAULT 0)     | Manual ordering position                         |
 
 **Primary Key:**
@@ -425,7 +427,7 @@ Local tag blocklist (Settings → Blacklist). Not modeled in Drizzle `schema.ts`
 | ------------ | --------------------------- | ------------------------------------ |
 | `id`         | INTEGER (PK, AutoIncrement) | Primary key                          |
 | `tag`        | TEXT (NOT NULL, UNIQUE)     | Normalized tag (lowercase, trimmed)  |
-| `created_at` | INTEGER (NOT NULL)          | Insert time (`unixepoch()` default)  |
+| `created_at` | INTEGER (NOT NULL)          | Insert time (**seconds**, `unixepoch()` default) |
 
 **Limits:** Maximum **100** tags (`MAX_BLACKLIST_TAGS` in `blacklist.ts`). Soft-deleted from feeds in Main after fetch / in local queries.
 

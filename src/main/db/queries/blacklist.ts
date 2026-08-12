@@ -9,6 +9,7 @@ const normalizeTag = (tag: string): string => tag.trim().toLowerCase();
 
 export function getAllBlacklistedTags(): string[] {
   const sqlite = getSqliteInstance();
+  // Units: tag_blacklist.created_at is Unix seconds (DEFAULT unixepoch()); ORDER BY only — no cutoff.
   const rows = sqlite
     .prepare<[], BlacklistTagRow>(
       "SELECT tag FROM tag_blacklist ORDER BY created_at DESC, id DESC"
@@ -30,6 +31,7 @@ export function addTagToBlacklist(tag: string): void {
     throw new Error(`Blacklist limit reached (${MAX_BLACKLIST_TAGS} tags maximum).`);
   }
 
+  // Units: created_at filled by DEFAULT (unixepoch()) = seconds; do not bind Date.now() here.
   sqlite
     .prepare("INSERT OR IGNORE INTO tag_blacklist (tag) VALUES (?)")
     .run(normalizedTag);

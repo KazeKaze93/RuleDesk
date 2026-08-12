@@ -12,11 +12,13 @@ CREATE TABLE IF NOT EXISTS fts5_cache_invalidation (
 );
 
 -- Initialize the single row if it doesn't exist
+-- Units: milliseconds (julianday → epoch ms); must match Date.now() cache stamps in PlaylistController.
 INSERT OR IGNORE INTO fts5_cache_invalidation (id, invalidated_at) 
 VALUES (1, CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER));
 
 -- Trigger: INSERT - Invalidate cache when new post is inserted into posts_fts
 -- This trigger fires AFTER posts_fts_insert, ensuring FTS5 index is updated first
+-- Units: milliseconds (same julianday formula as column DEFAULT).
 CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_insert 
 AFTER INSERT ON posts_fts BEGIN
   UPDATE fts5_cache_invalidation 
@@ -26,6 +28,7 @@ END;
 
 -- Trigger: UPDATE - Invalidate cache when post is updated in posts_fts
 -- This trigger fires AFTER posts_fts_update, ensuring FTS5 index is updated first
+-- Units: milliseconds (same julianday formula as column DEFAULT).
 CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_update 
 AFTER UPDATE ON posts_fts BEGIN
   UPDATE fts5_cache_invalidation 
@@ -35,6 +38,7 @@ END;
 
 -- Trigger: DELETE - Invalidate cache when post is deleted from posts_fts
 -- This trigger fires AFTER posts_fts_delete, ensuring FTS5 index is updated first
+-- Units: milliseconds (same julianday formula as column DEFAULT).
 CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_delete 
 AFTER DELETE ON posts_fts BEGIN
   UPDATE fts5_cache_invalidation 

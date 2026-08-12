@@ -51,6 +51,7 @@ export function createMockDb() {
   // Create __drizzle_migrations table if it doesn't exist
   // This table is created by drizzle's migrate function, but we need it for manual tracking
   // SQLite doesn't support SERIAL, use INTEGER PRIMARY KEY AUTOINCREMENT instead
+  // Units: __drizzle_migrations.created_at is written with Date.now() = milliseconds (journal only).
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS __drizzle_migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,6 +105,7 @@ export function createMockDb() {
         // but still create the cache invalidation table
         try {
           // Create the cache invalidation table (this part works)
+          // Units: invalidated_at = milliseconds via julianday epoch-ms formula (matches migration 0010).
           sqlite.exec(`
             CREATE TABLE IF NOT EXISTS fts5_cache_invalidation (
               id INTEGER PRIMARY KEY CHECK (id = 1),

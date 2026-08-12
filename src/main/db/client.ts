@@ -263,6 +263,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
           }
           
           // Create __drizzle_migrations table if it doesn't exist
+          // Units: __drizzle_migrations.created_at is written with Date.now() = milliseconds (journal only).
           sqliteInstance.exec(`
             CREATE TABLE IF NOT EXISTS __drizzle_migrations (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -316,6 +317,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
                 // Create the cache invalidation table but skip triggers if they fail
                 try {
                   // Create the cache invalidation table (this part works)
+                  // Units: invalidated_at = milliseconds via julianday epoch-ms formula (matches migration 0010).
                   sqliteInstance.exec(`
                     CREATE TABLE IF NOT EXISTS fts5_cache_invalidation (
                       id INTEGER PRIMARY KEY CHECK (id = 1),

@@ -792,6 +792,7 @@ export class SyncService {
         `);
 
         try {
+          // Units: invalidated_at milliseconds (julianday → epoch ms); must match migration 0010 / PlaylistController Date.now() stamps.
           sqlite.exec(`
             CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_insert
             AFTER INSERT ON posts_fts BEGIN
