@@ -95,34 +95,14 @@ const isInvalidPlaylistError = (message: string): boolean => {
   );
 };
 
-const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
-  if (publishedAt instanceof Date) {
-    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
-  }
-  if (typeof publishedAt === "number") {
-    const parsed = new Date(publishedAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return null;
-};
-
 const shouldIncludePostInPlaylistQueue = (
   post: Post,
   filters: {
     aiFilter: "all" | "hide" | "only";
-    dateFrom: Date | null;
-    dateTo: Date | null;
   }
 ): boolean => {
   if (filters.aiFilter === "hide" && hasAiGeneratedTag(post.tags)) return false;
   if (filters.aiFilter === "only" && !hasAiGeneratedTag(post.tags)) return false;
-  if (filters.dateFrom || filters.dateTo) {
-    const date = getPublishedDate(post.publishedAt);
-    if (date) {
-      if (filters.dateFrom && date < filters.dateFrom) return false;
-      if (filters.dateTo && date > filters.dateTo) return false;
-    }
-  }
   return true;
 };
 
@@ -244,23 +224,17 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
   );
   const queryClient = useQueryClient();
 
-  const ratingLetter = filters.rating;
-
   // Build filters for API call from search store state
   const apiFilters = useMemo(() => {
-    const result: { rating?: "s" | "q" | "e"; mediaType?: "all" | "images" | "videos" } = {};
+    const result: { mediaType?: "all" | "images" | "videos" } = {};
 
-    if (ratingLetter === "s" || ratingLetter === "q" || ratingLetter === "e") {
-      result.rating = ratingLetter;
-    }
-    
     // Map mediaType filter from current search store state
     if (filters.mediaType && filters.mediaType !== "all") {
       result.mediaType = filters.mediaType;
     }
     
     return result;
-  }, [filters.mediaType, ratingLetter]);
+  }, [filters.mediaType]);
 
   const {
     data,
@@ -273,7 +247,6 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       "playlist-posts",
       playlist.id,
       filters.mediaType,
-      ratingLetter,
       filters.aiFilter,
       sortOrder,
     ],
@@ -303,18 +276,8 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
     }
 
-    if (filters.dateFrom || filters.dateTo) {
-      posts = posts.filter((post) => {
-        const date = getPublishedDate(post.publishedAt);
-        if (!date) return true;
-        if (filters.dateFrom && date < filters.dateFrom) return false;
-        if (filters.dateTo && date > filters.dateTo) return false;
-        return true;
-      });
-    }
-
     return posts;
-  }, [data, filters.aiFilter, filters.dateFrom, filters.dateTo]);
+  }, [data, filters.aiFilter]);
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -357,8 +320,6 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
           .filter((post) =>
             shouldIncludePostInPlaylistQueue(post, {
               aiFilter: filters.aiFilter,
-              dateFrom: filters.dateFrom,
-              dateTo: filters.dateTo,
             })
           )
           .map((post) => (post.id === 0 && post.postId ? post.postId : post.id));
@@ -389,7 +350,6 @@ const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBack }) =
         kind: "playlist",
         playlistId: playlist.id,
         mediaType: filters.mediaType,
-        rating: ratingLetter,
         aiFilter: filters.aiFilter,
         sortOrder,
         provider, // Pass provider to origin for shadow insert operations

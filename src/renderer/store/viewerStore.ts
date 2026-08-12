@@ -15,7 +15,6 @@ export type ViewerOrigin =
       artistId: number;
       tags?: string[];
       aiFilter?: "all" | "hide" | "only";
-      rating?: "all" | "s" | "q" | "e";
       mediaType?: "all" | "images" | "videos";
       source?: "all" | "favorites" | "subscriptions";
       sortOrder?: "asc" | "desc";
@@ -24,7 +23,6 @@ export type ViewerOrigin =
       kind: "playlist";
       playlistId: number;
       mediaType?: "all" | "images" | "videos";
-      rating?: "all" | "s" | "q" | "e";
       aiFilter?: "all" | "hide" | "only";
       sortOrder?: "asc" | "desc";
       provider?: "rule34" | "gelbooru";

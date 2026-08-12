@@ -34,7 +34,6 @@ export interface BackupResponse {
 }
 
 export interface PostQueryFilters {
-  rating?: "s" | "q" | "e";
   tags?: string;
   sortBy?: "date" | "id" | "rating";
   isViewed?: boolean;

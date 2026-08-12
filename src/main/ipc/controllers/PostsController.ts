@@ -426,7 +426,7 @@ export class PostsController extends BaseController {
    * Centralized logic to avoid code duplication (DRY principle)
    *
    * @param artistId - Optional artist ID filter
-   * @param filters - Optional post filters (tags, rating, isViewed, isFavorited)
+   * @param filters - Optional post filters (tags, isViewed, isFavorited)
    * @returns Array of Drizzle SQL conditions for use with and()
    */
   private buildPostFilterConditions(
@@ -444,10 +444,6 @@ export class PostsController extends BaseController {
     // Empty string "" would become '""' and cause SQLITE_ERROR: fts5: syntax error
     if (filters?.tags && filters.tags.trim().length > 0) {
       conditions.push(this.createTagFilterCondition(filters.tags));
-    }
-
-    if (filters?.rating !== undefined) {
-      conditions.push(eq(posts.rating, filters.rating));
     }
 
     if (filters?.isFavorited !== undefined) {

@@ -138,7 +138,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 
 - `postIdIdx` - Index on `post_id` for efficient lookups
 - `artistIdIdx` - Index on `artist_id` for artist-based queries
-- `posts_rating_idx` - Index on `rating` for rating filters
+- `posts_rating_idx` - Index on `rating` for Stats aggregation and rating-column lookups
 - `isViewedIdx` - Index on `is_viewed` for view status filtering
 - `posts_last_viewed_at_idx` - Index on `last_viewed_at` for recently viewed sorting
 - `publishedAtIdx` - Index on `published_at` for date-based sorting

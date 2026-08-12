@@ -158,7 +158,7 @@ export type MovePostsBetweenManualPlaylistsRequest = z.infer<
  * Get Playlist Posts Schema
  *
  * Single source of truth for GetPlaylistPosts validation and typing.
- * Supports playlist-scoped filtering by rating and media type.
+ * Supports playlist-scoped filtering by media type.
  */
 export const GetPlaylistPostsSchema = z.object({
   playlistId: IdSchema,
@@ -181,7 +181,7 @@ export type GetPlaylistPostsRequest = z.infer<typeof GetPlaylistPostsSchema>;
  *
  * Single source of truth for ResolvePlaylistPosts validation and typing.
  * Used to resolve posts for both static and smart playlists.
- * Includes optional rating and mediaType filters from renderer state.
+ * Includes optional mediaType filter from renderer state.
  */
 export const ResolvePlaylistPostsSchema = z.object({
   playlistId: IdSchema,

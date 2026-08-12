@@ -49,7 +49,6 @@ export type PostData = z.infer<typeof PostDataSchema>;
 export const PostFilterSchema = z
   .object({
     tags: z.string().optional(),
-    rating: RatingSchema.optional(),
     isFavorited: z.boolean().optional(),
     isViewed: z.boolean().optional(),
     sinceTracking: z.boolean().optional(),

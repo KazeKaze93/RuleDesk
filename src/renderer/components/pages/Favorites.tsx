@@ -32,48 +32,20 @@ import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 // This matches the default limit in GetPostsSchema
 const POSTS_PER_PAGE = 50;
 
-const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
-  if (publishedAt instanceof Date) {
-    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
-  }
-  if (typeof publishedAt === "number") {
-    const parsed = new Date(publishedAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return null;
-};
-
 const shouldIncludePostInFavoritesQueue = (
   post: Post,
   filters: {
     aiFilter: "all" | "hide" | "only";
-    rating: "all" | "s" | "q" | "e";
     mediaType: "all" | "images" | "videos";
-    dateFrom: Date | null;
-    dateTo: Date | null;
   }
 ): boolean => {
   if (filters.aiFilter === "hide" && hasAiGeneratedTag(post.tags)) return false;
   if (filters.aiFilter === "only" && !hasAiGeneratedTag(post.tags)) return false;
 
-  if (filters.rating !== "all") {
-    const postRating =
-      typeof post.rating === "string" ? post.rating.trim().toLowerCase().charAt(0) : "";
-    if (postRating !== filters.rating) return false;
-  }
-
   if (filters.mediaType !== "all") {
     const isVideo = isVideoPost(post.fileUrl);
     if (filters.mediaType === "videos" && !isVideo) return false;
     if (filters.mediaType === "images" && isVideo) return false;
-  }
-
-  if (filters.dateFrom || filters.dateTo) {
-    const date = getPublishedDate(post.publishedAt);
-    if (date) {
-      if (filters.dateFrom && date < filters.dateFrom) return false;
-      if (filters.dateTo && date > filters.dateTo) return false;
-    }
   }
 
   return true;
@@ -141,8 +113,7 @@ export const Favorites = () => {
       initialPageParam: 1,
     });
   
-  const { aiFilter, mediaType, dateFrom, dateTo } = filters;
-  const rating = useSearchStore((state) => state.filters.rating);
+  const { aiFilter, mediaType } = filters;
 
   const allPosts = useMemo(() => {
     let posts = data?.pages.flatMap((page) => page) || [];
@@ -155,14 +126,6 @@ export const Favorites = () => {
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
     }
 
-    // Filter by rating
-    if (rating !== "all") {
-      posts = posts.filter((post) => {
-        const postRating = typeof post.rating === "string" ? post.rating.trim().toLowerCase().charAt(0) : "";
-        return postRating === rating;
-      });
-    }
-    
     // Filter by media type
     if (mediaType !== "all") {
       posts = posts.filter((post) => {
@@ -171,16 +134,6 @@ export const Favorites = () => {
       });
     }
 
-    if (dateFrom || dateTo) {
-      posts = posts.filter((post) => {
-        const date = getPublishedDate(post.publishedAt);
-        if (!date) return true;
-        if (dateFrom && date < dateFrom) return false;
-        if (dateTo && date > dateTo) return false;
-        return true;
-      });
-    }
-    
     // Sort by publishedAt (date of post creation)
     return [...posts].sort((a, b) => {
       const dateA = a.publishedAt instanceof Date 
@@ -196,7 +149,7 @@ export const Favorites = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, rating, mediaType, dateFrom, dateTo]);
+  }, [data, sortOrder, aiFilter, mediaType]);
   const selectedPosts = useMemo(
     () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
     [allPosts, selectedIds]
@@ -252,10 +205,7 @@ export const Favorites = () => {
             .filter((post) =>
               shouldIncludePostInFavoritesQueue(post, {
                 aiFilter,
-                rating,
                 mediaType,
-                dateFrom,
-                dateTo,
               })
             )
             .map((p) => p.id);

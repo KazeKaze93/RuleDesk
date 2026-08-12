@@ -646,7 +646,7 @@ const posts = await db.query.posts.findMany({
    - **Provider search failures** (auth, rate limit, network, parse): `Rule34Provider` throws typed `ProviderSearchError`; `SearchController` rethrows via `throwProviderSearchIpcError()` (enumerable `code` / `providerKind` on `Error`, no `stack` or raw API body to renderer). Renderer parses with `parseProviderSearchErrorPayload()` in `src/shared/utils/provider-search-ipc.ts` and shows `BrowseErrorState` (centered empty-state layout; auth → **Open Settings**).
    - **Worker filter/sort failures** (client-side only): partial failure uses a neutral `Alert` above loaded posts; fatal query failure uses `BrowseErrorState`.
    - **Preload constraint:** `src/main/bridge.ts` must stay thin — do **not** import shared Zod/schemas in preload (breaks `contextBridge.exposeInMainWorld` → perpetual Loading).
-   - **Removed:** orientation filter (no UI; dead code removed from store, worker, and gallery pages).
+   - **Removed:** local rating / date-range / orientation filters (no UI; dead plumbing removed from `searchStore`, worker `FilterConfig`, IPC `PostFilterSchema` / `PostFiltersSchema`, gallery pages, and viewer query keys). Post `rating` as data (column, badges, Stats, Safe Mode blur) is unchanged. Booru search metatags (`rating:`, `width:`, `aspectratio:`) are unchanged.
    - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts`, `tests/unit/utils/react-query-cache.test.ts`.
 
 13. **Bridge** (`src/main/bridge.ts`, built to `out/preload/bridge.cjs`)
@@ -1817,7 +1817,7 @@ Root:
 ### A. Filters (Advanced Search) — ongoing
 
 - ✅ `FiltersPanel` + `searchStore` drive AI, media, and source filters on main surfaces.
-- ℹ️ Removed panel controls (rating/date range/orientation) are intentionally out of current scope.
+- ℹ️ Local rating / date-range / orientation filters are out of scope: UI was already removed; store, worker, IPC filter schemas, and gallery apply-paths no longer accept those fields. Post `rating` data and booru search metatags are unchanged.
 - Full detail: [roadmap — Navigation & UX](./roadmap.md#-navigation--ux-revamp).
 
 ### B. Download Manager ✅ Implemented (Core Features)
