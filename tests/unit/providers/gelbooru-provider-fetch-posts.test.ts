@@ -1,0 +1,136 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import axios, { AxiosError } from "axios";
+import { GelbooruProvider } from "@/main/providers/gelbooru-provider";
+
+vi.mock("electron-log", () => ({
+  default: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+vi.mock("@/main/lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+vi.mock("@/main/lib/proxy", () => ({
+  getProxyAgent: vi.fn(() => undefined),
+}));
+
+const axiosGetMock = vi.spyOn(axios, "get");
+
+const SAMPLE_GELBOORU_POST = {
+  id: 42,
+  file_url: "https://img3.gelbooru.com/images/ab/cd/abcd1234.jpg",
+  sample_url: "https://img3.gelbooru.com/samples/ab/cd/sample_abcd1234.jpg",
+  preview_url: "https://img3.gelbooru.com/thumbnails/ab/cd/thumbnail_abcd1234.jpg",
+  tags: "solo 1girl",
+  rating: "q",
+  score: 10,
+  width: 800,
+  height: 600,
+  created_at: "Mon Jan 01 12:00:00 +0000 2024",
+};
+
+describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
+  const provider = new GelbooruProvider();
+  const settings = { userId: "1", apiKey: "test-key" };
+
+  beforeEach(() => {
+    axiosGetMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns mapped posts for HTTP 200 with valid JSON", async () => {
+    axiosGetMock.mockResolvedValueOnce({
+      status: 200,
+      headers: { "content-type": "application/json" },
+      data: [SAMPLE_GELBOORU_POST],
+    });
+
+    const posts = await provider.fetchPosts("solo", 1, settings, false, 50);
+
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.id).toBe(42);
+    expect(posts[0]?.fileUrl).toBe(SAMPLE_GELBOORU_POST.file_url);
+    expect(axiosGetMock).toHaveBeenCalledTimes(1);
+    expect(axiosGetMock.mock.calls[0]?.[1]).toMatchObject({
+      validateStatus: expect.any(Function),
+    });
+    const validateStatus = axiosGetMock.mock.calls[0]?.[1]?.validateStatus;
+    expect(typeof validateStatus).toBe("function");
+    if (typeof validateStatus === "function") {
+      expect(validateStatus(200)).toBe(true);
+      expect(validateStatus(429)).toBe(true);
+      expect(validateStatus(500)).toBe(false);
+    }
+  });
+
+  it("throws rate_limit error on HTTP 429 and does not return []", async () => {
+    axiosGetMock.mockResolvedValueOnce({
+      status: 429,
+      headers: { "retry-after": "12", "content-type": "text/plain" },
+      data: "",
+    });
+
+    await expect(
+      provider.fetchPosts("solo", 1, settings, false, 50)
+    ).rejects.toMatchObject({
+      kind: "rate_limit",
+      retryAfterMs: 12_000,
+    });
+
+    expect(axiosGetMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats invalid Retry-After as undefined retryAfterMs on 429", async () => {
+    axiosGetMock.mockResolvedValueOnce({
+      status: 429,
+      headers: { "retry-after": "not-a-number" },
+      data: "",
+    });
+
+    await expect(
+      provider.fetchPosts("solo", 1, settings, false, 50)
+    ).rejects.toMatchObject({
+      kind: "rate_limit",
+      retryAfterMs: undefined,
+    });
+  });
+
+  it("returns [] for non-JSON content-type on HTTP 200 (XML fallback path)", async () => {
+    axiosGetMock.mockResolvedValueOnce({
+      status: 200,
+      headers: { "content-type": "text/xml; charset=utf-8" },
+      data: "<posts></posts>",
+    });
+
+    await expect(
+      provider.fetchPosts("solo", 1, settings, false, 50)
+    ).resolves.toEqual([]);
+
+    expect(axiosGetMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns [] on transport failure (unchanged non-429 catch path)", async () => {
+    const timeoutError = new AxiosError("timeout of 15000ms exceeded");
+    timeoutError.code = "ECONNABORTED";
+    axiosGetMock.mockRejectedValueOnce(timeoutError);
+
+    await expect(
+      provider.fetchPosts("solo", 1, settings, false, 50)
+    ).resolves.toEqual([]);
+
+    expect(axiosGetMock).toHaveBeenCalledTimes(1);
+  });
+});

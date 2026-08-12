@@ -31,6 +31,44 @@ function isGelbooruTagItem(item: unknown): item is GelbooruTagItem {
   return typeof v === "string" && typeof l === "string";
 }
 
+/** Same contract as parseRule34RetryAfterMs: seconds → ms; invalid/negative → undefined. */
+function parseGelbooruRetryAfterMs(
+  headers: Record<string, string | string[] | undefined>
+): number | undefined {
+  const retryAfterHeader = headers["retry-after"];
+  const retryAfterRaw = Array.isArray(retryAfterHeader)
+    ? retryAfterHeader[0]
+    : retryAfterHeader;
+  if (typeof retryAfterRaw !== "string") {
+    return undefined;
+  }
+  const retryAfterSeconds = parseInt(retryAfterRaw, 10);
+  if (!Number.isFinite(retryAfterSeconds) || retryAfterSeconds < 0) {
+    return undefined;
+  }
+  return retryAfterSeconds * 1000;
+}
+
+function axiosHeadersToRetryAfterRecord(
+  headers: unknown
+): Record<string, string | string[] | undefined> {
+  if (typeof headers !== "object" || headers === null) {
+    return {};
+  }
+  const normalized: Record<string, string | string[] | undefined> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    if (value === null || value === undefined) {
+      continue;
+    }
+    if (typeof value === "string" || Array.isArray(value)) {
+      normalized[key] = value;
+      continue;
+    }
+    normalized[key] = String(value);
+  }
+  return normalized;
+}
+
 export class GelbooruProvider implements IBooruProvider {
   readonly id = "gelbooru";
   readonly name = "Gelbooru";
@@ -180,9 +218,19 @@ export class GelbooruProvider implements IBooruProvider {
       const response = await axios.get(`${this.baseUrl}?${params}`, {
         timeout: REQUEST_TIMEOUT,
         headers: { "User-Agent": this.sessionUA },
-        validateStatus: (status) => status === 200,
+        validateStatus: (status) => status < 500,
         httpsAgent: getProxyAgent(),
       });
+
+      if (response.status === 429) {
+        throw new ProviderSearchError(
+          "rate_limit",
+          undefined,
+          parseGelbooruRetryAfterMs(
+            axiosHeadersToRetryAfterRecord(response.headers)
+          )
+        );
+      }
 
       // Gelbooru sometimes returns XML instead of JSON when API fails
       const rawContentType = response.headers["content-type"];
@@ -254,6 +302,13 @@ export class GelbooruProvider implements IBooruProvider {
       
       return posts;
     } catch (error) {
+      if (
+        error instanceof ProviderSearchError &&
+        error.kind === "rate_limit"
+      ) {
+        this.throttle.notifyRateLimited(error.retryAfterMs);
+        throw error;
+      }
       logger.error(
         `[Gelbooru] Error fetching page ${page}`,
         redactErrorForLog(error)
