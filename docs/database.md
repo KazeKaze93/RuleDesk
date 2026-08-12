@@ -927,7 +927,7 @@ The application provides built-in backup functionality:
    - Auto-backup pattern: `data.backup.YYYY-MM-DD.bin`
 3. **Backup Format:** Full SQLite database copy (via `VACUUM INTO`)
 4. **Rotation:** After a successful backup, older files matching the backup name prefix are deleted so only the most recent `backupRetention` copies remain. `backupRetention` is stored in `settings` and clamped to `1..20` by Main Process validation.
-5. **Optional total-size cap (env):** If `BACKUP_RETENTION_MAX_TOTAL_MB` is set to a positive number, backup cleanup additionally prunes oldest files until total backup size is under the configured threshold.
+5. **Optional total-size cap (env):** If `BACKUP_RETENTION_MAX_TOTAL_MB` is set to a positive number, backup cleanup additionally prunes oldest files until total backup size is under the configured threshold. `runningTotal` only counts retained files. If the newest backup alone exceeds the cap, it is still kept so at least one backup always survives.
 
 **Example:**
 

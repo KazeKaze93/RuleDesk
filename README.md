@@ -214,7 +214,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **Integrity check** - Run `PRAGMA integrity_check`
 - **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (evaluated on app startup)
 - **Automatic backup rotation** - Keep the last `N` backups (`backupRetention`, configurable in UI, range `1..20`)
-- **Optional storage cap (env)** - `BACKUP_RETENTION_MAX_TOTAL_MB` can enforce a total size ceiling for backup files in addition to `keep last N`
+- **Optional storage cap (env)** - `BACKUP_RETENTION_MAX_TOTAL_MB` can enforce a total size ceiling for backup files in addition to `keep last N` (newest is always kept even if a single file exceeds the cap)
 - **Database maintenance (VACUUM)** - Last run timestamp/status/error, manual run button, and schedule (`manual` / `weekly` / `monthly`)
 
 ### Account
