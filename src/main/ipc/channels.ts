@@ -75,6 +75,12 @@ export const IPC_CHANNELS = {
     SET_SCHEDULE: "backup:setSchedule",
     GET_SCHEDULE: "backup:getSchedule",
   },
+  MAINTENANCE: {
+    GET_VACUUM_STATUS: "maintenance:get-vacuum-status",
+    RUN_VACUUM: "maintenance:run-vacuum",
+    GET_VACUUM_SCHEDULE: "maintenance:get-vacuum-schedule",
+    SET_VACUUM_SCHEDULE: "maintenance:set-vacuum-schedule",
+  },
   UPDATES: {
     GET_UNREAD_COUNT: "updates:getUnreadCount",
     GET_TOTAL_UNREAD_COUNT: "updates:getTotalUnreadCount",

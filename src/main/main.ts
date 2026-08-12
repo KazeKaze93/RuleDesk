@@ -75,7 +75,6 @@ import { container, DI_TOKENS } from "./core/di/Container";
 import { reloadProxyFromSettings } from "./lib/proxy";
 import { VideoProxyServer } from "./services/video-proxy-server";
 import { MaintenanceService } from "./services/MaintenanceService";
-import { registerMaintenanceHandlers } from "./ipc/handlers/maintenanceHandlers";
 
 logger.info("🚀 Application starting...");
 
@@ -439,8 +438,14 @@ async function initializeAppAndWindow() {
     await dbInitPromise;
     logger.info("✅ Main: Database initialized and ready.");
 
-    registerAllHandlers(syncService, backupService, updaterService, mainWindow, videoProxyServer);
-    registerMaintenanceHandlers(maintenanceService);
+    registerAllHandlers(
+      syncService,
+      backupService,
+      updaterService,
+      mainWindow,
+      videoProxyServer,
+      maintenanceService
+    );
     reloadProxyFromSettings();
 
     import("./db/backfill-media-type").then(({ backfillMediaType }) => {

@@ -10,6 +10,7 @@ import { getDatabasePaths } from "../../db/paths";
 import { getAppIconsDirectory } from "../../lib/app-resources";
 import { isResolvedPathWithinBase } from "../../utils/path-within-base";
 import type { VideoProxyServer } from "../../services/video-proxy-server";
+import type { UpdaterService } from "../../services/updater-service";
 
 const GetIconPathArgsSchema = z.tuple([z.enum(["light", "dark"]).optional()]);
 const WriteClipboardArgsSchema = z.tuple([z.string().min(1)]);
@@ -21,13 +22,16 @@ const WriteClipboardArgsSchema = z.tuple([z.string().min(1)]);
  * - Application version info
  * - Application lifecycle (quit, wipe all local data)
  * - Clipboard operations
+ * - Manual update checks / release-page openers
  */
 export class SystemController extends BaseController {
   private readonly videoProxyServer: VideoProxyServer;
+  private readonly updaterService: UpdaterService;
 
-  constructor(videoProxyServer: VideoProxyServer) {
+  constructor(videoProxyServer: VideoProxyServer, updaterService: UpdaterService) {
     super();
     this.videoProxyServer = videoProxyServer;
+    this.updaterService = updaterService;
   }
 
   public setup(): void {
@@ -55,8 +59,35 @@ export class SystemController extends BaseController {
         return this.writeToClipboard(event, text);
       }
     );
+    this.handle(
+      IPC_CHANNELS.APP.CHECK_FOR_UPDATES,
+      z.tuple([]),
+      this.checkForUpdates.bind(this)
+    );
+    this.handle(
+      IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD,
+      z.tuple([]),
+      this.startUpdateDownload.bind(this)
+    );
+    this.handle(
+      IPC_CHANNELS.APP.QUIT_AND_INSTALL,
+      z.tuple([]),
+      this.quitAndInstall.bind(this)
+    );
 
     log.info("[SystemController] All handlers registered");
+  }
+
+  private async checkForUpdates(_event: IpcMainInvokeEvent): Promise<void> {
+    await this.updaterService.checkForUpdates();
+  }
+
+  private async startUpdateDownload(_event: IpcMainInvokeEvent): Promise<void> {
+    await this.updaterService.openReleasesPage("download");
+  }
+
+  private async quitAndInstall(_event: IpcMainInvokeEvent): Promise<void> {
+    await this.updaterService.openReleasesPage("install");
   }
 
   private async getAppVersion(_event: IpcMainInvokeEvent): Promise<string> {

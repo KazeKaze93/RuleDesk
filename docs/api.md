@@ -12,7 +12,7 @@
 | Channel | Token | Args (Zod) | Idempotent | Handler | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `api:search-remote-tags` | `API.SEARCH_REMOTE` | `z.tuple([ z.string().trim().min(2), z.enum(["rule34", "gelbooru"]).optional(), ])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
-| `app:check-for-updates` | `APP.CHECK_FOR_UPDATES` | `[]` (no args) | no | `updater-service` | `src/main/services/updater-service.ts` |
+| `app:check-for-updates` | `APP.CHECK_FOR_UPDATES` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:download-file` | `APP.DOWNLOAD_FILE` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `app:get-db-location` | `APP.GET_DB_LOCATION` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:get-icon-path` | `APP.GET_ICON_PATH` | `z.tuple([z.enum(["light", "dark"]).optional()])` | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
@@ -21,14 +21,14 @@
 | `app:logout` | `APP.LOGOUT` | `[]` (no args) | no | `AuthController` | `src/main/ipc/controllers/AuthController.ts` |
 | `app:open-external` | `APP.OPEN_EXTERNAL` | `z.string().url().min(1)` | no | `ViewerController` | `src/main/ipc/controllers/ViewerController.ts` |
 | `app:quit` | `APP.QUIT` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
-| `app:quit-and-install` | `APP.QUIT_AND_INSTALL` | `[]` (no args) | no | `updater-service` | `src/main/services/updater-service.ts` |
+| `app:quit-and-install` | `APP.QUIT_AND_INSTALL` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:save-settings` | `SETTINGS.SAVE` | `z.tuple([SaveSettingsSchema])` | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
-| `app:start-download` | `APP.START_UPDATE_DOWNLOAD` | `[]` (no args) | no | `updater-service` | `src/main/services/updater-service.ts` |
+| `app:start-download` | `APP.START_UPDATE_DOWNLOAD` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:verify-creds` | `APP.VERIFY_CREDS` | `z.tuple([z.enum(["rule34", "gelbooru"]).optional()])` | no | `AuthController` | `src/main/ipc/controllers/AuthController.ts` |
 | `app:write-to-clipboard` | `APP.WRITE_CLIPBOARD` | `z.tuple([z.string().min(1)])` | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `backup:getSchedule` | `BACKUP.GET_SCHEDULE` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `backup:integrity-check` | `BACKUP.INTEGRITY_CHECK` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
-| `backup:setSchedule` | `BACKUP.SET_SCHEDULE` | `z.tuple([AutoBackupIntervalSchema])` | no | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
+| `backup:setSchedule` | `BACKUP.SET_SCHEDULE` | `z.tuple([AutoBackupIntervalSchema])` | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `blacklist:add` | `BLACKLIST.ADD` | `z.tuple([blacklistTagSchema])` | no | `BlacklistController` | `src/main/ipc/controllers/BlacklistController.ts` |
 | `blacklist:getAll` | `BLACKLIST.GET_ALL` | `[]` (no args) | yes | `BlacklistController` | `src/main/ipc/controllers/BlacklistController.ts` |
 | `blacklist:remove` | `BLACKLIST.REMOVE` | `z.tuple([blacklistTagSchema])` | no | `BlacklistController` | `src/main/ipc/controllers/BlacklistController.ts` |
@@ -87,6 +87,10 @@
 | `files:resume-download-all` | `FILES.RESUME_DOWNLOAD_ALL` | `[]` (no args) | yes | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:resume-pending-download` | `FILES.RESUME_PENDING_DOWNLOAD` | `z.tuple([])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:select-download-folder` | `FILES.SELECT_DOWNLOAD_FOLDER` | `z.tuple([])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
+| `maintenance:get-vacuum-schedule` | `MAINTENANCE.GET_VACUUM_SCHEDULE` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
+| `maintenance:get-vacuum-status` | `MAINTENANCE.GET_VACUUM_STATUS` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
+| `maintenance:run-vacuum` | `MAINTENANCE.RUN_VACUUM` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
+| `maintenance:set-vacuum-schedule` | `MAINTENANCE.SET_VACUUM_SCHEDULE` | schema: see source (`SetVacuumScheduleArgsSchema`) | no | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `settings:confirm-legal` | `SETTINGS.CONFIRM_LEGAL` | `[]` (no args) | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `settings:reset-onboarding` | `SETTINGS.RESET_ONBOARDING` | `[]` (no args) | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `settings:save-download-folder` | `SETTINGS.SAVE_DOWNLOAD_FOLDER` | `z.tuple([SaveDownloadFolderArgSchema])` | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
@@ -103,15 +107,15 @@
 | `system:wipe-all-data` | `APP.WIPE_ALL_DATA` | `[]` (no args) | no | `SystemController` | Deletes all children of userData (.rdcache), then app.exit(0). Order: closeDatabase → stop video proxy → rm → exit. Does not touch download folders outside userData. |
 | `updater:progress` | `UPDATER.PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `updater:status` | `UPDATER.STATUS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
-| `updates:getTotalUnreadCount` | `UPDATES.GET_TOTAL_UNREAD_COUNT` | schema: see source (`unknown`) | no | `updates` | `src/main/ipc/handlers/updates.ts` |
-| `updates:getUnreadCount` | `UPDATES.GET_UNREAD_COUNT` | `[]` (no args) | no | `updates` | `src/main/ipc/handlers/updates.ts` |
-| `updates:markAllSeen` | `UPDATES.MARK_ALL_SEEN` | `[]` (no args) | no | `updates` | `src/main/ipc/handlers/updates.ts` |
+| `updates:getTotalUnreadCount` | `UPDATES.GET_TOTAL_UNREAD_COUNT` | `z .object({ filters: PostFilterSchema.optional(), }) .optional() .default({})` | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
+| `updates:getUnreadCount` | `UPDATES.GET_UNREAD_COUNT` | `[]` (no args) | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
+| `updates:markAllSeen` | `UPDATES.MARK_ALL_SEEN` | `[]` (no args) | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
 | `video-proxy:get-url` | `VIDEO_PROXY.GET_URL` | `z.tuple([z.string().url()])` | yes | `VideoProxyController` | `src/main/ipc/controllers/VideoProxyController.ts` |
 
 ## Coverage
 
-- Channels in `channels.ts`: **96**
-- Channels with at least one scanned `handle` registration: **81**
+- Channels in `channels.ts`: **100**
+- Channels with at least one scanned `handle` registration: **85**
 - Handler rows extracted: **85**
 
 ## Regenerating

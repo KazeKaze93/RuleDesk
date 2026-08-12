@@ -184,6 +184,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** When tests rebuild better-sqlite3 against Node.js ABI, they don't execute under Electron's runtime. Edge cases that manifest only under Electron's event loop, WAL semantics, or sandbox behavior pass tests but fail in production.
 **Invariant Rule:** Integration tests involving native modules (better-sqlite3) should ideally run inside Electron via Playwright/electron-vitest. If staying with dual-ABI for speed, document the gap explicitly and add end-to-end Electron tests for critical DB paths.
 
+### Problem: `npm run dev` fails with better-sqlite3 NODE_MODULE_VERSION mismatch after running tests
+**Root Cause:** Direct `vitest` / `npx vitest` bypasses npm `pretest`/`posttest` hooks that run `db:rebuild:node` before tests and `db:rebuild` (Electron ABI) after — the native module stays on the Node ABI and Electron cannot load it.
+**Invariant Rule:** Run tests only via `npm test` / `npm run test:run` / `npm run test:watch` (and their derivatives). Direct `vitest` / `npx vitest` is forbidden unless `db:rebuild:node` is run before and `db:rebuild` after, manually. For a single file: `npm test -- <path>`.
+
 ## Architecture & Agent Workflow
 
 ### Problem: Unused infrastructure (i18n with a single locale)

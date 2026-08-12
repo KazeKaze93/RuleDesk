@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 
 /**
+ * LOGIC-ONLY MIRROR: does not import real component, will not catch drift.
+ * @testing-library/react is not a project dependency; adding it is out of scope for this audit.
+ * Mirrored class strings below are intentionally local copies — keep in sync manually with
+ * `src/renderer/components/gallery/virtuoso-factories.tsx` (and local factories in
+ * PlaylistsPage / ArtistGallery when those differ).
+ *
  * Tests for GridContainer layout logic
  * Verifies CSS classes based on viewType
  */

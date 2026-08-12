@@ -1,5 +1,6 @@
 import { useState } from "react";
 import log from "electron-log/renderer";
+import { Button } from "../../components/ui/button";
 
 export function BackupControls() {
   const [isLoading, setIsLoading] = useState(false);
@@ -61,31 +62,33 @@ export function BackupControls() {
         📦 Database Management
       </h3>
       <div className="flex gap-4">
-        <button
+        <Button
+          type="button"
           onClick={handleBackup}
           disabled={isLoading}
           aria-label="Create a full backup of the database"
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+          className={
             isLoading
-              ? "cursor-not-allowed bg-muted text-muted-foreground"
-              : "text-white bg-emerald-600 hover:bg-emerald-700"
-          }`}
+              ? "cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted"
+              : "bg-emerald-600 text-white hover:bg-emerald-700"
+          }
         >
           {isLoading ? "Загрузка..." : "💾 Создать бэкап"}
-        </button>
+        </Button>
 
-        <button
+        <Button
+          type="button"
           onClick={handleRestore}
           disabled={isLoading}
           aria-label="Restore database from a backup file"
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+          className={
             isLoading
-              ? "cursor-not-allowed bg-muted text-muted-foreground"
-              : "text-white bg-red-600 hover:bg-red-700"
-          }`}
+              ? "cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted"
+              : "bg-red-600 text-white hover:bg-red-700"
+          }
         >
           {isLoading ? "Processing..." : "♻️ Restore from File"}{" "}
-        </button>
+        </Button>
       </div>
     </div>
   );

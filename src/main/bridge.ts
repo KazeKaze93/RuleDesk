@@ -456,11 +456,13 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP.GET_SCHEDULE),
   setBackupSchedule: (interval) =>
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP.SET_SCHEDULE, interval),
-  getVacuumStatus: () => ipcRenderer.invoke("maintenance:get-vacuum-status"),
-  runVacuum: () => ipcRenderer.invoke("maintenance:run-vacuum"),
-  getVacuumSchedule: () => ipcRenderer.invoke("maintenance:get-vacuum-schedule"),
+  getVacuumStatus: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.GET_VACUUM_STATUS),
+  runVacuum: () => ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.RUN_VACUUM),
+  getVacuumSchedule: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.GET_VACUUM_SCHEDULE),
   setVacuumSchedule: (args) =>
-    ipcRenderer.invoke("maintenance:set-vacuum-schedule", args),
+    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.SET_VACUUM_SCHEDULE, args),
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) =>
