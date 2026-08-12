@@ -69,7 +69,6 @@ export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "./typ
 
 // Legacy interface for backward compatibility (can be removed if not used)
 export interface PostQueryFilters {
-  rating?: "s" | "q" | "e";
   tags?: string;
   sortBy?: "date" | "id" | "rating";
   isViewed?: boolean;

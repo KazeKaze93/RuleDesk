@@ -1195,10 +1195,10 @@ export class PlaylistController extends BaseController {
   }
 
   /**
-   * Get posts in a playlist with filters (rating, media type)
+   * Get posts in a playlist with filters (media type)
    *
    * Uses JOIN to efficiently retrieve posts with their playlist entries.
-   * Supports playlist-scoped filtering by rating and media type.
+   * Supports playlist-scoped filtering by media type.
    *
    * @param _event - IPC event (unused)
    * @param params - Request parameters (playlistId, page, filters, limit)
@@ -1216,11 +1216,6 @@ export class PlaylistController extends BaseController {
 
       // Build WHERE conditions array
       const conditions = [eq(playlistEntries.playlistId, playlistId)];
-
-      // Add rating filter if provided
-      if (filters?.rating) {
-        conditions.push(eq(posts.rating, filters.rating));
-      }
 
       // Add media type filter if provided
       if (filters?.mediaType === "videos") {
@@ -1558,7 +1553,7 @@ export class PlaylistController extends BaseController {
    *
    * For static playlists: Uses JOIN with playlist_entries.
    * For smart playlists: Parses query_json and builds dynamic Drizzle query with tag filters.
-   * Integrates with global filters (rating, mediaType) from GlobalTopBar.
+   * Integrates with global filters (mediaType) from GlobalTopBar.
    *
    * @param _event - IPC event (unused)
    * @param params - Request parameters (playlistId, page, limit, filters)
@@ -1588,9 +1583,6 @@ export class PlaylistController extends BaseController {
 
       // Build global filter conditions (from GlobalTopBar)
       const globalConditions: SQL[] = [];
-      if (filters?.rating) {
-        globalConditions.push(eq(posts.rating, filters.rating));
-      }
       if (filters?.mediaType === "videos") {
         globalConditions.push(eq(posts.mediaType, "video"));
       } else if (filters?.mediaType === "images") {
@@ -1868,13 +1860,13 @@ export class PlaylistController extends BaseController {
    * Resolve smart playlist posts from remote API
    * 
    * Fetches posts from booru API using the tag query string.
-   * Applies global filters (rating, media type) after fetching.
+   * Applies global filters (media type) after fetching.
    * 
    * @param playlistId - Playlist ID
    * @param query - Smart playlist query
    * @param page - Page number (1-indexed)
    * @param limit - Number of posts per page
-   * @param filters - Global filters (rating, media type)
+   * @param filters - Global filters (media type)
    * @param sortOrder - Sort order (asc/desc)
    * @returns Array of posts from remote API
    */
@@ -1940,11 +1932,6 @@ export class PlaylistController extends BaseController {
             }
           }
 
-          // Apply rating filter
-          if (filters?.rating && post.rating !== filters.rating) {
-            return false;
-          }
-          
           // Apply media type filter
           if (filters?.mediaType) {
             const isVideo = isVideoUrl(post.fileUrl);

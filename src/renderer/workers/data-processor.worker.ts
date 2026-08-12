@@ -38,11 +38,8 @@ interface WorkerResponse<T = unknown> {
 // Filter configuration type
 interface FilterConfig {
   aiFilter: "all" | "hide" | "only";
-  rating: "all" | "s" | "q" | "e";
   mediaType: "all" | "images" | "videos";
   source: "all" | "favorites" | "subscriptions";
-  dateFrom: Date | null;
-  dateTo: Date | null;
   sortOrder: "asc" | "desc";
   trackedTagsSet?: string[]; // Array of tracked tag strings (lowercase)
   tags?: string[]; // Active search tags for source filter
@@ -107,19 +104,6 @@ function getTimestamp(publishedAt: Date | number | null | undefined): number {
   return 0;
 }
 
-function getPublishedDate(
-  publishedAt: Date | number | null | undefined
-): Date | null {
-  if (publishedAt instanceof Date) {
-    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
-  }
-  if (typeof publishedAt === "number") {
-    const parsed = new Date(publishedAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return null;
-}
-
 /**
  * Filter and sort posts in a single efficient pass
  * Uses single-pass filter + sort for optimal performance
@@ -130,11 +114,8 @@ function filterAndSortPosts(
 ): WorkerPost[] {
   const {
     aiFilter,
-    rating,
     mediaType,
     source,
-    dateFrom,
-    dateTo,
     sortOrder,
     trackedTagsSet,
     tags,
@@ -150,12 +131,6 @@ function filterAndSortPosts(
     if (aiFilter === "hide" && hasAiGeneratedTag(post.tags)) return false;
     if (aiFilter === "only" && !hasAiGeneratedTag(post.tags)) return false;
 
-    // Rating filter
-    if (rating !== "all") {
-      const postRating = typeof post.rating === "string" ? post.rating.trim().toLowerCase().charAt(0) : "";
-      if (postRating !== rating) return false;
-    }
-    
     // Media type filter
     if (mediaType !== "all") {
       const isVideo = isVideoPost(post.fileUrl);
@@ -163,13 +138,6 @@ function filterAndSortPosts(
       if (mediaType === "images" && isVideo) return false;
     }
 
-    // Date range filter
-    const publishedDate = getPublishedDate(post.publishedAt);
-    if (publishedDate) {
-      if (dateFrom && publishedDate < dateFrom) return false;
-      if (dateTo && publishedDate > dateTo) return false;
-    }
-    
     // Source filter - only apply if there's an active search
     if (hasActiveSearch) {
       if (source === "favorites" && !post.isFavorited) return false;

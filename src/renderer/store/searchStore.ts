@@ -7,14 +7,10 @@ type MediaType = "all" | "images" | "videos";
 type SourceType = "all" | "favorites" | "subscriptions";
 type ViewType = "grid" | "masonry";
 type AiFilterType = "all" | "hide" | "only";
-type RatingType = "all" | "s" | "q" | "e";
 interface PostFilters {
   aiFilter: AiFilterType;
-  rating: RatingType;
   mediaType: MediaType;
   source: SourceType;
-  dateFrom: Date | null;
-  dateTo: Date | null;
 }
 
 export function buildBooruTagListForIpc(
@@ -59,11 +55,8 @@ export interface SearchState {
 
 const DEFAULT_FILTERS: PostFilters = {
   aiFilter: "all",
-  rating: "all",
   mediaType: "all",
   source: "all",
-  dateFrom: null,
-  dateTo: null,
 };
 
 const MAX_TOKEN_LENGTH = 200;

@@ -36,17 +36,6 @@ import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
 
-const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
-  if (publishedAt instanceof Date) {
-    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
-  }
-  if (typeof publishedAt === "number") {
-    const parsed = new Date(publishedAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return null;
-};
-
 // --- Helper function for updating InfiniteData cache ---
 /**
  * Updates a single post in InfiniteData cache by postId
@@ -224,8 +213,7 @@ export const Updates = () => {
       initialPageParam: 1,
     });
 
-  const { aiFilter, mediaType, dateFrom, dateTo } = filters;
-  const rating = useSearchStore((state) => state.filters.rating);
+  const { aiFilter, mediaType } = filters;
 
   useEffect(() => {
     let isMounted = true;
@@ -269,14 +257,13 @@ export const Updates = () => {
   });
 
   const { data: totalUnreadCount = 0 } = useQuery({
-    queryKey: ["updates", "totalUnreadCount", tags, aiFilter, rating, mediaType],
+    queryKey: ["updates", "totalUnreadCount", tags, aiFilter, mediaType],
     queryFn: () =>
       window.api.getUpdatesTotalUnreadCount({
         filters: {
           sinceTracking: true,
           tags: tags.length > 0 ? tags.join(" ") : undefined,
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
-          rating: rating === "all" ? undefined : rating,
           mediaType: mediaType === "all" ? undefined : mediaType,
         },
       }),
@@ -303,14 +290,6 @@ export const Updates = () => {
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
     }
 
-    // Filter by rating
-    if (rating !== "all") {
-      posts = posts.filter((post) => {
-        const postRating = typeof post.rating === "string" ? post.rating.trim().toLowerCase().charAt(0) : "";
-        return postRating === rating;
-      });
-    }
-    
     // Filter by media type
     if (mediaType !== "all") {
       posts = posts.filter((post) => {
@@ -319,16 +298,6 @@ export const Updates = () => {
       });
     }
 
-    if (dateFrom || dateTo) {
-      posts = posts.filter((post) => {
-        const date = getPublishedDate(post.publishedAt);
-        if (!date) return true;
-        if (dateFrom && date < dateFrom) return false;
-        if (dateTo && date > dateTo) return false;
-        return true;
-      });
-    }
-    
     // Sort by publishedAt (date of post creation)
     return [...posts].sort((a, b) => {
       const dateA = a.publishedAt instanceof Date 
@@ -344,7 +313,7 @@ export const Updates = () => {
       
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-  }, [data, sortOrder, aiFilter, rating, mediaType, dateFrom, dateTo]);
+  }, [data, sortOrder, aiFilter, mediaType]);
   const selectedPosts = useMemo(
     () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
     [allPosts, selectedIds]

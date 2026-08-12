@@ -260,7 +260,6 @@ const PostNotFoundFallback = ({
             "playlist-posts",
             queue.origin.playlistId,
             queue.origin.mediaType ?? "all",
-            queue.origin.rating ?? "all",
             queue.origin.aiFilter ?? "all",
             queue.origin.sortOrder ?? "desc",
           ];
@@ -410,10 +409,9 @@ const useCurrentPost = (
       }
       case "artist": {
         // CRITICAL: Match query key from ArtistGallery.tsx
-        // QueryKey includes: ["posts", artistId, aiFilter, rating, mediaType, source, sortOrder]
+        // QueryKey includes: ["posts", artistId, aiFilter, mediaType, source, sortOrder]
         // This ensures cache lookup matches the query key used for fetching artist posts
         const aiFilter = origin.aiFilter ?? "all";
-        const rating = origin.rating ?? "all";
         const mediaType = origin.mediaType ?? "all";
         const source = origin.source ?? "all";
         const sortOrder = origin.sortOrder ?? "desc";
@@ -421,7 +419,6 @@ const useCurrentPost = (
           "posts",
           origin.artistId,
           aiFilter,
-          rating,
           mediaType,
           source,
           sortOrder,
@@ -439,7 +436,6 @@ const useCurrentPost = (
           "playlist-posts",
           origin.playlistId,
           origin.mediaType ?? "all",
-          origin.rating ?? "all",
           origin.aiFilter ?? "all",
           origin.sortOrder ?? "desc",
         ] as const;
@@ -1751,17 +1747,15 @@ export const ViewerDialog = () => {
         "playlist-posts",
         queue.origin.playlistId,
         queue.origin.mediaType ?? "all",
-        queue.origin.rating ?? "all",
         queue.origin.aiFilter ?? "all",
         queue.origin.sortOrder ?? "desc",
       ];
     } else if (queue.origin.kind === "artist") {
       const aiFilter = queue.origin.aiFilter ?? "all";
-      const rating = queue.origin.rating ?? "all";
       const mediaType = queue.origin.mediaType ?? "all";
       const source = queue.origin.source ?? "all";
       const sortOrder = queue.origin.sortOrder ?? "desc";
-      queryKey = ["posts", queue.origin.artistId, aiFilter, rating, mediaType, source, sortOrder];
+      queryKey = ["posts", queue.origin.artistId, aiFilter, mediaType, source, sortOrder];
     } else if (queue.origin.kind === "favorites") {
       queryKey = ["posts", "favorites", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "updates") {
@@ -1822,17 +1816,16 @@ export const ViewerDialog = () => {
     // Query keys are consistent with component query keys.
     // Keep this mapping in sync with page query keys to avoid cache drift.
     // - Search: ["search", tags, source]
-    // - Artist: ["posts", artistId, aiFilter, rating, mediaType, source, sortOrder]
+    // - Artist: ["posts", artistId, aiFilter, mediaType, source, sortOrder]
     // - Favorites/Updates: ["posts", <tab>, tags]
-    // - Playlist: ["playlist-posts", playlistId, mediaType, rating, aiFilter, sortOrder]
+    // - Playlist: ["playlist-posts", playlistId, mediaType, aiFilter, sortOrder]
     let queryKey: unknown[] = [];
     if (queue.origin.kind === "artist") {
       const aiFilter = queue.origin.aiFilter ?? "all";
-      const rating = queue.origin.rating ?? "all";
       const mediaType = queue.origin.mediaType ?? "all";
       const source = queue.origin.source ?? "all";
       const sortOrder = queue.origin.sortOrder ?? "desc";
-      queryKey = ["posts", queue.origin.artistId, aiFilter, rating, mediaType, source, sortOrder];
+      queryKey = ["posts", queue.origin.artistId, aiFilter, mediaType, source, sortOrder];
     } else if (queue.origin.kind === "favorites") {
       queryKey = ["posts", "favorites", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "updates") {
@@ -1844,7 +1837,6 @@ export const ViewerDialog = () => {
         "playlist-posts",
         queue.origin.playlistId,
         queue.origin.mediaType ?? "all",
-        queue.origin.rating ?? "all",
         queue.origin.aiFilter ?? "all",
         queue.origin.sortOrder ?? "desc",
       ];

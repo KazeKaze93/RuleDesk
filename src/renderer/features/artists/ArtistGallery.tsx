@@ -26,17 +26,6 @@ interface ArtistGalleryProps {
   onBack: () => void;
 }
 
-const getPublishedDate = (publishedAt: Date | number | null): Date | null => {
-  if (publishedAt instanceof Date) {
-    return Number.isNaN(publishedAt.getTime()) ? null : publishedAt;
-  }
-  if (typeof publishedAt === "number") {
-    const parsed = new Date(publishedAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return null;
-};
-
 // --- Компоненты для виртуализации (Grid/Masonry Layout) ---
 
 const GridContainer = forwardRef<
@@ -118,21 +107,17 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   // Use atomic selectors to prevent unnecessary re-renders
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const aiFilter = useSearchStore((state) => state.filters.aiFilter);
-  const rating = useSearchStore((state) => state.filters.rating);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
-  const dateFrom = useSearchStore((state) => state.filters.dateFrom);
-  const dateTo = useSearchStore((state) => state.filters.dateTo);
   const viewType = useSearchStore((state) => state.viewType);
 
   const { data: totalPosts = 0 } = useQuery({
-    queryKey: ["posts-count", artist.id, aiFilter, rating, mediaType, source],
+    queryKey: ["posts-count", artist.id, aiFilter, mediaType, source],
     queryFn: async () => {
       const count = await window.api.getArtistPostsCount({
         artistId: artist.id,
         filters: {
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
-          rating: rating === "all" ? undefined : rating,
           mediaType: mediaType === "all" ? undefined : mediaType,
           isFavorited: source === "favorites" ? true : undefined,
         },
@@ -151,7 +136,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     isLoading,
     handleEndReached,
   } = useGalleryInfiniteScroll({
-    queryKey: ["posts", artist.id, aiFilter, rating, mediaType, source, sortOrder],
+    queryKey: ["posts", artist.id, aiFilter, mediaType, source, sortOrder],
     initialPageParam: 1,
     fetchFn: async (pageParam) => {
       return await window.api.getArtistPosts({
@@ -164,7 +149,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           tags: undefined,
           // AI and Media Type filters applied only if not in 'all' mode
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
-          rating: rating === "all" ? undefined : rating,
           mediaType: mediaType === "all" ? undefined : mediaType,
           isFavorited: source === "favorites" ? true : undefined,
         },
@@ -172,21 +156,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     },
   });
 
-  const allPosts = useMemo(() => {
-    let posts = rawPosts;
-
-    if (dateFrom || dateTo) {
-      posts = posts.filter((post) => {
-        const date = getPublishedDate(post.publishedAt);
-        if (!date) return true;
-        if (dateFrom && date < dateFrom) return false;
-        if (dateTo && date > dateTo) return false;
-        return true;
-      });
-    }
-
-    return posts;
-  }, [rawPosts, dateFrom, dateTo]);
+  const allPosts = rawPosts;
 
   const listAriaBusy = isLoading || isFetchingNextPage;
   const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
@@ -277,7 +247,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         artistId: artist.id,
         tags: undefined, // No tag filtering in artist gallery
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
-        rating,
         mediaType: mediaType === "all" ? undefined : mediaType,
         source,
         sortOrder,
@@ -299,12 +268,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       isRandom: false,
       filters: {
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
-        rating: rating === "all" ? undefined : rating,
         mediaType: mediaType === "all" ? undefined : mediaType,
         isFavorited: source === "favorites" ? true : undefined,
       },
     }),
-    [artist.id, aiFilter, rating, mediaType, source]
+    [artist.id, aiFilter, mediaType, source]
   );
   const {
     downloadAll,

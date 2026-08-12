@@ -19,6 +19,5 @@ export const PaginationSchema = z.object({
 export const RatingSchema = z.enum(["s", "q", "e"]);
 export const MediaTypeSchema = z.enum(["all", "images", "videos"]);
 export const PostFiltersSchema = z.object({
-  rating: RatingSchema.optional(),
   mediaType: MediaTypeSchema.optional(),
 });

@@ -27,10 +27,6 @@ const buildUpdatesUnreadConditions = (
 ): SQL[] => {
   const conditions: SQL[] = [eq(posts.isViewed, false)];
 
-  if (filters?.rating !== undefined) {
-    conditions.push(eq(posts.rating, filters.rating));
-  }
-
   if (filters?.isFavorited !== undefined) {
     conditions.push(eq(posts.isFavorited, filters.isFavorited));
   }
