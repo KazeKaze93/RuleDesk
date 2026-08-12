@@ -560,7 +560,7 @@ export abstract class BaseController {
             const expectedCount = schema.items.length;
             if (args.length !== expectedCount) {
               const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
-              // Security: Log only error details, not sanitized args (may still leak info)
+              // Security: Log only error details, not argument values
               log.error(
                 `[IPC] Validation failed for channel "${channel}": ${errorMessage}`,
                 {
@@ -588,7 +588,7 @@ export abstract class BaseController {
             // Single schema: must receive exactly 1 argument
             if (args.length !== 1) {
               const errorMessage = `Argument count mismatch: expected 1 (single object/primitive), got ${args.length}`;
-              // Security: Log only error details, not sanitized args (may still leak info)
+              // Security: Log only error details, not argument values
               log.error(
                 `[IPC] Validation failed for channel "${channel}": ${errorMessage}`,
                 {
@@ -806,93 +806,5 @@ export abstract class BaseController {
   protected removeHandler(channel: string): void {
     ipcMain.removeHandler(channel);
     log.info(`[IPC] Handler removed: ${channel}`);
-  }
-
-  /**
-   * Sanitize arguments for logging (prevent logging sensitive data)
-   * Override this method in subclasses if needed
-   *
-   * @param args - Handler arguments
-   * @returns Sanitized args safe for logging
-   */
-  protected sanitizeArgs(args: unknown[]): unknown[] {
-    return args.map((arg) => {
-      // Mask strings that might contain sensitive data
-      if (typeof arg === "string") {
-        // Mask file paths (preserve path structure, mask only username)
-        if (/^[A-Za-z]:[\\/]|^\/|^~/.test(arg)) {
-          // Preserve path for debugging, but mask username
-          // Windows: C:\Users\Username\... -> C:\Users\<user>\...
-          // Unix: /home/username/... -> /home/<user>/...
-          // This allows debugging file operations while protecting user identity
-          const maskedPath = arg
-            // Windows user path: C:\Users\Username\... -> C:\Users\<user>\...
-            .replace(
-              /^([A-Za-z]:[\\/]Users[\\/])([^\\/]+)([\\/])/i,
-              "$1<user>$3"
-            )
-            // Unix home path: /home/username/... -> /home/<user>/...
-            .replace(/^(\/home\/)([^/]+)(\/)/, "$1<user>$3")
-            // Tilde expansion: ~username/... -> ~<user>/...
-            .replace(/^(~)([^/\\]+)([/\\])/, "$1<user>$3")
-            // Generic user directory patterns
-            .replace(/\/(Users|home)\/([^/\\]+)([/\\])/gi, "/$1/<user>$3");
-
-          return maskedPath;
-        }
-
-        // Mask tokens and keys (any length if they match patterns)
-        if (
-          /(password|token|key|secret|api[_-]?key|auth|credential)/i.test(
-            arg
-          ) ||
-          /^[A-Za-z0-9+/]{32,}={0,2}$/.test(arg) || // Base64-like strings (32+ chars)
-          /^[a-f0-9]{32,}$/i.test(arg) // Hex strings (likely hashes/tokens)
-        ) {
-          return "<masked>";
-        }
-
-        // Mask long strings (likely tokens, keys, etc.)
-        if (arg.length > 50) {
-          return `<string:${arg.length}chars>`;
-        }
-
-        return arg;
-      }
-
-      // Mask objects that might contain sensitive data
-      if (typeof arg === "object" && arg !== null) {
-        if (Array.isArray(arg)) {
-          return arg.map((item) => this.sanitizeArgs([item])[0]);
-        }
-
-        // Comprehensive list of sensitive keys to mask
-        // Includes variations: apiKey, api_key, api-key, encryptedApiKey, etc.
-        const sensitiveKeyPattern =
-          /^(password|token|key|secret|api[_-]?key|encrypted[_-]?api[_-]?key|auth|credential|access[_-]?token|refresh[_-]?token|bearer|authorization)$/i;
-
-        const sanitized: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(arg)) {
-          // Check if key matches sensitive patterns
-          if (sensitiveKeyPattern.test(key)) {
-            // Always mask sensitive keys, regardless of value type
-            sanitized[key] = "<masked>";
-          } else if (typeof value === "string" && value.length > 0) {
-            // Recursively sanitize string values (may contain nested sensitive data)
-            const sanitizedValue = this.sanitizeArgs([value])[0];
-            sanitized[key] = sanitizedValue;
-          } else if (typeof value === "object" && value !== null) {
-            // Recursively sanitize nested objects and arrays
-            sanitized[key] = this.sanitizeArgs([value])[0];
-          } else {
-            // Pass through primitives and null
-            sanitized[key] = value;
-          }
-        }
-        return sanitized;
-      }
-
-      return arg;
-    });
   }
 }
