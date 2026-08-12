@@ -15,6 +15,7 @@ import { z } from "zod";
 import { ProviderThrottle, pickRandomUA, ProviderRateLimitGateError } from "./provider-throttle";
 import { ProviderSearchError } from "./provider-search-errors";
 import { getProxyAgent } from "../lib/proxy";
+import { redactErrorForLog } from "../lib/redact-error";
 
 type GelbooruTagItem = {
   value: string;
@@ -80,7 +81,10 @@ export class GelbooruProvider implements IBooruProvider {
       // Gelbooru sometimes returns empty array or object with post array
       return status === 200 && (Array.isArray(data) || !!data?.post);
     } catch (error) {
-      logger.error("[GelbooruProvider] Auth check failed", error);
+      logger.error(
+        "[GelbooruProvider] Auth check failed",
+        redactErrorForLog(error)
+      );
       return false;
     }
   }
@@ -250,8 +254,11 @@ export class GelbooruProvider implements IBooruProvider {
       
       return posts;
     } catch (error) {
-       logger.error(`[Gelbooru] Error fetching page ${page}`, error);
-       return [];
+      logger.error(
+        `[Gelbooru] Error fetching page ${page}`,
+        redactErrorForLog(error)
+      );
+      return [];
     }
   }
 
