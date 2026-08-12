@@ -106,7 +106,7 @@ RuleDesk needs your Rule34.xxx account credentials to fetch posts. These credent
 
 5. **Paste them into RuleDesk:**
 
-   - You can paste the entire URL from the account page, and RuleDesk will automatically extract the credentials
+   - A tip under the User ID and API key fields reminds you: paste the full account page URL into either field and both values are filled in automatically
    - Or manually enter them in the fields
 
 6. **Click "Save and Login"**
@@ -467,6 +467,7 @@ Settings are split into tabs:
 - **Provider** - Choose `rule34` or `gelbooru` (changing provider invalidates feed query caches and saves the selection)
 - **User ID** - Shown when the selected provider needs it
 - **API key field** - Password-style input with show/hide button
+- **Paste URL** - A tip under the fields: paste the full account page URL into either field and both User ID and API Key are filled in automatically
 - **API key status** - `Configured` / `Not configured` badge
 - **Save API key** - Update credentials from Settings
 
