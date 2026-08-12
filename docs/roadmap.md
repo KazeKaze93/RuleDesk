@@ -165,6 +165,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | Branch | Status | Notes |
 |--------|--------|-------|
 | `fix/ipc-handlers-compliance` | 🔄 PR | Legacy `ipcMain.handle` → BaseController; silent catch removed. (Branch renamed: remote `audit` ref blocks `audit/*`) |
+| `fix-frontend-virtuoso-gallery-audit` | 🔄 PR | [#125](https://github.com/KazeKaze93/RuleDesk/pull/125) — decorative tests; VirtuosoGrid factory dedupe; totalCount audit (clean); raw HTML→shadcn |
 
 ### Baseline DX (earlier)
 

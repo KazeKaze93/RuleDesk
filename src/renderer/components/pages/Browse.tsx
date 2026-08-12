@@ -1,4 +1,4 @@
-import React, { useMemo, forwardRef, useCallback, useEffect } from "react";
+import React, { useMemo, useCallback, useEffect } from "react";
 import {
   useQuery,
   useMutation,
@@ -8,7 +8,6 @@ import {
 import { Search, Loader2, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
-import { cn } from "../../lib/utils";
 import { resolveErrorMessage } from "../../utils/error-message";
 import {
   assertBrowseSearchError,
@@ -44,6 +43,7 @@ import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
 import { getSearchBrowseNextPageParam, isSearchGalleryPage } from "../../utils/react-query-cache";
+import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 
 const POSTS_PER_PAGE = 50;
 const BROWSE_SEARCH_STALE_TIME_MS = 5 * 60 * 1000;
@@ -57,73 +57,13 @@ function isBrowseCursorPageParam(
   return typeof pageParam === "object" && "beforePostId" in pageParam;
 }
 
-// --- Компоненты для виртуализации (Grid/Masonry Layout) ---
-
-const GridContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { viewType?: "grid" | "masonry" }
->(({ className, viewType = "grid", ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      viewType === "grid"
-        ? "grid gap-4 p-4 pb-44 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(188px,1fr))]"
-        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
-      className
-    )}
-    {...props}
-  />
-));
-GridContainer.displayName = "GridContainer";
-
-const GridItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
-  )
-);
-GridItemContainer.displayName = "BrowseGridItemContainer";
-
-const MasonryItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
-        className
-      )}
-      {...props}
-    />
-  )
-);
-MasonryItemContainer.displayName = "BrowseMasonryItemContainer";
-
-const GridVirtuosoList = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
->(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-  <GridContainer
-    {...props}
-    ref={ref}
-    className={className}
-    aria-busy={ariaBusy}
-    viewType="grid"
-  />
-));
-GridVirtuosoList.displayName = "BrowseGridVirtuosoList";
-
-const MasonryVirtuosoList = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
->(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-  <GridContainer
-    {...props}
-    ref={ref}
-    className={className}
-    aria-busy={ariaBusy}
-    viewType="masonry"
-  />
-));
-MasonryVirtuosoList.displayName = "BrowseMasonryVirtuosoList";
+const {
+  GridContainer,
+  GridItemContainer,
+  MasonryItemContainer,
+  GridVirtuosoList,
+  MasonryVirtuosoList,
+} = createVirtuosoGridFactories("Browse");
 
 // --- Основной компонент ---
 

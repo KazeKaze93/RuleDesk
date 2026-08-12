@@ -1295,15 +1295,18 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                             <Minus className="w-3 h-3" />
                           )}
                           <span>{tag.tag}</span>
-                          <button
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
                             onClick={(e) => {
                               e.stopPropagation();
                               removeTag(index);
                             }}
-                            className="ml-1 hover:bg-black/20 rounded-full p-0.5"
+                            className="ml-1 h-auto w-auto rounded-full p-0.5 hover:bg-black/20"
                           >
                             <X className="w-3 h-3" />
-                          </button>
+                          </Button>
                         </Badge>
                       ))}
                     </div>
@@ -1474,15 +1477,18 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                           <Minus className="w-3 h-3" />
                         )}
                         <span>{tag.tag}</span>
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
                             removeTag(index);
                           }}
-                          className="ml-1 hover:bg-black/20 rounded-full p-0.5"
+                          className="ml-1 h-auto w-auto rounded-full p-0.5 hover:bg-black/20"
                         >
                           <X className="w-3 h-3" />
-                        </button>
+                        </Button>
                       </Badge>
                     ))}
                   </div>

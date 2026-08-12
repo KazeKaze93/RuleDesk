@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useInfiniteQuery,
   useQuery,
@@ -10,7 +10,6 @@ import { RefreshCw, Loader2, CheckCheck, User, ChevronRight, CheckSquare } from 
 import { VirtuosoGrid } from "react-virtuoso";
 import { useNavigate } from "react-router-dom";
 import log from "electron-log/renderer";
-import { cn } from "../../lib/utils";
 import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
@@ -32,6 +31,7 @@ import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
+import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -82,73 +82,13 @@ const updatePostInInfiniteData = (
   };
 };
 
-// --- Компоненты для виртуализации (Grid/Masonry Layout) ---
-
-const GridContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { viewType?: "grid" | "masonry" }
->(({ className, viewType = "grid", ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      viewType === "grid"
-        ? "grid gap-4 p-4 pb-44 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(188px,1fr))]"
-        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
-      className
-    )}
-    {...props}
-  />
-));
-GridContainer.displayName = "GridContainer";
-
-const GridItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
-  )
-);
-GridItemContainer.displayName = "GridItemContainer";
-
-const MasonryItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
-        className
-      )}
-      {...props}
-    />
-  )
-);
-MasonryItemContainer.displayName = "MasonryItemContainer";
-
-const GridVirtuosoList = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
->(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-  <GridContainer
-    {...props}
-    ref={ref}
-    className={className}
-    aria-busy={ariaBusy}
-    viewType="grid"
-  />
-));
-GridVirtuosoList.displayName = "GridVirtuosoList";
-
-const MasonryVirtuosoList = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
->(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-  <GridContainer
-    {...props}
-    ref={ref}
-    className={className}
-    aria-busy={ariaBusy}
-    viewType="masonry"
-  />
-));
-MasonryVirtuosoList.displayName = "MasonryVirtuosoList";
+const {
+  GridContainer,
+  GridItemContainer,
+  MasonryItemContainer,
+  GridVirtuosoList,
+  MasonryVirtuosoList,
+} = createVirtuosoGridFactories("Updates");
 
 // --- Основной компонент ---
 
@@ -196,10 +136,12 @@ const CreatorsView = ({
         <div className="overflow-auto flex-1 p-4">
           <div className="space-y-3">
             {artists.map((artist) => (
-              <button
+              <Button
                 key={artist.id}
+                type="button"
+                variant="ghost"
                 onClick={() => onViewArtist(artist)}
-                className="flex items-center gap-3 p-3 w-full text-left rounded-lg border transition-colors bg-card hover:bg-accent hover:border-primary"
+                className="flex items-center gap-3 p-3 w-full h-auto text-left rounded-lg border transition-colors bg-card hover:bg-accent hover:border-primary"
                 aria-label={`View ${artist.name} gallery`}
               >
                 <div className="flex flex-shrink-0 justify-center items-center w-10 h-10 rounded-full bg-primary/10">
@@ -219,7 +161,7 @@ const CreatorsView = ({
                   </Badge>
                 )}
                 <ChevronRight className="flex-shrink-0 w-4 h-4 text-muted-foreground" />
-              </button>
+              </Button>
             ))}
           </div>
         </div>
