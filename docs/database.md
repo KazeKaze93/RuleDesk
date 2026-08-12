@@ -1018,11 +1018,11 @@ The application uses SQLite FTS5 for efficient tag searching in the `posts` tabl
 - **Multi-Language Support:** Proper Unicode handling for tags in different languages
 - **Automatic Sync:** Triggers keep FTS5 index synchronized with `posts` table:
   - `posts_fts_insert` - Populates index on INSERT
-  - `posts_fts_update` - Updates index on tags UPDATE
-  - `posts_fts_delete` - Removes from index on DELETE
+  - `posts_fts_update` - Reindexes on tags UPDATE via FTS5 `'delete'` command + INSERT (migration `0033`; never `DELETE FROM posts_fts` on an external-content table)
+  - `posts_fts_delete` - Removes from index on DELETE via the same `'delete'` command
 - **Smart-playlist empty-guard:** Before FTS `MATCH`, `PlaylistController` probes with `SELECT 1 FROM posts_fts LIMIT 1` (stops at the first row). Empty index → `sql\`1 = 0\``. No in-memory count cache.
 - **Deprecated (tables remain, unused by app code):** `fts5_count_meta` and `fts5_cache_invalidation` from migrations `0010` / `0011` — kept so older app versions can open the DB. Migration `0032_fix_fts5_cache_invalidation` only `DROP TRIGGER IF EXISTS` for the five never-working virtual-table trigger names. Do not recreate stamp/count triggers.
-- **Initial sync / hard-kill recovery:** Only `posts_fts_insert` is runtime-droppable; restored via `ensureFtsTriggers` (`src/main/db/fts-triggers.ts`), then missing `posts_fts` rows are backfilled.
+- **Initial sync / hard-kill recovery:** `posts_fts_insert` and `posts_fts_update` are runtime-droppable together during initial sync / repair bulk upsert (insert = perf; update = correctness — `'delete'` on a never-indexed rowid corrupts the VTAB while insert is down). Restored via `ensureFtsTriggers` (`src/main/db/fts-triggers.ts`). Sync then backfills with `INSERT INTO posts_fts(rowid, tags) SELECT id, tags FROM posts WHERE artist_id = ?` — never `NOT IN (SELECT rowid FROM posts_fts)` (bare SELECT on external-content FTS passes through to `posts`). Hard-kill recovery in `client.ts` uses `INSERT INTO posts_fts(posts_fts) VALUES('rebuild')`. `posts_fts_delete` stays live.
 
 ### Usage
 

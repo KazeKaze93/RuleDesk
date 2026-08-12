@@ -30,22 +30,13 @@ function recoverAfterRecreatedFtsTriggers(
   );
 
   try {
-    const result = sqlite
-      .prepare(
-        `
-        INSERT INTO posts_fts(rowid, tags)
-        SELECT id, tags FROM posts
-        WHERE id NOT IN (SELECT rowid FROM posts_fts);
-      `
-      )
-      .run();
-    if (result.changes > 0) {
-      logger.info(
-        `[DB] FTS backfill inserted ${result.changes} row(s) missing from posts_fts`
-      );
-    }
+    // Bare `SELECT rowid FROM posts_fts` passes through to `posts` on an
+    // external-content table (SQLite fts5.html) — never use it to find
+    // "missing" index rows. Rebuild the whole index from content.
+    sqlite.exec(`INSERT INTO posts_fts(posts_fts) VALUES('rebuild');`);
+    logger.info("[DB] FTS index rebuilt after restoring runtime-dropped triggers");
   } catch (error) {
-    logger.warn("[DB] FTS backfill failed", error);
+    logger.warn("[DB] FTS rebuild failed", error);
   }
 }
 

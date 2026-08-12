@@ -521,7 +521,7 @@ export class SyncService {
 
     if (isInitial) {
       logger.info(
-        `SyncService: ${artist.name} - disabling initial-sync FTS insert triggers`
+        `SyncService: ${artist.name} - disabling initial-sync FTS insert/update triggers`
       );
       dropFtsTriggersForBulkInsert(sqlite);
     }
@@ -770,15 +770,22 @@ export class SyncService {
     } finally {
       if (isInitial) {
         logger.info(
-          `SyncService: ${artist.name} - rebuilding FTS index and restoring insert triggers`
+          `SyncService: ${artist.name} - backfilling FTS index and restoring insert/update triggers`
         );
 
+        // External-content FTS5: a bare `SELECT rowid FROM posts_fts` is
+        // passed through to `posts` (no MATCH → not an index probe), so
+        // `NOT IN (SELECT rowid FROM posts_fts)` never backfills. Re-insert
+        // this artist's rows; duplicate FTS inserts for already-indexed
+        // rowids are harmless on this SQLite build.
         sqlite
-          .prepare(`
+          .prepare(
+            `
             INSERT INTO posts_fts(rowid, tags)
             SELECT id, tags FROM posts
-            WHERE artist_id = ? AND id NOT IN (SELECT rowid FROM posts_fts);
-          `)
+            WHERE artist_id = ?;
+          `
+          )
           .run(artist.id);
 
         ensureFtsTriggers(sqlite);
