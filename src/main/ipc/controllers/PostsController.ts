@@ -36,10 +36,10 @@ import {
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
+import { postsFtsTableExists } from "../../db/fts-table-check";
 import { isVideoUrl } from "@shared/utils/media";
 import { getProvider, type ProviderId } from "../../providers";
-import { settings, SETTINGS_ID } from "../../db/schema";
-import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
+import { getDecryptedApiSettings } from "../../services/credentials";
 import { ShadowInsertRequestSchema } from "../../../shared/schemas/shadow-insert";
 import { IdSchema } from "../../../shared/schemas/ipc";
 import { getAllBlacklistedTags } from "../../db/queries/blacklist";
@@ -124,33 +124,6 @@ export class PostsController extends BaseController {
    */
   private checkFtsTableExists(): boolean {
     return this.ftsTableExistsCache;
-  }
-
-  /**
-   * Initialize FTS table existence check (called once at setup)
-   * This avoids blocking synchronous SQLite calls during runtime
-   */
-  private initializeFtsTableCheck(): void {
-    try {
-      // Use official getSqliteInstance export (safe, no unsafe casts)
-      // Query sqlite_master system table to check if posts_fts exists
-      // Schema introspection: no Drizzle equivalent
-      const sqlite = getSqliteInstance();
-      const stmt = sqlite.prepare<[], { name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
-      );
-      const result = stmt.get();
-      this.ftsTableExistsCache = !!result;
-      log.info(
-        `[PostsController] FTS table check initialized: ${this.ftsTableExistsCache}`
-      );
-    } catch (error) {
-      log.warn(
-        "[PostsController] Failed to check FTS table existence, using LIKE fallback:",
-        error
-      );
-      this.ftsTableExistsCache = false;
-    }
   }
 
   /**
@@ -257,8 +230,8 @@ export class PostsController extends BaseController {
       }
     );
 
-    // Initialize FTS table check once at setup (avoids blocking synchronous calls at runtime)
-    this.initializeFtsTableCheck();
+    // Cache once at setup so runtime MATCH paths stay off the sqlite_master query.
+    this.ftsTableExistsCache = postsFtsTableExists(getSqliteInstance());
     this.initializeViewMetadataColumnsCheck();
 
     log.info("[PostsController] All handlers registered");
@@ -1314,46 +1287,6 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Get decrypted settings for API authentication
-   *
-   * @returns Decrypted settings or null if not available
-   */
-  private async getDecryptedSettings(): Promise<{
-    userId: string;
-    apiKey: string;
-  } | null> {
-    try {
-      const db = this.getDb();
-      const settingsRecord = await db
-        .select()
-        .from(settings)
-        .where(eq(settings.id, SETTINGS_ID))
-        .limit(1)
-        .all();
-
-      if (!settingsRecord || settingsRecord.length === 0) {
-        return null;
-      }
-
-      const record = settingsRecord[0];
-      if (!record.userId || !record.encryptedApiKey) {
-        return null;
-      }
-
-      const credentials = getDecryptedCredentialsFromRecord(record);
-      if (!credentials) {
-        log.warn("[PostsController] Failed to decrypt API key");
-        return null;
-      }
-
-      return credentials;
-    } catch (error) {
-      log.error("[PostsController] Failed to get decrypted settings:", error);
-      return null;
-    }
-  }
-
-  /**
    * Shadow Insert: Silently insert a remote post into the local database
    * 
    * CRITICAL SECURITY: Renderer only passes postId and provider.
@@ -1428,7 +1361,7 @@ export class PostsController extends BaseController {
 
       // Step 2: Fetch post data from API (Main process controls data source)
       const provider = getProvider(request.provider);
-      const apiSettings = await this.getDecryptedSettings();
+      const apiSettings = await getDecryptedApiSettings(this.getDb());
       
       if (!apiSettings) {
         throw new Error("API credentials not configured. Cannot fetch post data from provider.");
