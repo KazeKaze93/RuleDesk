@@ -21,7 +21,27 @@ vi.mock("electron-log", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
+    transports: {
+      main: { level: false },
+      renderer: { level: false },
+      file: { level: "info", resolvePathFn: vi.fn() },
+      console: { format: "" },
+    },
+    errorHandler: { startCatching: vi.fn() },
   },
+}));
+
+vi.mock("@/main/lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+vi.mock("@/main/lib/proxy", () => ({
+  getProxyAgent: vi.fn(() => undefined),
 }));
 
 import { VideoProxyServer } from "../../../src/main/services/video-proxy-server";
@@ -220,14 +240,29 @@ describe("VideoProxyServer cache integrity", () => {
     expect(fs.readdirSync(cacheDir)).toEqual([]);
   });
 
-  it("rejects disallowed CDN hosts with 400", async () => {
-    const url = proxy.getProxyUrl("https://evil.example/video.mp4");
+  async function proxyStatus(fileUrl: string): Promise<number> {
+    const url = proxy.getProxyUrl(fileUrl);
     const result = await new Promise<{ status: number }>((resolve, reject) => {
       http.get(url, (res) => {
         void readResponse(res).then((r) => resolve({ status: r.status }), reject);
       }).on("error", reject);
     });
-    expect(result.status).toBe(400);
+    return result.status;
+  }
+
+  it("rejects disallowed CDN hosts with 400", async () => {
+    expect(await proxyStatus("https://evil.example/video.mp4")).toBe(400);
+  });
+
+  it.each([
+    ["https://img4.gelbooru.com/images/x.webm", 200],
+    ["https://wimg.rule34.xxx/video.mp4", 200],
+    ["https://img1.gelbooru.com/images/x.webm", 400],
+    ["https://img2.gelbooru.com/images/x.webm", 400],
+    ["https://img3.gelbooru.com/images/x.webm", 400],
+    ["https://cdn-unknown.rule34.xxx/video.mp4", 400],
+  ])("provider-derived allowlist %s -> %i", async (fileUrl, status) => {
+    expect(await proxyStatus(fileUrl)).toBe(status);
   });
 
   it("does not leave truncated cache when client aborts mid-download", async () => {

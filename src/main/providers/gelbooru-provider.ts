@@ -72,11 +72,10 @@ function axiosHeadersToRetryAfterRecord(
 export class GelbooruProvider implements IBooruProvider {
   readonly id = "gelbooru";
   readonly name = "Gelbooru";
+  /** `gelbooru.com` is the API/site host; `img4.gelbooru.com` is the live media CDN. */
   readonly allowedDomains = [
     "gelbooru.com",
-    "img1.gelbooru.com",
-    "img2.gelbooru.com",
-    "img3.gelbooru.com",
+    "img4.gelbooru.com",
   ];
   private readonly baseUrl = "https://gelbooru.com/index.php";
   private readonly throttle = new ProviderThrottle();

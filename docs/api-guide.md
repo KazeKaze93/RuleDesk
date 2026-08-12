@@ -405,7 +405,7 @@ await window.api.wipeAllData();
 
 ### `getVideoProxyUrl(fileUrl: string)`
 
-Returns a `http://127.0.0.1` URL served by the main-process `VideoProxyServer` that forwards Range requests to the original HTTPS CDN and writes complete responses under `{userData}/video-cache/` via **atomic tmp + rename** (incomplete/aborted downloads never become cache hits). Cache size is bounded by `VIDEO_CACHE_MAX_BYTES` with eviction from the maintenance scheduler and a deferred sweep after proxy `start()`. The renderer should use the returned value as the `<video src>` (with a temporary fallback to the direct CDN URL while this promise resolves). Input is validated with `z.string().url()`. Only the same host allowlist enforced by the proxy is permitted; other URLs are rejected with HTTP 400 if passed through the proxy.
+Returns a `http://127.0.0.1` URL served by the main-process `VideoProxyServer` that forwards Range requests to the original HTTPS CDN and writes complete responses under `{userData}/video-cache/` via **atomic tmp + rename** (incomplete/aborted downloads never become cache hits). Cache size is bounded by `VIDEO_CACHE_MAX_BYTES` with eviction from the maintenance scheduler and a deferred sweep after proxy `start()`. The renderer should use the returned value as the `<video src>` (with a temporary fallback to the direct CDN URL while this promise resolves). Input is validated with `z.string().url()`. The proxy allowlist is the exact hostnames from `provider.allowedDomains` (via `getAllProviderDomains()`); other URLs are rejected with HTTP 400 if passed through the proxy.
 
 **Returns:** `Promise<string>`
 

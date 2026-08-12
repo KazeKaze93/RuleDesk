@@ -20,7 +20,10 @@ export interface ProviderSettings {
 export interface IBooruProvider {
   id: string;
   name: string;
-  /** Domains this provider is allowed to load media/connect from */
+  /**
+   * Exact hostnames this provider may load media/connect from.
+   * Single source for CSP (`getAllProviderDomains`) and video-proxy `isAllowedCdnUrl`.
+   */
   readonly allowedDomains: string[];
   /** Validates provided credentials against the API */
   checkAuth(settings: ProviderSettings): Promise<boolean>;
