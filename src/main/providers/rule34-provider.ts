@@ -45,6 +45,7 @@ interface R34AutocompleteItem {
 export class Rule34Provider implements IBooruProvider {
   readonly id = "rule34";
   readonly name = "Rule34.xxx";
+  /** Exact hosts for CSP and video-proxy; no suffix wildcard. */
   readonly allowedDomains = [
     "rule34.xxx",
     "api.rule34.xxx",

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import axios, { AxiosError } from "axios";
 import { GelbooruProvider } from "@/main/providers/gelbooru-provider";
+import { getAllProviderDomains } from "@/main/providers";
 import { ProviderThrottle } from "@/main/providers/provider-throttle";
 
 vi.mock("electron-log", () => ({
@@ -29,9 +30,9 @@ const axiosGetMock = vi.spyOn(axios, "get");
 
 const SAMPLE_GELBOORU_POST = {
   id: 42,
-  file_url: "https://img3.gelbooru.com/images/ab/cd/abcd1234.jpg",
-  sample_url: "https://img3.gelbooru.com/samples/ab/cd/sample_abcd1234.jpg",
-  preview_url: "https://img3.gelbooru.com/thumbnails/ab/cd/thumbnail_abcd1234.jpg",
+  file_url: "https://img4.gelbooru.com/images/ab/cd/abcd1234.jpg",
+  sample_url: "https://img4.gelbooru.com/samples/ab/cd/sample_abcd1234.jpg",
+  preview_url: "https://img4.gelbooru.com/thumbnails/ab/cd/thumbnail_abcd1234.jpg",
   tags: "solo 1girl",
   rating: "q",
   score: 10,
@@ -43,6 +44,18 @@ const SAMPLE_GELBOORU_POST = {
 describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
   const provider = new GelbooruProvider();
   const settings = { userId: "1", apiKey: "test-key" };
+
+  it("lists only the live API host and img4 CDN", () => {
+    expect(provider.allowedDomains).toEqual([
+      "gelbooru.com",
+      "img4.gelbooru.com",
+    ]);
+    const domains = getAllProviderDomains();
+    expect(domains).toContain("img4.gelbooru.com");
+    expect(domains).not.toContain("img1.gelbooru.com");
+    expect(domains).not.toContain("img2.gelbooru.com");
+    expect(domains).not.toContain("img3.gelbooru.com");
+  });
 
   beforeEach(() => {
     axiosGetMock.mockReset();

@@ -608,6 +608,7 @@ const posts = await db.query.posts.findMany({
    - Provider pattern abstraction for multi-booru support
    - `IBooruProvider` interface for standardized booru operations
    - Implementations: `Rule34Provider`, `GelbooruProvider`
+   - `allowedDomains` is the single host list for CSP (`getAllProviderDomains`) and video-proxy `isAllowedCdnUrl` (exact hostname match, no suffix wildcard). Gelbooru media CDN is `img4.gelbooru.com`; `gelbooru.com` is the API/site host.
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
    - Shared request pacing via `ProviderThrottle` (~1200ms + jitter) and session UA via `pickRandomUA()`
    - **Priorities:** `user` (Sync `fetchPosts`, Browse/search `fetchPosts`, autocomplete) drains before `background` (tag-resolve). Same min-interval; order only.
@@ -617,7 +618,7 @@ const posts = await db.query.posts.findMany({
 
    - Local HTTP proxy for video playback with on-disk `video-cache/` under `.rdcache`
    - Atomic cache writes (tmp+rename), abort cleanup, eviction capped by `VIDEO_CACHE_MAX_BYTES` (2 GiB) in `src/main/config/constants.ts`
-   - Allowlists Rule34 media hosts; does not rewrite stored post URLs at sync time
+   - Host allowlist is derived from `provider.allowedDomains` (exact match, cached at module load). Does not rewrite stored post URLs at sync time.
 
 10. **Updater Service** (`src/main/services/updater-service.ts`)
 
@@ -1760,7 +1761,7 @@ Root:
 - **Database Backup/Restore:** Manual backup and restore with integrity checks; automatic rotation of timestamped backup files using configurable `backupRetention` (`1..20`)
 - **DB Maintenance (VACUUM):** User-visible status, manual trigger, and persisted schedule (`manual`, `weekly`, `monthly`)
 - **Context Isolation:** Enabled globally with sandbox mode
-- **CSP:** Strict Content Security Policy in production, relaxed for development (HMR support)
+- **CSP:** Built from `getAllProviderDomains()` (`img-src` / `media-src` / `connect-src`); production is strict, development is relaxed for HMR
 - **IPC Architecture:** Controller-based IPC handlers with `BaseController` for centralized error handling
 
 **Data Integrity & Sync:**

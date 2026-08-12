@@ -1,7 +1,11 @@
 /**
- * Allowed hosts for external URL opening
- * This whitelist prevents opening arbitrary URLs and protects against XSS/SSRF attacks
- * 
+ * Allowed hosts for shell.openExternal (user-initiated browser tabs).
+ * This whitelist prevents opening arbitrary URLs and protects against XSS/SSRF attacks.
+ *
+ * Intentionally separate from provider.allowedDomains: that list is what the app
+ * may fetch (CSP + video-proxy). This list is what the user may open themselves.
+ * Do not sync the two — different trust boundaries (user click vs app-originated request).
+ *
  * To add new hosts, add them to this array. Only HTTPS URLs are allowed.
  */
 

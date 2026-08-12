@@ -9,6 +9,7 @@ import { app } from "electron";
 import log from "electron-log";
 import type { AddressInfo } from "node:net";
 import { tryParseHttpsUrlHostname } from "../../shared/utils/url-host";
+import { getAllProviderDomains } from "../providers";
 import {
   VIDEO_CACHE_EVICT_AFTER_START_MS,
   VIDEO_CACHE_MAX_BYTES,
@@ -17,7 +18,8 @@ import {
 
 const VIDEO_PATH = "/video";
 const PROXY_HOST = "127.0.0.1";
-const GELBOORU_IMG_HOSTS = new Set<string>(["img2.gelbooru.com", "img3.gelbooru.com", "img4.gelbooru.com"]);
+/** Cached at module load — `isAllowedCdnUrl` is on the video request hot path. */
+const ALLOWED_CDN_HOSTS = new Set(getAllProviderDomains());
 
 const VIDEO_CONTENT_TYPE = "video/mp4";
 const CACHE_BIN_SUFFIX = ".bin";
@@ -41,13 +43,7 @@ function isAllowedCdnUrl(urlString: string): boolean {
   if (!host) {
     return false;
   }
-  if (GELBOORU_IMG_HOSTS.has(host)) {
-    return true;
-  }
-  if (host === "rule34.xxx" || host.endsWith(".rule34.xxx")) {
-    return true;
-  }
-  return false;
+  return ALLOWED_CDN_HOSTS.has(host);
 }
 
 type RangeResult =

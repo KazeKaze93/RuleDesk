@@ -228,6 +228,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Backups** | `keep last N` is implemented; optional **total-size cap** is also supported via `BACKUP_RETENTION_MAX_TOTAL_MB` env for deployments that need hard storage ceilings (retained-only size accounting; newest backup always kept even if alone over cap). UI exposure for this cap remains optional future UX work. |
 | **Engineering** | Ongoing tooling hygiene; remaining shared validation consolidation as needed. |
 | **Testing** | Host-gate feedback covered: `vi.spyOn(ProviderThrottle.prototype, "notifyRateLimited")` asserts real 429 notify calls in `rule34-provider-fetch-posts.test.ts` and `gelbooru-provider-fetch-posts.test.ts` (closed after coverage gap noted post-[#126](https://github.com/KazeKaze93/RuleDesk/pull/126)). |
+| **Testing** | Live Gelbooru video-proxy check was not run (Gelbooru API key required); unit tests cover allowlist logic only. |
 | **Media filters (P3)** | Browse worker video regex (`mp4\|webm\|mov` in `data-processor.worker.ts`) is narrower than canonical `VIDEO_EXTENSIONS` in `src/shared/utils/media.ts` — align when touching the worker. |
 | **Product** | **Smart Collections AI** (research). |
 
