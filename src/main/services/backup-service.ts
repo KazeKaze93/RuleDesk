@@ -163,8 +163,16 @@ export class BackupService {
       const filesToDelete = autoBackups.slice(0, autoBackups.length - retention);
       for (const filename of filesToDelete) {
         const fullPath = path.join(backupDirectory, filename);
-        fs.rmSync(fullPath, { force: true });
-        log.info(`[BackupService] Deleted old auto-backup: ${filename}`);
+        try {
+          fs.rmSync(fullPath, { force: true });
+          log.info(`[BackupService] Deleted old auto-backup: ${filename}`);
+        } catch (deleteError) {
+          // Non-fatal: continue pruning remaining files (mirrors manual backup path)
+          log.warn(
+            `[BackupService] Failed to delete old auto-backup ${filename}:`,
+            deleteError
+          );
+        }
       }
     } catch (error) {
       log.warn("[BackupService] Auto-backup retention cleanup failed:", error);

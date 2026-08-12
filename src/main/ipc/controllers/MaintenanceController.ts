@@ -28,6 +28,7 @@ import {
   restoreBackupSidecar,
   writeBackupSidecar,
 } from "../../lib/backup-sidecar";
+import { markBackupsExceedingSizeCap } from "../../lib/backup-retention-size-cap";
 import { IdSchema } from "../../../shared/schemas/ipc";
 import {
   SetVacuumScheduleArgsSchema,
@@ -387,16 +388,11 @@ export class MaintenanceController extends BaseController {
         const newestFirst = [...existingFiles].sort((a, b) =>
           b.name.localeCompare(a.name)
         );
-        let runningTotal = 0;
-        for (const file of newestFirst) {
-          if (toDelete.has(file.fullPath)) {
-            continue;
-          }
-          runningTotal += file.size;
-          if (runningTotal > MAX_TOTAL_BACKUP_BYTES) {
-            toDelete.add(file.fullPath);
-          }
-        }
+        markBackupsExceedingSizeCap(
+          newestFirst,
+          MAX_TOTAL_BACKUP_BYTES,
+          toDelete
+        );
       }
 
       for (const file of backupFiles) {

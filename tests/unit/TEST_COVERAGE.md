@@ -2,7 +2,7 @@
 
 ## Overview
 
-Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **203 tests** across **29 files** (unit + integration + property). Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
+Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **209 tests** across **30 files** (unit + integration + property). Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
 
 ## Test files (unit)
 
@@ -11,6 +11,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `hooks/useGalleryInfiniteScroll.test.ts` | 7 | Infinite scroll pagination |
 | `hooks/useWorkerFilteredPosts.test.ts` | 7 | Worker post → Post field mapping |
 | `lib/filter-utils.test.ts` | 29 | AI tags, video detection |
+| `lib/backup-retention-size-cap.test.ts` | 6 | Backup size-cap prune (no over-delete / keep newest over cap) |
 | `utils/decrypted-credentials.test.ts` | 10 | API key decrypt fail-safe |
 | `utils/parse-credentials.test.ts` | 6 | Credential paste parsing |
 | `utils/react-query-cache.test.ts` | 8 | Browse pagination / cursor helpers |
