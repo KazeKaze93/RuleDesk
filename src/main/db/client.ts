@@ -10,38 +10,25 @@ import { logger } from "../lib/logger";
 import { getDatabasePaths, getLegacyDatabasePaths } from "./paths";
 import { SQLITE_BUSY_TIMEOUT_MS } from "../config/constants";
 import { getErrorCode } from "../../shared/utils/type-guards";
+import { ensureFtsTriggers } from "./fts-triggers";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
 let dbInstance: AppDatabase | null = null;
 let sqliteInstance: InstanceType<typeof Database> | null = null;
 
-const POSTS_FTS_INSERT_TRIGGER_NAME = "posts_fts_insert";
-
 /**
- * Recover `posts_fts_insert` if a hard kill mid-initial-sync left it dropped,
- * then backfill any posts missing from the FTS index.
+ * After hard-kill mid-initial-sync left runtime FTS triggers dropped:
+ * backfill missing posts_fts rows and reset fts5_cache_invalidation so stale
+ * invalidated_at cannot keep an in-memory FTS count cache forever fresh.
  */
-function ensurePostsFtsInsertTrigger(
-  sqlite: InstanceType<typeof Database>
+function recoverAfterRecreatedFtsTriggers(
+  sqlite: InstanceType<typeof Database>,
+  recreated: string[]
 ): void {
-  const existingTrigger = sqlite
-    .prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?"
-    )
-    .get(POSTS_FTS_INSERT_TRIGGER_NAME);
-
-  if (!existingTrigger) {
-    logger.warn(
-      `[DB] Missing ${POSTS_FTS_INSERT_TRIGGER_NAME} trigger — recreating after hard interrupt`
-    );
-    sqlite.exec(`
-      CREATE TRIGGER IF NOT EXISTS posts_fts_insert
-      AFTER INSERT ON posts BEGIN
-        INSERT INTO posts_fts(rowid, tags) VALUES (new.id, new.tags);
-      END;
-    `);
-  }
+  logger.warn(
+    `[DB] Missing FTS trigger(s) recreated after hard interrupt: ${recreated.join(", ")}`
+  );
 
   try {
     const result = sqlite
@@ -60,6 +47,18 @@ function ensurePostsFtsInsertTrigger(
     }
   } catch (error) {
     logger.warn("[DB] FTS backfill failed", error);
+  }
+
+  try {
+    // Table from drizzle/0010 — single-row invalidation stamp, not a query-result store.
+    // Clear + re-seed so UPDATE triggers have a row and consumers see a fresh stamp.
+    sqlite.exec("DELETE FROM fts5_cache_invalidation;");
+    sqlite.exec(`
+      INSERT INTO fts5_cache_invalidation (id, invalidated_at)
+      VALUES (1, CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER));
+    `);
+  } catch (error) {
+    logger.warn("[DB] Failed to reset fts5_cache_invalidation after trigger recovery", error);
   }
 }
 
@@ -534,7 +533,14 @@ export async function initializeDatabase(): Promise<AppDatabase> {
     // Do NOT create FTS5 tables here - this causes split-brain state if migration fails
     // If FTS5 table doesn't exist after migrations, it's a migration failure that should be fixed
     // by fixing the migration, not by creating it in code
-    ensurePostsFtsInsertTrigger(sqlite);
+    //
+    // Migration 0010 still creates fts5_cache_invalidate_* on first apply (table + all three
+    // triggers). ensureFtsTriggers is the crash-recovery path for the subset dropped during
+    // initial sync — keep 0010 intact so a clean first boot does not look like a hard interrupt.
+    const { recreated } = ensureFtsTriggers(sqlite);
+    if (recreated.length > 0) {
+      recoverAfterRecreatedFtsTriggers(sqlite, recreated);
+    }
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
     

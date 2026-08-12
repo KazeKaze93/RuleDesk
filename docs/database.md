@@ -1020,6 +1020,7 @@ The application uses SQLite FTS5 for efficient tag searching in the `posts` tabl
   - `posts_fts_insert` - Populates index on INSERT
   - `posts_fts_update` - Updates index on tags UPDATE
   - `posts_fts_delete` - Removes from index on DELETE
+- **Initial-sync drop / boot restore:** During initial artist sync both `posts_fts_insert` and `fts5_cache_invalidate_insert` are dropped for bulk insert speed, then restored in sync `finally`. On hard kill mid-sync, `ensureFtsTriggers` recreates whichever are missing at DB init (shared module `src/main/db/fts-triggers.ts`), backfills `posts_fts`, and resets `fts5_cache_invalidation`.
 
 ### Usage
 
