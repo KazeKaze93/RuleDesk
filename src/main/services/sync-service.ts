@@ -240,7 +240,6 @@ export class SyncService {
 
   public async syncAllArtists() {
     return this.runExclusive(async () => {
-    this.cancelRequested = false;
     logger.info("SyncService: Start Full Sync");
     this.sendEvent(IPC_CHANNELS.SYNC.START);
 
@@ -267,20 +266,10 @@ export class SyncService {
       }
       if (!settingsData?.userId) throw new Error("No API credentials");
       for (const artist of artistsList) {
-        if (this.cancelRequested) {
-          logger.info("SyncService: Full sync stopped after cancel request");
-          break;
-        }
         try {
           this.sendEvent(IPC_CHANNELS.SYNC.PROGRESS, `Checking ${artist.name}...`);
           await this.syncArtist(artist, settingsData);
         } catch (error) {
-          if (isSyncCancelledError(error)) {
-            logger.info(
-              `SyncService: Full sync cancelled during ${artist.name}`
-            );
-            break;
-          }
           const errorMsg = isProviderSearchError(error)
             ? error.message
             : axios.isAxiosError(error)
@@ -314,7 +303,6 @@ export class SyncService {
 
   public async repairArtist(artistId: number) {
     return this.runExclusive(async () => {
-    this.cancelRequested = false;
     let artistName = "Artist";
     try {
       const db = getDb();
@@ -347,9 +335,7 @@ export class SyncService {
         await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, MAX_PAGES_SAFETY_LIMIT);
       }
     } catch (e) {
-      if (isSyncCancelledError(e)) {
-        logger.info(`SyncService: Repair cancelled for ${artistName}`);
-      } else if (isProviderSearchError(e)) {
+      if (isProviderSearchError(e)) {
         this.sendEvent(
           IPC_CHANNELS.SYNC.ERROR,
           `${artistName}: ${e.message}`
@@ -484,8 +470,6 @@ export class SyncService {
     try {
       while (hasMore && page < maxPages) {
         try {
-          this.throwIfCancelled();
-
           // Build tags query: initial sync uses base tag, incremental uses id:> filter
           const baseTag = provider.formatTag(artist.tag, artist.type);
           const tagsQuery = isInitial 
@@ -508,8 +492,6 @@ export class SyncService {
             2000,
             artist.name
           );
-
-          this.throwIfCancelled();
 
           // Filter posts: initial sync saves all, incremental only saves new ones
           const newPosts = isInitial 
@@ -635,10 +617,6 @@ export class SyncService {
               `SyncService: Partial commit failed for ${artist.name}`,
               commitErr
             );
-          }
-
-          if (isSyncCancelledError(e)) {
-            throw e;
           }
 
           if (isProviderSearchError(e)) {
