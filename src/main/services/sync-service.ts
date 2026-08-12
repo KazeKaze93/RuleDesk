@@ -21,6 +21,7 @@ import { PAGE_SIZE, type BooruPost } from "../providers/types";
 import { isVideoUrl } from "@shared/utils/media";
 import { IPC_CHANNELS } from "../ipc/channels";
 import {
+  backfillArtistFtsIndex,
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
 } from "../db/fts-triggers";
@@ -773,21 +774,7 @@ export class SyncService {
           `SyncService: ${artist.name} - backfilling FTS index and restoring insert/update triggers`
         );
 
-        // External-content FTS5: a bare `SELECT rowid FROM posts_fts` is
-        // passed through to `posts` (no MATCH → not an index probe), so
-        // `NOT IN (SELECT rowid FROM posts_fts)` never backfills. Re-insert
-        // this artist's rows; duplicate FTS inserts for already-indexed
-        // rowids are harmless on this SQLite build.
-        sqlite
-          .prepare(
-            `
-            INSERT INTO posts_fts(rowid, tags)
-            SELECT id, tags FROM posts
-            WHERE artist_id = ?;
-          `
-          )
-          .run(artist.id);
-
+        backfillArtistFtsIndex(sqlite, artist.id);
         ensureFtsTriggers(sqlite);
       }
     }

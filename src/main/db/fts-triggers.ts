@@ -68,3 +68,33 @@ export function ensureFtsTriggers(sqlite: SqliteDatabase): {
 
   return { recreated };
 }
+
+/**
+ * Restore FTS consistency after bulk sync/repair with insert+update dropped.
+ *
+ * A blind `INSERT … SELECT … WHERE artist_id = ?` is safe only for never-indexed
+ * rowids (true greenfield). On repair, conflict UPDATE changes `posts.tags`
+ * while the update trigger is down, leaving stale terms in the index; a second
+ * INSERT for the same rowid adds the new terms but does not remove the old
+ * ones (MATCH finds both). The FTS5 `'delete'` command only clears those
+ * stale terms when given the previously indexed column values — which are
+ * already overwritten in `posts`. Full `rebuild` is therefore required.
+ *
+ * `artistId` is retained for call-site clarity (which artist's sync finished);
+ * rebuild is database-wide by FTS5 design.
+ */
+export function backfillArtistFtsIndex(
+  sqlite: SqliteDatabase,
+  artistId: number
+): void {
+  void artistId;
+  rebuildFtsIndex(sqlite);
+}
+
+/**
+ * Full FTS rebuild from the content table. Used after hard-kill recovery and
+ * after bulk sync/repair (see `backfillArtistFtsIndex`).
+ */
+export function rebuildFtsIndex(sqlite: SqliteDatabase): void {
+  sqlite.exec(`INSERT INTO posts_fts(posts_fts) VALUES('rebuild');`);
+}

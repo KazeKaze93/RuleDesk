@@ -10,7 +10,7 @@ import { logger } from "../lib/logger";
 import { getDatabasePaths, getLegacyDatabasePaths } from "./paths";
 import { SQLITE_BUSY_TIMEOUT_MS } from "../config/constants";
 import { getErrorCode } from "../../shared/utils/type-guards";
-import { ensureFtsTriggers } from "./fts-triggers";
+import { ensureFtsTriggers, rebuildFtsIndex } from "./fts-triggers";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -30,10 +30,7 @@ function recoverAfterRecreatedFtsTriggers(
   );
 
   try {
-    // Bare `SELECT rowid FROM posts_fts` passes through to `posts` on an
-    // external-content table (SQLite fts5.html) — never use it to find
-    // "missing" index rows. Rebuild the whole index from content.
-    sqlite.exec(`INSERT INTO posts_fts(posts_fts) VALUES('rebuild');`);
+    rebuildFtsIndex(sqlite);
     logger.info("[DB] FTS index rebuilt after restoring runtime-dropped triggers");
   } catch (error) {
     logger.warn("[DB] FTS rebuild failed", error);

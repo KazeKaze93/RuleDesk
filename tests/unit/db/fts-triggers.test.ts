@@ -4,6 +4,7 @@ import { artists, posts } from "../../../src/main/db/schema";
 import {
   POSTS_FTS_INSERT_TRIGGER_NAME,
   POSTS_FTS_UPDATE_TRIGGER_NAME,
+  backfillArtistFtsIndex,
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
 } from "../../../src/main/db/fts-triggers";
@@ -181,16 +182,7 @@ describe("FTS triggers (posts content table)", () => {
       ).c
     ).toBe(0);
 
-    sqlite
-      .prepare(
-        `
-        INSERT INTO posts_fts(rowid, tags)
-        SELECT id, tags FROM posts
-        WHERE artist_id = ?;
-      `
-      )
-      .run(artistId);
-
+    backfillArtistFtsIndex(sqlite, artistId);
     ensureFtsTriggers(sqlite);
 
     expect(
@@ -205,6 +197,98 @@ describe("FTS triggers (posts content table)", () => {
 
     sqlite.prepare("DELETE FROM posts WHERE artist_id = ?").run(artistId);
     expect(integrityOk(sqlite)).toBe(true);
+  });
+
+  it("repair path: already-indexed row survives conflict + backfillArtistFtsIndex", () => {
+    mockDb = createMockDb();
+    const { db, sqlite } = mockDb;
+    const artistId = seedArtist(db);
+
+    db.insert(posts)
+      .values({
+        postId: 303,
+        artistId,
+        fileUrl: "https://example.com/303.jpg",
+        previewUrl: "https://example.com/303_preview.jpg",
+        sampleUrl: "",
+        tags: "old_tag",
+        rating: "s",
+        mediaType: "image",
+        publishedAt: new Date("2024-01-03T00:00:00.000Z"),
+      })
+      .run();
+
+    const postRow = sqlite
+      .prepare("SELECT id FROM posts WHERE post_id = 303")
+      .get() as { id: number };
+    const rowid = postRow.id;
+
+    expect(
+      (
+        sqlite
+          .prepare(
+            `SELECT COUNT(*) AS c FROM posts_fts WHERE posts_fts MATCH 'old_tag'`
+          )
+          .get() as { c: number }
+      ).c
+    ).toBe(1);
+
+    dropFtsTriggersForBulkInsert(sqlite);
+
+    sqlite
+      .prepare(
+        `
+        INSERT INTO posts (
+          post_id, artist_id, file_url, preview_url, sample_url, tags, rating,
+          media_type, published_at, created_at
+        ) VALUES (303, ?, 'https://example.com/303.jpg', 'https://example.com/303_preview.jpg',
+                  '', 'new_tag', 's', 'image', unixepoch(), unixepoch())
+        ON CONFLICT(artist_id, post_id) DO UPDATE SET tags = excluded.tags
+      `
+      )
+      .run(artistId);
+
+    // Content updated; index still has old_tag until backfill.
+    expect(
+      (
+        sqlite.prepare("SELECT tags FROM posts WHERE id = ?").get(rowid) as {
+          tags: string;
+        }
+      ).tags
+    ).toBe("new_tag");
+
+    backfillArtistFtsIndex(sqlite, artistId);
+    ensureFtsTriggers(sqlite);
+
+    const integrity = sqlite.pragma("integrity_check") as Array<{
+      integrity_check: string;
+    }>;
+    const matchNew = (
+      sqlite
+        .prepare(
+          `SELECT COUNT(*) AS c FROM posts_fts WHERE posts_fts MATCH 'new_tag'`
+        )
+        .get() as { c: number }
+    ).c;
+    const matchOld = (
+      sqlite
+        .prepare(
+          `SELECT COUNT(*) AS c FROM posts_fts WHERE posts_fts MATCH 'old_tag'`
+        )
+        .get() as { c: number }
+    ).c;
+    // Bare SELECT on external-content FTS is content passthrough — still assert
+    // as a DoD probe; MATCH counts are the real index signal.
+    const bareRowidCount = (
+      sqlite
+        .prepare("SELECT COUNT(*) AS c FROM posts_fts WHERE rowid = ?")
+        .get(rowid) as { c: number }
+    ).c;
+
+    expect(integrity).toEqual([{ integrity_check: "ok" }]);
+    expect(matchNew).toBe(1);
+    expect(matchOld).toBe(0);
+    expect(bareRowidCount).toBe(1);
   });
 
   it("repeated UPDATE OF tags keeps integrity_check ok and reindexes FTS", () => {
