@@ -108,7 +108,7 @@ The application is organized into the following main sections accessible via the
 
 - **Updates (Subscriptions)** - View new posts from tracked artists and tag subscriptions
 - **Browse (All posts)** - Search the live booru API with chip-based tags, infinite scroll, and advanced filters; Favorites/Subscriptions modes search the local cache
-- **Favorites (Account favorites)** - Access your account favorites synced from the booru
+- **Favorites** - Local favorites only (`isFavorited` in SQLite). There is no booru account-favorites sync path in `SyncService` / providers
 - **Playlists (Collections)** - Create and manage curated collections of posts
 - **Statistics** - Extended local metrics and distribution charts via `getExtendedStats` (counts, pie charts, top artists/tags, provider artist split, DB size)
 - **Tracked (Artists/Tags management)** - Manage tracked artists, tags, and subscriptions

@@ -106,6 +106,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **User-configurable backup retention** is shipped (`settings.backupRetention`, range `1..20`, applied in `MaintenanceController` cleanup).
 - ✅ **Shared request pacing / UA rotation** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
 - ✅ Explicit VACUUM policy is shipped (manual run + persisted schedule + last-run telemetry in Settings).
+- 🔧 `audit/maintenance-vacuum-queue`: VACUUM joined to `maintenanceQueue` (serialize with backup/restore); status cache while DB closed; auto-backup skips when queue busy. Weekly/monthly VACUUM timer still not wired.
 
 ## 📋 Milestones
 
@@ -159,6 +160,12 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 | 11 | `chore/as-assertion-gate-alignment` | [#116](https://github.com/KazeKaze93/RuleDesk/pull/116) | ✅ merged |
 
 Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one missed first run and one sync-cursor follow-up). Follow-up gate alignment is #116.
+
+### Follow-up audits (post v17)
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| 1 | `audit/booru-favorites-warmed-db` | — | started (investigation: UA/Cloudflare hypothesis for empty `sync:booru-favorites` — **refuted**; no favorites sync path in code; README account-favorites claim corrected) |
 
 ### Baseline DX (earlier)
 

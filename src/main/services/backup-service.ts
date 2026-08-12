@@ -4,6 +4,7 @@ import path from "node:path";
 import log from "electron-log";
 import { getDatabasePaths } from "../db/paths";
 import { getDb } from "../db/client";
+import { maintenanceQueue } from "../db/maintenance-queue";
 import { settings, SETTINGS_ID } from "../db/schema";
 import { eq } from "drizzle-orm";
 import type { SyncService } from "./sync-service";
@@ -108,6 +109,13 @@ export class BackupService {
 
     if (this.syncService.getIsSyncing()) {
       log.warn("[BackupService] Skipping auto-backup because sync is in progress");
+      return;
+    }
+
+    if (maintenanceQueue.isProcessing()) {
+      log.warn(
+        "[BackupService] Skipping auto-backup because a maintenance operation is in progress"
+      );
       return;
     }
 
