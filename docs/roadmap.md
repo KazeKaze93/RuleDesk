@@ -143,6 +143,12 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **Video cache integrity** (#114): atomic tmp+rename, abort cleanup, `VIDEO_CACHE_MAX_BYTES` eviction.
 - ✅ **Sync cursor integrity** (#115): `lastPostId` / `lastChecked` only after natural pagination end; `lastSyncIncomplete`; network errors rethrow as `ProviderSearchError("network")`.
 
+### Audit follow-up — sync pagination / quit drain
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| — | `audit/sync-pagination-large-artists` | — | 🔄 in progress (graceful sync cancel + quit drain + FTS trigger recovery on DB init) |
+
 ### Audit v17 — branch tracking (complete)
 
 | # | Branch | PR | Status |

@@ -584,6 +584,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 
 1. Use **Repair** on the artist (resync from the beginning)
 2. Incomplete runs set `lastSyncIncomplete` and leave `lastPostId` unchanged so the next sync can refill gaps. If gaps persist after a successful complete sync, use Repair.
+3. Quitting while sync is running asks sync to stop and waits briefly before closing the database. Force-closing the process (Task Manager / kill) can still interrupt mid-sync — restart and sync again (or Repair if needed).
 
 ### App is slow
 
