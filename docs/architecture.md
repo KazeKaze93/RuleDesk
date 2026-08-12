@@ -627,14 +627,15 @@ const posts = await db.query.posts.findMany({
    - Emits IPC events for update status and progress
    - User-controlled download (manual download trigger)
 
-11. **Secure Storage** (`src/main/services/secure-storage.ts`) and **credential helpers** (`src/main/utils/decrypted-credentials.ts`)
+11. **Secure Storage** (`src/main/services/secure-storage.ts`) and **credential helpers** (`src/main/utils/decrypted-credentials.ts`, `src/main/services/credentials.ts`)
 
    - `SecureStorage.encrypt()` / `decrypt()` — static wrappers around Electron `safeStorage`; `decrypt()` returns `null` on failure (never raw ciphertext). **Sole** crypto path — do not reintroduce parallel helpers.
-   - `getDecryptedCredentialsFromRecord()` — shared by IPC controllers; returns `null` if decryption fails
+   - `getDecryptedCredentialsFromRecord()` — decrypt a settings row; returns `null` if decryption fails
+   - `getDecryptedApiSettings(db)` — Playlist/Posts load path: settings row + empty `userId`/`encryptedApiKey` pre-check + `getDecryptedCredentialsFromRecord()`. `SearchController` and `SyncService` keep their own variants (provider field / strict throw).
    - `getDecryptedCredentialsStrict()` — used by `SyncService`; throws `CredentialDecryptionError` instead of falling back to stored ciphertext
    - Decryption only occurs in Main Process when needed for API calls
    - Uses platform keychain (Windows Credential Manager, macOS Keychain, Linux libsecret)
-   - Unit tests: `tests/unit/utils/decrypted-credentials.test.ts`, `tests/unit/services/secure-storage.test.ts`
+   - Unit tests: `tests/unit/utils/decrypted-credentials.test.ts`, `tests/unit/services/secure-storage.test.ts`, `tests/unit/services/credentials.test.ts`
 
 12. **Browse** (`src/renderer/components/pages/Browse.tsx`, `SearchController.search`, `src/renderer/utils/react-query-cache.ts`)
 
@@ -1576,6 +1577,8 @@ src/
 ├── main/                          # Electron Main Process
 │   ├── db/                        # Database layer
 │   │   ├── client.ts              # Database client (initialization, getDb, getSqliteInstance)
+│   │   ├── fts-triggers.ts        # Runtime-droppable FTS trigger DDL / rebuild
+│   │   ├── fts-table-check.ts     # posts_fts existence probe (sqlite instance in)
 │   │   ├── maintenance-queue.ts   # Maintenance operation queue (sequential execution)
 │   │   ├── paths.ts               # DB/userData path constants (data.bin, .rdcache, backup prefix)
 │   │   ├── schema.ts              # Drizzle ORM schema definitions
@@ -1612,6 +1615,7 @@ src/
 │   │   ├── types.ts               # Provider interfaces
 │   │   └── index.ts               # Provider registry
 │   ├── services/                  # Background services
+│   │   ├── credentials.ts          # getDecryptedApiSettings (Playlist/Posts load path)
 │   │   ├── secure-storage.ts       # Secure storage for API credentials
 │   │   ├── sync-service.ts         # API synchronization
 │   │   ├── sync-scheduler.ts       # Periodic sync scheduler

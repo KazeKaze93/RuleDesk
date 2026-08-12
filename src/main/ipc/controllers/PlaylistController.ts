@@ -45,9 +45,9 @@ import {
 import { isVideoUrl } from "@shared/utils/media";
 import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
+import { postsFtsTableExists } from "../../db/fts-table-check";
 import { getProvider } from "../../providers";
-import { settings, SETTINGS_ID } from "../../db/schema";
-import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
+import { getDecryptedApiSettings } from "../../services/credentials";
 import { IdSchema, OptionalIdSchema } from "../../../shared/schemas/ipc";
 import { sanitizeProviderTagToken } from "../../../shared/utils/provider-tag-sanitize";
 import {
@@ -153,46 +153,6 @@ export class PlaylistController extends BaseController {
   // Cache FTS5 table existence check (schema doesn't change at runtime)
   // Initialized once at setup() to avoid blocking synchronous calls
   private ftsTableExistsCache: boolean = false;
-
-  /**
-   * Get decrypted settings for API authentication
-   *
-   * @returns Decrypted settings or null if not available
-   */
-  private async getDecryptedSettings(): Promise<{
-    userId: string;
-    apiKey: string;
-  } | null> {
-    try {
-      const db = this.getDb();
-      const settingsRecord = await db
-        .select()
-        .from(settings)
-        .where(eq(settings.id, SETTINGS_ID))
-        .limit(1)
-        .all();
-
-      if (!settingsRecord || settingsRecord.length === 0) {
-        return null;
-      }
-
-      const record = settingsRecord[0];
-      if (!record.userId || !record.encryptedApiKey) {
-        return null;
-      }
-
-      const credentials = getDecryptedCredentialsFromRecord(record);
-      if (!credentials) {
-        log.warn("[PlaylistController] Failed to decrypt API key");
-        return null;
-      }
-
-      return credentials;
-    } catch (error) {
-      log.error("[PlaylistController] Failed to get decrypted settings:", error);
-      return null;
-    }
-  }
 
   /**
    * Build booru query string from smart playlist tags
@@ -376,34 +336,8 @@ export class PlaylistController extends BaseController {
 
     log.info("[PlaylistController] All handlers registered");
 
-    // CRITICAL: Initialize FTS5 table existence check once at setup
-    // This avoids blocking Main Process with synchronous SQLite calls during runtime
-    this.initializeFtsTableCheck();
-  }
-
-  /**
-   * Initialize FTS5 table existence check (called once at setup)
-   * This avoids blocking synchronous SQLite calls during runtime
-   */
-  private initializeFtsTableCheck(): void {
-    try {
-      // Schema introspection: no Drizzle equivalent
-      const sqlite = getSqliteInstance();
-      const stmt = sqlite.prepare<[], { name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='posts_fts'"
-      );
-      const result = stmt.get();
-      this.ftsTableExistsCache = !!result;
-      log.info(
-        `[PlaylistController] FTS5 table check initialized: ${this.ftsTableExistsCache}`
-      );
-    } catch (error) {
-      log.warn(
-        "[PlaylistController] Failed to check FTS5 table existence, assuming it doesn't exist:",
-        error
-      );
-      this.ftsTableExistsCache = false;
-    }
+    // Cache once at setup so runtime MATCH paths stay off the sqlite_master query.
+    this.ftsTableExistsCache = postsFtsTableExists(getSqliteInstance());
   }
 
   /**
@@ -1888,7 +1822,7 @@ export class PlaylistController extends BaseController {
       // CRITICAL: Provider must match the actual source of posts to prevent 404 or invalid data
       const providerId = query.provider ?? "rule34";
       const provider = getProvider(providerId);
-      const apiSettings = await this.getDecryptedSettings();
+      const apiSettings = await getDecryptedApiSettings(this.getDb());
       
       if (!apiSettings) {
         log.warn(`[PlaylistController] Cannot fetch remote posts: no API settings available`);
