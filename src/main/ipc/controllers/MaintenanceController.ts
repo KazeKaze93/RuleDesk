@@ -20,6 +20,7 @@ import { settings, SETTINGS_ID } from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import { isErrnoException } from "../../../shared/utils/type-guards";
 import type { BackupService, AutoBackupInterval } from "../../services/backup-service";
+import type { MaintenanceService } from "../../services/MaintenanceService";
 import { BACKUP_FILE_PREFIX, getDatabasePaths } from "../../db/paths";
 import {
   getBackupSidecarPath,
@@ -28,6 +29,12 @@ import {
   writeBackupSidecar,
 } from "../../lib/backup-sidecar";
 import { IdSchema } from "../../../shared/schemas/ipc";
+import {
+  SetVacuumScheduleArgsSchema,
+  type VacuumSchedule,
+  type VacuumStatusResponse,
+  type RunVacuumResponse,
+} from "../../../shared/schemas/maintenance";
 
 const DEFAULT_BACKUP_RETENTION = 5;
 const MIN_BACKUP_RETENTION = 1;
@@ -52,10 +59,17 @@ const AutoBackupIntervalSchema = z.enum(["never", "daily", "weekly"]);
  * - Database backup creation
  * - Database restore from backup
  * - Sync operations
+ * - VACUUM status / schedule / run
  */
 // Query style: Drizzle Builder API only in this controller.
 export class MaintenanceController extends BaseController {
   private mainWindow: BrowserWindow | null = null;
+  private readonly maintenanceService: MaintenanceService;
+
+  constructor(maintenanceService: MaintenanceService) {
+    super();
+    this.maintenanceService = maintenanceService;
+  }
 
   /**
    * Set main window reference (needed for backup/restore UI feedback)
@@ -133,8 +147,73 @@ export class MaintenanceController extends BaseController {
       (event, ...args) =>
         this.setBackupSchedule(event, AutoBackupIntervalSchema.parse(args[0]))
     );
+    this.handle(
+      IPC_CHANNELS.MAINTENANCE.GET_VACUUM_STATUS,
+      z.tuple([]),
+      this.getVacuumStatus.bind(this),
+      { isIdempotent: true }
+    );
+    this.handle(
+      IPC_CHANNELS.MAINTENANCE.RUN_VACUUM,
+      z.tuple([]),
+      this.runVacuum.bind(this)
+    );
+    this.handle(
+      IPC_CHANNELS.MAINTENANCE.GET_VACUUM_SCHEDULE,
+      z.tuple([]),
+      this.getVacuumSchedule.bind(this),
+      { isIdempotent: true }
+    );
+    this.handle(
+      IPC_CHANNELS.MAINTENANCE.SET_VACUUM_SCHEDULE,
+      SetVacuumScheduleArgsSchema,
+      (event, args) => {
+        // BaseController already validated; re-parse narrows unknown → typed (handle args are unknown[]).
+        const payload = SetVacuumScheduleArgsSchema.parse(args);
+        return this.setVacuumSchedule(event, payload.schedule);
+      }
+    );
 
     log.info("[MaintenanceController] All handlers registered");
+  }
+
+  private getVacuumStatus(_event: IpcMainInvokeEvent): VacuumStatusResponse {
+    try {
+      return this.maintenanceService.getVacuumStatus();
+    } catch (error) {
+      log.error("[MaintenanceController] get-vacuum-status failed:", error);
+      throw error;
+    }
+  }
+
+  private async runVacuum(_event: IpcMainInvokeEvent): Promise<RunVacuumResponse> {
+    try {
+      return await this.maintenanceService.runVacuum();
+    } catch (error) {
+      log.error("[MaintenanceController] run-vacuum failed:", error);
+      throw error;
+    }
+  }
+
+  private getVacuumSchedule(_event: IpcMainInvokeEvent): VacuumSchedule {
+    try {
+      return this.maintenanceService.getSchedule();
+    } catch (error) {
+      log.error("[MaintenanceController] get-vacuum-schedule failed:", error);
+      throw error;
+    }
+  }
+
+  private setVacuumSchedule(
+    _event: IpcMainInvokeEvent,
+    schedule: VacuumSchedule
+  ): boolean {
+    try {
+      return this.maintenanceService.setSchedule(schedule);
+    } catch (error) {
+      log.error("[MaintenanceController] set-vacuum-schedule failed:", error);
+      throw error;
+    }
   }
 
   /**

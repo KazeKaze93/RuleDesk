@@ -160,6 +160,12 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one missed first run and one sync-cursor follow-up). Follow-up gate alignment is #116.
 
+### Audit follow-ups (post-v17)
+
+| Branch | Status | Notes |
+|--------|--------|-------|
+| `fix/ipc-handlers-compliance` | 🔄 PR | Legacy `ipcMain.handle` → BaseController; silent catch removed. (Branch renamed: remote `audit` ref blocks `audit/*`) |
+
 ### Baseline DX (earlier)
 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.

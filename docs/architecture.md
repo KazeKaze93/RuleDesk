@@ -1587,12 +1587,13 @@ src/
 │   │   │   ├── SettingsController.ts
 │   │   │   ├── AuthController.ts
 │   │   │   ├── MaintenanceController.ts
+│   │   │   ├── UpdatesController.ts
 │   │   │   ├── ViewerController.ts
 │   │   │   ├── FileController.ts
 │   │   │   ├── StatsController.ts
+│   │   │   ├── BlacklistController.ts
 │   │   │   ├── VideoProxyController.ts
 │   │   │   └── SystemController.ts
-│   │   ├── handlers/              # Legacy/aux IPC handlers
 │   │   ├── channels.ts            # IPC channel constants
 │   │   └── index.ts               # IPC setup and registration
 │   ├── core/                      # Core infrastructure

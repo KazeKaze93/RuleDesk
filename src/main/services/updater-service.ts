@@ -1,7 +1,7 @@
 import pkg from "electron-updater";
 const { autoUpdater } = pkg;
 import { logger } from "../lib/logger";
-import { BrowserWindow, ipcMain, shell } from "electron";
+import { BrowserWindow, shell } from "electron";
 import { IPC_CHANNELS } from "../ipc/channels";
 
 const RELEASES_URL = "https://github.com/KazeKaze93/ruledesk/releases/latest";
@@ -48,20 +48,6 @@ export class UpdaterService {
       logger.error("UPDATER: Error:", err);
       this.sendStatus("error", err.message);
     });
-
-    ipcMain.handle(IPC_CHANNELS.APP.CHECK_FOR_UPDATES, async () => {
-      return this.checkForUpdates();
-    });
-
-    ipcMain.handle(IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD, async () => {
-      logger.info("UPDATER: Opening GitHub releases for manual ZIP update.");
-      await shell.openExternal(RELEASES_URL);
-    });
-
-    ipcMain.handle(IPC_CHANNELS.APP.QUIT_AND_INSTALL, async () => {
-      logger.info("UPDATER: Opening GitHub releases (no in-app installer for ZIP build).");
-      await shell.openExternal(RELEASES_URL);
-    });
   }
 
   public async checkForUpdates(): Promise<void> {
@@ -72,7 +58,19 @@ export class UpdaterService {
       await autoUpdater.checkForUpdates();
     } catch (error) {
       logger.error("UPDATER: checkForUpdates failed:", error);
+      throw error;
     }
+  }
+
+  public async openReleasesPage(reason: "download" | "install"): Promise<void> {
+    if (reason === "download") {
+      logger.info("UPDATER: Opening GitHub releases for manual ZIP update.");
+    } else {
+      logger.info(
+        "UPDATER: Opening GitHub releases (no in-app installer for ZIP build)."
+      );
+    }
+    await shell.openExternal(RELEASES_URL);
   }
 
   private sendStatus(status: string, message?: string) {
