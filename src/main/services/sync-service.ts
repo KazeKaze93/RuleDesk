@@ -20,6 +20,11 @@ import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
 import { PAGE_SIZE, type BooruPost } from "../providers/types";
 import { isVideoUrl } from "@shared/utils/media";
 import { IPC_CHANNELS } from "../ipc/channels";
+import {
+  backfillArtistFtsIndex,
+  dropFtsTriggersForBulkInsert,
+  ensureFtsTriggers,
+} from "../db/fts-triggers";
 
 // SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
 // Each post has ~12 fields for INSERT + ~6 for UPDATE in onConflictDoUpdate
@@ -32,8 +37,6 @@ const CHUNK_SIZE = 75;
 // Safety limit for initial sync to prevent infinite loops
 // At 100 posts/page, this equals 100k posts - more than sufficient for any artist
 const MAX_PAGES_SAFETY_LIMIT = 1000;
-const POSTS_FTS_INSERT_TRIGGER_NAME = "posts_fts_insert";
-const FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME = "fts5_cache_invalidate_insert";
 const SYNC_CANCEL_POLL_MS = 50;
 
 type DecryptedSettings = { userId: string; apiKey: string };
@@ -519,13 +522,9 @@ export class SyncService {
 
     if (isInitial) {
       logger.info(
-        `SyncService: ${artist.name} - disabling initial-sync FTS insert triggers`
+        `SyncService: ${artist.name} - disabling initial-sync FTS insert/update triggers`
       );
-      // FTS5 trigger management: no Drizzle equivalent
-      sqlite.exec(`DROP TRIGGER IF EXISTS ${POSTS_FTS_INSERT_TRIGGER_NAME};`);
-      sqlite.exec(
-        `DROP TRIGGER IF EXISTS ${FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME};`
-      );
+      dropFtsTriggersForBulkInsert(sqlite);
     }
 
     try {
@@ -772,48 +771,11 @@ export class SyncService {
     } finally {
       if (isInitial) {
         logger.info(
-          `SyncService: ${artist.name} - rebuilding FTS index and restoring insert triggers`
+          `SyncService: ${artist.name} - backfilling FTS index and restoring insert/update triggers`
         );
 
-        sqlite
-          .prepare(`
-            INSERT INTO posts_fts(rowid, tags)
-            SELECT id, tags FROM posts
-            WHERE artist_id = ? AND id NOT IN (SELECT rowid FROM posts_fts);
-          `)
-          .run(artist.id);
-
-        // FTS5 trigger management: no Drizzle equivalent
-        sqlite.exec(`
-          CREATE TRIGGER IF NOT EXISTS posts_fts_insert
-          AFTER INSERT ON posts BEGIN
-            INSERT INTO posts_fts(rowid, tags) VALUES (new.id, new.tags);
-          END;
-        `);
-
-        try {
-          // Units: invalidated_at milliseconds (julianday → epoch ms); must match migration 0010 / PlaylistController Date.now() stamps.
-          sqlite.exec(`
-            CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_insert
-            AFTER INSERT ON posts_fts BEGIN
-              UPDATE fts5_cache_invalidation
-              SET invalidated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)
-              WHERE id = 1;
-            END;
-          `);
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          if (errorMessage.includes("cannot create triggers on virtual tables")) {
-            logger.warn(
-              `SyncService: Could not recreate ${FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME} (${errorMessage})`
-            );
-          } else {
-            logger.error(
-              `SyncService: Failed to recreate ${FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME}`,
-              error
-            );
-          }
-        }
+        backfillArtistFtsIndex(sqlite, artist.id);
+        ensureFtsTriggers(sqlite);
       }
     }
   }

@@ -218,6 +218,20 @@
       "when": 1777900000000,
       "tag": "0031_tag_metadata_status",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1778000000000,
+      "tag": "0032_fix_fts5_cache_invalidation",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1778100000000,
+      "tag": "0033_fix_fts_external_content_delete",
+      "breakpoints": true
     }
   ]
 }
