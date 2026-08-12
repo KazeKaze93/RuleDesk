@@ -10,38 +10,29 @@ import { logger } from "../lib/logger";
 import { getDatabasePaths, getLegacyDatabasePaths } from "./paths";
 import { SQLITE_BUSY_TIMEOUT_MS } from "../config/constants";
 import { getErrorCode } from "../../shared/utils/type-guards";
+import {
+  bumpFtsCacheInvalidationStamp,
+  ensureFtsCacheInvalidationRow,
+  ensureFtsTriggers,
+} from "./fts-triggers";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
 let dbInstance: AppDatabase | null = null;
 let sqliteInstance: InstanceType<typeof Database> | null = null;
 
-const POSTS_FTS_INSERT_TRIGGER_NAME = "posts_fts_insert";
-
 /**
- * Recover `posts_fts_insert` if a hard kill mid-initial-sync left it dropped,
- * then backfill any posts missing from the FTS index.
+ * After hard-kill mid-initial-sync left runtime FTS triggers dropped:
+ * backfill missing posts_fts rows and bump the invalidation stamp so
+ * PlaylistController's in-memory FTS count cache cannot stay forever fresh.
  */
-function ensurePostsFtsInsertTrigger(
-  sqlite: InstanceType<typeof Database>
+function recoverAfterRecreatedFtsTriggers(
+  sqlite: InstanceType<typeof Database>,
+  recreated: string[]
 ): void {
-  const existingTrigger = sqlite
-    .prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?"
-    )
-    .get(POSTS_FTS_INSERT_TRIGGER_NAME);
-
-  if (!existingTrigger) {
-    logger.warn(
-      `[DB] Missing ${POSTS_FTS_INSERT_TRIGGER_NAME} trigger — recreating after hard interrupt`
-    );
-    sqlite.exec(`
-      CREATE TRIGGER IF NOT EXISTS posts_fts_insert
-      AFTER INSERT ON posts BEGIN
-        INSERT INTO posts_fts(rowid, tags) VALUES (new.id, new.tags);
-      END;
-    `);
-  }
+  logger.warn(
+    `[DB] Missing FTS trigger(s) recreated after hard interrupt: ${recreated.join(", ")}`
+  );
 
   try {
     const result = sqlite
@@ -61,6 +52,8 @@ function ensurePostsFtsInsertTrigger(
   } catch (error) {
     logger.warn("[DB] FTS backfill failed", error);
   }
+
+  bumpFtsCacheInvalidationStamp(sqlite);
 }
 
 async function moveFileIfExists(sourcePath: string, targetPath: string): Promise<boolean> {
@@ -312,80 +305,25 @@ export async function initializeDatabase(): Promise<AppDatabase> {
                     .run(entry.tag, Date.now());
                 }
               } else if (entry.tag === "0010_add_fts5_cache_invalidation") {
-                // Handle migration 0010 specially - it tries to create triggers on FTS5 virtual table
-                // SQLite doesn't allow triggers on virtual tables in some configurations
-                // Create the cache invalidation table but skip triggers if they fail
-                try {
-                  // Create the cache invalidation table (this part works)
-                  // Units: invalidated_at = milliseconds via julianday epoch-ms formula (matches migration 0010).
-                  sqliteInstance.exec(`
-                    CREATE TABLE IF NOT EXISTS fts5_cache_invalidation (
-                      id INTEGER PRIMARY KEY CHECK (id = 1),
-                      invalidated_at INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
-                    );
-                  `);
-                  
-                  // Initialize the single row if it doesn't exist
-                  sqliteInstance.exec(`
-                    INSERT OR IGNORE INTO fts5_cache_invalidation (id, invalidated_at) 
-                    VALUES (1, CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER));
-                  `);
-                  
-                  // Try to create triggers, but don't fail if they can't be created
-                  // Triggers on FTS5 virtual tables may not be supported in all SQLite configurations
-                  try {
-                    sqliteInstance.exec(`
-                      CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_insert 
-                      AFTER INSERT ON posts_fts BEGIN
-                        UPDATE fts5_cache_invalidation 
-                        SET invalidated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)
-                        WHERE id = 1;
-                      END;
-                    `);
-                    sqliteInstance.exec(`
-                      CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_update 
-                      AFTER UPDATE ON posts_fts BEGIN
-                        UPDATE fts5_cache_invalidation 
-                        SET invalidated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)
-                        WHERE id = 1;
-                      END;
-                    `);
-                    sqliteInstance.exec(`
-                      CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_delete 
-                      AFTER DELETE ON posts_fts BEGIN
-                        UPDATE fts5_cache_invalidation 
-                        SET invalidated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)
-                        WHERE id = 1;
-                      END;
-                    `);
-                    logger.debug("[DB] Created FTS5 cache invalidation triggers");
-                  } catch (triggerError) {
-                    // Triggers on virtual tables may not be supported - log and continue
-                    logger.warn(
-                      `[DB] Could not create FTS5 triggers (may not be supported): ${triggerError instanceof Error ? triggerError.message : String(triggerError)}`
-                    );
-                  }
-                  
-                  // Mark migration as executed
-                  sqliteInstance
-                    .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
-                    .run(entry.tag, Date.now());
-                } catch (error) {
-                  // If table creation fails, log and mark as executed anyway
-                  // The triggers are not critical for basic functionality
-                  logger.warn(
-                    `[DB] Migration ${entry.tag} partially failed (triggers skipped): ${error instanceof Error ? error.message : String(error)}`
+                // 0010 SQL also CREATE TRIGGER ON posts_fts (virtual) which always fails.
+                // Apply only the table + singleton seed here. Triggers are created ON posts
+                // by migration 0032_fix_fts5_cache_invalidation (no soft-fail).
+                // Units: invalidated_at = milliseconds via julianday epoch-ms formula.
+                sqliteInstance.exec(`
+                  CREATE TABLE IF NOT EXISTS fts5_cache_invalidation (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    invalidated_at INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
                   );
-                  try {
-                    sqliteInstance
-                      .prepare(
-                        "INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)"
-                      )
-                      .run(entry.tag, Date.now());
-                  } catch {
-                    // Ignore errors when marking
-                  }
-                }
+                `);
+                sqliteInstance.exec(`
+                  INSERT OR IGNORE INTO fts5_cache_invalidation (id, invalidated_at)
+                  VALUES (1, CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER));
+                `);
+                sqliteInstance
+                  .prepare(
+                    "INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)"
+                  )
+                  .run(entry.tag, Date.now());
               } else if (entry.tag === "0011_add_fts5_count_meta") {
                 // Handle migration 0011 specially - it tries to create triggers on FTS5 virtual table
                 // SQLite doesn't allow triggers on virtual tables in some configurations
@@ -534,7 +472,11 @@ export async function initializeDatabase(): Promise<AppDatabase> {
     // Do NOT create FTS5 tables here - this causes split-brain state if migration fails
     // If FTS5 table doesn't exist after migrations, it's a migration failure that should be fixed
     // by fixing the migration, not by creating it in code
-    ensurePostsFtsInsertTrigger(sqlite);
+    ensureFtsCacheInvalidationRow(sqlite);
+    const { recreated } = ensureFtsTriggers(sqlite);
+    if (recreated.length > 0) {
+      recoverAfterRecreatedFtsTriggers(sqlite, recreated);
+    }
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
     
