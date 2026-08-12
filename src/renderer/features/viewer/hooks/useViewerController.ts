@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import log from "electron-log/renderer";
-import type { Post } from "../../../../main/db/schema";
+import type { Post } from "@shared/types/db";
 import type { ViewerOrigin } from "../../../store/viewerStore";
 import { normalizePostToPostData } from "../../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../../shared/constants";

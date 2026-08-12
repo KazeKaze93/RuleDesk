@@ -1,5 +1,5 @@
 import { List, Sparkles } from "lucide-react";
-import type { PlaylistWithStats } from "../../../main/bridge";
+import type { PlaylistWithStats } from "@shared/types/bridge";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { cn } from "../../lib/utils";
 

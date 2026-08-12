@@ -4,7 +4,7 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { normalizeTag } from "../../lib/tag-utils";
 import { AsyncAutocomplete } from "../inputs/AsyncAutocomplete";
-import type { SearchResults } from "../../../main/providers";
+import type { SearchResults } from "@shared/types/providers";
 import {
   Select,
   SelectContent,

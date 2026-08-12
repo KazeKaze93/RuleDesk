@@ -6,7 +6,7 @@
  */
 
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
-import type { Post } from "../../main/db/schema";
+import type { Post } from "@shared/types/db";
 import { RULE34_MAX_OFFSET_PAGES } from "../../shared/constants";
 import type {
   BrowseSearchPageParam,

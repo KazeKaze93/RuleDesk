@@ -33,7 +33,7 @@ import { ExternalLink } from "lucide-react";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 import { useWorkerFilteredPosts } from "../../hooks/useWorkerFilteredPosts";
 import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
-import type { Post } from "../../../main/db/schema";
+import type { Post } from "@shared/types/db";
 import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
 import { getErrorCode } from "../../../shared/utils/type-guards";

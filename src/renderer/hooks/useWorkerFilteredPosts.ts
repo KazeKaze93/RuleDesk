@@ -4,7 +4,7 @@ import {
   type WorkerFilterConfig,
 } from "./useWorkerProcessor";
 import { useDebounce } from "../lib/hooks/useDebounce";
-import type { Post } from "../../main/db/schema";
+import type { Post } from "@shared/types/db";
 import log from "electron-log/renderer";
 import { mapWorkerPostToPost } from "../lib/map-worker-post";
 

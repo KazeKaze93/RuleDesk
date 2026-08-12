@@ -3,7 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 import { Play, Check, Heart, List, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeRating } from "@shared/utils/post-normalization";
-import type { Post } from "../../../../main/db/schema";
+import type { Post } from "@shared/types/db";
 import { useSafeModeStore, shouldBlurPost, getEffectiveBlurAmount } from "../../../store/safeModeStore";
 import { useSearchStore } from "../../../store/searchStore";
 import { isVideoPost } from "../../../lib/filter-utils";

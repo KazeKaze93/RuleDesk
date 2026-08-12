@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { PlaylistWithStats } from "../../../main/bridge";
+import type { PlaylistWithStats } from "@shared/types/bridge";
 
 /**
  * Custom hook for fetching playlists with optimized caching

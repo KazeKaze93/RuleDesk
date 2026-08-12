@@ -17,7 +17,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../../components/ui/tooltip";
 import { cn } from "../../../lib/utils";
 import { formatRelativeTime } from "../../../lib/formatRelativeTime";
-import type { TrackedArtist } from "../../../../main/bridge";
+import type { TrackedArtist } from "@shared/types/bridge";
 
 interface ArtistListRowProps {
   artist: TrackedArtist;

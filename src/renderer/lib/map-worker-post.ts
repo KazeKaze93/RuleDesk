@@ -1,4 +1,4 @@
-import type { Post } from "../../main/db/schema";
+import type { Post } from "@shared/types/db";
 import type { WorkerPost } from "../../shared/types/post";
 import { isVideoUrl } from "../../shared/utils/media";
 

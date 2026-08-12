@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Post } from "../../main/db/schema";
+import type { Post } from "@shared/types/db";
 
 export type ViewerOrigin =
   | { kind: "browse"; filters?: string }

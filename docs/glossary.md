@@ -130,7 +130,7 @@ The secure Node.js environment in Electron that handles all I/O, persistence, an
 
 ### Renderer Process
 
-The sandboxed browser environment in Electron that handles UI rendering and user interactions. The Renderer Process communicates with the Main Process via IPC. UI copy is **English-only** (inline literals / local constants) — there is no i18n layer under `src/renderer/`.
+The sandboxed browser environment in Electron that handles UI rendering and user interactions. The Renderer Process communicates with the Main Process via IPC. UI copy is **English-only** (inline literals / local constants) — there is no i18n layer under `src/renderer/`. Renderer code must not import from `src/main/**` (including type-only); DB/IPC types come from `@shared/types/*`.
 
 **Related:** [Architecture - Renderer Process](./architecture.md#renderer-process-the-face)
 
@@ -350,7 +350,7 @@ An error handling strategy that increases wait time between retry attempts. Rule
 
 ### validate (npm script)
 
-Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-attrs`. CI runs this before `docs:api` freshness and tests.
+Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-attrs`. CI runs this before `docs:api` freshness and tests. `typecheck` uses `skipLibCheck: true`, so project `.d.ts` files (`src/renderer.d.ts`, …) are a known blind spot — a green run does not prove those ambient imports are valid.
 
 **Related:** [README — Quality Checks](../README.md#quality-checks)
 

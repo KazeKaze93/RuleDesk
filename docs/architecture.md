@@ -477,7 +477,7 @@ const posts = await db.query.posts.findMany({
    - Drizzle ORM schema definitions for all tables
    - Type-safe table definitions with proper indexes
    - Tables: `artists`, `posts`, `settings`, `tag_metadata`, `playlists`, `playlist_entries`; plus `tag_blacklist` (migration + raw SQL, not in Drizzle schema)
-   - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost` (and playlist / tag_metadata types)
+   - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost` (and playlist / tag_metadata types). Renderer consumes these via `@shared/types/db` (type-only re-export); do not import `schema.ts` from `src/renderer/**`.
 
 3. **Sync Service** (`src/main/services/sync-service.ts`)
 
@@ -673,6 +673,7 @@ const posts = await db.query.posts.findMany({
 - State management
 - Data presentation
 - **English-only UI copy** — inline literals (or local constants at 3+ call sites); no `i18next` / locale packs under `src/renderer/`
+- **Import boundary:** `src/renderer/**` must not import from `src/main/**`, including type-only imports (ESLint `no-restricted-imports`). DB row types (`Artist`, `Post`, `Playlist`, …) come from `@shared/types/db` (type-only re-export of `$inferSelect` from `src/main/db/schema.ts`). IPC extras (`TrackedArtist`, `PlaylistWithStats`) from `@shared/types/bridge`. Tag autocomplete DTO (`SearchResults`) from `@shared/types/providers`. Zod request types stay in `@shared/schemas/*`. A value import of `main/db/schema` or `main/providers` would pull Drizzle / better-sqlite3 into the browser bundle.
 
 **Key Components:**
 
@@ -1672,13 +1673,19 @@ src/
 │   ├── App.tsx                     # Main React component
 │   ├── index.css                   # Global styles
 │   ├── index.html                  # HTML template
-│   ├── main.tsx                    # Renderer entry point
-│   └── renderer.d.ts               # Renderer type definitions
+│   └── main.tsx                    # Renderer entry point
+│
+├── renderer.d.ts                  # window.api global types (preload contract; not under renderer/)
 │
 └── shared/                         # Shared contracts (schemas/constants/types)
     ├── schemas/
     ├── constants.ts
-    └── types/                      # Shared TypeScript types
+    └── types/
+        ├── db.ts                   # type-only re-export of Drizzle row types for renderer
+        ├── bridge.ts               # TrackedArtist, PlaylistWithStats (from main/bridge)
+        ├── providers.ts            # SearchResults (from main/providers/types)
+        ├── post.ts                 # WorkerPost Zod schema
+        └── ipc.ts                  # IpcSafe<> utility
 
 Root:
 ├── drizzle/                        # Database migrations
@@ -1724,7 +1731,7 @@ Root:
 
 ### DRY
 
-- Shared types between Main and Renderer
+- Shared types between Main and Renderer (`@shared/types/*` re-exports; renderer never imports `src/main/**`)
 - Reusable components and utilities
 - No code duplication
 

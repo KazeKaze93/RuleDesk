@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getSearchBrowseNextPageParam } from "@/renderer/utils/react-query-cache";
-import type { Post } from "@/main/db/schema";
+import type { Post } from "@shared/types/db";
 
 const POSTS_PER_PAGE = 50;
 

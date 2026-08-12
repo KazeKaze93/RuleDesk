@@ -4,7 +4,7 @@ import { Label } from "../ui/label";
 import { useRemoteTags } from "../../lib/hooks/useRemoteTags";
 import { cn } from "../../lib/utils";
 import { Loader2 } from "lucide-react";
-import type { SearchResults } from "../../../main/providers";
+import type { SearchResults } from "@shared/types/providers";
 
 export interface AsyncAutocompleteProps {
   label: string;

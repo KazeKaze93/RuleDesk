@@ -13,7 +13,7 @@ import { useViewerStore } from "../../store/viewerStore";
 import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
-import type { Post } from "../../../main/db/schema";
+import type { Post } from "@shared/types/db";
 import { Button } from "../ui/button";
 import {
   Tooltip,
