@@ -26,8 +26,8 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `controllers/posts-tag-query.test.ts` | 5 | Tag query helpers |
 | `store/searchStore.test.ts` | 3 | Search store |
 | `shared/provider-search-ipc-payload.test.ts` | 8 | Provider IPC error parsing |
-| `providers/rule34-provider-fetch-posts.test.ts` | 5 | fetchPosts error classification |
-| `providers/gelbooru-provider-fetch-posts.test.ts` | 5 | Gelbooru fetchPosts 429 → rate_limit gate |
+| `providers/rule34-provider-fetch-posts.test.ts` | 5 | fetchPosts error classification + `notifyRateLimited` spy on 429 |
+| `providers/gelbooru-provider-fetch-posts.test.ts` | 5 | Gelbooru fetchPosts 429 → rate_limit + `notifyRateLimited` spy |
 | `services/tag-resolve-coordinator.test.ts` | 3 | Tag resolve dedup / rate limit |
 | `services/secure-storage.test.ts` | 3 | `SecureStorage` encrypt/decrypt (sole crypto path) |
 | `services/video-proxy-server.test.ts` | 8 | Video proxy allowlist / cache / eviction |

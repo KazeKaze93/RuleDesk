@@ -3,10 +3,8 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import log from "electron-log";
 import { getDatabasePaths } from "../db/paths";
-import { getDb } from "../db/client";
 import { maintenanceQueue } from "../db/maintenance-queue";
-import { settings, SETTINGS_ID } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { getBackupRetention } from "../lib/backup-retention";
 import type { SyncService } from "./sync-service";
 
 export type AutoBackupInterval = "never" | "daily" | "weekly";
@@ -21,9 +19,6 @@ const AUTO_BACKUP_INTERVAL_MS: Record<Exclude<AutoBackupInterval, "never">, numb
   weekly: 7 * 24 * 60 * 60 * 1000,
 };
 const AUTO_BACKUP_FILE_REGEX = /^data\.backup\.\d{4}-\d{2}-\d{2}\.bin$/;
-const DEFAULT_BACKUP_RETENTION = 5;
-const MIN_BACKUP_RETENTION = 1;
-const MAX_BACKUP_RETENTION = 20;
 
 type BackupStoreContract = {
   get<K extends keyof BackupStoreSchema>(key: K): BackupStoreSchema[K];
@@ -134,23 +129,9 @@ export class BackupService {
     }
   }
 
-  private getBackupRetention(): number {
-    const db = getDb();
-    const currentSettings = db
-      .select({
-        backupRetention: settings.backupRetention,
-      })
-      .from(settings)
-      .where(eq(settings.id, SETTINGS_ID))
-      .limit(1)
-      .all()[0];
-    const retention = currentSettings?.backupRetention ?? DEFAULT_BACKUP_RETENTION;
-    return Math.max(MIN_BACKUP_RETENTION, Math.min(MAX_BACKUP_RETENTION, retention));
-  }
-
   private cleanupOldAutoBackups(backupDirectory: string): void {
     try {
-      const retention = this.getBackupRetention();
+      const retention = getBackupRetention();
       const autoBackups = fs
         .readdirSync(backupDirectory)
         .filter((filename) => AUTO_BACKUP_FILE_REGEX.test(filename))

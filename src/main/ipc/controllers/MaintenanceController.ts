@@ -5,7 +5,6 @@ import fs from "fs";
 import Database from "better-sqlite3";
 import log from "electron-log";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { registerDatabaseInContainerAfterReinit } from "../../core/di/databaseRegistration";
@@ -16,7 +15,6 @@ import {
   initializeDatabase,
 } from "../../db/client";
 import { maintenanceQueue } from "../../db/maintenance-queue";
-import { settings, SETTINGS_ID } from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import { isErrnoException } from "../../../shared/utils/type-guards";
 import type { BackupService, AutoBackupInterval } from "../../services/backup-service";
@@ -28,6 +26,7 @@ import {
   restoreBackupSidecar,
   writeBackupSidecar,
 } from "../../lib/backup-sidecar";
+import { getBackupRetention } from "../../lib/backup-retention";
 import { markBackupsExceedingSizeCap } from "../../lib/backup-retention-size-cap";
 import { IdSchema } from "../../../shared/schemas/ipc";
 import {
@@ -37,9 +36,6 @@ import {
   type RunVacuumResponse,
 } from "../../../shared/schemas/maintenance";
 
-const DEFAULT_BACKUP_RETENTION = 5;
-const MIN_BACKUP_RETENTION = 1;
-const MAX_BACKUP_RETENTION = 20;
 const MAX_TOTAL_BACKUP_BYTES = (() => {
   const rawValue = process.env.BACKUP_RETENTION_MAX_TOTAL_MB;
   if (!rawValue) {
@@ -79,24 +75,6 @@ export class MaintenanceController extends BaseController {
    */
   public setMainWindow(window: BrowserWindow): void {
     this.mainWindow = window;
-  }
-
-  private getBackupRetention(): number {
-    const db = container.resolve(DI_TOKENS.DB);
-    const currentSettings = db
-      .select({
-        backupRetention: settings.backupRetention,
-      })
-      .from(settings)
-      .where(eq(settings.id, SETTINGS_ID))
-      .limit(1)
-      .all()[0];
-
-    const retention = currentSettings?.backupRetention ?? DEFAULT_BACKUP_RETENTION;
-    return Math.max(
-      MIN_BACKUP_RETENTION,
-      Math.min(MAX_BACKUP_RETENTION, retention)
-    );
   }
 
   private getSyncService(): SyncService {
@@ -346,7 +324,7 @@ export class MaintenanceController extends BaseController {
 
   private async cleanupOldBackups(backupDir: string): Promise<void> {
     try {
-      const backupRetention = this.getBackupRetention();
+      const backupRetention = getBackupRetention();
       const entries = await fs.promises.readdir(backupDir);
       const escapedBackupPrefix = BACKUP_FILE_PREFIX.replace(
         /[.*+?^${}()|[\]\\]/g,
