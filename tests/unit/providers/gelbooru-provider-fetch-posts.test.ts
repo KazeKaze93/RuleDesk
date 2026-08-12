@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import axios, { AxiosError } from "axios";
 import { GelbooruProvider } from "@/main/providers/gelbooru-provider";
+import { ProviderThrottle } from "@/main/providers/provider-throttle";
 
 vi.mock("electron-log", () => ({
   default: {
@@ -77,6 +78,7 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
   });
 
   it("throws rate_limit error on HTTP 429 and does not return []", async () => {
+    const notifySpy = vi.spyOn(ProviderThrottle.prototype, "notifyRateLimited");
     axiosGetMock.mockResolvedValueOnce({
       status: 429,
       headers: { "retry-after": "12", "content-type": "text/plain" },
@@ -90,10 +92,13 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
       retryAfterMs: 12_000,
     });
 
+    expect(notifySpy).toHaveBeenCalledWith(12_000);
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
+    notifySpy.mockRestore();
   });
 
   it("treats invalid Retry-After as undefined retryAfterMs on 429", async () => {
+    const notifySpy = vi.spyOn(ProviderThrottle.prototype, "notifyRateLimited");
     axiosGetMock.mockResolvedValueOnce({
       status: 429,
       headers: { "retry-after": "not-a-number" },
@@ -106,6 +111,9 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
       kind: "rate_limit",
       retryAfterMs: undefined,
     });
+
+    expect(notifySpy).toHaveBeenCalledWith(undefined);
+    notifySpy.mockRestore();
   });
 
   it("returns [] for non-JSON content-type on HTTP 200 (XML fallback path)", async () => {

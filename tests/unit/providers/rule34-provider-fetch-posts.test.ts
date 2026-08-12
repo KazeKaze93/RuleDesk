@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import axios, { AxiosError } from "axios";
 import { RULE34_MISSING_AUTHENTICATION_MARKER } from "@/shared/constants/rule34-api";
 import { Rule34Provider } from "@/main/providers/rule34-provider";
+import { ProviderThrottle } from "@/main/providers/provider-throttle";
 
 vi.mock("electron-log", () => ({
   default: {
@@ -54,6 +55,7 @@ describe("Rule34Provider.fetchPosts error classification", () => {
   });
 
   it("throws rate_limit error on HTTP 429 without XML fallback", async () => {
+    const notifySpy = vi.spyOn(ProviderThrottle.prototype, "notifyRateLimited");
     axiosGetMock.mockResolvedValueOnce({
       status: 429,
       headers: { "retry-after": "12" },
@@ -65,7 +67,9 @@ describe("Rule34Provider.fetchPosts error classification", () => {
       retryAfterMs: 12_000,
     });
 
+    expect(notifySpy).toHaveBeenCalledWith(12_000);
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
+    notifySpy.mockRestore();
   });
 
   it("throws parse error for garbage body after XML fallback fails", async () => {
