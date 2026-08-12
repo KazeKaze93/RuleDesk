@@ -230,13 +230,4 @@ export class SystemController extends BaseController {
       return false;
     }
   }
-
-  protected sanitizeArgs(args: unknown[]): unknown[] {
-    return args.map((arg) => {
-      if (typeof arg === "string" && arg.length > 0) {
-        return `<string:${arg.length}chars>`;
-      }
-      return arg;
-    });
-  }
 }
