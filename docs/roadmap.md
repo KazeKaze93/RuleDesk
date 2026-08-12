@@ -167,6 +167,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 |--------|--------|-------|
 | `fix/ipc-handlers-compliance` | ✅ merged | [#124](https://github.com/KazeKaze93/RuleDesk/pull/124) — Legacy `ipcMain.handle` → BaseController; silent catch removed. (Branch renamed: remote `audit` ref blocks `audit/*`) |
 | `fix-frontend-virtuoso-gallery-audit` | ✅ merged | [#125](https://github.com/KazeKaze93/RuleDesk/pull/125) — decorative tests; VirtuosoGrid factory dedupe; totalCount audit (clean); raw HTML→shadcn |
+| `audit-booru-favorites-warmed-db` | ✅ merged | [#129](https://github.com/KazeKaze93/RuleDesk/pull/129) — UA/Cloudflare fingerprint hypothesis for empty `sync:booru-favorites` **refuted** (no favorites sync path; providers already send browser-style UA). README account-favorites claim corrected in [#128](https://github.com/KazeKaze93/RuleDesk/pull/128). (Remote hyphen name: flat `audit` ref blocks `audit/*`) |
 
 ### Baseline DX (earlier)
 
