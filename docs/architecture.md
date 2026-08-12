@@ -599,7 +599,7 @@ const posts = await db.query.posts.findMany({
    - Sequential execution queue for database maintenance operations
    - Prevents race conditions and "Database is closed" errors
    - Promise-based queue ensures operations complete before next starts
-   - Used for backup, restore, and database close operations
+   - Used for backup, restore, and user-visible VACUUM (`MaintenanceService.runVacuum` → worker). Serializes those ops with each other; does **not** gate ordinary CRUD IPC.
 
 8. **Booru Providers** (`src/main/providers/`)
 
@@ -822,7 +822,7 @@ The IPC layer enforces a strict security contract for API credentials:
 3. **Error Handling:** Errors are properly handled without exposing sensitive data
 4. **No Direct Node Access:** Renderer cannot access Node.js APIs directly
 5. **Secure Credentials:** API keys encrypted at rest, **NEVER returned to Renderer** (only `hasApiKey` boolean flag)
-6. **Maintenance Queue:** Database maintenance operations use sequential queue to prevent race conditions
+6. **Maintenance Queue:** Backup, restore, and user-visible VACUUM share a sequential queue to prevent close/reopen races; ordinary read/write IPC is not paused by the queue (except a few legacy updates handlers that incorrectly join it)
 
 ### Credential Security Flow
 

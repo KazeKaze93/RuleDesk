@@ -106,6 +106,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **User-configurable backup retention** is shipped (`settings.backupRetention`, range `1..20`, applied in `MaintenanceController` cleanup).
 - ✅ **Shared request pacing / UA rotation** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
 - ✅ Explicit VACUUM policy is shipped (manual run + persisted schedule + last-run telemetry in Settings).
+- 🔧 `audit/maintenance-vacuum-queue`: VACUUM joined to `maintenanceQueue` (serialize with backup/restore); status cache while DB closed; auto-backup skips when queue busy. Weekly/monthly VACUUM timer still not wired.
 
 ## 📋 Milestones
 
@@ -164,8 +165,8 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
-| `fix/ipc-handlers-compliance` | 🔄 PR | Legacy `ipcMain.handle` → BaseController; silent catch removed. (Branch renamed: remote `audit` ref blocks `audit/*`) |
-| `fix-frontend-virtuoso-gallery-audit` | 🔄 PR | [#125](https://github.com/KazeKaze93/RuleDesk/pull/125) — decorative tests; VirtuosoGrid factory dedupe; totalCount audit (clean); raw HTML→shadcn |
+| `fix/ipc-handlers-compliance` | ✅ merged | [#124](https://github.com/KazeKaze93/RuleDesk/pull/124) — Legacy `ipcMain.handle` → BaseController; silent catch removed. (Branch renamed: remote `audit` ref blocks `audit/*`) |
+| `fix-frontend-virtuoso-gallery-audit` | ✅ merged | [#125](https://github.com/KazeKaze93/RuleDesk/pull/125) — decorative tests; VirtuosoGrid factory dedupe; totalCount audit (clean); raw HTML→shadcn |
 
 ### Baseline DX (earlier)
 

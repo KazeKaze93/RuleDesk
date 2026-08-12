@@ -8,6 +8,7 @@ import {
   getDb,
   initializeDatabase,
 } from "../db/client";
+import { maintenanceQueue } from "../db/maintenance-queue";
 import { settings, SETTINGS_ID } from "../db/schema";
 import { registerDatabaseInContainerAfterReinit } from "../core/di/databaseRegistration";
 import type {
@@ -18,8 +19,19 @@ import type {
 
 type VacuumDbStatus = "success" | "error";
 
+type CachedVacuumStatus = {
+  lastVacuumAt: number | null;
+  lastRunStatus: "never" | "success" | "error";
+  lastError: string | null;
+};
+
 export class MaintenanceService {
   private isRunning = false;
+  private cachedStatus: CachedVacuumStatus = {
+    lastVacuumAt: null,
+    lastRunStatus: "never",
+    lastError: null,
+  };
 
   private runVacuumWorker(
     dbPath: string
@@ -60,9 +72,19 @@ export class MaintenanceService {
       });
 
       worker.once("exit", (code) => {
-        if (!settled && code !== 0) {
-          rejectOnce(new Error(`VACUUM worker exited with code ${code}`));
+        if (settled) {
+          return;
         }
+        if (code !== 0) {
+          rejectOnce(new Error(`VACUUM worker exited with code ${code}`));
+          return;
+        }
+        // Allow a queued 'message' to settle first; exit(0) without payload is a hang risk.
+        setImmediate(() => {
+          if (!settled) {
+            rejectOnce(new Error("VACUUM worker exited without result"));
+          }
+        });
       });
     });
   }
@@ -93,29 +115,49 @@ export class MaintenanceService {
   }
 
   public getVacuumStatus(): VacuumStatusResponse {
-    this.ensureSettingsRecord();
-    const db = getDb();
-    const state = db
-      .select({
-        lastVacuumAt: settings.lastVacuumAt,
-        lastVacuumStatus: settings.lastVacuumStatus,
-        lastVacuumError: settings.lastVacuumError,
-      })
-      .from(settings)
-      .where(eq(settings.id, SETTINGS_ID))
-      .limit(1)
-      .all()[0];
+    // DB is closed for the worker segment of VACUUM — never call getDb() then.
+    if (this.isRunning) {
+      return {
+        ...this.cachedStatus,
+        isRunning: true,
+      };
+    }
 
-    const status = state?.lastVacuumStatus;
-    const lastRunStatus: "never" | "success" | "error" =
-      status === "success" || status === "error" ? status : "never";
+    try {
+      this.ensureSettingsRecord();
+      const db = getDb();
+      const state = db
+        .select({
+          lastVacuumAt: settings.lastVacuumAt,
+          lastVacuumStatus: settings.lastVacuumStatus,
+          lastVacuumError: settings.lastVacuumError,
+        })
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
 
-    return {
-      lastVacuumAt: state?.lastVacuumAt ?? null,
-      lastRunStatus,
-      lastError: state?.lastVacuumError ?? null,
-      isRunning: this.isRunning,
-    };
+      const status = state?.lastVacuumStatus;
+      const lastRunStatus: "never" | "success" | "error" =
+        status === "success" || status === "error" ? status : "never";
+
+      this.cachedStatus = {
+        lastVacuumAt: state?.lastVacuumAt ?? null,
+        lastRunStatus,
+        lastError: state?.lastVacuumError ?? null,
+      };
+
+      return {
+        ...this.cachedStatus,
+        isRunning: false,
+      };
+    } catch (error) {
+      log.error("[MaintenanceService] getVacuumStatus failed:", error);
+      return {
+        ...this.cachedStatus,
+        isRunning: this.isRunning,
+      };
+    }
   }
 
   public async runVacuum(): Promise<RunVacuumResponse> {
@@ -129,13 +171,34 @@ export class MaintenanceService {
       };
     }
 
-    this.ensureSettingsRecord();
+    // Claim the in-memory lock before queue wait so a second IPC call returns
+    // "Already running" instead of enqueueing a duplicate VACUUM.
     this.isRunning = true;
 
+    try {
+      return await maintenanceQueue.execute(() => this.executeVacuum(startedAt));
+    } catch (error) {
+      this.isRunning = false;
+      const finishedAt = Date.now();
+      const errorMessage =
+        error instanceof Error ? error.message : "VACUUM failed";
+      log.error("[MaintenanceService] VACUUM queue execution failed:", error);
+      return {
+        success: false,
+        startedAt,
+        finishedAt,
+        durationMs: finishedAt - startedAt,
+        error: errorMessage,
+      };
+    }
+  }
+
+  private async executeVacuum(startedAt: number): Promise<RunVacuumResponse> {
     let success = false;
     let errorMessage: string | null = null;
 
     try {
+      this.ensureSettingsRecord();
       const { dbPath } = getDatabasePaths();
       closeDatabase();
 
@@ -158,21 +221,37 @@ export class MaintenanceService {
       errorMessage = errorMessage
         ? `${errorMessage}; reinit failed: ${reinitErrorMessage}`
         : `Database reinitialization failed: ${reinitErrorMessage}`;
-      log.error("[MaintenanceService] Failed to reinitialize database after VACUUM:", error);
+      log.error(
+        "[MaintenanceService] Failed to reinitialize database after VACUUM:",
+        error
+      );
     }
 
     const finishedAt = Date.now();
+    const lastVacuumError = success ? null : errorMessage ?? "VACUUM failed";
+    const lastVacuumStatus: VacuumDbStatus = success ? "success" : "error";
+
+    this.cachedStatus = {
+      lastVacuumAt: finishedAt,
+      lastRunStatus: lastVacuumStatus,
+      lastError: lastVacuumError,
+    };
     this.isRunning = false;
 
-    getDb()
-      .update(settings)
-      .set({
-        lastVacuumAt: finishedAt,
-        lastVacuumStatus: success ? "success" : ("error" satisfies VacuumDbStatus),
-        lastVacuumError: success ? null : errorMessage ?? "VACUUM failed",
-      })
-      .where(eq(settings.id, SETTINGS_ID))
-      .run();
+    try {
+      getDb()
+        .update(settings)
+        .set({
+          lastVacuumAt: finishedAt,
+          lastVacuumStatus,
+          lastVacuumError,
+        })
+        .where(eq(settings.id, SETTINGS_ID))
+        .run();
+    } catch (error) {
+      // Reinit may have failed — keep IPC/UI response; do not throw and lose the result.
+      log.error("[MaintenanceService] Failed to persist VACUUM status:", error);
+    }
 
     if (success) {
       return {
@@ -188,7 +267,7 @@ export class MaintenanceService {
       startedAt,
       finishedAt,
       durationMs: finishedAt - startedAt,
-      error: errorMessage ?? "VACUUM failed",
+      error: lastVacuumError ?? "VACUUM failed",
     };
   }
 
