@@ -44,7 +44,7 @@ export function getTrackedArtistsWithStats(db: AppDatabase): TrackedArtistWithSt
       lastChecked: artists.lastChecked,
       createdAt: artists.createdAt,
       postsCount: sql<number>`COALESCE(COUNT(${posts.id}), 0)`.as("postsCount"),
-      lastPostAt: sql<number | null>`MAX(${posts.createdAt})`.as("lastPostAt"),
+      lastPostAt: sql<number | null>`MAX(${posts.createdAt})`.as("lastPostAt"), // Units: seconds (posts.created_at mode "timestamp"); opaque aggregate, no cutoff.
     })
     .from(artists)
     .leftJoin(posts, eq(artists.id, posts.artistId))
@@ -55,7 +55,7 @@ export function getTrackedArtistsWithStats(db: AppDatabase): TrackedArtistWithSt
       )
     )
     .groupBy(artists.id)
-    .orderBy(desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`))
+    .orderBy(desc(sql`COALESCE(${artists.lastChecked}, ${artists.createdAt})`)) // Units: both seconds (mode "timestamp"); ORDER BY only.
     .limit(MAX_TRACKED_ARTISTS)
     .all();
 

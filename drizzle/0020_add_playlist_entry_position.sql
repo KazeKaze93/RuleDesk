@@ -1,6 +1,7 @@
 ALTER TABLE playlist_entries ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
 
--- Initialize positions based on current addedAt order
+-- Initialize positions based on current addedAt order.
+-- Units: same-column compare on added_at (Drizzle mode "timestamp" = Unix seconds); no cutoff math.
 UPDATE playlist_entries
 SET position = (
   SELECT COUNT(*)

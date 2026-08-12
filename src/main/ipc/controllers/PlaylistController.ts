@@ -154,7 +154,7 @@ export class PlaylistController extends BaseController {
   // Initialized lazily on first use and invalidated when posts_fts changes
   private fts5CountCache: number | null = null;
   private fts5CountCacheInitialized: boolean = false;
-  private fts5CountCacheTimestamp: number | null = null; // Timestamp when cache was last updated
+  private fts5CountCacheTimestamp: number | null = null; // Units: ms (invalidated_at / Date.now() fallback)
   
   // Cache FTS5 table existence check (schema doesn't change at runtime)
   // Initialized once at setup() to avoid blocking synchronous calls
@@ -435,8 +435,8 @@ export class PlaylistController extends BaseController {
     const sqlite = getSqliteInstance();
     
     try {
-      // Get current invalidation timestamp from database
-      // If table doesn't exist, this will throw and we'll fall back to simple caching
+      // Units: invalidated_at is milliseconds (julianday formula / Date.now() fallback stamps).
+      // Compare only against same-unit cache stamps — never against Drizzle mode "timestamp" columns.
       const invalidationStmt = sqlite.prepare<[], { invalidated_at: number }>(
         "SELECT invalidated_at FROM fts5_cache_invalidation WHERE id = 1"
       );
@@ -494,6 +494,7 @@ export class PlaylistController extends BaseController {
       } else {
         // Table exists but no row (should not happen, but handle gracefully)
         log.warn("[PlaylistController] fts5_cache_invalidation table exists but has no row, initializing cache without invalidation tracking");
+        // Units: Date.now() ms stamp for in-memory cache only (matches invalidated_at unit).
         this.fallbackToCountQuery(sqlite, Date.now());
       }
     } catch (error) {
@@ -507,6 +508,7 @@ export class PlaylistController extends BaseController {
         );
         // Fall back to simple caching without invalidation tracking
         if (!this.fts5CountCacheInitialized) {
+          // Units: Date.now() ms stamp for in-memory cache only (matches invalidated_at unit).
           this.fallbackToCountQuery(sqlite, Date.now());
         }
       } else {
@@ -622,6 +624,7 @@ export class PlaylistController extends BaseController {
       // Only perform if cache invalidation table exists (migration applied)
       try {
         const sqlite = getSqliteInstance();
+        // Units: invalidated_at is milliseconds (julianday / Date.now() stamps).
         const invalidationStmt = sqlite.prepare<[], { invalidated_at: number }>(
           "SELECT invalidated_at FROM fts5_cache_invalidation WHERE id = 1"
         );
