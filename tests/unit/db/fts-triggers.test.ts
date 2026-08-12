@@ -4,6 +4,7 @@ import { artists, posts } from "../../../src/main/db/schema";
 import {
   POSTS_FTS_INSERT_TRIGGER_NAME,
   POSTS_FTS_UPDATE_TRIGGER_NAME,
+  areRuntimeDroppableFtsTriggersPresent,
   backfillArtistFtsIndex,
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
@@ -104,11 +105,14 @@ describe("FTS triggers (posts content table)", () => {
     mockDb = createMockDb();
     const { sqlite } = mockDb;
 
+    expect(areRuntimeDroppableFtsTriggersPresent(sqlite)).toBe(true);
+
     dropFtsTriggersForBulkInsert(sqlite);
     const afterDrop = listTriggers(sqlite);
     expect(afterDrop).not.toContain(POSTS_FTS_INSERT_TRIGGER_NAME);
     expect(afterDrop).not.toContain(POSTS_FTS_UPDATE_TRIGGER_NAME);
     expect(afterDrop).toContain("posts_fts_delete");
+    expect(areRuntimeDroppableFtsTriggersPresent(sqlite)).toBe(false);
 
     const first = ensureFtsTriggers(sqlite);
     expect(first.recreated).toEqual([
@@ -116,6 +120,7 @@ describe("FTS triggers (posts content table)", () => {
       POSTS_FTS_UPDATE_TRIGGER_NAME,
     ]);
     expect(listTriggers(sqlite)).toEqual([...EXPECTED_TRIGGERS]);
+    expect(areRuntimeDroppableFtsTriggersPresent(sqlite)).toBe(true);
 
     const second = ensureFtsTriggers(sqlite);
     expect(second.recreated).toEqual([]);
