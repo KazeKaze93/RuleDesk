@@ -62,6 +62,7 @@ import { getAppIconPath, getAppIconsDirectory } from "./lib/app-resources";
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
 import { initializeDatabase, closeDatabase, getDb } from "./db/client";
+import { SYNC_SHUTDOWN_DRAIN_MS } from "./config/constants";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
@@ -118,15 +119,15 @@ app.commandLine.appendSwitch("ignore-gpu-blacklist");
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+/** Set after sync drain (if any) so a second before-quit can finish cleanup idempotently. */
+let isShuttingDown = false;
 const syncScheduler = new SyncScheduler(syncService);
 const maintenanceScheduler = new MaintenanceScheduler(videoProxyServer);
 const backupService = new BackupService(syncService);
 const maintenanceService = new MaintenanceService();
 container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
 
-// Single before-quit handler (module load once). Must not live inside initializeAppAndWindow —
-// tray re-open would stack duplicate listeners and call closeDatabase N times.
-app.on("before-quit", () => {
+function stopBackgroundServicesAndCloseDb(): void {
   videoProxyServer.stop();
   syncScheduler.stop();
   maintenanceScheduler.stop();
@@ -135,6 +136,38 @@ app.on("before-quit", () => {
     tray = null;
   }
   closeDatabase();
+}
+
+// Single before-quit handler (module load once). Must not live inside initializeAppAndWindow —
+// tray re-open would stack duplicate listeners and call closeDatabase N times.
+app.on("before-quit", (event) => {
+  if (isShuttingDown) {
+    stopBackgroundServicesAndCloseDb();
+    return;
+  }
+
+  if (syncService.getIsSyncing()) {
+    event.preventDefault();
+    void (async () => {
+      logger.info(
+        "[Main] Sync in progress — requesting cancel and draining before quit"
+      );
+      syncService.requestCancel();
+      const idle = await syncService.waitUntilIdle(SYNC_SHUTDOWN_DRAIN_MS);
+      if (!idle) {
+        logger.warn(
+          `[Main] Sync drain timed out after ${SYNC_SHUTDOWN_DRAIN_MS}ms; closing database anyway`
+        );
+      }
+      isShuttingDown = true;
+      stopBackgroundServicesAndCloseDb();
+      app.quit();
+    })();
+    return;
+  }
+
+  isShuttingDown = true;
+  stopBackgroundServicesAndCloseDb();
 });
 
 // In test mode, skip single instance lock to allow multiple test instances
@@ -578,11 +611,11 @@ function createTray(_window: BrowserWindow): void {
       {
         label: "Quit",
         click: () => {
+          // before-quit owns sync drain + closeDatabase; do not close DB here.
           if (tray) {
             tray.destroy();
             tray = null;
           }
-          closeDatabase();
           app.quit();
         },
       },
@@ -659,8 +692,7 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     // If tray exists, don't quit - allow running in background
     if (!tray) {
-      // CRITICAL: Close database connection before quitting to prevent data corruption
-      closeDatabase();
+      // before-quit owns sync drain + closeDatabase
       app.quit();
     }
   }

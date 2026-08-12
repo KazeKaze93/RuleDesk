@@ -16,6 +16,53 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
 let dbInstance: AppDatabase | null = null;
 let sqliteInstance: InstanceType<typeof Database> | null = null;
 
+const POSTS_FTS_INSERT_TRIGGER_NAME = "posts_fts_insert";
+
+/**
+ * Recover `posts_fts_insert` if a hard kill mid-initial-sync left it dropped,
+ * then backfill any posts missing from the FTS index.
+ */
+function ensurePostsFtsInsertTrigger(
+  sqlite: InstanceType<typeof Database>
+): void {
+  const existingTrigger = sqlite
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?"
+    )
+    .get(POSTS_FTS_INSERT_TRIGGER_NAME);
+
+  if (!existingTrigger) {
+    logger.warn(
+      `[DB] Missing ${POSTS_FTS_INSERT_TRIGGER_NAME} trigger — recreating after hard interrupt`
+    );
+    sqlite.exec(`
+      CREATE TRIGGER IF NOT EXISTS posts_fts_insert
+      AFTER INSERT ON posts BEGIN
+        INSERT INTO posts_fts(rowid, tags) VALUES (new.id, new.tags);
+      END;
+    `);
+  }
+
+  try {
+    const result = sqlite
+      .prepare(
+        `
+        INSERT INTO posts_fts(rowid, tags)
+        SELECT id, tags FROM posts
+        WHERE id NOT IN (SELECT rowid FROM posts_fts);
+      `
+      )
+      .run();
+    if (result.changes > 0) {
+      logger.info(
+        `[DB] FTS backfill inserted ${result.changes} row(s) missing from posts_fts`
+      );
+    }
+  } catch (error) {
+    logger.warn("[DB] FTS backfill failed", error);
+  }
+}
+
 async function moveFileIfExists(sourcePath: string, targetPath: string): Promise<boolean> {
   try {
     await fs.promises.access(sourcePath);
@@ -480,11 +527,12 @@ export async function initializeDatabase(): Promise<AppDatabase> {
       });
     });
     logger.info("[DB] Migrations complete.");
-    
+
     // FTS5 table creation is handled by migration 0006_add_fts5_search.sql
     // Do NOT create FTS5 tables here - this causes split-brain state if migration fails
     // If FTS5 table doesn't exist after migrations, it's a migration failure that should be fixed
     // by fixing the migration, not by creating it in code
+    ensurePostsFtsInsertTrigger(sqlite);
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
     

@@ -73,7 +73,11 @@ vi.mock('@/main/db/client', () => ({
 }));
 
 // Import after mocks
-import { SyncService } from '@/main/services/sync-service';
+import {
+  SyncCancelledError,
+  SyncService,
+  isSyncCancelledError,
+} from '@/main/services/sync-service';
 
 describe('SyncService Integration', () => {
   let mockDb: ReturnType<typeof createMockDb>;
@@ -1069,6 +1073,126 @@ describe('SyncService Integration', () => {
       expect(updatedArtist?.lastPostId).toBe(EXPECTED_TOTAL);
       expect(updatedArtist?.lastSyncIncomplete).toBe(false);
       expect(updatedArtist?.lastChecked).not.toBeNull();
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('should cancel mid-pagination without advancing lastPostId and keep page-0 posts', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    const INITIAL_LAST_POST_ID = 50;
+    await mockDb.db
+      .update(artists)
+      .set({ lastPostId: INITIAL_LAST_POST_ID, lastSyncIncomplete: false })
+      .where(eq(artists.id, artist.id));
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey =
+      safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+        ? safeStorage.decryptString(
+            Buffer.from(settingsRecord.encryptedApiKey, 'base64')
+          )
+        : settingsRecord.encryptedApiKey || '';
+
+    const createPage = (startId: number, count = PAGE_SIZE): BooruPost[] =>
+      Array.from({ length: count }, (_, index) => {
+        const id = startId + index;
+        return {
+          id,
+          fileUrl: `https://cdn.example.com/${id}.jpg`,
+          previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+          sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+          tags: ['artist_name', `tag_${id}`],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 1000,
+          height: 1000,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        };
+      });
+
+    const PAGE1_HANG_MS = 40;
+    let cancelOnNextPage1 = true;
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async (_tags, page) => {
+        if (page === 0) {
+          return createPage(INITIAL_LAST_POST_ID + 1, PAGE_SIZE);
+        }
+        if (page === 1) {
+          if (cancelOnNextPage1) {
+            cancelOnNextPage1 = false;
+            service.requestCancel();
+            await new Promise((resolve) => setTimeout(resolve, PAGE1_HANG_MS));
+          }
+          return createPage(INITIAL_LAST_POST_ID + PAGE_SIZE + 1, PAGE_SIZE);
+        }
+        return createPage(INITIAL_LAST_POST_ID + PAGE_SIZE * 2 + 1, 25);
+      }
+    );
+
+    try {
+      const artistBefore = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      if (!artistBefore) {
+        throw new Error('Artist missing before sync');
+      }
+
+      await expect(
+        service.syncArtist(artistBefore, {
+          userId: settingsRecord.userId || '',
+          apiKey,
+        })
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          isSyncCancelledError(error) || error instanceof SyncCancelledError
+      );
+
+      const afterCancel = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+      expect(afterCancel).toHaveLength(PAGE_SIZE);
+
+      let updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      expect(updatedArtist?.lastPostId).toBe(INITIAL_LAST_POST_ID);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+
+      // Resume via syncAllArtists (resets cancelRequested at exclusive start)
+      await service.syncAllArtists();
+
+      const afterResume = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+      expect(afterResume).toHaveLength(PAGE_SIZE * 2 + 25);
+
+      updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      expect(updatedArtist?.lastPostId).toBe(
+        INITIAL_LAST_POST_ID + PAGE_SIZE * 2 + 25
+      );
+      expect(updatedArtist?.lastSyncIncomplete).toBe(false);
     } finally {
       fetchPostsSpy.mockRestore();
     }

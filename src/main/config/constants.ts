@@ -30,3 +30,6 @@ export const VIDEO_CACHE_SWEEP_ORPHAN_TMP_AGE_MS = 60 * 60 * 1000;
 /** Deferred one-shot eviction after VideoProxyServer.start(). */
 export const VIDEO_CACHE_EVICT_AFTER_START_MS = 15_000;
 
+/** Max time to wait for in-flight sync to finish after cancel on app quit. */
+export const SYNC_SHUTDOWN_DRAIN_MS = 8000;
+

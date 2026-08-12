@@ -154,7 +154,7 @@ Main-process `VideoProxyServer` serves local `http://127.0.0.1` URLs for `<video
 
 ### Sync cursor (`lastPostId`)
 
-Per-artist watermark for incremental sync (`id:>lastPostId`). Advanced **only** after pagination completes naturally (`postsData.length < PAGE_SIZE`). Mid-batch and error partial commits persist posts and `newPostsCount` but never move the cursor. Incomplete runs set `lastSyncIncomplete` so the next sync can refill gaps.
+Per-artist watermark for incremental sync (`id:>lastPostId`). Advanced **only** after pagination completes naturally (`postsData.length < PAGE_SIZE`). Mid-batch, error, and cooperative-cancel partial commits persist posts and `newPostsCount` but never move the cursor. Incomplete runs set `lastSyncIncomplete` so the next sync can refill gaps. App quit requests sync cancel and drains briefly before closing the DB; a hard kill can still interrupt mid-write (FTS insert trigger is recovered on next DB init).
 
 **Related:** [Architecture — Sync](./architecture.md), [Roadmap](./roadmap.md)
 

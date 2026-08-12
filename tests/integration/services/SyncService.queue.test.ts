@@ -11,6 +11,10 @@ import {
 import { createMockDb } from "../../helpers/mock-db";
 import { server } from "../../mocks/server";
 import { artists, settings, SETTINGS_ID } from "@/main/db/schema";
+import {
+  SyncCancelledError,
+  SyncService,
+} from "@/main/services/sync-service";
 
 vi.mock("electron", () => ({
   app: { getPath: () => "/tmp" },
@@ -58,7 +62,9 @@ vi.mock("@/main/db/client", () => ({
   closeDatabase: vi.fn(),
 }));
 
-import { SyncService } from "@/main/services/sync-service";
+const CANCEL_WAIT_TIMEOUT_MS = 2000;
+const FIRST_ARTIST_DELAY_MS = 150;
+const SYNC_START_YIELD_MS = 10;
 
 const REPAIR_MAX_PAGES = 1000;
 const SYNC_DELAY_MS = 30;
@@ -152,5 +158,43 @@ describe("SyncService runExclusive queue", () => {
     expect(repairStartedAt).toBeGreaterThanOrEqual(syncStartedAt + SYNC_DELAY_MS);
     expect(syncArtistSpy).toHaveBeenCalledTimes(2);
     expect(syncArtistSpy.mock.calls[1]?.[2]).toBe(REPAIR_MAX_PAGES);
+  });
+
+  it("requestCancel stops syncAllArtists artist loop and waitUntilIdle resolves", async () => {
+    await mockDb.db.insert(artists).values({
+      name: "Queue Test Artist B",
+      tag: "queue_test_artist_b",
+      provider: "rule34",
+      type: "tag",
+      apiEndpoint: "https://api.rule34.xxx/index.php",
+      lastPostId: 1,
+      newPostsCount: 0,
+    });
+
+    let syncArtistCalls = 0;
+    const syncArtistSpy = vi
+      .spyOn(service, "syncArtist")
+      .mockImplementation(async () => {
+        syncArtistCalls += 1;
+        if (syncArtistCalls === 1) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, FIRST_ARTIST_DELAY_MS)
+          );
+          service.requestCancel();
+          throw new SyncCancelledError();
+        }
+      });
+
+    const syncPromise = service.syncAllArtists();
+    await new Promise((resolve) => setTimeout(resolve, SYNC_START_YIELD_MS));
+    expect(service.getIsSyncing()).toBe(true);
+
+    const idle = await service.waitUntilIdle(CANCEL_WAIT_TIMEOUT_MS);
+    await syncPromise;
+
+    expect(idle).toBe(true);
+    expect(service.getIsSyncing()).toBe(false);
+    expect(syncArtistCalls).toBe(1);
+    expect(syncArtistSpy).toHaveBeenCalledTimes(1);
   });
 });

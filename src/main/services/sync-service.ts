@@ -34,8 +34,22 @@ const CHUNK_SIZE = 75;
 const MAX_PAGES_SAFETY_LIMIT = 1000;
 const POSTS_FTS_INSERT_TRIGGER_NAME = "posts_fts_insert";
 const FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME = "fts5_cache_invalidate_insert";
+const SYNC_CANCEL_POLL_MS = 50;
 
 type DecryptedSettings = { userId: string; apiKey: string };
+
+export class SyncCancelledError extends Error {
+  constructor(message = "Sync cancelled") {
+    super(message);
+    this.name = "SyncCancelledError";
+  }
+}
+
+export function isSyncCancelledError(
+  error: unknown
+): error is SyncCancelledError {
+  return error instanceof SyncCancelledError;
+}
 
 function bulkUpsertPosts(
   postsToSave: NewPost[],
@@ -149,11 +163,37 @@ async function retryWithBackoff<T>(
 export class SyncService {
   private window: BrowserWindow | null = null;
   private isSyncing = false;
+  private cancelRequested = false;
   /** Serializes syncAllArtists / repairArtist — queued calls run after the active one finishes */
   private syncChain: Promise<void> = Promise.resolve();
 
   public getIsSyncing(): boolean {
     return this.isSyncing;
+  }
+
+  public requestCancel(): void {
+    this.cancelRequested = true;
+  }
+
+  /**
+   * Poll until exclusive sync work finishes, or `timeoutMs` elapses.
+   * @returns true if idle within the timeout, false if still syncing
+   */
+  public async waitUntilIdle(timeoutMs: number): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (this.isSyncing) {
+      if (Date.now() >= deadline) {
+        return false;
+      }
+      await new Promise((resolve) => setTimeout(resolve, SYNC_CANCEL_POLL_MS));
+    }
+    return true;
+  }
+
+  private throwIfCancelled(): void {
+    if (this.cancelRequested) {
+      throw new SyncCancelledError();
+    }
   }
 
   private runExclusive<T>(task: () => Promise<T>): Promise<T> {
@@ -241,6 +281,7 @@ export class SyncService {
 
   public async syncAllArtists() {
     return this.runExclusive(async () => {
+    this.cancelRequested = false;
     logger.info("SyncService: Start Full Sync");
     this.sendEvent(IPC_CHANNELS.SYNC.START);
 
@@ -267,10 +308,20 @@ export class SyncService {
       }
       if (!settingsData?.userId) throw new Error("No API credentials");
       for (const artist of artistsList) {
+        if (this.cancelRequested) {
+          logger.info("SyncService: Full sync cancelled — stopping artist loop");
+          break;
+        }
         try {
           this.sendEvent(IPC_CHANNELS.SYNC.PROGRESS, `Checking ${artist.name}...`);
           await this.syncArtist(artist, settingsData);
         } catch (error) {
+          if (isSyncCancelledError(error)) {
+            logger.info(
+              `SyncService: Full sync cancelled during ${artist.name}`
+            );
+            break;
+          }
           const errorMsg = isProviderSearchError(error)
             ? error.message
             : axios.isAxiosError(error)
@@ -283,11 +334,15 @@ export class SyncService {
         }
       }
     } catch (error) {
-      logger.error("Sync error", error);
-      this.sendEvent(
-        IPC_CHANNELS.SYNC.ERROR,
-        error instanceof Error ? error.message : "Error"
-      );
+      if (isSyncCancelledError(error)) {
+        logger.info("SyncService: Full sync cancelled");
+      } else {
+        logger.error("Sync error", error);
+        this.sendEvent(
+          IPC_CHANNELS.SYNC.ERROR,
+          error instanceof Error ? error.message : "Error"
+        );
+      }
     } finally {
       try {
         const sqlite = getSqliteInstance();
@@ -304,6 +359,7 @@ export class SyncService {
 
   public async repairArtist(artistId: number) {
     return this.runExclusive(async () => {
+    this.cancelRequested = false;
     let artistName = "Artist";
     try {
       const db = getDb();
@@ -336,13 +392,17 @@ export class SyncService {
         await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, MAX_PAGES_SAFETY_LIMIT);
       }
     } catch (e) {
-      if (isProviderSearchError(e)) {
-        this.sendEvent(
-          IPC_CHANNELS.SYNC.ERROR,
-          `${artistName}: ${e.message}`
-        );
+      if (isSyncCancelledError(e)) {
+        logger.info(`SyncService: Repair cancelled for ${artistName}`);
+      } else {
+        if (isProviderSearchError(e)) {
+          this.sendEvent(
+            IPC_CHANNELS.SYNC.ERROR,
+            `${artistName}: ${e.message}`
+          );
+        }
+        logger.error("Repair error", e);
       }
-      logger.error("Repair error", e);
     } finally {
       this.sendEvent(IPC_CHANNELS.SYNC.REPAIR_END);
     }
@@ -471,6 +531,8 @@ export class SyncService {
     try {
       while (hasMore && page < maxPages) {
         try {
+          this.throwIfCancelled();
+
           // Build tags query: initial sync uses base tag, incremental uses id:> filter
           const baseTag = provider.formatTag(artist.tag, artist.type);
           const tagsQuery = isInitial 
@@ -493,6 +555,8 @@ export class SyncService {
             2000,
             artist.name
           );
+
+          this.throwIfCancelled();
 
           // Filter posts: initial sync saves all, incremental only saves new ones
           const newPosts = isInitial 
@@ -577,10 +641,14 @@ export class SyncService {
             logger.debug(`SyncService: ${artist.name} - Page ${page - 1} returned ${postsData.length} posts, continuing to page ${page}`);
           }
         } catch (e) {
-          logger.error(
-            `Sync error for ${artist.name}`,
-            redactErrorForLog(e)
-          );
+          if (isSyncCancelledError(e)) {
+            logger.info(`SyncService: Sync cancelled for ${artist.name}`);
+          } else {
+            logger.error(
+              `Sync error for ${artist.name}`,
+              redactErrorForLog(e)
+            );
+          }
           hasMore = false;
 
           try {
@@ -621,6 +689,10 @@ export class SyncService {
               `SyncService: Partial commit failed for ${artist.name}`,
               commitErr
             );
+          }
+
+          if (isSyncCancelledError(e)) {
+            throw e;
           }
 
           if (isProviderSearchError(e)) {

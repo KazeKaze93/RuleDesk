@@ -486,6 +486,7 @@ const posts = await db.query.posts.findMany({
    - Maps API responses to database schema
    - Updates artist post counts
    - `syncAllArtists()` and `repairArtist()` run through `runExclusive()` — a promise-chain mutex: if one operation is in flight, the next **waits** until it finishes (no silent drop). Covered by `tests/integration/services/SyncService.queue.test.ts` (timing: repair’s `syncArtist` runs only after full sync completes).
+   - Cooperative cancel: `requestCancel()` / `SyncCancelledError` / `waitUntilIdle()` — app quit drains in-flight sync (up to `SYNC_SHUTDOWN_DRAIN_MS`) before `closeDatabase()`. Hard kill still bypasses cancel; `posts_fts_insert` is recovered on DB init via `ensurePostsFtsInsertTrigger`.
    - Emits IPC events for sync progress tracking
 
 4. **IPC Controllers** (`src/main/ipc/controllers/`)
@@ -592,6 +593,7 @@ const posts = await db.query.posts.findMany({
 6. **App lifecycle (Main)**
 
    - Process-lifetime listeners such as `before-quit` are registered **once** at module scope (not inside window recreate paths)
+   - Quit path: if sync is running, `before-quit` `preventDefault`s, calls `syncService.requestCancel()`, awaits `waitUntilIdle(SYNC_SHUTDOWN_DRAIN_MS)`, then stops proxy/schedulers/tray and `closeDatabase()`. Tray Quit and `window-all-closed` only call `app.quit()` so drain ownership stays in `before-quit`.
    - `closeDatabase` is idempotent; tray Show / `activate` may recreate the window and re-bind IPC (`removeHandler` first) without stacking quit handlers
 
 7. **Maintenance Queue** (`src/main/db/maintenance-queue.ts`)
@@ -1173,7 +1175,7 @@ sequenceDiagram
      });
    ```
 
-   g. **Updates artist** - Mid-batch and error paths update `newPostsCount` (and may set `lastSyncIncomplete`) without moving `lastPostId`. After natural pagination end (`postsData.length < PAGE_SIZE`), a single commit writes `lastPostId`, `lastChecked`, and clears `lastSyncIncomplete`.
+   g. **Updates artist** - Mid-batch and error paths update `newPostsCount` (and may set `lastSyncIncomplete`) without moving `lastPostId`. After natural pagination end (`postsData.length < PAGE_SIZE`), a single commit writes `lastPostId`, `lastChecked`, and clears `lastSyncIncomplete`. Cancel mid-pagination follows the same incomplete path (partial commit, cursor unchanged) then rethrows `SyncCancelledError`.
 
    h. **Progress event** - Emits IPC event: `emit('sync:progress', 'Syncing artist_name...')`
 
