@@ -100,12 +100,13 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
           "transition-colors hover:bg-accent/50"
         )}
       >
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => onSelect(artist)}
           className={cn(
             "flex min-h-[52px] min-w-0 flex-1 items-center gap-2 px-3 text-left sm:gap-3",
-            "bg-transparent",
+            "h-auto rounded-none bg-transparent hover:bg-transparent",
             "focus:outline-none focus-visible:z-[1] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           )}
           aria-label={`Select ${artist.name}`}
@@ -134,7 +135,7 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
           <div className="flex min-w-0 flex-shrink-0 items-center">
             {renderStatusBadge()}
           </div>
-        </button>
+        </Button>
         <div className="flex flex-shrink-0 items-center pr-1">
           <Button
             variant="ghost"

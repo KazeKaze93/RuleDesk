@@ -136,10 +136,12 @@ const CreatorsView = ({
         <div className="overflow-auto flex-1 p-4">
           <div className="space-y-3">
             {artists.map((artist) => (
-              <button
+              <Button
                 key={artist.id}
+                type="button"
+                variant="ghost"
                 onClick={() => onViewArtist(artist)}
-                className="flex items-center gap-3 p-3 w-full text-left rounded-lg border transition-colors bg-card hover:bg-accent hover:border-primary"
+                className="flex items-center gap-3 p-3 w-full h-auto text-left rounded-lg border transition-colors bg-card hover:bg-accent hover:border-primary"
                 aria-label={`View ${artist.name} gallery`}
               >
                 <div className="flex flex-shrink-0 justify-center items-center w-10 h-10 rounded-full bg-primary/10">
@@ -159,7 +161,7 @@ const CreatorsView = ({
                   </Badge>
                 )}
                 <ChevronRight className="flex-shrink-0 w-4 h-4 text-muted-foreground" />
-              </button>
+              </Button>
             ))}
           </div>
         </div>
