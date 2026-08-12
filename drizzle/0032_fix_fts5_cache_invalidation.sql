@@ -5,6 +5,12 @@
 --
 -- posts_fts is an external-content FTS5 table (content='posts'); every index
 -- change is driven by posts mutations. Invalidate the stamp at that source.
+--
+-- fts5CountCache in PlaylistController caches only posts_fts row count
+-- (empty-guard before MATCH). That count changes on INSERT/DELETE of posts,
+-- and FTS content is rewritten on UPDATE OF tags. Updates to is_viewed /
+-- is_favorited / rating / media_type do not touch posts_fts — keep UPDATE
+-- scoped to tags so gallery browsing does not thrash the stamp.
 
 DROP TRIGGER IF EXISTS fts5_cache_invalidate_insert;
 DROP TRIGGER IF EXISTS fts5_cache_invalidate_update;
@@ -22,9 +28,8 @@ AFTER INSERT ON posts BEGIN
   WHERE id = 1;
 END;
 
--- Any posts row change (not only tags) may affect FTS count consumers.
 CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_update
-AFTER UPDATE ON posts BEGIN
+AFTER UPDATE OF tags ON posts BEGIN
   UPDATE fts5_cache_invalidation
   SET invalidated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)
   WHERE id = 1;

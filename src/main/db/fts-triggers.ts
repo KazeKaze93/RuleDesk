@@ -1,18 +1,24 @@
 import type Database from "better-sqlite3";
 
-/** Runtime-droppable during initial sync bulk insert; restored by ensureFtsTriggers. */
+/** Runtime-droppable during initial sync / repair bulk upsert; restored by ensureFtsTriggers. */
 export const POSTS_FTS_INSERT_TRIGGER_NAME = "posts_fts_insert";
 export const FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME =
   "fts5_cache_invalidate_insert";
+export const FTS5_CACHE_INVALIDATE_UPDATE_TRIGGER_NAME =
+  "fts5_cache_invalidate_update";
 
 /** Units: ms via julianday epoch formula — matches migration 0010 / 0032. */
 const INVALIDATED_AT_NOW_SQL =
   "CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)";
 
 /**
- * DDL for triggers dropped during initial sync.
+ * DDL for triggers dropped during bulk sync upsert.
  * posts_fts_insert: verbatim from drizzle/0006_add_fts5_search.sql
- * fts5_cache_invalidate_insert: from drizzle/0032_fix_fts5_cache_invalidation.sql (ON posts)
+ * invalidate insert/update: from drizzle/0032_fix_fts5_cache_invalidation.sql (ON posts)
+ *
+ * Update is included because bulkUpsertPosts uses INSERT … ON CONFLICT DO UPDATE,
+ * which fires UPDATE triggers (repairArtist path), not only INSERT.
+ * Delete stays migration-only — sync does not bulk-delete posts.
  */
 export const RUNTIME_DROPPABLE_FTS_TRIGGERS = [
   {
@@ -25,6 +31,15 @@ END;`,
     name: FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME,
     ddl: `CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_insert
 AFTER INSERT ON posts BEGIN
+  UPDATE fts5_cache_invalidation
+  SET invalidated_at = ${INVALIDATED_AT_NOW_SQL}
+  WHERE id = 1;
+END;`,
+  },
+  {
+    name: FTS5_CACHE_INVALIDATE_UPDATE_TRIGGER_NAME,
+    ddl: `CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_update
+AFTER UPDATE OF tags ON posts BEGIN
   UPDATE fts5_cache_invalidation
   SET invalidated_at = ${INVALIDATED_AT_NOW_SQL}
   WHERE id = 1;
@@ -55,8 +70,8 @@ export function bumpFtsCacheInvalidationStamp(sqlite: SqliteDatabase): void {
 }
 
 /**
- * Drop FTS insert / invalidate-insert triggers that would fire per-row
- * during bulk initial sync.
+ * Drop FTS insert / invalidate insert+update triggers that would fire per-row
+ * during bulk initial sync or repair upsert.
  */
 export function dropFtsTriggersForBulkInsert(sqlite: SqliteDatabase): void {
   for (const trigger of RUNTIME_DROPPABLE_FTS_TRIGGERS) {

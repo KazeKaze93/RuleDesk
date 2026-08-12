@@ -3,6 +3,7 @@ import { createMockDb } from "../../helpers/mock-db";
 import { artists, posts } from "../../../src/main/db/schema";
 import {
   FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME,
+  FTS5_CACHE_INVALIDATE_UPDATE_TRIGGER_NAME,
   POSTS_FTS_INSERT_TRIGGER_NAME,
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
@@ -42,6 +43,13 @@ function readStamp(
   return row.invalidated_at;
 }
 
+function sleepMs(ms: number): void {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    // busy-wait so julianday ms stamp can advance
+  }
+}
+
 describe("FTS cache invalidation on posts", () => {
   let mockDb: ReturnType<typeof createMockDb> | null = null;
 
@@ -59,7 +67,7 @@ describe("FTS cache invalidation on posts", () => {
     expect(listTriggers(mockDb.sqlite)).toEqual([...EXPECTED_TRIGGERS]);
   });
 
-  it("bumps invalidated_at on INSERT, UPDATE, and DELETE of posts", () => {
+  it("bumps invalidated_at on INSERT, UPDATE OF tags, and DELETE; not on is_viewed", () => {
     mockDb = createMockDb();
     const { db, sqlite } = mockDb;
 
@@ -78,7 +86,7 @@ describe("FTS cache invalidation on posts", () => {
     }
 
     const beforeInsert = readStamp(sqlite);
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
+    sleepMs(2);
     db.insert(posts)
       .values({
         postId: 101,
@@ -101,38 +109,51 @@ describe("FTS cache invalidation on posts", () => {
       throw new Error("Failed to insert post");
     }
 
-    const beforeUpdate = readStamp(sqlite);
-    // Ensure julianday stamp can advance past the previous millisecond.
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
+    const beforeViewed = readStamp(sqlite);
+    sleepMs(2);
     sqlite
       .prepare("UPDATE posts SET is_viewed = 1 WHERE id = ?")
       .run(inserted.id);
-    const afterUpdate = readStamp(sqlite);
-    expect(afterUpdate).not.toBe(beforeUpdate);
-    expect(afterUpdate).toBeGreaterThan(beforeUpdate);
+    expect(readStamp(sqlite)).toBe(beforeViewed);
+
+    // posts_fts_update (0006) + external-content FTS5 hits
+    // "database disk image is malformed" on this Node better-sqlite3 build
+    // when rewriting the index on UPDATE OF tags. Isolate invalidate_update.
+    sqlite.exec("DROP TRIGGER IF EXISTS posts_fts_update;");
+
+    const beforeTags = readStamp(sqlite);
+    sleepMs(2);
+    sqlite
+      .prepare("UPDATE posts SET tags = 'a b c' WHERE id = ?")
+      .run(inserted.id);
+    const afterTags = readStamp(sqlite);
+    expect(afterTags).not.toBe(beforeTags);
+    expect(afterTags).toBeGreaterThan(beforeTags);
 
     const beforeDelete = readStamp(sqlite);
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2);
+    sleepMs(2);
     sqlite.prepare("DELETE FROM posts WHERE id = ?").run(inserted.id);
     const afterDelete = readStamp(sqlite);
     expect(afterDelete).not.toBe(beforeDelete);
     expect(afterDelete).toBeGreaterThan(beforeDelete);
   });
 
-  it("drop + ensure restores both runtime-droppable triggers idempotently", () => {
+  it("drop + ensure restores runtime-droppable triggers idempotently", () => {
     mockDb = createMockDb();
     const { sqlite } = mockDb;
 
     dropFtsTriggersForBulkInsert(sqlite);
-    expect(listTriggers(sqlite)).not.toContain(POSTS_FTS_INSERT_TRIGGER_NAME);
-    expect(listTriggers(sqlite)).not.toContain(
-      FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME
-    );
+    const afterDrop = listTriggers(sqlite);
+    expect(afterDrop).not.toContain(POSTS_FTS_INSERT_TRIGGER_NAME);
+    expect(afterDrop).not.toContain(FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME);
+    expect(afterDrop).not.toContain(FTS5_CACHE_INVALIDATE_UPDATE_TRIGGER_NAME);
+    expect(afterDrop).toContain("fts5_cache_invalidate_delete");
 
     const first = ensureFtsTriggers(sqlite);
     expect(first.recreated).toEqual([
       POSTS_FTS_INSERT_TRIGGER_NAME,
       FTS5_CACHE_INVALIDATE_INSERT_TRIGGER_NAME,
+      FTS5_CACHE_INVALIDATE_UPDATE_TRIGGER_NAME,
     ]);
     expect(listTriggers(sqlite)).toEqual([...EXPECTED_TRIGGERS]);
 

@@ -80,7 +80,7 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ### Problem: FTS cache-invalidation triggers never existed after migration 0010
 **Root Cause:** Triggers were declared `AFTER … ON posts_fts`, but `posts_fts` is `CREATE VIRTUAL TABLE … USING fts5`. SQLite rejects that with `cannot create triggers on virtual tables`; the migration aborted at the first CREATE and soft-fail paths marked it executed anyway — stamp table existed, triggers did not.
-**Invariant Rule:** FTS5 external-content tables → SQLite forbids triggers ON virtual tables; migration silently aborts at first CREATE → All triggers touching FTS must be declared ON the content table (`posts`). Never wrap DDL in try/catch: a swallowed CREATE TRIGGER error hides a permanently missing trigger.
+**Invariant Rule:** FTS5 external-content tables → SQLite forbids triggers ON virtual tables; migration silently aborts at first CREATE → All triggers touching FTS must be declared ON the content table (`posts`). Never wrap DDL in try/catch: a swallowed CREATE TRIGGER error hides a permanently missing trigger. Stamp invalidation UPDATE triggers must match what the cache actually depends on (here: `posts_fts` row count / tags rewrite) — unrestricted `AFTER UPDATE ON posts` thrash-invalidates on viewed/favorite toggles.
 
 ### Problem: Cache files written directly to their final path get served truncated
 **Root Cause:** Streaming writes went straight to the final cache path and hit-checks used `existsSync`; concurrent readers saw in-progress files as complete, and client aborts left permanently truncated files that were served forever.
