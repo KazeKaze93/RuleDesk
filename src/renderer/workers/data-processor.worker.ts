@@ -1,21 +1,15 @@
 /**
  * Data Processor Web Worker
- * 
- * Offloads heavy data processing (filtering, sorting) from the Renderer UI thread.
- * This worker handles client-side post processing for the Browse tab and provides
- * a foundation for future Smart Collections features.
- * 
- * IMPORTANT: This worker runs in a separate thread and cannot access:
+ *
+ * Offloads AI/media filter + sort from the Renderer UI thread for Browse
+ * remote results (source=all). Local Favorites/Subscriptions apply those
+ * filters in SQL before LIMIT/OFFSET and do not use this worker.
+ *
+ * This worker runs in a separate thread and cannot access:
  * - Node.js modules (fs, path, etc.)
  * - DOM APIs
  * - Electron APIs (window.api, etc.)
  * - Browser storage (localStorage, etc.)
- * 
- * Reserved action types for future implementation:
- * - 'ANALYZE_TAG_FREQUENCY' - Analyze tag frequency for Smart Collections
- * - 'GROUP_BY_CLUSTER' - Group posts by visual/content similarity
- * - 'EXTRACT_FEATURES' - Extract features for ML-based recommendations
- * - 'CALCULATE_SIMILARITY' - Calculate similarity scores between posts
  */
 
 // Worker cannot use path aliases, use relative path
@@ -35,14 +29,11 @@ interface WorkerResponse<T = unknown> {
   error?: string;
 }
 
-// Filter configuration type
+// Filter configuration type (remote Browse only: AI, media, sort)
 interface FilterConfig {
   aiFilter: "all" | "hide" | "only";
   mediaType: "all" | "images" | "videos";
-  source: "all" | "favorites" | "subscriptions";
   sortOrder: "asc" | "desc";
-  trackedTagsSet?: string[]; // Array of tracked tag strings (lowercase)
-  tags?: string[]; // Active search tags for source filter
 }
 
 // Filter and sort request payload
@@ -112,51 +103,21 @@ function filterAndSortPosts(
   posts: WorkerPost[],
   filters: FilterConfig
 ): WorkerPost[] {
-  const {
-    aiFilter,
-    mediaType,
-    source,
-    sortOrder,
-    trackedTagsSet,
-    tags,
-  } = filters;
-  
-  // Build tracked tags set for efficient lookup
-  const trackedSet = trackedTagsSet ? new Set(trackedTagsSet) : new Set<string>();
-  const hasActiveSearch = tags && tags.length > 0;
-  
-  // Single-pass filter: combine all filter conditions
+  const { aiFilter, mediaType, sortOrder } = filters;
+
   const filtered = posts.filter((post) => {
-    // AI filter
     if (aiFilter === "hide" && hasAiGeneratedTag(post.tags)) return false;
     if (aiFilter === "only" && !hasAiGeneratedTag(post.tags)) return false;
 
-    // Media type filter
     if (mediaType !== "all") {
       const isVideo = isVideoPost(post.fileUrl);
       if (mediaType === "videos" && !isVideo) return false;
       if (mediaType === "images" && isVideo) return false;
     }
 
-    // Source filter - only apply if there's an active search
-    if (hasActiveSearch) {
-      if (source === "favorites" && !post.isFavorited) return false;
-        if (source === "subscriptions") {
-          if (trackedSet.size === 0) return false;
-          if (!post.tags) return false;
-          // PERFORMANCE: Split once and use Set.has() for O(1) lookup
-          // This is faster than creating RegExp on each iteration (20k+ times)
-          // Split creates one array per post, but Set.has() is O(1) vs RegExp.test() which is O(n)
-          const postTags = post.tags.toLowerCase().split(/\s+/).filter(Boolean);
-          const hasTrackedTag = postTags.some((tag) => trackedSet.has(tag));
-          if (!hasTrackedTag) return false;
-        }
-    }
-    
     return true;
   });
-  
-  // Sort by publishedAt
+
   return filtered.sort((a, b) => {
     const dateA = getTimestamp(a.publishedAt);
     const dateB = getTimestamp(b.publishedAt);

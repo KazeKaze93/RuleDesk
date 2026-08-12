@@ -123,6 +123,8 @@ const allPosts: Post[] = data?.pages.flatMap((page: Post[]) => page) || [];
 
 **Scenario:** Infinite scroll on the Browse page against the live booru API (`searchBooru`). Rule34 offset pagination is capped at four pages; deeper scroll uses cursor pagination via `beforePostId` / `nextBeforePostId`.
 
+Browse **Favorites** / **Subscriptions** do not use this remote helper: they call `getArtistPosts` with `isFavorited` / `sinceTracking` and pass `aiFilter` / `mediaType` / `sortOrder` into SQL so filters apply before `LIMIT`/`OFFSET`. The React Query key is `buildBrowseSearchQueryKey({ tags, source, aiFilter, mediaType, sortOrder })`.
+
 Prefer `useGalleryInfiniteScroll` + `getSearchBrowseNextPageParam` (see `src/renderer/components/pages/Browse.tsx`) instead of hand-rolling page numbers:
 
 ```typescript

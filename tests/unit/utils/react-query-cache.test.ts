@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getSearchBrowseNextPageParam } from "@/renderer/utils/react-query-cache";
+import {
+  buildBrowseSearchQueryKey,
+  getSearchBrowseNextPageParam,
+} from "@/renderer/utils/react-query-cache";
 import type { Post } from "@shared/types/db";
 
 const POSTS_PER_PAGE = 50;
@@ -101,5 +104,30 @@ describe("getSearchBrowseNextPageParam", () => {
     expect(
       getSearchBrowseNextPageParam(cursorPage, allPages, POSTS_PER_PAGE)
     ).toEqual({ beforePostId: 7_500 });
+  });
+});
+
+describe("buildBrowseSearchQueryKey", () => {
+  it("includes aiFilter, mediaType, and sortOrder with defaults", () => {
+    expect(buildBrowseSearchQueryKey({ tags: ["cat"] })).toEqual([
+      "search",
+      ["cat"],
+      "all",
+      "all",
+      "all",
+      "desc",
+    ]);
+  });
+
+  it("passes through local source and SQL filter dimensions", () => {
+    expect(
+      buildBrowseSearchQueryKey({
+        tags: ["cat"],
+        source: "favorites",
+        aiFilter: "hide",
+        mediaType: "videos",
+        sortOrder: "asc",
+      })
+    ).toEqual(["search", ["cat"], "favorites", "hide", "videos", "asc"]);
   });
 });

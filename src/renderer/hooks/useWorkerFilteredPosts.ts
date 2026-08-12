@@ -17,7 +17,7 @@ import { mapWorkerPostToPost } from "../lib/map-worker-post";
  * @param rawPosts - Raw posts array to filter
  * @param filters - Filter configuration
  * @param debounceDelay - Debounce delay in ms (default: 250)
- * @returns Filtered and sorted posts with loading state
+ * @param enabled - When false, skip worker processing (local SQL paths)
  */
 export function useWorkerFilteredPosts(
   rawPosts: Post[],

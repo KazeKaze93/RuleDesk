@@ -46,7 +46,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
 - ✅ `FiltersPanel`: AI, media, source; wired to `searchStore` and post pipelines.
-- ✅ **Browse → Source (Favorites / Subscriptions):** requires at least one tag in the search box — **intentional** (subscriptions/favorites are interpreted in the context of a tag query against cached + API flows). Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)).
+- ✅ **Browse → Source (Favorites / Subscriptions):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Local AI/media filters run in SQL before `LIMIT`. Subscriptions is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)).
 - ✅ Search is chip-based and supports include/exclude, OR-groups, wildcard/fuzzy token forms (`*`, `~`) in query tokens.
 
 ### B. Viewer and Gallery Polish - High Priority
@@ -203,7 +203,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Topic | Status |
 |-------|--------|
-| **Browse → Source: Favorites / Subscriptions** | Requires a **non-empty tag query** so “favorites” and “subscriptions” are interpreted in context (cached + API). **Working as designed;** not a defect to “fix” unless product explicitly changes the model. |
+| **Browse → Source: Favorites / Subscriptions** | Requires a **non-empty tag query** in `SourceSwitcher` so those modes are selected in the context of a search. Local results come from SQL (`isFavorited` / `sinceTracking`) with AI/media applied before pagination. Subscriptions is **sinceTracking-only** (join by artist + publish date), not tag-intersection with tracked artist names. **Working as designed.** |
 | **Masonry vs grid** | Two **first-class** view toggles. No silent fallback; no open “masonry not implemented” item. |
 | **Viewer tags / progressive cards** | Shipped (`TagsDrawer`, `PostCard`). |
 

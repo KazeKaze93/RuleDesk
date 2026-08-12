@@ -6,7 +6,11 @@ import type { ViewerOrigin } from "../../../store/viewerStore";
 import { normalizePostToPostData } from "../../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../../shared/constants";
 import { getErrorCode } from "../../../../shared/utils/type-guards";
-import { updatePostInCache, updatePostInSearchCache } from "../../../utils/react-query-cache";
+import {
+  updatePostInCache,
+  updatePostInSearchCache,
+  buildBrowseSearchQueryKey,
+} from "../../../utils/react-query-cache";
 import type { SearchBooruPageResult } from "../../../../shared/schemas/search";
 
 interface ViewerQueue {
@@ -112,11 +116,13 @@ export function useViewerController({
 
     // Update search cache (for Browse page) if post is from search
     if (queue?.origin?.kind === "search") {
-      const searchQueryKey = [
-        "search",
-        queue.origin.tags,
-        queue.origin.source ?? "all",
-      ];
+      const searchQueryKey = buildBrowseSearchQueryKey({
+        tags: queue.origin.tags,
+        source: queue.origin.source,
+        aiFilter: queue.origin.aiFilter,
+        mediaType: queue.origin.mediaType,
+        sortOrder: queue.origin.sortOrder,
+      });
       queryClient.setQueryData<InfiniteData<SearchBooruPageResult<Post>>>(
         searchQueryKey,
         (old) => updatePostInSearchCache(old, post.id, (p) => ({ ...p, isViewed: true }))
@@ -198,11 +204,13 @@ export function useViewerController({
 
       // Update search cache (for Browse page) if post is from search
       if (queue?.origin?.kind === "search") {
-        const searchQueryKey = [
-          "search",
-          queue.origin.tags,
-          queue.origin.source ?? "all",
-        ];
+        const searchQueryKey = buildBrowseSearchQueryKey({
+          tags: queue.origin.tags,
+          source: queue.origin.source,
+          aiFilter: queue.origin.aiFilter,
+          mediaType: queue.origin.mediaType,
+          sortOrder: queue.origin.sortOrder,
+        });
         queryClient.setQueryData<InfiniteData<SearchBooruPageResult<Post>>>(
           searchQueryKey,
           (old) =>
