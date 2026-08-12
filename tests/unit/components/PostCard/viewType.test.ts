@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
 /**
+ * LOGIC-ONLY MIRROR: does not import real component, will not catch drift.
+ * @testing-library/react is not a project dependency; adding it is out of scope for this audit.
+ * Mirrored class strings below are intentionally local copies — keep in sync manually with
+ * `src/renderer/features/artists/components/PostCard.tsx` viewType styling.
+ *
  * Tests for PostCard viewType logic
  * These tests verify the conditional styling based on viewType
  */
