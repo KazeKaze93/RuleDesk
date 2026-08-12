@@ -14,25 +14,32 @@ import { PlaylistController } from "./controllers/PlaylistController";
 import { StatsController } from "./controllers/StatsController";
 import { VideoProxyController } from "./controllers/VideoProxyController";
 import { BlacklistController } from "./controllers/BlacklistController";
-import { registerUpdatesHandlers } from "./handlers/updates";
+import { UpdatesController } from "./controllers/UpdatesController";
 import { SyncService } from "../services/sync-service";
 import { UpdaterService } from "../services/updater-service";
 import { VideoProxyServer } from "../services/video-proxy-server";
 import type { BackupService } from "../services/backup-service";
+import type { MaintenanceService } from "../services/MaintenanceService";
 import { getDb } from "../db/client";
 import { container, DI_TOKENS } from "../core/di/Container";
 
 /**
  * Setup IPC Handlers
- * 
+ *
  * Initializes DI Container and registers all IPC controllers.
  * Called once during application startup.
- * 
+ *
  * @returns Object with controllers that need window reference
  */
 export function setupIpc(
   videoProxyServer: VideoProxyServer,
-): { maintenanceController: MaintenanceController; fileController: FileController; playlistController: PlaylistController } {
+  updaterService: UpdaterService,
+  maintenanceService: MaintenanceService
+): {
+  maintenanceController: MaintenanceController;
+  fileController: FileController;
+  playlistController: PlaylistController;
+} {
   log.info("[IPC] Setting up IPC handlers...");
 
   // Register database in DI container (using type-safe tokens)
@@ -44,7 +51,7 @@ export function setupIpc(
   const videoProxyController = new VideoProxyController(videoProxyServer);
   videoProxyController.setup();
 
-  const systemController = new SystemController(videoProxyServer);
+  const systemController = new SystemController(videoProxyServer, updaterService);
   systemController.setup();
 
   const artistsController = new ArtistsController();
@@ -59,7 +66,7 @@ export function setupIpc(
   const authController = new AuthController();
   authController.setup();
 
-  const maintenanceController = new MaintenanceController();
+  const maintenanceController = new MaintenanceController(maintenanceService);
   maintenanceController.setup();
 
   const viewerController = new ViewerController();
@@ -80,19 +87,23 @@ export function setupIpc(
   const blacklistController = new BlacklistController();
   blacklistController.setup();
 
-  registerUpdatesHandlers();
+  const updatesController = new UpdatesController();
+  updatesController.setup();
 
   log.info("[IPC] All controllers initialized successfully");
-  
-  return { maintenanceController, fileController, playlistController }; // Return for window injection
+
+  return { maintenanceController, fileController, playlistController };
 }
 
 /**
  * Register services in DI container (called after services are initialized)
- * 
+ *
  * @param syncService - Sync service instance
  */
-export function registerServices(syncService: SyncService, backupService: BackupService): void {
+export function registerServices(
+  syncService: SyncService,
+  backupService: BackupService
+): void {
   container.register(DI_TOKENS.SYNC_SERVICE, syncService);
   container.register(DI_TOKENS.BACKUP_SERVICE, backupService);
   log.info("[IPC] SyncService registered in DI container");
@@ -100,12 +111,16 @@ export function registerServices(syncService: SyncService, backupService: Backup
 
 /**
  * Set main window for controllers that need it (backup/restore, file dialogs)
- * 
+ *
  * @param controllers - Controllers that need window reference
  * @param mainWindow - Main browser window
  */
 export function setControllerWindows(
-  controllers: { maintenanceController: MaintenanceController; fileController: FileController; playlistController: PlaylistController },
+  controllers: {
+    maintenanceController: MaintenanceController;
+    fileController: FileController;
+    playlistController: PlaylistController;
+  },
   mainWindow: BrowserWindow
 ): void {
   controllers.maintenanceController.setMainWindow(mainWindow);
@@ -114,19 +129,22 @@ export function setControllerWindows(
   log.info("[IPC] Window references set for controllers");
 }
 
-
 // --- Main Registration Function ---
 export const registerAllHandlers = (
   syncService: SyncService,
   backupService: BackupService,
-  _updaterService: UpdaterService,
+  updaterService: UpdaterService,
   mainWindow: BrowserWindow,
   videoProxyServer: VideoProxyServer,
+  maintenanceService: MaintenanceService
 ) => {
   log.info("[IPC] Registering all handlers...");
 
-  // Initialize all controllers
-  const controllers = setupIpc(videoProxyServer);
+  const controllers = setupIpc(
+    videoProxyServer,
+    updaterService,
+    maintenanceService
+  );
   registerServices(syncService, backupService);
   setControllerWindows(controllers, mainWindow);
 

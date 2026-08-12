@@ -2085,11 +2085,11 @@ export const IPC_CHANNELS = {
 To avoid drift, this document no longer keeps long legacy snippets for handler registration or preload wiring.
 
 - **IPC handler registration:** `src/main/ipc/index.ts`
-- **Maintenance handlers:** `src/main/ipc/handlers/maintenanceHandlers.ts`
+- **Maintenance (VACUUM):** `src/main/ipc/controllers/MaintenanceController.ts`
 - **Channel constants:** `src/main/ipc/channels.ts`
 - **Renderer bridge (`window.api`):** `src/main/bridge.ts`
 
-Use these files as the canonical implementation reference for exact `ipcMain.handle` and `ipcRenderer.invoke` wiring.
+Use these files as the canonical implementation reference for exact BaseController registration and `ipcRenderer.invoke` wiring.
 
 ## API Evolution Notes
 
