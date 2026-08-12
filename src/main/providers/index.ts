@@ -21,6 +21,10 @@ export function getAllProviderDomains(): string[] {
   return [...new Set(PROVIDERS.flatMap((provider) => provider.allowedDomains))];
 }
 
+export function getAllProviderCdnDomains(): string[] {
+  return [...new Set(PROVIDERS.flatMap((provider) => provider.cdnDomains))];
+}
+
 export type {
   IBooruProvider,
   BooruPost,

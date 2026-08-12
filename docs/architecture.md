@@ -608,7 +608,7 @@ const posts = await db.query.posts.findMany({
    - Provider pattern abstraction for multi-booru support
    - `IBooruProvider` interface for standardized booru operations
    - Implementations: `Rule34Provider`, `GelbooruProvider`
-   - `allowedDomains` is the single host list for CSP (`getAllProviderDomains`) and video-proxy `isAllowedCdnUrl` (exact hostname match, no suffix wildcard). Gelbooru media CDN is `img4.gelbooru.com`; `gelbooru.com` is the API/site host.
+   - `allowedDomains` is the full host list for CSP (`getAllProviderDomains`: API + CDN). `cdnDomains` is the media-CDN subset for video-proxy `isAllowedCdnUrl` (`getAllProviderCdnDomains`; exact hostname match, no suffix wildcard). Gelbooru media CDN is `img4.gelbooru.com`; `gelbooru.com` is the API/site host and is not proxied.
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
    - Shared request pacing via `ProviderThrottle` (~1200ms + jitter) and session UA via `pickRandomUA()`
    - **Priorities:** `user` (Sync `fetchPosts`, Browse/search `fetchPosts`, autocomplete) drains before `background` (tag-resolve). Same min-interval; order only.
@@ -618,7 +618,7 @@ const posts = await db.query.posts.findMany({
 
    - Local HTTP proxy for video playback with on-disk `video-cache/` under `.rdcache`
    - Atomic cache writes (tmp+rename), abort cleanup, eviction capped by `VIDEO_CACHE_MAX_BYTES` (2 GiB) in `src/main/config/constants.ts`
-   - Host allowlist is derived from `provider.allowedDomains` (exact match, cached at module load). Does not rewrite stored post URLs at sync time.
+   - Host allowlist is derived from `provider.cdnDomains` via `getAllProviderCdnDomains` (exact match, cached at module load). API/apex hosts such as `api.rule34.xxx` and `gelbooru.com` are CSP-only. Does not rewrite stored post URLs at sync time.
 
 10. **Updater Service** (`src/main/services/updater-service.ts`)
 

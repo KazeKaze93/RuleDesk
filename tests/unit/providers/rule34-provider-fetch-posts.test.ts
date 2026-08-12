@@ -32,6 +32,18 @@ describe("Rule34Provider.fetchPosts error classification", () => {
   const provider = new Rule34Provider();
   const settings = { userId: "1", apiKey: "test-key" };
 
+  it("keeps API host in CSP allowlist but out of video-proxy CDN list", () => {
+    expect(provider.allowedDomains).toContain("api.rule34.xxx");
+    expect(provider.cdnDomains).not.toContain("api.rule34.xxx");
+    expect(provider.cdnDomains).toEqual([
+      "rule34.xxx",
+      "img.rule34.xxx",
+      "wimg.rule34.xxx",
+      "us.rule34.xxx",
+      "api-cdn.rule34.xxx",
+    ]);
+  });
+
   beforeEach(() => {
     axiosGetMock.mockReset();
   });

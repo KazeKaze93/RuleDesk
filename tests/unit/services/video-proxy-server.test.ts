@@ -257,11 +257,21 @@ describe("VideoProxyServer cache integrity", () => {
   it.each([
     ["https://img4.gelbooru.com/images/x.webm", 200],
     ["https://wimg.rule34.xxx/video.mp4", 200],
+    ["https://us.rule34.xxx/video.mp4", 200],
+    ["https://api-cdn.rule34.xxx/video.mp4", 200],
+    ["https://img.rule34.xxx/video.mp4", 200],
     ["https://img1.gelbooru.com/images/x.webm", 400],
     ["https://img2.gelbooru.com/images/x.webm", 400],
     ["https://img3.gelbooru.com/images/x.webm", 400],
     ["https://cdn-unknown.rule34.xxx/video.mp4", 400],
-  ])("provider-derived allowlist %s -> %i", async (fileUrl, status) => {
+  ])("provider-derived CDN allowlist %s -> %i", async (fileUrl, status) => {
+    expect(await proxyStatus(fileUrl)).toBe(status);
+  });
+
+  it.each([
+    ["https://api.rule34.xxx/index.php?page=dapi&s=post&q=index", 400],
+    ["https://gelbooru.com/index.php?page=dapi&s=post&q=index", 400],
+  ])("rejects API/apex hosts that CSP allows but video-proxy must not fetch %s", async (fileUrl, status) => {
     expect(await proxyStatus(fileUrl)).toBe(status);
   });
 

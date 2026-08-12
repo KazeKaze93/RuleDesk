@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import axios, { AxiosError } from "axios";
 import { GelbooruProvider } from "@/main/providers/gelbooru-provider";
-import { getAllProviderDomains } from "@/main/providers";
+import { getAllProviderCdnDomains, getAllProviderDomains } from "@/main/providers";
 import { ProviderThrottle } from "@/main/providers/provider-throttle";
 
 vi.mock("electron-log", () => ({
@@ -50,11 +50,17 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
       "gelbooru.com",
       "img4.gelbooru.com",
     ]);
+    expect(provider.cdnDomains).toEqual(["img4.gelbooru.com"]);
     const domains = getAllProviderDomains();
     expect(domains).toContain("img4.gelbooru.com");
+    expect(domains).toContain("gelbooru.com");
     expect(domains).not.toContain("img1.gelbooru.com");
     expect(domains).not.toContain("img2.gelbooru.com");
     expect(domains).not.toContain("img3.gelbooru.com");
+    const cdnDomains = getAllProviderCdnDomains();
+    expect(cdnDomains).toContain("img4.gelbooru.com");
+    expect(cdnDomains).not.toContain("gelbooru.com");
+    expect(cdnDomains).not.toContain("api.rule34.xxx");
   });
 
   beforeEach(() => {

@@ -21,10 +21,15 @@ export interface IBooruProvider {
   id: string;
   name: string;
   /**
-   * Exact hostnames this provider may load media/connect from.
-   * Single source for CSP (`getAllProviderDomains`) and video-proxy `isAllowedCdnUrl`.
+   * Exact hostnames this provider may load media/connect from (API + CDN).
+   * Source for CSP via `getAllProviderDomains`.
    */
   readonly allowedDomains: string[];
+  /**
+   * Media CDN hostnames for the video-proxy SSRF gate (via `getAllProviderCdnDomains`).
+   * Subset of `allowedDomains`; excludes API endpoints the proxy must not fetch.
+   */
+  readonly cdnDomains: string[];
   /** Validates provided credentials against the API */
   checkAuth(settings: ProviderSettings): Promise<boolean>;
   /** Fetches posts based on tags and page. Callers must pass an explicit page size. */
