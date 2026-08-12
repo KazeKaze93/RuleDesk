@@ -16,6 +16,41 @@ import type {
 type SearchGalleryPage = SearchBooruPageResult<Post>;
 type InfinitePostPage = Post[] | SearchGalleryPage;
 
+export type BrowseSearchSource = "all" | "favorites" | "subscriptions";
+export type BrowseSearchAiFilter = "all" | "hide" | "only";
+export type BrowseSearchMediaType = "all" | "images" | "videos";
+export type BrowseSearchSortOrder = "asc" | "desc";
+
+export type BrowseSearchQueryKey = readonly [
+  "search",
+  string[],
+  BrowseSearchSource,
+  BrowseSearchAiFilter,
+  BrowseSearchMediaType,
+  BrowseSearchSortOrder,
+];
+
+/**
+ * Canonical Browse infinite-query key. Must stay isomorphic across
+ * Browse fetch, viewer cache lookup, and manual cache writes.
+ */
+export function buildBrowseSearchQueryKey(params: {
+  tags: string[];
+  source?: BrowseSearchSource;
+  aiFilter?: BrowseSearchAiFilter;
+  mediaType?: BrowseSearchMediaType;
+  sortOrder?: BrowseSearchSortOrder;
+}): BrowseSearchQueryKey {
+  return [
+    "search",
+    params.tags,
+    params.source ?? "all",
+    params.aiFilter ?? "all",
+    params.mediaType ?? "all",
+    params.sortOrder ?? "desc",
+  ];
+}
+
 export function isSearchGalleryPage(page: unknown): page is SearchGalleryPage {
   return (
     typeof page === "object" &&
@@ -210,7 +245,10 @@ export function updatePostInAllCaches(
     | {
         kind: "search";
         tags: string[];
-        source?: "all" | "favorites" | "subscriptions";
+        source?: BrowseSearchSource;
+        aiFilter?: BrowseSearchAiFilter;
+        mediaType?: BrowseSearchMediaType;
+        sortOrder?: BrowseSearchSortOrder;
       }
     | { kind: "artist"; artistId: number }
     | { kind: "favorites" }
@@ -235,7 +273,13 @@ export function updatePostInAllCaches(
 
   // Update search cache if post is from search
   if (origin?.kind === "search") {
-    const searchQueryKey = ["search", origin.tags, origin.source ?? "all"];
+    const searchQueryKey = buildBrowseSearchQueryKey({
+      tags: origin.tags,
+      source: origin.source,
+      aiFilter: origin.aiFilter,
+      mediaType: origin.mediaType,
+      sortOrder: origin.sortOrder,
+    });
     queryClient.setQueryData<InfiniteData<SearchGalleryPage>>(
       searchQueryKey,
       (old) => updatePostInSearchCache(old, post.id, updater)

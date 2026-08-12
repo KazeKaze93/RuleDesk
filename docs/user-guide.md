@@ -246,7 +246,7 @@ Each post card shows:
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
 - **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically).
 - **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings** when credentials are invalid).
-- Browse source modes **Favorites** / **Subscriptions** query your **local cache** and require a non-empty tag query by design.
+- Browse source modes **Favorites** / **Subscriptions** query your **local cache** (SQL `isFavorited` / `sinceTracking`) and still require a non-empty tag query in the Source switcher by design. AI and Media filters on those modes run in SQL before pagination. **Subscriptions** means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name.
 
 ### Favorites
 
@@ -322,7 +322,7 @@ The download will start, and you'll see a progress indicator.
 **Filter by source:**
 
 1. In views that show the filter panel, open the top bar **Filters** control
-2. Choose **All** (live booru API), **Favorites** (local cache), or **Subscriptions** (local cache, tracked artists/tags)
+2. Choose **All** (live booru API), **Favorites** (local cache), or **Subscriptions** (local cache: posts published after you started tracking the artist)
 3. Gallery updates automatically
 
 **Filter by media type:**
@@ -562,7 +562,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 **Solutions:**
 
 1. Confirm API credentials in **Settings → Account**
-2. Clear restrictive filters (AI, media, rating, date) — client-side filters only apply to already loaded pages
+2. Clear restrictive filters (AI, media). On Browse Favorites/Subscriptions those filters run in SQL; on Source: All they apply to already loaded API pages
 3. If using **Favorites** / **Subscriptions**, add at least one tag in the search bar (required by design)
 4. If Browse shows a centered error screen (not the empty “no posts” state), use **Retry** or **Open Settings** for auth failures — messages distinguish invalid API credentials, rate limits, and network errors
 

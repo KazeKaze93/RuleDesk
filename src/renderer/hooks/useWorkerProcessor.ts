@@ -8,10 +8,7 @@ import type { WorkerPost } from "../../shared/types/post";
 export interface WorkerFilterConfig {
   aiFilter: "all" | "hide" | "only";
   mediaType: "all" | "images" | "videos";
-  source: "all" | "favorites" | "subscriptions";
   sortOrder: "asc" | "desc";
-  trackedTagsSet?: string[];
-  tags?: string[];
 }
 
 /**

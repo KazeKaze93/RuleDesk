@@ -1,6 +1,5 @@
 import React, { useMemo, useCallback, useEffect } from "react";
 import {
-  useQuery,
   useMutation,
   useQueryClient,
   type InfiniteData,
@@ -42,7 +41,11 @@ import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
-import { getSearchBrowseNextPageParam, isSearchGalleryPage } from "../../utils/react-query-cache";
+import {
+  buildBrowseSearchQueryKey,
+  getSearchBrowseNextPageParam,
+  isSearchGalleryPage,
+} from "../../utils/react-query-cache";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 
 const POSTS_PER_PAGE = 50;
@@ -92,12 +95,6 @@ export const Browse = () => {
     [includeTags, excludeTags]
   );
 
-  // Fetch tracked artists for subscriptions filter
-  const { data: trackedArtists } = useQuery({
-    queryKey: ["artists"],
-    queryFn: () => window.api.getTrackedArtists(),
-  });
-
   // Use atomic selectors to prevent unnecessary re-renders
   // Each field is selected independently, so changing viewType won't trigger
   // re-render if only filters change, and vice versa
@@ -115,6 +112,19 @@ export const Browse = () => {
     tags.length === 0 &&
     aiFilter === "all" &&
     mediaType === "all";
+  const workerEnabled = isRemoteBrowseSource && !usesDefaultRemoteFilters;
+  const browseSearchQueryKey = buildBrowseSearchQueryKey({
+    tags,
+    source,
+    aiFilter,
+    mediaType,
+    sortOrder,
+  });
+  const sqlOptionalFilters = {
+    aiFilter: aiFilter === "all" ? undefined : aiFilter,
+    mediaType: mediaType === "all" ? undefined : mediaType,
+    tags: tags.length > 0 ? tags.join(" ") : undefined,
+  };
 
   // Use the new infinite scroll hook
   // For external API (Browse), we need custom getNextPageParam logic
@@ -137,7 +147,7 @@ export const Browse = () => {
     unknown[],
     BrowseSearchPageParam
   >({
-    queryKey: ["search", tags, source],
+    queryKey: [...browseSearchQueryKey],
     initialPageParam: 1,
     flattenPage: (page) => page.posts,
     fetchFn: async (pageParam) => {
@@ -146,9 +156,10 @@ export const Browse = () => {
           typeof pageParam === "number" ? pageParam : 1;
         const posts = await window.api.getArtistPosts({
           page,
+          sortOrder,
           filters: {
             isFavorited: true,
-            tags: tags.length > 0 ? tags.join(" ") : undefined,
+            ...sqlOptionalFilters,
           },
         });
         return {
@@ -162,9 +173,10 @@ export const Browse = () => {
           typeof pageParam === "number" ? pageParam : 1;
         const posts = await window.api.getArtistPosts({
           page,
+          sortOrder,
           filters: {
             sinceTracking: true,
-            tags: tags.length > 0 ? tags.join(" ") : undefined,
+            ...sqlOptionalFilters,
           },
         });
         return {
@@ -212,40 +224,13 @@ export const Browse = () => {
     });
   }, [rawPostsFromQuery]);
 
-  // Build tracked tags array for subscriptions filter (worker needs array, not Set)
-  const trackedTagsArray = useMemo(() => {
-    if (!trackedArtists || trackedArtists.length === 0) return [];
-    
-    const tagsSet = new Set<string>();
-    trackedArtists.forEach((artist) => {
-      const tagLower = artist.tag.toLowerCase();
-      tagsSet.add(tagLower);
-      
-      // For uploader type (user:username), also check without "user:" prefix
-      if (tagLower.startsWith("user:")) {
-        const username = tagLower.replace("user:", "");
-        tagsSet.add(username);
-        // Also check with underscore (some APIs use underscores)
-        tagsSet.add(username.replace(/_/g, ""));
-      }
-      // Also check with "user:" prefix for tags that might not have it
-      if (!tagLower.startsWith("user:")) {
-        tagsSet.add(`user:${tagLower}`);
-      }
-    });
-    
-    return Array.from(tagsSet);
-  }, [trackedArtists]);
-
-  // Worker-based processing with custom hook to avoid cascade renders
+  // Worker is remote-only (source=all with non-default AI/media or an active tag search).
+  // Favorites/Subscriptions apply aiFilter/mediaType in SQL before LIMIT/OFFSET.
   const filterConfig: WorkerFilterConfig = useMemo(() => ({
     aiFilter,
     mediaType,
-    source,
     sortOrder,
-    trackedTagsSet: trackedTagsArray,
-    tags,
-  }), [aiFilter, mediaType, source, sortOrder, trackedTagsArray, tags]);
+  }), [aiFilter, mediaType, sortOrder]);
 
   const {
     data: workerPosts = [],
@@ -255,11 +240,11 @@ export const Browse = () => {
     rawPosts,
     filterConfig,
     250,
-    !usesDefaultRemoteFilters
+    workerEnabled
   );
 
   const displayPosts = useMemo(() => {
-    if (usesDefaultRemoteFilters) {
+    if (!workerEnabled) {
       return rawPosts;
     }
     if (workerPosts.length > 0) {
@@ -270,7 +255,7 @@ export const Browse = () => {
     }
     return workerPosts;
   }, [
-    usesDefaultRemoteFilters,
+    workerEnabled,
     rawPosts,
     workerPosts,
     workerLoading,
@@ -282,7 +267,7 @@ export const Browse = () => {
     [displayPosts, selectedIds]
   );
   const hasFilteredOutResults =
-    rawPosts.length > 0 && displayPosts.length === 0 && !usesDefaultRemoteFilters;
+    workerEnabled && rawPosts.length > 0 && displayPosts.length === 0;
   const isFatalSearchError = isSearchError && rawPosts.length === 0;
   const browseSearchError = toBrowseSearchError(searchError);
   const browseSearchErrorPresentation = browseSearchError
@@ -353,7 +338,7 @@ export const Browse = () => {
     },
     onSuccess: (postId) => {
       queryClient.setQueryData<InfiniteData<BrowseGalleryPage>>(
-        ["search", tags, source],
+        browseSearchQueryKey,
         (oldData) => {
           if (!oldData) return oldData;
           return {
@@ -391,10 +376,9 @@ export const Browse = () => {
       viewMutation.mutate(post);
     }
 
-    // Open viewer with search origin
-    // listKey and origin must match queryKey ["search", tags, source] used in ViewerDialog
+    // listKey and origin must match Browse queryKey (buildBrowseSearchQueryKey)
     openViewer({
-      origin: { kind: "search", tags, source },
+      origin: { kind: "search", tags, source, aiFilter, mediaType, sortOrder },
       ids: postIds,
       initialIndex: index,
       listKey: `search-${source}`,
@@ -466,7 +450,7 @@ export const Browse = () => {
             </AlertDescription>
           </Alert>
         ) : null}
-        {workerError && !usesDefaultRemoteFilters ? (
+        {workerError && workerEnabled ? (
           <Alert variant="destructive" className="mx-6 mt-4 shrink-0">
             <AlertTitle>Could not filter posts</AlertTitle>
             <AlertDescription>
@@ -476,7 +460,7 @@ export const Browse = () => {
         ) : null}
         {(isLoading ||
           isFetching ||
-          (!usesDefaultRemoteFilters && workerLoading)) &&
+          (workerEnabled && workerLoading)) &&
         displayPosts.length === 0 &&
         !isFatalSearchError ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
@@ -492,7 +476,7 @@ export const Browse = () => {
                     No posts match current filters
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Source or media filters excluded all loaded API results. Try switching Source to All.
+                    AI or media filters excluded all loaded API results. Try switching AI/Media to All.
                   </p>
                 </div>
               </div>

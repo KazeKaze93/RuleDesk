@@ -69,6 +69,7 @@ import {
   flattenInfinitePostPages,
   isSearchGalleryPage,
   searchBrowseHasNextPage,
+  buildBrowseSearchQueryKey,
 } from "../../utils/react-query-cache";
 import { releaseRadixModalLock } from "../../lib/radix-modal-lock";
 import { isVideoPost } from "../../lib/filter-utils";
@@ -425,10 +426,16 @@ const useCurrentPost = (
         ] as const;
       }
       case "search": {
-        return ["search", origin.tags, origin.source ?? "all"] as const;
+        return buildBrowseSearchQueryKey({
+          tags: origin.tags,
+          source: origin.source,
+          aiFilter: origin.aiFilter,
+          mediaType: origin.mediaType,
+          sortOrder: origin.sortOrder,
+        });
       }
       case "browse": {
-        return ["search", []] as const;
+        return buildBrowseSearchQueryKey({ tags: [] });
       }
       case "playlist": {
         // Match query key from PlaylistGallery
@@ -1761,7 +1768,13 @@ export const ViewerDialog = () => {
     } else if (queue.origin.kind === "updates") {
       queryKey = ["posts", "updates", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "search") {
-      queryKey = ["search", queue.origin.tags, queue.origin.source ?? "all"];
+      queryKey = [...buildBrowseSearchQueryKey({
+        tags: queue.origin.tags,
+        source: queue.origin.source,
+        aiFilter: queue.origin.aiFilter,
+        mediaType: queue.origin.mediaType,
+        sortOrder: queue.origin.sortOrder,
+      })];
     } else {
       return undefined;
     }
@@ -1815,7 +1828,7 @@ export const ViewerDialog = () => {
 
     // Query keys are consistent with component query keys.
     // Keep this mapping in sync with page query keys to avoid cache drift.
-    // - Search: ["search", tags, source]
+    // - Search: ["search", tags, source, aiFilter, mediaType, sortOrder]
     // - Artist: ["posts", artistId, aiFilter, mediaType, source, sortOrder]
     // - Favorites/Updates: ["posts", <tab>, tags]
     // - Playlist: ["playlist-posts", playlistId, mediaType, aiFilter, sortOrder]
@@ -1831,7 +1844,13 @@ export const ViewerDialog = () => {
     } else if (queue.origin.kind === "updates") {
       queryKey = ["posts", "updates", queue.origin.tags ?? []];
     } else if (queue.origin.kind === "search") {
-      queryKey = ["search", queue.origin.tags, queue.origin.source ?? "all"];
+      queryKey = [...buildBrowseSearchQueryKey({
+        tags: queue.origin.tags,
+        source: queue.origin.source,
+        aiFilter: queue.origin.aiFilter,
+        mediaType: queue.origin.mediaType,
+        sortOrder: queue.origin.sortOrder,
+      })];
     } else if (queue.origin.kind === "playlist") {
       queryKey = [
         "playlist-posts",

@@ -7,6 +7,9 @@ export type ViewerOrigin =
       kind: "search";
       tags: string[];
       source?: "all" | "favorites" | "subscriptions";
+      aiFilter?: "all" | "hide" | "only";
+      mediaType?: "all" | "images" | "videos";
+      sortOrder?: "asc" | "desc";
     }
   | { kind: "favorites"; tags?: string[] }
   | { kind: "updates"; tags?: string[] }
