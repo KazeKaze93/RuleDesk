@@ -77,6 +77,10 @@ export class GelbooruProvider implements IBooruProvider {
     "gelbooru.com",
     "img4.gelbooru.com",
   ];
+  /** Media CDN only — video-proxy must not fetch the API/apex host. */
+  readonly cdnDomains = [
+    "img4.gelbooru.com",
+  ];
   private readonly baseUrl = "https://gelbooru.com/index.php";
   private readonly throttle = new ProviderThrottle();
   private readonly sessionUA = pickRandomUA();

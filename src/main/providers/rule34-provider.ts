@@ -45,10 +45,18 @@ interface R34AutocompleteItem {
 export class Rule34Provider implements IBooruProvider {
   readonly id = "rule34";
   readonly name = "Rule34.xxx";
-  /** Exact hosts for CSP and video-proxy; no suffix wildcard. */
+  /** Exact hosts for CSP (`getAllProviderDomains`); API + CDN, no suffix wildcard. */
   readonly allowedDomains = [
     "rule34.xxx",
     "api.rule34.xxx",
+    "img.rule34.xxx",
+    "wimg.rule34.xxx",
+    "us.rule34.xxx",
+    "api-cdn.rule34.xxx",
+  ];
+  /** Media CDN hosts for video-proxy; excludes the API host. */
+  readonly cdnDomains = [
+    "rule34.xxx",
     "img.rule34.xxx",
     "wimg.rule34.xxx",
     "us.rule34.xxx",

@@ -9,7 +9,7 @@ import { app } from "electron";
 import log from "electron-log";
 import type { AddressInfo } from "node:net";
 import { tryParseHttpsUrlHostname } from "../../shared/utils/url-host";
-import { getAllProviderDomains } from "../providers";
+import { getAllProviderCdnDomains } from "../providers";
 import {
   VIDEO_CACHE_EVICT_AFTER_START_MS,
   VIDEO_CACHE_MAX_BYTES,
@@ -19,7 +19,7 @@ import {
 const VIDEO_PATH = "/video";
 const PROXY_HOST = "127.0.0.1";
 /** Cached at module load — `isAllowedCdnUrl` is on the video request hot path. */
-const ALLOWED_CDN_HOSTS = new Set(getAllProviderDomains());
+const ALLOWED_CDN_HOSTS = new Set(getAllProviderCdnDomains());
 
 const VIDEO_CONTENT_TYPE = "video/mp4";
 const CACHE_BIN_SUFFIX = ".bin";
