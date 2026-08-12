@@ -37,6 +37,7 @@ import {
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { postsFtsTableExists } from "../../db/fts-table-check";
+import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
 import { isVideoUrl } from "@shared/utils/media";
 import { getProvider, type ProviderId } from "../../providers";
 import { getDecryptedApiSettings } from "../../services/credentials";
@@ -66,6 +67,14 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  * Uses shared IpcSafe utility type for automatic Date -> number conversion.
  */
 type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
+
+/** Exact AI tag tokens used by SQL aiFilter (FTS MATCH and posts.tags instr). */
+const AI_FILTER_TAGS = [
+  "ai_generated",
+  "ai-generated",
+  "ai_generation",
+  "ai-generated_content",
+] as const;
 
 // Internal types (not exported - use types from src/main/types/ipc.ts instead)
 type GetPostsParams = GetPostsRequest;
@@ -427,34 +436,22 @@ export class PostsController extends BaseController {
       conditions.push(eq(posts.isViewed, filters.isViewed));
     }
 
-    // AI filter: filter by AI-generated tags using FTS5 for performance
-    // CRITICAL: LIKE "%...%" causes Full Table Scan. Use FTS5 instead.
+    // AI filter: FTS MATCH only while insert/update triggers exist (index is live).
+    // During bulk initial sync / repair those triggers are dropped; MATCH then
+    // miss never-indexed rows and hide fail-opens. Fall back to exact tokens on posts.tags.
     if (filters?.aiFilter === "hide" || filters?.aiFilter === "only") {
       const ftsTableExists = this.checkFtsTableExists();
+      const useFtsMatch =
+        ftsTableExists &&
+        areRuntimeDroppableFtsTriggersPresent(getSqliteInstance());
 
-      if (ftsTableExists) {
-        // Use FTS5 for indexed search (much faster than LIKE)
-        // AI tags to search for
-        const aiTags = [
-          "ai_generated",
-          "ai-generated",
-          "ai_generation",
-          "ai-generated_content",
-        ];
+      if (useFtsMatch) {
+        const ftsQuery = this.buildFts5OrQuery([...AI_FILTER_TAGS]);
 
-        // Build FTS5 query using safe array-based construction
-        // SECURITY: Validate and sanitize each tag, then construct query safely
-        // Even though tags are hardcoded, we validate them to prevent future bugs if list changes
-        // Use helper function to build FTS5 OR query from array of tags
-        const ftsQuery = this.buildFts5OrQuery(aiTags);
-
-        // CRITICAL: Ensure ftsQuery is not empty to prevent SQLite syntax error
-        // If sanitizedTagQueries is empty (shouldn't happen with hardcoded tags), skip filter
         if (!ftsQuery || ftsQuery.trim().length === 0) {
           log.warn(
             "[PostsController] Empty FTS5 query for AI filter, skipping filter condition"
           );
-          // Skip adding filter condition if query is empty
         } else {
           // SECURITY: ftsQuery is constructed from hardcoded, validated AI tags
           // Each tag is validated with /^[a-zA-Z0-9_-]+$/ and escaped (quotes doubled)
@@ -467,7 +464,6 @@ export class PostsController extends BaseController {
           // 4. Query is validated to be non-empty before use
           // For user input (tagFilter), use createTagFilterCondition which handles parameterization correctly
           if (filters.aiFilter === "hide") {
-            // Exclude AI posts: NOT (FTS5 match)
             conditions.push(
               not(
                 sql`EXISTS (
@@ -478,7 +474,6 @@ export class PostsController extends BaseController {
               )
             );
           } else {
-            // Only AI posts: FTS5 match
             conditions.push(
               sql`EXISTS (
                 SELECT 1 FROM posts_fts 
@@ -489,30 +484,16 @@ export class PostsController extends BaseController {
           }
         }
       } else {
-        // Fallback to LIKE only if FTS5 table doesn't exist (should not happen in production)
-        // NOTE: This is inefficient for large datasets - FTS5 should be available
-        log.warn(
-          "[PostsController] FTS5 table not found, using slow LIKE fallback for AI filter"
-        );
-        const aiTagPatterns = [
-          "%ai_generated%",
-          "%ai-generated%",
-          "%ai_generation%",
-          "%ai-generated_content%",
-        ];
-        const aiConditions = aiTagPatterns.map(
-          (pattern) => sql`${posts.tags} LIKE ${pattern} ESCAPE '\\'`
-        );
-        if (aiConditions.length > 0) {
-          const aiOrCondition = or(...aiConditions);
-          if (aiOrCondition) {
-            if (filters.aiFilter === "hide") {
-              conditions.push(not(aiOrCondition));
-            } else {
-              conditions.push(aiOrCondition);
-            }
-          }
+        if (!ftsTableExists) {
+          log.warn(
+            "[PostsController] FTS5 table not found, using posts.tags for AI filter"
+          );
+        } else {
+          log.debug(
+            "[PostsController] FTS bulk-insert triggers absent; using posts.tags for AI filter"
+          );
         }
+        this.appendAiFilterContentCondition(conditions, filters.aiFilter);
       }
     }
 
@@ -541,6 +522,30 @@ export class PostsController extends BaseController {
     }
 
     return conditions;
+  }
+
+  /**
+   * Exact-token AI filter on posts.tags (content table).
+   * Used when FTS MATCH is not trustworthy: missing posts_fts, or bulk-sync
+   * window with posts_fts_insert / posts_fts_update dropped.
+   */
+  private appendAiFilterContentCondition(
+    conditions: SQL[],
+    aiFilter: "hide" | "only"
+  ): void {
+    const aiTagConditions = AI_FILTER_TAGS.map(
+      (tag) =>
+        sql`instr(' ' || lower(${posts.tags}) || ' ', ' ' || ${tag} || ' ') > 0`
+    );
+    const aiOrCondition = or(...aiTagConditions);
+    if (!aiOrCondition) {
+      return;
+    }
+    if (aiFilter === "hide") {
+      conditions.push(not(aiOrCondition));
+    } else {
+      conditions.push(aiOrCondition);
+    }
   }
 
   /**

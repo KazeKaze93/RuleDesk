@@ -45,6 +45,26 @@ export function dropFtsTriggersForBulkInsert(sqlite: SqliteDatabase): void {
 }
 
 /**
+ * True when every runtime-droppable FTS trigger exists.
+ * This is the bulk-sync window probe: dropFtsTriggersForBulkInsert removes
+ * insert+update, so MATCH cannot see rows upserted during that window.
+ * Schema state (sqlite_master), not an FTS content-table SELECT.
+ */
+export function areRuntimeDroppableFtsTriggersPresent(
+  sqlite: SqliteDatabase
+): boolean {
+  const existingStmt = sqlite.prepare(
+    "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?"
+  );
+  for (const trigger of RUNTIME_DROPPABLE_FTS_TRIGGERS) {
+    if (!existingStmt.get(trigger.name)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Ensure runtime-droppable FTS triggers exist (idempotent).
  * Returns names that were missing and recreated.
  * No try/catch: DDL failures must abort loudly.
