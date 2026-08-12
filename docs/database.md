@@ -1020,7 +1020,9 @@ The application uses SQLite FTS5 for efficient tag searching in the `posts` tabl
   - `posts_fts_insert` - Populates index on INSERT
   - `posts_fts_update` - Updates index on tags UPDATE
   - `posts_fts_delete` - Removes from index on DELETE
-- **FTS count-cache invalidation:** `fts5_cache_invalidate_insert` / `_update` / `_delete` are declared **ON `posts`**, not on `posts_fts`. SQLite forbids triggers on virtual FTS5 tables (`cannot create triggers on virtual tables`); migration `0010` never created them. Migration `0032_fix_fts5_cache_invalidation` places them on the content table. `_update` is `AFTER UPDATE OF tags` only — `PlaylistController.fts5CountCache` stores `posts_fts` row count (empty-guard before MATCH), which is unaffected by `is_viewed` / `is_favorited` / `rating`. During initial sync / repair upsert, `posts_fts_insert` plus invalidate insert+update are dropped and restored via `ensureFtsTriggers` (`src/main/db/fts-triggers.ts`), then the stamp is bumped once.
+- **Smart-playlist empty-guard:** Before FTS `MATCH`, `PlaylistController` probes with `SELECT 1 FROM posts_fts LIMIT 1` (stops at the first row). Empty index → `sql\`1 = 0\``. No in-memory count cache.
+- **Deprecated (tables remain, unused by app code):** `fts5_count_meta` and `fts5_cache_invalidation` from migrations `0010` / `0011` — kept so older app versions can open the DB. Migration `0032_fix_fts5_cache_invalidation` only `DROP TRIGGER IF EXISTS` for the five never-working virtual-table trigger names. Do not recreate stamp/count triggers.
+- **Initial sync / hard-kill recovery:** Only `posts_fts_insert` is runtime-droppable; restored via `ensureFtsTriggers` (`src/main/db/fts-triggers.ts`), then missing `posts_fts` rows are backfilled.
 
 ### Usage
 

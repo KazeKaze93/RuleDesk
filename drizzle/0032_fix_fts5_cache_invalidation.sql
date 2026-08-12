@@ -1,43 +1,17 @@
--- Fix FTS cache invalidation triggers: declare them ON posts (content table),
--- not ON posts_fts. SQLite forbids CREATE TRIGGER on virtual FTS5 tables
--- (SQLITE_ERROR: cannot create triggers on virtual tables), so migration
--- 0010 never successfully created fts5_cache_invalidate_* in any database.
+-- Defensive cleanup only.
 --
--- posts_fts is an external-content FTS5 table (content='posts'); every index
--- change is driven by posts mutations. Invalidate the stamp at that source.
+-- Migrations 0010 / 0011 declared count and stamp-invalidation triggers
+-- ON posts_fts (virtual FTS5). SQLite rejects CREATE TRIGGER on virtual
+-- tables, so those objects never existed in normal installs. A brief
+-- attempt to recreate invalidate triggers ON posts was abandoned: the
+-- only consumer was an in-memory FTS count cache, which is replaced by
+-- SELECT 1 FROM posts_fts LIMIT 1 (empty-guard). Tables fts5_count_meta
+-- and fts5_cache_invalidation stay for downgrade safety but are unused.
 --
--- fts5CountCache in PlaylistController caches only posts_fts row count
--- (empty-guard before MATCH). That count changes on INSERT/DELETE of posts,
--- and FTS content is rewritten on UPDATE OF tags. Updates to is_viewed /
--- is_favorited / rating / media_type do not touch posts_fts — keep UPDATE
--- scoped to tags so gallery browsing does not thrash the stamp.
+-- DROP any of the five dead trigger names if they somehow exist.
 
 DROP TRIGGER IF EXISTS fts5_cache_invalidate_insert;
 DROP TRIGGER IF EXISTS fts5_cache_invalidate_update;
 DROP TRIGGER IF EXISTS fts5_cache_invalidate_delete;
-
--- Ensure singleton stamp row exists (UPDATE triggers are no-ops without it).
--- Units: milliseconds (julianday → epoch ms); must match 0010 / PlaylistController.
-INSERT OR IGNORE INTO fts5_cache_invalidation (id, invalidated_at)
-VALUES (1, CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER));
-
-CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_insert
-AFTER INSERT ON posts BEGIN
-  UPDATE fts5_cache_invalidation
-  SET invalidated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)
-  WHERE id = 1;
-END;
-
-CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_update
-AFTER UPDATE OF tags ON posts BEGIN
-  UPDATE fts5_cache_invalidation
-  SET invalidated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)
-  WHERE id = 1;
-END;
-
-CREATE TRIGGER IF NOT EXISTS fts5_cache_invalidate_delete
-AFTER DELETE ON posts BEGIN
-  UPDATE fts5_cache_invalidation
-  SET invalidated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)
-  WHERE id = 1;
-END;
+DROP TRIGGER IF EXISTS fts5_count_increment_insert;
+DROP TRIGGER IF EXISTS fts5_count_decrement_delete;

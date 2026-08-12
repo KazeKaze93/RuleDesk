@@ -486,7 +486,7 @@ const posts = await db.query.posts.findMany({
    - Maps API responses to database schema
    - Updates artist post counts
    - `syncAllArtists()` and `repairArtist()` run through `runExclusive()` — a promise-chain mutex: if one operation is in flight, the next **waits** until it finishes (no silent drop). Covered by `tests/integration/services/SyncService.queue.test.ts` (timing: repair’s `syncArtist` runs only after full sync completes).
-   - Cooperative cancel: `requestCancel()` / `SyncCancelledError` / `waitUntilIdle()` — app quit drains in-flight sync (up to `SYNC_SHUTDOWN_DRAIN_MS`) before `closeDatabase()`. Hard kill still bypasses cancel; runtime-droppable FTS triggers (`posts_fts_insert`, `fts5_cache_invalidate_insert` / `_update` on `posts`) are recovered on DB init via `ensureFtsTriggers` (`src/main/db/fts-triggers.ts`).
+   - Cooperative cancel: `requestCancel()` / `SyncCancelledError` / `waitUntilIdle()` — app quit drains in-flight sync (up to `SYNC_SHUTDOWN_DRAIN_MS`) before `closeDatabase()`. Hard kill still bypasses cancel; runtime-droppable FTS trigger `posts_fts_insert` is recovered on DB init via `ensureFtsTriggers` (`src/main/db/fts-triggers.ts`), then missing `posts_fts` rows are backfilled.
    - Emits IPC events for sync progress tracking
 
 4. **IPC Controllers** (`src/main/ipc/controllers/`)

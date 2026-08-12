@@ -21,7 +21,6 @@ import { PAGE_SIZE, type BooruPost } from "../providers/types";
 import { isVideoUrl } from "@shared/utils/media";
 import { IPC_CHANNELS } from "../ipc/channels";
 import {
-  bumpFtsCacheInvalidationStamp,
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
 } from "../db/fts-triggers";
@@ -783,8 +782,6 @@ export class SyncService {
           .run(artist.id);
 
         ensureFtsTriggers(sqlite);
-        // One stamp bump after rebuild so PlaylistController FTS count cache refreshes.
-        bumpFtsCacheInvalidationStamp(sqlite);
       }
     }
   }
