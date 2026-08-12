@@ -25,6 +25,7 @@ import { z } from "zod";
 import { ProviderThrottle, pickRandomUA, ProviderRateLimitGateError } from "./provider-throttle";
 import { ProviderSearchError, isProviderSearchError } from "./provider-search-errors";
 import { getProxyAgent } from "../lib/proxy";
+import { redactErrorForLog } from "../lib/redact-error";
 import {
   assertRule34NotBlockedResponse,
   isAxiosTransportFailure,
@@ -130,7 +131,7 @@ export class Rule34Provider implements IBooruProvider {
 
       return status === 200 && Array.isArray(data);
     } catch (error) {
-      logger.error("[Rule34Provider] Auth check failed", error);
+      logger.error("[Rule34Provider] Auth check failed", redactErrorForLog(error));
       return false;
     }
   }

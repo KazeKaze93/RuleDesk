@@ -1,5 +1,6 @@
 import { BrowserWindow } from "electron";
 import { logger } from "../lib/logger";
+import { redactErrorForLog } from "../lib/redact-error";
 import { getDb, getSqliteInstance } from "../db/client";
 import { artists, settings, posts, SETTINGS_ID } from "../db/schema";
 import {
@@ -576,7 +577,10 @@ export class SyncService {
             logger.debug(`SyncService: ${artist.name} - Page ${page - 1} returned ${postsData.length} posts, continuing to page ${page}`);
           }
         } catch (e) {
-          logger.error(`Sync error for ${artist.name}`, e);
+          logger.error(
+            `Sync error for ${artist.name}`,
+            redactErrorForLog(e)
+          );
           hasMore = false;
 
           try {
