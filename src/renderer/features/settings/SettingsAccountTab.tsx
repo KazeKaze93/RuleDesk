@@ -167,6 +167,9 @@ export const SettingsAccountTab = ({
             onPaste={handleCredentialsPaste}
             placeholder="api_key=...&user_id=... or API key only"
           />
+          <p className="text-xs text-muted-foreground">
+            Tip: paste the full account page URL into either field — both User ID and API Key will be filled in automatically.
+          </p>
           <section className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={onToggleApiKeyVisibility}>
               {showApiKey ? "Hide" : "Show"}

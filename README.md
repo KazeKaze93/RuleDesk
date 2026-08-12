@@ -222,6 +222,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **Provider** - `rule34` or `gelbooru`; changing provider invalidates React Query feed caches and persists the selection
 - **User ID** - Required for providers that use it (shown when applicable)
 - **API key update** - Password-style input with show/hide toggle
+- **Paste URL** - Paste the full account page URL into either field; User ID and API Key are extracted automatically
 - **Key status badge** - `Configured` / `Not configured` via safe `hasApiKey` contract
 
 ### Feedback timing
@@ -312,7 +313,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 
    - Launch the application
    - Confirm legal age / ToS in the mandatory Age Gate
-   - Option A: enter User ID + API Key and click "Save and Login"
+   - Option A: enter User ID + API Key and click "Save and Login" (or paste the account page URL into either field — both values fill in automatically)
    - Option B: click "Skip for now" to continue in Browse-only mode
    - Add API key later in `Settings -> Account` to unlock Updates and Artists (Favorites and Playlists work locally without credentials)
 

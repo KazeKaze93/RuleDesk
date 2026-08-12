@@ -693,7 +693,7 @@ const posts = await db.query.posts.findMany({
     - **Updates.tsx** / **Browse.tsx** / **Favorites.tsx** / **PlaylistsPage.tsx** / **StatsPage.tsx** — `src/renderer/components/pages/`
     - **Tracked.tsx** / **ArtistDetails.tsx** / **ArtistGallery.tsx** — `src/renderer/features/artists/`
     - **Settings.tsx** — `src/renderer/features/settings/Settings.tsx` (tabbed IA)
-    - **Onboarding.tsx** - API credentials input form (`src/renderer/features/onboarding/Onboarding.tsx`)
+    - **Onboarding.tsx** - API credentials input form with paste-URL hint under User ID / API key (`src/renderer/features/onboarding/Onboarding.tsx`)
 
   - **Layout:**
 
@@ -727,7 +727,7 @@ const posts = await db.query.posts.findMany({
     - **SettingsBlacklistTab.tsx** - Tag blacklist management
     - **SettingsBackupTab.tsx** - Backup, restore, integrity check, retention, and maintenance section
     - **DatabaseMaintenanceCard.tsx** - User-visible VACUUM status, schedule, and manual run
-    - **SettingsAccountTab.tsx** - API key input, visibility toggle, `hasApiKey` status
+    - **SettingsAccountTab.tsx** - API key input, visibility toggle, `hasApiKey` status, paste-URL hint under credentials fields
 
    - **Inputs:**
 

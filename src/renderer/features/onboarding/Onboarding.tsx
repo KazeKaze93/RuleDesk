@@ -186,6 +186,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             )}
           </div>
 
+          <p className="text-xs text-muted-foreground">
+            Tip: paste the full account page URL into either field — both User ID and API Key will be filled in automatically.
+          </p>
+
           <div>
             <Label className="block mb-1 text-muted-foreground">
               Verify for
