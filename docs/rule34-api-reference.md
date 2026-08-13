@@ -210,6 +210,7 @@ Rule34 serves media files from multiple hostnames that share the same path forma
 - `us.rule34.xxx` (USA)
 - `wimg.rule34.xxx` (EU)
 - `api-cdn.rule34.xxx` (API-CDN)
+- `api-cdn-mp4.rule34.xxx` (MP4 CDN; distinct host — not covered by `api-cdn.rule34.xxx`)
 
 If your client optimizes media delivery by selecting a faster host, keep a safe fallback to `rule34.xxx` and rewrite only media URLs (not API endpoint URLs such as `api.rule34.xxx`).
 

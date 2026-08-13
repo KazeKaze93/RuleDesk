@@ -300,6 +300,11 @@ export class VideoProxyServer {
 
     const urlParam = requestUrl.searchParams.get("url");
     if (urlParam === null || urlParam === "" || !isAllowedCdnUrl(urlParam)) {
+      const rejectedHost =
+        urlParam === null || urlParam === ""
+          ? null
+          : tryParseHttpsUrlHostname(urlParam);
+      log.warn("[VideoProxy] Rejected URL", { host: rejectedHost ?? "unparseable" });
       res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
       res.end("Invalid URL");
       return;

@@ -63,6 +63,7 @@ export class Rule34Provider implements IBooruProvider {
     "wimg.rule34.xxx",
     "us.rule34.xxx",
     "api-cdn.rule34.xxx",
+    "api-cdn-mp4.rule34.xxx",
   ];
   /** Media CDN hosts for video-proxy; excludes the API host. */
   readonly cdnDomains = [
@@ -71,6 +72,7 @@ export class Rule34Provider implements IBooruProvider {
     "wimg.rule34.xxx",
     "us.rule34.xxx",
     "api-cdn.rule34.xxx",
+    "api-cdn-mp4.rule34.xxx",
   ];
   private readonly baseUrl = "https://api.rule34.xxx/index.php";
   private readonly throttle = new ProviderThrottle();

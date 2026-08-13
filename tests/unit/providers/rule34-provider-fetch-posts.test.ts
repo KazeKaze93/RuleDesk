@@ -34,6 +34,7 @@ describe("Rule34Provider.fetchPosts error classification", () => {
 
   it("keeps API host in CSP allowlist but out of video-proxy CDN list", () => {
     expect(provider.allowedDomains).toContain("api.rule34.xxx");
+    expect(provider.allowedDomains).toContain("api-cdn-mp4.rule34.xxx");
     expect(provider.cdnDomains).not.toContain("api.rule34.xxx");
     expect(provider.cdnDomains).toEqual([
       "rule34.xxx",
@@ -41,6 +42,7 @@ describe("Rule34Provider.fetchPosts error classification", () => {
       "wimg.rule34.xxx",
       "us.rule34.xxx",
       "api-cdn.rule34.xxx",
+      "api-cdn-mp4.rule34.xxx",
     ]);
   });
 

@@ -259,6 +259,7 @@ describe("VideoProxyServer cache integrity", () => {
     ["https://wimg.rule34.xxx/video.mp4", 200],
     ["https://us.rule34.xxx/video.mp4", 200],
     ["https://api-cdn.rule34.xxx/video.mp4", 200],
+    ["https://api-cdn-mp4.rule34.xxx/video.mp4", 200],
     ["https://img.rule34.xxx/video.mp4", 200],
     ["https://img1.gelbooru.com/images/x.webm", 400],
     ["https://img2.gelbooru.com/images/x.webm", 400],
