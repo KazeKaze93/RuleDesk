@@ -48,15 +48,13 @@ interface FilterAndSortPayload {
   filters: FilterConfig;
 }
 
-// AI tag patterns (compiled once for reuse)
+// Exact booru tokens (`_` / `-`). Keep in sync with PostsController AI_FILTER_TAGS
+// and BOORU_AI_FILTER_TAGS. Space phrases cannot match after split(/\s+/).
 const AI_TAG_PATTERNS = [
   "ai_generated",
-  "ai generated",
   "ai-generated",
   "ai_generation",
-  "ai generation",
   "ai-generated_content",
-  "ai generated content",
 ];
 
 /**

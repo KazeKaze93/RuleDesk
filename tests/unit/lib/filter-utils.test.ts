@@ -34,8 +34,7 @@ describe('filter-utils', () => {
     });
 
     it('does not treat space-separated words as a single AI tag token', () => {
-      // hasAiGeneratedTag splits on whitespace, then tagArray.includes(aiTag).
-      // A token never contains a space, so phrase inputs cannot match.
+      // Split + includes never matches a phrase; booru tags are `_`/`-` tokens.
       expect(hasAiGeneratedTag('ai generated')).toBe(false);
       expect(hasAiGeneratedTag('ai generation')).toBe(false);
       expect(hasAiGeneratedTag('ai generated content')).toBe(false);
