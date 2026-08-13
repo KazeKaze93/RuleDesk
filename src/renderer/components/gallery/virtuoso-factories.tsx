@@ -9,10 +9,22 @@ type GridContainerProps = React.HTMLAttributes<HTMLDivElement> & {
   viewType?: "grid" | "masonry";
 };
 
+const GRID_LIST_CLASS =
+  "grid gap-4 p-4 pb-44 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(188px,1fr))]";
+const MASONRY_LIST_CLASS =
+  "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44";
+const GRID_ITEM_CLASS = "w-full aspect-[2/3]";
+const MASONRY_ITEM_CLASS = "w-full mb-4 break-inside-avoid";
+
 /**
- * Shared VirtuosoGrid List/Item factories for feed galleries that use the
- * flex-width masonry item pattern (Browse / Favorites / Updates).
+ * Shared VirtuosoGrid List/Item factories for all feed galleries
+ * (Browse / Favorites / Updates / Artist / Playlist).
  * Display-name prefix is the only intentional per-page difference.
+ *
+ * Masonry parent is CSS multi-column (`columns-N`). Item width must be
+ * `w-full` of the column box — percentage `w-[calc(...)]` is relative to
+ * the column, not the gallery, and shrinks cards. `flex-shrink-*` has no
+ * effect unless the parent is a flex container.
  */
 export function createVirtuosoGridFactories(displayNamePrefix: string) {
   const GridContainer = forwardRef<HTMLDivElement, GridContainerProps>(
@@ -20,9 +32,7 @@ export function createVirtuosoGridFactories(displayNamePrefix: string) {
       <div
         ref={ref}
         className={cn(
-          viewType === "grid"
-            ? "grid gap-4 p-4 pb-44 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(188px,1fr))]"
-            : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44",
+          viewType === "grid" ? GRID_LIST_CLASS : MASONRY_LIST_CLASS,
           className
         )}
         {...props}
@@ -35,7 +45,7 @@ export function createVirtuosoGridFactories(displayNamePrefix: string) {
     HTMLDivElement,
     React.HTMLAttributes<HTMLDivElement>
   >(({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
+    <div ref={ref} className={cn(GRID_ITEM_CLASS, className)} {...props} />
   ));
   GridItemContainer.displayName = `${displayNamePrefix}GridItemContainer`;
 
@@ -43,14 +53,7 @@ export function createVirtuosoGridFactories(displayNamePrefix: string) {
     HTMLDivElement,
     React.HTMLAttributes<HTMLDivElement>
   >(({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "flex-shrink-0 w-[calc(50%-0.5rem)] md:w-[calc(33.333%-1rem)] lg:w-[calc(25%-1rem)] xl:w-[calc(20%-1rem)]",
-        className
-      )}
-      {...props}
-    />
+    <div ref={ref} className={cn(MASONRY_ITEM_CLASS, className)} {...props} />
   ));
   MasonryItemContainer.displayName = `${displayNamePrefix}MasonryItemContainer`;
 

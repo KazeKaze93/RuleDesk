@@ -17,6 +17,7 @@ Vitest tests for gallery logic, filters, layout, and shared utilities. Property-
 ### Hooks
 
 - **`useGalleryInfiniteScroll.test.ts`** — pagination for local DB vs external API
+- **`useMasonryInfiniteScroll.test.ts`** — overflow-auto masonry load-more (debounce, ref guard, no Virtuoso at-bottom cascade)
 
 ### Components
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useInfiniteQuery,
   useQuery,
@@ -32,6 +32,7 @@ import { getBulkSelectId } from "../../lib/bulkSelect";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
+import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -437,18 +438,11 @@ export const Updates = () => {
     });
   };
 
-  const handleMasonryScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      if (!hasNextPage || isFetchingNextPage) return;
-
-      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
-      const LOAD_MORE_THRESHOLD_PX = 300;
-      if (scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX) {
-        void fetchNextPage();
-      }
-    },
-    [hasNextPage, isFetchingNextPage, fetchNextPage]
-  );
+  const handleMasonryScroll = useMasonryInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
+  });
 
   useEffect(() => {
     const unsubscribeSyncEnd = window.api.onSyncEnd(() => {
@@ -559,13 +553,13 @@ export const Updates = () => {
             <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
               <GridContainer viewType="masonry">
                 {allPosts.map((post, index) => (
-                  <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
+                  <MasonryItemContainer key={getPostCardKey(post)}>
                     <PostCard
                       post={post}
                       onClick={() => handlePostClick(index)}
                       preserveAspect={false}
                     />
-                  </div>
+                  </MasonryItemContainer>
                 ))}
               </GridContainer>
               {isFetchingNextPage && (

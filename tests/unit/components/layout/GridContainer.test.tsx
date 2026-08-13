@@ -65,15 +65,14 @@ describe("GridItemContainer", () => {
 });
 
 describe("MasonryItemContainer", () => {
-  it("applies flex-width column classes for masonry items", () => {
+  it("applies column-fill classes for CSS multi-column masonry items", () => {
     const { container } = render(<MasonryItemContainer />);
     const element = container.firstElementChild;
 
-    expect(element?.className).toContain("flex-shrink-0");
-    expect(element?.className).toContain("w-[calc(50%-0.5rem)]");
-    expect(element?.className).toContain("md:w-[calc(33.333%-1rem)]");
-    expect(element?.className).toContain("lg:w-[calc(25%-1rem)]");
-    expect(element?.className).toContain("xl:w-[calc(20%-1rem)]");
-    expect(element?.className).not.toContain("break-inside-avoid");
+    expect(element?.className).toContain("w-full");
+    expect(element?.className).toContain("mb-4");
+    expect(element?.className).toContain("break-inside-avoid");
+    expect(element?.className).not.toContain("flex-shrink-0");
+    expect(element?.className).not.toContain("w-[calc(");
   });
 });

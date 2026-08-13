@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import {
   useMutation,
   useQuery,
@@ -35,6 +35,7 @@ import {
 } from "../ui/tooltip";
 import { ExternalLink } from "lucide-react";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
+import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { useWorkerFilteredPosts } from "../../hooks/useWorkerFilteredPosts";
 import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
 import type { Post } from "@shared/types/db";
@@ -168,7 +169,6 @@ export const Browse = () => {
     error: searchError,
     refetch: refetchSearch,
     handleEndReached,
-    handleAtBottomStateChange,
   } = useGalleryInfiniteScroll<
     BrowseGalleryPage,
     Post,
@@ -335,26 +335,11 @@ export const Browse = () => {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, rawPosts, appendQueueIds]);
 
-  const handleMasonryScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      if (!hasNextPage || isFetchingNextPage) return;
-
-      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
-      const LOAD_MORE_THRESHOLD_PX = 300;
-      const nearBottom =
-        scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX;
-      handleAtBottomStateChange(nearBottom);
-      if (nearBottom) {
-        handleEndReached();
-      }
-    },
-    [
-      hasNextPage,
-      isFetchingNextPage,
-      handleEndReached,
-      handleAtBottomStateChange,
-    ]
-  );
+  const handleMasonryScroll = useMasonryInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
+  });
 
   const viewMutation = useMutation({
     mutationFn: async (post: Post) => {
@@ -552,13 +537,13 @@ export const Browse = () => {
             <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
               <GridContainer viewType="masonry">
                 {displayPosts.map((post, index) => (
-                  <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
+                  <MasonryItemContainer key={getPostCardKey(post)}>
                     <PostCard
                       post={post}
                       onClick={() => handlePostClick(index)}
                       preserveAspect={false}
                     />
-                  </div>
+                  </MasonryItemContainer>
                 ))}
               </GridContainer>
               {isFetchingNextPage && (
@@ -573,7 +558,6 @@ export const Browse = () => {
               aria-busy={listAriaBusy}
               totalCount={displayPosts.length}
               endReached={handleEndReached}
-              atBottomStateChange={handleAtBottomStateChange}
               increaseViewportBy={600}
               components={{
                 List: ListComponent,

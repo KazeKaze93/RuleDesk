@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import {
   useInfiniteQuery,
   useQueryClient,
@@ -26,6 +26,7 @@ import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
+import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 
 // --- Constants ---
 // Should ideally come from a shared constant or backend config
@@ -244,18 +245,11 @@ export const Favorites = () => {
     });
   };
 
-  const handleMasonryScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      if (!hasNextPage || isFetchingNextPage) return;
-
-      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
-      const LOAD_MORE_THRESHOLD_PX = 300;
-      if (scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX) {
-        void fetchNextPage();
-      }
-    },
-    [hasNextPage, isFetchingNextPage, fetchNextPage]
-  );
+  const handleMasonryScroll = useMasonryInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
+  });
 
   const handleBulkRemove = useCallback(
     async (posts: Post[]) => {
@@ -344,14 +338,14 @@ export const Favorites = () => {
             <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
               <GridContainer viewType="masonry">
                 {allPosts.map((post, index) => (
-                  <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
+                  <MasonryItemContainer key={getPostCardKey(post)}>
                     <PostCard
                       post={post}
                       onClick={() => handlePostClick(index)}
                       preserveAspect={false}
                       context="favorites"
                     />
-                  </div>
+                  </MasonryItemContainer>
                 ))}
               </GridContainer>
               {isFetchingNextPage && (

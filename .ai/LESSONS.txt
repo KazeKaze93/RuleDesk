@@ -190,6 +190,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** CSS `columns` layout is incompatible with Virtuoso virtualization; masonry path renders every loaded post.
 **Invariant Rule:** Document and treat masonry as O(n) DOM. Grid mode is O(visible) via VirtuosoGrid. Warn users or cap loaded pages in masonry for large feeds.
 
+### Problem: Gallery infinite scroll cascades fetchNextPage without user scroll
+**Root Cause:** Browse wired Virtuoso `atBottomStateChange` (documented as tail-f for live feeds where new items appear at the bottom) plus an `allPosts.length` effect that re-schedules while `atBottomRef` stays true. Downward pagination of existing pages is not that pattern; a sticky `atBottom=true` pumps `searchBooru` until `hasNextPage` is false. Masonry made it visible (O(n) DOM); grid hid it (windowing keeps the same visible index range at unchanged `scrollTop`).
+**Invariant Rule:** Downward gallery infinite scroll is `VirtuosoGrid.endReached` / `handleEndReached` (debounced) only. Do not use `atBottomStateChange` or a length-while-pinned effect. Masonry overflow-auto uses `useMasonryInfiniteScroll` (threshold + leave-zone guard + debounce), never the Virtuoso at-bottom contract.
+
 ## Performance
 
 ### Problem: forwardRef factory declared inside render remounts virtualized lists
