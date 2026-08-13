@@ -35,6 +35,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `services/video-proxy-server.test.ts` | 8 | Video proxy allowlist / cache / eviction |
 | `providers/throttle.test.ts` | 8 | Priority queue + shared 429 gate + abort dequeue |
 | `db/sync-status-recovery.test.ts` | 1 | Hard-kill `syncing` → `idle` reset; error rows untouched |
+| `features/viewer/buildViewerOriginQueryKey.test.ts` | 8 | Viewer origin → React Query key (artist/browse/favorites/playlist/updates) |
 
 ## Other Vitest suites
 

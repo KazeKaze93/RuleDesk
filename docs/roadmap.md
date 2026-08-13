@@ -172,7 +172,10 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
+| `chore/split-viewer-dialog` | 🔄 in progress | Mechanical split of `ViewerDialog` + `buildViewerOriginQueryKey` consolidation |
 | `chore/split-playlists-page` | ✅ merged | [#152](https://github.com/KazeKaze93/RuleDesk/pull/152) — Mechanical split: `PlaylistsPage` list/CRUD; `PlaylistGallery` + virtuoso wrappers under `components/playlists/` |
+
+- Shadow-insert cache-miss path (`PostNotFoundFallback`) is not live-tested after the ViewerDialog split — check when a natural case appears (remote playlist post absent from RQ cache); do not force a synthetic miss.
 | `fix/artist-autocomplete-throttle-cancellation` | 🔄 started | Add Artist second-pass: `user` throttle + Main abort of superseded waves; intervals unchanged |
 | `feat/add-artist-autocomplete-artist-only` | ✅ merged | [#150](https://github.com/KazeKaze93/RuleDesk/pull/150) — Add Artist autocomplete: Gelbooru `category===artist`; Rule34 top-5 DAPI second-pass; Browse search unfiltered |
 | `feat/sync-status-live-ui` | ✅ merged | [#149](https://github.com/KazeKaze93/RuleDesk/pull/149) — invalidate `["artists"]` on `sync:artist` + repair start/end; preload wires `REPAIR_*`; `sync:progress` payload unchanged |

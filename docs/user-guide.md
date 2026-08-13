@@ -409,7 +409,7 @@ The **top bar** appears on content pages and provides:
 
 ### Safe Mode
 
-Use the **Safe Mode** control in the app shell (`PanicButton`) to blur sensitive ratings on gallery cards and in the full-screen viewer. Blur amount and panic state live in `safeModeStore` and apply in `PostCard` / `ViewerDialog`.
+Use the **Safe Mode** control in the app shell (`PanicButton`) to blur sensitive ratings on gallery cards and in the full-screen viewer. Blur amount and panic state live in `safeModeStore` and apply in `PostCard` / `ViewerMedia`.
 
 ### Keyboard Shortcuts
 

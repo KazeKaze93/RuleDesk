@@ -48,7 +48,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Direct synchronous access via `better-sqlite3` in Main Process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. WAL mode enabled for concurrent reads.                                                                                                    |
 | **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization.                                                                               |
 | **🎨 Progressive Image Loading**  | Stills: `PostCard` loads **preview** first, then upgrades to **sample** when the card is in the viewport. Viewer uses file URL for full quality. Video posts use sample/file for hover preview as applicable.                                                                                                                                       |
-| **🌍 Rule34 CDN host fallback**   | Viewer builds an alternate-host URL chain for Rule34 media (`wimg.rule34.xxx`, `img.rule34.xxx`, `us.rule34.xxx`, `api-cdn.rule34.xxx`) when the primary host fails (`ViewerDialog`). No Main-process CDN probe/rewrite service.                                                                                                                        |
+| **🌍 Rule34 CDN host fallback**   | Viewer builds an alternate-host URL chain for Rule34 media (`wimg.rule34.xxx`, `img.rule34.xxx`, `us.rule34.xxx`, `api-cdn.rule34.xxx`) when the primary host fails (`ViewerMedia` / `viewer-media-urls.ts`). No Main-process CDN probe/rewrite service.                                                                                                                        |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                                                                                     |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
 | **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups in the user data directory; retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup. Restore replaces the live DB (with checks) and reloads the app.                                                                               |
@@ -79,7 +79,7 @@ This is the secure Node.js environment. It handles all I/O, persistence, and sec
 - **Data Layer:** **Drizzle ORM** (TypeScript type-safety for queries, raw SQL timestamps in milliseconds).
 - **Security:** **Secure Storage** using Electron's `safeStorage` API for encrypting API credentials at rest.
 - **API:** Custom wrapper based on `axios` with retry and backoff logic.
-- **CDN host fallback (Rule34 media):** Renderer `ViewerDialog` retries Rule34 media URLs across known alternate hosts when a host fails; Main does not rewrite URLs at fetch time.
+- **CDN host fallback (Rule34 media):** Renderer `ViewerMedia` retries Rule34 media URLs across known alternate hosts when a host fails (`viewer-media-urls.ts`); Main does not rewrite URLs at fetch time.
 - **Background Jobs:** Node.js timers and asynchronous operations.
 
 ### 2. Renderer (The Face - UI Process)
@@ -301,7 +301,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Age Gate Component:** Fully implemented with legal confirmation (`AgeGate.tsx` component and `confirmLegal` IPC method)
 - ✅ **Content Security Policy:** Strict CSP with support for Rule34.xxx and Gelbooru.com media sources
 - ✅ **Rule34 CDN host fallback:** Viewer retries Rule34 media across alternate hosts when a host fails
-- ✅ **Safe Mode / NSFW blur:** When Safe Mode is enabled, gallery cards and the full-screen viewer apply configurable blur to sensitive ratings (`PostCard`, `ViewerDialog`, `safeModeStore`)
+- ✅ **Safe Mode / NSFW blur:** When Safe Mode is enabled, gallery cards and the full-screen viewer apply configurable blur to sensitive ratings (`PostCard`, `ViewerMedia`, `safeModeStore`)
 
 ---
 
@@ -397,7 +397,7 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 
 **Goal:** Allow saving full-resolution files to the local file system.
 
-- ✅ "Download Original" button on post view (implemented in ViewerDialog)
+- ✅ "Download Original" button on post view (implemented in ViewerContent)
 - ✅ **Download Handler:** Downloads run in Main Process with progress tracking
 - ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
 - ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
