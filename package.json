@@ -2,7 +2,7 @@
   "name": "ruledesk",
   "productName": "RuleDesk",
   "version": "17.0.0",
-  "description": "A modern desktop client for Rule34 imageboard content",
+  "description": "A modern desktop companion for browsing and organizing booru-style imageboard content",
   "main": "out/main/main.cjs",
   "type": "module",
   "repository": {
@@ -43,7 +43,6 @@
     "test:integration:electron-node": "cross-env ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs run tests/integration",
     "test:smoke:blacklist:browse": "cross-env ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs run tests/integration/controllers/SearchController.blacklist.test.ts",
     "test:e2e": "cross-env NODE_ENV=test playwright test",
-    "test:e2e:headless": "cross-env NODE_ENV=test playwright test",
     "test:verify": "npm run validate && npm run db:rebuild:node && vitest run && npm run db:rebuild",
     "// RELEASE": "---",
     "dist": "npm run build && electron-builder --win zip",

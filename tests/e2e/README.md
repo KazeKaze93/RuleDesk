@@ -26,11 +26,8 @@ This directory contains end-to-end (E2E) tests for the Electron application usin
 ## Running Tests
 
 ```bash
-# Run all E2E tests (headless by default)
+# Run all E2E tests (headless by default; HEADLESS is read in the specs, not via a separate npm script)
 npm run test:e2e
-
-# Run in headless mode (explicit, same as default)
-npm run test:e2e:headless
 
 # Run in headed mode (see Electron window, for debugging)
 # On Windows PowerShell: $env:HEADLESS="false"; npm run test:e2e
