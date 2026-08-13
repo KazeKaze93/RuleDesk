@@ -15,15 +15,12 @@ export function hasAiGeneratedTag(tags: string | undefined | null): boolean {
     .split(/\s+/)
     .filter((tag) => tag.length > 0);
   
-  // Check for various AI tag formats
+  // Exact booru tokens (`_` / `-`). Space phrases cannot match after split(/\s+/).
   const aiTags = [
     "ai_generated",
-    "ai generated",
     "ai-generated",
     "ai_generation",
-    "ai generation",
     "ai-generated_content",
-    "ai generated content",
   ];
   
   return aiTags.some((aiTag) => tagArray.includes(aiTag));
