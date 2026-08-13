@@ -172,7 +172,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
-| `feat/sync-status-live-ui` | 🔄 in PR | [#149](https://github.com/KazeKaze93/RuleDesk/pull/149) — invalidate `["artists"]` on `sync:artist` + repair start/end; preload wires `REPAIR_*`; `sync:progress` payload unchanged |
+| `feat/sync-status-live-ui` | ✅ merged | [#149](https://github.com/KazeKaze93/RuleDesk/pull/149) — invalidate `["artists"]` on `sync:artist` + repair start/end; preload wires `REPAIR_*`; `sync:progress` payload unchanged |
 | `feat/sync-status-write-and-recovery` | ✅ merged | [#148](https://github.com/KazeKaze93/RuleDesk/pull/148) — persist per-artist `syncStatus` / `lastError`; `resetStaleSyncingArtists` on DB init |
 | `feat/remote-ai-filter-via-tags-injection` | ✅ merged | [#147](https://github.com/KazeKaze93/RuleDesk/pull/147) — Browse Source: All — Rule34 AI hide/only via tag injection into `searchBooru`; Gelbooru stays worker-only; defensive conflict → worker fallback |
 | `audit/raw-sql-timestamp-units` | ✅ merged | [#132](https://github.com/KazeKaze93/RuleDesk/pull/132) — Full raw-SQL timestamp unit inventory: **no P0 mismatch**; comment-only Units annotations + `docs/database.md` seconds vs ms correction. (Remote hyphen: `audit-raw-sql-timestamp-units`) |
