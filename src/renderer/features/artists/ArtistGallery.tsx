@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   useQuery,
   useQueryClient,
@@ -11,81 +11,29 @@ import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "@shared/types/db";
-import { cn } from "../../lib/utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "./components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
+import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { useDownloadAllFromBackend } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../../components/downloads/DownloadAllButton";
 import { getErrorCode } from "../../../shared/utils/type-guards";
+import { createVirtuosoGridFactories } from "../../components/gallery/virtuoso-factories";
 
 interface ArtistGalleryProps {
   artist: Artist;
   onBack: () => void;
 }
 
-// --- Компоненты для виртуализации (Grid/Masonry Layout) ---
-
-const GridContainer = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { viewType?: "grid" | "masonry" }
->(({ className, viewType = "grid", ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      viewType === "grid"
-        ? "grid gap-4 p-4 pb-32 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(188px,1fr))]"
-        : "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-32",
-      className
-    )}
-    {...props}
-  />
-));
-GridContainer.displayName = "GridContainer";
-
-const GridItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("w-full aspect-[2/3]", className)} {...props} />
-  )
-);
-GridItemContainer.displayName = "ArtistGalleryGridItemContainer";
-
-const MasonryItemContainer = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("w-full mb-4 break-inside-avoid", className)} {...props} />
-  )
-);
-MasonryItemContainer.displayName = "ArtistGalleryMasonryItemContainer";
-
-const GridVirtuosoList = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
->(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-  <GridContainer
-    {...props}
-    ref={ref}
-    className={className}
-    aria-busy={ariaBusy}
-    viewType="grid"
-  />
-));
-GridVirtuosoList.displayName = "ArtistGalleryGridVirtuosoList";
-
-const MasonryVirtuosoList = forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { "aria-busy"?: boolean }
->(({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-  <GridContainer
-    {...props}
-    ref={ref}
-    className={className}
-    aria-busy={ariaBusy}
-    viewType="masonry"
-  />
-));
-MasonryVirtuosoList.displayName = "ArtistGalleryMasonryVirtuosoList";
+const {
+  GridContainer,
+  GridItemContainer,
+  MasonryItemContainer,
+  GridVirtuosoList,
+  MasonryVirtuosoList,
+} = createVirtuosoGridFactories("ArtistGallery");
 
 // --- Основной компонент ---
 
@@ -220,18 +168,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     }
   };
 
-  const handleMasonryScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      if (!hasNextPage || isFetchingNextPage) return;
-
-      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
-      const LOAD_MORE_THRESHOLD_PX = 300;
-      if (scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX) {
-        void fetchNextPage();
-      }
-    },
-    [hasNextPage, isFetchingNextPage, fetchNextPage]
-  );
+  const handleMasonryScroll = useMasonryInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
+  });
 
   const handlePostClick = (index: number) => {
     const postIds = allPosts.map((p) => p.id);
@@ -376,13 +317,13 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
             <GridContainer viewType="masonry">
               {allPosts.map((post, index) => (
-                <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
+                <MasonryItemContainer key={getPostCardKey(post)}>
                   <PostCard
                     post={post}
                     onClick={() => handlePostClick(index)}
                     preserveAspect={false}
                   />
-                </div>
+                </MasonryItemContainer>
               ))}
             </GridContainer>
             {isFetchingNextPage && (

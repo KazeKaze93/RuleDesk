@@ -190,6 +190,16 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** CSS `columns` layout is incompatible with Virtuoso virtualization; masonry path renders every loaded post.
 **Invariant Rule:** Document and treat masonry as O(n) DOM. Grid mode is O(visible) via VirtuosoGrid. Warn users or cap loaded pages in masonry for large feeds.
 
+### Problem: Gallery infinite scroll cascades fetchNextPage without user scroll
+**Root Cause:** Browse wired Virtuoso `atBottomStateChange` (documented as tail-f for live feeds where new items appear at the bottom) plus an `allPosts.length` effect that re-schedules while `atBottomRef` stays true. Downward pagination of existing pages is not that pattern; a sticky `atBottom=true` pumps `searchBooru` until `hasNextPage` is false. Masonry made it visible (O(n) DOM); grid hid it (windowing keeps the same visible index range at unchanged `scrollTop`).
+**Invariant Rule:** Downward gallery infinite scroll is `VirtuosoGrid.endReached` / `handleEndReached` (debounced) only. Do not use `atBottomStateChange` or a length-while-pinned effect. Masonry overflow-auto uses `useMasonryInfiniteScroll` (threshold + leave-zone guard + debounce), never the Virtuoso at-bottom contract.
+
+## Library API semantics
+
+### Problem: A library callback that "works" can still be the wrong product motion
+**Root Cause:** `atBottomStateChange` is documented as tail-f (pin to bottom, load *newer* items). It was wired into Browse downward pagination because it fired and looked like infinite scroll. Four diagnostic rounds each found a *real* nearby issue that was not the root: (1) CSS class drift across five gallery copies; (2) masonry overflow-auto reusing the Virtuoso at-bottom contract; (3) `atBottomRef` surviving a masonry visit; (4) the cascade also ran on a fresh grid with no masonry. Byte-identical handler bodies vs master and "it works in isolation" both passed while the abstraction did not match "append the next existing page when the user scrolls down".
+**Invariant Rule:** Before adopting a library callback, match it to the product motion of data (pin-bottom live feed vs append-on-scroll-down). Compiles-and-fires is not semantic fit. Nearby duplication (CSS copies, five scroll handlers) can be worth fixing and still not be the cascade. Virtuoso `atBottomStateChange` / `followOutput` are tail-f; downward gallery pagination is `endReached` only.
+
 ## Performance
 
 ### Problem: forwardRef factory declared inside render remounts virtualized lists

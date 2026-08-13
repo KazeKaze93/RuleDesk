@@ -14,6 +14,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 |------|------|
 | `helpers/mock-db.test.ts` | Canonical in-memory `createMockDb` (migrations, isolation) |
 | `hooks/useGalleryInfiniteScroll.test.ts` | Real `useGalleryInfiniteScroll` (Browse next-page param, debounce, unmount cleanup) |
+| `hooks/useMasonryInfiniteScroll.test.ts` | Real `useMasonryInfiniteScroll` (threshold, debounce, leave-zone re-arm, no at-bottom cascade) |
 | `hooks/useWorkerFilteredPosts.test.ts` | Worker post → Post field mapping |
 | `lib/filter-utils.test.ts` | AI tag tokens, video URL detection |
 | `lib/backup-retention-size-cap.test.ts` | Backup size-cap prune |
@@ -26,7 +27,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `core/BaseController.collapse-throttle.test.ts` | Idempotent collapse (full-args hash) + mutate spacing |
 | `components/filters/SourceSwitcher.test.tsx` | Real `SourceSwitcher` (RTL) |
 | `components/filters/FilterToggleGroup.test.tsx` | Real `FilterToggleGroup` (RTL) |
-| `components/layout/GridContainer.test.tsx` | Real `createVirtuosoGridFactories` GridContainer |
+| `components/layout/GridContainer.test.tsx` | Real `createVirtuosoGridFactories`: CSS columns masonry + `w-full mb-4 break-inside-avoid` items |
 | `components/PostCard/viewType.test.tsx` | Real `PostCard` viewType classes |
 | `components/IntersectionObserver.test.tsx` | Real `PostCard` video viewport observer |
 | `components/VirtuosoGrid-totalCount.test.ts` | Gallery sources wire `totalCount` to the displayed collection |

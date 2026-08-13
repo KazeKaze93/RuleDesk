@@ -67,8 +67,6 @@ export function useGalleryInfiniteScroll<
   const endReachedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasNextPageRef = useRef(false);
   const isFetchingNextPageRef = useRef(false);
-  const atBottomRef = useRef(false);
-  const allPostsLengthRef = useRef(0);
 
   const {
     data,
@@ -142,16 +140,6 @@ export function useGalleryInfiniteScroll<
     scheduleLoadMore();
   }, [scheduleLoadMore]);
 
-  const handleAtBottomStateChange = useCallback(
-    (atBottom: boolean) => {
-      atBottomRef.current = atBottom;
-      if (atBottom) {
-        scheduleLoadMore();
-      }
-    },
-    [scheduleLoadMore]
-  );
-
   useEffect(() => {
     return () => {
       if (endReachedTimeoutRef.current) {
@@ -175,22 +163,6 @@ export function useGalleryInfiniteScroll<
     );
   }, [data, flattenPage]);
 
-  // Virtuoso endReached does not always refire when totalCount grows while pinned at bottom.
-  useEffect(() => {
-    const prevLength = allPostsLengthRef.current;
-    const nextLength = allPosts.length;
-    allPostsLengthRef.current = nextLength;
-
-    if (
-      nextLength > prevLength &&
-      atBottomRef.current &&
-      hasNextPage &&
-      !isFetchingNextPage
-    ) {
-      scheduleLoadMore();
-    }
-  }, [allPosts.length, hasNextPage, isFetchingNextPage, scheduleLoadMore]);
-
   return {
     data,
     allPosts,
@@ -204,6 +176,5 @@ export function useGalleryInfiniteScroll<
     error,
     refetch,
     handleEndReached,
-    handleAtBottomStateChange,
   };
 }

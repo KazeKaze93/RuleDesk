@@ -576,6 +576,10 @@ const posts = await db.query.posts.findMany({
 
    Masonry is suitable for moderate lists. With 2000+ posts, prefer **grid** mode for scroll performance.
 
+   All five galleries (`Browse`, `Favorites`, `Updates`, `ArtistGallery`, `PlaylistGallery`) use `createVirtuosoGridFactories` (`src/renderer/components/gallery/virtuoso-factories.tsx`). **Grid** uses `VirtuosoGrid`. **Masonry** is a non-virtualized overflow-auto CSS multi-column list (`columns-2 md:columns-3 lg:columns-4 xl:columns-5`) — `VirtuosoGrid` is not mounted in that mode. Masonry items are `w-full mb-4 break-inside-avoid` (width fills the column box; `break-inside-avoid` keeps a card from splitting across columns). Do not put `w-[calc(N%)]` on column children: percentages are relative to the column, not the gallery. `flex-shrink-*` has no effect unless the parent is `display: flex`. Bottom padding is `pb-44` (clears the fixed `BulkActionBar` when a selection is active).
+
+   **Infinite scroll split:** Grid uses `VirtuosoGrid.endReached` / `useGalleryInfiniteScroll.handleEndReached` (150ms debounce). Do not wire `atBottomStateChange` — that is Virtuoso's tail-f contract for live feeds that prepend/append while pinned at the bottom, and a sticky `atBottom=true` plus a length effect cascades `fetchNextPage` without user scroll. Masonry uses `useMasonryInfiniteScroll` on the overflow-auto scroller (300px threshold, 150ms debounce, ref guard that re-arms only after the user leaves the threshold).
+
    **Performance Guidelines:**
 
    - **Heavy queries** (full table scans, complex WHERE clauses) → Always use pagination
@@ -641,7 +645,7 @@ const posts = await db.query.posts.findMany({
 
 12. **Browse** (`src/renderer/components/pages/Browse.tsx`, `SearchController.search`, `src/renderer/utils/react-query-cache.ts`)
 
-   - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`, infinite scroll through `useGalleryInfiniteScroll`.
+   - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`. Grid infinite scroll: `useGalleryInfiniteScroll` + `VirtuosoGrid.endReached` only (no `atBottomStateChange`). Masonry infinite scroll: `useMasonryInfiniteScroll` (overflow-auto).
    - **Rule34 deep pagination:** offset pages 1–4 (`RULE34_MAX_OFFSET_PAGES`), then cursor via meta-tag `id:<postId>` (`beforePostId` / `nextBeforePostId`); `getSearchBrowseNextPageParam()` drives React Query `pageParam`.
    - **Local source modes:** Favorites / Browse Source Subscriptions filter query cached DB posts via `getArtistPosts` (page + `LIMIT`/`OFFSET`). `aiFilter` / `mediaType` / `sortOrder` are passed into SQL (`buildPostFilterConditions`) so filtering happens **before** pagination — same pattern as `ArtistGallery`. Favorites maps to `isFavorited`; Browse Source Subscriptions filter maps to `sinceTracking` (join `posts.artistId` + `publishedAt >= artists.createdAt`). Worker-side tag-intersection against tracked artist tags is **not** used. Distinct from the unimplemented tag-combination subscriptions feature/table.
    - **Remote AI filter (Rule34):** Browse injects verified AI tag tokens into the `searchBooru` tags array (`buildRemoteBooruTagListForIpc` / `buildRemoteAiFilterTagInjection` in `searchStore.ts`): `hide` → `-ai_generated -ai-generated -ai_generation -ai-generated_content`; `only` → OR-group `( ai_generated ~ … )`. Injection is **Rule34-only**. Defensive skip when the user's include/exclude chips already conflict with the filter (avoids API empty-page AND of `tag -tag`); then the worker AI path remains the fallback. **Gelbooru** (and any non-Rule34 provider) never injects — worker AI filtering only (live Gelbooru tag injection not verified).
@@ -651,7 +655,7 @@ const posts = await db.query.posts.findMany({
    - **Worker filter/sort failures** (client-side only): partial failure uses a neutral `Alert` above loaded posts; fatal query failure uses `BrowseErrorState`.
    - **Preload constraint:** `src/main/bridge.ts` must stay thin — do **not** import shared Zod/schemas in preload (breaks `contextBridge.exposeInMainWorld` → perpetual Loading).
    - **Removed:** local rating / date-range / orientation filters (no UI; dead plumbing removed from `searchStore`, worker `FilterConfig`, IPC `PostFilterSchema` / `PostFiltersSchema`, gallery pages, and viewer query keys). Post `rating` as data (column, badges, Stats, Safe Mode blur) is unchanged. Booru search metatags (`rating:`, `width:`, `aspectratio:`) are unchanged.
-   - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts`, `tests/unit/utils/react-query-cache.test.ts`.
+   - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts`, `tests/unit/hooks/useMasonryInfiniteScroll.test.ts`, `tests/unit/utils/react-query-cache.test.ts`.
 
 13. **Bridge** (`src/main/bridge.ts`, built to `out/preload/bridge.cjs`)
 

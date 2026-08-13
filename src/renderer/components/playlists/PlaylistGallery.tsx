@@ -41,14 +41,17 @@ import { hasAiGeneratedTag } from "../../lib/filter-utils";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
-import {
+import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
+import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
+import { SortablePostCard } from "./PlaylistVirtuosoComponents";
+
+const {
   GridContainer,
   GridItemContainer,
   MasonryItemContainer,
   GridVirtuosoList,
   MasonryVirtuosoList,
-  SortablePostCard,
-} from "./PlaylistVirtuosoComponents";
+} = createVirtuosoGridFactories("Playlist");
 
 const shouldIncludePostInPlaylistQueue = (
   post: Post,
@@ -233,18 +236,11 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     }
   };
 
-  const handleMasonryScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      if (!hasNextPage || isFetchingNextPage) return;
-
-      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
-      const LOAD_MORE_THRESHOLD_PX = 300;
-      if (scrollHeight - (scrollTop + clientHeight) <= LOAD_MORE_THRESHOLD_PX) {
-        void fetchNextPage();
-      }
-    },
-    [hasNextPage, isFetchingNextPage, fetchNextPage]
-  );
+  const handleMasonryScroll = useMasonryInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
+  });
 
   const handleRemovePost = async (postId: number) => {
     if (playlist.isSmart) {
@@ -397,7 +393,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
           <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
             <GridContainer viewType="masonry">
               {displayedPosts.map((post, index) => (
-                <div key={getPostCardKey(post)} className="w-full mb-4 break-inside-avoid">
+                <MasonryItemContainer key={getPostCardKey(post)}>
                   <PostCard
                     post={post}
                     onClick={() => handlePostClick(index)}
@@ -407,7 +403,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
                       !playlist.isSmart ? () => handleRemovePost(post.id) : undefined
                     }
                   />
-                </div>
+                </MasonryItemContainer>
               ))}
             </GridContainer>
             {isFetchingNextPage && (

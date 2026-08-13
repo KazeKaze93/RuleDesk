@@ -218,7 +218,7 @@ describe("useGalleryInfiniteScroll", () => {
     });
   });
 
-  describe("debounce, unmount cleanup, and at-bottom handler", () => {
+  describe("debounce and unmount cleanup", () => {
     it("does not fetch the next page until the default 150ms debounce elapses", async () => {
       const fetchFn = vi.fn(async (page: number) =>
         makeItems(POSTS_PER_PAGE, (page - 1) * POSTS_PER_PAGE + 1)
@@ -326,50 +326,6 @@ describe("useGalleryInfiniteScroll", () => {
         await vi.advanceTimersByTimeAsync(DEFAULT_DEBOUNCE_MS + 50);
       });
       expect(fetchFn).toHaveBeenCalledTimes(1);
-    });
-
-    it("schedules a load when handleAtBottomStateChange(true) and not when false", async () => {
-      const fetchFn = vi.fn(async (page: number) =>
-        makeItems(POSTS_PER_PAGE, (page - 1) * POSTS_PER_PAGE + 1)
-      );
-      const { result, unmount } = mountHook(queryClient, () =>
-        useGalleryInfiniteScroll({
-          queryKey: ["gallery-at-bottom"],
-          fetchFn,
-          initialPageParam: 1,
-        })
-      );
-
-      await waitForCondition(() => {
-        expect(result.current?.hasNextPage).toBe(true);
-      });
-      expect(fetchFn).toHaveBeenCalledTimes(1);
-
-      vi.useFakeTimers();
-      act(() => {
-        result.current?.handleAtBottomStateChange(false);
-      });
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(DEFAULT_DEBOUNCE_MS + 50);
-      });
-      expect(fetchFn).toHaveBeenCalledTimes(1);
-
-      act(() => {
-        result.current?.handleAtBottomStateChange(true);
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(DEFAULT_DEBOUNCE_MS - 1);
-      });
-      expect(fetchFn).toHaveBeenCalledTimes(1);
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(1);
-      });
-      await waitForCondition(() => {
-        expect(fetchFn).toHaveBeenCalledTimes(2);
-      });
-
-      unmount();
     });
   });
 });
