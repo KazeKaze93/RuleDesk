@@ -26,7 +26,7 @@ This document reflects the current roadmap for RuleDesk `v17.x` and is aligned w
 - ✅ Playlists, favorites, downloads, backup/restore, and full-screen viewer are implemented.
 - ✅ Playlists now include import/export, manual drag-and-drop reorder, and smart hybrid local+remote resolution.
 - ✅ Database is optimized for scale: WAL mode, FTS5, composite indexes, and migration workflow.
-- ✅ **Sync automation:** auto-sync on startup, optional auto-sync when adding an artist (`autoSyncOnArtistAdd`, default off → `repairArtist` via `runExclusive`), periodic background sync (presets in Settings, minimum interval enforced in `SyncScheduler`), and sync scheduler restart when settings are saved. Per-artist `syncStatus` / `lastError` persist during sync (**#148**); Artists list refreshes live via `sync:artist` / repair IPC (`feat/sync-status-live-ui`).
+- ✅ **Sync automation:** auto-sync on startup, optional auto-sync when adding an artist (`autoSyncOnArtistAdd`, default off → `repairArtist` via `runExclusive`), periodic background sync (presets in Settings, minimum interval enforced in `SyncScheduler`), and sync scheduler restart when settings are saved. Per-artist `syncStatus` / `lastError` persist during sync (**#148**); Artists list refreshes live via `sync:artist` / repair IPC (**#149**).
 - ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`).
 - ✅ **Backup retention:** after each successful backup, older files are pruned based on `backupRetention` from Settings (`1..20`).
 - ✅ **User-visible DB maintenance:** Settings now exposes VACUUM status (last run timestamp/status/error), manual trigger, and schedule (`manual` / `weekly` / `monthly`).
@@ -91,7 +91,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ **Auto-sync on startup** (toggle in Settings under Sync).
 - ✅ **Periodic sync** — interval selected in Settings (Disabled, 15 / 30 / 60 / 120 minutes). Values below the code minimum (`MIN_INTERVAL_MINUTES = 5`) are treated as disabled.
-- ✅ **Live per-artist badge** — `syncStatus` is written in Main; renderer invalidates `["artists"]` on `sync:artist` and repair start/end (DB remains source of truth). Hard-kill recovery: stuck `syncing` → `idle` on DB init (**#148**).
+- ✅ **Live per-artist badge** — `syncStatus` is written in Main; renderer invalidates `["artists"]` on `sync:artist` and repair start/end (DB remains source of truth) (**#149**). Hard-kill recovery: stuck `syncing` → `idle` on DB init (**#148**).
 
 ## 🛡️ Security & Reliability (Hardening)
 
@@ -172,7 +172,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
-| `feat/sync-status-live-ui` | 🔄 started | Invalidate `["artists"]` on `sync:artist` + repair start/end; preload wires `REPAIR_*`; `sync:progress` payload unchanged |
+| `feat/sync-status-live-ui` | 🔄 in PR | [#149](https://github.com/KazeKaze93/RuleDesk/pull/149) — invalidate `["artists"]` on `sync:artist` + repair start/end; preload wires `REPAIR_*`; `sync:progress` payload unchanged |
 | `feat/sync-status-write-and-recovery` | ✅ merged | [#148](https://github.com/KazeKaze93/RuleDesk/pull/148) — persist per-artist `syncStatus` / `lastError`; `resetStaleSyncingArtists` on DB init |
 | `feat/remote-ai-filter-via-tags-injection` | ✅ merged | [#147](https://github.com/KazeKaze93/RuleDesk/pull/147) — Browse Source: All — Rule34 AI hide/only via tag injection into `searchBooru`; Gelbooru stays worker-only; defensive conflict → worker fallback |
 | `audit/raw-sql-timestamp-units` | ✅ merged | [#132](https://github.com/KazeKaze93/RuleDesk/pull/132) — Full raw-SQL timestamp unit inventory: **no P0 mismatch**; comment-only Units annotations + `docs/database.md` seconds vs ms correction. (Remote hyphen: `audit-raw-sql-timestamp-units`) |
