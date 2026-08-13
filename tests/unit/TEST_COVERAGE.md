@@ -47,6 +47,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `db/fts-table-check.test.ts` | `postsFtsTableExists` |
 | `db/fts-triggers.test.ts` | FTS5 content-table triggers |
 | `features/viewer/buildViewerOriginQueryKey.test.ts` | Viewer origin → React Query key |
+| `features/viewer/openViewer-hasNextPage.test.ts` | Gallery `openViewer` passes react-query `hasNextPage`, not count-vs-page-size |
 | `ipc/PlaylistController.empty-guard.test.ts` | Playlist FTS empty-guard |
 
 ## Other Vitest suites

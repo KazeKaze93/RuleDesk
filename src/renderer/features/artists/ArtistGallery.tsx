@@ -196,7 +196,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       initialIndex: index,
       listKey: `artist-${artist.id}`,
       totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
-      hasNextPage: hasNextPage && allPosts.length < (totalPosts || Infinity),
+      hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore, // Передаем обновленный хендлер
     });
   };
