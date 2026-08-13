@@ -46,6 +46,8 @@ import { isVideoUrl } from "@shared/utils/media";
 import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { postsFtsTableExists } from "../../db/fts-table-check";
+import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
+import { escapeLikePattern } from "../../db/utils";
 import { getProvider } from "../../providers";
 import { getDecryptedApiSettings } from "../../services/credentials";
 import { IdSchema, OptionalIdSchema } from "../../../shared/schemas/ipc";
@@ -341,13 +343,62 @@ export class PlaylistController extends BaseController {
   }
 
   /**
-   * True when posts_fts has no rows. Stops at the first hit — not COUNT(*).
-   * Used only as the smart-playlist empty-guard before MATCH.
+   * True when the posts content table has no rows (external-content FTS
+   * SELECT without MATCH is a content passthrough).
+   * Safe only while insert/update triggers are live — then content emptiness
+   * equals index emptiness. Never use this as a bulk-sync-window probe.
    */
   private isFtsIndexEmpty(): boolean {
     const sqlite = getSqliteInstance();
     const row = sqlite.prepare("SELECT 1 FROM posts_fts LIMIT 1").get();
     return row === undefined;
+  }
+
+  /**
+   * Exact-token or prefix match on posts.tags (content table).
+   * Used when FTS MATCH is not trustworthy: bulk-sync window with
+   * posts_fts_insert / posts_fts_update dropped.
+   *
+   * Trailing `*` (allowed by the FTS sanitizer as prefix search) becomes a
+   * token-prefix LIKE on space-wrapped tags. Mid-tag `*` is rejected — same
+   * rule as the FTS combined-query check. This is not the AI-filter sanitizer.
+   */
+  private createSmartPlaylistContentTagCondition(sanitizedTag: string): SQL {
+    const starIndex = sanitizedTag.indexOf("*");
+    if (starIndex !== -1 && starIndex !== sanitizedTag.length - 1) {
+      throw new Error(
+        `Invalid FTS5 query: wildcard (*) can only appear at the end of tags`
+      );
+    }
+
+    if (starIndex !== -1) {
+      const prefix = sanitizedTag.slice(0, -1);
+      if (prefix.length === 0) {
+        throw new Error(
+          `Invalid tag: "*". Wildcard (*) can only appear at the end of tags, not as a standalone tag.`
+        );
+      }
+      const likePattern = `% ${escapeLikePattern(prefix)}%`;
+      return sql`(' ' || lower(${posts.tags}) || ' ') LIKE ${likePattern} ESCAPE '\\'`;
+    }
+
+    return sql`instr(' ' || lower(${posts.tags}) || ' ', ' ' || ${sanitizedTag} || ' ') > 0`;
+  }
+
+  private combineSmartPlaylistContentConditions(
+    tags: string[],
+    mode: "and" | "or"
+  ): SQL | undefined {
+    const parts = tags.map((tag) =>
+      this.createSmartPlaylistContentTagCondition(tag)
+    );
+    if (parts.length === 0) {
+      return undefined;
+    }
+    if (parts.length === 1) {
+      return parts[0];
+    }
+    return mode === "and" ? and(...parts) : or(...parts);
   }
 
   /**
@@ -386,9 +437,18 @@ export class PlaylistController extends BaseController {
       return { includeConditions: [sql`1 = 0`], excludeConditions: [] };
     }
 
-    // Empty-guard before MATCH: EXISTS-style probe (stops at first row).
-    // Avoids MATCH on an empty external-content index; not a cached COUNT(*).
-    if (this.isFtsIndexEmpty()) {
+    // MATCH only while insert/update triggers exist (index is live).
+    // Same sqlite_master probe as PostsController AI filter — not a content SELECT.
+    const useFtsMatch = areRuntimeDroppableFtsTriggersPresent(
+      getSqliteInstance()
+    );
+
+    if (!useFtsMatch) {
+      log.debug(
+        "[PlaylistController] FTS bulk-insert triggers absent; using posts.tags for smart playlist"
+      );
+    } else if (this.isFtsIndexEmpty()) {
+      // Live triggers ⇒ content emptiness equals index emptiness.
       log.warn(
         "[PlaylistController] FTS5 table exists but is empty. " +
           "Returning empty smart-playlist result until posts_fts has rows."
@@ -429,39 +489,47 @@ export class PlaylistController extends BaseController {
           const escapedTag = trimmed.replace(/"/g, '""');
           return escapedTag;
         });
-        
-        // Combine with AND operator (uppercase as required by FTS5 syntax)
-        // FTS5 syntax: tag1 AND tag2 (no quotes around individual tags)
-        const combinedQuery = sanitizedTags.join(" AND ");
-        
-        // DEFENSE IN DEPTH: Additional validation for FTS5 query safety
-        // Check for dangerous FTS5 operators that could break query parsing
-        // FTS5 special characters: : (colon for column specifier), * (wildcard only at end), " (quotes)
-        // Block queries that start with * (invalid), contain : (column specifier), or have unbalanced quotes
-        if (combinedQuery.includes(":")) {
-          throw new Error(`Invalid FTS5 query: colon (:) is not allowed in tag queries`);
+
+        if (useFtsMatch) {
+          // Combine with AND operator (uppercase as required by FTS5 syntax)
+          // FTS5 syntax: tag1 AND tag2 (no quotes around individual tags)
+          const combinedQuery = sanitizedTags.join(" AND ");
+
+          // DEFENSE IN DEPTH: Additional validation for FTS5 query safety
+          // Check for dangerous FTS5 operators that could break query parsing
+          // FTS5 special characters: : (colon for column specifier), * (wildcard only at end), " (quotes)
+          // Block queries that start with * (invalid), contain : (column specifier), or have unbalanced quotes
+          if (combinedQuery.includes(":")) {
+            throw new Error(`Invalid FTS5 query: colon (:) is not allowed in tag queries`);
+          }
+          if (combinedQuery.includes("*") && !/^[a-zA-Z0-9_ -]+\*(\s+AND\s+[a-zA-Z0-9_ -]+\*?)*$/i.test(combinedQuery)) {
+            // Allow trailing * for prefix search, but block * at start or middle
+            throw new Error(`Invalid FTS5 query: wildcard (*) can only appear at the end of tags`);
+          }
+          if ((combinedQuery.match(/"/g) || []).length % 2 !== 0) {
+            throw new Error(`Invalid FTS5 query: unbalanced quotes`);
+          }
+
+          log.debug(`[PlaylistController] Combined FTS5 include query: ${combinedQuery}`);
+
+          // CRITICAL SECURITY: Use Drizzle sql template with parameterization instead of sql.raw()
+          // Drizzle will properly escape the FTS5 query string, preventing SQL injection
+          // Even though tags are validated, we use parameterization as defense in depth
+          // FTS5 MATCH accepts string literals, and Drizzle handles the escaping correctly
+          includeConditions.push(sql`EXISTS (
+            SELECT 1 FROM posts_fts
+            WHERE posts_fts.rowid = ${posts.id}
+              AND posts_fts MATCH ${combinedQuery}
+          )`);
+        } else {
+          const includeCondition = this.combineSmartPlaylistContentConditions(
+            sanitizedTags,
+            "and"
+          );
+          if (includeCondition) {
+            includeConditions.push(includeCondition);
+          }
         }
-        if (combinedQuery.includes("*") && !/^[a-zA-Z0-9_ -]+\*(\s+AND\s+[a-zA-Z0-9_ -]+\*?)*$/i.test(combinedQuery)) {
-          // Allow trailing * for prefix search, but block * at start or middle
-          throw new Error(`Invalid FTS5 query: wildcard (*) can only appear at the end of tags`);
-        }
-        if ((combinedQuery.match(/"/g) || []).length % 2 !== 0) {
-          throw new Error(`Invalid FTS5 query: unbalanced quotes`);
-        }
-        
-        log.debug(`[PlaylistController] Combined FTS5 include query: ${combinedQuery}`);
-        
-        // CRITICAL SECURITY: Use Drizzle sql template with parameterization instead of sql.raw()
-        // Drizzle will properly escape the FTS5 query string, preventing SQL injection
-        // Even though tags are validated, we use parameterization as defense in depth
-        // FTS5 MATCH accepts string literals, and Drizzle handles the escaping correctly
-        const includeCondition = sql`EXISTS (
-          SELECT 1 FROM posts_fts 
-          WHERE posts_fts.rowid = ${posts.id}
-            AND posts_fts MATCH ${combinedQuery}
-        )`;
-        
-        includeConditions.push(includeCondition);
       } catch (error) {
         log.error(
           `[PlaylistController] Failed to build include tags condition:`,
@@ -502,24 +570,32 @@ export class PlaylistController extends BaseController {
           const escapedTag = trimmed.replace(/"/g, '""');
           return escapedTag;
         });
-        
-        // Combine with OR operator (uppercase as required by FTS5 syntax)
-        // FTS5 OR syntax: tag1 OR tag2 (no quotes around individual tags)
-        const combinedQuery = sanitizedTags.join(" OR ");
-        
-        log.debug(`[PlaylistController] Combined FTS5 exclude query: ${combinedQuery}`);
-        
-        // CRITICAL SECURITY: Use Drizzle sql template with parameterization instead of sql.raw()
-        // Drizzle will properly escape the FTS5 query string, preventing SQL injection
-        // Even though tags are validated, we use parameterization as defense in depth
-        // FTS5 MATCH accepts string literals, and Drizzle handles the escaping correctly
-        const excludeCondition = sql`EXISTS (
-          SELECT 1 FROM posts_fts 
-          WHERE posts_fts.rowid = ${posts.id}
-            AND posts_fts MATCH ${combinedQuery}
-        )`;
-        
-        excludeConditions.push(excludeCondition);
+
+        if (useFtsMatch) {
+          // Combine with OR operator (uppercase as required by FTS5 syntax)
+          // FTS5 OR syntax: tag1 OR tag2 (no quotes around individual tags)
+          const combinedQuery = sanitizedTags.join(" OR ");
+
+          log.debug(`[PlaylistController] Combined FTS5 exclude query: ${combinedQuery}`);
+
+          // CRITICAL SECURITY: Use Drizzle sql template with parameterization instead of sql.raw()
+          // Drizzle will properly escape the FTS5 query string, preventing SQL injection
+          // Even though tags are validated, we use parameterization as defense in depth
+          // FTS5 MATCH accepts string literals, and Drizzle handles the escaping correctly
+          excludeConditions.push(sql`EXISTS (
+            SELECT 1 FROM posts_fts
+            WHERE posts_fts.rowid = ${posts.id}
+              AND posts_fts MATCH ${combinedQuery}
+          )`);
+        } else {
+          const excludeCondition = this.combineSmartPlaylistContentConditions(
+            sanitizedTags,
+            "or"
+          );
+          if (excludeCondition) {
+            excludeConditions.push(excludeCondition);
+          }
+        }
       } catch (error) {
         log.error(
           `[PlaylistController] Failed to build exclude tags condition:`,
