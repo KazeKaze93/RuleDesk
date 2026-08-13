@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { container, DI_TOKENS } from "@/main/core/di/Container";
 import { artists, playlists, posts } from "@/main/db/schema";
+import {
+  dropFtsTriggersForBulkInsert,
+  ensureFtsTriggers,
+  rebuildFtsIndex,
+} from "@/main/db/fts-triggers";
 import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
 import type { SQL } from "drizzle-orm";
@@ -197,5 +202,115 @@ describe("PlaylistController FTS empty-guard", () => {
     expect(resolved.map((row) => row.postId).sort((a, b) => a - b)).toEqual([
       2001, 2002, 2003,
     ]);
+  });
+
+  it("include/exclude stay correct while insert triggers are dropped (bulk-sync window)", async () => {
+    const { db, sqlite } = mockDb;
+    dropFtsTriggersForBulkInsert(sqlite);
+
+    db.insert(artists)
+      .values({
+        name: "Bulk Window Artist",
+        tag: "bulk_window_artist",
+        provider: "rule34",
+        type: "tag",
+        apiEndpoint: "https://api.rule34.xxx/",
+      })
+      .run();
+    const artist = db.select({ id: artists.id }).from(artists).all()[0];
+    if (artist === undefined) {
+      throw new Error("Failed to insert artist");
+    }
+
+    db.insert(posts)
+      .values({
+        postId: 777,
+        artistId: artist.id,
+        fileUrl: "https://example.com/777.jpg",
+        previewUrl: "https://example.com/777_p.jpg",
+        sampleUrl: "",
+        tags: "test_tag other",
+        rating: "s",
+        mediaType: "image",
+        publishedAt: new Date("2024-01-01T00:00:00.000Z"),
+      })
+      .run();
+
+    const matchCount = (
+      sqlite
+        .prepare(
+          "SELECT COUNT(*) AS c FROM posts_fts WHERE posts_fts MATCH 'test_tag'"
+        )
+        .get() as { c: number }
+    ).c;
+    expect(matchCount).toBe(0);
+
+    db.insert(playlists)
+      .values([
+        {
+          name: "Include test_tag",
+          isSmart: true,
+          queryJson: JSON.stringify({
+            tags: [{ tag: "test_tag", type: "include" }],
+            provider: "rule34",
+          }),
+          querySchemaVersion: 1,
+          iconName: "",
+        },
+        {
+          name: "Exclude test_tag",
+          isSmart: true,
+          queryJson: JSON.stringify({
+            tags: [{ tag: "test_tag", type: "exclude" }],
+            provider: "rule34",
+          }),
+          querySchemaVersion: 1,
+          iconName: "",
+        },
+      ])
+      .run();
+    const playlistRows = db
+      .select({ id: playlists.id, name: playlists.name })
+      .from(playlists)
+      .all();
+    const includeId = playlistRows.find((row) => row.name === "Include test_tag")
+      ?.id;
+    const excludeId = playlistRows.find((row) => row.name === "Exclude test_tag")
+      ?.id;
+    if (includeId === undefined || excludeId === undefined) {
+      throw new Error("Failed to insert playlists");
+    }
+
+    const event = {} as IpcMainInvokeEvent;
+    const included = await controller.resolvePlaylistPosts(event, {
+      playlistId: includeId,
+      page: 1,
+      limit: 50,
+    });
+    const excluded = await controller.resolvePlaylistPosts(event, {
+      playlistId: excludeId,
+      page: 1,
+      limit: 50,
+    });
+
+    expect(included.map((row) => row.postId)).toEqual([777]);
+    expect(excluded).toEqual([]);
+
+    rebuildFtsIndex(sqlite);
+    ensureFtsTriggers(sqlite);
+
+    const includedAfterRebuild = await controller.resolvePlaylistPosts(event, {
+      playlistId: includeId,
+      page: 1,
+      limit: 50,
+    });
+    const excludedAfterRebuild = await controller.resolvePlaylistPosts(event, {
+      playlistId: excludeId,
+      page: 1,
+      limit: 50,
+    });
+
+    expect(includedAfterRebuild.map((row) => row.postId)).toEqual([777]);
+    expect(excludedAfterRebuild).toEqual([]);
   });
 });

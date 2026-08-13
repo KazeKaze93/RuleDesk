@@ -288,6 +288,13 @@ describe('SyncService Integration', () => {
         `)
         .get(artist.id) as { count: number };
       expect(ftsRowsForArtist.count).toBe(100);
+
+      const ftsMatchCount = mockDb.sqlite
+        .prepare(
+          `SELECT COUNT(*) as count FROM posts_fts WHERE posts_fts MATCH 'artist_name'`
+        )
+        .get() as { count: number };
+      expect(ftsMatchCount.count).toBe(100);
     } finally {
       fetchPostsSpy.mockRestore();
     }

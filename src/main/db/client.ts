@@ -39,7 +39,7 @@ export function resetStaleSyncingArtists(
 
 /**
  * After hard-kill mid-initial-sync left runtime FTS triggers dropped:
- * backfill missing posts_fts rows so MATCH / empty-guard see real data.
+ * backfill missing posts_fts rows so MATCH sees real index data.
  */
 function recoverAfterRecreatedFtsTriggers(
   sqlite: InstanceType<typeof Database>,
@@ -328,7 +328,8 @@ export async function initializeDatabase(): Promise<AppDatabase> {
               } else if (entry.tag === "0011_add_fts5_count_meta") {
                 // 0011 SQL also CREATE TRIGGER ON posts_fts (virtual) which always fails.
                 // Apply only the table + seed. Count triggers are never created;
-                // empty-guard uses SELECT 1 FROM posts_fts LIMIT 1 instead.
+                // empty-guard uses SELECT 1 FROM posts_fts LIMIT 1 only while
+                // insert/update triggers are live (content emptiness = index emptiness).
                 sqliteInstance.exec(`
                   CREATE TABLE IF NOT EXISTS fts5_count_meta (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
