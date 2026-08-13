@@ -1,7 +1,7 @@
 {
   "name": "ruledesk",
   "productName": "RuleDesk",
-  "version": "17.0.0",
+  "version": "18.0.0",
   "description": "A modern desktop companion for browsing and organizing booru-style imageboard content",
   "main": "out/main/main.cjs",
   "type": "module",
