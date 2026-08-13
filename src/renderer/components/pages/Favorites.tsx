@@ -248,7 +248,7 @@ export const Favorites = () => {
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: fetchNextPage,
+    onLoadMore: handleLoadMore,
   });
 
   const handleBulkRemove = useCallback(
@@ -359,11 +359,7 @@ export const Favorites = () => {
               className="h-full"
               aria-busy={listAriaBusy}
               totalCount={allPosts.length}
-              endReached={() => {
-                if (hasNextPage && !isFetchingNextPage) {
-                  fetchNextPage();
-                }
-              }}
+              endReached={handleLoadMore}
               increaseViewportBy={600}
               components={{
                 List: ListComponent,

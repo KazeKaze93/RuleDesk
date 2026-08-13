@@ -339,7 +339,7 @@ export const Browse = () => {
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: fetchNextPage,
+    onLoadMore: handleLoadMore,
   });
 
   const viewMutation = useMutation({
