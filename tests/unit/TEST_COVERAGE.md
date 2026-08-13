@@ -2,12 +2,13 @@
 
 ## Overview
 
-Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes unit + integration + property suites. Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
+Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes unit + integration + property suites (`tests/unit`, `tests/integration`, `tests/property`). In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tests/unit/helpers/mock-db.test.ts`.
 
 ## Test files (unit)
 
 | File | Tests | Area |
 |------|-------|------|
+| `helpers/mock-db.test.ts` | 3 | Canonical in-memory `createMockDb` (migrations, isolation) |
 | `hooks/useGalleryInfiniteScroll.test.ts` | 9 | Real `useGalleryInfiniteScroll` (default + Browse `getSearchBrowseNextPageParam`, 150ms debounce, unmount timer cleanup, `handleAtBottomStateChange`) |
 | `hooks/useWorkerFilteredPosts.test.ts` | 7 | Worker post → Post field mapping |
 | `lib/filter-utils.test.ts` | 29 | AI tags, video detection |
@@ -17,12 +18,12 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `utils/react-query-cache.test.ts` | 8 | Browse pagination / cursor helpers |
 | `core/di-container.test.ts` | 6 | Slim DI registry (`token.id` Map keys) |
 | `core/BaseController.collapse-throttle.test.ts` | 6 | Idempotent collapse (full-args hash) + mutate spacing |
-| `components/filters/SourceSwitcher.test.ts` | 8 | Source filter |
-| `components/filters/FilterToggleGroup.test.ts` | 8 | Toggle group |
-| `components/layout/GridContainer.test.ts` | 8 | Grid/masonry layout |
-| `components/PostCard/viewType.test.ts` | 9 | PostCard view modes |
-| `components/IntersectionObserver.test.ts` | 11 | Scroll sentinel |
-| `components/VirtuosoGrid-totalCount.test.ts` | 5 | Virtualized grid |
+| `components/filters/SourceSwitcher.test.tsx` | 8 | Real `SourceSwitcher` (RTL: values, disabled Favorites/Subscriptions) |
+| `components/filters/FilterToggleGroup.test.tsx` | 7 | Real `FilterToggleGroup` (RTL: change, disabled + Coming soon, icons) |
+| `components/layout/GridContainer.test.tsx` | 5 | Real `createVirtuosoGridFactories` GridContainer (grid-template-columns / columns-N) |
+| `components/PostCard/viewType.test.tsx` | 10 | Real `PostCard` viewType classes (`aspect-[2/3]`, `object-contain` / `h-auto`) |
+| `components/IntersectionObserver.test.tsx` | 3 | Real `PostCard` video viewport observer (`rootMargin: 100px`, `threshold: 0.01`) |
+| `components/VirtuosoGrid-totalCount.test.ts` | 5 | Gallery sources wire `totalCount` to the displayed collection length |
 | `controllers/posts-tag-query.test.ts` | 5 | Tag query helpers |
 | `store/searchStore.test.ts` | 3 | Search store |
 | `shared/provider-search-ipc-payload.test.ts` | 8 | Provider IPC error parsing |
@@ -33,7 +34,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `services/tag-resolve-coordinator.test.ts` | 8 | Tag resolve dedup / rate limit + Add Artist user-priority options |
 | `services/secure-storage.test.ts` | 3 | `SecureStorage` encrypt/decrypt (sole crypto path) |
 | `services/video-proxy-server.test.ts` | 8 | Video proxy allowlist / cache / eviction |
-| `providers/throttle.test.ts` | 8 | Priority queue + shared 429 gate + abort dequeue |
+| `providers/throttle.test.ts` | 8 | Priority queue + shared 429 gate + abort dequeue (`vi.useFakeTimers`) |
 | `db/sync-status-recovery.test.ts` | 1 | Hard-kill `syncing` → `idle` reset; error rows untouched |
 | `features/viewer/buildViewerOriginQueryKey.test.ts` | 8 | Viewer origin → React Query key (artist/browse/favorites/playlist/updates) |
 
@@ -69,8 +70,10 @@ npm run test:verify                   # validate + all tests + ABI restore
 
 ## Approach
 
-- Vitest node environment (jsdom only for `useGalleryInfiniteScroll` hook render tests)
-- Logic-first tests; hook debounce/unmount coverage renders the real hook via `react-dom` (no `@testing-library/react`)
+- Vitest default environment is Node; jsdom is opted in per file (`// @vitest-environment jsdom`) for hook and component render tests
+- Unit include is `tests/unit/**/*.{test,spec}.{ts,tsx}` so RTL component suites can use JSX
+- Component tests import production modules and assert via `@testing-library/react` (DOM/classes/props), not local copies of layout logic
+- Hook debounce/unmount coverage renders the real hook via `react-dom`
 - Integration tests use in-memory SQLite (`tests/helpers/mock-db.ts`)
 - Property tests guard schema and SQL escaping invariants
 - Post-audit: pure `mapWorkerPostToPost()` in `src/renderer/lib/map-worker-post.ts` (tested without Web Worker)
@@ -78,6 +81,6 @@ npm run test:verify                   # validate + all tests + ABI restore
 
 ## Future improvements
 
-1. Component rendering tests with `@testing-library/react` (optional)
-2. Broader IPC contract tests via shared Zod schemas
-3. Visual regression for masonry/grid layouts (Playwright)
+1. Broader IPC contract tests via shared Zod schemas
+2. Visual regression for masonry/grid layouts (Playwright)
+3. E2E follow-ups live in [`docs/roadmap.md`](../../docs/roadmap.md) backlog (`global-setup` mtime/hash rebuild-skip; keep `retries: 2` + flaky visibility). Not in this branch.

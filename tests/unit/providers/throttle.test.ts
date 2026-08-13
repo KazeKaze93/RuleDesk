@@ -1,20 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   isAbortError,
   ProviderRateLimitGateError,
   ProviderThrottle,
 } from "@/main/providers/provider-throttle";
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
+const FAKE_NOW_MS = Date.UTC(2026, 0, 1);
+
+beforeEach(() => {
+  vi.useFakeTimers({ now: FAKE_NOW_MS });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("ProviderThrottle priority and 429 gate", () => {
   it("runs a later user waiter before an earlier background waiter", async () => {
     const throttle = new ProviderThrottle(80, 0);
-    // Prime lastRequestAt so the next acquire must sleep (priority can cut in).
     await throttle.wait("user");
 
     const order: string[] = [];
@@ -25,14 +28,14 @@ describe("ProviderThrottle priority and 429 gate", () => {
       return Date.now() - startedAt;
     });
 
-    // Ensure background has entered interval sleep before user joins.
-    await sleep(10);
+    await vi.advanceTimersByTimeAsync(10);
 
     const user = throttle.wait("user").then(() => {
       order.push("user");
       return Date.now() - startedAt;
     });
 
+    await vi.advanceTimersByTimeAsync(200);
     const [backgroundElapsedMs, userElapsedMs] = await Promise.all([
       background,
       user,
@@ -50,7 +53,7 @@ describe("ProviderThrottle priority and 429 gate", () => {
     await expect(throttle.wait("background")).rejects.toBeInstanceOf(
       ProviderRateLimitGateError
     );
-    expect(Date.now() - startedAt).toBeLessThan(100);
+    expect(Date.now() - startedAt).toBe(0);
   });
 
   it("blocks a user waiter after tag-resolve notifies the shared gate", async () => {
@@ -59,21 +62,20 @@ describe("ProviderThrottle priority and 429 gate", () => {
       defaultRateLimitGateMs: 5_000,
     });
 
-    // Simulate tag-resolve 429 writing the shared host gate.
     throttle.notifyRateLimited(5_000);
 
     const startedAt = Date.now();
-    await expect(throttle.wait("user")).rejects.toBeInstanceOf(
+    const waitPromise = throttle.wait("user");
+    const assertion = expect(waitPromise).rejects.toBeInstanceOf(
       ProviderRateLimitGateError
     );
-    const elapsedMs = Date.now() - startedAt;
-    expect(elapsedMs).toBeGreaterThanOrEqual(70);
-    expect(elapsedMs).toBeLessThan(500);
+    await vi.advanceTimersByTimeAsync(80);
+    await assertion;
+    expect(Date.now() - startedAt).toBe(80);
   });
 
   it("exposes a sync-notified gate to subsequent background waiters", async () => {
     const throttle = new ProviderThrottle(10, 0);
-    // Simulate Sync/Browse receiving HTTP 429.
     throttle.notifyRateLimited(3_000);
 
     await expect(throttle.wait("background")).rejects.toMatchObject({
@@ -83,14 +85,14 @@ describe("ProviderThrottle priority and 429 gate", () => {
     expect(throttle.isRateLimited()).toBe(true);
   });
 
-  it("keeps single-caller spacing near the configured min interval", async () => {
+  it("keeps single-caller spacing at the configured min interval", async () => {
     const throttle = new ProviderThrottle(50, 0);
+    await throttle.wait("user");
     const startedAt = Date.now();
-    await throttle.wait("user");
-    await throttle.wait("user");
-    const elapsedMs = Date.now() - startedAt;
-    expect(elapsedMs).toBeGreaterThanOrEqual(45);
-    expect(elapsedMs).toBeLessThan(200);
+    const second = throttle.wait("user");
+    await vi.advanceTimersByTimeAsync(50);
+    await second;
+    expect(Date.now() - startedAt).toBe(50);
   });
 
   it("rejects wait immediately when the signal is already aborted", async () => {
@@ -113,7 +115,7 @@ describe("ProviderThrottle priority and 429 gate", () => {
         (error: unknown) => (isAbortError(error) ? "aborted" : "other")
       )
     );
-    await sleep(10);
+    await vi.advanceTimersByTimeAsync(10);
     abortController.abort();
     await expect(Promise.all(stale)).resolves.toEqual([
       "aborted",
@@ -124,12 +126,10 @@ describe("ProviderThrottle priority and 429 gate", () => {
     ]);
 
     const startedAt = Date.now();
-    await throttle.wait("user");
-    const elapsedMs = Date.now() - startedAt;
-    // Remaining min-interval after sleep(10) is ~40ms; CI clocks can land at 39.
-    // Still must be paced (not instant) and far below 5×50ms stale-queue delay.
-    expect(elapsedMs).toBeGreaterThanOrEqual(25);
-    expect(elapsedMs).toBeLessThan(200);
+    const next = throttle.wait("user");
+    await vi.advanceTimersByTimeAsync(40);
+    await next;
+    expect(Date.now() - startedAt).toBe(40);
   });
 
   it("does not consume a paced slot when background is rejected by the gate", async () => {
@@ -143,7 +143,9 @@ describe("ProviderThrottle priority and 429 gate", () => {
 
     throttle.resetRateLimitGateForTests();
     const startedAt = Date.now();
-    await throttle.wait("user");
-    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(70);
+    const next = throttle.wait("user");
+    await vi.advanceTimersByTimeAsync(80);
+    await next;
+    expect(Date.now() - startedAt).toBe(80);
   });
 });

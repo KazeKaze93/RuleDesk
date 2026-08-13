@@ -549,7 +549,7 @@ npm run test:e2e
 
 | Directory | Purpose |
 |-----------|---------|
-| `tests/unit/` | Hooks, utilities, filter/layout logic, DI, credential decrypt |
+| `tests/unit/` | Hooks, utilities, RTL component tests (jsdom), DI, credential decrypt |
 | `tests/integration/` | IPC controllers and services with in-memory SQLite |
 | `tests/property/` | Property-based / fuzzing tests (`fast-check`) |
 | `tests/e2e/` | Playwright user workflows |
