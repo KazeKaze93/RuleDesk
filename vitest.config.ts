@@ -20,7 +20,7 @@ export default defineConfig({
   test: {
     // Architecture strictness: separate E2E (Playwright) from Unit/Integration (Vitest)
     include: [
-      'tests/unit/**/*.{test,spec}.ts',
+      'tests/unit/**/*.{test,spec}.{ts,tsx}',
       'tests/integration/**/*.{test,spec}.ts',
       'tests/property/**/*.{test,spec}.ts',
     ],
@@ -40,6 +40,9 @@ export default defineConfig({
       exclude: ['node_modules/', 'tests/', '**/*.d.ts', '**/out/**', '**/dist/**'],
     },
     alias: {
+      // Renderer sources use tsconfig `@/*` → `src/renderer/*` (`@/lib/utils`).
+      // Test files use `@/main` and `@/renderer`, so `@` stays `src/`.
+      '@/lib': path.resolve(__dirname, './src/renderer/lib'),
       '@': path.resolve(__dirname, './src'),
       '@shared': path.resolve(__dirname, './src/shared'),
     },
