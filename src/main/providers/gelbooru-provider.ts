@@ -20,6 +20,7 @@ import {
 import { isAxiosTransportFailure } from "./rule34-post-response";
 import { getProxyAgent } from "../lib/proxy";
 import { redactErrorForLog } from "../lib/redact-error";
+import { warnIfUnknownMediaHost } from "./warn-unknown-media-host";
 
 type GelbooruTagItem = {
   value: string;
@@ -335,6 +336,7 @@ export class GelbooruProvider implements IBooruProvider {
       logger.warn("[GelbooruProvider] Skipping post with empty file_url", { id: raw.id });
       return null;
     }
+    warnIfUnknownMediaHost(fileUrl, this);
 
     const sampleUrl = raw.sample_url?.trim() || fileUrl;
     

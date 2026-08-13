@@ -38,6 +38,8 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `shared/autocomplete-label-count.test.ts` | Rule34 autocomplete `(count)` label parse |
 | `providers/rule34-provider-fetch-posts.test.ts` | fetchPosts error classification + searchTags shape |
 | `providers/gelbooru-provider-fetch-posts.test.ts` | Gelbooru fetchPosts errors + empty JSON `[]` |
+| `providers/assert-cdn-domains-subset.test.ts` | `cdnDomains ⊆ allowedDomains` throw vs live registry |
+| `providers/warn-unknown-media-host.test.ts` | Fetch-time unknown-host warn + per-hostname dedup |
 | `providers/throttle.test.ts` | Priority queue + 429 gate (`vi.useFakeTimers`) |
 | `services/tag-resolve-coordinator.test.ts` | Tag resolve dedup / rate limit |
 | `services/secure-storage.test.ts` | `SecureStorage` encrypt/decrypt |
@@ -49,6 +51,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `features/viewer/buildViewerOriginQueryKey.test.ts` | Viewer origin → React Query key |
 | `features/viewer/openViewer-hasNextPage.test.ts` | Gallery `openViewer` passes react-query `hasNextPage`, not count-vs-page-size |
 | `features/viewer/gallery-background-scroll-queue.test.ts` | Masonry / local grid infinite scroll use `handleLoadMore` (`appendQueueIds`) |
+| `features/viewer/viewer-media-urls.test.ts` | Rule34 image CDN fallback chain includes `api-cdn-mp4` as a source host |
 | `ipc/PlaylistController.empty-guard.test.ts` | Playlist FTS empty-guard |
 
 ## Other Vitest suites

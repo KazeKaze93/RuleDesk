@@ -40,6 +40,7 @@ import {
   toRule34HttpResponseFromAxiosSuccess,
   type Rule34HttpResponse,
 } from "./rule34-post-response";
+import { warnIfUnknownMediaHost } from "./warn-unknown-media-host";
 
 /**
  * Live autocomplete.php (2026-08-13 probe: q=wlop / hatsune_miku / genshin_impact)
@@ -525,6 +526,7 @@ export class Rule34Provider implements IBooruProvider {
 
     const fileUrl = String(post.file_url || "").trim();
     if (!fileUrl) return null;
+    warnIfUnknownMediaHost(fileUrl, this);
 
     // Map XML attributes directly to BooruPost format (camelCase)
     // Use selectBestPreview for previewUrl (fallback to fileUrl if preview_url missing)
@@ -610,6 +612,7 @@ export class Rule34Provider implements IBooruProvider {
       });
       return null;
     }
+    warnIfUnknownMediaHost(fileUrl, this);
 
     const preview = selectBestPreview({
       preview: raw.preview_url,

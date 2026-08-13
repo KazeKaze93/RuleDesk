@@ -1,13 +1,14 @@
-import type { Post } from "@shared/types/db";
-
+/** Hosts we may rewrite FROM. Includes the MP4 CDN so a fileUrl there still gets image mirrors. */
 const RULE34_IMAGE_HOSTS = new Set([
   "rule34.xxx",
   "wimg.rule34.xxx",
   "us.rule34.xxx",
   "img.rule34.xxx",
   "api-cdn.rule34.xxx",
+  "api-cdn-mp4.rule34.xxx",
 ]);
 
+/** Image CDN rewrite targets — not `api-cdn-mp4` (video host, not an image mirror). */
 const RULE34_CDN_FALLBACK_HOSTS = [
   "wimg.rule34.xxx",
   "img.rule34.xxx",
@@ -52,7 +53,7 @@ const appendUrlWithCdnMirrors = (
 };
 
 /** Full-resolution file_url variants only — never sample/preview (those are cropped thumbnails). */
-export const buildViewerFullImageChain = (post: Post): string[] => {
+export const buildViewerFullImageChain = (post: { fileUrl: string }): string[] => {
   const chain: string[] = [];
   const seen = new Set<string>();
   appendUrlWithCdnMirrors(chain, seen, post.fileUrl);

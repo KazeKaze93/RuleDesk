@@ -614,7 +614,7 @@ const posts = await db.query.posts.findMany({
    - Provider pattern abstraction for multi-booru support
    - `IBooruProvider` interface for standardized booru operations
    - Implementations: `Rule34Provider`, `GelbooruProvider`
-   - `allowedDomains` is the full host list for CSP (`getAllProviderDomains`: API + CDN). `cdnDomains` is the media-CDN subset for video-proxy `isAllowedCdnUrl` (`getAllProviderCdnDomains`; exact hostname match, no suffix wildcard). `api-cdn.rule34.xxx` does not cover `api-cdn-mp4.rule34.xxx` (Rule34 MP4 CDN). Gelbooru media CDN is `img4.gelbooru.com`; `gelbooru.com` is the API/site host and is not proxied.
+   - `allowedDomains` is the full host list for CSP (`getAllProviderDomains`: API + CDN). `cdnDomains` is the media-CDN subset for video-proxy `isAllowedCdnUrl` (`getAllProviderCdnDomains`; exact hostname match, no suffix wildcard). `api-cdn.rule34.xxx` does not cover `api-cdn-mp4.rule34.xxx` (Rule34 MP4 CDN). Gelbooru media CDN is `img4.gelbooru.com`; `gelbooru.com` is the API/site host and is not proxied. Registry load throws if any provider's `cdnDomains` is not a subset of `allowedDomains`. After mapping `file_url`, unknown hostnames (exact match, not CSP `*.domain`) `log.warn` once: missing from `allowedDomains`, or video URL missing from `cdnDomains`.
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
    - Shared request pacing via `ProviderThrottle` (~1200ms + jitter) and session UA via `pickRandomUA()`
    - **Priorities:** `user` (Sync `fetchPosts`, Browse/search `fetchPosts`, autocomplete, Add Artist DAPI second-pass) drains before `background` (Browse tag-resolve). Same min-interval; order only. Add Artist aborts superseded throttle waiters; intervals are unchanged.

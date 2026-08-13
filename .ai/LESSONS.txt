@@ -167,8 +167,8 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Invariant Rule:** CSP directives that enumerate external domains must be computed from the Provider Registry, never hardcoded in Main or Renderer.
 
 ### Problem: Video proxy / CSP miss sibling CDN hostnames
-**Root Cause:** Allowlists use exact hostname match (no suffix wildcard). `api-cdn.rule34.xxx` does not cover `api-cdn-mp4.rule34.xxx`. IPC `video-proxy:get-url` only mints a localhost URL and does not check the allowlist; rejection is HTTP 400 on the subsequent Range request. ViewerMedia logs `post.fileUrl`, not the proxied src.
-**Invariant Rule:** New live media hostnames observed in `fileUrl` must be added to both `allowedDomains` (CSP) and `cdnDomains` (video-proxy). Prefix similarity is not coverage. `get-url` success is not playback success.
+**Root Cause:** Allowlists use exact hostname match (no suffix wildcard). `api-cdn.rule34.xxx` does not cover `api-cdn-mp4.rule34.xxx`. Two hand-maintained arrays (`allowedDomains` vs `cdnDomains`) can drift: a host missing from both still satisfies subset; a host added only to `cdnDomains` would let the proxy fetch what CSP never listed. IPC `video-proxy:get-url` only mints a localhost URL and does not check the allowlist; rejection is HTTP 400 on the subsequent Range request. ViewerMedia logs `post.fileUrl`, not the proxied src.
+**Invariant Rule:** New live media hostnames observed in `fileUrl` must be added to both `allowedDomains` (CSP) and `cdnDomains` (video-proxy). Prefix similarity is not coverage. `get-url` success is not playback success. Registry load **throws** if `cdnDomains ⊈ allowedDomains` (config error). Mapping a post **warns once per hostname** (exact match, not CSP `*.domain`) when `fileUrl` is outside `allowedDomains`, or is video and outside `cdnDomains`. Do not throw on unknown live hosts.
 
 ## Renderer / Workers
 
