@@ -710,9 +710,11 @@ const posts = await db.query.posts.findMany({
     - **ArtistGallery.tsx** - Grid view of posts for an artist
     - **PostCard.tsx** - Individual post card component
 
-   - **Viewer:**
+   - **Viewer (`src/renderer/features/viewer/`):**
 
-     - **ViewerDialog.tsx** - Full-screen viewer with download, favorites, keyboard shortcuts
+     - **ViewerDialog.tsx** - Full-screen shell (queue, cache lookup via `buildViewerOriginQueryKey`, keyboard/side buttons)
+     - **ViewerContent.tsx** / **ViewerMedia.tsx** / **TagsDrawer.tsx** / **PostNotFoundFallback.tsx** - chrome, media, tags, shadow-insert fallback
+     - **buildViewerOriginQueryKey.ts** - origin → React Query key (Artist / Browse / Favorites / Updates / Playlist)
 
    - **Dialogs:**
 
@@ -1678,7 +1680,7 @@ src/
 │   ├── features/                  # Feature modules
 │   │   ├── artists/               # Artist details/tracked/gallery/post card
 │   │   ├── settings/
-│   │   └── viewer/
+│   │   └── viewer/                # ViewerDialog shell + media/tags/query-key helpers
 │   ├── hooks/                     # App-level hooks
 │   ├── lib/                        # Utilities
 │   │   ├── hooks/                  # Custom React hooks
@@ -1844,7 +1846,7 @@ Root:
 
 **Goal:** Allow saving full-resolution files to the local file system.
 
-- ✅ "Download Original" button on post view (implemented in ViewerDialog)
+- ✅ "Download Original" button on post view (implemented in ViewerContent)
 - ✅ **Download Handler:** Downloads run in Main Process with progress tracking
 - ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
 - ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
@@ -1926,7 +1928,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 
 ### Shipped (formerly listed under Missing / Planned)
 
-- **Safe Mode / NSFW Filter:** blur logic and safe mode state in gallery/viewer (`safeModeStore`, `PanicButton`, `PostCard`, `ViewerDialog`)
+- **Safe Mode / NSFW Filter:** blur logic and safe mode state in gallery/viewer (`safeModeStore`, `PanicButton`, `PostCard`, `ViewerMedia`)
 - **Age Gate:** `src/renderer/components/onboarding/AgeGate.tsx` and `confirmLegal` IPC method
 - **User Data Path:** Neutral `.rdcache` via `bootstrap-user-data.ts` (not next to the executable)
 - **Anti-Bot Measures:** Shared `ProviderThrottle` (~1200ms + jitter) and session UA rotation via `pickRandomUA()` across current providers. One throttle instance per provider host serializes Sync/Browse/autocomplete (`user` priority) ahead of tag-resolve (`background`). A single host 429 gate (`notifyRateLimited`) is written by any consumer and checked by every `wait()` — local rate-limit copies are forbidden.

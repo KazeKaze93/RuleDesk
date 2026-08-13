@@ -5,7 +5,7 @@ const ROOT_DIR = process.cwd();
 const RENDERER_DIR = path.join(ROOT_DIR, "src", "renderer");
 
 const EXEMPT_FILES = new Set([
-  "src/renderer/features/viewer/ViewerDialog.tsx",
+  "src/renderer/features/viewer/ViewerMedia.tsx",
   "src/renderer/components/ui/app-logo.tsx",
 ]);
 
