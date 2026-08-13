@@ -11,7 +11,7 @@
 
 | Channel | Token | Args (Zod) | Idempotent | Handler | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `api:search-remote-tags` | `API.SEARCH_REMOTE` | `z.tuple([ z.string().trim().min(2), z.enum(["rule34", "gelbooru"]).optional(), ])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
+| `api:search-remote-tags` | `API.SEARCH_REMOTE` | `z.tuple([ z.string().trim().min(2), z.enum(["rule34", "gelbooru"]).optional(), z.boolean().optional(), ])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
 | `app:check-for-updates` | `APP.CHECK_FOR_UPDATES` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:download-file` | `APP.DOWNLOAD_FILE` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `app:get-db-location` | `APP.GET_DB_LOCATION` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
