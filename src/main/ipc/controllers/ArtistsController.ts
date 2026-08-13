@@ -31,6 +31,7 @@ import {
 } from "../../services/tag-resolve-coordinator";
 import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
 import type { ProviderSettings } from "../../providers/types";
+import { isAbortError } from "../../providers/provider-throttle";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -78,6 +79,13 @@ type IpcArtist = {
  * - Search remote tags via API (Rule34/Gelbooru)
  */
 export class ArtistsController extends BaseController {
+  /**
+   * Add Artist autocomplete only. Renderer AbortController does not cancel
+   * ipcRenderer.invoke — a new artistOnly search aborts the previous Main wave
+   * so superseded DAPI waiters leave the throttle queue.
+   */
+  private artistAutocompleteAbort: AbortController | null = null;
+
   // Query style: Drizzle Builder API only in this controller.
   private getDb(): AppDatabase {
     return container.resolve(DI_TOKENS.DB);
@@ -350,7 +358,7 @@ export class ArtistsController extends BaseController {
    * Search remote tags via Booru provider autocomplete API.
    * When `artistOnly` is set (Add Artist modal), Gelbooru is filtered by
    * `category`/`SearchResults.type === "artist"`; Rule34 runs a top-N DAPI
-   * second-pass via `tag_metadata` + `resolveTagMetadataWave` (ARTIST).
+   * second-pass via `tag_metadata` + `resolveTagMetadataWave` (ARTIST, user throttle).
    */
   private async searchRemoteTags(
     _event: IpcMainInvokeEvent,
@@ -358,21 +366,38 @@ export class ArtistsController extends BaseController {
     providerId?: ProviderId,
     artistOnly?: boolean
   ): Promise<SearchResults[]> {
-    try {
-      const resolvedProviderId = providerId || "rule34";
-      const provider = getProvider(resolvedProviderId);
-      const results = await provider.searchTags(query);
-      if (!artistOnly) {
-        return results;
+    const resolvedProviderId = providerId || "rule34";
+    const provider = getProvider(resolvedProviderId);
+
+    if (!artistOnly) {
+      try {
+        return await provider.searchTags(query);
+      } catch (error) {
+        log.error("[ArtistsController] Remote search error:", error);
+        throw error;
       }
-      return applyArtistOnlyAutocompleteFilter(
+    }
+
+    this.artistAutocompleteAbort?.abort();
+    const abortController = new AbortController();
+    this.artistAutocompleteAbort = abortController;
+    const { signal } = abortController;
+
+    try {
+      const results = await provider.searchTags(query, signal);
+      if (signal.aborted) {
+        return [];
+      }
+      return await applyArtistOnlyAutocompleteFilter(
         resolvedProviderId,
         results,
-        (tags) => this.resolveArtistTagNames(tags)
+        (tags) => this.resolveArtistTagNames(tags, signal)
       );
     } catch (error) {
+      if (isAbortError(error) || signal.aborted) {
+        return [];
+      }
       log.error("[ArtistsController] Remote search error:", error);
-      // Re-throw original error instead of swallowing it
       throw error;
     }
   }
@@ -405,8 +430,14 @@ export class ArtistsController extends BaseController {
     }
   }
 
-  /** Reuses tag_metadata cache + background throttle; ARTIST type only. */
-  private async resolveArtistTagNames(tags: string[]): Promise<string[]> {
+  /** Reuses tag_metadata cache; ARTIST type only. Interactive path uses user throttle. */
+  private async resolveArtistTagNames(
+    tags: string[],
+    signal: AbortSignal
+  ): Promise<string[]> {
+    if (signal.aborted) {
+      return [];
+    }
     const uniqueTags = [
       ...new Set(
         tags
@@ -429,16 +460,22 @@ export class ArtistsController extends BaseController {
           uniqueTags,
           cache,
           providerSettings,
-          "searchRemoteTags:artistOnly"
+          "searchRemoteTags:artistOnly",
+          { priority: "user", signal }
         );
       } catch (error) {
-        log.error(
-          "[ArtistsController] Artist tag resolve failed:",
-          error
-        );
+        if (!isAbortError(error) && !signal.aborted) {
+          log.error(
+            "[ArtistsController] Artist tag resolve failed:",
+            error
+          );
+        }
       }
     }
 
+    if (signal.aborted) {
+      return [];
+    }
     return uniqueTags.filter(
       (tag) => cache.foundTypes.get(tag) === TAG_TYPES.ARTIST
     );

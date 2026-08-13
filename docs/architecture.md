@@ -110,7 +110,7 @@ RuleDesk is built on Electron, which runs two separate processes:
 
 When you click "Add Artist" in the UI:
 
-1. **Tag search** — `AsyncAutocomplete` calls `searchRemoteTags(query, provider, artistOnly=true)` after 300ms debounce. Gelbooru autocomplete2 includes `category` (`artist` / `character` / `copyright`); Main keeps `type === "artist"` only. Rule34 `autocomplete.php` has no category — Main takes the top 5 hits by label post_count and second-passes them through `tag_metadata` + DAPI `s=tag` (`TAG_TYPES.ARTIST`, background throttle). No match → empty list (not unfiltered tags). Browse/blacklist autocomplete still call `searchRemoteTags` without `artistOnly`.
+1. **Tag search** — `AsyncAutocomplete` calls `searchRemoteTags(query, provider, artistOnly=true)` after 300ms debounce. Gelbooru autocomplete2 includes `category` (`artist` / `character` / `copyright`); Main keeps `type === "artist"` only. Rule34 `autocomplete.php` has no category — Main takes the top 5 hits by label post_count and second-passes them through `tag_metadata` + DAPI `s=tag` (`TAG_TYPES.ARTIST`, **`user` throttle**). A new Add Artist query **aborts** the previous Main wave (`AbortController` → `throttle.wait` + axios); renderer abort alone does not cancel `invoke`. No match → empty list (not unfiltered tags). Browse tag-resolve stays `background`. Browse/blacklist autocomplete still call `searchRemoteTags` without `artistOnly`.
 2. React component calls `window.api.addArtist(data)`
 3. Preload script forwards request to Main Process via IPC
 4. IPC Handler validates input using Zod schemas
@@ -613,7 +613,7 @@ const posts = await db.query.posts.findMany({
    - `allowedDomains` is the full host list for CSP (`getAllProviderDomains`: API + CDN). `cdnDomains` is the media-CDN subset for video-proxy `isAllowedCdnUrl` (`getAllProviderCdnDomains`; exact hostname match, no suffix wildcard). Gelbooru media CDN is `img4.gelbooru.com`; `gelbooru.com` is the API/site host and is not proxied.
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
    - Shared request pacing via `ProviderThrottle` (~1200ms + jitter) and session UA via `pickRandomUA()`
-   - **Priorities:** `user` (Sync `fetchPosts`, Browse/search `fetchPosts`, autocomplete) drains before `background` (tag-resolve). Same min-interval; order only.
+   - **Priorities:** `user` (Sync `fetchPosts`, Browse/search `fetchPosts`, autocomplete, Add Artist DAPI second-pass) drains before `background` (Browse tag-resolve). Same min-interval; order only. Add Artist aborts superseded throttle waiters; intervals are unchanged.
    - **Host 429 gate:** any consumer calls `notifyRateLimited(retryAfterMs?)`; all waiters honor it (`background` fails fast, `user` waits up to `USER_GATE_WAIT_CEILING_MS` then fails with typed rate_limit)
 
 9. **Video Proxy Service** (`src/main/services/video-proxy-server.ts`)

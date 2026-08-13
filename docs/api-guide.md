@@ -1184,7 +1184,7 @@ Searches for tags using booru autocomplete API (multi-provider support).
 
 - `query: string` - Search query string (minimum 2 characters)
 - `provider?: ProviderId` - Provider ID ("rule34" or "gelbooru"), defaults to "rule34"
-- `artistOnly?: boolean` - When `true` (Add Artist modal), return artist tags only. Gelbooru filters `SearchResults.type === "artist"` (from autocomplete2 `category`). Rule34 autocomplete.php has no category field — second-pass resolves the top 5 results by post_count via `tag_metadata` / DAPI `s=tag` (`TAG_TYPES.ARTIST`). Empty list if none match (no unfiltered fallback). Browse, blacklist, and playlist autocomplete omit this flag.
+- `artistOnly?: boolean` - When `true` (Add Artist modal), return artist tags only. Gelbooru filters `SearchResults.type === "artist"` (from autocomplete2 `category`). Rule34 autocomplete.php has no category field — second-pass resolves the top 5 results by post_count via `tag_metadata` / DAPI `s=tag` (`TAG_TYPES.ARTIST`, `user` throttle priority). A newer `artistOnly` call aborts the previous Main wave (throttle waiters leave the queue). Empty list if none match (no unfiltered fallback). Browse, blacklist, and playlist autocomplete omit this flag.
 
 **Returns:** `Promise<SearchResults[]>`
 

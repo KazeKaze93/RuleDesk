@@ -5,7 +5,12 @@ import type * as schema from "../db/schema";
 import { TAG_TYPES, tagMetadata } from "../db/schema";
 import { getProvider } from "../providers";
 import type { IBooruProvider, ProviderSettings } from "../providers/types";
-import type { ProviderThrottle } from "../providers/provider-throttle";
+import {
+  createAbortError,
+  isAbortError,
+  type ProviderThrottle,
+  type ThrottlePriority,
+} from "../providers/provider-throttle";
 import {
   fetchRule34TagMetadata,
   Rule34TagRateLimitError,
@@ -139,25 +144,39 @@ export function loadTagMetadataCache(
   return { foundTypes, activeNotFound };
 }
 
+export type TagResolveWaveOptions = {
+  priority?: ThrottlePriority;
+  signal?: AbortSignal;
+};
+
 async function lookupTagFromApi(
   tagName: string,
-  settings: ProviderSettings
+  settings: ProviderSettings,
+  options: TagResolveWaveOptions = {}
 ): Promise<TagLookupResult> {
   const provider = getRule34TagProvider();
+  const signal = options.signal;
 
   for (
     let attempt = 0;
     attempt <= TAG_RESOLVE_MAX_RATE_LIMIT_RETRIES;
     attempt += 1
   ) {
+    if (signal?.aborted) {
+      throw createAbortError();
+    }
     try {
       return await fetchRule34TagMetadata(
         tagName,
         settings,
         provider.getRequestThrottle(),
-        provider.getRequestHeaders()
+        provider.getRequestHeaders(),
+        { priority: options.priority, signal }
       );
     } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
       if (error instanceof Rule34TagRateLimitError) {
         recordRateLimitBurst(error.retryAfterMs, attempt);
         if (attempt >= TAG_RESOLVE_MAX_RATE_LIMIT_RETRIES) {
@@ -176,18 +195,23 @@ async function lookupTagFromApi(
 async function lookupTagCoordinated(
   tagName: string,
   settings: ProviderSettings,
-  stats: TagResolveWaveStats
+  stats: TagResolveWaveStats,
+  options: TagResolveWaveOptions = {}
 ): Promise<TagLookupResult> {
-  const existing = inFlightLookups.get(tagName);
-  if (existing) {
-    stats.inFlightHits += 1;
-    return existing;
+  // Abortable waves (Add Artist) must not join a shared in-flight promise —
+  // that promise may belong to a superseded wave with a different signal.
+  if (!options.signal) {
+    const existing = inFlightLookups.get(tagName);
+    if (existing) {
+      stats.inFlightHits += 1;
+      return existing;
+    }
   }
 
   const lookupPromise = (async (): Promise<TagLookupResult> => {
     stats.apiCalls += 1;
     try {
-      return await lookupTagFromApi(tagName, settings);
+      return await lookupTagFromApi(tagName, settings, options);
     } catch (error) {
       if (error instanceof Rule34TagRateLimitError) {
         stats.rateLimitedCount += 1;
@@ -196,12 +220,16 @@ async function lookupTagCoordinated(
     }
   })();
 
-  inFlightLookups.set(tagName, lookupPromise);
+  if (!options.signal) {
+    inFlightLookups.set(tagName, lookupPromise);
+  }
 
   try {
     return await lookupPromise;
   } finally {
-    inFlightLookups.delete(tagName);
+    if (!options.signal) {
+      inFlightLookups.delete(tagName);
+    }
   }
 }
 
@@ -282,7 +310,8 @@ export async function resolveTagMetadataWave(
   uniqueTags: string[],
   cache: TagMetadataCacheState,
   settings: ProviderSettings,
-  context: string
+  context: string,
+  options: TagResolveWaveOptions = {}
 ): Promise<TagResolveWaveStats> {
   const stats: TagResolveWaveStats = {
     requested: uniqueTags.length,
@@ -312,9 +341,17 @@ export async function resolveTagMetadataWave(
   const lookupResults = await Promise.all(
     missingTags.map(async (tagName) => {
       try {
-        const result = await lookupTagCoordinated(tagName, settings, stats);
+        const result = await lookupTagCoordinated(
+          tagName,
+          settings,
+          stats,
+          options
+        );
         return { tagName, result };
       } catch (error) {
+        if (isAbortError(error) || options.signal?.aborted) {
+          return { tagName, result: null };
+        }
         if (error instanceof Rule34TagRateLimitError) {
           log.warn(
             `[TagResolve] ${context}: giving up on "${tagName}" after rate limit retries`

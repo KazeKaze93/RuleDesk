@@ -172,7 +172,8 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
-| `feat/add-artist-autocomplete-artist-only` | 🔄 started | Add Artist autocomplete: Gelbooru `category===artist`; Rule34 top-5 DAPI second-pass; Browse search unfiltered |
+| `fix/artist-autocomplete-throttle-cancellation` | 🔄 started | Add Artist second-pass: `user` throttle + Main abort of superseded waves; intervals unchanged |
+| `feat/add-artist-autocomplete-artist-only` | ✅ merged | [#150](https://github.com/KazeKaze93/RuleDesk/pull/150) — Add Artist autocomplete: Gelbooru `category===artist`; Rule34 top-5 DAPI second-pass; Browse search unfiltered |
 | `feat/sync-status-live-ui` | ✅ merged | [#149](https://github.com/KazeKaze93/RuleDesk/pull/149) — invalidate `["artists"]` on `sync:artist` + repair start/end; preload wires `REPAIR_*`; `sync:progress` payload unchanged |
 | `feat/sync-status-write-and-recovery` | ✅ merged | [#148](https://github.com/KazeKaze93/RuleDesk/pull/148) — persist per-artist `syncStatus` / `lastError`; `resetStaleSyncingArtists` on DB init |
 | `feat/remote-ai-filter-via-tags-injection` | ✅ merged | [#147](https://github.com/KazeKaze93/RuleDesk/pull/147) — Browse Source: All — Rule34 AI hide/only via tag injection into `searchBooru`; Gelbooru stays worker-only; defensive conflict → worker fallback |

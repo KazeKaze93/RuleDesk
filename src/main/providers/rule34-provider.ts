@@ -22,7 +22,12 @@ import {
 } from "../../shared/utils/provider-tag-sanitize";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
-import { ProviderThrottle, pickRandomUA, ProviderRateLimitGateError } from "./provider-throttle";
+import {
+  ProviderThrottle,
+  pickRandomUA,
+  ProviderRateLimitGateError,
+  isAbortError,
+} from "./provider-throttle";
 import { ProviderSearchError, isProviderSearchError } from "./provider-search-errors";
 import { getProxyAgent } from "../lib/proxy";
 import { redactErrorForLog } from "../lib/redact-error";
@@ -150,9 +155,9 @@ export class Rule34Provider implements IBooruProvider {
     }
   }
 
-  private async waitForUserSlot(): Promise<void> {
+  private async waitForUserSlot(signal?: AbortSignal): Promise<void> {
     try {
-      await this.throttle.wait("user");
+      await this.throttle.wait("user", signal);
     } catch (error) {
       if (error instanceof ProviderRateLimitGateError) {
         throw new ProviderSearchError("rate_limit", undefined, error.retryAfterMs);
@@ -174,7 +179,7 @@ export class Rule34Provider implements IBooruProvider {
     const safeQuery = sanitizeProviderTagQuery(query);
     if (safeQuery.length < 2) return [];
     try {
-      await this.waitForUserSlot();
+      await this.waitForUserSlot(signal);
       const params = new URLSearchParams({ q: safeQuery });
       const { data } = await axios.get<R34AutocompleteItem[]>(
         `https://api.rule34.xxx/autocomplete.php?${params.toString()}`,
@@ -197,8 +202,8 @@ export class Rule34Provider implements IBooruProvider {
       }
       return [];
     } catch (error) {
-      if (axios.isCancel(error)) {
-        return []; // Request was cancelled, return empty array
+      if (axios.isCancel(error) || isAbortError(error)) {
+        return [];
       }
       if (error instanceof ProviderSearchError) {
         throw error;

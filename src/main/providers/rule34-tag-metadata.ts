@@ -9,7 +9,9 @@ import {
 import type { ProviderSettings } from "./types";
 import {
   ProviderRateLimitGateError,
+  createAbortError,
   type ProviderThrottle,
+  type ThrottlePriority,
 } from "./provider-throttle";
 
 const R34TagResponseSchema = z
@@ -146,19 +148,32 @@ export type Rule34TagMetadataLookupResult =
   | { status: "found"; entry: Rule34TagMetadataEntry }
   | { status: "not_found" };
 
+export type FetchRule34TagMetadataOptions = {
+  /** Default `background` (Browse tag-resolve). Add Artist second-pass uses `user`. */
+  priority?: ThrottlePriority;
+  signal?: AbortSignal;
+};
+
 export async function fetchRule34TagMetadata(
   tagName: string,
   settings: ProviderSettings,
   throttle: ProviderThrottle,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  options: FetchRule34TagMetadataOptions = {}
 ): Promise<Rule34TagMetadataLookupResult> {
+  const priority = options.priority ?? "background";
+  const signal = options.signal;
   try {
-    await throttle.wait("background");
+    await throttle.wait(priority, signal);
   } catch (error) {
     if (error instanceof ProviderRateLimitGateError) {
       throw new Rule34TagRateLimitError(error.retryAfterMs);
     }
     throw error;
+  }
+
+  if (signal?.aborted) {
+    throw createAbortError();
   }
 
   const params = new URLSearchParams({
@@ -181,6 +196,7 @@ export async function fetchRule34TagMetadata(
 
   const response = await axios.get<string>(url, {
     timeout: TAG_RESOLVE_REQUEST_TIMEOUT_MS,
+    signal,
     headers: {
       ...headers,
       "Accept-Encoding": "identity",

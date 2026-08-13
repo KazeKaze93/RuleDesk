@@ -304,4 +304,28 @@ describe("tag-resolve-coordinator", () => {
     expect(remaining.some((row) => row.name === "fresh_miss")).toBe(true);
     expect(remaining.some((row) => row.name === "expired_miss")).toBe(false);
   });
+
+  it("forwards user priority and abort signal to tag metadata fetch", async () => {
+    fetchRule34TagMetadataMock.mockResolvedValue({
+      status: "found",
+      entry: { name: "wlop", type: TAG_TYPES.ARTIST },
+    });
+    const abortController = new AbortController();
+
+    await resolveTagMetadataWave(
+      mockDb.db,
+      ["wlop"],
+      loadTagMetadataCache(mockDb.db, ["wlop"]),
+      { userId: "1", apiKey: "k" },
+      "searchRemoteTags:artistOnly",
+      { priority: "user", signal: abortController.signal }
+    );
+
+    expect(fetchRule34TagMetadataMock).toHaveBeenCalledTimes(1);
+    const options = fetchRule34TagMetadataMock.mock.calls[0][4];
+    expect(options).toMatchObject({
+      priority: "user",
+      signal: abortController.signal,
+    });
+  });
 });
