@@ -5,6 +5,12 @@
  * remote results (source=all). Local Favorites/Subscriptions apply those
  * filters in SQL before LIMIT/OFFSET and do not use this worker.
  *
+ * AI filter path:
+ * - Rule34: prefer API tag injection in Browse (exclude / OR-group); worker AI
+ *   is skipped when injection succeeds (aiFilter passed as "all").
+ * - Gelbooru (and Rule34 conflict fallback): worker AI remains the filter path.
+ * - Media type + sort still run here for remote Browse when enabled.
+ *
  * This worker runs in a separate thread and cannot access:
  * - Node.js modules (fs, path, etc.)
  * - DOM APIs

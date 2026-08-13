@@ -123,7 +123,9 @@ const allPosts: Post[] = data?.pages.flatMap((page: Post[]) => page) || [];
 
 **Scenario:** Infinite scroll on the Browse page against the live booru API (`searchBooru`). Rule34 offset pagination is capped at four pages; deeper scroll uses cursor pagination via `beforePostId` / `nextBeforePostId`.
 
-Browse **Favorites** / **Subscriptions** do not use this remote helper: they call `getArtistPosts` with `isFavorited` / `sinceTracking` and pass `aiFilter` / `mediaType` / `sortOrder` into SQL so filters apply before `LIMIT`/`OFFSET`. The React Query key is `buildBrowseSearchQueryKey({ tags, source, aiFilter, mediaType, sortOrder })`.
+Browse **Favorites** / **Subscriptions** do not use this remote helper: they call `getArtistPosts` with `isFavorited` / `sinceTracking` and pass `aiFilter` / `mediaType` / `sortOrder` into SQL so filters apply before `LIMIT`/`OFFSET`. The React Query key is `buildBrowseSearchQueryKey({ tags, source, aiFilter, mediaType, sortOrder })` (chip tags + `aiFilter`; injected AI tokens are request-only).
+
+On **Source: All** with provider **Rule34**, Browse appends AI filter tags to the `searchBooru` request via `buildRemoteBooruTagListForIpc` (`hide` → exclude tokens; `only` → OR-group). Conflict with the user's own AI chips skips injection and keeps worker AI filtering. **Gelbooru** does not inject (worker-only) until separately verified.
 
 Prefer `useGalleryInfiniteScroll` + `getSearchBrowseNextPageParam` (see `src/renderer/components/pages/Browse.tsx`) instead of hand-rolling page numbers:
 
