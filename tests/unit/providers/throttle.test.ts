@@ -126,7 +126,9 @@ describe("ProviderThrottle priority and 429 gate", () => {
     const startedAt = Date.now();
     await throttle.wait("user");
     const elapsedMs = Date.now() - startedAt;
-    expect(elapsedMs).toBeGreaterThanOrEqual(40);
+    // Remaining min-interval after sleep(10) is ~40ms; CI clocks can land at 39.
+    // Still must be paced (not instant) and far below 5×50ms stale-queue delay.
+    expect(elapsedMs).toBeGreaterThanOrEqual(25);
     expect(elapsedMs).toBeLessThan(200);
   });
 

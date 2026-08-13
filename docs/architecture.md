@@ -693,7 +693,8 @@ const posts = await db.query.posts.findMany({
 
    - **Pages:**
 
-    - **Updates.tsx** / **Browse.tsx** / **Favorites.tsx** / **PlaylistsPage.tsx** / **StatsPage.tsx** — `src/renderer/components/pages/`
+    - **Updates.tsx** / **Browse.tsx** / **Favorites.tsx** / **PlaylistsPage.tsx** / **StatsPage.tsx** — `src/renderer/components/pages/` (`PlaylistsPage` is list/CRUD; gallery lives under `components/playlists/`)
+    - **PlaylistCard.tsx** / **PlaylistGallery.tsx** / **PlaylistVirtuosoComponents.tsx** / **AddToPlaylistModal.tsx** / **QuickAddToPlaylistMenu.tsx** — `src/renderer/components/playlists/`
     - **Tracked.tsx** / **ArtistDetails.tsx** / **ArtistGallery.tsx** — `src/renderer/features/artists/`
     - **Settings.tsx** — `src/renderer/features/settings/Settings.tsx` (tabbed IA)
 
@@ -1662,10 +1663,16 @@ src/
 │   │   ├── pages/                  # Page components
 │   │   │   ├── Browse.tsx
 │   │   │   ├── Favorites.tsx
-│   │   │   ├── PlaylistsPage.tsx
+│   │   │   ├── PlaylistsPage.tsx   # Playlist list + CRUD/import-export
 │   │   │   ├── StatsPage.tsx
 │   │   │   ├── Updates.tsx
 │   │   │   └── ...
+│   │   ├── playlists/              # Playlist UI (card, gallery, virtuoso, add menus)
+│   │   │   ├── PlaylistCard.tsx
+│   │   │   ├── PlaylistGallery.tsx
+│   │   │   ├── PlaylistVirtuosoComponents.tsx
+│   │   │   ├── AddToPlaylistModal.tsx
+│   │   │   └── QuickAddToPlaylistMenu.tsx
 │   │   ├── ui/                     # shadcn/ui components
 │   │   │   └── ...
 │   ├── features/                  # Feature modules
@@ -1855,7 +1862,7 @@ Root:
 - ✅ **Database Tables:** `playlists` table (`id`, `name`, `is_smart`, `query_json`, `icon_name`, `created_at`) and `playlist_entries` table (`playlist_id`, `post_id`, `added_at`) with proper indexes and composite primary key
 - ✅ **Playlist Management:** Full CRUD operations via `PlaylistController` (create, read, update, delete playlists)
 - ✅ **Add to Playlist:** Quick add menu (`QuickAddToPlaylistMenu`) on Post Cards and in viewer dialog
-- ✅ **Playlists Page:** Dedicated `PlaylistsPage` component in Sidebar navigation
+- ✅ **Playlists Page:** Dedicated `PlaylistsPage` component in Sidebar navigation (list + CRUD/import-export; `PlaylistGallery` + Virtuoso wrappers under `components/playlists/`)
 - ✅ **Playlist Gallery:** Grid and masonry view modes with filtering (FTS5 tag search, media type, AI filter) and date-oriented sorting
 - ✅ **Smart Playlists:** Support for dynamic playlists with tag-based queries (auto-fill based on tags)
 - ✅ **FTS5 Integration:** Fast tag searching within playlists using FTS5 full-text search

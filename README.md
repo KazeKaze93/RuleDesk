@@ -413,7 +413,7 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 - ✅ **Database Tables:** `playlists` table (`id`, `name`, `is_smart`, `query_json`, `icon_name`, `created_at`) and `playlist_entries` table (`playlist_id`, `post_id`, `added_at`) with proper indexes
 - ✅ **Playlist Management:** Create, rename, delete playlists with full CRUD operations
 - ✅ **Add to Playlist:** Quick add menu on Post Cards and in viewer dialog
-- ✅ **Playlists Page:** Dedicated page in Sidebar with playlist list and gallery views
+- ✅ **Playlists Page:** Dedicated page in Sidebar with playlist list (`PlaylistsPage`) and gallery views (`PlaylistGallery`)
 - ✅ **Playlist Gallery:** Grid and masonry view modes with filtering, sorting, and search
 - ✅ **Smart Playlists:** Support for dynamic playlists with tag-based queries (auto-fill based on tags)
 - ✅ **Hybrid Smart Search:** Smart collections resolve posts from local DB and remote API, merge, and deduplicate results
