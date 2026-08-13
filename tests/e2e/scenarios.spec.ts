@@ -63,88 +63,27 @@ test.describe('User Journeys', () => {
     // Fill the tag input
     const tagInput = addArtistDialog.locator('input[placeholder*="Search on"]');
     await expect(tagInput).toBeVisible({ timeout: 3000 });
-    
-    // Use a real tag for realism (sakimichan is a popular artist tag)
+
     const testTag = 'sakimichan';
-    
-    // Clear any existing value first
+    const testTagPattern = new RegExp(testTag, 'i');
+
     await tagInput.clear();
-    await page.waitForTimeout(100);
-    
-    // Type the tag character by character to simulate real user input
-    // This triggers handleTagChange which sets the value via react-hook-form
-    await tagInput.type(testTag, { delay: 30 });
-    
-    // Wait for debounce (300ms) + potential API call
-    await page.waitForTimeout(800);
-    
-    // Option 1: Try to select from dropdown if it appears (user clicks on suggestion)
-    const dropdownOption = addArtistDialog.locator('[role="option"]').first();
-    const hasDropdown = await dropdownOption.isVisible({ timeout: 2000 }).catch(() => false);
-    
-    if (hasDropdown) {
-      console.log('[E2E] Dropdown appeared, selecting first option');
-      await dropdownOption.click();
-      
-      // After selecting from dropdown, AsyncAutocomplete clears the input
-      // but react-hook-form should update it via setValue
-      // Wait for the value to be set by react-hook-form
-      await page.waitForFunction(
-        (expectedTag) => {
-          const input = document.querySelector('input[placeholder*="Search on"]') as HTMLInputElement;
-          return input && input.value.toLowerCase().includes(expectedTag.toLowerCase());
-        },
-        testTag.toLowerCase(),
-        { timeout: 5000 }
-      ).catch(() => {
-        // If waitForFunction fails, try to get the value directly
-        console.log('[E2E] Warning: waitForFunction failed, checking input value directly');
-      });
-      
-      await page.waitForTimeout(500);
-    } else {
-      // Option 2: User typed text directly (no dropdown or user wants to use typed text)
-      // The value is already set via handleTagChange, just need to ensure it's committed
-      console.log('[E2E] No dropdown, using typed text directly');
-      // Press Tab or blur to ensure the value is committed
-      await tagInput.press('Tab');
-      await page.waitForTimeout(300);
+    await tagInput.pressSequentially(testTag, { delay: 30 });
+
+    const matchingOption = addArtistDialog
+      .locator('[role="option"]')
+      .filter({ hasText: testTagPattern })
+      .first();
+    const hasMatchingOption = await matchingOption
+      .isVisible({ timeout: 4000 })
+      .catch(() => false);
+
+    if (hasMatchingOption) {
+      await matchingOption.click();
     }
+
+    await expect(tagInput).toHaveValue(testTagPattern);
     
-    // Verify that the input has the value
-    // In controlled mode (react-hook-form), the value might be set via setValue
-    // So we need to wait a bit for the form state to update
-    await page.waitForTimeout(500);
-    
-    const inputValue = await tagInput.inputValue();
-    
-    // If input is empty but dropdown was selected, the value might be in react-hook-form state
-    // Check if the submit button is enabled (which means form has a valid tag value)
-    if (inputValue.length === 0) {
-      console.log('[E2E] Input appears empty, checking if form state has value via submit button state');
-      const submitButton = addArtistDialog.getByRole('button', { name: 'Start Tracking' });
-      const isEnabled = await submitButton.isEnabled({ timeout: 2000 }).catch(() => false);
-      
-      if (isEnabled) {
-        // Button is enabled, which means form has a valid tag value
-        // The input might be cleared but form state has the value
-        console.log('[E2E] Submit button is enabled, form has valid tag value (input may be cleared by AsyncAutocomplete)');
-      } else {
-        // Button is disabled, form doesn't have a value - this is an error
-        throw new Error(`Input value is empty and submit button is disabled. Expected tag: ${testTag}`);
-      }
-    } else {
-      // Input has value, verify it matches
-      expect(inputValue.length).toBeGreaterThan(0);
-      expect(inputValue.toLowerCase()).toContain(testTag.toLowerCase());
-    }
-    
-    // Wait a bit more for react-hook-form to update the form state
-    await page.waitForTimeout(500);
-    
-    // Find the submit button - it should be visible in the modal
-    // The button text is "Start Tracking" (from AddArtistModal.tsx line 170)
-    // Use a more reliable selector - find by text within the form
     const submitButton = addArtistDialog.getByRole('button', { name: 'Start Tracking' });
     
     // Check if button exists and is visible

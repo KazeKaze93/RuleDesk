@@ -1,172 +1,375 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+// @vitest-environment jsdom
+import { createElement, act, type ReactNode } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useGalleryInfiniteScroll } from "@/renderer/hooks/useGalleryInfiniteScroll";
+import { getSearchBrowseNextPageParam } from "@/renderer/utils/react-query-cache";
+import type { SearchBooruPageResult } from "@/shared/schemas/search";
 
-// Mock electron-log
-vi.mock("electron-log/renderer", () => ({
-  default: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  },
-}));
+const POSTS_PER_PAGE = 50;
+const DEFAULT_DEBOUNCE_MS = 150;
 
-// Mock React hooks
-vi.mock("react", () => ({
-  useCallback: <T>(fn: T) => fn,
-  useEffect: (fn: () => void | (() => void)) => {
-    // Return cleanup function
-    return fn();
-  },
-  useRef: <T>(initial: T) => ({ current: initial }),
-}));
+type PostItem = { id: number };
 
-// Mock @tanstack/react-query
-const mockUseInfiniteQuery = vi.fn();
-vi.mock("@tanstack/react-query", () => ({
-  useInfiniteQuery: (options: unknown) => mockUseInfiniteQuery(options),
-}));
+type BrowsePage = SearchBooruPageResult<PostItem>;
 
-// Test pagination logic directly (without React rendering)
-describe("useGalleryInfiniteScroll - Pagination Logic", () => {
+function makeItems(count: number, startId = 1): PostItem[] {
+  return Array.from({ length: count }, (_, index) => ({ id: startId + index }));
+}
+
+function createQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: Infinity,
+      },
+    },
+  });
+}
+
+async function flushAct(): Promise<void> {
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
+async function waitForCondition(
+  assertion: () => void,
+  maxTicks = 80
+): Promise<void> {
+  let lastError: unknown;
+  for (let tick = 0; tick < maxTicks; tick += 1) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await flushAct();
+    }
+  }
+  throw lastError;
+}
+
+type MountedHook<TApi> = {
+  result: { current: TApi | null };
+  unmount: () => void;
+};
+
+function mountHook<TApi>(
+  queryClient: QueryClient,
+  renderHook: () => TApi
+): MountedHook<TApi> {
+  const result: { current: TApi | null } = { current: null };
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root: Root = createRoot(container);
+
+  function Harness(): ReactNode {
+    result.current = renderHook();
+    return null;
+  }
+
+  act(() => {
+    root.render(
+      createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        createElement(Harness)
+      )
+    );
+  });
+
+  return {
+    result,
+    unmount: () => {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    },
+  };
+}
+
+describe("useGalleryInfiniteScroll", () => {
+  let queryClient: QueryClient;
+
   beforeEach(() => {
-    vi.clearAllMocks();
+    queryClient = createQueryClient();
+    Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.useRealTimers();
+    queryClient.clear();
   });
 
-  describe("Default pagination logic (Local DB)", () => {
-    it("should return next page if last page has exactly POSTS_PER_PAGE items", () => {
-      const POSTS_PER_PAGE = 50;
-      const lastPage = Array.from({ length: 50 }, (_, i) => ({ id: i + 1 }));
-      const allPages = [lastPage];
+  describe("default pagination (local DB page size)", () => {
+    it("sets hasNextPage when the last page has exactly POSTS_PER_PAGE items", async () => {
+      const fetchFn = vi.fn(async () => makeItems(POSTS_PER_PAGE));
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["gallery-default-full"],
+          fetchFn,
+          initialPageParam: 1,
+        })
+      );
 
-      const defaultGetNextPageParam = (
-        lastPage: unknown[],
-        allPages: unknown[][]
-      ) => {
-        return lastPage.length === POSTS_PER_PAGE
-          ? allPages.length + 1
-          : undefined;
-      };
+      await waitForCondition(() => {
+        expect(result.current?.allPosts).toHaveLength(POSTS_PER_PAGE);
+        expect(result.current?.hasNextPage).toBe(true);
+      });
 
-      const result = defaultGetNextPageParam(lastPage, allPages);
-      expect(result).toBe(2);
+      unmount();
     });
 
-    it("should return undefined if last page has less than POSTS_PER_PAGE items", () => {
-      const POSTS_PER_PAGE = 50;
-      const lastPage = Array.from({ length: 30 }, (_, i) => ({ id: i + 1 }));
-      const allPages = [lastPage];
+    it("clears hasNextPage when the last page is shorter than POSTS_PER_PAGE", async () => {
+      const fetchFn = vi.fn(async () => makeItems(30));
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["gallery-default-partial"],
+          fetchFn,
+          initialPageParam: 1,
+        })
+      );
 
-      const defaultGetNextPageParam = (
-        lastPage: unknown[],
-        allPages: unknown[][]
-      ) => {
-        return lastPage.length === POSTS_PER_PAGE
-          ? allPages.length + 1
-          : undefined;
-      };
+      await waitForCondition(() => {
+        expect(result.current?.allPosts).toHaveLength(30);
+        expect(result.current?.hasNextPage).toBe(false);
+      });
 
-      const result = defaultGetNextPageParam(lastPage, allPages);
-      expect(result).toBeUndefined();
+      unmount();
     });
 
-    it("should return undefined if last page is empty", () => {
-      const POSTS_PER_PAGE = 50;
-      const lastPage: unknown[] = [];
-      const allPages = [lastPage];
+    it("clears hasNextPage when the last page is empty", async () => {
+      const fetchFn = vi.fn(async (): Promise<PostItem[]> => []);
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["gallery-default-empty"],
+          fetchFn,
+          initialPageParam: 1,
+        })
+      );
 
-      const defaultGetNextPageParam = (
-        lastPage: unknown[],
-        allPages: unknown[][]
-      ) => {
-        return lastPage.length === POSTS_PER_PAGE
-          ? allPages.length + 1
-          : undefined;
-      };
+      await waitForCondition(() => {
+        expect(result.current?.allPosts).toEqual([]);
+        expect(result.current?.hasNextPage).toBe(false);
+      });
 
-      const result = defaultGetNextPageParam(lastPage, allPages);
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe("Custom pagination logic (External API - Browse)", () => {
-    it("should continue loading if page has any posts", () => {
-      const lastPage = Array.from({ length: 30 }, (_, i) => ({ id: i + 1 }));
-      const allPages = [lastPage];
-
-      const browseGetNextPageParam = (
-        lastPage: unknown[],
-        allPages: unknown[][]
-      ) => {
-        if (lastPage.length === 0) return undefined;
-        return allPages.length + 1;
-      };
-
-      const result = browseGetNextPageParam(lastPage, allPages);
-      expect(result).toBe(2);
-    });
-
-    it("should stop loading only when page is empty", () => {
-      const lastPage: unknown[] = [];
-      const allPages = [lastPage];
-
-      const browseGetNextPageParam = (
-        lastPage: unknown[],
-        allPages: unknown[][]
-      ) => {
-        if (lastPage.length === 0) return undefined;
-        return allPages.length + 1;
-      };
-
-      const result = browseGetNextPageParam(lastPage, allPages);
-      expect(result).toBeUndefined();
-    });
-
-    it("should continue loading even with less than 50 posts", () => {
-      const lastPage = Array.from({ length: 10 }, (_, i) => ({ id: i + 1 }));
-      const allPages = [lastPage];
-
-      const browseGetNextPageParam = (
-        lastPage: unknown[],
-        allPages: unknown[][]
-      ) => {
-        if (lastPage.length === 0) return undefined;
-        return allPages.length + 1;
-      };
-
-      const result = browseGetNextPageParam(lastPage, allPages);
-      expect(result).toBe(2); // Should continue even with 10 posts
+      unmount();
     });
   });
 
-  describe("Pagination edge cases", () => {
-    it("should handle multiple pages correctly", () => {
-      const page1 = Array.from({ length: 50 }, (_, i) => ({ id: i + 1 }));
-      const page2 = Array.from({ length: 50 }, (_, i) => ({ id: i + 51 }));
-      const page3 = Array.from({ length: 30 }, (_, i) => ({ id: i + 101 }));
-      const allPages = [page1, page2, page3];
+  describe("Browse pagination via getSearchBrowseNextPageParam", () => {
+    it("keeps hasNextPage when the API reports hasMore on a partial visible page", async () => {
+      const fetchFn = vi.fn(
+        async (): Promise<BrowsePage> => ({
+          posts: makeItems(30),
+          hasMore: true,
+          apiFetchedCount: POSTS_PER_PAGE,
+          nextBeforePostId: 100,
+        })
+      );
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll<BrowsePage, PostItem, unknown[], number>({
+          queryKey: ["gallery-browse-has-more"],
+          fetchFn,
+          initialPageParam: 1,
+          flattenPage: (page) => page.posts,
+          getNextPageParam: (lastPage, allPages) =>
+            getSearchBrowseNextPageParam(lastPage, allPages, POSTS_PER_PAGE),
+        })
+      );
 
-      const defaultGetNextPageParam = (
-        lastPage: unknown[],
-        allPages: unknown[][]
-      ) => {
-        const POSTS_PER_PAGE = 50;
-        return lastPage.length === POSTS_PER_PAGE
-          ? allPages.length + 1
-          : undefined;
-      };
+      await waitForCondition(() => {
+        expect(result.current?.allPosts).toHaveLength(30);
+        expect(result.current?.hasNextPage).toBe(true);
+      });
 
-      // Test page 1 -> page 2
-      expect(defaultGetNextPageParam(page1, [page1])).toBe(2);
+      unmount();
+    });
 
-      // Test page 2 -> page 3
-      expect(defaultGetNextPageParam(page2, [page1, page2])).toBe(3);
+    it("clears hasNextPage when the API returned zero rows", async () => {
+      const fetchFn = vi.fn(
+        async (): Promise<BrowsePage> => ({
+          posts: [],
+          hasMore: false,
+          apiFetchedCount: 0,
+        })
+      );
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll<BrowsePage, PostItem, unknown[], number>({
+          queryKey: ["gallery-browse-empty"],
+          fetchFn,
+          initialPageParam: 1,
+          flattenPage: (page) => page.posts,
+          getNextPageParam: (lastPage, allPages) =>
+            getSearchBrowseNextPageParam(lastPage, allPages, POSTS_PER_PAGE),
+        })
+      );
 
-      // Test page 3 (last, < 50) -> stop
-      expect(defaultGetNextPageParam(page3, allPages)).toBeUndefined();
+      await waitForCondition(() => {
+        expect(result.current?.allPosts).toEqual([]);
+        expect(result.current?.hasNextPage).toBe(false);
+      });
+
+      unmount();
+    });
+  });
+
+  describe("debounce, unmount cleanup, and at-bottom handler", () => {
+    it("does not fetch the next page until the default 150ms debounce elapses", async () => {
+      const fetchFn = vi.fn(async (page: number) =>
+        makeItems(POSTS_PER_PAGE, (page - 1) * POSTS_PER_PAGE + 1)
+      );
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["gallery-debounce"],
+          fetchFn,
+          initialPageParam: 1,
+        })
+      );
+
+      await waitForCondition(() => {
+        expect(result.current?.allPosts).toHaveLength(POSTS_PER_PAGE);
+        expect(result.current?.hasNextPage).toBe(true);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      vi.useFakeTimers();
+      act(() => {
+        result.current?.handleEndReached();
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(DEFAULT_DEBOUNCE_MS - 1);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      await waitForCondition(() => {
+        expect(fetchFn).toHaveBeenCalledTimes(2);
+      });
+
+      unmount();
+    });
+
+    it("resets the debounce window on rapid handleEndReached calls", async () => {
+      const fetchFn = vi.fn(async (page: number) =>
+        makeItems(POSTS_PER_PAGE, (page - 1) * POSTS_PER_PAGE + 1)
+      );
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["gallery-debounce-reset"],
+          fetchFn,
+          initialPageParam: 1,
+        })
+      );
+
+      await waitForCondition(() => {
+        expect(result.current?.hasNextPage).toBe(true);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      vi.useFakeTimers();
+      act(() => {
+        result.current?.handleEndReached();
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+      act(() => {
+        result.current?.handleEndReached();
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(DEFAULT_DEBOUNCE_MS - 1);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      await waitForCondition(() => {
+        expect(fetchFn).toHaveBeenCalledTimes(2);
+      });
+
+      unmount();
+    });
+
+    it("clears the pending debounce timer on unmount", async () => {
+      const fetchFn = vi.fn(async (page: number) =>
+        makeItems(POSTS_PER_PAGE, (page - 1) * POSTS_PER_PAGE + 1)
+      );
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["gallery-unmount-cleanup"],
+          fetchFn,
+          initialPageParam: 1,
+        })
+      );
+
+      await waitForCondition(() => {
+        expect(result.current?.hasNextPage).toBe(true);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      vi.useFakeTimers();
+      act(() => {
+        result.current?.handleEndReached();
+      });
+      unmount();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(DEFAULT_DEBOUNCE_MS + 50);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("schedules a load when handleAtBottomStateChange(true) and not when false", async () => {
+      const fetchFn = vi.fn(async (page: number) =>
+        makeItems(POSTS_PER_PAGE, (page - 1) * POSTS_PER_PAGE + 1)
+      );
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["gallery-at-bottom"],
+          fetchFn,
+          initialPageParam: 1,
+        })
+      );
+
+      await waitForCondition(() => {
+        expect(result.current?.hasNextPage).toBe(true);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      vi.useFakeTimers();
+      act(() => {
+        result.current?.handleAtBottomStateChange(false);
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(DEFAULT_DEBOUNCE_MS + 50);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        result.current?.handleAtBottomStateChange(true);
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(DEFAULT_DEBOUNCE_MS - 1);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      await waitForCondition(() => {
+        expect(fetchFn).toHaveBeenCalledTimes(2);
+      });
+
+      unmount();
     });
   });
 });

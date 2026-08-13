@@ -172,6 +172,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
+| `fix/p1-test-suite-false-confidence` | started | P1-1..P1-4: property/e2e/hook tests that could not fail on real regressions. P1-5 Gelbooru transport `[]` vs Rule34 throw — prod silent-failure, **not** fixed in this branch. |
 | `chore/split-viewer-dialog` | ✅ merged | [#153](https://github.com/KazeKaze93/RuleDesk/pull/153) — Mechanical split: `ViewerDialog` shell + `ViewerContent` / `ViewerMedia` / `TagsDrawer` / `PostNotFoundFallback`; `buildViewerOriginQueryKey` consolidation |
 | `chore/split-playlists-page` | ✅ merged | [#152](https://github.com/KazeKaze93/RuleDesk/pull/152) — Mechanical split: `PlaylistsPage` list/CRUD; `PlaylistGallery` + virtuoso wrappers under `components/playlists/` |
 | `chore/remove-dead-onboarding-component` | ✅ merged | [#145](https://github.com/KazeKaze93/RuleDesk/pull/145) — Removed `Onboarding.tsx`; first launch is Age Gate → AccountGate / `SettingsAccountTab` (no Skip) |
