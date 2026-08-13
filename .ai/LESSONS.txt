@@ -73,8 +73,12 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Invariant Rule:** Errors must surface, not swallow. On provider/IPC failure throw a typed error (`ProviderSearchError` with kind); never map failure to an empty-success shape. Rate-limit responses must propagate `retryAfterMs` and back off globally, not per-call.
 
 ### Problem: Renderer AbortController around ipcRenderer.invoke does not cancel Main work
-**Root Cause:** `invoke` is not abortable; the renderer flag only skips `setState`. Debounced autocomplete still left previous Main waves on `ProviderThrottle` (N×1200–1600 ms each).
-**Invariant Rule:** Interactive IPC that fans out to a shared throttle must abort the previous in-flight wave **in Main** on the next invoke (controller-owned `AbortController` passed into `throttle.wait` + axios). Renderer abort alone is UI-only. Do not add a third throttle priority; Add Artist second-pass uses existing `user` (FIFO with Sync). Browse tag-resolve stays `background`.
+**Root Cause:** `invoke` is not abortable; the renderer flag only skips `setState`. Debounced autocomplete still left previous Main waves on `ProviderThrottle` (N×1200–1600 ms each). `Promise.all` does not parallelize those waves — one host throttle serializes slots.
+**Invariant Rule:** Interactive IPC that fans out to a shared throttle must abort the previous in-flight wave **in Main** on the next invoke (controller-owned `AbortController` passed into `throttle.wait` + axios). Renderer abort alone is UI-only. Do not add a third throttle priority. Keystroke-driven work (Add Artist second-pass, autocomplete) uses existing `user` (FIFO with Sync); Browse tag-resolve stays `background`. Do not change min-interval/jitter to “fix” UI latency — that interval is the ban guard.
+
+### Problem: Spec-correct / unit-green interactive features still fail real typing
+**Root Cause:** Tests and one-shot probes (paste, single `q=wlop`, mocked IPC) never enqueue overlapping Main waves or sit behind `background` while a human types letter-by-letter. Add Artist artist-filter shipped green; live `cherry-gig` was 10+ s until a separate diagnosis round.
+**Invariant Rule:** Any debounce/autocomplete/keystroke IPC path needs a **live letter-by-letter Electron check** before DoD — not paste, not a single query, not mocked invoke. Log throttle wait vs HTTP per wave. “Works by spec” ≠ “works for a person typing.” Same class as LIVE ELECTRON VERIFICATION for IPC error shapes (`.cursorrules`).
 
 ## Data Integrity
 
@@ -235,8 +239,8 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 **Invariant Rule:** Prefer a slim typed instance registry (`Container` + `DI_TOKENS`, keyed by `token.id`). No cycle detection without lazy factories. Use a real IoC container only when automatic wiring or scope management is actually needed.
 
 ### Problem: Background API consumers burned the budget for user actions, and 429 state lived in one consumer
-**Root Cause:** Shared `ProviderThrottle` had no priorities (FIFO/racing sleeps); tag-resolve kept `globalRateLimitUntilMs` locally so Sync/Browse ignored an already-known host 429.
-**Invariant Rule:** A shared API budget has exactly two priorities (`user` / `background`) and one circuit-breaker per host that every consumer writes and reads. Local copies of rate-limit state are forbidden (same split-brain class as duplicated crypto helpers).
+**Root Cause:** Shared `ProviderThrottle` had no priorities (FIFO/racing sleeps); tag-resolve kept `globalRateLimitUntilMs` locally so Sync/Browse ignored an already-known host 429. Later, Add Artist second-pass was mistakenly put on `background` and sat behind Sync + piled-up waves.
+**Invariant Rule:** A shared API budget has exactly two priorities (`user` / `background`) and one circuit-breaker per host that every consumer writes and reads. Local copies of rate-limit state are forbidden (same split-brain class as duplicated crypto helpers). Keystroke/UI-initiated host calls are `user`; `background` is only non-interactive (drawer tag-resolve, etc.).
 
 ### Problem: Re-opening the window stacks duplicate `before-quit` listeners
 **Root Cause:** `app.on("before-quit", …)` was registered inside `initializeAppAndWindow()`, which tray Show/click/`activate` can call again after the window was destroyed.
