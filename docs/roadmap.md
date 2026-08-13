@@ -7,7 +7,7 @@ This document reflects the current roadmap for RuleDesk `v17.x` and is aligned w
 - [Recent Fixes & Current Status](#-recent-fixes--current-status-completed)
 - [Active Roadmap](#-active-roadmap-priority-tasks)
 - [Navigation & UX Revamp](#-navigation--ux-revamp)
-- [Subscriptions / Updates](#-subscriptions--updates)
+- [Updates feed](#-updates-feed)
 - [Security & Reliability](#-security--reliability-hardening)
 - [Milestones](#-milestones)
 - [Technical Improvements & DX](#-technical-improvements-from-audit--dx)
@@ -46,7 +46,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
 - ✅ `FiltersPanel`: AI, media, source; wired to `searchStore` and post pipelines.
-- ✅ **Browse → Source (Favorites / Subscriptions):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Local AI/media filters run in SQL before `LIMIT`. Subscriptions is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)).
+- ✅ **Browse → Source (Favorites / Browse Source Subscriptions filter):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Local AI/media filters run in SQL before `LIMIT`. The Browse Source Subscriptions filter is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)). Distinct from the unimplemented [tag-combination subscriptions feature/table](#planned-product-work).
 - ✅ Search is chip-based and supports include/exclude, OR-groups, wildcard/fuzzy token forms (`*`, `~`) in query tokens.
 
 ### B. Viewer and Gallery Polish - High Priority
@@ -75,7 +75,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - 🟡 **Optional polish (backlog, not “missing v1”):** additional tooltips for dense controls, item order tweaks for first-run discoverability, and density tuning on small windows. This is **UX refinement** on the current structure — we are **not** tracking alignment to an obsolete written wireframe; the product is what ships in the build.
 - ✅ **Masonry vs grid** — two explicit modes; **closed** as a gap ([Closed by design](#closed-by-design-not-backlog)).
 
-## 📰 Subscriptions / Updates
+## 📰 Updates feed
 
 ### Feed Enhancements
 
@@ -148,7 +148,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| — | `audit/sync-pagination-large-artists` | — | 🔄 in progress (graceful sync cancel + quit drain + FTS trigger recovery on DB init) |
+| — | `audit/sync-pagination-large-artists` | — | ✅ merged into master (no dedicated PR number): `requestCancel` / `waitUntilIdle` + quit drain (`SYNC_SHUTDOWN_DRAIN_MS` in `main.ts`) + `ensureFtsTriggers` on DB init (`fts-triggers.ts`) |
 
 ### Audit v17 — branch tracking (complete)
 
@@ -172,11 +172,12 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
-| `chore/split-viewer-dialog` | 🔄 in progress | Mechanical split of `ViewerDialog` + `buildViewerOriginQueryKey` consolidation |
+| `chore/split-viewer-dialog` | ✅ merged | [#153](https://github.com/KazeKaze93/RuleDesk/pull/153) — Mechanical split: `ViewerDialog` shell + `ViewerContent` / `ViewerMedia` / `TagsDrawer` / `PostNotFoundFallback`; `buildViewerOriginQueryKey` consolidation |
 | `chore/split-playlists-page` | ✅ merged | [#152](https://github.com/KazeKaze93/RuleDesk/pull/152) — Mechanical split: `PlaylistsPage` list/CRUD; `PlaylistGallery` + virtuoso wrappers under `components/playlists/` |
+| `chore/remove-dead-onboarding-component` | ✅ merged | [#145](https://github.com/KazeKaze93/RuleDesk/pull/145) — Removed `Onboarding.tsx`; first launch is Age Gate → AccountGate / `SettingsAccountTab` (no Skip) |
 
 - Shadow-insert cache-miss path (`PostNotFoundFallback`) is not live-tested after the ViewerDialog split — check when a natural case appears (remote playlist post absent from RQ cache); do not force a synthetic miss.
-| `fix/artist-autocomplete-throttle-cancellation` | 🔄 started | Add Artist second-pass: `user` throttle + Main abort of superseded waves; intervals unchanged |
+| `fix/artist-autocomplete-throttle-cancellation` | ✅ merged | [#151](https://github.com/KazeKaze93/RuleDesk/pull/151) — Add Artist second-pass: `user` throttle + Main abort of superseded waves; intervals unchanged |
 | `feat/add-artist-autocomplete-artist-only` | ✅ merged | [#150](https://github.com/KazeKaze93/RuleDesk/pull/150) — Add Artist autocomplete: Gelbooru `category===artist`; Rule34 top-5 DAPI second-pass; Browse search unfiltered |
 | `feat/sync-status-live-ui` | ✅ merged | [#149](https://github.com/KazeKaze93/RuleDesk/pull/149) — invalidate `["artists"]` on `sync:artist` + repair start/end; preload wires `REPAIR_*`; `sync:progress` payload unchanged |
 | `feat/sync-status-write-and-recovery` | ✅ merged | [#148](https://github.com/KazeKaze93/RuleDesk/pull/148) — persist per-artist `syncStatus` / `lastError`; `resetStaleSyncingArtists` on DB init |
@@ -190,7 +191,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.
 - ✅ **CI:** `validate` → `docs:api` freshness → `npm test` → production `npm audit --omit=dev --audit-level=high`; release tags wait for quality + e2e, then Windows zip + Linux AppImage.
-- ✅ **Post-audit regression tests:** **209** Vitest tests across **30** files (includes collapse/throttle + `SecureStorage` + video-proxy suites — see [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md); inventory file may lag — trust `npm test` count).
+- ✅ **Post-audit regression tests:** Vitest unit + integration + property suites (includes collapse/throttle + `SecureStorage` + video-proxy). Inventory in [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md) may lag — trust `npm test` output as the count source of truth.
 - ✅ **Main process HMR/watch**, shared Zod IPC helpers, provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
 
 - ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.
@@ -213,7 +214,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Topic | Status |
 |-------|--------|
-| **Browse → Source: Favorites / Subscriptions** | Requires a **non-empty tag query** in `SourceSwitcher` so those modes are selected in the context of a search. Local results come from SQL (`isFavorited` / `sinceTracking`) with AI/media applied before pagination. Subscriptions is **sinceTracking-only** (join by artist + publish date), not tag-intersection with tracked artist names. **Working as designed.** |
+| **Browse Source Subscriptions filter** (and Favorites) | Requires a **non-empty tag query** in `SourceSwitcher` so those modes are selected in the context of a search. Local results come from SQL (`isFavorited` / `sinceTracking`) with AI/media applied before pagination. Browse Source Subscriptions filter is **sinceTracking-only** (join by artist + publish date), not tag-intersection with tracked artist names. **Working as designed.** Distinct from the unimplemented tag-combination subscriptions feature/table. |
 | **Masonry vs grid** | Two **first-class** view toggles. No silent fallback; no open “masonry not implemented” item. |
 | **Viewer tags / progressive cards** | Shipped (`TagsDrawer`, `PostCard`). |
 
@@ -225,6 +226,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Item | Description |
 |------|-------------|
+| **tag-combination subscriptions feature/table** | Not implemented (no table in `schema.ts`, no subscription IPC). Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking`). |
 
 ---
 

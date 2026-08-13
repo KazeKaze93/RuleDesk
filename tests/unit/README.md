@@ -31,7 +31,7 @@ Vitest tests for gallery logic, filters, layout, and shared utilities. Property-
 
 ### Core (Main)
 
-- **`core/di-container.test.ts`** — `Container` keyed by `token.id`; re-entrant circular detection
+- **`core/di-container.test.ts`** — `Container` keyed by `token.id` (instance Map; no circular-dependency detection)
 
 ### Worker mapping
 

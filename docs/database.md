@@ -476,7 +476,7 @@ All database operations are accessed through Drizzle ORM using the database inst
 
 Retrieves tracked artists for IPC/UI via `getTrackedArtistsWithStats()` in `src/main/db/queries/artists.ts` (newest activity first).
 
-**Limit:** At most `MAX_TRACKED_ARTISTS` (**5000**, `src/shared/constants.ts`). If the DB has more rows, the query applies `.limit(5000)` and Main logs a warning — the UI must not assume an unbounded subscription list.
+**Limit:** At most `MAX_TRACKED_ARTISTS` (**5000**, `src/shared/constants.ts`). If the DB has more rows, the query applies `.limit(5000)` and Main logs a warning — the UI must not assume an unbounded tracked-artist list.
 
 **Example (query helper):**
 
@@ -1069,7 +1069,7 @@ Planned database improvements:
   - `playlists` table with support for manual and smart playlists
   - `playlist_entries` junction table with composite primary key
   - Full CRUD operations via `PlaylistController`
-- ⏳ **Subscriptions Table:** Tag subscriptions feature planned (schema not yet implemented)
+- ⏳ **tag-combination subscriptions feature/table:** Not implemented (no table in `schema.ts`). Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking` on `posts` + `artists`).
 - ⏳ Post deduplication logic
 - ✅ Extended **Statistics** aggregates are shipped via `getExtendedStats` (totals, distributions, top artists/tags, timeline-ready data, DB size)
 - ⏳ Export/import functionality

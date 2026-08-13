@@ -106,12 +106,12 @@ This is the sandboxed browser environment. It handles presentation.
 
 The application is organized into the following main sections accessible via the Sidebar:
 
-- **Updates (Subscriptions)** - View new posts from tracked artists and tag subscriptions
-- **Browse (All posts)** - Search the live booru API with chip-based tags, infinite scroll, and advanced filters; Favorites/Subscriptions modes search the local cache
+- **Updates** - View new posts from tracked artists
+- **Browse (All posts)** - Search the live booru API with chip-based tags, infinite scroll, and advanced filters; Favorites / Browse Source Subscriptions filter modes search the local cache
 - **Favorites** - Local favorites only (`isFavorited` in SQLite). There is no booru account-favorites sync path
 - **Playlists (Collections)** - Create and manage curated collections of posts
 - **Statistics** - Extended local metrics and distribution charts via `getExtendedStats` (counts, pie charts, top artists/tags, provider artist split, DB size)
-- **Tracked (Artists/Tags management)** - Manage tracked artists, tags, and subscriptions
+- **Tracked (Artists/Tags management)** - Manage tracked artists and tags
 - **Settings** - Configure downloads, sync, appearance, account, backup/restore, and Danger-zone wipe
 
 ## 🎨 Core UX Principles
@@ -287,7 +287,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
 - ✅ **Sidebar Navigation:** Persistent grouped sidebar structure (Discover / Library / System) with the current shipped IA.
 - ✅ **Global Top Bar:** Search (chip-based include/exclude with OR-group tokens), syntax-help popover, `FiltersPanel` (AI, media, source), dedicated date sort control, view toggle, `SyncStatusBadge`
-- ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), and source (all/favorites/subscriptions)
+- ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), and source (all / favorites / Browse Source Subscriptions filter)
 - ✅ **Sorting:** Sort by date order (newest/oldest) across main feeds
 - ✅ **View Modes:** Grid (virtualized) and masonry (CSS columns) are both shipped and user-selectable.
   *Trade-off remains intentional: masonry prioritizes visual layout over full virtualization on huge feeds.*
@@ -314,13 +314,12 @@ The application is stable and production-ready (see **`package.json`** → `vers
    - Visit https://rule34.xxx/index.php?page=account&s=options
    - Copy your **User ID** and **API Key** from the API Access section
 
-2. **Onboarding:**
+2. **Age Gate and account:**
 
    - Launch the application
-   - Confirm legal age / ToS in the mandatory Age Gate
-   - Option A: enter User ID + API Key and click "Save and Login" (or paste the account page URL into either field — both values fill in automatically)
-   - Option B: click "Skip for now" to continue in Browse-only mode
-   - Add API key later in `Settings -> Account` to unlock Updates and Artists (Favorites and Playlists work locally without credentials)
+   - Confirm legal age / ToS in the mandatory Age Gate (`AgeGate.tsx`)
+   - If no API key is stored, AccountGate (`SettingsAccountTab` in `App.tsx`) requires User ID + API Key — **Save API Key** (or paste the account page URL into either field). There is no Skip; the main shell loads only after `hasApiKey` is true
+   - Credentials can be updated later in Settings → Account
 
 3. **Add Artists:**
 
@@ -387,7 +386,7 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 
 - ✅ **Global top bar** — `GlobalTopBar.tsx` + `FiltersPanel` (AI, media, source) and separate date sort control
 - ✅ **AI / media / source** — Backed by `searchStore` and post queries
-- ✅ **Source on Browse** — Favorites/Subscriptions require a tag query when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog)). Local modes apply AI/media in SQL before pagination. Subscriptions is `sinceTracking` (join by artist + publish date), not tag-intersection. Remote Source: All AI hide/only on **Rule34** is injected into the booru tag query; Gelbooru still uses the Browse worker.
+- ✅ **Source on Browse** — Favorites / Browse Source Subscriptions filter require a tag query when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog)). Local modes apply AI/media in SQL before pagination. Browse Source Subscriptions filter is `sinceTracking` (join by artist + publish date), not tag-intersection. Distinct from the unimplemented tag-combination subscriptions feature/table. Remote Source: All AI hide/only on **Rule34** is injected into the booru tag query; Gelbooru still uses the Browse worker.
 - 🟡 **View modes** — Grid (`VirtuosoGrid`) vs masonry (CSS columns); different scaling behavior on huge lists
 - ✅ **FTS5** — Tag search where integrated in browse/search flows
 
@@ -523,7 +522,7 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests (**209 tests** across 30 files). **Playwright** covers E2E flows. Full suite inventory: [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md).
+**Vitest** covers unit, integration, and property-based tests. **Playwright** covers E2E flows. Treat `npm test` output as the count source of truth; the file inventory in [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md) may lag.
 
 ```bash
 # Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron

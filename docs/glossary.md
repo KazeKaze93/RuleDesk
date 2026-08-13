@@ -104,7 +104,7 @@ An abstraction layer that allows RuleDesk to support multiple booru sources with
 
 ### Browse
 
-The **Browse** page searches the live booru API (Source: **All**) or filters posts from the local cache (Source: **Favorites** / **Subscriptions**). Infinite scroll loads 50 posts per batch; on Rule34, RuleDesk continues past the API offset cap using cursor pagination (`id:<postId>`).
+The **Browse** page searches the live booru API (Source: **All**) or filters posts from the local cache (Source: **Favorites** / **Browse Source Subscriptions filter**). Infinite scroll loads 50 posts per batch; on Rule34, RuleDesk continues past the API offset cap using cursor pagination (`id:<postId>`).
 
 **Related:** [User Guide - Search](./user-guide.md#search), [Rule34 pagination](./rule34-api-reference.md#pagination-beyond-the-offset-cap), [searchBooru](./api-guide.md#searchbooru)
 
@@ -245,7 +245,7 @@ A system for marking and managing favorite posts. Favorites are stored locally i
 
 ### Tracked Artists / `MAX_TRACKED_ARTISTS`
 
-Artists (tags, uploaders, or query subscriptions) stored in the local `artists` table and surfaced via `getTrackedArtists()` IPC.
+Artists (tag, uploader, or query type) stored in the local `artists` table and surfaced via `getTrackedArtists()` IPC.
 
 **Cap:** IPC returns at most **5000** rows (`MAX_TRACKED_ARTISTS` in `src/shared/constants.ts`). Larger libraries are truncated with a Main-process warning — not a silent full export.
 
@@ -253,11 +253,17 @@ Artists (tags, uploaders, or query subscriptions) stored in the local `artists` 
 
 ---
 
-### Subscriptions
+### Browse Source Subscriptions filter
 
-Tag-based subscriptions for tracking specific tag combinations. Currently planned but not yet implemented.
+Shipped Browse **Source** toggle (`SourceSwitcher` value `subscriptions`, panel label **Subscriptions**). Local cache query with `sinceTracking`: posts published after the artist was tracked (`posts.artistId` + `publishedAt >= artists.createdAt`). Not tag-intersection with tracked artist names. Requires a non-empty tag query when selecting this source.
 
-**Related:** [Roadmap - Subscriptions](./roadmap.md#-subscriptions--updates)
+**Related:** [User Guide — Filters](./user-guide.md#filters-and-sorting), [Closed by design](./roadmap.md#closed-by-design-not-backlog)
+
+### tag-combination subscriptions feature/table
+
+Not implemented. No subscriptions table in `schema.ts`, no subscription IPC (`getSubscriptions` / `addSubscription` / `deleteSubscription` do not exist). Distinct from the Browse Source Subscriptions filter above.
+
+**Related:** [Planned product work](./roadmap.md#planned-product-work), [Database — Future Enhancements](./database.md#future-enhancements)
 
 ---
 
@@ -270,7 +276,7 @@ Curated collections of posts independent of Artists/Trackers. Users can create p
 - Create, rename, and delete playlists
 - Add posts to playlists via quick menu on Post Cards or in viewer
 - View playlist galleries with grid and masonry layouts
-- Filter and sort posts within playlists (FTS5 tag search, rating, media type, AI filter)
+- Filter and sort posts within playlists (FTS5 tag search, media type, AI filter)
 - Smart playlists with dynamic tag-based queries
 
 **Related:** [Roadmap](./roadmap.md#-active-roadmap-priority-tasks), [Database Schema - Playlists](./database.md#table-playlists)

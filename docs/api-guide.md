@@ -123,7 +123,7 @@ const allPosts: Post[] = data?.pages.flatMap((page: Post[]) => page) || [];
 
 **Scenario:** Infinite scroll on the Browse page against the live booru API (`searchBooru`). Rule34 offset pagination is capped at four pages; deeper scroll uses cursor pagination via `beforePostId` / `nextBeforePostId`.
 
-Browse **Favorites** / **Subscriptions** do not use this remote helper: they call `getArtistPosts` with `isFavorited` / `sinceTracking` and pass `aiFilter` / `mediaType` / `sortOrder` into SQL so filters apply before `LIMIT`/`OFFSET`. The React Query key is `buildBrowseSearchQueryKey({ tags, source, aiFilter, mediaType, sortOrder })` (chip tags + `aiFilter`; injected AI tokens are request-only).
+Browse **Favorites** / **Browse Source Subscriptions filter** do not use this remote helper: they call `getArtistPosts` with `isFavorited` / `sinceTracking` and pass `aiFilter` / `mediaType` / `sortOrder` into SQL so filters apply before `LIMIT`/`OFFSET`. The React Query key is `buildBrowseSearchQueryKey({ tags, source, aiFilter, mediaType, sortOrder })` (chip tags + `aiFilter`; injected AI tokens are request-only).
 
 On **Source: All** with provider **Rule34**, Browse appends AI filter tags to the `searchBooru` request via `buildRemoteBooruTagListForIpc` (`hide` → exclude tokens; `only` → OR-group). Conflict with the user's own AI chips skips injection and keeps worker AI filtering. **Gelbooru** does not inject (worker-only) until separately verified.
 
@@ -424,7 +424,7 @@ Returns a `http://127.0.0.1` URL served by the main-process `VideoProxyServer` t
 
 Retrieves tracked artists from the local database (newest activity first).
 
-**Limit:** Returns at most `MAX_TRACKED_ARTISTS` (5000). If the user has more subscriptions, the list is truncated and Main logs a warning — UI should not assume a complete unbounded list.
+**Limit:** Returns at most `MAX_TRACKED_ARTISTS` (5000). If the user has more tracked artists, the list is truncated and Main logs a warning — UI should not assume a complete unbounded list.
 
 **When to use:** Load the list of tracked artists for display in the Tracked page, sidebar, or artist selection dropdown.
 
@@ -608,24 +608,30 @@ if (settings) {
 **Real-world usage in React component:**
 
 ```typescript
-// In App.tsx - check if user needs onboarding
+// In App.tsx — Age Gate first, then AccountGate if no API key
 import type { IpcSettings } from "../../../shared/schemas/settings";
+import { AgeGate } from "@/components/onboarding/AgeGate";
 
 const { data: settings } = useQuery<IpcSettings | null>({
   queryKey: ["settings"],
   queryFn: () => window.api.getSettings(),
 });
 
-if (!settings || !settings.hasApiKey) {
-  // No settings or no API key configured - show onboarding
+const legalConfirmed =
+  settings?.isAdultVerified === true && settings.tosAcceptedAt !== null;
+if (!legalConfirmed) {
   return (
-    <Onboarding
-      onComplete={() => queryClient.invalidateQueries(["settings"])}
+    <AgeGate
+      onComplete={(updated) => queryClient.setQueryData(["settings"], updated)}
     />
   );
 }
 
-// Settings exist and API key is configured - show main app
+if (!settings.hasApiKey) {
+  // AccountGate in App.tsx renders SettingsAccountTab (saveSettings)
+  return <AccountGate />;
+}
+
 return <MainApp />;
 ```
 
@@ -639,12 +645,12 @@ Saves settings to the database. Supports partial updates (credentials, sync opti
 
 **⚠️ SECURITY CONTRACT:**
 
-- **Input:** API key is sent from Renderer in **plaintext** (unavoidable during onboarding)
+- **Input:** API key is sent from Renderer in **plaintext** (unavoidable during AccountGate / Settings → Account)
 - **Processing:** API key is **immediately encrypted** in Main Process using `safeStorage` API
 - **Storage:** Only **encrypted** key is stored in database
 - **Output:** API key is **NEVER** returned to Renderer (see `getSettings()` which returns `hasApiKey: boolean`)
 
-**When to use:** During onboarding flow when user enters their credentials, or when updating credentials in Settings.
+**When to use:** During AccountGate (`SettingsAccountTab`) when the user first enters credentials, or when updating credentials in Settings → Account.
 
 **Typical scenario:** User pastes credentials from Rule34.xxx account page → form validates → calls `saveSettings` → credentials encrypted and stored → user proceeds to main app.
 
@@ -959,7 +965,9 @@ return (
 
 ### `openExternal(url: string)`
 
-Opens a URL in the default external browser. Only allows rule34.xxx URLs for security.
+Opens a URL in the default external browser after `ViewerController` validates it against `ALLOWED_HOSTS` in `src/main/config/allowed-hosts.ts`.
+
+This allowlist is **user-click `shell.openExternal` only** (exact hostname, HTTPS). It is **not** `provider.allowedDomains` / `provider.cdnDomains` (CSP + video-proxy) and **not** the Sync provider registry. Currently the live set is `rule34.xxx` and `www.rule34.xxx`; `gelbooru.com` / `www.gelbooru.com` are present in the file but commented out.
 
 **Parameters:**
 
@@ -977,13 +985,13 @@ await window.api.openExternal(
 
 **IPC Channel:** `app:open-external`
 
-**Security:** Only HTTPS URLs from rule34.xxx domain are allowed.
+**Security:** Only HTTPS URLs whose hostname is in `ALLOWED_HOSTS`. Gelbooru post pages cannot be opened this way until those hosts are uncommented.
 
 ---
 
 ### `syncAll()`
 
-Initiates background synchronization of all tracked artists. Fetches new posts from Rule34.xxx API.
+Initiates background synchronization of all tracked artists. `SyncService` dispatches each artist through `getProvider(artist.provider)` (**Rule34** and **Gelbooru**). This is independent of the `openExternal` / `ALLOWED_HOSTS` allowlist.
 
 **Returns:** `Promise<boolean>`
 
@@ -2147,13 +2155,11 @@ Use these files as the canonical implementation reference for exact BaseControll
 
 Potential next additions (not committed to a release):
 
-- `updateArtist(artistId: number, data: Partial<Artist>)` - Update artist settings
-- `getSubscriptions()` / `addSubscription(...)` / `deleteSubscription(...)` - Subscription management
 - `getBackupList()` / `deleteBackup(...)` - Backup lifecycle management
 
 ## External API Integration
 
-The application integrates with **Rule34.xxx API**. Integration is handled in the Main process via `SyncService` and `SearchController`, and is not directly exposed as raw HTTP from the Renderer (Browse uses IPC `searchBooru`).
+The application integrates with booru providers via `IBooruProvider` (**Rule34.xxx** and **Gelbooru**). Integration is handled in the Main process via `SyncService` and `SearchController`, and is not directly exposed as raw HTTP from the Renderer (Browse uses IPC `searchBooru`).
 
 **SyncService (tracked artists):**
 
