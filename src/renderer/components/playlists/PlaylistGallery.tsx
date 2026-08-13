@@ -225,7 +225,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       ids: postIds,
       initialIndex: index,
       listKey: `playlist-${playlist.id}`,
-      hasNextPage: hasNextPage && displayedPosts.length < (data?.pages.length ?? 0) * 50,
+      hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
     });
   };
