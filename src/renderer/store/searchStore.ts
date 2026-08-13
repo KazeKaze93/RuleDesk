@@ -31,6 +31,15 @@ export const BOORU_AI_FILTER_OR_GROUP = `( ${BOORU_AI_FILTER_TAGS.join(" ~ ")} )
 
 const RULE34_PROVIDER_ID = "rule34";
 
+/**
+ * Exact `video` metadata tag for remote media-filter injection.
+ * Live autocomplete 2026-08-14: Rule34 `video` (513788); Gelbooru `video` (105460, category metadata).
+ * Format subsets (`webm`, `mp4`) are not injected — they are smaller than `video`.
+ */
+export const BOORU_VIDEO_FILTER_TAG = "video";
+
+const VIDEO_FILTER_PROVIDERS = new Set<string>(["rule34", "gelbooru"]);
+
 export function buildBooruTagListForIpc(
   includeTags: string[],
   excludeTags: string[]
@@ -62,6 +71,15 @@ export type RemoteAiFilterInjection = {
    * False → keep client worker AI filtering (Gelbooru, conflict, aiFilter all).
    */
   aiInjected: boolean;
+};
+
+export type RemoteMediaTypeTagInjection = {
+  injectedTags: string[];
+  /**
+   * True when media type was pushed into the API query.
+   * False → keep client worker media filtering (conflict, unknown provider).
+   */
+  mediaInjected: boolean;
 };
 
 /**
@@ -107,8 +125,61 @@ export function buildRemoteAiFilterTagInjection(params: {
   return { injectedTags: [], aiInjected: false };
 }
 
+function tagListIncludesVideoToken(tags: string[]): boolean {
+  const needle = BOORU_VIDEO_FILTER_TAG;
+  for (const tag of tags) {
+    if (tag.toLowerCase() === needle) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
- * User chip tags plus optional Rule34 AI injection for the live API request.
+ * Build video/image tag injection for remote Browse.
+ * Live-verified `video` token on Rule34 and Gelbooru.
+ * Skips injection on conflict with the user's own include/exclude chips
+ * so the API does not return an unexplained empty page.
+ */
+export function buildRemoteMediaTypeTagInjection(params: {
+  provider: string;
+  mediaType: MediaType;
+  includeTags: string[];
+  excludeTags: string[];
+}): RemoteMediaTypeTagInjection {
+  const { provider, mediaType, includeTags, excludeTags } = params;
+
+  if (!VIDEO_FILTER_PROVIDERS.has(provider) || mediaType === "all") {
+    return { injectedTags: [], mediaInjected: false };
+  }
+
+  if (mediaType === "videos") {
+    if (tagListIncludesVideoToken(excludeTags)) {
+      return { injectedTags: [], mediaInjected: false };
+    }
+    if (tagListIncludesVideoToken(includeTags)) {
+      return { injectedTags: [], mediaInjected: true };
+    }
+    return {
+      injectedTags: [BOORU_VIDEO_FILTER_TAG],
+      mediaInjected: true,
+    };
+  }
+
+  if (tagListIncludesVideoToken(includeTags)) {
+    return { injectedTags: [], mediaInjected: false };
+  }
+  if (tagListIncludesVideoToken(excludeTags)) {
+    return { injectedTags: [], mediaInjected: true };
+  }
+  return {
+    injectedTags: [`-${BOORU_VIDEO_FILTER_TAG}`],
+    mediaInjected: true,
+  };
+}
+
+/**
+ * User chip tags plus optional Rule34 AI / media-type injection for the live API request.
  * Query keys should keep the chip tags; only searchBooru uses this list.
  */
 export function buildRemoteBooruTagListForIpc(params: {
@@ -116,23 +187,32 @@ export function buildRemoteBooruTagListForIpc(params: {
   excludeTags: string[];
   provider: string;
   aiFilter: AiFilterType;
-}): { tags: string[]; aiInjected: boolean } {
+  mediaType: MediaType;
+}): { tags: string[]; aiInjected: boolean; mediaInjected: boolean } {
   const baseTags = buildBooruTagListForIpc(
     params.includeTags,
     params.excludeTags
   );
-  const injection = buildRemoteAiFilterTagInjection({
+  const aiInjection = buildRemoteAiFilterTagInjection({
     provider: params.provider,
     aiFilter: params.aiFilter,
     includeTags: params.includeTags,
     excludeTags: params.excludeTags,
   });
-  if (!injection.aiInjected || injection.injectedTags.length === 0) {
-    return { tags: baseTags, aiInjected: false };
-  }
+  const mediaInjection = buildRemoteMediaTypeTagInjection({
+    provider: params.provider,
+    mediaType: params.mediaType,
+    includeTags: params.includeTags,
+    excludeTags: params.excludeTags,
+  });
+  const extraTags = [
+    ...aiInjection.injectedTags,
+    ...mediaInjection.injectedTags,
+  ];
   return {
-    tags: [...baseTags, ...injection.injectedTags],
-    aiInjected: true,
+    tags: extraTags.length === 0 ? baseTags : [...baseTags, ...extraTags],
+    aiInjected: aiInjection.aiInjected,
+    mediaInjected: mediaInjection.mediaInjected,
   };
 }
 

@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BOORU_AI_FILTER_OR_GROUP,
   BOORU_AI_FILTER_TAGS,
+  BOORU_VIDEO_FILTER_TAG,
   buildBooruTagListForIpc,
   buildRemoteAiFilterTagInjection,
   buildRemoteBooruTagListForIpc,
+  buildRemoteMediaTypeTagInjection,
   parseSearchQuery,
   useSearchStore,
 } from "@/renderer/store/searchStore";
@@ -140,8 +142,10 @@ describe("buildRemoteBooruTagListForIpc", () => {
       excludeTags: ["solo"],
       provider: "rule34",
       aiFilter: "hide",
+      mediaType: "all",
     });
     expect(result.aiInjected).toBe(true);
+    expect(result.mediaInjected).toBe(false);
     expect(result.tags).toEqual([
       "1girl",
       "-solo",
@@ -155,7 +159,127 @@ describe("buildRemoteBooruTagListForIpc", () => {
       excludeTags: [],
       provider: "gelbooru",
       aiFilter: "hide",
+      mediaType: "all",
     });
-    expect(result).toEqual({ tags: ["1girl"], aiInjected: false });
+    expect(result).toEqual({
+      tags: ["1girl"],
+      aiInjected: false,
+      mediaInjected: false,
+    });
+  });
+
+  it("appends video tag for rule34 videos filter", () => {
+    const result = buildRemoteBooruTagListForIpc({
+      includeTags: ["1girl"],
+      excludeTags: [],
+      provider: "rule34",
+      aiFilter: "all",
+      mediaType: "videos",
+    });
+    expect(result).toEqual({
+      tags: ["1girl", BOORU_VIDEO_FILTER_TAG],
+      aiInjected: false,
+      mediaInjected: true,
+    });
+  });
+
+  it("appends video tag for gelbooru videos filter", () => {
+    const result = buildRemoteBooruTagListForIpc({
+      includeTags: [],
+      excludeTags: [],
+      provider: "gelbooru",
+      aiFilter: "all",
+      mediaType: "videos",
+    });
+    expect(result).toEqual({
+      tags: [BOORU_VIDEO_FILTER_TAG],
+      aiInjected: false,
+      mediaInjected: true,
+    });
+  });
+
+  it("combines AI hide excludes with video injection", () => {
+    const result = buildRemoteBooruTagListForIpc({
+      includeTags: ["1girl"],
+      excludeTags: [],
+      provider: "rule34",
+      aiFilter: "hide",
+      mediaType: "videos",
+    });
+    expect(result.aiInjected).toBe(true);
+    expect(result.mediaInjected).toBe(true);
+    expect(result.tags).toEqual([
+      "1girl",
+      ...BOORU_AI_FILTER_TAGS.map((tag) => `-${tag}`),
+      BOORU_VIDEO_FILTER_TAG,
+    ]);
+  });
+});
+
+describe("buildRemoteMediaTypeTagInjection", () => {
+  it("injects video for videos filter", () => {
+    expect(
+      buildRemoteMediaTypeTagInjection({
+        provider: "rule34",
+        mediaType: "videos",
+        includeTags: ["1girl"],
+        excludeTags: [],
+      })
+    ).toEqual({ injectedTags: [BOORU_VIDEO_FILTER_TAG], mediaInjected: true });
+  });
+
+  it("injects -video for images filter", () => {
+    expect(
+      buildRemoteMediaTypeTagInjection({
+        provider: "gelbooru",
+        mediaType: "images",
+        includeTags: [],
+        excludeTags: [],
+      })
+    ).toEqual({ injectedTags: [`-${BOORU_VIDEO_FILTER_TAG}`], mediaInjected: true });
+  });
+
+  it("skips extra inject when user already included video (still marks injected)", () => {
+    expect(
+      buildRemoteMediaTypeTagInjection({
+        provider: "rule34",
+        mediaType: "videos",
+        includeTags: ["video"],
+        excludeTags: [],
+      })
+    ).toEqual({ injectedTags: [], mediaInjected: true });
+  });
+
+  it("skips videos injection when user excluded video (conflict)", () => {
+    expect(
+      buildRemoteMediaTypeTagInjection({
+        provider: "rule34",
+        mediaType: "videos",
+        includeTags: ["1girl"],
+        excludeTags: ["video"],
+      })
+    ).toEqual({ injectedTags: [], mediaInjected: false });
+  });
+
+  it("skips images injection when user included video (conflict)", () => {
+    expect(
+      buildRemoteMediaTypeTagInjection({
+        provider: "rule34",
+        mediaType: "images",
+        includeTags: ["video"],
+        excludeTags: [],
+      })
+    ).toEqual({ injectedTags: [], mediaInjected: false });
+  });
+
+  it("does not inject when mediaType is all", () => {
+    expect(
+      buildRemoteMediaTypeTagInjection({
+        provider: "rule34",
+        mediaType: "all",
+        includeTags: [],
+        excludeTags: [],
+      })
+    ).toEqual({ injectedTags: [], mediaInjected: false });
   });
 });

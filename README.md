@@ -386,7 +386,7 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 
 - ✅ **Global top bar** — `GlobalTopBar.tsx` + `FiltersPanel` (AI, media, source) and separate date sort control
 - ✅ **AI / media / source** — Backed by `searchStore` and post queries
-- ✅ **Source on Browse** — Favorites / Browse Source Subscriptions filter require a tag query when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog)). Local modes apply AI/media in SQL before pagination. Browse Source Subscriptions filter is `sinceTracking` (join by artist + publish date), not tag-intersection. Distinct from the unimplemented tag-combination subscriptions feature/table. Remote Source: All AI hide/only on **Rule34** is injected into the booru tag query; Gelbooru still uses the Browse worker.
+- ✅ **Source on Browse** — Favorites / Browse Source Subscriptions filter require a tag query when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog)). Local modes apply AI/media in SQL before pagination. Browse Source Subscriptions filter is `sinceTracking` (join by artist + publish date), not tag-intersection. Distinct from the unimplemented tag-combination subscriptions feature/table. Remote Source: All AI hide/only on **Rule34** is injected into the booru tag query; Gelbooru still uses the Browse worker for AI. Remote Videos / Images inject the live-verified `video` / `-video` tag on Rule34 and Gelbooru.
 - 🟡 **View modes** — Grid (`VirtuosoGrid`) vs masonry (CSS columns); different scaling behavior on huge lists
 - ✅ **FTS5** — Tag search where integrated in browse/search flows
 

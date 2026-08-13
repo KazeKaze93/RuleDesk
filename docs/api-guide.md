@@ -125,7 +125,7 @@ const allPosts: Post[] = data?.pages.flatMap((page: Post[]) => page) || [];
 
 Browse **Favorites** / **Browse Source Subscriptions filter** do not use this remote helper: they call `getArtistPosts` with `isFavorited` / `sinceTracking` and pass `aiFilter` / `mediaType` / `sortOrder` into SQL so filters apply before `LIMIT`/`OFFSET`. The React Query key is `buildBrowseSearchQueryKey({ tags, source, aiFilter, mediaType, sortOrder })` (chip tags + `aiFilter`; injected AI tokens are request-only).
 
-On **Source: All** with provider **Rule34**, Browse appends AI filter tags to the `searchBooru` request via `buildRemoteBooruTagListForIpc` (`hide` → exclude tokens; `only` → OR-group). Conflict with the user's own AI chips skips injection and keeps worker AI filtering. **Gelbooru** does not inject (worker-only) until separately verified.
+On **Source: All**, Browse appends remote filter tags to the `searchBooru` request via `buildRemoteBooruTagListForIpc`: Rule34 AI (`hide` → exclude tokens; `only` → OR-group); Rule34 and Gelbooru media (`videos` → `video`; `images` → `-video`). Conflict with the user's own chips skips that axis and keeps worker filtering. Gelbooru AI does not inject (worker-only) until separately verified.
 
 Prefer `useGalleryInfiniteScroll` + `getSearchBrowseNextPageParam` (see `src/renderer/components/pages/Browse.tsx`) instead of hand-rolling page numbers:
 
@@ -412,7 +412,7 @@ await window.api.wipeAllData();
 
 ### `getVideoProxyUrl(fileUrl: string)`
 
-Returns a `http://127.0.0.1` URL served by the main-process `VideoProxyServer` that forwards Range requests to the original HTTPS CDN and writes complete responses under `{userData}/video-cache/` via **atomic tmp + rename** (incomplete/aborted downloads never become cache hits). Cache size is bounded by `VIDEO_CACHE_MAX_BYTES` with eviction from the maintenance scheduler and a deferred sweep after proxy `start()`. The renderer should use the returned value as the `<video src>` (with a temporary fallback to the direct CDN URL while this promise resolves). Input is validated with `z.string().url()`. The proxy allowlist is the exact media-CDN hostnames from `provider.cdnDomains` (via `getAllProviderCdnDomains()`); API/apex hosts remain in CSP via `getAllProviderDomains()` but are rejected with HTTP 400 if passed through the proxy.
+Returns a `http://127.0.0.1` URL served by the main-process `VideoProxyServer` that forwards Range requests to the original HTTPS CDN and writes complete responses under `{userData}/video-cache/` via **atomic tmp + rename** (incomplete/aborted downloads never become cache hits). Cache size is bounded by `VIDEO_CACHE_MAX_BYTES` with eviction from the maintenance scheduler and a deferred sweep after proxy `start()`. The renderer should use the returned value as the `<video src>` (with a temporary fallback to the direct CDN URL while this promise resolves). Input is validated with `z.string().url()`. The proxy allowlist is the exact media-CDN hostnames from `provider.cdnDomains` (via `getAllProviderCdnDomains()`); prefix similarity is not coverage (`api-cdn.rule34.xxx` does not include `api-cdn-mp4.rule34.xxx`). This handler only mints the localhost URL and does not check the allowlist — rejection is HTTP 400 on the subsequent Range request. API/apex hosts remain in CSP via `getAllProviderDomains()` but are rejected with HTTP 400 if passed through the proxy.
 
 **Returns:** `Promise<string>`
 

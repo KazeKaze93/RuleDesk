@@ -113,33 +113,34 @@ export const Browse = () => {
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
 
-  // App seeds ["settings"]; Browse reads provider for Rule34-only AI tag injection.
+  // App seeds ["settings"]; Browse reads provider for remote AI / media tag injection.
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: () => window.api.getSettings(),
   });
   const provider = settings?.provider ?? "rule34";
 
-  const { tags: remoteSearchTags, aiInjected } = useMemo(
+  const { tags: remoteSearchTags, aiInjected, mediaInjected } = useMemo(
     () =>
       buildRemoteBooruTagListForIpc({
         includeTags,
         excludeTags,
         provider,
         aiFilter,
+        mediaType,
       }),
-    [includeTags, excludeTags, provider, aiFilter]
+    [includeTags, excludeTags, provider, aiFilter, mediaType]
   );
 
   const isRemoteBrowseSource = source === "all";
-  // When Rule34 AI injection succeeds, worker AI is skipped; media still needs the worker.
-  // Conflict / non-Rule34 keep worker AI as the filter path.
+  // When injection succeeds, worker skips that axis; conflict / unverified keep the worker path.
   const workerAiFilter = aiInjected ? "all" : aiFilter;
+  const workerMediaType = mediaInjected ? "all" : mediaType;
   const usesDefaultRemoteFilters =
     isRemoteBrowseSource &&
     tags.length === 0 &&
     workerAiFilter === "all" &&
-    mediaType === "all";
+    workerMediaType === "all";
   const workerEnabled = isRemoteBrowseSource && !usesDefaultRemoteFilters;
   // queryKey keeps chip tags + aiFilter (not injected tokens); aiFilter change still refetches.
   const browseSearchQueryKey = buildBrowseSearchQueryKey({
@@ -254,12 +255,12 @@ export const Browse = () => {
 
   // Worker is remote-only (source=all with non-default AI/media or an active tag search).
   // Favorites/Subscriptions apply aiFilter/mediaType in SQL before LIMIT/OFFSET.
-  // Rule34 AI injection: workerAiFilter is "all"; Gelbooru / conflict keep real aiFilter.
+  // Successful remote injection: workerAiFilter / workerMediaType are "all".
   const filterConfig: WorkerFilterConfig = useMemo(() => ({
     aiFilter: workerAiFilter,
-    mediaType,
+    mediaType: workerMediaType,
     sortOrder,
-  }), [workerAiFilter, mediaType, sortOrder]);
+  }), [workerAiFilter, workerMediaType, sortOrder]);
 
   const {
     data: workerPosts = [],

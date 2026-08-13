@@ -249,7 +249,7 @@ Each post card shows:
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
 - **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically).
 - **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings** when credentials are invalid).
-- Browse source modes **Favorites** / **Browse Source Subscriptions filter** (panel label **Subscriptions**) query your **local cache** (SQL `isFavorited` / `sinceTracking`) and still require a non-empty tag query in the Source switcher by design. AI and Media filters on those modes run in SQL before pagination. On **Source: All** with Rule34, AI hide/only is sent as booru tags in the live search (so pages stay full); Gelbooru still filters AI client-side after each page. The Browse Source Subscriptions filter means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name. It is not the unimplemented tag-combination subscriptions feature/table.
+- Browse source modes **Favorites** / **Browse Source Subscriptions filter** (panel label **Subscriptions**) query your **local cache** (SQL `isFavorited` / `sinceTracking`) and still require a non-empty tag query in the Source switcher by design. AI and Media filters on those modes run in SQL before pagination. On **Source: All**, Rule34 AI hide/only and Rule34/Gelbooru Videos/Images are sent as booru tags in the live search (so pages stay full). Gelbooru still filters AI client-side after each page. The Browse Source Subscriptions filter means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name. It is not the unimplemented tag-combination subscriptions feature/table.
 
 ### Favorites
 
@@ -333,6 +333,8 @@ The download will start, and you'll see a progress indicator.
 1. Click **"Filters"** in the top bar
 2. Choose **"Images"** or **"Videos"**
 3. Gallery updates automatically
+
+On Browse **Source: All**, Videos / Images are applied in the live API search tags (pages stay full). Local Favorites / Subscriptions still filter in SQL before pagination. If your search chips already include or exclude `video` in a way that conflicts with the filter, the app skips API injection and filters in the client instead so results are not unexplained empty.
 
 **Filter by AI content:**
 

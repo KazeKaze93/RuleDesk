@@ -166,6 +166,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** Security policy duplicated provider-specific domains instead of deriving them from the provider registry.
 **Invariant Rule:** CSP directives that enumerate external domains must be computed from the Provider Registry, never hardcoded in Main or Renderer.
 
+### Problem: Video proxy / CSP miss sibling CDN hostnames
+**Root Cause:** Allowlists use exact hostname match (no suffix wildcard). `api-cdn.rule34.xxx` does not cover `api-cdn-mp4.rule34.xxx`. IPC `video-proxy:get-url` only mints a localhost URL and does not check the allowlist; rejection is HTTP 400 on the subsequent Range request. ViewerMedia logs `post.fileUrl`, not the proxied src.
+**Invariant Rule:** New live media hostnames observed in `fileUrl` must be added to both `allowedDomains` (CSP) and `cdnDomains` (video-proxy). Prefix similarity is not coverage. `get-url` success is not playback success.
+
 ## Renderer / Workers
 
 ### Problem: Browse media-type filter breaks after worker pass
@@ -183,6 +187,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 ### Problem: Worker still applied local AI filter after SQL unification
 **Root Cause:** Filter unification moved local hide/only into `buildPostFilterConditions`; `data-processor.worker.ts` was left as a second path.
 **Invariant Rule:** After filter unification, `data-processor.worker.ts` is remote-only AI filter (Browse `source=all`); do not reintroduce local filtering there.
+
+### Problem: Browse Videos filter shows 1–2 tiles per API page
+**Root Cause:** Source: All applied media type only in the worker after a mixed 50-post page. Unlike AI hide/only, `video` was not sent to `searchBooru`.
+**Invariant Rule:** Remote filters that would drop most of a mixed API page must inject a live-verified tag (`video` / `-video`) into `searchBooru` the same way AI hide/only does. Worker remains a fallback on chip conflict. Do not invent tags — autocomplete-verify first.
 
 ## Gallery performance
 
