@@ -135,7 +135,7 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
     notifySpy.mockRestore();
   });
 
-  it("returns [] for non-JSON content-type on HTTP 200 (XML fallback path)", async () => {
+  it("throws parse error for non-JSON content-type on HTTP 200", async () => {
     axiosGetMock.mockResolvedValueOnce({
       status: 200,
       headers: { "content-type": "text/xml; charset=utf-8" },
@@ -144,18 +144,36 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
 
     await expect(
       provider.fetchPosts("solo", 1, settings, false, 50)
-    ).resolves.toEqual([]);
+    ).rejects.toMatchObject({
+      kind: "parse",
+    });
 
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
   });
 
-  it("returns [] on transport failure (unchanged non-429 catch path)", async () => {
+  it("throws network error on transport failure", async () => {
     const timeoutError = new AxiosError("timeout of 15000ms exceeded");
     timeoutError.code = "ECONNABORTED";
     axiosGetMock.mockRejectedValueOnce(timeoutError);
 
     await expect(
       provider.fetchPosts("solo", 1, settings, false, 50)
+    ).rejects.toMatchObject({
+      kind: "network",
+    });
+
+    expect(axiosGetMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns [] for a genuine well-formed empty JSON array", async () => {
+    axiosGetMock.mockResolvedValueOnce({
+      status: 200,
+      headers: { "content-type": "application/json" },
+      data: [],
+    });
+
+    await expect(
+      provider.fetchPosts("missing_tag", 1, settings, false, 50)
     ).resolves.toEqual([]);
 
     expect(axiosGetMock).toHaveBeenCalledTimes(1);

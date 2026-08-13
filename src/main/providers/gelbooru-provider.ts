@@ -13,7 +13,11 @@ import {
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 import { ProviderThrottle, pickRandomUA, ProviderRateLimitGateError } from "./provider-throttle";
-import { ProviderSearchError } from "./provider-search-errors";
+import {
+  isProviderSearchError,
+  ProviderSearchError,
+} from "./provider-search-errors";
+import { isAxiosTransportFailure } from "./rule34-post-response";
 import { getProxyAgent } from "../lib/proxy";
 import { redactErrorForLog } from "../lib/redact-error";
 
@@ -243,7 +247,7 @@ export class GelbooruProvider implements IBooruProvider {
         typeof rawContentType === "string" ? rawContentType : "";
       if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
         logger.warn(`[Gelbooru] Unexpected Content-Type: ${contentType}. Expected JSON.`);
-        return [];
+        throw new ProviderSearchError("parse");
       }
 
       const { data } = response;
@@ -307,18 +311,20 @@ export class GelbooruProvider implements IBooruProvider {
       
       return posts;
     } catch (error) {
-      if (
-        error instanceof ProviderSearchError &&
-        error.kind === "rate_limit"
-      ) {
-        this.throttle.notifyRateLimited(error.retryAfterMs);
+      if (isProviderSearchError(error)) {
+        if (error.kind === "rate_limit") {
+          this.throttle.notifyRateLimited(error.retryAfterMs);
+        }
         throw error;
       }
       logger.error(
         `[Gelbooru] Error fetching page ${page}`,
         redactErrorForLog(error)
       );
-      return [];
+      if (isAxiosTransportFailure(error)) {
+        throw new ProviderSearchError("network");
+      }
+      throw new ProviderSearchError("parse");
     }
   }
 

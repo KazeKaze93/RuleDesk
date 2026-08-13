@@ -29,7 +29,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `shared/autocomplete-label-count.test.ts` | 2 | Rule34 autocomplete `(count)` label parse |
 | `lib/filter-artist-autocomplete.test.ts` | 5 | Add Artist artist-only filter (Gelbooru category + Rule34 top-N) |
 | `providers/rule34-provider-fetch-posts.test.ts` | 7 | fetchPosts error classification + searchTags live shape (no `type`) |
-| `providers/gelbooru-provider-fetch-posts.test.ts` | 7 | Gelbooru fetchPosts 429 + searchTags `category` → `SearchResults.type` |
+| `providers/gelbooru-provider-fetch-posts.test.ts` | 8 | Gelbooru fetchPosts 429 / network / parse + empty JSON `[]` + searchTags `category` → `SearchResults.type` |
 | `services/tag-resolve-coordinator.test.ts` | 8 | Tag resolve dedup / rate limit + Add Artist user-priority options |
 | `services/secure-storage.test.ts` | 3 | `SecureStorage` encrypt/decrypt (sole crypto path) |
 | `services/video-proxy-server.test.ts` | 8 | Video proxy allowlist / cache / eviction |
@@ -41,7 +41,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 
 | Suite | Location | Tests |
 |-------|----------|-------|
-| Integration | `tests/integration/` | 22 |
+| Integration | `tests/integration/` | 24 |
 | Property / fuzzing | `tests/property/fuzzing.test.ts` | 12 |
 
 ### Integration highlights
@@ -51,6 +51,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `controllers/ArtistsController.limit.test.ts` | `MAX_TRACKED_ARTISTS` truncation |
 | `controllers/ArtistsController.test.ts` | Add/update artist IPC |
 | `controllers/SearchController.blacklist.test.ts` | Browse blacklist filtering |
+| `controllers/SearchController.errors.test.ts` | Network throw skips alias/user: heuristics; genuine `[]` still runs them |
 | `controllers/SettingsController.test.ts` | Partial settings save |
 | `services/SyncService.queue.test.ts` | `runExclusive` — repair after full sync |
 | `services/SyncService.test.ts` | Sync pagination, graceful errors, auth → `SYNC.ERROR`, per-artist `syncStatus` / `lastError`, `sync:artist` / repair event order |

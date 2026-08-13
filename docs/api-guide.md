@@ -2003,7 +2003,7 @@ All IPC methods can throw errors. Always wrap calls in try-catch blocks or let R
 | Layer | Responsibility |
 |-------|----------------|
 | `Rule34Provider.fetchPosts` | Throws `ProviderSearchError` with `kind` (`auth`, `rate_limit`, `network`, `parse`); XML fallback only on `parse`, never on auth/429 |
-| `GelbooruProvider.fetchPosts` | On HTTP 429 throws `ProviderSearchError("rate_limit")` after `notifyRateLimited(retryAfterMs)` (shared host gate); other failures still log + return `[]`. Non-JSON content-type on 200 remains `[]` with a warn (unchanged) |
+| `GelbooruProvider.fetchPosts` | Throws `ProviderSearchError` with `kind` (`rate_limit` on HTTP 429 after `notifyRateLimited`; `network` on transport/timeout; `parse` on non-JSON 200). Genuine empty JSON `[]` still returns `[]` so Browse alias/user: heuristics can run. |
 | `throwProviderSearchIpcError` (main) | Serializes to IPC-safe `Error` + enumerable payload fields |
 | `parseProviderSearchErrorPayload` (shared) | Normalizes Electron invoke wrapper → typed payload for UI |
 | `BrowseErrorState` (renderer) | User-facing centered error state (not a destructive banner) |
