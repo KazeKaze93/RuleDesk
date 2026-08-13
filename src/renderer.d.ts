@@ -145,7 +145,11 @@ export interface IpcApi extends IpcBridge {
 
   shadowInsertPost: (request: ShadowInsertRequest) => Promise<Post>;
 
-  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
+  searchRemoteTags: (
+    query: string,
+    provider?: ProviderId,
+    artistOnly?: boolean
+  ) => Promise<SearchResults[]>;
 
   searchBooru: (params: {
     tags: string[];

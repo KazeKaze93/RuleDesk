@@ -264,7 +264,8 @@ interface IpcBridge {
   openExternal: (url: string) => Promise<void>;
   searchRemoteTags: (
     query: string,
-    provider?: ProviderId
+    provider?: ProviderId,
+    artistOnly?: boolean
   ) => Promise<SearchResults[]>;
   searchBooru: (params: {
     tags: string[];
@@ -1175,7 +1176,7 @@ results.forEach((result) => {
 
 ---
 
-### `searchRemoteTags(query: string, provider?: ProviderId)`
+### `searchRemoteTags(query: string, provider?: ProviderId, artistOnly?: boolean)`
 
 Searches for tags using booru autocomplete API (multi-provider support).
 
@@ -1183,13 +1184,14 @@ Searches for tags using booru autocomplete API (multi-provider support).
 
 - `query: string` - Search query string (minimum 2 characters)
 - `provider?: ProviderId` - Provider ID ("rule34" or "gelbooru"), defaults to "rule34"
+- `artistOnly?: boolean` - When `true` (Add Artist modal), return artist tags only. Gelbooru filters `SearchResults.type === "artist"` (from autocomplete2 `category`). Rule34 autocomplete.php has no category field — second-pass resolves the top 5 results by post_count via `tag_metadata` / DAPI `s=tag` (`TAG_TYPES.ARTIST`). Empty list if none match (no unfiltered fallback). Browse, blacklist, and playlist autocomplete omit this flag.
 
 **Returns:** `Promise<SearchResults[]>`
 
 **Example:**
 
 ```typescript
-const results = await window.api.searchRemoteTags("tag", "rule34");
+const results = await window.api.searchRemoteTags("wlop", "rule34", true);
 results.forEach((result) => {
   console.log(result.id, result.label);
 });
@@ -1197,7 +1199,7 @@ results.forEach((result) => {
 
 **IPC Channel:** `api:search-remote-tags`
 
-**Note:** Requires at least 2 characters. Returns empty array if query is too short or API call fails. Supports multiple booru providers via provider pattern.
+**Note:** Requires at least 2 characters. Returns empty array if query is too short or API call fails. Supports multiple booru providers via provider pattern. Default `artistOnly=false` keeps general tag search unchanged.
 
 ---
 

@@ -161,3 +161,51 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("GelbooruProvider.searchTags", () => {
+  const provider = new GelbooruProvider();
+
+  beforeEach(() => {
+    axiosGetMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("maps category into SearchResults.type and keeps type=tag_query query param", async () => {
+    axiosGetMock.mockResolvedValueOnce({
+      status: 200,
+      data: [
+        {
+          type: "tag",
+          label: "wlop",
+          value: "wlop",
+          post_count: "397",
+          category: "artist",
+        },
+        {
+          type: "tag",
+          label: "hatsune miku",
+          value: "hatsune_miku",
+          post_count: "149676",
+          category: "character",
+        },
+      ],
+    });
+
+    await expect(provider.searchTags("wlop")).resolves.toEqual([
+      { id: "wlop", label: "wlop", value: "wlop", type: "artist" },
+      {
+        id: "hatsune_miku",
+        label: "hatsune miku",
+        value: "hatsune_miku",
+        type: "character",
+      },
+    ]);
+
+    const calledUrl = String(axiosGetMock.mock.calls[0]?.[0]);
+    expect(calledUrl).toContain("page=autocomplete2");
+    expect(calledUrl).toContain("type=tag_query");
+  });
+});

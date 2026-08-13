@@ -43,7 +43,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | Feature                           | Description                                                                                                                                                                                                                                                                                                                                            |
 | :-------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials encrypted using Electron's `safeStorage` API and stored securely. Decryption only happens in Main Process when needed for API calls.                                                                                                                          |
-| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Supports tag-based tracking with autocomplete search (local and remote Rule34.xxx API). Tag normalization automatically strips metadata like "(123)" from tag names.                                                                                                |
+| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Add Artist autocomplete suggests **artist tags only** (Gelbooru `category`, Rule34 DAPI second-pass on top matches). Tag normalization automatically strips metadata like "(123)" from tag names.                                                                                                |
 | **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with shared `ProviderThrottle` pacing (~1200ms minimum + 0–400ms jitter per request) and exponential backoff on retries. Real-time sync progress updates via IPC events.                                                                                                                      |
 | **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Direct synchronous access via `better-sqlite3` in Main Process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. WAL mode enabled for concurrent reads.                                                                                                    |
 | **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization.                                                                               |
@@ -325,7 +325,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 3. **Add Artists:**
 
    - Click "Add Artist" button
-   - Enter artist name and tag
+   - Search for an **artist** tag (character/copyright tags are filtered out)
    - Select type (tag or uploader)
    - Click "Add"
 

@@ -189,7 +189,11 @@ export interface IpcBridge {
   ) => () => void;
   onPendingDownloadStateChanged: (callback: () => void) => () => void;
 
-  searchRemoteTags: (query: string, provider?: ProviderId) => Promise<SearchResults[]>;
+  searchRemoteTags: (
+    query: string,
+    provider?: ProviderId,
+    artistOnly?: boolean
+  ) => Promise<SearchResults[]>;
 
   searchBooru: (params: {
     tags: string[];
@@ -257,8 +261,13 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.APP.WRITE_CLIPBOARD, text),
 
   // Search remote tags via specified provider (defaults to rule34)
-  searchRemoteTags: (query, provider = "rule34") =>
-    ipcRenderer.invoke(IPC_CHANNELS.API.SEARCH_REMOTE, query, provider),
+  searchRemoteTags: (query, provider = "rule34", artistOnly = false) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.API.SEARCH_REMOTE,
+      query,
+      provider,
+      artistOnly
+    ),
 
   searchBooru: (params) =>
     ipcRenderer.invoke(IPC_CHANNELS.API.SEARCH_POSTS, params),

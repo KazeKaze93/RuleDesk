@@ -36,10 +36,15 @@ import {
   type Rule34HttpResponse,
 } from "./rule34-post-response";
 
+/**
+ * Live autocomplete.php (2026-08-13 probe: q=wlop / hatsune_miku / genshin_impact)
+ * returns only `{ label, value }`. `type` is absent — not a tag category.
+ * Do not use it for artist filtering; Add Artist uses DAPI second-pass instead.
+ */
 interface R34AutocompleteItem {
   label: string;
   value: string;
-  type: string;
+  type?: string;
 }
 
 export class Rule34Provider implements IBooruProvider {
@@ -185,7 +190,9 @@ export class Rule34Provider implements IBooruProvider {
           id: item.value,
           label: item.label,
           value: item.value,
-          type: item.type,
+          ...(typeof item.type === "string" && item.type.length > 0
+            ? { type: item.type }
+            : {}),
         }));
       }
       return [];
