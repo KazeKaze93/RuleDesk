@@ -41,10 +41,14 @@ export function toProviderSearchSerializableError(
   return ProviderSearchErrorPayloadSchema.parse(payload);
 }
 
-/** IPC-safe throw: Error.message survives Electron invoke; fields are enumerable for renderer parse. */
+/**
+ * IPC-safe throw. Electron invoke keeps Error.message and drops custom fields,
+ * so the full payload (including providerKind) is JSON-encoded into message.
+ * Enumerable fields remain for in-process / mocked invoke.
+ */
 export function throwProviderSearchIpcError(error: ProviderSearchError): never {
   const payload = toProviderSearchSerializableError(error);
-  const ipcError = new Error(payload.message);
+  const ipcError = new Error(JSON.stringify(payload));
   Object.assign(ipcError, {
     name: payload.name,
     code: payload.code,

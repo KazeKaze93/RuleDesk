@@ -62,19 +62,19 @@ export function providerKindToErrorCode(
 
 export const PROVIDER_SEARCH_USER_MESSAGES: Record<ProviderErrorKind, string> =
   {
-    auth: "Rule34 rejected the API credentials. Open Settings → Account and sign in again.",
+    auth: "The API rejected the credentials. Open Settings → Account and sign in again.",
     rate_limit:
-      "Rule34 is rate-limiting requests. Wait a moment, then use Retry.",
+      "The imageboard is rate-limiting requests. Wait a moment, then use Retry.",
     network:
-      "Could not reach Rule34. Check your connection and try again.",
+      "Could not reach the imageboard. Check your connection and try again.",
     parse:
-      "Rule34 returned an unexpected response. Try again later.",
+      "The imageboard returned an unexpected response. Try again later.",
   };
 
 export const PROVIDER_SEARCH_ERROR_TITLES: Record<ProviderErrorKind, string> =
   {
     auth: "API credentials required",
-    rate_limit: "Rate limited by Rule34",
+    rate_limit: "Rate limited",
     network: "Network error",
     parse: "Unexpected API response",
   };

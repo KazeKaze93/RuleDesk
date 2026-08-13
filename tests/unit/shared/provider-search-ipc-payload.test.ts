@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { ProviderSearchError } from "@/main/providers/provider-search-errors";
-import { toProviderSearchSerializableError } from "@/main/providers/provider-search-errors";
+import {
+  throwProviderSearchIpcError,
+  toProviderSearchSerializableError,
+} from "@/main/providers/provider-search-errors";
 import {
   BrowseSearchError,
   toBrowseSearchError,
 } from "@/renderer/utils/provider-search-error";
+import { PROVIDER_SEARCH_ERROR_TITLES, PROVIDER_SEARCH_USER_MESSAGES } from "@/shared/schemas/provider-errors";
 import { parseProviderSearchErrorPayload } from "@/shared/utils/provider-search-ipc";
 
 describe("provider search IPC payload hygiene", () => {
@@ -28,7 +32,7 @@ describe("provider search IPC payload hygiene", () => {
   it("parseProviderSearchErrorPayload strips extra IPC fields", () => {
     const parsed = parseProviderSearchErrorPayload({
       name: "ProviderSearchError",
-      message: "Rule34 rejected the API credentials. Open Settings → Account and sign in again.",
+      message: PROVIDER_SEARCH_USER_MESSAGES.auth,
       code: "AUTH_ERROR",
       providerKind: "auth",
       stack: "must not surface in renderer",
@@ -43,7 +47,7 @@ describe("provider search IPC payload hygiene", () => {
 
   it("parseProviderSearchErrorPayload handles Electron IPC Error wrapper", () => {
     const ipcError = new Error(
-      "Error invoking remote method 'booru:search': Rule34 is rate-limiting requests. Wait a moment, then use Retry."
+      `Error invoking remote method 'booru:search': ${PROVIDER_SEARCH_USER_MESSAGES.rate_limit}`
     );
     Object.assign(ipcError, {
       code: "RATE_LIMIT",
@@ -54,23 +58,64 @@ describe("provider search IPC payload hygiene", () => {
 
     expect(parsed).toEqual({
       name: "ProviderSearchError",
-      message:
-        "Rule34 is rate-limiting requests. Wait a moment, then use Retry.",
+      message: PROVIDER_SEARCH_USER_MESSAGES.rate_limit,
       code: "RATE_LIMIT",
       providerKind: "rate_limit",
       retryAfterMs: undefined,
     });
   });
 
-  it("parseProviderSearchErrorPayload infers kind from IPC message when fields are missing", () => {
+  it("throwProviderSearchIpcError JSON-encodes kind so it survives message-only IPC", () => {
+    const source = new ProviderSearchError("network");
+    let thrown: unknown;
+    try {
+      throwProviderSearchIpcError(source);
+    } catch (error: unknown) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    if (!(thrown instanceof Error)) {
+      throw new Error("expected Error");
+    }
+
+    const encoded: unknown = JSON.parse(thrown.message);
+    expect(encoded).toMatchObject({
+      name: "ProviderSearchError",
+      providerKind: "network",
+      code: "NETWORK_ERROR",
+      message: PROVIDER_SEARCH_USER_MESSAGES.network,
+    });
+
+    const electronStripped = new Error(
+      `Error invoking remote method 'booru:search': ${thrown.message}`
+    );
+    const parsed = parseProviderSearchErrorPayload(electronStripped);
+
+    expect(parsed?.providerKind).toBe("network");
+    expect(parsed?.code).toBe("NETWORK_ERROR");
+    expect(parsed?.message).toBe(PROVIDER_SEARCH_USER_MESSAGES.network);
+    expect(parsed?.message).not.toMatch(/Rule34/i);
+
+    const inProcess = parseProviderSearchErrorPayload(thrown);
+    expect(inProcess?.message).toBe(PROVIDER_SEARCH_USER_MESSAGES.network);
+    expect(inProcess?.providerKind).toBe("network");
+  });
+
+  it("user-facing provider search copy does not hardcode a provider name", () => {
+    const kinds = ["auth", "rate_limit", "network", "parse"] as const;
+    for (const kind of kinds) {
+      expect(PROVIDER_SEARCH_USER_MESSAGES[kind]).not.toMatch(/Rule34|Gelbooru/i);
+      expect(PROVIDER_SEARCH_ERROR_TITLES[kind]).not.toMatch(/Rule34|Gelbooru/i);
+    }
+  });
+
+  it("parseProviderSearchErrorPayload does not infer kind from user-facing copy", () => {
     const ipcError = new Error(
-      "Error invoking remote method 'booru:search': Rule34 is rate-limiting requests. Wait a moment, then use Retry."
+      `Error invoking remote method 'booru:search': ${PROVIDER_SEARCH_USER_MESSAGES.rate_limit}`
     );
 
-    const parsed = parseProviderSearchErrorPayload(ipcError);
-
-    expect(parsed?.providerKind).toBe("rate_limit");
-    expect(parsed?.code).toBe("RATE_LIMIT");
+    expect(parseProviderSearchErrorPayload(ipcError)).toBeNull();
   });
 
   it("parseProviderSearchErrorPayload handles [object Object] IPC message with attached fields", () => {
@@ -85,16 +130,13 @@ describe("provider search IPC payload hygiene", () => {
     const parsed = parseProviderSearchErrorPayload(ipcError);
 
     expect(parsed?.providerKind).toBe("rate_limit");
-    expect(parsed?.message).toBe(
-      "Rule34 is rate-limiting requests. Wait a moment, then use Retry."
-    );
+    expect(parsed?.message).toBe(PROVIDER_SEARCH_USER_MESSAGES.rate_limit);
   });
 
   it("parseProviderSearchErrorPayload handles JSON-serialized IPC message body", () => {
     const payload = {
       name: "ProviderSearchError",
-      message:
-        "Rule34 rejected the API credentials. Open Settings → Account and sign in again.",
+      message: PROVIDER_SEARCH_USER_MESSAGES.auth,
       code: "AUTH_ERROR",
       providerKind: "auth",
     };
@@ -106,13 +148,13 @@ describe("provider search IPC payload hygiene", () => {
 
     expect(parsed?.providerKind).toBe("auth");
     expect(parsed?.code).toBe("AUTH_ERROR");
+    expect(parsed?.message).toBe(PROVIDER_SEARCH_USER_MESSAGES.auth);
   });
 
   it("toBrowseSearchError preserves BrowseSearchError from queryFn", () => {
     const typed = new BrowseSearchError({
       name: "ProviderSearchError",
-      message:
-        "Rule34 is rate-limiting requests. Wait a moment, then use Retry.",
+      message: PROVIDER_SEARCH_USER_MESSAGES.rate_limit,
       code: "RATE_LIMIT",
       providerKind: "rate_limit",
     });
@@ -121,9 +163,7 @@ describe("provider search IPC payload hygiene", () => {
   });
 
   it("toBrowseSearchError reads kind field from re-thrown normalized errors", () => {
-    const ipcError = new Error(
-      "Rule34 is rate-limiting requests. Wait a moment, then use Retry."
-    );
+    const ipcError = new Error(PROVIDER_SEARCH_USER_MESSAGES.rate_limit);
     Object.assign(ipcError, {
       name: "ProviderSearchError",
       code: "RATE_LIMIT",

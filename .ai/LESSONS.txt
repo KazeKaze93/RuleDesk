@@ -65,8 +65,8 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 ## IPC & Errors
 
 ### Problem: Custom Error fields silently stripped across the IPC boundary
-**Root Cause:** Electron `ipcMain.handle` / `ipcRenderer.invoke` serialize rejections through structured clone semantics — custom Error properties (`providerKind`, `kind`, `code`, `retryAfterMs`) are dropped; only `message` survives reliably. Mocked-IPC unit tests cannot see this: mocks pass objects by reference.
-**Invariant Rule:** Typed error payloads crossing IPC must be JSON-encoded into `error.message` in Main, normalized in preload, and parsed in the shared layer (`provider-search-ipc.ts` pattern). Never rely on custom Error fields surviving `invoke`. Any branch changing IPC error shapes requires live Electron verification before merge (see `.cursorrules` — LIVE ELECTRON VERIFICATION).
+**Root Cause:** Electron `ipcMain.handle` / `ipcRenderer.invoke` serialize rejections through structured clone semantics — custom Error properties (`providerKind`, `kind`, `code`, `retryAfterMs`) are dropped; only `message` survives reliably. Mocked-IPC unit tests cannot see this: mocks pass objects by reference. A user-copy fallback (`inferKindFromUserMessage` matching `PROVIDER_SEARCH_USER_MESSAGES`) then coupled routing to English strings and hardcoded "Rule34", so Gelbooru failures were classified only if the copy still matched.
+**Invariant Rule:** Typed error payloads crossing IPC must be JSON-encoded into `error.message` in Main (`throwProviderSearchIpcError`), normalized by `parseProviderSearchErrorPayload` (JSON unwrap + explicit `providerKind` / `code`), and never recovered by matching user-facing copy. `PROVIDER_SEARCH_USER_MESSAGES` is display-only. Any branch changing IPC error shapes requires live Electron verification before merge (see `.cursorrules` — LIVE ELECTRON VERIFICATION).
 
 ### Problem: Provider errors returned as empty results create silent failure loops
 **Root Cause:** Handlers returned `[]` on provider failure instead of throwing; the UI interpreted emptiness as "no data", retried, and amplified into a 429 storm.
