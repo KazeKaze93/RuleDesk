@@ -50,7 +50,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `controllers/SearchController.blacklist.test.ts` | Browse blacklist filtering |
 | `controllers/SettingsController.test.ts` | Partial settings save |
 | `services/SyncService.queue.test.ts` | `runExclusive` — repair after full sync |
-| `services/SyncService.test.ts` | Sync pagination, graceful errors, auth → `SYNC.ERROR`, per-artist `syncStatus` / `lastError` |
+| `services/SyncService.test.ts` | Sync pagination, graceful errors, auth → `SYNC.ERROR`, per-artist `syncStatus` / `lastError`, `sync:artist` / repair event order |
 
 ## Running tests
 

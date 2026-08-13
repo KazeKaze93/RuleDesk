@@ -1399,4 +1399,139 @@ describe('SyncService Integration', () => {
       fetchPostsSpy.mockRestore();
     }
   });
+
+  it('emits sync:artist after syncing is written and again after idle', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey =
+      safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+        ? safeStorage.decryptString(
+            Buffer.from(settingsRecord.encryptedApiKey, 'base64')
+          )
+        : settingsRecord.encryptedApiKey || '';
+
+    const artistPulseStatuses: string[] = [];
+    const sendEventSpy = vi
+      .spyOn(service, 'sendEvent')
+      .mockImplementation((channel: string) => {
+        if (channel !== IPC_CHANNELS.SYNC.ARTIST) {
+          return;
+        }
+        const row = mockDb.db
+          .select({ syncStatus: artists.syncStatus })
+          .from(artists)
+          .where(eq(artists.id, artist.id))
+          .all()[0];
+        if (row) {
+          artistPulseStatuses.push(row.syncStatus);
+        }
+      });
+
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async () => [
+        {
+          id: 11,
+          fileUrl: 'https://cdn.example.com/11.jpg',
+          previewUrl: 'https://cdn.example.com/11-p.jpg',
+          sampleUrl: 'https://cdn.example.com/11-s.jpg',
+          tags: ['artist_name'],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 100,
+          height: 100,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        },
+      ]
+    );
+
+    try {
+      await service.syncArtist(artist, {
+        userId: settingsRecord.userId || '',
+        apiKey,
+      });
+
+      expect(artistPulseStatuses[0]).toBe('syncing');
+      expect(artistPulseStatuses[artistPulseStatuses.length - 1]).toBe('idle');
+      expect(
+        sendEventSpy.mock.calls.filter(
+          (call) => call[0] === IPC_CHANNELS.SYNC.ARTIST
+        )
+      ).toHaveLength(2);
+    } finally {
+      sendEventSpy.mockRestore();
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('emits repair start only after syncStatus is syncing', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    let statusAtRepairStart: string | undefined;
+    const sendEventSpy = vi
+      .spyOn(service, 'sendEvent')
+      .mockImplementation((channel: string) => {
+        if (channel !== IPC_CHANNELS.SYNC.REPAIR_START) {
+          return;
+        }
+        const row = mockDb.db
+          .select({ syncStatus: artists.syncStatus })
+          .from(artists)
+          .where(eq(artists.id, artist.id))
+          .all()[0];
+        statusAtRepairStart = row?.syncStatus;
+      });
+
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async () => [
+        {
+          id: 21,
+          fileUrl: 'https://cdn.example.com/21.jpg',
+          previewUrl: 'https://cdn.example.com/21-p.jpg',
+          sampleUrl: 'https://cdn.example.com/21-s.jpg',
+          tags: ['artist_name'],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 100,
+          height: 100,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        },
+      ]
+    );
+
+    try {
+      await service.repairArtist(artist.id);
+
+      expect(statusAtRepairStart).toBe('syncing');
+      expect(sendEventSpy).toHaveBeenCalledWith(
+        IPC_CHANNELS.SYNC.REPAIR_START,
+        artist.name
+      );
+      expect(sendEventSpy).toHaveBeenCalledWith(IPC_CHANNELS.SYNC.REPAIR_END);
+    } finally {
+      sendEventSpy.mockRestore();
+      fetchPostsSpy.mockRestore();
+    }
+  });
 });

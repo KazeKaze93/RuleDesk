@@ -97,6 +97,7 @@
 | `settings:save-download-settings` | `SETTINGS.SAVE_DOWNLOAD_SETTINGS` | `z.tuple([SaveDownloadSettingsPayloadSchema])` | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `settings:save-theme` | `SETTINGS.SAVE_THEME` | `z.tuple([ThemePreferenceSchema])` | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `stats:get-extended` | `STATS.GET_EXTENDED` | `[]` (no args) | yes | `StatsController` | `src/main/ipc/controllers/StatsController.ts` |
+| `sync:artist` | `SYNC.ARTIST` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `sync:end` | `SYNC.END` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `sync:error` | `SYNC.ERROR` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `sync:progress` | `SYNC.PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
@@ -114,7 +115,7 @@
 
 ## Coverage
 
-- Channels in `channels.ts`: **100**
+- Channels in `channels.ts`: **101**
 - Channels with at least one scanned `handle` registration: **85**
 - Handler rows extracted: **85**
 

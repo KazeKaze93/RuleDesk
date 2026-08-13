@@ -175,7 +175,7 @@ When enabled in **Settings → Sync**, the app starts a full **Sync All** after 
 
 Optional **Sync new artist automatically** (off by default) queues `repairArtist` for each newly added artist via the same exclusive sync mutex — it does not block the add-artist IPC response.
 
-Each artist row stores `syncStatus` (`idle` / `syncing` / `error`) and `lastError`. A hard kill mid-sync cannot leave **Syncing** forever: the next DB init resets stuck `syncing` → `idle`. Live **Syncing** on the Artists list during a run still depends on a later UI refresh (IPC invalidation).
+Each artist row stores `syncStatus` (`idle` / `syncing` / `error`) and `lastError`. A hard kill mid-sync cannot leave **Syncing** forever: the next DB init resets stuck `syncing` → `idle`. The Artists list badge updates live: `AppLayout` invalidates `["artists"]` on `sync:artist` and repair start/end (DB remains source of truth).
 
 ### ✅ Periodic background sync
 

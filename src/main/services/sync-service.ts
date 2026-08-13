@@ -433,9 +433,14 @@ export class SyncService {
       }
 
       if (artist && settingsData) {
-        this.sendEvent(IPC_CHANNELS.SYNC.REPAIR_START, artist.name);
-        // Repair: reset lastPostId to 0 and sync posts with safety limit
-        await this.syncArtist({ ...artist, lastPostId: 0 }, settingsData, MAX_PAGES_SAFETY_LIMIT);
+        // Repair: reset lastPostId to 0 and sync posts with safety limit.
+        // REPAIR_START is emitted from syncArtist after syncStatus is written.
+        await this.syncArtist(
+          { ...artist, lastPostId: 0 },
+          settingsData,
+          MAX_PAGES_SAFETY_LIMIT,
+          { notifyRepairStart: true }
+        );
       }
     } catch (e) {
       if (isSyncCancelledError(e)) {
@@ -464,11 +469,13 @@ export class SyncService {
    * @param artist - Artist to sync
    * @param settings - API credentials (userId, apiKey)
    * @param maxPages - Maximum pages to fetch (default: Infinity)
+   * @param options.notifyRepairStart - Emit REPAIR_START after syncing status is persisted
    */
   public async syncArtist(
     artist: Artist,
     settings: { userId: string; apiKey: string },
-    maxPages = Infinity
+    maxPages = Infinity,
+    options?: { notifyRepairStart?: boolean }
   ) {
     setArtistSyncStatus(
       getDb(),
@@ -476,6 +483,10 @@ export class SyncService {
       ARTIST_SYNC_STATUS.SYNCING,
       null
     );
+    if (options?.notifyRepairStart) {
+      this.sendEvent(IPC_CHANNELS.SYNC.REPAIR_START, artist.name);
+    }
+    this.sendEvent(IPC_CHANNELS.SYNC.ARTIST);
 
     // DYNAMIC PROVIDER SELECTION
     // Validate provider ID against known providers
@@ -516,16 +527,20 @@ export class SyncService {
     const isInitialSync = currentLastPostId === 0;
     
     // Unified sync method - handles both initial and incremental sync
-    return await this.syncPosts(
-      artist,
-      settings,
-      provider,
-      {
-        isInitial: isInitialSync,
-        currentLastPostId,
-        maxPages: isInitialSync ? maxPages : Infinity,
-      }
-    );
+    try {
+      return await this.syncPosts(
+        artist,
+        settings,
+        provider,
+        {
+          isInitial: isInitialSync,
+          currentLastPostId,
+          maxPages: isInitialSync ? maxPages : Infinity,
+        }
+      );
+    } finally {
+      this.sendEvent(IPC_CHANNELS.SYNC.ARTIST);
+    }
   }
 
   /**
