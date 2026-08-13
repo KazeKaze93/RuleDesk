@@ -34,7 +34,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `controllers/posts-tag-query.test.ts` | Tag query helpers |
 | `controllers/PostsController.ai-filter.test.ts` | AI filter during FTS bulk-sync window |
 | `store/searchStore.test.ts` | Search store |
-| `shared/provider-search-ipc-payload.test.ts` | Provider IPC error parsing |
+| `shared/provider-search-ipc-payload.test.ts` | Provider IPC JSON payload / explicit `providerKind` (no copy-matching) |
 | `shared/autocomplete-label-count.test.ts` | Rule34 autocomplete `(count)` label parse |
 | `providers/rule34-provider-fetch-posts.test.ts` | fetchPosts error classification + searchTags shape |
 | `providers/gelbooru-provider-fetch-posts.test.ts` | Gelbooru fetchPosts errors + empty JSON `[]` |

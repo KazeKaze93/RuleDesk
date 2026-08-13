@@ -30,16 +30,6 @@ function stripIpcMessagePrefix(message: string): string {
   return message.replace(IPC_INVOKE_PREFIX, "").trim();
 }
 
-function inferKindFromUserMessage(message: string): ProviderErrorKind | null {
-  for (const key of Object.keys(PROVIDER_SEARCH_USER_MESSAGES)) {
-    const kind = ProviderErrorKindSchema.safeParse(key);
-    if (kind.success && PROVIDER_SEARCH_USER_MESSAGES[kind.data] === message) {
-      return kind.data;
-    }
-  }
-  return null;
-}
-
 function isUnusableIpcMessage(message: string | undefined): boolean {
   return message === undefined || message.length === 0 || message === "[object Object]";
 }
@@ -82,6 +72,33 @@ function tryParseJsonProviderPayload(
   return null;
 }
 
+/**
+ * Electron keeps Error.message and drops custom fields. Main JSON-encodes the
+ * payload into message; unwrap it before strict/relaxed parse so kind is never
+ * taken from user-facing copy.
+ */
+function hydrateCandidateFromJsonMessage(
+  candidate: Record<string, unknown>
+): Record<string, unknown> {
+  if (typeof candidate.message !== "string") {
+    return candidate;
+  }
+  const stripped = stripIpcMessagePrefix(candidate.message);
+  const json = tryParseJsonProviderPayload(stripped);
+  if (!json) {
+    return candidate;
+  }
+  const innerMessage = json.message;
+  return {
+    ...candidate,
+    ...json,
+    message:
+      typeof innerMessage === "string" && innerMessage.length > 0
+        ? innerMessage
+        : stripped,
+  };
+}
+
 function buildProviderSearchPayloadFromPartial(
   candidate: Record<string, unknown>
 ): ProviderSearchErrorPayload | null {
@@ -122,14 +139,6 @@ function buildProviderSearchPayloadFromPartial(
   const usableMergedMessage = isUnusableIpcMessage(resolvedMessageFromMerge)
     ? undefined
     : resolvedMessageFromMerge;
-
-  if (!kind && usableMergedMessage) {
-    kind = inferKindFromUserMessage(usableMergedMessage);
-  }
-
-  if (!kind && message) {
-    kind = inferKindFromUserMessage(message);
-  }
 
   if (!kind) {
     return null;
@@ -182,13 +191,15 @@ function candidateFromObject(error: object): Record<string, unknown> {
 
 /**
  * Parse a provider search failure from an IPC invoke rejection or re-thrown Browse error.
- * Tolerates Electron's Error wrapper, JSON-serialized payloads, and partial field sets.
+ * Kind comes from payload fields or JSON-encoded message, never from user-facing copy.
  */
 export function parseProviderSearchErrorPayload(
   error: unknown
 ): ProviderSearchErrorPayload | null {
   for (const candidateObject of collectErrorCandidates(error)) {
-    const candidate = candidateFromObject(candidateObject);
+    const candidate = hydrateCandidateFromJsonMessage(
+      candidateFromObject(candidateObject)
+    );
 
     const strict = pickProviderSearchPayload(candidate);
     if (strict) {

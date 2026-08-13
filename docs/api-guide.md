@@ -1265,12 +1265,12 @@ await window.api.searchBooru({
 
 **IPC Channel:** `booru:search`
 
-**Errors:** On provider failures `SearchController` calls `throwProviderSearchIpcError()` — an `Error` whose `message` is user-safe and whose enumerable fields match `ProviderSearchErrorPayload` (`name`, `code`, `providerKind`, optional `retryAfterMs`). **No** `stack`, `originalError`, or raw API body crosses IPC. Preload does not parse or reshape these errors.
+**Errors:** On provider failures `SearchController` calls `throwProviderSearchIpcError()` — `Error.message` is `JSON.stringify(ProviderSearchErrorPayload)` (`name`, `message`, `code`, `providerKind`, optional `retryAfterMs`) because Electron invoke drops custom Error fields. Enumerable `code` / `providerKind` remain for in-process callers. **No** `stack`, `originalError`, or raw API body crosses IPC. Preload does not parse or reshape these errors. Renderer `parseProviderSearchErrorPayload()` unwraps the JSON payload; `providerKind` is never inferred from user-facing copy. `PROVIDER_SEARCH_USER_MESSAGES` is display-only and must not name a specific provider.
 
 Renderer flow:
 
 1. React Query `queryFn` rejects with Electron’s wrapped invoke error.
-2. `parseProviderSearchErrorPayload()` in `src/shared/utils/provider-search-ipc.ts` strips the IPC prefix, tolerates JSON bodies and `[object Object]` messages, and validates via `ProviderSearchErrorPayloadSchema`.
+2. `parseProviderSearchErrorPayload()` in `src/shared/utils/provider-search-ipc.ts` strips the IPC prefix, unwraps a JSON-encoded payload (explicit `providerKind`), and validates via `ProviderSearchErrorPayloadSchema`. Kind is not recovered by matching user-facing copy.
 3. `BrowseErrorState` maps `providerKind` to title, icon, and actions (`auth` → **Open Settings**; others → **Retry** when applicable).
 
 Only a successful `{ posts: [] }` shows the empty-state screen. Raw API bodies are logged in main only (truncated).
