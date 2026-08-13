@@ -167,6 +167,8 @@ export function AddArtistModal({
                     onSelect={handleTagSelect}
                     placeholder={`Search on ${provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}...`}
                     onBlur={field.onBlur}
+                    provider={provider}
+                    artistOnly
                   />
                 )}
               />
@@ -175,7 +177,10 @@ export function AddArtistModal({
               <p className="text-xs text-destructive ml-1">{errors.tag.message}</p>
             )}
             <p className="text-[10px] text-muted-foreground ml-1">
-              Searching on <span className="font-medium text-foreground">{provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}</span>
+              Searching artist tags on{" "}
+              <span className="font-medium text-foreground">
+                {provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}
+              </span>
             </p>
           </div>
 

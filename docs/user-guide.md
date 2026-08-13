@@ -141,7 +141,7 @@ That's it! You're now ready to use RuleDesk.
 
 The artist will appear in your tracked list. Until the first successful sync finishes, the status badge shows **Not synced yet** (not green **Synced**). While that artist is being synced (Sync All, repair, or **Sync new artist automatically**), the badge switches to **Syncing**; when that artist finishes it becomes **Synced** or **Error** (hover for the reason) without waiting for every other artist. If **Sync new artist automatically** is enabled in Settings → Sync, RuleDesk queues that sync right after you add the artist.
 
-**Tip:** You can use the search box to find tags. Type a few letters and RuleDesk will suggest matching tags.
+**Tip:** Type a few letters in **Tag to Track** — suggestions are **artist tags only**. Gelbooru filters by tag category in one request. Rule34 autocomplete has no category field, so RuleDesk checks the top matches against the tag API (cached) and hides characters/series. Browse search autocomplete is unchanged (all tag types).
 
 ### Synchronizing Posts
 

@@ -9,6 +9,8 @@ interface UseRemoteTagsOptions {
   minQueryLength?: number;
   debounceMs?: number;
   provider?: ProviderId;
+  /** Add Artist modal: artist tags only. Browse/blacklist stay unfiltered. */
+  artistOnly?: boolean;
 }
 
 interface UseRemoteTagsReturn {
@@ -34,6 +36,7 @@ export function useRemoteTags({
   minQueryLength = 2,
   debounceMs = 300,
   provider = "rule34",
+  artistOnly = false,
 }: UseRemoteTagsOptions): UseRemoteTagsReturn {
   const [results, setResults] = useState<SearchResults[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +91,7 @@ export function useRemoteTags({
     setError(null);
 
     window.api
-      .searchRemoteTags(trimmedQuery, provider)
+      .searchRemoteTags(trimmedQuery, provider, artistOnly)
       .then((tags) => {
         // Only update state if request wasn't aborted
         if (!abortController.signal.aborted) {
@@ -117,7 +120,7 @@ export function useRemoteTags({
         abortControllerRef.current = null;
       }
     };
-  }, [debouncedQuery, minQueryLength, provider]);
+  }, [debouncedQuery, minQueryLength, provider, artistOnly]);
 
   return { results, isLoading, error };
 }

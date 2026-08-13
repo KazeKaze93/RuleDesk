@@ -110,12 +110,13 @@ RuleDesk is built on Electron, which runs two separate processes:
 
 When you click "Add Artist" in the UI:
 
-1. React component calls `window.api.addArtist(data)`
-2. Preload script forwards request to Main Process via IPC
-3. IPC Handler validates input using Zod schemas
-4. Service layer saves artist to database via Drizzle ORM
-5. Response flows back through IPC to Renderer
-6. React Query updates the UI with the new artist
+1. **Tag search** — `AsyncAutocomplete` calls `searchRemoteTags(query, provider, artistOnly=true)` after 300ms debounce. Gelbooru autocomplete2 includes `category` (`artist` / `character` / `copyright`); Main keeps `type === "artist"` only. Rule34 `autocomplete.php` has no category — Main takes the top 5 hits by label post_count and second-passes them through `tag_metadata` + DAPI `s=tag` (`TAG_TYPES.ARTIST`, background throttle). No match → empty list (not unfiltered tags). Browse/blacklist autocomplete still call `searchRemoteTags` without `artistOnly`.
+2. React component calls `window.api.addArtist(data)`
+3. Preload script forwards request to Main Process via IPC
+4. IPC Handler validates input using Zod schemas
+5. Service layer saves artist to database via Drizzle ORM
+6. Response flows back through IPC to Renderer
+7. React Query updates the UI with the new artist
 
 This separation ensures security (Renderer can't access sensitive data) and performance (database operations run in Main Process).
 

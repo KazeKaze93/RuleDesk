@@ -5,6 +5,7 @@ import { useRemoteTags } from "../../lib/hooks/useRemoteTags";
 import { cn } from "../../lib/utils";
 import { Loader2 } from "lucide-react";
 import type { SearchResults } from "@shared/types/providers";
+import type { ProviderId } from "../../../shared/constants";
 
 export interface AsyncAutocompleteProps {
   label: string;
@@ -13,6 +14,9 @@ export interface AsyncAutocompleteProps {
   placeholder?: string;
   value?: string;
   onBlur?: () => void;
+  provider?: ProviderId;
+  /** Add Artist: filter to artist tags. Default false for playlists/other. */
+  artistOnly?: boolean;
 }
 
 /**
@@ -37,6 +41,8 @@ export function AsyncAutocomplete({
   placeholder = "Search for tags...",
   value,
   onBlur,
+  provider = "rule34",
+  artistOnly = false,
 }: AsyncAutocompleteProps) {
   const isControlled = value !== undefined;
   const [internalQuery, setInternalQuery] = useState(value || "");
@@ -51,11 +57,15 @@ export function AsyncAutocomplete({
     query: query.trim(),
     minQueryLength: 2,
     debounceMs: 300,
-    provider: "rule34",
+    provider,
+    artistOnly,
   });
 
-  // Show dropdown when there are results and query is long enough
-  const shouldShowDropdown = isOpen && query.trim().length >= 2 && results.length > 0;
+  // Show dropdown while loading/error even before results (Rule34 second-pass latency).
+  const shouldShowDropdown =
+    isOpen &&
+    query.trim().length >= 2 &&
+    (isLoading || error !== null || results.length > 0);
 
   // Handle input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +88,10 @@ export function AsyncAutocomplete({
 
   // Handle input focus
   const handleFocus = () => {
-    if (query.trim().length >= 2 && results.length > 0) {
+    if (
+      query.trim().length >= 2 &&
+      (isLoading || error !== null || results.length > 0)
+    ) {
       setIsOpen(true);
     }
   };

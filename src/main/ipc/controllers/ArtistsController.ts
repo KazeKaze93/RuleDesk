@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq, or, sql } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { artists, settings, SETTINGS_ID } from "../../db/schema";
+import { artists, settings, SETTINGS_ID, TAG_TYPES } from "../../db/schema";
 import { escapeLikePattern } from "../../db/utils";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
@@ -23,6 +23,14 @@ import {
 } from "../../../shared/constants";
 import { AddArtistSchema, type AddArtistRequest } from "../../../shared/schemas/artist";
 import { IdSchema } from "../../../shared/schemas/ipc";
+import { sanitizeProviderTagToken } from "../../../shared/utils/provider-tag-sanitize";
+import { applyArtistOnlyAutocompleteFilter } from "../../lib/filter-artist-autocomplete";
+import {
+  loadTagMetadataCache,
+  resolveTagMetadataWave,
+} from "../../services/tag-resolve-coordinator";
+import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
+import type { ProviderSettings } from "../../providers/types";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -35,6 +43,7 @@ const SearchArtistsArgsSchema = z.tuple([z.string().trim().min(1)]);
 const SearchRemoteTagsArgsSchema = z.tuple([
   z.string().trim().min(2),
   z.enum(["rule34", "gelbooru"]).optional(),
+  z.boolean().optional(),
 ]);
 
 /**
@@ -115,8 +124,9 @@ export class ArtistsController extends BaseController {
       IPC_CHANNELS.API.SEARCH_REMOTE,
       SearchRemoteTagsArgsSchema,
       (event, ...args) => {
-        const [query, providerId] = SearchRemoteTagsArgsSchema.parse(args);
-        return this.searchRemoteTags(event, query, providerId);
+        const [query, providerId, artistOnly] =
+          SearchRemoteTagsArgsSchema.parse(args);
+        return this.searchRemoteTags(event, query, providerId, artistOnly);
       }
     );
 
@@ -337,25 +347,100 @@ export class ArtistsController extends BaseController {
   }
 
   /**
-   * Search remote tags via Booru provider autocomplete API
-   *
-   * @param _event - IPC event (unused)
-   * @param query - Search query string (validated)
-   * @param providerId - Provider identifier (optional, defaults to "rule34")
-   * @returns Array of search results
+   * Search remote tags via Booru provider autocomplete API.
+   * When `artistOnly` is set (Add Artist modal), Gelbooru is filtered by
+   * `category`/`SearchResults.type === "artist"`; Rule34 runs a top-N DAPI
+   * second-pass via `tag_metadata` + `resolveTagMetadataWave` (ARTIST).
    */
   private async searchRemoteTags(
     _event: IpcMainInvokeEvent,
     query: string,
-    providerId?: ProviderId
+    providerId?: ProviderId,
+    artistOnly?: boolean
   ): Promise<SearchResults[]> {
     try {
-      const provider = getProvider(providerId || "rule34");
-      return await provider.searchTags(query);
+      const resolvedProviderId = providerId || "rule34";
+      const provider = getProvider(resolvedProviderId);
+      const results = await provider.searchTags(query);
+      if (!artistOnly) {
+        return results;
+      }
+      return applyArtistOnlyAutocompleteFilter(
+        resolvedProviderId,
+        results,
+        (tags) => this.resolveArtistTagNames(tags)
+      );
     } catch (error) {
       log.error("[ArtistsController] Remote search error:", error);
       // Re-throw original error instead of swallowing it
       throw error;
     }
+  }
+
+  private getDecryptedProviderSettings(): ProviderSettings | null {
+    try {
+      const settingsRecord = this.getDb()
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
+      if (!settingsRecord) {
+        return null;
+      }
+      const credentials = getDecryptedCredentialsFromRecord(settingsRecord);
+      if (!credentials) {
+        return null;
+      }
+      return {
+        userId: credentials.userId,
+        apiKey: credentials.apiKey,
+      };
+    } catch (error) {
+      log.error(
+        "[ArtistsController] Failed to load credentials for artist autocomplete:",
+        error
+      );
+      return null;
+    }
+  }
+
+  /** Reuses tag_metadata cache + background throttle; ARTIST type only. */
+  private async resolveArtistTagNames(tags: string[]): Promise<string[]> {
+    const uniqueTags = [
+      ...new Set(
+        tags
+          .filter(Boolean)
+          .map((tag) => sanitizeProviderTagToken(tag).toLowerCase().trim())
+          .filter((tag) => tag.length > 0)
+      ),
+    ];
+    if (uniqueTags.length === 0) {
+      return [];
+    }
+
+    const db = this.getDb();
+    const cache = loadTagMetadataCache(db, uniqueTags);
+    const providerSettings = this.getDecryptedProviderSettings();
+    if (providerSettings) {
+      try {
+        await resolveTagMetadataWave(
+          db,
+          uniqueTags,
+          cache,
+          providerSettings,
+          "searchRemoteTags:artistOnly"
+        );
+      } catch (error) {
+        log.error(
+          "[ArtistsController] Artist tag resolve failed:",
+          error
+        );
+      }
+    }
+
+    return uniqueTags.filter(
+      (tag) => cache.foundTypes.get(tag) === TAG_TYPES.ARTIST
+    );
   }
 }

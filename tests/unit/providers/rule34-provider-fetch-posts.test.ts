@@ -46,6 +46,7 @@ describe("Rule34Provider.fetchPosts error classification", () => {
 
   beforeEach(() => {
     axiosGetMock.mockReset();
+    vi.spyOn(ProviderThrottle.prototype, "wait").mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -128,5 +129,33 @@ describe("Rule34Provider.fetchPosts error classification", () => {
     });
 
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Rule34Provider.searchTags", () => {
+  const provider = new Rule34Provider();
+
+  beforeEach(() => {
+    axiosGetMock.mockReset();
+    vi.spyOn(ProviderThrottle.prototype, "wait").mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("maps label/value and omits missing type (live autocomplete.php shape)", async () => {
+    axiosGetMock.mockResolvedValueOnce({
+      status: 200,
+      data: [{ label: "wlop (16)", value: "wlop" }],
+    });
+
+    await expect(provider.searchTags("wlop")).resolves.toEqual([
+      { id: "wlop", label: "wlop (16)", value: "wlop" },
+    ]);
+
+    const calledUrl = String(axiosGetMock.mock.calls[0]?.[0]);
+    expect(calledUrl).toContain("autocomplete.php");
+    expect(calledUrl).toContain("q=wlop");
   });
 });

@@ -192,6 +192,7 @@ https://api.rule34.xxx/index.php?page=dapi&s=tag&q=index&limit=500
 - This is not an official endpoint, but it is available for use
 - Some implementations may use the autocomplete from the main site; use this endpoint instead
 - Returns suggestions based on partial tag input
+- Live response shape is `{ label, value }` only (e.g. `{"label":"wlop (16)","value":"wlop"}`). There is **no** `type` / category field — artist vs character vs copyright cannot be filtered from this endpoint. Tag class comes from DAPI `s=tag&q=index` (`type=1` artist).
 
 **Example:**
 

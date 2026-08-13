@@ -150,7 +150,9 @@ export class GelbooruProvider implements IBooruProvider {
       );
       
       if (Array.isArray(data)) {
-        // Gelbooru format: [{"value":"tag_name","label":"tag_name (123)","type":"0"}]
+        // Live autocomplete2: { value, label, type: "tag", category: "artist"|"character"|"copyright"|"tag", post_count }.
+        // `type=tag_query` query param is the search mode — do not overwrite it.
+        // `type` in the body is always "tag" (entity kind). Category is the tag class.
         const results: SearchResults[] = [];
         for (const item of data) {
           if (isGelbooruTagItem(item)) {
