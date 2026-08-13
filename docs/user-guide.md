@@ -139,7 +139,7 @@ That's it! You're now ready to use RuleDesk.
 
 4. Click **"Add"**
 
-The artist will appear in your tracked list. Until the first successful sync finishes, the status badge shows **Not synced yet** (not green **Synced**). If **Sync new artist automatically** is enabled in Settings → Sync, RuleDesk queues that sync right after you add the artist.
+The artist will appear in your tracked list. Until the first successful sync finishes, the status badge shows **Not synced yet** (not green **Synced**). After a sync run completes, the badge reflects that artist’s last result: **Synced**, **Error** (hover for the reason), or **Not synced yet**. A live **Syncing** spinner during an in-progress run is not shown until the list refreshes (for example after **Sync All** finishes). If **Sync new artist automatically** is enabled in Settings → Sync, RuleDesk queues that sync right after you add the artist.
 
 **Tip:** You can use the search box to find tags. Type a few letters and RuleDesk will suggest matching tags.
 

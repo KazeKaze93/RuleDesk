@@ -18,6 +18,26 @@ let dbInstance: AppDatabase | null = null;
 let sqliteInstance: InstanceType<typeof Database> | null = null;
 
 /**
+ * Hard-kill mid-sync can leave artists.sync_status = 'syncing' forever.
+ * Reset only that in-flight flag. Do not touch error / lastError / lastSyncIncomplete.
+ */
+export function resetStaleSyncingArtists(
+  sqlite: InstanceType<typeof Database>
+): number {
+  const result = sqlite
+    .prepare(
+      "UPDATE artists SET sync_status = 'idle' WHERE sync_status = 'syncing'"
+    )
+    .run();
+  if (result.changes > 0) {
+    logger.info(
+      `[DB] Reset ${result.changes} artist(s) stuck in syncing after hard interrupt`
+    );
+  }
+  return result.changes;
+}
+
+/**
  * After hard-kill mid-initial-sync left runtime FTS triggers dropped:
  * backfill missing posts_fts rows so MATCH / empty-guard see real data.
  */
@@ -386,6 +406,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
     if (recreated.length > 0) {
       recoverAfterRecreatedFtsTriggers(sqlite, recreated);
     }
+    resetStaleSyncingArtists(sqlite);
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
     
