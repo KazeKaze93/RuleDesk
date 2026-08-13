@@ -171,7 +171,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: fetchNextPage,
+    onLoadMore: handleLoadMore,
   });
 
   const handlePostClick = (index: number) => {

@@ -208,6 +208,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** Playlist `openViewer` set `hasNextPage: queryHasNextPage && displayedPosts.length < pages.length * 50`. Artist ANDed the query flag with `allPosts.length < totalPosts`. A full page (50/50) makes those inequalities false while react-query `hasNextPage` is still true (`getNextPageParam` treats `length === pageSize` as "maybe more"). `ViewerDialog` then freezes `liveHasNextPage` as false and never calls `onLoadMore`; `next()` only advances inside `queue.ids`.
 **Invariant Rule:** Pass the infinite-query `hasNextPage` flag into `openViewer` unchanged. Do not AND it with loaded-count vs page-size multiples or vs `totalCount`. Exhausted data is `hasNextPage === false` from `getNextPageParam` (short last page), not "count is a multiple of 50".
 
+### Problem: Gallery background fetch does not grow the open viewer queue
+**Root Cause:** Masonry `useMasonryInfiniteScroll` and local grid `endReached` called naked `fetchNextPage`, while `openViewer({ onLoadMore: handleLoadMore })` was the only path that `appendQueueIds`. Background pages landed in react-query cache; the viewer queue stayed at open-time ids until its own near-end loader ran.
+**Invariant Rule:** Gallery infinite-scroll `onLoadMore` / local `endReached` must be the same `handleLoadMore` that fetches and `appendQueueIds`. Do not pass naked `fetchNextPage` when that handler exists. `appendQueueIds` is a no-op if `queue` is null. Browse/Artist grid via `useGalleryInfiniteScroll.handleEndReached` is a separate hook-level change.
+
 ## Library API semantics
 
 ### Problem: A library callback that "works" can still be the wrong product motion

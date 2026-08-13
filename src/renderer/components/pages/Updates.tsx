@@ -441,7 +441,7 @@ export const Updates = () => {
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: fetchNextPage,
+    onLoadMore: handleLoadMore,
   });
 
   useEffect(() => {
@@ -573,11 +573,7 @@ export const Updates = () => {
               className="h-full"
               aria-busy={listAriaBusy}
               totalCount={allPosts.length}
-              endReached={() => {
-                if (hasNextPage && !isFetchingNextPage) {
-                  fetchNextPage();
-                }
-              }}
+              endReached={handleLoadMore}
               increaseViewportBy={600}
               components={{
                 List: ListComponent,

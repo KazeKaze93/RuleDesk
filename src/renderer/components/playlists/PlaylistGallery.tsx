@@ -230,16 +230,10 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     });
   };
 
-  const handleEndReached = () => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-  };
-
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: fetchNextPage,
+    onLoadMore: handleLoadMore,
   });
 
   const handleRemovePost = async (postId: number) => {
@@ -441,7 +435,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
             className="h-full"
             aria-busy={listAriaBusy}
             totalCount={displayedPosts.length}
-            endReached={handleEndReached}
+            endReached={handleLoadMore}
             increaseViewportBy={600}
             components={{
               List: ListComponent,
