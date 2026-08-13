@@ -26,7 +26,7 @@ This document reflects the current roadmap for RuleDesk `v17.x` and is aligned w
 - ✅ Playlists, favorites, downloads, backup/restore, and full-screen viewer are implemented.
 - ✅ Playlists now include import/export, manual drag-and-drop reorder, and smart hybrid local+remote resolution.
 - ✅ Database is optimized for scale: WAL mode, FTS5, composite indexes, and migration workflow.
-- ✅ **Sync automation:** auto-sync on startup, periodic background sync (presets in Settings, minimum interval enforced in `SyncScheduler`), and sync scheduler restart when settings are saved.
+- ✅ **Sync automation:** auto-sync on startup, optional auto-sync when adding an artist (`autoSyncOnArtistAdd`, default off → `repairArtist` via `runExclusive`), periodic background sync (presets in Settings, minimum interval enforced in `SyncScheduler`), and sync scheduler restart when settings are saved.
 - ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`).
 - ✅ **Backup retention:** after each successful backup, older files are pruned based on `backupRetention` from Settings (`1..20`).
 - ✅ **User-visible DB maintenance:** Settings now exposes VACUUM status (last run timestamp/status/error), manual trigger, and schedule (`manual` / `weekly` / `monthly`).
@@ -231,6 +231,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Testing** | Live Gelbooru video-proxy check was not run (Gelbooru API key required); unit tests cover allowlist logic only. |
 | **Media filters (P3)** | Browse worker video regex (`mp4\|webm\|mov` in `data-processor.worker.ts`) is narrower than canonical `VIDEO_EXTENSIONS` in `src/shared/utils/media.ts` — align when touching the worker. |
 | **Product** | **Smart Collections AI** (research). |
+| **Sync UX** | Live per-artist `syncStatus` (`syncing` / `error` / idle) written by `SyncService` during sync, with optional IPC push or query invalidation for a real-time **Syncing…** badge — separate from the static `lastChecked === null` → **Not synced yet** fix. |
 
 **Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.
 

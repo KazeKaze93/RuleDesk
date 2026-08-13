@@ -1048,6 +1048,7 @@ sequenceDiagram
        .returning();
      ```
    - Database returns the new artist with generated ID
+   - If Settings `autoSyncOnArtistAdd` is enabled and API credentials are configured, Main fire-and-forgets `SyncService.repairArtist(id)` (queued via `runExclusive`; does not block the IPC response). Default is off.
    - Response flows back to Renderer
 
 6. **Cache invalidation** - On success, component invalidates React Query cache:

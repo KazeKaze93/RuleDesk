@@ -106,6 +106,7 @@ function mapSettingsToIpc(
       z.enum(["flat", "{artist_id}"]).safeParse(dbSettings.downloadFolderStructure).data ?? "flat",
     theme: ThemePreferenceSchema.safeParse(dbSettings.theme).data ?? "system",
     autoSyncOnStartup: !!dbSettings.autoSyncOnStartup,
+    autoSyncOnArtistAdd: !!dbSettings.autoSyncOnArtistAdd,
     syncIntervalMinutes: dbSettings.syncIntervalMinutes ?? 0,
     backupRetention: dbSettings.backupRetention ?? 5,
   };
@@ -325,6 +326,8 @@ export class SettingsController extends BaseController {
           // Using explicit .set() for all fields to ensure they are updated
           const finalAutoSyncOnStartup =
             data.autoSyncOnStartup ?? existing.autoSyncOnStartup ?? false;
+          const finalAutoSyncOnArtistAdd =
+            data.autoSyncOnArtistAdd ?? existing.autoSyncOnArtistAdd ?? false;
           const finalSyncIntervalMinutes =
             data.syncIntervalMinutes ?? existing.syncIntervalMinutes ?? 0;
           const finalBackupRetention =
@@ -342,6 +345,7 @@ export class SettingsController extends BaseController {
               tosAcceptedAt: existing.tosAcceptedAt ?? null,
               theme: existing.theme ?? "system",
               autoSyncOnStartup: finalAutoSyncOnStartup,
+              autoSyncOnArtistAdd: finalAutoSyncOnArtistAdd,
               syncIntervalMinutes: finalSyncIntervalMinutes,
               backupRetention: finalBackupRetention,
             })
@@ -362,6 +366,7 @@ export class SettingsController extends BaseController {
               tosAcceptedAt: null,
               theme: "system",
               autoSyncOnStartup: data.autoSyncOnStartup ?? false,
+              autoSyncOnArtistAdd: data.autoSyncOnArtistAdd ?? false,
               syncIntervalMinutes: data.syncIntervalMinutes ?? 0,
               backupRetention: data.backupRetention ?? 5,
             })

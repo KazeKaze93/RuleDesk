@@ -67,6 +67,7 @@ describe("SettingsController Integration", () => {
         tosAcceptedAt: null,
         theme: "system",
         autoSyncOnStartup: false,
+        autoSyncOnArtistAdd: false,
         syncIntervalMinutes: 30,
       })
       .run();
@@ -106,6 +107,31 @@ describe("SettingsController Integration", () => {
     expect(updated).toBeDefined();
     expect(updated?.syncIntervalMinutes).toBe(30);
     expect(updated?.autoSyncOnStartup).toBe(true);
+    expect(updated?.autoSyncOnArtistAdd).toBe(false);
+    expect(scheduler.restart).toHaveBeenCalledWith(30);
+  });
+
+  it("keeps other sync fields when saving autoSyncOnArtistAdd", async () => {
+    const saveCall = vi
+      .mocked(ipcMain.handle)
+      .mock.calls.find(([channel]) => channel === IPC_CHANNELS.SETTINGS.SAVE);
+
+    expect(saveCall).toBeDefined();
+    if (!saveCall) {
+      throw new Error("SETTINGS.SAVE handler was not registered");
+    }
+
+    const invokeHandler = saveCall[1];
+    await invokeHandler(undefined, { autoSyncOnArtistAdd: true });
+
+    const updated = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    expect(updated).toBeDefined();
+    expect(updated?.syncIntervalMinutes).toBe(30);
+    expect(updated?.autoSyncOnStartup).toBe(false);
+    expect(updated?.autoSyncOnArtistAdd).toBe(true);
     expect(scheduler.restart).toHaveBeenCalledWith(30);
   });
 });

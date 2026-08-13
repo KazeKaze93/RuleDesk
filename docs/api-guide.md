@@ -232,6 +232,7 @@ interface IpcBridge {
     apiKey?: string;
     proxyUrl?: string | null;
     autoSyncOnStartup?: boolean;
+    autoSyncOnArtistAdd?: boolean;
     syncIntervalMinutes?: number;
   }) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
@@ -577,6 +578,7 @@ type IpcSettings = {
   downloadFolderStructure: "flat" | "{artist_id}";
   theme: "system" | "light" | "dark";
   autoSyncOnStartup: boolean;
+  autoSyncOnArtistAdd: boolean;
   syncIntervalMinutes: number;
   backupRetention: number;
 };
@@ -656,6 +658,7 @@ Saves settings to the database. Supports partial updates (credentials, sync opti
 - `creds.apiKey?: string` - Rule34.xxx API Key (encrypted before storage)
 - `creds.proxyUrl?: string | null` - Optional outbound proxy URL
 - `creds.autoSyncOnStartup?: boolean` - Auto-sync startup toggle
+- `creds.autoSyncOnArtistAdd?: boolean` - Auto-sync newly added artists (default off)
 - `creds.syncIntervalMinutes?: number` - Periodic sync interval in minutes
 - `creds.backupRetention?: number` - Number of backups to keep (1..20)
 

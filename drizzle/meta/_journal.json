@@ -232,6 +232,13 @@
       "when": 1778100000000,
       "tag": "0033_fix_fts_external_content_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1778200000000,
+      "tag": "0034_add_auto_sync_on_artist_add",
+      "breakpoints": true
     }
   ]
 }

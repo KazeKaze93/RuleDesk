@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  Circle,
   Hash,
   RefreshCw,
   Search,
@@ -81,6 +82,17 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
             {artist.lastError}
           </TooltipContent>
         </Tooltip>
+      );
+    }
+
+    // lastChecked is set only after a successful pagination end (see SyncService).
+    // Null means the artist has never completed a sync — do not treat default idle as Synced.
+    if (artist.lastChecked === null) {
+      return (
+        <Badge variant="secondary" className="h-6 shrink-0 gap-1 text-xs">
+          <Circle className="w-3 h-3" />
+          Not synced yet
+        </Badge>
       );
     }
 
