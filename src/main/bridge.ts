@@ -135,6 +135,10 @@ export interface IpcBridge {
   onSyncEnd: (callback: () => void) => () => void;
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
+  /** Per-artist syncStatus was persisted (start or end). Void payload — refetch DB. */
+  onSyncArtist: (callback: () => void) => () => void;
+  onRepairStart: (callback: (artistName: string) => void) => () => void;
+  onRepairEnd: (callback: () => void) => () => void;
 
   markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
 
@@ -443,6 +447,28 @@ const ipcBridge: IpcBridge = {
   onSyncProgress: (callback) => {
     const sub = (_: IpcRendererEvent, msg: string) => callback(msg);
     const channel = IPC_CHANNELS.SYNC.PROGRESS;
+    ipcRenderer.on(channel, sub);
+    return () => ipcRenderer.removeListener(channel, sub);
+  },
+
+  onSyncArtist: (callback) => {
+    const sub = () => callback();
+    const channel = IPC_CHANNELS.SYNC.ARTIST;
+    ipcRenderer.on(channel, sub);
+    return () => ipcRenderer.removeListener(channel, sub);
+  },
+
+  onRepairStart: (callback) => {
+    const channel = IPC_CHANNELS.SYNC.REPAIR_START;
+    const subscription = (_: IpcRendererEvent, artistName: string) =>
+      callback(artistName);
+    ipcRenderer.on(channel, subscription);
+    return () => ipcRenderer.removeListener(channel, subscription);
+  },
+
+  onRepairEnd: (callback) => {
+    const sub = () => callback();
+    const channel = IPC_CHANNELS.SYNC.REPAIR_END;
     ipcRenderer.on(channel, sub);
     return () => ipcRenderer.removeListener(channel, sub);
   },

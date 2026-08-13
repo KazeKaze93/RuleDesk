@@ -96,6 +96,8 @@ export const IPC_CHANNELS = {
     END: "sync:end",
     ERROR: "sync:error",
     PROGRESS: "sync:progress",
+    /** Void pulse after per-artist syncStatus is written (start + end). Not a progress string. */
+    ARTIST: "sync:artist",
     REPAIR_START: "sync:repair:start",
     REPAIR_END: "sync:repair:end",
   },

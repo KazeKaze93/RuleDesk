@@ -356,6 +356,9 @@ interface IpcBridge {
   onSyncEnd: (callback: () => void) => () => void;
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
+  onSyncArtist: (callback: () => void) => () => void;
+  onRepairStart: (callback: (artistName: string) => void) => () => void;
+  onRepairEnd: (callback: () => void) => () => void;
 }
 ```
 
@@ -994,7 +997,7 @@ if (success) {
 
 **IPC Channel:** `db:sync-all`
 
-**Note:** This is an asynchronous operation. The method returns immediately, and synchronization runs in the background. Use event listeners (`onSyncStart`, `onSyncEnd`, `onSyncProgress`, `onSyncError`) to track progress. Check artist `newPostsCount` to see results.
+**Note:** This is an asynchronous operation. The method returns immediately, and synchronization runs in the background. Use event listeners (`onSyncStart`, `onSyncEnd`, `onSyncProgress`, `onSyncError`, `onSyncArtist`, `onRepairStart`, `onRepairEnd`) to track progress. Check artist `newPostsCount` / `syncStatus` to see results.
 
 ---
 
@@ -1882,6 +1885,46 @@ const unsubscribe = window.api.onSyncProgress((message) => {
 ```
 
 **IPC Channel:** `sync:progress`
+
+Payload is always a **string** (human-readable progress). Do not change this shape — Sidebar / `SyncStatusBadge` use it only to toggle global `isSyncing`. Per-artist `syncStatus` uses `onSyncArtist` / repair events + DB refetch.
+
+---
+
+#### `onSyncArtist(callback: () => void)`
+
+Fired after per-artist `syncStatus` is written (start **and** end of `syncArtist`). Void payload — renderer invalidates `["artists"]` and refetches from DB (source of truth). Not a substitute for `onSyncProgress`.
+
+**Returns:** `() => void` - Unsubscribe function
+
+**Example:**
+
+```typescript
+const unsubscribe = window.api.onSyncArtist(() => {
+  void queryClient.invalidateQueries({ queryKey: ["artists"] });
+});
+```
+
+**IPC Channel:** `sync:artist`
+
+---
+
+#### `onRepairStart(callback: (artistName: string) => void)`
+
+Fired when a repair/auto-sync-on-add run starts, **after** `syncStatus` is `"syncing"`.
+
+**Returns:** `() => void` - Unsubscribe function
+
+**IPC Channel:** `sync:repair:start`
+
+---
+
+#### `onRepairEnd(callback: () => void)`
+
+Fired when repair/auto-sync-on-add finishes (`idle` or `error` already persisted).
+
+**Returns:** `() => void` - Unsubscribe function
+
+**IPC Channel:** `sync:repair:end`
 
 ---
 

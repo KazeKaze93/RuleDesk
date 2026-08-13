@@ -135,6 +135,9 @@ export interface IpcApi extends IpcBridge {
   onSyncEnd: (callback: () => void) => () => void;
   onSyncProgress: (callback: (message: string) => void) => () => void;
   onSyncError: (callback: SyncErrorCallback) => () => void;
+  onSyncArtist: (callback: () => void) => () => void;
+  onRepairStart: (callback: (artistName: string) => void) => () => void;
+  onRepairEnd: (callback: () => void) => () => void;
 
   markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
 

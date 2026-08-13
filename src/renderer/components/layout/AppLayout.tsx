@@ -30,18 +30,29 @@ export const AppLayout = () => {
   }, [location.pathname]);
 
   useEffect(() => {
+    const invalidateArtists = () => {
+      void queryClient.invalidateQueries({ queryKey: ["artists"] });
+    };
+
     const unsubscribeSyncEnd = window.api.onSyncEnd(() => {
       // Sync writes new posts into DB, so all post-based feeds must refresh.
       // Smart playlists are dynamic queries over posts, so they must be invalidated too.
       void queryClient.invalidateQueries({ queryKey: ["posts"] });
       void queryClient.invalidateQueries({ queryKey: ["playlist-posts"] });
       void queryClient.invalidateQueries({ queryKey: ["playlists"] });
-      void queryClient.invalidateQueries({ queryKey: ["artists"] });
+      invalidateArtists();
       void queryClient.invalidateQueries({ queryKey: ["posts-count"] });
     });
 
+    const unsubscribeSyncArtist = window.api.onSyncArtist(invalidateArtists);
+    const unsubscribeRepairStart = window.api.onRepairStart(invalidateArtists);
+    const unsubscribeRepairEnd = window.api.onRepairEnd(invalidateArtists);
+
     return () => {
       unsubscribeSyncEnd();
+      unsubscribeSyncArtist();
+      unsubscribeRepairStart();
+      unsubscribeRepairEnd();
     };
   }, [queryClient]);
 

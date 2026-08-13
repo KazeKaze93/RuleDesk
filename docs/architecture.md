@@ -487,7 +487,7 @@ const posts = await db.query.posts.findMany({
    - Updates artist post counts
    - `syncAllArtists()` and `repairArtist()` run through `runExclusive()` — a promise-chain mutex: if one operation is in flight, the next **waits** until it finishes (no silent drop). Covered by `tests/integration/services/SyncService.queue.test.ts` (timing: repair’s `syncArtist` runs only after full sync completes).
    - Cooperative cancel: `requestCancel()` / `SyncCancelledError` / `waitUntilIdle()` — app quit drains in-flight sync (up to `SYNC_SHUTDOWN_DRAIN_MS`) before `closeDatabase()`. Hard kill still bypasses cancel; runtime-droppable FTS triggers (`posts_fts_insert`, `posts_fts_update`) are recovered on DB init via `ensureFtsTriggers` (`src/main/db/fts-triggers.ts`), then `rebuildFtsIndex` (`VALUES('rebuild')`). Successful initial/repair sync calls `backfillArtistFtsIndex` (also `rebuild` — blind artist `INSERT…SELECT` leaves stale terms after repair conflicts) before restoring triggers. While those triggers are dropped, `PostsController` AI filter (`hide`/`only`) does not use FTS `MATCH` — `areRuntimeDroppableFtsTriggersPresent` reads `sqlite_master` and falls back to exact-token `instr` on `posts.tags` so hide cannot fail-open. `getIsSyncing()` is not that signal (incremental sync keeps triggers live). Same init path also runs `resetStaleSyncingArtists` (`UPDATE artists SET sync_status = 'idle' WHERE sync_status = 'syncing'`) so a hard-kill cannot leave a permanent **Syncing** badge; `'error'`, `lastError`, and `lastSyncIncomplete` are left alone.
-   - Per-artist `syncStatus` (`idle` / `syncing` / `error`) and `lastError` are written by `SyncService.setArtistSyncStatus`: `"syncing"` at the start of `syncArtist` (before network / FTS drop); `"idle"` + `lastError: null` on successful pagination end (same tx as `lastPostId` / `lastChecked`) and on incomplete-without-throw (`lastSyncIncomplete: true`) or cancel; `"error"` + message on provider/network rethrow. Not written on credentials early-return or invalid-provider fallback. Live renderer refresh of the badge is a separate follow-up (IPC invalidation / push).
+   - Per-artist `syncStatus` (`idle` / `syncing` / `error`) and `lastError` are written by `SyncService.setArtistSyncStatus`: `"syncing"` at the start of `syncArtist` (before network / FTS drop); `"idle"` + `lastError: null` on successful pagination end (same tx as `lastPostId` / `lastChecked`) and on incomplete-without-throw (`lastSyncIncomplete: true`) or cancel; `"error"` + message on provider/network rethrow. Not written on credentials early-return or invalid-provider fallback. After each persist, Main emits void `sync:artist` (and `sync:repair:start` after the syncing write when repairing). `AppLayout` invalidates React Query `["artists"]` on `sync:artist` / `sync:repair:start` / `sync:repair:end` (plus full feed refresh on `sync:end`). `sync:progress` remains a **string** for the global Sidebar/`SyncStatusBadge` indicator — do not overload it with artist status.
    - Emits IPC events for sync progress tracking
 
 4. **IPC Controllers** (`src/main/ipc/controllers/`)
@@ -1181,17 +1181,23 @@ sequenceDiagram
 
    g. **Updates artist** - Mid-batch and error paths update `newPostsCount` (and may set `lastSyncIncomplete`) without moving `lastPostId`. After natural pagination end (`postsData.length < PAGE_SIZE`), a single commit writes `lastPostId`, `lastChecked`, clears `lastSyncIncomplete`, and sets `syncStatus` to `idle`. Incomplete-without-throw keeps `syncStatus` `idle` with `lastSyncIncomplete`. Provider/network rethrow sets `syncStatus` `error` and `lastError` before rethrow; cancel returns `syncStatus` to `idle`. Cancel mid-pagination follows the same incomplete path (partial commit, cursor unchanged) then rethrows `SyncCancelledError`.
 
-   h. **Progress event** - Emits IPC event: `emit('sync:progress', 'Syncing artist_name...')`
+   h. **Progress event** - Emits IPC event: `emit('sync:progress', 'Checking artist_name...')` (string only — global Sidebar indicator). After per-artist `syncStatus` is written, emits void `sync:artist` so `AppLayout` can invalidate `["artists"]`. Repair emits `sync:repair:start` (after syncing write) and `sync:repair:end`.
 
-5. **UI updates in real-time** - React component listens to progress events:
+5. **UI updates in real-time** - Global shell listens to progress for the Sync All spinner; artist badges refetch via `onSyncArtist` / repair listeners:
 
    ```typescript
    useEffect(() => {
-     const unsubscribe = window.api.onSyncProgress((message) => {
-       setSyncMessage(message); // Update progress text
+     const unsubscribeProgress = window.api.onSyncProgress((message) => {
+       setSyncMessage(message);
      });
-     return () => unsubscribe();
-   }, []);
+     const unsubscribeArtist = window.api.onSyncArtist(() => {
+       void queryClient.invalidateQueries({ queryKey: ["artists"] });
+     });
+     return () => {
+       unsubscribeProgress();
+       unsubscribeArtist();
+     };
+   }, [queryClient]);
    ```
 
 6. **Completion** - When all artists are processed, service emits `sync:end` event. UI shows "Sync complete" message.
