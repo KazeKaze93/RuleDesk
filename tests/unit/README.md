@@ -2,11 +2,13 @@
 
 Vitest tests for gallery logic, filters, layout, and shared utilities. Property-based fuzzing lives in `tests/property/`.
 
+**Count source of truth:** `npm test` output (`Test Files` / `Tests`). Do not copy totals into this file.
+
 ## Layout
 
 | Path | Focus |
 |------|--------|
-| `tests/unit/` | Unit tests (hooks, components logic, utilities) |
+| `tests/unit/` | Unit tests (hooks, RTL components, utilities) |
 | `tests/property/` | Property-based tests (`fast-check`) — e.g. `escapeLikePattern`, Zod schemas |
 | `tests/integration/` | IPC controllers & services (see integration folder) |
 
@@ -18,14 +20,14 @@ Vitest tests for gallery logic, filters, layout, and shared utilities. Property-
 
 ### Components
 
-- **`SourceSwitcher.test.ts`**, **`FilterToggleGroup.test.ts`** — filter toggles
-- **`GridContainer.test.ts`**, **`PostCard/viewType.test.ts`** — grid vs masonry
-- **`IntersectionObserver.test.ts`** — infinite-scroll sentinel
-- **`VirtuosoGrid-totalCount.test.ts`** — virtualized grid sizing
+- **`SourceSwitcher.test.tsx`**, **`FilterToggleGroup.test.tsx`** — real filter toggles (RTL)
+- **`GridContainer.test.tsx`**, **`PostCard/viewType.test.tsx`** — grid vs masonry classes from production
+- **`IntersectionObserver.test.tsx`** — `PostCard` video viewport observer
+- **`VirtuosoGrid-totalCount.test.ts`** — `totalCount` wired to the displayed collection
 
 ### Utilities
 
-- **`filter-utils.test.ts`** — AI tag detection, video file detection
+- **`filter-utils.test.ts`** — AI tag tokens, video file detection
 - **`posts-tag-query.test.ts`** — tag query helpers
 - **`utils/decrypted-credentials.test.ts`** — `getDecryptedCredentialsStrict`, `CredentialDecryptionError` (no ciphertext fallback)
 
@@ -66,13 +68,13 @@ npm run test:coverage
 
 ## Conventions
 
-- Vitest **node** environment (see `vitest.config.ts`)
-- Prefer testing pure logic without React rendering
+- Vitest **node** environment by default; jsdom via `// @vitest-environment jsdom` for hook/component render tests
+- Component tests import production modules and assert with `@testing-library/react`
 - Mock Electron/native deps where needed
 - AAA pattern (Arrange, Act, Assert)
 
 For integration IPC/SQLite tests (artist limit, sync queue), see [`tests/integration/README.md`](../integration/README.md).
 
-For the full suite inventory (**140** tests), see [`TEST_COVERAGE.md`](./TEST_COVERAGE.md).
+For the file inventory, see [`TEST_COVERAGE.md`](./TEST_COVERAGE.md). For case counts, run `npm test`.
 
 For E2E workflows, see `tests/e2e/README.md` and Playwright specs.

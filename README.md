@@ -522,7 +522,7 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests. **Playwright** covers E2E flows. Treat `npm test` output as the count source of truth; the file inventory in [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md) may lag.
+**Vitest** covers unit, integration, and property-based tests. **Playwright** covers E2E flows. Treat `npm test` output as the count source of truth. [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md) is a file inventory (no case totals).
 
 ```bash
 # Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron

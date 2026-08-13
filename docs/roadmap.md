@@ -175,6 +175,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | `fix/gelbooru-transport-failure-silent-swallow` | ✅ merged | [#157](https://github.com/KazeKaze93/RuleDesk/pull/157) — Gelbooru `fetchPosts` throws `ProviderSearchError("network"|"parse")` instead of `[]`; SearchController heuristics stay on genuine empty API pages only. |
 | `fix/p1-test-suite-false-confidence` | ✅ merged | [#156](https://github.com/KazeKaze93/RuleDesk/pull/156) — P1-1..P1-4: property/e2e/hook tests that could not fail on real regressions. P1-5 Gelbooru transport `[]` vs Rule34 throw — prod silent-failure, **not** fixed in this branch. |
 | `fix/p2-test-suite-reliability` | ✅ merged | [#158](https://github.com/KazeKaze93/RuleDesk/pull/158) — Duplicate mock-db helper removed; component tests import real UI + RTL; throttle uses fake timers. E2E rebuild-skip / retries and Artist/Playlist GridContainer copies — recorded in [Backlog](#backlog-not-implemented-yet), not in this branch. |
+| `chore/p3-test-suite-hygiene` | 🟡 in progress | Coverage docs as file inventory (no stale case totals); filter-utils space-phrase tests rewritten as token-exact; startup.spec asserts Age Gate on a fresh profile. |
 | `chore/split-viewer-dialog` | ✅ merged | [#153](https://github.com/KazeKaze93/RuleDesk/pull/153) — Mechanical split: `ViewerDialog` shell + `ViewerContent` / `ViewerMedia` / `TagsDrawer` / `PostNotFoundFallback`; `buildViewerOriginQueryKey` consolidation |
 | `chore/split-playlists-page` | ✅ merged | [#152](https://github.com/KazeKaze93/RuleDesk/pull/152) — Mechanical split: `PlaylistsPage` list/CRUD; `PlaylistGallery` + virtuoso wrappers under `components/playlists/` |
 | `chore/remove-dead-onboarding-component` | ✅ merged | [#145](https://github.com/KazeKaze93/RuleDesk/pull/145) — Removed `Onboarding.tsx`; first launch is Age Gate → AccountGate / `SettingsAccountTab` (no Skip) |
@@ -194,7 +195,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.
 - ✅ **CI:** `validate` → `docs:api` freshness → `npm test` → production `npm audit --omit=dev --audit-level=high`; release tags wait for quality + e2e, then Windows zip + Linux AppImage.
-- ✅ **Post-audit regression tests:** Vitest unit + integration + property suites (includes collapse/throttle + `SecureStorage` + video-proxy). Inventory in [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md) may lag — trust `npm test` output as the count source of truth.
+- ✅ **Post-audit regression tests:** Vitest unit + integration + property suites (includes collapse/throttle + `SecureStorage` + video-proxy). File inventory in [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md); case counts: `npm test`.
 - ✅ **Main process HMR/watch**, shared Zod IPC helpers, provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
 
 - ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.

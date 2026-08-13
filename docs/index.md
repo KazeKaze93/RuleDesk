@@ -100,7 +100,7 @@ Engineering materials are intentionally grouped here to keep the top-level index
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
 - [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, CI/CD
 - [Unit test guide](../tests/unit/README.md) - Vitest unit/property test layout
-- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - Suite inventory (count: trust `npm test`; this file may lag)
+- [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - File inventory (case counts: `npm test`)
 - [Integration test notes](../tests/integration/README.md) - IPC + SQLite integration tests
 - [.cursorrules](../.cursorrules) - Engineering standards (includes English-only UI copy; no i18n stack)
 - [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants (do not add root `LESSONS.md`)

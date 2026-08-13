@@ -19,14 +19,6 @@ describe('filter-utils', () => {
       expect(hasAiGeneratedTag('AI_GENERATED')).toBe(true); // Case insensitive
     });
 
-    it('should detect ai generated tag (with space) - split into separate tags', () => {
-      // Note: "ai generated" is split into ["ai", "generated"], so it won't match "ai generated" as single tag
-      // But it will match if tags are "ai" and "generated" separately
-      expect(hasAiGeneratedTag('ai generated')).toBe(false); // Split into ["ai", "generated"]
-      // However, if the tag is stored as "ai_generated" or "ai-generated", it will match
-      expect(hasAiGeneratedTag('ai_generated')).toBe(true);
-    });
-
     it('should detect ai-generated tag (with hyphen)', () => {
       expect(hasAiGeneratedTag('ai-generated')).toBe(true);
       expect(hasAiGeneratedTag('tag1 ai-generated tag2')).toBe(true);
@@ -37,20 +29,16 @@ describe('filter-utils', () => {
       expect(hasAiGeneratedTag('tag1 ai_generation tag2')).toBe(true);
     });
 
-    it('should detect ai generation tag (with space) - split into separate tags', () => {
-      // Note: "ai generation" is split into ["ai", "generation"], so it won't match
-      expect(hasAiGeneratedTag('ai generation')).toBe(false); // Split into ["ai", "generation"]
-      expect(hasAiGeneratedTag('ai_generation')).toBe(true);
-    });
-
     it('should detect ai-generated_content tag', () => {
       expect(hasAiGeneratedTag('ai-generated_content')).toBe(true);
     });
 
-    it('should detect ai generated content tag - split into separate tags', () => {
-      // Note: "ai generated content" is split into ["ai", "generated", "content"]
-      expect(hasAiGeneratedTag('ai generated content')).toBe(false); // Split into separate words
-      expect(hasAiGeneratedTag('ai-generated_content')).toBe(true);
+    it('does not treat space-separated words as a single AI tag token', () => {
+      // hasAiGeneratedTag splits on whitespace, then tagArray.includes(aiTag).
+      // A token never contains a space, so phrase inputs cannot match.
+      expect(hasAiGeneratedTag('ai generated')).toBe(false);
+      expect(hasAiGeneratedTag('ai generation')).toBe(false);
+      expect(hasAiGeneratedTag('ai generated content')).toBe(false);
     });
 
     it('should return false for non-AI tags', () => {

@@ -2,48 +2,58 @@
 
 ## Overview
 
-Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes unit + integration + property suites (`tests/unit`, `tests/integration`, `tests/property`). In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tests/unit/helpers/mock-db.test.ts`.
+Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes `tests/unit`, `tests/integration`, and `tests/property` (see `vitest.config.ts` include). Playwright E2E lives under `tests/e2e/` and is **not** part of `npm test`.
+
+**Count source of truth:** the Vitest summary line (`Test Files` / `Tests`) from `npm test`. This file is a **file inventory**, not a case counter — do not copy totals here.
+
+In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tests/unit/helpers/mock-db.test.ts`.
 
 ## Test files (unit)
 
-| File | Tests | Area |
-|------|-------|------|
-| `helpers/mock-db.test.ts` | 3 | Canonical in-memory `createMockDb` (migrations, isolation) |
-| `hooks/useGalleryInfiniteScroll.test.ts` | 9 | Real `useGalleryInfiniteScroll` (default + Browse `getSearchBrowseNextPageParam`, 150ms debounce, unmount timer cleanup, `handleAtBottomStateChange`) |
-| `hooks/useWorkerFilteredPosts.test.ts` | 7 | Worker post → Post field mapping |
-| `lib/filter-utils.test.ts` | 29 | AI tags, video detection |
-| `lib/backup-retention-size-cap.test.ts` | 6 | Backup size-cap prune (no over-delete / keep newest over cap) |
-| `utils/decrypted-credentials.test.ts` | 10 | API key decrypt fail-safe |
-| `utils/parse-credentials.test.ts` | 6 | Credential paste parsing |
-| `utils/react-query-cache.test.ts` | 8 | Browse pagination / cursor helpers |
-| `core/di-container.test.ts` | 6 | Slim DI registry (`token.id` Map keys) |
-| `core/BaseController.collapse-throttle.test.ts` | 6 | Idempotent collapse (full-args hash) + mutate spacing |
-| `components/filters/SourceSwitcher.test.tsx` | 8 | Real `SourceSwitcher` (RTL: values, disabled Favorites/Subscriptions) |
-| `components/filters/FilterToggleGroup.test.tsx` | 7 | Real `FilterToggleGroup` (RTL: change, disabled + Coming soon, icons) |
-| `components/layout/GridContainer.test.tsx` | 5 | Real `createVirtuosoGridFactories` GridContainer (grid-template-columns / columns-N) |
-| `components/PostCard/viewType.test.tsx` | 10 | Real `PostCard` viewType classes (`aspect-[2/3]`, `object-contain` / `h-auto`) |
-| `components/IntersectionObserver.test.tsx` | 3 | Real `PostCard` video viewport observer (`rootMargin: 100px`, `threshold: 0.01`) |
-| `components/VirtuosoGrid-totalCount.test.ts` | 5 | Gallery sources wire `totalCount` to the displayed collection length |
-| `controllers/posts-tag-query.test.ts` | 5 | Tag query helpers |
-| `store/searchStore.test.ts` | 3 | Search store |
-| `shared/provider-search-ipc-payload.test.ts` | 8 | Provider IPC error parsing |
-| `shared/autocomplete-label-count.test.ts` | 2 | Rule34 autocomplete `(count)` label parse |
-| `lib/filter-artist-autocomplete.test.ts` | 5 | Add Artist artist-only filter (Gelbooru category + Rule34 top-N) |
-| `providers/rule34-provider-fetch-posts.test.ts` | 7 | fetchPosts error classification + searchTags live shape (no `type`) |
-| `providers/gelbooru-provider-fetch-posts.test.ts` | 8 | Gelbooru fetchPosts 429 / network / parse + empty JSON `[]` + searchTags `category` → `SearchResults.type` |
-| `services/tag-resolve-coordinator.test.ts` | 8 | Tag resolve dedup / rate limit + Add Artist user-priority options |
-| `services/secure-storage.test.ts` | 3 | `SecureStorage` encrypt/decrypt (sole crypto path) |
-| `services/video-proxy-server.test.ts` | 8 | Video proxy allowlist / cache / eviction |
-| `providers/throttle.test.ts` | 8 | Priority queue + shared 429 gate + abort dequeue (`vi.useFakeTimers`) |
-| `db/sync-status-recovery.test.ts` | 1 | Hard-kill `syncing` → `idle` reset; error rows untouched |
-| `features/viewer/buildViewerOriginQueryKey.test.ts` | 8 | Viewer origin → React Query key (artist/browse/favorites/playlist/updates) |
+| File | Area |
+|------|------|
+| `helpers/mock-db.test.ts` | Canonical in-memory `createMockDb` (migrations, isolation) |
+| `hooks/useGalleryInfiniteScroll.test.ts` | Real `useGalleryInfiniteScroll` (Browse next-page param, debounce, unmount cleanup) |
+| `hooks/useWorkerFilteredPosts.test.ts` | Worker post → Post field mapping |
+| `lib/filter-utils.test.ts` | AI tag tokens, video URL detection |
+| `lib/backup-retention-size-cap.test.ts` | Backup size-cap prune |
+| `lib/filter-artist-autocomplete.test.ts` | Add Artist artist-only filter |
+| `lib/redact-error.test.ts` | Credential redaction in logged URLs / Axios errors |
+| `utils/decrypted-credentials.test.ts` | API key decrypt fail-safe |
+| `utils/parse-credentials.test.ts` | Credential paste parsing |
+| `utils/react-query-cache.test.ts` | Browse pagination / cursor helpers |
+| `core/di-container.test.ts` | Slim DI registry (`token.id` Map keys) |
+| `core/BaseController.collapse-throttle.test.ts` | Idempotent collapse (full-args hash) + mutate spacing |
+| `components/filters/SourceSwitcher.test.tsx` | Real `SourceSwitcher` (RTL) |
+| `components/filters/FilterToggleGroup.test.tsx` | Real `FilterToggleGroup` (RTL) |
+| `components/layout/GridContainer.test.tsx` | Real `createVirtuosoGridFactories` GridContainer |
+| `components/PostCard/viewType.test.tsx` | Real `PostCard` viewType classes |
+| `components/IntersectionObserver.test.tsx` | Real `PostCard` video viewport observer |
+| `components/VirtuosoGrid-totalCount.test.ts` | Gallery sources wire `totalCount` to the displayed collection |
+| `controllers/posts-tag-query.test.ts` | Tag query helpers |
+| `controllers/PostsController.ai-filter.test.ts` | AI filter during FTS bulk-sync window |
+| `store/searchStore.test.ts` | Search store |
+| `shared/provider-search-ipc-payload.test.ts` | Provider IPC error parsing |
+| `shared/autocomplete-label-count.test.ts` | Rule34 autocomplete `(count)` label parse |
+| `providers/rule34-provider-fetch-posts.test.ts` | fetchPosts error classification + searchTags shape |
+| `providers/gelbooru-provider-fetch-posts.test.ts` | Gelbooru fetchPosts errors + empty JSON `[]` |
+| `providers/throttle.test.ts` | Priority queue + 429 gate (`vi.useFakeTimers`) |
+| `services/tag-resolve-coordinator.test.ts` | Tag resolve dedup / rate limit |
+| `services/secure-storage.test.ts` | `SecureStorage` encrypt/decrypt |
+| `services/credentials.test.ts` | `getDecryptedApiSettings` fail-closed |
+| `services/video-proxy-server.test.ts` | Video proxy allowlist / cache / eviction |
+| `db/sync-status-recovery.test.ts` | Hard-kill `syncing` → `idle` reset |
+| `db/fts-table-check.test.ts` | `postsFtsTableExists` |
+| `db/fts-triggers.test.ts` | FTS5 content-table triggers |
+| `features/viewer/buildViewerOriginQueryKey.test.ts` | Viewer origin → React Query key |
+| `ipc/PlaylistController.empty-guard.test.ts` | Playlist FTS empty-guard |
 
 ## Other Vitest suites
 
-| Suite | Location | Tests |
-|-------|----------|-------|
-| Integration | `tests/integration/` | 24 |
-| Property / fuzzing | `tests/property/fuzzing.test.ts` | 12 |
+| Suite | Location |
+|-------|----------|
+| Integration | `tests/integration/` |
+| Property / fuzzing | `tests/property/fuzzing.test.ts` |
 
 ### Integration highlights
 
@@ -54,8 +64,9 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `controllers/SearchController.blacklist.test.ts` | Browse blacklist filtering |
 | `controllers/SearchController.errors.test.ts` | Network throw skips alias/user: heuristics; genuine `[]` still runs them |
 | `controllers/SettingsController.test.ts` | Partial settings save |
+| `controllers/StatsController.timeline.test.ts` | Timeline bucket units |
 | `services/SyncService.queue.test.ts` | `runExclusive` — repair after full sync |
-| `services/SyncService.test.ts` | Sync pagination, graceful errors, auth → `SYNC.ERROR`, per-artist `syncStatus` / `lastError`, `sync:artist` / repair event order |
+| `services/SyncService.test.ts` | Sync pagination, graceful errors, auth → `SYNC.ERROR`, per-artist `syncStatus` / `lastError` |
 
 ## Running tests
 
@@ -83,4 +94,4 @@ npm run test:verify                   # validate + all tests + ABI restore
 
 1. Broader IPC contract tests via shared Zod schemas
 2. Visual regression for masonry/grid layouts (Playwright)
-3. E2E follow-ups live in [`docs/roadmap.md`](../../docs/roadmap.md) backlog (`global-setup` mtime/hash rebuild-skip; keep `retries: 2` + flaky visibility). Not in this branch.
+3. E2E follow-ups live in [`docs/roadmap.md`](../../docs/roadmap.md) backlog (`global-setup` mtime/hash rebuild-skip; keep `retries: 2` + flaky visibility).
