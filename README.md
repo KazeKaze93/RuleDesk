@@ -175,6 +175,8 @@ When enabled in **Settings → Sync**, the app starts a full **Sync All** after 
 
 Optional **Sync new artist automatically** (off by default) queues `repairArtist` for each newly added artist via the same exclusive sync mutex — it does not block the add-artist IPC response.
 
+Each artist row stores `syncStatus` (`idle` / `syncing` / `error`) and `lastError`. A hard kill mid-sync cannot leave **Syncing** forever: the next DB init resets stuck `syncing` → `idle`. Live **Syncing** on the Artists list during a run still depends on a later UI refresh (IPC invalidation).
+
 ### ✅ Periodic background sync
 
 **Settings → Sync → Sync interval** controls how often a background full sync runs (Disabled, 15 / 30 / 60 / 120 minutes). The main process enforces a **minimum interval of 5 minutes** (`MIN_INTERVAL_MINUTES` in `SyncScheduler`); values below that are treated as disabled. Rate limiting and backoff in `SyncService` / `ProviderThrottle` apply to scheduled runs as well as manual ones.
@@ -276,7 +278,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 - ✅ **Rate Limiting:** Shared `ProviderThrottle` (~1200ms + 0–400ms jitter per request) across providers
 - ✅ **Anti-Bot Measures:** Session User-Agent from a shared pool (`pickRandomUA`) plus jittered request pacing.
-- ✅ **Sync integrity:** `lastPostId` advances only after complete pagination; unfinished runs set `lastSyncIncomplete`. Video-cache writes are atomic (tmp+rename) with size-capped eviction — see [Roadmap](./docs/roadmap.md).
+- ✅ **Sync integrity:** `lastPostId` advances only after complete pagination; unfinished runs set `lastSyncIncomplete`. Per-artist `syncStatus` / `lastError` are written during sync; hard-kill recovery resets stuck `syncing` → `idle` on DB init. Video-cache writes are atomic (tmp+rename) with size-capped eviction — see [Roadmap](./docs/roadmap.md).
 
 ### UI/UX
 

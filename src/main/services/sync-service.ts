@@ -41,6 +41,49 @@ const SYNC_CANCEL_POLL_MS = 50;
 
 type DecryptedSettings = { userId: string; apiKey: string };
 
+const ARTIST_SYNC_STATUS = {
+  IDLE: "idle",
+  SYNCING: "syncing",
+  ERROR: "error",
+} as const;
+
+type ArtistSyncStatus =
+  (typeof ARTIST_SYNC_STATUS)[keyof typeof ARTIST_SYNC_STATUS];
+
+type AppDatabase = BetterSQLite3Database<typeof schema>;
+
+function artistSyncErrorMessage(error: unknown): string {
+  if (isProviderSearchError(error)) {
+    return error.message;
+  }
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    return status !== undefined
+      ? `HTTP ${status}: ${error.message}`
+      : error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Unknown error";
+}
+
+function setArtistSyncStatus(
+  dbOrTx: AppDatabase,
+  artistId: number,
+  status: ArtistSyncStatus,
+  lastError: string | null = null
+): void {
+  dbOrTx
+    .update(artists)
+    .set({
+      syncStatus: status,
+      lastError,
+    })
+    .where(eq(artists.id, artistId))
+    .run();
+}
+
 export class SyncCancelledError extends Error {
   constructor(message = "Sync cancelled") {
     super(message);
@@ -427,6 +470,12 @@ export class SyncService {
     settings: { userId: string; apiKey: string },
     maxPages = Infinity
   ) {
+    setArtistSyncStatus(
+      getDb(),
+      artist.id,
+      ARTIST_SYNC_STATUS.SYNCING,
+      null
+    );
 
     // DYNAMIC PROVIDER SELECTION
     // Validate provider ID against known providers
@@ -691,6 +740,12 @@ export class SyncService {
           }
 
           if (isSyncCancelledError(e)) {
+            setArtistSyncStatus(
+              db,
+              artist.id,
+              ARTIST_SYNC_STATUS.IDLE,
+              null
+            );
             throw e;
           }
 
@@ -700,11 +755,29 @@ export class SyncService {
               e.kind === "rate_limit" ||
               e.kind === "network"
             ) {
+              setArtistSyncStatus(
+                db,
+                artist.id,
+                ARTIST_SYNC_STATUS.ERROR,
+                artistSyncErrorMessage(e)
+              );
               throw e;
             }
           } else if (axios.isAxiosError(e)) {
+            setArtistSyncStatus(
+              db,
+              artist.id,
+              ARTIST_SYNC_STATUS.ERROR,
+              artistSyncErrorMessage(e)
+            );
             throw new ProviderSearchError("network");
           } else {
+            setArtistSyncStatus(
+              db,
+              artist.id,
+              ARTIST_SYNC_STATUS.ERROR,
+              artistSyncErrorMessage(e)
+            );
             throw e;
           }
         }
@@ -752,6 +825,7 @@ export class SyncService {
             })
             .where(eq(artists.id, artist.id))
             .run();
+          setArtistSyncStatus(tx, artist.id, ARTIST_SYNC_STATUS.IDLE, null);
         });
       } else {
         db.transaction((tx) => {
@@ -759,6 +833,7 @@ export class SyncService {
             .set({ lastSyncIncomplete: true })
             .where(eq(artists.id, artist.id))
             .run();
+          setArtistSyncStatus(tx, artist.id, ARTIST_SYNC_STATUS.IDLE, null);
         });
       }
 

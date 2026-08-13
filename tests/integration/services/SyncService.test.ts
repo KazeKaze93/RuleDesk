@@ -212,6 +212,8 @@ describe('SyncService Integration', () => {
     });
     
     expect(updatedArtist?.lastPostId).toBe(1234568); // The ID of the newest post in fixture
+    expect(updatedArtist?.syncStatus).toBe('idle');
+    expect(updatedArtist?.lastError).toBeNull();
   });
 
   it('should rebuild FTS index after initial sync', async () => {
@@ -407,6 +409,8 @@ describe('SyncService Integration', () => {
     });
     expect(updatedArtist?.lastPostId).toBe(0);
     expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+    expect(updatedArtist?.syncStatus).toBe('idle');
+    expect(updatedArtist?.lastError).toBeNull();
   });
 
   it('should preserve accumulated posts when a later page fails', async () => {
@@ -494,6 +498,8 @@ describe('SyncService Integration', () => {
       expect(updatedArtist?.lastPostId).toBe(0);
       expect(updatedArtist?.lastSyncIncomplete).toBe(true);
       expect(updatedArtist?.lastChecked).toBeNull();
+      expect(updatedArtist?.syncStatus).toBe('error');
+      expect(updatedArtist?.lastError).toBe('Provider page 3 failure');
     } finally {
       fetchPostsSpy.mockRestore();
     }
@@ -677,6 +683,8 @@ describe('SyncService Integration', () => {
       });
       expect(updatedArtist?.lastPostId).toBe(50);
       expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+      expect(updatedArtist?.syncStatus).toBe('error');
+      expect(updatedArtist?.lastError).toBe('Transient page 2 failure');
 
       const afterFailure = await mockDb.db
         .select()
@@ -708,6 +716,8 @@ describe('SyncService Integration', () => {
       expect(finalArtist?.lastPostId).toBe(300);
       expect(finalArtist?.lastSyncIncomplete).toBe(false);
       expect(finalArtist?.lastChecked).not.toBeNull();
+      expect(finalArtist?.syncStatus).toBe('idle');
+      expect(finalArtist?.lastError).toBeNull();
     } finally {
       fetchPostsSpy.mockRestore();
     }
@@ -931,6 +941,8 @@ describe('SyncService Integration', () => {
       });
       expect(updatedArtist?.lastPostId).toBe(0);
       expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+      expect(updatedArtist?.syncStatus).toBe('error');
+      expect(updatedArtist?.lastError).toBe('Network down');
     } finally {
       fetchPostsSpy.mockRestore();
     }
@@ -958,6 +970,12 @@ describe('SyncService Integration', () => {
         IPC_CHANNELS.SYNC.ERROR,
         expect.stringContaining('Settings')
       );
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.tag, 'artist_name'),
+      });
+      expect(updatedArtist?.syncStatus).toBe('error');
+      expect(updatedArtist?.lastError).toContain('credentials');
     } finally {
       sendEventSpy.mockRestore();
       fetchPostsSpy.mockRestore();
@@ -1176,6 +1194,8 @@ describe('SyncService Integration', () => {
       });
       expect(updatedArtist?.lastPostId).toBe(INITIAL_LAST_POST_ID);
       expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+      expect(updatedArtist?.syncStatus).toBe('idle');
+      expect(updatedArtist?.lastError).toBeNull();
 
       // Resume via syncAllArtists (resets cancelRequested at exclusive start)
       await service.syncAllArtists();
@@ -1193,6 +1213,188 @@ describe('SyncService Integration', () => {
         INITIAL_LAST_POST_ID + PAGE_SIZE * 2 + 25
       );
       expect(updatedArtist?.lastSyncIncomplete).toBe(false);
+      expect(updatedArtist?.syncStatus).toBe('idle');
+      expect(updatedArtist?.lastError).toBeNull();
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('marks only the current artist as syncing during syncAllArtists', async () => {
+    await mockDb.db.insert(artists).values({
+      name: 'Zebra Artist',
+      tag: 'zebra_artist',
+      provider: 'rule34',
+      type: 'tag',
+      apiEndpoint: 'https://api.rule34.xxx/index.php',
+      lastPostId: 0,
+      newPostsCount: 0,
+    });
+
+    const snapshots: Array<Record<string, string>> = [];
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async () => {
+        const rows = mockDb.db
+          .select({
+            tag: artists.tag,
+            syncStatus: artists.syncStatus,
+          })
+          .from(artists)
+          .all();
+        snapshots.push(
+          Object.fromEntries(
+            rows.map((row) => [row.tag, row.syncStatus])
+          )
+        );
+        return [
+          {
+            id: snapshots.length * 10 + 1,
+            fileUrl: `https://cdn.example.com/${snapshots.length}.jpg`,
+            previewUrl: `https://cdn.example.com/${snapshots.length}-p.jpg`,
+            sampleUrl: `https://cdn.example.com/${snapshots.length}-s.jpg`,
+            tags: ['snapshot'],
+            rating: 's',
+            score: 0,
+            source: '',
+            width: 100,
+            height: 100,
+            createdAt: new Date('2025-01-01T00:00:00.000Z'),
+          },
+        ];
+      }
+    );
+
+    try {
+      await service.syncAllArtists();
+
+      expect(snapshots).toHaveLength(2);
+      expect(snapshots[0]).toMatchObject({
+        artist_name: 'syncing',
+        zebra_artist: 'idle',
+      });
+      expect(snapshots[1]).toMatchObject({
+        artist_name: 'idle',
+        zebra_artist: 'syncing',
+      });
+
+      const after = mockDb.db
+        .select({
+          syncStatus: artists.syncStatus,
+          lastError: artists.lastError,
+        })
+        .from(artists)
+        .all();
+      for (const row of after) {
+        expect(row.syncStatus).toBe('idle');
+        expect(row.lastError).toBeNull();
+      }
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('keeps syncStatus idle when pagination hits maxPages without error', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey =
+      safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+        ? safeStorage.decryptString(
+            Buffer.from(settingsRecord.encryptedApiKey, 'base64')
+          )
+        : settingsRecord.encryptedApiKey || '';
+
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async () =>
+        Array.from({ length: PAGE_SIZE }, (_, index) => {
+          const id = index + 1;
+          return {
+            id,
+            fileUrl: `https://cdn.example.com/${id}.jpg`,
+            previewUrl: `https://cdn.example.com/${id}-p.jpg`,
+            sampleUrl: `https://cdn.example.com/${id}-s.jpg`,
+            tags: ['artist_name'],
+            rating: 's',
+            score: 0,
+            source: '',
+            width: 100,
+            height: 100,
+            createdAt: new Date('2025-01-01T00:00:00.000Z'),
+          };
+        })
+    );
+
+    try {
+      await service.syncArtist(
+        artist,
+        {
+          userId: settingsRecord.userId || '',
+          apiKey,
+        },
+        1
+      );
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      expect(updatedArtist?.syncStatus).toBe('idle');
+      expect(updatedArtist?.lastError).toBeNull();
+      expect(updatedArtist?.lastSyncIncomplete).toBe(true);
+      expect(updatedArtist?.lastPostId).toBe(0);
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('repairArtist ends with idle syncStatus via syncArtist', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async () => [
+        {
+          id: 99,
+          fileUrl: 'https://cdn.example.com/99.jpg',
+          previewUrl: 'https://cdn.example.com/99-p.jpg',
+          sampleUrl: 'https://cdn.example.com/99-s.jpg',
+          tags: ['artist_name'],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 100,
+          height: 100,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        },
+      ]
+    );
+
+    try {
+      await service.repairArtist(artist.id);
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      expect(updatedArtist?.syncStatus).toBe('idle');
+      expect(updatedArtist?.lastError).toBeNull();
     } finally {
       fetchPostsSpy.mockRestore();
     }

@@ -232,7 +232,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Testing** | Live Gelbooru video-proxy check was not run (Gelbooru API key required); unit tests cover allowlist logic only. |
 | **Media filters (P3)** | Browse worker video regex (`mp4\|webm\|mov` in `data-processor.worker.ts`) is narrower than canonical `VIDEO_EXTENSIONS` in `src/shared/utils/media.ts` — align when touching the worker. |
 | **Product** | **Smart Collections AI** (research). |
-| **Sync UX** | Live per-artist `syncStatus` (`syncing` / `error` / idle) written by `SyncService` during sync, with optional IPC push or query invalidation for a real-time **Syncing…** badge — separate from the static `lastChecked === null` → **Not synced yet** fix. |
+| **Sync UX** | **Write + hard-kill recovery done** (`SyncService` persists per-artist `syncStatus` / `lastError`; `resetStaleSyncingArtists` on DB init). **Still open:** live renderer refresh (**Syncing…** immediately) via IPC invalidation / push — separate from the static `lastChecked === null` → **Not synced yet** badge. |
 
 **Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.
 

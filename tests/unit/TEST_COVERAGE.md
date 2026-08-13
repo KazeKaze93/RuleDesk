@@ -2,7 +2,7 @@
 
 ## Overview
 
-Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes **209 tests** across **30 files** (unit + integration + property). Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
+Vitest covers unit logic, integration flows (IPC + SQLite), and property-based fuzzing. The default `npm test` run executes unit + integration + property suites. Helper suites under `tests/helpers/` and `tests/utils/` are separate and not counted in that total.
 
 ## Test files (unit)
 
@@ -32,6 +32,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `services/secure-storage.test.ts` | 3 | `SecureStorage` encrypt/decrypt (sole crypto path) |
 | `services/video-proxy-server.test.ts` | 8 | Video proxy allowlist / cache / eviction |
 | `providers/throttle.test.ts` | 6 | Priority queue + shared 429 gate |
+| `db/sync-status-recovery.test.ts` | 1 | Hard-kill `syncing` → `idle` reset; error rows untouched |
 
 ## Other Vitest suites
 
@@ -49,7 +50,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `controllers/SearchController.blacklist.test.ts` | Browse blacklist filtering |
 | `controllers/SettingsController.test.ts` | Partial settings save |
 | `services/SyncService.queue.test.ts` | `runExclusive` — repair after full sync |
-| `services/SyncService.test.ts` | Sync pagination, graceful errors, auth → `SYNC.ERROR` |
+| `services/SyncService.test.ts` | Sync pagination, graceful errors, auth → `SYNC.ERROR`, per-artist `syncStatus` / `lastError` |
 
 ## Running tests
 
