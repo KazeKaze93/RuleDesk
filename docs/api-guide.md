@@ -684,7 +684,7 @@ try {
 **Real-world usage in React component:**
 
 ```typescript
-// In Onboarding.tsx component
+// In SettingsAccountTab (AccountGate / Settings → Account)
 import type { Settings } from "@shared/types/db";
 
 const onSubmit = async (data: CredsFormValues) => {
@@ -694,10 +694,9 @@ const onSubmit = async (data: CredsFormValues) => {
       apiKey: data.apiKey,
     });
     // Credentials are now encrypted and stored
-    onComplete(); // Navigate to main app
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown save error.";
-    log.error(`[Onboarding] Authorization error: ${message}`);
+    log.error(`[Settings] Authorization error: ${message}`);
     // Show error to user
   }
 };

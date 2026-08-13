@@ -681,7 +681,7 @@ const posts = await db.query.posts.findMany({
 1. **React Application** (`src/renderer/App.tsx`)
 
    - Main UI component with routing logic
-   - Onboarding screen for API credentials
+   - Account gate for API credentials (`AccountGate` → `SettingsAccountTab`)
    - Sidebar navigation with multiple pages
    - Uses TanStack Query for data fetching
    - State management via React hooks and Zustand
@@ -693,7 +693,6 @@ const posts = await db.query.posts.findMany({
     - **Updates.tsx** / **Browse.tsx** / **Favorites.tsx** / **PlaylistsPage.tsx** / **StatsPage.tsx** — `src/renderer/components/pages/`
     - **Tracked.tsx** / **ArtistDetails.tsx** / **ArtistGallery.tsx** — `src/renderer/features/artists/`
     - **Settings.tsx** — `src/renderer/features/settings/Settings.tsx` (tabbed IA)
-    - **Onboarding.tsx** - API credentials input form with paste-URL hint under User ID / API key (`src/renderer/features/onboarding/Onboarding.tsx`)
 
   - **Layout:**
 
@@ -868,7 +867,7 @@ sequenceDiagram
 
 **Human-Readable Explanation:**
 
-1. **Saving Credentials (Onboarding):**
+1. **Saving Credentials (AccountGate / SettingsAccountTab):**
 
    - User enters API key in Renderer (plaintext, unavoidable during input)
    - `saveSettings()` sends credentials via IPC to Main Process
@@ -1296,8 +1295,10 @@ graph TD
         Tracked[Tracked]
         Settings[Settings]
         ArtistDetails[ArtistDetails]
-        Onboarding[Onboarding]
     end
+
+    App --> AccountGate[AccountGate]
+    AccountGate --> SettingsAccountTab[SettingsAccountTab]
 
     AppLayout --> Updates
     AppLayout --> Browse
@@ -1305,7 +1306,6 @@ graph TD
     AppLayout --> Tracked
     AppLayout --> Settings
     AppLayout --> ArtistDetails
-    AppLayout --> Onboarding
 
     subgraph "Shared Components"
         ArtistGallery[ArtistGallery]
@@ -1660,7 +1660,6 @@ src/
 │   │   │   └── ...
 │   ├── features/                  # Feature modules
 │   │   ├── artists/               # Artist details/tracked/gallery/post card
-│   │   ├── onboarding/
 │   │   ├── settings/
 │   │   └── viewer/
 │   ├── hooks/                     # App-level hooks
@@ -1809,7 +1808,7 @@ Root:
 19. ✅ **Global Top Bar:** Search, `FiltersPanel` (AI, media, source), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines.
 20. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 21. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
-22. ✅ **Logout Functionality:** Clear stored credentials and return to onboarding
+22. ✅ **Logout Functionality:** Clear stored credentials and return to account gate
 23. ✅ **User Data Path:** Neutral `.rdcache` directory for dev and packaged builds
 24. ✅ **IPC Controllers:** Controller-based architecture with `BaseController` and dependency injection
 25. ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
