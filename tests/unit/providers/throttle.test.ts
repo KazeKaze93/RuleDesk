@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isAbortError,
   ProviderRateLimitGateError,
   ProviderThrottle,
 } from "@/main/providers/provider-throttle";
@@ -89,6 +90,43 @@ describe("ProviderThrottle priority and 429 gate", () => {
     await throttle.wait("user");
     const elapsedMs = Date.now() - startedAt;
     expect(elapsedMs).toBeGreaterThanOrEqual(45);
+    expect(elapsedMs).toBeLessThan(200);
+  });
+
+  it("rejects wait immediately when the signal is already aborted", async () => {
+    const throttle = new ProviderThrottle(80, 0);
+    const abortController = new AbortController();
+    abortController.abort();
+    await expect(
+      throttle.wait("user", abortController.signal)
+    ).rejects.toSatisfy(isAbortError);
+  });
+
+  it("removes queued waiters on abort so a later wait is not delayed by them", async () => {
+    const throttle = new ProviderThrottle(50, 0);
+    await throttle.wait("user");
+
+    const abortController = new AbortController();
+    const stale = [0, 1, 2, 3, 4].map(() =>
+      throttle.wait("user", abortController.signal).then(
+        () => "resolved",
+        (error: unknown) => (isAbortError(error) ? "aborted" : "other")
+      )
+    );
+    await sleep(10);
+    abortController.abort();
+    await expect(Promise.all(stale)).resolves.toEqual([
+      "aborted",
+      "aborted",
+      "aborted",
+      "aborted",
+      "aborted",
+    ]);
+
+    const startedAt = Date.now();
+    await throttle.wait("user");
+    const elapsedMs = Date.now() - startedAt;
+    expect(elapsedMs).toBeGreaterThanOrEqual(40);
     expect(elapsedMs).toBeLessThan(200);
   });
 

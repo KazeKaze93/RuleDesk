@@ -20,16 +20,10 @@ interface UseRemoteTagsReturn {
 }
 
 /**
- * Custom hook for remote tag search with automatic request cancellation
- * 
- * Handles:
- * - Debouncing search queries
- * - AbortController for canceling stale requests
- * - Loading state management
- * - Error handling
- * 
- * @param options - Search configuration
- * @returns Search results, loading state, and error
+ * Remote tag search with debounce + local AbortController.
+ * Renderer abort does **not** cancel `ipcRenderer.invoke`. Add Artist
+ * (`artistOnly`) cancellation runs in Main: a new search aborts the previous
+ * wave (throttle waiters + axios).
  */
 export function useRemoteTags({
   query,

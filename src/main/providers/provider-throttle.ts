@@ -36,6 +36,24 @@ type QueuedWaiter = {
   reject: (error: unknown) => void;
 };
 
+export function createAbortError(
+  message = "The operation was aborted."
+): Error {
+  if (typeof DOMException === "function") {
+    return new DOMException(message, "AbortError");
+  }
+  const error = new Error(message);
+  error.name = "AbortError";
+  return error;
+}
+
+export function isAbortError(error: unknown): boolean {
+  if (typeof DOMException === "function" && error instanceof DOMException) {
+    return error.name === "AbortError";
+  }
+  return error instanceof Error && error.name === "AbortError";
+}
+
 type ProviderThrottleOptions = {
   userGateWaitCeilingMs?: number;
   defaultRateLimitGateMs?: number;
@@ -103,10 +121,46 @@ export class ProviderThrottle {
   /**
    * Acquire the next request slot.
    * `user` is drained before `background`. Priority is required (no silent default).
+   * Optional `signal` removes the waiter from the queue without consuming a paced slot
+   * (a slot already inside `acquireSlot` still completes for whoever remains).
    */
-  async wait(priority: ThrottlePriority): Promise<void> {
+  async wait(priority: ThrottlePriority, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) {
+      throw createAbortError();
+    }
     return new Promise<void>((resolve, reject) => {
-      const waiter: QueuedWaiter = { priority, resolve, reject };
+      let settled = false;
+      const waiter: QueuedWaiter = {
+        priority,
+        resolve: () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve();
+        },
+        reject: (error: unknown) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          reject(error);
+        },
+      };
+      const onAbort = () => {
+        this.removeWaiter(waiter);
+        waiter.reject(createAbortError());
+      };
+      const cleanup = () => {
+        if (signal) {
+          signal.removeEventListener("abort", onAbort);
+        }
+      };
+      if (signal) {
+        signal.addEventListener("abort", onAbort, { once: true });
+      }
       if (priority === "user") {
         this.userQueue.push(waiter);
       } else {
@@ -114,6 +168,15 @@ export class ProviderThrottle {
       }
       void this.pump();
     });
+  }
+
+  private removeWaiter(waiter: QueuedWaiter): void {
+    const queue =
+      waiter.priority === "user" ? this.userQueue : this.backgroundQueue;
+    const index = queue.indexOf(waiter);
+    if (index >= 0) {
+      queue.splice(index, 1);
+    }
   }
 
   private dequeue(): QueuedWaiter | undefined {

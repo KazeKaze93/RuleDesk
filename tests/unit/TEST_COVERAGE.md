@@ -30,10 +30,10 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 | `lib/filter-artist-autocomplete.test.ts` | 5 | Add Artist artist-only filter (Gelbooru category + Rule34 top-N) |
 | `providers/rule34-provider-fetch-posts.test.ts` | 7 | fetchPosts error classification + searchTags live shape (no `type`) |
 | `providers/gelbooru-provider-fetch-posts.test.ts` | 7 | Gelbooru fetchPosts 429 + searchTags `category` → `SearchResults.type` |
-| `services/tag-resolve-coordinator.test.ts` | 3 | Tag resolve dedup / rate limit |
+| `services/tag-resolve-coordinator.test.ts` | 8 | Tag resolve dedup / rate limit + Add Artist user-priority options |
 | `services/secure-storage.test.ts` | 3 | `SecureStorage` encrypt/decrypt (sole crypto path) |
 | `services/video-proxy-server.test.ts` | 8 | Video proxy allowlist / cache / eviction |
-| `providers/throttle.test.ts` | 6 | Priority queue + shared 429 gate |
+| `providers/throttle.test.ts` | 8 | Priority queue + shared 429 gate + abort dequeue |
 | `db/sync-status-recovery.test.ts` | 1 | Hard-kill `syncing` → `idle` reset; error rows untouched |
 
 ## Other Vitest suites

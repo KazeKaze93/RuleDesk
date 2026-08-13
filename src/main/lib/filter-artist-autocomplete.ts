@@ -11,7 +11,7 @@ export const GELBOORU_TAG_CATEGORY_ARTIST = "artist";
 
 /**
  * Max Rule34 DAPI tag lookups per Add-Artist autocomplete keystroke.
- * Second-pass uses background throttle + `tag_metadata` cache; 5 bounds cost
+ * Second-pass uses user throttle + `tag_metadata` cache; 5 bounds cost
  * without resolving the full 10–20 autocomplete page.
  */
 export const ARTIST_AUTOCOMPLETE_RESOLVE_LIMIT = 5;

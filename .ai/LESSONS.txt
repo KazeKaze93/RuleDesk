@@ -72,6 +72,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** Handlers returned `[]` on provider failure instead of throwing; the UI interpreted emptiness as "no data", retried, and amplified into a 429 storm.
 **Invariant Rule:** Errors must surface, not swallow. On provider/IPC failure throw a typed error (`ProviderSearchError` with kind); never map failure to an empty-success shape. Rate-limit responses must propagate `retryAfterMs` and back off globally, not per-call.
 
+### Problem: Renderer AbortController around ipcRenderer.invoke does not cancel Main work
+**Root Cause:** `invoke` is not abortable; the renderer flag only skips `setState`. Debounced autocomplete still left previous Main waves on `ProviderThrottle` (N×1200–1600 ms each).
+**Invariant Rule:** Interactive IPC that fans out to a shared throttle must abort the previous in-flight wave **in Main** on the next invoke (controller-owned `AbortController` passed into `throttle.wait` + axios). Renderer abort alone is UI-only. Do not add a third throttle priority; Add Artist second-pass uses existing `user` (FIFO with Sync). Browse tag-resolve stays `background`.
+
 ## Data Integrity
 
 ### Problem: Sync cursor advanced past unfetched pages, permanently skipping posts
