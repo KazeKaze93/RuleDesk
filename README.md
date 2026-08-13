@@ -173,6 +173,8 @@ Post cards in gallery views include informative overlays:
 
 When enabled in **Settings → Sync**, the app starts a full **Sync All** after the main window is ready (if no sync is already running). Progress uses the same sync pipeline as manual sync.
 
+Optional **Sync new artist automatically** (off by default) queues `repairArtist` for each newly added artist via the same exclusive sync mutex — it does not block the add-artist IPC response.
+
 ### ✅ Periodic background sync
 
 **Settings → Sync → Sync interval** controls how often a background full sync runs (Disabled, 15 / 30 / 60 / 120 minutes). The main process enforces a **minimum interval of 5 minutes** (`MIN_INTERVAL_MINUTES` in `SyncScheduler`); values below that are treated as disabled. Rate limiting and backoff in `SyncService` / `ProviderThrottle` apply to scheduled runs as well as manual ones.
@@ -196,6 +198,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 ### Sync
 
 - **Sync on startup** - Toggle automatic sync when app opens
+- **Sync new artist automatically** - Queue sync for an artist right after it is added (off by default)
 - **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
 - **Sync now** - Manual trigger in the sidebar with live `Last sync` relative time
 

@@ -48,6 +48,7 @@ export const Settings = () => {
   >("flat");
   const [databaseLocation, setDatabaseLocation] = useState<string>("");
   const [autoSyncOnStartup, setAutoSyncOnStartup] = useState(false);
+  const [autoSyncOnArtistAdd, setAutoSyncOnArtistAdd] = useState(false);
   const [syncIntervalMinutes, setSyncIntervalMinutes] = useState("0");
   const [backupRetention, setBackupRetention] = useState("5");
   const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>("never");
@@ -82,6 +83,9 @@ export const Settings = () => {
       if (s?.downloadFolderStructure) setDownloadFolderStructure(s.downloadFolderStructure);
       if (s?.autoSyncOnStartup !== undefined) {
         setAutoSyncOnStartup(s.autoSyncOnStartup);
+      }
+      if (s?.autoSyncOnArtistAdd !== undefined) {
+        setAutoSyncOnArtistAdd(s.autoSyncOnArtistAdd);
       }
       if (s?.syncIntervalMinutes !== undefined) {
         setSyncIntervalMinutes(String(s.syncIntervalMinutes));
@@ -302,6 +306,17 @@ export const Settings = () => {
     }
   };
 
+  const handleAutoSyncOnArtistAddChange = async (checked: boolean): Promise<void> => {
+    const previousValue = autoSyncOnArtistAdd;
+    setAutoSyncOnArtistAdd(checked);
+    try {
+      await window.api.saveSettings({ autoSyncOnArtistAdd: checked });
+    } catch (error) {
+      log.error("[Settings] Failed to save auto sync on artist add:", error);
+      setAutoSyncOnArtistAdd(previousValue);
+    }
+  };
+
   const handleSyncIntervalChange = async (value: string): Promise<void> => {
     const previousValue = syncIntervalMinutes;
     setSyncIntervalMinutes(value);
@@ -512,9 +527,13 @@ export const Settings = () => {
         <TabsContent value="sync">
           <SettingsSyncTab
             autoSyncOnStartup={autoSyncOnStartup}
+            autoSyncOnArtistAdd={autoSyncOnArtistAdd}
             syncIntervalMinutes={syncIntervalMinutes}
             onAutoSyncChange={(checked) => {
               void handleAutoSyncOnStartupChange(checked);
+            }}
+            onAutoSyncOnArtistAddChange={(checked) => {
+              void handleAutoSyncOnArtistAddChange(checked);
             }}
             onSyncIntervalChange={(value) => {
               void handleSyncIntervalChange(value);

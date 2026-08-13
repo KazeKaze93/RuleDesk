@@ -11,15 +11,19 @@ import {
 
 interface SettingsSyncTabProps {
   autoSyncOnStartup: boolean;
+  autoSyncOnArtistAdd: boolean;
   syncIntervalMinutes: string;
   onAutoSyncChange: (checked: boolean) => void;
+  onAutoSyncOnArtistAddChange: (checked: boolean) => void;
   onSyncIntervalChange: (value: string) => void;
 }
 
 export const SettingsSyncTab = ({
   autoSyncOnStartup,
+  autoSyncOnArtistAdd,
   syncIntervalMinutes,
   onAutoSyncChange,
+  onAutoSyncOnArtistAddChange,
   onSyncIntervalChange,
 }: SettingsSyncTabProps) => {
   return (
@@ -40,6 +44,20 @@ export const SettingsSyncTab = ({
             id="auto-sync-on-startup"
             checked={autoSyncOnStartup}
             onCheckedChange={onAutoSyncChange}
+          />
+        </section>
+
+        <section className="flex items-start justify-between gap-4 rounded-md border p-4">
+          <section className="space-y-1">
+            <Label htmlFor="auto-sync-on-artist-add">Sync new artist automatically</Label>
+            <p className="text-sm text-muted-foreground">
+              Automatically sync a new artist right after adding it.
+            </p>
+          </section>
+          <Switch
+            id="auto-sync-on-artist-add"
+            checked={autoSyncOnArtistAdd}
+            onCheckedChange={onAutoSyncOnArtistAddChange}
           />
         </section>
 

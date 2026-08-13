@@ -139,7 +139,7 @@ That's it! You're now ready to use RuleDesk.
 
 4. Click **"Add"**
 
-The artist will appear in your tracked list!
+The artist will appear in your tracked list. Until the first successful sync finishes, the status badge shows **Not synced yet** (not green **Synced**). If **Sync new artist automatically** is enabled in Settings → Sync, RuleDesk queues that sync right after you add the artist.
 
 **Tip:** You can use the search box to find tags. Type a few letters and RuleDesk will suggest matching tags.
 
@@ -163,7 +163,8 @@ The artist will appear in your tracked list!
 
 1. Open **Settings** (sidebar) → **Sync**
 2. Enable **Sync on startup** if you want a full sync every time the app starts
-3. Set **Sync interval** to run background sync while the app is open (or leave **Disabled** and use **Sync All** in the sidebar when you want)
+3. Enable **Sync new artist automatically** if you want each newly added artist to sync immediately after tracking starts (off by default)
+4. Set **Sync interval** to run background sync while the app is open (or leave **Disabled** and use **Sync All** in the sidebar when you want)
 
 You can still run **Sync All** manually at any time; automatic runs use the same engine and rate limits.
 
@@ -439,6 +440,7 @@ Settings are split into tabs:
 ### Sync
 
 - **Sync on startup** - Run sync automatically when app starts
+- **Sync new artist automatically** - After adding an artist, queue a sync for that artist (off by default; uses the same exclusive sync queue as Repair)
 - **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
 - **Sync now** - Manual sync trigger in the sidebar
 - **Last sync status** - Relative timestamp under the sidebar sync button (`never`, `X min ago`, etc.)

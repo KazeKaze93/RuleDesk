@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createMockDb } from '../../helpers/mock-db';
 import { ARTIST_TYPES, PROVIDER_IDS } from '@/shared/constants';
 import { container, DI_TOKENS } from '@/main/core/di/Container';
-import { artists } from '@/main/db/schema';
+import { artists, settings, SETTINGS_ID } from '@/main/db/schema';
 import { eq } from 'drizzle-orm';
 
 // Mock Electron BEFORE imports
@@ -46,6 +46,7 @@ import type { AddArtistRequest } from '@/shared/schemas/artist';
 describe('ArtistsController Integration', () => {
   let mockDb: ReturnType<typeof createMockDb>;
   let controller: ArtistsController;
+  let repairArtist: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     // CRITICAL: Clear DI container before each test to prevent state leakage
@@ -58,6 +59,9 @@ describe('ArtistsController Integration', () => {
     // Register mock DB in DI container
     // Container.register expects the instance directly, not wrapped in an object
     container.register(DI_TOKENS.DB, mockDb.db);
+
+    repairArtist = vi.fn().mockResolvedValue(undefined);
+    container.register(DI_TOKENS.SYNC_SERVICE, { repairArtist });
 
     // Instantiate controller (will use the fresh DB from container)
     controller = new ArtistsController();
@@ -106,6 +110,7 @@ describe('ArtistsController Integration', () => {
       // Verify return value
       expect(result.name).toBe('Test Artist');
       expect(result.tag).toBe('test_artist_tag');
+      expect(repairArtist).not.toHaveBeenCalled();
     });
 
     it('should update existing artist when tag already exists', async () => {
@@ -234,6 +239,72 @@ describe('ArtistsController Integration', () => {
         expect(inserted).toHaveLength(1);
         expect(inserted[0].type).toBe(type);
       }
+    });
+
+    it('does not queue repairArtist when autoSyncOnArtistAdd is disabled', async () => {
+      await mockDb.db
+        .insert(settings)
+        .values({
+          id: SETTINGS_ID,
+          userId: '123',
+          encryptedApiKey: 'encrypted',
+          autoSyncOnArtistAdd: false,
+        })
+        .run();
+
+      const result = await controller.handleAddArtist(null, {
+        name: 'No Auto Sync',
+        tag: 'no_auto_sync_tag',
+        provider: 'rule34',
+        type: 'tag',
+      });
+
+      expect(result.id).toBeDefined();
+      expect(repairArtist).not.toHaveBeenCalled();
+    });
+
+    it('queues repairArtist with inserted id when autoSyncOnArtistAdd is enabled', async () => {
+      await mockDb.db
+        .insert(settings)
+        .values({
+          id: SETTINGS_ID,
+          userId: '123',
+          encryptedApiKey: 'encrypted',
+          autoSyncOnArtistAdd: true,
+        })
+        .run();
+
+      const result = await controller.handleAddArtist(null, {
+        name: 'Auto Sync Artist',
+        tag: 'auto_sync_tag',
+        provider: 'rule34',
+        type: 'tag',
+      });
+
+      expect(result.id).toBeDefined();
+      expect(repairArtist).toHaveBeenCalledTimes(1);
+      expect(repairArtist).toHaveBeenCalledWith(result.id);
+    });
+
+    it('skips repairArtist when autoSyncOnArtistAdd is on but credentials are missing', async () => {
+      await mockDb.db
+        .insert(settings)
+        .values({
+          id: SETTINGS_ID,
+          userId: '',
+          encryptedApiKey: '',
+          autoSyncOnArtistAdd: true,
+        })
+        .run();
+
+      await controller.handleAddArtist(null, {
+        name: 'Missing Creds',
+        tag: 'missing_creds_tag',
+        provider: 'rule34',
+        type: 'tag',
+      });
+
+      expect(repairArtist).not.toHaveBeenCalled();
     });
   });
 });

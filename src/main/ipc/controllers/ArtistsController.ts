@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq, or, sql } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { artists } from "../../db/schema";
+import { artists, settings, SETTINGS_ID } from "../../db/schema";
 import { escapeLikePattern } from "../../db/utils";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
@@ -15,6 +15,7 @@ import {
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
+import type { SyncService } from "../../services/sync-service";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { getTrackedArtistsWithStats } from "../../db/queries/artists";
 import {
@@ -71,6 +72,10 @@ export class ArtistsController extends BaseController {
   // Query style: Drizzle Builder API only in this controller.
   private getDb(): AppDatabase {
     return container.resolve(DI_TOKENS.DB);
+  }
+
+  private getSyncService(): SyncService {
+    return container.resolve(DI_TOKENS.SYNC_SERVICE);
   }
 
   /**
@@ -200,12 +205,60 @@ export class ArtistsController extends BaseController {
       const inserted = result[0];
       log.info(`[ArtistsController] Artist added/updated: ${inserted.name}`);
 
+      this.maybeQueueAutoSyncOnArtistAdd(inserted.id);
+
       // Convert Date objects to numbers for Electron 39+ IPC serialization
       return toIpcSafe(inserted);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       log.error("[ArtistsController] Failed to add artist:", error);
       throw new Error(`Database error: ${msg}`);
+    }
+  }
+
+  /**
+   * Fire-and-forget repair sync when Settings.autoSyncOnArtistAdd is enabled.
+   * Uses repairArtist (runExclusive) — never syncArtist directly (FTS trigger races).
+   */
+  private maybeQueueAutoSyncOnArtistAdd(artistId: number): void {
+    try {
+      const db = this.getDb();
+      const currentSettings = db
+        .select()
+        .from(settings)
+        .where(eq(settings.id, SETTINGS_ID))
+        .limit(1)
+        .all()[0];
+
+      if (!currentSettings?.autoSyncOnArtistAdd) {
+        return;
+      }
+
+      const hasUserId = (currentSettings.userId ?? "").trim().length > 0;
+      const hasApiKey = (currentSettings.encryptedApiKey ?? "").trim().length > 0;
+      if (!hasUserId || !hasApiKey) {
+        log.debug(
+          `[ArtistsController] Skipping auto-sync on add for artist ${artistId}: credentials not configured`
+        );
+        return;
+      }
+
+      log.info(
+        `[ArtistsController] Queueing auto-sync on add for artist ${artistId}`
+      );
+      void this.getSyncService()
+        .repairArtist(artistId)
+        .catch((error: unknown) => {
+          log.error(
+            `[ArtistsController] Auto-sync on add failed for artist ${artistId}:`,
+            error
+          );
+        });
+    } catch (error) {
+      log.error(
+        `[ArtistsController] Failed to evaluate auto-sync on add for artist ${artistId}:`,
+        error
+      );
     }
   }
 

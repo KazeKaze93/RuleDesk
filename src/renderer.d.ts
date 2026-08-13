@@ -58,6 +58,7 @@ export interface IpcSettings {
   downloadFolderStructure: "flat" | "{artist_id}";
   theme: "system" | "light" | "dark";
   autoSyncOnStartup: boolean;
+  autoSyncOnArtistAdd: boolean;
   syncIntervalMinutes: number;
   backupRetention: number;
 }
@@ -76,6 +77,7 @@ export interface IpcApi extends IpcBridge {
     apiKey?: string;
     proxyUrl?: string | null;
     autoSyncOnStartup?: boolean;
+    autoSyncOnArtistAdd?: boolean;
     syncIntervalMinutes?: number;
     backupRetention?: number;
     provider?: ProviderId;
