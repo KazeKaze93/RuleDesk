@@ -643,7 +643,7 @@ const posts = await db.query.posts.findMany({
 
    - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`, infinite scroll through `useGalleryInfiniteScroll`.
    - **Rule34 deep pagination:** offset pages 1–4 (`RULE34_MAX_OFFSET_PAGES`), then cursor via meta-tag `id:<postId>` (`beforePostId` / `nextBeforePostId`); `getSearchBrowseNextPageParam()` drives React Query `pageParam`.
-   - **Local source modes:** Favorites / Subscriptions query cached DB posts via `getArtistPosts` (page + `LIMIT`/`OFFSET`). `aiFilter` / `mediaType` / `sortOrder` are passed into SQL (`buildPostFilterConditions`) so filtering happens **before** pagination — same pattern as `ArtistGallery`. Favorites maps to `isFavorited`; Subscriptions maps to `sinceTracking` (join `posts.artistId` + `publishedAt >= artists.createdAt`). Worker-side tag-intersection against tracked artist tags is **not** used.
+   - **Local source modes:** Favorites / Browse Source Subscriptions filter query cached DB posts via `getArtistPosts` (page + `LIMIT`/`OFFSET`). `aiFilter` / `mediaType` / `sortOrder` are passed into SQL (`buildPostFilterConditions`) so filtering happens **before** pagination — same pattern as `ArtistGallery`. Favorites maps to `isFavorited`; Browse Source Subscriptions filter maps to `sinceTracking` (join `posts.artistId` + `publishedAt >= artists.createdAt`). Worker-side tag-intersection against tracked artist tags is **not** used. Distinct from the unimplemented tag-combination subscriptions feature/table.
    - **Remote AI filter (Rule34):** Browse injects verified AI tag tokens into the `searchBooru` tags array (`buildRemoteBooruTagListForIpc` / `buildRemoteAiFilterTagInjection` in `searchStore.ts`): `hide` → `-ai_generated -ai-generated -ai_generation -ai-generated_content`; `only` → OR-group `( ai_generated ~ … )`. Injection is **Rule34-only**. Defensive skip when the user's include/exclude chips already conflict with the filter (avoids API empty-page AND of `tag -tag`); then the worker AI path remains the fallback. **Gelbooru** (and any non-Rule34 provider) never injects — worker AI filtering only (live Gelbooru tag injection not verified).
    - **Client-side filter/sort (remote only):** `useWorkerFilteredPosts` runs when Source is **All** and filters are non-default after accounting for injection (`usesDefaultRemoteFilters`: no chip tags + worker AI All + Media All). When Rule34 injection succeeds, worker receives `aiFilter: "all"` and only media/sort remain; Gelbooru / conflict keep worker AI. Worker output is mapped via `mapWorkerPostToPost()` in `src/renderer/lib/map-worker-post.ts` (preserves `mediaType`, `viewCount`, `lastViewedAt`; infers `mediaType` from `fileUrl` when missing).
    - Filter config is debounced (~250 ms) on the remote worker path; raw post pages are not debounced (scroll/load latency). Browse `queryKey` is `buildBrowseSearchQueryKey({ tags, source, aiFilter, mediaType, sortOrder })` with **chip tags** (not injected tokens) + `aiFilter` — isomorphic with viewer cache lookup; changing AI filter still refetches.
@@ -952,7 +952,7 @@ sequenceDiagram
 
 5. **Validation** - The IPC handler validates the request (though `getTrackedArtists` has no parameters, validation still runs for consistency).
 
-6. **Database query** - The handler calls `getTrackedArtistsWithStats()` (newest activity first), capped at `MAX_TRACKED_ARTISTS` (**5000**). If the DB has more subscriptions, the list is truncated and Main logs a warning.
+6. **Database query** - The handler calls `getTrackedArtistsWithStats()` (newest activity first), capped at `MAX_TRACKED_ARTISTS` (**5000**). If the DB has more tracked artists, the list is truncated and Main logs a warning.
 
 7. **Response** - The array of artists flows back:
 
@@ -1596,6 +1596,10 @@ src/
 │   │   ├── paths.ts               # DB/userData path constants (data.bin, .rdcache, backup prefix)
 │   │   ├── schema.ts              # Drizzle ORM schema definitions
 │   │   └── backfill-media-type.ts # Background media_type backfill
+│   ├── config/                    # Main-process constants / allowlists
+│   │   ├── allowed-hosts.ts       # shell.openExternal host allowlist (user click; not provider CDN)
+│   │   ├── constants.ts           # SYNC_SHUTDOWN_DRAIN_MS, VIDEO_CACHE_MAX_BYTES, …
+│   │   └── tag-resolve-constants.ts
 │   ├── ipc/                       # IPC (Inter-Process Communication)
 │   │   ├── controllers/           # IPC Controllers (domain-based)
 │   │   │   ├── ArtistsController.ts
@@ -1610,7 +1614,6 @@ src/
 │   │   │   ├── ViewerController.ts
 │   │   │   ├── FileController.ts
 │   │   │   ├── StatsController.ts
-│   │   │   ├── BlacklistController.ts
 │   │   │   ├── VideoProxyController.ts
 │   │   │   └── SystemController.ts
 │   │   ├── channels.ts            # IPC channel constants
@@ -1681,6 +1684,8 @@ src/
 │   │   ├── artists/               # Artist details/tracked/gallery/post card
 │   │   ├── settings/
 │   │   └── viewer/                # ViewerDialog shell + media/tags/query-key helpers
+│   ├── workers/                   # Renderer Web Workers (not Node worker_threads)
+│   │   └── data-processor.worker.ts # Remote Browse only (source=all): AI/media/sort; local Favorites / Browse Source Subscriptions filter use SQL
 │   ├── hooks/                     # App-level hooks
 │   ├── lib/                        # Utilities
 │   │   ├── hooks/                  # Custom React hooks
@@ -1882,7 +1887,7 @@ See [Roadmap](./roadmap.md#-security--reliability-hardening) for detailed securi
 
 ### Future Considerations
 
-1. **Tag Subscriptions:** Subscribe to tag combinations (see `docs/database.md` / schema notes)
+1. **tag-combination subscriptions feature/table:** Not implemented (see `docs/database.md` / planned product work). Distinct from the shipped Browse Source Subscriptions filter (`sinceTracking`).
 2. **Content Script Injection:** DOM enhancements for external sites
 3. **Statistics page:** extended aggregate metrics are shipped on the same `StatsPage` via `getExtendedStats` (totals, rating/media/viewed/favorites pie charts, provider artist split, top artists/tags, DB size). Further additions should stay in the same page/IPC pattern — see [roadmap — Planned product work](./roadmap.md#planned-product-work)
 4. **Multi-Booru Support:** additional providers on top of the existing `IBooruProvider` pattern (Rule34, Gelbooru)

@@ -74,7 +74,9 @@ Clone the repo, run `npm install`, then `npm run dev`. See [README — Developme
 
 ## First Launch
 
-When you first open RuleDesk, you'll see the **Onboarding** screen. This is where you'll enter your API credentials.
+When you first open RuleDesk, **Age Gate** (`AgeGate.tsx`) must be completed before any content loads: confirm you are an adult and accept the Terms. That calls `confirmLegal` and stores `isAdultVerified` / `tosAcceptedAt`.
+
+If no API key is configured (`hasApiKey` is false), **AccountGate** in `App.tsx` is shown next. It renders **Settings → Account** (`SettingsAccountTab`): enter User ID and API Key (or paste the account page URL into either field) and click **Save API Key**. There is no Skip — without credentials the main app does not load. You can change credentials later in Settings → Account.
 
 ### What are API Credentials?
 
@@ -247,7 +249,7 @@ Each post card shows:
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
 - **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically).
 - **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings** when credentials are invalid).
-- Browse source modes **Favorites** / **Subscriptions** query your **local cache** (SQL `isFavorited` / `sinceTracking`) and still require a non-empty tag query in the Source switcher by design. AI and Media filters on those modes run in SQL before pagination. On **Source: All** with Rule34, AI hide/only is sent as booru tags in the live search (so pages stay full); Gelbooru still filters AI client-side after each page. **Subscriptions** means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name.
+- Browse source modes **Favorites** / **Browse Source Subscriptions filter** (panel label **Subscriptions**) query your **local cache** (SQL `isFavorited` / `sinceTracking`) and still require a non-empty tag query in the Source switcher by design. AI and Media filters on those modes run in SQL before pagination. On **Source: All** with Rule34, AI hide/only is sent as booru tags in the live search (so pages stay full); Gelbooru still filters AI client-side after each page. The Browse Source Subscriptions filter means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name. It is not the unimplemented tag-combination subscriptions feature/table.
 
 ### Favorites
 
@@ -323,7 +325,7 @@ The download will start, and you'll see a progress indicator.
 **Filter by source:**
 
 1. In views that show the filter panel, open the top bar **Filters** control
-2. Choose **All** (live booru API), **Favorites** (local cache), or **Subscriptions** (local cache: posts published after you started tracking the artist)
+2. Choose **All** (live booru API), **Favorites** (local cache), or **Subscriptions** (Browse Source Subscriptions filter: local cache, posts published after you started tracking the artist)
 3. Gallery updates automatically
 
 **Filter by media type:**
@@ -383,7 +385,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 ### Sidebar Sections
 
 - **Updates** - See new posts from your tracked sources. A purple badge shows unread count and auto-refreshes periodically.
-- **Browse** - Search the live booru (Source: All) or filter cached posts (Favorites / Subscriptions); infinite scroll, filters, and sorting
+- **Browse** - Search the live booru (Source: All) or filter cached posts (Favorites / Browse Source Subscriptions filter); infinite scroll, filters, and sorting
 - **Favorites** - Your favorited posts collection
 - **Playlists** - Manual playlists and smart collections
 - **Statistics** - Local library aggregates and charts (`/stats`)
@@ -570,8 +572,8 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 **Solutions:**
 
 1. Confirm API credentials in **Settings → Account**
-2. Clear restrictive filters (AI, media). On Browse Favorites/Subscriptions those filters run in SQL before pagination. On Source: All with Rule34, AI hide/only is applied in the live API tag query (fuller pages); Gelbooru and conflict cases still filter client-side after each API page. Media filters on Source: All remain client-side.
-3. If using **Favorites** / **Subscriptions**, add at least one tag in the search bar (required by design)
+2. Clear restrictive filters (AI, media). On Browse Favorites / Browse Source Subscriptions filter those filters run in SQL before pagination. On Source: All with Rule34, AI hide/only is applied in the live API tag query (fuller pages); Gelbooru and conflict cases still filter client-side after each API page. Media filters on Source: All remain client-side.
+3. If using **Favorites** / **Browse Source Subscriptions filter**, add at least one tag in the search bar (required by design)
 4. If Browse shows a centered error screen (not the empty “no posts” state), use **Retry** or **Open Settings** for auth failures — messages distinguish invalid API credentials, rate limits, and network errors
 
 ### Video playback glitches / stuck loading
