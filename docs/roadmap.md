@@ -171,7 +171,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
-| `feat/remote-ai-filter-via-tags-injection` | 🔄 in progress | Browse Source: All — Rule34 AI hide/only via tag injection into `searchBooru`; Gelbooru stays worker-only; defensive conflict → worker fallback |
+| `feat/remote-ai-filter-via-tags-injection` | ✅ merged | [#147](https://github.com/KazeKaze93/RuleDesk/pull/147) — Browse Source: All — Rule34 AI hide/only via tag injection into `searchBooru`; Gelbooru stays worker-only; defensive conflict → worker fallback |
 | `audit/raw-sql-timestamp-units` | ✅ merged | [#132](https://github.com/KazeKaze93/RuleDesk/pull/132) — Full raw-SQL timestamp unit inventory: **no P0 mismatch**; comment-only Units annotations + `docs/database.md` seconds vs ms correction. (Remote hyphen: `audit-raw-sql-timestamp-units`) |
 | `fix/ipc-handlers-compliance` | ✅ merged | [#124](https://github.com/KazeKaze93/RuleDesk/pull/124) — Legacy `ipcMain.handle` → BaseController; silent catch removed. (Branch renamed: remote `audit` ref blocks `audit/*`) |
 | `fix-frontend-virtuoso-gallery-audit` | ✅ merged | [#125](https://github.com/KazeKaze93/RuleDesk/pull/125) — decorative tests; VirtuosoGrid factory dedupe; totalCount audit (clean); raw HTML→shadcn |
