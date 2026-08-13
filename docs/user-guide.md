@@ -247,7 +247,7 @@ Each post card shows:
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
 - **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically).
 - **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings** when credentials are invalid).
-- Browse source modes **Favorites** / **Subscriptions** query your **local cache** (SQL `isFavorited` / `sinceTracking`) and still require a non-empty tag query in the Source switcher by design. AI and Media filters on those modes run in SQL before pagination. **Subscriptions** means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name.
+- Browse source modes **Favorites** / **Subscriptions** query your **local cache** (SQL `isFavorited` / `sinceTracking`) and still require a non-empty tag query in the Source switcher by design. AI and Media filters on those modes run in SQL before pagination. On **Source: All** with Rule34, AI hide/only is sent as booru tags in the live search (so pages stay full); Gelbooru still filters AI client-side after each page. **Subscriptions** means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name.
 
 ### Favorites
 
@@ -331,6 +331,11 @@ The download will start, and you'll see a progress indicator.
 1. Click **"Filters"** in the top bar
 2. Choose **"Images"** or **"Videos"**
 3. Gallery updates automatically
+
+**Filter by AI content:**
+
+1. Open **Filters** and choose **All** / **No AI** / **Only AI**
+2. On Browse **Source: All** with Rule34, No AI / Only AI are applied in the live API search tags (pages stay full). Gelbooru still filters after each page loads. If your search chips already include or exclude an AI tag in a way that conflicts with the filter, the app skips API injection and filters in the client instead so results are not unexplained empty.
 
 **Sort posts:**
 
@@ -565,7 +570,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 **Solutions:**
 
 1. Confirm API credentials in **Settings → Account**
-2. Clear restrictive filters (AI, media). On Browse Favorites/Subscriptions those filters run in SQL; on Source: All they apply to already loaded API pages
+2. Clear restrictive filters (AI, media). On Browse Favorites/Subscriptions those filters run in SQL before pagination. On Source: All with Rule34, AI hide/only is applied in the live API tag query (fuller pages); Gelbooru and conflict cases still filter client-side after each API page. Media filters on Source: All remain client-side.
 3. If using **Favorites** / **Subscriptions**, add at least one tag in the search bar (required by design)
 4. If Browse shows a centered error screen (not the empty “no posts” state), use **Retry** or **Open Settings** for auth failures — messages distinguish invalid API credentials, rate limits, and network errors
 

@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback, useEffect } from "react";
 import {
   useMutation,
+  useQuery,
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
@@ -17,7 +18,11 @@ import {
 } from "../../utils/provider-search-error";
 import { BrowseErrorState } from "../browse/BrowseErrorState";
 import { useViewerStore } from "../../store/viewerStore";
-import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
+import {
+  buildBooruTagListForIpc,
+  buildRemoteBooruTagListForIpc,
+  useSearchStore,
+} from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import { Button } from "../ui/button";
@@ -90,6 +95,7 @@ export const Browse = () => {
     };
   }, [deactivateBulkMode]);
 
+  // Chip tags for queryKey / viewer origin (must stay isomorphic with cache helpers).
   const tags = useMemo(
     () => buildBooruTagListForIpc(includeTags, excludeTags),
     [includeTags, excludeTags]
@@ -106,13 +112,35 @@ export const Browse = () => {
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const source = useSearchStore((state) => state.filters.source);
 
+  // App seeds ["settings"]; Browse reads provider for Rule34-only AI tag injection.
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => window.api.getSettings(),
+  });
+  const provider = settings?.provider ?? "rule34";
+
+  const { tags: remoteSearchTags, aiInjected } = useMemo(
+    () =>
+      buildRemoteBooruTagListForIpc({
+        includeTags,
+        excludeTags,
+        provider,
+        aiFilter,
+      }),
+    [includeTags, excludeTags, provider, aiFilter]
+  );
+
   const isRemoteBrowseSource = source === "all";
+  // When Rule34 AI injection succeeds, worker AI is skipped; media still needs the worker.
+  // Conflict / non-Rule34 keep worker AI as the filter path.
+  const workerAiFilter = aiInjected ? "all" : aiFilter;
   const usesDefaultRemoteFilters =
     isRemoteBrowseSource &&
     tags.length === 0 &&
-    aiFilter === "all" &&
+    workerAiFilter === "all" &&
     mediaType === "all";
   const workerEnabled = isRemoteBrowseSource && !usesDefaultRemoteFilters;
+  // queryKey keeps chip tags + aiFilter (not injected tokens); aiFilter change still refetches.
   const browseSearchQueryKey = buildBrowseSearchQueryKey({
     tags,
     source,
@@ -188,7 +216,7 @@ export const Browse = () => {
       try {
         if (isBrowseCursorPageParam(pageParam)) {
           return await window.api.searchBooru({
-            tags,
+            tags: remoteSearchTags,
             page: 1,
             beforePostId: pageParam.beforePostId,
             limit: POSTS_PER_PAGE,
@@ -196,7 +224,7 @@ export const Browse = () => {
         }
 
         return await window.api.searchBooru({
-          tags,
+          tags: remoteSearchTags,
           page: pageParam,
           limit: POSTS_PER_PAGE,
         });
@@ -226,11 +254,12 @@ export const Browse = () => {
 
   // Worker is remote-only (source=all with non-default AI/media or an active tag search).
   // Favorites/Subscriptions apply aiFilter/mediaType in SQL before LIMIT/OFFSET.
+  // Rule34 AI injection: workerAiFilter is "all"; Gelbooru / conflict keep real aiFilter.
   const filterConfig: WorkerFilterConfig = useMemo(() => ({
-    aiFilter,
+    aiFilter: workerAiFilter,
     mediaType,
     sortOrder,
-  }), [aiFilter, mediaType, sortOrder]);
+  }), [workerAiFilter, mediaType, sortOrder]);
 
   const {
     data: workerPosts = [],
