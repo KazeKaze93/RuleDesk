@@ -8,7 +8,7 @@ Vitest covers unit logic, integration flows (IPC + SQLite), and property-based f
 
 | File | Tests | Area |
 |------|-------|------|
-| `hooks/useGalleryInfiniteScroll.test.ts` | 7 | Infinite scroll pagination |
+| `hooks/useGalleryInfiniteScroll.test.ts` | 9 | Real `useGalleryInfiniteScroll` (default + Browse `getSearchBrowseNextPageParam`, 150ms debounce, unmount timer cleanup, `handleAtBottomStateChange`) |
 | `hooks/useWorkerFilteredPosts.test.ts` | 7 | Worker post → Post field mapping |
 | `lib/filter-utils.test.ts` | 29 | AI tags, video detection |
 | `lib/backup-retention-size-cap.test.ts` | 6 | Backup size-cap prune (no over-delete / keep newest over cap) |
@@ -68,8 +68,8 @@ npm run test:verify                   # validate + all tests + ABI restore
 
 ## Approach
 
-- Vitest node environment
-- Logic-first tests; minimal React rendering
+- Vitest node environment (jsdom only for `useGalleryInfiniteScroll` hook render tests)
+- Logic-first tests; hook debounce/unmount coverage renders the real hook via `react-dom` (no `@testing-library/react`)
 - Integration tests use in-memory SQLite (`tests/helpers/mock-db.ts`)
 - Property tests guard schema and SQL escaping invariants
 - Post-audit: pure `mapWorkerPostToPost()` in `src/renderer/lib/map-worker-post.ts` (tested without Web Worker)

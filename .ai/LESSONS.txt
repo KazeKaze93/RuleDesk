@@ -212,6 +212,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ## Testing
 
+### Problem: Tests that reimplement production logic or swallow failures create false confidence
+**Root Cause:** Suites copied pagination locally instead of importing the hook, property tests `return true` without asserting Zod `safeParse`, and e2e `.catch(() => {})` / "empty input but enabled submit = success" treated missing UI as pass.
+**Invariant Rule:** A test must import and call production code, not a local copy of the algorithm. Property tests assert parse success and failure, never vacuously return true. E2E waits for required state must fail on timeout; optional UI (autocomplete dropdown) may branch, but the required field value / gate visibility must be asserted positively.
+
 ### Problem: Dual-ABI test setup masks Electron-vs-Node native module incompatibilities
 **Root Cause:** When tests rebuild better-sqlite3 against Node.js ABI, they don't execute under Electron's runtime. Edge cases that manifest only under Electron's event loop, WAL semantics, or sandbox behavior pass tests but fail in production.
 **Invariant Rule:** Integration tests involving native modules (better-sqlite3) should ideally run inside Electron via Playwright/electron-vitest. If staying with dual-ABI for speed, document the gap explicitly and add end-to-end Electron tests for critical DB paths.

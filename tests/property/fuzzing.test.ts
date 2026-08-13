@@ -105,11 +105,16 @@ describe('Property-Based Testing (Fuzzing)', () => {
             type: 'tag'  // valid enum
           });
           
-          // Если имя валидное (не пустое после trim) - должно пройти, иначе ошибка Zod
+          // AddArtistSchema.name is z.string().trim().min(1) — any non-empty
+          // trimmed string must parse; whitespace-only / empty must fail.
           if (name.trim().length > 0) {
-            // Zod might strip/trim, so we just check it doesn't crash
-            return true;
+            expect(result.success).toBe(true);
+            if (result.success) {
+              expect(result.data.name).toBe(name.trim());
+            }
+            return result.success;
           }
+          expect(result.success).toBe(false);
           return !result.success;
         })
       );
@@ -196,8 +201,14 @@ describe('Property-Based Testing (Fuzzing)', () => {
               type: 'tag',
             });
             
-            if (result.success) {
-              expect(result.data.name).toBe(nameWithWhitespace.trim());
+            const trimmed = nameWithWhitespace.trim();
+            if (trimmed.length === 0) {
+              expect(result.success).toBe(false);
+            } else {
+              expect(result.success).toBe(true);
+              if (result.success) {
+                expect(result.data.name).toBe(trimmed);
+              }
             }
           }
         )
