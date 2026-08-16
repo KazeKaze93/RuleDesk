@@ -172,7 +172,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
-| `feat/post-not-found-ttl` | ⏳ started | Per-ID `id:` lookup TTL (`post_lookup_cache`, 30 days). Sync artist pagination has no per-ID HTTP — gate is shadow-insert. |
+| `feat/post-not-found-ttl` | ✅ merged | [#170](https://github.com/KazeKaze93/RuleDesk/pull/170) — Per-ID `id:` lookup TTL (`post_lookup_cache`, 30 days). Sync artist pagination has no per-ID HTTP — gate is shadow-insert. `found` does not skip HTTP (no body in table). |
 | `fix/media-cache-eviction` | ✅ merged | [#169](https://github.com/KazeKaze93/RuleDesk/pull/169) — Size cap already existed (`VIDEO_CACHE_MAX_BYTES` + `evictCache`). Policy was mtime; now LRU last-accessed (`utimes` atime bump). No SQLite replica of cache files. Open readers skipped; `warn` if still over cap. |
 | `feat/tag-resolve-cache-ttl-alignment` | ⏳ not started | — Session-scoped React Query cache (`staleTime: Infinity`) can outlive `tag_metadata`'s 7-day TTL on long-running sessions, showing stale "No X detected" after server-side re-resolution. Low priority — requires session >7 days uninterrupted. Accepted trade-off from [#168](https://github.com/KazeKaze93/RuleDesk/pull/168); not a merge blocker. |
 | `fix/post-metadata-artist-character-loading-state` | ✅ merged | [#168](https://github.com/KazeKaze93/RuleDesk/pull/168) — TagsDrawer Artist/Character/Copyright: React Query `isLoading` vs confirmed-absent copy; no Main / `tag-resolve-coordinator` changes |
