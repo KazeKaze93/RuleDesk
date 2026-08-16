@@ -275,6 +275,12 @@ export class VideoProxyServer {
         log.error("[VideoProxy] Failed to evict cache file", err);
       }
     }
+
+    if (remainingBytes > VIDEO_CACHE_MAX_BYTES) {
+      log.warn(
+        `[VideoProxy] Cache still over cap after eviction: remaining≈${remainingBytes} cap=${VIDEO_CACHE_MAX_BYTES} skippedOpen=${skipPaths.size}`,
+      );
+    }
   }
 
   private acquireReader(filePath: string): void {

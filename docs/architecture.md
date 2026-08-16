@@ -623,7 +623,7 @@ const posts = await db.query.posts.findMany({
 9. **Video Proxy Service** (`src/main/services/video-proxy-server.ts`)
 
    - Local HTTP proxy for video playback with on-disk `video-cache/` under `.rdcache`
-   - Atomic cache writes (tmp+rename), abort cleanup, eviction capped by `VIDEO_CACHE_MAX_BYTES` (2 GiB) in `src/main/config/constants.ts`. LRU by last-accessed (`atime` bumped on hit); open readers are skipped. Selection lives in `selectMediaCacheFilesToEvict`; `MaintenanceScheduler` runs `evictCache()` after SQLite work on a nested `setImmediate`.
+   - Atomic cache writes (tmp+rename), abort cleanup, eviction capped by `VIDEO_CACHE_MAX_BYTES` (2 GiB) in `src/main/config/constants.ts`. LRU by last-accessed (`atime` bumped on hit); open readers are skipped. Selection lives in `selectMediaCacheFilesToEvict`; `MaintenanceScheduler` runs `evictCache()` after SQLite work on a nested `setImmediate` (one synchronous directory walk per tick — not chunked iteration). A pass that still exceeds the cap logs `warn` (`skippedOpen`); that is an expected trade-off while a viewer holds the file, not a silent miss.
    - Host allowlist is derived from `provider.cdnDomains` via `getAllProviderCdnDomains` (exact match, cached at module load). IPC `video-proxy:get-url` only mints a localhost URL and does not check the allowlist; rejection is HTTP 400 on the subsequent Range request (logged with hostname). API/apex hosts such as `api.rule34.xxx` and `gelbooru.com` are CSP-only. Does not rewrite stored post URLs at sync time.
 
 10. **Updater Service** (`src/main/services/updater-service.ts`)

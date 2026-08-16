@@ -45,6 +45,7 @@ vi.mock("@/main/lib/proxy", () => ({
 }));
 
 import { VideoProxyServer } from "../../../src/main/services/video-proxy-server";
+import log from "electron-log";
 
 const CDN_HOST_URL = "https://rule34.xxx/data/test-video.bin";
 const PAYLOAD = Buffer.from("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -416,7 +417,8 @@ describe("VideoProxyServer cache integrity", () => {
     fs.utimesSync(closedB, (Date.now() - 10_000) / 1000, (Date.now() - 10_000) / 1000);
 
     const originalStat = fs.statSync.bind(fs);
-    const huge = Math.floor(VIDEO_CACHE_MAX_BYTES / 2) + 10;
+    const huge = VIDEO_CACHE_MAX_BYTES + 10;
+    vi.mocked(log.warn).mockClear();
     vi.spyOn(fs, "statSync").mockImplementation(((
       p: fs.PathLike,
       options?: fs.StatSyncOptions,
@@ -439,6 +441,9 @@ describe("VideoProxyServer cache integrity", () => {
     proxy.evictCache();
 
     expect(fs.existsSync(openPath)).toBe(true);
+    expect(vi.mocked(log.warn)).toHaveBeenCalledWith(
+      expect.stringContaining("Cache still over cap after eviction"),
+    );
 
     vi.mocked(fs.statSync).mockRestore();
     held.resume();
