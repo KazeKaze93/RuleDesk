@@ -8,6 +8,8 @@ import {
   loadTagMetadataCache,
   resolveTagMetadataWave,
 } from "../../services/tag-resolve-coordinator";
+import { resolveCachedSearchPage } from "../../services/search-results-cache";
+import { buildSearchResultsCacheKey } from "../../../shared/search-results-cache-key";
 import { eq, inArray, and } from "drizzle-orm";
 import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
@@ -257,7 +259,10 @@ export class SearchController extends BaseController {
   }
 
   /**
-   * Search posts via external Booru API
+   * Search posts via external Booru API.
+   * Cache-first: SQLite `search_results_cache` (TTL) before provider.fetchPosts.
+   * Confirmed empty tagged pages persist as not_found; 429/network are unresolved (not written).
+   * `isRandom` bypasses the cache. IPC signature unchanged.
    *
    * @param _event - IPC event (unused)
    * @param params - Search parameters: tags (array), page, limit (optional)
@@ -353,105 +358,130 @@ export class SearchController extends BaseController {
         : isRandom
           ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1
           : page;
-      let booruPosts = await provider.fetchPosts(
-        tagsString,
-        apiPage,
-        providerSettings,
-        isRandom,
-        limit
-      );
 
-      // Step 2: Fallback Logic (only if Step 1 returned 0 AND input is a single word)
-      if (
-        booruPosts.length === 0 &&
-        tagsString &&
-        safeInputTags.length === 1 &&
-        !useCursorPagination
-      ) {
-        const originalTag = safeInputTags[0].trim();
-        
-        // Attempt A: Autocomplete (Fix Aliases)
-        // Use provider abstraction instead of direct URL access
-        try {
-          const autocompleteResults = await provider.searchTags(originalTag);
-          
-          if (autocompleteResults.length > 0) {
-            const suggestion = autocompleteResults[0].value.trim();
-            
-            // If suggestion is different from original, retry with suggestion
-            if (suggestion.toLowerCase() !== originalTag.toLowerCase()) {
-              // Use provider.formatTag() for consistent normalization
-              const suggestionString = provider.formatTag(suggestion, "tag");
-              booruPosts = await provider.fetchPosts(
-                suggestionString,
+      const fetchFromProvider = async (): Promise<BooruPost[]> => {
+        let fetched = await provider.fetchPosts(
+          tagsString,
+          apiPage,
+          providerSettings,
+          isRandom,
+          limit
+        );
+
+        // Fallback Logic (only if Step 1 returned 0 AND input is a single word)
+        if (
+          fetched.length === 0 &&
+          tagsString &&
+          safeInputTags.length === 1 &&
+          !useCursorPagination
+        ) {
+          const originalTag = safeInputTags[0].trim();
+
+          // Attempt A: Autocomplete (Fix Aliases)
+          try {
+            const autocompleteResults = await provider.searchTags(originalTag);
+
+            if (autocompleteResults.length > 0) {
+              const suggestion = autocompleteResults[0].value.trim();
+
+              if (suggestion.toLowerCase() !== originalTag.toLowerCase()) {
+                const suggestionString = provider.formatTag(suggestion, "tag");
+                fetched = await provider.fetchPosts(
+                  suggestionString,
+                  apiPage,
+                  providerSettings,
+                  isRandom,
+                  limit
+                );
+
+                if (fetched.length > 0) {
+                  tagsString = suggestionString;
+                }
+              }
+            }
+          } catch (autocompleteError) {
+            if (isProviderSearchError(autocompleteError)) {
+              throw autocompleteError;
+            }
+          }
+
+          // Attempt B: User Account Search
+          if (
+            fetched.length === 0 &&
+            !originalTag.toLowerCase().startsWith("user:")
+          ) {
+            const formattedUserTag = provider.formatTag(originalTag, "uploader");
+
+            try {
+              fetched = await provider.fetchPosts(
+                formattedUserTag,
                 apiPage,
                 providerSettings,
                 isRandom,
                 limit
               );
-              
-              if (booruPosts.length > 0) {
-                tagsString = suggestionString; // Update for logging
+
+              if (fetched.length > 0) {
+                tagsString = formattedUserTag;
+              }
+            } catch (userSearchError) {
+              if (isProviderSearchError(userSearchError)) {
+                throw userSearchError;
               }
             }
           }
-        } catch (autocompleteError) {
-          if (isProviderSearchError(autocompleteError)) {
-            throw autocompleteError;
-          }
-          // Autocomplete check failed, continue with other fallback attempts
-        }
 
-        // Attempt B: User Account Search (if Attempt A failed or returned same tag)
-        if (booruPosts.length === 0 && !originalTag.toLowerCase().startsWith('user:')) {
-          // Use provider.formatTag() to ensure consistent formatting (same as SyncService)
-          // This handles lowercase conversion and space-to-underscore replacement
-          const formattedUserTag = provider.formatTag(originalTag, "uploader");
-          
-          try {
-            booruPosts = await provider.fetchPosts(
-              formattedUserTag,
-              apiPage,
-              providerSettings,
-              isRandom,
-              limit
-            );
-            
-            if (booruPosts.length > 0) {
-              tagsString = formattedUserTag; // Update for logging
-            }
-          } catch (userSearchError) {
-            if (isProviderSearchError(userSearchError)) {
-              throw userSearchError;
+          // Attempt C: Rule34 artist meta tags (e.g. sodaglow vs sodaglow_artist)
+          if (
+            fetched.length === 0 &&
+            originalTag.toLowerCase().endsWith("_artist") &&
+            originalTag.length > "_artist".length
+          ) {
+            const strippedTag = originalTag.slice(0, -"_artist".length);
+            try {
+              const formatted = provider.formatTag(strippedTag, "tag");
+              fetched = await provider.fetchPosts(
+                formatted,
+                apiPage,
+                providerSettings,
+                isRandom,
+                limit
+              );
+              if (fetched.length > 0) {
+                tagsString = formatted;
+              }
+            } catch (artistStripError) {
+              if (isProviderSearchError(artistStripError)) {
+                throw artistStripError;
+              }
             }
           }
         }
 
-        // Attempt C: Rule34 artist meta tags (e.g. sodaglow vs sodaglow_artist)
-        if (
-          booruPosts.length === 0 &&
-          originalTag.toLowerCase().endsWith("_artist") &&
-          originalTag.length > "_artist".length
-        ) {
-          const strippedTag = originalTag.slice(0, -"_artist".length);
-          try {
-            const formatted = provider.formatTag(strippedTag, "tag");
-            booruPosts = await provider.fetchPosts(
-              formatted,
-              apiPage,
-              providerSettings,
-              isRandom,
-              limit
-            );
-            if (booruPosts.length > 0) {
-              tagsString = formatted;
-            }
-          } catch (artistStripError) {
-            if (isProviderSearchError(artistStripError)) {
-              throw artistStripError;
-            }
-          }
-        }
+        return fetched;
+      };
+
+      const db = this.getDb();
+      let booruPosts: BooruPost[];
+      if (isRandom) {
+        booruPosts = await fetchFromProvider();
+      } else {
+        const cacheKey = buildSearchResultsCacheKey({
+          provider: providerId,
+          tags: tagsString,
+          page: apiPage,
+          limit,
+          beforePostId: useCursorPagination ? beforePostId : undefined,
+        });
+        // Untagged page 1 empty can be a throttle blip — do not persist as not_found.
+        // Untagged page 2+ empty is a real end-of-feed — persist so repeat scroll skips HTTP.
+        const persistEmpty = !(page === 1 && safeInputTags.length === 0);
+        booruPosts = await resolveCachedSearchPage(
+          db,
+          cacheKey,
+          fetchFromProvider,
+          { persistEmpty }
+        );
       }
       
       const apiFetchedCount = booruPosts.length;
@@ -481,7 +511,6 @@ export class SearchController extends BaseController {
 
       // Fetch local DB state (isFavorite, isViewed) for these posts
       // Search by postId and artistId = EXTERNAL_ARTIST_ID (external posts from Browse)
-      const db = this.getDb();
       let localPostsState: Map<number, { isFavorited: boolean; isViewed: boolean }> = new Map();
 
       if (postIds.length > 0) {

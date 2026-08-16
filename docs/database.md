@@ -299,6 +299,35 @@ Persistent cache for Rule34 tag type resolution (viewer TagsDrawer / resolve IPC
 
 - `tag_metadata_type_idx` — Index on `type` for filtering (e.g. all artists)
 
+### Table: `search_results_cache`
+
+Persistent TTL cache for Browse `searchBooru` API pages (`SearchController.search`). One row per canonical cache key. Does **not** replace `tag_metadata`.
+
+| Column                    | Type                             | Description                                                                 |
+| ------------------------- | -------------------------------- | --------------------------------------------------------------------------- |
+| `cache_key`               | TEXT (PK, NOT NULL)              | Canonical JSON-array key (version, provider, formatted tags, page, limit, beforePostId) |
+| `status`                  | TEXT (NOT NULL)                  | `found` or `not_found` — never store unresolved (429/network) as absence    |
+| `payload_schema_version`  | INTEGER (NOT NULL)               | Version of `response_payload` JSON DSL; unknown versions are cache-misses   |
+| `response_payload`        | TEXT (NULL)                      | Versioned JSON (`{ posts: BooruPost[] }`, `createdAt` ISO); null when `not_found` |
+| `resolved_at`             | INTEGER (TIMESTAMP_MS, NOT NULL) | When this outcome was written (**milliseconds**); TTL gate for both statuses |
+
+**Semantics:**
+
+- `found` — successful API page with at least one post; payload parsed only through the versioned resolver (`parseSearchResultsCachePayload`). TTL `SEARCH_RESULTS_CACHE_TTL_MS` (24 hours).
+- `not_found` — confirmed empty API page after alias/user:/artist-strip fallbacks (tagged queries). Same TTL. Empty is **not** stored as `found`.
+- Unresolved failures (429/network/parse) are **not** written.
+- Untagged page 1 returning zero rows is **not** persisted (same throttle-blip case as the empty-page UI path).
+- Untagged page 2+ returning zero rows **is** persisted as `not_found` (real end-of-feed; repeat scroll must not re-hit the API).
+- `isRandom` searches bypass the cache (read and write).
+- Blacklist filtering and local viewed/favorited merge run **after** a cache hit, so they stay live.
+- Key dimensions are only values that `SearchController.search()` actually varies: provider, formatted API `tags` (AI/media injection already inlined), page, limit, cursor. Browse `sortOrder` / removed local `rating` / `source` / `aiFilter` / `mediaType` flags are **not** in the SQLite key — they are not IPC arguments. Changing injected tags (AI hide / `video`) yields a different `tags` string and therefore a different key.
+
+**Indexes:**
+
+- `search_results_cache_resolved_at_idx` — Index on `resolved_at` for maintenance DELETE
+
+Maintenance: `deleteExpiredSearchResultsCache` (same cycle as `deleteExpiredNotFoundTagMetadata`). Raw SQL cutoff uses `Date.now()` ms against `mode: "timestamp_ms"`.
+
 ### Table: `playlists`
 
 Stores playlist/collection information for curated post collections.
@@ -969,7 +998,7 @@ The application also exposes VACUUM maintenance controls in Settings:
 
 1. **Manual run:** `window.api.runVacuum()` closes the Main DB handle, runs `VACUUM;` in a dedicated **maintenance worker** (`vacuumWorker.ts`), then reinitializes. The run is enqueued on `maintenanceQueue` so it cannot overlap backup/restore. This is the **only** intentional DB-related worker-thread exception: interactive CRUD stays on the Main thread via synchronous `better-sqlite3` + Drizzle; VACUUM is offloaded so the UI/IPC loop is not blocked for the duration of a full vacuum.
 2. **Status:** `window.api.getVacuumStatus()` returns last run time/result/error and in-memory `isRunning`. While VACUUM is running (DB closed), status is served from an in-memory cache so polling does not hit `getDb()`.
-3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`. **Note:** `MaintenanceScheduler` only runs lightweight `wal_checkpoint` + `optimize` (not user-visible VACUUM); weekly/monthly VACUUM execution is not wired to a timer yet.
+3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`. **Note:** `MaintenanceScheduler` only runs lightweight `wal_checkpoint` + `optimize` plus TTL eviction (`deleteExpiredNotFoundTagMetadata`, `deleteExpiredSearchResultsCache`) — not user-visible VACUUM; weekly/monthly VACUUM execution is not wired to a timer yet.
 
 **Important:** `VACUUM` remains blocking for SQLite itself, but is isolated from the UI/IPC loop by the maintenance worker. Do not use worker threads for ordinary CRUD — that remains forbidden (see `.cursorrules`). Worker errors return `error.message` only (no stack) to settings/`DatabaseMaintenanceCard`.
 

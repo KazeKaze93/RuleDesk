@@ -32,6 +32,11 @@ export type TagType = (typeof TAG_TYPES)[keyof typeof TAG_TYPES];
 export const TAG_METADATA_STATUSES = ["found", "not_found"] as const;
 export type TagMetadataStatus = (typeof TAG_METADATA_STATUSES)[number];
 
+/** Cache outcome for search_results_cache rows (unresolved API failures are never stored). */
+export const SEARCH_RESULTS_CACHE_STATUSES = ["found", "not_found"] as const;
+export type SearchResultsCacheStatus =
+  (typeof SEARCH_RESULTS_CACHE_STATUSES)[number];
+
 // Settings ID constant for single profile design
 export const SETTINGS_ID = 1;
 
@@ -177,6 +182,25 @@ export const tagMetadata = sqliteTable(
   })
 );
 
+export const searchResultsCache = sqliteTable(
+  "search_results_cache",
+  {
+    cacheKey: text("cache_key").primaryKey(),
+    status: text("status", { enum: SEARCH_RESULTS_CACHE_STATUSES }).notNull(),
+    payloadSchemaVersion: integer("payload_schema_version").notNull(),
+    responsePayload: text("response_payload"),
+    // Units: milliseconds since epoch. Raw SQL (maintenance DELETE) compares with Date.now()-based cutoffs.
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    resolvedAtIdx: index("search_results_cache_resolved_at_idx").on(
+      t.resolvedAt
+    ),
+  })
+);
+
 export const playlists = sqliteTable(
   "playlists",
   {
@@ -243,6 +267,8 @@ export type Settings = typeof settings.$inferSelect;
 export type NewSettings = typeof settings.$inferInsert;
 export type TagMetadata = typeof tagMetadata.$inferSelect;
 export type NewTagMetadata = typeof tagMetadata.$inferInsert;
+export type SearchResultsCacheRow = typeof searchResultsCache.$inferSelect;
+export type NewSearchResultsCacheRow = typeof searchResultsCache.$inferInsert;
 export type Playlist = typeof playlists.$inferSelect;
 export type NewPlaylist = typeof playlists.$inferInsert;
 export type PlaylistEntry = typeof playlistEntries.$inferSelect;

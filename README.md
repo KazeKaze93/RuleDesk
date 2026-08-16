@@ -250,7 +250,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 
 ### Database & Schema
 
-- ✅ **Schema:** Core tables `artists`, `posts`, `settings`; additional `tag_metadata`, `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 external content for posts
+- ✅ **Schema:** Core tables `artists`, `posts`, `settings`; additional `tag_metadata`, `search_results_cache`, `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 external content for posts
 - ✅ **Migrations:** Fully functional migration system using `drizzle-kit` with idempotent migration handling
 - ✅ **Media Type Support:** `media_type` column in `posts` table for efficient image/video filtering (`image`, `video`)
 - ✅ **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`, `mediaType`

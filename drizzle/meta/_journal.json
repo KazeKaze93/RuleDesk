@@ -239,6 +239,13 @@
       "when": 1778200000000,
       "tag": "0034_add_auto_sync_on_artist_add",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1778300000000,
+      "tag": "0035_add_search_results_cache",
+      "breakpoints": true
     }
   ]
 }

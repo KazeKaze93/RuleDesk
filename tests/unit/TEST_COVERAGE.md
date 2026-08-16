@@ -42,6 +42,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `providers/warn-unknown-media-host.test.ts` | Fetch-time unknown-host warn + per-hostname dedup |
 | `providers/throttle.test.ts` | Priority queue + 429 gate (`vi.useFakeTimers`) |
 | `services/tag-resolve-coordinator.test.ts` | Tag resolve dedup / rate limit |
+| `services/search-results-cache.test.ts` | Browse search SQLite TTL cache (found / not_found / unresolved, key isolation, maintenance ms) |
 | `services/secure-storage.test.ts` | `SecureStorage` encrypt/decrypt |
 | `services/credentials.test.ts` | `getDecryptedApiSettings` fail-closed |
 | `services/video-proxy-server.test.ts` | Video proxy allowlist / cache / eviction |
@@ -69,6 +70,8 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `controllers/ArtistsController.test.ts` | Add/update artist IPC |
 | `controllers/SearchController.blacklist.test.ts` | Browse blacklist filtering |
 | `controllers/SearchController.errors.test.ts` | Network throw skips alias/user: heuristics; genuine `[]` still runs them |
+| `controllers/SearchController.cache.test.ts` | `searchBooru` cache-first: repeat tags+page skips HTTP; 429 not stored as empty; untagged page 2 empty cached, page 1 empty not |
+| `db/search-results-cache-migration.test.ts` | `0035` overlay on populated pre-0035 DB; `sqlite_master` table + index |
 | `controllers/SettingsController.test.ts` | Partial settings save |
 | `controllers/StatsController.timeline.test.ts` | Timeline bucket units |
 | `services/SyncService.queue.test.ts` | `runExclusive` — repair after full sync |
