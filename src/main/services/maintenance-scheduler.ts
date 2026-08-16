@@ -2,6 +2,7 @@ import log from "electron-log";
 import { getSqliteInstance } from "../db/client";
 import { deleteExpiredNotFoundTagMetadata } from "../db/queries/tag-metadata";
 import { deleteExpiredSearchResultsCache } from "../db/queries/search-results-cache";
+import { deleteExpiredNotFoundPostLookupCache } from "../db/queries/post-lookup-cache";
 import type { VideoProxyServer } from "./video-proxy-server";
 
 const STARTUP_DELAY_MS = 10_000;
@@ -57,6 +58,13 @@ export class MaintenanceScheduler {
         if (deletedExpiredSearchPages > 0) {
           log.info(
             `[MaintenanceScheduler] Deleted ${deletedExpiredSearchPages} expired search_results_cache rows`
+          );
+        }
+
+        const deletedExpiredPostLookups = deleteExpiredNotFoundPostLookupCache(sqlite);
+        if (deletedExpiredPostLookups > 0) {
+          log.info(
+            `[MaintenanceScheduler] Deleted ${deletedExpiredPostLookups} expired not_found post_lookup_cache rows`
           );
         }
 

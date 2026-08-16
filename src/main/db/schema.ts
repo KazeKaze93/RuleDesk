@@ -37,6 +37,11 @@ export const SEARCH_RESULTS_CACHE_STATUSES = ["found", "not_found"] as const;
 export type SearchResultsCacheStatus =
   (typeof SEARCH_RESULTS_CACHE_STATUSES)[number];
 
+/** Cache outcome for post_lookup_cache rows (unresolved API failures are never stored). */
+export const POST_LOOKUP_CACHE_STATUSES = ["found", "not_found"] as const;
+export type PostLookupCacheStatus =
+  (typeof POST_LOOKUP_CACHE_STATUSES)[number];
+
 // Settings ID constant for single profile design
 export const SETTINGS_ID = 1;
 
@@ -201,6 +206,23 @@ export const searchResultsCache = sqliteTable(
   })
 );
 
+export const postLookupCache = sqliteTable(
+  "post_lookup_cache",
+  {
+    provider: text("provider", { enum: PROVIDER_IDS }).notNull(),
+    postId: integer("post_id").notNull(),
+    status: text("status", { enum: POST_LOOKUP_CACHE_STATUSES }).notNull(),
+    // Units: milliseconds since epoch. Raw SQL (maintenance DELETE) compares with Date.now()-based cutoffs.
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.provider, t.postId] }),
+    resolvedAtIdx: index("post_lookup_cache_resolved_at_idx").on(t.resolvedAt),
+  })
+);
+
 export const playlists = sqliteTable(
   "playlists",
   {
@@ -269,6 +291,8 @@ export type TagMetadata = typeof tagMetadata.$inferSelect;
 export type NewTagMetadata = typeof tagMetadata.$inferInsert;
 export type SearchResultsCacheRow = typeof searchResultsCache.$inferSelect;
 export type NewSearchResultsCacheRow = typeof searchResultsCache.$inferInsert;
+export type PostLookupCacheRow = typeof postLookupCache.$inferSelect;
+export type NewPostLookupCacheRow = typeof postLookupCache.$inferInsert;
 export type Playlist = typeof playlists.$inferSelect;
 export type NewPlaylist = typeof playlists.$inferInsert;
 export type PlaylistEntry = typeof playlistEntries.$inferSelect;

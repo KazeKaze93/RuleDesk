@@ -41,6 +41,8 @@ import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
 import { isVideoUrl } from "@shared/utils/media";
 import { getProvider, type ProviderId } from "../../providers";
 import { getDecryptedApiSettings } from "../../services/credentials";
+import { resolvePostLookup } from "../../services/post-lookup-cache";
+import { POST_LOOKUP_SINGLE_ID_PAGE_LIMIT } from "../../config/post-lookup-constants";
 import { ShadowInsertRequestSchema } from "../../../shared/schemas/shadow-insert";
 import { IdSchema } from "../../../shared/schemas/ipc";
 import { getAllBlacklistedTags } from "../../db/queries/blacklist";
@@ -1372,28 +1374,31 @@ export class PostsController extends BaseController {
         throw new Error("API credentials not configured. Cannot fetch post data from provider.");
       }
 
-      // Fetch post by ID using provider API
-      // Most Booru APIs support id:postId query format
+      // Fetch post by ID using provider API (cache-first not_found TTL).
+      // Most Booru APIs support id:postId query format.
       const tagsQuery = `id:${request.postId}`;
-      const booruPosts = await provider.fetchPosts(
-        tagsQuery,
-        0, // Page 0 for single post lookup
-        {
-          userId: apiSettings.userId,
-          apiKey: apiSettings.apiKey,
-        },
-        false,
-        50 // Preserve prior Rule34 default; single-id lookup does not need a full sync page
+      const lookup = await resolvePostLookup(
+        db,
+        request.provider,
+        request.postId,
+        () =>
+          provider.fetchPosts(
+            tagsQuery,
+            0,
+            {
+              userId: apiSettings.userId,
+              apiKey: apiSettings.apiKey,
+            },
+            false,
+            POST_LOOKUP_SINGLE_ID_PAGE_LIMIT
+          )
       );
 
-      if (!booruPosts || booruPosts.length === 0) {
+      if (lookup.status === "not_found") {
         throw new Error(`Post ${request.postId} not found in ${request.provider} API`);
       }
 
-      const booruPost = booruPosts.find(p => p.id === request.postId);
-      if (!booruPost) {
-        throw new Error(`Post ${request.postId} not found in API response`);
-      }
+      const booruPost = lookup.post;
 
       // Step 3: Validate URLs from API response
       if (!booruPost.fileUrl || booruPost.fileUrl.trim() === "") {

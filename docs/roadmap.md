@@ -27,7 +27,7 @@ This document reflects the current roadmap for RuleDesk `v17.x` and is aligned w
 - ✅ Playlists now include import/export, manual drag-and-drop reorder, and smart hybrid local+remote resolution.
 - ✅ Database is optimized for scale: WAL mode, FTS5, composite indexes, and migration workflow.
 - ✅ **Sync automation:** auto-sync on startup, optional auto-sync when adding an artist (`autoSyncOnArtistAdd`, default off → `repairArtist` via `runExclusive`), periodic background sync (presets in Settings, minimum interval enforced in `SyncScheduler`), and sync scheduler restart when settings are saved. Per-artist `syncStatus` / `lastError` persist during sync (**#148**); Artists list refreshes live via `sync:artist` / repair IPC (**#149**).
-- ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`); TTL eviction for `tag_metadata` not_found and `search_results_cache`.
+- ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`); TTL eviction for `tag_metadata` not_found, `search_results_cache`, and `post_lookup_cache` not_found.
 - ✅ **Backup retention:** after each successful backup, older files are pruned based on `backupRetention` from Settings (`1..20`).
 - ✅ **User-visible DB maintenance:** Settings now exposes VACUUM status (last run timestamp/status/error), manual trigger, and schedule (`manual` / `weekly` / `monthly`).
 - ✅ **Post-audit hardening (v17.x):** shared credential decrypt helper (no ciphertext fallback on IPC paths), `SyncService.runExclusive` queue for sync/repair, `MAX_TRACKED_ARTISTS` (5000) cap, stable Virtuoso list components, Browse worker error UI, worker `mapWorkerPostToPost` field preservation, DI container keyed by `token.id`, orientation filter removed (dead code). See [Architecture](./architecture.md) and [TEST_COVERAGE.md](../tests/unit/TEST_COVERAGE.md).
@@ -172,6 +172,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
+| `feat/post-not-found-ttl` | ⏳ started | Per-ID `id:` lookup TTL (`post_lookup_cache`, 30 days). Sync artist pagination has no per-ID HTTP — gate is shadow-insert. |
 | `fix/media-cache-eviction` | ✅ merged | [#169](https://github.com/KazeKaze93/RuleDesk/pull/169) — Size cap already existed (`VIDEO_CACHE_MAX_BYTES` + `evictCache`). Policy was mtime; now LRU last-accessed (`utimes` atime bump). No SQLite replica of cache files. Open readers skipped; `warn` if still over cap. |
 | `feat/tag-resolve-cache-ttl-alignment` | ⏳ not started | — Session-scoped React Query cache (`staleTime: Infinity`) can outlive `tag_metadata`'s 7-day TTL on long-running sessions, showing stale "No X detected" after server-side re-resolution. Low priority — requires session >7 days uninterrupted. Accepted trade-off from [#168](https://github.com/KazeKaze93/RuleDesk/pull/168); not a merge blocker. |
 | `fix/post-metadata-artist-character-loading-state` | ✅ merged | [#168](https://github.com/KazeKaze93/RuleDesk/pull/168) — TagsDrawer Artist/Character/Copyright: React Query `isLoading` vs confirmed-absent copy; no Main / `tag-resolve-coordinator` changes |
@@ -242,7 +243,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | Item | Description |
 |------|-------------|
 | **tag-combination subscriptions feature/table** | Not implemented (no table in `schema.ts`, no subscription IPC). Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking`). |
-| **`search_results_cache` row cap (not media LRU)** | Infinite Browse scroll mints a new `cache_key` per `beforePostId`. TTL already deletes expired rows; a long cursor session can still grow the table inside the TTL window. **Decide before writing “prompt 2” (eviction):** this is **SQLite row cap + `MaintenanceScheduler`**, not video-proxy LRU of on-disk files (`VIDEO_CACHE_MAX_BYTES`, last-accessed). Do **not** fold it into a media-file eviction prompt. Same *pattern* (cap + maintenance tick), different *unit* and code path. Treat as a **separate** follow-up (working name: prompt 4 / `search-results-cache-cap`). Prompt 3 (post `not_found` TTL) is separate DDL-on-existing-DB work — reuse the copy-prod `sqlite_master` lesson. |
+| **`search_results_cache` row cap (not media LRU)** | Infinite Browse scroll mints a new `cache_key` per `beforePostId`. TTL already deletes expired rows; a long cursor session can still grow the table inside the TTL window. Same *pattern* as media LRU (cap + maintenance tick), different *unit* and code path (`search-results-cache-cap`). Prompt 3 (post `not_found` TTL) is `feat/post-not-found-ttl`. |
 
 ---
 
