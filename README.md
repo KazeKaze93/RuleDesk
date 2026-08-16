@@ -145,6 +145,7 @@ The full-screen viewer provides a polished media viewing experience:
 - **Tags Drawer** - Right-side sheet with tags grouped by type:
   - **Click** tag to add to search (**include**)
   - **Right-click** to add **exclude** (`-tag`); state shown with **green** (include) / **red** (exclude) ring styling
+  - Artist / Character / Copyright show a compact resolving indicator while tag-type lookup is in flight; “No artist detected” / “No character detected” / “No copyright detected” only after the lookup finishes with no match (session-cached hits render immediately)
 *✅ Implemented in `ViewerDialog` / `TagsDrawer` via `useSearchStore` (`addIncludeTag` / `addExcludeTag`).*
 
 ### Progressive Image Loading

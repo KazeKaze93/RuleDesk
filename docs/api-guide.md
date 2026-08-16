@@ -1285,7 +1285,7 @@ Resolves tags to their canonical form using the booru API. Returns artist tags (
 
 **When to use:** When you need to identify which tags in a post are artist tags. Used in viewer to highlight artist names.
 
-**Typical scenario:** User opens a post in viewer → component calls `resolveTags` with all post tags → receives list of artist tags → highlights artist names in UI.
+**Typical scenario:** User opens a post in viewer → component calls `resolveTags` with all post tags → receives list of artist tags → highlights artist names in UI. While that React Query is `isLoading`, Post Metadata shows a resolving indicator instead of “No artist detected”.
 
 **Parameters:**
 

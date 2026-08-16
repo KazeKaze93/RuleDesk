@@ -229,7 +229,7 @@ A full-screen immersive viewer for viewing posts with keyboard shortcuts, downlo
 - Auto-hide controls
 - Keyboard navigation (←/→)
 - Download and favorites
-- Tags drawer
+- Tags drawer (Artist/Character/Copyright distinguish in-flight resolve from confirmed-absent)
 
 **Related:** [Viewer Experience](../README.md#viewer-experience), [Full-Screen Viewer](../README.md#-full-screen-viewer)
 

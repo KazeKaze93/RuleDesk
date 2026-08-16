@@ -718,7 +718,7 @@ const posts = await db.query.posts.findMany({
    - **Viewer (`src/renderer/features/viewer/`):**
 
      - **ViewerDialog.tsx** - Full-screen shell (queue, cache lookup via `buildViewerOriginQueryKey`, keyboard/side buttons). `openViewer({ hasNextPage })` is the react-query infinite-query flag (Playlist/Artist/Browse/Favorites/Updates). Do not derive it from loaded count vs page size (`n * 50`) or `allPosts.length < totalCount` — a full last page makes those inequalities false while `getNextPageParam` still reports more data, and the viewer next-arrow then dead-ends.
-     - **ViewerContent.tsx** / **ViewerMedia.tsx** / **TagsDrawer.tsx** / **PostNotFoundFallback.tsx** - chrome, media, tags, shadow-insert fallback
+     - **ViewerContent.tsx** / **ViewerMedia.tsx** / **TagsDrawer.tsx** / **PostNotFoundFallback.tsx** - chrome, media, tags, shadow-insert fallback. `TagsDrawer` Artist / Character / Copyright: in-flight resolve uses React Query `isLoading` (`isPending && isFetching`); confirmed empty is “No … detected”; session-cached hits (`staleTime: Infinity`) skip the loading row on first paint.
      - **buildViewerOriginQueryKey.ts** - origin → React Query key (Artist / Browse / Favorites / Updates / Playlist)
 
    - **Dialogs:**

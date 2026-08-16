@@ -351,7 +351,8 @@ On Browse **Source: All**, Videos / Images are applied in the live API search ta
 1. Open a post in the viewer
 2. Click the **"Tags"** button (or press **T**) to open the tags drawer
 3. **Click** a tag to **include** it in the search query; **right-click** to add an **exclude** (`-tag`); included/excluded tags are highlighted (**green** / **red** rings) in the drawer
-4. The gallery or browse view updates to match the query in the top bar
+4. Artist, Character, and Copyright may show a small resolving spinner until tag types are looked up (this can take a moment on first view). “No artist detected” / “No character detected” means the lookup finished and no tag of that type was found — not that the panel is empty forever while lookup is still running
+5. The gallery or browse view updates to match the query in the top bar
 
 **Clear filters:**
 
