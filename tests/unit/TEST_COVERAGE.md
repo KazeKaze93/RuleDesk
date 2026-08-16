@@ -49,6 +49,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `db/sync-status-recovery.test.ts` | Hard-kill `syncing` → `idle` reset |
 | `db/fts-table-check.test.ts` | `postsFtsTableExists` |
 | `db/fts-triggers.test.ts` | FTS5 content-table triggers |
+| `features/viewer/TagsDrawer.resolved-tags.test.tsx` | Post Metadata Artist/Character: loading vs found vs confirmed-absent |
 | `features/viewer/buildViewerOriginQueryKey.test.ts` | Viewer origin → React Query key |
 | `features/viewer/openViewer-hasNextPage.test.ts` | Gallery `openViewer` passes react-query `hasNextPage`, not count-vs-page-size |
 | `features/viewer/gallery-background-scroll-queue.test.ts` | Masonry / local grid infinite scroll use `handleLoadMore` (`appendQueueIds`) |

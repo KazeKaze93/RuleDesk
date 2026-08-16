@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
@@ -19,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../../components/ui/tooltip";
-import { Copy } from "lucide-react";
+import { Copy, Loader2 } from "lucide-react";
 import { useSearchStore } from "../../store/searchStore";
 import { useViewerStore, type ViewerOrigin } from "../../store/viewerStore";
 import { cn } from "../../lib/utils";
@@ -27,6 +34,52 @@ import { VIEWER_OVERLAY_Z, viewerOverlayClass } from "./viewer-layers";
 
 const VIEWER_TAG_HINT_SEEN_KEY = "hasSeenTagHint";
 const RESOLVE_TAGS_BATCH_SIZE = 100;
+const RESOLVED_TAG_VALUE_ROW_CLASS =
+  "flex h-5 items-center text-sm text-muted-foreground";
+
+type ResolvedTagFieldProps = {
+  title: string;
+  tags: string[];
+  isResolving: boolean;
+  emptyLabel: string;
+  loadingLabel: string;
+  renderTag: (tag: string) => ReactNode;
+};
+
+function ResolvedTagField({
+  title,
+  tags,
+  isResolving,
+  emptyLabel,
+  loadingLabel,
+  renderTag,
+}: ResolvedTagFieldProps): ReactElement {
+  let body: ReactNode;
+  if (tags.length > 0) {
+    body = <div className="min-h-5 space-y-1">{tags.map((tag) => renderTag(tag))}</div>;
+  } else if (isResolving) {
+    body = (
+      <p
+        className={RESOLVED_TAG_VALUE_ROW_CLASS}
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label={loadingLabel}
+      >
+        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+      </p>
+    );
+  } else {
+    body = <p className={RESOLVED_TAG_VALUE_ROW_CLASS}>{emptyLabel}</p>;
+  }
+
+  return (
+    <div>
+      <h3 className="mb-2 text-sm font-semibold">{title}</h3>
+      {body}
+    </div>
+  );
+}
 
 const chunkTags = (tags: string[], chunkSize: number): string[][] => {
   const chunks: string[][] = [];
@@ -132,7 +185,8 @@ export const TagsDrawer = ({
   // Clean IPC call - no credentials passed from UI
   // Main Process handles authentication and persistent SQLite cache internally
   // Pass ALL tags to resolveTags - no client-side slice to ensure artist tags are found even if they're beyond position 20
-  const { data: resolvedArtistTags = [] } = useQuery<string[]>({
+  const { data: resolvedArtistTags = [], isLoading: isResolvingArtistTags } =
+    useQuery<string[]>({
     queryKey: ['resolve-tags-ipc', tagsString],
     queryFn: async () => {
       if (!tagsString) return [];
@@ -151,7 +205,8 @@ export const TagsDrawer = ({
   });
 
   // Resolve character tags (type=4) from API
-  const { data: resolvedCharacterTags = [] } = useQuery<string[]>({
+  const { data: resolvedCharacterTags = [], isLoading: isResolvingCharacterTags } =
+    useQuery<string[]>({
     queryKey: ['resolve-character-tags-ipc', tagsString],
     queryFn: async () => {
       if (!tagsString) return [];
@@ -170,7 +225,8 @@ export const TagsDrawer = ({
   });
 
   // Resolve copyright tags (type=3) from API
-  const { data: resolvedCopyrightTags = [] } = useQuery<string[]>({
+  const { data: resolvedCopyrightTags = [], isLoading: isResolvingCopyrightTags } =
+    useQuery<string[]>({
     queryKey: ['resolve-copyright-tags-ipc', tagsString],
     queryFn: async () => {
       if (!tagsString) return [];
@@ -384,66 +440,51 @@ export const TagsDrawer = ({
               </p>
             </div>
           )}
-          {/* Copyright Section */}
-          <div>
-            <h3 className="mb-2 text-sm font-semibold">Copyright</h3>
-            {copyrightTags.length > 0 ? (
-              <div className="space-y-1">
-                {copyrightTags.map((tag) => (
-                  renderTagActionButton(
-                    tag,
-                    "link",
-                    "text-purple-600 hover:underline",
-                    "h-auto min-h-0 w-full justify-start p-0 text-sm"
-                  )
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No copyright detected
-              </p>
-            )}
-          </div>
-          {/* Character Section */}
-          <div>
-            <h3 className="mb-2 text-sm font-semibold">Character</h3>
-            {characterTags.length > 0 ? (
-              <div className="space-y-1">
-                {characterTags.map((tag) => (
-                  renderTagActionButton(
-                    tag,
-                    "link",
-                    "text-green-600 hover:underline",
-                    "h-auto min-h-0 w-full justify-start p-0 text-sm"
-                  )
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No character detected
-              </p>
-            )}
-          </div>
-          {/* Artist Section */}
-          <div>
-            <h3 className="mb-2 text-sm font-semibold">Artist</h3>
-            {artistTags.length > 0 ? (
-              <div className="space-y-1">
-                {artistTags.map((tag) => (
-                  renderTagActionButton(
-                    tag,
-                    "link",
-                    "text-red-600 hover:underline",
-                    "h-auto min-h-0 w-full justify-start p-0 text-sm"
-                  )
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No artist detected
-              </p>
-            )}
-          </div>
+          <ResolvedTagField
+            title="Copyright"
+            tags={copyrightTags}
+            isResolving={isResolvingCopyrightTags}
+            emptyLabel="No copyright detected"
+            loadingLabel="Resolving copyright"
+            renderTag={(tag) =>
+              renderTagActionButton(
+                tag,
+                "link",
+                "text-purple-600 hover:underline",
+                "h-auto min-h-0 w-full justify-start p-0 text-sm"
+              )
+            }
+          />
+          <ResolvedTagField
+            title="Character"
+            tags={characterTags}
+            isResolving={isResolvingCharacterTags}
+            emptyLabel="No character detected"
+            loadingLabel="Resolving character"
+            renderTag={(tag) =>
+              renderTagActionButton(
+                tag,
+                "link",
+                "text-green-600 hover:underline",
+                "h-auto min-h-0 w-full justify-start p-0 text-sm"
+              )
+            }
+          />
+          <ResolvedTagField
+            title="Artist"
+            tags={artistTags}
+            isResolving={isResolvingArtistTags}
+            emptyLabel="No artist detected"
+            loadingLabel="Resolving artist"
+            renderTag={(tag) =>
+              renderTagActionButton(
+                tag,
+                "link",
+                "text-red-600 hover:underline",
+                "h-auto min-h-0 w-full justify-start p-0 text-sm"
+              )
+            }
+          />
           {/* General Tags Section */}
           <div>
             <h3 className="mb-2 text-sm font-semibold">
