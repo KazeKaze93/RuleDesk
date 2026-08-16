@@ -279,7 +279,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 - ✅ **Rate Limiting:** Shared `ProviderThrottle` (~1200ms + 0–400ms jitter per request) across providers
 - ✅ **Anti-Bot Measures:** Session User-Agent from a shared pool (`pickRandomUA`) plus jittered request pacing.
-- ✅ **Sync integrity:** `lastPostId` advances only after complete pagination; unfinished runs set `lastSyncIncomplete`. Per-artist `syncStatus` / `lastError` are written during sync; hard-kill recovery resets stuck `syncing` → `idle` on DB init. Video-cache writes are atomic (tmp+rename) with size-capped eviction — see [Roadmap](./docs/roadmap.md).
+- ✅ **Sync integrity:** `lastPostId` advances only after complete pagination; unfinished runs set `lastSyncIncomplete`. Per-artist `syncStatus` / `lastError` are written during sync; hard-kill recovery resets stuck `syncing` → `idle` on DB init. Video-cache writes are atomic (tmp+rename) with size-capped **LRU last-accessed** eviction — see [Roadmap](./docs/roadmap.md).
 
 ### UI/UX
 

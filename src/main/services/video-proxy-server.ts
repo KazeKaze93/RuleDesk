@@ -15,6 +15,7 @@ import {
   VIDEO_CACHE_MAX_BYTES,
   VIDEO_CACHE_SWEEP_ORPHAN_TMP_AGE_MS,
 } from "../config/constants";
+import { selectMediaCacheFilesToEvict } from "../lib/media-cache-eviction";
 
 const VIDEO_PATH = "/video";
 const PROXY_HOST = "127.0.0.1";
@@ -105,11 +106,20 @@ function isCompleteCacheFile(filePath: string): boolean {
   }
 }
 
+function isBusyUnlinkError(err: unknown): boolean {
+  if (typeof err !== "object" || err === null || !("code" in err)) {
+    return false;
+  }
+  const code = err.code;
+  return code === "EBUSY" || code === "EPERM" || code === "EACCES";
+}
+
 export class VideoProxyServer {
   private server: http.Server | null = null;
   private port = 0;
   private readonly cacheDir: string;
   private startEvictTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly openReaderCounts = new Map<string, number>();
 
   /**
    * @param cacheDirOverride - optional cache directory (unit tests); production uses userData/video-cache
@@ -177,8 +187,9 @@ export class VideoProxyServer {
   }
 
   /**
-   * Delete orphaned tmp writers older than orphan-age, then drop oldest *.bin
-   * files until total size is within VIDEO_CACHE_MAX_BYTES.
+   * Delete orphaned tmp writers older than orphan-age, then drop least-recently
+   * accessed *.bin files until total size is within VIDEO_CACHE_MAX_BYTES.
+   * Files with an open reader are skipped (active viewer).
    */
   evictCache(): void {
     let names: string[];
@@ -218,8 +229,7 @@ export class VideoProxyServer {
       return;
     }
 
-    type BinEntry = { fullPath: string; size: number; mtimeMs: number };
-    const bins: BinEntry[] = [];
+    const bins: { fullPath: string; size: number; lastAccessedMs: number }[] = [];
     for (const name of binNames) {
       if (!name.endsWith(CACHE_BIN_SUFFIX) || name.includes(CACHE_TMP_MARKER)) {
         continue;
@@ -230,29 +240,65 @@ export class VideoProxyServer {
         if (!st.isFile()) {
           continue;
         }
-        bins.push({ fullPath, size: st.size, mtimeMs: st.mtimeMs });
+        bins.push({
+          fullPath,
+          size: st.size,
+          lastAccessedMs: st.atimeMs,
+        });
       } catch {
         // skip vanished entries
       }
     }
 
-    bins.sort((a, b) => a.mtimeMs - b.mtimeMs);
-    let totalBytes = bins.reduce((sum, b) => sum + b.size, 0);
+    const skipPaths = new Set(this.openReaderCounts.keys());
+    const toEvict = selectMediaCacheFilesToEvict(
+      bins,
+      VIDEO_CACHE_MAX_BYTES,
+      skipPaths,
+    );
 
-    while (totalBytes > VIDEO_CACHE_MAX_BYTES && bins.length > 0) {
-      const oldest = bins.shift();
-      if (oldest === undefined) {
-        break;
-      }
+    let remainingBytes = bins.reduce((sum, b) => sum + b.size, 0);
+    for (const file of toEvict) {
       try {
-        fs.unlinkSync(oldest.fullPath);
-        totalBytes -= oldest.size;
+        fs.unlinkSync(file.fullPath);
+        remainingBytes -= file.size;
         log.info(
-          `[VideoProxy] Evicted cache file (${oldest.size} bytes); remaining≈${totalBytes}`,
+          `[VideoProxy] Evicted cache file (${file.size} bytes); remaining≈${remainingBytes}`,
         );
       } catch (err) {
+        if (isBusyUnlinkError(err)) {
+          log.info(
+            `[VideoProxy] Skipped busy cache file during eviction (${file.size} bytes)`,
+          );
+          continue;
+        }
         log.error("[VideoProxy] Failed to evict cache file", err);
       }
+    }
+  }
+
+  private acquireReader(filePath: string): void {
+    this.openReaderCounts.set(
+      filePath,
+      (this.openReaderCounts.get(filePath) ?? 0) + 1,
+    );
+  }
+
+  private releaseReader(filePath: string): void {
+    const n = this.openReaderCounts.get(filePath) ?? 0;
+    if (n <= 1) {
+      this.openReaderCounts.delete(filePath);
+      return;
+    }
+    this.openReaderCounts.set(filePath, n - 1);
+  }
+
+  /** Persist last-accessed without changing mtime (NTFS does not auto-update atime). */
+  private touchCacheLastAccessed(filePath: string, mtime: Date): void {
+    try {
+      fs.utimesSync(filePath, new Date(), mtime);
+    } catch (err) {
+      log.error("[VideoProxy] failed to bump cache atime", err);
     }
   }
 
@@ -339,6 +385,7 @@ export class VideoProxyServer {
     }
 
     const fileSize = stat.size;
+    this.touchCacheLastAccessed(filePath, stat.mtime);
     const rangeResult = parseRangeHeader(req.headers.range, fileSize);
 
     if (rangeResult.kind === "invalid") {
@@ -386,7 +433,7 @@ export class VideoProxyServer {
         "Cache-Control": "no-store",
       });
       const stream = fs.createReadStream(filePath);
-      this.pipeStreamToResponseWithCleanup(stream, res);
+      this.pipeStreamToResponseWithCleanup(stream, res, filePath);
       return;
     }
 
@@ -400,20 +447,33 @@ export class VideoProxyServer {
       "Cache-Control": "no-store",
     });
     const stream = fs.createReadStream(filePath, { start, end });
-    this.pipeStreamToResponseWithCleanup(stream, res);
+    this.pipeStreamToResponseWithCleanup(stream, res, filePath);
   }
 
   private pipeStreamToResponseWithCleanup(
     fileStream: fs.ReadStream,
     res: http.ServerResponse,
+    filePath: string,
   ): void {
+    this.acquireReader(filePath);
+    let released = false;
+    const releaseReader = (): void => {
+      if (released) {
+        return;
+      }
+      released = true;
+      this.releaseReader(filePath);
+    };
+
     res.on("close", () => {
       if (!fileStream.destroyed) {
         fileStream.destroy();
       }
     });
+    fileStream.on("close", releaseReader);
     fileStream.on("error", (err) => {
       log.error("[VideoProxy] read cache file failed", err);
+      releaseReader();
       if (!res.headersSent) {
         res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
         res.end("Read error");

@@ -338,18 +338,24 @@ describe("VideoProxyServer cache integrity", () => {
     expect(fs.existsSync(path.join(cacheDir, "a.bin"))).toBe(true);
   });
 
-  it("evictCache drops oldest bins first when total size exceeds the soft cap", () => {
+  it("evictCache drops least-recently-accessed bins, not oldest mtime", () => {
     const originalStat = fs.statSync.bind(fs);
 
-    fs.writeFileSync(path.join(cacheDir, "old.bin"), "x");
-    fs.writeFileSync(path.join(cacheDir, "mid.bin"), "y");
-    fs.writeFileSync(path.join(cacheDir, "new.bin"), "z");
-    const t0 = Date.now() - 3000;
-    const t1 = Date.now() - 2000;
-    const t2 = Date.now() - 1000;
-    fs.utimesSync(path.join(cacheDir, "old.bin"), t0 / 1000, t0 / 1000);
-    fs.utimesSync(path.join(cacheDir, "mid.bin"), t1 / 1000, t1 / 1000);
-    fs.utimesSync(path.join(cacheDir, "new.bin"), t2 / 1000, t2 / 1000);
+    const recentlyPlayed = path.join(cacheDir, "old-played.bin");
+    const freshJunk = path.join(cacheDir, "fresh-junk.bin");
+    const other = path.join(cacheDir, "other.bin");
+    fs.writeFileSync(recentlyPlayed, "x");
+    fs.writeFileSync(freshJunk, "y");
+    fs.writeFileSync(other, "z");
+
+    const playedAt = Date.now() - 1_000;
+    const createdLongAgo = Date.now() - 30_000;
+    const neverPlayedAt = Date.now() - 20_000;
+    const createdRecently = Date.now() - 2_000;
+    const midAccess = Date.now() - 10_000;
+    fs.utimesSync(recentlyPlayed, playedAt / 1000, createdLongAgo / 1000);
+    fs.utimesSync(freshJunk, neverPlayedAt / 1000, createdRecently / 1000);
+    fs.utimesSync(other, midAccess / 1000, midAccess / 1000);
 
     const huge = Math.floor(VIDEO_CACHE_MAX_BYTES / 2) + 10;
     vi.spyOn(fs, "statSync").mockImplementation(((
@@ -376,9 +382,66 @@ describe("VideoProxyServer cache integrity", () => {
     const left = fs
       .readdirSync(cacheDir)
       .filter((n) => n.endsWith(".bin") && !n.includes(".tmp-"));
-    expect(left.length).toBeLessThan(3);
-    expect(left.includes("new.bin")).toBe(true);
+    expect(left.includes("old-played.bin")).toBe(true);
+    expect(left.includes("fresh-junk.bin")).toBe(false);
 
     vi.mocked(fs.statSync).mockRestore();
+  });
+
+  it("evictCache does not unlink a bin with an open reader", async () => {
+    const first = await proxyGet();
+    expect(first.status).toBe(200);
+    const cacheName = await waitForFinalCache();
+    const openPath = path.join(cacheDir, cacheName);
+    fs.writeFileSync(openPath, Buffer.alloc(2 * 1024 * 1024, 1));
+
+    const held = await new Promise<http.IncomingMessage>((resolve, reject) => {
+      const req = http.get(proxy.getProxyUrl(CDN_HOST_URL), (res) => {
+        res.pause();
+        resolve(res);
+      });
+      req.on("error", reject);
+    });
+    await new Promise((r) => setTimeout(r, 30));
+
+    const createdRecently = Date.now() - 1_000;
+    const accessedLongAgo = Date.now() - 30_000;
+    fs.utimesSync(openPath, accessedLongAgo / 1000, createdRecently / 1000);
+
+    const closedA = path.join(cacheDir, "closed-a.bin");
+    const closedB = path.join(cacheDir, "closed-b.bin");
+    fs.writeFileSync(closedA, "a");
+    fs.writeFileSync(closedB, "b");
+    fs.utimesSync(closedA, (Date.now() - 20_000) / 1000, (Date.now() - 20_000) / 1000);
+    fs.utimesSync(closedB, (Date.now() - 10_000) / 1000, (Date.now() - 10_000) / 1000);
+
+    const originalStat = fs.statSync.bind(fs);
+    const huge = Math.floor(VIDEO_CACHE_MAX_BYTES / 2) + 10;
+    vi.spyOn(fs, "statSync").mockImplementation(((
+      p: fs.PathLike,
+      options?: fs.StatSyncOptions,
+    ) => {
+      const st = originalStat(p, options);
+      if (
+        typeof p === "string" &&
+        p.endsWith(".bin") &&
+        !p.includes(".tmp-") &&
+        st &&
+        typeof st === "object" &&
+        "isFile" in st
+      ) {
+        // boundary: vitest mock overlays size on real Stats for eviction overflow simulation
+        Object.defineProperty(st, "size", { value: huge, configurable: true });
+      }
+      return st;
+    }) as typeof fs.statSync);
+
+    proxy.evictCache();
+
+    expect(fs.existsSync(openPath)).toBe(true);
+
+    vi.mocked(fs.statSync).mockRestore();
+    held.resume();
+    await readResponse(held);
   });
 });

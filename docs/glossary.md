@@ -146,7 +146,7 @@ Settings → General → **Danger zone** → confirmed delete of everything unde
 
 ### Video proxy / video-cache
 
-Main-process `VideoProxyServer` serves local `http://127.0.0.1` URLs for `<video>` playback and stores **complete** files under `{userData}/video-cache/` (atomic tmp + rename; bounded by `VIDEO_CACHE_MAX_BYTES` with eviction).
+Main-process `VideoProxyServer` serves local `http://127.0.0.1` URLs for `<video>` playback and stores **complete** files under `{userData}/video-cache/` (atomic tmp + rename; bounded by `VIDEO_CACHE_MAX_BYTES` with LRU last-accessed eviction).
 
 **Related:** [API Guide — getVideoProxyUrl](./api-guide.md#getvideoproxyurlfileurl-string), [Roadmap](./roadmap.md#open-p0-audit--remaining)
 

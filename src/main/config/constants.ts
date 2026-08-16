@@ -21,7 +21,10 @@ export const AUTOCOMPLETE_TIMEOUT = 10000;
  */
 export const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
-/** Soft cap for on-disk video proxy cache under userData/video-cache. */
+/**
+ * Soft cap for on-disk video proxy cache under userData/video-cache.
+ * Eviction is LRU by last-accessed time (atime bumped on hit), not mtime.
+ */
 export const VIDEO_CACHE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 
 /** Age after which orphaned `*.bin.tmp-*` files are deleted during eviction. */

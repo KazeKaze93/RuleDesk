@@ -18,6 +18,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `hooks/useWorkerFilteredPosts.test.ts` | Worker post → Post field mapping |
 | `lib/filter-utils.test.ts` | AI tag tokens, video URL detection |
 | `lib/backup-retention-size-cap.test.ts` | Backup size-cap prune |
+| `lib/media-cache-eviction.test.ts` | Video-cache LRU last-accessed selection (not mtime; skip open readers) |
 | `lib/filter-artist-autocomplete.test.ts` | Add Artist artist-only filter |
 | `lib/redact-error.test.ts` | Credential redaction in logged URLs / Axios errors |
 | `utils/decrypted-credentials.test.ts` | API key decrypt fail-safe |
