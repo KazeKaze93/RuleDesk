@@ -174,7 +174,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 |--------|--------|-------|
 | `feat/post-not-found-ttl` | ✅ merged | [#170](https://github.com/KazeKaze93/RuleDesk/pull/170) — Per-ID `id:` lookup TTL (`post_lookup_cache`, 30 days). Sync artist pagination has no per-ID HTTP — gate is shadow-insert. `found` does not skip HTTP (no body in table). |
 | `fix/media-cache-eviction` | ✅ merged | [#169](https://github.com/KazeKaze93/RuleDesk/pull/169) — Size cap already existed (`VIDEO_CACHE_MAX_BYTES` + `evictCache`). Policy was mtime; now LRU last-accessed (`utimes` atime bump). No SQLite replica of cache files. Open readers skipped; `warn` if still over cap. |
-| `feat/tag-resolve-cache-ttl-alignment` | ⏳ not started | — Session-scoped React Query cache (`staleTime: Infinity`) can outlive `tag_metadata`'s 7-day TTL on long-running sessions, showing stale "No X detected" after server-side re-resolution. Low priority — requires session >7 days uninterrupted. Accepted trade-off from [#168](https://github.com/KazeKaze93/RuleDesk/pull/168); not a merge blocker. |
+| `feat/tag-resolve-cache-ttl-alignment` | ⏳ not started | No branch/PR/commits (checked 2026-08-16: `git branch -a`, `ls-remote`, `git log --all --grep`). Tracking name only. Session-scoped React Query cache (`staleTime: Infinity` in `TagsDrawer.tsx`) can outlive `tag_metadata`'s 7-day TTL (`TAG_RESOLVE_NOT_FOUND_TTL_MS`) on long-running sessions, showing stale "No X detected" after server-side re-resolution. Low priority — requires session >7 days uninterrupted. Accepted trade-off from [#168](https://github.com/KazeKaze93/RuleDesk/pull/168); not a merge blocker. |
 | `fix/post-metadata-artist-character-loading-state` | ✅ merged | [#168](https://github.com/KazeKaze93/RuleDesk/pull/168) — TagsDrawer Artist/Character/Copyright: React Query `isLoading` vs confirmed-absent copy; no Main / `tag-resolve-coordinator` changes |
 | `fix/gelbooru-transport-failure-silent-swallow` | ✅ merged | [#157](https://github.com/KazeKaze93/RuleDesk/pull/157) — Gelbooru `fetchPosts` throws `ProviderSearchError("network"|"parse")` instead of `[]`; SearchController heuristics stay on genuine empty API pages only. |
 | `fix/p1-test-suite-false-confidence` | ✅ merged | [#156](https://github.com/KazeKaze93/RuleDesk/pull/156) — P1-1..P1-4: property/e2e/hook tests that could not fail on real regressions. P1-5 Gelbooru transport `[]` vs Rule34 throw — prod silent-failure, **not** fixed in this branch. |
@@ -208,9 +208,9 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.
 - ✅ **CI:** `validate` → `docs:api` freshness → `npm test` → production `npm audit --omit=dev --audit-level=high`; release tags wait for quality + e2e, then Windows zip + Linux AppImage.
 - ✅ **Post-audit regression tests:** Vitest unit + integration + property suites (includes collapse/throttle + `SecureStorage` + video-proxy). File inventory in [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md); case counts: `npm test`.
-- ✅ **Main process HMR/watch**, shared Zod IPC helpers, provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
+- ✅ **Main process HMR/watch**, Zod IPC validation via `BaseController.handle` only (checked 2026-08-16: 85 production `this.handle(` across 14 controllers; `createValidatedHandler` / `parseNoArgs` / `parseSingleArg` deleted in [#124](https://github.com/KazeKaze93/RuleDesk/pull/124)), provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
 
-- ⏳ **Tooling / hygiene:** keep `validate` green; remaining shared validation consolidation as needed. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`.
+- ⏳ **Tooling / hygiene:** keep `validate` green. Dev-only audit noise (electron-builder transitive deps) is separate from production `npm audit`. Three-pattern IPC validation consolidation is **closed** (checked 2026-08-16); leftover `z.tuple([])` literals in controllers are not a second handler API.
 
 ## 🏗️ Architecture Considerations
 
@@ -243,7 +243,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | Item | Description |
 |------|-------------|
 | **tag-combination subscriptions feature/table** | Not implemented (no table in `schema.ts`, no subscription IPC). Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking`). |
-| **`search_results_cache` row cap (not media LRU)** | Infinite Browse scroll mints a new `cache_key` per `beforePostId`. TTL already deletes expired rows; a long cursor session can still grow the table inside the TTL window. Same *pattern* as media LRU (cap + maintenance tick), different *unit* and code path (`search-results-cache-cap`). Prompt 3 (post `not_found` TTL) is `feat/post-not-found-ttl`. |
+| **`search_results_cache` row cap (not media LRU)** | Infinite Browse scroll mints a new `cache_key` per `beforePostId`. TTL already deletes expired rows; a long cursor session can still grow the table inside the TTL window. Same *pattern* as media LRU (cap + maintenance tick), different *unit* and code path (`search-results-cache-cap`). Post `not_found` TTL landed as `feat/post-not-found-ttl` ([#170](https://github.com/KazeKaze93/RuleDesk/pull/170)); not part of this open item. |
 
 ---
 
@@ -255,7 +255,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
 | **Backups** | `keep last N` is implemented; optional **total-size cap** is also supported via `BACKUP_RETENTION_MAX_TOTAL_MB` env for deployments that need hard storage ceilings (retained-only size accounting; newest backup always kept even if alone over cap). UI exposure for this cap remains optional future UX work. |
-| **Engineering** | Ongoing tooling hygiene; remaining shared validation consolidation as needed. |
+| **Engineering** | Ongoing tooling hygiene (`validate` green). Shared IPC validation is a single path (`BaseController.handle`); the former `createValidatedHandler` / `parseNoArgs` / `parseSingleArg` stack is gone (checked 2026-08-16). |
 | **Testing** | Host-gate feedback covered: `vi.spyOn(ProviderThrottle.prototype, "notifyRateLimited")` asserts real 429 notify calls in `rule34-provider-fetch-posts.test.ts` and `gelbooru-provider-fetch-posts.test.ts` (closed after coverage gap noted post-[#126](https://github.com/KazeKaze93/RuleDesk/pull/126)). |
 | **Testing** | Live Gelbooru video-proxy check was not run (Gelbooru API key required); unit tests cover allowlist logic only. |
 | **Gallery layout (P0-class drift)** | ✅ Closed in [#161](https://github.com/KazeKaze93/RuleDesk/pull/161). All five galleries call `createVirtuosoGridFactories`. Masonry **overflow-auto** path already used `w-full mb-4 break-inside-avoid`; factory `MasonryItemContainer` now matches. `pb-44` unified. `PlaylistVirtuosoComponents` is DnD `SortablePostCard` only. Masonry load-more is `useMasonryInfiniteScroll`. Browse infinite-scroll tail-f (`atBottomStateChange` + length effect) removed — `endReached` only. |
