@@ -215,6 +215,8 @@ export async function resolveCachedSearchPage(
     return [];
   }
 
+  log.info("[SearchCache] miss, fetching");
+
   const existing = inFlightSearches.get(cacheKey);
   if (existing) {
     return existing;
