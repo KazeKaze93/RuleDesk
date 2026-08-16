@@ -80,6 +80,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** Tests and one-shot probes (paste, single `q=wlop`, mocked IPC) never enqueue overlapping Main waves or sit behind `background` while a human types letter-by-letter. Add Artist artist-filter shipped green; live `cherry-gig` was 10+ s until a separate diagnosis round.
 **Invariant Rule:** Any debounce/autocomplete/keystroke IPC path needs a **live letter-by-letter Electron check** before DoD — not paste, not a single query, not mocked invoke. Log throttle wait vs HTTP per wave. “Works by spec” ≠ “works for a person typing.” Same class as LIVE ELECTRON VERIFICATION for IPC error shapes (`.cursorrules`).
 
+### Problem: Renderer DevTools Network misses Main-process booru HTTP
+**Root Cause:** Browse `searchBooru` leaves the machine from Main (`provider.fetchPosts` / axios), not from the renderer. A live check that watches Chromium Network in the renderer window cannot see those requests — the same class of false confidence as green tests with the wrong observation point.
+**Invariant Rule:** Before any live IPC / provider-network check, identify **which process** issues the HTTP. Main-side traffic is verified from Main logs (`app.log`, e.g. `[SearchCache] miss, fetching` vs `hit found`) or a Main inspector — not renderer DevTools Network. Renderer Network only covers renderer-initiated loads (img/video/proxy). Persistence proofs use a **process restart**, not in-session navigate-back (that can be React Query memory).
+
 ## Data Integrity
 
 ### Problem: Sync cursor advanced past unfetched pages, permanently skipping posts

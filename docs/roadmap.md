@@ -193,7 +193,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | `feat/sync-status-live-ui` | ✅ merged | [#149](https://github.com/KazeKaze93/RuleDesk/pull/149) — invalidate `["artists"]` on `sync:artist` + repair start/end; preload wires `REPAIR_*`; `sync:progress` payload unchanged |
 | `feat/sync-status-write-and-recovery` | ✅ merged | [#148](https://github.com/KazeKaze93/RuleDesk/pull/148) — persist per-artist `syncStatus` / `lastError`; `resetStaleSyncingArtists` on DB init |
 | `feat/remote-ai-filter-via-tags-injection` | ✅ merged | [#147](https://github.com/KazeKaze93/RuleDesk/pull/147) — Browse Source: All — Rule34 AI hide/only via tag injection into `searchBooru`; Gelbooru stays worker-only; defensive conflict → worker fallback |
-| `feat/search-results-persistent-cache` | 🟡 started | Persistent SQLite TTL cache for Browse `searchBooru` pages (`search_results_cache`: found/not_found; 429/network unresolved; versioned JSON payload) |
+| `feat/search-results-persistent-cache` | 🟡 started | Review complete, **ready to merge** (no PR yet). SQLite TTL cache for Browse `searchBooru` pages. Unbounded `beforePostId` keys → [planned row cap](#planned-product-work), not media LRU. |
 | `audit/raw-sql-timestamp-units` | ✅ merged | [#132](https://github.com/KazeKaze93/RuleDesk/pull/132) — Full raw-SQL timestamp unit inventory: **no P0 mismatch**; comment-only Units annotations + `docs/database.md` seconds vs ms correction. (Remote hyphen: `audit-raw-sql-timestamp-units`) |
 | `fix/ipc-handlers-compliance` | ✅ merged | [#124](https://github.com/KazeKaze93/RuleDesk/pull/124) — Legacy `ipcMain.handle` → BaseController; silent catch removed. (Branch renamed: remote `audit` ref blocks `audit/*`) |
 | `fix-frontend-virtuoso-gallery-audit` | ✅ merged | [#125](https://github.com/KazeKaze93/RuleDesk/pull/125) — decorative tests; VirtuosoGrid factory dedupe; totalCount audit (clean); raw HTML→shadcn |
@@ -239,6 +239,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | Item | Description |
 |------|-------------|
 | **tag-combination subscriptions feature/table** | Not implemented (no table in `schema.ts`, no subscription IPC). Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking`). |
+| **`search_results_cache` row cap (not media LRU)** | Infinite Browse scroll mints a new `cache_key` per `beforePostId`. TTL already deletes expired rows; a long cursor session can still grow the table inside the TTL window. **Decide before writing “prompt 2” (eviction):** this is **SQLite row cap + `MaintenanceScheduler`**, not video-proxy LRU of on-disk files (`VIDEO_CACHE_MAX_BYTES`, last-accessed). Do **not** fold it into a media-file eviction prompt. Same *pattern* (cap + maintenance tick), different *unit* and code path. Treat as a **separate** follow-up (working name: prompt 4 / `search-results-cache-cap`). Prompt 3 (post `not_found` TTL) is separate DDL-on-existing-DB work — reuse the copy-prod `sqlite_master` lesson. |
 
 ---
 
