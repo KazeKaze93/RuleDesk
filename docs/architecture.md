@@ -477,8 +477,8 @@ const posts = await db.query.posts.findMany({
 
    - Drizzle ORM schema definitions for all tables
    - Type-safe table definitions with proper indexes
-   - Tables: `artists`, `posts`, `settings`, `tag_metadata`, `search_results_cache`, `playlists`, `playlist_entries`; plus `tag_blacklist` (migration + raw SQL, not in Drizzle schema)
-   - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost` (and playlist / tag_metadata types). `SearchResultsCacheRow` is Main-only. Renderer consumes gallery types via `@shared/types/db` (type-only re-export); do not import `schema.ts` from `src/renderer/**`.
+   - Tables: `artists`, `posts`, `settings`, `tag_metadata`, `search_results_cache`, `post_lookup_cache`, `playlists`, `playlist_entries`; plus `tag_blacklist` (migration + raw SQL, not in Drizzle schema)
+   - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost` (and playlist / tag_metadata types). `SearchResultsCacheRow` and `PostLookupCacheRow` are Main-only. Renderer consumes gallery types via `@shared/types/db` (type-only re-export); do not import `schema.ts` from `src/renderer/**`.
 
 3. **Sync Service** (`src/main/services/sync-service.ts`)
 
@@ -501,7 +501,7 @@ const posts = await db.query.posts.findMany({
    **Controller Modules:**
 
    - `ArtistsController.ts` - Artist management operations
-   - `PostsController.ts` - Post-related operations
+   - `PostsController.ts` - Post-related operations. Shadow-insert `id:${postId}` fetch is cache-first via `resolvePostLookup` (`post_lookup_cache` not_found TTL). Mark-viewed / favorite with supplied `postData` does not hit that cache.
    - `SettingsController.ts` - Settings management (including `confirmLegal` for age gate)
    - `AuthController.ts` - Authentication and credential verification
    - `MaintenanceController.ts` - Database backup/restore operations
@@ -1605,7 +1605,9 @@ src/
 │   ├── config/                    # Main-process constants / allowlists
 │   │   ├── allowed-hosts.ts       # shell.openExternal host allowlist (user click; not provider CDN)
 │   │   ├── constants.ts           # SYNC_SHUTDOWN_DRAIN_MS, VIDEO_CACHE_MAX_BYTES, …
-│   │   └── tag-resolve-constants.ts
+│   │   ├── tag-resolve-constants.ts
+│   │   ├── search-results-cache-constants.ts
+│   │   └── post-lookup-constants.ts
 │   ├── ipc/                       # IPC (Inter-Process Communication)
 │   │   ├── controllers/           # IPC Controllers (domain-based)
 │   │   │   ├── ArtistsController.ts
@@ -1646,6 +1648,7 @@ src/
 │   │   ├── MaintenanceService.ts   # User-triggered VACUUM status/run logic
 │   │   ├── updater-service.ts      # Auto-updater service
 │   │   ├── tag-resolve-coordinator.ts # Tag metadata resolve: found/not_found persist, unresolved not cached
+│   │   ├── post-lookup-cache.ts    # Single-post id: lookup: not_found TTL, unresolved not cached
 │   │   └── video-proxy-server.ts   # Local video proxy + disk cache
 │   ├── workers/                   # Worker threads
 │   │   ├── downloadWorker.ts       # Batch download worker
@@ -1781,7 +1784,7 @@ Root:
 
 **Database & Schema:**
 
-- **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `search_results_cache` (Browse `searchBooru` page TTL cache, found|not_found, versioned JSON payload), `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 for post tags
+- **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `search_results_cache` (Browse `searchBooru` page TTL cache, found|not_found, versioned JSON payload), `post_lookup_cache` (single-post `id:` lookup TTL, found|not_found, 30-day not_found), `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
 - **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `npm test`, and production `npm audit`
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`

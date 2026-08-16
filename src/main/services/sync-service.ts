@@ -596,7 +596,9 @@ export class SyncService {
         try {
           this.throwIfCancelled();
 
-          // Build tags query: initial sync uses base tag, incremental uses id:> filter
+          // Artist-tag pagination — not a per-ID lookup. Deleted posts simply
+          // omit from the listing. Per-ID not_found TTL is `resolvePostLookup`
+          // (`id:${postId}`), used by shadow-insert, not this loop.
           const baseTag = provider.formatTag(artist.tag, artist.type);
           const tagsQuery = isInitial 
             ? baseTag 

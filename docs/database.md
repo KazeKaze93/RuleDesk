@@ -328,6 +328,28 @@ Persistent TTL cache for Browse `searchBooru` API pages (`SearchController.searc
 
 Maintenance: `deleteExpiredSearchResultsCache` (same cycle as `deleteExpiredNotFoundTagMetadata`). Raw SQL cutoff uses `Date.now()` ms against `mode: "timestamp_ms"`.
 
+### Table: `post_lookup_cache`
+
+Persistent TTL cache for single-post `id:${postId}` lookups (`resolvePostLookup`). Separate from `tag_metadata` and `search_results_cache`. Artist-tag **sync pagination** does not use this table (it never fetches a deleted post by ID). The HTTP gate is shadow-insert (`PostsController.performShadowInsert`). Mark-viewed / favorite with caller-supplied `postData` does not go through this cache.
+
+| Column         | Type                             | Description                                                                 |
+| -------------- | -------------------------------- | --------------------------------------------------------------------------- |
+| `provider`     | TEXT (NOT NULL, PK part)         | `rule34` or `gelbooru`                                                      |
+| `post_id`      | INTEGER (NOT NULL, PK part)      | Booru post ID                                                               |
+| `status`       | TEXT (NOT NULL)                  | `found` or `not_found` — never store unresolved (429/network) as absence    |
+| `resolved_at`  | INTEGER (TIMESTAMP_MS, NOT NULL) | When this outcome was written (**milliseconds**); TTL gate for `not_found`  |
+
+**Semantics:**
+
+- `not_found` — confirmed empty/`id:` miss from the API. TTL `POST_LOOKUP_NOT_FOUND_TTL_MS` (**30 days** — deleted/banned posts rarely return, unlike tags that may appear later; longer than `TAG_RESOLVE_NOT_FOUND_TTL_MS` 7 days). Repeat lookups within TTL skip HTTP. Expired rows are cache-misses; maintenance DELETEs them via `deleteExpiredNotFoundPostLookupCache`.
+- `found` — matching post returned; stored so a prior `not_found` is cleared. **Does not skip HTTP** (the post body is not in this table; `posts` is the found payload).
+- Unresolved failures (429/network/parse) are **not** written.
+
+**Indexes:**
+
+- Composite primary key `(provider, post_id)`
+- `post_lookup_cache_resolved_at_idx` — maintenance TTL DELETE
+
 ### Table: `playlists`
 
 Stores playlist/collection information for curated post collections.
@@ -998,7 +1020,7 @@ The application also exposes VACUUM maintenance controls in Settings:
 
 1. **Manual run:** `window.api.runVacuum()` closes the Main DB handle, runs `VACUUM;` in a dedicated **maintenance worker** (`vacuumWorker.ts`), then reinitializes. The run is enqueued on `maintenanceQueue` so it cannot overlap backup/restore. This is the **only** intentional DB-related worker-thread exception: interactive CRUD stays on the Main thread via synchronous `better-sqlite3` + Drizzle; VACUUM is offloaded so the UI/IPC loop is not blocked for the duration of a full vacuum.
 2. **Status:** `window.api.getVacuumStatus()` returns last run time/result/error and in-memory `isRunning`. While VACUUM is running (DB closed), status is served from an in-memory cache so polling does not hit `getDb()`.
-3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`. **Note:** `MaintenanceScheduler` only runs lightweight `wal_checkpoint` + `optimize` plus TTL eviction (`deleteExpiredNotFoundTagMetadata`, `deleteExpiredSearchResultsCache`) and on-disk video-cache LRU (`VideoProxyServer.evictCache`, last-accessed) — not user-visible VACUUM; weekly/monthly VACUUM execution is not wired to a timer yet.
+3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`. **Note:** `MaintenanceScheduler` only runs lightweight `wal_checkpoint` + `optimize` plus TTL eviction (`deleteExpiredNotFoundTagMetadata`, `deleteExpiredSearchResultsCache`, `deleteExpiredNotFoundPostLookupCache`) and on-disk video-cache LRU (`VideoProxyServer.evictCache`, last-accessed) — not user-visible VACUUM; weekly/monthly VACUUM execution is not wired to a timer yet.
 
 **Important:** `VACUUM` remains blocking for SQLite itself, but is isolated from the UI/IPC loop by the maintenance worker. Do not use worker threads for ordinary CRUD — that remains forbidden (see `.cursorrules`). Worker errors return `error.message` only (no stack) to settings/`DatabaseMaintenanceCard`.
 
