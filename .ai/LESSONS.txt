@@ -152,7 +152,7 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ### Problem: Negative cache died with the process while rate-limit failures risked being cached as absent
 **Root Cause:** Tag resolve outcomes collapsed to found/miss; confirmed empty API responses lived only in an in-memory Map (TTL), and unresolved failures (429/network) could be confused with not_found if classification stayed binary.
-**Invariant Rule:** Cacheable outcomes of external lookups distinguish `not_found` (persist with TTL in the same table as hits) from `unresolved` (do not persist as absence). Never mix the two — mixing permanently corrupts categorization. One source of truth for negative state (SQLite), no split-brain RAM Map alongside it.
+**Invariant Rule:** Cacheable outcomes of external lookups distinguish `not_found` (persist with TTL in the same table as hits) from `unresolved` (do not persist as absence). Never mix the two — mixing permanently corrupts categorization. One source of truth for negative state (SQLite), no split-brain RAM Map alongside it. Renderer consumers of this cache are a second three-way (loading / found / confirmed-absent) — do not collapse in-flight empty into confirmed-absent (see Renderer: Identical "empty" render for loading and confirmed-absent).
 
 ### Problem: Raw-SQL maintenance deleted every fresh not_found row within seconds of startup
 **Root Cause:** Drizzle `mode: "timestamp"` stores seconds while maintenance DELETE compared `resolved_at` to a `Date.now()`-based millisecond cutoff — seconds are always below that cutoff, so the first tick wiped the entire negative cache.
@@ -179,6 +179,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Invariant Rule:** New live media hostnames observed in `fileUrl` must be added to both `allowedDomains` (CSP) and `cdnDomains` (video-proxy). Prefix similarity is not coverage. `get-url` success is not playback success. Registry load **throws** if `cdnDomains ⊈ allowedDomains` (config error). Mapping a post **warns once per hostname** (exact match, not CSP `*.domain`) when `fileUrl` is outside `allowedDomains`, or is video and outside `cdnDomains`. Do not throw on unknown live hosts.
 
 ## Renderer / Workers
+
+### Problem: Identical "empty" render for loading and confirmed-absent states
+**Root Cause:** useQuery returned data=[] for both in-flight and settled-empty results; UI branched only on data.length, never checked isLoading/isPending — so async resolution latency was indistinguishable from a genuine negative result.
+**Invariant Rule:** Any UI reading from an async resolve-then-cache pattern (`tag_metadata`-style found/not_found/unresolved) must render three distinct states — loading, found, confirmed-absent — never collapse loading into confirmed-absent just because both currently produce an empty value. Same three-way class as Main `tag_metadata` (see Data Integrity: Negative cache died with the process); grep sibling fields in the same panel (Copyright was the same hole as Artist/Character).
 
 ### Problem: Browse media-type filter breaks after worker pass
 **Root Cause:** `useWorkerFilteredPosts` remapped worker output with `mediaType: null` and dropped `viewCount` / `lastViewedAt`.
