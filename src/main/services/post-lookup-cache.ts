@@ -30,8 +30,14 @@ function isActiveNotFound(resolvedAt: Date, nowMs: number): boolean {
 
 /**
  * Single read of post_lookup_cache for one provider+postId.
- * not_found within TTL → skip HTTP; found does not skip (body lives in `posts`);
- * expired / missing → miss.
+ *
+ * HTTP short-circuit is **only** `not_found` within TTL. A `found` row is not a
+ * cache hit for the body: this table stores outcome, not the post payload
+ * (`posts` is that source). Returning `found` here still requires a fetch so
+ * shadow-insert can display the file. `found` exists to clear a prior
+ * `not_found` after the post reappears — not to skip HTTP.
+ *
+ * expired not_found / missing → miss.
  */
 export function loadPostLookupCache(
   db: AppDatabase,
@@ -90,8 +96,9 @@ function upsertLookupStatus(
 
 /**
  * Cache-first single-post lookup (`id:${postId}`).
- * Confirmed empty API → persist not_found.
+ * Confirmed empty API → persist not_found (the only HTTP skip).
  * Matching post → persist found (clears a prior not_found) and return the body.
+ * A cached `found` still fetches: no payload in this table.
  * Fetch throws (429/network/parse) → unresolved, not written.
  */
 export async function resolvePostLookup(
@@ -108,6 +115,8 @@ export async function resolvePostLookup(
     );
     return { status: "not_found" };
   }
+  // cached.status === "found" | "miss": both fall through to HTTP.
+  // found is not a hit — see loadPostLookupCache.
 
   const key = lookupKey(provider, postId);
   const existing = inFlightLookups.get(key);
