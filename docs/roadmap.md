@@ -27,7 +27,7 @@ This document reflects the current roadmap for RuleDesk `v17.x` and is aligned w
 - ✅ Playlists now include import/export, manual drag-and-drop reorder, and smart hybrid local+remote resolution.
 - ✅ Database is optimized for scale: WAL mode, FTS5, composite indexes, and migration workflow.
 - ✅ **Sync automation:** auto-sync on startup, optional auto-sync when adding an artist (`autoSyncOnArtistAdd`, default off → `repairArtist` via `runExclusive`), periodic background sync (presets in Settings, minimum interval enforced in `SyncScheduler`), and sync scheduler restart when settings are saved. Per-artist `syncStatus` / `lastError` persist during sync (**#148**); Artists list refreshes live via `sync:artist` / repair IPC (**#149**).
-- ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`).
+- ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`); TTL eviction for `tag_metadata` not_found and `search_results_cache`.
 - ✅ **Backup retention:** after each successful backup, older files are pruned based on `backupRetention` from Settings (`1..20`).
 - ✅ **User-visible DB maintenance:** Settings now exposes VACUUM status (last run timestamp/status/error), manual trigger, and schedule (`manual` / `weekly` / `monthly`).
 - ✅ **Post-audit hardening (v17.x):** shared credential decrypt helper (no ciphertext fallback on IPC paths), `SyncService.runExclusive` queue for sync/repair, `MAX_TRACKED_ARTISTS` (5000) cap, stable Virtuoso list components, Browse worker error UI, worker `mapWorkerPostToPost` field preservation, DI container keyed by `token.id`, orientation filter removed (dead code). See [Architecture](./architecture.md) and [TEST_COVERAGE.md](../tests/unit/TEST_COVERAGE.md).
@@ -193,6 +193,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | `feat/sync-status-live-ui` | ✅ merged | [#149](https://github.com/KazeKaze93/RuleDesk/pull/149) — invalidate `["artists"]` on `sync:artist` + repair start/end; preload wires `REPAIR_*`; `sync:progress` payload unchanged |
 | `feat/sync-status-write-and-recovery` | ✅ merged | [#148](https://github.com/KazeKaze93/RuleDesk/pull/148) — persist per-artist `syncStatus` / `lastError`; `resetStaleSyncingArtists` on DB init |
 | `feat/remote-ai-filter-via-tags-injection` | ✅ merged | [#147](https://github.com/KazeKaze93/RuleDesk/pull/147) — Browse Source: All — Rule34 AI hide/only via tag injection into `searchBooru`; Gelbooru stays worker-only; defensive conflict → worker fallback |
+| `feat/search-results-persistent-cache` | 🟡 started | Review complete, **ready to merge** (no PR yet). SQLite TTL cache for Browse `searchBooru` pages. Unbounded `beforePostId` keys → [planned row cap](#planned-product-work), not media LRU. |
 | `audit/raw-sql-timestamp-units` | ✅ merged | [#132](https://github.com/KazeKaze93/RuleDesk/pull/132) — Full raw-SQL timestamp unit inventory: **no P0 mismatch**; comment-only Units annotations + `docs/database.md` seconds vs ms correction. (Remote hyphen: `audit-raw-sql-timestamp-units`) |
 | `fix/ipc-handlers-compliance` | ✅ merged | [#124](https://github.com/KazeKaze93/RuleDesk/pull/124) — Legacy `ipcMain.handle` → BaseController; silent catch removed. (Branch renamed: remote `audit` ref blocks `audit/*`) |
 | `fix-frontend-virtuoso-gallery-audit` | ✅ merged | [#125](https://github.com/KazeKaze93/RuleDesk/pull/125) — decorative tests; VirtuosoGrid factory dedupe; totalCount audit (clean); raw HTML→shadcn |
@@ -238,6 +239,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | Item | Description |
 |------|-------------|
 | **tag-combination subscriptions feature/table** | Not implemented (no table in `schema.ts`, no subscription IPC). Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking`). |
+| **`search_results_cache` row cap (not media LRU)** | Infinite Browse scroll mints a new `cache_key` per `beforePostId`. TTL already deletes expired rows; a long cursor session can still grow the table inside the TTL window. **Decide before writing “prompt 2” (eviction):** this is **SQLite row cap + `MaintenanceScheduler`**, not video-proxy LRU of on-disk files (`VIDEO_CACHE_MAX_BYTES`, last-accessed). Do **not** fold it into a media-file eviction prompt. Same *pattern* (cap + maintenance tick), different *unit* and code path. Treat as a **separate** follow-up (working name: prompt 4 / `search-results-cache-cap`). Prompt 3 (post `not_found` TTL) is separate DDL-on-existing-DB work — reuse the copy-prod `sqlite_master` lesson. |
 
 ---
 

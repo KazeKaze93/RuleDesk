@@ -80,6 +80,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** Tests and one-shot probes (paste, single `q=wlop`, mocked IPC) never enqueue overlapping Main waves or sit behind `background` while a human types letter-by-letter. Add Artist artist-filter shipped green; live `cherry-gig` was 10+ s until a separate diagnosis round.
 **Invariant Rule:** Any debounce/autocomplete/keystroke IPC path needs a **live letter-by-letter Electron check** before DoD — not paste, not a single query, not mocked invoke. Log throttle wait vs HTTP per wave. “Works by spec” ≠ “works for a person typing.” Same class as LIVE ELECTRON VERIFICATION for IPC error shapes (`.cursorrules`).
 
+### Problem: Renderer DevTools Network misses Main-process booru HTTP
+**Root Cause:** Browse `searchBooru` leaves the machine from Main (`provider.fetchPosts` / axios), not from the renderer. A live check that watches Chromium Network in the renderer window cannot see those requests — the same class of false confidence as green tests with the wrong observation point.
+**Invariant Rule:** Before any live IPC / provider-network check, identify **which process** issues the HTTP. Main-side traffic is verified from Main logs (`app.log`, e.g. `[SearchCache] miss, fetching` vs `hit found`) or a Main inspector — not renderer DevTools Network. Renderer Network only covers renderer-initiated loads (img/video/proxy). Persistence proofs use a **process restart**, not in-session navigate-back (that can be React Query memory).
+
 ## Data Integrity
 
 ### Problem: Sync cursor advanced past unfetched pages, permanently skipping posts
@@ -93,6 +97,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 ### Problem: Swallowed DDL hides permanently missing schema objects
 **Root Cause:** `try/catch` around `CREATE TRIGGER` / `CREATE TABLE` logged a warning and continued (or marked the migration executed). Runtime had no symptom until a feature depended on the missing object (empty smart playlists, stale count cache). Soft-fail branches that matched SQLite message substrings (`cannot create triggers on virtual tables`) turned one bad migration into a permanent factory for silent schema gaps.
 **Invariant Rule:** A swallowed DDL error hides a permanently missing schema object with no runtime symptom → Never wrap `CREATE TRIGGER` / `CREATE TABLE` in try/catch. Let startup fail loudly. Matching DB errors by English message substrings is a dependency on an unstable format — prefer stable `error.code` / object-type checks; message includes are last-resort legacy only.
+
+### Problem: Greenfield SQLite tests miss DDL that never lands on existing user databases
+**Root Cause:** In-memory migrate-from-zero always creates the new table; journal tag collisions and skipped files leave populated DBs without the object. Mocked unit tests never query `sqlite_master` on a real file.
+**Invariant Rule:** Any SQLite DDL (`CREATE TABLE` / `INDEX` / `TRIGGER`) is verified before merge on a **copy** of a populated production database: apply the new migration, then `SELECT name, type, sql FROM sqlite_master` for those objects. Existing table row counts must be unchanged. Greenfield `:memory:` / `createMockDb()` migrate is not that check. Do not run the probe against the live `data.bin` path — copy first.
 
 ### Problem: FTS5 external-content DELETE trigger corrupts DB file
 **Root Cause:** `DELETE FROM <fts_table> WHERE rowid=...` on an external-content FTS5 table bypasses the internal segment-delete protocol SQLite expects; observed as SqliteError `database disk image is malformed` / `SQLITE_CORRUPT_VTAB` on better-sqlite3 12.5.0 / SQLite 3.51.1 (msvc-1944), triggered by any `UPDATE OF <indexed column>` or `DELETE` on the content table, independent of mmap_size or batch size (single-row reproduces it). Separately: the canonical `VALUES('delete', ...)` command still corrupts if the rowid was never inserted into the index (e.g. insert trigger dropped for bulk upsert, then conflict UPDATE fires update trigger). And `id NOT IN (SELECT rowid FROM posts_fts)` never backfills missing index rows — without MATCH, a query on an external-content FTS5 table is passed through to the content table (fts5.html), so the NOT IN set is every posts.id.

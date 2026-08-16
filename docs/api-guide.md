@@ -1263,6 +1263,8 @@ await window.api.searchBooru({
 });
 ```
 
+**Persistent cache:** Successful pages are stored in SQLite `search_results_cache` with TTL `SEARCH_RESULTS_CACHE_TTL_MS` (24 hours). A later `searchBooru` with the same provider + formatted tags + page + limit + cursor reads SQLite and does **not** call the booru HTTP API. Confirmed empty tagged pages persist as `not_found` (same TTL). Untagged **page 1** empty is not persisted (throttle-blip). Untagged **page 2+** empty is persisted as `not_found` (end of feed). HTTP 429 / network / parse failures are **unresolved** and are never written as empty/valid results. `isRandom` skips the cache. Blacklist filtering and local favorite/viewed flags are applied after a hit. IPC request/response shape is unchanged. `sortOrder` / `rating` are not cache-key fields — they are not passed over this IPC.
+
 **IPC Channel:** `booru:search`
 
 **Errors:** On provider failures `SearchController` calls `throwProviderSearchIpcError()` — `Error.message` is `JSON.stringify(ProviderSearchErrorPayload)` (`name`, `message`, `code`, `providerKind`, optional `retryAfterMs`) because Electron invoke drops custom Error fields. Enumerable `code` / `providerKind` remain for in-process callers. **No** `stack`, `originalError`, or raw API body crosses IPC. Preload does not parse or reshape these errors. Renderer `parseProviderSearchErrorPayload()` unwraps the JSON payload; `providerKind` is never inferred from user-facing copy. `PROVIDER_SEARCH_USER_MESSAGES` is display-only and must not name a specific provider.

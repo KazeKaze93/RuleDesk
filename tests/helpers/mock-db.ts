@@ -19,7 +19,10 @@ import fs from 'fs';
  * 
  * @returns Object containing drizzle database instance and sqlite connection
  */
-export function createMockDb() {
+export function createMockDb(options?: {
+  omitMigrationTags?: readonly string[];
+}) {
+  const omitMigrationTags = new Set(options?.omitMigrationTags ?? []);
   // Use :memory: database to ensure fresh state for each test
   // This prevents state leakage between test runs
   const sqlite = new Database(':memory:');
@@ -66,6 +69,10 @@ export function createMockDb() {
     
     if (!fs.existsSync(migrationFile)) {
       console.warn(`[Test DB] Migration file not found: ${migrationFile}`);
+      continue;
+    }
+
+    if (omitMigrationTags.has(entry.tag)) {
       continue;
     }
     

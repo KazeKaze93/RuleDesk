@@ -477,8 +477,8 @@ const posts = await db.query.posts.findMany({
 
    - Drizzle ORM schema definitions for all tables
    - Type-safe table definitions with proper indexes
-   - Tables: `artists`, `posts`, `settings`, `tag_metadata`, `playlists`, `playlist_entries`; plus `tag_blacklist` (migration + raw SQL, not in Drizzle schema)
-   - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost` (and playlist / tag_metadata types). Renderer consumes these via `@shared/types/db` (type-only re-export); do not import `schema.ts` from `src/renderer/**`.
+   - Tables: `artists`, `posts`, `settings`, `tag_metadata`, `search_results_cache`, `playlists`, `playlist_entries`; plus `tag_blacklist` (migration + raw SQL, not in Drizzle schema)
+   - Type inference: `Artist`, `Post`, `Settings`, `NewArtist`, `NewPost` (and playlist / tag_metadata types). `SearchResultsCacheRow` is Main-only. Renderer consumes gallery types via `@shared/types/db` (type-only re-export); do not import `schema.ts` from `src/renderer/**`.
 
 3. **Sync Service** (`src/main/services/sync-service.ts`)
 
@@ -508,7 +508,7 @@ const posts = await db.query.posts.findMany({
    - `ViewerController.ts` - Viewer-related operations
    - `FileController.ts` - File download and management
    - `SystemController.ts` - System-level ops (version, clipboard, icon path, quit, **`wipeAllData`**)
-   - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
+   - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination and SQLite `search_results_cache` TTL layer, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
    - `PlaylistController.ts` - Playlist CRUD, smart queries, import/export
    - `StatsController.ts` - Extended stats for `/stats`
    - `BlacklistController.ts` - Tag blacklist CRUD
@@ -645,7 +645,7 @@ const posts = await db.query.posts.findMany({
 
 12. **Browse** (`src/renderer/components/pages/Browse.tsx`, `SearchController.search`, `src/renderer/utils/react-query-cache.ts`)
 
-   - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`. Grid infinite scroll: `useGalleryInfiniteScroll` + `VirtuosoGrid.endReached` only (no `atBottomStateChange`). Masonry infinite scroll: `useMasonryInfiniteScroll` (overflow-auto).
+   - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`. Main is cache-first: `search_results_cache` (TTL `SEARCH_RESULTS_CACHE_TTL_MS`) before `provider.fetchPosts`. Hits skip HTTP; confirmed empty tagged pages persist as `not_found`; untagged page 1 empty is not persisted; untagged page 2+ empty is `not_found`. 429/network are unresolved (not written). `isRandom` bypasses the cache. Blacklist + local viewed/favorited still apply on hits. Grid infinite scroll: `useGalleryInfiniteScroll` + `VirtuosoGrid.endReached` only (no `atBottomStateChange`). Masonry infinite scroll: `useMasonryInfiniteScroll` (overflow-auto).
    - **Rule34 deep pagination:** offset pages 1–4 (`RULE34_MAX_OFFSET_PAGES`), then cursor via meta-tag `id:<postId>` (`beforePostId` / `nextBeforePostId`); `getSearchBrowseNextPageParam()` drives React Query `pageParam`.
    - **Local source modes:** Favorites / Browse Source Subscriptions filter query cached DB posts via `getArtistPosts` (page + `LIMIT`/`OFFSET`). `aiFilter` / `mediaType` / `sortOrder` are passed into SQL (`buildPostFilterConditions`) so filtering happens **before** pagination — same pattern as `ArtistGallery`. Favorites maps to `isFavorited`; Browse Source Subscriptions filter maps to `sinceTracking` (join `posts.artistId` + `publishedAt >= artists.createdAt`). Worker-side tag-intersection against tracked artist tags is **not** used. Distinct from the unimplemented tag-combination subscriptions feature/table.
    - **Remote AI filter (Rule34):** Browse injects verified AI tag tokens into the `searchBooru` tags array (`buildRemoteBooruTagListForIpc` / `buildRemoteAiFilterTagInjection` in `searchStore.ts`): `hide` → `-ai_generated -ai-generated -ai_generation -ai-generated_content`; `only` → OR-group `( ai_generated ~ … )`. Injection is **Rule34-only**. Defensive skip when the user's include/exclude chips already conflict with the filter (avoids API empty-page AND of `tag -tag`); then the worker AI path remains the fallback. **Gelbooru** (and any non-Rule34 provider) never injects AI — worker AI filtering only (live Gelbooru AI tag injection not verified).
@@ -1369,6 +1369,7 @@ External API calls are abstracted through the **Provider Pattern** (`src/main/pr
    - **Page size:** 50 posts per request (configurable `limit`, max 100)
    - **Rule34 offset cap:** pages 1–4 via `pid`; page 5+ via meta-tag cursor `id:<postId>` with `pid=0`
    - **Response metadata:** `hasMore`, `apiFetchedCount`, `nextBeforePostId` for infinite scroll (blacklist applied after fetch)
+   - **Persistent cache:** SQLite `search_results_cache` is consulted before `provider.fetchPosts`. Cache key is provider + formatted API tags + page + limit + cursor (AI/media isolation is the injected tags string). Payload JSON is versioned (`payload_schema_version`); unknown versions are misses. Untagged page 1 empty is not persisted; untagged page 2+ empty is `not_found`. Maintenance deletes expired rows via `deleteExpiredSearchResultsCache`.
 
 ### Download Flow
 
@@ -1780,7 +1781,7 @@ Root:
 
 **Database & Schema:**
 
-- **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 for post tags
+- **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `search_results_cache` (Browse `searchBooru` page TTL cache, found|not_found, versioned JSON payload), `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
 - **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `npm test`, and production `npm audit`
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
