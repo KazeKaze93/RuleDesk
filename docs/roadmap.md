@@ -172,7 +172,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Branch | Status | Notes |
 |--------|--------|-------|
-| `fix/post-metadata-artist-character-loading-state` | 🟡 in progress | TagsDrawer Artist/Character/Copyright: React Query `isLoading` vs confirmed-absent copy; no Main / `tag-resolve-coordinator` changes |
+| `fix/post-metadata-artist-character-loading-state` | 🟡 open | [#168](https://github.com/KazeKaze93/RuleDesk/pull/168) — TagsDrawer Artist/Character/Copyright: React Query `isLoading` vs confirmed-absent copy; no Main / `tag-resolve-coordinator` changes |
 | `fix/gelbooru-transport-failure-silent-swallow` | ✅ merged | [#157](https://github.com/KazeKaze93/RuleDesk/pull/157) — Gelbooru `fetchPosts` throws `ProviderSearchError("network"|"parse")` instead of `[]`; SearchController heuristics stay on genuine empty API pages only. |
 | `fix/p1-test-suite-false-confidence` | ✅ merged | [#156](https://github.com/KazeKaze93/RuleDesk/pull/156) — P1-1..P1-4: property/e2e/hook tests that could not fail on real regressions. P1-5 Gelbooru transport `[]` vs Rule34 throw — prod silent-failure, **not** fixed in this branch. |
 | `fix/p2-test-suite-reliability` | ✅ merged | [#158](https://github.com/KazeKaze93/RuleDesk/pull/158) — Duplicate mock-db helper removed; component tests import real UI + RTL; throttle uses fake timers. E2E rebuild-skip / retries and Artist/Playlist GridContainer copies — recorded in [Backlog](#backlog-not-implemented-yet), not in this branch. |
