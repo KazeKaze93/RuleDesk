@@ -65,12 +65,16 @@ export class MaintenanceScheduler {
         log.error("[MaintenanceScheduler] Maintenance failed:", error);
       }
 
-      if (this.videoProxyServer !== null) {
-        try {
-          this.videoProxyServer.evictCache();
-        } catch (error) {
-          log.error("[MaintenanceScheduler] Video cache eviction failed:", error);
-        }
+      // Yield after sync SQLite work so IPC can run before the cache directory walk.
+      const videoProxy = this.videoProxyServer;
+      if (videoProxy !== null) {
+        setImmediate(() => {
+          try {
+            videoProxy.evictCache();
+          } catch (error) {
+            log.error("[MaintenanceScheduler] Video cache eviction failed:", error);
+          }
+        });
       }
     });
   }
