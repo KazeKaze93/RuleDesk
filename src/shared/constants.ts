@@ -54,6 +54,13 @@ export type ArtistType = typeof ARTIST_TYPES[number];
 export const MAX_TRACKED_ARTISTS = 5000;
 
 /**
+ * SQLite TTL for confirmed `not_found` rows in `tag_metadata`, and the matching
+ * React Query `staleTime` for TagsDrawer Artist/Character/Copyright resolve
+ * queries. Keep client cache from outliving Main's negative-cache eviction.
+ */
+export const TAG_RESOLVE_NOT_FOUND_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
  * Maximum Random Pages
  *
  * Maximum number of pages to use for pseudo-random fallback when provider

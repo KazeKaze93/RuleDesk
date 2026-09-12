@@ -11,7 +11,10 @@ import { useNavigate } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import type { Artist, Post } from "@shared/types/db";
-import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import {
+  EXTERNAL_ARTIST_ID,
+  TAG_RESOLVE_NOT_FOUND_TTL_MS,
+} from "../../../shared/constants";
 import { Button } from "../../components/ui/button";
 import {
   Sheet,
@@ -176,7 +179,8 @@ export const TagsDrawer = ({
 
   // Lazy batch resolver for artist tags (only for untracked posts)
   // Uses React Query to cache results and batch multiple tags in one request
-  // Acts as a permanent session cache (staleTime: Infinity)
+  // staleTime matches Main tag_metadata not_found TTL (shared constant) so a
+  // long session cannot keep "No X detected" after server-side re-resolution.
   // Uses IPC to call Main Process which has full access to credentials and persistent DB cache
   // Post.tags is always a string in the schema, but handle edge cases
   const tagsString = typeof post?.tags === "string" ? post.tags : '';
@@ -200,7 +204,7 @@ export const TagsDrawer = ({
       return resolvedChunks.flat();
     },
     enabled: !!post && !hasKnownArtist && tagsString.length > 0,
-    staleTime: Infinity, // Keep in RAM for session
+    staleTime: TAG_RESOLVE_NOT_FOUND_TTL_MS,
     retry: false,
   });
 
@@ -220,7 +224,7 @@ export const TagsDrawer = ({
       return resolvedChunks.flat();
     },
     enabled: !!post && tagsString.length > 0,
-    staleTime: Infinity, // Keep in RAM for session
+    staleTime: TAG_RESOLVE_NOT_FOUND_TTL_MS,
     retry: false,
   });
 
@@ -240,7 +244,7 @@ export const TagsDrawer = ({
       return resolvedChunks.flat();
     },
     enabled: !!post && tagsString.length > 0,
-    staleTime: Infinity, // Keep in RAM for session
+    staleTime: TAG_RESOLVE_NOT_FOUND_TTL_MS,
     retry: false,
   });
 
