@@ -1,7 +1,7 @@
 # 🚀 Roadmap
 
 This document reflects the current roadmap for RuleDesk `v18.x` and is aligned with `README.md` and `package.json` (see `version`).
-> Backlog items below verified against code on 2026-09-12 (VACUUM scheduler, tag-resolve-cache-ttl, search_results_cache cap, E2E rebuild-skip, tag-combination subscriptions, Smart Collections AI — all confirmed accurate).
+> Backlog items below verified against code on 2026-09-12 (VACUUM scheduler, tag-resolve-cache-ttl, search_results_cache cap, E2E rebuild-skip, Smart Collections AI — all confirmed accurate). Tag-combination subscriptions closed as superseded by smart playlists on the same audit.
 
 ## 📑 Table of Contents
 
@@ -47,7 +47,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
 - ✅ `FiltersPanel`: AI, media, source; wired to `searchStore` and post pipelines.
-- ✅ **Browse → Source (Favorites / Browse Source Subscriptions filter):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Local AI/media filters run in SQL before `LIMIT`. The Browse Source Subscriptions filter is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)). Distinct from the unimplemented [tag-combination subscriptions feature/table](#planned-product-work).
+- ✅ **Browse → Source (Favorites / Browse Source Subscriptions filter):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Local AI/media filters run in SQL before `LIMIT`. The Browse Source Subscriptions filter is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)). Distinct from [tag-combination subscriptions](#closed-by-design-not-backlog) (closed — superseded by smart playlists).
 - ✅ Search is chip-based and supports include/exclude, OR-groups, wildcard/fuzzy token forms (`*`, `~`) in query tokens.
 
 ### B. Viewer and Gallery Polish - High Priority
@@ -233,7 +233,8 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Topic | Status |
 |-------|--------|
-| **Browse Source Subscriptions filter** (and Favorites) | Requires a **non-empty tag query** in `SourceSwitcher` so those modes are selected in the context of a search. Local results come from SQL (`isFavorited` / `sinceTracking`) with AI/media applied before pagination. Browse Source Subscriptions filter is **sinceTracking-only** (join by artist + publish date), not tag-intersection with tracked artist names. **Working as designed.** Distinct from the unimplemented tag-combination subscriptions feature/table. |
+| **Browse Source Subscriptions filter** (and Favorites) | Requires a **non-empty tag query** in `SourceSwitcher` so those modes are selected in the context of a search. Local results come from SQL (`isFavorited` / `sinceTracking`) with AI/media applied before pagination. Browse Source Subscriptions filter is **sinceTracking-only** (join by artist + publish date), not tag-intersection with tracked artist names. **Working as designed.** Distinct from tag-combination subscriptions (closed below). |
+| **tag-combination subscriptions feature/table** | **Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit).** Docs never defined positive behavior (only “not Browse Source Subscriptions”); Features.md / Product_Strategy.md had no entry. Tag-combo follow behavior is already covered by smart playlists — closed as duplicate, not as an open gap. |
 | **Masonry vs grid** | Two **first-class** view toggles. No silent fallback; no open “masonry not implemented” item. |
 | **Viewer tags / progressive cards** | Shipped (`TagsDrawer`, `PostCard`). |
 
@@ -245,7 +246,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Item | Description |
 |------|-------------|
-| **tag-combination subscriptions feature/table** | Not implemented (no table in `schema.ts`, no subscription IPC). Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking`). |
+| *(none)* | tag-combination subscriptions moved to [Closed by design](#closed-by-design-not-backlog) (2026-09-12). |
 
 ---
 

@@ -261,9 +261,9 @@ Shipped Browse **Source** toggle (`SourceSwitcher` value `subscriptions`, panel 
 
 ### tag-combination subscriptions feature/table
 
-Not implemented. No subscriptions table in `schema.ts`, no subscription IPC (`getSubscriptions` / `addSubscription` / `deleteSubscription` do not exist). Distinct from the Browse Source Subscriptions filter above.
+**Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit).** No separate subscriptions table/IPC was ever shipped. Distinct from the Browse Source Subscriptions filter above (`sinceTracking`). Closed as duplicate of smart playlists, not as an open “not implemented” gap — original docs had no positive product description (Features.md / Product_Strategy.md silent).
 
-**Related:** [Planned product work](./roadmap.md#planned-product-work), [Database — Future Enhancements](./database.md#future-enhancements)
+**Related:** [Closed by design](./roadmap.md#closed-by-design-not-backlog), [Playlists / Collections](#playlists--collections), [Database — Future Enhancements](./database.md#future-enhancements)
 
 ---
 
