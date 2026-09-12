@@ -1120,7 +1120,7 @@ Planned database improvements:
   - `playlists` table with support for manual and smart playlists
   - `playlist_entries` junction table with composite primary key
   - Full CRUD operations via `PlaylistController`
-- ⏳ **tag-combination subscriptions feature/table:** Not implemented (no table in `schema.ts`). Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking` on `posts` + `artists`).
+- ✅ **tag-combination subscriptions feature/table:** **Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit).** Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking` on `posts` + `artists`). Not an open schema gap.
 - ⏳ Post deduplication logic
 - ✅ Extended **Statistics** aggregates are shipped via `getExtendedStats` (totals, distributions, top artists/tags, timeline-ready data, DB size)
 - ⏳ Export/import functionality
