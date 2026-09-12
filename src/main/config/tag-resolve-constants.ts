@@ -1,8 +1,9 @@
 /**
- * SQLite TTL for confirmed not_found tag_metadata rows.
- * Expired rows are treated as cache-misses (re-resolve); maintenance DELETEs them.
+ * Tag-resolve tuning constants (Main).
+ * TTL for `tag_metadata` not_found lives in shared — used by Main maintenance
+ * and Renderer TagsDrawer `staleTime` (must stay aligned).
  */
-export const TAG_RESOLVE_NOT_FOUND_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export { TAG_RESOLVE_NOT_FOUND_TTL_MS } from "../../shared/constants";
 
 /** HTTP timeout for a single tag metadata lookup. */
 export const TAG_RESOLVE_REQUEST_TIMEOUT_MS = 10_000;
