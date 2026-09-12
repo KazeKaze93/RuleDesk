@@ -3,6 +3,7 @@ import { getSqliteInstance } from "../db/client";
 import { deleteExpiredNotFoundTagMetadata } from "../db/queries/tag-metadata";
 import { deleteExpiredSearchResultsCache } from "../db/queries/search-results-cache";
 import { deleteExpiredNotFoundPostLookupCache } from "../db/queries/post-lookup-cache";
+import type { MaintenanceService } from "./MaintenanceService";
 import type { VideoProxyServer } from "./video-proxy-server";
 
 const STARTUP_DELAY_MS = 10_000;
@@ -12,9 +13,14 @@ export class MaintenanceScheduler {
   private startupTimer: ReturnType<typeof setTimeout> | null = null;
   private dailyTimer: ReturnType<typeof setInterval> | null = null;
   private readonly videoProxyServer: VideoProxyServer | null;
+  private readonly maintenanceService: MaintenanceService | null;
 
-  constructor(videoProxyServer?: VideoProxyServer) {
+  constructor(
+    videoProxyServer?: VideoProxyServer,
+    maintenanceService?: MaintenanceService
+  ) {
     this.videoProxyServer = videoProxyServer ?? null;
+    this.maintenanceService = maintenanceService ?? null;
   }
 
   public start(): void {
@@ -84,6 +90,40 @@ export class MaintenanceScheduler {
           }
         });
       }
+
+      // After lightweight maintenance: due weekly/monthly VACUUM (closes DB).
+      // Uses the existing daily tick — day granularity is enough for 7d/30d schedules;
+      // do not change STARTUP_DELAY_MS / DAILY_INTERVAL_MS frequencies.
+      this.scheduleVacuumIfDue();
+    });
+  }
+
+  private scheduleVacuumIfDue(): void {
+    const maintenanceService = this.maintenanceService;
+    if (maintenanceService === null) {
+      return;
+    }
+
+    setImmediate(() => {
+      void maintenanceService
+        .runVacuumIfScheduleDue()
+        .then((result) => {
+          if (result === null) {
+            return;
+          }
+          if (result.success) {
+            log.info(
+              `[MaintenanceScheduler] Scheduled VACUUM succeeded (durationMs=${result.durationMs ?? "n/a"})`
+            );
+            return;
+          }
+          log.error(
+            `[MaintenanceScheduler] Scheduled VACUUM failed: ${result.error ?? "unknown"}`
+          );
+        })
+        .catch((error: unknown) => {
+          log.error("[MaintenanceScheduler] Scheduled VACUUM threw:", error);
+        });
     });
   }
 }

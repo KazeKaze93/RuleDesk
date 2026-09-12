@@ -25,6 +25,12 @@ type CachedVacuumStatus = {
   lastError: string | null;
 };
 
+/** Intervals for user-visible VACUUM schedule (`settings.vacuum_schedule`). */
+const VACUUM_SCHEDULE_INTERVAL_MS = {
+  weekly: 7 * 24 * 60 * 60 * 1000,
+  monthly: 30 * 24 * 60 * 60 * 1000,
+} as const;
+
 export class MaintenanceService {
   private isRunning = false;
   private cachedStatus: CachedVacuumStatus = {
@@ -295,5 +301,36 @@ export class MaintenanceService {
       .where(eq(settings.id, SETTINGS_ID))
       .run();
     return true;
+  }
+
+  /**
+   * If `vacuum_schedule` is weekly/monthly and enough time has passed since
+   * `settings.last_vacuum_at` (ms via Date.now()), run VACUUM through the same
+   * path as the Settings button (`runVacuum` → `maintenanceQueue`).
+   * `manual` never auto-runs. Returns null when skipped.
+   */
+  public async runVacuumIfScheduleDue(
+    nowMs: number = Date.now()
+  ): Promise<RunVacuumResponse | null> {
+    const schedule = this.getSchedule();
+    if (schedule === "manual") {
+      return null;
+    }
+
+    const status = this.getVacuumStatus();
+    if (status.isRunning) {
+      return null;
+    }
+
+    const intervalMs = VACUUM_SCHEDULE_INTERVAL_MS[schedule];
+    const lastVacuumAt = status.lastVacuumAt;
+    if (lastVacuumAt !== null && nowMs - lastVacuumAt < intervalMs) {
+      return null;
+    }
+
+    log.info(
+      `[MaintenanceService] Scheduled VACUUM due (schedule=${schedule}, lastVacuumAt=${lastVacuumAt ?? "never"})`
+    );
+    return this.runVacuum();
   }
 }
