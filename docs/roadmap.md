@@ -1,6 +1,7 @@
 # 🚀 Roadmap
 
-This document reflects the current roadmap for RuleDesk `v17.x` and is aligned with `README.md` and `package.json` (see `version`).
+This document reflects the current roadmap for RuleDesk `v18.x` and is aligned with `README.md` and `package.json` (see `version`).
+> Backlog items below verified against code on 2026-09-12 (VACUUM scheduler, tag-resolve-cache-ttl, search_results_cache cap, E2E rebuild-skip, tag-combination subscriptions, Smart Collections AI — all confirmed accurate).
 
 ## 📑 Table of Contents
 
