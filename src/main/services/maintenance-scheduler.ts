@@ -1,7 +1,10 @@
 import log from "electron-log";
 import { getSqliteInstance } from "../db/client";
 import { deleteExpiredNotFoundTagMetadata } from "../db/queries/tag-metadata";
-import { deleteExpiredSearchResultsCache } from "../db/queries/search-results-cache";
+import {
+  deleteExpiredSearchResultsCache,
+  enforceSearchResultsCacheRowCap,
+} from "../db/queries/search-results-cache";
 import { deleteExpiredNotFoundPostLookupCache } from "../db/queries/post-lookup-cache";
 import type { MaintenanceService } from "./MaintenanceService";
 import type { VideoProxyServer } from "./video-proxy-server";
@@ -64,6 +67,13 @@ export class MaintenanceScheduler {
         if (deletedExpiredSearchPages > 0) {
           log.info(
             `[MaintenanceScheduler] Deleted ${deletedExpiredSearchPages} expired search_results_cache rows`
+          );
+        }
+
+        const deletedOverCapSearchPages = enforceSearchResultsCacheRowCap(sqlite);
+        if (deletedOverCapSearchPages > 0) {
+          log.info(
+            `[MaintenanceScheduler] Evicted ${deletedOverCapSearchPages} search_results_cache rows over row cap`
           );
         }
 

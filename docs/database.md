@@ -324,9 +324,9 @@ Persistent TTL cache for Browse `searchBooru` API pages (`SearchController.searc
 
 **Indexes:**
 
-- `search_results_cache_resolved_at_idx` — Index on `resolved_at` for maintenance DELETE
+- `search_results_cache_resolved_at_idx` — Index on `resolved_at` for maintenance DELETE / row-cap eviction
 
-Maintenance: `deleteExpiredSearchResultsCache` (same cycle as `deleteExpiredNotFoundTagMetadata`). Raw SQL cutoff uses `Date.now()` ms against `mode: "timestamp_ms"`.
+Maintenance: `deleteExpiredSearchResultsCache` then `enforceSearchResultsCacheRowCap` (`MAX_SEARCH_RESULTS_CACHE_ROWS`, 2000) on the same `MaintenanceScheduler` tick as `deleteExpiredNotFoundTagMetadata`. TTL first, then oldest-by-`resolved_at` eviction of excess rows. Raw SQL cutoff uses `Date.now()` ms against `mode: "timestamp_ms"`. No `last_accessed` — cache hits do not bump `resolved_at`; pinning hot reads would need a schema change.
 
 ### Table: `post_lookup_cache`
 
@@ -1020,7 +1020,7 @@ The application also exposes VACUUM maintenance controls in Settings:
 
 1. **Manual run:** `window.api.runVacuum()` closes the Main DB handle, runs `VACUUM;` in a dedicated **maintenance worker** (`vacuumWorker.ts`), then reinitializes. The run is enqueued on `maintenanceQueue` so it cannot overlap backup/restore. This is the **only** intentional DB-related worker-thread exception: interactive CRUD stays on the Main thread via synchronous `better-sqlite3` + Drizzle; VACUUM is offloaded so the UI/IPC loop is not blocked for the duration of a full vacuum.
 2. **Status:** `window.api.getVacuumStatus()` returns last run time/result/error and in-memory `isRunning`. While VACUUM is running (DB closed), status is served from an in-memory cache so polling does not hit `getDb()`.
-3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`. `MaintenanceScheduler` still runs lightweight `wal_checkpoint` + `optimize` plus TTL eviction (`deleteExpiredNotFoundTagMetadata`, `deleteExpiredSearchResultsCache`, `deleteExpiredNotFoundPostLookupCache`) and on-disk video-cache LRU (`VideoProxyServer.evictCache`, last-accessed) on its startup/daily tick. After that tick it also calls `MaintenanceService.runVacuumIfScheduleDue`: if `vacuum_schedule` is `weekly` (7d) or `monthly` (30d) and `settings.last_vacuum_at` is null or older than the interval, it runs the same `runVacuum` path as Settings (via `maintenanceQueue`). `manual` never auto-runs.
+3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`. `MaintenanceScheduler` still runs lightweight `wal_checkpoint` + `optimize` plus TTL eviction (`deleteExpiredNotFoundTagMetadata`, `deleteExpiredSearchResultsCache`, `deleteExpiredNotFoundPostLookupCache`), `search_results_cache` row-cap eviction (`enforceSearchResultsCacheRowCap`), and on-disk video-cache LRU (`VideoProxyServer.evictCache`, last-accessed) on its startup/daily tick. After that tick it also calls `MaintenanceService.runVacuumIfScheduleDue`: if `vacuum_schedule` is `weekly` (7d) or `monthly` (30d) and `settings.last_vacuum_at` is null or older than the interval, it runs the same `runVacuum` path as Settings (via `maintenanceQueue`). `manual` never auto-runs.
 
 **Important:** `VACUUM` remains blocking for SQLite itself, but is isolated from the UI/IPC loop by the maintenance worker. Do not use worker threads for ordinary CRUD — that remains forbidden (see `.cursorrules`). Worker errors return `error.message` only (no stack) to settings/`DatabaseMaintenanceCard`.
 
