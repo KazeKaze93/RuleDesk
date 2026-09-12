@@ -1,7 +1,7 @@
 # 🚀 Roadmap
 
 This document reflects the current roadmap for RuleDesk `v18.x` and is aligned with `README.md` and `package.json` (see `version`).
-> Backlog items below verified against code on 2026-09-12 (VACUUM scheduler, tag-resolve-cache-ttl, search_results_cache cap, E2E rebuild-skip, Smart Collections AI — all confirmed accurate). Tag-combination subscriptions closed as superseded by smart playlists on the same audit.
+> Backlog items below verified against code on 2026-09-12 (VACUUM scheduler, tag-resolve-cache-ttl, search_results_cache cap, E2E rebuild-skip — all confirmed accurate). Tag-combination subscriptions closed as superseded by smart playlists on the same audit.
 
 ## 📑 Table of Contents
 
@@ -225,7 +225,6 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 ## 🔮 Long-Term Goals (Future Considerations)
 
 - More **booru providers** (beyond Rule34 + Gelbooru) on `IBooruProvider`.
-- **Smart Collections AI** — research; see `Product_Strategy.md`.
 
 ---
 
@@ -265,7 +264,6 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **E2E rebuild-skip** | ✅ Closed in `fix/e2e-always-rebuild-on-ci`. CI always rebuilds (`process.env.CI`); local `existsSync` skip kept. mtime/hash deliberately not used. |
 | **E2E Playwright retries** | Keep `retries: 2` (known Electron “Target closed” on this platform). Do not lower blindly. Follow-up: surface flaky vs failed in CI (Playwright already labels flaky in the report) without changing retry count. |
 | **AI tag phrases (P3)** | ✅ Closed in [#160](https://github.com/KazeKaze93/RuleDesk/pull/160). Live Rule34/Gelbooru autocomplete (2026-08-13): space queries (`ai generated`, `ai generation`, `ai generated content`) return `[]`; real tags are `_`/`-` (`ai_generated` 3.2M on Rule34, `ai-generated` on Gelbooru). Origin was speculative lists in `ad62e5b` / `9788d8f` (2026-01-15), not observed legacy data. Consecutive-token matching rejected (`generated` exists as its own tag, 698 posts). Space phrases removed from `filter-utils.ts` `aiTags` and worker `AI_TAG_PATTERNS`; `PostsController.AI_FILTER_TAGS` / `BOORU_AI_FILTER_TAGS` were already token-only. |
-| **Product** | **Smart Collections AI** (research). |
 
 **Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.
 
