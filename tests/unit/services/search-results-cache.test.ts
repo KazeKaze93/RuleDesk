@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { searchResultsCache } from "@/main/db/schema";
 import { SEARCH_RESULTS_CACHE_TTL_MS } from "@/main/config/search-results-cache-constants";
-import { deleteExpiredSearchResultsCache } from "@/main/db/queries/search-results-cache";
+import {
+  deleteExpiredSearchResultsCache,
+  enforceSearchResultsCacheRowCap,
+} from "@/main/db/queries/search-results-cache";
 import {
   buildSearchResultsCacheKey,
   type SearchResultsCacheKeyInput,
@@ -366,5 +369,56 @@ describe("search-results-cache", () => {
     const remaining = mockDb.db.select().from(searchResultsCache).all();
     expect(remaining.some((row) => row.cacheKey === freshKey)).toBe(true);
     expect(remaining.some((row) => row.cacheKey === expiredKey)).toBe(false);
+  });
+
+  it("row cap evicts oldest resolved_at first and leaves newest", () => {
+    const now = Date.now();
+    for (let i = 0; i < 5; i += 1) {
+      mockDb.db
+        .insert(searchResultsCache)
+        .values({
+          cacheKey: buildSearchResultsCacheKey(
+            baseKeyInput({ tags: `cap_${i}` })
+          ),
+          status: "not_found",
+          payloadSchemaVersion: 1,
+          responsePayload: null,
+          resolvedAt: new Date(now - (5 - i) * 60_000),
+        })
+        .run();
+    }
+
+    const deleted = enforceSearchResultsCacheRowCap(mockDb.sqlite, 3);
+    expect(deleted).toBe(2);
+
+    const remaining = mockDb.db
+      .select()
+      .from(searchResultsCache)
+      .all()
+      .map((row) => row.cacheKey)
+      .sort();
+    expect(remaining).toEqual(
+      [
+        buildSearchResultsCacheKey(baseKeyInput({ tags: "cap_2" })),
+        buildSearchResultsCacheKey(baseKeyInput({ tags: "cap_3" })),
+        buildSearchResultsCacheKey(baseKeyInput({ tags: "cap_4" })),
+      ].sort()
+    );
+  });
+
+  it("row cap is a no-op when at or under the limit", () => {
+    mockDb.db
+      .insert(searchResultsCache)
+      .values({
+        cacheKey: buildSearchResultsCacheKey(baseKeyInput({ tags: "under_cap" })),
+        status: "not_found",
+        payloadSchemaVersion: 1,
+        responsePayload: null,
+        resolvedAt: new Date(),
+      })
+      .run();
+
+    expect(enforceSearchResultsCacheRowCap(mockDb.sqlite, 10)).toBe(0);
+    expect(mockDb.db.select().from(searchResultsCache).all()).toHaveLength(1);
   });
 });

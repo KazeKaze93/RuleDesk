@@ -174,6 +174,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | Branch | Status | Notes |
 |--------|--------|-------|
 | `feat/post-not-found-ttl` | ✅ merged | [#170](https://github.com/KazeKaze93/RuleDesk/pull/170) — Per-ID `id:` lookup TTL (`post_lookup_cache`, 30 days). Sync artist pagination has no per-ID HTTP — gate is shadow-insert. `found` does not skip HTTP (no body in table). |
+| `feat/search-results-cache-row-cap` | ✅ merged | Soft row cap `MAX_SEARCH_RESULTS_CACHE_ROWS` (2000) on `search_results_cache`: after TTL cleanup on the MaintenanceScheduler tick, evict oldest by `resolved_at`. No `last_accessed` — hits do not bump write time; live Browse viewport is React Query memory. |
 | `fix/media-cache-eviction` | ✅ merged | [#169](https://github.com/KazeKaze93/RuleDesk/pull/169) — Size cap already existed (`VIDEO_CACHE_MAX_BYTES` + `evictCache`). Policy was mtime; now LRU last-accessed (`utimes` atime bump). No SQLite replica of cache files. Open readers skipped; `warn` if still over cap. |
 | `fix/tag-resolve-cache-ttl-alignment` | ✅ merged | TagsDrawer Artist/Character/Copyright React Query `staleTime` aligned to shared `TAG_RESOLVE_NOT_FOUND_TTL_MS` (7 days) — same constant as Main `tag_metadata` not_found TTL. No longer session-infinite; does not outlive server-side eviction on long-running sessions. |
 | `fix/post-metadata-artist-character-loading-state` | ✅ merged | [#168](https://github.com/KazeKaze93/RuleDesk/pull/168) — TagsDrawer Artist/Character/Copyright: React Query `isLoading` vs confirmed-absent copy; no Main / `tag-resolve-coordinator` changes |
@@ -244,7 +245,6 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | Item | Description |
 |------|-------------|
 | **tag-combination subscriptions feature/table** | Not implemented (no table in `schema.ts`, no subscription IPC). Distinct from the shipped **Browse Source Subscriptions filter** (`sinceTracking`). |
-| **`search_results_cache` row cap (not media LRU)** | Infinite Browse scroll mints a new `cache_key` per `beforePostId`. TTL already deletes expired rows; a long cursor session can still grow the table inside the TTL window. Same *pattern* as media LRU (cap + maintenance tick), different *unit* and code path (`search-results-cache-cap`). Post `not_found` TTL landed as `feat/post-not-found-ttl` ([#170](https://github.com/KazeKaze93/RuleDesk/pull/170)); not part of this open item. |
 
 ---
 
