@@ -122,9 +122,12 @@ let tray: Tray | null = null;
 /** Set after sync drain (if any) so a second before-quit can finish cleanup idempotently. */
 let isShuttingDown = false;
 const syncScheduler = new SyncScheduler(syncService);
-const maintenanceScheduler = new MaintenanceScheduler(videoProxyServer);
 const backupService = new BackupService(syncService);
 const maintenanceService = new MaintenanceService();
+const maintenanceScheduler = new MaintenanceScheduler(
+  videoProxyServer,
+  maintenanceService
+);
 container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
 
 function stopBackgroundServicesAndCloseDb(): void {

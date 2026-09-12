@@ -58,15 +58,28 @@ export const SettingsBackupTab = ({
   onAutoBackupIntervalChange,
 }: SettingsBackupTabProps) => {
   const queryClient = useQueryClient();
-  const vacuumStatusQuery = useQuery<VacuumStatusResponse>({
-    queryKey: ["maintenance", "vacuum-status"],
-    queryFn: () => window.api.getVacuumStatus(),
-    refetchInterval: (query) =>
-      query.state.data?.isRunning === true ? 5000 : false,
-  });
   const vacuumScheduleQuery = useQuery<VacuumSchedule>({
     queryKey: ["maintenance", "vacuum-schedule"],
     queryFn: () => window.api.getVacuumSchedule(),
+  });
+  const selectedSchedule = vacuumScheduleQuery.data ?? "manual";
+
+  const vacuumStatusQuery = useQuery<VacuumStatusResponse>({
+    queryKey: ["maintenance", "vacuum-status"],
+    queryFn: () => window.api.getVacuumStatus(),
+    // Default staleTime is 0, but a mounted observer does not auto-refetch when
+    // stale. Auto VACUUM never calls invalidateQueries (only the manual mutation
+    // does), so without an interval a user sitting on Backup would keep a frozen
+    // last-run until remount. Poll while scheduled; faster while isRunning.
+    refetchInterval: (query) => {
+      if (query.state.data?.isRunning === true) {
+        return 5_000;
+      }
+      if (selectedSchedule === "manual") {
+        return false;
+      }
+      return 60_000;
+    },
   });
   const runVacuumMutation = useMutation<RunVacuumResponse>({
     mutationFn: () => window.api.runVacuum(),
@@ -95,7 +108,6 @@ export const SettingsBackupTab = ({
   });
 
   const vacuumStatus = vacuumStatusQuery.data;
-  const selectedSchedule = vacuumScheduleQuery.data ?? "manual";
 
   return (
     <Card>

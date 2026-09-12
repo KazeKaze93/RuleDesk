@@ -108,7 +108,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - ✅ **User-configurable backup retention** is shipped (`settings.backupRetention`, range `1..20`, applied in `MaintenanceController` cleanup).
 - ✅ **Shared request pacing / UA rotation** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
 - ✅ Explicit VACUUM policy is shipped (manual run + persisted schedule + last-run telemetry in Settings).
-- 🔧 `audit/maintenance-vacuum-queue`: VACUUM joined to `maintenanceQueue` (serialize with backup/restore); status cache while DB closed; auto-backup skips when queue busy. Weekly/monthly VACUUM timer still not wired.
+- 🔧 `audit/maintenance-vacuum-queue`: VACUUM joined to `maintenanceQueue` (serialize with backup/restore); status cache while DB closed; auto-backup skips when queue busy. Weekly/monthly VACUUM is checked on the existing `MaintenanceScheduler` daily tick via `MaintenanceService.runVacuumIfScheduleDue` (`settings.last_vacuum_at` + `vacuum_schedule`; `manual` skips).
 
 ## 📋 Milestones
 
