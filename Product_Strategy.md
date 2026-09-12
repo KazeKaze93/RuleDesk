@@ -6,16 +6,6 @@
 
 RuleDesk is an open-core desktop product focused on safe, maintainable media workflow tooling with a strong local-first architecture.
 
-## Strategic Feature Pillars
-
-### 1) Intelligent Curation
-
-- **Smart Collections AI** — **RESEARCH** (not release-ready).
-  - Requires CLIP/ResNet-class model assets (`~100MB+`).
-  - Requires GPU acceleration via ONNX inference.
-  - Requires substantial engineering and QA effort (`3-6 months` expected).
-  - Current status: exploration only; no ship claim.
-
 ## Go-to-Market Constraints
 
 - Marketing messaging must only reference implemented capabilities documented in `README.md`.
