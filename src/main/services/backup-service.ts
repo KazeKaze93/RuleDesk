@@ -3,8 +3,15 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import log from "electron-log";
 import { getDatabasePaths } from "../db/paths";
+import { getSqliteInstance } from "../db/client";
 import { maintenanceQueue } from "../db/maintenance-queue";
 import { getBackupRetention } from "../lib/backup-retention";
+import {
+  buildAutoBackupFilename,
+  createConsistentBackup,
+  isAutoBackupFilename,
+} from "../lib/database-backup";
+import { getBackupSidecarPath } from "../lib/backup-sidecar";
 import type { SyncService } from "./sync-service";
 
 export type AutoBackupInterval = "never" | "daily" | "weekly";
@@ -18,7 +25,6 @@ const AUTO_BACKUP_INTERVAL_MS: Record<Exclude<AutoBackupInterval, "never">, numb
   daily: 24 * 60 * 60 * 1000,
   weekly: 7 * 24 * 60 * 60 * 1000,
 };
-const AUTO_BACKUP_FILE_REGEX = /^data\.backup\.\d{4}-\d{2}-\d{2}\.bin$/;
 
 type BackupStoreContract = {
   get<K extends keyof BackupStoreSchema>(key: K): BackupStoreSchema[K];
@@ -62,13 +68,6 @@ function getBackupStore(): BackupStoreContract {
   }
   return store;
 }
-
-const getDateStamp = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
 
 export class BackupService {
   private readonly syncService: SyncService;
@@ -116,11 +115,12 @@ export class BackupService {
 
     const { dbPath } = getDatabasePaths();
     const dbDirectory = path.dirname(dbPath);
-    const backupFilename = `data.backup.${getDateStamp(new Date(now))}.bin`;
+    const backupFilename = buildAutoBackupFilename(new Date(now));
     const backupPath = path.join(dbDirectory, backupFilename);
 
     try {
-      fs.copyFileSync(dbPath, backupPath);
+      const sqlite = getSqliteInstance();
+      createConsistentBackup(sqlite, backupPath);
       backupStore.set("lastAutoBackupAt", now);
       this.cleanupOldAutoBackups(dbDirectory);
       log.info(`[BackupService] Auto-backup created at ${backupPath}`);
@@ -132,9 +132,11 @@ export class BackupService {
   private cleanupOldAutoBackups(backupDirectory: string): void {
     try {
       const retention = getBackupRetention();
+      // Counts both legacy `.bin` and new `.ruledesk-backup-auto-*.db` so neither
+      // accumulates forever after the format switch nor gets mass-deleted.
       const autoBackups = fs
         .readdirSync(backupDirectory)
-        .filter((filename) => AUTO_BACKUP_FILE_REGEX.test(filename))
+        .filter((filename) => isAutoBackupFilename(filename))
         .sort((left, right) => left.localeCompare(right));
 
       if (autoBackups.length <= retention) {
@@ -146,6 +148,7 @@ export class BackupService {
         const fullPath = path.join(backupDirectory, filename);
         try {
           fs.rmSync(fullPath, { force: true });
+          fs.rmSync(getBackupSidecarPath(fullPath), { force: true });
           log.info(`[BackupService] Deleted old auto-backup: ${filename}`);
         } catch (deleteError) {
           // Non-fatal: continue pruning remaining files (mirrors manual backup path)

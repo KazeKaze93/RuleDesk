@@ -987,11 +987,25 @@ The application provides built-in backup functionality:
 
 1. **Manual Backup:** Use `window.api.createBackup()` or the Backup Controls UI in **Settings**
 2. **Backup Location:** Backups are stored in the user data directory with timestamped filenames
-   - Manual backup pattern: `.ruledesk-backup-<timestamp>.db`
-   - Auto-backup pattern: `data.backup.YYYY-MM-DD.bin`
-3. **Backup Format:** Full SQLite database copy (via `VACUUM INTO`)
-4. **Rotation:** After a successful backup, older files matching the backup name prefix are deleted so only the most recent `backupRetention` copies remain. `backupRetention` is stored in `settings` and clamped to `1..20` by Main Process validation.
-5. **Optional total-size cap (env):** If `BACKUP_RETENTION_MAX_TOTAL_MB` is set to a positive number, backup cleanup additionally prunes oldest files until total backup size is under the configured threshold. `runningTotal` only counts retained files. If the newest backup alone exceeds the cap, it is still kept so at least one backup always survives.
+   - **Unified format (current):** `.ruledesk-backup-<ISO-timestamp>.db` (manual) and `.ruledesk-backup-auto-YYYY-MM-DD.db` (auto)
+   - **Legacy auto format (still restorable / pruned):** `data.backup.YYYY-MM-DD.bin`
+3. **Backup Format:** Consistent SQLite snapshot via `VACUUM INTO` (shared helper `createConsistentBackup` in `src/main/lib/database-backup.ts`). Both manual and auto paths use this — not a hot `copyFileSync` of the live WAL main file.
+4. **Settings sidecar:** Both paths write `<backup>.settings.json` via `writeBackupSidecar` immediately after a successful `VACUUM INTO`.
+5. **Rotation:** Retention stays **separate** for auto vs manual (same `settings.backupRetention` count, different filename matchers). Auto cleanup recognizes both legacy `.bin` and new `-auto-*.db` so neither piles up forever after the format switch nor gets mass-deleted. Manual cleanup matches only `.ruledesk-backup-*.db` excluding the `-auto-` infix.
+6. **Optional total-size cap (env):** If `BACKUP_RETENTION_MAX_TOTAL_MB` is set to a positive number, **manual** backup cleanup additionally prunes oldest files until total backup size is under the configured threshold. `runningTotal` only counts retained files. If the newest backup alone exceeds the cap, it is still kept so at least one backup always survives.
+7. **Default schedule:** `autoBackupInterval` defaults to `"never"` (opt-in). Changing the default is a separate product step after the backup→restore path is proven.
+
+**Guarantees:**
+
+- Auto and manual backups are transactionally consistent online snapshots (`VACUUM INTO`), not racy copies of `data.bin` alone.
+- Restore dialog accepts `.db`, `.sqlite`, and legacy `.bin` (extension is UX only; `PRAGMA integrity_check` is the validity gate).
+- On restore, live DB/WAL/SHM are moved to `.bak` first; `.bak` is deleted **only after** successful `initializeDatabase()` + DI re-registration. If reinit fails, rollback renames `.bak` back.
+
+**Known limitations:**
+
+- `VACUUM INTO` is slower than a bare file copy (full consistent rewrite). Acceptable trade-off for correctness; first auto-backup after enabling the schedule may take longer on large DBs.
+- Auto-backup still uses lightweight TOCTOU guards (`getIsSyncing` / `maintenanceQueue.isProcessing`) rather than a full exclusive lock.
+- Backups still live under the same userData directory as the live DB (relocation is a separate task).
 
 **Example:**
 
@@ -1007,9 +1021,9 @@ if (result.success) {
 **Using the Application:**
 
 1. Use `window.api.restoreBackup()` or the Backup Controls UI component
-2. Select a backup file from the file dialog
+2. Select a backup file from the file dialog (`.db` / `.sqlite` / legacy `.bin`)
 3. Database integrity check runs automatically before restore
-4. Application window reloads after successful restore
+4. Application continues on the restored DB after successful reinit (`.bak` then removed)
 
 **Manual Recovery:**
 
@@ -1020,7 +1034,7 @@ If the database becomes corrupted and you need to restore manually:
 3. Copy the backup file to replace `data.bin`
 4. Restart the application (migrations will run automatically)
 
-**Note:** The restore process includes automatic integrity checks using `PRAGMA integrity_check` before replacing the database. If integrity check fails, the restore is rolled back and original database is preserved.
+**Note:** The restore process includes automatic integrity checks using `PRAGMA integrity_check` before replacing the database. If integrity check or reinit fails, the restore is rolled back and the original database is preserved via `.bak`.
 
 ### User-visible DB Maintenance (VACUUM)
 
