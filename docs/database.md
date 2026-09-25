@@ -782,7 +782,15 @@ This creates a new migration file in the `drizzle/` directory.
 
 ### Running Migrations
 
-Migrations are automatically run on application startup via `initializeDatabase()` in `src/main/db/client.ts`.
+Migrations are automatically run on application startup via `initializeDatabase()` in `src/main/db/client.ts`, using the manual runner in `src/main/db/migration-runner.ts` (not Drizzle's stock `migrate()` for the normal path).
+
+**Safety guarantees on upgrade:**
+
+1. **Pre-migration snapshot** — If `__drizzle_migrations` already has rows and the journal still has unapplied tags, `VACUUM INTO` writes `${dbPath}.pre-migration-snapshot.bin` **before** applying any pending file. Fresh installs (empty migration table) skip the snapshot. The snapshot is deleted only after a fully successful `initializeDatabase()` (migrations + FTS trigger ensure + stale sync reset). On failure it remains on disk for recovery.
+2. **One file = one transaction** — Each migration file runs inside `better-sqlite3`'s `sqlite.transaction()`. Failure rolls back that file entirely (including the `__drizzle_migrations` insert). There is no `isAlreadyExists` soft-skip that stamps a half-applied file as done.
+3. **Idempotent SQL / gated ALTER** — `CREATE TABLE` / `CREATE INDEX` / `CREATE TRIGGER` use `IF NOT EXISTS` where applicable. `ALTER TABLE … ADD COLUMN` is gated with `PRAGMA table_info` (SQLite has no `IF NOT EXISTS` for ADD COLUMN); only the missing column statements run.
+
+Special tags `0000_blue_lorna_dane`, `0010_add_fts5_cache_invalidation`, and `0011_add_fts5_count_meta` keep their historical special-case bodies (skip if `artists` exists; create only the meta tables, never the broken virtual-table triggers), still wrapped in a transaction.
 
 **Manual execution:**
 

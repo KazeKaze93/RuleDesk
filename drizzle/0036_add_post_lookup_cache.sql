@@ -1,4 +1,4 @@
-CREATE TABLE `post_lookup_cache` (
+CREATE TABLE IF NOT EXISTS `post_lookup_cache` (
 	`provider` text NOT NULL,
 	`post_id` integer NOT NULL,
 	`status` text NOT NULL,
@@ -7,4 +7,4 @@ CREATE TABLE `post_lookup_cache` (
 	PRIMARY KEY(`provider`, `post_id`)
 );
 
-CREATE INDEX `post_lookup_cache_resolved_at_idx` ON `post_lookup_cache` (`resolved_at`);
+CREATE INDEX IF NOT EXISTS `post_lookup_cache_resolved_at_idx` ON `post_lookup_cache` (`resolved_at`);

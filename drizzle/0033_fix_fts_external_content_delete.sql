@@ -27,11 +27,11 @@
 DROP TRIGGER IF EXISTS posts_fts_update;
 DROP TRIGGER IF EXISTS posts_fts_delete;
 
-CREATE TRIGGER posts_fts_update AFTER UPDATE OF tags ON posts BEGIN
+CREATE TRIGGER IF NOT EXISTS posts_fts_update AFTER UPDATE OF tags ON posts BEGIN
   INSERT INTO posts_fts(posts_fts, rowid, tags) VALUES('delete', old.id, old.tags);
   INSERT INTO posts_fts(rowid, tags) VALUES (new.id, new.tags);
 END;
 
-CREATE TRIGGER posts_fts_delete AFTER DELETE ON posts BEGIN
+CREATE TRIGGER IF NOT EXISTS posts_fts_delete AFTER DELETE ON posts BEGIN
   INSERT INTO posts_fts(posts_fts, rowid, tags) VALUES('delete', old.id, old.tags);
 END;

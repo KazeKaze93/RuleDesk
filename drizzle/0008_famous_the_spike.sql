@@ -1,4 +1,4 @@
-CREATE TABLE `playlist_entries` (
+CREATE TABLE IF NOT EXISTS `playlist_entries` (
 	`playlist_id` integer NOT NULL,
 	`post_id` integer NOT NULL,
 	`added_at` integer NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE `playlist_entries` (
 	FOREIGN KEY (`post_id`) REFERENCES `posts`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `playlists` (
+CREATE TABLE IF NOT EXISTS `playlists` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
 	`is_smart` integer DEFAULT false NOT NULL,
@@ -16,10 +16,10 @@ CREATE TABLE `playlists` (
 	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
-CREATE INDEX `playlist_entries_playlist_id_idx` ON `playlist_entries` (`playlist_id`);--> statement-breakpoint
-CREATE INDEX `playlist_entries_post_id_idx` ON `playlist_entries` (`post_id`);--> statement-breakpoint
-CREATE INDEX `playlist_entries_playlist_post_idx` ON `playlist_entries` (`playlist_id`,`post_id`);--> statement-breakpoint
-CREATE INDEX `playlist_entries_added_at_idx` ON `playlist_entries` (`added_at`);--> statement-breakpoint
-CREATE INDEX `playlists_createdAt_idx` ON `playlists` (`created_at`);--> statement-breakpoint
-CREATE INDEX `playlists_isSmart_idx` ON `playlists` (`is_smart`);--> statement-breakpoint
-CREATE INDEX `posts_artist_media_type_idx` ON `posts` (`artist_id`,`media_type`);
+CREATE INDEX IF NOT EXISTS `playlist_entries_playlist_id_idx` ON `playlist_entries` (`playlist_id`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `playlist_entries_post_id_idx` ON `playlist_entries` (`post_id`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `playlist_entries_playlist_post_idx` ON `playlist_entries` (`playlist_id`,`post_id`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `playlist_entries_added_at_idx` ON `playlist_entries` (`added_at`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `playlists_createdAt_idx` ON `playlists` (`created_at`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `playlists_isSmart_idx` ON `playlists` (`is_smart`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `posts_artist_media_type_idx` ON `posts` (`artist_id`,`media_type`);
