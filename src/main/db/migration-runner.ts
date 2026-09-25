@@ -60,6 +60,51 @@ export function hasPendingMigrations(
 }
 
 /**
+ * Downgrade / future-schema guard.
+ *
+ * Source of truth: any hash in `__drizzle_migrations` that is absent from this
+ * build's journal means a newer app (or restore from a newer backup) already
+ * wrote the DB. Refuse to open — do not migrate, snapshot, or mutate.
+ *
+ * Not based on PRAGMA user_version (legacy DBs are all 0; hashing avoids a
+ * bootstrap special-case).
+ */
+export function assertNoUnknownMigrationHashes(
+  sqlite: InstanceType<typeof Database>,
+  migrationEntries: readonly MigrationJournalEntry[]
+): void {
+  const knownTags = new Set(migrationEntries.map((entry) => entry.tag));
+  // boundary: better-sqlite3 raw row
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
+  const rows = sqlite
+    .prepare("SELECT hash FROM __drizzle_migrations")
+    .all() as Array<{ hash: string }>;
+
+  for (const row of rows) {
+    if (!knownTags.has(row.hash)) {
+      throw new Error(
+        `Database was migrated by a newer RuleDesk version (unknown migration: ${row.hash}). ` +
+          `Install that newer version, or restore a backup created with this version. ` +
+          `The database file was not modified.`
+      );
+    }
+  }
+}
+
+/**
+ * Informational only: stamps PRAGMA user_version = journal length for support
+ * tooling. Never used for downgrade/upgrade decisions (see
+ * assertNoUnknownMigrationHashes).
+ */
+export function stampUserVersion(
+  sqlite: InstanceType<typeof Database>,
+  migrationCount: number
+): void {
+  sqlite.pragma(`user_version = ${migrationCount}`);
+  log.info(`[DB] PRAGMA user_version set to ${migrationCount} (informational)`);
+}
+
+/**
  * Consistent online snapshot via VACUUM INTO (not a hot file copy).
  * Writes through a temp path then renames over any prior snapshot.
  */

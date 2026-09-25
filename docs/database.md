@@ -792,6 +792,17 @@ Migrations are automatically run on application startup via `initializeDatabase(
 
 Special tags `0000_blue_lorna_dane`, `0010_add_fts5_cache_invalidation`, and `0011_add_fts5_count_meta` keep their historical special-case bodies (skip if `artists` exists; create only the meta tables, never the broken virtual-table triggers), still wrapped in a transaction.
 
+**Downgrade / future-schema guard:**
+
+- Before applying migrations, `assertNoUnknownMigrationHashes` compares every hash in `__drizzle_migrations` to this build's journal tags. An unknown hash means a **newer** RuleDesk already migrated (or restored) this DB — startup throws into the existing `dialog.showErrorBox` path and **does not** write snapshots, migrations, or other DB changes.
+- This is hash-based on purpose, not `PRAGMA user_version`. Existing installs all have `user_version = 0`; using the pragma as the gate would need a one-shot bootstrap special-case. The pragma is still stamped to `journal.length` after a successful init as an **informational** note for support tooling only — never for open/block decisions.
+
+**Legacy path migrate (`metadata.db` → `data.bin`):**
+
+- Implemented in `src/main/db/legacy-database-migrate.ts`. Before any rename: open the legacy file, `PRAGMA wal_checkpoint(TRUNCATE)`, close — so committed WAL data lives in the main file.
+- Move via `rename`; on `EXDEV` (cross-volume): `copyFile` → verify same size → only then `unlink` source.
+- Checkpoint failure: leave legacy files untouched, log, skip that candidate (no half-moved DB). An empty stub `data.bin` from a prior soft failure is removed so the next launch can retry.
+
 **Manual execution:**
 
 ```bash

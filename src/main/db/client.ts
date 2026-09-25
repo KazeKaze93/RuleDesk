@@ -11,13 +11,16 @@ import { getDatabasePaths, getLegacyDatabasePaths } from "./paths";
 import { SQLITE_BUSY_TIMEOUT_MS } from "../config/constants";
 import { ensureFtsTriggers, rebuildFtsIndex } from "./fts-triggers";
 import {
+  assertNoUnknownMigrationHashes,
   createPreMigrationSnapshot,
   deletePreMigrationSnapshot,
   ensureDrizzleMigrationsTable,
   hasPendingMigrations,
   readMigrationJournal,
   runManualMigrations,
+  stampUserVersion,
 } from "./migration-runner";
+import { migrateLegacyDatabase } from "./legacy-database-migrate";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -64,53 +67,13 @@ function recoverAfterRecreatedFtsTriggers(
   }
 }
 
-async function moveFileIfExists(sourcePath: string, targetPath: string): Promise<boolean> {
-  try {
-    await fs.promises.access(sourcePath);
-  } catch {
-    return false;
-  }
-
-  await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
-  await fs.promises.rename(sourcePath, targetPath);
-  return true;
-}
-
-async function removeDirectoryIfEmpty(dirPath: string): Promise<void> {
-  try {
-    const entries = await fs.promises.readdir(dirPath);
-    if (entries.length === 0) {
-      await fs.promises.rmdir(dirPath);
-    }
-  } catch {
-    // Ignore cleanup errors - non-critical.
-  }
-}
-
 async function migrateLegacyDatabaseIfNeeded(newDbPath: string): Promise<void> {
-  if (fs.existsSync(newDbPath)) {
-    return;
-  }
-
-  const legacyPaths = getLegacyDatabasePaths();
-
-  for (const legacyPath of legacyPaths) {
-    if (!fs.existsSync(legacyPath.dbPath)) {
-      continue;
-    }
-
-    const movedDb = await moveFileIfExists(legacyPath.dbPath, newDbPath);
-    const movedWal = await moveFileIfExists(`${legacyPath.dbPath}-wal`, `${newDbPath}-wal`);
-    const movedShm = await moveFileIfExists(`${legacyPath.dbPath}-shm`, `${newDbPath}-shm`);
-
-    logger.info(
-      `[DB] Migrated legacy database from ${legacyPath.userDataDirName} to new location. ` +
-        `(db:${movedDb}, wal:${movedWal}, shm:${movedShm})`
-    );
-
-    await removeDirectoryIfEmpty(legacyPath.userDataDir);
-    break;
-  }
+  const legacyCandidates = getLegacyDatabasePaths().map((legacyPath) => ({
+    userDataDirName: legacyPath.userDataDirName,
+    userDataDir: legacyPath.userDataDir,
+    dbPath: legacyPath.dbPath,
+  }));
+  await migrateLegacyDatabase({ newDbPath, legacyCandidates });
 }
 
 export async function initializeDatabase(): Promise<AppDatabase> {
@@ -202,6 +165,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
   dbInstance = drizzle(sqlite, { schema }) as AppDatabase;
 
   let preMigrationSnapshotPath: string | null = null;
+  let stampedMigrationCount: number | null = null;
 
   try {
     logger.info("[DB] Running migrations...");
@@ -257,6 +221,10 @@ export async function initializeDatabase(): Promise<AppDatabase> {
 
           ensureDrizzleMigrationsTable(sqliteInstance);
 
+          // Refuse DBs stamped by a newer app (unknown journal hashes) before
+          // any snapshot or migration writes.
+          assertNoUnknownMigrationHashes(sqliteInstance, migrationEntries);
+
           // Snapshot only on upgrade (existing migration history + pending tags).
           // Fresh install: empty __drizzle_migrations → no snapshot.
           if (hasPendingMigrations(sqliteInstance, migrationEntries)) {
@@ -270,6 +238,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
           }
 
           runManualMigrations(sqliteInstance, migrationsFolder, migrationEntries);
+          stampedMigrationCount = migrationEntries.length;
           
           resolve();
         } catch (error) {
@@ -288,6 +257,11 @@ export async function initializeDatabase(): Promise<AppDatabase> {
       recoverAfterRecreatedFtsTriggers(sqlite, recreated);
     }
     resetStaleSyncingArtists(sqlite);
+
+    // Informational only — not used for downgrade/upgrade decisions.
+    if (stampedMigrationCount !== null) {
+      stampUserVersion(sqlite, stampedMigrationCount);
+    }
 
     // Delete snapshot only after the full successful init path (migrations + FTS + reset).
     // On any throw above, catch must leave the snapshot on disk.
