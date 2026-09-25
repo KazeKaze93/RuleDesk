@@ -186,8 +186,8 @@ describe("BackupService auto-backup default + opt-in prompt", () => {
   });
 
   afterEach(() => {
-    wipeSettingsFile();
     resetBackupStoreForTests();
+    fs.rmSync(testUserDataDir, { recursive: true, force: true });
   });
 
   it("new install (no settings file): defaults to daily and does not show prompt", () => {
