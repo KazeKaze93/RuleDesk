@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type Database from "better-sqlite3";
 import { BACKUP_FILE_PREFIX } from "../db/paths";
 import { writeBackupSidecar } from "./backup-sidecar";
@@ -48,6 +50,51 @@ export function buildAutoBackupFilename(date: Date): string {
 export function buildManualBackupFilename(date: Date = new Date()): string {
   const timestamp = date.toISOString().replace(/[:.]/g, "-");
   return `${BACKUP_FILE_PREFIX}-${timestamp}.db`;
+}
+
+export type AutoBackupFileAge = {
+  filename: string;
+  mtimeMs: number;
+};
+
+/**
+ * List auto-backup files (legacy `.bin` + new `-auto-*.db`) oldest-first by
+ * filesystem mtime. Do NOT sort by filename: `.ruledesk-backup-auto-*` sorts
+ * before `data.backup.*` lexicographically, which would delete newest first.
+ */
+export function listAutoBackupFilesOldestFirst(
+  backupDirectory: string
+): AutoBackupFileAge[] {
+  return fs
+    .readdirSync(backupDirectory)
+    .filter((filename) => isAutoBackupFilename(filename))
+    .map((filename) => {
+      const fullPath = path.join(backupDirectory, filename);
+      const mtimeMs = fs.statSync(fullPath).mtimeMs;
+      return { filename, mtimeMs };
+    })
+    .sort((left, right) => {
+      if (left.mtimeMs !== right.mtimeMs) {
+        return left.mtimeMs - right.mtimeMs;
+      }
+      return left.filename.localeCompare(right.filename);
+    });
+}
+
+/**
+ * Filenames that exceed retention when `filesOldestFirst` is already ordered
+ * by age (oldest at index 0).
+ */
+export function selectAutoBackupFilenamesToDelete(
+  filesOldestFirst: readonly AutoBackupFileAge[],
+  retention: number
+): string[] {
+  if (filesOldestFirst.length <= retention) {
+    return [];
+  }
+  return filesOldestFirst
+    .slice(0, filesOldestFirst.length - retention)
+    .map((file) => file.filename);
 }
 
 /**

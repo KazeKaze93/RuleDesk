@@ -18,6 +18,8 @@ import {
   isAutoBackupFilename,
   isManualBackupFilename,
   isLegacyAutoBackupFilename,
+  listAutoBackupFilesOldestFirst,
+  selectAutoBackupFilenamesToDelete,
 } from "@/main/lib/database-backup";
 import { restoreDatabaseFromBackup } from "@/main/lib/database-restore";
 import { writeBackupSidecar } from "@/main/lib/backup-sidecar";
@@ -138,6 +140,56 @@ describe("backup/restore consistency", () => {
     expect(buildAutoBackupFilename(new Date("2026-09-25T12:00:00Z"))).toBe(
       ".ruledesk-backup-auto-2026-09-25.db"
     );
+  });
+
+  it("mixed legacy+new auto retention deletes oldest by mtime, not localeCompare", () => {
+    const tempDir = createTempDir("ruledesk-backup-mixed-retention-");
+    tempDirs.push(tempDir);
+
+    // Lexicographically: dotted new names sort BEFORE legacy `data.*`.
+    // By real age: legacy files are older; new auto files are newer.
+    const legacyOld = "data.backup.2026-01-01.bin";
+    const legacyNewer = "data.backup.2026-01-02.bin";
+    const autoOld = ".ruledesk-backup-auto-2026-06-01.db";
+    const autoMid = ".ruledesk-backup-auto-2026-06-02.db";
+    const autoNewest = ".ruledesk-backup-auto-2026-06-03.db";
+
+    const dayMs = 24 * 60 * 60 * 1000;
+    const base = Date.UTC(2026, 0, 1);
+    const ages: Array<{ name: string; mtimeMs: number }> = [
+      { name: legacyOld, mtimeMs: base },
+      { name: legacyNewer, mtimeMs: base + dayMs },
+      { name: autoOld, mtimeMs: base + 2 * dayMs },
+      { name: autoMid, mtimeMs: base + 3 * dayMs },
+      { name: autoNewest, mtimeMs: base + 4 * dayMs },
+    ];
+
+    for (const file of ages) {
+      const fullPath = path.join(tempDir, file.name);
+      fs.writeFileSync(fullPath, "backup-fixture");
+      const seconds = file.mtimeMs / 1000;
+      fs.utimesSync(fullPath, seconds, seconds);
+    }
+
+    // Broken localeCompare order would delete the three newest (dotted names first).
+    const lexicalOrder = [...ages.map((f) => f.name)].sort((a, b) =>
+      a.localeCompare(b)
+    );
+    expect(lexicalOrder.slice(0, 2)).toEqual([autoOld, autoMid]);
+
+    const oldestFirst = listAutoBackupFilesOldestFirst(tempDir);
+    expect(oldestFirst.map((f) => f.filename)).toEqual([
+      legacyOld,
+      legacyNewer,
+      autoOld,
+      autoMid,
+      autoNewest,
+    ]);
+
+    const toDelete = selectAutoBackupFilenamesToDelete(oldestFirst, 3);
+    expect(toDelete.sort()).toEqual([legacyOld, legacyNewer].sort());
+    expect(toDelete).not.toContain(autoNewest);
+    expect(toDelete).not.toContain(autoMid);
   });
 
   it("VACUUM INTO backup then restore recovers artists/settings bit-for-bit for key rows", async () => {

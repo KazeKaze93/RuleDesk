@@ -9,7 +9,8 @@ import { getBackupRetention } from "../lib/backup-retention";
 import {
   buildAutoBackupFilename,
   createConsistentBackup,
-  isAutoBackupFilename,
+  listAutoBackupFilesOldestFirst,
+  selectAutoBackupFilenamesToDelete,
 } from "../lib/database-backup";
 import { getBackupSidecarPath } from "../lib/backup-sidecar";
 import type { SyncService } from "./sync-service";
@@ -132,18 +133,14 @@ export class BackupService {
   private cleanupOldAutoBackups(backupDirectory: string): void {
     try {
       const retention = getBackupRetention();
-      // Counts both legacy `.bin` and new `.ruledesk-backup-auto-*.db` so neither
-      // accumulates forever after the format switch nor gets mass-deleted.
-      const autoBackups = fs
-        .readdirSync(backupDirectory)
-        .filter((filename) => isAutoBackupFilename(filename))
-        .sort((left, right) => left.localeCompare(right));
+      // Counts both legacy `.bin` and new `.ruledesk-backup-auto-*.db`, ordered by
+      // mtime (not localeCompare — dotted new names sort before legacy `data.*`).
+      const autoBackups = listAutoBackupFilesOldestFirst(backupDirectory);
+      const filesToDelete = selectAutoBackupFilenamesToDelete(
+        autoBackups,
+        retention
+      );
 
-      if (autoBackups.length <= retention) {
-        return;
-      }
-
-      const filesToDelete = autoBackups.slice(0, autoBackups.length - retention);
       for (const filename of filesToDelete) {
         const fullPath = path.join(backupDirectory, filename);
         try {
