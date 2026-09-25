@@ -500,6 +500,15 @@ The built binaries will be available in the `release/` directory. The exact outp
 
 Local packaging scripts: `npm run dist:win`, `npm run dist:linux` (after `npm run build`). `npm run dist` defaults to Windows zip on the current machine.
 
+**⚠️ Manual downgrade (ZIP overwrite):** Do not unpack an older GitHub Releases ZIP over a newer install without checking where your library lives. Older builds look in a different folder and may silently create an empty database beside your real one.
+
+| Data path change | Unsafe to run below | Notes |
+|------------------|---------------------|--------|
+| Electron default → `.rdcache` | below **v17.0.0** (e.g. v16.2.0 and older) | First release with `.rdcache` was `v17.0.0`. |
+| `.rdcache` → `RuleDesk-Data` | below **`<next release that includes RuleDesk-Data — fill in when tagging>`** | Relocate is on `master` but **not in any `v*` tag yet**. Replace the placeholder when cutting that release. |
+
+If you already rolled back: stop, use backups under `RuleDesk-Backups`, or contact support before continuing. Maintainer detail: [docs/database.md — Downgrade limitation](./docs/database.md#database-location).
+
 **Release hygiene:** Production builds disable source maps (`electron.vite.config.ts`). `electron-builder` excludes `.env*`, databases, logs, tests, `.cursorrules`, `.ai/`, and `*.map` from `app.asar`. CI runs `npm run check:release-artifacts` on every packaged build before upload. User API keys are never bundled — they are entered at runtime and stored encrypted in the local user data directory (`RuleDesk-Data`), not in the installer.
 
 ### Quality Checks
