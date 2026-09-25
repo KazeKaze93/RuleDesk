@@ -134,8 +134,14 @@ export function databaseHasUserContent(
     }
 
     if (tableExists(sqlite, "settings")) {
-      // Non-default settings = user has progressed past a blank install
-      // (AgeGate sets is_adult_verified + tos_accepted_at before any artists).
+      // Non-default vs schema.ts defaults only. Fields checked:
+      //   is_adult_confirmed / is_adult_verified default false → nonzero = user
+      //   tos_accepted_at default null → IS NOT NULL (AgeGate)
+      //   encrypted_api_key / user_id default '' → non-empty = user
+      //   theme default 'system' → anything else = user
+      //   proxy_url default null → IS NOT NULL = user
+      // Deliberately omitted: is_safe_mode (default true) — checking
+      // "!== false" would treat every blank install as customized.
       const customized = sqlite
         .prepare(
           `SELECT 1 AS hit FROM settings WHERE
