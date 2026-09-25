@@ -9,7 +9,10 @@ import {
   mkdirSync,
   writeFileSync,
 } from "node:fs";
-import { USER_DATA_DIR_NAME } from "./db/paths";
+import {
+  USER_DATA_DIR_NAME,
+  getNeutralDataRoot,
+} from "./db/paths";
 
 const isTestMode = process.env.NODE_ENV === "test";
 
@@ -52,11 +55,7 @@ function configureUserDataPath(): void {
 
   const legacyUserDataDir = app.getPath("userData");
 
-  const neutralRoot =
-    process.platform === "win32"
-      ? process.env.LOCALAPPDATA || app.getPath("appData")
-      : app.getPath("appData");
-  const neutralUserDataPath = path.join(neutralRoot, USER_DATA_DIR_NAME);
+  const neutralUserDataPath = path.join(getNeutralDataRoot(), USER_DATA_DIR_NAME);
 
   mkdirSync(neutralUserDataPath, { recursive: true });
 

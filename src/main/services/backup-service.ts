@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import log from "electron-log";
-import { getDatabasePaths } from "../db/paths";
+import { getBackupDirectory } from "../db/paths";
 import { getSqliteInstance } from "../db/client";
 import { maintenanceQueue } from "../db/maintenance-queue";
 import { getBackupRetention } from "../lib/backup-retention";
@@ -114,16 +114,15 @@ export class BackupService {
       return;
     }
 
-    const { dbPath } = getDatabasePaths();
-    const dbDirectory = path.dirname(dbPath);
+    const backupDir = getBackupDirectory();
     const backupFilename = buildAutoBackupFilename(new Date(now));
-    const backupPath = path.join(dbDirectory, backupFilename);
+    const backupPath = path.join(backupDir, backupFilename);
 
     try {
       const sqlite = getSqliteInstance();
       createConsistentBackup(sqlite, backupPath);
       backupStore.set("lastAutoBackupAt", now);
-      this.cleanupOldAutoBackups(dbDirectory);
+      this.cleanupOldAutoBackups(backupDir);
       log.info(`[BackupService] Auto-backup created at ${backupPath}`);
     } catch (error) {
       log.error("[BackupService] Failed to create auto-backup:", error);

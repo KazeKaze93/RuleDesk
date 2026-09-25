@@ -1,9 +1,16 @@
 import { app } from "electron";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 
 export const DB_FILE_NAME = "data.bin";
 export const LEGACY_DB_FILE_NAME = "metadata.db";
 export const USER_DATA_DIR_NAME = ".rdcache";
+/**
+ * Sibling of `.rdcache` under the neutral root — human-readable, not a cache name.
+ * Must NEVER match any entry in `LEGACY_USER_DATA_DIR_NAMES` (those folders still
+ * hold legacy `metadata.db` candidates).
+ */
+export const BACKUP_DIR_NAME = "RuleDesk-Backups";
 export const LEGACY_USER_DATA_DIR_NAMES = ["RuleDesk", "NSFW Booru Client"] as const;
 export const BACKUP_FILE_PREFIX = ".ruledesk-backup";
 
@@ -20,6 +27,31 @@ export type LegacyDatabasePaths = DatabasePaths & {
 
 function getSqliteAuxPath(dbPath: string, suffix: "-wal" | "-shm"): string {
   return `${dbPath}${suffix}`;
+}
+
+/**
+ * Root that holds `.rdcache` (live DB) and `RuleDesk-Backups` as siblings.
+ * Same win32/appData rules as `bootstrap-user-data.ts`.
+ * In test mode, stay under the temp `userData` so CI never writes to real disks.
+ */
+export function getNeutralDataRoot(): string {
+  if (process.env.NODE_ENV === "test") {
+    return app.getPath("userData");
+  }
+  if (process.platform === "win32") {
+    return process.env.LOCALAPPDATA || app.getPath("appData");
+  }
+  return app.getPath("appData");
+}
+
+/**
+ * Directory for auto/manual/legacy backup files (and their `.settings.json` sidecars).
+ * Creates the directory on first use. Live `data.bin` stays in `.rdcache`.
+ */
+export function getBackupDirectory(): string {
+  const dir = path.join(getNeutralDataRoot(), BACKUP_DIR_NAME);
+  mkdirSync(dir, { recursive: true });
+  return dir;
 }
 
 export function getDatabasePaths(): DatabasePaths {

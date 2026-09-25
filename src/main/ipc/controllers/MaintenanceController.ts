@@ -17,7 +17,7 @@ import { maintenanceQueue } from "../../db/maintenance-queue";
 import type { SyncService } from "../../services/sync-service";
 import type { BackupService, AutoBackupInterval } from "../../services/backup-service";
 import type { MaintenanceService } from "../../services/MaintenanceService";
-import { getDatabasePaths } from "../../db/paths";
+import { getBackupDirectory, getDatabasePaths } from "../../db/paths";
 import {
   getBackupSidecarPath,
   logRestoredSettingsSnapshot,
@@ -259,21 +259,21 @@ export class MaintenanceController extends BaseController {
     // Execute backup operation in maintenance queue to prevent race conditions
     return maintenanceQueue.execute(async () => {
       try {
-      const backupDir = app.getPath("userData");
+      const backupDir = getBackupDirectory();
       const backupPath = path.join(backupDir, buildManualBackupFilename());
 
-      // Ensure backup directory exists
+      // Ensure backup directory exists (getBackupDirectory already mkdir's; keep access check for races)
       try {
         await fs.promises.access(backupDir);
       } catch {
         await fs.promises.mkdir(backupDir, { recursive: true });
       }
 
-      // Validate path is absolute and within user data directory
+      // Validate path is absolute and within the backup directory
       const normalizedBackupPath = path.resolve(backupPath);
       const normalizedBackupDir = path.resolve(backupDir);
       if (!normalizedBackupPath.startsWith(normalizedBackupDir)) {
-        throw new Error("Backup path validation failed: path outside user data directory");
+        throw new Error("Backup path validation failed: path outside backup directory");
       }
 
       // Send loading event before VACUUM (which freezes the UI)
@@ -411,6 +411,7 @@ export class MaintenanceController extends BaseController {
 
     const { canceled, filePaths } = await dialog.showOpenDialog(this.mainWindow, {
       title: "Select backup file",
+      defaultPath: getBackupDirectory(),
       // `.bin` = legacy auto-backups; `.db`/`.sqlite` = unified + manual format.
       // Integrity_check is the real validity gate — extensions are UX only.
       filters: [
