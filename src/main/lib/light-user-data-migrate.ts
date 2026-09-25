@@ -4,7 +4,7 @@ import {
   existsSync,
   mkdirSync,
 } from "node:fs";
-import { DB_FILE_NAME } from "../db/paths";
+import { DB_FILE_NAME, LEGACY_DB_FILE_NAME } from "../db/paths";
 
 /** Chromium / Electron OSCrypt key material; required to decrypt `safeStorage` ciphertext in `data.bin`. */
 export const LOCAL_STATE_FILE_NAME = "Local State";
@@ -18,19 +18,26 @@ function migrateFileIfMissing(sourcePath: string, targetPath: string): void {
   copyFileSync(sourcePath, targetPath);
 }
 
+function sourceHasPendingLegacyDb(sourceUserDataDir: string): boolean {
+  return (
+    existsSync(path.join(sourceUserDataDir, DB_FILE_NAME)) ||
+    existsSync(path.join(sourceUserDataDir, LEGACY_DB_FILE_NAME))
+  );
+}
+
 /**
  * Copy `Local State` so `safeStorage` can decrypt API keys that lived under the prior userData.
  * - Normal: first-write-wins when the target file is absent.
- * - Pending DB migrate: if the target has no `data.bin` yet but a source still has both
- *   `data.bin` and `Local State`, overwrite the target's `Local State`. A failed earlier
- *   launch may have already written a fresh os_crypt key that cannot decrypt the old DB.
+ * - Pending DB migrate: if the target has no `data.bin` yet but a source still has a legacy
+ *   DB (`data.bin` or ancient `metadata.db`) and `Local State`, overwrite the target's
+ *   `Local State`. A failed earlier launch may have already written a fresh os_crypt key
+ *   that cannot decrypt the old DB.
  */
 function migrateLocalStateForPendingDb(
   sourceUserDataDir: string,
   targetUserDataDir: string
 ): void {
   const sourceLocalState = path.join(sourceUserDataDir, LOCAL_STATE_FILE_NAME);
-  const sourceDb = path.join(sourceUserDataDir, DB_FILE_NAME);
   const targetLocalState = path.join(targetUserDataDir, LOCAL_STATE_FILE_NAME);
   const targetDb = path.join(targetUserDataDir, DB_FILE_NAME);
 
@@ -38,7 +45,7 @@ function migrateLocalStateForPendingDb(
     return;
   }
 
-  if (!existsSync(targetDb) && existsSync(sourceDb)) {
+  if (!existsSync(targetDb) && sourceHasPendingLegacyDb(sourceUserDataDir)) {
     mkdirSync(targetUserDataDir, { recursive: true });
     copyFileSync(sourceLocalState, targetLocalState);
     return;

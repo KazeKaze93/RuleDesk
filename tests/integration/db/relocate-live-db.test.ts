@@ -372,6 +372,45 @@ describe("relocate live DB out of .rdcache", () => {
     ).toBe(legacyOsCrypt);
   });
 
+  it("light sidecars: pending metadata.db migrate overwrites stale Local State from Electron-default", () => {
+    const root = createTempDir("ruledesk-relocate-local-state-metadata-");
+    tempDirs.push(root);
+    const productDir = path.join(root, "RuleDesk");
+    const rdcacheDir = path.join(root, LEGACY_NEUTRAL_USER_DATA_DIR_NAME);
+    const liveDir = path.join(root, USER_DATA_DIR_NAME);
+    fs.mkdirSync(productDir, { recursive: true });
+    fs.mkdirSync(rdcacheDir, { recursive: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    const legacyOsCrypt = '{"os_crypt":{"encrypted_key":"ancient-product-key"}}\n';
+    const staleOsCrypt = '{"os_crypt":{"encrypted_key":"fresh-wrong-key"}}\n';
+    fs.writeFileSync(
+      path.join(productDir, LEGACY_DB_FILE_NAME),
+      "ancient-db",
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(productDir, LOCAL_STATE_FILE_NAME),
+      legacyOsCrypt,
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(liveDir, LOCAL_STATE_FILE_NAME),
+      staleOsCrypt,
+      "utf-8"
+    );
+
+    migrateLightUserDataSidecars({
+      rdcacheUserDataDir: rdcacheDir,
+      electronDefaultUserDataDir: productDir,
+      targetUserDataDir: liveDir,
+    });
+
+    expect(
+      fs.readFileSync(path.join(liveDir, LOCAL_STATE_FILE_NAME), "utf-8")
+    ).toBe(legacyOsCrypt);
+  });
+
   it("light sidecars: Local State first-write-wins when target already has data.bin", () => {
     const root = createTempDir("ruledesk-relocate-local-state-stable-");
     tempDirs.push(root);
