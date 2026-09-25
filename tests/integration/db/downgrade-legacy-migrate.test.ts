@@ -356,4 +356,92 @@ describe("downgrade guard and legacy migrate", () => {
       opened.prepare("SELECT name FROM artists WHERE name = ?").get("orphan-me")
     ).toMatchObject({ name: "orphan-me" });
   });
+
+  it("does not delete new DB that has settings/ToS but zero artists when legacy remains", async () => {
+    // Same seam as the orphan recovery test, but after empty migrate the user
+    // already passed AgeGate (tos_accepted_at set) with no artists yet.
+    // artists.count===0 must NOT be treated as a removable stub.
+    const tempDir = createTempDir("ruledesk-legacy-settings-not-stub-");
+    tempDirs.push(tempDir);
+    const legacyDir = path.join(tempDir, "RuleDesk");
+    const newDir = path.join(tempDir, ".rdcache");
+    fs.mkdirSync(legacyDir, { recursive: true });
+    fs.mkdirSync(newDir, { recursive: true });
+
+    const legacyDbPath = path.join(legacyDir, "metadata.db");
+    const newDbPath = path.join(newDir, "data.bin");
+
+    const legacy = new Database(legacyDbPath);
+    legacy.exec(
+      "CREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT); INSERT INTO artists (name) VALUES ('legacy-only');"
+    );
+    legacy.close();
+
+    const first = await migrateLegacyDatabase({
+      newDbPath,
+      legacyCandidates: [
+        {
+          userDataDirName: "RuleDesk",
+          userDataDir: legacyDir,
+          dbPath: legacyDbPath,
+        },
+      ],
+      deps: {
+        openDatabase: () => {
+          throw new Error("transient lock");
+        },
+      },
+    });
+    expect(first.blockedLegacyPath).toBe(legacyDbPath);
+
+    const seeded = new Database(newDbPath);
+    openDbs.push(seeded);
+    const entries = readMigrationJournal(PROJECT_DRIZZLE);
+    expect(entries).not.toBeNull();
+    if (!entries) {
+      throw new Error("journal missing");
+    }
+    ensureDrizzleMigrationsTable(seeded);
+    runManualMigrations(seeded, PROJECT_DRIZZLE, entries);
+    seeded
+      .prepare(
+        `INSERT INTO settings (id, is_adult_verified, tos_accepted_at)
+         VALUES (1, 1, ?)`
+      )
+      .run(Date.now());
+    seeded.close();
+    openDbs.pop();
+
+    const newDbBytesBefore = fs.readFileSync(newDbPath);
+    const legacyBytesBefore = fs.readFileSync(legacyDbPath);
+
+    const second = await migrateLegacyDatabase({
+      newDbPath,
+      legacyCandidates: [
+        {
+          userDataDirName: "RuleDesk",
+          userDataDir: legacyDir,
+          dbPath: legacyDbPath,
+        },
+      ],
+    });
+
+    expect(second.migrated).toBe(false);
+    expect(second.blockedLegacyPath).toBe(legacyDbPath);
+    expect(fs.existsSync(legacyDbPath)).toBe(true);
+    expect(fs.existsSync(newDbPath)).toBe(true);
+    expect(fs.readFileSync(newDbPath)).toEqual(newDbBytesBefore);
+    expect(fs.readFileSync(legacyDbPath)).toEqual(legacyBytesBefore);
+
+    const probe = new Database(newDbPath, { readonly: true });
+    openDbs.push(probe);
+    expect(
+      probe.prepare("SELECT COUNT(*) AS c FROM artists").get()
+    ).toMatchObject({ c: 0 });
+    expect(
+      probe
+        .prepare("SELECT tos_accepted_at IS NOT NULL AS has_tos FROM settings WHERE id = 1")
+        .get()
+    ).toMatchObject({ has_tos: 1 });
+  });
 });

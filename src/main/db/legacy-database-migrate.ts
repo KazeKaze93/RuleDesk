@@ -94,8 +94,11 @@ export function databaseLooksInitialized(
 }
 
 /**
- * True when the DB has at least one artists row (proxy for real user data).
- * Used to distinguish an empty post-migrate stub from a gallery the user already uses.
+ * True when the DB holds real user state — not a fresh post-migrate stub.
+ *
+ * Artists alone are insufficient: AgeGate writes ToS / adult flags into
+ * `settings` before the user can add any artist; empty playlists are also
+ * valid user data with zero artists.
  */
 export function databaseHasUserContent(
   dbPath: string,
@@ -107,20 +110,51 @@ export function databaseHasUserContent(
   let sqlite: InstanceType<typeof Database> | null = null;
   try {
     sqlite = openDatabase(dbPath);
-    const artists = sqlite
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='artists'"
-      )
-      .get();
-    if (!artists) {
-      return false;
+
+    if (tableExists(sqlite, "artists")) {
+      // boundary: better-sqlite3 raw row
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
+      const artistsCount = sqlite
+        .prepare("SELECT COUNT(*) AS count FROM artists")
+        .get() as { count: number } | undefined;
+      if ((artistsCount?.count ?? 0) > 0) {
+        return true;
+      }
     }
-    // boundary: better-sqlite3 raw row
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
-    const countRow = sqlite
-      .prepare("SELECT COUNT(*) AS count FROM artists")
-      .get() as { count: number } | undefined;
-    return (countRow?.count ?? 0) > 0;
+
+    if (tableExists(sqlite, "playlists")) {
+      // boundary: better-sqlite3 raw row
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
+      const playlistsCount = sqlite
+        .prepare("SELECT COUNT(*) AS count FROM playlists")
+        .get() as { count: number } | undefined;
+      if ((playlistsCount?.count ?? 0) > 0) {
+        return true;
+      }
+    }
+
+    if (tableExists(sqlite, "settings")) {
+      // Non-default settings = user has progressed past a blank install
+      // (AgeGate sets is_adult_verified + tos_accepted_at before any artists).
+      const customized = sqlite
+        .prepare(
+          `SELECT 1 AS hit FROM settings WHERE
+            COALESCE(is_adult_confirmed, 0) != 0
+            OR COALESCE(is_adult_verified, 0) != 0
+            OR tos_accepted_at IS NOT NULL
+            OR (encrypted_api_key IS NOT NULL AND encrypted_api_key != '')
+            OR (user_id IS NOT NULL AND user_id != '')
+            OR (theme IS NOT NULL AND theme != 'system')
+            OR proxy_url IS NOT NULL
+          LIMIT 1`
+        )
+        .get();
+      if (customized) {
+        return true;
+      }
+    }
+
+    return false;
   } catch {
     return false;
   } finally {
@@ -128,10 +162,38 @@ export function databaseHasUserContent(
   }
 }
 
+function tableExists(
+  sqlite: InstanceType<typeof Database>,
+  tableName: string
+): boolean {
+  return (
+    sqlite
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+      )
+      .get(tableName) !== undefined
+  );
+}
+
 function removeDbSidecars(dbPath: string, fileFs: LegacyMigrateFs): void {
   fileFs.rmSync(dbPath, { force: true });
   fileFs.rmSync(`${dbPath}-wal`, { force: true });
   fileFs.rmSync(`${dbPath}-shm`, { force: true });
+}
+
+async function legacyFileIsAccessible(
+  legacyDbPath: string,
+  fileFs: LegacyMigrateFs
+): Promise<boolean> {
+  if (!fileFs.existsSync(legacyDbPath)) {
+    return false;
+  }
+  try {
+    await fileFs.access(legacyDbPath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -242,25 +304,41 @@ export async function migrateLegacyDatabase(params: {
       if (!leftoverLegacy) {
         return { migrated: false, blockedLegacyPath: null };
       }
-      // Empty-but-migrated new DB + leftover legacy = the orphan trap from
-      // continuing past a failed checkpoint. Remove the empty stub and retry.
-      if (!databaseHasUserContent(newDbPath, openDatabase)) {
-        log.warn(
-          `[DB] Removing empty initialized stub at ${newDbPath} to retry legacy migrate ` +
-            `(legacy still present at ${leftoverLegacy.dbPath})`
-        );
-        removeDbSidecars(newDbPath, fileFs);
-      } else {
+      if (databaseHasUserContent(newDbPath, openDatabase)) {
         // Both sides have real data — do not overwrite; surface to the caller.
         return {
           migrated: false,
           blockedLegacyPath: leftoverLegacy.dbPath,
         };
       }
-    } else {
-      // Uninitialized stub after a prior soft failure — remove so rename can land.
+      // Empty-but-migrated stub + leftover legacy. Confirm legacy is reachable
+      // before deleting the stub so a failed retry does not leave zero DBs.
+      if (!(await legacyFileIsAccessible(leftoverLegacy.dbPath, fileFs))) {
+        return {
+          migrated: false,
+          blockedLegacyPath: leftoverLegacy.dbPath,
+        };
+      }
+      log.warn(
+        `[DB] Removing empty initialized stub at ${newDbPath} to retry legacy migrate ` +
+          `(legacy still present at ${leftoverLegacy.dbPath})`
+      );
+      removeDbSidecars(newDbPath, fileFs);
+    } else if (leftoverLegacy) {
+      if (!(await legacyFileIsAccessible(leftoverLegacy.dbPath, fileFs))) {
+        return {
+          migrated: false,
+          blockedLegacyPath: leftoverLegacy.dbPath,
+        };
+      }
       log.warn(
         `[DB] Removing uninitialized stub at ${newDbPath} to retry legacy migrate`
+      );
+      removeDbSidecars(newDbPath, fileFs);
+    } else {
+      // No legacy candidate — drop an empty stub so a fresh open can create cleanly.
+      log.warn(
+        `[DB] Removing uninitialized stub at ${newDbPath} (no legacy candidate)`
       );
       removeDbSidecars(newDbPath, fileFs);
     }
