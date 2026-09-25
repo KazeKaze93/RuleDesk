@@ -801,7 +801,8 @@ Special tags `0000_blue_lorna_dane`, `0010_add_fts5_cache_invalidation`, and `00
 
 - Implemented in `src/main/db/legacy-database-migrate.ts`. Before any rename: open the legacy file, `PRAGMA wal_checkpoint(TRUNCATE)`, close — so committed WAL data lives in the main file.
 - Move via `rename`; on `EXDEV` (cross-volume): `copyFile` → verify same size → only then `unlink` source.
-- Checkpoint failure: leave legacy files untouched, log, skip that candidate (no half-moved DB). An empty stub `data.bin` from a prior soft failure is removed so the next launch can retry.
+- Checkpoint failure: leave legacy files untouched and return `{ migrated: false, blockedLegacyPath }`. `client.ts` **throws** before `new Database(dbPath)` so an empty schema is never created on the new path (that empty-but-migrated file would pass `databaseLooksInitialized` and permanently orphan the legacy DB on the next launch). The error uses the same `dialog.showErrorBox` path as other init failures.
+- Recovery if an empty initialized stub already exists and a legacy file is still on disk: remove the stub (no `artists` rows) and retry the move. If the new DB already has user rows **and** legacy remains, return `blockedLegacyPath` instead of overwriting — startup stops with a clear message.
 
 **Manual execution:**
 

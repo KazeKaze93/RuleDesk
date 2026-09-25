@@ -73,7 +73,17 @@ async function migrateLegacyDatabaseIfNeeded(newDbPath: string): Promise<void> {
     userDataDir: legacyPath.userDataDir,
     dbPath: legacyPath.dbPath,
   }));
-  await migrateLegacyDatabase({ newDbPath, legacyCandidates });
+  const result = await migrateLegacyDatabase({ newDbPath, legacyCandidates });
+  if (result.blockedLegacyPath) {
+    // Refuse to open/create an empty DB at newDbPath — that would look
+    // "initialized" on the next launch and permanently orphan the legacy file.
+    throw new Error(
+      `Found a previous RuleDesk database at ${result.blockedLegacyPath}, but could not move it ` +
+        `(the file may be locked, in use, or corrupted). Close any program that might be using ` +
+        `that file and restart RuleDesk. Your data was left in place; RuleDesk did not create ` +
+        `an empty replacement database.`
+    );
+  }
 }
 
 export async function initializeDatabase(): Promise<AppDatabase> {

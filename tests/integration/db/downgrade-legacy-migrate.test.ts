@@ -185,7 +185,7 @@ describe("downgrade guard and legacy migrate", () => {
       true
     );
 
-    await migrateLegacyDatabase({
+    const result = await migrateLegacyDatabase({
       newDbPath,
       legacyCandidates: [
         {
@@ -196,6 +196,8 @@ describe("downgrade guard and legacy migrate", () => {
       ],
     });
 
+    expect(result.migrated).toBe(true);
+    expect(result.blockedLegacyPath).toBeNull();
     expect(fs.existsSync(newDbPath)).toBe(true);
     expect(fs.existsSync(legacyDbPath)).toBe(false);
     expect(databaseLooksInitialized(newDbPath)).toBe(true);
@@ -254,7 +256,7 @@ describe("downgrade guard and legacy migrate", () => {
     const newDbPath = path.join(newDir, "data.bin");
     fs.writeFileSync(legacyDbPath, "not-a-sqlite-database");
 
-    await migrateLegacyDatabase({
+    const result = await migrateLegacyDatabase({
       newDbPath,
       legacyCandidates: [
         {
@@ -270,7 +272,88 @@ describe("downgrade guard and legacy migrate", () => {
       },
     });
 
+    expect(result.migrated).toBe(false);
+    expect(result.blockedLegacyPath).toBe(legacyDbPath);
     expect(fs.existsSync(legacyDbPath)).toBe(true);
     expect(fs.existsSync(newDbPath)).toBe(false);
+  });
+
+  it("does not permanently orphan legacy data after checkpoint fail + empty new DB init", async () => {
+    // Seam test: what a buggy client used to do between two launches —
+    // (1) migrate fails checkpoint, (2) new Database + full migrations on empty path,
+    // (3) second migrate without artificial failure must still move legacy data
+    // (not skip via databaseLooksInitialized on the empty-but-valid new DB).
+    const tempDir = createTempDir("ruledesk-legacy-orphan-seam-");
+    tempDirs.push(tempDir);
+    const legacyDir = path.join(tempDir, "RuleDesk");
+    const newDir = path.join(tempDir, ".rdcache");
+    fs.mkdirSync(legacyDir, { recursive: true });
+    fs.mkdirSync(newDir, { recursive: true });
+
+    const legacyDbPath = path.join(legacyDir, "metadata.db");
+    const newDbPath = path.join(newDir, "data.bin");
+
+    const legacy = new Database(legacyDbPath);
+    legacy.exec(
+      "CREATE TABLE artists (id INTEGER PRIMARY KEY, name TEXT); INSERT INTO artists (name) VALUES ('orphan-me');"
+    );
+    legacy.close();
+
+    const first = await migrateLegacyDatabase({
+      newDbPath,
+      legacyCandidates: [
+        {
+          userDataDirName: "RuleDesk",
+          userDataDir: legacyDir,
+          dbPath: legacyDbPath,
+        },
+      ],
+      deps: {
+        openDatabase: () => {
+          throw new Error("transient lock");
+        },
+      },
+    });
+    expect(first.blockedLegacyPath).toBe(legacyDbPath);
+    expect(first.migrated).toBe(false);
+    expect(fs.existsSync(newDbPath)).toBe(false);
+
+    // Simulate the old buggy client path: create + migrate an empty new DB anyway.
+    const emptyNew = new Database(newDbPath);
+    openDbs.push(emptyNew);
+    const entries = readMigrationJournal(PROJECT_DRIZZLE);
+    expect(entries).not.toBeNull();
+    if (!entries) {
+      throw new Error("journal missing");
+    }
+    ensureDrizzleMigrationsTable(emptyNew);
+    runManualMigrations(emptyNew, PROJECT_DRIZZLE, entries);
+    emptyNew.close();
+    openDbs.pop();
+
+    expect(databaseLooksInitialized(newDbPath)).toBe(true);
+    expect(fs.existsSync(legacyDbPath)).toBe(true);
+
+    const second = await migrateLegacyDatabase({
+      newDbPath,
+      legacyCandidates: [
+        {
+          userDataDirName: "RuleDesk",
+          userDataDir: legacyDir,
+          dbPath: legacyDbPath,
+        },
+      ],
+    });
+
+    expect(second.migrated).toBe(true);
+    expect(second.blockedLegacyPath).toBeNull();
+    expect(fs.existsSync(legacyDbPath)).toBe(false);
+    expect(fs.existsSync(newDbPath)).toBe(true);
+
+    const opened = new Database(newDbPath, { readonly: true });
+    openDbs.push(opened);
+    expect(
+      opened.prepare("SELECT name FROM artists WHERE name = ?").get("orphan-me")
+    ).toMatchObject({ name: "orphan-me" });
   });
 });
