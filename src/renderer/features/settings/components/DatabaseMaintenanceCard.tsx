@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -18,6 +19,7 @@ import {
 } from "../../../components/ui/select";
 import { formatRelativeTime } from "../../../lib/formatRelativeTime";
 import type {
+  OrphanDetectionReport,
   VacuumSchedule,
   VacuumStatusResponse,
 } from "../../../../shared/schemas/maintenance";
@@ -43,6 +45,12 @@ export const DatabaseMaintenanceCard = ({
   onRunVacuum,
   onVacuumScheduleChange,
 }: DatabaseMaintenanceCardProps) => {
+  const [orphanReport, setOrphanReport] = useState<OrphanDetectionReport | null>(
+    null
+  );
+  const [orphanError, setOrphanError] = useState<string | null>(null);
+  const [isDetectingOrphans, setIsDetectingOrphans] = useState(false);
+
   const absoluteDate =
     lastVacuumAt === null ? "Never" : new Date(lastVacuumAt).toLocaleString();
   const relativeDate =
@@ -55,11 +63,37 @@ export const DatabaseMaintenanceCard = ({
         ? "Last run: error"
         : "Last run: never";
 
+  const handleDetectOrphans = async () => {
+    setIsDetectingOrphans(true);
+    setOrphanError(null);
+    try {
+      const report = await window.api.detectOrphans();
+      setOrphanReport(report);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Orphan detection failed";
+      setOrphanError(message);
+      setOrphanReport(null);
+    } finally {
+      setIsDetectingOrphans(false);
+    }
+  };
+
+  const orphanTotal =
+    orphanReport === null
+      ? 0
+      : orphanReport.orphanedPostsCount +
+        orphanReport.orphanedPlaylistEntriesCount +
+        orphanReport.ftsRowsWithoutPostCount;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Database Maintenance</CardTitle>
-        <CardDescription>VACUUM reclaims space and compacts the local database file.</CardDescription>
+        <CardDescription>
+          VACUUM reclaims space and compacts the local database file. Orphan
+          check is read-only (no cleanup yet).
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <section className="space-y-1">
@@ -110,6 +144,64 @@ export const DatabaseMaintenanceCard = ({
         <p className="text-xs text-muted-foreground">
           VACUUM may take several seconds on large databases.
         </p>
+
+        <section className="space-y-2 border-t pt-4">
+          <p className="text-sm font-medium">Orphaned data check</p>
+          <p className="text-xs text-muted-foreground">
+            Known issue: foreign keys are not enforced, so deleting an artist can
+            leave posts behind. This report counts them; cleanup is a separate
+            follow-up.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void handleDetectOrphans();
+            }}
+            disabled={isDetectingOrphans || isVacuumRunning}
+          >
+            {isDetectingOrphans ? "Checking..." : "Check for orphaned data"}
+          </Button>
+          {orphanError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Orphan check failed</AlertTitle>
+              <AlertDescription>{orphanError}</AlertDescription>
+            </Alert>
+          ) : null}
+          {orphanReport ? (
+            <Alert>
+              <AlertTitle>
+                {orphanTotal === 0
+                  ? "No orphaned rows found"
+                  : `Found ${orphanTotal} orphaned row(s)`}
+              </AlertTitle>
+              <AlertDescription>
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
+                  <li>
+                    Orphaned posts (no artist): {orphanReport.orphanedPostsCount}
+                  </li>
+                  <li>
+                    Orphaned playlist entries (no post):{" "}
+                    {orphanReport.orphanedPlaylistEntriesCount}
+                  </li>
+                  <li>
+                    FTS index rows without post:{" "}
+                    {orphanReport.ftsRowsWithoutPostCount}
+                  </li>
+                  <li>
+                    Ghost artist ids: {orphanReport.ghostArtistIds.length}
+                    {orphanReport.postsPerGhostArtist.length > 0
+                      ? ` (e.g. ${orphanReport.postsPerGhostArtist
+                          .slice(0, 5)
+                          .map((g) => `${g.artistId}:${g.postCount}`)
+                          .join(", ")})`
+                      : ""}
+                  </li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </section>
       </CardContent>
       <CardFooter>
         <Button

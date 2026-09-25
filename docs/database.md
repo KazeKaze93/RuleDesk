@@ -13,6 +13,7 @@
 - [Best Practices](#best-practices)
 - [Backup and Recovery](#backup-and-recovery)
 - [Performance Considerations](#performance-considerations)
+- [Known issue: orphaned rows (detection only, cleanup pending)](#known-issue-orphaned-rows-detection-only-cleanup-pending)
 - [Future Enhancements](#future-enhancements)
 
 ---
@@ -1137,6 +1138,24 @@ const posts = await db.getPosts({
 - **Index Size:** Minimal (external content table stores only index, not data)
 - **Search Speed:** O(log n) complexity, typically < 10ms for 100k+ records
 - **Memory Usage:** Low (no data duplication, only index structures)
+
+## Known issue: orphaned rows (detection only, cleanup pending)
+
+**Status:** detection-only. Cleanup and any change to FK policy are a **separate follow-up** — do not treat this section as a license to delete rows.
+
+Drizzle declares `onDelete: "cascade"` on `posts.artist_id → artists.id` and `playlist_entries → playlists/posts`, but the app never sets `PRAGMA foreign_keys` explicitly. Current `better-sqlite3` defaults `foreign_keys = ON`, so cascade may already apply on fresh connections — yet older databases (or sessions that had FK off) can still hold orphaned posts after `deleteArtist` removed only the `artists` row. There is also no application path that deletes posts, so playlist-entry orphans only appear from manual/SQL/restore damage. FTS external-content index rows can diverge when the delete trigger is bypassed.
+
+**Detection (this release):**
+
+- Module: `src/main/db/orphan-detection.ts` — SELECT/COUNT only, DEFERRED transaction snapshot.
+- IPC: `maintenance:detect-orphans` (read-only, not on `maintenanceQueue`, not on startup).
+- UI: Settings → Database Maintenance → **Check for orphaned data**.
+- Report: orphaned posts (excluding `EXTERNAL_ARTIST_ID`), orphaned playlist entries (missing `post_id`), FTS `posts_fts_docsize` rows without a post, ghost artist id breakdown.
+- `EXTERNAL_ARTIST_ID` (`0`) posts are **not** counted as orphans even if the artists row is missing — Browse/external sentinel; `deleteArtist` refuses to remove it.
+
+**Field probe (2026-09-25):** read-only run of `detectOrphans` against the live `%LOCALAPPDATA%\.rdcache\data.bin` (~3.3 MB, last write 2026-08-16) returned **all zeros** (`orphanedPostsCount`, `orphanedPlaylistEntriesCount`, `ftsRowsWithoutPostCount`, `ghostArtistIds`). Connection `PRAGMA foreign_keys` was **1** (better-sqlite3 default). Conclusion for this install: orphan accumulation from `deleteArtist` is a **theoretical / legacy-risk**, not an observed live problem — cleanup is not warranted until a non-zero report appears. Keep the detector for support; do not schedule automatic cleanup.
+
+**Not in this release:** any DELETE, changing FK pragma policy, FTS rebuild, or automatic cleanup.
 
 ## Future Enhancements
 
