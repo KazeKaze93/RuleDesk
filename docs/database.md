@@ -1148,6 +1148,8 @@ Drizzle declares `onDelete: "cascade"` on `posts.artist_id → artists.id` and `
 - Report: orphaned posts (excluding `EXTERNAL_ARTIST_ID`), orphaned playlist entries (missing `post_id`), FTS `posts_fts_docsize` rows without a post, ghost artist id breakdown.
 - `EXTERNAL_ARTIST_ID` (`0`) posts are **not** counted as orphans even if the artists row is missing — Browse/external sentinel; `deleteArtist` refuses to remove it.
 
+**Field probe (2026-09-25):** read-only run of `detectOrphans` against the live `%LOCALAPPDATA%\.rdcache\data.bin` (~3.3 MB, last write 2026-08-16) returned **all zeros** (`orphanedPostsCount`, `orphanedPlaylistEntriesCount`, `ftsRowsWithoutPostCount`, `ghostArtistIds`). Connection `PRAGMA foreign_keys` was **1** (better-sqlite3 default). Conclusion for this install: orphan accumulation from `deleteArtist` is a **theoretical / legacy-risk**, not an observed live problem — cleanup is not warranted until a non-zero report appears. Keep the detector for support; do not schedule automatic cleanup.
+
 **Not in this release:** any DELETE, changing FK pragma policy, FTS rebuild, or automatic cleanup.
 
 ## Future Enhancements
