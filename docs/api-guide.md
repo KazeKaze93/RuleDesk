@@ -1473,6 +1473,26 @@ Sets automatic backup schedule used by startup auto-backup check.
 
 ---
 
+### `shouldShowBackupPrompt()`
+
+Whether the one-time auto-backup opt-in dialog should be shown: `autoBackupInterval === "never"` and the user has not yet been asked (`hasSeenAutoBackupPrompt === false`).
+
+**Returns:** `Promise<boolean>`
+
+**IPC Channel:** `maintenance:should-show-backup-prompt`
+
+---
+
+### `markBackupPromptSeen()`
+
+Marks the auto-backup opt-in prompt as seen so it is not shown again (regardless of whether the user enabled backups, declined, or dismissed the dialog).
+
+**Returns:** `Promise<boolean>`
+
+**IPC Channel:** `maintenance:mark-backup-prompt-seen`
+
+---
+
 ### `getVacuumStatus()`
 
 Returns the current user-visible VACUUM telemetry from Settings state.

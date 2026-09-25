@@ -46,3 +46,16 @@ export type VacuumStatusResponse = z.infer<typeof VacuumStatusResponseSchema>;
 export type RunVacuumResponse = z.infer<typeof RunVacuumResponseSchema>;
 export type SetVacuumScheduleArgs = z.infer<typeof SetVacuumScheduleArgsSchema>;
 export type OrphanDetectionReport = z.infer<typeof OrphanDetectionReportSchema>;
+
+/** IPC `maintenance:should-show-backup-prompt` — no args, returns boolean. */
+export const ShouldShowBackupPromptResponseSchema = z.boolean();
+
+/** IPC `maintenance:mark-backup-prompt-seen` — no args, returns boolean. */
+export const MarkBackupPromptSeenResponseSchema = z.boolean();
+
+export type ShouldShowBackupPromptResponse = z.infer<
+  typeof ShouldShowBackupPromptResponseSchema
+>;
+export type MarkBackupPromptSeenResponse = z.infer<
+  typeof MarkBackupPromptSeenResponseSchema
+>;

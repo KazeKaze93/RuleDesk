@@ -12,14 +12,23 @@ import {
   listAutoBackupFilesOldestFirst,
   selectAutoBackupFilenamesToDelete,
 } from "../lib/database-backup";
-import { getBackupSidecarPath } from "../lib/backup-sidecar";
+import {
+  getBackupSidecarPath,
+  getElectronStoreConfigPath,
+} from "../lib/backup-sidecar";
 import type { SyncService } from "./sync-service";
 
 export type AutoBackupInterval = "never" | "daily" | "weekly";
 
+export const BACKUP_SETTINGS_STORE_NAME = "backup-settings";
+
+const DEFAULT_AUTO_BACKUP_INTERVAL_NEW_INSTALL: AutoBackupInterval = "daily";
+const DEFAULT_AUTO_BACKUP_INTERVAL_EXISTING: AutoBackupInterval = "never";
+
 type BackupStoreSchema = {
   autoBackupInterval: AutoBackupInterval;
   lastAutoBackupAt: number | null;
+  hasSeenAutoBackupPrompt: boolean;
 };
 
 const AUTO_BACKUP_INTERVAL_MS: Record<Exclude<AutoBackupInterval, "never">, number> = {
@@ -35,6 +44,7 @@ type BackupStoreContract = {
 type BackupStoreConstructor = new (options: {
   name: string;
   defaults: BackupStoreSchema;
+  cwd?: string;
 }) => BackupStoreContract;
 
 function isBackupStoreConstructor(v: unknown): v is BackupStoreConstructor {
@@ -56,18 +66,58 @@ if (!isBackupStoreConstructor(resolvedConstructor)) {
 const StoreConstructor: BackupStoreConstructor = resolvedConstructor;
 
 let store: BackupStoreContract | null = null;
+let settingsFileExistedBeforeInit: boolean | null = null;
+/** When set, passed as `cwd` to electron-store (Vitest has no real Electron userData). */
+let storeCwdForTests: string | null = null;
+
+/**
+ * Whether `backup-settings.json` already existed on disk **before** the first
+ * `electron-store` / `conf` construction in this process. Cached on first call
+ * so a constructor side-effect that creates the file cannot flip the answer.
+ */
+export function backupSettingsFileExistedBeforeInit(): boolean {
+  if (settingsFileExistedBeforeInit === null) {
+    settingsFileExistedBeforeInit = fs.existsSync(
+      getElectronStoreConfigPath(BACKUP_SETTINGS_STORE_NAME)
+    );
+  }
+  return settingsFileExistedBeforeInit;
+}
+
+// Eager probe at module load — must run before any getBackupStore() in this process.
+backupSettingsFileExistedBeforeInit();
+
+function defaultAutoBackupInterval(): AutoBackupInterval {
+  return backupSettingsFileExistedBeforeInit()
+    ? DEFAULT_AUTO_BACKUP_INTERVAL_EXISTING
+    : DEFAULT_AUTO_BACKUP_INTERVAL_NEW_INSTALL;
+}
 
 function getBackupStore(): BackupStoreContract {
   if (!store) {
     store = new StoreConstructor({
-      name: "backup-settings",
+      name: BACKUP_SETTINGS_STORE_NAME,
       defaults: {
-        autoBackupInterval: "never",
+        autoBackupInterval: defaultAutoBackupInterval(),
         lastAutoBackupAt: null,
+        hasSeenAutoBackupPrompt: false,
       },
+      ...(storeCwdForTests !== null ? { cwd: storeCwdForTests } : {}),
     });
   }
   return store;
+}
+
+/** Clears the module singleton so tests can simulate a fresh process. */
+export function resetBackupStoreForTests(): void {
+  store = null;
+  settingsFileExistedBeforeInit = null;
+  storeCwdForTests = null;
+}
+
+/** Points electron-store at a temp dir (createRequire bypasses Vitest electron mocks). */
+export function setBackupStoreCwdForTests(cwd: string): void {
+  storeCwdForTests = cwd;
 }
 
 export class BackupService {
@@ -84,6 +134,19 @@ export class BackupService {
 
   public getAutoBackupSchedule(): AutoBackupInterval {
     return getBackupStore().get("autoBackupInterval");
+  }
+
+  public shouldShowAutoBackupPrompt(): boolean {
+    const backupStore = getBackupStore();
+    return (
+      backupStore.get("autoBackupInterval") === "never" &&
+      backupStore.get("hasSeenAutoBackupPrompt") === false
+    );
+  }
+
+  public markAutoBackupPromptSeen(): void {
+    getBackupStore().set("hasSeenAutoBackupPrompt", true);
+    log.info("[BackupService] Auto-backup opt-in prompt marked as seen");
   }
 
   public checkAndRunAutoBackup(): void {
