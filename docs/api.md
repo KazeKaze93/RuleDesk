@@ -40,7 +40,7 @@
 | `db:add-artist` | `DB.ADD_ARTIST` | `z.tuple([AddArtistSchema])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
 | `db:add-posts-to-playlist` | `DB.ADD_POSTS_TO_PLAYLIST` | `z.tuple([AddPostsToPlaylistSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:clear-manual-playlist` | `DB.CLEAR_MANUAL_PLAYLIST` | schema: see source (`ClearManualPlaylistSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
-| `db:create-backup` | `BACKUP.CREATE` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
+| `db:create-backup` | `BACKUP.CREATE` | `[]` (no args) | yes | `MaintenanceController` | Consistent SQLite snapshot via VACUUM INTO into RuleDesk-Backups/ (sibling of .rdcache). Opens the backup folder in the file explorer. Retention prune follows backupRetention. |
 | `db:create-playlist` | `DB.CREATE_PLAYLIST` | `z.tuple([CreatePlaylistSchema])` | yes | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:delete-artist` | `DB.DELETE_ARTIST` | `z.tuple([IdSchema])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
 | `db:delete-playlist` | `DB.DELETE_PLAYLIST` | `z.tuple([IdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
@@ -87,10 +87,11 @@
 | `files:resume-download-all` | `FILES.RESUME_DOWNLOAD_ALL` | `[]` (no args) | yes | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:resume-pending-download` | `FILES.RESUME_PENDING_DOWNLOAD` | `z.tuple([])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:select-download-folder` | `FILES.SELECT_DOWNLOAD_FOLDER` | `z.tuple([])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
+| `maintenance:detect-orphans` | `MAINTENANCE.DETECT_ORPHANS` | `[]` (no args) | yes | `MaintenanceController` | Read-only orphan report (posts without artist, playlist entries without post, FTS rows without post, ghost artist ids). SELECT-only; not on maintenanceQueue; no automatic cleanup. |
 | `maintenance:get-vacuum-schedule` | `MAINTENANCE.GET_VACUUM_SCHEDULE` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `maintenance:get-vacuum-status` | `MAINTENANCE.GET_VACUUM_STATUS` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `maintenance:run-vacuum` | `MAINTENANCE.RUN_VACUUM` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
-| `maintenance:set-vacuum-schedule` | `MAINTENANCE.SET_VACUUM_SCHEDULE` | schema: see source (`SetVacuumScheduleArgsSchema`) | no | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
+| `maintenance:set-vacuum-schedule` | `MAINTENANCE.SET_VACUUM_SCHEDULE` | schema: see source (`SetVacuumScheduleArgsSchema`) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `settings:confirm-legal` | `SETTINGS.CONFIRM_LEGAL` | `[]` (no args) | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `settings:reset-onboarding` | `SETTINGS.RESET_ONBOARDING` | `[]` (no args) | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `settings:save-download-folder` | `SETTINGS.SAVE_DOWNLOAD_FOLDER` | `z.tuple([SaveDownloadFolderArgSchema])` | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
@@ -105,7 +106,7 @@
 | `sync:repair:end` | `SYNC.REPAIR_END` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `sync:repair:start` | `SYNC.REPAIR_START` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `sync:start` | `SYNC.START` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
-| `system:wipe-all-data` | `APP.WIPE_ALL_DATA` | `[]` (no args) | no | `SystemController` | Deletes all children of userData (.rdcache), then app.exit(0). Order: closeDatabase → stop video proxy → rm → exit. Does not touch download folders outside userData. |
+| `system:wipe-all-data` | `APP.WIPE_ALL_DATA` | `[]` (no args) | no | `SystemController` | Deletes all children of userData (.rdcache), then app.exit(0). Order: closeDatabase → stop video proxy → rm → exit. Does not touch media download folders or DB backups under RuleDesk-Backups (sibling of .rdcache). |
 | `updater:progress` | `UPDATER.PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `updater:status` | `UPDATER.STATUS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `updates:getTotalUnreadCount` | `UPDATES.GET_TOTAL_UNREAD_COUNT` | `z .object({ filters: PostFilterSchema.optional(), }) .optional() .default({})` | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
@@ -115,9 +116,9 @@
 
 ## Coverage
 
-- Channels in `channels.ts`: **101**
-- Channels with at least one scanned `handle` registration: **85**
-- Handler rows extracted: **85**
+- Channels in `channels.ts`: **102**
+- Channels with at least one scanned `handle` registration: **86**
+- Handler rows extracted: **86**
 
 ## Regenerating
 

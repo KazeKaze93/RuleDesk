@@ -51,7 +51,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🌍 Rule34 CDN host fallback**   | Viewer builds an alternate-host URL chain for Rule34 media (`wimg.rule34.xxx`, `img.rule34.xxx`, `us.rule34.xxx`, `api-cdn.rule34.xxx`) when the primary host fails (`ViewerMedia` / `viewer-media-urls.ts`). No Main-process CDN probe/rewrite service.                                                                                                                        |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                                                                                     |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
-| **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups in the user data directory; retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup. Restore replaces the live DB (with checks) and reloads the app.                                                                               |
+| **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups under `%LOCALAPPDATA%\RuleDesk-Backups\` (sibling of `.rdcache`, not inside the cache dir); retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup. Restore replaces the live DB (with checks) and reloads the app.                                                                               |
 | **🧹 DB Maintenance (VACUUM)**    | User-visible maintenance card in Settings: shows last VACUUM run, allows manual `Run VACUUM now`, and supports schedule policy (`manual`, `weekly`, `monthly`). Lightweight auto-maintenance (`wal_checkpoint` + `optimize`) remains automatic in Main process.                                                                                     |
 | **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`) with infinite scroll on Browse. Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
 | **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                                                                           |
@@ -196,7 +196,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **Duplicate behavior** - `skip` or `overwrite` for existing files
 - **Folder structure** - `flat` or `{artist_id}` subfolder mode
 - **Proxy URL** - Optional HTTP/HTTPS proxy for outbound requests/downloads
-- **Danger zone — Delete all data** - Confirmed wipe of everything under `.rdcache` (database, `video-cache/`, logs, in-app backups, Electron cache), then quit. Does **not** delete the separate media download folder. Prefer this over uninstall alone (uninstall leaves `.rdcache`).
+- **Danger zone — Delete all data** - Confirmed wipe of everything under `.rdcache` (database, `video-cache/`, logs, Electron cache), then quit. Does **not** delete the separate media download folder or DB backups under `RuleDesk-Backups`. Prefer this over uninstall alone (uninstall leaves `.rdcache` and backups).
 
 ### Sync
 
@@ -215,9 +215,10 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 
 ### Backup
 
-- **Create backup** - Manual timestamped backup
-- **Restore backup** - Restore from backup file and reload app
+- **Create backup** - Manual timestamped backup (written to `RuleDesk-Backups`)
+- **Restore backup** - Restore from backup file (dialog defaults to `RuleDesk-Backups`) and reload app
 - **Integrity check** - Run `PRAGMA integrity_check`
+- **Orphaned data check** - Read-only report of posts/playlist entries/FTS rows without parents (Settings → Database Maintenance); no automatic cleanup
 - **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (evaluated on app startup)
 - **Automatic backup rotation** - Keep the last `N` backups (`backupRetention`, configurable in UI, range `1..20`)
 - **Optional storage cap (env)** - `BACKUP_RETENTION_MAX_TOTAL_MB` can enforce a total size ceiling for backup files in addition to `keep last N` (newest is always kept even if a single file exceeds the cap)
@@ -467,8 +468,9 @@ The application stores configuration in SQLite database:
 - **Database Location** (development and packaged builds use the same neutral path):
   - Windows: `%LOCALAPPDATA%\.rdcache\data.bin`
   - Logs: `%LOCALAPPDATA%\.rdcache\logs\app.log`
-  - macOS: `~/Library/Application Support/.rdcache/data.bin`
-  - Linux: `~/.config/.rdcache/data.bin`
+  - Backups: `%LOCALAPPDATA%\RuleDesk-Backups\`
+  - macOS: `~/Library/Application Support/.rdcache/data.bin` (backups: `…/RuleDesk-Backups/`)
+  - Linux: `~/.config/.rdcache/data.bin` (backups: `…/RuleDesk-Backups/`)
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 - **No Environment Variables Required:** All configuration is handled through the UI
 
@@ -646,7 +648,7 @@ npm run db:studio
 
 ### Database Location
 
-- **All builds:** neutral user data directory (`.rdcache/` — `data.bin`, `logs/app.log`, `backup-settings.json`; see paths above)
+- **All builds:** neutral user data directory (`.rdcache/` — `data.bin`, `logs/app.log`, `backup-settings.json`) plus sibling `RuleDesk-Backups/` for DB snapshots; see paths above
 
 **📖 For detailed database information, see [Database Documentation](./docs/database.md).**
 
