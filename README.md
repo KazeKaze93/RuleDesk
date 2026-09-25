@@ -505,7 +505,7 @@ Local packaging scripts: `npm run dist:win`, `npm run dist:linux` (after `npm ru
 | Data path change | Unsafe to run below | Notes |
 |------------------|---------------------|--------|
 | Electron default → `.rdcache` | below **v17.0.0** (e.g. v16.2.0 and older) | First release with `.rdcache` was `v17.0.0`. |
-| `.rdcache` → `RuleDesk-Data` | below **`<next release that includes RuleDesk-Data — fill in when tagging>`** | Relocate is on `master` but **not in any `v*` tag yet**. Replace the placeholder when cutting that release. |
+| `.rdcache` → `RuleDesk-Data` | below **v18.1.0** | First release with `RuleDesk-Data` live path. |
 
 If you already rolled back: stop, use backups under `RuleDesk-Backups`, or contact support before continuing. Maintainer detail: [docs/database.md — Downgrade limitation](./docs/database.md#database-location).
 

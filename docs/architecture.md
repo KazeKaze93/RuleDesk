@@ -1429,7 +1429,7 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 **Vitest** (`vitest.config.ts`) — `tests/unit/`, `tests/integration/`, `tests/property/`; Node environment; `better-sqlite3` externalized.
 
-**Playwright** — `tests/e2e/`; requires `npm run build` and Chromium; live API tests need `TEST_USER_ID` / `TEST_API_KEY` in CI secrets.
+**Playwright** — `tests/e2e/`; requires `npm run build` and Chromium; live API tests need `TEST_USER_ID` / `TEST_API_KEY` in CI secrets. Helpers must remove temp `userData` dirs (`cleanupTestApp` / per-spec `rmSync`) after each run — do not leave `%TEMP%\ruledesk-*` behind.
 
 **Native module ABI:** Vitest uses Node; the app uses Electron. Scripts call `db:rebuild:node` before Vitest and `db:rebuild` after `npm test` so local dev keeps working.
 

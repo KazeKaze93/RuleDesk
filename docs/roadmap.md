@@ -1,7 +1,7 @@
 # 🚀 Roadmap
 
 This document reflects the current roadmap for RuleDesk `v18.x` and is aligned with `README.md` and `package.json` (see `version`).
-> Backlog items below verified against code on 2026-09-25 (data-safety PRs #179–#183 merged: migration snapshot/txn, backup VACUUM INTO + restore order, downgrade/legacy migrate, orphan detection, `RuleDesk-Backups` path). Earlier 2026-09-12 VACUUM/tag-resolve/search-cache/E2E notes remain accurate unless superseded above.
+> Backlog items below verified against code on 2026-09-25 (data-safety through #190: `RuleDesk-Data` relocate, Local State/`safeStorage` migrate, rollback docs, E2E temp cleanup; earlier #179–#185 notes remain).
 
 ## 📑 Table of Contents
 
@@ -29,8 +29,8 @@ This document reflects the current roadmap for RuleDesk `v18.x` and is aligned w
 - ✅ Database is optimized for scale: WAL mode, FTS5, composite indexes, and migration workflow.
 - ✅ **Sync automation:** auto-sync on startup, optional auto-sync when adding an artist (`autoSyncOnArtistAdd`, default off → `repairArtist` via `runExclusive`), periodic background sync (presets in Settings, minimum interval enforced in `SyncScheduler`), and sync scheduler restart when settings are saved. Per-artist `syncStatus` / `lastError` persist during sync (**#148**); Artists list refreshes live via `sync:artist` / repair IPC (**#149**).
 - ✅ **DB maintenance:** passive `WAL` checkpoint + `PRAGMA optimize` after startup (delayed) and on a daily timer (`MaintenanceScheduler`); TTL eviction for `tag_metadata` not_found, `search_results_cache`, and `post_lookup_cache` not_found.
-- ✅ **Backup retention:** after each successful backup, older files are pruned based on `backupRetention` from Settings (`1..20`). Backups live under `RuleDesk-Backups/` (sibling of `.rdcache`), not inside the cache dir ([#182](https://github.com/KazeKaze93/RuleDesk/pull/182)).
-- ✅ **Data-safety series (2026-09):** migration pre-snapshot + per-file txn ([#179](https://github.com/KazeKaze93/RuleDesk/pull/179)); consistent auto/manual backup via `VACUUM INTO` + restore `.bak` order + mtime retention ([#180](https://github.com/KazeKaze93/RuleDesk/pull/180)); downgrade hash guard + legacy DB migrate ([#181](https://github.com/KazeKaze93/RuleDesk/pull/181)); read-only orphan detection ([#183](https://github.com/KazeKaze93/RuleDesk/pull/183)); backups outside `.rdcache` ([#182](https://github.com/KazeKaze93/RuleDesk/pull/182)).
+- ✅ **Backup retention:** after each successful backup, older files are pruned based on `backupRetention` from Settings (`1..20`). Backups live under `RuleDesk-Backups/` (sibling of `RuleDesk-Data`, not inside the live userData dir) ([#182](https://github.com/KazeKaze93/RuleDesk/pull/182)).
+- ✅ **Data-safety series (2026-09):** migration pre-snapshot + per-file txn ([#179](https://github.com/KazeKaze93/RuleDesk/pull/179)); consistent auto/manual backup via `VACUUM INTO` + restore `.bak` order + mtime retention ([#180](https://github.com/KazeKaze93/RuleDesk/pull/180)); downgrade hash guard + legacy DB migrate ([#181](https://github.com/KazeKaze93/RuleDesk/pull/181)); read-only orphan detection ([#183](https://github.com/KazeKaze93/RuleDesk/pull/183)); backups outside cache dir ([#182](https://github.com/KazeKaze93/RuleDesk/pull/182)); live DB relocate to `RuleDesk-Data` ([#186](https://github.com/KazeKaze93/RuleDesk/pull/186)); `Local State` / `safeStorage` migrate ([#189](https://github.com/KazeKaze93/RuleDesk/pull/189)); rollback version warning ([#188](https://github.com/KazeKaze93/RuleDesk/pull/188)).
 - ✅ **User-visible DB maintenance:** Settings now exposes VACUUM status (last run timestamp/status/error), manual trigger, and schedule (`manual` / `weekly` / `monthly`).
 - ✅ **Post-audit hardening (v17.x):** shared credential decrypt helper (no ciphertext fallback on IPC paths), `SyncService.runExclusive` queue for sync/repair, `MAX_TRACKED_ARTISTS` (5000) cap, stable Virtuoso list components, Browse worker error UI, worker `mapWorkerPostToPost` field preservation, DI container keyed by `token.id`, orientation filter removed (dead code). See [Architecture](./architecture.md) and [TEST_COVERAGE.md](../tests/unit/TEST_COVERAGE.md).
 
@@ -217,7 +217,11 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | `feat/backups-outside-cache-dir` | [#182](https://github.com/KazeKaze93/RuleDesk/pull/182) | ✅ merged | Backups under `RuleDesk-Backups/` (sibling of `.rdcache`); deferred migrate from cache dir |
 | `feat/orphan-detection-report` | [#183](https://github.com/KazeKaze93/RuleDesk/pull/183) | ✅ merged | Read-only orphan report in Settings; live probe all-zeros — cleanup deferred |
 | `feat/backup-default-opt-in-prompt` | [#185](https://github.com/KazeKaze93/RuleDesk/pull/185) | ✅ merged | New installs default auto-backup to daily; existing `never` users get a one-time dismissible opt-in prompt |
-| `feat/relocate-live-db-out-of-rdcache` | [#186](https://github.com/KazeKaze93/RuleDesk/pull/186) | 🔧 in progress | Live `data.bin` moves from `.rdcache` to `RuleDesk-Data`; reuse legacy migrate primitives |
+| `feat/relocate-live-db-out-of-rdcache` | [#186](https://github.com/KazeKaze93/RuleDesk/pull/186) | ✅ merged | Live `data.bin` moves from `.rdcache` to `RuleDesk-Data`; light sidecars prefer `.rdcache` |
+| `fix/remove-dead-verify-signature-override` | [#187](https://github.com/KazeKaze93/RuleDesk/pull/187) | ✅ merged | Remove dead `verifyUpdateCodeSignature=false` (NsisUpdater ignores falsy) |
+| `docs/rollback-version-warning` | [#188](https://github.com/KazeKaze93/RuleDesk/pull/188) | ✅ merged | README + `docs/database.md` downgrade boundaries for path moves |
+| `fix/migrate-local-state-oscrypt` | [#189](https://github.com/KazeKaze93/RuleDesk/pull/189) | ✅ merged | Copy Chromium `Local State` with pending DB migrate so `safeStorage` still decrypts API keys |
+| `fix/e2e-cleanup-temp-dirs` | [#190](https://github.com/KazeKaze93/RuleDesk/pull/190) | ✅ merged | `cleanupTestApp` removes `%TEMP%\ruledesk-e2e-*` after close |
 
 ### Baseline DX (earlier)
 
