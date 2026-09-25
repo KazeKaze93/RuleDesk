@@ -104,29 +104,48 @@ export async function launchTestApp() {
   return { app, tempDir };
 }
 
+const TEMP_DIR_RM_MAX_ATTEMPTS = 5;
+const TEMP_DIR_RM_RETRY_BASE_MS = 200;
+
 /**
- * Cleans up the test app and optionally removes the temporary directory.
- * 
+ * Closes the test app and removes its temporary userData directory.
+ *
  * @param app - Electron application instance (may be undefined if launch failed)
  * @param tempDir - Temporary directory path (may be undefined if creation failed)
  */
-export async function cleanupTestApp(app: ElectronApplication | undefined, _tempDir: string | undefined) {
+export async function cleanupTestApp(
+  app: ElectronApplication | undefined,
+  tempDir: string | undefined
+): Promise<void> {
   if (app) {
     try {
       await app.close();
     } catch (error) {
-      console.error('Error closing Electron app:', error);
+      console.error("Error closing Electron app:", error);
     }
   }
-  
-  // Optional: Clean up temp dir (sometimes risky if app holds locks, OS cleans tmp eventually)
-  // Uncomment if you want to clean up immediately (may fail if files are locked)
-  // if (tempDir && fs.existsSync(tempDir)) {
-  //   try {
-  //     fs.rmSync(tempDir, { recursive: true, force: true });
-  //     console.log('Cleaned up temp directory:', tempDir);
-  //   } catch (error) {
-  //     console.warn('Failed to clean up temp directory (files may be locked):', error);
-  //   }
-  // }
+
+  if (!tempDir || !fs.existsSync(tempDir)) {
+    return;
+  }
+
+  // Windows may hold locks briefly after close; retry a few times before giving up.
+  for (let attempt = 1; attempt <= TEMP_DIR_RM_MAX_ATTEMPTS; attempt++) {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (attempt === TEMP_DIR_RM_MAX_ATTEMPTS) {
+        console.warn(
+          `Failed to clean up temp directory after ${TEMP_DIR_RM_MAX_ATTEMPTS} attempts:`,
+          tempDir,
+          error
+        );
+        return;
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, TEMP_DIR_RM_RETRY_BASE_MS * attempt)
+      );
+    }
+  }
 }
