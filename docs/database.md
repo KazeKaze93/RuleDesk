@@ -45,7 +45,7 @@ Development and packaged builds use the same neutral `userData` directory (not a
 - **macOS:** `~/Library/Application Support/.rdcache/` (backups: `~/Library/Application Support/RuleDesk-Backups/`)
 - **Linux:** `~/.config/.rdcache/` (backups: `~/.config/RuleDesk-Backups/`)
 
-**Implementation:** `src/main/bootstrap-user-data.ts` runs before logger and `electron-store` so all paths resolve under `.rdcache`.
+**Implementation:** `src/main/bootstrap-user-data.ts` runs before logger and `electron-store` so live paths resolve under `.rdcache`. Wipe (`system:wipe-all-data`) deletes children of `.rdcache` only — it does **not** delete `RuleDesk-Backups`.
 
 ## Schema
 
@@ -1048,8 +1048,8 @@ if (result.success) {
 If the database becomes corrupted and you need to restore manually:
 
 1. Stop the application
-2. Locate the backup file (in user data directory)
-3. Copy the backup file to replace `data.bin`
+2. Locate the backup file under `RuleDesk-Backups/` (or a path you chose)
+3. Copy the backup file to replace `data.bin` inside `.rdcache`
 4. Restart the application (migrations will run automatically)
 
 **Note:** The restore process includes automatic integrity checks using `PRAGMA integrity_check` before replacing the database. If integrity check or reinit fails, the restore is rolled back and the original database is preserved via `.bak`.

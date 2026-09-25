@@ -1,5 +1,7 @@
 {
-  "system:wipe-all-data": "Deletes all children of userData (.rdcache), then app.exit(0). Order: closeDatabase → stop video proxy → rm → exit. Does not touch download folders outside userData.",
+  "system:wipe-all-data": "Deletes all children of userData (.rdcache), then app.exit(0). Order: closeDatabase → stop video proxy → rm → exit. Does not touch media download folders or DB backups under RuleDesk-Backups (sibling of .rdcache).",
+  "maintenance:detect-orphans": "Read-only orphan report (posts without artist, playlist entries without post, FTS rows without post, ghost artist ids). SELECT-only; not on maintenanceQueue; no automatic cleanup.",
+  "db:create-backup": "Consistent SQLite snapshot via VACUUM INTO into RuleDesk-Backups/ (sibling of .rdcache). Opens the backup folder in the file explorer. Retention prune follows backupRetention.",
   "app:get-settings-status": "Returns IPC-safe settings (no API key plaintext). Idempotent; cached until save.",
   "db:get-posts": "Paginated posts with filters. Always limited — see MAX page size in PostsController.",
   "booru:search": "Provider search; auth/rate_limit errors surface as typed IPC errors to Browse UI."

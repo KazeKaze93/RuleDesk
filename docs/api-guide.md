@@ -223,6 +223,7 @@ The IPC bridge is exposed to the Renderer process via `window.api`. All methods 
 interface IpcBridge {
   // App
   getAppVersion: () => Promise<string>;
+  wipeAllData: () => Promise<void>;
   writeToClipboard: (text: string) => Promise<boolean>;
   verifyCredentials: () => Promise<boolean>;
   logout: () => Promise<void>;
@@ -326,6 +327,7 @@ interface IpcBridge {
   setVacuumSchedule: (args: {
     schedule: "manual" | "weekly" | "monthly";
   }) => Promise<boolean>;
+  detectOrphans: () => Promise<OrphanDetectionReport>;
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
@@ -400,7 +402,7 @@ Deletes all application data under `userData` (`.rdcache`), then exits the proce
 **Args:** none (`z.tuple([])`)  
 **Order:** `closeDatabase()` → stop video proxy → delete children of `userData` (paths validated with `isResolvedPathWithinBase`) → `app.exit(0)`.
 
-Does **not** delete the user's media download folder outside `.rdcache`. On partial delete failure, throws a user-facing error and does not exit.
+Does **not** delete the user's media download folder outside `.rdcache`, and does **not** delete DB backups under `RuleDesk-Backups` (sibling of `.rdcache`). On partial delete failure, throws a user-facing error and does not exit.
 
 **Returns:** `Promise<void>` (normally does not resolve — process exits)
 
@@ -1418,7 +1420,7 @@ if (result.success) {
 
 **IPC Channel:** `db:create-backup`
 
-**Note:** The backup file is created in the user data directory. The file explorer will open to show the backup location.
+**Note:** The backup file is created under `RuleDesk-Backups/` (sibling of `.rdcache`), via consistent `VACUUM INTO`. The file explorer will open to show the backup location.
 After each successful backup, old backup files are pruned and only the most recent `backupRetention` files are kept.
 
 ---
@@ -1510,6 +1512,28 @@ Sets the VACUUM schedule policy.
 **Returns:** `Promise<boolean>`
 
 **IPC Channel:** `maintenance:set-vacuum-schedule`
+
+---
+
+### `detectOrphans()`
+
+Read-only orphan report: posts without a parent artist (excluding `EXTERNAL_ARTIST_ID`), playlist entries whose `post_id` is missing, FTS rows without a post, and ghost artist id breakdown. SELECT-only; not enqueued on `maintenanceQueue`; no automatic cleanup.
+
+**Returns:** `Promise<OrphanDetectionReport>`
+
+```typescript
+type OrphanDetectionReport = {
+  orphanedPostsCount: number;
+  orphanedPostIdsSample: number[];
+  orphanedPlaylistEntriesCount: number;
+  orphanedPlaylistEntrySamples: { playlistId: number; postId: number }[];
+  ftsRowsWithoutPostCount: number;
+  ghostArtistIds: number[];
+  postsPerGhostArtist: { artistId: number; postCount: number }[];
+};
+```
+
+**IPC Channel:** `maintenance:detect-orphans`
 
 ---
 

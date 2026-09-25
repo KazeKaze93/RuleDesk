@@ -200,11 +200,12 @@ export const SettingsGeneralTab = ({
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             This removes the database (<span className="font-mono">data.bin</span> and
-            WAL/SHM), video cache, logs, backup schedule, in-app DB backups, download
-            queue, and other Electron cache files inside{" "}
-            <span className="font-mono">.rdcache</span>. Your chosen media download folder
-            outside that directory is not touched. After restart you will see the age gate
-            and onboarding again.
+            WAL/SHM), video cache, logs, backup schedule, download queue, and other Electron
+            cache files inside <span className="font-mono">.rdcache</span>. Database backup
+            files under <span className="font-mono">RuleDesk-Backups</span> (sibling of{" "}
+            <span className="font-mono">.rdcache</span>) are not deleted. Your chosen media
+            download folder outside that directory is not touched. After restart you will see
+            the age gate and onboarding again.
           </p>
           <Button
             type="button"
@@ -227,10 +228,11 @@ export const SettingsGeneralTab = ({
             <AlertDialogDescription>
               This cannot be undone. Everything in{" "}
               <span className="font-mono">.rdcache</span> will be erased and the app will
-              quit. Reinstalling or deleting the .exe alone does not remove this folder —
-              use this action (or delete{" "}
-              <span className="font-mono">.rdcache</span> manually) when you want a clean
-              wipe.
+              quit. Database backups under{" "}
+              <span className="font-mono">RuleDesk-Backups</span> are not deleted.
+              Reinstalling or deleting the .exe alone does not remove{" "}
+              <span className="font-mono">.rdcache</span> — use this action (or delete that
+              folder manually) when you want a clean wipe.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <section className="flex items-start gap-3 py-2">

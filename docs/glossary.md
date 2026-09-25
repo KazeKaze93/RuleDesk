@@ -138,7 +138,7 @@ The sandboxed browser environment in Electron that handles UI rendering and user
 
 ### Wipe all data
 
-Settings → General → **Danger zone** → confirmed delete of everything under the user data directory (`.rdcache`), including the database, `video-cache/`, logs, and in-app backups, then app quit. Does not delete the separate media download folder. IPC: `system:wipe-all-data` / `wipeAllData`.
+Settings → General → **Danger zone** → confirmed delete of everything under the user data directory (`.rdcache`), including the database, `video-cache/`, and logs, then app quit. Does **not** delete DB backups under `RuleDesk-Backups` (sibling of `.rdcache`) or the separate media download folder. IPC: `system:wipe-all-data` / `wipeAllData`.
 
 **Related:** [User Guide — Settings](./user-guide.md#settings), [API Reference](./api.md)
 
@@ -295,9 +295,17 @@ A script that modifies the database schema. RuleDesk uses Drizzle Kit to generat
 
 ### Backup / Restore
 
-Manual database backup and restore functionality. Backups are timestamped and stored in the user data directory.
+Manual database backup and restore functionality. Backups are timestamped consistent SQLite snapshots (`VACUUM INTO`) stored under `RuleDesk-Backups/` (sibling of `.rdcache`, not inside the cache dir).
 
 **Related:** [Backup and Recovery](./database.md#backup-and-recovery), [Backup & Restore](../README.md#-backup--restore)
+
+---
+
+### Orphan detection
+
+Read-only report of posts without a parent artist, playlist entries without a post, FTS index rows without a post, and ghost artist ids. Settings → Backup → Database Maintenance → **Check for orphaned data**. IPC: `maintenance:detect-orphans` / `detectOrphans`. No automatic cleanup.
+
+**Related:** [Known issue: orphaned rows](./database.md#known-issue-orphaned-rows-detection-only-cleanup-pending)
 
 ---
 

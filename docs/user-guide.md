@@ -445,7 +445,7 @@ Settings are split into tabs:
 - **When file already exists** - Choose `Skip` or `Overwrite`
 - **Folder structure** - `Flat` or `By artist`
 - **Proxy URL** - Optional HTTP/HTTPS proxy for requests/downloads
-- **Danger zone** - **Delete all data…** (checkbox + confirm). Closes the DB, stops the video proxy, deletes the contents of `.rdcache`, and quits. Media downloads outside `.rdcache` are not removed.
+- **Danger zone** - **Delete all data…** (checkbox + confirm). Closes the DB, stops the video proxy, deletes the contents of `.rdcache`, and quits. Media downloads outside `.rdcache` and DB backups under `RuleDesk-Backups` are not removed.
 
 ### Sync
 
@@ -467,9 +467,10 @@ Settings are split into tabs:
 
 ### Backup
 
-- **Create Backup** - Save a timestamped backup of your database
-- **Restore Backup** - Restore from a backup file (app reloads after success)
+- **Create Backup** - Save a timestamped consistent snapshot of your database under `RuleDesk-Backups`
+- **Restore Backup** - Restore from a backup file (dialog opens in `RuleDesk-Backups`; app reloads after success)
 - **Check Integrity** - Verify database is not corrupted
+- **Orphaned data check** - Read-only report of posts/playlist entries/FTS rows without parents (no automatic cleanup)
 - **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup)
 - **Retention** - Older files are rotated automatically according to `Retention` value (`backupRetention`, range `1..20`)
 - **Database Maintenance (VACUUM)** - See last VACUUM run status/time, run VACUUM manually, and choose maintenance schedule (`Manual`, `Weekly`, `Monthly`)
@@ -493,13 +494,13 @@ Settings are split into tabs:
 
 1. Go to **Settings** → **Backup**
 2. Click **Create Backup**
-3. A timestamped backup file is created
+3. A timestamped backup file is created under `RuleDesk-Backups` (the folder opens in Explorer/Finder)
 
 **How to restore a backup:**
 
 1. Go to **Settings** → **Backup**
 2. Click **Restore Backup**
-3. Select a backup file
+3. Select a backup file (dialog defaults to `RuleDesk-Backups`)
 4. Confirm restore
 5. The app reloads automatically
 
@@ -644,14 +645,15 @@ The application redirects `userData` to a neutral `.rdcache` directory. Developm
   - Database: `%LOCALAPPDATA%\.rdcache\data.bin`
   - Logs: `%LOCALAPPDATA%\.rdcache\logs\app.log`
   - Backup schedule: `%LOCALAPPDATA%\.rdcache\backup-settings.json`
-- **macOS:** `~/Library/Application Support/.rdcache/`
-- **Linux:** `~/.config/.rdcache/`
+  - DB backups: `%LOCALAPPDATA%\RuleDesk-Backups\`
+- **macOS:** `~/Library/Application Support/.rdcache/` (backups: `…/RuleDesk-Backups/`)
+- **Linux:** `~/.config/.rdcache/` (backups: `…/RuleDesk-Backups/`)
 
-**Note:** Data is not stored next to `RuleDesk.exe`. You can move or replace the app folder freely; local database, logs, and settings stay under `.rdcache` until you delete that directory.
+**Note:** Data is not stored next to `RuleDesk.exe`. You can move or replace the app folder freely; local database, logs, and settings stay under `.rdcache` until you delete that directory. Timestamped DB backups live in the sibling `RuleDesk-Backups` folder (survives Danger-zone wipe and typical cache cleaners).
 
-**Delete all data (in-app):** Settings → General → **Danger zone** → **Delete all data…**. Confirm with the checkbox, then confirm. The app closes the database, stops the video proxy, deletes everything inside `.rdcache` (database + WAL/SHM, `video-cache/`, logs, `backup-settings.json`, in-app `.ruledesk-backup-*.db` files, download queue, Electron cache files), and quits. Your separate media download folder is not deleted. After restart you go through the age gate / onboarding again. Prefer this over uninstalling the `.exe` alone — uninstall does not remove `.rdcache`.
+**Delete all data (in-app):** Settings → General → **Danger zone** → **Delete all data…**. Confirm with the checkbox, then confirm. The app closes the database, stops the video proxy, deletes everything inside `.rdcache` (database + WAL/SHM, `video-cache/`, logs, `backup-settings.json`, download queue, Electron cache files), and quits. Your separate media download folder and DB backups under `RuleDesk-Backups` are not deleted. After restart you go through the age gate / onboarding again. Prefer this over uninstalling the `.exe` alone — uninstall does not remove `.rdcache` or `RuleDesk-Backups`.
 
-**Legacy (pre-fix builds):** `%APPDATA%\RuleDesk\` may still contain old `logs/` and `backup-settings.json`. New builds copy them into `.rdcache` on first launch when targets are missing.
+**Legacy (pre-fix builds):** `%APPDATA%\RuleDesk\` may still contain old `logs/` and `backup-settings.json`. New builds copy them into `.rdcache` on first launch when targets are missing. Older backup files that lived inside `.rdcache` are moved into `RuleDesk-Backups` on a deferred startup migrate.
 
 ---
 
