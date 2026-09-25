@@ -1,6 +1,8 @@
 {
   "system:wipe-all-data": "Deletes all children of userData (.rdcache), then app.exit(0). Order: closeDatabase → stop video proxy → rm → exit. Does not touch media download folders or DB backups under RuleDesk-Backups (sibling of .rdcache).",
   "maintenance:detect-orphans": "Read-only orphan report (posts without artist, playlist entries without post, FTS rows without post, ghost artist ids). SELECT-only; not on maintenanceQueue; no automatic cleanup.",
+  "maintenance:should-show-backup-prompt": "True when autoBackupInterval is never and hasSeenAutoBackupPrompt is false (existing installs that still inherit never). Read-only.",
+  "maintenance:mark-backup-prompt-seen": "Sets hasSeenAutoBackupPrompt=true so the one-time auto-backup opt-in dialog is not shown again (Enable, Not now, or dismiss).",
   "db:create-backup": "Consistent SQLite snapshot via VACUUM INTO into RuleDesk-Backups/ (sibling of .rdcache). Opens the backup folder in the file explorer. Retention prune follows backupRetention.",
   "app:get-settings-status": "Returns IPC-safe settings (no API key plaintext). Idempotent; cached until save.",
   "db:get-posts": "Paginated posts with filters. Always limited — see MAX page size in PostsController.",

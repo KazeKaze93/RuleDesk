@@ -81,6 +81,8 @@ export const IPC_CHANNELS = {
     GET_VACUUM_SCHEDULE: "maintenance:get-vacuum-schedule",
     SET_VACUUM_SCHEDULE: "maintenance:set-vacuum-schedule",
     DETECT_ORPHANS: "maintenance:detect-orphans",
+    SHOULD_SHOW_BACKUP_PROMPT: "maintenance:should-show-backup-prompt",
+    MARK_BACKUP_PROMPT_SEEN: "maintenance:mark-backup-prompt-seen",
   },
   UPDATES: {
     GET_UNREAD_COUNT: "updates:getUnreadCount",

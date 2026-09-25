@@ -90,8 +90,10 @@
 | `maintenance:detect-orphans` | `MAINTENANCE.DETECT_ORPHANS` | `[]` (no args) | yes | `MaintenanceController` | Read-only orphan report (posts without artist, playlist entries without post, FTS rows without post, ghost artist ids). SELECT-only; not on maintenanceQueue; no automatic cleanup. |
 | `maintenance:get-vacuum-schedule` | `MAINTENANCE.GET_VACUUM_SCHEDULE` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `maintenance:get-vacuum-status` | `MAINTENANCE.GET_VACUUM_STATUS` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
+| `maintenance:mark-backup-prompt-seen` | `MAINTENANCE.MARK_BACKUP_PROMPT_SEEN` | `[]` (no args) | no | `MaintenanceController` | Sets hasSeenAutoBackupPrompt=true so the one-time auto-backup opt-in dialog is not shown again (Enable, Not now, or dismiss). |
 | `maintenance:run-vacuum` | `MAINTENANCE.RUN_VACUUM` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `maintenance:set-vacuum-schedule` | `MAINTENANCE.SET_VACUUM_SCHEDULE` | schema: see source (`SetVacuumScheduleArgsSchema`) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
+| `maintenance:should-show-backup-prompt` | `MAINTENANCE.SHOULD_SHOW_BACKUP_PROMPT` | `[]` (no args) | yes | `MaintenanceController` | True when autoBackupInterval is never and hasSeenAutoBackupPrompt is false (existing installs that still inherit never). Read-only. |
 | `settings:confirm-legal` | `SETTINGS.CONFIRM_LEGAL` | `[]` (no args) | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `settings:reset-onboarding` | `SETTINGS.RESET_ONBOARDING` | `[]` (no args) | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `settings:save-download-folder` | `SETTINGS.SAVE_DOWNLOAD_FOLDER` | `z.tuple([SaveDownloadFolderArgSchema])` | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
@@ -116,9 +118,9 @@
 
 ## Coverage
 
-- Channels in `channels.ts`: **102**
-- Channels with at least one scanned `handle` registration: **86**
-- Handler rows extracted: **86**
+- Channels in `channels.ts`: **104**
+- Channels with at least one scanned `handle` registration: **88**
+- Handler rows extracted: **88**
 
 ## Regenerating
 

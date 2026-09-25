@@ -163,6 +163,17 @@ export class MaintenanceController extends BaseController {
       this.detectOrphans.bind(this),
       { isIdempotent: true }
     );
+    this.handle(
+      IPC_CHANNELS.MAINTENANCE.SHOULD_SHOW_BACKUP_PROMPT,
+      z.tuple([]),
+      this.shouldShowBackupPrompt.bind(this),
+      { isIdempotent: true }
+    );
+    this.handle(
+      IPC_CHANNELS.MAINTENANCE.MARK_BACKUP_PROMPT_SEEN,
+      z.tuple([]),
+      this.markBackupPromptSeen.bind(this)
+    );
 
     log.info("[MaintenanceController] All handlers registered");
   }
@@ -540,6 +551,15 @@ export class MaintenanceController extends BaseController {
     interval: AutoBackupInterval
   ): boolean {
     this.getBackupService().scheduleAutoBackup(interval);
+    return true;
+  }
+
+  private shouldShowBackupPrompt(_event: IpcMainInvokeEvent): boolean {
+    return this.getBackupService().shouldShowAutoBackupPrompt();
+  }
+
+  private markBackupPromptSeen(_event: IpcMainInvokeEvent): boolean {
+    this.getBackupService().markAutoBackupPromptSeen();
     return true;
   }
 }

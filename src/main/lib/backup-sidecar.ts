@@ -20,7 +20,7 @@ export type BackupSidecarV1 = {
   };
 };
 
-function getElectronStoreConfigPath(storeName: string): string {
+export function getElectronStoreConfigPath(storeName: string): string {
   return path.join(app.getPath("userData"), `${storeName}.json`);
 }
 

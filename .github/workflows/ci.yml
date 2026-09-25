@@ -14,6 +14,7 @@ jobs:
   quality:
     name: 🧪 Quality Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,8 +36,17 @@ jobs:
           npm run docs:api
           git diff --exit-code docs/api.md
 
+      # `npm test` runs pretest/posttest rebuilds; keep them visible so a hang
+      # is attributable (recent Quality Check jobs stuck inside the opaque step).
+      - name: Rebuild better-sqlite3 for Node (pretest)
+        run: npm run db:rebuild:node
+
       - name: Unit, integration & property tests
-        run: npm test
+        run: npx vitest run --reporter=verbose
+        timeout-minutes: 8
+
+      - name: Rebuild better-sqlite3 for Electron (posttest)
+        run: npm run db:rebuild
 
       - name: npm audit (production, high severity)
         run: npm audit --omit=dev --audit-level=high

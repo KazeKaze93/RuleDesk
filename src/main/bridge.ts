@@ -217,6 +217,8 @@ export interface IpcBridge {
   checkDatabaseIntegrity: () => Promise<{ ok: boolean; details: string }>;
   getBackupSchedule: () => Promise<AutoBackupInterval>;
   setBackupSchedule: (interval: AutoBackupInterval) => Promise<boolean>;
+  shouldShowBackupPrompt: () => Promise<boolean>;
+  markBackupPromptSeen: () => Promise<boolean>;
   getVacuumStatus: () => Promise<VacuumStatusResponse>;
   runVacuum: () => Promise<RunVacuumResponse>;
   getVacuumSchedule: () => Promise<VacuumSchedule>;
@@ -492,6 +494,10 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP.GET_SCHEDULE),
   setBackupSchedule: (interval) =>
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP.SET_SCHEDULE, interval),
+  shouldShowBackupPrompt: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.SHOULD_SHOW_BACKUP_PROMPT),
+  markBackupPromptSeen: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.MARK_BACKUP_PROMPT_SEEN),
   getVacuumStatus: () =>
     ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.GET_VACUUM_STATUS),
   runVacuum: () => ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.RUN_VACUUM),

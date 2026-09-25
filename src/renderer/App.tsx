@@ -7,6 +7,7 @@ import type { ProviderId } from "@shared/constants";
 import { AppLayout as Layout } from "./components/layout/AppLayout";
 import { Settings } from "./features/settings/Settings";
 import { AgeGate } from "@/components/onboarding/AgeGate";
+import { AutoBackupOptInPrompt } from "@/components/onboarding/AutoBackupOptInPrompt";
 import { Tracked } from "./features/artists/Tracked";
 import { ArtistDetails } from "./features/artists/ArtistDetails";
 import { Favorites } from "./components/pages/Favorites";
@@ -295,6 +296,7 @@ function App() {
           />
         </Route>
       </Routes>
+      <AutoBackupOptInPrompt />
       <Toaster />
     </>
   );

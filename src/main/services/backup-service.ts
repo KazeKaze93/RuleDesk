@@ -12,14 +12,23 @@ import {
   listAutoBackupFilesOldestFirst,
   selectAutoBackupFilenamesToDelete,
 } from "../lib/database-backup";
-import { getBackupSidecarPath } from "../lib/backup-sidecar";
+import {
+  getBackupSidecarPath,
+  getElectronStoreConfigPath,
+} from "../lib/backup-sidecar";
 import type { SyncService } from "./sync-service";
 
 export type AutoBackupInterval = "never" | "daily" | "weekly";
 
+export const BACKUP_SETTINGS_STORE_NAME = "backup-settings";
+
+const DEFAULT_AUTO_BACKUP_INTERVAL_NEW_INSTALL: AutoBackupInterval = "daily";
+const DEFAULT_AUTO_BACKUP_INTERVAL_EXISTING: AutoBackupInterval = "never";
+
 type BackupStoreSchema = {
   autoBackupInterval: AutoBackupInterval;
   lastAutoBackupAt: number | null;
+  hasSeenAutoBackupPrompt: boolean;
 };
 
 const AUTO_BACKUP_INTERVAL_MS: Record<Exclude<AutoBackupInterval, "never">, number> = {
@@ -27,7 +36,7 @@ const AUTO_BACKUP_INTERVAL_MS: Record<Exclude<AutoBackupInterval, "never">, numb
   weekly: 7 * 24 * 60 * 60 * 1000,
 };
 
-type BackupStoreContract = {
+export type BackupStoreContract = {
   get<K extends keyof BackupStoreSchema>(key: K): BackupStoreSchema[K];
   set<K extends keyof BackupStoreSchema>(key: K, value: BackupStoreSchema[K]): void;
 };
@@ -35,39 +44,97 @@ type BackupStoreContract = {
 type BackupStoreConstructor = new (options: {
   name: string;
   defaults: BackupStoreSchema;
+  cwd?: string;
 }) => BackupStoreContract;
 
 function isBackupStoreConstructor(v: unknown): v is BackupStoreConstructor {
   return typeof v === "function";
 }
 
-const require = createRequire(import.meta.url);
-const storeModule: unknown = require("electron-store");
-const storeModuleDefault: unknown =
-  typeof storeModule === "object" && storeModule !== null && "default" in storeModule
-    ? storeModule.default
-    : null;
-const resolvedConstructor = isBackupStoreConstructor(storeModule)
-  ? storeModule
-  : storeModuleDefault;
-if (!isBackupStoreConstructor(resolvedConstructor)) {
-  throw new Error("[backup-service] electron-store module did not export a constructor");
+let StoreConstructor: BackupStoreConstructor | null = null;
+
+function getStoreConstructor(): BackupStoreConstructor {
+  if (StoreConstructor !== null) {
+    return StoreConstructor;
+  }
+  // Lazy require: top-level createRequire("electron-store") pulls the real
+  // `electron` package (a binary path string) and has hung Vitest workers on CI.
+  const require = createRequire(import.meta.url);
+  const storeModule: unknown = require("electron-store");
+  const storeModuleDefault: unknown =
+    typeof storeModule === "object" && storeModule !== null && "default" in storeModule
+      ? storeModule.default
+      : null;
+  const resolvedConstructor = isBackupStoreConstructor(storeModule)
+    ? storeModule
+    : storeModuleDefault;
+  if (!isBackupStoreConstructor(resolvedConstructor)) {
+    throw new Error("[backup-service] electron-store module did not export a constructor");
+  }
+  StoreConstructor = resolvedConstructor;
+  return StoreConstructor;
 }
-const StoreConstructor: BackupStoreConstructor = resolvedConstructor;
 
 let store: BackupStoreContract | null = null;
+let settingsFileExistedBeforeInit: boolean | null = null;
+
+/**
+ * Whether `backup-settings.json` already existed on disk **before** the first
+ * `electron-store` / `conf` construction in this process. Cached on first call
+ * so a constructor side-effect that creates the file cannot flip the answer.
+ */
+export function backupSettingsFileExistedBeforeInit(): boolean {
+  if (settingsFileExistedBeforeInit === null) {
+    settingsFileExistedBeforeInit = fs.existsSync(
+      getElectronStoreConfigPath(BACKUP_SETTINGS_STORE_NAME)
+    );
+  }
+  return settingsFileExistedBeforeInit;
+}
+
+// Eager probe at module load — must run before any getBackupStore() in this process.
+backupSettingsFileExistedBeforeInit();
+
+function defaultAutoBackupInterval(): AutoBackupInterval {
+  return backupSettingsFileExistedBeforeInit()
+    ? DEFAULT_AUTO_BACKUP_INTERVAL_EXISTING
+    : DEFAULT_AUTO_BACKUP_INTERVAL_NEW_INSTALL;
+}
 
 function getBackupStore(): BackupStoreContract {
   if (!store) {
-    store = new StoreConstructor({
-      name: "backup-settings",
+    store = new (getStoreConstructor())({
+      name: BACKUP_SETTINGS_STORE_NAME,
       defaults: {
-        autoBackupInterval: "never",
+        autoBackupInterval: defaultAutoBackupInterval(),
         lastAutoBackupAt: null,
+        hasSeenAutoBackupPrompt: false,
       },
     });
   }
   return store;
+}
+
+/** Clears the module singleton so tests can simulate a fresh process. */
+export function resetBackupStoreForTests(): void {
+  store = null;
+  settingsFileExistedBeforeInit = null;
+}
+
+/**
+ * Install a pre-built store (e.g. `conf` with an explicit `cwd`) so tests never
+ * construct `electron-store` (which loads the real `electron` package via createRequire).
+ */
+export function setBackupStoreForTests(next: BackupStoreContract): void {
+  store = next;
+}
+
+export function buildBackupStoreDefaultsForTests(): BackupStoreSchema {
+  return {
+    autoBackupInterval: defaultAutoBackupInterval(),
+    lastAutoBackupAt: null,
+    hasSeenAutoBackupPrompt: false,
+  };
 }
 
 export class BackupService {
@@ -84,6 +151,19 @@ export class BackupService {
 
   public getAutoBackupSchedule(): AutoBackupInterval {
     return getBackupStore().get("autoBackupInterval");
+  }
+
+  public shouldShowAutoBackupPrompt(): boolean {
+    const backupStore = getBackupStore();
+    return (
+      backupStore.get("autoBackupInterval") === "never" &&
+      backupStore.get("hasSeenAutoBackupPrompt") === false
+    );
+  }
+
+  public markAutoBackupPromptSeen(): void {
+    getBackupStore().set("hasSeenAutoBackupPrompt", true);
+    log.info("[BackupService] Auto-backup opt-in prompt marked as seen");
   }
 
   public checkAndRunAutoBackup(): void {
