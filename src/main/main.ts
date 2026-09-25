@@ -62,6 +62,8 @@ import { getAppIconPath, getAppIconsDirectory } from "./lib/app-resources";
 import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
 import { initializeDatabase, closeDatabase, getDb } from "./db/client";
+import { getBackupDirectory, getDatabasePaths } from "./db/paths";
+import { migrateBackupDirectory } from "./db/backup-dir-migrate";
 import { SYNC_SHUTDOWN_DRAIN_MS } from "./config/constants";
 import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
@@ -301,6 +303,32 @@ function scheduleDeferredStartupTasks(window: BrowserWindow): void {
   void videoProxyServer.start().catch((error) => {
     logger.error("[Main] Video proxy failed to start:", error);
   });
+
+  // Non-critical: move existing backups out of .rdcache into RuleDesk/backups.
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const { userDataDir } = getDatabasePaths();
+        const targetDir = getBackupDirectory();
+        const result = await migrateBackupDirectory({
+          sourceDir: userDataDir,
+          targetDir,
+        });
+        if (
+          result.moved.length > 0 ||
+          result.skippedExisting.length > 0 ||
+          result.failed.length > 0
+        ) {
+          logger.info(
+            `[Main] Backup directory migrate: moved=${result.moved.length}, ` +
+              `skipped=${result.skippedExisting.length}, failed=${result.failed.length}`
+          );
+        }
+      } catch (error) {
+        logger.error("[Main] Backup directory migrate failed (non-fatal):", error);
+      }
+    })();
+  }, 2500);
 
   setTimeout(() => {
     backupService.checkAndRunAutoBackup();
