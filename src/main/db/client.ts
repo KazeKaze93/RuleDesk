@@ -9,8 +9,15 @@ import * as schema from "./schema";
 import { logger } from "../lib/logger";
 import { getDatabasePaths, getLegacyDatabasePaths } from "./paths";
 import { SQLITE_BUSY_TIMEOUT_MS } from "../config/constants";
-import { getErrorCode } from "../../shared/utils/type-guards";
 import { ensureFtsTriggers, rebuildFtsIndex } from "./fts-triggers";
+import {
+  createPreMigrationSnapshot,
+  deletePreMigrationSnapshot,
+  ensureDrizzleMigrationsTable,
+  hasPendingMigrations,
+  readMigrationJournal,
+  runManualMigrations,
+} from "./migration-runner";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -194,6 +201,8 @@ export async function initializeDatabase(): Promise<AppDatabase> {
   // eslint-disable-next-line no-restricted-syntax -- boundary: better-sqlite3 / drizzle instance typing
   dbInstance = drizzle(sqlite, { schema }) as AppDatabase;
 
+  let preMigrationSnapshotPath: string | null = null;
+
   try {
     logger.info("[DB] Running migrations...");
     
@@ -237,159 +246,30 @@ export async function initializeDatabase(): Promise<AppDatabase> {
           if (!dbInstance || !sqliteInstance) {
             throw new Error("Database instance is null");
           }
-          
-          // Handle migration 0004 specially - it tries to add columns that may already exist
-          // This happens when database is created from schema (migration 0000) which already includes these columns
-          // We need to manually execute migrations to handle duplicate column errors gracefully
-          const journalPath = path.join(migrationsFolder, "meta", "_journal.json");
-          let migrationEntries: Array<{ tag: string }> = [];
-          
-          try {
-            const journalContent = fs.readFileSync(journalPath, "utf-8");
-            const journal = JSON.parse(journalContent);
-            migrationEntries = journal.entries || [];
-          } catch (_journalError) {
-            // If journal doesn't exist, use standard migrate
+
+          const migrationEntries = readMigrationJournal(migrationsFolder);
+          if (!migrationEntries) {
             logger.warn("[DB] Could not read migration journal, using standard migrate");
             migrate(dbInstance, { migrationsFolder });
             resolve();
             return;
           }
-          
-          // Create __drizzle_migrations table if it doesn't exist
-          // Units: __drizzle_migrations.created_at is written with Date.now() = milliseconds (journal only).
-          sqliteInstance.exec(`
-            CREATE TABLE IF NOT EXISTS __drizzle_migrations (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              hash text NOT NULL,
-              created_at bigint
+
+          ensureDrizzleMigrationsTable(sqliteInstance);
+
+          // Snapshot only on upgrade (existing migration history + pending tags).
+          // Fresh install: empty __drizzle_migrations → no snapshot.
+          if (hasPendingMigrations(sqliteInstance, migrationEntries)) {
+            const vacuumStartedAt = Date.now();
+            preMigrationSnapshotPath = createPreMigrationSnapshot(
+              sqliteInstance,
+              dbPath
             );
-          `);
-          
-          // Execute migrations manually, handling duplicate column/table errors
-          for (const entry of migrationEntries) {
-            const migrationFile = path.join(migrationsFolder, `${entry.tag}.sql`);
-            
-            if (!fs.existsSync(migrationFile)) {
-              logger.warn(`[DB] Migration file not found: ${migrationFile}`);
-              continue;
-            }
-            
-            // Check if migration was already executed
-            const existing = sqliteInstance
-              .prepare("SELECT hash FROM __drizzle_migrations WHERE hash = ?")
-              .get(entry.tag);
-            if (existing) {
-              logger.debug(`[DB] Migration ${entry.tag} already executed, skipping...`);
-              continue;
-            }
-            
-            try {
-              const migrationSQL = fs.readFileSync(migrationFile, "utf-8");
-              
-              // Handle migration 0000: if artists table exists, skip (DB was created without migrations)
-              if (entry.tag === "0000_blue_lorna_dane") {
-                const artistsTableExists = sqliteInstance
-                  .prepare(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='artists'"
-                  )
-                  .get();
-                if (artistsTableExists) {
-                  logger.debug("[DB] Migration 0000: artists exists, skipping");
-                  sqliteInstance
-                    .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
-                    .run(entry.tag, Date.now());
-                } else {
-                  sqliteInstance.exec(migrationSQL);
-                  sqliteInstance
-                    .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
-                    .run(entry.tag, Date.now());
-                }
-              } else if (entry.tag === "0010_add_fts5_cache_invalidation") {
-                // 0010 SQL also CREATE TRIGGER ON posts_fts (virtual) which always fails.
-                // Apply only the table + singleton seed. Triggers are never created;
-                // 0032 only DROPs dead names. Table kept for downgrade safety (unused).
-                // Units: invalidated_at = milliseconds via julianday epoch-ms formula.
-                sqliteInstance.exec(`
-                  CREATE TABLE IF NOT EXISTS fts5_cache_invalidation (
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
-                    invalidated_at INTEGER NOT NULL DEFAULT (CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
-                  );
-                `);
-                sqliteInstance.exec(`
-                  INSERT OR IGNORE INTO fts5_cache_invalidation (id, invalidated_at)
-                  VALUES (1, CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER));
-                `);
-                sqliteInstance
-                  .prepare(
-                    "INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)"
-                  )
-                  .run(entry.tag, Date.now());
-              } else if (entry.tag === "0011_add_fts5_count_meta") {
-                // 0011 SQL also CREATE TRIGGER ON posts_fts (virtual) which always fails.
-                // Apply only the table + seed. Count triggers are never created;
-                // empty-guard uses SELECT 1 FROM posts_fts LIMIT 1 only while
-                // insert/update triggers are live (content emptiness = index emptiness).
-                sqliteInstance.exec(`
-                  CREATE TABLE IF NOT EXISTS fts5_count_meta (
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
-                    count INTEGER NOT NULL DEFAULT 0
-                  );
-                `);
-                // boundary: better-sqlite3 raw row — prepare().get() row typing
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
-                const countResult = sqliteInstance
-                  .prepare("SELECT COUNT(*) as count FROM posts_fts")
-                  .get() as { count: number } | undefined;
-                const count = countResult?.count ?? 0;
-                sqliteInstance.exec(`
-                  INSERT OR IGNORE INTO fts5_count_meta (id, count)
-                  VALUES (1, ${count});
-                `);
-                sqliteInstance
-                  .prepare(
-                    "INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)"
-                  )
-                  .run(entry.tag, Date.now());
-              } else {
-                // Execute other migrations normally
-                sqliteInstance.exec(migrationSQL);
-                
-                // Mark migration as executed
-                sqliteInstance
-                  .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
-                  .run(entry.tag, Date.now());
-              }
-            } catch (migrationError: unknown) {
-              const errorMessage = migrationError instanceof Error ? migrationError.message : String(migrationError);
-              const errorCode = getErrorCode(migrationError) ?? "";
-              
-              // If it's a duplicate column/table/index error, log and mark as executed
-              // (DB was created without migrations or from different schema)
-              const isAlreadyExists =
-                (errorCode === "SQLITE_ERROR" && errorMessage.includes("duplicate column")) ||
-                (errorCode === "SQLITE_ERROR" && errorMessage.includes("already exists"));
-              if (isAlreadyExists) {
-                logger.warn(
-                  `[DB] Migration ${entry.tag}: object already exists. Skipping...`
-                );
-                // Mark as executed anyway to prevent retry
-                try {
-                  sqliteInstance
-                    .prepare(
-                      "INSERT OR IGNORE INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)"
-                    )
-                    .run(entry.tag, Date.now());
-                } catch {
-                  // Ignore errors when marking
-                }
-              } else {
-                // For other errors, throw — never soft-fail CREATE TRIGGER / CREATE TABLE
-                logger.error(`[DB] Migration ${entry.tag} failed:`, errorMessage);
-                throw migrationError;
-              }
-            }
+            const vacuumMs = Date.now() - vacuumStartedAt;
+            logger.info(`[DB] Pre-migration VACUUM INTO took ${vacuumMs}ms`);
           }
+
+          runManualMigrations(sqliteInstance, migrationsFolder, migrationEntries);
           
           resolve();
         } catch (error) {
@@ -408,6 +288,13 @@ export async function initializeDatabase(): Promise<AppDatabase> {
       recoverAfterRecreatedFtsTriggers(sqlite, recreated);
     }
     resetStaleSyncingArtists(sqlite);
+
+    // Delete snapshot only after the full successful init path (migrations + FTS + reset).
+    // On any throw above, catch must leave the snapshot on disk.
+    if (preMigrationSnapshotPath) {
+      deletePreMigrationSnapshot(preMigrationSnapshotPath);
+      preMigrationSnapshotPath = null;
+    }
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
     

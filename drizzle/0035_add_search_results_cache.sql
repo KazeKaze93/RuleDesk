@@ -1,4 +1,4 @@
-CREATE TABLE `search_results_cache` (
+CREATE TABLE IF NOT EXISTS `search_results_cache` (
   `cache_key` text PRIMARY KEY NOT NULL,
   `status` text NOT NULL,
   `payload_schema_version` integer NOT NULL,
@@ -7,4 +7,4 @@ CREATE TABLE `search_results_cache` (
   `resolved_at` integer NOT NULL
 );
 
-CREATE INDEX `search_results_cache_resolved_at_idx` ON `search_results_cache` (`resolved_at`);
+CREATE INDEX IF NOT EXISTS `search_results_cache_resolved_at_idx` ON `search_results_cache` (`resolved_at`);

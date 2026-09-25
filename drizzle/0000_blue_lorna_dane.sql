@@ -1,4 +1,4 @@
-CREATE TABLE `artists` (
+CREATE TABLE IF NOT EXISTS `artists` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
 	`tag` text NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE `artists` (
 	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE `posts` (
+CREATE TABLE IF NOT EXISTS `posts` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`post_id` integer NOT NULL,
 	`artist_id` integer NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE `posts` (
 	FOREIGN KEY (`artist_id`) REFERENCES `artists`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `settings` (
+CREATE TABLE IF NOT EXISTS `settings` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`user_id` text DEFAULT '',
 	`encrypted_api_key` text DEFAULT '',
@@ -38,11 +38,11 @@ CREATE TABLE `settings` (
 	`tos_accepted_at` integer
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `artists_tag_unique` ON `artists` (`tag`);--> statement-breakpoint
-CREATE INDEX `artists_lastChecked_idx` ON `artists` (`last_checked`);--> statement-breakpoint
-CREATE INDEX `artists_createdAt_idx` ON `artists` (`created_at`);--> statement-breakpoint
-CREATE INDEX `artistIdIdx` ON `posts` (`artist_id`);--> statement-breakpoint
-CREATE INDEX `isViewedIdx` ON `posts` (`is_viewed`);--> statement-breakpoint
-CREATE INDEX `publishedAtIdx` ON `posts` (`published_at`);--> statement-breakpoint
-CREATE INDEX `isFavoritedIdx` ON `posts` (`is_favorited`);--> statement-breakpoint
-CREATE UNIQUE INDEX `posts_artist_id_post_id_unique` ON `posts` (`artist_id`,`post_id`);
+CREATE UNIQUE INDEX IF NOT EXISTS `artists_tag_unique` ON `artists` (`tag`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `artists_lastChecked_idx` ON `artists` (`last_checked`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `artists_createdAt_idx` ON `artists` (`created_at`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `artistIdIdx` ON `posts` (`artist_id`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `isViewedIdx` ON `posts` (`is_viewed`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `publishedAtIdx` ON `posts` (`published_at`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `isFavoritedIdx` ON `posts` (`is_favorited`);--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS `posts_artist_id_post_id_unique` ON `posts` (`artist_id`,`post_id`);
