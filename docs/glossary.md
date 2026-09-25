@@ -138,7 +138,7 @@ The sandboxed browser environment in Electron that handles UI rendering and user
 
 ### Wipe all data
 
-Settings → General → **Danger zone** → confirmed delete of everything under the user data directory (`.rdcache`), including the database, `video-cache/`, and logs, then app quit. Does **not** delete DB backups under `RuleDesk-Backups` (sibling of `.rdcache`) or the separate media download folder. IPC: `system:wipe-all-data` / `wipeAllData`.
+Settings → General → **Danger zone** → confirmed delete of everything under the user data directory (`RuleDesk-Data`), including the database, `video-cache/`, and logs, then app quit. Does **not** delete DB backups under `RuleDesk-Backups` (sibling of `RuleDesk-Data`) or the separate media download folder. IPC: `system:wipe-all-data` / `wipeAllData`.
 
 **Related:** [User Guide — Settings](./user-guide.md#settings), [API Reference](./api.md)
 
@@ -295,7 +295,7 @@ A script that modifies the database schema. RuleDesk uses Drizzle Kit to generat
 
 ### Backup / Restore
 
-Manual database backup and restore functionality. Backups are timestamped consistent SQLite snapshots (`VACUUM INTO`) stored under `RuleDesk-Backups/` (sibling of `.rdcache`, not inside the cache dir).
+Manual database backup and restore functionality. Backups are timestamped consistent SQLite snapshots (`VACUUM INTO`) stored under `RuleDesk-Backups/` (sibling of `RuleDesk-Data`, not inside live userData).
 
 **Related:** [Backup and Recovery](./database.md#backup-and-recovery), [Backup & Restore](../README.md#-backup--restore)
 

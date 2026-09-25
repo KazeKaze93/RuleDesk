@@ -3,49 +3,15 @@
  */
 import { app } from "electron";
 import path from "node:path";
+import { mkdirSync } from "node:fs";
 import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  writeFileSync,
-} from "node:fs";
-import {
+  LEGACY_NEUTRAL_USER_DATA_DIR_NAME,
   USER_DATA_DIR_NAME,
   getNeutralDataRoot,
 } from "./db/paths";
+import { migrateLightUserDataSidecars } from "./lib/light-user-data-migrate";
 
 const isTestMode = process.env.NODE_ENV === "test";
-
-function migrateFileIfMissing(sourcePath: string, targetPath: string): void {
-  if (!existsSync(sourcePath) || existsSync(targetPath)) {
-    return;
-  }
-
-  mkdirSync(path.dirname(targetPath), { recursive: true });
-  copyFileSync(sourcePath, targetPath);
-}
-
-/**
- * One-time migration from Electron default userData (e.g. %APPDATA%/RuleDesk)
- * to neutral %LOCALAPPDATA%/.rdcache after path redirect was introduced.
- */
-function migrateLegacyUserDataFiles(
-  legacyUserDataDir: string,
-  targetUserDataDir: string
-): void {
-  if (legacyUserDataDir === targetUserDataDir) {
-    return;
-  }
-
-  migrateFileIfMissing(
-    path.join(legacyUserDataDir, "backup-settings.json"),
-    path.join(targetUserDataDir, "backup-settings.json")
-  );
-  migrateFileIfMissing(
-    path.join(legacyUserDataDir, "logs", "app.log"),
-    path.join(targetUserDataDir, "logs", "app.log")
-  );
-}
 
 function configureUserDataPath(): void {
   if (isTestMode) {
@@ -53,23 +19,23 @@ function configureUserDataPath(): void {
     return;
   }
 
-  const legacyUserDataDir = app.getPath("userData");
+  const electronDefaultUserDataDir = app.getPath("userData");
+  const neutralRoot = getNeutralDataRoot();
+  const targetUserDataDir = path.join(neutralRoot, USER_DATA_DIR_NAME);
+  const rdcacheUserDataDir = path.join(
+    neutralRoot,
+    LEGACY_NEUTRAL_USER_DATA_DIR_NAME
+  );
 
-  const neutralUserDataPath = path.join(getNeutralDataRoot(), USER_DATA_DIR_NAME);
+  mkdirSync(targetUserDataDir, { recursive: true });
 
-  mkdirSync(neutralUserDataPath, { recursive: true });
-
-  if (process.platform === "win32") {
-    try {
-      writeFileSync(path.join(neutralUserDataPath, ".init"), "", { flag: "a" });
-    } catch {
-      // Non-critical marker for hidden attribute in main.ts
-    }
-  }
-
-  app.setPath("userData", neutralUserDataPath);
-  migrateLegacyUserDataFiles(legacyUserDataDir, neutralUserDataPath);
-  process.env.USER_DATA_PATH = neutralUserDataPath;
+  app.setPath("userData", targetUserDataDir);
+  migrateLightUserDataSidecars({
+    rdcacheUserDataDir,
+    electronDefaultUserDataDir,
+    targetUserDataDir,
+  });
+  process.env.USER_DATA_PATH = targetUserDataDir;
 }
 
 configureUserDataPath();

@@ -507,7 +507,7 @@ const posts = await db.query.posts.findMany({
    - `MaintenanceController.ts` - Database backup/restore, VACUUM, and read-only orphan detection
    - `ViewerController.ts` - Viewer-related operations
    - `FileController.ts` - File download and management
-   - `SystemController.ts` - System-level ops (version, clipboard, icon path, quit, **`wipeAllData`** — `.rdcache` only; does not delete `RuleDesk-Backups`)
+   - `SystemController.ts` - System-level ops (version, clipboard, icon path, quit, **`wipeAllData`** — `RuleDesk-Data` only; does not delete `RuleDesk-Backups`)
    - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination and SQLite `search_results_cache` TTL layer, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
    - `PlaylistController.ts` - Playlist CRUD, smart queries, import/export
    - `StatsController.ts` - Extended stats for `/stats`
@@ -622,7 +622,7 @@ const posts = await db.query.posts.findMany({
 
 9. **Video Proxy Service** (`src/main/services/video-proxy-server.ts`)
 
-   - Local HTTP proxy for video playback with on-disk `video-cache/` under `.rdcache`
+   - Local HTTP proxy for video playback with on-disk `video-cache/` under `RuleDesk-Data`
    - Atomic cache writes (tmp+rename), abort cleanup, eviction capped by `VIDEO_CACHE_MAX_BYTES` (2 GiB) in `src/main/config/constants.ts`. LRU by last-accessed (`atime` bumped on hit); open readers are skipped. Selection lives in `selectMediaCacheFilesToEvict`; `MaintenanceScheduler` runs `evictCache()` after SQLite work on a nested `setImmediate` (one synchronous directory walk per tick — not chunked iteration). A pass that still exceeds the cap logs `warn` (`skippedOpen`); that is an expected trade-off while a viewer holds the file, not a silent miss.
    - Host allowlist is derived from `provider.cdnDomains` via `getAllProviderCdnDomains` (exact match, cached at module load). IPC `video-proxy:get-url` only mints a localhost URL and does not check the allowlist; rejection is HTTP 400 on the subsequent Range request (logged with hostname). API/apex hosts such as `api.rule34.xxx` and `gelbooru.com` are CSP-only. Does not rewrite stored post URLs at sync time.
 
@@ -1599,7 +1599,7 @@ src/
 │   │   ├── fts-triggers.ts        # Runtime-droppable FTS trigger DDL / rebuild
 │   │   ├── fts-table-check.ts     # posts_fts existence probe (sqlite instance in)
 │   │   ├── maintenance-queue.ts   # Maintenance operation queue (sequential execution)
-│   │   ├── paths.ts               # DB/userData (.rdcache) + RuleDesk-Backups path helpers
+│   │   ├── paths.ts               # DB/userData (RuleDesk-Data) + RuleDesk-Backups path helpers
 │   │   ├── schema.ts              # Drizzle ORM schema definitions
 │   │   └── backfill-media-type.ts # Background media_type backfill
 │   ├── config/                    # Main-process constants / allowlists
@@ -1780,7 +1780,7 @@ Root:
 - **Electron Version:** 39.8.x with latest security patches
 - **Build System:** electron-vite for optimal build performance
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
-- **User Data Path:** Neutral `.rdcache` directory for live DB/logs/settings; sibling `RuleDesk-Backups/` for DB snapshots (`bootstrap-user-data.ts` runs before logger and electron-store)
+- **User Data Path:** Neutral `RuleDesk-Data` directory for live DB/logs/settings; sibling `RuleDesk-Backups/` for DB snapshots (`bootstrap-user-data.ts` runs before logger and electron-store)
 
 **Database & Schema:**
 
@@ -1794,7 +1794,7 @@ Root:
 **Security & Reliability:**
 
 - **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API (Windows Credential Manager, macOS Keychain, Linux libsecret)
-- **Database Backup/Restore:** Manual/auto backups via `VACUUM INTO` into `RuleDesk-Backups/` (outside `.rdcache`); integrity checks; automatic rotation using configurable `backupRetention` (`1..20`); read-only orphan detection in Settings
+- **Database Backup/Restore:** Manual/auto backups via `VACUUM INTO` into `RuleDesk-Backups/` (outside live userData); integrity checks; automatic rotation using configurable `backupRetention` (`1..20`); read-only orphan detection in Settings
 - **DB Maintenance (VACUUM):** User-visible status, manual trigger, and persisted schedule (`manual`, `weekly`, `monthly`)
 - **Context Isolation:** Enabled globally with sandbox mode
 - **CSP:** Built from `getAllProviderDomains()` (`img-src` / `media-src` / `connect-src`); production is strict, development is relaxed for HMR
@@ -1842,7 +1842,7 @@ Root:
 20. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 21. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
 22. ✅ **Logout Functionality:** Clear stored credentials and return to account gate
-23. ✅ **User Data Path:** Neutral `.rdcache` for live data; sibling `RuleDesk-Backups/` for snapshots
+23. ✅ **User Data Path:** Neutral `RuleDesk-Data` for live data; sibling `RuleDesk-Backups/` for snapshots
 24. ✅ **IPC Controllers:** Controller-based architecture with `BaseController` and dependency injection
 25. ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 
@@ -1944,7 +1944,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 
 - **Safe Mode / NSFW Filter:** blur logic and safe mode state in gallery/viewer (`safeModeStore`, `PanicButton`, `PostCard`, `ViewerMedia`)
 - **Age Gate:** `src/renderer/components/onboarding/AgeGate.tsx` and `confirmLegal` IPC method
-- **User Data Path:** Neutral `.rdcache` via `bootstrap-user-data.ts` (not next to the executable); DB backups in sibling `RuleDesk-Backups/`
+- **User Data Path:** Neutral `RuleDesk-Data` via `bootstrap-user-data.ts` (not next to the executable); DB backups in sibling `RuleDesk-Backups/`
 - **Anti-Bot Measures:** Shared `ProviderThrottle` (~1200ms + jitter) and session UA rotation via `pickRandomUA()` across current providers. One throttle instance per provider host serializes Sync/Browse/autocomplete (`user` priority) ahead of tag-resolve (`background`). A single host 429 gate (`notifyRateLimited`) is written by any consumer and checked by every `wait()` — local rate-limit copies are forbidden.
 - **DB Optimization (FTS5):** FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
 - **Composite Indexes:** Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries

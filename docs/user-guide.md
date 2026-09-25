@@ -43,7 +43,7 @@ Tagged [Releases](https://github.com/KazeKaze93/ruledesk/releases) ship **pre-bu
 2. Extract the archive
 3. Run `RuleDesk.exe`
 
-Application data is stored in the same location as the dev build (`%LOCALAPPDATA%/.rdcache` on Windows). Updates: use **Download** in the in-app notification to open the latest release on GitHub.
+Application data is stored in the same location as the dev build (`%LOCALAPPDATA%/RuleDesk-Data` on Windows). Updates: use **Download** in the in-app notification to open the latest release on GitHub.
 
 ### Linux
 
@@ -55,7 +55,7 @@ Application data is stored in the same location as the dev build (`%LOCALAPPDATA
 
 - AppImage bundles the app; no system-wide install is required.
 - Some distributions need FUSE (`libfuse2`) to run AppImages. If launch fails, install your distro's `libfuse2` / `fuse` package and retry.
-- Application data: `~/.config/.rdcache/` (same as a local dev build on Linux).
+- Application data: `~/.config/RuleDesk-Data/` (same as a local dev build on Linux).
 
 ### macOS — not distributed
 
@@ -445,7 +445,7 @@ Settings are split into tabs:
 - **When file already exists** - Choose `Skip` or `Overwrite`
 - **Folder structure** - `Flat` or `By artist`
 - **Proxy URL** - Optional HTTP/HTTPS proxy for requests/downloads
-- **Danger zone** - **Delete all data…** (checkbox + confirm). Closes the DB, stops the video proxy, deletes the contents of `.rdcache`, and quits. Media downloads outside `.rdcache` and DB backups under `RuleDesk-Backups` are not removed.
+- **Danger zone** - **Delete all data…** (checkbox + confirm). Closes the DB, stops the video proxy, deletes the contents of `RuleDesk-Data`, and quits. Media downloads outside `RuleDesk-Data` and DB backups under `RuleDesk-Backups` are not removed.
 
 ### Sync
 
@@ -587,8 +587,8 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 **Solutions:**
 
 1. Retry opening the post (proxy may fall back to the direct CDN URL while resolving)
-2. If problems persist across many videos, manually delete the `video-cache` folder under `.rdcache` and restart — or use **Settings → General → Danger zone → Delete all data** as a last resort (wipes all of `.rdcache`)
-3. Known limitation: if playback still fails after an interrupt, clear `video-cache` under `.rdcache` (or use Danger zone wipe). Cache writes are atomic (tmp + rename); incomplete downloads should not become hits.
+2. If problems persist across many videos, manually delete the `video-cache` folder under `RuleDesk-Data` and restart — or use **Settings → General → Danger zone → Delete all data** as a last resort (wipes all of `RuleDesk-Data`)
+3. Known limitation: if playback still fails after an interrupt, clear `video-cache` under `RuleDesk-Data` (or use Danger zone wipe). Cache writes are atomic (tmp + rename); incomplete downloads should not become hits.
 
 ### Artist sync seems to skip newer posts
 
@@ -639,21 +639,21 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 
 **Database locations:**
 
-The application redirects `userData` to a neutral `.rdcache` directory. Development and packaged builds use the same paths on a given machine:
+The application redirects `userData` to a neutral `RuleDesk-Data` directory. Development and packaged builds use the same paths on a given machine:
 
 - **Windows:**
-  - Database: `%LOCALAPPDATA%\.rdcache\data.bin`
-  - Logs: `%LOCALAPPDATA%\.rdcache\logs\app.log`
-  - Backup schedule: `%LOCALAPPDATA%\.rdcache\backup-settings.json`
+  - Database: `%LOCALAPPDATA%\RuleDesk-Data\data.bin`
+  - Logs: `%LOCALAPPDATA%\RuleDesk-Data\logs\app.log`
+  - Backup schedule: `%LOCALAPPDATA%\RuleDesk-Data\backup-settings.json`
   - DB backups: `%LOCALAPPDATA%\RuleDesk-Backups\`
-- **macOS:** `~/Library/Application Support/.rdcache/` (backups: `…/RuleDesk-Backups/`)
-- **Linux:** `~/.config/.rdcache/` (backups: `…/RuleDesk-Backups/`)
+- **macOS:** `~/Library/Application Support/RuleDesk-Data/` (backups: `…/RuleDesk-Backups/`)
+- **Linux:** `~/.config/RuleDesk-Data/` (backups: `…/RuleDesk-Backups/`)
 
-**Note:** Data is not stored next to `RuleDesk.exe`. You can move or replace the app folder freely; local database, logs, and settings stay under `.rdcache` until you delete that directory. Timestamped DB backups live in the sibling `RuleDesk-Backups` folder (survives Danger-zone wipe and typical cache cleaners).
+**Note:** Data is not stored next to `RuleDesk.exe`. You can move or replace the app folder freely; local database, logs, and settings stay under `RuleDesk-Data` until you delete that directory. Timestamped DB backups live in the sibling `RuleDesk-Backups` folder (survives Danger-zone wipe and typical cache cleaners).
 
-**Delete all data (in-app):** Settings → General → **Danger zone** → **Delete all data…**. Confirm with the checkbox, then confirm. The app closes the database, stops the video proxy, deletes everything inside `.rdcache` (database + WAL/SHM, `video-cache/`, logs, `backup-settings.json`, download queue, Electron cache files), and quits. Your separate media download folder and DB backups under `RuleDesk-Backups` are not deleted. After restart you go through the age gate / onboarding again. Prefer this over uninstalling the `.exe` alone — uninstall does not remove `.rdcache` or `RuleDesk-Backups`.
+**Delete all data (in-app):** Settings → General → **Danger zone** → **Delete all data…**. Confirm with the checkbox, then confirm. The app closes the database, stops the video proxy, deletes everything inside `RuleDesk-Data` (database + WAL/SHM, `video-cache/`, logs, `backup-settings.json`, download queue, Electron cache files), and quits. Your separate media download folder and DB backups under `RuleDesk-Backups` are not deleted. After restart you go through the age gate / onboarding again. Prefer this over uninstalling the `.exe` alone — uninstall does not remove `RuleDesk-Data` or `RuleDesk-Backups`.
 
-**Legacy (pre-fix builds):** `%APPDATA%\RuleDesk\` may still contain old `logs/` and `backup-settings.json`. New builds copy them into `.rdcache` on first launch when targets are missing. Older backup files that lived inside `.rdcache` are moved into `RuleDesk-Backups` on a deferred startup migrate.
+**Legacy (pre-relocate builds):** `%APPDATA%\RuleDesk\` or `%LOCALAPPDATA%\.rdcache\` may still contain old `logs/`, `backup-settings.json`, or `data.bin`. New builds copy light files into `RuleDesk-Data` and move `data.bin` on first launch when targets are missing. Leftover backup files under those old locations are moved into `RuleDesk-Backups` on a deferred startup migrate. Do not run a pre-relocate binary after upgrading — it will not see `RuleDesk-Data` and may create an empty DB under `.rdcache`.
 
 ---
 

@@ -30,8 +30,8 @@ function isBackupFilename(filename: string): boolean {
 }
 
 /**
- * Move backup files (and matching `.settings.json` sidecars) from the live
- * userData / `.rdcache` directory into the dedicated backups folder.
+ * Move backup files (and matching `.settings.json` sidecars) from a live
+ * userData directory (or legacy `.rdcache`) into the dedicated backups folder.
  *
  * Idempotent: if the target filename already exists, skip (do not overwrite).
  * Per-file failures are logged and collected; other files still migrate.

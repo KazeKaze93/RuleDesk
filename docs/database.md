@@ -37,15 +37,17 @@ This document is a maintainer-focused database reference. RuleDesk uses **SQLite
 
 Development and packaged builds use the same neutral `userData` directory (not a folder next to the executable):
 
-- **Windows:** `%LOCALAPPDATA%\.rdcache\`
+- **Windows:** `%LOCALAPPDATA%\RuleDesk-Data\`
   - Database: `data.bin`
   - Logs: `logs\app.log`
   - Backup schedule sidecar: `backup-settings.json`
-  - **Backups (not in cache dir):** `%LOCALAPPDATA%\RuleDesk-Backups\`
-- **macOS:** `~/Library/Application Support/.rdcache/` (backups: `~/Library/Application Support/RuleDesk-Backups/`)
-- **Linux:** `~/.config/.rdcache/` (backups: `~/.config/RuleDesk-Backups/`)
+  - **Backups (sibling):** `%LOCALAPPDATA%\RuleDesk-Backups\`
+- **macOS:** `~/Library/Application Support/RuleDesk-Data/` (backups: `~/Library/Application Support/RuleDesk-Backups/`)
+- **Linux:** `~/.config/RuleDesk-Data/` (backups: `~/.config/RuleDesk-Backups/`)
 
-**Implementation:** `src/main/bootstrap-user-data.ts` runs before logger and `electron-store` so live paths resolve under `.rdcache`. Wipe (`system:wipe-all-data`) deletes children of `.rdcache` only — it does **not** delete `RuleDesk-Backups`.
+**Implementation:** `src/main/bootstrap-user-data.ts` runs before logger and `electron-store` so live paths resolve under `RuleDesk-Data`. On upgrade it copies light files (`backup-settings.json`, `logs/app.log`) when targets are missing — **fresher `.rdcache` first**, Electron-default product dir only as fallback (copy is not rename; both sources may still exist on disk for long-time users, and first-write-wins would otherwise revive a stale pre-redirect `app.log`). `initializeDatabase` then moves `data.bin` via `migrateLegacyDatabase`: first from Electron-default `metadata.db` locations, then from `.rdcache/data.bin` (DB migrate uses rename and already consumed the ancient source for most installs). Wipe (`system:wipe-all-data`) deletes children of `RuleDesk-Data` only — it does **not** delete `RuleDesk-Backups`.
+
+**Downgrade limitation:** Builds that still expect `.rdcache` do not know about `RuleDesk-Data`. If you launch an older binary after this relocate, it will not see the moved database and may create a new empty DB under `.rdcache` — a silent data fork that cannot be patched in already-shipped binaries. Do not run a pre-relocate build after upgrading unless you have confirmed where your `data.bin` lives (or contact support). Prefer restoring from `RuleDesk-Backups` if you must roll back.
 
 ## Schema
 
@@ -503,7 +505,7 @@ All database operations are performed directly in the **Main Process** using syn
 - Manages database initialization and migrations
 - Provides `getDb()` and `getSqliteInstance()` functions
 - Automatic migration execution on startup
-- Neutral `userData` path (`.rdcache`) for dev and packaged builds
+- Neutral `userData` path (`RuleDesk-Data`) for dev and packaged builds
 
 ### Initialization
 
@@ -1000,12 +1002,12 @@ export const artists = sqliteTable(
 The application provides built-in backup functionality:
 
 1. **Manual Backup:** Use `window.api.createBackup()` or the Backup Controls UI in **Settings**
-2. **Backup Location:** Backups live under a dedicated directory **outside** `.rdcache` (so a cache cleaner cannot wipe the live DB and every recovery snapshot together):
-   - **Default path:** `<neutralRoot>/RuleDesk-Backups/` — sibling of `.rdcache` under the same root (`%LOCALAPPDATA%` on Windows, Electron `appData` on macOS/Linux; see `getNeutralDataRoot()` / `bootstrap-user-data.ts`). Name must not collide with `LEGACY_USER_DATA_DIR_NAMES` (e.g. legacy `RuleDesk/`).
-   - **Live DB stays in `.rdcache`:** `data.bin` / `-wal` / `-shm` are **not** moved by this change (relocating the live DB is a separate future task)
+2. **Backup Location:** Backups live under a dedicated directory **outside** live userData (so a wipe or cache cleaner cannot remove the live DB and every recovery snapshot together):
+   - **Default path:** `<neutralRoot>/RuleDesk-Backups/` — sibling of `RuleDesk-Data` under the same root (`%LOCALAPPDATA%` on Windows, Electron `appData` on macOS/Linux; see `getNeutralDataRoot()` / `bootstrap-user-data.ts`). Name must not collide with `LEGACY_USER_DATA_DIR_NAMES` (e.g. legacy `RuleDesk/`) or `USER_DATA_DIR_NAME`.
+   - **Live DB:** `data.bin` / `-wal` / `-shm` under `RuleDesk-Data/` (migrated from `.rdcache` on first launch of this build)
    - **Unified format (current):** `.ruledesk-backup-<ISO-timestamp>.db` (manual) and `.ruledesk-backup-auto-YYYY-MM-DD.db` (auto)
    - **Legacy auto format (still restorable / pruned / migrated):** `data.backup.YYYY-MM-DD.bin`
-3. **One-time migrate on upgrade:** deferred startup (`scheduleDeferredStartupTasks`) moves existing backup files (and matching `.settings.json` sidecars) from `.rdcache` into `RuleDesk-Backups` via `migrateBackupDirectory` + `moveFileWithExdevFallback`. Non-blocking, non-fatal on error; already-present target names are skipped (no overwrite). Next backup always writes to the new directory.
+3. **One-time migrate on upgrade:** deferred startup (`scheduleDeferredStartupTasks`) moves leftover backup files (and matching `.settings.json` sidecars) from live userData and from legacy `.rdcache` into `RuleDesk-Backups` via `migrateBackupDirectory` + `moveFileWithExdevFallback`. Non-blocking, non-fatal on error; already-present target names are skipped (no overwrite). Next backup always writes to the new directory.
 4. **Backup Format:** Consistent SQLite snapshot via `VACUUM INTO` (shared helper `createConsistentBackup` in `src/main/lib/database-backup.ts`). Both manual and auto paths use this — not a hot `copyFileSync` of the live WAL main file.
 5. **Settings sidecar:** Both paths write `<backup>.settings.json` via `writeBackupSidecar` immediately after a successful `VACUUM INTO`.
 6. **Rotation:** Retention stays **separate** for auto vs manual (same `settings.backupRetention` count, different filename matchers), still scoped to `getBackupDirectory()`. Auto cleanup recognizes both legacy `.bin` and new `-auto-*.db`, ordered by filesystem **mtime** (not filename localeCompare — dotted new names would otherwise sort before legacy `data.*` and delete newest first). Manual cleanup matches only `.ruledesk-backup-*.db` excluding the `-auto-` infix.
@@ -1023,7 +1025,7 @@ The application provides built-in backup functionality:
 
 - `VACUUM INTO` is slower than a bare file copy (full consistent rewrite). Acceptable trade-off for correctness; first auto-backup after enabling the schedule may take longer on large DBs.
 - Auto-backup still uses lightweight TOCTOU guards (`getIsSyncing` / `maintenanceQueue.isProcessing`) rather than a full exclusive lock.
-- Live `data.bin` remains under `.rdcache` on purpose; only backup files were relocated (live-DB path change is a separate task).
+- Live `data.bin` lives under `RuleDesk-Data/`; backup files live under sibling `RuleDesk-Backups/`. Leftover `.rdcache` is a migrate source only.
 
 **Example:**
 
@@ -1049,7 +1051,7 @@ If the database becomes corrupted and you need to restore manually:
 
 1. Stop the application
 2. Locate the backup file under `RuleDesk-Backups/` (or a path you chose)
-3. Copy the backup file to replace `data.bin` inside `.rdcache`
+3. Copy the backup file to replace `data.bin` inside `RuleDesk-Data`
 4. Restart the application (migrations will run automatically)
 
 **Note:** The restore process includes automatic integrity checks using `PRAGMA integrity_check` before replacing the database. If integrity check or reinit fails, the restore is rolled back and the original database is preserved via `.bak`.

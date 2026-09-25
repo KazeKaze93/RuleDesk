@@ -396,13 +396,13 @@ const { data: version } = useQuery<string>({
 
 ### `wipeAllData()`
 
-Deletes all application data under `userData` (`.rdcache`), then exits the process.
+Deletes all application data under `userData` (`RuleDesk-Data`), then exits the process.
 
 **IPC Channel:** `system:wipe-all-data`  
 **Args:** none (`z.tuple([])`)  
 **Order:** `closeDatabase()` → stop video proxy → delete children of `userData` (paths validated with `isResolvedPathWithinBase`) → `app.exit(0)`.
 
-Does **not** delete the user's media download folder outside `.rdcache`, and does **not** delete DB backups under `RuleDesk-Backups` (sibling of `.rdcache`). On partial delete failure, throws a user-facing error and does not exit.
+Does **not** delete the user's media download folder outside `RuleDesk-Data`, and does **not** delete DB backups under `RuleDesk-Backups` (sibling of `RuleDesk-Data`). On partial delete failure, throws a user-facing error and does not exit.
 
 **Returns:** `Promise<void>` (normally does not resolve — process exits)
 
@@ -1420,7 +1420,7 @@ if (result.success) {
 
 **IPC Channel:** `db:create-backup`
 
-**Note:** The backup file is created under `RuleDesk-Backups/` (sibling of `.rdcache`), via consistent `VACUUM INTO`. The file explorer will open to show the backup location.
+**Note:** The backup file is created under `RuleDesk-Backups/` (sibling of `RuleDesk-Data`), via consistent `VACUUM INTO`. The file explorer will open to show the backup location.
 After each successful backup, old backup files are pruned and only the most recent `backupRetention` files are kept.
 
 ---
