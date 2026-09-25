@@ -9,6 +9,7 @@ import {
   moveFileWithExdevFallback,
   type LegacyMigrateFs,
 } from "@/main/db/legacy-database-migrate";
+import { migrateLightUserDataSidecars } from "@/main/lib/light-user-data-migrate";
 import {
   BACKUP_DIR_NAME,
   DB_FILE_NAME,
@@ -273,5 +274,62 @@ describe("relocate live DB out of .rdcache", () => {
     expect(fs.existsSync(target)).toBe(true);
     expect(fs.readFileSync(target, "utf-8")).toBe("relocate-exdev-payload");
     expect(fs.existsSync(source)).toBe(false);
+  });
+
+  it("light sidecars: fresher .rdcache app.log wins over stale Electron-default copy", () => {
+    const root = createTempDir("ruledesk-relocate-sidecars-");
+    tempDirs.push(root);
+    const productDir = path.join(root, "RuleDesk");
+    const rdcacheDir = path.join(root, LEGACY_NEUTRAL_USER_DATA_DIR_NAME);
+    const liveDir = path.join(root, USER_DATA_DIR_NAME);
+    fs.mkdirSync(path.join(productDir, "logs"), { recursive: true });
+    fs.mkdirSync(path.join(rdcacheDir, "logs"), { recursive: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    const staleLog = "stale-electron-default-log\n";
+    const freshLog = "fresh-rdcache-log-from-recent-months\n";
+    fs.writeFileSync(path.join(productDir, "logs", "app.log"), staleLog, "utf-8");
+    fs.writeFileSync(path.join(rdcacheDir, "logs", "app.log"), freshLog, "utf-8");
+
+    migrateLightUserDataSidecars({
+      rdcacheUserDataDir: rdcacheDir,
+      electronDefaultUserDataDir: productDir,
+      targetUserDataDir: liveDir,
+    });
+
+    const targetLog = path.join(liveDir, "logs", "app.log");
+    expect(fs.existsSync(targetLog)).toBe(true);
+    expect(fs.readFileSync(targetLog, "utf-8")).toBe(freshLog);
+    // Sources are copy-not-rename — both leftovers remain on disk.
+    expect(fs.readFileSync(path.join(productDir, "logs", "app.log"), "utf-8")).toBe(
+      staleLog
+    );
+    expect(fs.readFileSync(path.join(rdcacheDir, "logs", "app.log"), "utf-8")).toBe(
+      freshLog
+    );
+  });
+
+  it("light sidecars: Electron-default is fallback when .rdcache has no app.log", () => {
+    const root = createTempDir("ruledesk-relocate-sidecar-fallback-");
+    tempDirs.push(root);
+    const productDir = path.join(root, "RuleDesk");
+    const rdcacheDir = path.join(root, LEGACY_NEUTRAL_USER_DATA_DIR_NAME);
+    const liveDir = path.join(root, USER_DATA_DIR_NAME);
+    fs.mkdirSync(path.join(productDir, "logs"), { recursive: true });
+    fs.mkdirSync(rdcacheDir, { recursive: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    const onlyAncient = "only-ancient-log\n";
+    fs.writeFileSync(path.join(productDir, "logs", "app.log"), onlyAncient, "utf-8");
+
+    migrateLightUserDataSidecars({
+      rdcacheUserDataDir: rdcacheDir,
+      electronDefaultUserDataDir: productDir,
+      targetUserDataDir: liveDir,
+    });
+
+    expect(fs.readFileSync(path.join(liveDir, "logs", "app.log"), "utf-8")).toBe(
+      onlyAncient
+    );
   });
 });

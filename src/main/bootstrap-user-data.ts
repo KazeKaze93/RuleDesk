@@ -3,49 +3,15 @@
  */
 import { app } from "electron";
 import path from "node:path";
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-} from "node:fs";
+import { mkdirSync } from "node:fs";
 import {
   LEGACY_NEUTRAL_USER_DATA_DIR_NAME,
   USER_DATA_DIR_NAME,
   getNeutralDataRoot,
 } from "./db/paths";
+import { migrateLightUserDataSidecars } from "./lib/light-user-data-migrate";
 
 const isTestMode = process.env.NODE_ENV === "test";
-
-function migrateFileIfMissing(sourcePath: string, targetPath: string): void {
-  if (!existsSync(sourcePath) || existsSync(targetPath)) {
-    return;
-  }
-
-  mkdirSync(path.dirname(targetPath), { recursive: true });
-  copyFileSync(sourcePath, targetPath);
-}
-
-/**
- * Copy light sidecars (backup schedule + app log) when the target is missing.
- * Idempotent: no-op if source is absent or target already exists.
- */
-function migrateLegacyUserDataFiles(
-  legacyUserDataDir: string,
-  targetUserDataDir: string
-): void {
-  if (legacyUserDataDir === targetUserDataDir) {
-    return;
-  }
-
-  migrateFileIfMissing(
-    path.join(legacyUserDataDir, "backup-settings.json"),
-    path.join(targetUserDataDir, "backup-settings.json")
-  );
-  migrateFileIfMissing(
-    path.join(legacyUserDataDir, "logs", "app.log"),
-    path.join(targetUserDataDir, "logs", "app.log")
-  );
-}
 
 function configureUserDataPath(): void {
   if (isTestMode) {
@@ -64,10 +30,11 @@ function configureUserDataPath(): void {
   mkdirSync(targetUserDataDir, { recursive: true });
 
   app.setPath("userData", targetUserDataDir);
-  // (1) Electron default product dir → RuleDesk-Data (first-time redirect users).
-  migrateLegacyUserDataFiles(electronDefaultUserDataDir, targetUserDataDir);
-  // (2) Legacy .rdcache → RuleDesk-Data (users already on the neutral cache path).
-  migrateLegacyUserDataFiles(rdcacheUserDataDir, targetUserDataDir);
+  migrateLightUserDataSidecars({
+    rdcacheUserDataDir,
+    electronDefaultUserDataDir,
+    targetUserDataDir,
+  });
   process.env.USER_DATA_PATH = targetUserDataDir;
 }
 
