@@ -792,6 +792,18 @@ Migrations are automatically run on application startup via `initializeDatabase(
 
 Special tags `0000_blue_lorna_dane`, `0010_add_fts5_cache_invalidation`, and `0011_add_fts5_count_meta` keep their historical special-case bodies (skip if `artists` exists; create only the meta tables, never the broken virtual-table triggers), still wrapped in a transaction.
 
+**Downgrade / future-schema guard:**
+
+- Before applying migrations, `assertNoUnknownMigrationHashes` compares every hash in `__drizzle_migrations` to this build's journal tags. An unknown hash means a **newer** RuleDesk already migrated (or restored) this DB — startup throws into the existing `dialog.showErrorBox` path and **does not** write snapshots, migrations, or other DB changes.
+- This is hash-based on purpose, not `PRAGMA user_version`. Existing installs all have `user_version = 0`; using the pragma as the gate would need a one-shot bootstrap special-case. The pragma is still stamped to `journal.length` after a successful init as an **informational** note for support tooling only — never for open/block decisions.
+
+**Legacy path migrate (`metadata.db` → `data.bin`):**
+
+- Implemented in `src/main/db/legacy-database-migrate.ts`. Before any rename: open the legacy file, `PRAGMA wal_checkpoint(TRUNCATE)`, close — so committed WAL data lives in the main file.
+- Move via `rename`; on `EXDEV` (cross-volume): `copyFile` → verify same size → only then `unlink` source.
+- Checkpoint failure: leave legacy files untouched and return `{ migrated: false, blockedLegacyPath }`. `client.ts` **throws** before `new Database(dbPath)` so an empty schema is never created on the new path (that empty-but-migrated file would pass `databaseLooksInitialized` and permanently orphan the legacy DB on the next launch). The error uses the same `dialog.showErrorBox` path as other init failures.
+- Recovery if an empty initialized stub already exists and a legacy file is still on disk: confirm the legacy path is reachable (`exists` + `access`), then remove the stub and retry the move. "Empty" means **no user content**: zero `artists`, zero `playlists`, and `settings` still at schema defaults (in particular `tos_accepted_at` null and adult flags false — AgeGate writes these before any artist exists). If the new DB already has any of that user state **and** legacy remains, return `blockedLegacyPath` instead of deleting or overwriting — startup stops with a clear message.
+
 **Manual execution:**
 
 ```bash
