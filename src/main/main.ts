@@ -3,7 +3,6 @@ import { app, BrowserWindow, dialog, Tray, nativeImage, Menu, session } from "el
 import path from "node:path";
 import { existsSync, writeFileSync } from "fs";
 import log from "electron-log";
-import { execFile } from "node:child_process";
 
 // === Initialize electron-log first ===
 log.initialize();
@@ -59,10 +58,9 @@ if (isTestMode) {
 
 import { getAppIconPath, getAppIconsDirectory } from "./lib/app-resources";
 
-import { promises as fs } from "fs";
 import { registerAllHandlers } from "./ipc/index";
 import { initializeDatabase, closeDatabase, getDb } from "./db/client";
-import { getBackupDirectory, getDatabasePaths } from "./db/paths";
+import { getBackupDirectory, getDatabasePaths, getLegacyNeutralUserDataDir } from "./db/paths";
 import { migrateBackupDirectory } from "./db/backup-dir-migrate";
 import { SYNC_SHUTDOWN_DRAIN_MS } from "./config/constants";
 import { logger } from "./lib/logger";
@@ -81,34 +79,9 @@ import { MaintenanceService } from "./services/MaintenanceService";
 
 logger.info("🚀 Application starting...");
 
-function runCommand(file: string, args: string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    execFile(file, args, (error) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
-async function hideDirectoryOnWindows(dirPath: string): Promise<void> {
-  if (process.platform !== "win32") {
-    return;
-  }
-
-  try {
-    await fs.writeFile(path.join(dirPath, ".init"), "", { flag: "a" });
-    await runCommand("attrib", ["+H", dirPath]);
-  } catch (error) {
-    logger.warn(`[Main] Failed to set hidden attribute on ${dirPath}:`, error);
-  }
-}
-
 if (!isTestMode) {
   logger.info(`[Main] userData path: ${app.getPath("userData")}`);
-  void hideDirectoryOnWindows(app.getPath("userData"));
+  // Live data lives under the human-readable RuleDesk-Data folder — do not hide it.
 }
 
 const videoProxyServer = new VideoProxyServer();
@@ -304,24 +277,30 @@ function scheduleDeferredStartupTasks(window: BrowserWindow): void {
     logger.error("[Main] Video proxy failed to start:", error);
   });
 
-  // Non-critical: move existing backups out of .rdcache into RuleDesk-Backups.
+  // Non-critical: move leftover backups out of live userData / legacy .rdcache
+  // into RuleDesk-Backups.
   setTimeout(() => {
     void (async () => {
       try {
         const { userDataDir } = getDatabasePaths();
         const targetDir = getBackupDirectory();
-        const result = await migrateBackupDirectory({
-          sourceDir: userDataDir,
-          targetDir,
-        });
-        if (
-          result.moved.length > 0 ||
-          result.skippedExisting.length > 0 ||
-          result.failed.length > 0
-        ) {
+        const sourceDirs = [userDataDir, getLegacyNeutralUserDataDir()];
+        let moved = 0;
+        let skipped = 0;
+        let failed = 0;
+        for (const sourceDir of sourceDirs) {
+          const result = await migrateBackupDirectory({
+            sourceDir,
+            targetDir,
+          });
+          moved += result.moved.length;
+          skipped += result.skippedExisting.length;
+          failed += result.failed.length;
+        }
+        if (moved > 0 || skipped > 0 || failed > 0) {
           logger.info(
-            `[Main] Backup directory migrate: moved=${result.moved.length}, ` +
-              `skipped=${result.skippedExisting.length}, failed=${result.failed.length}`
+            `[Main] Backup directory migrate: moved=${moved}, ` +
+              `skipped=${skipped}, failed=${failed}`
           );
         }
       } catch (error) {

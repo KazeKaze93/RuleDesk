@@ -165,7 +165,7 @@ export class SystemController extends BaseController {
   }
 
   /**
-   * Deletes all application data under userData (.rdcache), then exits.
+   * Deletes all application data under userData (RuleDesk-Data), then exits.
    * Order: close DB → stop video proxy → delete children of userData → app.exit(0).
    * User download folders and backups outside userData are not touched.
    */

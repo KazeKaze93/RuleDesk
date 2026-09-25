@@ -216,7 +216,8 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | `fix/downgrade-guard-and-legacy-checkpoint` | [#181](https://github.com/KazeKaze93/RuleDesk/pull/181) | ✅ merged | Downgrade hash guard + legacy DB migrate (`blockedLegacyPath` on checkpoint failure) |
 | `feat/backups-outside-cache-dir` | [#182](https://github.com/KazeKaze93/RuleDesk/pull/182) | ✅ merged | Backups under `RuleDesk-Backups/` (sibling of `.rdcache`); deferred migrate from cache dir |
 | `feat/orphan-detection-report` | [#183](https://github.com/KazeKaze93/RuleDesk/pull/183) | ✅ merged | Read-only orphan report in Settings; live probe all-zeros — cleanup deferred |
-| `feat/backup-default-opt-in-prompt` | [#185](https://github.com/KazeKaze93/RuleDesk/pull/185) | 🔧 in progress | New installs default auto-backup to daily; existing `never` users get a one-time dismissible opt-in prompt (no silent flip) |
+| `feat/backup-default-opt-in-prompt` | [#185](https://github.com/KazeKaze93/RuleDesk/pull/185) | ✅ merged | New installs default auto-backup to daily; existing `never` users get a one-time dismissible opt-in prompt |
+| `feat/relocate-live-db-out-of-rdcache` | — | 🔧 in progress | Live `data.bin` moves from `.rdcache` to `RuleDesk-Data`; reuse legacy migrate primitives |
 
 ### Baseline DX (earlier)
 

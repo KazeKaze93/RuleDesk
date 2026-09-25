@@ -193,17 +193,17 @@ export const SettingsGeneralTab = ({
         <CardHeader>
           <CardTitle className="text-destructive">Danger zone</CardTitle>
           <CardDescription>
-            Permanently delete all local RuleDesk data stored under the hidden{" "}
-            <span className="font-mono">.rdcache</span> folder, then quit the app.
+            Permanently delete all local RuleDesk data stored under the{" "}
+            <span className="font-mono">RuleDesk-Data</span> folder, then quit the app.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             This removes the database (<span className="font-mono">data.bin</span> and
             WAL/SHM), video cache, logs, backup schedule, download queue, and other Electron
-            cache files inside <span className="font-mono">.rdcache</span>. Database backup
+            cache files inside <span className="font-mono">RuleDesk-Data</span>. Database backup
             files under <span className="font-mono">RuleDesk-Backups</span> (sibling of{" "}
-            <span className="font-mono">.rdcache</span>) are not deleted. Your chosen media
+            <span className="font-mono">RuleDesk-Data</span>) are not deleted. Your chosen media
             download folder outside that directory is not touched. After restart you will see
             the age gate and onboarding again.
           </p>
@@ -227,11 +227,11 @@ export const SettingsGeneralTab = ({
             <AlertDialogTitle>Delete all local data?</AlertDialogTitle>
             <AlertDialogDescription>
               This cannot be undone. Everything in{" "}
-              <span className="font-mono">.rdcache</span> will be erased and the app will
+              <span className="font-mono">RuleDesk-Data</span> will be erased and the app will
               quit. Database backups under{" "}
               <span className="font-mono">RuleDesk-Backups</span> are not deleted.
               Reinstalling or deleting the .exe alone does not remove{" "}
-              <span className="font-mono">.rdcache</span> — use this action (or delete that
+              <span className="font-mono">RuleDesk-Data</span> — use this action (or delete that
               folder manually) when you want a clean wipe.
             </AlertDialogDescription>
           </AlertDialogHeader>

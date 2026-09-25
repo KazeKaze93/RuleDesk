@@ -51,7 +51,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🌍 Rule34 CDN host fallback**   | Viewer builds an alternate-host URL chain for Rule34 media (`wimg.rule34.xxx`, `img.rule34.xxx`, `us.rule34.xxx`, `api-cdn.rule34.xxx`) when the primary host fails (`ViewerMedia` / `viewer-media-urls.ts`). No Main-process CDN probe/rewrite service.                                                                                                                        |
 | **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                                                                                     |
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
-| **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups under `%LOCALAPPDATA%\RuleDesk-Backups\` (sibling of `.rdcache`, not inside the cache dir); retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup. Restore replaces the live DB (with checks) and reloads the app.                                                                               |
+| **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups under `%LOCALAPPDATA%\RuleDesk-Backups\` (sibling of `RuleDesk-Data`, not inside the cache dir); retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup. Restore replaces the live DB (with checks) and reloads the app.                                                                               |
 | **🧹 DB Maintenance (VACUUM)**    | User-visible maintenance card in Settings: shows last VACUUM run, allows manual `Run VACUUM now`, and supports schedule policy (`manual`, `weekly`, `monthly`). Lightweight auto-maintenance (`wal_checkpoint` + `optimize`) remains automatic in Main process.                                                                                     |
 | **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`) with infinite scroll on Browse. Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
 | **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                                                                           |
@@ -196,7 +196,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **Duplicate behavior** - `skip` or `overwrite` for existing files
 - **Folder structure** - `flat` or `{artist_id}` subfolder mode
 - **Proxy URL** - Optional HTTP/HTTPS proxy for outbound requests/downloads
-- **Danger zone — Delete all data** - Confirmed wipe of everything under `.rdcache` (database, `video-cache/`, logs, Electron cache), then quit. Does **not** delete the separate media download folder or DB backups under `RuleDesk-Backups`. Prefer this over uninstall alone (uninstall leaves `.rdcache` and backups).
+- **Danger zone — Delete all data** - Confirmed wipe of everything under `RuleDesk-Data` (database, `video-cache/`, logs, Electron cache), then quit. Does **not** delete the separate media download folder or DB backups under `RuleDesk-Backups`. Prefer this over uninstall alone (uninstall leaves `RuleDesk-Data` and backups).
 
 ### Sync
 
@@ -245,7 +245,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Electron Version:** 39.8.x with latest security patches
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
-- ✅ **User Data Path:** Neutral `.rdcache` directory for dev and packaged builds (same location on a given machine)
+- ✅ **User Data Path:** Neutral `RuleDesk-Data` directory for dev and packaged builds (same location on a given machine)
 - ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate`, `docs:api` freshness, and `npm test` on every push/PR
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
@@ -265,11 +265,11 @@ The application is stable and production-ready (see **`package.json`** → `vers
 
 - ✅ **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API via **`SecureStorage` only** (no parallel crypto helpers). Credentials encrypted at rest; decryption only in Main Process
 - ✅ **Database Backup/Restore:** Manual backup and restore with integrity checks; configurable retention
-- ✅ **Wipe all data:** Settings → General → Danger zone deletes `.rdcache` contents and quits
+- ✅ **Wipe all data:** Settings → General → Danger zone deletes `RuleDesk-Data` contents and quits
 - ✅ **Input Validation:** Zod validation per IPC handler via `BaseController` (collapse for idempotent; spacing for mutate)
 - ✅ **Context Isolation:** Enabled globally with sandbox mode for maximum security
 - ✅ **CSP (Content Security Policy):** Strict CSP in production, relaxed for development (HMR support)
-- ✅ **User Data Path:** Packaged and dev builds use `%LOCALAPPDATA%/.rdcache` on Windows (not a folder next to the executable)
+- ✅ **User Data Path:** Packaged and dev builds use `%LOCALAPPDATA%/RuleDesk-Data` on Windows (not a folder next to the executable)
 - ✅ **Age Gate:** Age gate component implemented with legal confirmation (`confirmLegal` method)
 
 ### Data Integrity & Sync
@@ -466,11 +466,11 @@ The application stores configuration in SQLite database:
 
 - **API Credentials:** Stored securely with encryption using Electron's `safeStorage` API. API keys are encrypted at rest and only decrypted in Main Process when needed for API calls.
 - **Database Location** (development and packaged builds use the same neutral path):
-  - Windows: `%LOCALAPPDATA%\.rdcache\data.bin`
-  - Logs: `%LOCALAPPDATA%\.rdcache\logs\app.log`
+  - Windows: `%LOCALAPPDATA%\RuleDesk-Data\data.bin`
+  - Logs: `%LOCALAPPDATA%\RuleDesk-Data\logs\app.log`
   - Backups: `%LOCALAPPDATA%\RuleDesk-Backups\`
-  - macOS: `~/Library/Application Support/.rdcache/data.bin` (backups: `…/RuleDesk-Backups/`)
-  - Linux: `~/.config/.rdcache/data.bin` (backups: `…/RuleDesk-Backups/`)
+  - macOS: `~/Library/Application Support/RuleDesk-Data/data.bin` (backups: `…/RuleDesk-Backups/`)
+  - Linux: `~/.config/RuleDesk-Data/data.bin` (backups: `…/RuleDesk-Backups/`)
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 - **No Environment Variables Required:** All configuration is handled through the UI
 
@@ -500,7 +500,7 @@ The built binaries will be available in the `release/` directory. The exact outp
 
 Local packaging scripts: `npm run dist:win`, `npm run dist:linux` (after `npm run build`). `npm run dist` defaults to Windows zip on the current machine.
 
-**Release hygiene:** Production builds disable source maps (`electron.vite.config.ts`). `electron-builder` excludes `.env*`, databases, logs, tests, `.cursorrules`, `.ai/`, and `*.map` from `app.asar`. CI runs `npm run check:release-artifacts` on every packaged build before upload. User API keys are never bundled — they are entered at runtime and stored encrypted in the local user data directory (`.rdcache`), not in the installer.
+**Release hygiene:** Production builds disable source maps (`electron.vite.config.ts`). `electron-builder` excludes `.env*`, databases, logs, tests, `.cursorrules`, `.ai/`, and `*.map` from `app.asar`. CI runs `npm run check:release-artifacts` on every packaged build before upload. User API keys are never bundled — they are entered at runtime and stored encrypted in the local user data directory (`RuleDesk-Data`), not in the installer.
 
 ### Quality Checks
 
@@ -648,7 +648,7 @@ npm run db:studio
 
 ### Database Location
 
-- **All builds:** neutral user data directory (`.rdcache/` — `data.bin`, `logs/app.log`, `backup-settings.json`) plus sibling `RuleDesk-Backups/` for DB snapshots; see paths above
+- **All builds:** neutral user data directory (`RuleDesk-Data/` — `data.bin`, `logs/app.log`, `backup-settings.json`) plus sibling `RuleDesk-Backups/` for DB snapshots; see paths above
 
 **📖 For detailed database information, see [Database Documentation](./docs/database.md).**
 

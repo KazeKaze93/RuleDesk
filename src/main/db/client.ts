@@ -7,7 +7,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import log from "electron-log";
 import * as schema from "./schema";
 import { logger } from "../lib/logger";
-import { getDatabasePaths, getLegacyDatabasePaths } from "./paths";
+import { getDatabasePaths, getLegacyDatabasePaths, getLegacyNeutralUserDataDir, DB_FILE_NAME, LEGACY_NEUTRAL_USER_DATA_DIR_NAME } from "./paths";
 import { SQLITE_BUSY_TIMEOUT_MS } from "../config/constants";
 import { ensureFtsTriggers, rebuildFtsIndex } from "./fts-triggers";
 import {
@@ -86,11 +86,39 @@ async function migrateLegacyDatabaseIfNeeded(newDbPath: string): Promise<void> {
   }
 }
 
+/**
+ * Move live `data.bin` (+ wal/shm) from legacy `.rdcache` into the current userData
+ * (`RuleDesk-Data`). Reuses the same checkpoint / EXDEV / stub-protection path as
+ * the Electron-default → data.bin migrate above.
+ */
+async function migrateRdcacheDatabaseIfNeeded(newDbPath: string): Promise<void> {
+  const rdcacheDir = getLegacyNeutralUserDataDir();
+  const result = await migrateLegacyDatabase({
+    newDbPath,
+    legacyCandidates: [
+      {
+        userDataDirName: LEGACY_NEUTRAL_USER_DATA_DIR_NAME,
+        userDataDir: rdcacheDir,
+        dbPath: path.join(rdcacheDir, DB_FILE_NAME),
+      },
+    ],
+  });
+  if (result.blockedLegacyPath) {
+    throw new Error(
+      `Found a previous RuleDesk database at ${result.blockedLegacyPath}, but could not move it ` +
+        `(the file may be locked, in use, or corrupted). Close any program that might be using ` +
+        `that file and restart RuleDesk. Your data was left in place; RuleDesk did not create ` +
+        `an empty replacement database.`
+    );
+  }
+}
+
 export async function initializeDatabase(): Promise<AppDatabase> {
   if (dbInstance) return dbInstance;
 
   const { dbPath } = getDatabasePaths();
   await migrateLegacyDatabaseIfNeeded(dbPath);
+  await migrateRdcacheDatabaseIfNeeded(dbPath);
   
   // Determine migrations folder path - handle test environment correctly
   // In test mode, migrations are in project root (not packaged)

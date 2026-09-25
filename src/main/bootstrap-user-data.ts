@@ -7,9 +7,9 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  writeFileSync,
 } from "node:fs";
 import {
+  LEGACY_NEUTRAL_USER_DATA_DIR_NAME,
   USER_DATA_DIR_NAME,
   getNeutralDataRoot,
 } from "./db/paths";
@@ -26,8 +26,8 @@ function migrateFileIfMissing(sourcePath: string, targetPath: string): void {
 }
 
 /**
- * One-time migration from Electron default userData (e.g. %APPDATA%/RuleDesk)
- * to neutral %LOCALAPPDATA%/.rdcache after path redirect was introduced.
+ * Copy light sidecars (backup schedule + app log) when the target is missing.
+ * Idempotent: no-op if source is absent or target already exists.
  */
 function migrateLegacyUserDataFiles(
   legacyUserDataDir: string,
@@ -53,23 +53,22 @@ function configureUserDataPath(): void {
     return;
   }
 
-  const legacyUserDataDir = app.getPath("userData");
+  const electronDefaultUserDataDir = app.getPath("userData");
+  const neutralRoot = getNeutralDataRoot();
+  const targetUserDataDir = path.join(neutralRoot, USER_DATA_DIR_NAME);
+  const rdcacheUserDataDir = path.join(
+    neutralRoot,
+    LEGACY_NEUTRAL_USER_DATA_DIR_NAME
+  );
 
-  const neutralUserDataPath = path.join(getNeutralDataRoot(), USER_DATA_DIR_NAME);
+  mkdirSync(targetUserDataDir, { recursive: true });
 
-  mkdirSync(neutralUserDataPath, { recursive: true });
-
-  if (process.platform === "win32") {
-    try {
-      writeFileSync(path.join(neutralUserDataPath, ".init"), "", { flag: "a" });
-    } catch {
-      // Non-critical marker for hidden attribute in main.ts
-    }
-  }
-
-  app.setPath("userData", neutralUserDataPath);
-  migrateLegacyUserDataFiles(legacyUserDataDir, neutralUserDataPath);
-  process.env.USER_DATA_PATH = neutralUserDataPath;
+  app.setPath("userData", targetUserDataDir);
+  // (1) Electron default product dir → RuleDesk-Data (first-time redirect users).
+  migrateLegacyUserDataFiles(electronDefaultUserDataDir, targetUserDataDir);
+  // (2) Legacy .rdcache → RuleDesk-Data (users already on the neutral cache path).
+  migrateLegacyUserDataFiles(rdcacheUserDataDir, targetUserDataDir);
+  process.env.USER_DATA_PATH = targetUserDataDir;
 }
 
 configureUserDataPath();
