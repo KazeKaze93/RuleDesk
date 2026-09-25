@@ -304,7 +304,7 @@ function scheduleDeferredStartupTasks(window: BrowserWindow): void {
     logger.error("[Main] Video proxy failed to start:", error);
   });
 
-  // Non-critical: move existing backups out of .rdcache into RuleDesk/backups.
+  // Non-critical: move existing backups out of .rdcache into RuleDesk-Backups.
   setTimeout(() => {
     void (async () => {
       try {

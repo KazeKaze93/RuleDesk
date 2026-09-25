@@ -3,7 +3,11 @@ import os from "os";
 import path from "path";
 import { afterEach, describe, expect, it } from "vitest";
 import { migrateBackupDirectory } from "@/main/db/backup-dir-migrate";
-import { BACKUP_FILE_PREFIX } from "@/main/db/paths";
+import {
+  BACKUP_DIR_NAME,
+  BACKUP_FILE_PREFIX,
+  LEGACY_USER_DATA_DIR_NAMES,
+} from "@/main/db/paths";
 import {
   buildAutoBackupFilename,
   buildManualBackupFilename,
@@ -18,6 +22,18 @@ function writeFile(filePath: string, contents: string): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, contents, "utf-8");
 }
+
+describe("backup directory path constants", () => {
+  it("BACKUP_DIR_NAME never collides with LEGACY_USER_DATA_DIR_NAMES", () => {
+    expect(LEGACY_USER_DATA_DIR_NAMES).not.toContain(BACKUP_DIR_NAME);
+    for (const legacyName of LEGACY_USER_DATA_DIR_NAMES) {
+      expect(BACKUP_DIR_NAME).not.toBe(legacyName);
+      // Backup folder must not be nested under a legacy product dir name either.
+      expect(BACKUP_DIR_NAME.startsWith(`${legacyName}${path.sep}`)).toBe(false);
+      expect(BACKUP_DIR_NAME.startsWith(`${legacyName}/`)).toBe(false);
+    }
+  });
+});
 
 describe("backup directory migrate", () => {
   const tempDirs: string[] = [];
@@ -36,7 +52,7 @@ describe("backup directory migrate", () => {
     const root = createTempDir("ruledesk-backup-migrate-");
     tempDirs.push(root);
     const sourceDir = path.join(root, ".rdcache");
-    const targetDir = path.join(root, "RuleDesk", "backups");
+    const targetDir = path.join(root, "RuleDesk-Backups");
     fs.mkdirSync(sourceDir, { recursive: true });
 
     const autoName = buildAutoBackupFilename(new Date("2026-01-15T00:00:00Z"));
@@ -96,7 +112,7 @@ describe("backup directory migrate", () => {
     const root = createTempDir("ruledesk-backup-migrate-idempotent-");
     tempDirs.push(root);
     const sourceDir = path.join(root, ".rdcache");
-    const targetDir = path.join(root, "RuleDesk", "backups");
+    const targetDir = path.join(root, "RuleDesk-Backups");
     fs.mkdirSync(sourceDir, { recursive: true });
     fs.mkdirSync(targetDir, { recursive: true });
 
@@ -126,7 +142,7 @@ describe("backup directory migrate", () => {
     const root = createTempDir("ruledesk-backup-migrate-partial-");
     tempDirs.push(root);
     const sourceDir = path.join(root, ".rdcache");
-    const targetDir = path.join(root, "RuleDesk", "backups");
+    const targetDir = path.join(root, "RuleDesk-Backups");
     fs.mkdirSync(sourceDir, { recursive: true });
 
     const good = buildManualBackupFilename(new Date("2026-03-01T00:00:00Z"));
@@ -158,7 +174,7 @@ describe("backup directory migrate", () => {
     const root = createTempDir("ruledesk-backup-migrate-empty-");
     tempDirs.push(root);
     const sourceDir = path.join(root, ".rdcache");
-    const targetDir = path.join(root, "RuleDesk", "backups");
+    const targetDir = path.join(root, "RuleDesk-Backups");
     fs.mkdirSync(sourceDir, { recursive: true });
     writeFile(path.join(sourceDir, "data.bin"), "live");
 
