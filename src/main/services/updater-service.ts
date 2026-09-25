@@ -23,9 +23,6 @@ export class UpdaterService {
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = false;
 
-    // @ts-expect-error: signature validation disabled
-    autoUpdater.verifyUpdateCodeSignature = false;
-
     autoUpdater.on("checking-for-update", () => {
       logger.info("UPDATER: Checking...");
       this.sendStatus("checking");
