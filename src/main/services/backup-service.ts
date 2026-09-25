@@ -36,7 +36,7 @@ const AUTO_BACKUP_INTERVAL_MS: Record<Exclude<AutoBackupInterval, "never">, numb
   weekly: 7 * 24 * 60 * 60 * 1000,
 };
 
-type BackupStoreContract = {
+export type BackupStoreContract = {
   get<K extends keyof BackupStoreSchema>(key: K): BackupStoreSchema[K];
   set<K extends keyof BackupStoreSchema>(key: K, value: BackupStoreSchema[K]): void;
 };
@@ -51,24 +51,32 @@ function isBackupStoreConstructor(v: unknown): v is BackupStoreConstructor {
   return typeof v === "function";
 }
 
-const require = createRequire(import.meta.url);
-const storeModule: unknown = require("electron-store");
-const storeModuleDefault: unknown =
-  typeof storeModule === "object" && storeModule !== null && "default" in storeModule
-    ? storeModule.default
-    : null;
-const resolvedConstructor = isBackupStoreConstructor(storeModule)
-  ? storeModule
-  : storeModuleDefault;
-if (!isBackupStoreConstructor(resolvedConstructor)) {
-  throw new Error("[backup-service] electron-store module did not export a constructor");
+let StoreConstructor: BackupStoreConstructor | null = null;
+
+function getStoreConstructor(): BackupStoreConstructor {
+  if (StoreConstructor !== null) {
+    return StoreConstructor;
+  }
+  // Lazy require: top-level createRequire("electron-store") pulls the real
+  // `electron` package (a binary path string) and has hung Vitest workers on CI.
+  const require = createRequire(import.meta.url);
+  const storeModule: unknown = require("electron-store");
+  const storeModuleDefault: unknown =
+    typeof storeModule === "object" && storeModule !== null && "default" in storeModule
+      ? storeModule.default
+      : null;
+  const resolvedConstructor = isBackupStoreConstructor(storeModule)
+    ? storeModule
+    : storeModuleDefault;
+  if (!isBackupStoreConstructor(resolvedConstructor)) {
+    throw new Error("[backup-service] electron-store module did not export a constructor");
+  }
+  StoreConstructor = resolvedConstructor;
+  return StoreConstructor;
 }
-const StoreConstructor: BackupStoreConstructor = resolvedConstructor;
 
 let store: BackupStoreContract | null = null;
 let settingsFileExistedBeforeInit: boolean | null = null;
-/** When set, passed as `cwd` to electron-store (Vitest has no real Electron userData). */
-let storeCwdForTests: string | null = null;
 
 /**
  * Whether `backup-settings.json` already existed on disk **before** the first
@@ -95,14 +103,13 @@ function defaultAutoBackupInterval(): AutoBackupInterval {
 
 function getBackupStore(): BackupStoreContract {
   if (!store) {
-    store = new StoreConstructor({
+    store = new (getStoreConstructor())({
       name: BACKUP_SETTINGS_STORE_NAME,
       defaults: {
         autoBackupInterval: defaultAutoBackupInterval(),
         lastAutoBackupAt: null,
         hasSeenAutoBackupPrompt: false,
       },
-      ...(storeCwdForTests !== null ? { cwd: storeCwdForTests } : {}),
     });
   }
   return store;
@@ -112,12 +119,22 @@ function getBackupStore(): BackupStoreContract {
 export function resetBackupStoreForTests(): void {
   store = null;
   settingsFileExistedBeforeInit = null;
-  storeCwdForTests = null;
 }
 
-/** Points electron-store at a temp dir (createRequire bypasses Vitest electron mocks). */
-export function setBackupStoreCwdForTests(cwd: string): void {
-  storeCwdForTests = cwd;
+/**
+ * Install a pre-built store (e.g. `conf` with an explicit `cwd`) so tests never
+ * construct `electron-store` (which loads the real `electron` package via createRequire).
+ */
+export function setBackupStoreForTests(next: BackupStoreContract): void {
+  store = next;
+}
+
+export function buildBackupStoreDefaultsForTests(): BackupStoreSchema {
+  return {
+    autoBackupInterval: defaultAutoBackupInterval(),
+    lastAutoBackupAt: null,
+    hasSeenAutoBackupPrompt: false,
+  };
 }
 
 export class BackupService {

@@ -9,8 +9,9 @@ const require = createRequire(import.meta.url);
 /** Path only — created on disk in beforeEach so vi.hoisted needs no Node requires. */
 const { testUserDataDir } = vi.hoisted(() => {
   const tmpRoot = process.env.TEMP || process.env.TMP || process.env.TMPDIR || ".";
+  const needsSep = !(tmpRoot.endsWith("\\") || tmpRoot.endsWith("/"));
   return {
-    testUserDataDir: `${tmpRoot}${tmpRoot.endsWith("\\") || tmpRoot.endsWith("/") ? "" : "/" }ruledesk-backup-store-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    testUserDataDir: `${tmpRoot}${needsSep ? "/" : ""}ruledesk-backup-store-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   };
 });
 
@@ -79,36 +80,31 @@ import {
   BACKUP_SETTINGS_STORE_NAME,
   BackupService,
   backupSettingsFileExistedBeforeInit,
+  buildBackupStoreDefaultsForTests,
   resetBackupStoreForTests,
-  setBackupStoreCwdForTests,
+  setBackupStoreForTests,
+  type BackupStoreContract,
 } from "@/main/services/backup-service";
 
-type StoreContract = {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-};
-
-type StoreConstructor = new (options: {
-  name: string;
+type ConfConstructor = new (options: {
   cwd: string;
+  configName: string;
+  projectName: string;
   defaults: Record<string, unknown>;
-}) => StoreContract;
+}) => BackupStoreContract;
 
-function resolveStoreConstructor(): StoreConstructor {
-  const storeModule: unknown = require("electron-store");
-  const storeModuleDefault: unknown =
-    typeof storeModule === "object" && storeModule !== null && "default" in storeModule
-      ? storeModule.default
+function resolveConfConstructor(): ConfConstructor {
+  const confModule: unknown = require("conf");
+  const confDefault: unknown =
+    typeof confModule === "object" && confModule !== null && "default" in confModule
+      ? confModule.default
       : null;
-  const resolved =
-    typeof storeModule === "function"
-      ? storeModule
-      : storeModuleDefault;
+  const resolved = typeof confModule === "function" ? confModule : confDefault;
   if (typeof resolved !== "function") {
-    throw new Error("electron-store constructor unavailable in test");
+    throw new Error("conf constructor unavailable in test");
   }
-  // boundary: electron-store CJS/ESM constructor shape after require()
-  return resolved as StoreConstructor;
+  // boundary: conf CJS/ESM constructor shape after require()
+  return resolved as ConfConstructor;
 }
 
 function settingsPath(): string {
@@ -124,6 +120,16 @@ function writeSettingsFile(data: Record<string, unknown>): void {
   fs.writeFileSync(settingsPath(), JSON.stringify(data, null, 2), "utf-8");
 }
 
+function openBackupConfStore(): BackupStoreContract {
+  const Conf = resolveConfConstructor();
+  return new Conf({
+    cwd: testUserDataDir,
+    configName: BACKUP_SETTINGS_STORE_NAME,
+    projectName: "ruledesk-backup-opt-in-test",
+    defaults: buildBackupStoreDefaultsForTests(),
+  });
+}
+
 function createBackupService(): BackupService {
   const syncService = {
     getIsSyncing: () => false,
@@ -132,9 +138,15 @@ function createBackupService(): BackupService {
   return new BackupService(syncService as SyncService);
 }
 
-describe("conf / electron-store persist semantics", () => {
+function installStoreFromDisk(): void {
+  // Probe before constructing Conf — same ordering rule as production.
+  backupSettingsFileExistedBeforeInit();
+  setBackupStoreForTests(openBackupConfStore());
+}
+
+describe("conf persist semantics", () => {
   it("keeps on-disk autoBackupInterval over a newer constructor default", () => {
-    const Store = resolveStoreConstructor();
+    const Conf = resolveConfConstructor();
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "ruledesk-conf-persist-"));
     const storeFile = path.join(cwd, "backup-settings.json");
     fs.writeFileSync(
@@ -143,9 +155,10 @@ describe("conf / electron-store persist semantics", () => {
       "utf-8"
     );
 
-    const store = new Store({
-      name: "backup-settings",
+    const store = new Conf({
       cwd,
+      configName: "backup-settings",
+      projectName: "ruledesk-conf-persist-test",
       defaults: {
         autoBackupInterval: "daily",
         lastAutoBackupAt: null,
@@ -170,7 +183,6 @@ describe("BackupService auto-backup default + opt-in prompt", () => {
     fs.mkdirSync(testUserDataDir, { recursive: true });
     wipeSettingsFile();
     resetBackupStoreForTests();
-    setBackupStoreCwdForTests(testUserDataDir);
   });
 
   afterEach(() => {
@@ -180,6 +192,7 @@ describe("BackupService auto-backup default + opt-in prompt", () => {
 
   it("new install (no settings file): defaults to daily and does not show prompt", () => {
     expect(fs.existsSync(settingsPath())).toBe(false);
+    installStoreFromDisk();
     expect(backupSettingsFileExistedBeforeInit()).toBe(false);
 
     const service = createBackupService();
@@ -193,7 +206,7 @@ describe("BackupService auto-backup default + opt-in prompt", () => {
       lastAutoBackupAt: null,
     });
     resetBackupStoreForTests();
-    setBackupStoreCwdForTests(testUserDataDir);
+    installStoreFromDisk();
     expect(backupSettingsFileExistedBeforeInit()).toBe(true);
 
     const service = createBackupService();
@@ -205,7 +218,7 @@ describe("BackupService auto-backup default + opt-in prompt", () => {
 
     // Simulate a new process: clear singleton, keep the same file on disk.
     resetBackupStoreForTests();
-    setBackupStoreCwdForTests(testUserDataDir);
+    installStoreFromDisk();
     expect(backupSettingsFileExistedBeforeInit()).toBe(true);
     const nextSession = createBackupService();
     expect(nextSession.getAutoBackupSchedule()).toBe("never");
@@ -218,7 +231,7 @@ describe("BackupService auto-backup default + opt-in prompt", () => {
       lastAutoBackupAt: 1,
     });
     resetBackupStoreForTests();
-    setBackupStoreCwdForTests(testUserDataDir);
+    installStoreFromDisk();
     expect(backupSettingsFileExistedBeforeInit()).toBe(true);
 
     const service = createBackupService();
