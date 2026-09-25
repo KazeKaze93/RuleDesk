@@ -9,7 +9,10 @@ import {
   moveFileWithExdevFallback,
   type LegacyMigrateFs,
 } from "@/main/db/legacy-database-migrate";
-import { migrateLightUserDataSidecars } from "@/main/lib/light-user-data-migrate";
+import {
+  LOCAL_STATE_FILE_NAME,
+  migrateLightUserDataSidecars,
+} from "@/main/lib/light-user-data-migrate";
 import {
   BACKUP_DIR_NAME,
   DB_FILE_NAME,
@@ -331,5 +334,76 @@ describe("relocate live DB out of .rdcache", () => {
     expect(fs.readFileSync(path.join(liveDir, "logs", "app.log"), "utf-8")).toBe(
       onlyAncient
     );
+  });
+
+  it("light sidecars: pending data.bin migrate overwrites stale target Local State from .rdcache", () => {
+    const root = createTempDir("ruledesk-relocate-local-state-pending-");
+    tempDirs.push(root);
+    const productDir = path.join(root, "RuleDesk");
+    const rdcacheDir = path.join(root, LEGACY_NEUTRAL_USER_DATA_DIR_NAME);
+    const liveDir = path.join(root, USER_DATA_DIR_NAME);
+    fs.mkdirSync(rdcacheDir, { recursive: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.mkdirSync(productDir, { recursive: true });
+
+    const legacyOsCrypt = '{"os_crypt":{"encrypted_key":"legacy-key"}}\n';
+    const staleOsCrypt = '{"os_crypt":{"encrypted_key":"fresh-wrong-key"}}\n';
+    fs.writeFileSync(path.join(rdcacheDir, DB_FILE_NAME), "legacy-db", "utf-8");
+    fs.writeFileSync(
+      path.join(rdcacheDir, LOCAL_STATE_FILE_NAME),
+      legacyOsCrypt,
+      "utf-8"
+    );
+    // Failed earlier launch already wrote a new Chromium profile key.
+    fs.writeFileSync(
+      path.join(liveDir, LOCAL_STATE_FILE_NAME),
+      staleOsCrypt,
+      "utf-8"
+    );
+
+    migrateLightUserDataSidecars({
+      rdcacheUserDataDir: rdcacheDir,
+      electronDefaultUserDataDir: productDir,
+      targetUserDataDir: liveDir,
+    });
+
+    expect(
+      fs.readFileSync(path.join(liveDir, LOCAL_STATE_FILE_NAME), "utf-8")
+    ).toBe(legacyOsCrypt);
+  });
+
+  it("light sidecars: Local State first-write-wins when target already has data.bin", () => {
+    const root = createTempDir("ruledesk-relocate-local-state-stable-");
+    tempDirs.push(root);
+    const productDir = path.join(root, "RuleDesk");
+    const rdcacheDir = path.join(root, LEGACY_NEUTRAL_USER_DATA_DIR_NAME);
+    const liveDir = path.join(root, USER_DATA_DIR_NAME);
+    fs.mkdirSync(rdcacheDir, { recursive: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.mkdirSync(productDir, { recursive: true });
+
+    const liveOsCrypt = '{"os_crypt":{"encrypted_key":"live-key"}}\n';
+    const leftoverOsCrypt = '{"os_crypt":{"encrypted_key":"leftover-key"}}\n';
+    fs.writeFileSync(path.join(liveDir, DB_FILE_NAME), "already-migrated", "utf-8");
+    fs.writeFileSync(
+      path.join(liveDir, LOCAL_STATE_FILE_NAME),
+      liveOsCrypt,
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(rdcacheDir, LOCAL_STATE_FILE_NAME),
+      leftoverOsCrypt,
+      "utf-8"
+    );
+
+    migrateLightUserDataSidecars({
+      rdcacheUserDataDir: rdcacheDir,
+      electronDefaultUserDataDir: productDir,
+      targetUserDataDir: liveDir,
+    });
+
+    expect(
+      fs.readFileSync(path.join(liveDir, LOCAL_STATE_FILE_NAME), "utf-8")
+    ).toBe(liveOsCrypt);
   });
 });

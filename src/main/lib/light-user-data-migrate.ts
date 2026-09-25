@@ -4,6 +4,10 @@ import {
   existsSync,
   mkdirSync,
 } from "node:fs";
+import { DB_FILE_NAME } from "../db/paths";
+
+/** Chromium / Electron OSCrypt key material; required to decrypt `safeStorage` ciphertext in `data.bin`. */
+export const LOCAL_STATE_FILE_NAME = "Local State";
 
 function migrateFileIfMissing(sourcePath: string, targetPath: string): void {
   if (!existsSync(sourcePath) || existsSync(targetPath)) {
@@ -12,6 +16,35 @@ function migrateFileIfMissing(sourcePath: string, targetPath: string): void {
 
   mkdirSync(path.dirname(targetPath), { recursive: true });
   copyFileSync(sourcePath, targetPath);
+}
+
+/**
+ * Copy `Local State` so `safeStorage` can decrypt API keys that lived under the prior userData.
+ * - Normal: first-write-wins when the target file is absent.
+ * - Pending DB migrate: if the target has no `data.bin` yet but a source still has both
+ *   `data.bin` and `Local State`, overwrite the target's `Local State`. A failed earlier
+ *   launch may have already written a fresh os_crypt key that cannot decrypt the old DB.
+ */
+function migrateLocalStateForPendingDb(
+  sourceUserDataDir: string,
+  targetUserDataDir: string
+): void {
+  const sourceLocalState = path.join(sourceUserDataDir, LOCAL_STATE_FILE_NAME);
+  const sourceDb = path.join(sourceUserDataDir, DB_FILE_NAME);
+  const targetLocalState = path.join(targetUserDataDir, LOCAL_STATE_FILE_NAME);
+  const targetDb = path.join(targetUserDataDir, DB_FILE_NAME);
+
+  if (!existsSync(sourceLocalState)) {
+    return;
+  }
+
+  if (!existsSync(targetDb) && existsSync(sourceDb)) {
+    mkdirSync(targetUserDataDir, { recursive: true });
+    copyFileSync(sourceLocalState, targetLocalState);
+    return;
+  }
+
+  migrateFileIfMissing(sourceLocalState, targetLocalState);
 }
 
 /**
@@ -34,6 +67,7 @@ export function migrateLegacyUserDataFiles(
     path.join(legacyUserDataDir, "logs", "app.log"),
     path.join(targetUserDataDir, "logs", "app.log")
   );
+  migrateLocalStateForPendingDb(legacyUserDataDir, targetUserDataDir);
 }
 
 /**
