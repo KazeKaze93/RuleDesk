@@ -37,7 +37,9 @@ import {
   type VacuumSchedule,
   type VacuumStatusResponse,
   type RunVacuumResponse,
+  type OrphanDetectionReport,
 } from "../../../shared/schemas/maintenance";
+import { detectOrphans as runOrphanDetection } from "../../db/orphan-detection";
 
 const MAX_TOTAL_BACKUP_BYTES = (() => {
   const rawValue = process.env.BACKUP_RETENTION_MAX_TOTAL_MB;
@@ -154,6 +156,12 @@ export class MaintenanceController extends BaseController {
         const payload = SetVacuumScheduleArgsSchema.parse(args);
         return this.setVacuumSchedule(event, payload.schedule);
       }
+    );
+    this.handle(
+      IPC_CHANNELS.MAINTENANCE.DETECT_ORPHANS,
+      z.tuple([]),
+      this.detectOrphans.bind(this),
+      { isIdempotent: true }
     );
 
     log.info("[MaintenanceController] All handlers registered");
@@ -496,6 +504,28 @@ export class MaintenanceController extends BaseController {
       return { ok: isOk, details };
     } catch (error) {
       log.error("[MaintenanceController] Integrity check failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Read-only orphan detection. Does not enqueue on maintenanceQueue —
+   * SELECT-only, no race with writers that would need exclusive close/reopen.
+   */
+  private detectOrphans(_event: IpcMainInvokeEvent): OrphanDetectionReport {
+    try {
+      const sqlite = getSqliteInstance();
+      const report = runOrphanDetection(sqlite);
+      log.info(
+        `[MaintenanceController] Orphan detection: ` +
+          `posts=${report.orphanedPostsCount}, ` +
+          `playlistEntries=${report.orphanedPlaylistEntriesCount}, ` +
+          `ftsWithoutPost=${report.ftsRowsWithoutPostCount}, ` +
+          `ghostArtists=${report.ghostArtistIds.length}`
+      );
+      return report;
+    } catch (error) {
+      log.error("[MaintenanceController] Orphan detection failed:", error);
       throw error;
     }
   }

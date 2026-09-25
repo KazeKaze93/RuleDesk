@@ -27,6 +27,7 @@ import type {
 } from "../shared/schemas/playlist";
 import type { ExtendedStats } from "../shared/schemas/stats";
 import type {
+  OrphanDetectionReport,
   RunVacuumResponse,
   SetVacuumScheduleArgs,
   VacuumSchedule,
@@ -220,6 +221,7 @@ export interface IpcBridge {
   runVacuum: () => Promise<RunVacuumResponse>;
   getVacuumSchedule: () => Promise<VacuumSchedule>;
   setVacuumSchedule: (args: SetVacuumScheduleArgs) => Promise<boolean>;
+  detectOrphans: () => Promise<OrphanDetectionReport>;
 
   verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
 
@@ -497,6 +499,8 @@ const ipcBridge: IpcBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.GET_VACUUM_SCHEDULE),
   setVacuumSchedule: (args) =>
     ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.SET_VACUUM_SCHEDULE, args),
+  detectOrphans: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.DETECT_ORPHANS),
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) =>

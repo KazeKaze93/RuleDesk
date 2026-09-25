@@ -80,6 +80,7 @@ export const IPC_CHANNELS = {
     RUN_VACUUM: "maintenance:run-vacuum",
     GET_VACUUM_SCHEDULE: "maintenance:get-vacuum-schedule",
     SET_VACUUM_SCHEDULE: "maintenance:set-vacuum-schedule",
+    DETECT_ORPHANS: "maintenance:detect-orphans",
   },
   UPDATES: {
     GET_UNREAD_COUNT: "updates:getUnreadCount",
