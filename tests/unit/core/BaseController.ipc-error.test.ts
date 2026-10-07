@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 import { BaseController } from "@/main/core/ipc/BaseController";
-import { ErrorCode } from "@/main/types/ipc";
+import { ErrorCode } from "@/shared/types/error-codes";
+import { createCodedError } from "@/shared/utils/coded-error";
 import { invokeIpc } from "@/preload/invoke-ipc";
 import {
   isIpcFailureResult,
@@ -72,7 +73,7 @@ describe("BaseController IPC error shape", () => {
 
   it("returns a failure envelope with message and code (does not throw)", async () => {
     controller.register("test:fail", z.tuple([]), async () => {
-      throw new Error("credentials missing");
+      throw createCodedError("credentials missing", ErrorCode.AUTH_ERROR);
     });
 
     const handler = getHandler("test:fail");
@@ -84,6 +85,21 @@ describe("BaseController IPC error shape", () => {
     }
     expect(result.error.message).toBe("credentials missing");
     expect(result.error.code).toBe(ErrorCode.AUTH_ERROR);
+  });
+
+  it("does not infer ErrorCode from English message substrings", async () => {
+    controller.register("test:no-infer", z.tuple([]), async () => {
+      throw new Error("credentials missing / database / rate limit / network");
+    });
+
+    const handler = getHandler("test:no-infer");
+    const result = await handler({} as IpcMainInvokeEvent);
+
+    expect(isIpcFailureResult(result)).toBe(true);
+    if (!isIpcFailureResult(result)) {
+      throw new Error("expected failure envelope");
+    }
+    expect(result.error.code).toBe(ErrorCode.UNKNOWN_ERROR);
   });
 
   it("validation failures return VALIDATION_ERROR envelope", async () => {
@@ -107,7 +123,7 @@ describe("BaseController IPC error shape", () => {
 
   it("preload invokeIpc rethrows Error with code after Structured Clone", async () => {
     controller.register("test:preload", z.tuple([]), async () => {
-      throw new Error("credentials missing");
+      throw createCodedError("credentials missing", ErrorCode.AUTH_ERROR);
     });
 
     const handler = getHandler("test:preload");

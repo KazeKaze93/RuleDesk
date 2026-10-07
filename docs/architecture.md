@@ -1712,14 +1712,18 @@ src/
 │   ├── index.html                  # HTML template
 │   └── main.tsx                    # Renderer entry point
 │
-├── renderer.d.ts                  # window.api global types (preload contract; not under renderer/)
+├── bridge.d.ts                    # ambient Window.api — derived from shared IpcBridge (do not redeclare methods)
+├── renderer.d.ts                  # thin re-export of bridge DTOs (legacy path; prefer ipc-bridge)
 │
 └── shared/                         # Shared contracts (schemas/constants/types)
     ├── schemas/
     ├── constants.ts
     └── types/
         ├── db.ts                   # type-only re-export of Drizzle row types for renderer
-        ├── bridge.ts               # TrackedArtist, PlaylistWithStats (from main/bridge)
+        ├── ipc-bridge.ts           # IpcBridge contract (source of truth for window.api)
+        ├── ipc-bridge.drift.ts     # compile-time Window.api ↔ IpcBridge equality guard
+        ├── bridge.ts               # TrackedArtist, PlaylistWithStats re-exports
+        ├── error-codes.ts          # shared ErrorCode enum (IPC / provider; no English matching)
         ├── providers.ts            # SearchResults (from main/providers/types)
         ├── post.ts                 # WorkerPost Zod schema
         └── ipc.ts                  # IpcSafe<> utility

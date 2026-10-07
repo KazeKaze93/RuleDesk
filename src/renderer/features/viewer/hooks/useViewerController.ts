@@ -5,6 +5,7 @@ import type { Post } from "@shared/types/db";
 import type { ViewerOrigin } from "../../../store/viewerStore";
 import { normalizePostToPostData } from "../../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../../shared/constants";
+import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../../shared/utils/type-guards";
 import {
   updatePostInCache,
@@ -86,7 +87,7 @@ export function useViewerController({
       window.api.markPostAsViewed(post.id, postData).catch((err) => {
         // Ignore rate limit errors - use typed errorCode, NOT string parsing
         const errorCode = getErrorCode(err);
-        if (errorCode === "RATE_LIMIT") {
+        if (errorCode === ErrorCode.RATE_LIMIT) {
           return; // Silently ignore rate limit errors
         }
         // Log other errors for debugging

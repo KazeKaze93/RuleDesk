@@ -83,12 +83,16 @@ export const GetPostsSchema = z.object({
 });
 
 /**
- * Get Posts Request Type
- *
- * Exported directly from schema to ensure single source of truth.
- * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
+ * Parsed GetPosts shape (after Zod defaults: page/limit/isRandom present).
+ * Controllers use this after BaseController validation.
  */
 export type GetPostsRequest = z.infer<typeof GetPostsSchema>;
+
+/**
+ * Caller-facing GetPosts args (defaults may be omitted; Zod fills them on parse).
+ * Use this on the IPC bridge / ``window.api`` surface.
+ */
+export type GetPostsRequestInput = z.input<typeof GetPostsSchema>;
 
 export const GetPostsCountSchema = z.object({
   artistId: OptionalArtistScopeIdSchema,

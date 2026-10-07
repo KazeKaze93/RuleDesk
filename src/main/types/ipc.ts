@@ -24,18 +24,11 @@ export type {
 export type { IpcSettings } from "../../shared/schemas/settings";
 
 /**
- * Error codes for typed error handling
- * Prevents brittle string matching in error handling
+ * Error codes for typed error handling.
+ * Canonical definition lives in shared — re-export for Main callers.
  */
-export enum ErrorCode {
-  RATE_LIMIT = "RATE_LIMIT",
-  VALIDATION_ERROR = "VALIDATION_ERROR",
-  DATABASE_ERROR = "DATABASE_ERROR",
-  NETWORK_ERROR = "NETWORK_ERROR",
-  AUTH_ERROR = "AUTH_ERROR",
-  PARSE_ERROR = "PARSE_ERROR",
-  UNKNOWN_ERROR = "UNKNOWN_ERROR",
-}
+import { ErrorCode } from "../../shared/types/error-codes";
+export { ErrorCode };
 
 /**
  * Fields carried inside the BaseController failure envelope

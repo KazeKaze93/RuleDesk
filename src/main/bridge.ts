@@ -1,18 +1,10 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import type { Artist, Post, Playlist } from "./db/schema";
 import { invokeIpc } from "../preload/invoke-ipc";
 import { IPC_CHANNELS } from "./ipc/channels";
 import type {
-  GetPostsRequest,
+  GetPostsRequestInput,
   GetPostsCountRequest,
-  AddArtistRequest,
-} from "./types/ipc";
-import type { IpcSettings, SaveSettings } from "../shared/schemas/settings";
-import type { ThemePreference } from "../shared/schemas/settings";
-import type { PostData, PostFilterRequest } from "../shared/schemas/post";
-import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
-import type { SearchBooruPageResult } from "../shared/schemas/search";
-import type { ProviderId, SearchResults } from "./providers";
+} from "../shared/schemas/post";
 import type {
   CreatePlaylistRequest,
   UpdatePlaylistRequest,
@@ -26,233 +18,30 @@ import type {
   ClearManualPlaylistRequest,
   MovePostsBetweenManualPlaylistsRequest,
 } from "../shared/schemas/playlist";
-import type { ExtendedStats } from "../shared/schemas/stats";
+import type { ShadowInsertRequest } from "../shared/schemas/shadow-insert";
 import type {
-  OrphanDetectionReport,
-  RunVacuumResponse,
-  SetVacuumScheduleArgs,
-  VacuumSchedule,
-  VacuumStatusResponse,
-} from "../shared/schemas/maintenance";
+  IpcBridge,
+  UpdateStatusData,
+  DownloadProgressData,
+} from "../shared/types/ipc-bridge";
 
-export type UpdateStatusData = {
-  status: string;
-  message?: string;
-  version?: string;
-};
+export type {
+  IpcBridge,
+  UpdateStatusData,
+  UpdateStatusCallback,
+  UpdateProgressCallback,
+  SyncErrorCallback,
+  AutoBackupInterval,
+  BackupResponse,
+  DownloadProgressCallback,
+  DownloadProgressData,
+  TrackedArtist,
+  PlaylistWithStats,
+  PostQueryFilters,
+} from "../shared/types/ipc-bridge";
 
-export type UpdateStatusCallback = (data: UpdateStatusData) => void;
-export type UpdateProgressCallback = (percent: number) => void;
-export type SyncErrorCallback = (message: string) => void;
-export type AutoBackupInterval = "never" | "daily" | "weekly";
-
-export type BackupResponse = {
-  success: boolean;
-  path?: string;
-  error?: string;
-};
-
-export type DownloadProgressData = {
-  id: string;
-  percent: number;
-};
-export type DownloadProgressCallback = (data: DownloadProgressData) => void;
-export type TrackedArtist = Artist & {
-  postsCount: number;
-  lastPostAt: number | null;
-};
-export type PlaylistWithStats = Playlist & {
-  postCount: number;
-};
-
-// Re-export IPC DTOs for use in renderer
-// Re-export types from controllers (single source of truth)
+// Re-export IPC DTOs for callers that historically imported from bridge.ts
 export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "./types/ipc";
-
-// Legacy interface for backward compatibility (can be removed if not used)
-export interface PostQueryFilters {
-  tags?: string;
-  sortBy?: "date" | "id" | "rating";
-  isViewed?: boolean;
-}
-
-export interface IpcBridge {
-  // App
-  getAppVersion: () => Promise<string>;
-  getDatabaseLocation: () => Promise<string>;
-  getIconPath: (theme?: "light" | "dark") => Promise<string>;
-  wipeAllData: () => Promise<void>;
-
-  writeToClipboard: (text: string) => Promise<boolean>;
-
-  // Settings
-  getSettings: () => Promise<IpcSettings | null>;
-  saveSettings: (creds: SaveSettings) => Promise<boolean>;
-  saveTheme: (theme: ThemePreference) => Promise<boolean>;
-  saveDownloadFolder: (path: string | null) => Promise<boolean>;
-  confirmLegal: () => Promise<IpcSettings>;
-  resetOnboarding: () => Promise<boolean>;
-  logout: () => Promise<void>;
-
-  // Artists
-  getTrackedArtists: () => Promise<TrackedArtist[]>;
-  addArtist: (artist: AddArtistRequest) => Promise<Artist | undefined>;
-  deleteArtist: (id: number) => Promise<void>;
-
-  // --- NEW: SEARCH ---
-  searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
-
-  // Posts
-  getArtistPosts: (params: GetPostsRequest) => Promise<Post[]>;
-  getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
-  getDownloadItems: (params: GetPostsRequest & { limit?: number }) => Promise<{ items: Array<{ url: string; filename: string }> }>;
-  getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) => Promise<number>;
-  getStats: () => Promise<ExtendedStats>;
-  getExtendedStats: () => Promise<ExtendedStats>;
-
-  togglePostViewed: (postId: number) => Promise<boolean>;
-  markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
-  getUpdatesUnreadCount: () => Promise<number>;
-  getUpdatesTotalUnreadCount: (params: { filters?: PostFilterRequest }) => Promise<number>;
-  markAllUpdatesSeen: () => Promise<boolean>;
-
-  resetPostCache: (postId: number) => Promise<boolean>;
-
-  // External
-  openExternal: (url: string) => Promise<void>;
-
-  // Sync
-  syncAll: () => Promise<boolean>;
-  repairArtist: (artistId: number) => Promise<{ success: boolean; error?: string }>;
-
-  // Updater
-  checkForUpdates: () => Promise<void>;
-  quitAndInstall: () => Promise<void>;
-  startDownload: () => Promise<void>;
-
-  onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
-  onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
-
-  onSyncStart: (callback: () => void) => () => void;
-  onSyncEnd: (callback: () => void) => () => void;
-  onSyncProgress: (callback: (message: string) => void) => () => void;
-  onSyncError: (callback: SyncErrorCallback) => () => void;
-  /** Per-artist syncStatus was persisted (start or end). Void payload — refetch DB. */
-  onSyncArtist: (callback: () => void) => () => void;
-  onRepairStart: (callback: (artistName: string) => void) => () => void;
-  onRepairEnd: (callback: () => void) => () => void;
-
-  markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
-
-  togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
-
-  shadowInsertPost: (request: ShadowInsertRequest) => Promise<Post>;
-
-  // Downloads
-  downloadFile: (
-    url: string,
-    filename: string
-  ) => Promise<{
-    success: boolean;
-    path?: string;
-    error?: string;
-    canceled?: boolean;
-  }>;
-  downloadAll: (
-    items: Array<{ url: string; filename: string }>
-  ) => Promise<{
-    success: boolean;
-    downloaded: number;
-    failed: number;
-    canceled: boolean;
-    error?: string;
-  }>;
-  cancelDownloadAll: () => Promise<boolean>;
-  pauseDownloadAll: () => Promise<void>;
-  resumeDownloadAll: () => Promise<void>;
-  getPendingDownload: () => Promise<{
-    hasPending: boolean;
-    total: number;
-    done: number;
-    folder: string;
-  } | null>;
-  resumePendingDownload: () => Promise<{ success: boolean; error?: string }>;
-  dismissPendingDownload: () => Promise<void>;
-  saveDownloadSettings: (data: {
-    duplicateFileBehavior?: "skip" | "overwrite";
-    downloadFolderStructure?: "flat" | "{artist_id}";
-  }) => Promise<boolean>;
-  openFileInFolder: (path: string) => Promise<boolean>;
-  selectDownloadFolder: () => Promise<string | null>;
-
-  onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
-  onDownloadAllProgress: (
-    callback: (data: { id: string; percent: number; done: number; total: number }) => void
-  ) => () => void;
-  onPendingDownloadStateChanged: (callback: () => void) => () => void;
-
-  searchRemoteTags: (
-    query: string,
-    provider?: ProviderId,
-    artistOnly?: boolean
-  ) => Promise<SearchResults[]>;
-
-  searchBooru: (params: {
-    tags: string[];
-    page: number;
-    isRandom?: boolean;
-    limit?: number;
-    beforePostId?: number;
-  }) => Promise<SearchBooruPageResult<Post>>;
-
-  resolveTags: (tags: string[]) => Promise<string[]>;
-  resolveCharacterTags: (tags: string[]) => Promise<string[]>;
-  resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
-  resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
-  getBlacklistedTags: () => Promise<string[]>;
-  addTagToBlacklist: (tag: string) => Promise<void>;
-  removeTagFromBlacklist: (tag: string) => Promise<void>;
-
-  createBackup: () => Promise<BackupResponse>;
-  restoreBackup: () => Promise<BackupResponse>;
-  checkDatabaseIntegrity: () => Promise<{ ok: boolean; details: string }>;
-  getBackupSchedule: () => Promise<AutoBackupInterval>;
-  setBackupSchedule: (interval: AutoBackupInterval) => Promise<boolean>;
-  shouldShowBackupPrompt: () => Promise<boolean>;
-  markBackupPromptSeen: () => Promise<boolean>;
-  getVacuumStatus: () => Promise<VacuumStatusResponse>;
-  runVacuum: () => Promise<RunVacuumResponse>;
-  getVacuumSchedule: () => Promise<VacuumSchedule>;
-  setVacuumSchedule: (args: SetVacuumScheduleArgs) => Promise<boolean>;
-  detectOrphans: () => Promise<OrphanDetectionReport>;
-
-  verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
-
-  // Playlists
-  createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
-  getPlaylists: () => Promise<PlaylistWithStats[]>;
-  getPlaylist: (playlistId: number) => Promise<Playlist | null>;
-  updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
-  deletePlaylist: (playlistId: number) => Promise<boolean>;
-  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
-  removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
-  reorderPlaylistEntries: (params: ReorderPlaylistEntriesRequest) => Promise<void>;
-  getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
-  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
-  getPlaylistsContainingPost: (postId: number, rule34PostId?: number) => Promise<number[]>;
-  getManualPlaylistMembershipForPosts: (
-    data: GetManualPlaylistMembershipForPostsRequest
-  ) => Promise<{ playlistId: number; matchCount: number }[]>;
-  syncManualPlaylistMembership: (data: SyncManualPlaylistMembershipRequest) => Promise<void>;
-  clearManualPlaylist: (data: ClearManualPlaylistRequest) => Promise<void>;
-  movePostsBetweenManualPlaylists: (
-    data: MovePostsBetweenManualPlaylistsRequest
-  ) => Promise<void>;
-  exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
-  importPlaylist: () => Promise<{ success: boolean; playlistId?: number; error?: string }>;
-
-  getVideoProxyUrl: (fileUrl: string) => Promise<string>;
-}
 
 const ipcBridge: IpcBridge = {
   getAppVersion: () => invokeIpc(IPC_CHANNELS.APP.GET_VERSION),
@@ -316,14 +105,15 @@ const ipcBridge: IpcBridge = {
 
   searchArtists: (query) => invokeIpc(IPC_CHANNELS.DB.SEARCH_TAGS, query),
 
-  getArtistPosts: (params: GetPostsRequest) =>
+  getArtistPosts: (params: GetPostsRequestInput) =>
     invokeIpc(IPC_CHANNELS.DB.GET_POSTS, params),
   getArtistPostsCount: (params: GetPostsCountRequest) =>
     invokeIpc(IPC_CHANNELS.DB.GET_POSTS_COUNT, params),
-  getDownloadItems: (params: GetPostsRequest & { limit?: number }) =>
+  getDownloadItems: (params: GetPostsRequestInput) =>
     invokeIpc(IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS, params),
-  getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) =>
-    invokeIpc(IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS, params),
+  getPostsCountWithFilters: (
+    params: Pick<GetPostsRequestInput, "artistId" | "filters">
+  ) => invokeIpc(IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS, params),
   getStats: () => invokeIpc(IPC_CHANNELS.DB.GET_STATS),
   getExtendedStats: () => invokeIpc(IPC_CHANNELS.STATS.GET_EXTENDED),
 

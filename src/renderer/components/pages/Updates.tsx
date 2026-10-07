@@ -33,6 +33,8 @@ import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
+import { ErrorCode } from "@shared/types/error-codes";
+import { getErrorCode } from "../../../shared/utils/type-guards";
 
 // --- Constants ---
 const POSTS_PER_PAGE = 50;
@@ -81,10 +83,6 @@ const {
 } = createVirtuosoGridFactories("Updates");
 
 // --- Основной компонент ---
-
-const hasErrorCode = (value: unknown): value is { code?: string } => {
-  return typeof value === "object" && value !== null && "code" in value;
-};
 
 const FEED_VIEW = "feed";
 const CREATORS_VIEW = "creators";
@@ -340,9 +338,8 @@ export const Updates = () => {
       );
     },
     onError: (err) => {
-      // Ignore rate limit errors - use typed errorCode, NOT string parsing
-      const errorCode = hasErrorCode(err) ? err.code : undefined;
-      if (errorCode === "RATE_LIMIT") {
+      // Ignore rate limit errors - use typed ErrorCode, NOT English message matching
+      if (getErrorCode(err) === ErrorCode.RATE_LIMIT) {
         return; // Silently ignore rate limit errors
       }
       // Log other errors for debugging

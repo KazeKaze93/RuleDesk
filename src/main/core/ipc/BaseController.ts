@@ -1,18 +1,24 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
-import { z, type ZodErrorMap } from "zod";
+import { z, type ZodErrorMap, type ZodTypeAny } from "zod";
+import { ErrorCode } from "../../../shared/types/error-codes";
+import { createCodedError } from "../../../shared/utils/coded-error";
 import {
   isIpcFailureResult,
   toIpcFailureResult,
   type IpcFailureResult,
 } from "../../../shared/utils/ipc-result";
-import { ErrorCode } from "../../types/ipc";
 
-/**
- * Build a typed Error for internal control flow. BaseController never rejects
- * the ipcMain.handle Promise with it — the outer catch returns an
- * ``IpcFailureResult`` so ``code`` survives Structured Clone to preload.
- */
+type IpcHandlerSchema =
+  | z.ZodTuple<[ZodTypeAny, ...ZodTypeAny[]] | [], ZodTypeAny | null>
+  | ZodTypeAny;
+
+type IpcHandlerFn = (
+  event: IpcMainInvokeEvent,
+  ...args: unknown[]
+) => Promise<unknown> | unknown;
+
+/** Local alias — BaseController never rejects; envelope carries the code. */
 function createIpcError(
   message: string,
   code: ErrorCode,
@@ -22,13 +28,94 @@ function createIpcError(
     extra?: Record<string, unknown>;
   }
 ): Error {
-  const err = new Error(message);
-  err.name = options?.name ?? "Error";
-  if (options?.stack) {
-    err.stack = options.stack;
-  }
-  Object.assign(err, { code }, options?.extra ?? {});
-  return err;
+  return createCodedError(message, code, options);
+}
+
+function throwArgumentCountMismatch(
+  channel: string,
+  expectedCount: number,
+  receivedCount: number
+): never {
+  const errorMessage =
+    expectedCount === 1
+      ? `Argument count mismatch: expected 1 (single object/primitive), got ${receivedCount}`
+      : `Argument count mismatch: expected ${expectedCount}, got ${receivedCount}`;
+  log.error(`[IPC] Validation failed for channel "${channel}": ${errorMessage}`, {
+    expected: expectedCount,
+    received: receivedCount,
+  });
+  throw createIpcError(errorMessage, ErrorCode.VALIDATION_ERROR, {
+    name: "ValidationError",
+    extra: {
+      errors: [
+        {
+          path: [],
+          message: errorMessage,
+          code: "custom",
+        },
+      ],
+    },
+  });
+}
+
+function throwZodValidationError(
+  channel: string,
+  validationError: z.ZodError
+): never {
+  const errorMessages = validationError.errors.map((e) => {
+    const pathStr =
+      e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
+    return `${e.message}${pathStr}`;
+  });
+  const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
+
+  log.error(`[IPC] Validation failed for channel "${channel}":`, {
+    errors: validationError.errors.map((e) => ({
+      path: e.path.map((segment) => {
+        const segmentStr = String(segment);
+        if (
+          /password|token|key|secret|api[_-]?key|auth|credential/i.test(
+            segmentStr
+          )
+        ) {
+          return "<masked>";
+        }
+        return segment;
+      }),
+      message: e.message,
+      code: e.code,
+    })),
+  });
+
+  const isProduction = process.env.NODE_ENV === "production";
+  const originalErrorJson = isProduction
+    ? JSON.stringify({
+        name: validationError.name,
+        message: validationError.message,
+        errorCount: validationError.errors.length,
+      })
+    : JSON.stringify({
+        name: validationError.name,
+        message: validationError.message,
+        errors: validationError.errors.map((e) => ({
+          path: e.path,
+          message: e.message,
+          code: e.code,
+        })),
+      });
+
+  throw createIpcError(errorMessage, ErrorCode.VALIDATION_ERROR, {
+    name: "ValidationError",
+    stack: validationError.stack,
+    extra: {
+      originalError: originalErrorJson,
+      errors: validationError.errors.map((e) => ({
+        path: e.path,
+        message: e.message,
+        code: e.code,
+      })),
+    },
+  });
 }
 
 function hasIpcErrorCode(error: unknown): error is Error & { code: string } {
@@ -78,35 +165,14 @@ function ipcFailureFromUnknown(
   });
 }
 
+/**
+ * Infer a code only from typed error identity — never from English message text.
+ * Throw sites that need a specific code must attach ErrorCode via createCodedError /
+ * withErrorCode (or throwProviderSearchIpcError).
+ */
 function inferErrorCode(error: Error): ErrorCode {
-  const errorMessage = error.message.toLowerCase();
-  if (
-    errorMessage.includes("rate limit") ||
-    errorMessage.includes("too frequent")
-  ) {
-    return ErrorCode.RATE_LIMIT;
-  }
   if (error.name === "ValidationError" || error instanceof z.ZodError) {
     return ErrorCode.VALIDATION_ERROR;
-  }
-  if (
-    errorMessage.includes("database") ||
-    errorMessage.includes("sqlite")
-  ) {
-    return ErrorCode.DATABASE_ERROR;
-  }
-  if (
-    errorMessage.includes("network") ||
-    errorMessage.includes("fetch")
-  ) {
-    return ErrorCode.NETWORK_ERROR;
-  }
-  if (
-    errorMessage.includes("auth") ||
-    errorMessage.includes("unauthorized") ||
-    errorMessage.includes("credential")
-  ) {
-    return ErrorCode.AUTH_ERROR;
   }
   return ErrorCode.UNKNOWN_ERROR;
 }
@@ -293,6 +359,55 @@ export abstract class BaseController {
   private static callCount = 0; // Counter for tracking IPC calls
 
   /**
+   * Shared validation + handler execution for both collapsed (idempotent) and
+   * throttled registration paths. Throws typed validation errors; callers own
+   * the failure-envelope catch.
+   */
+  private async runValidatedHandler(
+    channel: string,
+    schema: IpcHandlerSchema,
+    handler: IpcHandlerFn,
+    event: IpcMainInvokeEvent,
+    args: unknown[]
+  ): Promise<unknown> {
+    log.debug(
+      `[IPC] Incoming request: ${channel} (${args.length} arg${
+        args.length !== 1 ? "s" : ""
+      })`
+    );
+
+    const isTuple = schema instanceof z.ZodTuple;
+
+    if (isTuple) {
+      const expectedCount = schema.items.length;
+      if (args.length !== expectedCount) {
+        throwArgumentCountMismatch(channel, expectedCount, args.length);
+      }
+    } else if (args.length !== 1) {
+      throwArgumentCountMismatch(channel, 1, args.length);
+    }
+
+    const normalizedSchema = isTuple ? schema : z.tuple([schema]);
+    type ValidatedArgs = z.infer<typeof normalizedSchema>;
+    let validatedArgs: ValidatedArgs;
+    try {
+      validatedArgs = normalizedSchema.parse(args, {
+        errorMap: sanitizedErrorMap,
+      });
+    } catch (validationError) {
+      if (validationError instanceof z.ZodError) {
+        throwZodValidationError(channel, validationError);
+      }
+      throw validationError;
+    }
+
+    const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
+    const result = await handler(event, ...handlerArgs);
+    log.debug(`[IPC] Request completed: ${channel}`);
+    return result;
+  }
+
+  /**
    * Protected helper to register IPC handlers with centralized error handling and input validation
    *
    * Accepts either:
@@ -317,13 +432,8 @@ export abstract class BaseController {
    */
   protected handle(
     channel: string,
-    schema:
-      | z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], z.ZodTypeAny | null>
-      | z.ZodTypeAny,
-    handler: (
-      event: IpcMainInvokeEvent,
-      ...args: unknown[]
-    ) => Promise<unknown> | unknown,
+    schema: IpcHandlerSchema,
+    handler: IpcHandlerFn,
     options?: { isIdempotent?: boolean }
   ): void {
     // Critical: Remove existing handler to prevent "duplicate handler" crash
@@ -489,187 +599,35 @@ export abstract class BaseController {
               // Request Collapsing already prevents duplicate work, so throttling is redundant
               // If handler has internal cache (like SettingsController.getSettings), rapid calls are safe
 
-              // Execute handler logic (validation + execution) asynchronously
-              // Throttling already checked above
+              // Execute shared validation + handler asynchronously
               (async () => {
-              try {
-                // Execute validation and handler (inline to avoid method extraction complexity)
-                // Security: Log only channel name and argument count
-                log.debug(
-                  `[IPC] Incoming request: ${channel} (${args.length} arg${
-                    args.length !== 1 ? "s" : ""
-                  })`
-                );
-
-                // Determine if schema is a tuple
-                const isTuple = schema instanceof z.ZodTuple;
-
-                // Strict validation: Check argument count BEFORE parsing
-                if (isTuple) {
-                  const expectedCount = schema.items.length;
-                  if (args.length !== expectedCount) {
-                    const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
-                    log.error(
-                      `[IPC] Validation failed for channel "${channel}": ${errorMessage}`
-                    );
-                    throw createIpcError(
-                      errorMessage,
-                      ErrorCode.VALIDATION_ERROR,
-                      {
-                        name: "ValidationError",
-                        extra: {
-                          errors: [
-                            {
-                              path: [],
-                              message: errorMessage,
-                              code: "custom",
-                            },
-                          ],
-                        },
-                      }
-                    );
-                  }
-                } else {
-                  if (args.length !== 1) {
-                    const errorMessage = `Argument count mismatch: expected 1, got ${args.length}`;
-                    log.error(
-                      `[IPC] Validation failed for channel "${channel}": ${errorMessage}`
-                    );
-                    throw createIpcError(
-                      errorMessage,
-                      ErrorCode.VALIDATION_ERROR,
-                      {
-                        name: "ValidationError",
-                        extra: {
-                          errors: [
-                            {
-                              path: [],
-                              message: errorMessage,
-                              code: "custom",
-                            },
-                          ],
-                        },
-                      }
-                    );
-                  }
-                }
-
-                // Normalize schema and validate
-                const normalizedSchema = isTuple
-                  ? schema
-                  : z.tuple([schema]);
-                
-                // Use z.infer to extract types from schema for proper type safety
-                // This eliminates the need for 'as unknown[]' type assertion
-                // SECURITY: Use local error map to sanitize error messages without affecting global Zod settings
-                type ValidatedArgs = z.infer<typeof normalizedSchema>;
-                let validatedArgs: ValidatedArgs;
                 try {
-                  validatedArgs = normalizedSchema.parse(args, {
-                    errorMap: sanitizedErrorMap,
-                  });
-                } catch (validationError) {
-                  if (validationError instanceof z.ZodError) {
-                    // Build detailed error message with path information
-                    // SECURITY: Sanitize error messages to prevent leaking sensitive data
-                    // Zod error messages may contain values like "Expected string, received 12345"
-                    // We must strip actual values and only keep type/format information
-                    const errorMessages = validationError.errors.map((e) => {
-                      const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
-                      // SECURITY: Error messages are already sanitized by custom errorMap
-                      // No need for regex replacement - values are never included in messages
-                      return `${e.message}${pathStr}`;
+                  const result = await this.runValidatedHandler(
+                    channel,
+                    schema,
+                    handler,
+                    event,
+                    args
+                  );
+                  settle(result);
+                } catch (error: unknown) {
+                  // Resolve with failure envelope (do not reject — Electron drops Error.code).
+                  const isProduction = process.env.NODE_ENV === "production";
+                  if (!hasIpcErrorCode(error)) {
+                    log.error(`[IPC] Error in channel "${channel}":`, {
+                      message:
+                        error instanceof Error
+                          ? error.message
+                          : "Unknown error",
+                      stack: isProduction
+                        ? undefined
+                        : error instanceof Error
+                          ? error.stack
+                          : undefined,
                     });
-                    const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
-                    
-              // Security: Log only validation errors (paths and messages), not actual argument values
-              // Mask sensitive data in error paths (e.g., paths containing "password", "token", "key")
-              log.error(`[IPC] Validation failed for channel "${channel}":`, {
-                errors: validationError.errors.map((e) => ({
-                  path: e.path.map(segment => {
-                    // Mask sensitive path segments
-                    const segmentStr = String(segment);
-                    if (/password|token|key|secret|api[_-]?key|auth|credential/i.test(segmentStr)) {
-                      return "<masked>";
-                    }
-                    return segment;
-                  }),
-                  // SECURITY: Error messages are already sanitized by custom errorMap
-                  // No need for regex replacement - values are never included in messages
-                  message: e.message,
-                  code: e.code,
-                  // SECURITY: Do not log actual values - they may contain sensitive data
-                  // Only log path and sanitized message, not the value that failed validation
-                })),
-              });
-
-                    // Create serializable validation error with proper string representation
-                    // SECURITY: Limit JSON.stringify output size to prevent huge error strings in production logs
-                    // Only include essential error information (name, message, error count) for production
-                    const isProduction = process.env.NODE_ENV === "production";
-                    const originalErrorJson = isProduction
-                      ? JSON.stringify({
-                          name: validationError.name,
-                          message: validationError.message,
-                          errorCount: validationError.errors.length,
-                        })
-                      : JSON.stringify({
-                          name: validationError.name,
-                          message: validationError.message,
-                          errors: validationError.errors.map((e) => ({
-                            path: e.path,
-                            message: e.message,
-                            code: e.code,
-                          })),
-                        });
-                    
-                    throw createIpcError(
-                      errorMessage,
-                      ErrorCode.VALIDATION_ERROR,
-                      {
-                        name: "ValidationError",
-                        stack: validationError.stack,
-                        extra: {
-                          originalError: originalErrorJson,
-                          errors: validationError.errors.map((e) => ({
-                            path: e.path,
-                            message: e.message,
-                            code: e.code,
-                          })),
-                        },
-                      }
-                    );
                   }
-                  // Re-throw if it's not a ZodError
-                  throw validationError;
+                  settle(ipcFailureFromUnknown(error, isProduction));
                 }
-                
-                // Call handler with validated arguments
-                // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
-                const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
-
-                // Execute handler (call sync so collapse still coalesces concurrent invokes)
-                const result = await handler(event, ...handlerArgs);
-                log.debug(`[IPC] Request completed: ${channel}`);
-                settle(result);
-              } catch (error: unknown) {
-                // Resolve with failure envelope (do not reject — Electron drops Error.code).
-                const isProduction = process.env.NODE_ENV === "production";
-                if (!hasIpcErrorCode(error)) {
-                  log.error(`[IPC] Error in channel "${channel}":`, {
-                    message:
-                      error instanceof Error
-                        ? error.message
-                        : "Unknown error",
-                    stack: isProduction
-                      ? undefined
-                      : error instanceof Error
-                        ? error.stack
-                        : undefined,
-                  });
-                }
-                settle(ipcFailureFromUnknown(error, isProduction));
-              }
               })();
 
               return promise;
@@ -696,170 +654,13 @@ export abstract class BaseController {
           }
           BaseController.throttleMap.set(channel, Date.now());
 
-          // Security: Log only channel name and argument count, not actual arguments
-          // This prevents leaking user data, file paths, or other sensitive information
-          // Performance: Use debug level to avoid I/O overhead on high-frequency calls (e.g., scrolling)
-          log.debug(
-            `[IPC] Incoming request: ${channel} (${args.length} arg${
-              args.length !== 1 ? "s" : ""
-            })`
+          return await this.runValidatedHandler(
+            channel,
+            schema,
+            handler,
+            event,
+            args
           );
-
-          // Determine if schema is a tuple
-          const isTuple = schema instanceof z.ZodTuple;
-
-          // Strict validation: Check argument count BEFORE parsing
-          // This prevents silent failures when Renderer sends wrong number of arguments
-          if (isTuple) {
-            const expectedCount = schema.items.length;
-            if (args.length !== expectedCount) {
-              const errorMessage = `Argument count mismatch: expected ${expectedCount}, got ${args.length}`;
-              // Security: Log only error details, not argument values
-              log.error(
-                `[IPC] Validation failed for channel "${channel}": ${errorMessage}`,
-                {
-                  expected: expectedCount,
-                  received: args.length,
-                }
-              );
-
-              throw createIpcError(errorMessage, ErrorCode.VALIDATION_ERROR, {
-                name: "ValidationError",
-                extra: {
-                  errors: [
-                    {
-                      path: [],
-                      message: errorMessage,
-                      code: "custom",
-                    },
-                  ],
-                },
-              });
-            }
-          } else {
-            // Single schema: must receive exactly 1 argument
-            if (args.length !== 1) {
-              const errorMessage = `Argument count mismatch: expected 1 (single object/primitive), got ${args.length}`;
-              // Security: Log only error details, not argument values
-              log.error(
-                `[IPC] Validation failed for channel "${channel}": ${errorMessage}`,
-                {
-                  expected: 1,
-                  received: args.length,
-                }
-              );
-
-              throw createIpcError(errorMessage, ErrorCode.VALIDATION_ERROR, {
-                name: "ValidationError",
-                extra: {
-                  errors: [
-                    {
-                      path: [],
-                      message: errorMessage,
-                      code: "custom",
-                    },
-                  ],
-                },
-              });
-            }
-          }
-
-          // Normalize schema: if single ZodType (not tuple), wrap in tuple for validation
-          const normalizedSchema = isTuple
-            ? schema
-            : z.tuple([schema]);
-
-          // Use z.infer to extract types from schema instead of as unknown[]
-          // This provides proper type safety without type assertions
-          // SECURITY: Use local error map to sanitize error messages without affecting global Zod settings
-          type ValidatedArgs = z.infer<typeof normalizedSchema>;
-          let validatedArgs: ValidatedArgs;
-          try {
-            validatedArgs = normalizedSchema.parse(args, {
-              errorMap: sanitizedErrorMap,
-            });
-          } catch (validationError) {
-            if (validationError instanceof z.ZodError) {
-              // Build detailed error message with path information
-              // SECURITY: Sanitize error messages to prevent leaking sensitive data
-              // Zod error messages may contain values like "Expected string, received 12345"
-              // We must strip actual values and only keep type/format information
-              const errorMessages = validationError.errors.map((e) => {
-                const pathStr = e.path.length > 0 ? ` at path "${e.path.join(".")}"` : "";
-                // SECURITY: Error messages are already sanitized by custom errorMap
-                // No need for regex replacement - values are never included in messages
-                return `${e.message}${pathStr}`;
-              });
-              const errorMessage = `Validation Error: ${errorMessages.join("; ")}`;
-              
-              // Security: Log only validation errors (paths and messages), not actual argument values
-              // Mask sensitive data in error paths (e.g., paths containing "password", "token", "key")
-              log.error(`[IPC] Validation failed for channel "${channel}":`, {
-                errors: validationError.errors.map((e) => ({
-                  path: e.path.map(segment => {
-                    // Mask sensitive path segments
-                    const segmentStr = String(segment);
-                    if (/password|token|key|secret|api[_-]?key|auth|credential/i.test(segmentStr)) {
-                      return "<masked>";
-                    }
-                    return segment;
-                  }),
-                  // SECURITY: Error messages are already sanitized by custom errorMap
-                  // No need for regex replacement - values are never included in messages
-                  message: e.message,
-                  code: e.code,
-                  // SECURITY: Do not log actual values - they may contain sensitive data
-                  // Only log path and sanitized message, not the value that failed validation
-                })),
-              });
-
-              // Create serializable validation error with proper string representation
-              // Use JSON.stringify for originalError to prevent [object Object] output
-              // SECURITY: Limit JSON.stringify output size to prevent huge error strings in production logs
-              // Only include essential error information (name, message, error count) for production
-              const isProduction = process.env.NODE_ENV === "production";
-              const originalErrorJson = isProduction
-                ? JSON.stringify({
-                    name: validationError.name,
-                    message: validationError.message,
-                    errorCount: validationError.errors.length,
-                  })
-                : JSON.stringify({
-                    name: validationError.name,
-                    message: validationError.message,
-                    errors: validationError.errors.map((e) => ({
-                      path: e.path,
-                      message: e.message,
-                      code: e.code,
-                    })),
-                  });
-              
-              throw createIpcError(errorMessage, ErrorCode.VALIDATION_ERROR, {
-                name: "ValidationError",
-                stack: validationError.stack,
-                extra: {
-                  originalError: originalErrorJson,
-                  errors: validationError.errors.map((e) => ({
-                    path: e.path,
-                    message: e.message,
-                    code: e.code,
-                  })),
-                },
-              });
-            }
-            // Re-throw if it's not a ZodError
-            throw validationError;
-          }
-
-          // Call handler with validated arguments
-          // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
-          const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
-
-          // Execute handler
-          const result = await handler(event, ...handlerArgs);
-          // Performance: Use debug level to avoid I/O overhead on high-frequency calls
-          log.debug(`[IPC] Request completed: ${channel}`);
-          return result;
         } catch (error: unknown) {
           // Never reject the handle Promise — return a clone-safe failure envelope.
           // Preload ``invokeIpc`` rethrows as Error with ``code`` on the renderer side.

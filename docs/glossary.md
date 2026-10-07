@@ -364,7 +364,7 @@ An error handling strategy that increases wait time between retry attempts. Rule
 
 ### validate (npm script)
 
-Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-attrs`. CI runs this before `docs:api` freshness and tests. `typecheck` uses `skipLibCheck: true`, so project `.d.ts` files (`src/renderer.d.ts`, …) are a known blind spot — a green run does not prove those ambient imports are valid.
+Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-attrs`. CI runs this before `docs:api` freshness and tests. `typecheck` uses `skipLibCheck: true`, so ambient `.d.ts` bodies are lightly checked — `src/bridge.d.ts` only aliases `IpcBridge` from `src/shared/types/ipc-bridge.ts`, and `src/shared/types/ipc-bridge.drift.ts` asserts `Window["api"]` equals that contract so drift cannot stay silent.
 
 **Related:** [README — Quality Checks](../README.md#quality-checks)
 
