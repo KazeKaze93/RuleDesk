@@ -42,10 +42,10 @@ jobs:
         run: npm run db:rebuild:node
 
       - name: Unit, integration & property tests
-        # Force-exit reporter: suite can finish green then hang on open handles
-        # (HTTP listen / timers). Verbose stays for diagnosis; exit follows onFinished.
+        # singleFork + force-exit reporter: leaked handles were pinning forks so
+        # only ~15/61 files ran, then the step hit the 8m timeout with no summary.
         run: npx vitest run --reporter=verbose --reporter=./tests/vitest-force-exit-reporter.ts
-        timeout-minutes: 8
+        timeout-minutes: 10
 
       - name: Rebuild better-sqlite3 for Electron (posttest)
         run: npm run db:rebuild

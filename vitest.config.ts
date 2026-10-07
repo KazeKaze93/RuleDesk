@@ -34,8 +34,16 @@ export default defineConfig({
     testTimeout: 15000,
     hookTimeout: 15000,
     // Kill stuck workers instead of waiting until the GH step timeout (8m).
-    teardownTimeout: 5000,
+    teardownTimeout: 3000,
+    // One process for the whole suite so a leaked listen handle in file A
+    // cannot pin a fork and starve the remaining files (CI was finishing ~15/61).
     pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
+    fileParallelism: false,
     
     coverage: {
       provider: 'v8',
