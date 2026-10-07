@@ -158,8 +158,15 @@ describe("VideoProxyServer cache integrity", () => {
   afterEach(async () => {
     httpsRequestSpy.mockRestore();
     proxy.stop();
+    // Paused clients (open-reader test) otherwise keep sockets alive and
+    // server.close() never finishes — Vitest/CI hang until job timeout.
+    cdnServer.closeAllConnections();
     await new Promise<void>((resolve, reject) => {
+      const force = setTimeout(() => {
+        resolve();
+      }, 2_000);
       cdnServer.close((err) => {
+        clearTimeout(force);
         if (err) {
           reject(err);
           return;
@@ -167,7 +174,11 @@ describe("VideoProxyServer cache integrity", () => {
         resolve();
       });
     });
-    fs.rmSync(cacheDir, { recursive: true, force: true });
+    try {
+      fs.rmSync(cacheDir, { recursive: true, force: true, maxRetries: 10 });
+    } catch {
+      // Windows may still hold a handle briefly; temp dir is best-effort.
+    }
   });
 
   function proxyGet(
@@ -396,57 +407,72 @@ describe("VideoProxyServer cache integrity", () => {
     const openPath = path.join(cacheDir, cacheName);
     fs.writeFileSync(openPath, Buffer.alloc(2 * 1024 * 1024, 1));
 
-    const held = await new Promise<http.IncomingMessage>((resolve, reject) => {
-      const req = http.get(proxy.getProxyUrl(CDN_HOST_URL), (res) => {
-        res.pause();
-        resolve(res);
+    let held: http.IncomingMessage | undefined;
+    let heldReq: http.ClientRequest | undefined;
+    try {
+      held = await new Promise<http.IncomingMessage>((resolve, reject) => {
+        heldReq = http.get(proxy.getProxyUrl(CDN_HOST_URL), (res) => {
+          res.pause();
+          resolve(res);
+        });
+        heldReq.on("error", reject);
       });
-      req.on("error", reject);
-    });
-    await new Promise((r) => setTimeout(r, 30));
+      await new Promise((r) => setTimeout(r, 30));
 
-    const createdRecently = Date.now() - 1_000;
-    const accessedLongAgo = Date.now() - 30_000;
-    fs.utimesSync(openPath, accessedLongAgo / 1000, createdRecently / 1000);
+      const createdRecently = Date.now() - 1_000;
+      const accessedLongAgo = Date.now() - 30_000;
+      fs.utimesSync(openPath, accessedLongAgo / 1000, createdRecently / 1000);
 
-    const closedA = path.join(cacheDir, "closed-a.bin");
-    const closedB = path.join(cacheDir, "closed-b.bin");
-    fs.writeFileSync(closedA, "a");
-    fs.writeFileSync(closedB, "b");
-    fs.utimesSync(closedA, (Date.now() - 20_000) / 1000, (Date.now() - 20_000) / 1000);
-    fs.utimesSync(closedB, (Date.now() - 10_000) / 1000, (Date.now() - 10_000) / 1000);
+      const closedA = path.join(cacheDir, "closed-a.bin");
+      const closedB = path.join(cacheDir, "closed-b.bin");
+      fs.writeFileSync(closedA, "a");
+      fs.writeFileSync(closedB, "b");
+      fs.utimesSync(
+        closedA,
+        (Date.now() - 20_000) / 1000,
+        (Date.now() - 20_000) / 1000
+      );
+      fs.utimesSync(
+        closedB,
+        (Date.now() - 10_000) / 1000,
+        (Date.now() - 10_000) / 1000
+      );
 
-    const originalStat = fs.statSync.bind(fs);
-    const huge = VIDEO_CACHE_MAX_BYTES + 10;
-    vi.mocked(log.warn).mockClear();
-    vi.spyOn(fs, "statSync").mockImplementation(((
-      p: fs.PathLike,
-      options?: fs.StatSyncOptions,
-    ) => {
-      const st = originalStat(p, options);
-      if (
-        typeof p === "string" &&
-        p.endsWith(".bin") &&
-        !p.includes(".tmp-") &&
-        st &&
-        typeof st === "object" &&
-        "isFile" in st
-      ) {
-        // boundary: vitest mock overlays size on real Stats for eviction overflow simulation
-        Object.defineProperty(st, "size", { value: huge, configurable: true });
+      const originalStat = fs.statSync.bind(fs);
+      const huge = VIDEO_CACHE_MAX_BYTES + 10;
+      vi.mocked(log.warn).mockClear();
+      vi.spyOn(fs, "statSync").mockImplementation(((
+        p: fs.PathLike,
+        options?: fs.StatSyncOptions,
+      ) => {
+        const st = originalStat(p, options);
+        if (
+          typeof p === "string" &&
+          p.endsWith(".bin") &&
+          !p.includes(".tmp-") &&
+          st &&
+          typeof st === "object" &&
+          "isFile" in st
+        ) {
+          // boundary: vitest mock overlays size on real Stats for eviction overflow simulation
+          Object.defineProperty(st, "size", { value: huge, configurable: true });
+        }
+        return st;
+      }) as typeof fs.statSync);
+
+      proxy.evictCache();
+
+      expect(fs.existsSync(openPath)).toBe(true);
+      expect(vi.mocked(log.warn)).toHaveBeenCalledWith(
+        expect.stringContaining("Cache still over cap after eviction"),
+      );
+    } finally {
+      vi.mocked(fs.statSync).mockRestore();
+      heldReq?.destroy();
+      if (held) {
+        held.resume();
+        held.destroy();
       }
-      return st;
-    }) as typeof fs.statSync);
-
-    proxy.evictCache();
-
-    expect(fs.existsSync(openPath)).toBe(true);
-    expect(vi.mocked(log.warn)).toHaveBeenCalledWith(
-      expect.stringContaining("Cache still over cap after eviction"),
-    );
-
-    vi.mocked(fs.statSync).mockRestore();
-    held.resume();
-    await readResponse(held);
+    }
   });
 });

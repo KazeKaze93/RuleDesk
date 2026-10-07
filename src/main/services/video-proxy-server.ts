@@ -471,12 +471,15 @@ export class VideoProxyServer {
       this.releaseReader(filePath);
     };
 
+    // Hold the open-reader pin until the HTTP response ends — not when the
+    // ReadStream finishes buffering the file (client may still be paused).
+    res.on("finish", releaseReader);
     res.on("close", () => {
       if (!fileStream.destroyed) {
         fileStream.destroy();
       }
+      releaseReader();
     });
-    fileStream.on("close", releaseReader);
     fileStream.on("error", (err) => {
       log.error("[VideoProxy] read cache file failed", err);
       releaseReader();
