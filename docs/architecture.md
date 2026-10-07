@@ -1720,6 +1720,7 @@ src/
     └── types/
         ├── db.ts                   # type-only re-export of Drizzle row types for renderer
         ├── bridge.ts               # TrackedArtist, PlaylistWithStats (from main/bridge)
+        ├── error-codes.ts          # shared ErrorCode enum (IPC / provider; no English matching)
         ├── providers.ts            # SearchResults (from main/providers/types)
         ├── post.ts                 # WorkerPost Zod schema
         └── ipc.ts                  # IpcSafe<> utility

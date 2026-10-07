@@ -3,6 +3,7 @@ import log from "electron-log/renderer";
 import type { Post } from "@shared/types/db";
 import type { GetPostsRequest } from "@shared/schemas/post";
 import { useDownloadStore } from "../store/downloadStore";
+import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../shared/utils/type-guards";
 
 function postToDownloadItem(p: Post): { url: string; filename: string } | null {
@@ -94,7 +95,7 @@ export function useDownloadAllWithFilters(
       .getPostsCountWithFilters(fetchParams)
       .then(setTotalCount)
       .catch((e) => {
-        if (getErrorCode(e) !== "RATE_LIMIT") {
+        if (getErrorCode(e) !== ErrorCode.RATE_LIMIT) {
           setTotalCount(0);
         }
       });

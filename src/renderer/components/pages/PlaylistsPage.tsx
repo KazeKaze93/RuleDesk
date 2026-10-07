@@ -6,6 +6,8 @@ import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Penc
 import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
 import type { PlaylistWithStats } from "@shared/types/bridge";
+import { ErrorCode } from "@shared/types/error-codes";
+import { getErrorCode } from "../../../shared/utils/type-guards";
 import { cn } from "../../lib/utils";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -36,28 +38,6 @@ interface PlaylistsPageProps {
 
 const INVALID_PLAYLIST_TOAST = "Invalid playlist file";
 const EMPTY_IMPORTED_PLAYLIST_TOAST = "Playlist imported but contains no posts";
-
-const toErrorMessage = (error: unknown): string => {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
-
-  if (typeof error === "string" && error.trim().length > 0) {
-    return error;
-  }
-
-  return "Unknown error";
-};
-
-const isInvalidPlaylistError = (message: string): boolean => {
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("invalid playlist file format") ||
-    normalized.includes("invalid playlist") ||
-    normalized.includes("unexpected token") ||
-    normalized.includes("json")
-  );
-};
 
 // Main Playlists Page Component
 export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
@@ -315,17 +295,19 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
         return;
       }
 
-      if (result.error && result.error !== "Cancelled") {
-        if (isInvalidPlaylistError(result.error)) {
-          toast.error(INVALID_PLAYLIST_TOAST);
-        } else {
-          toast.error(`Failed to import playlist: ${result.error}`);
-        }
+      if (result.code === ErrorCode.CANCELLED) {
+        return;
+      }
+      if (result.code === ErrorCode.PARSE_ERROR) {
+        toast.error(INVALID_PLAYLIST_TOAST);
+        return;
+      }
+      if (result.error) {
+        toast.error(`Failed to import playlist: ${result.error}`);
       }
     } catch (error) {
       log.error("[PlaylistsPage] Failed to import playlist:", error);
-      const message = toErrorMessage(error);
-      if (isInvalidPlaylistError(message)) {
+      if (getErrorCode(error) === ErrorCode.PARSE_ERROR) {
         toast.error(INVALID_PLAYLIST_TOAST);
       } else {
         toast.error("Failed to import playlist");

@@ -33,6 +33,8 @@ import {
   DropdownMenuSubContent,
 } from "../../components/ui/dropdown-menu";
 import { useViewerStore, type ViewerOrigin } from "../../store/viewerStore";
+import { ErrorCode } from "@shared/types/error-codes";
+import { getErrorCode } from "../../../shared/utils/type-guards";
 import { cn } from "../../lib/utils";
 import { AddToPlaylistModal } from "../../components/playlists/AddToPlaylistModal";
 import { useViewerController } from "./hooks/useViewerController";
@@ -85,10 +87,7 @@ export const ViewerContent = ({
     if (post.isViewed) return;
     // Fire and forget: suppress rate limit errors
     window.api.markPostAsViewed(post.id).catch((err: unknown) => {
-      const errorCode = typeof err === "object" && err !== null && "code" in err
-        ? Reflect.get(err, "code")
-        : undefined;
-      if (errorCode === "RATE_LIMIT") {
+      if (getErrorCode(err) === ErrorCode.RATE_LIMIT) {
         return; // Silently ignore rate limit errors
       }
       const errorMessage = err instanceof Error ? err.message : String(err);

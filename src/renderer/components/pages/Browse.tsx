@@ -41,6 +41,7 @@ import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
 import type { Post } from "@shared/types/db";
 import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import type { SearchBooruPageResult, BrowseSearchPageParam } from "../../../shared/schemas/search";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
@@ -370,7 +371,7 @@ export const Browse = () => {
     },
     onError: (err) => {
       const errorCode = getErrorCode(err);
-      if (errorCode === "RATE_LIMIT") {
+      if (errorCode === ErrorCode.RATE_LIMIT) {
         return;
       }
       const errorMessage = err instanceof Error ? err.message : String(err);

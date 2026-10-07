@@ -342,7 +342,12 @@ interface IpcBridge {
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
   getPlaylistsContainingPost: (postId: number, rule34PostId?: number) => Promise<number[]>;
   exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
-  importPlaylist: () => Promise<{ success: boolean; playlistId?: number; error?: string }>;
+  importPlaylist: () => Promise<{
+    success: boolean;
+    playlistId?: number;
+    error?: string;
+    code?: ErrorCode; // CANCELLED | PARSE_ERROR | …
+  }>;
 
   // Video (localhost proxy; see architecture docs for cache and host allowlist)
   getVideoProxyUrl: (fileUrl: string) => Promise<string>;
@@ -2067,7 +2072,8 @@ try {
   // Prefer shared parsers per domain; never assume error.stack is available in renderer
   if (error instanceof Error) {
     log.error(error.message);
-    // error.code is restored by preload invokeIpc (ErrorCode enum)
+    // error.code is restored by preload invokeIpc (shared ErrorCode enum).
+    // Match ErrorCode.* — never English message substrings.
   }
 }
 ```

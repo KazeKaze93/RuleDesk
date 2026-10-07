@@ -188,7 +188,12 @@ export interface IpcApi extends IpcBridge {
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
   getPlaylistsContainingPost: (postId: number) => Promise<number[]>;
   exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
-  importPlaylist: () => Promise<{ success: boolean; playlistId?: number; error?: string }>;
+  importPlaylist: () => Promise<{
+    success: boolean;
+    playlistId?: number;
+    error?: string;
+    code?: import("./shared/types/error-codes").ErrorCode;
+  }>;
 
   getVideoProxyUrl: (fileUrl: string) => Promise<string>;
 }

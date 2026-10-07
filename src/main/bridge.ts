@@ -34,6 +34,7 @@ import type {
   VacuumSchedule,
   VacuumStatusResponse,
 } from "../shared/schemas/maintenance";
+import type { ErrorCode } from "../shared/types/error-codes";
 
 export type UpdateStatusData = {
   status: string;
@@ -249,7 +250,12 @@ export interface IpcBridge {
     data: MovePostsBetweenManualPlaylistsRequest
   ) => Promise<void>;
   exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
-  importPlaylist: () => Promise<{ success: boolean; playlistId?: number; error?: string }>;
+  importPlaylist: () => Promise<{
+    success: boolean;
+    playlistId?: number;
+    error?: string;
+    code?: ErrorCode;
+  }>;
 
   getVideoProxyUrl: (fileUrl: string) => Promise<string>;
 }

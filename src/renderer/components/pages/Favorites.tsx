@@ -24,6 +24,7 @@ import {
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
+import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
@@ -183,7 +184,7 @@ export const Favorites = () => {
     onError: (err) => {
       // Ignore rate limit errors - use typed errorCode, NOT string parsing
       const errorCode = getErrorCode(err);
-      if (errorCode === "RATE_LIMIT") {
+      if (errorCode === ErrorCode.RATE_LIMIT) {
         return; // Silently ignore rate limit errors
       }
       // Log other errors for debugging

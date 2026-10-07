@@ -12,6 +12,8 @@ import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import type { InferSelectModel } from "drizzle-orm";
 import type { IpcSafe } from "../../../shared/types/ipc";
+import { ErrorCode } from "../../../shared/types/error-codes";
+import { createCodedError } from "../../../shared/utils/coded-error";
 import {
   CreatePlaylistSchema,
   UpdatePlaylistSchema,
@@ -1458,7 +1460,12 @@ export class PlaylistController extends BaseController {
 
   private async importPlaylist(
     _event: IpcMainInvokeEvent
-  ): Promise<{ success: boolean; playlistId?: number; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    playlistId?: number;
+    error?: string;
+    code?: ErrorCode;
+  }> {
     try {
       if (!this.mainWindow || this.mainWindow.isDestroyed()) {
         throw new Error("No window reference");
@@ -1472,7 +1479,11 @@ export class PlaylistController extends BaseController {
 
       const selectedFilePath = filePaths[0];
       if (canceled || !selectedFilePath) {
-        return { success: false, error: "Cancelled" };
+        return {
+          success: false,
+          error: "Cancelled",
+          code: ErrorCode.CANCELLED,
+        };
       }
 
       const raw = await fs.promises.readFile(selectedFilePath, "utf-8");
@@ -1480,11 +1491,19 @@ export class PlaylistController extends BaseController {
       try {
         parsed = JSON.parse(raw);
       } catch {
-        return { success: false, error: "Invalid playlist file format" };
+        return {
+          success: false,
+          error: "Invalid playlist file format",
+          code: ErrorCode.PARSE_ERROR,
+        };
       }
 
       if (!isPlaylistExport(parsed)) {
-        return { success: false, error: "Invalid playlist file format" };
+        return {
+          success: false,
+          error: "Invalid playlist file format",
+          code: ErrorCode.PARSE_ERROR,
+        };
       }
 
       const exportData = parsed;
@@ -1888,8 +1907,9 @@ export class PlaylistController extends BaseController {
       const apiSettings = await getDecryptedApiSettings(this.getDb());
       
       if (!apiSettings) {
-        throw new Error(
-          "Cannot fetch remote playlist posts: credentials missing or unavailable"
+        throw createCodedError(
+          "Cannot fetch remote playlist posts: credentials missing or unavailable",
+          ErrorCode.AUTH_ERROR
         );
       }
 

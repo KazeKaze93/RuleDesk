@@ -19,6 +19,7 @@ import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { useDownloadAllFromBackend } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../../components/downloads/DownloadAllButton";
+import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../../components/gallery/virtuoso-factories";
 
@@ -134,7 +135,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     onError: (err) => {
       // Ignore rate limit errors - use typed errorCode, NOT string parsing
       const errorCode = getErrorCode(err);
-      if (errorCode === "RATE_LIMIT") {
+      if (errorCode === ErrorCode.RATE_LIMIT) {
         return; // Silently ignore rate limit errors
       }
       // Log other errors for debugging

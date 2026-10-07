@@ -1,12 +1,13 @@
 import { z } from "zod";
+import { ErrorCode } from "../types/error-codes";
 
-/** Subset of main-process ErrorCode values used for provider search failures. */
+/** Subset of ErrorCode values used for provider search failures. */
 export const ProviderSearchErrorCodeSchema = z.enum([
-  "AUTH_ERROR",
-  "RATE_LIMIT",
-  "NETWORK_ERROR",
-  "PARSE_ERROR",
-  "UNKNOWN_ERROR",
+  ErrorCode.AUTH_ERROR,
+  ErrorCode.RATE_LIMIT,
+  ErrorCode.NETWORK_ERROR,
+  ErrorCode.PARSE_ERROR,
+  ErrorCode.UNKNOWN_ERROR,
 ]);
 
 export type ProviderSearchErrorCode = z.infer<
@@ -48,10 +49,10 @@ const PROVIDER_KIND_TO_CODE: Record<
   ProviderErrorKind,
   ProviderSearchErrorCode
 > = {
-  auth: "AUTH_ERROR",
-  rate_limit: "RATE_LIMIT",
-  network: "NETWORK_ERROR",
-  parse: "PARSE_ERROR",
+  auth: ErrorCode.AUTH_ERROR,
+  rate_limit: ErrorCode.RATE_LIMIT,
+  network: ErrorCode.NETWORK_ERROR,
+  parse: ErrorCode.PARSE_ERROR,
 };
 
 export function providerKindToErrorCode(

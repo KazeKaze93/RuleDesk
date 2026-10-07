@@ -1,12 +1,13 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z, type ZodErrorMap, type ZodTypeAny } from "zod";
+import { ErrorCode } from "../../../shared/types/error-codes";
+import { createCodedError } from "../../../shared/utils/coded-error";
 import {
   isIpcFailureResult,
   toIpcFailureResult,
   type IpcFailureResult,
 } from "../../../shared/utils/ipc-result";
-import { ErrorCode } from "../../types/ipc";
 
 type IpcHandlerSchema =
   | z.ZodTuple<[ZodTypeAny, ...ZodTypeAny[]] | [], ZodTypeAny | null>
@@ -17,11 +18,7 @@ type IpcHandlerFn = (
   ...args: unknown[]
 ) => Promise<unknown> | unknown;
 
-/**
- * Build a typed Error for internal control flow. BaseController never rejects
- * the ipcMain.handle Promise with it — the outer catch returns an
- * ``IpcFailureResult`` so ``code`` survives Structured Clone to preload.
- */
+/** Local alias — BaseController never rejects; envelope carries the code. */
 function createIpcError(
   message: string,
   code: ErrorCode,
@@ -31,13 +28,7 @@ function createIpcError(
     extra?: Record<string, unknown>;
   }
 ): Error {
-  const err = new Error(message);
-  err.name = options?.name ?? "Error";
-  if (options?.stack) {
-    err.stack = options.stack;
-  }
-  Object.assign(err, { code }, options?.extra ?? {});
-  return err;
+  return createCodedError(message, code, options);
 }
 
 function throwArgumentCountMismatch(
@@ -174,35 +165,14 @@ function ipcFailureFromUnknown(
   });
 }
 
+/**
+ * Infer a code only from typed error identity — never from English message text.
+ * Throw sites that need a specific code must attach ErrorCode via createCodedError /
+ * withErrorCode (or throwProviderSearchIpcError).
+ */
 function inferErrorCode(error: Error): ErrorCode {
-  const errorMessage = error.message.toLowerCase();
-  if (
-    errorMessage.includes("rate limit") ||
-    errorMessage.includes("too frequent")
-  ) {
-    return ErrorCode.RATE_LIMIT;
-  }
   if (error.name === "ValidationError" || error instanceof z.ZodError) {
     return ErrorCode.VALIDATION_ERROR;
-  }
-  if (
-    errorMessage.includes("database") ||
-    errorMessage.includes("sqlite")
-  ) {
-    return ErrorCode.DATABASE_ERROR;
-  }
-  if (
-    errorMessage.includes("network") ||
-    errorMessage.includes("fetch")
-  ) {
-    return ErrorCode.NETWORK_ERROR;
-  }
-  if (
-    errorMessage.includes("auth") ||
-    errorMessage.includes("unauthorized") ||
-    errorMessage.includes("credential")
-  ) {
-    return ErrorCode.AUTH_ERROR;
   }
   return ErrorCode.UNKNOWN_ERROR;
 }
