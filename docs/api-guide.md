@@ -2058,7 +2058,7 @@ Sync pagination uses the same provider errors: `auth` / `rate_limit` abort sync 
 
 ### General IPC errors
 
-`BaseController` rejects with a real `Error` instance. The renderer receives `error.message` and an enumerable `error.code` (`ErrorCode`). Do not throw plain objects from Main — Electron serializes those as `[object Object]`.
+`BaseController` returns `{ ok: false, error: { message, code } }` on failure (it does not reject the `ipcMain.handle` Promise — Electron would strip `code`). Preload `invokeIpc` rethrows a real `Error` with `code` for `window.api.*` callers.
 
 ```typescript
 try {
@@ -2067,7 +2067,7 @@ try {
   // Prefer shared parsers per domain; never assume error.stack is available in renderer
   if (error instanceof Error) {
     log.error(error.message);
-    // error.code is set by BaseController (ErrorCode enum)
+    // error.code is restored by preload invokeIpc (ErrorCode enum)
   }
 }
 ```
@@ -2097,7 +2097,7 @@ IPC handlers are registered via controllers in `src/main/ipc/index.ts`:
 All IPC operations are handled through domain-specific controllers that extend `BaseController`:
 
 - **BaseController** provides:
-  - Centralized error handling (real `Error` + enumerable `code`, never plain-object rejects)
+  - Centralized error handling (failure envelope → preload rethrows `Error` + `code`)
   - Automatic input validation using Zod schemas
   - Type-safe handler registration
   - Prevents duplicate handler registration errors

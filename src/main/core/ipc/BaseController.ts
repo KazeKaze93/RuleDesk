@@ -1,11 +1,17 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z, type ZodErrorMap } from "zod";
+import {
+  isIpcFailureResult,
+  toIpcFailureResult,
+  type IpcFailureResult,
+} from "../../../shared/utils/ipc-result";
 import { ErrorCode } from "../../types/ipc";
 
 /**
- * Electron ``invoke`` must reject with a real ``Error``. Plain objects become
- * ``[object Object]`` in the renderer. Attach ``code`` as an own enumerable field.
+ * Build a typed Error for internal control flow. BaseController never rejects
+ * the ipcMain.handle Promise with it — the outer catch returns an
+ * ``IpcFailureResult`` so ``code`` survives Structured Clone to preload.
  */
 function createIpcError(
   message: string,
@@ -31,6 +37,45 @@ function hasIpcErrorCode(error: unknown): error is Error & { code: string } {
     "code" in error &&
     typeof Reflect.get(error, "code") === "string"
   );
+}
+
+function ipcFailureFromUnknown(
+  error: unknown,
+  isProduction: boolean
+): IpcFailureResult {
+  if (isIpcFailureResult(error)) {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    const code = hasIpcErrorCode(error)
+      ? String(Reflect.get(error, "code"))
+      : inferErrorCode(error);
+    const extras: Record<string, unknown> = {};
+    for (const key of Object.keys(error)) {
+      if (key === "message" || key === "name" || key === "stack") {
+        continue;
+      }
+      const value = Reflect.get(error, key);
+      if (
+        value === undefined ||
+        typeof value === "function" ||
+        typeof value === "symbol"
+      ) {
+        continue;
+      }
+      extras[key] = value;
+    }
+    return toIpcFailureResult(error.message || "Unknown IPC error", code, {
+      name: error.name,
+      stack: isProduction ? undefined : error.stack,
+      ...extras,
+    });
+  }
+
+  return toIpcFailureResult("Unknown IPC error", ErrorCode.UNKNOWN_ERROR, {
+    originalError: isProduction ? undefined : String(error),
+  });
 }
 
 function inferErrorCode(error: Error): ErrorCode {
@@ -392,10 +437,9 @@ export abstract class BaseController {
               // Create Promise IMMEDIATELY (synchronously) and store in map
               // This ensures second call (even milliseconds later) will see the Promise
               let promiseResolve: (value: unknown) => void;
-              let promiseReject: (error: unknown) => void;
-              const promise = new Promise<unknown>((resolve, reject) => {
+              // Failures resolve with an IpcFailureResult envelope (never reject).
+              const promise = new Promise<unknown>((resolve) => {
                 promiseResolve = resolve;
-                promiseReject = reject;
               });
 
               // Store Promise in collapse map IMMEDIATELY (synchronously)
@@ -587,8 +631,23 @@ export abstract class BaseController {
                 const result = await handler(event, ...handlerArgs);
                 log.debug(`[IPC] Request completed: ${channel}`);
                 promiseResolve!(result);
-              } catch (error) {
-                promiseReject!(error);
+              } catch (error: unknown) {
+                // Resolve with failure envelope (do not reject — Electron drops Error.code).
+                const isProduction = process.env.NODE_ENV === "production";
+                if (!hasIpcErrorCode(error)) {
+                  log.error(`[IPC] Error in channel "${channel}":`, {
+                    message:
+                      error instanceof Error
+                        ? error.message
+                        : "Unknown error",
+                    stack: isProduction
+                      ? undefined
+                      : error instanceof Error
+                        ? error.stack
+                        : undefined,
+                  });
+                }
+                promiseResolve!(ipcFailureFromUnknown(error, isProduction));
               } finally {
                 // Clean up collapse map after Promise resolves/rejects
                 // MEMORY LEAK PREVENTION: Clear timeout and remove promise
@@ -789,45 +848,21 @@ export abstract class BaseController {
           log.debug(`[IPC] Request completed: ${channel}`);
           return result;
         } catch (error: unknown) {
-          // Already an Error with a typed code (ValidationError, ProviderSearchError, …)
-          if (hasIpcErrorCode(error)) {
-            throw error;
-          }
-
+          // Never reject the handle Promise — return a clone-safe failure envelope.
+          // Preload ``invokeIpc`` rethrows as Error with ``code`` on the renderer side.
           const isProduction = process.env.NODE_ENV === "production";
-
-          log.error(`[IPC] Error in channel "${channel}":`, {
-            message: error instanceof Error ? error.message : "Unknown error",
-            stack: isProduction
-              ? undefined
-              : error instanceof Error
-                ? error.stack
-                : undefined,
-          });
-
-          if (error instanceof Error) {
-            throw createIpcError(
-              error.message || "Unknown IPC error",
-              inferErrorCode(error),
-              {
-                name: error.name,
-                stack: isProduction ? undefined : error.stack,
-                extra: isProduction
-                  ? undefined
-                  : { originalError: String(error) },
-              }
-            );
-          }
-
-          throw createIpcError(
-            "Unknown IPC error",
-            ErrorCode.UNKNOWN_ERROR,
-            {
-              extra: isProduction
+          if (!hasIpcErrorCode(error)) {
+            log.error(`[IPC] Error in channel "${channel}":`, {
+              message:
+                error instanceof Error ? error.message : "Unknown error",
+              stack: isProduction
                 ? undefined
-                : { originalError: String(error) },
-            }
-          );
+                : error instanceof Error
+                  ? error.stack
+                  : undefined,
+            });
+          }
+          return ipcFailureFromUnknown(error, isProduction);
         }
       }
     );

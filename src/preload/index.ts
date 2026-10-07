@@ -1,10 +1,10 @@
-import { ipcRenderer } from "electron";
 import type { SetVacuumScheduleArgs } from "../shared/schemas/maintenance";
+import { invokeIpc } from "./invoke-ipc";
 
 export const maintenancePreloadApi = {
-  getVacuumStatus: () => ipcRenderer.invoke("maintenance:get-vacuum-status"),
-  runVacuum: () => ipcRenderer.invoke("maintenance:run-vacuum"),
-  getVacuumSchedule: () => ipcRenderer.invoke("maintenance:get-vacuum-schedule"),
+  getVacuumStatus: () => invokeIpc("maintenance:get-vacuum-status"),
+  runVacuum: () => invokeIpc("maintenance:run-vacuum"),
+  getVacuumSchedule: () => invokeIpc("maintenance:get-vacuum-schedule"),
   setVacuumSchedule: (args: SetVacuumScheduleArgs) =>
-    ipcRenderer.invoke("maintenance:set-vacuum-schedule", args),
+    invokeIpc("maintenance:set-vacuum-schedule", args),
 };

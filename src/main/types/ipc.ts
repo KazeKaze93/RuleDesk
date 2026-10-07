@@ -38,8 +38,8 @@ export enum ErrorCode {
 }
 
 /**
- * IPC error shape attached to a real ``Error`` thrown from BaseController
- * (``message`` + enumerable ``code``; never a bare plain object).
+ * Fields carried inside the BaseController failure envelope
+ * (``{ ok: false, error }``) and restored onto a real ``Error`` by preload.
  */
 export interface SerializableError {
   message: string;

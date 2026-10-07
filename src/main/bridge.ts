@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type { Artist, Post, Playlist } from "./db/schema";
+import { invokeIpc } from "../preload/invoke-ipc";
 import { IPC_CHANNELS } from "./ipc/channels";
 import type {
   GetPostsRequest,
@@ -254,19 +255,19 @@ export interface IpcBridge {
 }
 
 const ipcBridge: IpcBridge = {
-  getAppVersion: () => ipcRenderer.invoke(IPC_CHANNELS.APP.GET_VERSION),
-  getDatabaseLocation: () => ipcRenderer.invoke(IPC_CHANNELS.APP.GET_DB_LOCATION),
+  getAppVersion: () => invokeIpc(IPC_CHANNELS.APP.GET_VERSION),
+  getDatabaseLocation: () => invokeIpc(IPC_CHANNELS.APP.GET_DB_LOCATION),
   getIconPath: (theme) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.APP.GET_ICON_PATH, theme);
+    return invokeIpc(IPC_CHANNELS.APP.GET_ICON_PATH, theme);
   },
-  wipeAllData: () => ipcRenderer.invoke(IPC_CHANNELS.APP.WIPE_ALL_DATA),
+  wipeAllData: () => invokeIpc(IPC_CHANNELS.APP.WIPE_ALL_DATA),
 
   writeToClipboard: (text) =>
-    ipcRenderer.invoke(IPC_CHANNELS.APP.WRITE_CLIPBOARD, text),
+    invokeIpc(IPC_CHANNELS.APP.WRITE_CLIPBOARD, text),
 
   // Search remote tags via specified provider (defaults to rule34)
   searchRemoteTags: (query, provider = "rule34", artistOnly = false) =>
-    ipcRenderer.invoke(
+    invokeIpc(
       IPC_CHANNELS.API.SEARCH_REMOTE,
       query,
       provider,
@@ -274,109 +275,109 @@ const ipcBridge: IpcBridge = {
     ),
 
   searchBooru: (params) =>
-    ipcRenderer.invoke(IPC_CHANNELS.API.SEARCH_POSTS, params),
+    invokeIpc(IPC_CHANNELS.API.SEARCH_POSTS, params),
 
   resolveTags: (tags) =>
-    ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS, tags),
+    invokeIpc(IPC_CHANNELS.API.RESOLVE_TAGS, tags),
 
   resolveCharacterTags: (tags) =>
-    ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_CHARACTER_TAGS, tags),
+    invokeIpc(IPC_CHANNELS.API.RESOLVE_CHARACTER_TAGS, tags),
 
   resolveCopyrightTags: (tags) =>
-    ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS, tags),
+    invokeIpc(IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS, tags),
 
   resolveTagsByType: (tags, type) =>
-    ipcRenderer.invoke(IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE, tags, type),
+    invokeIpc(IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE, tags, type),
   getBlacklistedTags: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.BLACKLIST.GET_ALL),
+    invokeIpc(IPC_CHANNELS.BLACKLIST.GET_ALL),
   addTagToBlacklist: (tag) =>
-    ipcRenderer.invoke(IPC_CHANNELS.BLACKLIST.ADD, tag),
+    invokeIpc(IPC_CHANNELS.BLACKLIST.ADD, tag),
   removeTagFromBlacklist: (tag) =>
-    ipcRenderer.invoke(IPC_CHANNELS.BLACKLIST.REMOVE, tag),
+    invokeIpc(IPC_CHANNELS.BLACKLIST.REMOVE, tag),
 
   verifyCredentials: (providerId) =>
-    ipcRenderer.invoke(IPC_CHANNELS.APP.VERIFY_CREDS, providerId),
+    invokeIpc(IPC_CHANNELS.APP.VERIFY_CREDS, providerId),
 
-  getSettings: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.GET),
+  getSettings: () => invokeIpc(IPC_CHANNELS.SETTINGS.GET),
   saveDownloadFolder: (path) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER, path),
+    invokeIpc(IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER, path),
   saveSettings: (creds) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE, creds),
+    invokeIpc(IPC_CHANNELS.SETTINGS.SAVE, creds),
   saveTheme: (theme) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_THEME, theme),
-  confirmLegal: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.CONFIRM_LEGAL),
+    invokeIpc(IPC_CHANNELS.SETTINGS.SAVE_THEME, theme),
+  confirmLegal: () => invokeIpc(IPC_CHANNELS.SETTINGS.CONFIRM_LEGAL),
   resetOnboarding: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.RESET_ONBOARDING),
-  logout: () => ipcRenderer.invoke(IPC_CHANNELS.APP.LOGOUT),
+    invokeIpc(IPC_CHANNELS.SETTINGS.RESET_ONBOARDING),
+  logout: () => invokeIpc(IPC_CHANNELS.APP.LOGOUT),
 
-  getTrackedArtists: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_ARTISTS),
-  addArtist: (artist) => ipcRenderer.invoke(IPC_CHANNELS.DB.ADD_ARTIST, artist),
-  deleteArtist: (id) => ipcRenderer.invoke(IPC_CHANNELS.DB.DELETE_ARTIST, id),
+  getTrackedArtists: () => invokeIpc(IPC_CHANNELS.DB.GET_ARTISTS),
+  addArtist: (artist) => invokeIpc(IPC_CHANNELS.DB.ADD_ARTIST, artist),
+  deleteArtist: (id) => invokeIpc(IPC_CHANNELS.DB.DELETE_ARTIST, id),
 
-  searchArtists: (query) => ipcRenderer.invoke(IPC_CHANNELS.DB.SEARCH_TAGS, query),
+  searchArtists: (query) => invokeIpc(IPC_CHANNELS.DB.SEARCH_TAGS, query),
 
   getArtistPosts: (params: GetPostsRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS, params),
+    invokeIpc(IPC_CHANNELS.DB.GET_POSTS, params),
   getArtistPostsCount: (params: GetPostsCountRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS_COUNT, params),
+    invokeIpc(IPC_CHANNELS.DB.GET_POSTS_COUNT, params),
   getDownloadItems: (params: GetPostsRequest & { limit?: number }) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS, params),
+    invokeIpc(IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS, params),
   getPostsCountWithFilters: (params: Pick<GetPostsRequest, "artistId" | "filters">) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS, params),
-  getStats: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_STATS),
-  getExtendedStats: () => ipcRenderer.invoke(IPC_CHANNELS.STATS.GET_EXTENDED),
+    invokeIpc(IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS, params),
+  getStats: () => invokeIpc(IPC_CHANNELS.DB.GET_STATS),
+  getExtendedStats: () => invokeIpc(IPC_CHANNELS.STATS.GET_EXTENDED),
 
-  openExternal: (url) => ipcRenderer.invoke(IPC_CHANNELS.APP.OPEN_EXTERNAL, url),
+  openExternal: (url) => invokeIpc(IPC_CHANNELS.APP.OPEN_EXTERNAL, url),
 
-  syncAll: () => ipcRenderer.invoke(IPC_CHANNELS.DB.SYNC_ALL),
+  syncAll: () => invokeIpc(IPC_CHANNELS.DB.SYNC_ALL),
 
   markPostAsViewed: (postId, postData) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.MARK_VIEWED, postId, postData),
+    invokeIpc(IPC_CHANNELS.DB.MARK_VIEWED, postId, postData),
 
   togglePostFavorite: (postId, postData) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.TOGGLE_FAVORITE, postId, postData),
+    invokeIpc(IPC_CHANNELS.DB.TOGGLE_FAVORITE, postId, postData),
 
   shadowInsertPost: (request: ShadowInsertRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.SHADOW_INSERT_POST, request),
+    invokeIpc(IPC_CHANNELS.DB.SHADOW_INSERT_POST, request),
 
   togglePostViewed: (postId) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.TOGGLE_POST_VIEWED, postId),
+    invokeIpc(IPC_CHANNELS.DB.TOGGLE_POST_VIEWED, postId),
   markAllPostsAsViewed: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.MARK_ALL_VIEWED),
+    invokeIpc(IPC_CHANNELS.DB.MARK_ALL_VIEWED),
   getUpdatesUnreadCount: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT),
+    invokeIpc(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT),
   getUpdatesTotalUnreadCount: (params) =>
-    ipcRenderer.invoke(IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT, params),
+    invokeIpc(IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT, params),
   markAllUpdatesSeen: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.UPDATES.MARK_ALL_SEEN),
+    invokeIpc(IPC_CHANNELS.UPDATES.MARK_ALL_SEEN),
 
-  resetPostCache: (postId) => ipcRenderer.invoke(IPC_CHANNELS.DB.RESET_POST_CACHE, postId),
+  resetPostCache: (postId) => invokeIpc(IPC_CHANNELS.DB.RESET_POST_CACHE, postId),
 
   downloadFile: (url: string, filename: string) => {
-    return ipcRenderer.invoke(IPC_CHANNELS.FILES.DOWNLOAD, url, filename);
+    return invokeIpc(IPC_CHANNELS.FILES.DOWNLOAD, url, filename);
   },
 
   downloadAll: (items: Array<{ url: string; filename: string }>) =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.DOWNLOAD_ALL, items),
+    invokeIpc(IPC_CHANNELS.FILES.DOWNLOAD_ALL, items),
   cancelDownloadAll: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.CANCEL_DOWNLOAD_ALL),
+    invokeIpc(IPC_CHANNELS.FILES.CANCEL_DOWNLOAD_ALL),
   pauseDownloadAll: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.PAUSE_DOWNLOAD_ALL),
+    invokeIpc(IPC_CHANNELS.FILES.PAUSE_DOWNLOAD_ALL),
   resumeDownloadAll: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.RESUME_DOWNLOAD_ALL),
+    invokeIpc(IPC_CHANNELS.FILES.RESUME_DOWNLOAD_ALL),
   getPendingDownload: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.GET_PENDING_DOWNLOAD),
+    invokeIpc(IPC_CHANNELS.FILES.GET_PENDING_DOWNLOAD),
   resumePendingDownload: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.RESUME_PENDING_DOWNLOAD),
+    invokeIpc(IPC_CHANNELS.FILES.RESUME_PENDING_DOWNLOAD),
   dismissPendingDownload: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.DISMISS_PENDING_DOWNLOAD),
+    invokeIpc(IPC_CHANNELS.FILES.DISMISS_PENDING_DOWNLOAD),
   saveDownloadSettings: (data) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS, data),
+    invokeIpc(IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS, data),
   openFileInFolder: (path: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.OPEN_FOLDER, path),
+    invokeIpc(IPC_CHANNELS.FILES.OPEN_FOLDER, path),
 
   selectDownloadFolder: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.FILES.SELECT_DOWNLOAD_FOLDER),
+    invokeIpc(IPC_CHANNELS.FILES.SELECT_DOWNLOAD_FOLDER),
 
   onDownloadProgress: (callback) => {
     const channel = IPC_CHANNELS.FILES.DOWNLOAD_PROGRESS;
@@ -407,12 +408,12 @@ const ipcBridge: IpcBridge = {
   },
 
   repairArtist: (artistId) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SYNC.REPAIR, artistId),
+    invokeIpc(IPC_CHANNELS.SYNC.REPAIR, artistId),
 
   // Updater Implementation
-  checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.APP.CHECK_FOR_UPDATES),
-  quitAndInstall: () => ipcRenderer.invoke(IPC_CHANNELS.APP.QUIT_AND_INSTALL),
-  startDownload: () => ipcRenderer.invoke(IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD),
+  checkForUpdates: () => invokeIpc(IPC_CHANNELS.APP.CHECK_FOR_UPDATES),
+  quitAndInstall: () => invokeIpc(IPC_CHANNELS.APP.QUIT_AND_INSTALL),
+  startDownload: () => invokeIpc(IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD),
 
   onUpdateStatus: (callback) => {
     const channel = IPC_CHANNELS.UPDATER.STATUS;
@@ -486,65 +487,65 @@ const ipcBridge: IpcBridge = {
     return () => ipcRenderer.removeListener(channel, sub);
   },
 
-  createBackup: () => ipcRenderer.invoke(IPC_CHANNELS.BACKUP.CREATE),
-  restoreBackup: () => ipcRenderer.invoke(IPC_CHANNELS.BACKUP.RESTORE),
+  createBackup: () => invokeIpc(IPC_CHANNELS.BACKUP.CREATE),
+  restoreBackup: () => invokeIpc(IPC_CHANNELS.BACKUP.RESTORE),
   checkDatabaseIntegrity: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.BACKUP.INTEGRITY_CHECK),
+    invokeIpc(IPC_CHANNELS.BACKUP.INTEGRITY_CHECK),
   getBackupSchedule: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.BACKUP.GET_SCHEDULE),
+    invokeIpc(IPC_CHANNELS.BACKUP.GET_SCHEDULE),
   setBackupSchedule: (interval) =>
-    ipcRenderer.invoke(IPC_CHANNELS.BACKUP.SET_SCHEDULE, interval),
+    invokeIpc(IPC_CHANNELS.BACKUP.SET_SCHEDULE, interval),
   shouldShowBackupPrompt: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.SHOULD_SHOW_BACKUP_PROMPT),
+    invokeIpc(IPC_CHANNELS.MAINTENANCE.SHOULD_SHOW_BACKUP_PROMPT),
   markBackupPromptSeen: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.MARK_BACKUP_PROMPT_SEEN),
+    invokeIpc(IPC_CHANNELS.MAINTENANCE.MARK_BACKUP_PROMPT_SEEN),
   getVacuumStatus: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.GET_VACUUM_STATUS),
-  runVacuum: () => ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.RUN_VACUUM),
+    invokeIpc(IPC_CHANNELS.MAINTENANCE.GET_VACUUM_STATUS),
+  runVacuum: () => invokeIpc(IPC_CHANNELS.MAINTENANCE.RUN_VACUUM),
   getVacuumSchedule: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.GET_VACUUM_SCHEDULE),
+    invokeIpc(IPC_CHANNELS.MAINTENANCE.GET_VACUUM_SCHEDULE),
   setVacuumSchedule: (args) =>
-    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.SET_VACUUM_SCHEDULE, args),
+    invokeIpc(IPC_CHANNELS.MAINTENANCE.SET_VACUUM_SCHEDULE, args),
   detectOrphans: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.MAINTENANCE.DETECT_ORPHANS),
+    invokeIpc(IPC_CHANNELS.MAINTENANCE.DETECT_ORPHANS),
 
   // Playlists
   createPlaylist: (data: CreatePlaylistRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.CREATE_PLAYLIST, data),
-  getPlaylists: () => ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLISTS),
+    invokeIpc(IPC_CHANNELS.DB.CREATE_PLAYLIST, data),
+  getPlaylists: () => invokeIpc(IPC_CHANNELS.DB.GET_PLAYLISTS),
   getPlaylist: (playlistId: number) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLIST, playlistId),
+    invokeIpc(IPC_CHANNELS.DB.GET_PLAYLIST, playlistId),
   updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.UPDATE_PLAYLIST, playlistId, data),
+    invokeIpc(IPC_CHANNELS.DB.UPDATE_PLAYLIST, playlistId, data),
   deletePlaylist: (playlistId: number) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.DELETE_PLAYLIST, playlistId),
+    invokeIpc(IPC_CHANNELS.DB.DELETE_PLAYLIST, playlistId),
   addPostsToPlaylist: (data: AddPostsToPlaylistRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.ADD_POSTS_TO_PLAYLIST, data),
+    invokeIpc(IPC_CHANNELS.DB.ADD_POSTS_TO_PLAYLIST, data),
   removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.REMOVE_POSTS_FROM_PLAYLIST, data),
+    invokeIpc(IPC_CHANNELS.DB.REMOVE_POSTS_FROM_PLAYLIST, data),
   reorderPlaylistEntries: (params: ReorderPlaylistEntriesRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.REORDER_PLAYLIST_ENTRIES, params),
+    invokeIpc(IPC_CHANNELS.DB.REORDER_PLAYLIST_ENTRIES, params),
   getPlaylistPosts: (params: GetPlaylistPostsRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLIST_POSTS, params),
+    invokeIpc(IPC_CHANNELS.DB.GET_PLAYLIST_POSTS, params),
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
+    invokeIpc(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
   getPlaylistsContainingPost: (postId: number, rule34PostId?: number) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST, postId, rule34PostId),
+    invokeIpc(IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST, postId, rule34PostId),
   getManualPlaylistMembershipForPosts: (data: GetManualPlaylistMembershipForPostsRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS, data),
+    invokeIpc(IPC_CHANNELS.DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS, data),
   syncManualPlaylistMembership: (data: SyncManualPlaylistMembershipRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.SYNC_MANUAL_PLAYLIST_MEMBERSHIP, data),
+    invokeIpc(IPC_CHANNELS.DB.SYNC_MANUAL_PLAYLIST_MEMBERSHIP, data),
   clearManualPlaylist: (data: ClearManualPlaylistRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.CLEAR_MANUAL_PLAYLIST, data),
+    invokeIpc(IPC_CHANNELS.DB.CLEAR_MANUAL_PLAYLIST, data),
   movePostsBetweenManualPlaylists: (data: MovePostsBetweenManualPlaylistsRequest) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.MOVE_POSTS_BETWEEN_MANUAL_PLAYLISTS, data),
+    invokeIpc(IPC_CHANNELS.DB.MOVE_POSTS_BETWEEN_MANUAL_PLAYLISTS, data),
   exportPlaylist: (playlistId: number) =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.EXPORT_PLAYLIST, playlistId),
+    invokeIpc(IPC_CHANNELS.DB.EXPORT_PLAYLIST, playlistId),
   importPlaylist: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.DB.IMPORT_PLAYLIST),
+    invokeIpc(IPC_CHANNELS.DB.IMPORT_PLAYLIST),
 
   getVideoProxyUrl: (fileUrl: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.VIDEO_PROXY.GET_URL, fileUrl),
+    invokeIpc(IPC_CHANNELS.VIDEO_PROXY.GET_URL, fileUrl),
 };
 
 contextBridge.exposeInMainWorld("api", ipcBridge);

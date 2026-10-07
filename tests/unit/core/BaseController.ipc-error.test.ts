@@ -3,11 +3,20 @@ import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 import { BaseController } from "@/main/core/ipc/BaseController";
 import { ErrorCode } from "@/main/types/ipc";
+import { invokeIpc } from "@/preload/invoke-ipc";
+import {
+  isIpcFailureResult,
+  unwrapIpcInvokeResult,
+} from "@/shared/utils/ipc-result";
+import { getErrorCode } from "@/shared/utils/type-guards";
 
 vi.mock("electron", () => ({
   ipcMain: {
     handle: vi.fn(),
     removeHandler: vi.fn(),
+  },
+  ipcRenderer: {
+    invoke: vi.fn(),
   },
 }));
 
@@ -61,28 +70,23 @@ describe("BaseController IPC error shape", () => {
     vi.clearAllMocks();
   });
 
-  it("throws a real Error with message and code (not a plain object)", async () => {
+  it("returns a failure envelope with message and code (does not throw)", async () => {
     controller.register("test:fail", z.tuple([]), async () => {
       throw new Error("credentials missing");
     });
 
     const handler = getHandler("test:fail");
-    let caught: unknown;
-    try {
-      await handler({} as IpcMainInvokeEvent);
-    } catch (error) {
-      caught = error;
-    }
+    const result = await handler({} as IpcMainInvokeEvent);
 
-    expect(caught).toBeInstanceOf(Error);
-    const err = caught as Error & { code?: string };
-    expect(err.message).toBe("credentials missing");
-    expect(err.code).toBe(ErrorCode.AUTH_ERROR);
-    // Renderer must not see String(plainObject) === "[object Object]"
-    expect(String(err)).not.toContain("[object Object]");
+    expect(isIpcFailureResult(result)).toBe(true);
+    if (!isIpcFailureResult(result)) {
+      throw new Error("expected failure envelope");
+    }
+    expect(result.error.message).toBe("credentials missing");
+    expect(result.error.code).toBe(ErrorCode.AUTH_ERROR);
   });
 
-  it("validation failures also throw Error instances with VALIDATION_ERROR code", async () => {
+  it("validation failures return VALIDATION_ERROR envelope", async () => {
     controller.register(
       "test:validate",
       z.tuple([z.object({ id: z.number() })]),
@@ -90,18 +94,62 @@ describe("BaseController IPC error shape", () => {
     );
 
     const handler = getHandler("test:validate");
+    const result = await handler({} as IpcMainInvokeEvent, { id: "nope" });
+
+    expect(isIpcFailureResult(result)).toBe(true);
+    if (!isIpcFailureResult(result)) {
+      throw new Error("expected failure envelope");
+    }
+    expect(result.error.message.length).toBeGreaterThan(0);
+    expect(result.error.message).not.toBe("[object Object]");
+    expect(result.error.code).toBe(ErrorCode.VALIDATION_ERROR);
+  });
+
+  it("preload invokeIpc rethrows Error with code after Structured Clone", async () => {
+    controller.register("test:preload", z.tuple([]), async () => {
+      throw new Error("credentials missing");
+    });
+
+    const handler = getHandler("test:preload");
+    const envelope = await handler({} as IpcMainInvokeEvent);
+    // Simulate Electron IPC: resolve path clones the return value
+    const cloned = structuredClone(envelope);
+
+    const { ipcRenderer } = await import("electron");
+    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce(cloned);
+
     let caught: unknown;
     try {
-      await handler({} as IpcMainInvokeEvent, { id: "nope" });
+      await invokeIpc("test:preload");
     } catch (error) {
       caught = error;
     }
 
     expect(caught).toBeInstanceOf(Error);
-    const err = caught as Error & { code?: string };
-    expect(typeof err.message).toBe("string");
-    expect(err.message.length).toBeGreaterThan(0);
-    expect(err.message).not.toBe("[object Object]");
-    expect(err.code).toBe(ErrorCode.VALIDATION_ERROR);
+    expect(getErrorCode(caught)).toBe(ErrorCode.AUTH_ERROR);
+    if (!(caught instanceof Error)) {
+      throw new Error("expected Error");
+    }
+    expect(caught.message).toBe("credentials missing");
+  });
+
+  it("unwrapIpcInvokeResult exposes code on the rethrown Error", () => {
+    const envelope = {
+      ok: false as const,
+      error: {
+        message: "rate limited",
+        code: ErrorCode.RATE_LIMIT,
+        name: "Error",
+      },
+    };
+    const cloned = structuredClone(envelope);
+    let caught: unknown;
+    try {
+      unwrapIpcInvokeResult(cloned);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    expect(getErrorCode(caught)).toBe(ErrorCode.RATE_LIMIT);
   });
 });

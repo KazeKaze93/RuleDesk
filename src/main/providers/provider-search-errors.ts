@@ -42,9 +42,9 @@ export function toProviderSearchSerializableError(
 }
 
 /**
- * IPC-safe throw. Electron invoke keeps Error.message and drops custom fields,
- * so the full payload (including providerKind) is JSON-encoded into message.
- * Enumerable fields remain for in-process / mocked invoke.
+ * Throw into BaseController, which returns an ``IpcFailureResult`` envelope.
+ * Enumerable fields (code, providerKind, …) are copied into the envelope;
+ * JSON-in-message remains as defense in depth for older preload paths.
  */
 export function throwProviderSearchIpcError(error: ProviderSearchError): never {
   const payload = toProviderSearchSerializableError(error);
