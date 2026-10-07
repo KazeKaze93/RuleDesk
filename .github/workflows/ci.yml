@@ -42,8 +42,8 @@ jobs:
         run: npm run db:rebuild:node
 
       - name: Unit, integration & property tests
-        # singleFork + force-exit reporter: leaked handles were pinning forks so
-        # only ~15/61 files ran, then the step hit the 8m timeout with no summary.
+        # maxWorkers=1 + force-exit: one leaked handle must not starve files;
+        # fake-timer/act deadlocks previously hung a worker until the step timeout.
         run: npx vitest run --reporter=verbose --reporter=./tests/vitest-force-exit-reporter.ts
         timeout-minutes: 10
 

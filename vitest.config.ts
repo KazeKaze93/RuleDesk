@@ -33,16 +33,12 @@ export default defineConfig({
     // Timeout adjustment for Electron startup overhead and native module loading
     testTimeout: 15000,
     hookTimeout: 15000,
-    // Kill stuck workers instead of waiting until the GH step timeout (8m).
-    teardownTimeout: 3000,
-    // One process for the whole suite so a leaked listen handle in file A
-    // cannot pin a fork and starve the remaining files (CI was finishing ~15/61).
+    // Kill stuck workers instead of waiting until the GH step timeout.
+    teardownTimeout: 5000,
+    // Vitest 4: poolOptions removed — top-level maxWorkers / fileParallelism.
+    // Serial files avoid one leaked handle pinning a fork and starving the rest.
     pool: "forks",
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    maxWorkers: 1,
     fileParallelism: false,
     
     coverage: {

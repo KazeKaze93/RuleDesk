@@ -237,22 +237,29 @@ describe("useGalleryInfiniteScroll", () => {
       });
       expect(fetchFn).toHaveBeenCalledTimes(1);
 
+      // Do not call waitForCondition/act-without-advance under fake timers:
+      // React 18 act() waits for scheduled timeouts and deadlocks the suite.
       vi.useFakeTimers();
-      act(() => {
-        result.current?.handleEndReached();
-      });
+      try {
+        act(() => {
+          result.current?.handleEndReached();
+        });
 
-      await act(async () => {
-        vi.advanceTimersByTime(DEFAULT_DEBOUNCE_MS - 1);
-      });
-      expect(fetchFn).toHaveBeenCalledTimes(1);
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(DEFAULT_DEBOUNCE_MS - 1);
+        });
+        expect(fetchFn).toHaveBeenCalledTimes(1);
 
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(1);
-      });
-      await waitForCondition(() => {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+        await act(async () => {
+          await vi.runOnlyPendingTimersAsync();
+        });
         expect(fetchFn).toHaveBeenCalledTimes(2);
-      });
+      } finally {
+        vi.useRealTimers();
+      }
 
       unmount();
     });
@@ -275,26 +282,31 @@ describe("useGalleryInfiniteScroll", () => {
       expect(fetchFn).toHaveBeenCalledTimes(1);
 
       vi.useFakeTimers();
-      act(() => {
-        result.current?.handleEndReached();
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(100);
-      });
-      act(() => {
-        result.current?.handleEndReached();
-      });
-      await act(async () => {
-        vi.advanceTimersByTime(DEFAULT_DEBOUNCE_MS - 1);
-      });
-      expect(fetchFn).toHaveBeenCalledTimes(1);
+      try {
+        act(() => {
+          result.current?.handleEndReached();
+        });
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(100);
+        });
+        act(() => {
+          result.current?.handleEndReached();
+        });
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(DEFAULT_DEBOUNCE_MS - 1);
+        });
+        expect(fetchFn).toHaveBeenCalledTimes(1);
 
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(1);
-      });
-      await waitForCondition(() => {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+        await act(async () => {
+          await vi.runOnlyPendingTimersAsync();
+        });
         expect(fetchFn).toHaveBeenCalledTimes(2);
-      });
+      } finally {
+        vi.useRealTimers();
+      }
 
       unmount();
     });
@@ -317,15 +329,19 @@ describe("useGalleryInfiniteScroll", () => {
       expect(fetchFn).toHaveBeenCalledTimes(1);
 
       vi.useFakeTimers();
-      act(() => {
-        result.current?.handleEndReached();
-      });
-      unmount();
+      try {
+        act(() => {
+          result.current?.handleEndReached();
+        });
+        unmount();
 
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(DEFAULT_DEBOUNCE_MS + 50);
-      });
-      expect(fetchFn).toHaveBeenCalledTimes(1);
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(DEFAULT_DEBOUNCE_MS + 50);
+        });
+        expect(fetchFn).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });
