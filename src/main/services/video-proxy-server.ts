@@ -176,8 +176,12 @@ export class VideoProxyServer {
       clearTimeout(this.startEvictTimer);
       this.startEvictTimer = null;
     }
-    this.server?.close();
-    this.server = null;
+    if (this.server) {
+      // Drop paused/half-closed clients so close() (and Vitest) cannot hang.
+      this.server.closeAllConnections();
+      this.server.close();
+      this.server = null;
+    }
     this.port = 0;
     log.info("[VideoProxy] Stopped");
   }
@@ -471,15 +475,16 @@ export class VideoProxyServer {
       this.releaseReader(filePath);
     };
 
-    // Hold the open-reader pin until the HTTP response ends — not when the
-    // ReadStream finishes buffering the file (client may still be paused).
-    res.on("finish", releaseReader);
     res.on("close", () => {
       if (!fileStream.destroyed) {
         fileStream.destroy();
       }
       releaseReader();
     });
+    // Primary pin lifetime: open FD. res.close is a backup if the stream errors
+    // without closing cleanly. Do not release on res.finish — TCP may accept the
+    // whole body while a viewer connection is still open; FD close is the signal.
+    fileStream.on("close", releaseReader);
     fileStream.on("error", (err) => {
       log.error("[VideoProxy] read cache file failed", err);
       releaseReader();
@@ -493,6 +498,14 @@ export class VideoProxyServer {
       }
     });
     fileStream.pipe(res);
+  }
+
+  /** Test-only: pin a cache path as an open reader (deterministic eviction guard). */
+  pinReaderForTest(filePath: string): () => void {
+    this.acquireReader(filePath);
+    return () => {
+      this.releaseReader(filePath);
+    };
   }
 
   private proxyFromCdn(

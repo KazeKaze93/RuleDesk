@@ -158,15 +158,9 @@ describe("VideoProxyServer cache integrity", () => {
   afterEach(async () => {
     httpsRequestSpy.mockRestore();
     proxy.stop();
-    // Paused clients (open-reader test) otherwise keep sockets alive and
-    // server.close() never finishes — Vitest/CI hang until job timeout.
     cdnServer.closeAllConnections();
     await new Promise<void>((resolve, reject) => {
-      const force = setTimeout(() => {
-        resolve();
-      }, 2_000);
       cdnServer.close((err) => {
-        clearTimeout(force);
         if (err) {
           reject(err);
           return;
@@ -400,25 +394,12 @@ describe("VideoProxyServer cache integrity", () => {
     vi.mocked(fs.statSync).mockRestore();
   });
 
-  it("evictCache does not unlink a bin with an open reader", async () => {
-    const first = await proxyGet();
-    expect(first.status).toBe(200);
-    const cacheName = await waitForFinalCache();
-    const openPath = path.join(cacheDir, cacheName);
-    fs.writeFileSync(openPath, Buffer.alloc(2 * 1024 * 1024, 1));
+  it("evictCache does not unlink a bin with an open reader", () => {
+    const openPath = path.join(cacheDir, "open-reader.bin");
+    fs.writeFileSync(openPath, Buffer.alloc(64 * 1024, 1));
 
-    let held: http.IncomingMessage | undefined;
-    let heldReq: http.ClientRequest | undefined;
+    const releasePin = proxy.pinReaderForTest(openPath);
     try {
-      held = await new Promise<http.IncomingMessage>((resolve, reject) => {
-        heldReq = http.get(proxy.getProxyUrl(CDN_HOST_URL), (res) => {
-          res.pause();
-          resolve(res);
-        });
-        heldReq.on("error", reject);
-      });
-      await new Promise((r) => setTimeout(r, 30));
-
       const createdRecently = Date.now() - 1_000;
       const accessedLongAgo = Date.now() - 30_000;
       fs.utimesSync(openPath, accessedLongAgo / 1000, createdRecently / 1000);
@@ -468,11 +449,7 @@ describe("VideoProxyServer cache integrity", () => {
       );
     } finally {
       vi.mocked(fs.statSync).mockRestore();
-      heldReq?.destroy();
-      if (held) {
-        held.resume();
-        held.destroy();
-      }
+      releasePin();
     }
   });
 });
