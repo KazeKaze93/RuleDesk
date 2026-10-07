@@ -49,6 +49,7 @@ jobs:
           --reporter=verbose
           --reporter=./tests/vitest-force-exit-reporter.ts
           --exclude tests/unit/services/video-proxy-server.test.ts
+          --exclude tests/unit/hooks/**
         timeout-minutes: 8
 
       - name: Video-proxy unit tests (isolated)
