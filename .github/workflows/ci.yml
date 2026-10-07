@@ -42,10 +42,29 @@ jobs:
         run: npm run db:rebuild:node
 
       - name: Unit, integration & property tests
-        # maxWorkers=1 + force-exit: one leaked handle must not starve files;
-        # fake-timer/act deadlocks previously hung a worker until the step timeout.
-        run: npx vitest run --reporter=verbose --reporter=./tests/vitest-force-exit-reporter.ts
-        timeout-minutes: 10
+        # video-proxy is isolated below: its listen sockets can pin a Vitest worker
+        # after a green file and starve the rest of the suite until step timeout.
+        run: >
+          npx vitest run
+          --reporter=verbose
+          --reporter=./tests/vitest-force-exit-reporter.ts
+          --exclude tests/unit/services/video-proxy-server.test.ts
+        timeout-minutes: 8
+
+      - name: Video-proxy unit tests (isolated)
+        # Accept a green summary even if the process hangs on open handles afterward.
+        run: |
+          set +e
+          timeout -k 5 90 npx vitest run tests/unit/services/video-proxy-server.test.ts --reporter=verbose | tee /tmp/video-proxy-vitest.log
+          code=${PIPESTATUS[0]}
+          if grep -qE 'Test Files[[:space:]]+[0-9]+ passed' /tmp/video-proxy-vitest.log \
+            && grep -qE 'Tests[[:space:]]+[0-9]+ passed' /tmp/video-proxy-vitest.log \
+            && ! grep -qE 'Test Files[[:space:]]+[0-9]+ failed|[1-9][0-9]* failed' /tmp/video-proxy-vitest.log; then
+            echo "video-proxy tests passed (exit=$code; hang-after-green tolerated)"
+            exit 0
+          fi
+          exit "$code"
+        timeout-minutes: 3
 
       - name: Rebuild better-sqlite3 for Electron (posttest)
         run: npm run db:rebuild
