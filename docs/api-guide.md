@@ -203,19 +203,19 @@ await window.api.addArtist({
 
 ## Architecture
 
-The application uses Electron's IPC (Inter-Process Communication) with Context Isolation enabled. The Renderer process cannot directly access Node.js APIs. Instead, it communicates with the Main process through a secure bridge defined in `src/main/bridge.ts`.
+The application uses Electron's IPC (Inter-Process Communication) with Context Isolation enabled. The Renderer process cannot directly access Node.js APIs. Instead, it communicates with the Main process through a secure bridge: contract in `src/shared/types/ipc-bridge.ts`, runtime wiring in `src/main/bridge.ts`, ambient `Window.api` in `src/bridge.d.ts`.
 
 **IPC Architecture:**
 
 - **Controller-based:** All IPC handlers are organized in controllers that extend `BaseController`
 - **Dependency Injection:** Services are registered in DI Container and resolved via tokens
-- **Type Safety:** All IPC communication is strictly typed using TypeScript interfaces
+- **Type Safety:** All IPC communication is strictly typed using the shared `IpcBridge` contract (drift-checked in `ipc-bridge.drift.ts`)
 - **Input Validation:** All inputs are validated using Zod schemas in `BaseController`
 - **Error Handling:** Centralized error handling via `BaseController`
 
 ## IPC Bridge Interface
 
-The IPC bridge is exposed to the Renderer process via `window.api`. All methods return Promises and are fully typed.
+The IPC bridge is exposed to the Renderer process via `window.api`. All methods return Promises and are fully typed. Edit `IpcBridge` in `src/shared/types/ipc-bridge.ts` — do not redeclare methods in `bridge.d.ts`.
 
 ### Type Definitions
 
