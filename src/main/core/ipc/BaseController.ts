@@ -455,6 +455,12 @@ export abstract class BaseController {
                 promiseResolve!(value);
               };
 
+              // Race the handler so a stuck await cannot keep the collapse IIFE (and Vitest) alive.
+              let timeoutAbort!: (error: Error) => void;
+              const timeoutRace = new Promise<never>((_resolve, reject) => {
+                timeoutAbort = reject;
+              });
+
               // Store Promise in collapse map IMMEDIATELY (synchronously)
               // This prevents race condition where second call arrives before Promise is stored
               const createdAt = Date.now();
@@ -469,9 +475,13 @@ export abstract class BaseController {
                     `[IPC] Timeout cleanup: removing stuck promise for channel "${channel}" ` +
                       `with key "${collapseKey}" (age: ${Date.now() - entry.createdAt}ms)`
                   );
+                  const timeoutError = new Error(
+                    `IPC request timed out for channel "${channel}"`
+                  );
+                  timeoutAbort(timeoutError);
                   entry.settle(
                     toIpcFailureResult(
-                      `IPC request timed out for channel "${channel}"`,
+                      timeoutError.message,
                       ErrorCode.UNKNOWN_ERROR
                     )
                   );
@@ -648,8 +658,13 @@ export abstract class BaseController {
                 // Unpack tuple: if single arg was wrapped, unwrap it; otherwise spread tuple
                 const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
 
-                // Execute handler
-                const result = await handler(event, ...handlerArgs);
+                // Execute handler (raced against collapse timeout — see timeoutRace above).
+                // Call handler synchronously so collapse still coalesces concurrent invokes.
+                const handlerResult = handler(event, ...handlerArgs);
+                const result = await Promise.race([
+                  Promise.resolve(handlerResult),
+                  timeoutRace,
+                ]);
                 log.debug(`[IPC] Request completed: ${channel}`);
                 settle(result);
               } catch (error: unknown) {
