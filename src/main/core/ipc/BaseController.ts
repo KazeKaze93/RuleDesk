@@ -168,20 +168,20 @@ export abstract class BaseController {
   private static readonly throttleMap = new Map<string, number>();
 
   // Request Collapsing: For idempotent handlers, reuse in-flight Promise to prevent duplicate work
-  // Map<key, { promise: Promise<unknown>, createdAt: number, timeoutId: NodeJS.Timeout }>
   // Key = channel + fastHash(stableStringify(args)) so different payloads never share a Promise
-  // MEMORY LEAK PREVENTION: Each promise has its own setTimeout to ensure cleanup even if IPC stops
+  // MEMORY LEAK PREVENTION: Each promise has its own setTimeout; timeout also settles the
+  // Promise (failure envelope) so awaiters / Vitest do not hang forever on a stuck handler.
   private static readonly requestCollapseMap = new Map<
     string,
-    { 
-      promise: Promise<unknown>; 
+    {
+      promise: Promise<unknown>;
+      settle: (value: unknown) => void;
       createdAt: number;
-      timeoutId: NodeJS.Timeout; // Individual timeout for each promise
+      timeoutId: NodeJS.Timeout;
     }
   >();
-  
-  // Timeout for request collapsing: remove stuck promises after 30 seconds
-  // If handler hangs (infinite await, deadlock), promise will be removed to prevent memory leak
+
+  // Timeout for request collapsing: settle + remove stuck promises after 30 seconds
   private static readonly REQUEST_COLLAPSE_TIMEOUT_MS = 30000; // 30 seconds
 
   /**
@@ -441,29 +441,50 @@ export abstract class BaseController {
               const promise = new Promise<unknown>((resolve) => {
                 promiseResolve = resolve;
               });
+              let settled = false;
+              const settle = (value: unknown): void => {
+                if (settled) {
+                  return;
+                }
+                settled = true;
+                const entry = BaseController.requestCollapseMap.get(collapseKey);
+                if (entry) {
+                  clearTimeout(entry.timeoutId);
+                  BaseController.requestCollapseMap.delete(collapseKey);
+                }
+                promiseResolve!(value);
+              };
 
               // Store Promise in collapse map IMMEDIATELY (synchronously)
               // This prevents race condition where second call arrives before Promise is stored
-              // MEMORY LEAK PREVENTION: Each promise gets its own setTimeout to ensure cleanup
-              // Even if IPC calls stop, stuck promises will be removed after timeout
               const createdAt = Date.now();
               const timeoutId = setTimeout(() => {
                 const entry = BaseController.requestCollapseMap.get(collapseKey);
-                if (entry && Date.now() - entry.createdAt >= BaseController.REQUEST_COLLAPSE_TIMEOUT_MS) {
+                if (
+                  entry &&
+                  Date.now() - entry.createdAt >=
+                    BaseController.REQUEST_COLLAPSE_TIMEOUT_MS
+                ) {
                   log.warn(
                     `[IPC] Timeout cleanup: removing stuck promise for channel "${channel}" ` +
-                    `with key "${collapseKey}" (age: ${Date.now() - entry.createdAt}ms)`
+                      `with key "${collapseKey}" (age: ${Date.now() - entry.createdAt}ms)`
                   );
-                  BaseController.requestCollapseMap.delete(collapseKey);
+                  entry.settle(
+                    toIpcFailureResult(
+                      `IPC request timed out for channel "${channel}"`,
+                      ErrorCode.UNKNOWN_ERROR
+                    )
+                  );
                 }
               }, BaseController.REQUEST_COLLAPSE_TIMEOUT_MS);
-              
+
               BaseController.requestCollapseMap.set(collapseKey, {
                 promise,
+                settle,
                 createdAt,
                 timeoutId,
               });
-              
+
               // NOTE: No throttling for idempotent handlers with Request Collapsing
               // Request Collapsing already prevents duplicate work, so throttling is redundant
               // If handler has internal cache (like SettingsController.getSettings), rapid calls are safe
@@ -630,7 +651,7 @@ export abstract class BaseController {
                 // Execute handler
                 const result = await handler(event, ...handlerArgs);
                 log.debug(`[IPC] Request completed: ${channel}`);
-                promiseResolve!(result);
+                settle(result);
               } catch (error: unknown) {
                 // Resolve with failure envelope (do not reject — Electron drops Error.code).
                 const isProduction = process.env.NODE_ENV === "production";
@@ -647,15 +668,7 @@ export abstract class BaseController {
                         : undefined,
                   });
                 }
-                promiseResolve!(ipcFailureFromUnknown(error, isProduction));
-              } finally {
-                // Clean up collapse map after Promise resolves/rejects
-                // MEMORY LEAK PREVENTION: Clear timeout and remove promise
-                const entry = BaseController.requestCollapseMap.get(collapseKey);
-                if (entry) {
-                  clearTimeout(entry.timeoutId); // Clear individual timeout
-                  BaseController.requestCollapseMap.delete(collapseKey);
-                }
+                settle(ipcFailureFromUnknown(error, isProduction));
               }
               })();
 

@@ -3,6 +3,8 @@ import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 import log from "electron-log";
 import { BaseController } from "@/main/core/ipc/BaseController";
+import { ErrorCode } from "@/main/types/ipc";
+import { isIpcFailureResult } from "@/shared/utils/ipc-result";
 
 vi.mock("electron", () => ({
   ipcMain: {
@@ -22,6 +24,7 @@ vi.mock("electron-log", () => ({
 
 type CollapseEntry = {
   promise: Promise<unknown>;
+  settle: (value: unknown) => void;
   createdAt: number;
   timeoutId: NodeJS.Timeout;
 };
@@ -241,7 +244,7 @@ describe("BaseController request collapsing and throttle", () => {
     );
 
     const invoke = getRegisteredHandler("test:hang");
-    void invoke(mockEvent);
+    const hung = invoke(mockEvent);
 
     expect(getInternals().requestCollapseMap.size).toBe(1);
 
@@ -253,6 +256,15 @@ describe("BaseController request collapsing and throttle", () => {
     expect(log.warn).toHaveBeenCalledWith(
       expect.stringContaining("Timeout cleanup")
     );
+
+    // Timeout must settle the Promise — otherwise Vitest/CI hang on open handles.
+    const result = await hung;
+    expect(isIpcFailureResult(result)).toBe(true);
+    if (!isIpcFailureResult(result)) {
+      throw new Error("expected failure envelope after collapse timeout");
+    }
+    expect(result.error.code).toBe(ErrorCode.UNKNOWN_ERROR);
+    expect(result.error.message).toContain("timed out");
   });
 
   it("uses the same collapse key regardless of object key insertion order", async () => {
