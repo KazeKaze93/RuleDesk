@@ -42,7 +42,9 @@ jobs:
         run: npm run db:rebuild:node
 
       - name: Unit, integration & property tests
-        run: npx vitest run --reporter=verbose
+        # Force-exit reporter: suite can finish green then hang on open handles
+        # (HTTP listen / timers). Verbose stays for diagnosis; exit follows onFinished.
+        run: npx vitest run --reporter=verbose --reporter=./tests/vitest-force-exit-reporter.ts
         timeout-minutes: 8
 
       - name: Rebuild better-sqlite3 for Electron (posttest)

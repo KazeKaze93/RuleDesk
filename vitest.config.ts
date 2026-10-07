@@ -33,6 +33,9 @@ export default defineConfig({
     // Timeout adjustment for Electron startup overhead and native module loading
     testTimeout: 15000,
     hookTimeout: 15000,
+    // Kill stuck workers instead of waiting until the GH step timeout (8m).
+    teardownTimeout: 5000,
+    pool: "forks",
     
     coverage: {
       provider: 'v8',
