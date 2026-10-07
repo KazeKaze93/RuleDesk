@@ -98,24 +98,25 @@ Engineering materials are intentionally grouped here to keep the top-level index
 - [API channel notes](./api-notes/) - Optional human notes merged into the generated reference
 - [Database Documentation](./database.md) - Schema, migrations, and operational notes
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
-- [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, CI/CD
+- [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, pre-push hook
 - [Unit test guide](../tests/unit/README.md) - Vitest unit/property test layout
 - [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - File inventory (case counts: `npm test`)
 - [Integration test notes](../tests/integration/README.md) - IPC + SQLite integration tests
 - [.cursorrules](../.cursorrules) - Engineering standards (includes English-only UI copy; no i18n stack)
 - [Canonical Lessons](../.ai/LESSONS.txt) - Reusable invariants (do not add root `LESSONS.md`)
 
-### Quality gates (local & CI)
+### Quality gates (local pre-push)
 
 | Step | Command |
 |------|---------|
+| Enable hooks (once per clone) | `git config core.hooksPath .githooks` |
 | Typecheck + lint + img policy | `npm run validate` |
-| IPC API docs freshness | `npm run docs:api` (CI: then `git diff --exit-code docs/api.md`) |
-| All Vitest suites | `npm test` |
+| IPC API docs freshness | `npm run docs:api` then `git diff --exit-code docs/api.md` |
+| All Vitest suites (min pass count) | `npm test` |
 | Pre-PR full gate | `npm run test:verify` |
 | Production dependency audit | `npm audit --omit=dev --audit-level=high` |
 
-CI (`.github/workflows/ci.yml`) runs **validate**, **docs:api freshness**, **npm test**, production audit, then **E2E**; tagged releases also require e2e to pass, then publish **Windows zip** and **Linux AppImage** (macOS binaries are not distributed — see [user guide — Installation](./user-guide.md#installation)).
+`.githooks/pre-push` runs **validate**, **docs:api freshness**, and **npm test**. GitHub Actions CI workflows are removed; releases are packaged locally (`npm run dist:win` / `dist:linux`) — see [user guide — Installation](./user-guide.md#installation).
 
 ---
 

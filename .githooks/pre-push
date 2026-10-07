@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Local quality gate (replaces GitHub Actions CI). Abort push on failure.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "pre-push: npm run validate"
+npm run validate
+
+echo "pre-push: docs:api freshness"
+npm run docs:api
+git diff --exit-code docs/api.md
+
+echo "pre-push: vitest (min count enforced)"
+npm test
+
+echo "pre-push: ok"

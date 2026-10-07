@@ -1426,25 +1426,15 @@ The project uses **electron-vite** for building both Main and Renderer processes
 - DevTools enabled in development
 - Main/Preload sources are watched in development for faster iteration ✅
 
-### Testing & CI
+### Testing & local quality gate
 
-**Vitest** (`vitest.config.ts`) — `tests/unit/`, `tests/integration/`, `tests/property/`; Node environment; `better-sqlite3` externalized.
+**Vitest** (`vitest.config.ts`) — `tests/unit/`, `tests/integration/`, `tests/property/`; Node environment; `better-sqlite3` externalized. `npm test` wraps Vitest with a pinned minimum pass count (`scripts/run-vitest-with-min.mjs`) and the force-exit reporter.
 
-**Playwright** — `tests/e2e/`; requires `npm run build` and Chromium; live API tests need `TEST_USER_ID` / `TEST_API_KEY` in CI secrets. Helpers must remove temp `userData` dirs (`cleanupTestApp` / per-spec `rmSync`) after each run — do not leave `%TEMP%\ruledesk-*` behind.
+**Playwright** — `tests/e2e/`; requires `npm run build` and Chromium; live API tests need `TEST_USER_ID` / `TEST_API_KEY` when hitting live providers. Helpers must remove temp `userData` dirs (`cleanupTestApp` / per-spec `rmSync`) after each run — do not leave `%TEMP%\ruledesk-*` behind.
 
 **Native module ABI:** Vitest uses Node; the app uses Electron. Scripts call `db:rebuild:node` before Vitest and `db:rebuild` after `npm test` so local dev keeps working.
 
-**CI pipeline** (`.github/workflows/ci.yml`):
-
-1. `validate` → `docs:api` freshness (`git diff --exit-code docs/api.md`) → `npm test` → `npm audit --omit=dev --audit-level=high`
-2. E2E on built artifact
-3. Tagged releases (parallel native runners after quality + e2e):
-   - **Windows:** `RuleDesk-*-win.zip` (`windows-latest`)
-   - **Linux:** `RuleDesk-*.AppImage` (`ubuntu-latest`, `libfuse2` for AppImage)
-   - **macOS:** not published (no signed/notarized CI pipeline; build from source locally if needed)
-   - Each packaging job runs `npm run check:release-artifacts` before upload (no `.map`, tests, `.env`, fixture secrets, or `sourceMappingURL` in `out/**`)
-
-**Local maintainer gate:** `npm run test:verify` (= validate + all Vitest + Electron rebuild).
+**Local gate (`.githooks/pre-push`):** after `git config core.hooksPath .githooks`, every push runs `validate` → `docs:api` freshness → `npm test`. There is no GitHub Actions workflow; maintainers own the gate locally. `npm run test:verify` is the same validate + Vitest path. Packaged releases still use `npm run check:release-artifacts` before upload.
 
 ## State Management
 
@@ -1747,8 +1737,8 @@ Root:
 │   ├── generate-api-docs.mjs       # IPC docs generator
 │   ├── check-img-loading-decoding.mjs
 │   └── check-release-artifacts.mjs
-├── .github/                        # GitHub workflows
-│   └── workflows/
+├── .githooks/                      # Local git hooks (core.hooksPath)
+│   └── pre-push                    # validate + docs:api + vitest
 │       └── ci.yml
 ├── electron.vite.config.ts         # Electron-Vite configuration
 ├── drizzle.config.ts               # Drizzle ORM configuration
@@ -1791,7 +1781,7 @@ Root:
 
 - **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `search_results_cache` (Browse `searchBooru` page TTL cache, found|not_found, versioned JSON payload), `post_lookup_cache` (single-post `id:` lookup TTL, found|not_found, 30-day not_found), `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
-- **Testing & CI:** Vitest (unit, integration, property), Playwright (E2E); CI runs `validate`, `npm test`, and production `npm audit`
+- **Testing & local gate:** Vitest (unit, integration, property), Playwright (E2E); `pre-push` runs `validate` + `docs:api` + `npm test`
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
 - **Provider Support:** Multi-booru support with `provider` field (rule34, gelbooru)
 - **Artist Types:** Support for `tag`, `uploader`, and `query` types

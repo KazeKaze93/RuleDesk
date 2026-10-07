@@ -246,7 +246,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
 - ✅ **User Data Path:** Neutral `RuleDesk-Data` directory for dev and packaged builds (same location on a given machine)
-- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); CI runs `validate`, `docs:api` freshness, and `npm test` on every push/PR
+- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); local `pre-push` hook runs `validate`, `docs:api` freshness, and `npm test` (pinned minimum pass count)
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
 
@@ -441,7 +441,14 @@ This project uses **electron-vite** as the build tool for both the Electron Main
 
 ### Prerequisites
 
-- **Node.js:** v20 LTS (matches CI)
+- **Node.js:** v20 LTS
+- **Git hooks:** after clone, point Git at the repo hooks (once per clone):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`pre-push` runs `validate`, `docs:api` freshness, and Vitest with a pinned minimum pass count; a failing gate aborts the push.
 - **npm:** v9 or higher
 - **Git:** For version control
 
@@ -509,7 +516,7 @@ Local packaging scripts: `npm run dist:win`, `npm run dist:linux` (after `npm ru
 
 If you already rolled back: stop, use backups under `RuleDesk-Backups`, or contact support before continuing. Maintainer detail: [docs/database.md — Downgrade limitation](./docs/database.md#database-location).
 
-**Release hygiene:** Production builds disable source maps (`electron.vite.config.ts`). `electron-builder` excludes `.env*`, databases, logs, tests, `.cursorrules`, `.ai/`, and `*.map` from `app.asar`. CI runs `npm run check:release-artifacts` on every packaged build before upload. User API keys are never bundled — they are entered at runtime and stored encrypted in the local user data directory (`RuleDesk-Data`), not in the installer.
+**Release hygiene:** Production builds disable source maps (`electron.vite.config.ts`). `electron-builder` excludes `.env*`, databases, logs, tests, `.cursorrules`, `.ai/`, and `*.map` from `app.asar`. Run `npm run check:release-artifacts` on packaged builds before upload. User API keys are never bundled — they are entered at runtime and stored encrypted in the local user data directory (`RuleDesk-Data`), not in the installer.
 
 ### Quality Checks
 

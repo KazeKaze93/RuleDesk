@@ -128,4 +128,4 @@
 npm run docs:api
 ```
 
-CI fails if this file is stale (`npm run docs:api` then `git diff --exit-code docs/api.md`).
+pre-push fails if this file is stale (`npm run docs:api` then `git diff --exit-code docs/api.md`).

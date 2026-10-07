@@ -350,7 +350,7 @@ function renderMarkdown(handlers, byChannel, notes) {
   lines.push("```");
   lines.push("");
   lines.push(
-    "CI fails if this file is stale (`npm run docs:api` then `git diff --exit-code docs/api.md`)."
+    "pre-push fails if this file is stale (`npm run docs:api` then `git diff --exit-code docs/api.md`)."
   );
   lines.push("");
 

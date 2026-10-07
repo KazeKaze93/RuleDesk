@@ -364,7 +364,7 @@ An error handling strategy that increases wait time between retry attempts. Rule
 
 ### validate (npm script)
 
-Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-attrs`. CI runs this before `docs:api` freshness and tests. `typecheck` uses `skipLibCheck: true`, so ambient `.d.ts` bodies are lightly checked — `src/bridge.d.ts` only aliases `IpcBridge` from `src/shared/types/ipc-bridge.ts`, and `src/shared/types/ipc-bridge.drift.ts` asserts `Window["api"]` equals that contract so drift cannot stay silent.
+Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-attrs`. The `pre-push` hook runs this before `docs:api` freshness and tests. `typecheck` uses `skipLibCheck: true`, so ambient `.d.ts` bodies are lightly checked — `src/bridge.d.ts` only aliases `IpcBridge` from `src/shared/types/ipc-bridge.ts`, and `src/shared/types/ipc-bridge.drift.ts` asserts `Window["api"]` equals that contract so drift cannot stay silent.
 
 **Related:** [README — Quality Checks](../README.md#quality-checks)
 
@@ -372,7 +372,7 @@ Local quality gate: `npm run typecheck` + `npm run lint` + `npm run check:img-at
 
 ### docs:api (npm script)
 
-Regenerates the IPC channel reference (`docs/api.md`) from `channels.ts` and handler registrations. Hand-editing `api.md` is forbidden; CI fails if the file is stale.
+Regenerates the IPC channel reference (`docs/api.md`) from `channels.ts` and handler registrations. Hand-editing `api.md` is forbidden; `pre-push` fails if the file is stale.
 
 **Related:** [API Reference](./api.md), [API Guide](./api-guide.md), [README — Quality Checks](../README.md#quality-checks)
 
@@ -382,7 +382,7 @@ Regenerates the IPC channel reference (`docs/api.md`) from `channels.ts` and han
 
 Full maintainer gate before a PR: `validate` → all Vitest suites (unit, integration, property) → restore `better-sqlite3` for Electron.
 
-**Related:** [README — Testing](../README.md#testing), [Architecture — Testing & CI](./architecture.md#testing--ci)
+**Related:** [README — Testing](../README.md#testing), [Architecture — Testing & local quality gate](./architecture.md#testing--local-quality-gate)
 
 ---
 
