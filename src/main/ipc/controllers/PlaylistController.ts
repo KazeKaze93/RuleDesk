@@ -1745,68 +1745,55 @@ export class PlaylistController extends BaseController {
 
       const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;
 
-      // Execute local DB query and remote API query concurrently
+      // Execute local DB query and remote API query concurrently.
+      // Provider/creds failures must throw — never map to [] (silent empty success).
       const [localPosts, remotePosts] = await Promise.all([
-        // Local DB query
         (async () => {
-          try {
-            const queryBuilder = db
-              .select({
-                id: posts.id,
-                postId: posts.postId,
-                artistId: posts.artistId,
-                fileUrl: posts.fileUrl,
-                previewUrl: posts.previewUrl,
-                sampleUrl: posts.sampleUrl,
-                title: posts.title,
-                rating: posts.rating,
-                tags: posts.tags,
-                mediaType: posts.mediaType,
-                publishedAt: posts.publishedAt,
-                createdAt: posts.createdAt,
-                isViewed: posts.isViewed,
-                isFavorited: posts.isFavorited,
-                lastViewedAt: posts.lastViewedAt,
-                viewCount: posts.viewCount,
-              })
-              .from(posts)
-              .where(whereClause);
+          const queryBuilder = db
+            .select({
+              id: posts.id,
+              postId: posts.postId,
+              artistId: posts.artistId,
+              fileUrl: posts.fileUrl,
+              previewUrl: posts.previewUrl,
+              sampleUrl: posts.sampleUrl,
+              title: posts.title,
+              rating: posts.rating,
+              tags: posts.tags,
+              mediaType: posts.mediaType,
+              publishedAt: posts.publishedAt,
+              createdAt: posts.createdAt,
+              isViewed: posts.isViewed,
+              isFavorited: posts.isFavorited,
+              lastViewedAt: posts.lastViewedAt,
+              viewCount: posts.viewCount,
+            })
+            .from(posts)
+            .where(whereClause);
 
-            const result = isRandom
-              ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
-              : queryBuilder
-                  .orderBy(
-                    smartSortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt)
-                  )
-                  .limit(limit)
-                  .offset(offset)
-                  .all();
-            log.info(
-              `[PlaylistController] Local DB query returned ${result.length} posts for smart playlist ${playlistId}`
-            );
-            return toIpcSafe(result);
-          } catch (error) {
-            log.error(`[PlaylistController] Local DB query failed for smart playlist ${playlistId}:`, error);
-            return []; // Return empty array on error, continue with remote results
-          }
+          const result = isRandom
+            ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+            : queryBuilder
+                .orderBy(
+                  smartSortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt)
+                )
+                .limit(limit)
+                .offset(offset)
+                .all();
+          log.info(
+            `[PlaylistController] Local DB query returned ${result.length} posts for smart playlist ${playlistId}`
+          );
+          return toIpcSafe(result);
         })(),
-        // Remote API query
-        (async () => {
-          try {
-            return await this.resolveRemotePlaylistPosts(
-              playlistId,
-              query,
-              page,
-              limit,
-              filters,
-              smartSortOrder,
-              isRandom
-            );
-          } catch (error) {
-            log.error(`[PlaylistController] Remote API query failed for smart playlist ${playlistId}:`, error);
-            return []; // Return empty array on error, continue with local results
-          }
-        })(),
+        this.resolveRemotePlaylistPosts(
+          playlistId,
+          query,
+          page,
+          limit,
+          filters,
+          smartSortOrder,
+          isRandom
+        ),
       ]);
 
       // Merge and deduplicate results
@@ -1901,8 +1888,9 @@ export class PlaylistController extends BaseController {
       const apiSettings = await getDecryptedApiSettings(this.getDb());
       
       if (!apiSettings) {
-        log.warn(`[PlaylistController] Cannot fetch remote posts: no API settings available`);
-        return [];
+        throw new Error(
+          "Cannot fetch remote playlist posts: credentials missing or unavailable"
+        );
       }
 
       const providerSettings = {
@@ -1910,57 +1898,56 @@ export class PlaylistController extends BaseController {
         apiKey: apiSettings.apiKey,
       };
 
-      // Fetch posts from remote API (page is 0-indexed in API, but 1-indexed in our system)
-      // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) and shuffle results
-      // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
-      // should be done via API's native sort:random parameter if the provider supports it.
-      // If the provider doesn't support native randomization, this pseudo-random approach
-      // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
-      const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page - 1;
-      const { posts: booruPosts } = await provider.fetchPosts(
-        booruQuery,
-        apiPage,
-        providerSettings,
-        isRandom,
-        limit
-      );
       const blacklistedTagSet = new Set(
         getAllBlacklistedTags().map((tag) => tag.trim().toLowerCase()).filter(Boolean)
       );
-      
-      log.info(`[PlaylistController] Fetched ${booruPosts.length} posts from remote API for playlist ${playlistId}`);
 
-      // Convert BooruPost to IpcPost format and apply filters
-      const filteredPosts = booruPosts
-        .filter((post) => {
+      const filteredPosts: IpcPost[] = [];
+      // Start at the requested page; keep fetching until we fill ``limit`` after filters
+      // (blacklist / media type can drop many items from a raw API page).
+      let apiPage = isRandom
+        ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1
+        : page - 1;
+      const maxPagesToScan = isRandom ? 1 : 20;
+      let pagesScanned = 0;
+      let rawFetchedTotal = 0;
+
+      while (filteredPosts.length < limit && pagesScanned < maxPagesToScan) {
+        const { posts: booruPosts, rawItemCount } = await provider.fetchPosts(
+          booruQuery,
+          apiPage,
+          providerSettings,
+          isRandom,
+          limit
+        );
+        pagesScanned += 1;
+        rawFetchedTotal += booruPosts.length;
+
+        for (const post of booruPosts) {
           if (blacklistedTagSet.size > 0) {
             const hasBlacklistedTag = post.tags.some((tag) =>
               blacklistedTagSet.has(tag.trim().toLowerCase())
             );
             if (hasBlacklistedTag) {
-              return false;
+              continue;
             }
           }
 
-          // Apply media type filter
           if (filters?.mediaType) {
             const isVideo = isVideoUrl(post.fileUrl);
             if (filters.mediaType === "videos" && !isVideo) {
-              return false;
+              continue;
             }
             if (filters.mediaType === "images" && isVideo) {
-              return false;
+              continue;
             }
           }
-          
-          return true;
-        })
-        .map((post): IpcPost => {
+
           const isVideo = isVideoUrl(post.fileUrl);
-          return {
-            id: 0, // Remote posts don't have local DB ID
+          filteredPosts.push({
+            id: 0,
             postId: post.id,
-            artistId: EXTERNAL_ARTIST_ID, // Use EXTERNAL_ARTIST_ID instead of null (schema requires notNull)
+            artistId: EXTERNAL_ARTIST_ID,
             fileUrl: post.fileUrl,
             previewUrl: post.previewUrl,
             sampleUrl: post.sampleUrl,
@@ -1970,36 +1957,45 @@ export class PlaylistController extends BaseController {
             mediaType: isVideo ? "video" : "image",
             publishedAt: post.createdAt.getTime(),
             createdAt: post.createdAt.getTime(),
-            isViewed: false, // Remote posts are never viewed locally
-            isFavorited: false, // Remote posts are never favorited locally
+            isViewed: false,
+            isFavorited: false,
             lastViewedAt: null,
             viewCount: 0,
-          };
-        });
+          });
 
-      // Sort or shuffle posts based on isRandom flag
+          if (filteredPosts.length >= limit) {
+            break;
+          }
+        }
+
+        if (rawItemCount < limit || booruPosts.length === 0) {
+          break;
+        }
+        if (isRandom) {
+          break;
+        }
+        apiPage += 1;
+      }
+
       if (isRandom) {
-        // Shuffle filtered posts for randomization
         for (let i = filteredPosts.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [filteredPosts[i], filteredPosts[j]] = [filteredPosts[j], filteredPosts[i]];
         }
       } else {
-        // Sort posts (remote API usually returns sorted, but we ensure it)
         filteredPosts.sort((a, b) => {
           if (sortOrder === "asc") {
             return a.publishedAt - b.publishedAt;
-          } else {
-            return b.publishedAt - a.publishedAt;
           }
+          return b.publishedAt - a.publishedAt;
         });
       }
 
-      // Apply pagination (limit)
       const paginatedPosts = filteredPosts.slice(0, limit);
 
       log.info(
-        `[PlaylistController] Resolved ${paginatedPosts.length} posts from remote API for smart playlist ${playlistId} (page ${page}, filtered from ${booruPosts.length} total)`
+        `[PlaylistController] Resolved ${paginatedPosts.length} posts from remote API for smart playlist ${playlistId} ` +
+          `(page ${page}, scanned ${pagesScanned} API page(s), raw ${rawFetchedTotal})`
       );
 
       return paginatedPosts;

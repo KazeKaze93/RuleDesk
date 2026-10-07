@@ -5,6 +5,10 @@ const readStringField = (error: object, key: string): string | undefined => {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 };
 
+/**
+ * Prefer ``Error.message`` from Main (BaseController throws real Error instances).
+ * Strip Electron's invoke prefix when present.
+ */
 export const resolveErrorMessage = (
   error: unknown,
   fallback: string
@@ -14,17 +18,17 @@ export const resolveErrorMessage = (
   }
 
   if (error instanceof Error && error.message) {
-    const stripped = error.message.replace(IPC_INVOKE_PREFIX, "");
-    if (stripped.length > 0 && stripped !== "[object Object]") {
+    const stripped = error.message.replace(IPC_INVOKE_PREFIX, "").trim();
+    if (stripped.length > 0) {
       return stripped;
     }
   }
 
   if (typeof error === "object" && error !== null) {
     const message = readStringField(error, "message");
-    if (message && !message.includes("[object Object]")) {
-      const nested = message.replace(IPC_INVOKE_PREFIX, "");
-      if (nested.length > 0 && nested !== "[object Object]") {
+    if (message) {
+      const nested = message.replace(IPC_INVOKE_PREFIX, "").trim();
+      if (nested.length > 0) {
         return nested;
       }
     }

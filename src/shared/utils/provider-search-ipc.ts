@@ -31,7 +31,13 @@ function stripIpcMessagePrefix(message: string): string {
 }
 
 function isUnusableIpcMessage(message: string | undefined): boolean {
-  return message === undefined || message.length === 0 || message === "[object Object]";
+  // Legacy Main threw plain objects; Electron then set message to "[object Object]".
+  // Prefer kind/code fields and fall back to PROVIDER_SEARCH_USER_MESSAGES.
+  return (
+    message === undefined ||
+    message.length === 0 ||
+    message === "[object Object]"
+  );
 }
 
 function readRetryAfterMs(candidate: Record<string, unknown>): number | undefined {

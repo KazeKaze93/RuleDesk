@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { artists, playlists, posts } from "@/main/db/schema";
+import { artists, playlists, posts, settings, SETTINGS_ID } from "@/main/db/schema";
 import {
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
@@ -24,6 +24,10 @@ vi.mock("@/main/db/client", () => ({
 
 vi.mock("electron", () => ({
   app: { getPath: () => "/tmp" },
+  safeStorage: {
+    isEncryptionAvailable: () => true,
+    decryptString: (buffer: Buffer) => buffer.toString(),
+  },
   ipcMain: {
     handle: vi.fn(),
     on: vi.fn(),
@@ -101,11 +105,18 @@ describe("PlaylistController FTS empty-guard", () => {
   let mockDb: ReturnType<typeof createMockDb>;
   let controller: PlaylistControllerInternals;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
     container.register(DI_TOKENS.DB, mockDb.db);
+    await mockDb.db.insert(settings).values({
+      id: SETTINGS_ID,
+      userId: "12345",
+      encryptedApiKey: Buffer.from("test-api-key-12345").toString("base64"),
+      provider: "rule34",
+      isAdultVerified: true,
+    });
     controller = new PlaylistController() as unknown as PlaylistControllerInternals;
     controller.setup();
   });

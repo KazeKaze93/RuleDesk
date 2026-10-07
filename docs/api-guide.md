@@ -1801,10 +1801,10 @@ Smart playlists use a hybrid flow:
 
 1. Build include/exclude tag conditions from `queryJson`
 2. Query local cache (FTS5)
-3. Query provider API (Rule34/Gelbooru)
+3. Query provider API (Rule34/Gelbooru), paging until the blacklist-filtered set fills `limit` (or the feed ends)
 4. Merge and deduplicate by `postId` (local entries have priority)
 
-This gives fast local results while still surfacing posts not yet cached locally.
+Provider/credential failures on the remote leg throw (typed IPC error) — they are never mapped to an empty post list. This gives fast local results while still surfacing posts not yet cached locally.
 
 **Key channels:**
 
@@ -2058,6 +2058,8 @@ Sync pagination uses the same provider errors: `auth` / `rate_limit` abort sync 
 
 ### General IPC errors
 
+`BaseController` rejects with a real `Error` instance. The renderer receives `error.message` and an enumerable `error.code` (`ErrorCode`). Do not throw plain objects from Main — Electron serializes those as `[object Object]`.
+
 ```typescript
 try {
   const result = await window.api.addArtist(artistData);
@@ -2065,6 +2067,7 @@ try {
   // Prefer shared parsers per domain; never assume error.stack is available in renderer
   if (error instanceof Error) {
     log.error(error.message);
+    // error.code is set by BaseController (ErrorCode enum)
   }
 }
 ```
@@ -2094,7 +2097,7 @@ IPC handlers are registered via controllers in `src/main/ipc/index.ts`:
 All IPC operations are handled through domain-specific controllers that extend `BaseController`:
 
 - **BaseController** provides:
-  - Centralized error handling
+  - Centralized error handling (real `Error` + enumerable `code`, never plain-object rejects)
   - Automatic input validation using Zod schemas
   - Type-safe handler registration
   - Prevents duplicate handler registration errors

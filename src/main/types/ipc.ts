@@ -38,8 +38,8 @@ export enum ErrorCode {
 }
 
 /**
- * Serializable error structure for IPC communication
- * Electron IPC cannot serialize Error objects properly, so we use plain objects
+ * IPC error shape attached to a real ``Error`` thrown from BaseController
+ * (``message`` + enumerable ``code``; never a bare plain object).
  */
 export interface SerializableError {
   message: string;

@@ -1,8 +1,70 @@
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z, type ZodErrorMap } from "zod";
-import type { SerializableError, ValidationError } from "../../types/ipc";
 import { ErrorCode } from "../../types/ipc";
+
+/**
+ * Electron ``invoke`` must reject with a real ``Error``. Plain objects become
+ * ``[object Object]`` in the renderer. Attach ``code`` as an own enumerable field.
+ */
+function createIpcError(
+  message: string,
+  code: ErrorCode,
+  options?: {
+    name?: string;
+    stack?: string;
+    extra?: Record<string, unknown>;
+  }
+): Error {
+  const err = new Error(message);
+  err.name = options?.name ?? "Error";
+  if (options?.stack) {
+    err.stack = options.stack;
+  }
+  Object.assign(err, { code }, options?.extra ?? {});
+  return err;
+}
+
+function hasIpcErrorCode(error: unknown): error is Error & { code: string } {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof Reflect.get(error, "code") === "string"
+  );
+}
+
+function inferErrorCode(error: Error): ErrorCode {
+  const errorMessage = error.message.toLowerCase();
+  if (
+    errorMessage.includes("rate limit") ||
+    errorMessage.includes("too frequent")
+  ) {
+    return ErrorCode.RATE_LIMIT;
+  }
+  if (error.name === "ValidationError" || error instanceof z.ZodError) {
+    return ErrorCode.VALIDATION_ERROR;
+  }
+  if (
+    errorMessage.includes("database") ||
+    errorMessage.includes("sqlite")
+  ) {
+    return ErrorCode.DATABASE_ERROR;
+  }
+  if (
+    errorMessage.includes("network") ||
+    errorMessage.includes("fetch")
+  ) {
+    return ErrorCode.NETWORK_ERROR;
+  }
+  if (
+    errorMessage.includes("auth") ||
+    errorMessage.includes("unauthorized") ||
+    errorMessage.includes("credential")
+  ) {
+    return ErrorCode.AUTH_ERROR;
+  }
+  return ErrorCode.UNKNOWN_ERROR;
+}
 
 /**
  * Custom Zod error map that sanitizes error messages to prevent leaking sensitive data
@@ -385,14 +447,22 @@ export abstract class BaseController {
                     log.error(
                       `[IPC] Validation failed for channel "${channel}": ${errorMessage}`
                     );
-                    const serializedError: ValidationError = {
-                      message: errorMessage,
-                      stack: undefined,
-                      name: "ValidationError",
-                      originalError: undefined,
-                      errors: [{ path: [], message: errorMessage, code: "custom" }],
-                    };
-                    throw serializedError;
+                    throw createIpcError(
+                      errorMessage,
+                      ErrorCode.VALIDATION_ERROR,
+                      {
+                        name: "ValidationError",
+                        extra: {
+                          errors: [
+                            {
+                              path: [],
+                              message: errorMessage,
+                              code: "custom",
+                            },
+                          ],
+                        },
+                      }
+                    );
                   }
                 } else {
                   if (args.length !== 1) {
@@ -400,14 +470,22 @@ export abstract class BaseController {
                     log.error(
                       `[IPC] Validation failed for channel "${channel}": ${errorMessage}`
                     );
-                    const serializedError: ValidationError = {
-                      message: errorMessage,
-                      stack: undefined,
-                      name: "ValidationError",
-                      originalError: undefined,
-                      errors: [{ path: [], message: errorMessage, code: "custom" }],
-                    };
-                    throw serializedError;
+                    throw createIpcError(
+                      errorMessage,
+                      ErrorCode.VALIDATION_ERROR,
+                      {
+                        name: "ValidationError",
+                        extra: {
+                          errors: [
+                            {
+                              path: [],
+                              message: errorMessage,
+                              code: "custom",
+                            },
+                          ],
+                        },
+                      }
+                    );
                   }
                 }
 
@@ -480,18 +558,22 @@ export abstract class BaseController {
                           })),
                         });
                     
-                    const serializedError: ValidationError = {
-                      message: errorMessage,
-                      stack: validationError.stack,
-                      name: "ValidationError",
-                      originalError: originalErrorJson,
-                      errors: validationError.errors.map((e) => ({
-                        path: e.path,
-                        message: e.message,
-                        code: e.code,
-                      })),
-                    };
-                    throw serializedError;
+                    throw createIpcError(
+                      errorMessage,
+                      ErrorCode.VALIDATION_ERROR,
+                      {
+                        name: "ValidationError",
+                        stack: validationError.stack,
+                        extra: {
+                          originalError: originalErrorJson,
+                          errors: validationError.errors.map((e) => ({
+                            path: e.path,
+                            message: e.message,
+                            code: e.code,
+                          })),
+                        },
+                      }
+                    );
                   }
                   // Re-throw if it's not a ZodError
                   throw validationError;
@@ -569,20 +651,18 @@ export abstract class BaseController {
                 }
               );
 
-              const serializedError: ValidationError = {
-                message: errorMessage,
-                stack: undefined,
+              throw createIpcError(errorMessage, ErrorCode.VALIDATION_ERROR, {
                 name: "ValidationError",
-                originalError: undefined,
-                errors: [
-                  {
-                    path: [],
-                    message: errorMessage,
-                    code: "custom",
-                  },
-                ],
-              };
-              throw serializedError;
+                extra: {
+                  errors: [
+                    {
+                      path: [],
+                      message: errorMessage,
+                      code: "custom",
+                    },
+                  ],
+                },
+              });
             }
           } else {
             // Single schema: must receive exactly 1 argument
@@ -597,20 +677,18 @@ export abstract class BaseController {
                 }
               );
 
-              const serializedError: ValidationError = {
-                message: errorMessage,
-                stack: undefined,
+              throw createIpcError(errorMessage, ErrorCode.VALIDATION_ERROR, {
                 name: "ValidationError",
-                originalError: undefined,
-                errors: [
-                  {
-                    path: [],
-                    message: errorMessage,
-                    code: "custom",
-                  },
-                ],
-              };
-              throw serializedError;
+                extra: {
+                  errors: [
+                    {
+                      path: [],
+                      message: errorMessage,
+                      code: "custom",
+                    },
+                  ],
+                },
+              });
             }
           }
 
@@ -684,18 +762,18 @@ export abstract class BaseController {
                     })),
                   });
               
-              const serializedError: ValidationError = {
-                message: errorMessage,
-                stack: validationError.stack,
+              throw createIpcError(errorMessage, ErrorCode.VALIDATION_ERROR, {
                 name: "ValidationError",
-                originalError: originalErrorJson,
-                errors: validationError.errors.map((e) => ({
-                  path: e.path,
-                  message: e.message,
-                  code: e.code,
-                })),
-              };
-              throw serializedError;
+                stack: validationError.stack,
+                extra: {
+                  originalError: originalErrorJson,
+                  errors: validationError.errors.map((e) => ({
+                    path: e.path,
+                    message: e.message,
+                    code: e.code,
+                  })),
+                },
+              });
             }
             // Re-throw if it's not a ZodError
             throw validationError;
@@ -711,85 +789,45 @@ export abstract class BaseController {
           log.debug(`[IPC] Request completed: ${channel}`);
           return result;
         } catch (error: unknown) {
-          // Skip re-serialization for already-serialized IPC errors (ValidationError, etc.)
-          if (
-            typeof error === "object" &&
-            error !== null &&
-            "name" in error &&
-            "message" in error &&
-            "code" in error
-          ) {
+          // Already an Error with a typed code (ValidationError, ProviderSearchError, …)
+          if (hasIpcErrorCode(error)) {
             throw error;
           }
 
-          // Electron IPC quirk: pure Error objects don't serialize well via invoke
-          // Serialize error to plain object, but hide sensitive details in production
-          // Security: Never log stack traces in production - they may contain file paths
           const isProduction = process.env.NODE_ENV === "production";
 
-          // Log error details for debugging (without sensitive argument data)
           log.error(`[IPC] Error in channel "${channel}":`, {
             message: error instanceof Error ? error.message : "Unknown error",
             stack: isProduction
               ? undefined
               : error instanceof Error
-              ? error.stack
-              : undefined,
-            // Security: Do not log args - they may contain sensitive data even after sanitization
+                ? error.stack
+                : undefined,
           });
 
-          // Determine error code based on error type/message
-          let errorCode: ErrorCode = ErrorCode.UNKNOWN_ERROR;
           if (error instanceof Error) {
-            const errorMessage = error.message.toLowerCase();
-            if (
-              errorMessage.includes("rate limit") ||
-              errorMessage.includes("too frequent")
-            ) {
-              errorCode = ErrorCode.RATE_LIMIT;
-            } else if (
-              error.name === "ValidationError" ||
-              error instanceof z.ZodError
-            ) {
-              errorCode = ErrorCode.VALIDATION_ERROR;
-            } else if (
-              errorMessage.includes("database") ||
-              errorMessage.includes("sqlite")
-            ) {
-              errorCode = ErrorCode.DATABASE_ERROR;
-            } else if (
-              errorMessage.includes("network") ||
-              errorMessage.includes("fetch")
-            ) {
-              errorCode = ErrorCode.NETWORK_ERROR;
-            } else if (
-              errorMessage.includes("auth") ||
-              errorMessage.includes("unauthorized")
-            ) {
-              errorCode = ErrorCode.AUTH_ERROR;
-            }
+            throw createIpcError(
+              error.message || "Unknown IPC error",
+              inferErrorCode(error),
+              {
+                name: error.name,
+                stack: isProduction ? undefined : error.stack,
+                extra: isProduction
+                  ? undefined
+                  : { originalError: String(error) },
+              }
+            );
           }
 
-          const serializedError: SerializableError =
-            error instanceof Error
-              ? {
-                  message: error.message || "Unknown IPC error",
-                  // Hide stack trace in production (potential security leak - file paths, structure)
-                  stack: isProduction ? undefined : error.stack,
-                  name: error.name,
-                  // Hide originalError in production (may contain system details)
-                  originalError: isProduction ? undefined : String(error),
-                  code: errorCode, // Typed error code for reliable error handling
-                }
-              : {
-                  message: String(error) || "Unknown IPC error",
-                  stack: undefined,
-                  name: "Error",
-                  originalError: isProduction ? undefined : String(error),
-                  code: errorCode,
-                };
-
-          throw serializedError;
+          throw createIpcError(
+            "Unknown IPC error",
+            ErrorCode.UNKNOWN_ERROR,
+            {
+              extra: isProduction
+                ? undefined
+                : { originalError: String(error) },
+            }
+          );
         }
       }
     );

@@ -517,6 +517,7 @@ const posts = await db.query.posts.findMany({
    **BaseController** (`src/main/core/ipc/BaseController.ts`):
 
    - Provides centralized error handling
+   - Rejects with a real ``Error`` (``message`` + enumerable ``code``) — never a bare plain object (Electron would otherwise surface ``[object Object]`` in the renderer)
    - Automatic input validation using Zod schemas
    - Type-safe handler registration
    - Prevents duplicate handler registration errors
