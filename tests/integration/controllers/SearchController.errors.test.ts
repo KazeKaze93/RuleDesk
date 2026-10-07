@@ -132,7 +132,7 @@ describe("SearchController empty result vs transport failure", () => {
   });
 
   it("still runs autocomplete and user: fallbacks on a genuine empty API page", async () => {
-    fetchPostsMock.mockResolvedValue([]);
+    fetchPostsMock.mockResolvedValue({ posts: [], rawItemCount: 0, rejectedPostIds: [] });
 
     const resultUnknown = await invokeSearch(controller, ["missing_tag"]);
     if (

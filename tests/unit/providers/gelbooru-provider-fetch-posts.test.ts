@@ -78,11 +78,13 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
       data: [SAMPLE_GELBOORU_POST],
     });
 
-    const posts = await provider.fetchPosts("solo", 1, settings, false, 50);
+    const result = await provider.fetchPosts("solo", 1, settings, false, 50);
 
-    expect(posts).toHaveLength(1);
-    expect(posts[0]?.id).toBe(42);
-    expect(posts[0]?.fileUrl).toBe(SAMPLE_GELBOORU_POST.file_url);
+    expect(result.rawItemCount).toBe(1);
+    expect(result.rejectedPostIds).toEqual([]);
+    expect(result.posts).toHaveLength(1);
+    expect(result.posts[0]?.id).toBe(42);
+    expect(result.posts[0]?.fileUrl).toBe(SAMPLE_GELBOORU_POST.file_url);
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
     expect(axiosGetMock.mock.calls[0]?.[1]).toMatchObject({
       validateStatus: expect.any(Function),
@@ -165,7 +167,7 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
   });
 
-  it("returns [] for a genuine well-formed empty JSON array", async () => {
+  it("returns empty FetchPostsResult for a genuine well-formed empty JSON array", async () => {
     axiosGetMock.mockResolvedValueOnce({
       status: 200,
       headers: { "content-type": "application/json" },
@@ -174,7 +176,7 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
 
     await expect(
       provider.fetchPosts("missing_tag", 1, settings, false, 50)
-    ).resolves.toEqual([]);
+    ).resolves.toEqual({ posts: [], rawItemCount: 0, rejectedPostIds: [] });
 
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
   });

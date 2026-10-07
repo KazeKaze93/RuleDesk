@@ -1258,7 +1258,7 @@ useEffect(() => {
 - **Bulk operations** - Posts are inserted in chunks of `CHUNK_SIZE` (75) to stay under SQLite variable limits
 - **Incremental sync** - Only fetches posts newer than `lastPostId` (not all posts)
 - **Background execution** - Sync doesn't block UI or other operations
-- **Page size** - Sync calls `fetchPosts(..., PAGE_SIZE)` with the same `PAGE_SIZE` (100) used for the pagination stop condition (`postsData.length < PAGE_SIZE`)
+- **Page size** - Sync calls `fetchPosts(..., PAGE_SIZE)` with the same `PAGE_SIZE` (100) used for the pagination stop condition (`rawItemCount < PAGE_SIZE`). End-of-feed is decided from the raw API item count **before** Zod/XML filtering; a full page where every item fails validation must continue pagination, not mark the sync complete. When Zod drops items, SyncService logs a warn via electron-log with the count and `rejectedPostIds`.
 
 ## Database Architecture
 

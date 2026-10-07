@@ -360,13 +360,15 @@ export class SearchController extends BaseController {
           : page;
 
       const fetchFromProvider = async (): Promise<BooruPost[]> => {
-        let fetched = await provider.fetchPosts(
-          tagsString,
-          apiPage,
-          providerSettings,
-          isRandom,
-          limit
-        );
+        let fetched = (
+          await provider.fetchPosts(
+            tagsString,
+            apiPage,
+            providerSettings,
+            isRandom,
+            limit
+          )
+        ).posts;
 
         // Fallback Logic (only if Step 1 returned 0 AND input is a single word)
         if (
@@ -386,13 +388,15 @@ export class SearchController extends BaseController {
 
               if (suggestion.toLowerCase() !== originalTag.toLowerCase()) {
                 const suggestionString = provider.formatTag(suggestion, "tag");
-                fetched = await provider.fetchPosts(
-                  suggestionString,
-                  apiPage,
-                  providerSettings,
-                  isRandom,
-                  limit
-                );
+                fetched = (
+                  await provider.fetchPosts(
+                    suggestionString,
+                    apiPage,
+                    providerSettings,
+                    isRandom,
+                    limit
+                  )
+                ).posts;
 
                 if (fetched.length > 0) {
                   tagsString = suggestionString;
@@ -413,13 +417,15 @@ export class SearchController extends BaseController {
             const formattedUserTag = provider.formatTag(originalTag, "uploader");
 
             try {
-              fetched = await provider.fetchPosts(
-                formattedUserTag,
-                apiPage,
-                providerSettings,
-                isRandom,
-                limit
-              );
+              fetched = (
+                await provider.fetchPosts(
+                  formattedUserTag,
+                  apiPage,
+                  providerSettings,
+                  isRandom,
+                  limit
+                )
+              ).posts;
 
               if (fetched.length > 0) {
                 tagsString = formattedUserTag;
@@ -440,13 +446,15 @@ export class SearchController extends BaseController {
             const strippedTag = originalTag.slice(0, -"_artist".length);
             try {
               const formatted = provider.formatTag(strippedTag, "tag");
-              fetched = await provider.fetchPosts(
-                formatted,
-                apiPage,
-                providerSettings,
-                isRandom,
-                limit
-              );
+              fetched = (
+                await provider.fetchPosts(
+                  formatted,
+                  apiPage,
+                  providerSettings,
+                  isRandom,
+                  limit
+                )
+              ).posts;
               if (fetched.length > 0) {
                 tagsString = formatted;
               }

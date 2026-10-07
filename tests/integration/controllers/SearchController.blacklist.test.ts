@@ -96,7 +96,7 @@ describe("SearchController blacklist integration", () => {
   it("filters blacklisted tags in browse remote search", async () => {
     mockDb.sqlite.exec("INSERT INTO tag_blacklist (tag) VALUES ('ai_generated');");
 
-    fetchPostsMock.mockResolvedValue([
+    fetchPostsMock.mockResolvedValue({ posts: [
       {
         id: 101,
         fileUrl: "https://img.example/101.jpg",
@@ -115,7 +115,7 @@ describe("SearchController blacklist integration", () => {
         tags: ["safe_tag", "another_tag"],
         createdAt: new Date("2026-01-02T00:00:00.000Z"),
       },
-    ]);
+    ], rawItemCount: 2, rejectedPostIds: [] });
 
     const searchMethodUnknown = Reflect.get(controller, "search");
     if (typeof searchMethodUnknown !== "function") {

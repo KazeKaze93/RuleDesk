@@ -1381,17 +1381,19 @@ export class PostsController extends BaseController {
         db,
         request.provider,
         request.postId,
-        () =>
-          provider.fetchPosts(
-            tagsQuery,
-            0,
-            {
-              userId: apiSettings.userId,
-              apiKey: apiSettings.apiKey,
-            },
-            false,
-            POST_LOOKUP_SINGLE_ID_PAGE_LIMIT
-          )
+        async () =>
+          (
+            await provider.fetchPosts(
+              tagsQuery,
+              0,
+              {
+                userId: apiSettings.userId,
+                apiKey: apiSettings.apiKey,
+              },
+              false,
+              POST_LOOKUP_SINGLE_ID_PAGE_LIMIT
+            )
+          ).posts
       );
 
       if (lookup.status === "not_found") {

@@ -140,7 +140,7 @@ describe("SearchController search_results_cache wiring", () => {
   });
 
   it("serves the second identical tags+page from SQLite without HTTP", async () => {
-    fetchPostsMock.mockResolvedValue([makePost(11)]);
+    fetchPostsMock.mockResolvedValue({ posts: [makePost(11)], rawItemCount: 1, rejectedPostIds: [] });
 
     await invokeSearch(controller, ["cat"], 1);
     await invokeSearch(controller, ["cat"], 1);
@@ -149,7 +149,7 @@ describe("SearchController search_results_cache wiring", () => {
   });
 
   it("does not reuse cache across different tags", async () => {
-    fetchPostsMock.mockResolvedValue([makePost(11)]);
+    fetchPostsMock.mockResolvedValue({ posts: [makePost(11)], rawItemCount: 1, rejectedPostIds: [] });
 
     await invokeSearch(controller, ["cat"], 1);
     await invokeSearch(controller, ["dog"], 1);
@@ -166,13 +166,13 @@ describe("SearchController search_results_cache wiring", () => {
     expect(fetchPostsMock).toHaveBeenCalledTimes(1);
 
     fetchPostsMock.mockReset();
-    fetchPostsMock.mockResolvedValue([makePost(12)]);
+    fetchPostsMock.mockResolvedValue({ posts: [makePost(12)], rawItemCount: 1, rejectedPostIds: [] });
     await invokeSearch(controller, ["cat"], 1);
     expect(fetchPostsMock).toHaveBeenCalledTimes(1);
   });
 
   it("caches untagged page 2 empty as not_found; untagged page 1 empty is not persisted", async () => {
-    fetchPostsMock.mockResolvedValue([]);
+    fetchPostsMock.mockResolvedValue({ posts: [], rawItemCount: 0, rejectedPostIds: [] });
 
     await invokeSearch(controller, [], 1);
     expect(fetchPostsMock).toHaveBeenCalledTimes(1);

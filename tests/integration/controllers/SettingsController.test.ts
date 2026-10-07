@@ -111,6 +111,62 @@ describe("SettingsController Integration", () => {
     expect(scheduler.restart).toHaveBeenCalledWith(30);
   });
 
+  it("keeps existing proxyUrl when partial save only updates syncIntervalMinutes", async () => {
+    await mockDb.db
+      .update(settings)
+      .set({ proxyUrl: "http://127.0.0.1:8080" })
+      .where(eq(settings.id, SETTINGS_ID))
+      .run();
+
+    const saveCall = vi
+      .mocked(ipcMain.handle)
+      .mock.calls.find(([channel]) => channel === IPC_CHANNELS.SETTINGS.SAVE);
+
+    expect(saveCall).toBeDefined();
+    if (!saveCall) {
+      throw new Error("SETTINGS.SAVE handler was not registered");
+    }
+
+    const invokeHandler = saveCall[1];
+    await invokeHandler(undefined, { syncIntervalMinutes: 15 });
+
+    const updated = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    expect(updated).toBeDefined();
+    expect(updated?.syncIntervalMinutes).toBe(15);
+    expect(updated?.proxyUrl).toBe("http://127.0.0.1:8080");
+    expect(scheduler.restart).toHaveBeenCalledWith(15);
+  });
+
+  it("clears proxyUrl when save explicitly sends null", async () => {
+    await mockDb.db
+      .update(settings)
+      .set({ proxyUrl: "http://127.0.0.1:8080" })
+      .where(eq(settings.id, SETTINGS_ID))
+      .run();
+
+    const saveCall = vi
+      .mocked(ipcMain.handle)
+      .mock.calls.find(([channel]) => channel === IPC_CHANNELS.SETTINGS.SAVE);
+
+    expect(saveCall).toBeDefined();
+    if (!saveCall) {
+      throw new Error("SETTINGS.SAVE handler was not registered");
+    }
+
+    const invokeHandler = saveCall[1];
+    await invokeHandler(undefined, { proxyUrl: null });
+
+    const updated = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    expect(updated).toBeDefined();
+    expect(updated?.proxyUrl).toBeNull();
+  });
+
   it("keeps other sync fields when saving autoSyncOnArtistAdd", async () => {
     const saveCall = vi
       .mocked(ipcMain.handle)

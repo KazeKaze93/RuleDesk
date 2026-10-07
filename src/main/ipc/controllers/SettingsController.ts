@@ -333,12 +333,16 @@ export class SettingsController extends BaseController {
           const finalBackupRetention =
             data.backupRetention ?? existing.backupRetention ?? 5;
 
+          // Absent proxyUrl key keeps existing; explicit null/"" clears ("" → null via schema preprocess).
+          const finalProxyUrl =
+            "proxyUrl" in data ? (data.proxyUrl ?? null) : existing.proxyUrl;
+
           tx.update(settings)
             .set({
               userId: finalUserId,
               provider: finalProvider,
               encryptedApiKey: finalEncryptedKey,
-              proxyUrl: data.proxyUrl ?? null,
+              proxyUrl: finalProxyUrl,
               // CRITICAL: Preserve isAdultVerified and tosAcceptedAt when saving auth data
               // These fields should only be updated by confirmLegal, not by saveSettings
               isAdultVerified: existing.isAdultVerified ?? false,
@@ -359,7 +363,7 @@ export class SettingsController extends BaseController {
               userId: userId ?? "",
               provider: provider ?? "rule34",
               encryptedApiKey: encryptedKey ?? "",
-              proxyUrl: data.proxyUrl ?? null,
+              proxyUrl: "proxyUrl" in data ? (data.proxyUrl ?? null) : null,
               isSafeMode: true,
               isAdultConfirmed: false,
               isAdultVerified: false,

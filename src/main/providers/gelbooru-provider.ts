@@ -2,7 +2,14 @@ import axios from "axios";
 import { logger } from "../lib/logger";
 import { selectBestPreview } from "../lib/media-utils";
 import { REQUEST_TIMEOUT } from "../config/constants";
-import { IBooruProvider, BooruPost, ProviderSettings, SearchResults } from "./types";
+import {
+  IBooruProvider,
+  BooruPost,
+  FetchPostsResult,
+  ProviderSettings,
+  SearchResults,
+  extractRawPostId,
+} from "./types";
 import type { ArtistType } from "../db/schema";
 import { GelbooruRawPostSchema, type GelbooruRawPost } from "../../shared/schemas/booru";
 import { normalizeRating } from "../../shared/utils/post-normalization";
@@ -189,7 +196,7 @@ export class GelbooruProvider implements IBooruProvider {
     settings: ProviderSettings,
     isRandom: boolean,
     limit: number
-  ): Promise<BooruPost[]> {
+  ): Promise<FetchPostsResult> {
     try {
       await this.throttle.wait("user");
     } catch (error) {
@@ -275,6 +282,7 @@ export class GelbooruProvider implements IBooruProvider {
       // Instead, we validate each post and collect valid ones
       const validatedPosts: GelbooruRawPost[] = [];
       const validationErrors: z.ZodError[] = [];
+      const rejectedPostIds: number[] = [];
 
       for (const raw of rawPosts) {
         const result = GelbooruRawPostSchema.safeParse(raw);
@@ -282,6 +290,10 @@ export class GelbooruProvider implements IBooruProvider {
           validatedPosts.push(result.data);
         } else {
           validationErrors.push(result.error);
+          const rejectedId = extractRawPostId(raw);
+          if (rejectedId !== null) {
+            rejectedPostIds.push(rejectedId);
+          }
         }
       }
 
@@ -293,6 +305,7 @@ export class GelbooruProvider implements IBooruProvider {
             totalPosts: rawPosts.length,
             validPosts: validatedPosts.length,
             invalidPosts: validationErrors.length,
+            rejectedPostIds,
             sampleErrors: validationErrors.slice(0, 3).map(e => e.errors)
           }
         );
@@ -310,7 +323,7 @@ export class GelbooruProvider implements IBooruProvider {
         }
       }
       
-      return posts;
+      return { posts, rawItemCount: rawPosts.length, rejectedPostIds };
     } catch (error) {
       if (isProviderSearchError(error)) {
         if (error.kind === "rate_limit") {

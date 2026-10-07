@@ -604,7 +604,7 @@ export class SyncService {
             ? baseTag 
             : `${baseTag} id:>${currentLastPostId}`;
 
-          const postsData = await retryWithBackoff(
+          const pageResult = await retryWithBackoff(
             () =>
               provider.fetchPosts(
                 tagsQuery,
@@ -620,19 +620,54 @@ export class SyncService {
             2000,
             artist.name
           );
+          const postsData = pageResult.posts;
+          const rawItemCount = pageResult.rawItemCount;
+          const rejectedPostIds = pageResult.rejectedPostIds;
+
+          if (rejectedPostIds.length > 0) {
+            logger.warn(
+              `SyncService: ${artist.name} - ${rejectedPostIds.length} posts rejected by Zod validation`,
+              { rejectedPostIds }
+            );
+          }
 
           this.throwIfCancelled();
 
           // Filter posts: initial sync saves all, incremental only saves new ones
-          const newPosts = isInitial 
-            ? postsData 
+          const newPosts = isInitial
+            ? postsData
             : postsData.filter((p) => p.id > currentLastPostId);
 
-          // Stop if no new posts found — known territory reached (incremental complete)
-          if (newPosts.length === 0) {
+          // Known territory: validated posts exist but none are newer than the cursor
+          if (newPosts.length === 0 && postsData.length > 0) {
             paginationCompleted = true;
             hasMore = false;
             break;
+          }
+
+          // True empty API page (no raw items)
+          if (rawItemCount === 0) {
+            paginationCompleted = true;
+            hasMore = false;
+            break;
+          }
+
+          // Full/partial raw page where every item failed Zod/XML filtering — do not
+          // treat as end-of-feed; advance page only when the raw page was full.
+          if (newPosts.length === 0) {
+            if (rawItemCount < PAGE_SIZE) {
+              paginationCompleted = true;
+              hasMore = false;
+              logger.debug(
+                `SyncService: ${artist.name} - Page ${page} rawItemCount=${rawItemCount} (< ${PAGE_SIZE}) with 0 valid posts, stopping pagination`
+              );
+            } else {
+              page++;
+              logger.debug(
+                `SyncService: ${artist.name} - Page ${page - 1} rawItemCount=${rawItemCount} all failed validation, continuing to page ${page}`
+              );
+            }
+            continue;
           }
 
           // Pre-compute mediaType for all posts to avoid repeated URL parsing
@@ -668,7 +703,7 @@ export class SyncService {
           // Commit batch transaction when we have enough pages or reached end
           const shouldCommitBatch = 
             allPostsToSave.length >= BATCH_SIZE_PAGES * PAGE_SIZE || // 5 pages worth
-            (postsData.length < PAGE_SIZE && allPostsToSave.length > 0) || // End of pagination
+            (rawItemCount < PAGE_SIZE && allPostsToSave.length > 0) || // End of pagination
             !hasMore; // No more pages
 
           if (shouldCommitBatch && allPostsToSave.length > 0) {
@@ -696,14 +731,14 @@ export class SyncService {
             );
           }
 
-          // Continue pagination if we got a full page (PAGE_SIZE posts)
-          if (postsData.length < PAGE_SIZE) {
+          // End-of-feed from raw page size (before Zod/XML filtering), not validated length
+          if (rawItemCount < PAGE_SIZE) {
             paginationCompleted = true;
             hasMore = false;
-            logger.debug(`SyncService: ${artist.name} - Page ${page} returned ${postsData.length} posts (< ${PAGE_SIZE}), stopping pagination`);
+            logger.debug(`SyncService: ${artist.name} - Page ${page} rawItemCount=${rawItemCount} (< ${PAGE_SIZE}), stopping pagination`);
           } else {
             page++;
-            logger.debug(`SyncService: ${artist.name} - Page ${page - 1} returned ${postsData.length} posts, continuing to page ${page}`);
+            logger.debug(`SyncService: ${artist.name} - Page ${page - 1} rawItemCount=${rawItemCount}, continuing to page ${page}`);
           }
         } catch (e) {
           if (isSyncCancelledError(e)) {

@@ -643,7 +643,7 @@ return <MainApp />;
 
 ### `saveSettings(creds)`
 
-Saves settings to the database. Supports partial updates (credentials, sync options, proxy URL). API key is encrypted at rest using Electron's `safeStorage` API before storage.
+Saves settings to the database. Supports partial updates (credentials, sync options, proxy URL). Omitted fields keep their existing DB values. For `proxyUrl`, key absence keeps the existing value; explicit `null` or `""` clears it (`"proxyUrl" in data ? data.proxyUrl ?? null : existing.proxyUrl`). API key is encrypted at rest using Electron's `safeStorage` API before storage.
 
 **⚠️ SECURITY CONTRACT:**
 
@@ -2048,8 +2048,8 @@ All IPC methods can throw errors. Always wrap calls in try-catch blocks or let R
 
 | Layer | Responsibility |
 |-------|----------------|
-| `Rule34Provider.fetchPosts` | Throws `ProviderSearchError` with `kind` (`auth`, `rate_limit`, `network`, `parse`); XML fallback only on `parse`, never on auth/429 |
-| `GelbooruProvider.fetchPosts` | Throws `ProviderSearchError` with `kind` (`rate_limit` on HTTP 429 after `notifyRateLimited`; `network` on transport/timeout; `parse` on non-JSON 200). Genuine empty JSON `[]` still returns `[]` so Browse alias/user: heuristics can run. |
+| `Rule34Provider.fetchPosts` | Returns `FetchPostsResult` `{ posts, rawItemCount, rejectedPostIds }` (`rawItemCount` = items before Zod/XML filtering; `rejectedPostIds` = ids that failed Zod). Throws `ProviderSearchError` with `kind` (`auth`, `rate_limit`, `network`, `parse`); XML fallback only on `parse`, never on auth/429 |
+| `GelbooruProvider.fetchPosts` | Returns `FetchPostsResult` `{ posts, rawItemCount, rejectedPostIds }`. Throws `ProviderSearchError` with `kind` (`rate_limit` on HTTP 429 after `notifyRateLimited`; `network` on transport/timeout; `parse` on non-JSON 200). Genuine empty JSON `[]` still returns `{ posts: [], rawItemCount: 0, rejectedPostIds: [] }` so Browse alias/user: heuristics can run. |
 | `throwProviderSearchIpcError` (main) | Serializes to IPC-safe `Error` + enumerable payload fields |
 | `parseProviderSearchErrorPayload` (shared) | Normalizes Electron invoke wrapper → typed payload for UI |
 | `BrowseErrorState` (renderer) | User-facing centered error state (not a destructive banner) |

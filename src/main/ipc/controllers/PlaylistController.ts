@@ -1917,7 +1917,7 @@ export class PlaylistController extends BaseController {
       // If the provider doesn't support native randomization, this pseudo-random approach
       // provides reasonable distribution across pages (1-MAX_RANDOM_PAGES) for better variety.
       const apiPage = isRandom ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1 : page - 1;
-      const booruPosts = await provider.fetchPosts(
+      const { posts: booruPosts } = await provider.fetchPosts(
         booruQuery,
         apiPage,
         providerSettings,

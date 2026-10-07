@@ -10,8 +10,10 @@ import {
 import {
   IBooruProvider,
   BooruPost,
+  FetchPostsResult,
   ProviderSettings,
   SearchResults,
+  extractRawPostId,
 } from "./types";
 import type { ArtistType } from "../db/schema";
 import { R34RawPostSchema, type R34RawPost } from "../../shared/schemas/booru";
@@ -264,11 +266,13 @@ export class Rule34Provider implements IBooruProvider {
   }
 
   /**
-   * Normalize JSON posts to BooruPost format
+   * Normalize JSON posts to BooruPost format.
+   * ``rawItemCount`` is the array length before Zod/map filtering.
    */
-  private normalizePosts(json: unknown[]): BooruPost[] {
+  private normalizePosts(json: unknown[]): FetchPostsResult {
     const validatedPosts: R34RawPost[] = [];
     const validationErrors: z.ZodError[] = [];
+    const rejectedPostIds: number[] = [];
 
     for (const raw of json) {
       const result = R34RawPostSchema.safeParse(raw);
@@ -276,6 +280,10 @@ export class Rule34Provider implements IBooruProvider {
         validatedPosts.push(result.data);
       } else {
         validationErrors.push(result.error);
+        const rejectedId = extractRawPostId(raw);
+        if (rejectedId !== null) {
+          rejectedPostIds.push(rejectedId);
+        }
       }
     }
 
@@ -286,14 +294,19 @@ export class Rule34Provider implements IBooruProvider {
           totalPosts: json.length,
           validPosts: validatedPosts.length,
           invalidPosts: validationErrors.length,
+          rejectedPostIds,
           sampleErrors: validationErrors.slice(0, 3).map((e) => e.errors),
         }
       );
     }
 
-    return validatedPosts
-      .map((raw) => this.mapToBooruPost(raw))
-      .filter((post): post is BooruPost => post !== null);
+    return {
+      posts: validatedPosts
+        .map((raw) => this.mapToBooruPost(raw))
+        .filter((post): post is BooruPost => post !== null),
+      rawItemCount: json.length,
+      rejectedPostIds,
+    };
   }
 
   async fetchPosts(
@@ -302,7 +315,7 @@ export class Rule34Provider implements IBooruProvider {
     settings: ProviderSettings,
     isRandom: boolean,
     limit: number
-  ): Promise<BooruPost[]> {
+  ): Promise<FetchPostsResult> {
     await this.waitForUserSlot();
 
     const apiPage = isRandom
@@ -321,8 +334,8 @@ export class Rule34Provider implements IBooruProvider {
         limit: pageLimit,
       });
       assertRule34NotBlockedResponse(jsonResponse);
-      const posts = this.parseJsonPostSearchResponse(jsonResponse.text, tags);
-      return this.maybeShufflePosts(posts, isRandom);
+      const result = this.parseJsonPostSearchResponse(jsonResponse.text, tags);
+      return this.maybeShufflePosts(result, isRandom);
     } catch (error) {
       this.notifyIfRateLimited(error);
       if (isProviderSearchError(error)) {
@@ -356,11 +369,11 @@ export class Rule34Provider implements IBooruProvider {
         limit: pageLimit,
       });
       assertRule34NotBlockedResponse(xmlResponse);
-      const posts = this.parseXmlPostSearchResponse(xmlResponse.text);
+      const result = this.parseXmlPostSearchResponse(xmlResponse.text);
       logger.warn(
-        `[Rule34Provider] Recovered ${posts.length} posts via XML fallback.`
+        `[Rule34Provider] Recovered ${result.posts.length} posts via XML fallback (rawItemCount=${result.rawItemCount}).`
       );
-      return this.maybeShufflePosts(posts, isRandom);
+      return this.maybeShufflePosts(result, isRandom);
     } catch (error) {
       this.notifyIfRateLimited(error);
       if (isProviderSearchError(error)) {
@@ -374,18 +387,22 @@ export class Rule34Provider implements IBooruProvider {
   }
 
   private maybeShufflePosts(
-    posts: BooruPost[],
+    result: FetchPostsResult,
     isRandom: boolean
-  ): BooruPost[] {
-    if (!isRandom || posts.length <= 1) {
-      return posts;
+  ): FetchPostsResult {
+    if (!isRandom || result.posts.length <= 1) {
+      return result;
     }
-    const shuffled = [...posts];
+    const shuffled = [...result.posts];
     for (let i = shuffled.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    return shuffled;
+    return {
+      posts: shuffled,
+      rawItemCount: result.rawItemCount,
+      rejectedPostIds: result.rejectedPostIds,
+    };
   }
 
   private async requestPostSearchResponse(options: {
@@ -418,7 +435,7 @@ export class Rule34Provider implements IBooruProvider {
     }
   }
 
-  private parseJsonPostSearchResponse(text: string, tags: string): BooruPost[] {
+  private parseJsonPostSearchResponse(text: string, tags: string): FetchPostsResult {
     if (!text || text.trim().length === 0) {
       logRule34ResponseBodySnippet(
         `Empty JSON response for tags "${tags}"`,
@@ -450,28 +467,25 @@ export class Rule34Provider implements IBooruProvider {
     return this.normalizePosts(json);
   }
 
-  private parseXmlPostSearchResponse(text: string): BooruPost[] {
+  private parseXmlPostSearchResponse(text: string): FetchPostsResult {
     if (!text || text.trim().length === 0) {
       logRule34ResponseBodySnippet("Empty XML response", text);
       throw new ProviderSearchError("parse");
     }
 
-    const posts = this.parsePostXml(text);
-    if (posts.length === 0 && !isRule34PostsXml(text)) {
+    const result = this.parsePostXml(text);
+    if (result.rawItemCount === 0 && !isRule34PostsXml(text)) {
       logRule34ResponseBodySnippet("Unrecognized XML/HTML response", text);
       throw new ProviderSearchError("parse");
     }
-    return posts;
+    return result;
   }
 
   /**
-   * Parse XML response from Rule34 API using fast-xml-parser
-   * Returns BooruPost[] with strict camelCase field mapping for UI compatibility
-   *
-   * @param xml - Raw XML response text
-   * @returns Array of parsed BooruPost objects
+   * Parse XML response from Rule34 API using fast-xml-parser.
+   * ``rawItemCount`` is the post element count before map/filter.
    */
-  private parsePostXml(xml: string): BooruPost[] {
+  private parsePostXml(xml: string): FetchPostsResult {
     try {
       const parsed = this.parser.parse(xml);
 
@@ -483,7 +497,7 @@ export class Rule34Provider implements IBooruProvider {
 
       if (!postsRaw) {
         logger.warn("[Rule34Provider] No posts found in response (parsed.posts.post is undefined)");
-        return [];
+        return { posts: [], rawItemCount: 0, rejectedPostIds: [] };
       }
 
       // If post is only one, parser returns object instead of array -> normalize
@@ -496,10 +510,15 @@ export class Rule34Provider implements IBooruProvider {
         .map((raw: unknown) => this.mapPostFromXml(raw))
         .filter((p: BooruPost | null): p is BooruPost => p !== null);
 
-      return mappedPosts;
+      // XML path does not run Zod; rejectedPostIds stays empty.
+      return {
+        posts: mappedPosts,
+        rawItemCount: postsRaw.length,
+        rejectedPostIds: [],
+      };
     } catch (error) {
       logger.error(`[Rule34Provider] Failed to parse XML posts:`, error);
-      return [];
+      return { posts: [], rawItemCount: 0, rejectedPostIds: [] };
     }
   }
 

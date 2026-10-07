@@ -114,9 +114,11 @@ describe("Rule34Provider.fetchPosts error classification", () => {
       data: "[]",
     });
 
-    await expect(provider.fetchPosts("missing_tag", 1, settings, false, 50)).resolves.toEqual(
-      []
-    );
+    await expect(provider.fetchPosts("missing_tag", 1, settings, false, 50)).resolves.toEqual({
+      posts: [],
+      rawItemCount: 0,
+      rejectedPostIds: [],
+    });
 
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
   });

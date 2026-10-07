@@ -4,7 +4,7 @@ import { server } from '../../mocks/server';
 import { artists, posts, settings, SETTINGS_ID } from '@/main/db/schema';
 import { eq } from 'drizzle-orm';
 import { getProvider } from '@/main/providers';
-import type { BooruPost } from '@/main/providers/types';
+import type { BooruPost, FetchPostsResult } from '@/main/providers/types';
 import { PAGE_SIZE } from '@/main/providers/types';
 import { ProviderSearchError } from '@/main/providers/provider-search-errors';
 import { IPC_CHANNELS } from '@/main/ipc/channels';
@@ -80,6 +80,16 @@ import {
 } from '@/main/services/sync-service';
 
 describe('SyncService Integration', () => {
+  const asFetchResult = (
+    posts: BooruPost[],
+    rawItemCount = posts.length,
+    rejectedPostIds: number[] = []
+  ): FetchPostsResult => ({
+    posts,
+    rawItemCount,
+    rejectedPostIds,
+  });
+
   let mockDb: ReturnType<typeof createMockDb>;
   let service: SyncService;
 
@@ -260,9 +270,9 @@ describe('SyncService Integration', () => {
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
       async (_tags, page) => {
         if (page === 0) {
-          return createPage(1);
+          return asFetchResult(createPage(1));
         }
-        return [];
+        return asFetchResult([]);
       }
     );
 
@@ -464,15 +474,15 @@ describe('SyncService Integration', () => {
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
       async (_tags, page) => {
         if (page === 0) {
-          return createPage(1);
+          return asFetchResult(createPage(1));
         }
         if (page === 1) {
-          return createPage(101);
+          return asFetchResult(createPage(101));
         }
         if (page === 2) {
           throw new ProviderSearchError('network', 'Provider page 3 failure');
         }
-        return [];
+        return asFetchResult([]);
       }
     );
 
@@ -557,12 +567,12 @@ describe('SyncService Integration', () => {
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
       async (_tags, page) => {
         if (page >= 0 && page <= 4) {
-          return createPage(page * 100 + 1);
+          return asFetchResult(createPage(page * 100 + 1));
         }
         if (page === 5) {
           throw new ProviderSearchError('network', 'Provider failure after mid-batch');
         }
-        return [];
+        return asFetchResult([]);
       }
     );
 
@@ -649,19 +659,19 @@ describe('SyncService Integration', () => {
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
       async (_tags, page) => {
         if (page === 0) {
-          return createPage(51);
+          return asFetchResult(createPage(51));
         }
         if (page === 1 && failOnce) {
           failOnce = false;
           throw new ProviderSearchError('network', 'Transient page 2 failure');
         }
         if (page === 1) {
-          return createPage(151);
+          return asFetchResult(createPage(151));
         }
         if (page === 2) {
-          return createPage(251, 50);
+          return asFetchResult(createPage(251, 50));
         }
-        return [];
+        return asFetchResult([]);
       }
     );
 
@@ -730,6 +740,168 @@ describe('SyncService Integration', () => {
     }
   });
 
+  it('should continue sync when a full page fails validation and not skip older posts', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    await mockDb.db
+      .update(artists)
+      .set({ lastPostId: 0, lastSyncIncomplete: false, lastChecked: null })
+      .where(eq(artists.id, artist.id));
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const createPage = (startId: number, count: number): BooruPost[] =>
+      Array.from({ length: count }, (_, index) => {
+        const id = startId + index;
+        return {
+          id,
+          fileUrl: `https://cdn.example.com/${id}.jpg`,
+          previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+          sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+          tags: ['artist_name', `tag_${id}`],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 1000,
+          height: 1000,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        };
+      });
+
+    const provider = getProvider('rule34');
+    let fetchCount = 0;
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(async () => {
+      fetchCount += 1;
+      if (fetchCount === 1) {
+        // Full raw page, zero posts survive Zod/XML filtering — must not end sync.
+        return {
+          posts: [],
+          rawItemCount: PAGE_SIZE,
+          rejectedPostIds: Array.from({ length: PAGE_SIZE }, (_, i) => 9000 + i),
+        };
+      }
+      if (fetchCount === 2) {
+        return asFetchResult(createPage(1, PAGE_SIZE), PAGE_SIZE);
+      }
+      return asFetchResult(createPage(PAGE_SIZE + 1, 10), 10);
+    });
+
+    try {
+      const artistBefore = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      if (!artistBefore) {
+        throw new Error('Artist missing');
+      }
+
+      await service.syncArtist(artistBefore, {
+        userId: settingsRecord.userId || '',
+        apiKey,
+      });
+
+      expect(fetchCount).toBeGreaterThanOrEqual(3);
+
+      const savedPosts = await mockDb.db.query.posts.findMany({
+        where: eq(posts.artistId, artist.id),
+      });
+      expect(savedPosts.length).toBe(PAGE_SIZE + 10);
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+      expect(updatedArtist?.lastPostId).toBe(PAGE_SIZE + 10);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(false);
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('warns with rejected post ids when Zod validation drops items on a page', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    await mockDb.db
+      .update(artists)
+      .set({ lastPostId: 0, lastSyncIncomplete: false, lastChecked: null })
+      .where(eq(artists.id, artist.id));
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey =
+      safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+        ? safeStorage.decryptString(
+            Buffer.from(settingsRecord.encryptedApiKey, 'base64')
+          )
+        : settingsRecord.encryptedApiKey || '';
+
+    const log = await import('electron-log');
+    const warnMock = vi.mocked(log.default.warn);
+    warnMock.mockClear();
+
+    const rejectedPostIds = [501, 502, 503];
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockResolvedValue({
+      posts: [
+        {
+          id: 10,
+          fileUrl: 'https://cdn.example.com/10.jpg',
+          previewUrl: 'https://cdn.example.com/10-p.jpg',
+          sampleUrl: 'https://cdn.example.com/10-s.jpg',
+          tags: ['artist_name'],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 100,
+          height: 100,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        },
+      ],
+      rawItemCount: 4,
+      rejectedPostIds,
+    });
+
+    try {
+      await service.syncArtist(artist, {
+        userId: settingsRecord.userId || '',
+        apiKey,
+      });
+
+      expect(warnMock).toHaveBeenCalledWith(
+        expect.stringMatching(/3 posts rejected by Zod validation/),
+        expect.objectContaining({ rejectedPostIds })
+      );
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
   it('should treat a full page of already-known posts as completed incremental sync', async () => {
     const artist = await mockDb.db.query.artists.findFirst({
       where: eq(artists.tag, 'artist_name'),
@@ -777,9 +949,7 @@ describe('SyncService Integration', () => {
 
     const provider = getProvider('rule34');
     // Full PAGE_SIZE of posts all ≤ lastPostId → newPosts empty, still completed
-    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockResolvedValue(
-      createPage(401)
-    );
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockResolvedValue(asFetchResult(createPage(401)));
 
     try {
       const artistBefore = await mockDb.db.query.artists.findFirst({
@@ -851,8 +1021,8 @@ describe('SyncService Integration', () => {
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
       async (_tags, page) => {
         if (page === 0) {
-          return Array.from({ length: 100 }, (_, index) =>
-            createPost(51 + index)
+          return asFetchResult(
+            Array.from({ length: 100 }, (_, index) => createPost(51 + index))
           );
         }
         if (page === 1) {
@@ -864,9 +1034,9 @@ describe('SyncService Integration', () => {
               throw new Error('Processing failure on short last page');
             },
           });
-          return [boomPost, createPost(152)];
+          return asFetchResult([boomPost, createPost(152)]);
         }
-        return [];
+        return asFetchResult([]);
       }
     );
 
@@ -1044,20 +1214,20 @@ describe('SyncService Integration', () => {
       async (_tags, page, _settings, _isRandom, limit) => {
         if (limit !== PAGE_SIZE) {
           if (page === 0) {
-            return createPosts(1, 50);
+            return asFetchResult(createPosts(1, 50));
           }
-          return [];
+          return asFetchResult([]);
         }
         if (page === 0) {
-          return createPosts(1, PAGE_SIZE);
+          return asFetchResult(createPosts(1, PAGE_SIZE));
         }
         if (page === 1) {
-          return createPosts(PAGE_SIZE + 1, PAGE_SIZE);
+          return asFetchResult(createPosts(PAGE_SIZE + 1, PAGE_SIZE));
         }
         if (page === 2) {
-          return createPosts(PAGE_SIZE * 2 + 1, SHORT_LAST_PAGE);
+          return asFetchResult(createPosts(PAGE_SIZE * 2 + 1, SHORT_LAST_PAGE));
         }
-        return [];
+        return asFetchResult([]);
       }
     );
 
@@ -1158,7 +1328,7 @@ describe('SyncService Integration', () => {
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
       async (_tags, page) => {
         if (page === 0) {
-          return createPage(INITIAL_LAST_POST_ID + 1, PAGE_SIZE);
+          return asFetchResult(createPage(INITIAL_LAST_POST_ID + 1, PAGE_SIZE));
         }
         if (page === 1) {
           if (cancelOnNextPage1) {
@@ -1166,9 +1336,9 @@ describe('SyncService Integration', () => {
             service.requestCancel();
             await new Promise((resolve) => setTimeout(resolve, PAGE1_HANG_MS));
           }
-          return createPage(INITIAL_LAST_POST_ID + PAGE_SIZE + 1, PAGE_SIZE);
+          return asFetchResult(createPage(INITIAL_LAST_POST_ID + PAGE_SIZE + 1, PAGE_SIZE));
         }
-        return createPage(INITIAL_LAST_POST_ID + PAGE_SIZE * 2 + 1, 25);
+        return asFetchResult(createPage(INITIAL_LAST_POST_ID + PAGE_SIZE * 2 + 1, 25));
       }
     );
 
@@ -1254,7 +1424,7 @@ describe('SyncService Integration', () => {
             rows.map((row) => [row.tag, row.syncStatus])
           )
         );
-        return [
+        return asFetchResult([
           {
             id: snapshots.length * 10 + 1,
             fileUrl: `https://cdn.example.com/${snapshots.length}.jpg`,
@@ -1268,7 +1438,7 @@ describe('SyncService Integration', () => {
             height: 100,
             createdAt: new Date('2025-01-01T00:00:00.000Z'),
           },
-        ];
+        ]);
       }
     );
 
@@ -1327,22 +1497,24 @@ describe('SyncService Integration', () => {
     const provider = getProvider('rule34');
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
       async () =>
-        Array.from({ length: PAGE_SIZE }, (_, index) => {
-          const id = index + 1;
-          return {
-            id,
-            fileUrl: `https://cdn.example.com/${id}.jpg`,
-            previewUrl: `https://cdn.example.com/${id}-p.jpg`,
-            sampleUrl: `https://cdn.example.com/${id}-s.jpg`,
-            tags: ['artist_name'],
-            rating: 's',
-            score: 0,
-            source: '',
-            width: 100,
-            height: 100,
-            createdAt: new Date('2025-01-01T00:00:00.000Z'),
-          };
-        })
+        asFetchResult(
+          Array.from({ length: PAGE_SIZE }, (_, index) => {
+            const id = index + 1;
+            return {
+              id,
+              fileUrl: `https://cdn.example.com/${id}.jpg`,
+              previewUrl: `https://cdn.example.com/${id}-p.jpg`,
+              sampleUrl: `https://cdn.example.com/${id}-s.jpg`,
+              tags: ['artist_name'],
+              rating: 's',
+              score: 0,
+              source: '',
+              width: 100,
+              height: 100,
+              createdAt: new Date('2025-01-01T00:00:00.000Z'),
+            };
+          })
+        )
     );
 
     try {
@@ -1377,21 +1549,22 @@ describe('SyncService Integration', () => {
 
     const provider = getProvider('rule34');
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
-      async () => [
-        {
-          id: 99,
-          fileUrl: 'https://cdn.example.com/99.jpg',
-          previewUrl: 'https://cdn.example.com/99-p.jpg',
-          sampleUrl: 'https://cdn.example.com/99-s.jpg',
-          tags: ['artist_name'],
-          rating: 's',
-          score: 0,
-          source: '',
-          width: 100,
-          height: 100,
-          createdAt: new Date('2025-01-01T00:00:00.000Z'),
-        },
-      ]
+      async () =>
+        asFetchResult([
+          {
+            id: 99,
+            fileUrl: 'https://cdn.example.com/99.jpg',
+            previewUrl: 'https://cdn.example.com/99-p.jpg',
+            sampleUrl: 'https://cdn.example.com/99-s.jpg',
+            tags: ['artist_name'],
+            rating: 's',
+            score: 0,
+            source: '',
+            width: 100,
+            height: 100,
+            createdAt: new Date('2025-01-01T00:00:00.000Z'),
+          },
+        ])
     );
 
     try {
@@ -1449,21 +1622,22 @@ describe('SyncService Integration', () => {
 
     const provider = getProvider('rule34');
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
-      async () => [
-        {
-          id: 11,
-          fileUrl: 'https://cdn.example.com/11.jpg',
-          previewUrl: 'https://cdn.example.com/11-p.jpg',
-          sampleUrl: 'https://cdn.example.com/11-s.jpg',
-          tags: ['artist_name'],
-          rating: 's',
-          score: 0,
-          source: '',
-          width: 100,
-          height: 100,
-          createdAt: new Date('2025-01-01T00:00:00.000Z'),
-        },
-      ]
+      async () =>
+        asFetchResult([
+          {
+            id: 11,
+            fileUrl: 'https://cdn.example.com/11.jpg',
+            previewUrl: 'https://cdn.example.com/11-p.jpg',
+            sampleUrl: 'https://cdn.example.com/11-s.jpg',
+            tags: ['artist_name'],
+            rating: 's',
+            score: 0,
+            source: '',
+            width: 100,
+            height: 100,
+            createdAt: new Date('2025-01-01T00:00:00.000Z'),
+          },
+        ])
     );
 
     try {
@@ -1510,21 +1684,22 @@ describe('SyncService Integration', () => {
 
     const provider = getProvider('rule34');
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
-      async () => [
-        {
-          id: 21,
-          fileUrl: 'https://cdn.example.com/21.jpg',
-          previewUrl: 'https://cdn.example.com/21-p.jpg',
-          sampleUrl: 'https://cdn.example.com/21-s.jpg',
-          tags: ['artist_name'],
-          rating: 's',
-          score: 0,
-          source: '',
-          width: 100,
-          height: 100,
-          createdAt: new Date('2025-01-01T00:00:00.000Z'),
-        },
-      ]
+      async () =>
+        asFetchResult([
+          {
+            id: 21,
+            fileUrl: 'https://cdn.example.com/21.jpg',
+            previewUrl: 'https://cdn.example.com/21-p.jpg',
+            sampleUrl: 'https://cdn.example.com/21-s.jpg',
+            tags: ['artist_name'],
+            rating: 's',
+            score: 0,
+            source: '',
+            width: 100,
+            height: 100,
+            createdAt: new Date('2025-01-01T00:00:00.000Z'),
+          },
+        ])
     );
 
     try {

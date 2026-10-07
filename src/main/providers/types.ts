@@ -17,6 +17,32 @@ export interface ProviderSettings {
   apiKey?: string;
 }
 
+/**
+ * One API page: validated posts plus the raw item count before Zod/XML filtering.
+ * Sync pagination must use ``rawItemCount`` (not ``posts.length``) to detect end-of-feed.
+ * ``rejectedPostIds`` are raw item ids that failed Zod (best-effort; omitted id → not listed).
+ */
+export type FetchPostsResult = {
+  posts: BooruPost[];
+  rawItemCount: number;
+  rejectedPostIds: number[];
+};
+
+/** Best-effort numeric post id from a raw API item (Zod failure logging). */
+export function extractRawPostId(raw: unknown): number | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+  const id = Reflect.get(raw, "id");
+  if (typeof id === "number" && Number.isFinite(id)) {
+    return id;
+  }
+  if (typeof id === "string" && /^\d+$/.test(id)) {
+    return Number(id);
+  }
+  return null;
+}
+
 export interface IBooruProvider {
   id: string;
   name: string;
@@ -39,7 +65,7 @@ export interface IBooruProvider {
     settings: ProviderSettings,
     isRandom: boolean,
     limit: number
-  ): Promise<BooruPost[]>;
+  ): Promise<FetchPostsResult>;
   /** Search for tags (autocomplete) with optional AbortSignal for cancellation */
   searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]>;
   /** Formats a tag based on artist type (e.g. adding 'user:' prefix) */

@@ -76,7 +76,11 @@ export const SaveSettingsSchema = z.object({
     )
     .refine((val) => val.trim().length > 0, "API key cannot be whitespace only")
     .optional(),
-  proxyUrl: z.string().url().nullable().optional(),
+  // Absent key = leave existing; null or "" = clear. Preprocess "" → null so URL schema stays strict.
+  proxyUrl: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().url().nullable().optional()
+  ),
   autoSyncOnStartup: z.boolean().optional(),
   autoSyncOnArtistAdd: z.boolean().optional(),
   syncIntervalMinutes: z.number().int().min(0).max(1440).optional(),

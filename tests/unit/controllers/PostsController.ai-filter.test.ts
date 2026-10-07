@@ -52,7 +52,7 @@ vi.mock("electron-log", () => ({
 vi.mock("@/main/providers", () => ({
   getProvider: vi.fn(() => ({
     formatTag: (tag: string) => tag.trim().toLowerCase(),
-    fetchPosts: vi.fn().mockResolvedValue([]),
+    fetchPosts: vi.fn().mockResolvedValue({ posts: [], rawItemCount: 0, rejectedPostIds: [] }),
     searchTags: vi.fn().mockResolvedValue([]),
   })),
   PROVIDER_IDS: ["rule34", "gelbooru"],
