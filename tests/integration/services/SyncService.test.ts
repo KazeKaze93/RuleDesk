@@ -833,6 +833,53 @@ describe('SyncService Integration', () => {
     }
   });
 
+  it('pauseForDbMaintenance waits for active sync and blocks new sync until resume', async () => {
+    let releaseFetch: (() => void) | null = null;
+    const fetchGate = new Promise<void>((resolve) => {
+      releaseFetch = resolve;
+    });
+
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async () => {
+        await fetchGate;
+        return asFetchResult([]);
+      }
+    );
+
+    try {
+      // syncAllArtists (not bare syncArtist) owns the exclusive isSyncing flag.
+      const syncPromise = service.syncAllArtists();
+
+      await new Promise((r) => setTimeout(r, 40));
+      expect(service.getIsSyncing()).toBe(true);
+
+      const pausePromise = service.pauseForDbMaintenance(5000);
+      await new Promise((r) => setTimeout(r, 30));
+      releaseFetch?.();
+      await expect(pausePromise).resolves.toBe(true);
+      expect(service.isDbMaintenanceHoldActive()).toBe(true);
+      await syncPromise.catch(() => undefined);
+
+      let secondStarted = false;
+      fetchPostsSpy.mockImplementation(async () => {
+        secondStarted = true;
+        return asFetchResult([]);
+      });
+      const secondPromise = service.syncAllArtists();
+      await new Promise((r) => setTimeout(r, 50));
+      expect(secondStarted).toBe(false);
+      expect(service.getIsSyncing()).toBe(false);
+
+      service.resumeAfterDbMaintenance();
+      await secondPromise;
+      expect(secondStarted).toBe(true);
+    } finally {
+      service.resumeAfterDbMaintenance();
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
   it('warns with rejected post ids when Zod validation drops items on a page', async () => {
     const artist = await mockDb.db.query.artists.findFirst({
       where: eq(artists.tag, 'artist_name'),

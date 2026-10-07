@@ -31,6 +31,7 @@ import {
   isManualBackupFilename,
 } from "../../lib/database-backup";
 import { restoreDatabaseFromBackup } from "../../lib/database-restore";
+import { withSyncPausedForDbWork } from "../../lib/sync-db-maintenance";
 import { IdSchema } from "../../../shared/schemas/ipc";
 import {
   SetVacuumScheduleArgsSchema,
@@ -457,14 +458,18 @@ export class MaintenanceController extends BaseController {
           });
         }
 
-        const result = await restoreDatabaseFromBackup(backupPath, {
-          getPaths: getDatabasePaths,
-          closeDatabase,
-          initializeDatabase,
-          afterSuccessfulReinit: registerDatabaseInContainerAfterReinit,
-          restoreSidecar: restoreBackupSidecar,
-          logSettingsSnapshot: logRestoredSettingsSnapshot,
-        });
+        const result = await withSyncPausedForDbWork(
+          this.getSyncService(),
+          () =>
+            restoreDatabaseFromBackup(backupPath, {
+              getPaths: getDatabasePaths,
+              closeDatabase,
+              initializeDatabase,
+              afterSuccessfulReinit: registerDatabaseInContainerAfterReinit,
+              restoreSidecar: restoreBackupSidecar,
+              logSettingsSnapshot: logRestoredSettingsSnapshot,
+            })
+        );
 
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.mainWindow.webContents.send("APP:LOADING", { loading: false });

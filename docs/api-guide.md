@@ -1506,7 +1506,7 @@ Returns the current user-visible VACUUM telemetry from Settings state.
 
 ### `runVacuum()`
 
-Runs SQLite `VACUUM;` in Main Process (blocking operation) and updates last-run metadata in `settings`.
+Runs SQLite `VACUUM;` in Main Process (blocking operation) and updates last-run metadata in `settings`. Before closing the DB, Main cancels any in-flight sync (`requestCancel` + `waitUntilIdle`) and blocks new sync until VACUUM reinit finishes (same gate as restore / `wipeAllData`).
 
 **Returns:**
 `Promise<{ success: boolean; startedAt: number; finishedAt?: number; durationMs?: number; error?: string }>`

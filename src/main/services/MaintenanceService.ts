@@ -11,6 +11,8 @@ import {
 import { maintenanceQueue } from "../db/maintenance-queue";
 import { settings, SETTINGS_ID } from "../db/schema";
 import { registerDatabaseInContainerAfterReinit } from "../core/di/databaseRegistration";
+import { withSyncPausedForDbWork } from "../lib/sync-db-maintenance";
+import type { SyncService } from "./sync-service";
 import type {
   RunVacuumResponse,
   VacuumSchedule,
@@ -38,6 +40,8 @@ export class MaintenanceService {
     lastRunStatus: "never",
     lastError: null,
   };
+
+  constructor(private readonly syncService: SyncService) {}
 
   private runVacuumWorker(
     dbPath: string
@@ -204,33 +208,46 @@ export class MaintenanceService {
     let errorMessage: string | null = null;
 
     try {
-      this.ensureSettingsRecord();
-      const { dbPath } = getDatabasePaths();
-      closeDatabase();
+      await withSyncPausedForDbWork(this.syncService, async () => {
+        this.ensureSettingsRecord();
+        const { dbPath } = getDatabasePaths();
+        closeDatabase();
 
-      const workerResult = await this.runVacuumWorker(dbPath);
-      success = workerResult.success;
-      errorMessage = workerResult.error ?? null;
+        const workerResult = await this.runVacuumWorker(dbPath);
+        success = workerResult.success;
+        errorMessage = workerResult.error ?? null;
+
+        try {
+          await initializeDatabase();
+          registerDatabaseInContainerAfterReinit();
+        } catch (error) {
+          success = false;
+          const reinitErrorMessage =
+            error instanceof Error
+              ? error.message
+              : "Database reinitialization failed";
+          errorMessage = errorMessage
+            ? `${errorMessage}; reinit failed: ${reinitErrorMessage}`
+            : `Database reinitialization failed: ${reinitErrorMessage}`;
+          log.error(
+            "[MaintenanceService] Failed to reinitialize database after VACUUM:",
+            error
+          );
+        }
+      });
     } catch (error) {
       success = false;
       errorMessage = error instanceof Error ? error.message : "VACUUM failed";
       log.error("[MaintenanceService] VACUUM worker execution failed:", error);
-    }
-
-    try {
-      await initializeDatabase();
-      registerDatabaseInContainerAfterReinit();
-    } catch (error) {
-      success = false;
-      const reinitErrorMessage =
-        error instanceof Error ? error.message : "Database reinitialization failed";
-      errorMessage = errorMessage
-        ? `${errorMessage}; reinit failed: ${reinitErrorMessage}`
-        : `Database reinitialization failed: ${reinitErrorMessage}`;
-      log.error(
-        "[MaintenanceService] Failed to reinitialize database after VACUUM:",
-        error
-      );
+      try {
+        await initializeDatabase();
+        registerDatabaseInContainerAfterReinit();
+      } catch (reinitError) {
+        log.error(
+          "[MaintenanceService] Failed to reinitialize database after VACUUM error:",
+          reinitError
+        );
+      }
     }
 
     const finishedAt = Date.now();

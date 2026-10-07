@@ -607,7 +607,7 @@ const posts = await db.query.posts.findMany({
    - Sequential execution queue for database maintenance operations
    - Prevents race conditions and "Database is closed" errors
    - Promise-based queue ensures operations complete before next starts
-   - Used for backup, restore, and user-visible VACUUM (`MaintenanceService.runVacuum` → worker). Serializes those ops with each other; does **not** gate ordinary CRUD IPC.
+   - Used for backup, restore, and user-visible VACUUM (`MaintenanceService.runVacuum` → worker). Serializes those ops with each other; does **not** gate ordinary CRUD IPC. VACUUM / restore / wipe also call `SyncService.pauseForDbMaintenance` so sync cannot touch a closed SQLite handle.
 
 8. **Booru Providers** (`src/main/providers/`)
 

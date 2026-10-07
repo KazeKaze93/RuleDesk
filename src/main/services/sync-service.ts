@@ -210,11 +210,20 @@ export class SyncService {
   private window: BrowserWindow | null = null;
   private isSyncing = false;
   private cancelRequested = false;
+  /**
+   * When true, new exclusive sync work waits (VACUUM / restore / wipe).
+   * Set before cancel+drain so queued chain items cannot start mid-maintenance.
+   */
+  private dbMaintenanceHold = false;
   /** Serializes syncAllArtists / repairArtist — queued calls run after the active one finishes */
   private syncChain: Promise<void> = Promise.resolve();
 
   public getIsSyncing(): boolean {
     return this.isSyncing;
+  }
+
+  public isDbMaintenanceHoldActive(): boolean {
+    return this.dbMaintenanceHold;
   }
 
   public requestCancel(): void {
@@ -236,6 +245,20 @@ export class SyncService {
     return true;
   }
 
+  /**
+   * Block new sync, cancel in-flight work, wait until idle.
+   * Call ``resumeAfterDbMaintenance`` in a finally after DB close/reopen work.
+   */
+  public async pauseForDbMaintenance(timeoutMs: number): Promise<boolean> {
+    this.dbMaintenanceHold = true;
+    this.requestCancel();
+    return this.waitUntilIdle(timeoutMs);
+  }
+
+  public resumeAfterDbMaintenance(): void {
+    this.dbMaintenanceHold = false;
+  }
+
   private throwIfCancelled(): void {
     if (this.cancelRequested) {
       throw new SyncCancelledError();
@@ -244,6 +267,9 @@ export class SyncService {
 
   private runExclusive<T>(task: () => Promise<T>): Promise<T> {
     const run = async (): Promise<T> => {
+      while (this.dbMaintenanceHold) {
+        await new Promise((resolve) => setTimeout(resolve, SYNC_CANCEL_POLL_MS));
+      }
       this.isSyncing = true;
       try {
         return await task();

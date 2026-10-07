@@ -98,7 +98,7 @@ let tray: Tray | null = null;
 let isShuttingDown = false;
 const syncScheduler = new SyncScheduler(syncService);
 const backupService = new BackupService(syncService);
-const maintenanceService = new MaintenanceService();
+const maintenanceService = new MaintenanceService(syncService);
 const maintenanceScheduler = new MaintenanceScheduler(
   videoProxyServer,
   maintenanceService

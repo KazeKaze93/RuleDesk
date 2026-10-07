@@ -4,11 +4,14 @@ import path from "node:path";
 import { readFileSync, existsSync, promises as fs } from "fs";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
+import { container, DI_TOKENS } from "../../core/di/Container";
 import { closeDatabase } from "../../db/client";
 import { IPC_CHANNELS } from "../channels";
 import { getDatabasePaths } from "../../db/paths";
 import { getAppIconsDirectory } from "../../lib/app-resources";
+import { withSyncPausedForDbWork } from "../../lib/sync-db-maintenance";
 import { isResolvedPathWithinBase } from "../../utils/path-within-base";
+import type { SyncService } from "../../services/sync-service";
 import type { VideoProxyServer } from "../../services/video-proxy-server";
 import type { UpdaterService } from "../../services/updater-service";
 
@@ -169,47 +172,53 @@ export class SystemController extends BaseController {
    * Order: close DB → stop video proxy → delete children of userData → app.exit(0).
    * User download folders and backups outside userData are not touched.
    */
+  private getSyncService(): SyncService {
+    return container.resolve(DI_TOKENS.SYNC_SERVICE);
+  }
+
   private async wipeAllData(_event: IpcMainInvokeEvent): Promise<void> {
     const userDataDir = path.resolve(app.getPath("userData"));
     log.warn(`[SystemController] Wipe all data requested for: ${userDataDir}`);
 
-    closeDatabase();
-    this.videoProxyServer.stop();
+    await withSyncPausedForDbWork(this.getSyncService(), async () => {
+      closeDatabase();
+      this.videoProxyServer.stop();
 
-    let entries: string[];
-    try {
-      entries = await fs.readdir(userDataDir);
-    } catch (error) {
-      log.error("[SystemController] Failed to list userData for wipe:", error);
-      throw new Error("Could not read application data folder.");
-    }
-
-    const failures: string[] = [];
-
-    for (const name of entries) {
-      const fullPath = path.resolve(userDataDir, name);
-      if (!isResolvedPathWithinBase(fullPath, userDataDir)) {
-        log.error(
-          `[SystemController] Refusing wipe path outside userData: ${fullPath}`
-        );
-        failures.push(name);
-        continue;
-      }
-
+      let entries: string[];
       try {
-        await fs.rm(fullPath, { recursive: true, force: true });
-        log.info(`[SystemController] Wiped: ${name}`);
+        entries = await fs.readdir(userDataDir);
       } catch (error) {
-        log.error(`[SystemController] Failed to wipe "${name}":`, error);
-        failures.push(name);
+        log.error("[SystemController] Failed to list userData for wipe:", error);
+        throw new Error("Could not read application data folder.");
       }
-    }
 
-    if (failures.length > 0) {
-      throw new Error(
-        `Could not delete: ${failures.join(", ")}. Close other apps using these files and try again.`
-      );
-    }
+      const failures: string[] = [];
+
+      for (const name of entries) {
+        const fullPath = path.resolve(userDataDir, name);
+        if (!isResolvedPathWithinBase(fullPath, userDataDir)) {
+          log.error(
+            `[SystemController] Refusing wipe path outside userData: ${fullPath}`
+          );
+          failures.push(name);
+          continue;
+        }
+
+        try {
+          await fs.rm(fullPath, { recursive: true, force: true });
+          log.info(`[SystemController] Wiped: ${name}`);
+        } catch (error) {
+          log.error(`[SystemController] Failed to wipe "${name}":`, error);
+          failures.push(name);
+        }
+      }
+
+      if (failures.length > 0) {
+        throw new Error(
+          `Could not delete: ${failures.join(", ")}. Close other apps using these files and try again.`
+        );
+      }
+    });
 
     log.warn("[SystemController] Wipe complete — exiting");
     app.exit(0);
