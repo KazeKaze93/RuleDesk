@@ -159,12 +159,12 @@ describe("VideoProxyServer cache integrity", () => {
     httpsRequestSpy.mockRestore();
     await proxy.stop();
     cdnServer.closeAllConnections();
-    await new Promise<void>((resolve, reject) => {
-      cdnServer.close((err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
+    await new Promise<void>((resolve) => {
+      const force = setTimeout(() => {
+        resolve();
+      }, 1_000);
+      cdnServer.close(() => {
+        clearTimeout(force);
         resolve();
       });
     });

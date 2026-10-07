@@ -188,11 +188,15 @@ export class VideoProxyServer {
       log.info("[VideoProxy] Stopped");
       return;
     }
-    // Drop half-closed clients, then await close so the listen handle cannot
-    // keep Vitest's event loop alive after the suite finishes.
+    // Drop half-closed clients, then close. Cap the wait — close()'s callback
+    // can stall on some platforms and freeze Vitest afterEach for minutes.
     srv.closeAllConnections();
     await new Promise<void>((resolve) => {
+      const force = setTimeout(() => {
+        resolve();
+      }, 1_000);
       srv.close(() => {
+        clearTimeout(force);
         resolve();
       });
     });
