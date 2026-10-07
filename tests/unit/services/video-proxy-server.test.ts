@@ -124,7 +124,10 @@ describe("VideoProxyServer cache integrity", () => {
     });
 
     await new Promise<void>((resolve) => {
-      cdnServer.listen(0, "127.0.0.1", () => resolve());
+      cdnServer.listen(0, "127.0.0.1", () => {
+        cdnServer.unref();
+        resolve();
+      });
     });
     cdnPort = getPort(cdnServer);
 

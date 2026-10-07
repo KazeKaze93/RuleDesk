@@ -161,6 +161,9 @@ export class VideoProxyServer {
       srv.once("error", reject);
       srv.listen(0, PROXY_HOST, () => {
         srv.removeListener("error", reject);
+        // Do not keep the Node event loop alive solely for this listen socket
+        // (Vitest workers otherwise hang after a green video-proxy file).
+        srv.unref();
         try {
           this.port = getListeningPort(srv);
         } catch (err) {

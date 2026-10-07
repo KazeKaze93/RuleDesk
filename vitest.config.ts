@@ -35,11 +35,7 @@ export default defineConfig({
     hookTimeout: 15000,
     // Kill stuck workers instead of waiting until the GH step timeout.
     teardownTimeout: 5000,
-    // Vitest 4: poolOptions removed — top-level maxWorkers / fileParallelism.
-    // Serial files avoid one leaked handle pinning a fork and starving the rest.
     pool: "forks",
-    maxWorkers: 1,
-    fileParallelism: false,
     
     coverage: {
       provider: 'v8',
