@@ -29,9 +29,8 @@ export default defineConfig({
       '**/dist/**',
       '**/out/**',
       'tests/e2e/**',
-      // Local gate / former CI: video-proxy can pin a Vitest worker after green.
+      // Run via `npm run test:isolated` (separate pool + wall-clock in pre-push).
       'tests/unit/services/video-proxy-server.test.ts',
-      // jsdom suites crash on current Node/undici (markAsUncloneable).
       'tests/unit/hooks/**',
       'tests/unit/components/**',
       'tests/unit/features/**',

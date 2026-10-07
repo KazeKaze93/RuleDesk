@@ -11,7 +11,13 @@ echo "pre-push: docs:api freshness"
 npm run docs:api
 git diff --exit-code docs/api.md
 
-echo "pre-push: vitest (min count enforced)"
+echo "pre-push: vitest main (min count enforced)"
 npm test
+
+echo "pre-push: vitest isolated (jsdom/happy-dom + video-proxy, wall-clock)"
+npm run test:isolated
+
+echo "pre-push: combined Vitest min total"
+node scripts/assert-vitest-min-total.mjs
 
 echo "pre-push: ok"

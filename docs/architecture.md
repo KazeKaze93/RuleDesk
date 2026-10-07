@@ -1434,7 +1434,7 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 **Native module ABI:** Vitest uses Node; the app uses Electron. Scripts call `db:rebuild:node` before Vitest and `db:rebuild` after `npm test` so local dev keeps working.
 
-**Local gate (`.githooks/pre-push`):** after `git config core.hooksPath .githooks`, every push runs `validate` → `docs:api` freshness → `npm test`. There is no GitHub Actions workflow; maintainers own the gate locally. `npm run test:verify` is the same validate + Vitest path. Packaged releases still use `npm run check:release-artifacts` before upload.
+**Local gate (`.githooks/pre-push`):** after `git config core.hooksPath .githooks`, every push runs `validate` → `docs:api` freshness → `npm test` → `npm run test:isolated` (happy-dom + video-proxy, forks, hard wall-clock; hang dumps verbose/`why-is-node-running`) → combined min pass count. There is no GitHub Actions workflow; maintainers own the gate locally. `npm run test:verify` matches that Vitest path. Packaged releases still use `npm run check:release-artifacts` before upload.
 
 ## State Management
 

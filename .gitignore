@@ -30,6 +30,8 @@ npm-debug.log
 .vscode
 .idea
 *.log
+.vitest-main-passed
+.vitest-isolated-passed
 .DS_Store
 Thumbs.db
 

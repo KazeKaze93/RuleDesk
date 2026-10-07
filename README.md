@@ -246,7 +246,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
 - ✅ **User Data Path:** Neutral `RuleDesk-Data` directory for dev and packaged builds (same location on a given machine)
-- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); local `pre-push` hook runs `validate`, `docs:api` freshness, and `npm test` (pinned minimum pass count)
+- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); local `pre-push` hook runs `validate`, `docs:api` freshness, `npm test`, then `npm run test:isolated` (pinned combined pass count)
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
 
@@ -448,7 +448,7 @@ This project uses **electron-vite** as the build tool for both the Electron Main
 git config core.hooksPath .githooks
 ```
 
-`pre-push` runs `validate`, `docs:api` freshness, and Vitest with a pinned minimum pass count; a failing gate aborts the push.
+`pre-push` runs `validate`, `docs:api` freshness, main Vitest (`npm test`), then isolated Vitest (`npm run test:isolated` — happy-dom + video-proxy under a hard wall-clock). Combined passed count must meet the pinned floor; a failing gate aborts the push.
 - **npm:** v9 or higher
 - **Git:** For version control
 
@@ -541,13 +541,16 @@ npm run test:verify
 
 ### Testing
 
-**Vitest** covers unit, integration, and property-based tests. **Playwright** covers E2E flows. Treat `npm test` output as the count source of truth. [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md) is a file inventory (no case totals).
+**Vitest** covers unit, integration, and property-based tests. **Playwright** covers E2E flows. Main: `npm test`. Isolated (happy-dom + video-proxy): `npm run test:isolated`. Combined floor: `scripts/vitest-min-counts.mjs`. [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md) is a file inventory (no case totals).
 
 ```bash
-# Full suite: rebuild for Node → run all Vitest tests → rebuild for Electron
+# Main suite: rebuild for Node → Vitest (excl. isolated) → rebuild for Electron
 npm test
 
-# Same Vitest run without posttest Electron rebuild (still rebuilds Node first)
+# Isolated suite (forks + wall-clock in pre-push)
+npm run test:isolated
+
+# Same main Vitest run without posttest Electron rebuild (still rebuilds Node first)
 npm run test:run
 
 # Watch / UI / coverage (each rebuilds better-sqlite3 for Node before running)
