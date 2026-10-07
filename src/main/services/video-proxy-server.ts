@@ -118,6 +118,8 @@ export class VideoProxyServer {
   private server: http.Server | null = null;
   private port = 0;
   private readonly cacheDir: string;
+  /** false in unit tests (explicit cache dir) — avoids a 15s timer holding Vitest open. */
+  private readonly enableDeferredEviction: boolean;
   private startEvictTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly openReaderCounts = new Map<string, number>();
 
@@ -125,6 +127,7 @@ export class VideoProxyServer {
    * @param cacheDirOverride - optional cache directory (unit tests); production uses userData/video-cache
    */
   constructor(cacheDirOverride?: string) {
+    this.enableDeferredEviction = cacheDirOverride === undefined;
     this.cacheDir =
       cacheDirOverride ?? path.join(app.getPath("userData"), "video-cache");
   }
@@ -165,24 +168,34 @@ export class VideoProxyServer {
           return;
         }
         log.info(`[VideoProxy] Started on port ${this.port}`);
-        this.scheduleDeferredEviction();
+        if (this.enableDeferredEviction) {
+          this.scheduleDeferredEviction();
+        }
         resolve(this.port);
       });
     });
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (this.startEvictTimer !== null) {
       clearTimeout(this.startEvictTimer);
       this.startEvictTimer = null;
     }
-    if (this.server) {
-      // Drop paused/half-closed clients so close() (and Vitest) cannot hang.
-      this.server.closeAllConnections();
-      this.server.close();
-      this.server = null;
-    }
+    const srv = this.server;
+    this.server = null;
     this.port = 0;
+    if (!srv) {
+      log.info("[VideoProxy] Stopped");
+      return;
+    }
+    // Drop half-closed clients, then await close so the listen handle cannot
+    // keep Vitest's event loop alive after the suite finishes.
+    srv.closeAllConnections();
+    await new Promise<void>((resolve) => {
+      srv.close(() => {
+        resolve();
+      });
+    });
     log.info("[VideoProxy] Stopped");
   }
 

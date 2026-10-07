@@ -65,9 +65,13 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
 
   beforeEach(() => {
     axiosGetMock.mockReset();
+    provider.getRequestThrottle().resetRateLimitGateForTests();
+    // Pace/gate sleeps are not under test here — Rule34 fetch-posts does the same.
+    vi.spyOn(ProviderThrottle.prototype, "wait").mockResolvedValue(undefined);
   });
 
   afterEach(() => {
+    provider.getRequestThrottle().resetRateLimitGateForTests();
     vi.clearAllMocks();
   });
 

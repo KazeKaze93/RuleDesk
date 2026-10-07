@@ -157,7 +157,7 @@ describe("VideoProxyServer cache integrity", () => {
 
   afterEach(async () => {
     httpsRequestSpy.mockRestore();
-    proxy.stop();
+    await proxy.stop();
     cdnServer.closeAllConnections();
     await new Promise<void>((resolve, reject) => {
       cdnServer.close((err) => {
@@ -168,6 +168,8 @@ describe("VideoProxyServer cache integrity", () => {
         resolve();
       });
     });
+    http.globalAgent.destroy();
+    https.globalAgent.destroy();
     try {
       fs.rmSync(cacheDir, { recursive: true, force: true, maxRetries: 10 });
     } catch {

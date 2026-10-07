@@ -106,7 +106,7 @@ const maintenanceScheduler = new MaintenanceScheduler(
 container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
 
 function stopBackgroundServicesAndCloseDb(): void {
-  videoProxyServer.stop();
+  void videoProxyServer.stop();
   syncScheduler.stop();
   maintenanceScheduler.stop();
   if (tray) {

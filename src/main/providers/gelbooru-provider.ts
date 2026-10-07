@@ -97,6 +97,11 @@ export class GelbooruProvider implements IBooruProvider {
   private readonly throttle = new ProviderThrottle();
   private readonly sessionUA = pickRandomUA();
 
+  /** Shared throttle for post search (tests reset the 429 gate between cases). */
+  getRequestThrottle(): ProviderThrottle {
+    return this.throttle;
+  }
+
   getDefaultApiEndpoint(): string {
     return `${this.baseUrl}?page=dapi&s=post&q=index`;
   }

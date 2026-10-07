@@ -182,7 +182,7 @@ export class SystemController extends BaseController {
 
     await withSyncPausedForDbWork(this.getSyncService(), async () => {
       closeDatabase();
-      this.videoProxyServer.stop();
+      await this.videoProxyServer.stop();
 
       let entries: string[];
       try {
