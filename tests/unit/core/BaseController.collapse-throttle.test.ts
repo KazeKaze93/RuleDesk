@@ -237,11 +237,17 @@ describe("BaseController request collapsing and throttle", () => {
   it("removes stuck collapse promises after timeout", async () => {
     vi.useFakeTimers();
 
-    controller.registerIdempotent(
-      "test:hang",
-      z.tuple([]),
-      () => new Promise<never>(() => undefined)
-    );
+    // Deferred hang — must be resolved before the file ends or Vitest waits forever
+    // on the orphaned handler Promise (even after collapse timeout settles the IPC side).
+    let releaseHang!: () => void;
+    const hangGate = new Promise<void>((resolve) => {
+      releaseHang = resolve;
+    });
+
+    controller.registerIdempotent("test:hang", z.tuple([]), async () => {
+      await hangGate;
+      return "unreachable-after-timeout";
+    });
 
     const invoke = getRegisteredHandler("test:hang");
     const hung = invoke(mockEvent);
@@ -265,6 +271,8 @@ describe("BaseController request collapsing and throttle", () => {
     }
     expect(result.error.code).toBe(ErrorCode.UNKNOWN_ERROR);
     expect(result.error.message).toContain("timed out");
+
+    releaseHang();
   });
 
   it("uses the same collapse key regardless of object key insertion order", async () => {

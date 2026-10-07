@@ -69,8 +69,8 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Invariant Rule:** BaseController must **return** ``{ ok: false, error: { message, code, … } }`` on failure (never reject the handle Promise). Preload ``invokeIpc`` detects the envelope after Structured Clone and rethrows a real ``Error`` with ``code`` attached. Success payloads stay unwrapped. Provider-search may still JSON-encode into ``message`` as defense in depth; `PROVIDER_SEARCH_USER_MESSAGES` is display-only. Tests for this path must go through preload unwrap (or `structuredClone` + `unwrapIpcInvokeResult`), not only direct handler calls.
 
 ### Problem: Request-collapse timeout left Vitest/CI hung for minutes
-**Root Cause:** Idempotent collapse cleanup deleted the map entry after 30s but never settled the shared Promise, and the collapse IIFE kept ``await``ing a never-resolving handler. Vitest waited on that open work until the job timeout.
-**Invariant Rule:** Collapse timeout must **settle** the shared Promise (failure envelope) via single-flight ``settle()`` and **abort the handler race** (``Promise.race`` with timeout) so the IIFE exits. Tests that simulate hangs must await that settlement.
+**Root Cause:** (1) Collapse cleanup deleted the map entry but never settled the shared Promise. (2) A ``Promise.race`` timeout peer left forever-pending Promises after successful handlers — Vitest waited on them until the job timeout. (3) Tests that used ``new Promise(() => {})`` left orphaned handler Promises.
+**Invariant Rule:** Collapse timeout must **settle** the shared Promise (failure envelope) via single-flight ``settle()``. Do not leave auxiliary forever-pending Promises in the collapse path. Hang-simulation tests must release their deferred handler after asserting timeout settlement.
 
 ### Problem: Provider errors returned as empty results create silent failure loops
 **Root Cause:** Handlers returned `[]` on provider failure instead of throwing; the UI interpreted emptiness as "no data", retried, and amplified into a 429 storm. Smart playlists swallowed remote failures inside `Promise.all` the same way.
