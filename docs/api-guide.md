@@ -944,6 +944,7 @@ Retrieves posts for a specific artist with pagination.
 
 - `params.artistId: number` - Artist ID
 - `params.page?: number` - Page number (defaults to 1)
+- Full request shape is `GetPostsSchema` (`isRandom`, optional `seed`, filters, `limit`, `sortOrder`). For local random order, reuse the same `seed` across pages; a new seed starts a new shuffle.
 
 **Returns:** `Promise<Post[]>`
 
@@ -1850,8 +1851,8 @@ Playlist APIs are handled by `PlaylistController` and use shared Zod schemas fro
 - `updatePlaylist(playlistId, data)` / `deletePlaylist(playlistId)` -> Update or delete playlist
 - `addPostsToPlaylist(data)` / `removePostsFromPlaylist(data)` -> Manage manual playlist entries
 - `reorderPlaylistEntries(params)` -> Persist drag-and-drop order for manual playlists
-- `getPlaylistPosts(params)` -> Fetch static playlist posts with filters/sort
-- `resolvePlaylistPosts(params)` -> Resolve static or smart playlist posts
+- `getPlaylistPosts(params)` -> Fetch static playlist posts with filters/sort. When `isRandom` is true, pass optional `seed` (and reuse it on later pages) for a stable shuffle; a new seed starts a new shuffle.
+- `resolvePlaylistPosts(params)` -> Resolve static or smart playlist posts. Local `isRandom` ordering uses the same optional `seed` contract as `getPlaylistPosts` / `getPosts`.
 - `getPlaylistsContainingPost(postId, rule34PostId?)` -> Check membership for local/external posts
 - `exportPlaylist(playlistId)` / `importPlaylist()` -> JSON transfer via native file dialogs
 

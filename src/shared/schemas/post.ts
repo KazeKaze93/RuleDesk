@@ -7,6 +7,7 @@ import {
   LimitSchema,
   RatingSchema,
   MediaTypeSchema,
+  RandomSeedSchema,
 } from "./ipc";
 
 /**
@@ -83,6 +84,8 @@ export const GetPostsSchema = z.object({
   filters: PostFilterSchema.optional(),
   limit: LimitSchema.max(100).default(50),
   isRandom: z.boolean().optional().default(false),
+  /** Keep across pages for a stable shuffle; omit / change for a new shuffle. */
+  seed: RandomSeedSchema,
 });
 
 /**
