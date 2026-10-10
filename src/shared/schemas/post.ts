@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PROVIDER_IDS } from "../constants";
 import {
   IdSchema,
   OptionalArtistScopeIdSchema,
@@ -16,10 +17,12 @@ import {
  *
  * This schema defines the structure for optional post data that can be passed
  * to markPostAsViewed and togglePostFavorite IPC methods for external posts.
+ * `provider` is required: post identity is (artistId, provider, postId).
  */
 export const PostDataSchema = z.object({
   postId: IdSchema,
   artistId: z.number().int().nonnegative(),
+  provider: z.enum(PROVIDER_IDS),
   fileUrl: z.string().min(1).url(),
   previewUrl: z.string().min(1).url(),
   sampleUrl: z.string().optional(),

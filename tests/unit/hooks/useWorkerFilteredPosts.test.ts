@@ -7,6 +7,7 @@ describe("mapWorkerPostToPost", () => {
     id: 1,
     postId: 100,
     artistId: 1,
+    provider: "rule34",
     fileUrl: "https://example.com/video.mp4",
     previewUrl: "https://example.com/preview.jpg",
     sampleUrl: "https://example.com/sample.jpg",

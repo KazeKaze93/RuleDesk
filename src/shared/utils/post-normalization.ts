@@ -65,6 +65,7 @@ export function normalizePostToPostData(post: Post): PostData {
   return {
     postId: post.postId,
     artistId: post.artistId,
+    provider: post.provider,
     fileUrl: post.fileUrl,
     previewUrl: post.previewUrl,
     sampleUrl: post.sampleUrl || undefined,

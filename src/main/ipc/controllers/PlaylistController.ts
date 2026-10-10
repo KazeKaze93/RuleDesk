@@ -45,7 +45,11 @@ import {
   parseSmartQuery,
 } from "../../../shared/schemas/smart-playlist-query";
 import { isVideoUrl } from "@shared/utils/media";
-import { EXTERNAL_ARTIST_ID, MAX_RANDOM_PAGES } from "../../../shared/constants";
+import {
+  EXTERNAL_ARTIST_ID,
+  MAX_RANDOM_PAGES,
+  PROVIDER_IDS,
+} from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
 import { postsFtsTableExists } from "../../db/fts-table-check";
 import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
@@ -71,15 +75,35 @@ const RemovePostsFromPlaylistArgsSchema = z.tuple([RemovePostsFromPlaylistSchema
 const GetPlaylistPostsArgsSchema = z.tuple([GetPlaylistPostsSchema]);
 const ReorderPlaylistEntriesArgsSchema = z.tuple([ReorderPlaylistEntriesSchema]);
 const ResolvePlaylistPostsArgsSchema = z.tuple([ResolvePlaylistPostsSchema]);
-const GetPlaylistsContainingPostArgsSchema = z.tuple([z.number().int(), OptionalIdSchema]);
+const GetPlaylistsContainingPostArgsSchema = z.tuple([
+  z.number().int(),
+  OptionalIdSchema,
+  z.enum(PROVIDER_IDS).optional(),
+]);
 const ImportPlaylistArgsSchema = z.tuple([]);
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null;
 }
 
+function isProviderId(value: unknown): value is (typeof PROVIDER_IDS)[number] {
+  if (typeof value !== "string") {
+    return false;
+  }
+  for (const id of PROVIDER_IDS) {
+    if (id === value) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function isPlaylistExport(value: unknown): value is PlaylistExport {
-  if (!isRecord(value) || value.version !== 1 || typeof value.exportedAt !== "string") {
+  if (
+    !isRecord(value) ||
+    (value.version !== 1 && value.version !== 2) ||
+    typeof value.exportedAt !== "string"
+  ) {
     return false;
   }
 
@@ -106,8 +130,37 @@ function isPlaylistExport(value: unknown): value is PlaylistExport {
     if (!isRecord(entry)) {
       return false;
     }
-    return typeof entry.postId === "number" && Number.isFinite(entry.postId) && Number.isInteger(entry.postId)
-      && typeof entry.addedAt === "number" && Number.isFinite(entry.addedAt);
+    const hasPostId =
+      typeof entry.postId === "number" &&
+      Number.isFinite(entry.postId) &&
+      Number.isInteger(entry.postId);
+    const hasAddedAt =
+      typeof entry.addedAt === "number" && Number.isFinite(entry.addedAt);
+    if (!hasPostId || !hasAddedAt) {
+      return false;
+    }
+    if (value.version === 2) {
+      return (
+        typeof entry.artistId === "number" &&
+        Number.isFinite(entry.artistId) &&
+        Number.isInteger(entry.artistId) &&
+        isProviderId(entry.provider)
+      );
+    }
+    // v1: artistId/provider optional (legacy files)
+    if (entry.artistId !== undefined) {
+      if (
+        typeof entry.artistId !== "number" ||
+        !Number.isFinite(entry.artistId) ||
+        !Number.isInteger(entry.artistId)
+      ) {
+        return false;
+      }
+    }
+    if (entry.provider !== undefined && !isProviderId(entry.provider)) {
+      return false;
+    }
+    return true;
   });
 }
 
@@ -278,8 +331,14 @@ export class PlaylistController extends BaseController {
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
       GetPlaylistsContainingPostArgsSchema,
       (event, ...args) => {
-        const [postId, rule34PostId] = GetPlaylistsContainingPostArgsSchema.parse(args);
-        return this.getPlaylistsContainingPost(event, postId, rule34PostId);
+        const [postId, externalPostId, provider] =
+          GetPlaylistsContainingPostArgsSchema.parse(args);
+        return this.getPlaylistsContainingPost(
+          event,
+          postId,
+          externalPostId,
+          provider
+        );
       }
     );
 
@@ -1257,6 +1316,7 @@ export class PlaylistController extends BaseController {
           id: posts.id,
           postId: posts.postId,
           artistId: posts.artistId,
+          provider: posts.provider,
           fileUrl: posts.fileUrl,
           previewUrl: posts.previewUrl,
           sampleUrl: posts.sampleUrl,
@@ -1350,22 +1410,24 @@ export class PlaylistController extends BaseController {
   private async getPlaylistsContainingPost(
     _event: IpcMainInvokeEvent,
     postId: number,
-    rule34PostId?: number
+    externalPostId?: number,
+    provider?: (typeof PROVIDER_IDS)[number]
   ): Promise<number[]> {
     try {
       const db = this.getDb();
 
       let result: { playlistId: number }[];
-      if (postId <= 0 && rule34PostId != null && rule34PostId > 0) {
-        // External post from Browse: look up by posts.postId and artistId=EXTERNAL_ARTIST_ID
+      if (postId <= 0 && externalPostId != null && externalPostId > 0 && provider) {
+        // External post from Browse: (EXTERNAL_ARTIST_ID, provider, postId)
         const rows = db
           .select({ playlistId: playlistEntries.playlistId })
           .from(playlistEntries)
           .innerJoin(posts, eq(playlistEntries.postId, posts.id))
           .where(
             and(
-              eq(posts.postId, rule34PostId),
-              eq(posts.artistId, EXTERNAL_ARTIST_ID)
+              eq(posts.postId, externalPostId),
+              eq(posts.artistId, EXTERNAL_ARTIST_ID),
+              eq(posts.provider, provider)
             )
           )
           .all();
@@ -1412,6 +1474,8 @@ export class PlaylistController extends BaseController {
         .select({
           addedAt: playlistEntries.addedAt,
           postId: posts.postId,
+          artistId: posts.artistId,
+          provider: posts.provider,
         })
         .from(playlistEntries)
         .innerJoin(posts, eq(posts.id, playlistEntries.postId))
@@ -1420,7 +1484,7 @@ export class PlaylistController extends BaseController {
         .all();
 
       const exportData: PlaylistExport = {
-        version: 1,
+        version: 2,
         exportedAt: new Date().toISOString(),
         playlist: {
           name: playlist.name,
@@ -1430,6 +1494,8 @@ export class PlaylistController extends BaseController {
         },
         entries: entries.map((entry) => ({
           postId: entry.postId,
+          artistId: entry.artistId,
+          provider: entry.provider,
           addedAt: entry.addedAt.getTime(),
         })),
       };
@@ -1529,15 +1595,45 @@ export class PlaylistController extends BaseController {
       if (!exportData.playlist.isSmart && exportData.entries.length > 0) {
         const importedPostIds = exportData.entries.map((entry) => entry.postId);
         const localPosts = db
-          .select({ id: posts.id, postId: posts.postId })
+          .select({
+            id: posts.id,
+            postId: posts.postId,
+            artistId: posts.artistId,
+            provider: posts.provider,
+          })
           .from(posts)
           .where(inArray(posts.postId, importedPostIds))
           .all();
-        const localPostIdMap = new Map(localPosts.map((p) => [p.postId, p.id]));
+        const localPostIdMap = new Map(
+          localPosts.map((p) => [
+            `${p.artistId}:${p.provider}:${p.postId}`,
+            p.id,
+          ])
+        );
+        // Legacy v1 fallback: bare postId only when unambiguous
+        const postIdOnlyCounts = new Map<number, number>();
+        for (const p of localPosts) {
+          postIdOnlyCounts.set(p.postId, (postIdOnlyCounts.get(p.postId) ?? 0) + 1);
+        }
+        const unambiguousPostIdMap = new Map(
+          localPosts
+            .filter((p) => postIdOnlyCounts.get(p.postId) === 1)
+            .map((p) => [p.postId, p.id])
+        );
 
         const entriesToInsert = exportData.entries
           .map((entry, index) => {
-            const localPostId = localPostIdMap.get(entry.postId);
+            let localPostId: number | undefined;
+            if (
+              entry.artistId !== undefined &&
+              entry.provider !== undefined
+            ) {
+              localPostId = localPostIdMap.get(
+                `${entry.artistId}:${entry.provider}:${entry.postId}`
+              );
+            } else {
+              localPostId = unambiguousPostIdMap.get(entry.postId);
+            }
             if (localPostId === undefined) {
               return null;
             }
@@ -1644,6 +1740,7 @@ export class PlaylistController extends BaseController {
             id: posts.id,
             postId: posts.postId,
             artistId: posts.artistId,
+            provider: posts.provider,
             fileUrl: posts.fileUrl,
             previewUrl: posts.previewUrl,
             sampleUrl: posts.sampleUrl,
@@ -1773,6 +1870,7 @@ export class PlaylistController extends BaseController {
               id: posts.id,
               postId: posts.postId,
               artistId: posts.artistId,
+              provider: posts.provider,
               fileUrl: posts.fileUrl,
               previewUrl: posts.previewUrl,
               sampleUrl: posts.sampleUrl,
@@ -1816,22 +1914,25 @@ export class PlaylistController extends BaseController {
       ]);
 
       // Merge and deduplicate results
-      // Create a Map keyed by postId to deduplicate
+      // Key by (provider, postId) — same postId on different boorus are distinct
       // Prioritize local entries (they have isViewed/isFavorited status)
-      const mergedMap = new Map<number, IpcPost>();
-      
+      const mergeKey = (post: { provider: string; postId: number }): string =>
+        `${post.provider}:${post.postId}`;
+      const mergedMap = new Map<string, IpcPost>();
+
       // First, add all local posts (these have priority)
       for (const post of localPosts) {
-        mergedMap.set(post.postId, post);
+        mergedMap.set(mergeKey(post), post);
       }
-      
+
       // Then, add remote posts that aren't already in the map
       for (const post of remotePosts) {
-        if (!mergedMap.has(post.postId)) {
-          mergedMap.set(post.postId, post);
+        const key = mergeKey(post);
+        if (!mergedMap.has(key)) {
+          mergedMap.set(key, post);
         } else {
           log.debug(
-            `[PlaylistController] Deduplicated remote post (postId: ${post.postId}) - local entry exists`
+            `[PlaylistController] Deduplicated remote post (provider: ${post.provider}, postId: ${post.postId}) - local entry exists`
           );
         }
       }
@@ -1968,6 +2069,7 @@ export class PlaylistController extends BaseController {
             id: 0,
             postId: post.id,
             artistId: EXTERNAL_ARTIST_ID,
+            provider: providerId,
             fileUrl: post.fileUrl,
             previewUrl: post.previewUrl,
             sampleUrl: post.sampleUrl,

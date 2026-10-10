@@ -35,6 +35,7 @@ export function mapWorkerPostToPost(workerPost: WorkerPost): Post {
     id: workerPost.id,
     postId: workerPost.postId,
     artistId: workerPost.artistId,
+    provider: workerPost.provider,
     fileUrl: workerPost.fileUrl,
     previewUrl: workerPost.previewUrl,
     sampleUrl: workerPost.sampleUrl,

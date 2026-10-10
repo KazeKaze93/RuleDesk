@@ -18,7 +18,11 @@ import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
 import { cn } from "../../lib/utils";
 
-type PostRef = { id: number; postId: number };
+type PostRef = {
+  id: number;
+  postId: number;
+  provider: "rule34" | "gelbooru";
+};
 
 const invalidateAfterMembershipChange = (
   queryClient: ReturnType<typeof useQueryClient>,
@@ -124,7 +128,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
           if (p.postId > 0) {
             const inserted = await window.api.shadowInsertPost({
               postId: p.postId,
-              provider: "rule34",
+              provider: p.provider,
             });
             ids.push(inserted.id);
             continue;

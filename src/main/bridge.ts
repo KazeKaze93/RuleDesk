@@ -313,8 +313,17 @@ const ipcBridge: IpcBridge = {
     invokeIpc(IPC_CHANNELS.DB.GET_PLAYLIST_POSTS, params),
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) =>
     invokeIpc(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
-  getPlaylistsContainingPost: (postId: number, rule34PostId?: number) =>
-    invokeIpc(IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST, postId, rule34PostId),
+  getPlaylistsContainingPost: (
+    postId: number,
+    externalPostId?: number,
+    provider?: "rule34" | "gelbooru"
+  ) =>
+    invokeIpc(
+      IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
+      postId,
+      externalPostId,
+      provider
+    ),
   getManualPlaylistMembershipForPosts: (data: GetManualPlaylistMembershipForPostsRequest) =>
     invokeIpc(IPC_CHANNELS.DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS, data),
   syncManualPlaylistMembership: (data: SyncManualPlaylistMembershipRequest) =>

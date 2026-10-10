@@ -92,6 +92,10 @@ export const posts = sqliteTable(
     artistId: integer("artist_id")
       .notNull()
       .references(() => artists.id, { onDelete: "cascade" }),
+    /** Booru provider that owns this post_id namespace. Part of post identity. */
+    provider: text("provider", { enum: PROVIDER_IDS })
+      .notNull()
+      .default("rule34"),
     fileUrl: text("file_url").notNull(),
     previewUrl: text("preview_url").notNull(),
     sampleUrl: text("sample_url").notNull().default(""),
@@ -116,7 +120,7 @@ export const posts = sqliteTable(
       .default(false),
   },
   (t) => ({
-    uniquePost: unique().on(t.artistId, t.postId),
+    uniquePost: unique().on(t.artistId, t.provider, t.postId),
     postIdIdx: index("postIdIdx").on(t.postId),
     artistIdIdx: index("artistIdIdx").on(t.artistId),
     ratingIdx: index("posts_rating_idx").on(t.rating),

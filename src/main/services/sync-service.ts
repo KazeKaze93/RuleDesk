@@ -124,7 +124,7 @@ function bulkUpsertPosts(
     tx.insert(posts)
       .values(chunk)
       .onConflictDoUpdate({
-        target: [posts.artistId, posts.postId],
+        target: [posts.artistId, posts.provider, posts.postId],
         set: {
           fileUrl: sql`excluded.file_url`,
           sampleUrl: sql`excluded.sample_url`,
@@ -832,6 +832,7 @@ export class SyncService {
             const mediaType = isVideoUrl(p.fileUrl) ? "video" : "image";
             return {
               artistId: artist.id,
+              provider: artist.provider,
               fileUrl: p.fileUrl,
               postId: p.id,
               previewUrl: p.previewUrl,

@@ -163,6 +163,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** External post write path inserted into `posts` with `artist_id=EXTERNAL_ARTIST_ID` without ensuring placeholder artist existed, causing FK write failures and later state rollback on refetch.
 **Invariant Rule:** Every external-post write path (`view`, `favorite`, `shadow insert`) must ensure `EXTERNAL_ARTIST_ID` exists in the same transaction (`onConflictDoNothing`).
 
+### Problem: Sentinel artist does not distinguish providers
+**Root Cause:** Unique `(artist_id, post_id)` with a single `EXTERNAL_ARTIST_ID` glued Rule34 and Gelbooru posts that shared a numeric `post_id`, so shadow-insert / fav / viewed / Browse merge wrote the wrong row.
+**Invariant Rule:** Post identity is `(artist_id, provider, post_id)`. `provider` is a first-class column on `posts` and must travel from renderer (`PostData` / shadow-insert request) through to every SQL lookup and sync upsert conflict target. Do not invent a second sentinel artist per provider — exclusions for `artist_id = 0` stay one predicate.
+
 ### Problem: Delayed-only viewed persistence is lost on fast tab switches
 **Root Cause:** Browse relied on delayed viewer timer; request was canceled before DB write, while UI already showed optimistic viewed state.
 **Invariant Rule:** Persist viewed state immediately on card click in list pages. Viewer delayed mark can be only a backup path, not primary persistence.

@@ -123,7 +123,12 @@ export const BulkActionBar = ({
 
   // Must run on every render (including when selectedCount === 0); hooks cannot follow a conditional return.
   const postRefs = useMemo(
-    () => selectedPosts.map((p) => ({ id: p.id, postId: p.postId })),
+    () =>
+      selectedPosts.map((p) => ({
+        id: p.id,
+        postId: p.postId,
+        provider: p.provider,
+      })),
     [selectedPosts]
   );
 
@@ -165,7 +170,7 @@ export const BulkActionBar = ({
         }
         const inserted = await window.api.shadowInsertPost({
           postId: post.postId,
-          provider: "rule34",
+          provider: post.provider,
         });
         resolvedIds.push(inserted.id);
       }
