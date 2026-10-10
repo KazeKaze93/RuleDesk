@@ -325,7 +325,8 @@ The download will start, and you'll see a progress indicator.
 - At most **500** files per batch. If you select more, the app warns and downloads the first 500.
 - Partial failures do not discard successful files. The toast shows `Downloaded X, failed Y` with reason codes (network, 403/404/429, disk, timeout). Artist gallery can expand the failed list under the button.
 - HTTP **429** pauses the whole download queue (no new files start) for max(backoff, Retry-After), then retries; after retries are exhausted the file is listed as failed.
-- Cancel stops in-flight requests (including hung ones). Quitting the app cancels downloads and waits before closing the database.
+- Queue progress is written atomically (unique temp file + rename, with retries on Windows file locks). If the queue file cannot be updated after retries, that item is listed as a **disk** failure even if the media file already landed — resume can still skip an existing file when duplicate handling is **skip**.
+- Cancel stops in-flight requests (including hung ones). Quitting the app cancels downloads and waits for any in-flight queue write before closing the database.
 - Interrupted batches can be resumed from the pending-download banner; resume skips files already completed by id (safe with parallel downloads).
 - Optional Settings proxy applies to mass download the same as single download.
 

@@ -45,6 +45,15 @@ export const DELETE_ARTIST_SYNC_DRAIN_MS = 120_000;
 /** Max time to wait for in-flight mass download cancel/drain before closing DB on quit. */
 export const DOWNLOAD_SHUTDOWN_DRAIN_MS = 8000;
 
+/**
+ * Atomic tmp+rename retries for EPERM/EBUSY/EACCES (Windows AV / indexer).
+ * Attempt 0 waits base, then 2×, 4×, … before the next try.
+ */
+export const ATOMIC_WRITE_RETRY_MAX_ATTEMPTS = 5;
+
+/** Base delay (ms) for atomic-write rename/write backoff. */
+export const ATOMIC_WRITE_RETRY_BASE_DELAY_MS = 20;
+
 /** Parallel axios downloads inside downloadWorker. */
 export const BATCH_DOWNLOAD_CONCURRENCY = 3;
 

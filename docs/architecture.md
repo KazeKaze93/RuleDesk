@@ -506,7 +506,7 @@ const posts = await db.query.posts.findMany({
    - `AuthController.ts` - Authentication and credential verification
    - `MaintenanceController.ts` - Database backup/restore, VACUUM, and read-only orphan detection
    - `ViewerController.ts` - Viewer-related operations
-   - `FileController.ts` - File download and management
+   - `FileController.ts` - File download and management. Mass-download queue (`download-queue.json`) uses single-writer atomic tmp+rename (`src/main/lib/atomic-write.ts`); worker gets `item-persisted` only after a successful queue write that includes the item (persist failure → `item-persist-failed` / DISK in the batch summary).
    - `SystemController.ts` - System-level ops (version / **`getAppInfo`**, **`openLogsFolder`**, **`getDiagnostics`** with redacted log tail, clipboard, icon path, **`wipeAllData`** — `RuleDesk-Data` only; does not delete `RuleDesk-Backups`). Process quit is tray/`app.quit()` → `before-quit` only (no dedicated quit IPC channel).
    - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination and SQLite `search_results_cache` TTL layer, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
    - `PlaylistController.ts` - Playlist CRUD, smart queries, import/export

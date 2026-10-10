@@ -53,9 +53,14 @@ function listen(
 function runWorkerBatch(params: {
   items: Array<{ url: string; filename: string }>;
   folder: string;
+  persistQueue?: boolean;
+  /** When persistQueue is false: how Main answers item-completed. */
+  onItemCompletedAck?: "persisted" | "persist-failed";
   onWorker?: (worker: Worker) => void;
 }): Promise<CompleteMessage> {
   const queueFilePath = path.join(params.folder, "queue.json");
+  const persistQueue = params.persistQueue ?? true;
+  const ackMode = params.onItemCompletedAck ?? "persisted";
   return new Promise((resolve, reject) => {
     const worker = new Worker(WORKER_PATH, {
       workerData: {
@@ -65,11 +70,30 @@ function runWorkerBatch(params: {
         downloadFolderStructure: "flat",
         queueFilePath,
         proxyUrl: null,
+        persistQueue,
       },
     });
     params.onWorker?.(worker);
     worker.on("message", (msg: unknown) => {
       if (typeof msg !== "object" || msg === null || !("type" in msg)) {
+        return;
+      }
+      if (
+        !persistQueue &&
+        msg.type === "item-completed" &&
+        "id" in msg &&
+        typeof msg.id === "string"
+      ) {
+        if (ackMode === "persisted") {
+          worker.postMessage({ type: "item-persisted", id: msg.id });
+        } else {
+          worker.postMessage({
+            type: "item-persist-failed",
+            id: msg.id,
+            code: "DISK",
+            message: "simulated queue persist failure",
+          });
+        }
         return;
       }
       if (msg.type === "complete" || msg.type === "error") {
@@ -189,4 +213,41 @@ describe("downloadWorker behavior", () => {
     const gapBeforeFourthMs = sortedStarts[3] - sortedStarts[0];
     expect(gapBeforeFourthMs).toBeGreaterThanOrEqual(800);
   }, 30_000);
+
+  it("persist-failed ack records DISK failure and does not hang", async () => {
+    folder = fs.mkdtempSync(path.join(os.tmpdir(), "rd-dl-persist-fail-"));
+    const { server, port } = await listen((_req, res) => {
+      res.writeHead(200, {
+        "Content-Type": "application/octet-stream",
+        "Content-Length": "4",
+      });
+      res.end("ok!!");
+    });
+    servers.push(server);
+
+    const filename = "0_persist.bin";
+    const started = Date.now();
+    const result = await runWorkerBatch({
+      items: [
+        {
+          url: `http://127.0.0.1:${port}/ok`,
+          filename,
+        },
+      ],
+      folder,
+      persistQueue: false,
+      onItemCompletedAck: "persist-failed",
+    });
+
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(result.success).toBe(false);
+    expect(result.downloaded).toBe(0);
+    expect(result.failed).toEqual([
+      expect.objectContaining({
+        itemId: filename,
+        code: "DISK",
+      }),
+    ]);
+    expect(fs.existsSync(path.join(folder, filename))).toBe(true);
+  }, 15_000);
 });
