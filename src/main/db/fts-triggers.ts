@@ -6,6 +6,24 @@ export const POSTS_FTS_UPDATE_TRIGGER_NAME = "posts_fts_update";
 export const POSTS_FTS_DELETE_TRIGGER_NAME = "posts_fts_delete";
 
 /**
+ * Non-alphanumeric tag characters kept inside unicode61 tokens (space = delimiter).
+ * Baked into drizzle/0041_fts_tokenizer_tag_tokens.sql. Measured set also had `;`
+ * (HTML entities only); omitted from DDL — see migration comment.
+ */
+export const POSTS_FTS_UNICODE61_TOKENCHARS = "!#&()+,-./:=?^_";
+
+/**
+ * Quote one tag as an FTS5 phrase so `_` / `-` / other tokenchars are not
+ * operators. Trailing `*` stays a prefix query: `"tag"*`.
+ */
+export function quoteFts5TagPhrase(tag: string): string {
+  const hasPrefix = tag.endsWith("*");
+  const body = hasPrefix ? tag.slice(0, -1) : tag;
+  const escaped = body.replace(/"/g, '""');
+  return hasPrefix ? `"${escaped}"*` : `"${escaped}"`;
+}
+
+/**
  * DDL for triggers dropped during bulk sync upsert.
  *
  * - posts_fts_insert: perf (per-row FTS insert during large initial sync).
@@ -16,7 +34,8 @@ export const POSTS_FTS_DELETE_TRIGGER_NAME = "posts_fts_delete";
  * - posts_fts_delete: same never-indexed `'delete'` hazard if posts inserted
  *   in this window are removed (cascade) before backfill/rebuild.
  *
- * Verbatim trigger bodies match drizzle/0006 insert + drizzle/0033 update/delete.
+ * Verbatim trigger bodies match drizzle/0006 insert + drizzle/0033 update/delete
+ * (recreated again by drizzle/0041 after posts_fts tokenizer rebuild).
  */
 export const RUNTIME_DROPPABLE_FTS_TRIGGERS = [
   {

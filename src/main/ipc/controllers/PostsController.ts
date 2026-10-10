@@ -43,7 +43,10 @@ import type { DownloadQueueItem } from "../../../shared/types/download";
 import { getSqliteInstance } from "../../db/client";
 import { onDatabaseReopened } from "../../core/di/databaseRegistration";
 import { postsFtsTableExists } from "../../db/fts-table-check";
-import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
+import {
+  areRuntimeDroppableFtsTriggersPresent,
+  quoteFts5TagPhrase,
+} from "../../db/fts-triggers";
 import { isVideoUrl } from "@shared/utils/media";
 import { getProvider, type ProviderId } from "../../providers";
 import { getDecryptedApiSettings } from "../../services/credentials";
@@ -355,7 +358,7 @@ export class PostsController extends BaseController {
       throw new Error("Cannot build FTS5 OR query from empty tag array");
     }
     
-    // Validate and sanitize each tag
+    // Validate and phrase-quote each tag (hyphen is FTS5 NOT unless quoted)
     const sanitizedTags = tags.map((tag) => {
       // Validate tag format: only alphanumeric, hyphens, underscores allowed
       // This prevents injection if tags list is ever extended to user input
@@ -364,14 +367,11 @@ export class PostsController extends BaseController {
           `Invalid tag format: "${tag}". Only alphanumeric, hyphens, and underscores allowed.`
         );
       }
-      // Escape quotes for FTS5 (double quotes for literal)
-      const escaped = tag.replace(/"/g, '""');
-      // Wrap in quotes to make FTS5 treat it as literal
-      return `"${escaped}"`;
+      return quoteFts5TagPhrase(tag);
     });
-    
+
     // Join with OR operator
-    // SECURITY: All tags are validated and escaped above, so this is safe
+    // SECURITY: All tags are validated and phrase-quoted above, so this is safe
     return sanitizedTags.join(" OR ");
   }
 

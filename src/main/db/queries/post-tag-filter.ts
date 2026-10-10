@@ -12,6 +12,8 @@ function createSearchTermCondition(term: ParsedSearchTerm): SQL | null {
     return null;
   }
 
+  // Exact token = space-delimited whole tag (same grammar as FTS phrase MATCH
+  // after unicode61 tokenchars in 0041; underscore/hyphen are inside the token).
   if (term.mode === "exact") {
     return sql`instr(' ' || lower(${posts.tags}) || ' ', ' ' || ${normalizedValue} || ' ') > 0`;
   }

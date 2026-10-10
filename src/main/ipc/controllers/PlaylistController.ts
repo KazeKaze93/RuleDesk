@@ -58,7 +58,10 @@ import {
 import { getSqliteInstance } from "../../db/client";
 import { onDatabaseReopened } from "../../core/di/databaseRegistration";
 import { postsFtsTableExists } from "../../db/fts-table-check";
-import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
+import {
+  areRuntimeDroppableFtsTriggersPresent,
+  quoteFts5TagPhrase,
+} from "../../db/fts-triggers";
 import { escapeLikePattern } from "../../db/utils";
 import { getProvider } from "../../providers";
 import { getDecryptedApiSettings } from "../../services/credentials";
@@ -555,31 +558,25 @@ export class PlaylistController extends BaseController {
           if (!strictWhitelistRegex.test(trimmed)) {
             throw new Error(`Invalid tag: "${tag}". Only alphanumeric characters, spaces, hyphens, underscores, and trailing asterisks are allowed.`);
           }
-          
-          // For FTS5, tags should be used without quotes unless they contain spaces
-          // Since we validate that tags don't contain special characters, we can use them directly
-          // SECURITY: Escape double quotes in tags to prevent FTS5 query injection
-          // FTS5 uses double quotes for phrase matching, so we need to escape them
-          // Replace " with "" (FTS5 escape sequence) to safely include quotes in tags
-          const escapedTag = trimmed.replace(/"/g, '""');
-          return escapedTag;
+
+          // Content-fallback path uses this raw token; MATCH path phrase-quotes below.
+          return trimmed;
         });
 
         if (useFtsMatch) {
-          // Combine with AND operator (uppercase as required by FTS5 syntax)
-          // FTS5 syntax: tag1 AND tag2 (no quotes around individual tags)
-          const combinedQuery = sanitizedTags.join(" AND ");
+          // Phrase-quote every tag so hyphen/underscore are not FTS5 operators.
+          const combinedQuery = sanitizedTags
+            .map((tag) => quoteFts5TagPhrase(tag))
+            .join(" AND ");
 
-          // DEFENSE IN DEPTH: Additional validation for FTS5 query safety
-          // Check for dangerous FTS5 operators that could break query parsing
-          // FTS5 special characters: : (colon for column specifier), * (wildcard only at end), " (quotes)
-          // Block queries that start with * (invalid), contain : (column specifier), or have unbalanced quotes
-          if (combinedQuery.includes(":")) {
-            throw new Error(`Invalid FTS5 query: colon (:) is not allowed in tag queries`);
-          }
-          if (combinedQuery.includes("*") && !/^[a-zA-Z0-9_ -]+\*(\s+AND\s+[a-zA-Z0-9_ -]+\*?)*$/i.test(combinedQuery)) {
-            // Allow trailing * for prefix search, but block * at start or middle
-            throw new Error(`Invalid FTS5 query: wildcard (*) can only appear at the end of tags`);
+          // DEFENSE IN DEPTH: phrase-quoted tags only; optional trailing * per tag ("tag"*).
+          if (
+            combinedQuery.includes("*") &&
+            !/^"[^"]+"\*?(\s+AND\s+"[^"]+"\*?)*$/i.test(combinedQuery)
+          ) {
+            throw new Error(
+              `Invalid FTS5 query: wildcard (*) can only appear at the end of tags`
+            );
           }
           if ((combinedQuery.match(/"/g) || []).length % 2 !== 0) {
             throw new Error(`Invalid FTS5 query: unbalanced quotes`);
@@ -637,19 +634,16 @@ export class PlaylistController extends BaseController {
           if (!strictWhitelistRegex.test(trimmed)) {
             throw new Error(`Invalid tag: "${tag}". Only alphanumeric characters, spaces, hyphens, underscores, and trailing asterisks are allowed.`);
           }
-          
-          // For FTS5, tags should be used without quotes unless they contain spaces
-          // SECURITY: Escape double quotes in tags to prevent FTS5 query injection
-          // FTS5 uses double quotes for phrase matching, so we need to escape them
-          // Replace " with "" (FTS5 escape sequence) to safely include quotes in tags
-          const escapedTag = trimmed.replace(/"/g, '""');
-          return escapedTag;
+
+          // Content-fallback path uses this raw token; MATCH path phrase-quotes below.
+          return trimmed;
         });
 
         if (useFtsMatch) {
-          // Combine with OR operator (uppercase as required by FTS5 syntax)
-          // FTS5 OR syntax: tag1 OR tag2 (no quotes around individual tags)
-          const combinedQuery = sanitizedTags.join(" OR ");
+          // Phrase-quote every tag so hyphen/underscore are not FTS5 operators.
+          const combinedQuery = sanitizedTags
+            .map((tag) => quoteFts5TagPhrase(tag))
+            .join(" OR ");
 
           log.debug(`[PlaylistController] Combined FTS5 exclude query: ${combinedQuery}`);
 
