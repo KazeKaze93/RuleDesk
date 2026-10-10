@@ -62,6 +62,10 @@ import { getAppIconPath, getAppIconsDirectory } from "./lib/app-resources";
 
 import { getFileController, registerAllHandlers } from "./ipc/index";
 import { initializeDatabase, closeDatabase, getDb } from "./db/client";
+import {
+  readMinimizeToTrayEnabled,
+  revealMainWindow,
+} from "./lib/tray-window-lifecycle";
 import { getBackupDirectory, getDatabasePaths, getLegacyNeutralUserDataDir } from "./db/paths";
 import { migrateBackupDirectory } from "./db/backup-dir-migrate";
 import { SYNC_SHUTDOWN_DRAIN_MS } from "./config/constants";
@@ -183,11 +187,13 @@ if (!gotTheLock) {
   // Only register second-instance handler if not in test mode
   if (!isTestMode) {
     app.on("second-instance", () => {
-      logger.info("Second instance detected. Focusing main window...");
-      if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        mainWindow.focus();
-      }
+      logger.info("Second instance detected. Revealing main window...");
+      revealMainWindow({
+        mainWindow,
+        recreateWindow: () => {
+          void initializeAppAndWindow();
+        },
+      });
     });
   }
 
@@ -535,9 +541,38 @@ async function initializeAppAndWindow() {
       windowShowController?.ensureVisible();
     }
 
+    mainWindow.on("close", (event) => {
+      if (isShuttingDown || isTestMode) {
+        return;
+      }
+      // macOS: closing the window must not quit the app (Dock convention).
+      if (process.platform === "darwin") {
+        event.preventDefault();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.hide();
+        }
+        return;
+      }
+      let minimizeToTray = true;
+      try {
+        minimizeToTray = readMinimizeToTrayEnabled(getDb());
+      } catch (error) {
+        logger.error(
+          "[Main] Failed to read minimizeToTray; defaulting to tray hide:",
+          error
+        );
+      }
+      if (minimizeToTray) {
+        event.preventDefault();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.hide();
+        }
+      }
+      // Setting off: allow close → window-all-closed → app.quit()
+    });
+
     mainWindow.on("closed", () => {
       mainWindow = null;
-      // Don't destroy tray on window close - allow app to run in background
     });
   } catch (e) {
     logger.error("FATAL: Failed to initialize application or database.", e);
@@ -624,13 +659,12 @@ function createTray(_window: BrowserWindow): void {
       {
         label: "Show",
         click: () => {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.show();
-            mainWindow.focus();
-          } else {
-            // Window was closed - recreate it
-            initializeAppAndWindow();
-          }
+          revealMainWindow({
+            mainWindow,
+            recreateWindow: () => {
+              void initializeAppAndWindow();
+            },
+          });
         },
       },
       {
@@ -720,16 +754,15 @@ app.on("window-all-closed", () => {
     logger.info("[Main] Test mode: window-all-closed event ignored (Playwright manages lifecycle)");
     return;
   }
-  
-  // On macOS, keep app running even when all windows are closed
-  // On other platforms, quit only if tray is not available
-  if (process.platform !== "darwin") {
-    // If tray exists, don't quit - allow running in background
-    if (!tray) {
-      // before-quit owns sync drain + closeDatabase
-      app.quit();
-    }
+
+  // macOS: keep app running when all windows are closed (Dock convention).
+  if (process.platform === "darwin") {
+    return;
   }
+
+  // win/linux: a real close (minimize-to-tray off) destroys the window; quit.
+  // Tray-hide path uses preventDefault + hide, so this event does not fire.
+  app.quit();
 });
 
 app.on("activate", () => {

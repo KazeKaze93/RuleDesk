@@ -190,4 +190,31 @@ describe("SettingsController Integration", () => {
     expect(updated?.autoSyncOnArtistAdd).toBe(true);
     expect(scheduler.restart).toHaveBeenCalledWith(30);
   });
+
+  it("keeps minimizeToTray when saving unrelated fields and updates on explicit save", async () => {
+    const saveCall = vi
+      .mocked(ipcMain.handle)
+      .mock.calls.find(([channel]) => channel === IPC_CHANNELS.SETTINGS.SAVE);
+
+    expect(saveCall).toBeDefined();
+    if (!saveCall) {
+      throw new Error("SETTINGS.SAVE handler was not registered");
+    }
+
+    const invokeHandler = saveCall[1];
+    await invokeHandler(undefined, { autoSyncOnStartup: true });
+
+    let updated = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+    expect(updated?.minimizeToTray).toBe(true);
+
+    await invokeHandler(undefined, { minimizeToTray: false });
+
+    updated = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+    expect(updated?.minimizeToTray).toBe(false);
+    expect(updated?.autoSyncOnStartup).toBe(true);
+  });
 });

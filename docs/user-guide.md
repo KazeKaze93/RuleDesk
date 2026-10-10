@@ -463,6 +463,7 @@ Settings are split into tabs:
 - **Default download folder** - Choose a folder or reset to default
 - **When file already exists** - Choose `Skip` or `Overwrite`
 - **Folder structure** - `Flat` or `By artist`
+- **Minimize to tray on close** - When on (default), closing the window hides the app to the system tray. When off, closing the window quits the application (Windows/Linux). Change applies immediately without restart. On macOS, closing the window never quits the app (Dock convention).
 - **Proxy URL** - Optional HTTP/HTTPS proxy for requests/downloads
 - **Danger zone** - **Delete all data…** (checkbox + confirm). Closes the DB, stops the video proxy, deletes the contents of `RuleDesk-Data`, and quits. Media downloads outside `RuleDesk-Data` and DB backups under `RuleDesk-Backups` are not removed.
 
