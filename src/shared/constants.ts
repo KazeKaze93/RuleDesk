@@ -54,10 +54,21 @@ export type ArtistType = typeof ARTIST_TYPES[number];
 export const MAX_TRACKED_ARTISTS = 5000;
 
 /**
- * Soft cap for one mass-download batch. Oversized selections are truncated
- * (not rejected); UI must warn "N of M".
+ * @deprecated Prefer BATCH_DOWNLOAD_LIST_MAX_FILES. Kept for docs/tests migrating off 500.
+ * Soft cap historically applied before skip-duplicates; artist mass download has no cap.
  */
 export const BATCH_DOWNLOAD_MAX_FILES = 500;
+
+/**
+ * Safety cap for kind:"list" mass download (loaded UI posts / manual selection).
+ * Exceeding this returns an explicit error result — no throw, no silent truncate.
+ */
+export const BATCH_DOWNLOAD_LIST_MAX_FILES = 5000;
+
+/**
+ * Posts per DB cursor chunk when kind:"artist" mass-download walks by posts.id.
+ */
+export const BATCH_DOWNLOAD_CHUNK_SIZE = 100;
 
 /**
  * Max post ids accepted by `updates:markSeenByIds` in one IPC call.

@@ -79,7 +79,7 @@
 | `files:cancel-download-all` | `FILES.CANCEL_DOWNLOAD_ALL` | `[]` (no args) | yes | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:dismiss-pending-download` | `FILES.DISMISS_PENDING_DOWNLOAD` | `[]` (no args) | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:download` | `FILES.DOWNLOAD` | `z.tuple([ DownloadFileSchema.shape.url, DownloadFileSchema.shape.filename, ])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
-| `files:download-all` | `FILES.DOWNLOAD_ALL` | `z.tuple([DownloadAllSchema])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
+| `files:download-all` | `FILES.DOWNLOAD_ALL` | `z.tuple([DownloadAllRequestSchema])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:download-all-progress` | `FILES.DOWNLOAD_ALL_PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `files:download-progress` | `FILES.DOWNLOAD_PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `files:get-pending-download` | `FILES.GET_PENDING_DOWNLOAD` | `[]` (no args) | yes | `FileController` | `src/main/ipc/controllers/FileController.ts` |

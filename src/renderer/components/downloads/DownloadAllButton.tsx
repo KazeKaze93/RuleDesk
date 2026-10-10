@@ -16,6 +16,10 @@ export interface DownloadAllButtonProps {
   progress: { done: number; total: number };
   canDownload: boolean;
   totalLabel: string | number;
+  /**
+   * Idle button label mode. Artist library uses "all"; loaded UI slices use "loaded".
+   */
+  labelMode?: "all" | "loaded";
   failures?: DownloadFailure[];
   size?: "default" | "sm";
   className?: string;
@@ -31,6 +35,7 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
   progress,
   canDownload,
   totalLabel,
+  labelMode = "all",
   failures = [],
   size = "sm",
   className,
@@ -39,6 +44,16 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
   const [failuresOpen, setFailuresOpen] = useState(false);
   const pct = progress.total > 0 ? Math.round((progress.done * 100) / progress.total) : 0;
   const disabled = !canDownload || (isAnyDownloadActive && !isDownloading);
+  const idleLabel =
+    labelMode === "loaded"
+      ? `Download ${totalLabel} loaded posts`
+      : `Download All (${totalLabel})`;
+  const idleTitle =
+    disabled && isAnyDownloadActive
+      ? "Download in progress"
+      : labelMode === "loaded"
+        ? `Download ${totalLabel} loaded posts`
+        : `Download ${totalLabel} files`;
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
@@ -49,10 +64,10 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
             size={size}
             onClick={onClick}
             disabled={disabled}
-            title={disabled && isAnyDownloadActive ? "Download in progress" : `Download ${totalLabel} files`}
+            title={idleTitle}
           >
             <Download className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Download All ({totalLabel})</span>
+            <span className="hidden sm:inline">{idleLabel}</span>
           </Button>
         ) : (
           <>

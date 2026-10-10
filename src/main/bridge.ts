@@ -153,8 +153,8 @@ const ipcBridge: IpcBridge = {
     return invokeIpc(IPC_CHANNELS.FILES.DOWNLOAD, url, filename);
   },
 
-  downloadAll: (items: Array<{ url: string; filename: string }>) =>
-    invokeIpc(IPC_CHANNELS.FILES.DOWNLOAD_ALL, items),
+  downloadAll: (request) =>
+    invokeIpc(IPC_CHANNELS.FILES.DOWNLOAD_ALL, request),
   cancelDownloadAll: () =>
     invokeIpc(IPC_CHANNELS.FILES.CANCEL_DOWNLOAD_ALL),
   pauseDownloadAll: () =>

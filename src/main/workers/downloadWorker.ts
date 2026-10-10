@@ -36,6 +36,8 @@ interface WorkerData {
   queueFilePath: string;
   /** Proxy URL string; worker builds its own agent. */
   proxyUrl: string | null;
+  /** When false, Main owns queue.json (artist/list orchestration). Default true for tests. */
+  persistQueue?: boolean;
 }
 
 type WorkerOutboundMessage =
@@ -45,6 +47,10 @@ type WorkerOutboundMessage =
       percent: number;
       done: number;
       total: number;
+    }
+  | {
+      type: "item-completed";
+      id: string;
     }
   | {
       type: "item-failed";
@@ -108,6 +114,7 @@ async function runWorker(): Promise<void> {
     downloadFolderStructure,
     queueFilePath,
     proxyUrl,
+    persistQueue = true,
   // boundary: worker message — workerData payload after trust/Zod
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: worker message
   } = workerData as WorkerData;
@@ -122,27 +129,44 @@ async function runWorker(): Promise<void> {
       ? new HttpsProxyAgent(proxyUrl)
       : undefined;
 
-  parentPort?.on("message", (msg: { type: string }) => {
+  const persistAcks = new Map<string, () => void>();
+
+  parentPort?.on("message", (msg: { type: string; id?: string }) => {
     if (msg.type === "cancel") {
       aborted = true;
       for (const controller of activeControllers) {
         controller.abort();
       }
+      for (const resolve of persistAcks.values()) {
+        resolve();
+      }
+      persistAcks.clear();
     }
     if (msg.type === "pause") paused = true;
     if (msg.type === "resume") paused = false;
+    if (msg.type === "item-persisted" && typeof msg.id === "string") {
+      const resolve = persistAcks.get(msg.id);
+      if (resolve) {
+        persistAcks.delete(msg.id);
+        resolve();
+      }
+    }
   });
 
   const post = (m: WorkerOutboundMessage) => parentPort?.postMessage(m);
 
   const writeQueueFile = async (data: {
-    version: 2;
+    version: 3;
+    kind: "list";
     items: Array<{ url: string; filename: string }>;
     completedIds: string[];
     total: number;
     folder: string;
     timestamp: number;
   }) => {
+    if (!persistQueue) {
+      return;
+    }
     try {
       await writeFile(queueFilePath, JSON.stringify(data), "utf-8");
     } catch {
@@ -163,9 +187,10 @@ async function runWorker(): Promise<void> {
   const failed: DownloadFailure[] = [];
   const completedIds: string[] = [];
 
-  const persistQueue = async () => {
+  const persistQueueState = async () => {
     await writeQueueFile({
-      version: 2,
+      version: 3,
+      kind: "list",
       items,
       completedIds: [...completedIds],
       total: items.length,
@@ -174,10 +199,28 @@ async function runWorker(): Promise<void> {
     });
   };
 
+  const ITEM_PERSIST_ACK_TIMEOUT_MS = 10_000;
+
   const markCompleted = async (filename: string) => {
     completedIds.push(filename);
     downloaded++;
-    await persistQueue();
+    // File is already on disk. Notify Main, then wait for queue ack when Main owns persistence.
+    if (!persistQueue) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          persistAcks.delete(filename);
+          resolve();
+        }, ITEM_PERSIST_ACK_TIMEOUT_MS);
+        persistAcks.set(filename, () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        post({ type: "item-completed", id: filename });
+      });
+    } else {
+      post({ type: "item-completed", id: filename });
+      await persistQueueState();
+    }
   };
 
   const recordFailure = (
@@ -359,7 +402,8 @@ async function runWorker(): Promise<void> {
   };
 
   await writeQueueFile({
-    version: 2,
+    version: 3,
+    kind: "list",
     items,
     completedIds: [],
     total: items.length,
@@ -394,9 +438,11 @@ async function runWorker(): Promise<void> {
 
   const canceled = aborted;
   if (!canceled && failed.length === 0) {
-    await deleteQueueFile();
+    if (persistQueue) {
+      await deleteQueueFile();
+    }
   } else {
-    await persistQueue();
+    await persistQueueState();
   }
 
   post({

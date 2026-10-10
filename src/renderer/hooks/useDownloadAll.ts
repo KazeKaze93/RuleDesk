@@ -3,13 +3,14 @@ import log from "electron-log/renderer";
 import type { Post } from "@shared/types/db";
 import type { DownloadFailure } from "@shared/types/download";
 import type { GetPostsRequest } from "@shared/schemas/post";
-import { BATCH_DOWNLOAD_MAX_FILES } from "@shared/constants";
+import type { PostFilterRequest } from "@shared/schemas/post";
+import { BATCH_DOWNLOAD_LIST_MAX_FILES } from "@shared/constants";
 import { useDownloadStore } from "../store/downloadStore";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../shared/utils/type-guards";
 import {
   presentDownloadAllResult,
-  warnIfDownloadTruncated,
+  warnIfDownloadListOverLimit,
 } from "../lib/download-result-ui";
 
 function postToDownloadItem(p: Post): { url: string; filename: string } | null {
@@ -23,7 +24,7 @@ function postToDownloadItem(p: Post): { url: string; filename: string } | null {
   };
 }
 
-/** Download from loaded posts (Favorites, Updates, Browse, Playlists) */
+/** Download from loaded posts (Favorites, Updates, Browse, Playlists) — list, not full remote crawl. */
 export function useDownloadAll(posts: Post[]) {
   const [isDownloading, setIsDownloading] = useState(false);
   const setGlobalDownloading = useDownloadStore((s) => s.setDownloading);
@@ -44,14 +45,16 @@ export function useDownloadAll(posts: Post[]) {
       .map(postToDownloadItem)
       .filter((x): x is { url: string; filename: string } => x !== null);
     if (items.length === 0) return;
-    warnIfDownloadTruncated(items.length);
+    if (warnIfDownloadListOverLimit(items.length)) {
+      return;
+    }
     setIsDownloading(true);
     setGlobalDownloading(true);
     setIsPaused(false);
     setLastFailures([]);
     setProgress({ done: 0, total: items.length });
     try {
-      const result = await window.api.downloadAll(items);
+      const result = await window.api.downloadAll({ kind: "list", items });
       setLastFailures(result.failed);
       log.info(
         `[useDownloadAll] Done: ${result.downloaded} ok, ${result.failed.length} failed, canceled=${result.canceled}`
@@ -104,37 +107,12 @@ export function useDownloadAll(posts: Post[]) {
     progress,
     lastFailures,
     canDownload: posts.length > 0,
+    loadedCount: posts.length,
+    listMaxFiles: BATCH_DOWNLOAD_LIST_MAX_FILES,
   };
 }
 
-/** Download from backend with filters (Updates, Favorites - fetches count + items from DB) */
-export function useDownloadAllWithFilters(
-  fetchParams: Pick<GetPostsRequest, "artistId" | "filters"> | null
-) {
-  const [totalCount, setTotalCount] = useState(0);
-  const effectiveTotalCount = fetchParams ? totalCount : 0;
-
-  useEffect(() => {
-    if (!fetchParams) return;
-    window.api
-      .getPostsCountWithFilters(fetchParams)
-      .then(setTotalCount)
-      .catch((e) => {
-        if (getErrorCode(e) !== ErrorCode.RATE_LIMIT) {
-          setTotalCount(0);
-        }
-      });
-  }, [fetchParams]);
-
-  const backendResult = useDownloadAllFromBackend(
-    fetchParams ? { ...fetchParams, page: 1, limit: 50, isRandom: false } : null,
-    effectiveTotalCount
-  );
-
-  return { ...backendResult, totalCount: effectiveTotalCount };
-}
-
-/** Download from backend (ArtistGallery - fetches all from DB, uses totalCount for display) */
+/** Artist Library: uncapped cursor download by posts.id (filter + snapshot). */
 export function useDownloadAllFromBackend(
   fetchParams: GetPostsRequest | null,
   totalCount: number
@@ -154,25 +132,19 @@ export function useDownloadAllFromBackend(
   }, [isDownloading]);
 
   const downloadAll = async () => {
-    if (!fetchParams) return;
+    if (!fetchParams?.artistId) return;
     setIsDownloading(true);
     setGlobalDownloading(true);
     setIsPaused(false);
     setLastFailures([]);
-    setProgress({ done: 0, total: 0 });
+    setProgress({ done: 0, total: totalCount });
     try {
-      const { items } = await window.api.getDownloadItems({
-        ...fetchParams,
-        limit: BATCH_DOWNLOAD_MAX_FILES,
+      const filters: PostFilterRequest | undefined = fetchParams.filters;
+      const result = await window.api.downloadAll({
+        kind: "artist",
+        artistId: fetchParams.artistId,
+        filters,
       });
-      if (items.length === 0) return;
-      if (totalCount > items.length) {
-        warnIfDownloadTruncated(totalCount);
-      } else {
-        warnIfDownloadTruncated(items.length);
-      }
-      setProgress({ done: 0, total: items.length });
-      const result = await window.api.downloadAll(items);
       setLastFailures(result.failed);
       log.info(
         `[useDownloadAllFromBackend] Done: ${result.downloaded} ok, ${result.failed.length} failed, canceled=${result.canceled}`
@@ -224,4 +196,33 @@ export function useDownloadAllFromBackend(
     lastFailures,
     canDownload: totalCount > 0,
   };
+}
+
+/** Download with filters count (Updates/Favorites helpers) — still artist/DB scoped via backend. */
+export function useDownloadAllWithFilters(
+  fetchParams: Pick<GetPostsRequest, "artistId" | "filters"> | null
+) {
+  const [totalCount, setTotalCount] = useState(0);
+  const effectiveTotalCount = fetchParams ? totalCount : 0;
+
+  useEffect(() => {
+    if (!fetchParams) return;
+    window.api
+      .getPostsCountWithFilters(fetchParams)
+      .then(setTotalCount)
+      .catch((e) => {
+        if (getErrorCode(e) !== ErrorCode.RATE_LIMIT) {
+          setTotalCount(0);
+        }
+      });
+  }, [fetchParams]);
+
+  const backendResult = useDownloadAllFromBackend(
+    fetchParams
+      ? { ...fetchParams, page: 1, limit: 50, isRandom: false }
+      : null,
+    effectiveTotalCount
+  );
+
+  return { ...backendResult, totalCount: effectiveTotalCount };
 }

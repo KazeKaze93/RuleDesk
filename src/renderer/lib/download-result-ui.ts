@@ -1,16 +1,28 @@
 import { toast } from "sonner";
-import { BATCH_DOWNLOAD_MAX_FILES } from "@shared/constants";
+import { BATCH_DOWNLOAD_LIST_MAX_FILES } from "@shared/constants";
 import type { DownloadAllResult, DownloadFailure } from "@shared/types/download";
 import { downloadFailureCodeLabel } from "@shared/utils/download-failure";
 
-export function warnIfDownloadTruncated(itemCount: number): number {
-  if (itemCount <= BATCH_DOWNLOAD_MAX_FILES) {
-    return itemCount;
+/**
+ * Returns true when the list is over the safety cap (caller must abort).
+ * Shows an explicit toast — no silent truncate.
+ */
+export function warnIfDownloadListOverLimit(itemCount: number): boolean {
+  if (itemCount <= BATCH_DOWNLOAD_LIST_MAX_FILES) {
+    return false;
   }
-  toast.warning(
-    `Will download ${BATCH_DOWNLOAD_MAX_FILES} of ${itemCount} selected posts`
+  toast.error(
+    `Selection has ${itemCount} posts; maximum is ${BATCH_DOWNLOAD_LIST_MAX_FILES}. Narrow the selection.`
   );
-  return BATCH_DOWNLOAD_MAX_FILES;
+  return true;
+}
+
+/** @deprecated Use warnIfDownloadListOverLimit — no silent truncate. */
+export function warnIfDownloadTruncated(itemCount: number): number {
+  if (warnIfDownloadListOverLimit(itemCount)) {
+    return 0;
+  }
+  return itemCount;
 }
 
 export function formatDownloadFailures(failed: DownloadFailure[]): string {
@@ -41,11 +53,7 @@ export function presentDownloadAllResult(result: DownloadAllResult): void {
   }
 
   if (result.failed.length === 0 && result.success) {
-    const trunc =
-      result.truncatedFrom !== undefined
-        ? ` (capped from ${result.truncatedFrom})`
-        : "";
-    toast.success(`Downloaded ${result.downloaded} file(s)${trunc}`);
+    toast.success(`Downloaded ${result.downloaded} file(s)`);
     return;
   }
 
