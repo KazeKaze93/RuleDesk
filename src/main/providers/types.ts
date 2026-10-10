@@ -64,7 +64,8 @@ export interface IBooruProvider {
     page: number,
     settings: ProviderSettings,
     isRandom: boolean,
-    limit: number
+    limit: number,
+    signal?: AbortSignal
   ): Promise<FetchPostsResult>;
   /** Search for tags (autocomplete) with optional AbortSignal for cancellation */
   searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]>;

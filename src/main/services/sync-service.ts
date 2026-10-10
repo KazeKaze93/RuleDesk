@@ -12,6 +12,7 @@ import {
   isProviderSearchError,
   ProviderSearchError,
 } from "../providers/provider-search-errors";
+import { isAbortError } from "../providers/provider-throttle";
 import type { Artist, NewPost } from "../db/schema";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
@@ -185,18 +186,74 @@ function isInitialArtistSync(artist: Artist): boolean {
   return artist.lastPostId === 0 && artist.lastChecked === null;
 }
 
+function isRequestAbortError(error: unknown): boolean {
+  if (isAbortError(error) || axios.isCancel(error)) {
+    return true;
+  }
+  return axios.isAxiosError(error) && error.code === "ERR_CANCELED";
+}
+
+async function sleepInterruptible(
+  ms: number,
+  signal: AbortSignal,
+  throwIfCancelled: () => void
+): Promise<void> {
+  throwIfCancelled();
+  if (ms <= 0) {
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      try {
+        throwIfCancelled();
+        reject(signal.reason ?? new Error("The operation was aborted."));
+      } catch (error) {
+        reject(error);
+      }
+      return;
+    }
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      cleanup();
+      try {
+        throwIfCancelled();
+        reject(signal.reason ?? new Error("The operation was aborted."));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  throwIfCancelled();
+}
+
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
   baseDelay = 2000,
-  contextName = "unknown"
+  contextName = "unknown",
+  signal?: AbortSignal,
+  throwIfCancelled?: () => void
 ): Promise<T> {
+  const checkCancel = throwIfCancelled ?? (() => undefined);
   let lastError: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    checkCancel();
     try {
       return await fn();
     } catch (error) {
       lastError = error;
+      if (isSyncCancelledError(error) || isRequestAbortError(error)) {
+        checkCancel();
+        throw error;
+      }
       if (isProviderSearchError(error)) {
         if (error.kind === "rate_limit" && attempt < maxRetries) {
           const delay =
@@ -204,7 +261,12 @@ async function retryWithBackoff<T>(
           logger.warn(
             `SyncService: Provider rate limit for ${contextName}; retrying in ${delay}ms`
           );
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          if (signal) {
+            await sleepInterruptible(delay, signal, checkCancel);
+          } else {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            checkCancel();
+          }
           continue;
         }
         throw error;
@@ -219,7 +281,12 @@ async function retryWithBackoff<T>(
             error instanceof Error ? error.message : "Unknown error"
           }`
         );
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        if (signal) {
+          await sleepInterruptible(delay, signal, checkCancel);
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          checkCancel();
+        }
         continue;
       }
       const status = error.response?.status;
@@ -247,7 +314,12 @@ async function retryWithBackoff<T>(
           status || "network error"
         }`
       );
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
+      if (signal) {
+        await sleepInterruptible(waitTime, signal, checkCancel);
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        checkCancel();
+      }
     }
   }
   throw lastError;
@@ -278,6 +350,8 @@ export class SyncService {
    * (drop at start, rebuild + ensureFtsTriggers in Sync All finally).
    */
   private syncAllOwnsFtsLifecycle = false;
+  /** Aborts the in-flight sync page request / retry sleep for the active artist. */
+  private syncAbortController: AbortController | null = null;
 
   public getIsSyncing(): boolean {
     return this.isSyncing;
@@ -293,11 +367,15 @@ export class SyncService {
 
   public requestCancel(): void {
     this.cancelRequested = true;
+    this.syncAbortController?.abort();
   }
 
   /** Request cancel for one artist only (Sync All continues with others). */
   public requestArtistCancel(artistId: number): void {
     this.artistCancelIds.add(artistId);
+    if (this.activeSyncArtistId === artistId) {
+      this.syncAbortController?.abort();
+    }
   }
 
   /**
@@ -811,6 +889,16 @@ export class SyncService {
       dropFtsTriggersForBulkInsert(sqlite);
     }
 
+    const abortController = new AbortController();
+    this.syncAbortController = abortController;
+    if (
+      this.cancelRequested ||
+      this.artistCancelIds.has(artist.id)
+    ) {
+      abortController.abort();
+    }
+    const syncSignal = abortController.signal;
+
     try {
       while (hasMore && page < maxPages) {
         try {
@@ -834,11 +922,14 @@ export class SyncService {
                   apiKey: settings.apiKey,
                 },
                 false,
-                PAGE_SIZE
+                PAGE_SIZE,
+                syncSignal
               ),
             3,
             2000,
-            artist.name
+            artist.name,
+            syncSignal,
+            () => this.throwIfCancelled(artist.id)
           );
           const postsData = pageResult.posts;
           const rawItemCount = pageResult.rawItemCount;
@@ -963,10 +1054,18 @@ export class SyncService {
             logger.debug(`SyncService: ${artist.name} - Page ${page - 1} rawItemCount=${rawItemCount}, continuing to page ${page}`);
           }
         } catch (e) {
-          if (isSyncCancelledError(e)) {
+          let caught: unknown = e;
+          if (isRequestAbortError(e)) {
+            try {
+              this.throwIfCancelled(artist.id);
+            } catch (cancelError) {
+              caught = cancelError;
+            }
+          }
+          if (isSyncCancelledError(caught)) {
             logger.info(`SyncService: Sync cancelled for ${artist.name}`);
           } else {
-            logger.error(`Sync error for ${artist.name}`, e);
+            logger.error(`Sync error for ${artist.name}`, caught);
           }
           hasMore = false;
 
@@ -1011,36 +1110,36 @@ export class SyncService {
             );
           }
 
-          if (isSyncCancelledError(e)) {
+          if (isSyncCancelledError(caught)) {
             setArtistSyncStatus(
               db,
               artist.id,
               ARTIST_SYNC_STATUS.IDLE,
               null
             );
-            throw e;
+            throw caught;
           }
 
-          if (isProviderSearchError(e)) {
+          if (isProviderSearchError(caught)) {
             if (
-              e.kind === "auth" ||
-              e.kind === "rate_limit" ||
-              e.kind === "network"
+              caught.kind === "auth" ||
+              caught.kind === "rate_limit" ||
+              caught.kind === "network"
             ) {
               setArtistSyncStatus(
                 db,
                 artist.id,
                 ARTIST_SYNC_STATUS.ERROR,
-                artistSyncErrorMessage(e)
+                artistSyncErrorMessage(caught)
               );
-              throw e;
+              throw caught;
             }
-          } else if (axios.isAxiosError(e)) {
+          } else if (axios.isAxiosError(caught)) {
             setArtistSyncStatus(
               db,
               artist.id,
               ARTIST_SYNC_STATUS.ERROR,
-              artistSyncErrorMessage(e)
+              artistSyncErrorMessage(caught)
             );
             throw new ProviderSearchError("network");
           } else {
@@ -1048,9 +1147,9 @@ export class SyncService {
               db,
               artist.id,
               ARTIST_SYNC_STATUS.ERROR,
-              artistSyncErrorMessage(e)
+              artistSyncErrorMessage(caught)
             );
-            throw e;
+            throw caught;
           }
         }
       }
@@ -1117,6 +1216,9 @@ export class SyncService {
         `(was: ${previousLastPostId}, paginationCompleted: ${paginationCompleted})`
       );
     } finally {
+      if (this.syncAbortController === abortController) {
+        this.syncAbortController = null;
+      }
       // Per-artist FTS restore only for single-artist / repair. Sync All restores once.
       if (isInitial && !this.syncAllOwnsFtsLifecycle) {
         logger.info(

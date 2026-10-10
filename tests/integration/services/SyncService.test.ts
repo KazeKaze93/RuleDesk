@@ -834,17 +834,24 @@ describe('SyncService Integration', () => {
   });
 
   it('pauseForDbMaintenance waits for active sync and blocks new sync until resume', async () => {
-    let releaseFetch: (() => void) | null = null;
-    const fetchGate = new Promise<void>((resolve) => {
-      releaseFetch = resolve;
-    });
-
     const provider = getProvider('rule34');
     const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
-      async () => {
-        await fetchGate;
-        return asFetchResult([]);
-      }
+      (_tags, _page, _settings, _isRandom, _limit, signal) =>
+        new Promise((resolve, reject) => {
+          if (signal?.aborted) {
+            reject(new DOMException('The operation was aborted.', 'AbortError'));
+            return;
+          }
+          const onAbort = () => {
+            reject(new DOMException('The operation was aborted.', 'AbortError'));
+          };
+          signal?.addEventListener('abort', onAbort, { once: true });
+          // Idle path if cancel never arrives (should not happen in this test).
+          setTimeout(() => {
+            signal?.removeEventListener('abort', onAbort);
+            resolve(asFetchResult([]));
+          }, 10_000);
+        })
     );
 
     try {
@@ -855,8 +862,6 @@ describe('SyncService Integration', () => {
       expect(service.getIsSyncing()).toBe(true);
 
       const pausePromise = service.pauseForDbMaintenance(5000);
-      await new Promise((r) => setTimeout(r, 30));
-      releaseFetch?.();
       await expect(pausePromise).resolves.toBe(true);
       expect(service.isDbMaintenanceHoldActive()).toBe(true);
       await syncPromise.catch(() => undefined);

@@ -179,6 +179,7 @@ Integrity / silent-error / sync-FTS / index / cache / uniqueness / blacklist bat
 | # | Branch | PR | Status |
 |---|--------|----|--------|
 | — | `audit/sync-pagination-large-artists` | — | ✅ merged into master (no dedicated PR number): `requestCancel` / `waitUntilIdle` + quit drain (`SYNC_SHUTDOWN_DRAIN_MS` in `main.ts`) + `ensureFtsTriggers` on DB init (`fts-triggers.ts`) |
+| — | `fix/sync-cancel-responsive` | — | 🔄 open: AbortSignal into sync `fetchPosts` + interruptible `retryWithBackoff` sleep (cancel during Retry-After / hung request) |
 
 ### Audit v17 — branch tracking (complete)
 

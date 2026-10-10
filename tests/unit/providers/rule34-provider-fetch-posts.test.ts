@@ -134,6 +134,21 @@ describe("Rule34Provider.fetchPosts error classification", () => {
 
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
   });
+
+  it("forwards AbortSignal into axios and rethrows abort", async () => {
+    const abortController = new AbortController();
+    const abortError = new DOMException("The operation was aborted.", "AbortError");
+    axiosGetMock.mockRejectedValueOnce(abortError);
+
+    await expect(
+      provider.fetchPosts("test_tag", 1, settings, false, 50, abortController.signal)
+    ).rejects.toBe(abortError);
+
+    expect(axiosGetMock).toHaveBeenCalledTimes(1);
+    expect(axiosGetMock.mock.calls[0]?.[1]).toMatchObject({
+      signal: abortController.signal,
+    });
+  });
 });
 
 describe("Rule34Provider.searchTags", () => {

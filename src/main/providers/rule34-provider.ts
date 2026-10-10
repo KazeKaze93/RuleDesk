@@ -314,9 +314,10 @@ export class Rule34Provider implements IBooruProvider {
     page: number,
     settings: ProviderSettings,
     isRandom: boolean,
-    limit: number
+    limit: number,
+    signal?: AbortSignal
   ): Promise<FetchPostsResult> {
-    await this.waitForUserSlot();
+    await this.waitForUserSlot(signal);
 
     const apiPage = isRandom
       ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1
@@ -332,11 +333,15 @@ export class Rule34Provider implements IBooruProvider {
         settings,
         json: 1,
         limit: pageLimit,
+        signal,
       });
       assertRule34NotBlockedResponse(jsonResponse);
       const result = this.parseJsonPostSearchResponse(jsonResponse.text, tags);
       return this.maybeShufflePosts(result, isRandom);
     } catch (error) {
+      if (axios.isCancel(error) || isAbortError(error)) {
+        throw error;
+      }
       this.notifyIfRateLimited(error);
       if (isProviderSearchError(error)) {
         if (
@@ -367,6 +372,7 @@ export class Rule34Provider implements IBooruProvider {
         settings,
         json: 0,
         limit: pageLimit,
+        signal,
       });
       assertRule34NotBlockedResponse(xmlResponse);
       const result = this.parseXmlPostSearchResponse(xmlResponse.text);
@@ -375,6 +381,9 @@ export class Rule34Provider implements IBooruProvider {
       );
       return this.maybeShufflePosts(result, isRandom);
     } catch (error) {
+      if (axios.isCancel(error) || isAbortError(error)) {
+        throw error;
+      }
       this.notifyIfRateLimited(error);
       if (isProviderSearchError(error)) {
         throw error;
@@ -411,10 +420,12 @@ export class Rule34Provider implements IBooruProvider {
     settings: ProviderSettings;
     json: 0 | 1;
     limit: number;
+    signal?: AbortSignal;
   }): Promise<Rule34HttpResponse> {
     const url = this.buildUrl(options);
     try {
       const response = await axios.get<string>(url, {
+        signal: options.signal,
         timeout: REQUEST_TIMEOUT,
         headers: this.getHeaders(),
         responseType: "text",
@@ -427,6 +438,9 @@ export class Rule34Provider implements IBooruProvider {
         data: response.data ?? "",
       });
     } catch (error) {
+      if (axios.isCancel(error) || isAbortError(error)) {
+        throw error;
+      }
       const httpResponse = toRule34HttpResponseFromAxiosError(error);
       if (httpResponse) {
         return httpResponse;

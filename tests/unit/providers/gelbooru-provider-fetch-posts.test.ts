@@ -171,6 +171,21 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
   });
 
+  it("forwards AbortSignal into axios and rethrows abort", async () => {
+    const abortController = new AbortController();
+    const abortError = new DOMException("The operation was aborted.", "AbortError");
+    axiosGetMock.mockRejectedValueOnce(abortError);
+
+    await expect(
+      provider.fetchPosts("solo", 1, settings, false, 50, abortController.signal)
+    ).rejects.toBe(abortError);
+
+    expect(axiosGetMock).toHaveBeenCalledTimes(1);
+    expect(axiosGetMock.mock.calls[0]?.[1]).toMatchObject({
+      signal: abortController.signal,
+    });
+  });
+
   it("returns empty FetchPostsResult for a genuine well-formed empty JSON array", async () => {
     axiosGetMock.mockResolvedValueOnce({
       status: 200,
