@@ -1,6 +1,5 @@
 import { BrowserWindow } from "electron";
 import { logger } from "../lib/logger";
-import { redactErrorForLog } from "../lib/redact-error";
 import { getDb, getSqliteInstance } from "../db/client";
 import { artists, settings, posts, SETTINGS_ID } from "../db/schema";
 import {
@@ -770,10 +769,7 @@ export class SyncService {
           if (isSyncCancelledError(e)) {
             logger.info(`SyncService: Sync cancelled for ${artist.name}`);
           } else {
-            logger.error(
-              `Sync error for ${artist.name}`,
-              redactErrorForLog(e)
-            );
+            logger.error(`Sync error for ${artist.name}`, e);
           }
           hasMore = false;
 

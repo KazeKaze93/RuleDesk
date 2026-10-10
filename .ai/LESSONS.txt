@@ -309,3 +309,7 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 ### Problem: Re-opening the window stacks duplicate `before-quit` listeners
 **Root Cause:** `app.on("before-quit", …)` was registered inside `initializeAppAndWindow()`, which tray Show/click/`activate` can call again after the window was destroyed.
 **Invariant Rule:** Register process-lifetime Electron listeners (`before-quit`, CSP setup flags, etc.) once at module scope (or behind a one-shot guard). Window recreation may re-run IPC setup (`removeHandler` first) but must not re-bind app-level quit handlers.
+
+### Problem: Secrets in logs leak through raw Error / AxiosError serialization
+**Root Cause:** Axios embeds credentials in `config.url`, `config.params`, and `request.path` / `_header`. Logging the raw error (or relying on a few call-site redactors) misses most `log.error(..., error)` sites; substring username masks (e.g. OS name `user`) can also corrupt `user_id` / `users` if applied before query-key masks.
+**Invariant Rule:** Redact only via a centralized `electron-log` hook (main + renderer) over every transport. Masks are segment-based (path segments / query params / URL userinfo), never bare substrings. Apply sensitive keys/query params before username path-segment masks. Do not depend on call-site discipline for disk-safe logs.

@@ -837,7 +837,8 @@ The IPC layer enforces a strict security contract for API credentials:
 3. **Error Handling:** Errors are properly handled without exposing sensitive data
 4. **No Direct Node Access:** Renderer cannot access Node.js APIs directly
 5. **Secure Credentials:** API keys encrypted at rest, **NEVER returned to Renderer** (only `hasApiKey` boolean flag)
-6. **Maintenance Queue:** Backup, restore, and user-visible VACUUM share a sequential queue to prevent close/reopen races; ordinary read/write IPC is not paused by the queue (except a few legacy updates handlers that incorrectly join it)
+6. **Log redaction:** `electron-log` hooks (main `logger.ts`, renderer `setup-log-redaction.ts`) redact `api_key` / `user_id` (and related object keys) plus OS home/user path segments before console and `logs/app.log` writes. Pure logic lives in `src/shared/utils/log-redaction.ts` — do not rely on call-site discipline alone.
+7. **Maintenance Queue:** Backup, restore, and user-visible VACUUM share a sequential queue to prevent close/reopen races; ordinary read/write IPC is not paused by the queue (except a few legacy updates handlers that incorrectly join it)
 
 ### Credential Security Flow
 
@@ -1645,7 +1646,7 @@ src/
 │   │   ├── downloadWorker.ts       # Batch download worker
 │   │   └── vacuumWorker.ts         # VACUUM worker
 │   ├── lib/                       # Utilities
-│   │   ├── logger.ts              # Logging utility
+│   │   ├── logger.ts              # electron-log setup + redaction hook (main)
 │   │   └── proxy.ts               # Proxy config helpers
 │   ├── bridge.ts                  # IPC bridge interface definition
 │   ├── main.d.ts                  # Main process type definitions

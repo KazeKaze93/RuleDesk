@@ -26,7 +26,6 @@ import {
 } from "./provider-search-errors";
 import { isAxiosTransportFailure } from "./rule34-post-response";
 import { getProxyAgent } from "../lib/proxy";
-import { redactErrorForLog } from "../lib/redact-error";
 import { warnIfUnknownMediaHost } from "./warn-unknown-media-host";
 
 type GelbooruTagItem = {
@@ -139,10 +138,7 @@ export class GelbooruProvider implements IBooruProvider {
       // Gelbooru sometimes returns empty array or object with post array
       return status === 200 && (Array.isArray(data) || !!data?.post);
     } catch (error) {
-      logger.error(
-        "[GelbooruProvider] Auth check failed",
-        redactErrorForLog(error)
-      );
+      logger.error("[GelbooruProvider] Auth check failed", error);
       return false;
     }
   }
@@ -336,10 +332,7 @@ export class GelbooruProvider implements IBooruProvider {
         }
         throw error;
       }
-      logger.error(
-        `[Gelbooru] Error fetching page ${page}`,
-        redactErrorForLog(error)
-      );
+      logger.error(`[Gelbooru] Error fetching page ${page}`, error);
       if (isAxiosTransportFailure(error)) {
         throw new ProviderSearchError("network");
       }

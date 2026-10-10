@@ -20,7 +20,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `lib/backup-retention-size-cap.test.ts` | Backup size-cap prune |
 | `lib/media-cache-eviction.test.ts` | Video-cache LRU last-accessed selection (not mtime; skip open readers) |
 | `lib/filter-artist-autocomplete.test.ts` | Add Artist artist-only filter |
-| `lib/redact-error.test.ts` | Credential redaction in logged URLs / Axios errors |
+| `shared/log-redaction.test.ts` | Central log redaction (query keys, userinfo, paths, AxiosError) |
 | `utils/decrypted-credentials.test.ts` | API key decrypt fail-safe |
 | `utils/parse-credentials.test.ts` | Credential paste parsing |
 | `utils/react-query-cache.test.ts` | Browse pagination / cursor helpers |
