@@ -299,13 +299,15 @@ Persistent cache for Rule34 tag type resolution (viewer TagsDrawer / resolve IPC
 
 **Semantics:**
 
-- `found` — API returned the tag; used for categorization.
+- `found` — API returned the tag; used for categorization. Maintenance TTL `TAG_RESOLVE_FOUND_TTL_MS` (90 days — much larger than not_found). Load still serves `found` until the next maintenance tick deletes expired rows (eviction-only bound).
 - `not_found` — API answered successfully with empty/miss; TTL `TAG_RESOLVE_NOT_FOUND_TTL_MS` (7 days). Expired rows are treated as cache-miss (re-resolve); maintenance DELETEs them.
 - Unresolved failures are **not** written — they remain candidates for the next session.
 
 **Indexes:**
 
 - `tag_metadata_type_idx` — Index on `type` for filtering (e.g. all artists)
+
+Maintenance: `deleteExpiredTagMetadata` then `enforceTagMetadataRowCap` (`MAX_TAG_METADATA_ROWS`, 50_000) on the `MaintenanceScheduler` tick (via `maintenanceQueue`).
 
 ### Table: `search_results_cache`
 
@@ -321,8 +323,8 @@ Persistent TTL cache for Browse `searchBooru` API pages (`SearchController.searc
 
 **Semantics:**
 
-- `found` — successful API page with at least one post; payload parsed only through the versioned resolver (`parseSearchResultsCachePayload`). TTL `SEARCH_RESULTS_CACHE_TTL_MS` (24 hours).
-- `not_found` — confirmed empty API page after alias/user:/artist-strip fallbacks (tagged queries). Same TTL. Empty is **not** stored as `found`.
+- `found` — successful API page with at least one post; payload parsed only through the versioned resolver (`parseSearchResultsCachePayload`). TTL `SEARCH_RESULTS_CACHE_FOUND_TTL_MS` (7 days — much larger than not_found).
+- `not_found` — confirmed empty API page after alias/user:/artist-strip fallbacks (tagged queries). TTL `SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS` (24 hours). Empty is **not** stored as `found`.
 - Unresolved failures (429/network/parse) are **not** written.
 - Untagged page 1 returning zero rows is **not** persisted (same throttle-blip case as the empty-page UI path).
 - Untagged page 2+ returning zero rows **is** persisted as `not_found` (real end-of-feed; repeat scroll must not re-hit the API).
@@ -332,9 +334,9 @@ Persistent TTL cache for Browse `searchBooru` API pages (`SearchController.searc
 
 **Indexes:**
 
-- `search_results_cache_resolved_at_idx` — Index on `resolved_at` for maintenance DELETE / row-cap eviction
+- `search_results_cache_resolved_at_idx` — Index on `resolved_at` for maintenance DELETE / row-cap / payload-byte eviction
 
-Maintenance: `deleteExpiredSearchResultsCache` then `enforceSearchResultsCacheRowCap` (`MAX_SEARCH_RESULTS_CACHE_ROWS`, 2000) on the same `MaintenanceScheduler` tick as `deleteExpiredNotFoundTagMetadata`. TTL first, then oldest-by-`resolved_at` eviction of excess rows. Raw SQL cutoff uses `Date.now()` ms against `mode: "timestamp_ms"`. No `last_accessed` — cache hits do not bump `resolved_at`; pinning hot reads would need a schema change.
+Maintenance (via `maintenanceQueue` on the `MaintenanceScheduler` tick): `deleteExpiredSearchResultsCache` (status-specific TTLs), then `enforceSearchResultsCacheRowCap` (`MAX_SEARCH_RESULTS_CACHE_ROWS`, 2000), then `enforceSearchResultsCachePayloadByteCap` (`MAX_SEARCH_RESULTS_CACHE_PAYLOAD_BYTES`, 32 MiB of `SUM(LENGTH(response_payload))`). TTL first, then oldest-by-`resolved_at` eviction. Raw SQL cutoff uses ms against `mode: "timestamp_ms"`. No `last_accessed` — cache hits do not bump `resolved_at`; pinning hot reads would need a schema change.
 
 ### Table: `post_lookup_cache`
 
@@ -349,14 +351,16 @@ Persistent TTL cache for single-post `id:${postId}` lookups (`resolvePostLookup`
 
 **Semantics:**
 
-- `not_found` — confirmed empty/`id:` miss from the API. TTL `POST_LOOKUP_NOT_FOUND_TTL_MS` (**30 days** — deleted/banned posts rarely return, unlike tags that may appear later; longer than `TAG_RESOLVE_NOT_FOUND_TTL_MS` 7 days). Repeat lookups within TTL skip HTTP. Expired rows are cache-misses; maintenance DELETEs them via `deleteExpiredNotFoundPostLookupCache`.
-- `found` — matching post returned; stored so a prior `not_found` is cleared. **Does not skip HTTP** (the post body is not in this table; `posts` is the found payload).
+- `not_found` — confirmed empty/`id:` miss from the API. TTL `POST_LOOKUP_NOT_FOUND_TTL_MS` (**30 days** — deleted/banned posts rarely return, unlike tags that may appear later; longer than `TAG_RESOLVE_NOT_FOUND_TTL_MS` 7 days). Repeat lookups within TTL skip HTTP. Expired rows are cache-misses; maintenance DELETEs them via `deleteExpiredPostLookupCache`.
+- `found` — matching post returned; stored so a prior `not_found` is cleared. **Does not skip HTTP** (the post body is not in this table; `posts` is the found payload). Maintenance/load TTL `POST_LOOKUP_FOUND_TTL_MS` (180 days — much larger than not_found).
 - Unresolved failures (429/network/parse) are **not** written.
 
 **Indexes:**
 
 - Composite primary key `(provider, post_id)`
-- `post_lookup_cache_resolved_at_idx` — maintenance TTL DELETE
+- `post_lookup_cache_resolved_at_idx` — maintenance TTL DELETE / row-cap eviction
+
+Maintenance: `deleteExpiredPostLookupCache` then `enforcePostLookupCacheRowCap` (`MAX_POST_LOOKUP_CACHE_ROWS`, 20_000) on the same queued tick.
 
 ### Table: `playlists`
 
@@ -1066,7 +1070,7 @@ The application also exposes VACUUM maintenance controls in Settings:
 
 1. **Manual run:** `window.api.runVacuum()` closes the Main DB handle, runs `VACUUM;` in a dedicated **maintenance worker** (`vacuumWorker.ts`), then reinitializes. The run is enqueued on `maintenanceQueue` so it cannot overlap backup/restore. Intentional DB-related worker-thread exceptions (not ordinary CRUD): user-visible `VACUUM`, backup `VACUUM INTO`, and `PRAGMA integrity_check` (manual + restore gate) via `backupIntegrityWorker.ts`. Interactive CRUD stays on the Main thread via synchronous `better-sqlite3` + Drizzle; those heavy PRAGMA/VACUUM ops are offloaded so the UI/IPC loop is not blocked for their full duration.
 2. **Status:** `window.api.getVacuumStatus()` returns last run time/result/error and in-memory `isRunning`. While VACUUM is running (DB closed), status is served from an in-memory cache so polling does not hit `getDb()`.
-3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`. `MaintenanceScheduler` still runs lightweight `wal_checkpoint` + `optimize` plus TTL eviction (`deleteExpiredNotFoundTagMetadata`, `deleteExpiredSearchResultsCache`, `deleteExpiredNotFoundPostLookupCache`), `search_results_cache` row-cap eviction (`enforceSearchResultsCacheRowCap`), and on-disk video-cache LRU (`VideoProxyServer.evictCache`, last-accessed) on its startup/daily tick. After that tick it also calls `MaintenanceService.runVacuumIfScheduleDue`: if `vacuum_schedule` is `weekly` (7d) or `monthly` (30d) and `settings.last_vacuum_at` is null or older than the interval, it runs the same `runVacuum` path as Settings (via `maintenanceQueue`). `manual` never auto-runs.
+3. **Schedule policy:** `window.api.getVacuumSchedule()` / `window.api.setVacuumSchedule(...)` store user policy (`manual`, `weekly`, `monthly`) in `settings`. `MaintenanceScheduler` runs lightweight `wal_checkpoint` + `optimize` plus cache TTL/row/byte eviction (`deleteExpiredTagMetadata`, `enforceTagMetadataRowCap`, `deleteExpiredSearchResultsCache`, `enforceSearchResultsCacheRowCap`, `enforceSearchResultsCachePayloadByteCap`, `deleteExpiredPostLookupCache`, `enforcePostLookupCacheRowCap`) inside `maintenanceQueue` on its startup/daily tick, then on-disk video-cache LRU (`VideoProxyServer.evictCache`, last-accessed). After that tick it also calls `MaintenanceService.runVacuumIfScheduleDue`: if `vacuum_schedule` is `weekly` (7d) or `monthly` (30d) and `settings.last_vacuum_at` is null or older than the interval, it runs the same `runVacuum` path as Settings (via `maintenanceQueue`). `manual` never auto-runs.
 
 **Important:** `VACUUM` remains blocking for SQLite itself, but is isolated from the UI/IPC loop by the maintenance worker. Do not use worker threads for ordinary CRUD — that remains forbidden (see `.cursorrules`). Worker errors return `error.message` only (no stack) to settings/`DatabaseMaintenanceCard`.
 

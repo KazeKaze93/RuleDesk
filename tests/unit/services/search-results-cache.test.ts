@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { searchResultsCache } from "@/main/db/schema";
-import { SEARCH_RESULTS_CACHE_TTL_MS } from "@/main/config/search-results-cache-constants";
+import {
+  SEARCH_RESULTS_CACHE_FOUND_TTL_MS,
+  SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS,
+} from "@/main/config/search-results-cache-constants";
 import {
   deleteExpiredSearchResultsCache,
+  enforceSearchResultsCachePayloadByteCap,
   enforceSearchResultsCacheRowCap,
 } from "@/main/db/queries/search-results-cache";
 import {
@@ -246,11 +250,13 @@ describe("search-results-cache", () => {
     expect(row?.responsePayload).toBeNull();
   });
 
-  it("treats expired rows as cache-miss and re-fetches", async () => {
+  it("treats expired found rows as cache-miss and re-fetches", async () => {
     const cacheKey = buildSearchResultsCacheKey(
       baseKeyInput({ tags: "stale_page" })
     );
-    const expiredAt = new Date(Date.now() - SEARCH_RESULTS_CACHE_TTL_MS - 1_000);
+    const expiredAt = new Date(
+      Date.now() - SEARCH_RESULTS_CACHE_FOUND_TTL_MS - 1_000
+    );
     mockDb.db
       .insert(searchResultsCache)
       .values({
@@ -270,13 +276,46 @@ describe("search-results-cache", () => {
       .run();
 
     const fetchFromProvider = vi.fn(async () => [makePost(8)]);
-    const posts = await resolveCachedSearchPage(cacheKey,
-      fetchFromProvider,
-      { persistEmpty: true }
-    );
+    const posts = await resolveCachedSearchPage(cacheKey, fetchFromProvider, {
+      persistEmpty: true,
+    });
 
     expect(fetchFromProvider).toHaveBeenCalledTimes(1);
     expect(posts[0]?.id).toBe(8);
+  });
+
+  it("keeps found rows that are older than not_found TTL but still within found TTL", async () => {
+    const cacheKey = buildSearchResultsCacheKey(
+      baseKeyInput({ tags: "mid_age_found" })
+    );
+    const midAgeAt = new Date(
+      Date.now() - SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS - 60_000
+    );
+    mockDb.db
+      .insert(searchResultsCache)
+      .values({
+        cacheKey,
+        status: "found",
+        payloadSchemaVersion: 1,
+        responsePayload: JSON.stringify({
+          posts: [
+            {
+              ...makePost(70),
+              createdAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        }),
+        resolvedAt: midAgeAt,
+      })
+      .run();
+
+    const fetchFromProvider = vi.fn(async () => [makePost(71)]);
+    const posts = await resolveCachedSearchPage(cacheKey, fetchFromProvider, {
+      persistEmpty: true,
+    });
+
+    expect(fetchFromProvider).not.toHaveBeenCalled();
+    expect(posts[0]?.id).toBe(70);
   });
 
   it("deduplicates concurrent fetches for the same cache key", async () => {
@@ -321,7 +360,8 @@ describe("search-results-cache", () => {
     const freshKey = buildSearchResultsCacheKey(
       baseKeyInput({ tags: "fresh_page" })
     );
-    await resolveCachedSearchPage(freshKey,
+    await resolveCachedSearchPage(
+      freshKey,
       async () => [makePost(1)],
       { persistEmpty: true }
     );
@@ -336,26 +376,78 @@ describe("search-results-cache", () => {
     const deletedFresh = deleteExpiredSearchResultsCache(mockDb.sqlite);
     expect(deletedFresh).toBe(0);
 
-    const expiredKey = buildSearchResultsCacheKey(
-      baseKeyInput({ tags: "expired_page" })
+    const expiredNotFoundKey = buildSearchResultsCacheKey(
+      baseKeyInput({ tags: "expired_not_found" })
     );
-    const expiredAt = new Date(Date.now() - SEARCH_RESULTS_CACHE_TTL_MS - 60_000);
+    const expiredNotFoundAt = new Date(
+      Date.now() - SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS - 60_000
+    );
     mockDb.db
       .insert(searchResultsCache)
       .values({
-        cacheKey: expiredKey,
+        cacheKey: expiredNotFoundKey,
         status: "not_found",
         payloadSchemaVersion: 1,
         responsePayload: null,
-        resolvedAt: expiredAt,
+        resolvedAt: expiredNotFoundAt,
+      })
+      .run();
+
+    const midAgeFoundKey = buildSearchResultsCacheKey(
+      baseKeyInput({ tags: "mid_age_found_ttl" })
+    );
+    mockDb.db
+      .insert(searchResultsCache)
+      .values({
+        cacheKey: midAgeFoundKey,
+        status: "found",
+        payloadSchemaVersion: 1,
+        responsePayload: JSON.stringify({
+          posts: [
+            {
+              ...makePost(2),
+              createdAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        }),
+        resolvedAt: expiredNotFoundAt,
+      })
+      .run();
+
+    const expiredFoundKey = buildSearchResultsCacheKey(
+      baseKeyInput({ tags: "expired_found" })
+    );
+    mockDb.db
+      .insert(searchResultsCache)
+      .values({
+        cacheKey: expiredFoundKey,
+        status: "found",
+        payloadSchemaVersion: 1,
+        responsePayload: JSON.stringify({
+          posts: [
+            {
+              ...makePost(3),
+              createdAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        }),
+        resolvedAt: new Date(
+          Date.now() - SEARCH_RESULTS_CACHE_FOUND_TTL_MS - 60_000
+        ),
       })
       .run();
 
     const deletedExpired = deleteExpiredSearchResultsCache(mockDb.sqlite);
-    expect(deletedExpired).toBe(1);
+    expect(deletedExpired).toBe(2);
     const remaining = mockDb.db.select().from(searchResultsCache).all();
     expect(remaining.some((row) => row.cacheKey === freshKey)).toBe(true);
-    expect(remaining.some((row) => row.cacheKey === expiredKey)).toBe(false);
+    expect(remaining.some((row) => row.cacheKey === midAgeFoundKey)).toBe(true);
+    expect(remaining.some((row) => row.cacheKey === expiredNotFoundKey)).toBe(
+      false
+    );
+    expect(remaining.some((row) => row.cacheKey === expiredFoundKey)).toBe(
+      false
+    );
   });
 
   it("row cap evicts oldest resolved_at first and leaves newest", () => {
@@ -406,6 +498,68 @@ describe("search-results-cache", () => {
       .run();
 
     expect(enforceSearchResultsCacheRowCap(mockDb.sqlite, 10)).toBe(0);
+    expect(mockDb.db.select().from(searchResultsCache).all()).toHaveLength(1);
+  });
+
+  it("payload-byte cap evicts oldest until under the byte budget", () => {
+    const now = Date.now();
+    const payloadA = "a".repeat(100);
+    const payloadB = "b".repeat(100);
+    const payloadC = "c".repeat(100);
+    mockDb.db
+      .insert(searchResultsCache)
+      .values([
+        {
+          cacheKey: buildSearchResultsCacheKey(baseKeyInput({ tags: "bytes_a" })),
+          status: "found",
+          payloadSchemaVersion: 1,
+          responsePayload: payloadA,
+          resolvedAt: new Date(now - 3 * 60_000),
+        },
+        {
+          cacheKey: buildSearchResultsCacheKey(baseKeyInput({ tags: "bytes_b" })),
+          status: "found",
+          payloadSchemaVersion: 1,
+          responsePayload: payloadB,
+          resolvedAt: new Date(now - 2 * 60_000),
+        },
+        {
+          cacheKey: buildSearchResultsCacheKey(baseKeyInput({ tags: "bytes_c" })),
+          status: "found",
+          payloadSchemaVersion: 1,
+          responsePayload: payloadC,
+          resolvedAt: new Date(now - 60_000),
+        },
+      ])
+      .run();
+
+    const deleted = enforceSearchResultsCachePayloadByteCap(mockDb.sqlite, 150);
+    expect(deleted).toBe(2);
+
+    const remaining = mockDb.db.select().from(searchResultsCache).all();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]?.cacheKey).toBe(
+      buildSearchResultsCacheKey(baseKeyInput({ tags: "bytes_c" }))
+    );
+  });
+
+  it("payload-byte cap skips when total payload is under the limit", () => {
+    mockDb.db
+      .insert(searchResultsCache)
+      .values({
+        cacheKey: buildSearchResultsCacheKey(
+          baseKeyInput({ tags: "bytes_under" })
+        ),
+        status: "found",
+        payloadSchemaVersion: 1,
+        responsePayload: "small",
+        resolvedAt: new Date(),
+      })
+      .run();
+
+    expect(enforceSearchResultsCachePayloadByteCap(mockDb.sqlite, 10_000)).toBe(
+      0
+    );
     expect(mockDb.db.select().from(searchResultsCache).all()).toHaveLength(1);
   });
 });

@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { postLookupCache } from "@/main/db/schema";
-import { POST_LOOKUP_NOT_FOUND_TTL_MS } from "@/main/config/post-lookup-constants";
-import { deleteExpiredNotFoundPostLookupCache } from "@/main/db/queries/post-lookup-cache";
+import {
+  POST_LOOKUP_FOUND_TTL_MS,
+  POST_LOOKUP_NOT_FOUND_TTL_MS,
+} from "@/main/config/post-lookup-constants";
+import {
+  deleteExpiredPostLookupCache,
+  enforcePostLookupCacheRowCap,
+} from "@/main/db/queries/post-lookup-cache";
 import type { BooruPost } from "@/shared/schemas/booru";
 import { ProviderSearchError } from "@/main/providers/provider-search-errors";
 
@@ -233,7 +239,7 @@ describe("post-lookup-cache", () => {
     }
   });
 
-  it("maintenance DELETE keeps fresh Drizzle not_found and removes expired (ms units aligned)", async () => {
+  it("maintenance DELETE keeps fresh rows and removes expired found/not_found (ms units aligned)", async () => {
     const fetchFromProvider = vi.fn().mockResolvedValue([]);
     await resolvePostLookup("rule34", 1, fetchFromProvider);
 
@@ -244,7 +250,7 @@ describe("post-lookup-cache", () => {
       .get("rule34", 1) as { resolved_at: number } | undefined;
     expect(rawFresh?.resolved_at).toBeGreaterThan(1_000_000_000_000);
 
-    expect(deleteExpiredNotFoundPostLookupCache(mockDb.sqlite)).toBe(0);
+    expect(deleteExpiredPostLookupCache(mockDb.sqlite)).toBe(0);
     expect(
       mockDb.db
         .select()
@@ -253,7 +259,7 @@ describe("post-lookup-cache", () => {
         .some((row) => row.postId === 1)
     ).toBe(true);
 
-    const expiredAt = new Date(
+    const expiredNotFoundAt = new Date(
       Date.now() - POST_LOOKUP_NOT_FOUND_TTL_MS - 60_000
     );
     mockDb.db
@@ -262,13 +268,74 @@ describe("post-lookup-cache", () => {
         provider: "rule34",
         postId: 2,
         status: "not_found",
-        resolvedAt: expiredAt,
+        resolvedAt: expiredNotFoundAt,
       })
       .run();
 
-    expect(deleteExpiredNotFoundPostLookupCache(mockDb.sqlite)).toBe(1);
+    mockDb.db
+      .insert(postLookupCache)
+      .values({
+        provider: "rule34",
+        postId: 3,
+        status: "found",
+        resolvedAt: expiredNotFoundAt,
+      })
+      .run();
+
+    mockDb.db
+      .insert(postLookupCache)
+      .values({
+        provider: "rule34",
+        postId: 4,
+        status: "found",
+        resolvedAt: new Date(Date.now() - POST_LOOKUP_FOUND_TTL_MS - 60_000),
+      })
+      .run();
+
+    expect(deleteExpiredPostLookupCache(mockDb.sqlite)).toBe(2);
     const remaining = mockDb.db.select().from(postLookupCache).all();
     expect(remaining.some((row) => row.postId === 1)).toBe(true);
+    expect(remaining.some((row) => row.postId === 3)).toBe(true);
     expect(remaining.some((row) => row.postId === 2)).toBe(false);
+    expect(remaining.some((row) => row.postId === 4)).toBe(false);
+  });
+
+  it("row cap evicts oldest resolved_at first and leaves newest", () => {
+    const now = Date.now();
+    for (let i = 0; i < 5; i += 1) {
+      mockDb.db
+        .insert(postLookupCache)
+        .values({
+          provider: "rule34",
+          postId: i + 1,
+          status: "found",
+          resolvedAt: new Date(now - (5 - i) * 60_000),
+        })
+        .run();
+    }
+
+    expect(enforcePostLookupCacheRowCap(mockDb.sqlite, 3)).toBe(2);
+    const remaining = mockDb.db
+      .select()
+      .from(postLookupCache)
+      .all()
+      .map((row) => row.postId)
+      .sort((a, b) => a - b);
+    expect(remaining).toEqual([3, 4, 5]);
+  });
+
+  it("row cap is a no-op when at or under the limit", () => {
+    mockDb.db
+      .insert(postLookupCache)
+      .values({
+        provider: "rule34",
+        postId: 1,
+        status: "found",
+        resolvedAt: new Date(),
+      })
+      .run();
+
+    expect(enforcePostLookupCacheRowCap(mockDb.sqlite, 10)).toBe(0);
+    expect(mockDb.db.select().from(postLookupCache).all()).toHaveLength(1);
   });
 });

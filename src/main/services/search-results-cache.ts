@@ -7,9 +7,11 @@ import { getDb } from "../db/client";
 import { searchResultsCache } from "../db/schema";
 import { BooruPostSchema, type BooruPost } from "../../shared/schemas/booru";
 import {
+  SEARCH_RESULTS_CACHE_FOUND_TTL_MS,
+  SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS,
   SEARCH_RESULTS_CACHE_PAYLOAD_SCHEMA_VERSION,
-  SEARCH_RESULTS_CACHE_TTL_MS,
 } from "../config/search-results-cache-constants";
+import type { SearchResultsCacheStatus } from "../db/schema";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -29,8 +31,18 @@ export type CachedSearchPageLookup =
   | { status: "not_found" }
   | { status: "miss" };
 
-function isActiveCacheEntry(resolvedAt: Date, nowMs: number): boolean {
-  return nowMs - resolvedAt.getTime() < SEARCH_RESULTS_CACHE_TTL_MS;
+function ttlForStatus(status: SearchResultsCacheStatus): number {
+  return status === "found"
+    ? SEARCH_RESULTS_CACHE_FOUND_TTL_MS
+    : SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS;
+}
+
+function isActiveCacheEntry(
+  status: SearchResultsCacheStatus,
+  resolvedAt: Date,
+  nowMs: number
+): boolean {
+  return nowMs - resolvedAt.getTime() < ttlForStatus(status);
 }
 
 function serializeFoundPayload(posts: BooruPost[]): string {
@@ -99,7 +111,7 @@ export function loadSearchResultsCache(
   if (!row) {
     return { status: "miss" };
   }
-  if (!isActiveCacheEntry(row.resolvedAt, nowMs)) {
+  if (!isActiveCacheEntry(row.status, row.resolvedAt, nowMs)) {
     return { status: "miss" };
   }
   if (row.status === "not_found") {

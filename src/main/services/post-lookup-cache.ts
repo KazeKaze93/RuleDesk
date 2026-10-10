@@ -4,7 +4,10 @@ import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../db/schema";
 import { getDb } from "../db/client";
 import { postLookupCache } from "../db/schema";
-import { POST_LOOKUP_NOT_FOUND_TTL_MS } from "../config/post-lookup-constants";
+import {
+  POST_LOOKUP_FOUND_TTL_MS,
+  POST_LOOKUP_NOT_FOUND_TTL_MS,
+} from "../config/post-lookup-constants";
 import type { ProviderId } from "../../shared/constants";
 import type { BooruPost } from "../../shared/schemas/booru";
 import {
@@ -34,6 +37,10 @@ function isActiveNotFound(resolvedAt: Date, nowMs: Millis): boolean {
   return nowMs - dateToMillis(resolvedAt) < POST_LOOKUP_NOT_FOUND_TTL_MS;
 }
 
+function isActiveFound(resolvedAt: Date, nowMs: Millis): boolean {
+  return nowMs - dateToMillis(resolvedAt) < POST_LOOKUP_FOUND_TTL_MS;
+}
+
 /**
  * Single read of post_lookup_cache for one provider+postId.
  *
@@ -43,7 +50,7 @@ function isActiveNotFound(resolvedAt: Date, nowMs: Millis): boolean {
  * shadow-insert can display the file. `found` exists to clear a prior
  * `not_found` after the post reappears — not to skip HTTP.
  *
- * expired not_found / missing → miss.
+ * expired not_found / expired found / missing → miss.
  */
 export function loadPostLookupCache(
   db: AppDatabase,
@@ -68,7 +75,7 @@ export function loadPostLookupCache(
   if (row.status === "not_found" && isActiveNotFound(row.resolvedAt, nowMs)) {
     return { status: "not_found" };
   }
-  if (row.status === "found") {
+  if (row.status === "found" && isActiveFound(row.resolvedAt, nowMs)) {
     return { status: "found" };
   }
   return { status: "miss" };

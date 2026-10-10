@@ -1,11 +1,19 @@
 import log from "electron-log";
 import { getSqliteInstance } from "../db/client";
-import { deleteExpiredNotFoundTagMetadata } from "../db/queries/tag-metadata";
+import { maintenanceQueue } from "../db/maintenance-queue";
+import {
+  deleteExpiredTagMetadata,
+  enforceTagMetadataRowCap,
+} from "../db/queries/tag-metadata";
 import {
   deleteExpiredSearchResultsCache,
+  enforceSearchResultsCachePayloadByteCap,
   enforceSearchResultsCacheRowCap,
 } from "../db/queries/search-results-cache";
-import { deleteExpiredNotFoundPostLookupCache } from "../db/queries/post-lookup-cache";
+import {
+  deleteExpiredPostLookupCache,
+  enforcePostLookupCacheRowCap,
+} from "../db/queries/post-lookup-cache";
 import type { MaintenanceService } from "./MaintenanceService";
 import type { VideoProxyServer } from "./video-proxy-server";
 
@@ -50,61 +58,91 @@ export class MaintenanceScheduler {
   private runMaintenance(trigger: "startup" | "scheduled"): void {
     // Yield to event loop to keep startup/UI responsive.
     setImmediate(() => {
-      try {
-        const sqlite = getSqliteInstance();
-        // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
-        sqlite.exec("PRAGMA wal_checkpoint(PASSIVE);");
-        sqlite.exec("PRAGMA optimize;");
+      void maintenanceQueue
+        .execute(async () => {
+          const sqlite = getSqliteInstance();
+          // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
+          sqlite.exec("PRAGMA wal_checkpoint(PASSIVE);");
+          sqlite.exec("PRAGMA optimize;");
 
-        const deletedExpiredNotFound = deleteExpiredNotFoundTagMetadata(sqlite);
-        if (deletedExpiredNotFound > 0) {
-          log.info(
-            `[MaintenanceScheduler] Deleted ${deletedExpiredNotFound} expired not_found tag_metadata rows`
-          );
-        }
-
-        const deletedExpiredSearchPages = deleteExpiredSearchResultsCache(sqlite);
-        if (deletedExpiredSearchPages > 0) {
-          log.info(
-            `[MaintenanceScheduler] Deleted ${deletedExpiredSearchPages} expired search_results_cache rows`
-          );
-        }
-
-        const deletedOverCapSearchPages = enforceSearchResultsCacheRowCap(sqlite);
-        if (deletedOverCapSearchPages > 0) {
-          log.info(
-            `[MaintenanceScheduler] Evicted ${deletedOverCapSearchPages} search_results_cache rows over row cap`
-          );
-        }
-
-        const deletedExpiredPostLookups = deleteExpiredNotFoundPostLookupCache(sqlite);
-        if (deletedExpiredPostLookups > 0) {
-          log.info(
-            `[MaintenanceScheduler] Deleted ${deletedExpiredPostLookups} expired not_found post_lookup_cache rows`
-          );
-        }
-
-        log.info(`[MaintenanceScheduler] Maintenance complete (trigger=${trigger})`);
-      } catch (error) {
-        log.error("[MaintenanceScheduler] Maintenance failed:", error);
-      }
-
-      // Yield after sync SQLite work so IPC can run before the cache directory walk.
-      const videoProxy = this.videoProxyServer;
-      if (videoProxy !== null) {
-        setImmediate(() => {
-          try {
-            videoProxy.evictCache();
-          } catch (error) {
-            log.error("[MaintenanceScheduler] Video cache eviction failed:", error);
+          const deletedExpiredTags = deleteExpiredTagMetadata(sqlite);
+          if (deletedExpiredTags > 0) {
+            log.info(
+              `[MaintenanceScheduler] Deleted ${deletedExpiredTags} expired tag_metadata rows`
+            );
           }
-        });
-      }
 
-      // After lightweight maintenance: due weekly/monthly VACUUM (closes DB).
-      // Uses the existing daily tick — day granularity is enough for 7d/30d schedules;
-      // do not change STARTUP_DELAY_MS / DAILY_INTERVAL_MS frequencies.
-      this.scheduleVacuumIfDue();
+          const deletedOverCapTags = enforceTagMetadataRowCap(sqlite);
+          if (deletedOverCapTags > 0) {
+            log.info(
+              `[MaintenanceScheduler] Evicted ${deletedOverCapTags} tag_metadata rows over row cap`
+            );
+          }
+
+          const deletedExpiredSearchPages = deleteExpiredSearchResultsCache(sqlite);
+          if (deletedExpiredSearchPages > 0) {
+            log.info(
+              `[MaintenanceScheduler] Deleted ${deletedExpiredSearchPages} expired search_results_cache rows`
+            );
+          }
+
+          const deletedOverCapSearchPages = enforceSearchResultsCacheRowCap(sqlite);
+          if (deletedOverCapSearchPages > 0) {
+            log.info(
+              `[MaintenanceScheduler] Evicted ${deletedOverCapSearchPages} search_results_cache rows over row cap`
+            );
+          }
+
+          const deletedOverBytesSearchPages =
+            enforceSearchResultsCachePayloadByteCap(sqlite);
+          if (deletedOverBytesSearchPages > 0) {
+            log.info(
+              `[MaintenanceScheduler] Evicted ${deletedOverBytesSearchPages} search_results_cache rows over payload-byte cap`
+            );
+          }
+
+          const deletedExpiredPostLookups = deleteExpiredPostLookupCache(sqlite);
+          if (deletedExpiredPostLookups > 0) {
+            log.info(
+              `[MaintenanceScheduler] Deleted ${deletedExpiredPostLookups} expired post_lookup_cache rows`
+            );
+          }
+
+          const deletedOverCapPostLookups = enforcePostLookupCacheRowCap(sqlite);
+          if (deletedOverCapPostLookups > 0) {
+            log.info(
+              `[MaintenanceScheduler] Evicted ${deletedOverCapPostLookups} post_lookup_cache rows over row cap`
+            );
+          }
+
+          log.info(
+            `[MaintenanceScheduler] Maintenance complete (trigger=${trigger})`
+          );
+        })
+        .catch((error: unknown) => {
+          log.error("[MaintenanceScheduler] Maintenance failed:", error);
+        })
+        .finally(() => {
+          // Yield after sync SQLite work so IPC can run before the cache directory walk.
+          const videoProxy = this.videoProxyServer;
+          if (videoProxy !== null) {
+            setImmediate(() => {
+              try {
+                videoProxy.evictCache();
+              } catch (error) {
+                log.error(
+                  "[MaintenanceScheduler] Video cache eviction failed:",
+                  error
+                );
+              }
+            });
+          }
+
+          // After lightweight maintenance: due weekly/monthly VACUUM (closes DB).
+          // Uses the existing daily tick — day granularity is enough for 7d/30d schedules;
+          // do not change STARTUP_DELAY_MS / DAILY_INTERVAL_MS frequencies.
+          this.scheduleVacuumIfDue();
+        });
     });
   }
 
