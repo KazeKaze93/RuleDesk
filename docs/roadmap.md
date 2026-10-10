@@ -85,7 +85,7 @@ Artists was often misread as a favorites-like side list; tracking (sync / full d
 |---|--------|----|--------|
 | U1 | `ux/artists-section-clarity` | [#208](https://github.com/KazeKaze93/RuleDesk/pull/208) | ✅ merged |
 | U2 | `feat/browse-track-and-download` | [#210](https://github.com/KazeKaze93/RuleDesk/pull/210) | ✅ merged |
-| U3 | `chore/lessons-browse-bridge` | — | started |
+| U3 | `chore/lessons-browse-bridge` | [#211](https://github.com/KazeKaze93/RuleDesk/pull/211) | started |
 
 ## 📰 Updates feed
 
