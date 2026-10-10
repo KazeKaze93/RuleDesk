@@ -632,7 +632,7 @@ const posts = await db.query.posts.findMany({
    - Background update *check* via `electron-updater` (`autoDownload` / `autoInstallOnAppQuit` stay false)
    - No in-app download/install (win.zip is unsupported; AppImage install not shipped)
    - Emits `updater:status` for `available` (with version); check/not-available stay quiet in UI; errors are logged only
-   - `app:open-release-page` opens a constant GitHub Releases URL (`/tag/v{semver}` or `/latest`) via `shell.openExternal`
+   - `app:open-release-page` (no args) opens a constant GitHub Releases URL from Main's last `update-available` version (`/tag/v{semver}` or `/latest`) via `shell.openExternal`
 
 11. **Secure Storage** (`src/main/services/secure-storage.ts`) and **credential helpers** (`src/main/utils/decrypted-credentials.ts`, `src/main/services/credentials.ts`)
 

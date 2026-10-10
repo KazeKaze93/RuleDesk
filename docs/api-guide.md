@@ -366,7 +366,7 @@ interface IpcBridge {
 
   // Updater (check + open GitHub release page; no in-app download/install)
   checkForUpdates: () => Promise<void>;
-  openReleasePage: (version?: string) => Promise<void>;
+  openReleasePage: () => Promise<void>;
 
   // Event Listeners
   onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
@@ -1092,20 +1092,16 @@ await window.api.checkForUpdates();
 
 ---
 
-### `openReleasePage(version?: string)`
+### `openReleasePage()`
 
-Opens the GitHub Releases page in the system browser. With a valid semver, opens `/releases/tag/v{version}`; otherwise `/releases/latest`. The URL is built from a fixed repository constant — never from arbitrary user URLs.
-
-**Parameters:**
-
-- `version?: string` - Optional semver from `update-available` (leading `v` allowed)
+Opens the GitHub Releases page in the system browser. Main uses the last version from `update-available` (validated semver → `/releases/tag/v{version}`); otherwise `/releases/latest`. The renderer does not pass a version — the URL is built only from Main state + a fixed repository constant.
 
 **Returns:** `Promise<void>`
 
 **Example:**
 
 ```typescript
-await window.api.openReleasePage("18.2.0");
+await window.api.openReleasePage();
 ```
 
 **IPC Channel:** `app:open-release-page`

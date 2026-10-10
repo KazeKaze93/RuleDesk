@@ -207,8 +207,7 @@ const ipcBridge: IpcBridge = {
 
   // Updater Implementation
   checkForUpdates: () => invokeIpc(IPC_CHANNELS.APP.CHECK_FOR_UPDATES),
-  openReleasePage: (version) =>
-    invokeIpc(IPC_CHANNELS.APP.OPEN_RELEASE_PAGE, version),
+  openReleasePage: () => invokeIpc(IPC_CHANNELS.APP.OPEN_RELEASE_PAGE),
 
   onUpdateStatus: (callback) => {
     const channel = IPC_CHANNELS.UPDATER.STATUS;

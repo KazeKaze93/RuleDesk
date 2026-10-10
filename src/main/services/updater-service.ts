@@ -7,7 +7,7 @@ import { buildGitHubReleasePageUrl } from "../lib/github-release-url";
 
 export class UpdaterService {
   private window: BrowserWindow | null = null;
-  /** Last version from update-available (used when openReleasePage has no arg). */
+  /** Last version from update-available; sole source for openReleasePage URL. */
   private lastAvailableVersion: string | null = null;
 
   constructor() {
@@ -62,15 +62,11 @@ export class UpdaterService {
   }
 
   /**
-   * Open the GitHub release page for a version (or /latest).
-   * URL is built only from constants + validated semver — never from raw user input.
+   * Open the GitHub release page for the last update-available version (or /latest).
+   * Version never comes from the renderer — only from autoUpdater + semver validation.
    */
-  public async openReleasePage(version?: string): Promise<void> {
-    const resolved =
-      version !== undefined && version.trim().length > 0
-        ? version
-        : this.lastAvailableVersion;
-    const url = buildGitHubReleasePageUrl(resolved);
+  public async openReleasePage(): Promise<void> {
+    const url = buildGitHubReleasePageUrl(this.lastAvailableVersion);
     logger.info(`UPDATER: Opening release page: ${url}`);
     await shell.openExternal(url);
   }

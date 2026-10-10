@@ -50,7 +50,7 @@ describe("UpdateNotification", () => {
       name: /Open release page for version 18\.2\.0/i,
     });
     fireEvent.click(openButton);
-    expect(openReleasePage).toHaveBeenCalledWith("18.2.0");
+    expect(openReleasePage).toHaveBeenCalledWith();
   });
 
   it("ignores checking, not-available, and error (no phantom UI)", () => {

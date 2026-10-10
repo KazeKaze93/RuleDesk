@@ -22,7 +22,7 @@
 | `app:logout` | `APP.LOGOUT` | `[]` (no args) | no | `AuthController` | `src/main/ipc/controllers/AuthController.ts` |
 | `app:open-external` | `APP.OPEN_EXTERNAL` | `z.string().url().min(1)` | no | `ViewerController` | `src/main/ipc/controllers/ViewerController.ts` |
 | `app:open-logs-folder` | `APP.OPEN_LOGS_FOLDER` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
-| `app:open-release-page` | `APP.OPEN_RELEASE_PAGE` | `z.tuple([z.string().optional()])` | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
+| `app:open-release-page` | `APP.OPEN_RELEASE_PAGE` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:save-settings` | `SETTINGS.SAVE` | `z.tuple([SaveSettingsSchema])` | no | `SettingsController` | Partial upsert. minimizeToTray: when true (default), win/linux close hides to tray; when false, close quits. Read at close time (no restart). macOS close never quits (Dock). |
 | `app:verify-creds` | `APP.VERIFY_CREDS` | `z.tuple([z.enum(["rule34", "gelbooru"]).optional()])` | no | `AuthController` | `src/main/ipc/controllers/AuthController.ts` |
 | `app:write-to-clipboard` | `APP.WRITE_CLIPBOARD` | `z.tuple([z.string().min(1)])` | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |

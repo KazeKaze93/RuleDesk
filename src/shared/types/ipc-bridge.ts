@@ -145,8 +145,8 @@ export interface IpcBridge {
   ) => Promise<{ success: boolean; error?: string }>;
 
   checkForUpdates: () => Promise<void>;
-  /** Opens GitHub Releases for an optional semver (tag page) or /latest. */
-  openReleasePage: (version?: string) => Promise<void>;
+  /** Opens GitHub Releases for the last update-available version (or /latest). */
+  openReleasePage: () => Promise<void>;
 
   onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
 

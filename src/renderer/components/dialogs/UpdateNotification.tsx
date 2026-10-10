@@ -34,7 +34,7 @@ export const UpdateNotification: React.FC = () => {
 
   const handleClose = () => setVisible(false);
   const handleOpenRelease = () => {
-    void window.api.openReleasePage(version || undefined).catch((error: unknown) => {
+    void window.api.openReleasePage().catch((error: unknown) => {
       log.error("[UpdateNotification] Failed to open release page:", error);
     });
   };

@@ -55,7 +55,7 @@ describe("UpdaterService", () => {
     cb(...args);
   }
 
-  it("notifies the window on available and opens the tag URL for that version", async () => {
+  it("notifies the window on available and opens the tag URL from Main state", async () => {
     const service = await loadService();
     const send = vi.fn();
     const windowStub = {
@@ -73,7 +73,7 @@ describe("UpdaterService", () => {
       version: "18.2.0",
     });
 
-    await service.openReleasePage("18.2.0");
+    await service.openReleasePage();
     expect(openExternal).toHaveBeenCalledWith(
       "https://github.com/KazeKaze93/ruledesk/releases/tag/v18.2.0"
     );
@@ -95,20 +95,20 @@ describe("UpdaterService", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("falls back to /latest when openReleasePage gets a bad version", async () => {
+  it("falls back to /latest when no update-available version was stored", async () => {
     const service = await loadService();
-    await service.openReleasePage("../not-semver");
+    await service.openReleasePage();
     expect(openExternal).toHaveBeenCalledWith(
       "https://github.com/KazeKaze93/ruledesk/releases/latest"
     );
   });
 
-  it("uses last available version when openReleasePage has no arg", async () => {
+  it("falls back to /latest when update-available version is not semver", async () => {
     const service = await loadService();
-    emit("update-available", { version: "19.0.0" });
+    emit("update-available", { version: "../not-semver" });
     await service.openReleasePage();
     expect(openExternal).toHaveBeenCalledWith(
-      "https://github.com/KazeKaze93/ruledesk/releases/tag/v19.0.0"
+      "https://github.com/KazeKaze93/ruledesk/releases/latest"
     );
   });
 });

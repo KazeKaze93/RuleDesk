@@ -36,7 +36,6 @@ import type { UpdaterService } from "../../services/updater-service";
 
 const GetIconPathArgsSchema = z.tuple([z.enum(["light", "dark"]).optional()]);
 const WriteClipboardArgsSchema = z.tuple([z.string().min(1)]);
-const OpenReleasePageArgsSchema = z.tuple([z.string().optional()]);
 
 const OPEN_LOGS_FOLDER_FAILED_MESSAGE = "Could not open the logs folder.";
 const DIAGNOSTICS_LOG_READ_FAILED_MESSAGE = "Could not read the application log.";
@@ -102,11 +101,8 @@ export class SystemController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.APP.OPEN_RELEASE_PAGE,
-      OpenReleasePageArgsSchema,
-      (event, ...args) => {
-        const [version] = OpenReleasePageArgsSchema.parse(args);
-        return this.openReleasePage(event, version);
-      }
+      z.tuple([]),
+      this.openReleasePage.bind(this)
     );
 
     log.info("[SystemController] All handlers registered");
@@ -178,11 +174,8 @@ export class SystemController extends BaseController {
     await this.updaterService.checkForUpdates();
   }
 
-  private async openReleasePage(
-    _event: IpcMainInvokeEvent,
-    version?: string
-  ): Promise<void> {
-    await this.updaterService.openReleasePage(version);
+  private async openReleasePage(_event: IpcMainInvokeEvent): Promise<void> {
+    await this.updaterService.openReleasePage();
   }
 
   private async getAppInfo(_event: IpcMainInvokeEvent): Promise<AppInfo> {
