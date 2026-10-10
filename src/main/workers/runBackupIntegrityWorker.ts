@@ -2,12 +2,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { Worker } from "worker_threads";
 
-function resolveBackupIntegrityWorkerPath(): string {
-  const besideModule = path.join(__dirname, "backupIntegrityWorker.cjs");
-  if (fs.existsSync(besideModule)) {
-    return besideModule;
+/**
+ * electron-vite emits workers under `out/main/workers/*.cjs` while callers
+ * (including this module) are bundled into `out/main/main.cjs`. Mirror vacuum /
+ * download: `__dirname/workers/<name>.cjs`.
+ */
+export function resolveBackupIntegrityWorkerPath(): string {
+  const packaged = path.join(
+    __dirname,
+    "workers",
+    "backupIntegrityWorker.cjs"
+  );
+  if (fs.existsSync(packaged)) {
+    return packaged;
   }
-  // Vitest loads from src/; electron-vite emits out/main/workers/*.cjs
+  // Vitest loads from src/main/workers/; built artifact is still under out/main/workers/
   const fromRepoOut = path.resolve(
     __dirname,
     "../../../out/main/workers/backupIntegrityWorker.cjs"
@@ -15,7 +24,7 @@ function resolveBackupIntegrityWorkerPath(): string {
   if (fs.existsSync(fromRepoOut)) {
     return fromRepoOut;
   }
-  return besideModule;
+  return packaged;
 }
 
 export type BackupIntegrityVacuumIntoRequest = {
