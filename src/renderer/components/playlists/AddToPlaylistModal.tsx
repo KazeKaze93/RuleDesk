@@ -25,15 +25,20 @@ const invalidateAfterMembershipChange = (
   postIds: number[],
   touchedPlaylistIds: number[]
 ) => {
+  const invalidate = (queryKey: readonly unknown[]) => {
+    void queryClient.invalidateQueries({ queryKey }).catch((error: unknown) => {
+      log.error("[AddToPlaylistModal] Failed to invalidate queries:", error);
+    });
+  };
   for (const pid of postIds) {
-    queryClient.invalidateQueries({ queryKey: ["playlist-entries", pid] });
+    invalidate(["playlist-entries", pid]);
   }
-  queryClient.invalidateQueries({ queryKey: ["playlists"] });
-  queryClient.invalidateQueries({ queryKey: ["playlist-entries"] });
+  invalidate(["playlists"]);
+  invalidate(["playlist-entries"]);
   for (const pl of touchedPlaylistIds) {
-    queryClient.invalidateQueries({ queryKey: ["playlist-posts", pl] });
+    invalidate(["playlist-posts", pl]);
   }
-  queryClient.invalidateQueries({ queryKey: ["playlist-posts"] });
+  invalidate(["playlist-posts"]);
 };
 
 export interface AddToPlaylistModalProps {

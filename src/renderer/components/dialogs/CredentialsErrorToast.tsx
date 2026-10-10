@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import log from "electron-log/renderer";
 import { AlertCircle, X } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
@@ -34,7 +35,9 @@ export const CredentialsErrorToast = () => {
   };
 
   const handleOpenSettings = () => {
-    navigate("/settings");
+    void Promise.resolve(navigate("/settings")).catch((error: unknown) => {
+      log.error("[CredentialsErrorToast] Navigation to settings failed:", error);
+    });
     setVisible(false);
   };
 

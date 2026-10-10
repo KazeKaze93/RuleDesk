@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import log from "electron-log/renderer";
 
 type ThemePreference = "system" | "light" | "dark";
 
@@ -57,7 +58,11 @@ export const useTheme = () => {
     },
     onSuccess: (nextTheme) => {
       queryClient.setQueryData(THEME_QUERY_KEY, nextTheme);
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["settings"] })
+        .catch((error: unknown) => {
+          log.error("[useTheme] Failed to invalidate settings:", error);
+        });
     },
   });
 

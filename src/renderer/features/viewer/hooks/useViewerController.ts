@@ -263,7 +263,14 @@ export function useViewerController({
       );
 
       if (!newState || !foundInCache) {
-        queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
+        void queryClient
+          .invalidateQueries({ queryKey: favoritesQueryKey })
+          .catch((error: unknown) => {
+            log.error(
+              "[ViewerController] Failed to invalidate favorites:",
+              error
+            );
+          });
       }
     } catch (error) {
       setIsFavorited(previousState);
@@ -317,7 +324,9 @@ export function useViewerController({
 
   const handleOpenExternal = (url: string) => {
     if (!url) return;
-    window.api.openExternal(url);
+    void window.api.openExternal(url).catch((error: unknown) => {
+      log.error("[ViewerController] Failed to open external URL:", error);
+    });
   };
 
   const resetLocalCache = () => {
@@ -325,7 +334,9 @@ export function useViewerController({
     log.info(
       `[ViewerController] Attempting to reset local cache for Post ID: ${post.id}`
     );
-    window.api.resetPostCache(post.id);
+    void window.api.resetPostCache(post.id).catch((error: unknown) => {
+      log.error("[ViewerController] Failed to reset post cache:", error);
+    });
   };
 
   const handleCopyMetadata = async () => {

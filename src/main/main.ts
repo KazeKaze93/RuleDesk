@@ -176,7 +176,12 @@ app.on("before-quit", (event) => {
       isShuttingDown = true;
       stopBackgroundServicesAndCloseDb();
       app.quit();
-    })();
+    })().catch((error: unknown) => {
+      logger.error("[Main] Error during quit drain:", error);
+      isShuttingDown = true;
+      stopBackgroundServicesAndCloseDb();
+      app.quit();
+    });
     return;
   }
 
@@ -200,7 +205,9 @@ if (!gotTheLock) {
       revealMainWindow({
         mainWindow,
         recreateWindow: () => {
-          void initializeAppAndWindow();
+          void initializeAppAndWindow().catch((error: unknown) => {
+            logger.error("[Main] Failed to recreate window:", error);
+          });
         },
       });
     });
@@ -211,7 +218,9 @@ if (!gotTheLock) {
     if (process.platform === "win32") {
       app.setAppUserModelId("com.kaze.ruledesk");
     }
-    initializeAppAndWindow();
+    void initializeAppAndWindow().catch((error: unknown) => {
+      logger.error("[Main] Failed to initialize app on ready:", error);
+    });
   });
 }
 
@@ -309,7 +318,9 @@ function createMainWindowShowController(window: BrowserWindow): {
 
 function scheduleDeferredStartupTasks(window: BrowserWindow): void {
   setTimeout(() => {
-    updaterService.checkForUpdates();
+    void updaterService.checkForUpdates().catch((error: unknown) => {
+      logger.error("[Main] Deferred update check failed:", error);
+    });
   }, 3000);
 
   void videoProxyServer.start().catch((error) => {
@@ -530,11 +541,15 @@ async function initializeAppAndWindow() {
     );
     reloadProxyFromSettings();
 
-    import("./db/backfill-media-type").then(({ backfillMediaType }) => {
-      backfillMediaType().catch((error) => {
-        logger.error("[Main] Background media_type backfill failed:", error);
+    void import("./db/backfill-media-type")
+      .then(({ backfillMediaType }) => {
+        void backfillMediaType().catch((error: unknown) => {
+          logger.error("[Main] Background media_type backfill failed:", error);
+        });
+      })
+      .catch((error: unknown) => {
+        logger.error("[Main] Failed to load backfill-media-type module:", error);
       });
-    });
 
     await rendererLoadPromise;
     logger.info(`[Main] Renderer load finished (test mode: ${isTestMode})`);
@@ -650,8 +665,8 @@ function createTray(_window: BrowserWindow): void {
     if (tray) {
       try {
         tray.destroy();
-      } catch (_e) {
-        // Ignore errors when destroying
+      } catch (error) {
+        logger.debug("[Tray] Ignoring tray.destroy error:", error);
       }
       tray = null;
     }
@@ -667,7 +682,9 @@ function createTray(_window: BrowserWindow): void {
           revealMainWindow({
             mainWindow,
             recreateWindow: () => {
-              void initializeAppAndWindow();
+              void initializeAppAndWindow().catch((error: unknown) => {
+                logger.error("[Main] Failed to recreate window from tray:", error);
+              });
             },
           });
         },
@@ -708,7 +725,9 @@ function createTray(_window: BrowserWindow): void {
 
         // Window was closed - recreate it
         if (!mainWindow || mainWindow.isDestroyed()) {
-          initializeAppAndWindow();
+          void initializeAppAndWindow().catch((error: unknown) => {
+            logger.error("[Tray] Failed to recreate window on click:", error);
+          });
           return;
         }
         
@@ -731,7 +750,12 @@ function createTray(_window: BrowserWindow): void {
       tray.on("double-click", () => {
         try {
           if (!mainWindow || mainWindow.isDestroyed()) {
-            initializeAppAndWindow();
+            void initializeAppAndWindow().catch((error: unknown) => {
+              logger.error(
+                "[Tray] Failed to recreate window on double-click:",
+                error
+              );
+            });
             return;
           }
           
@@ -772,7 +796,9 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    initializeAppAndWindow();
+    void initializeAppAndWindow().catch((error: unknown) => {
+      logger.error("[Main] Failed to initialize app on activate:", error);
+    });
   }
 });
 

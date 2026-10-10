@@ -130,7 +130,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           };
         }
       );
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["artists"] })
+        .catch((error: unknown) => {
+          log.error("[ArtistGallery] Failed to invalidate artists:", error);
+        });
     },
     onError: (err) => {
       // Ignore rate limit errors - use typed errorCode, NOT string parsing
@@ -240,9 +244,21 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     queryClient.removeQueries({ queryKey: ["posts", artist.id] });
     try {
       await window.api.repairArtist(artist.id);
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
-      queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
-      queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["artists"] })
+        .catch((error: unknown) => {
+          log.error("[ArtistGallery] Failed to invalidate artists:", error);
+        });
+      void queryClient
+        .invalidateQueries({ queryKey: ["posts", artist.id] })
+        .catch((error: unknown) => {
+          log.error("[ArtistGallery] Failed to invalidate posts:", error);
+        });
+      void queryClient
+        .invalidateQueries({ queryKey: ["posts-count", artist.id] })
+        .catch((error: unknown) => {
+          log.error("[ArtistGallery] Failed to invalidate posts count:", error);
+        });
     } catch (e) {
       log.error("[ArtistGallery] Repair sync failed:", e);
     }

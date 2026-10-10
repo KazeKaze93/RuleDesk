@@ -959,7 +959,9 @@ export class FileController extends BaseController {
         log.error(
           `[FileController] SECURITY VIOLATION: Attempt to open path outside safe directory: ${normalizedPath}`
         );
-        shell.openPath(downloadRoot);
+        void shell.openPath(downloadRoot).catch((error: unknown) => {
+          log.error("[FileController] Failed to open download root:", error);
+        });
         return false;
       }
 
@@ -986,7 +988,9 @@ export class FileController extends BaseController {
         log.error(
           `[FileController] SECURITY VIOLATION: Real path outside safe directory: ${normalizedRealPath} (original: ${normalizedPath})`
         );
-        shell.openPath(downloadRoot);
+        void shell.openPath(downloadRoot).catch((error: unknown) => {
+          log.error("[FileController] Failed to open download root:", error);
+        });
         return false;
       }
 

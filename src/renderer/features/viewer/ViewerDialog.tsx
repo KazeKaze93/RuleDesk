@@ -131,7 +131,9 @@ export const ViewerDialog = () => {
         log.info(
           `[Viewer] Triggering onLoadMore callback at index ${currentIndex}. Loaded: ${loadedCount}`
         );
-        queue.onLoadMore();
+        void Promise.resolve(queue.onLoadMore()).catch((error: unknown) => {
+          log.error("[ViewerDialog] onLoadMore failed:", error);
+        });
         return;
       }
     }

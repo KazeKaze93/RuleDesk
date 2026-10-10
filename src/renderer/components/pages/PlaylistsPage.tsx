@@ -111,7 +111,11 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
         iconName: "",
       });
 
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["playlists"] })
+        .catch((error: unknown) => {
+          log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
+        });
           setNewPlaylistName("");
           setTagInputValue("");
           setSmartTags([]);
@@ -185,7 +189,11 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
         queryJson,
       });
 
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["playlists"] })
+        .catch((error: unknown) => {
+          log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
+        });
       setNewPlaylistName("");
       setTagInputValue("");
       setSmartTags([]);
@@ -205,7 +213,11 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     setIsDeleting(true);
     try {
       await window.api.deletePlaylist(playlistToDelete.id);
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["playlists"] })
+        .catch((error: unknown) => {
+          log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
+        });
       setPlaylistToDelete(null);
       
       // If deleted playlist was selected, go back to list
@@ -274,7 +286,11 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     try {
       const result = await window.api.importPlaylist();
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["playlists"] });
+        void queryClient
+          .invalidateQueries({ queryKey: ["playlists"] })
+          .catch((error: unknown) => {
+            log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
+          });
 
         if (typeof result.playlistId === "number") {
           const importedPosts = await window.api.getPlaylistPosts({
@@ -619,9 +635,13 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !isCreating && newPlaylistName.trim()) {
                     if (playlistType === "smart" && smartTags.length > 0) {
-                      handleCreatePlaylist();
+                      void handleCreatePlaylist().catch((error: unknown) => {
+                        log.error("[PlaylistsPage] Create playlist failed:", error);
+                      });
                     } else if (playlistType === "manual") {
-                      handleCreatePlaylist();
+                      void handleCreatePlaylist().catch((error: unknown) => {
+                        log.error("[PlaylistsPage] Create playlist failed:", error);
+                      });
                     }
                   }
                 }}

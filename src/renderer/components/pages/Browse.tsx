@@ -516,7 +516,9 @@ export const Browse = () => {
                   onClick={() => {
                     const tagString = tags.join("+");
                     const url = `https://rule34.xxx/index.php?page=post&s=list&tags=${encodeURIComponent(tagString)}`;
-                    window.api.openExternal(url);
+                    void window.api.openExternal(url).catch((error: unknown) => {
+                      log.error("[Browse] Failed to open external URL:", error);
+                    });
                   }}
                   variant="default"
                   className="gap-2"

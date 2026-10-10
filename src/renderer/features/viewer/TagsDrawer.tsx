@@ -323,7 +323,9 @@ export const TagsDrawer = ({
     clearTagChips();
     setFilters({ source: "all" });
     addIncludeTag(tag);
-    navigate("/browse");
+    void Promise.resolve(navigate("/browse")).catch((error: unknown) => {
+      log.error("[TagsDrawer] Navigation to browse failed:", error);
+    });
   };
 
   const handleTagExclude = (tag: string) => {
@@ -332,7 +334,9 @@ export const TagsDrawer = ({
     clearTagChips();
     setFilters({ source: "all" });
     addExcludeTag(tag);
-    navigate("/browse");
+    void Promise.resolve(navigate("/browse")).catch((error: unknown) => {
+      log.error("[TagsDrawer] Navigation to browse failed:", error);
+    });
   };
 
   const renderTagActionButton = (

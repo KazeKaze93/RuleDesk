@@ -110,7 +110,9 @@ export const ViewerContent = ({
         case "f":
         case "F":
           e.preventDefault();
-          handleToggleFavorite();
+          void handleToggleFavorite().catch((error: unknown) => {
+            log.error("[ViewerContent] Failed to toggle favorite:", error);
+          });
           // Announce action for screen readers and accessibility
           setAnnouncement(post.isFavorited ? "Removed from favorites" : "Added to favorites");
           setTimeout(() => setAnnouncement(""), 3000);
@@ -118,7 +120,9 @@ export const ViewerContent = ({
         case "v":
         case "V":
           e.preventDefault();
-          handleMarkViewed();
+          void handleMarkViewed().catch((error: unknown) => {
+            log.error("[ViewerContent] Failed to mark viewed:", error);
+          });
           // Announce action for screen readers and accessibility
           setAnnouncement("Marked as viewed");
           setTimeout(() => setAnnouncement(""), 3000);

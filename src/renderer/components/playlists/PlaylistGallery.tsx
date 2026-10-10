@@ -252,10 +252,25 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       });
 
       // Invalidate playlist posts list
-      queryClient.invalidateQueries({ queryKey: ["playlist-posts", playlist.id] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["playlist-posts", playlist.id] })
+        .catch((error: unknown) => {
+          log.error("[PlaylistGallery] Failed to invalidate playlist posts:", error);
+        });
       // Invalidate playlist-entries so PostCard/QuickAddToPlaylistMenu on other tabs show correct status
-      queryClient.invalidateQueries({ queryKey: ["playlist-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["playlist-entries", postId] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["playlist-entries"] })
+        .catch((error: unknown) => {
+          log.error("[PlaylistGallery] Failed to invalidate playlist entries:", error);
+        });
+      void queryClient
+        .invalidateQueries({ queryKey: ["playlist-entries", postId] })
+        .catch((error: unknown) => {
+          log.error(
+            "[PlaylistGallery] Failed to invalidate playlist entry for post:",
+            error
+          );
+        });
     } catch (error) {
       log.error("[PlaylistGallery] Failed to remove post from playlist:", error);
       setLocalPosts(previousPosts);

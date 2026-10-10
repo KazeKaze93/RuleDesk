@@ -1,5 +1,6 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import log from "electron-log/renderer";
 import { Loader2, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -33,7 +34,11 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
       await window.api.deleteArtist(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["artists"] })
+        .catch((error: unknown) => {
+          log.error("[DeleteArtistDialog] Failed to invalidate artists:", error);
+        });
       onOpenChange(false);
     },
   });
