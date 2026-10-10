@@ -2,12 +2,14 @@ import { describe, it, expect, afterEach } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { artists, posts } from "../../../src/main/db/schema";
 import {
+  POSTS_FTS_DELETE_TRIGGER_NAME,
   POSTS_FTS_INSERT_TRIGGER_NAME,
   POSTS_FTS_UPDATE_TRIGGER_NAME,
   areRuntimeDroppableFtsTriggersPresent,
   backfillArtistFtsIndex,
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
+  rebuildFtsIndex,
 } from "../../../src/main/db/fts-triggers";
 
 const EXPECTED_TRIGGERS = [
@@ -101,7 +103,7 @@ describe("FTS triggers (posts content table)", () => {
     expect(deleteSql.toLowerCase()).not.toContain("delete from posts_fts");
   });
 
-  it("drop + ensure restores posts_fts_insert and posts_fts_update idempotently", () => {
+  it("drop + ensure restores insert, update, and delete triggers idempotently", () => {
     mockDb = createMockDb();
     const { sqlite } = mockDb;
 
@@ -111,19 +113,82 @@ describe("FTS triggers (posts content table)", () => {
     const afterDrop = listTriggers(sqlite);
     expect(afterDrop).not.toContain(POSTS_FTS_INSERT_TRIGGER_NAME);
     expect(afterDrop).not.toContain(POSTS_FTS_UPDATE_TRIGGER_NAME);
-    expect(afterDrop).toContain("posts_fts_delete");
+    expect(afterDrop).not.toContain(POSTS_FTS_DELETE_TRIGGER_NAME);
     expect(areRuntimeDroppableFtsTriggersPresent(sqlite)).toBe(false);
 
     const first = ensureFtsTriggers(sqlite);
     expect(first.recreated).toEqual([
       POSTS_FTS_INSERT_TRIGGER_NAME,
       POSTS_FTS_UPDATE_TRIGGER_NAME,
+      POSTS_FTS_DELETE_TRIGGER_NAME,
     ]);
     expect(listTriggers(sqlite)).toEqual([...EXPECTED_TRIGGERS]);
     expect(areRuntimeDroppableFtsTriggersPresent(sqlite)).toBe(true);
 
     const second = ensureFtsTriggers(sqlite);
     expect(second.recreated).toEqual([]);
+  });
+
+  it("after bulk window, delete trigger cleans MATCH; delete during window + rebuild stays healthy", () => {
+    mockDb = createMockDb();
+    const { db, sqlite } = mockDb;
+    const artistId = seedArtist(db);
+
+    db.insert(posts)
+      .values({
+        postId: 501,
+        artistId,
+        fileUrl: "https://example.com/501.jpg",
+        previewUrl: "https://example.com/501_p.jpg",
+        sampleUrl: "",
+        tags: "unique_delete_token_xyz",
+        rating: "s",
+        mediaType: "image",
+        publishedAt: new Date(),
+        createdAt: new Date(),
+      })
+      .run();
+
+    expect(
+      (
+        sqlite
+          .prepare(
+            `SELECT COUNT(*) AS c FROM posts_fts WHERE posts_fts MATCH 'unique_delete_token_xyz'`
+          )
+          .get() as { c: number }
+      ).c
+    ).toBe(1);
+
+    dropFtsTriggersForBulkInsert(sqlite);
+    sqlite
+      .prepare(
+        `INSERT INTO posts (
+          post_id, artist_id, file_url, preview_url, sample_url, tags, rating,
+          media_type, published_at, created_at
+        ) VALUES (502, ?, 'https://example.com/502.jpg', '', '', 'bulk_only_token', 's', 'image', unixepoch(), unixepoch())`
+      )
+      .run(artistId);
+
+    // Cascade-style delete of never-indexed row while delete trigger is down
+    sqlite.prepare("DELETE FROM posts WHERE post_id = 502").run();
+    expect(integrityOk(sqlite)).toBe(true);
+
+    rebuildFtsIndex(sqlite);
+    ensureFtsTriggers(sqlite);
+    expect(listTriggers(sqlite)).toEqual([...EXPECTED_TRIGGERS]);
+    expect(integrityOk(sqlite)).toBe(true);
+
+    sqlite.prepare("DELETE FROM posts WHERE post_id = 501").run();
+    expect(
+      (
+        sqlite
+          .prepare(
+            `SELECT COUNT(*) AS c FROM posts_fts WHERE posts_fts MATCH 'unique_delete_token_xyz'`
+          )
+          .get() as { c: number }
+      ).c
+    ).toBe(0);
+    expect(integrityOk(sqlite)).toBe(true);
   });
 
   it("bulk path: drop triggers, upsert conflicts, backfill without NOT IN, then DELETE ok", () => {

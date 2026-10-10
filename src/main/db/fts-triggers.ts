@@ -3,6 +3,7 @@ import type Database from "better-sqlite3";
 /** Runtime-droppable during initial sync / repair bulk upsert; restored by ensureFtsTriggers. */
 export const POSTS_FTS_INSERT_TRIGGER_NAME = "posts_fts_insert";
 export const POSTS_FTS_UPDATE_TRIGGER_NAME = "posts_fts_update";
+export const POSTS_FTS_DELETE_TRIGGER_NAME = "posts_fts_delete";
 
 /**
  * DDL for triggers dropped during bulk sync upsert.
@@ -12,9 +13,10 @@ export const POSTS_FTS_UPDATE_TRIGGER_NAME = "posts_fts_update";
  *   `ON CONFLICT DO UPDATE SET tags` would fire the update trigger's
  *   FTS5 `'delete'` command on a never-indexed rowid, which corrupts the
  *   VTAB (SQLITE_CORRUPT_VTAB) on better-sqlite3 12.5.0 / SQLite 3.51.1.
+ * - posts_fts_delete: same never-indexed `'delete'` hazard if posts inserted
+ *   in this window are removed (cascade) before backfill/rebuild.
  *
- * posts_fts_delete stays live (bulk sync does not delete posts).
- * Verbatim trigger bodies match drizzle/0006 insert + drizzle/0033 update.
+ * Verbatim trigger bodies match drizzle/0006 insert + drizzle/0033 update/delete.
  */
 export const RUNTIME_DROPPABLE_FTS_TRIGGERS = [
   {
@@ -30,12 +32,18 @@ END;`,
   INSERT INTO posts_fts(rowid, tags) VALUES (new.id, new.tags);
 END;`,
   },
+  {
+    name: POSTS_FTS_DELETE_TRIGGER_NAME,
+    ddl: `CREATE TRIGGER IF NOT EXISTS posts_fts_delete AFTER DELETE ON posts BEGIN
+  INSERT INTO posts_fts(posts_fts, rowid, tags) VALUES('delete', old.id, old.tags);
+END;`,
+  },
 ] as const;
 
 type SqliteDatabase = InstanceType<typeof Database>;
 
 /**
- * Drop FTS insert/update triggers that would fire per-row during bulk
+ * Drop FTS insert/update/delete triggers that would fire per-row during bulk
  * initial sync or repair upsert.
  */
 export function dropFtsTriggersForBulkInsert(sqlite: SqliteDatabase): void {
@@ -47,7 +55,7 @@ export function dropFtsTriggersForBulkInsert(sqlite: SqliteDatabase): void {
 /**
  * True when every runtime-droppable FTS trigger exists.
  * This is the bulk-sync window probe: dropFtsTriggersForBulkInsert removes
- * insert+update, so MATCH cannot see rows upserted during that window.
+ * insert/update/delete, so MATCH cannot see rows upserted during that window.
  * Schema state (sqlite_master), not an FTS content-table SELECT.
  */
 export function areRuntimeDroppableFtsTriggersPresent(
@@ -90,7 +98,7 @@ export function ensureFtsTriggers(sqlite: SqliteDatabase): {
 }
 
 /**
- * Restore FTS consistency after bulk sync/repair with insert+update dropped.
+ * Restore FTS consistency after bulk sync/repair with insert/update/delete dropped.
  *
  * A blind `INSERT … SELECT … WHERE artist_id = ?` is safe only for never-indexed
  * rowids (true greenfield). On repair, conflict UPDATE changes `posts.tags`

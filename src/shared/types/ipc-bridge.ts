@@ -10,7 +10,7 @@ import type { DownloadAllResult } from "./download";
 import type { DownloadAllRequest } from "../schemas/download";
 import type { ProviderId } from "../constants";
 import type { SearchResults } from "./providers";
-import type { AddArtistRequest } from "../schemas/artist";
+import type { AddArtistRequest, DeleteArtistResult } from "../schemas/artist";
 import type {
   GetPostsRequestInput,
   GetPostsCountRequest,
@@ -106,7 +106,7 @@ export interface IpcBridge {
 
   getTrackedArtists: () => Promise<TrackedArtist[]>;
   addArtist: (artist: AddArtistRequest) => Promise<Artist | undefined>;
-  deleteArtist: (id: number) => Promise<void>;
+  deleteArtist: (id: number) => Promise<DeleteArtistResult>;
 
   searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 

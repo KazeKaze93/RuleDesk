@@ -246,7 +246,7 @@ interface IpcBridge {
   // Artists
   getTrackedArtists: () => Promise<Artist[]>;
   addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
-  deleteArtist: (id: number) => Promise<void>;
+  deleteArtist: (id: number) => Promise<DeleteArtistResult>;
   searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
 
   // Posts
@@ -898,20 +898,31 @@ type NewArtist = {
 
 Removes an artist from tracking. Also deletes all associated posts (cascade delete).
 
+If that artist is currently syncing (e.g. primary/initial sync), Main cancels **only that artist's** sync, waits for its `finally` (FTS rebuild + trigger restore), then deletes. Other artists in Sync All continue. If the wait times out, nothing is deleted and the result explains why.
+
 **Parameters:**
 
 - `id: number` - Artist ID to delete
 
-**Returns:** `Promise<void>`
+**Returns:** `Promise<DeleteArtistResult>`
+
+```typescript
+type DeleteArtistResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "sync_busy_timeout";
+      message: string;
+    };
+```
 
 **Example:**
 
 ```typescript
-try {
-  await window.api.deleteArtist(123);
-  console.log("Artist deleted");
-} catch (error) {
-  console.error("Failed to delete artist:", error);
+const result = await window.api.deleteArtist(123);
+if (!result.ok) {
+  // e.g. sync_busy_timeout — show result.message, retry later
+  throw new Error(result.message);
 }
 ```
 

@@ -7,5 +7,6 @@
   "app:get-settings-status": "Returns IPC-safe settings (no API key plaintext), including minimizeToTray (default true). Idempotent; cached until save.",
   "app:save-settings": "Partial upsert. minimizeToTray: when true (default), win/linux close hides to tray; when false, close quits. Read at close time (no restart). macOS close never quits (Dock).",
   "db:get-posts": "Paginated posts with filters. Always limited — see MAX page size in PostsController.",
+  "db:delete-artist": "Deletes artist + cascaded posts. If that artist is mid-sync, cancels only their sync and waits for FTS finally (timeout → { ok:false, reason:sync_busy_timeout }); does not globally cancel Sync All.",
   "booru:search": "Provider search; auth/rate_limit errors surface as typed IPC errors to Browse UI."
 }

@@ -11,6 +11,7 @@ import {
 import { createMockDb } from "../../helpers/mock-db";
 import { server } from "../../mocks/server";
 import { artists, settings, SETTINGS_ID } from "@/main/db/schema";
+import { eq } from "drizzle-orm";
 import {
   SyncCancelledError,
   SyncService,
@@ -197,4 +198,59 @@ describe("SyncService runExclusive queue", () => {
     expect(syncArtistCalls).toBe(1);
     expect(syncArtistSpy).toHaveBeenCalledTimes(1);
   });
+
+  it("per-artist cancel does not stop Sync All for remaining artists", async () => {
+    await mockDb.db.insert(artists).values({
+      name: "Queue Test Artist B",
+      tag: "queue_test_artist_b",
+      provider: "rule34",
+      type: "tag",
+      apiEndpoint: "https://api.rule34.xxx/index.php",
+      lastPostId: 1,
+      newPostsCount: 0,
+    });
+
+    let syncArtistCalls = 0;
+    vi.spyOn(service, "syncArtist").mockImplementation(async (artist) => {
+      syncArtistCalls += 1;
+      if (syncArtistCalls === 1) {
+        throw new SyncCancelledError(`cancelled ${artist.id}`, {
+          scope: "artist",
+          artistId: artist.id,
+        });
+      }
+    });
+
+    await service.syncAllArtists();
+
+    expect(syncArtistCalls).toBe(2);
+  });
+
+  it("Sync All skips artists deleted before the queue reaches them", async () => {
+    const [artistB] = await mockDb.db
+      .insert(artists)
+      .values({
+        name: "Queue Test Artist B",
+        tag: "queue_test_artist_b",
+        provider: "rule34",
+        type: "tag",
+        apiEndpoint: "https://api.rule34.xxx/index.php",
+        lastPostId: 1,
+        newPostsCount: 0,
+      })
+      .returning({ id: artists.id });
+
+    const syncedIds: number[] = [];
+    vi.spyOn(service, "syncArtist").mockImplementation(async (artist) => {
+      syncedIds.push(artist.id);
+      if (artist.id === artistId) {
+        await mockDb.db.delete(artists).where(eq(artists.id, artistB.id));
+      }
+    });
+
+    await service.syncAllArtists();
+
+    expect(syncedIds).toEqual([artistId]);
+  });
 });
+
