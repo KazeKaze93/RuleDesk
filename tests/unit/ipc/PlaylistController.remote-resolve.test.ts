@@ -170,19 +170,34 @@ describe("PlaylistController smart remote resolve", () => {
   });
 
   it("fetches additional pages until limit is filled after filtering", async () => {
-    // Page 0: 3 posts, 2 blocked by blacklist → 1 kept
-    // Page 1: 3 clean posts → fill remaining for limit=3
-    fetchPostsMock
-      .mockResolvedValueOnce(
-        asResult([
-          makePost(1, ["solo", "blocked_tag"]),
-          makePost(2, ["solo", "blocked_tag"]),
-          makePost(3, ["solo"]),
-        ])
-      )
-      .mockResolvedValueOnce(
-        asResult([makePost(4, ["solo"]), makePost(5, ["solo"]), makePost(6, ["solo"])])
-      );
+    // Remote materializes a large fixed window (api page size up to 1000). Page 0 is a
+    // full API page with one clean post; page 1 adds more cleans and ends the feed.
+    fetchPostsMock.mockImplementation(
+      async (
+        _tags: string,
+        apiPage: number,
+        _settings: unknown,
+        _isRandom: boolean,
+        requestLimit: number
+      ) => {
+        if (apiPage === 0) {
+          const posts = Array.from({ length: requestLimit }, (_, index) =>
+            index === 0
+              ? makePost(3, ["solo"])
+              : makePost(10_000 + index, ["solo", "blocked_tag"])
+          );
+          return asResult(posts);
+        }
+        if (apiPage === 1) {
+          return asResult([
+            makePost(4, ["solo"]),
+            makePost(5, ["solo"]),
+            makePost(6, ["solo"]),
+          ]);
+        }
+        return asResult([]);
+      }
+    );
 
     const resolved = await controller.resolvePlaylistPosts(
       {} as IpcMainInvokeEvent,
@@ -196,6 +211,6 @@ describe("PlaylistController smart remote resolve", () => {
     expect(fetchPostsMock.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(resolved).toHaveLength(3);
     // Default smart sort is publishedAt/postId desc; makePost shares one timestamp → postId desc.
-    expect(resolved.map((p) => p.postId)).toEqual([5, 4, 3]);
+    expect(resolved.map((p) => p.postId)).toEqual([6, 5, 4]);
   });
 });

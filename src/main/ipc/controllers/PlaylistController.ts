@@ -204,10 +204,13 @@ const HYBRID_REMOTE_MAX_PAGES_TO_SCAN = 20;
 /** Matches provider `fetchPosts` page-size cap (Rule34/Gelbooru). */
 const HYBRID_REMOTE_API_PAGE_CAP = 1000;
 /**
- * Cap for hybrid local materialization (and seeded-random remote union).
+ * Cap for hybrid local + remote materialization.
  * Ordered hybrid must know the full local identity set so a remote twin that
  * ranks high on the API feed is not treated as remote-only on early pages.
- * Rank order ≠ provider feed order for random, so random also materializes both legs.
+ * Remote must use the same fixed window on every page: provider feed order ≠
+ * publishedAt, so expanding `page * limit` then re-sorting lets later-feed
+ * newer posts reshuffle the merge (R2 page1∩page2). Random ranks also need
+ * both legs materialized because rank order ≠ feed order.
  */
 const HYBRID_RANDOM_MATERIALIZE_CAP = 50_000;
 
@@ -2118,7 +2121,7 @@ export class PlaylistController extends BaseController {
       );
 
       // Smart playlist hybrid search:
-      // 1) Materialize local matches (capped) + remote window (page*limit or random cap)
+      // 1) Materialize local + remote matches (same capped window every page)
       // 2) Collapse (provider, postId), cursor-merge with local-preferred dedupe
       // 3) Return the page slice of the merged stream (never slice(0, limit) of a double page)
 
@@ -2165,13 +2168,11 @@ export class PlaylistController extends BaseController {
 
       const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;
 
-      // Local leg: always materialize up to the cap so ordered pages can drop remote
-      // twins that exist later in the local ranking (window-only dedupe caused page overlap).
-      // Remote leg: ordered uses page*limit feed prefix; random materializes (capped).
+      // Both legs: always materialize up to the cap. Local must expose twins past
+      // any page prefix; remote must be a fixed window so publishedAt re-sort after
+      // an expanding page*limit feed prefix cannot reshuffle earlier pages.
       const localFetchLimit = HYBRID_RANDOM_MATERIALIZE_CAP;
-      const remoteFetchLimit = isRandom
-        ? HYBRID_RANDOM_MATERIALIZE_CAP
-        : page * limit;
+      const remoteFetchLimit = HYBRID_RANDOM_MATERIALIZE_CAP;
       const resolvedSeed = resolveRandomSeed(seed);
 
       // Execute local DB query and remote API query concurrently.
