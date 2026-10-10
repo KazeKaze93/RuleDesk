@@ -39,18 +39,18 @@ npm run test:e2e
 
 ## CI
 
-GitHub Actions runs E2E after the **quality** job (`validate`, `npm test`, production audit). Steps: `npm ci` → `db:rebuild` → `build` → Playwright Chromium → `npm run test:e2e` under `xvfb-run` on Ubuntu.
+E2E is **not** on GitHub Actions; run locally (or in your own runner) with Playwright. Typical steps: `npm ci` → `db:rebuild` → `build` → `npx playwright install --with-deps chromium` → `npm run test:e2e` (on Linux, under `xvfb-run` if headless).
 
-**Secrets** (repository Settings → Actions):
+**Secrets / env** for live API flows:
 
-- `TEST_USER_ID` — Rule34 API user id for live auth flows
+- `TEST_USER_ID` — Rule34 API user id
 - `TEST_API_KEY` — Rule34 API key
 
-Without these secrets, tests that require real credentials will fail in CI with an explicit error.
+Without these, tests that require real credentials fail with an explicit error.
 
-**Onboarding selectors:** Age Gate uses `#age-confirm` / `#tos-accept`. Account credentials are saved in E2E via `window.api.saveSettings` (IPC) with trimmed `TEST_USER_ID` / `TEST_API_KEY`, then the page reloads. In `NODE_ENV=test`, main process uses a reversible test credential encoding when Linux headless CI has no OS keychain (`safeStorage` unavailable).
+**Onboarding selectors:** Age Gate uses `#age-confirm` / `#tos-accept`. Account credentials are saved in E2E via `window.api.saveSettings` (IPC) with trimmed `TEST_USER_ID` / `TEST_API_KEY`, then the page reloads. In `NODE_ENV=test`, main process uses a reversible test credential encoding when Linux headless has no OS keychain (`safeStorage` unavailable).
 
-Tagged releases (`v*`) wait for both **quality** and **e2e** before Windows zip and Linux AppImage packaging jobs run.
+Tagged releases (`v*`) are packaged by [`.github/workflows/release.yml`](../../.github/workflows/release.yml) (Windows zip + Linux AppImage) without waiting on E2E — quality stays on local `pre-push`. See [docs/development.md](../../docs/development.md).
 
 ## Test Structure
 

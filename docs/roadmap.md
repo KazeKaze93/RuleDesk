@@ -226,7 +226,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 ### Baseline DX (earlier)
 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.
-- ✅ **CI:** `validate` → `docs:api` freshness → `npm test` → production `npm audit --omit=dev --audit-level=high`; release tags wait for quality + e2e, then Windows zip + Linux AppImage.
+- ✅ **Quality gate:** local `pre-push` — `validate` → `docs:api` freshness → `npm test` / `test:isolated`; production `npm audit --omit=dev --audit-level=high` as needed. **Release CI:** tag `v*` (or dispatch) packages Windows zip + Linux AppImage — see [development.md](./development.md).
 - ✅ **Post-audit regression tests:** Vitest unit + integration + property suites (includes collapse/throttle + `SecureStorage` + video-proxy). File inventory in [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md); case counts: `npm test`.
 - ✅ **Main process HMR/watch**, Zod IPC validation via `BaseController.handle` only (checked 2026-09-12: 85 production `this.handle(` across 14 controllers; `createValidatedHandler` / `parseNoArgs` / `parseSingleArg` deleted in [#124](https://github.com/KazeKaze93/RuleDesk/pull/124)), provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
 
