@@ -105,6 +105,22 @@ Integrity / silent-error / sync-FTS / index / cache / uniqueness / blacklist bat
 | T9 | `perf/blacklist-filter` | [#213](https://github.com/KazeKaze93/RuleDesk/pull/213) | ✅ merged |
 | T10 | `chore/lessons-db-review-waves` | [#214](https://github.com/KazeKaze93/RuleDesk/pull/214) | started |
 
+### DB review waves (P2)
+
+FTS tokenizer / seeded random / cache eviction / schema SQL sync / backup worker / sync cancel / hybrid playlist merge / newPostsCount single source / lessons. Status lives only in this table. Architectural lessons harvested in P9.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| P1 | `fix/fts-tokenizer-tag-tokens` | [#222](https://github.com/KazeKaze93/RuleDesk/pull/222) | ✅ merged |
+| P2 | `fix/seeded-random-ordering` | [#220](https://github.com/KazeKaze93/RuleDesk/pull/220) | ✅ merged |
+| P3 | `fix/cache-eviction` | [#223](https://github.com/KazeKaze93/RuleDesk/pull/223) | ✅ merged |
+| P4 | `chore/schema-sql-sync` | [#224](https://github.com/KazeKaze93/RuleDesk/pull/224) | ✅ merged |
+| P5 | `perf/backup-integrity-worker` | [#219](https://github.com/KazeKaze93/RuleDesk/pull/219) | ✅ merged |
+| P6 | `fix/sync-cancel-responsive` | [#227](https://github.com/KazeKaze93/RuleDesk/pull/227) ([#229](https://github.com/KazeKaze93/RuleDesk/pull/229) flake) | ✅ merged |
+| P7 | `fix/hybrid-smart-playlist-merge` | [#226](https://github.com/KazeKaze93/RuleDesk/pull/226) | ✅ merged |
+| P8 | `fix/new-posts-count-single-source` | [#230](https://github.com/KazeKaze93/RuleDesk/pull/230) | ✅ merged |
+| P9 | `chore/lessons-p2` | — | started |
+
 ## 📰 Updates feed
 
 ### Feed Enhancements
@@ -179,7 +195,7 @@ Integrity / silent-error / sync-FTS / index / cache / uniqueness / blacklist bat
 | # | Branch | PR | Status |
 |---|--------|----|--------|
 | — | `audit/sync-pagination-large-artists` | — | ✅ merged into master (no dedicated PR number): `requestCancel` / `waitUntilIdle` + quit drain (`SYNC_SHUTDOWN_DRAIN_MS` in `main.ts`) + `ensureFtsTriggers` on DB init (`fts-triggers.ts`) |
-| — | `fix/sync-cancel-responsive` | — | 🔄 open: AbortSignal into sync `fetchPosts` + interruptible `retryWithBackoff` sleep (cancel during Retry-After / hung request) |
+| — | `fix/sync-cancel-responsive` | [#227](https://github.com/KazeKaze93/RuleDesk/pull/227) | ✅ merged ([#229](https://github.com/KazeKaze93/RuleDesk/pull/229) pre-push flake): AbortSignal into sync `fetchPosts` + interruptible `retryWithBackoff` sleep |
 
 ### Audit v17 — branch tracking (complete)
 
