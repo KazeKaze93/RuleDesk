@@ -16,6 +16,7 @@ import {
   VIDEO_CACHE_SWEEP_ORPHAN_TMP_AGE_MS,
 } from "../config/constants";
 import { selectMediaCacheFilesToEvict } from "../lib/media-cache-eviction";
+import { renameTmpFileAtomic } from "../lib/atomic-write";
 
 const VIDEO_PATH = "/video";
 const PROXY_HOST = "127.0.0.1";
@@ -681,15 +682,17 @@ export class VideoProxyServer {
           if (fromPath === null) {
             return;
           }
-          try {
-            fs.renameSync(fromPath, cachePath);
-            settled = true;
-            tmpPath = null;
-            writeStream = null;
-          } catch (err) {
-            log.error("[VideoProxy] cache rename failed", err);
-            cleanupTmp();
-          }
+          // Ownership transfers to renameTmpFileAtomic (single-writer + EPERM retry).
+          tmpPath = null;
+          writeStream = null;
+          void renameTmpFileAtomic(cachePath, fromPath)
+            .then(() => {
+              settled = true;
+            })
+            .catch((err: unknown) => {
+              log.error("[VideoProxy] cache rename failed", err);
+              settled = true;
+            });
         });
       },
     );

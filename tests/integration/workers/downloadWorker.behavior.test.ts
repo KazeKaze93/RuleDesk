@@ -59,7 +59,8 @@ function runWorkerBatch(params: {
   onWorker?: (worker: Worker) => void;
 }): Promise<CompleteMessage> {
   const queueFilePath = path.join(params.folder, "queue.json");
-  const persistQueue = params.persistQueue ?? true;
+  // Main-owned ack path (worker no longer writes queue.json).
+  const persistQueue = params.persistQueue ?? false;
   const ackMode = params.onItemCompletedAck ?? "persisted";
   return new Promise((resolve, reject) => {
     const worker = new Worker(WORKER_PATH, {

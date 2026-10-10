@@ -8,6 +8,7 @@ import type { AutoBackupInterval } from "../services/backup-service";
 import { settings, SETTINGS_ID } from "../db/schema";
 import { getDb } from "../db/client";
 import { isErrnoException } from "../../shared/utils/type-guards";
+import { writeFileAtomic } from "./atomic-write";
 
 export const BACKUP_SIDECAR_SUFFIX = ".settings.json";
 
@@ -58,7 +59,7 @@ export function getBackupSidecarPath(backupDbPath: string): string {
   return `${backupDbPath}${BACKUP_SIDECAR_SUFFIX}`;
 }
 
-export function writeBackupSidecar(backupDbPath: string): void {
+export async function writeBackupSidecar(backupDbPath: string): Promise<void> {
   const sidecar: BackupSidecarV1 = {
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -66,11 +67,13 @@ export function writeBackupSidecar(backupDbPath: string): void {
   };
 
   const sidecarPath = getBackupSidecarPath(backupDbPath);
-  fs.writeFileSync(sidecarPath, JSON.stringify(sidecar, null, 2), "utf-8");
+  await writeFileAtomic(sidecarPath, JSON.stringify(sidecar, null, 2));
   log.info(`[BackupSidecar] Wrote settings sidecar: ${sidecarPath}`);
 }
 
-export function restoreBackupSidecar(backupDbPath: string): boolean {
+export async function restoreBackupSidecar(
+  backupDbPath: string
+): Promise<boolean> {
   const sidecarPath = getBackupSidecarPath(backupDbPath);
   if (!fs.existsSync(sidecarPath)) {
     return false;
@@ -96,7 +99,7 @@ export function restoreBackupSidecar(backupDbPath: string): boolean {
 
     const configPath = getElectronStoreConfigPath("backup-settings");
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(
+    await writeFileAtomic(
       configPath,
       JSON.stringify(
         {
@@ -105,8 +108,7 @@ export function restoreBackupSidecar(backupDbPath: string): boolean {
         },
         null,
         2
-      ),
-      "utf-8"
+      )
     );
 
     log.info(`[BackupSidecar] Restored backup schedule from ${sidecarPath}`);

@@ -167,6 +167,10 @@ export class BackupService {
   }
 
   public checkAndRunAutoBackup(): void {
+    void this.runAutoBackupIfDue();
+  }
+
+  private async runAutoBackupIfDue(): Promise<void> {
     const backupStore = getBackupStore();
     const interval = backupStore.get("autoBackupInterval");
     if (interval === "never") {
@@ -200,7 +204,7 @@ export class BackupService {
 
     try {
       const sqlite = getSqliteInstance();
-      createConsistentBackup(sqlite, backupPath);
+      await createConsistentBackup(sqlite, backupPath);
       backupStore.set("lastAutoBackupAt", now);
       this.cleanupOldAutoBackups(backupDir);
       log.info(`[BackupService] Auto-backup created at ${backupPath}`);

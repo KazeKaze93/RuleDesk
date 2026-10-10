@@ -18,7 +18,7 @@ export type RestoreDatabaseDeps = {
   closeDatabase: () => void;
   initializeDatabase: () => Promise<unknown>;
   afterSuccessfulReinit?: () => void;
-  restoreSidecar?: (backupPath: string) => void;
+  restoreSidecar?: (backupPath: string) => boolean | Promise<boolean>;
   logSettingsSnapshot?: () => void;
 };
 
@@ -134,7 +134,7 @@ export async function restoreDatabaseFromBackup(
     // Reinit BEFORE deleting .bak — if this throws, catch rolls back from .bak.
     await deps.initializeDatabase();
     deps.afterSuccessfulReinit?.();
-    (deps.restoreSidecar ?? restoreBackupSidecar)(backupPath);
+    await (deps.restoreSidecar ?? restoreBackupSidecar)(backupPath);
     (deps.logSettingsSnapshot ?? logRestoredSettingsSnapshot)();
 
     await deleteBak(bakPaths.db);

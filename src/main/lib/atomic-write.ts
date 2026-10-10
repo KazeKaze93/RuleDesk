@@ -2,6 +2,9 @@
  * Single-writer atomic file replace: unique tmp beside target, then rename.
  * Coalesces concurrent writes per path (last payload wins) so callers do not
  * queue N full serial writes of superseded state.
+ *
+ * Stream caches that already wrote a unique tmp use `renameTmpFileAtomic`
+ * (same per-path slot + EPERM/EBUSY retry; last tmp wins).
  */
 import { rename, unlink, writeFile } from "node:fs/promises";
 import log from "electron-log";
@@ -24,9 +27,13 @@ const defaultFs: AtomicWriteFs = {
   unlink,
 };
 
+type PendingPayload =
+  | { kind: "contents"; contents: string }
+  | { kind: "tmp"; tmpPath: string };
+
 type PathSlot = {
   draining: boolean;
-  pending: string | null;
+  pending: PendingPayload | null;
   waiters: Array<{
     resolve: () => void;
     reject: (error: unknown) => void;
@@ -107,6 +114,15 @@ async function unlinkQuiet(
   }
 }
 
+async function discardSupersededPending(
+  fsImpl: AtomicWriteFs,
+  previous: PendingPayload | null
+): Promise<void> {
+  if (previous?.kind === "tmp") {
+    await unlinkQuiet(fsImpl, previous.tmpPath);
+  }
+}
+
 /**
  * One attempt: write unique tmp, rename over target. Deletes tmp on any failure.
  * Retries on EPERM/EBUSY/EACCES with short exponential backoff.
@@ -164,6 +180,62 @@ export async function writeFileAtomicOnce(
     : new Error("atomic write retries exhausted");
 }
 
+/**
+ * Rename a caller-owned unique tmp over `filePath` with the same retry policy
+ * as `writeFileAtomicOnce`. Deletes tmp on failure.
+ */
+export async function renameTmpFileOnce(
+  filePath: string,
+  tmpPath: string,
+  fsImpl: AtomicWriteFs = defaultFs
+): Promise<void> {
+  let lastError: unknown;
+  for (
+    let attempt = 0;
+    attempt < ATOMIC_WRITE_RETRY_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      await fsImpl.rename(tmpPath, filePath);
+      return;
+    } catch (renameError: unknown) {
+      if (isErrnoCode(renameError, "ENOENT")) {
+        log.error(
+          "[atomic-write] rename ENOENT — tmp missing (single-writer defect)",
+          { filePath, tmpPath, renameError }
+        );
+        throw renameError;
+      }
+      if (
+        isRetryableErrno(renameError) &&
+        attempt + 1 < ATOMIC_WRITE_RETRY_MAX_ATTEMPTS
+      ) {
+        lastError = renameError;
+        await delay(ATOMIC_WRITE_RETRY_BASE_DELAY_MS * 2 ** attempt);
+        continue;
+      }
+      await unlinkQuiet(fsImpl, tmpPath);
+      throw renameError;
+    }
+  }
+  await unlinkQuiet(fsImpl, tmpPath);
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("atomic rename retries exhausted");
+}
+
+async function applyPending(
+  filePath: string,
+  pending: PendingPayload,
+  fsImpl: AtomicWriteFs
+): Promise<void> {
+  if (pending.kind === "contents") {
+    await writeFileAtomicOnce(filePath, pending.contents, fsImpl);
+    return;
+  }
+  await renameTmpFileOnce(filePath, pending.tmpPath, fsImpl);
+}
+
 async function drainSlot(
   filePath: string,
   slot: PathSlot,
@@ -175,12 +247,12 @@ async function drainSlot(
   slot.draining = true;
   try {
     while (slot.pending !== null) {
-      const contents = slot.pending;
+      const pending = slot.pending;
       const waiters = slot.waiters;
       slot.pending = null;
       slot.waiters = [];
       try {
-        await writeFileAtomicOnce(filePath, contents, fsImpl);
+        await applyPending(filePath, pending, fsImpl);
         for (const waiter of waiters) {
           waiter.resolve();
         }
@@ -200,6 +272,24 @@ async function drainSlot(
   }
 }
 
+function enqueueAtomic(
+  filePath: string,
+  pending: PendingPayload,
+  fsImpl: AtomicWriteFs
+): Promise<void> {
+  const slot = getSlot(filePath);
+  return new Promise<void>((resolve, reject) => {
+    const previous = slot.pending;
+    slot.pending = pending;
+    slot.waiters.push({ resolve, reject });
+    void discardSupersededPending(fsImpl, previous).then(() => {
+      void drainSlot(filePath, slot, fsImpl).catch((error: unknown) => {
+        log.error("[atomic-write] drain crashed", { filePath, error });
+      });
+    });
+  });
+}
+
 /**
  * Atomically replace `filePath` with `contents`. Concurrent callers for the
  * same path share one in-flight write; newer payloads coalesce (last wins).
@@ -209,14 +299,19 @@ export async function writeFileAtomic(
   contents: string,
   fsImpl: AtomicWriteFs = defaultFs
 ): Promise<void> {
-  const slot = getSlot(filePath);
-  return new Promise<void>((resolve, reject) => {
-    slot.pending = contents;
-    slot.waiters.push({ resolve, reject });
-    void drainSlot(filePath, slot, fsImpl).catch((error: unknown) => {
-      log.error("[atomic-write] drain crashed", { filePath, error });
-    });
-  });
+  return enqueueAtomic(filePath, { kind: "contents", contents }, fsImpl);
+}
+
+/**
+ * Commit a pre-written unique tmp over `filePath` (stream caches). Same
+ * single-writer coalescing as `writeFileAtomic`; superseded tmps are unlinked.
+ */
+export async function renameTmpFileAtomic(
+  filePath: string,
+  tmpPath: string,
+  fsImpl: AtomicWriteFs = defaultFs
+): Promise<void> {
+  return enqueueAtomic(filePath, { kind: "tmp", tmpPath }, fsImpl);
 }
 
 /**
