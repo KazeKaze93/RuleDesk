@@ -9,6 +9,7 @@ import { ArrowLeft, ExternalLink, Wrench, Loader2 } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
+import { toast } from "sonner";
 import { Button } from "../../components/ui/button";
 import type { Artist, Post } from "@shared/types/db";
 import { useViewerStore } from "../../store/viewerStore";
@@ -22,6 +23,7 @@ import { DownloadAllButton } from "../../components/downloads/DownloadAllButton"
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../../components/gallery/virtuoso-factories";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -60,7 +62,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const source = useSearchStore((state) => state.filters.source);
   const viewType = useSearchStore((state) => state.viewType);
 
-  const { data: totalPosts = 0 } = useQuery({
+  const {
+    data: totalPosts = 0,
+    isError: isPostsCountError,
+    error: postsCountError,
+  } = useQuery({
     queryKey: ["posts-count", artist.id, aiFilter, mediaType, source],
     queryFn: async () => {
       const count = await window.api.getArtistPostsCount({
@@ -73,6 +79,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       });
       return count;
     },
+    retry: false,
   });
 
   // Use the new infinite scroll hook
@@ -142,9 +149,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       if (errorCode === ErrorCode.RATE_LIMIT) {
         return; // Silently ignore rate limit errors
       }
-      // Log other errors for debugging
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      log.error("[ArtistGallery] Failed to mark post as viewed:", errorMessage);
+      log.error("[ArtistGallery] Failed to mark post as viewed:", err);
+      toast.error(resolveErrorMessage(err, "Failed to mark post as viewed"));
     },
   });
 
@@ -284,11 +290,18 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           <div>
             <h2 className="text-xl font-bold">{artist.name}</h2>
             <div className="flex gap-2 text-xs text-muted-foreground">
-              {totalPosts > 0 && (
+              {isPostsCountError ? (
+                <span className="text-sm font-medium text-destructive">
+                  {resolveErrorMessage(
+                    postsCountError,
+                    "Failed to load post count"
+                  )}
+                </span>
+              ) : totalPosts > 0 ? (
                 <span className="text-sm font-medium text-muted-foreground">
                   Total: {totalPosts}
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

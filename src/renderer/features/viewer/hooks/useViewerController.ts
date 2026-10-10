@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import log from "electron-log/renderer";
+import { toast } from "sonner";
 import type { Post } from "@shared/types/db";
 import type { ViewerOrigin } from "../../../store/viewerStore";
 import { normalizePostToPostData } from "../../../../shared/utils/post-normalization";
@@ -13,6 +14,7 @@ import {
   buildBrowseSearchQueryKey,
 } from "../../../utils/react-query-cache";
 import type { SearchBooruPageResult } from "../../../../shared/schemas/search";
+import { resolveErrorMessage } from "../../../utils/error-message";
 
 interface ViewerQueue {
   ids: number[];
@@ -90,12 +92,8 @@ export function useViewerController({
         if (errorCode === ErrorCode.RATE_LIMIT) {
           return; // Silently ignore rate limit errors
         }
-        // Log other errors for debugging
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        log.error(
-          "[ViewerController] Failed to mark post as viewed:",
-          errorMessage
-        );
+        log.error("[ViewerController] Failed to mark post as viewed:", err);
+        toast.error(resolveErrorMessage(err, "Failed to mark post as viewed"));
       });
     }, 500); // 500ms delay: only mark as viewed if user looks at it for half a second
 
@@ -336,6 +334,7 @@ export function useViewerController({
     );
     void window.api.resetPostCache(post.id).catch((error: unknown) => {
       log.error("[ViewerController] Failed to reset post cache:", error);
+      toast.error(resolveErrorMessage(error, "Failed to reset post cache"));
     });
   };
 

@@ -8,6 +8,7 @@ import {
 import { Heart, Loader2, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
+import { toast } from "sonner";
 import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
 import { useViewerStore } from "../../store/viewerStore";
 import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
@@ -28,6 +29,7 @@ import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 // --- Constants ---
 // Should ideally come from a shared constant or backend config
@@ -187,9 +189,8 @@ export const Favorites = () => {
       if (errorCode === ErrorCode.RATE_LIMIT) {
         return; // Silently ignore rate limit errors
       }
-      // Log other errors for debugging
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      log.error("[Favorites] Failed to mark post as viewed:", errorMessage);
+      log.error("[Favorites] Failed to mark post as viewed:", err);
+      toast.error(resolveErrorMessage(err, "Failed to mark post as viewed"));
     },
   });
 

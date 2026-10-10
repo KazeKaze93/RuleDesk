@@ -32,10 +32,12 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent,
 } from "../../components/ui/dropdown-menu";
+import { toast } from "sonner";
 import { useViewerStore, type ViewerOrigin } from "../../store/viewerStore";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { cn } from "../../lib/utils";
+import { resolveErrorMessage } from "../../utils/error-message";
 import { AddToPlaylistModal } from "../../components/playlists/AddToPlaylistModal";
 import { useViewerController } from "./hooks/useViewerController";
 import { VIEWER_OVERLAY_Z, viewerOverlayClass } from "./viewer-layers";
@@ -90,8 +92,8 @@ export const ViewerContent = ({
       if (getErrorCode(err) === ErrorCode.RATE_LIMIT) {
         return; // Silently ignore rate limit errors
       }
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      log.error("[ViewerDialog] Failed to mark post as viewed:", errorMessage);
+      log.error("[ViewerDialog] Failed to mark post as viewed:", err);
+      toast.error(resolveErrorMessage(err, "Failed to mark post as viewed"));
     });
   }, [post]);
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import log from "electron-log/renderer";
+import { toast } from "sonner";
 import type { Post } from "@shared/types/db";
 import type { DownloadFailure } from "@shared/types/download";
 import type { GetPostsRequest } from "@shared/schemas/post";
@@ -12,6 +13,7 @@ import {
   presentDownloadAllResult,
   warnIfDownloadListOverLimit,
 } from "../lib/download-result-ui";
+import { resolveErrorMessage } from "../utils/error-message";
 
 function postToDownloadItem(p: Post): { url: string; filename: string } | null {
   if (!p.fileUrl?.trim()) return null;
@@ -211,9 +213,13 @@ export function useDownloadAllWithFilters(
       .getPostsCountWithFilters(fetchParams)
       .then(setTotalCount)
       .catch((e) => {
-        if (getErrorCode(e) !== ErrorCode.RATE_LIMIT) {
-          setTotalCount(0);
+        if (getErrorCode(e) === ErrorCode.RATE_LIMIT) {
+          return;
         }
+        log.error("[useDownloadAllWithFilters] getPostsCountWithFilters failed:", e);
+        toast.error(
+          resolveErrorMessage(e, "Failed to load downloadable post count")
+        );
       });
   }, [fetchParams]);
 

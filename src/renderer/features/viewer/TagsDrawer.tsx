@@ -33,6 +33,7 @@ import { Copy, Loader2 } from "lucide-react";
 import { useSearchStore } from "../../store/searchStore";
 import { useViewerStore, type ViewerOrigin } from "../../store/viewerStore";
 import { cn } from "../../lib/utils";
+import { resolveErrorMessage } from "../../utils/error-message";
 import { VIEWER_OVERLAY_Z, viewerOverlayClass } from "./viewer-layers";
 
 const VIEWER_TAG_HINT_SEEN_KEY = "hasSeenTagHint";
@@ -44,6 +45,8 @@ type ResolvedTagFieldProps = {
   title: string;
   tags: string[];
   isResolving: boolean;
+  isError: boolean;
+  errorLabel: string;
   emptyLabel: string;
   loadingLabel: string;
   renderTag: (tag: string) => ReactNode;
@@ -53,6 +56,8 @@ function ResolvedTagField({
   title,
   tags,
   isResolving,
+  isError,
+  errorLabel,
   emptyLabel,
   loadingLabel,
   renderTag,
@@ -70,6 +75,12 @@ function ResolvedTagField({
         aria-label={loadingLabel}
       >
         <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+      </p>
+    );
+  } else if (isError) {
+    body = (
+      <p className={RESOLVED_TAG_VALUE_ROW_CLASS} role="alert">
+        {errorLabel}
       </p>
     );
   } else {
@@ -189,8 +200,12 @@ export const TagsDrawer = ({
   // Clean IPC call - no credentials passed from UI
   // Main Process handles authentication and persistent SQLite cache internally
   // Pass ALL tags to resolveTags - no client-side slice to ensure artist tags are found even if they're beyond position 20
-  const { data: resolvedArtistTags = [], isLoading: isResolvingArtistTags } =
-    useQuery<string[]>({
+  const {
+    data: resolvedArtistTags = [],
+    isLoading: isResolvingArtistTags,
+    isError: isArtistResolveError,
+    error: artistResolveError,
+  } = useQuery<string[]>({
     queryKey: ['resolve-tags-ipc', tagsString],
     queryFn: async () => {
       if (!tagsString) return [];
@@ -209,8 +224,12 @@ export const TagsDrawer = ({
   });
 
   // Resolve character tags (type=4) from API
-  const { data: resolvedCharacterTags = [], isLoading: isResolvingCharacterTags } =
-    useQuery<string[]>({
+  const {
+    data: resolvedCharacterTags = [],
+    isLoading: isResolvingCharacterTags,
+    isError: isCharacterResolveError,
+    error: characterResolveError,
+  } = useQuery<string[]>({
     queryKey: ['resolve-character-tags-ipc', tagsString],
     queryFn: async () => {
       if (!tagsString) return [];
@@ -229,8 +248,12 @@ export const TagsDrawer = ({
   });
 
   // Resolve copyright tags (type=3) from API
-  const { data: resolvedCopyrightTags = [], isLoading: isResolvingCopyrightTags } =
-    useQuery<string[]>({
+  const {
+    data: resolvedCopyrightTags = [],
+    isLoading: isResolvingCopyrightTags,
+    isError: isCopyrightResolveError,
+    error: copyrightResolveError,
+  } = useQuery<string[]>({
     queryKey: ['resolve-copyright-tags-ipc', tagsString],
     queryFn: async () => {
       if (!tagsString) return [];
@@ -452,6 +475,11 @@ export const TagsDrawer = ({
             title="Copyright"
             tags={copyrightTags}
             isResolving={isResolvingCopyrightTags}
+            isError={isCopyrightResolveError}
+            errorLabel={resolveErrorMessage(
+              copyrightResolveError,
+              "Failed to resolve copyright tags"
+            )}
             emptyLabel="No copyright detected"
             loadingLabel="Resolving copyright"
             renderTag={(tag) =>
@@ -467,6 +495,11 @@ export const TagsDrawer = ({
             title="Character"
             tags={characterTags}
             isResolving={isResolvingCharacterTags}
+            isError={isCharacterResolveError}
+            errorLabel={resolveErrorMessage(
+              characterResolveError,
+              "Failed to resolve character tags"
+            )}
             emptyLabel="No character detected"
             loadingLabel="Resolving character"
             renderTag={(tag) =>
@@ -482,6 +515,11 @@ export const TagsDrawer = ({
             title="Artist"
             tags={artistTags}
             isResolving={isResolvingArtistTags}
+            isError={isArtistResolveError}
+            errorLabel={resolveErrorMessage(
+              artistResolveError,
+              "Failed to resolve artist tags"
+            )}
             emptyLabel="No artist detected"
             loadingLabel="Resolving artist"
             renderTag={(tag) =>

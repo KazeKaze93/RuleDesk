@@ -36,6 +36,9 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `controllers/posts-tag-query.test.ts` | Tag query helpers |
 | `controllers/PostsController.ai-filter.test.ts` | AI filter during FTS bulk-sync window |
 | `controllers/PostsController.provider-collision.test.ts` | External post identity `(artistId, provider, postId)` — fav/view/shadow-insert isolation |
+| `controllers/PostsController.silent-errors.test.ts` | Count/viewed/cache DB failures throw (not `0`/`false`/`{updatedCount:0}`) |
+| `controllers/ArtistsController.silent-errors.test.ts` | `searchArtists` DB failure throws (not `[]`) |
+| `controllers/SearchController.silent-errors.test.ts` | `resolveTagsForType` DB failure throws (not `[]`) |
 | `controllers/SearchController.provider-merge.test.ts` | Browse merge scopes `isFavorited`/`isViewed` by provider |
 | `db/posts-provider-identity.test.ts` | Playlist import key + sync upsert conflict target |
 | `store/searchStore.test.ts` | Search store |
@@ -55,7 +58,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `db/sync-status-recovery.test.ts` | Hard-kill `syncing` → `idle` reset |
 | `db/fts-table-check.test.ts` | `postsFtsTableExists` |
 | `db/fts-triggers.test.ts` | FTS5 content-table triggers |
-| `features/viewer/TagsDrawer.resolved-tags.test.tsx` | Post Metadata Artist/Character: loading vs found vs confirmed-absent |
+| `features/viewer/TagsDrawer.resolved-tags.test.tsx` | Post Metadata Artist/Character: loading vs found vs confirmed-absent vs resolve error |
 | `features/viewer/buildViewerOriginQueryKey.test.ts` | Viewer origin → React Query key |
 | `features/viewer/openViewer-hasNextPage.test.ts` | Gallery `openViewer` passes react-query `hasNextPage`, not count-vs-page-size |
 | `features/viewer/gallery-background-scroll-queue.test.ts` | Masonry / local grid infinite scroll use `handleLoadMore` (`appendQueueIds`) |
