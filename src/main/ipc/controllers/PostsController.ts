@@ -7,9 +7,7 @@ import {
   count,
   and,
   sql,
-  gte,
   not,
-  notLike,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -47,11 +45,11 @@ import { POST_LOOKUP_SINGLE_ID_PAGE_LIMIT } from "../../config/post-lookup-const
 import { ShadowInsertRequestSchema } from "../../../shared/schemas/shadow-insert";
 import { IdSchema } from "../../../shared/schemas/ipc";
 import { getAllBlacklistedTags } from "../../db/queries/blacklist";
-import { escapeLikePattern } from "../../db/utils";
 import {
-  parseTagFilterQuery,
-  type ParsedSearchTerm,
-} from "./posts-tag-query";
+  buildUpdatesFeedJoinOn,
+  buildUpdatesFeedPostScopeCondition,
+} from "../../db/queries/updates-feed";
+import { buildPostsTagsFilterCondition } from "../../db/queries/post-tag-filter";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -355,62 +353,6 @@ export class PostsController extends BaseController {
    * @param tagFilter - Tag search string (user input from Renderer)
    * @returns Drizzle SQL condition for tag filtering using FTS5 or LIKE
    */
-  private createTagFilterCondition(tagFilter: string): SQL {
-    const parsedTokens = parseTagFilterQuery(tagFilter);
-    if (parsedTokens.length === 0) {
-      return sql`1 = 1`;
-    }
-
-    const tokenConditions: SQL[] = [];
-    for (const token of parsedTokens) {
-      const termConditions = token.terms
-        .map((term) => this.createSearchTermCondition(term))
-        .filter((condition): condition is SQL => Boolean(condition));
-
-      if (termConditions.length === 0) {
-        continue;
-      }
-
-      const tokenCondition =
-        termConditions.length === 1
-          ? termConditions[0]
-          : (or(...termConditions) ?? termConditions[0]);
-
-      tokenConditions.push(token.exclude ? not(tokenCondition) : tokenCondition);
-    }
-
-    if (tokenConditions.length === 0) {
-      return sql`1 = 1`;
-    }
-
-    if (tokenConditions.length === 1) {
-      return tokenConditions[0];
-    }
-    return and(...tokenConditions) ?? tokenConditions[0];
-  }
-
-  private createSearchTermCondition(term: ParsedSearchTerm): SQL | null {
-    const normalizedValue = term.value.trim();
-    if (normalizedValue.length === 0) {
-      return null;
-    }
-
-    if (term.mode === "exact") {
-      return sql`instr(' ' || lower(${posts.tags}) || ' ', ' ' || ${normalizedValue} || ' ') > 0`;
-    }
-
-    if (term.mode === "wildcard") {
-      const likePattern = `%${escapeLikePattern(normalizedValue).replace(
-        /\*/g,
-        "%"
-      )}%`;
-      return sql`lower(${posts.tags}) LIKE ${likePattern} ESCAPE '\\'`;
-    }
-
-    const fuzzyPattern = `%${escapeLikePattern(normalizedValue)}%`;
-    return sql`lower(${posts.tags}) LIKE ${fuzzyPattern} ESCAPE '\\'`;
-  }
-
   /**
    * Build WHERE conditions array for post filtering
    * Centralized logic to avoid code duplication (DRY principle)
@@ -433,7 +375,7 @@ export class PostsController extends BaseController {
     // Validate that tag filter is not empty to prevent FTS5 syntax errors
     // Empty string "" would become '""' and cause SQLITE_ERROR: fts5: syntax error
     if (filters?.tags && filters.tags.trim().length > 0) {
-      conditions.push(this.createTagFilterCondition(filters.tags));
+      conditions.push(buildPostsTagsFilterCondition(filters.tags));
     }
 
     if (filters?.isFavorited !== undefined) {
@@ -622,22 +564,10 @@ export class PostsController extends BaseController {
         const whereClause =
           baseConditions.length > 0 ? and(...baseConditions) : undefined;
 
-        // Use select with innerJoin for sinceTracking filter
-        // The date filter is part of the join condition for efficiency
-        // This ensures filtering happens at the join level, not after
-        // The join condition (gte(posts.publishedAt, artists.createdAt)) ensures
-        // we only get posts published after the artist was tracked, even if whereClause is undefined
-        // Also exclude EXTERNAL_ARTIST_ID and placeholder artists to ensure only real tracked artists
-        const joinConditions = and(
-          eq(posts.artistId, artists.id),
-          gte(posts.publishedAt, artists.createdAt),
-          not(eq(posts.artistId, EXTERNAL_ARTIST_ID)), // Exclude external posts
-          notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`) // Exclude placeholder artists
-        );
-
+        // Feed scope join: sinceTracking + tracked artists (shared with badge / mark-all).
         const finalWhereClause = whereClause
-          ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
-          : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
+          ? and(whereClause, buildUpdatesFeedPostScopeCondition())
+          : buildUpdatesFeedPostScopeCondition();
 
         const queryBuilder = db
           .select({
@@ -659,7 +589,7 @@ export class PostsController extends BaseController {
             viewCount: posts.viewCount,
           })
           .from(posts)
-          .innerJoin(artists, joinConditions)
+          .innerJoin(artists, buildUpdatesFeedJoinOn())
           .where(finalWhereClause);
 
         const result = isRandom
@@ -792,20 +722,14 @@ export class PostsController extends BaseController {
         const baseConditions = this.buildPostFilterConditions(artistId, filters);
         const whereClause =
           baseConditions.length > 0 ? and(...baseConditions) : undefined;
-        const joinConditions = and(
-          eq(posts.artistId, artists.id),
-          gte(posts.publishedAt, artists.createdAt),
-          not(eq(posts.artistId, EXTERNAL_ARTIST_ID)),
-          notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`)
-        );
         const finalWhereClause = whereClause
-          ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
-          : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
+          ? and(whereClause, buildUpdatesFeedPostScopeCondition())
+          : buildUpdatesFeedPostScopeCondition();
 
         const result = await db
           .select({ value: count() })
           .from(posts)
-          .innerJoin(artists, joinConditions)
+          .innerJoin(artists, buildUpdatesFeedJoinOn())
           .where(finalWhereClause);
 
         const total = result[0]?.value ?? 0;

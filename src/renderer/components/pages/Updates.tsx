@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useInfiniteQuery,
   useQuery,
@@ -6,7 +6,15 @@ import {
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
-import { RefreshCw, Loader2, CheckCheck, User, ChevronRight, CheckSquare } from "lucide-react";
+import {
+  RefreshCw,
+  Loader2,
+  CheckCheck,
+  User,
+  ChevronRight,
+  CheckSquare,
+  Filter,
+} from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import { useNavigate } from "react-router-dom";
 import log from "electron-log/renderer";
@@ -20,6 +28,7 @@ import type { TrackedArtist } from "@shared/types/bridge";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import { Alert, AlertDescription } from "../ui/alert";
 import {
   Tooltip,
   TooltipContent,
@@ -35,23 +44,21 @@ import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
+import { UpdatesFeedEmptyState } from "../updates/UpdatesFeedEmptyState";
+import { resolveUpdatesFeedEmptyKind } from "../../lib/updates-feed-empty";
 
-// --- Constants ---
 const POSTS_PER_PAGE = 50;
+const UPDATES_UNREAD_COUNT_QUERY_KEY = ["updates", "unreadCount"] as const;
+const UPDATES_TOTAL_UNREAD_QUERY_KEY = "totalUnreadCount";
+const SYNC_LAST_COMPLETED_QUERY_KEY = ["sync", "lastCompletedAt"] as const;
 
-// --- Helper function for updating InfiniteData cache ---
-/**
- * Updates a single post in InfiniteData cache by postId
- * Optimized to only update the page containing the post, not all pages
- */
 const updatePostInInfiniteData = (
   oldData: InfiniteData<Post[]> | undefined,
   postId: number,
   updater: (post: Post) => Post
 ): InfiniteData<Post[]> | undefined => {
   if (!oldData) return oldData;
-  
-  // Find the page index containing the post
+
   let pageIndex = -1;
   for (let i = 0; i < oldData.pages.length; i++) {
     if (oldData.pages[i].some((post) => post.id === postId)) {
@@ -59,11 +66,9 @@ const updatePostInInfiniteData = (
       break;
     }
   }
-  
-  // If post not found, return unchanged
+
   if (pageIndex === -1) return oldData;
-  
-  // Update only the page containing the post
+
   return {
     ...oldData,
     pages: oldData.pages.map((page, index) =>
@@ -81,8 +86,6 @@ const {
   GridVirtuosoList,
   MasonryVirtuosoList,
 } = createVirtuosoGridFactories("Updates");
-
-// --- Основной компонент ---
 
 const FEED_VIEW = "feed";
 const CREATORS_VIEW = "creators";
@@ -139,13 +142,20 @@ const CreatorsView = ({
                   <p className="font-medium truncate">{artist.name}</p>
                   <p className="text-xs truncate text-muted-foreground">
                     {`${artist.tag} \u00b7 ${artist.postsCount > 999 ? "999+" : artist.postsCount} posts \u00b7 ${
-                      artist.lastPostAt === null ? "never" : formatRelativeTime(artist.lastPostAt)
+                      artist.lastPostAt === null
+                        ? "never"
+                        : formatRelativeTime(artist.lastPostAt)
                     }`}
                   </p>
                 </div>
                 {artist.newPostsCount > 0 && (
-                  <Badge variant="default" className="flex-shrink-0 tabular-nums">
-                    {artist.newPostsCount > 999 ? "999+" : artist.newPostsCount}
+                  <Badge
+                    variant="default"
+                    className="flex-shrink-0 tabular-nums"
+                  >
+                    {artist.newPostsCount > 999
+                      ? "999+"
+                      : artist.newPostsCount}
                   </Badge>
                 )}
                 <ChevronRight className="flex-shrink-0 w-4 h-4 text-muted-foreground" />
@@ -164,14 +174,15 @@ export const Updates = () => {
   const queryClient = useQueryClient();
   const includeTags = useSearchStore((state) => state.includeTags);
   const excludeTags = useSearchStore((state) => state.excludeTags);
+  const clearTagChips = useSearchStore((state) => state.clearTagChips);
   const [activeView, setActiveView] = useState<UpdatesView>(FEED_VIEW);
   const tags = useMemo(
     () => buildBooruTagListForIpc(includeTags, excludeTags),
     [includeTags, excludeTags]
   );
+  const hasActiveTagFilter = tags.length > 0;
+  const markedSeenIdsRef = useRef(new Set<number>());
 
-  // Use separate selectors instead of destructuring to prevent unnecessary re-renders
-  // Each selector only subscribes to its specific value, not the entire store
   const openViewer = useViewerStore((state) => state.open);
   const appendQueueIds = useViewerStore((state) => state.appendQueueIds);
   const isBulkMode = useBulkSelect((state) => state.isBulkMode);
@@ -181,30 +192,28 @@ export const Updates = () => {
   const selectAll = useBulkSelect((state) => state.selectAll);
   const clearSelection = useBulkSelect((state) => state.clearSelection);
 
-  // Use atomic selectors to prevent unnecessary re-renders
-  // Each selector only subscribes to its specific value, not the entire store
-  // This is more efficient than useShallow when fields are used in different parts of the tree
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const viewType = useSearchStore((state) => state.viewType);
   const filters = useSearchStore((state) => state.filters);
+
+  const feedFilters = useMemo(
+    () => ({
+      sinceTracking: true as const,
+      tags: hasActiveTagFilter ? tags.join(" ") : undefined,
+    }),
+    [hasActiveTagFilter, tags]
+  );
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["posts", "updates", tags],
       queryFn: async ({ pageParam = 1 }) => {
-        // Global feed: no artistId specified, returns posts from all tracked artists
-        // sinceTracking: true filters to only posts published after artist was added
         return await window.api.getArtistPosts({
           page: pageParam,
-          filters: {
-            sinceTracking: true,
-            tags: tags.length > 0 ? tags.join(" ") : undefined,
-          },
+          filters: feedFilters,
         });
       },
       getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-        // Use lastPageParam + 1 for correct pagination
-        // This ensures we use the actual page number from the last request
         return lastPage.length === POSTS_PER_PAGE
           ? Number(lastPageParam) + 1
           : undefined;
@@ -213,29 +222,6 @@ export const Updates = () => {
     });
 
   const { aiFilter, mediaType } = filters;
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const markUpdatesAsSeen = async () => {
-      try {
-        await window.api.markAllUpdatesSeen();
-        if (!isMounted) {
-          return;
-        }
-        await queryClient.invalidateQueries({ queryKey: ["updates", "unreadCount"] });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        log.error("[Updates] Failed to mark updates as seen on mount:", errorMessage);
-      }
-    };
-
-    void markUpdatesAsSeen();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [queryClient]);
 
   useEffect(() => {
     return () => {
@@ -252,16 +238,42 @@ export const Updates = () => {
   const { data: artists = [], isLoading: isArtistsLoading } = useQuery({
     queryKey: ["artists"],
     queryFn: () => window.api.getTrackedArtists(),
-    enabled: activeView === CREATORS_VIEW,
   });
 
+  const { data: lastSyncAtMs = null, isLoading: isLastSyncLoading } = useQuery({
+    queryKey: SYNC_LAST_COMPLETED_QUERY_KEY,
+    queryFn: () => window.api.getUpdatesLastSyncAt(),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+
+  const {
+    data: unfilteredFeedCount = 0,
+    isLoading: isUnfilteredCountLoading,
+  } = useQuery({
+    queryKey: ["posts", "updates", "unfilteredCount"],
+    queryFn: () =>
+      window.api.getPostsCountWithFilters({
+        filters: { sinceTracking: true },
+      }),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+
+  const isFeedMetaLoading =
+    isArtistsLoading || isLastSyncLoading || isUnfilteredCountLoading;
+
   const { data: totalUnreadCount = 0 } = useQuery({
-    queryKey: ["updates", "totalUnreadCount", tags, aiFilter, mediaType],
+    queryKey: [
+      "updates",
+      UPDATES_TOTAL_UNREAD_QUERY_KEY,
+      tags,
+      aiFilter,
+      mediaType,
+    ],
     queryFn: () =>
       window.api.getUpdatesTotalUnreadCount({
         filters: {
           sinceTracking: true,
-          tags: tags.length > 0 ? tags.join(" ") : undefined,
+          tags: hasActiveTagFilter ? tags.join(" ") : undefined,
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
           mediaType: mediaType === "all" ? undefined : mediaType,
         },
@@ -280,16 +292,13 @@ export const Updates = () => {
 
   const allPosts = useMemo(() => {
     let posts = data?.pages.flatMap((page) => page) || [];
-    
-    // Apply filters using atomic selectors
-    // Filter AI generated posts
+
     if (aiFilter === "hide") {
       posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
     } else if (aiFilter === "only") {
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
     }
 
-    // Filter by media type
     if (mediaType !== "all") {
       posts = posts.filter((post) => {
         const isVideo = isVideoPost(post.fileUrl);
@@ -297,37 +306,104 @@ export const Updates = () => {
       });
     }
 
-    // Sort by publishedAt (date of post creation)
     return [...posts].sort((a, b) => {
-      const dateA = a.publishedAt instanceof Date 
-        ? a.publishedAt.getTime() 
-        : typeof a.publishedAt === "number" 
-        ? a.publishedAt 
-        : 0;
-      const dateB = b.publishedAt instanceof Date 
-        ? b.publishedAt.getTime() 
-        : typeof b.publishedAt === "number" 
-        ? b.publishedAt 
-        : 0;
-      
+      const dateA =
+        a.publishedAt instanceof Date
+          ? a.publishedAt.getTime()
+          : typeof a.publishedAt === "number"
+            ? a.publishedAt
+            : 0;
+      const dateB =
+        b.publishedAt instanceof Date
+          ? b.publishedAt.getTime()
+          : typeof b.publishedAt === "number"
+            ? b.publishedAt
+            : 0;
+
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
   }, [data, sortOrder, aiFilter, mediaType]);
+
+  useEffect(() => {
+    if (!data?.pages.length) {
+      return;
+    }
+
+    const unseenIds: number[] = [];
+    for (const page of data.pages) {
+      for (const post of page) {
+        if (!markedSeenIdsRef.current.has(post.id)) {
+          unseenIds.push(post.id);
+        }
+      }
+    }
+
+    if (unseenIds.length === 0) {
+      return;
+    }
+
+    for (const id of unseenIds) {
+      markedSeenIdsRef.current.add(id);
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        await window.api.markUpdatesSeenByIds(unseenIds);
+        if (cancelled) {
+          return;
+        }
+        await queryClient.invalidateQueries({
+          queryKey: UPDATES_UNREAD_COUNT_QUERY_KEY,
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["updates", UPDATES_TOTAL_UNREAD_QUERY_KEY],
+        });
+      } catch (error) {
+        for (const id of unseenIds) {
+          markedSeenIdsRef.current.delete(id);
+        }
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        log.error(
+          "[Updates] Failed to mark loaded posts as seen:",
+          errorMessage
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data, queryClient]);
+
   const selectedPosts = useMemo(
     () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
     [allPosts, selectedIds]
   );
 
+  const emptyKind = useMemo(
+    () =>
+      resolveUpdatesFeedEmptyKind({
+        trackedArtistCount: artists.length,
+        lastSyncAtMs,
+        hasActiveTagFilter,
+        unfilteredFeedCount,
+      }),
+    [artists.length, lastSyncAtMs, hasActiveTagFilter, unfilteredFeedCount]
+  );
+
   const listAriaBusy = isLoading || isFetchingNextPage;
-  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
-  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
+  const ListComponent =
+    viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
+  const ItemComponent =
+    viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
       await window.api.markPostAsViewed(postId);
     },
     onSuccess: (_, postId) => {
-      // Update cache for updates feed using helper function
       queryClient.setQueriesData<InfiniteData<Post[]>>(
         { queryKey: ["posts", "updates"] },
         (oldData) =>
@@ -338,18 +414,24 @@ export const Updates = () => {
       );
     },
     onError: (err) => {
-      // Ignore rate limit errors - use typed ErrorCode, NOT English message matching
       if (getErrorCode(err) === ErrorCode.RATE_LIMIT) {
-        return; // Silently ignore rate limit errors
+        return;
       }
-      // Log other errors for debugging
       const errorMessage = err instanceof Error ? err.message : String(err);
       log.error("[Updates] Failed to mark post as viewed:", errorMessage);
     },
   });
 
   const markAllMutation = useMutation({
-    mutationFn: () => window.api.markAllPostsAsViewed(),
+    mutationFn: () =>
+      window.api.markAllUpdatesSeen({
+        filters: {
+          sinceTracking: true,
+          tags: hasActiveTagFilter ? tags.join(" ") : undefined,
+          aiFilter: aiFilter === "all" ? undefined : aiFilter,
+          mediaType: mediaType === "all" ? undefined : mediaType,
+        },
+      }),
     onSuccess: () => {
       queryClient.setQueriesData<InfiniteData<Post[]>>(
         { queryKey: ["posts", "updates"] },
@@ -370,7 +452,13 @@ export const Updates = () => {
           newPostsCount: 0,
         }));
       });
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
+      void queryClient.invalidateQueries({ queryKey: ["artists"] });
+      void queryClient.invalidateQueries({
+        queryKey: UPDATES_UNREAD_COUNT_QUERY_KEY,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["updates", UPDATES_TOTAL_UNREAD_QUERY_KEY],
+      });
     },
     onError: (err) => {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -388,10 +476,8 @@ export const Updates = () => {
         const newPage = result.data.pages[result.data.pages.length - 1];
 
         if (newPage && newPage.length > 0) {
-          // Get existing post IDs to avoid duplicates
           const existingPostIds = new Set(allPosts.map((p) => p.id));
-          
-          // Filter out posts that are already in the list
+
           const newIds = newPage
             .map((p) => p.id)
             .filter((id) => !existingPostIds.has(id));
@@ -419,12 +505,10 @@ export const Updates = () => {
       return;
     }
 
-    // Mark as viewed first
     if (!post.isViewed) {
       viewMutation.mutate(post.id);
     }
 
-    // Open viewer with updates origin
     openViewer({
       origin: { kind: "updates", tags: tags.length > 0 ? tags : undefined },
       ids: currentPosts.map((p) => p.id),
@@ -445,6 +529,10 @@ export const Updates = () => {
     const unsubscribeSyncEnd = window.api.onSyncEnd(() => {
       queryClient.invalidateQueries({ queryKey: ["posts", "updates"] });
       queryClient.invalidateQueries({ queryKey: ["artists"] });
+      queryClient.invalidateQueries({ queryKey: SYNC_LAST_COMPLETED_QUERY_KEY });
+      queryClient.invalidateQueries({
+        queryKey: UPDATES_UNREAD_COUNT_QUERY_KEY,
+      });
     });
 
     return () => {
@@ -452,9 +540,15 @@ export const Updates = () => {
     };
   }, [queryClient]);
 
+  const filterBannerLabel = useMemo(() => {
+    if (!hasActiveTagFilter) {
+      return null;
+    }
+    return tags.join(" ");
+  }, [hasActiveTagFilter, tags]);
+
   return (
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
-      {/* Header */}
       <div className="flex z-[5] justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="flex gap-4 items-center">
           <div>
@@ -512,15 +606,36 @@ export const Updates = () => {
         )}
       </div>
 
-      {/* Grid Content */}
       <div className="flex-1 min-h-0">
-        <div className="px-6 pt-4">
+        <div className="px-6 pt-4 space-y-3">
           <Tabs value={activeView} onValueChange={handleViewChange}>
             <TabsList>
               <TabsTrigger value={FEED_VIEW}>Feed</TabsTrigger>
               <TabsTrigger value={CREATORS_VIEW}>Creators</TabsTrigger>
             </TabsList>
           </Tabs>
+          {activeView === FEED_VIEW && filterBannerLabel !== null ? (
+            <Alert>
+              <Filter className="h-4 w-4" />
+              <AlertDescription className="flex flex-wrap gap-2 justify-between items-center">
+                <span>
+                  Filtered by:{" "}
+                  <span className="font-medium text-foreground">
+                    {filterBannerLabel}
+                  </span>
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => clearTagChips()}
+                  aria-label="Clear tag filter"
+                >
+                  Clear
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
         </div>
         {activeView === CREATORS_VIEW ? (
           <CreatorsView
@@ -533,69 +648,64 @@ export const Updates = () => {
               navigate(`/artist/${artist.id}`);
             }}
           />
-        ) : isLoading && allPosts.length === 0 ? (
+        ) : (isLoading || isFeedMetaLoading) && allPosts.length === 0 ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
         ) : allPosts.length === 0 ? (
-          <div className="flex flex-col gap-4 justify-center items-center h-full text-muted-foreground">
-            <RefreshCw className="w-16 h-16 opacity-50" />
-            <div className="text-center">
-              <p className="mb-2 text-lg font-semibold">No posts found</p>
-              <p className="text-sm">Track some artists to see updates here.</p>
-            </div>
-          </div>
-        ) : (
-          viewType === "masonry" ? (
-            <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
-              <GridContainer viewType="masonry">
-                {allPosts.map((post, index) => (
-                  <MasonryItemContainer key={getPostCardKey(post)}>
-                    <PostCard
-                      post={post}
-                      onClick={() => handlePostClick(index)}
-                      preserveAspect={false}
-                    />
-                  </MasonryItemContainer>
-                ))}
-              </GridContainer>
-              {isFetchingNextPage && (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              )}
-            </div>
-          ) : (
-            <VirtuosoGrid
-              className="h-full"
-              aria-busy={listAriaBusy}
-              totalCount={allPosts.length}
-              endReached={handleLoadMore}
-              increaseViewportBy={600}
-              components={{
-                List: ListComponent,
-                Item: ItemComponent,
-                Footer: () =>
-                  isFetchingNextPage ? (
-                    <div className="flex col-span-full justify-center py-4 w-full">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    </div>
-                  ) : null,
-              }}
-              itemContent={(index) => {
-                const post = allPosts[index];
-                if (!post) return null;
-
-                return (
+          <UpdatesFeedEmptyState
+            kind={emptyKind}
+            onClearFilter={() => clearTagChips()}
+          />
+        ) : viewType === "masonry" ? (
+          <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
+            <GridContainer viewType="masonry">
+              {allPosts.map((post, index) => (
+                <MasonryItemContainer key={getPostCardKey(post)}>
                   <PostCard
-                    key={getPostCardKey(post)}
                     post={post}
                     onClick={() => handlePostClick(index)}
+                    preserveAspect={false}
                   />
-                );
-              }}
-            />
-          )
+                </MasonryItemContainer>
+              ))}
+            </GridContainer>
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <VirtuosoGrid
+            className="h-full"
+            aria-busy={listAriaBusy}
+            totalCount={allPosts.length}
+            endReached={handleLoadMore}
+            increaseViewportBy={600}
+            components={{
+              List: ListComponent,
+              Item: ItemComponent,
+              Footer: () =>
+                isFetchingNextPage ? (
+                  <div className="flex col-span-full justify-center py-4 w-full">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : null,
+            }}
+            itemContent={(index) => {
+              const post = allPosts[index];
+              if (!post) return null;
+
+              return (
+                <PostCard
+                  key={getPostCardKey(post)}
+                  post={post}
+                  onClick={() => handlePostClick(index)}
+                />
+              );
+            }}
+          />
         )}
       </div>
       <BulkActionBar

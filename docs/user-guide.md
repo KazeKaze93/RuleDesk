@@ -387,7 +387,9 @@ On Browse **Source: All**, Videos / Images are applied in the live API search ta
 **Mark all as viewed (Updates feed):**
 
 1. Open **Updates** in the sidebar
-2. In the **Feed** tab, click **Mark all read** in the top bar to mark every post currently shown in the feed as viewed
+2. In the **Feed** tab, click **Mark all read** to mark unread posts in the feed scope (posts since you started tracking each artist). If tag chips are active, only posts matching that filter are marked.
+
+Tag chips from the top bar still filter the Updates feed. When they do, a **Filtered by:** banner is shown; clear chips to restore the full feed.
 
 ---
 
@@ -408,8 +410,9 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 **Unread badge behavior (Updates):**
 
 - The badge appears only when unread count is greater than zero.
-- Opening the **Updates** page marks all cached updates as seen and clears the badge after refresh.
-- Background sync does not auto-mark updates as seen; this happens only on explicit navigation to **Updates**.
+- The badge counts unread posts in the Updates feed scope (since tracking began), not the full library history and not the current tag filter.
+- Opening **Updates** marks only the posts loaded into the feed as seen (pagination marks newly loaded pages). Posts not yet loaded stay unread until you scroll to them or use **Mark all read**.
+- Background sync does not auto-mark updates as seen.
 
 ### Top Bar
 
@@ -469,7 +472,7 @@ Settings are split into tabs:
 - **Sync new artist automatically** - After adding an artist, queue a sync for that artist (off by default; uses the same exclusive sync queue as Repair)
 - **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
 - **Sync now** - Manual sync trigger in the sidebar
-- **Last sync status** - Relative timestamp under the sidebar sync button (`never`, `X min ago`, etc.)
+- **Last sync status** - Relative timestamp under the sidebar sync button from the latest successful artist sync (`never` until at least one tracked artist has completed sync; survives app restart)
 
 ### Appearance
 

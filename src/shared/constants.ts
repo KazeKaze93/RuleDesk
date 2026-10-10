@@ -60,6 +60,12 @@ export const MAX_TRACKED_ARTISTS = 5000;
 export const BATCH_DOWNLOAD_MAX_FILES = 500;
 
 /**
+ * Max post ids accepted by `updates:markSeenByIds` in one IPC call.
+ * Matches a generous multi-page Updates feed load (page size 50).
+ */
+export const UPDATES_MARK_SEEN_BY_IDS_MAX = 500;
+
+/**
  * SQLite TTL for confirmed `not_found` rows in `tag_metadata`, and the matching
  * React Query `staleTime` for TagsDrawer Artist/Character/Copyright resolve
  * queries. Keep client cache from outliving Main's negative-cache eviction.

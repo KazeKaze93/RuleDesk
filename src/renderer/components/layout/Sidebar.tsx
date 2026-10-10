@@ -67,7 +67,7 @@ export const Sidebar = () => {
   });
   const { data: lastSyncTimestamp = null } = useQuery<number | null>({
     queryKey: SYNC_LAST_COMPLETED_QUERY_KEY,
-    queryFn: async () => null,
+    queryFn: () => window.api.getUpdatesLastSyncAt(),
     staleTime: Infinity,
   });
   const clearTagChips = useSearchStore((state) => state.clearTagChips);
@@ -84,7 +84,12 @@ export const Sidebar = () => {
 
     const unsubscribeEnd = window.api.onSyncEnd(() => {
       setIsSyncing(false);
-      queryClient.setQueryData(SYNC_LAST_COMPLETED_QUERY_KEY, Date.now());
+      void queryClient.invalidateQueries({
+        queryKey: SYNC_LAST_COMPLETED_QUERY_KEY,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["updates", "unreadCount"],
+      });
     });
 
     return () => {

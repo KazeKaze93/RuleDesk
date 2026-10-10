@@ -113,16 +113,18 @@
 | `system:wipe-all-data` | `APP.WIPE_ALL_DATA` | `[]` (no args) | no | `SystemController` | Deletes all children of userData (RuleDesk-Data), then app.exit(0). Order: closeDatabase → stop video proxy → rm → exit. Does not touch media download folders or DB backups under RuleDesk-Backups (sibling of RuleDesk-Data). |
 | `updater:progress` | `UPDATER.PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `updater:status` | `UPDATER.STATUS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
+| `updates:getLastSyncAt` | `UPDATES.GET_LAST_SYNC_AT` | `[]` (no args) | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
 | `updates:getTotalUnreadCount` | `UPDATES.GET_TOTAL_UNREAD_COUNT` | `z .object({ filters: PostFilterSchema.optional(), }) .optional() .default({})` | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
 | `updates:getUnreadCount` | `UPDATES.GET_UNREAD_COUNT` | `[]` (no args) | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
-| `updates:markAllSeen` | `UPDATES.MARK_ALL_SEEN` | `[]` (no args) | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
+| `updates:markAllSeen` | `UPDATES.MARK_ALL_SEEN` | `z .object({ filters: PostFilterSchema.optional(), }) .optional() .default({})` | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
+| `updates:markSeenByIds` | `UPDATES.MARK_SEEN_BY_IDS` | `z.tuple([ z.array(IdSchema).max(UPDATES_MARK_SEEN_BY_IDS_MAX), ])` | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
 | `video-proxy:get-url` | `VIDEO_PROXY.GET_URL` | `z.tuple([z.string().url()])` | yes | `VideoProxyController` | `src/main/ipc/controllers/VideoProxyController.ts` |
 
 ## Coverage
 
-- Channels in `channels.ts`: **106**
-- Channels with at least one scanned `handle` registration: **90**
-- Handler rows extracted: **90**
+- Channels in `channels.ts`: **108**
+- Channels with at least one scanned `handle` registration: **92**
+- Handler rows extracted: **92**
 
 ## Regenerating
 

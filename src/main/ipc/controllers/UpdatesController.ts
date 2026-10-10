@@ -1,17 +1,19 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
-import { and, count, eq, gte, not, notLike, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { getDb } from "../../db/client";
 import { maintenanceQueue } from "../../db/maintenance-queue";
-import { artists, posts } from "../../db/schema";
+import {
+  countUpdatesFeedPosts,
+  getLastTrackedArtistSyncAtMs,
+  markPostsViewedByIds,
+  markUpdatesFeedPostsViewed,
+} from "../../db/queries/updates-feed";
 import { IPC_CHANNELS } from "../channels";
 import { PostFilterSchema } from "../../../shared/schemas/post";
-import {
-  EXTERNAL_ARTIST_ID,
-  EXTERNAL_ARTIST_TAG_PREFIX,
-} from "../../../shared/constants";
+import { IdSchema } from "../../../shared/schemas/ipc";
+import { UPDATES_MARK_SEEN_BY_IDS_MAX } from "../../../shared/constants";
 
 const TotalUnreadCountParamsSchema = z
   .object({
@@ -22,48 +24,23 @@ const TotalUnreadCountParamsSchema = z
 
 type TotalUnreadCountParams = z.infer<typeof TotalUnreadCountParamsSchema>;
 
-const buildUpdatesUnreadConditions = (
-  filters: z.infer<typeof PostFilterSchema> | undefined
-): SQL[] => {
-  const conditions: SQL[] = [eq(posts.isViewed, false)];
+const MarkAllSeenParamsSchema = z
+  .object({
+    filters: PostFilterSchema.optional(),
+  })
+  .optional()
+  .default({});
 
-  if (filters?.isFavorited !== undefined) {
-    conditions.push(eq(posts.isFavorited, filters.isFavorited));
-  }
+type MarkAllSeenParams = z.infer<typeof MarkAllSeenParamsSchema>;
 
-  if (filters?.mediaType === "videos") {
-    conditions.push(eq(posts.mediaType, "video"));
-  } else if (filters?.mediaType === "images") {
-    const imageOrNull = or(
-      eq(posts.mediaType, "image"),
-      sql`${posts.mediaType} IS NULL`
-    );
-    if (imageOrNull) conditions.push(imageOrNull);
-  }
-
-  if (filters?.tags && filters.tags.trim().length > 0) {
-    const tagTokens = filters.tags
-      .split(/\s+/)
-      .map((token) => token.trim().toLowerCase())
-      .filter((token) => token.length > 0);
-
-    for (const token of tagTokens) {
-      const escapedToken = token.replace(/[%_]/g, (char) =>
-        char === "%" ? "\\%" : "\\_"
-      );
-      conditions.push(
-        sql`LOWER(COALESCE(${posts.tags}, '')) LIKE ${`%${escapedToken}%`} ESCAPE '\\'`
-      );
-    }
-  }
-
-  return conditions;
-};
+const MarkSeenByIdsArgsSchema = z.tuple([
+  z.array(IdSchema).max(UPDATES_MARK_SEEN_BY_IDS_MAX),
+]);
 
 /**
  * Updates Controller
  *
- * Unread badge counts and mark-all-seen for the Updates feed.
+ * Unread badge/header counts, scoped mark-all-read, and mark-seen-by-ids for the Updates feed.
  */
 export class UpdatesController extends BaseController {
   public setup(): void {
@@ -75,15 +52,23 @@ export class UpdatesController extends BaseController {
     );
     this.handle(
       IPC_CHANNELS.UPDATES.MARK_ALL_SEEN,
-      z.tuple([]),
-      this.markAllSeen.bind(this)
+      MarkAllSeenParamsSchema,
+      (event, params) => {
+        return this.markAllSeen(event, MarkAllSeenParamsSchema.parse(params));
+      }
+    );
+    this.handle(
+      IPC_CHANNELS.UPDATES.MARK_SEEN_BY_IDS,
+      MarkSeenByIdsArgsSchema,
+      (event, ...args) => {
+        const [ids] = MarkSeenByIdsArgsSchema.parse(args);
+        return this.markSeenByIds(event, ids);
+      }
     );
     this.handle(
       IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT,
       TotalUnreadCountParamsSchema,
       (event, params) => {
-        // BaseController already validated against TotalUnreadCountParamsSchema;
-        // handler args are typed unknown[], so re-parse is TS narrowing only (idempotent).
         return this.getTotalUnreadCount(
           event,
           TotalUnreadCountParamsSchema.parse(params)
@@ -91,19 +76,21 @@ export class UpdatesController extends BaseController {
       },
       { isIdempotent: true }
     );
+    this.handle(
+      IPC_CHANNELS.UPDATES.GET_LAST_SYNC_AT,
+      z.tuple([]),
+      this.getLastSyncAt.bind(this),
+      { isIdempotent: true }
+    );
 
     log.info("[UpdatesController] All handlers registered");
   }
 
+  /** Sidebar badge: feed unread without tag filters. */
   private async getUnreadCount(_event: IpcMainInvokeEvent): Promise<number> {
     return maintenanceQueue.execute(async () => {
       try {
-        const row = getDb()
-          .select({ value: count() })
-          .from(posts)
-          .where(eq(posts.isViewed, false))
-          .get();
-        return row?.value ?? 0;
+        return countUpdatesFeedPosts(getDb(), { unreadOnly: true });
       } catch (error) {
         log.error("[UpdatesController] Failed to get unread count:", error);
         throw error;
@@ -111,13 +98,35 @@ export class UpdatesController extends BaseController {
     });
   }
 
-  private async markAllSeen(_event: IpcMainInvokeEvent): Promise<boolean> {
+  /** Mark all read: feed scope + optional filters (tags). */
+  private async markAllSeen(
+    _event: IpcMainInvokeEvent,
+    params: MarkAllSeenParams
+  ): Promise<{ updatedCount: number }> {
     return maintenanceQueue.execute(async () => {
       try {
-        getDb().update(posts).set({ isViewed: true }).run();
-        return true;
+        const updatedCount = markUpdatesFeedPostsViewed(
+          getDb(),
+          params.filters
+        );
+        return { updatedCount };
       } catch (error) {
         log.error("[UpdatesController] Failed to mark all seen:", error);
+        throw error;
+      }
+    });
+  }
+
+  private async markSeenByIds(
+    _event: IpcMainInvokeEvent,
+    ids: number[]
+  ): Promise<{ updatedCount: number }> {
+    return maintenanceQueue.execute(async () => {
+      try {
+        const updatedCount = markPostsViewedByIds(getDb(), ids);
+        return { updatedCount };
+      } catch (error) {
+        log.error("[UpdatesController] Failed to mark seen by ids:", error);
         throw error;
       }
     });
@@ -129,44 +138,29 @@ export class UpdatesController extends BaseController {
   ): Promise<number> {
     return maintenanceQueue.execute(async () => {
       try {
-        const filters = params.filters;
-        const baseConditions = buildUpdatesUnreadConditions(filters);
-        const whereClause =
-          baseConditions.length > 0 ? and(...baseConditions) : undefined;
-
-        if (filters?.sinceTracking === true) {
-          const joinConditions = and(
-            eq(posts.artistId, artists.id),
-            gte(posts.publishedAt, artists.createdAt),
-            not(eq(posts.artistId, EXTERNAL_ARTIST_ID)),
-            notLike(artists.tag, `${EXTERNAL_ARTIST_TAG_PREFIX}%`)
-          );
-          const finalWhereClause = whereClause
-            ? and(whereClause, not(eq(posts.artistId, EXTERNAL_ARTIST_ID)))
-            : not(eq(posts.artistId, EXTERNAL_ARTIST_ID));
-
-          const row = getDb()
-            .select({ value: count() })
-            .from(posts)
-            .innerJoin(artists, joinConditions)
-            .where(finalWhereClause)
-            .get();
-
-          return row?.value ?? 0;
-        }
-
-        const row = getDb()
-          .select({ value: count() })
-          .from(posts)
-          .where(whereClause)
-          .get();
-
-        return row?.value ?? 0;
+        return countUpdatesFeedPosts(getDb(), {
+          filters: params.filters,
+          unreadOnly: true,
+        });
       } catch (error) {
         log.error(
           "[UpdatesController] Failed to get total unread count:",
           error
         );
+        throw error;
+      }
+    });
+  }
+
+  /** MAX(artists.last_checked) for tracked artists, Unix ms; null if never. */
+  private async getLastSyncAt(
+    _event: IpcMainInvokeEvent
+  ): Promise<number | null> {
+    return maintenanceQueue.execute(async () => {
+      try {
+        return getLastTrackedArtistSyncAtMs(getDb());
+      } catch (error) {
+        log.error("[UpdatesController] Failed to get last sync at:", error);
         throw error;
       }
     });

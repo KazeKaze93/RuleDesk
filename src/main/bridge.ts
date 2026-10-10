@@ -140,8 +140,12 @@ const ipcBridge: IpcBridge = {
     invokeIpc(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT),
   getUpdatesTotalUnreadCount: (params) =>
     invokeIpc(IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT, params),
-  markAllUpdatesSeen: () =>
-    invokeIpc(IPC_CHANNELS.UPDATES.MARK_ALL_SEEN),
+  markAllUpdatesSeen: (params) =>
+    invokeIpc(IPC_CHANNELS.UPDATES.MARK_ALL_SEEN, params ?? {}),
+  markUpdatesSeenByIds: (ids) =>
+    invokeIpc(IPC_CHANNELS.UPDATES.MARK_SEEN_BY_IDS, ids),
+  getUpdatesLastSyncAt: () =>
+    invokeIpc(IPC_CHANNELS.UPDATES.GET_LAST_SYNC_AT),
 
   resetPostCache: (postId) => invokeIpc(IPC_CHANNELS.DB.RESET_POST_CACHE, postId),
 

@@ -127,7 +127,13 @@ export interface IpcBridge {
   getUpdatesTotalUnreadCount: (params: {
     filters?: PostFilterRequest;
   }) => Promise<number>;
-  markAllUpdatesSeen: () => Promise<boolean>;
+  markAllUpdatesSeen: (params?: {
+    filters?: PostFilterRequest;
+  }) => Promise<{ updatedCount: number }>;
+  markUpdatesSeenByIds: (
+    ids: number[]
+  ) => Promise<{ updatedCount: number }>;
+  getUpdatesLastSyncAt: () => Promise<number | null>;
 
   resetPostCache: (postId: number) => Promise<boolean>;
 

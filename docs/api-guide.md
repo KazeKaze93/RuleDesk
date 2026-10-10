@@ -260,7 +260,16 @@ interface IpcBridge {
   togglePostViewed: (postId: number) => Promise<boolean>;
   togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
   getUpdatesUnreadCount: () => Promise<number>;
-  markAllUpdatesSeen: () => Promise<boolean>;
+  getUpdatesTotalUnreadCount: (params: {
+    filters?: PostFilterRequest;
+  }) => Promise<number>;
+  markAllUpdatesSeen: (params?: {
+    filters?: PostFilterRequest;
+  }) => Promise<{ updatedCount: number }>;
+  markUpdatesSeenByIds: (
+    ids: number[]
+  ) => Promise<{ updatedCount: number }>;
+  getUpdatesLastSyncAt: () => Promise<number | null>;
   resetPostCache: (postId: number) => Promise<boolean>;
 
   // External
@@ -1144,7 +1153,7 @@ if (success) {
 
 ### `getUpdatesUnreadCount()`
 
-Returns the number of unread posts for the **Updates** sidebar badge.
+Returns unread posts in the **Updates feed scope** for the sidebar badge: posts from tracked artists with `published_at >= artists.created_at`, excluding `artist_id = 0` / `external_%`. Does **not** apply searchStore tag filters.
 
 **When to use:** Poll unread count in navigation UI (for example, via TanStack Query with periodic refetch).
 
@@ -1161,28 +1170,56 @@ if (unreadCount > 0) {
 
 **IPC Channel:** `updates:getUnreadCount`
 
-**Query semantics:** Reads `COUNT(*)` from `posts` where `is_viewed = 0`.
+---
+
+### `getUpdatesTotalUnreadCount(params?)`
+
+Same feed scope as the badge, plus optional filters (`tags`, `aiFilter`, `mediaType`) for the Updates header counter.
+
+**IPC Channel:** `updates:getTotalUnreadCount`
 
 ---
 
-### `markAllUpdatesSeen()`
+### `markAllUpdatesSeen(params?)`
 
-Marks all posts as seen when user explicitly opens the **Updates** page.
+Marks unread posts in the Updates feed scope (optional `filters.tags` / media / AI) as viewed. Used by **Mark all read**.
 
-**When to use:** On Updates page mount, then invalidate unread-count query key to refresh sidebar badge.
-
-**Returns:** `Promise<boolean>`
+**Returns:** `Promise<{ updatedCount: number }>`
 
 **Example:**
 
 ```typescript
-await window.api.markAllUpdatesSeen();
+await window.api.markAllUpdatesSeen({
+  filters: { sinceTracking: true, tags: "1girl" },
+});
 await queryClient.invalidateQueries({ queryKey: ["updates", "unreadCount"] });
 ```
 
 **IPC Channel:** `updates:markAllSeen`
 
-**Important:** This method should be triggered by explicit user navigation to Updates, not by background sync.
+---
+
+### `markUpdatesSeenByIds(ids)`
+
+Marks only the given post database ids as viewed (batch, one transaction). Used when the Updates feed loads or paginates so filtered-out / not-yet-loaded posts stay unread.
+
+**Parameters:** `ids: number[]` (max `UPDATES_MARK_SEEN_BY_IDS_MAX`)
+
+**Returns:** `Promise<{ updatedCount: number }>`
+
+**IPC Channel:** `updates:markSeenByIds`
+
+---
+
+### `getUpdatesLastSyncAt()`
+
+Returns `MAX(artists.last_checked)` for tracked artists as Unix milliseconds, or `null` if no successful sync has been recorded.
+
+**When to use:** Sidebar “Last sync” label (persist across restart).
+
+**Returns:** `Promise<number | null>`
+
+**IPC Channel:** `updates:getLastSyncAt`
 
 ---
 
