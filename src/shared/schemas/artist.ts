@@ -28,3 +28,14 @@ export const AddArtistSchema = z.object({
  * Use this type in IPC layer (bridge.ts, renderer.d.ts) instead of duplicating interface.
  */
 export type AddArtistRequest = z.infer<typeof AddArtistSchema>;
+
+export const DeleteArtistResultSchema = z.discriminatedUnion("ok", [
+  z.object({ ok: z.literal(true) }),
+  z.object({
+    ok: z.literal(false),
+    reason: z.enum(["sync_busy_timeout"]),
+    message: z.string().min(1),
+  }),
+]);
+
+export type DeleteArtistResult = z.infer<typeof DeleteArtistResultSchema>;

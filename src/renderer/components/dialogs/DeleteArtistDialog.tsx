@@ -31,7 +31,10 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
 
   const mutation = useMutation({
     mutationFn: async (id: number) => {
-      await window.api.deleteArtist(id);
+      const result = await window.api.deleteArtist(id);
+      if (!result.ok) {
+        throw new Error(result.message);
+      }
     },
     onSuccess: () => {
       void queryClient
@@ -76,6 +79,12 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
           <div className="mt-1 text-xs text-slate-500">Tag: {artist.tag}</div>
         </div>
 
+        {mutation.isPending && (
+          <p className="mb-2 text-sm text-slate-400" aria-live="polite">
+            Deleting… If this artist is syncing, waiting for sync to stop first.
+          </p>
+        )}
+
         {mutation.isError && (
           <div
             className="flex gap-2 items-center p-3 mb-2 text-sm text-red-200 rounded border border-red-800 bg-red-900/50"
@@ -100,9 +109,15 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
             onClick={() => mutation.mutate(artist.id)}
             disabled={mutation.isPending}
             className="text-white bg-red-600 hover:bg-red-700"
+            aria-label={
+              mutation.isPending ? "Deleting artist" : DELETE_ARTIST_LABEL
+            }
           >
             {mutation.isPending ? (
-              <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+              <>
+                <Loader2 className="mr-2 w-4 h-4 animate-spin" aria-hidden />
+                Deleting…
+              </>
             ) : (
               "Delete"
             )}

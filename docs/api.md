@@ -42,7 +42,7 @@
 | `db:clear-manual-playlist` | `DB.CLEAR_MANUAL_PLAYLIST` | schema: see source (`ClearManualPlaylistSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:create-backup` | `BACKUP.CREATE` | `[]` (no args) | yes | `MaintenanceController` | Consistent SQLite snapshot via VACUUM INTO into RuleDesk-Backups/ (sibling of RuleDesk-Data). Opens the backup folder in the file explorer. Retention prune follows backupRetention. |
 | `db:create-playlist` | `DB.CREATE_PLAYLIST` | `z.tuple([CreatePlaylistSchema])` | yes | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
-| `db:delete-artist` | `DB.DELETE_ARTIST` | `z.tuple([IdSchema])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
+| `db:delete-artist` | `DB.DELETE_ARTIST` | `z.tuple([IdSchema])` | no | `ArtistsController` | Deletes artist + cascaded posts. If that artist is mid-sync, cancels only their sync and waits for FTS finally (timeout → { ok:false, reason:sync_busy_timeout }); does not globally cancel Sync All. |
 | `db:delete-playlist` | `DB.DELETE_PLAYLIST` | `z.tuple([IdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:export-playlist` | `DB.EXPORT_PLAYLIST` | `z.tuple([IdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-api-key-encrypted` | `DB.GET_API_KEY_ENCRYPTED` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |

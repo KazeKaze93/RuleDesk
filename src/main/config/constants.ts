@@ -36,6 +36,12 @@ export const VIDEO_CACHE_EVICT_AFTER_START_MS = 15_000;
 /** Max time to wait for in-flight sync to finish after cancel on app quit. */
 export const SYNC_SHUTDOWN_DRAIN_MS = 8000;
 
+/**
+ * Max time deleteArtist waits for a per-artist sync cancel + finally
+ * (FTS rebuild + trigger restore) before refusing the delete.
+ */
+export const DELETE_ARTIST_SYNC_DRAIN_MS = 120_000;
+
 /** Max time to wait for in-flight mass download cancel/drain before closing DB on quit. */
 export const DOWNLOAD_SHUTDOWN_DRAIN_MS = 8000;
 

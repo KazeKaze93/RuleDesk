@@ -1145,7 +1145,7 @@ const posts = await db.getPosts({
 
 **Status:** detection-only. Cleanup and any change to FK policy are a **separate follow-up** — do not treat this section as a license to delete rows.
 
-Drizzle declares `onDelete: "cascade"` on `posts.artist_id → artists.id` and `playlist_entries → playlists/posts`, but the app never sets `PRAGMA foreign_keys` explicitly. Current `better-sqlite3` defaults `foreign_keys = ON`, so cascade may already apply on fresh connections — yet older databases (or sessions that had FK off) can still hold orphaned posts after `deleteArtist` removed only the `artists` row. There is also no application path that deletes posts, so playlist-entry orphans only appear from manual/SQL/restore damage. FTS external-content index rows can diverge when the delete trigger is bypassed.
+Drizzle declares `onDelete: "cascade"` on `posts.artist_id → artists.id` and `playlist_entries → playlists/posts`, but the app never sets `PRAGMA foreign_keys` explicitly. Current `better-sqlite3` defaults `foreign_keys = ON`, so cascade may already apply on fresh connections — yet older databases (or sessions that had FK off) can still hold orphaned posts after `deleteArtist` removed only the `artists` row. There is also no application path that deletes posts, so playlist-entry orphans only appear from manual/SQL/restore damage. FTS external-content index rows can diverge when the delete trigger is bypassed. During initial-sync bulk windows all three runtime FTS triggers (insert/update/delete) are dropped; `deleteArtist` cancels that artist's sync and waits for rebuild+restore before cascading DELETE so never-indexed rowids never receive an FTS5 `'delete'` command.
 
 **Detection (this release):**
 

@@ -21,7 +21,12 @@ import { getTrackedArtistsWithStats } from "../../db/queries/artists";
 import {
   EXTERNAL_ARTIST_ID,
 } from "../../../shared/constants";
-import { AddArtistSchema, type AddArtistRequest } from "../../../shared/schemas/artist";
+import {
+  AddArtistSchema,
+  DeleteArtistResultSchema,
+  type AddArtistRequest,
+  type DeleteArtistResult,
+} from "../../../shared/schemas/artist";
 import { IdSchema } from "../../../shared/schemas/ipc";
 import { sanitizeProviderTagToken } from "../../../shared/utils/provider-tag-sanitize";
 import { applyArtistOnlyAutocompleteFilter } from "../../lib/filter-artist-autocomplete";
@@ -32,6 +37,7 @@ import {
 import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
 import type { ProviderSettings } from "../../providers/types";
 import { isAbortError } from "../../providers/provider-throttle";
+import { DELETE_ARTIST_SYNC_DRAIN_MS } from "../../config/constants";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -281,31 +287,50 @@ export class ArtistsController extends BaseController {
   }
 
   /**
-   * Delete artist by ID
-   *
-   * @param _event - IPC event (unused)
-   * @param id - Artist ID to delete (validated)
-   * @returns true if deletion succeeded
-   * @throws {Error} If deletion fails
+   * Delete artist by ID.
+   * If that artist is mid-sync, cancel only their task and wait for its finally
+   * (FTS rebuild + triggers) before cascading DELETE.
    */
   private async deleteArtist(
     _event: IpcMainInvokeEvent,
     id: number
-  ): Promise<boolean> {
-    try {
-      // SECURITY: Prevent deletion of EXTERNAL_ARTIST_ID (virtual artist for external posts)
-      // This is a sentinel value that should never be deleted
-      if (id === EXTERNAL_ARTIST_ID) {
-        log.warn(
-          `[ArtistsController] Attempted to delete EXTERNAL_ARTIST_ID (${EXTERNAL_ARTIST_ID}). This is not allowed.`
-        );
-        throw new Error("Cannot delete external artist placeholder");
-      }
+  ): Promise<DeleteArtistResult> {
+    // SECURITY: Prevent deletion of EXTERNAL_ARTIST_ID (virtual artist for external posts)
+    if (id === EXTERNAL_ARTIST_ID) {
+      log.warn(
+        `[ArtistsController] Attempted to delete EXTERNAL_ARTIST_ID (${EXTERNAL_ARTIST_ID}). This is not allowed.`
+      );
+      throw new Error("Cannot delete external artist placeholder");
+    }
 
+    const syncService = this.getSyncService();
+    if (syncService.isArtistSyncActive(id)) {
+      log.info(
+        `[ArtistsController] Artist ${id} is syncing — cancelling that sync before delete`
+      );
+      const drained = await syncService.cancelArtistSyncAndWait(
+        id,
+        DELETE_ARTIST_SYNC_DRAIN_MS
+      );
+      if (!drained) {
+        const result = DeleteArtistResultSchema.parse({
+          ok: false,
+          reason: "sync_busy_timeout",
+          message:
+            "Could not stop sync for this artist in time. Try delete again in a moment.",
+        });
+        log.warn(
+          `[ArtistsController] Delete refused for artist ${id}: sync cancel timed out`
+        );
+        return result;
+      }
+    }
+
+    try {
       const db = this.getDb();
-      await db.delete(artists).where(eq(artists.id, id));
+      db.delete(artists).where(eq(artists.id, id)).run();
       log.info(`[ArtistsController] Artist deleted: ID ${id}`);
-      return true;
+      return DeleteArtistResultSchema.parse({ ok: true });
     } catch (error) {
       log.error("[ArtistsController] Failed to delete artist:", error);
       throw error;

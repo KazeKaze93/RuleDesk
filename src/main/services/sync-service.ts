@@ -83,10 +83,20 @@ function setArtistSyncStatus(
     .run();
 }
 
+export type SyncCancelScope = "global" | "artist";
+
 export class SyncCancelledError extends Error {
-  constructor(message = "Sync cancelled") {
+  readonly scope: SyncCancelScope;
+  readonly artistId: number | null;
+
+  constructor(
+    message = "Sync cancelled",
+    options?: { scope?: SyncCancelScope; artistId?: number }
+  ) {
     super(message);
     this.name = "SyncCancelledError";
+    this.scope = options?.scope ?? "global";
+    this.artistId = options?.artistId ?? null;
   }
 }
 
@@ -94,6 +104,12 @@ export function isSyncCancelledError(
   error: unknown
 ): error is SyncCancelledError {
   return error instanceof SyncCancelledError;
+}
+
+export function isGlobalSyncCancelledError(
+  error: unknown
+): error is SyncCancelledError {
+  return isSyncCancelledError(error) && error.scope === "global";
 }
 
 function bulkUpsertPosts(
@@ -216,6 +232,15 @@ export class SyncService {
   private dbMaintenanceHold = false;
   /** Serializes syncAllArtists / repairArtist — queued calls run after the active one finishes */
   private syncChain: Promise<void> = Promise.resolve();
+  /** Artist id currently inside syncArtist (null when between artists / idle). */
+  private activeSyncArtistId: number | null = null;
+  /** Per-artist cancel flags (deleteArtist); does not stop Sync All globally. */
+  private readonly artistCancelIds = new Set<number>();
+  /** Resolvers notified when a given artist's syncArtist fully ends (after finally). */
+  private readonly artistSyncEndedWaiters = new Map<
+    number,
+    Array<() => void>
+  >();
 
   public getIsSyncing(): boolean {
     return this.isSyncing;
@@ -225,8 +250,90 @@ export class SyncService {
     return this.dbMaintenanceHold;
   }
 
+  public isArtistSyncActive(artistId: number): boolean {
+    return this.activeSyncArtistId === artistId;
+  }
+
   public requestCancel(): void {
     this.cancelRequested = true;
+  }
+
+  /** Request cancel for one artist only (Sync All continues with others). */
+  public requestArtistCancel(artistId: number): void {
+    this.artistCancelIds.add(artistId);
+  }
+
+  /**
+   * Cancel the artist's in-flight sync (if any) and wait until syncArtist's
+   * finally finished (includes FTS rebuild + trigger restore for initial sync).
+   * @returns true if idle within timeout (or was not syncing), false on timeout
+   */
+  public async cancelArtistSyncAndWait(
+    artistId: number,
+    timeoutMs: number
+  ): Promise<boolean> {
+    if (!this.isArtistSyncActive(artistId)) {
+      return true;
+    }
+    this.requestArtistCancel(artistId);
+    return this.waitForArtistSyncEnd(artistId, timeoutMs);
+  }
+
+  private waitForArtistSyncEnd(
+    artistId: number,
+    timeoutMs: number
+  ): Promise<boolean> {
+    if (!this.isArtistSyncActive(artistId)) {
+      return Promise.resolve(true);
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (ok: boolean) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        const waiters = this.artistSyncEndedWaiters.get(artistId);
+        if (waiters) {
+          const next = waiters.filter((w) => w !== onEnded);
+          if (next.length === 0) {
+            this.artistSyncEndedWaiters.delete(artistId);
+          } else {
+            this.artistSyncEndedWaiters.set(artistId, next);
+          }
+        }
+        resolve(ok);
+      };
+
+      const onEnded = () => {
+        finish(true);
+      };
+
+      const timer = setTimeout(() => {
+        finish(false);
+      }, timeoutMs);
+
+      const waiters = this.artistSyncEndedWaiters.get(artistId) ?? [];
+      waiters.push(onEnded);
+      this.artistSyncEndedWaiters.set(artistId, waiters);
+
+      if (!this.isArtistSyncActive(artistId)) {
+        finish(true);
+      }
+    });
+  }
+
+  private notifyArtistSyncEnded(artistId: number): void {
+    const waiters = this.artistSyncEndedWaiters.get(artistId);
+    if (!waiters || waiters.length === 0) {
+      return;
+    }
+    this.artistSyncEndedWaiters.delete(artistId);
+    for (const resolve of waiters) {
+      resolve();
+    }
   }
 
   /**
@@ -258,9 +365,15 @@ export class SyncService {
     this.dbMaintenanceHold = false;
   }
 
-  private throwIfCancelled(): void {
+  private throwIfCancelled(artistId: number): void {
     if (this.cancelRequested) {
-      throw new SyncCancelledError();
+      throw new SyncCancelledError("Sync cancelled", { scope: "global" });
+    }
+    if (this.artistCancelIds.has(artistId)) {
+      throw new SyncCancelledError(`Sync cancelled for artist ${artistId}`, {
+        scope: "artist",
+        artistId,
+      });
     }
   }
 
@@ -383,15 +496,33 @@ export class SyncService {
           logger.info("SyncService: Full sync cancelled — stopping artist loop");
           break;
         }
+
+        const stillPresent = await db.query.artists.findFirst({
+          where: eq(artists.id, artist.id),
+          columns: { id: true },
+        });
+        if (!stillPresent) {
+          logger.info(
+            `SyncService: Skipping artist ${artist.name} (id=${artist.id}) — deleted before queue reached it`
+          );
+          continue;
+        }
+
         try {
           this.sendEvent(IPC_CHANNELS.SYNC.PROGRESS, `Checking ${artist.name}...`);
           await this.syncArtist(artist, settingsData);
         } catch (error) {
           if (isSyncCancelledError(error)) {
+            if (error.scope === "global" || this.cancelRequested) {
+              logger.info(
+                `SyncService: Full sync cancelled during ${artist.name}`
+              );
+              break;
+            }
             logger.info(
-              `SyncService: Full sync cancelled during ${artist.name}`
+              `SyncService: Artist sync cancelled for ${artist.name} (id=${artist.id}); continuing Sync All`
             );
-            break;
+            continue;
           }
           const errorMsg = isProviderSearchError(error)
             ? error.message
@@ -502,68 +633,67 @@ export class SyncService {
     maxPages = Infinity,
     options?: { notifyRepairStart?: boolean }
   ) {
-    setArtistSyncStatus(
-      getDb(),
-      artist.id,
-      ARTIST_SYNC_STATUS.SYNCING,
-      null
-    );
-    if (options?.notifyRepairStart) {
-      this.sendEvent(IPC_CHANNELS.SYNC.REPAIR_START, artist.name);
-    }
-    this.sendEvent(IPC_CHANNELS.SYNC.ARTIST);
-
-    // DYNAMIC PROVIDER SELECTION
-    // Validate provider ID against known providers
-    const rawProviderId = artist.provider || "rule34";
-
-    // Type-safe validation without casting
-    const isValidProvider = (id: string): id is ProviderId => {
-      return PROVIDER_IDS.some((validId: ProviderId) => validId === id);
-    };
-
-    let providerId: ProviderId;
-    if (!isValidProvider(rawProviderId)) {
-      logger.error(
-        `SyncService: Invalid provider '${rawProviderId}' for artist ${artist.name} (ID: ${artist.id}). ` +
-          `Database integrity compromised. Expected one of: ${PROVIDER_IDS.join(
-            ", "
-          )}. ` +
-          `Falling back to 'rule34' to continue sync.`
-      );
-      // Fallback to rule34 instead of throwing - don't kill entire sync process
-      providerId = "rule34";
-      this.sendEvent(
-        IPC_CHANNELS.SYNC.ERROR,
-        `${artist.name}: Invalid provider, using Rule34 fallback`
-      );
-    } else {
-      providerId = rawProviderId;
-    }
-
-    const provider = getProvider(providerId);
-
-    logger.info(
-      `SyncService: Syncing ${artist.name} using provider: ${provider.name} (lastPostId: ${artist.lastPostId})`
-    );
-
-    // Track current lastPostId separately to avoid mutating artist object
-    const currentLastPostId = artist.lastPostId;
-    const isInitialSync = currentLastPostId === 0;
-    
-    // Unified sync method - handles both initial and incremental sync
+    this.activeSyncArtistId = artist.id;
     try {
-      return await this.syncPosts(
-        artist,
-        settings,
-        provider,
-        {
-          isInitial: isInitialSync,
-          currentLastPostId,
-          maxPages: isInitialSync ? maxPages : Infinity,
-        }
+      setArtistSyncStatus(
+        getDb(),
+        artist.id,
+        ARTIST_SYNC_STATUS.SYNCING,
+        null
       );
+      if (options?.notifyRepairStart) {
+        this.sendEvent(IPC_CHANNELS.SYNC.REPAIR_START, artist.name);
+      }
+      this.sendEvent(IPC_CHANNELS.SYNC.ARTIST);
+
+      // DYNAMIC PROVIDER SELECTION
+      // Validate provider ID against known providers
+      const rawProviderId = artist.provider || "rule34";
+
+      // Type-safe validation without casting
+      const isValidProvider = (id: string): id is ProviderId => {
+        return PROVIDER_IDS.some((validId: ProviderId) => validId === id);
+      };
+
+      let providerId: ProviderId;
+      if (!isValidProvider(rawProviderId)) {
+        logger.error(
+          `SyncService: Invalid provider '${rawProviderId}' for artist ${artist.name} (ID: ${artist.id}). ` +
+            `Database integrity compromised. Expected one of: ${PROVIDER_IDS.join(
+              ", "
+            )}. ` +
+            `Falling back to 'rule34' to continue sync.`
+        );
+        // Fallback to rule34 instead of throwing - don't kill entire sync process
+        providerId = "rule34";
+        this.sendEvent(
+          IPC_CHANNELS.SYNC.ERROR,
+          `${artist.name}: Invalid provider, using Rule34 fallback`
+        );
+      } else {
+        providerId = rawProviderId;
+      }
+
+      const provider = getProvider(providerId);
+
+      logger.info(
+        `SyncService: Syncing ${artist.name} using provider: ${provider.name} (lastPostId: ${artist.lastPostId})`
+      );
+
+      // Track current lastPostId separately to avoid mutating artist object
+      const currentLastPostId = artist.lastPostId;
+      const isInitialSync = currentLastPostId === 0;
+
+      // Unified sync method - handles both initial and incremental sync
+      return await this.syncPosts(artist, settings, provider, {
+        isInitial: isInitialSync,
+        currentLastPostId,
+        maxPages: isInitialSync ? maxPages : Infinity,
+      });
     } finally {
+      this.activeSyncArtistId = null;
+      this.artistCancelIds.delete(artist.id);
+      this.notifyArtistSyncEnded(artist.id);
       this.sendEvent(IPC_CHANNELS.SYNC.ARTIST);
     }
   }
@@ -611,7 +741,7 @@ export class SyncService {
 
     if (isInitial) {
       logger.info(
-        `SyncService: ${artist.name} - disabling initial-sync FTS insert/update triggers`
+        `SyncService: ${artist.name} - disabling initial-sync FTS insert/update/delete triggers`
       );
       dropFtsTriggersForBulkInsert(sqlite);
     }
@@ -619,7 +749,7 @@ export class SyncService {
     try {
       while (hasMore && page < maxPages) {
         try {
-          this.throwIfCancelled();
+          this.throwIfCancelled(artist.id);
 
           // Artist-tag pagination — not a per-ID lookup. Deleted posts simply
           // omit from the listing. Per-ID not_found TTL is `resolvePostLookup`
@@ -656,7 +786,7 @@ export class SyncService {
             );
           }
 
-          this.throwIfCancelled();
+          this.throwIfCancelled(artist.id);
 
           // Filter posts: initial sync saves all, incremental only saves new ones
           const newPosts = isInitial
@@ -920,7 +1050,7 @@ export class SyncService {
     } finally {
       if (isInitial) {
         logger.info(
-          `SyncService: ${artist.name} - backfilling FTS index and restoring insert/update triggers`
+          `SyncService: ${artist.name} - backfilling FTS index and restoring insert/update/delete triggers`
         );
 
         backfillArtistFtsIndex(sqlite, artist.id);
