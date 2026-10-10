@@ -507,7 +507,7 @@ const posts = await db.query.posts.findMany({
    - `MaintenanceController.ts` - Database backup/restore, VACUUM, and read-only orphan detection
    - `ViewerController.ts` - Viewer-related operations
    - `FileController.ts` - File download and management
-   - `SystemController.ts` - System-level ops (version / **`getAppInfo`**, **`openLogsFolder`**, **`getDiagnostics`** with redacted log tail, clipboard, icon path, quit, **`wipeAllData`** — `RuleDesk-Data` only; does not delete `RuleDesk-Backups`)
+   - `SystemController.ts` - System-level ops (version / **`getAppInfo`**, **`openLogsFolder`**, **`getDiagnostics`** with redacted log tail, clipboard, icon path, **`wipeAllData`** — `RuleDesk-Data` only; does not delete `RuleDesk-Backups`). Process quit is tray/`app.quit()` → `before-quit` only (no dedicated quit IPC channel).
    - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination and SQLite `search_results_cache` TTL layer, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
    - `PlaylistController.ts` - Playlist CRUD, smart queries, import/export
    - `StatsController.ts` - Extended stats for `/stats`
