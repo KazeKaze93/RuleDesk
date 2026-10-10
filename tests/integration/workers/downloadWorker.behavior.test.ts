@@ -177,20 +177,16 @@ describe("downloadWorker behavior", () => {
       filename: `0_${n}.bin`,
     }));
 
-    const t0 = Date.now();
     const result = await runWorkerBatch({ items, folder });
     expect(result.canceled).toBe(false);
     expect(result.downloaded).toBeGreaterThan(0);
 
-    // First wave: up to concurrency (3) start near t0.
-    // During the 429 pause (~1s Retry-After), no additional starts.
-    const pauseEndApprox = t0 + 900;
-    const startsDuringPause = requestStarts.filter(
-      (t) => t > t0 + 150 && t < pauseEndApprox
-    );
-    expect(startsDuringPause.length).toBe(0);
-
-    const startsAfterPause = requestStarts.filter((t) => t >= pauseEndApprox);
-    expect(startsAfterPause.length).toBeGreaterThan(0);
+    // Concurrency 3 → first three 429s form the opening wave; the next start
+    // must wait for Retry-After (~1s). Wall-clock "during pause" windows flake
+    // under load when the first wave itself straddles t0+150ms.
+    const sortedStarts = [...requestStarts].sort((a, b) => a - b);
+    expect(sortedStarts.length).toBeGreaterThan(3);
+    const gapBeforeFourthMs = sortedStarts[3] - sortedStarts[0];
+    expect(gapBeforeFourthMs).toBeGreaterThanOrEqual(800);
   }, 30_000);
 });
