@@ -20,6 +20,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `lib/browse-track-download.test.ts` | Single-include-tag gate + ensureArtistTrackedAndSynced (no duplicate add; sync fail/cancel) |
 | `lib/filter-utils.test.ts` | AI tag tokens, video URL detection |
 | `lib/backup-retention-size-cap.test.ts` | Backup size-cap prune |
+| `lib/atomic-write.test.ts` | Single-writer atomic tmp+rename: coalesce, EPERM retry, leftover tmp cleanup |
 | `lib/media-cache-eviction.test.ts` | Video-cache LRU last-accessed selection (not mtime; skip open readers) |
 | `lib/filter-artist-autocomplete.test.ts` | Add Artist artist-only filter |
 | `shared/log-redaction.test.ts` | Central log redaction (query keys, userinfo, paths, AxiosError) |

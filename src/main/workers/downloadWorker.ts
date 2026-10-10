@@ -129,29 +129,52 @@ async function runWorker(): Promise<void> {
       ? new HttpsProxyAgent(proxyUrl)
       : undefined;
 
-  const persistAcks = new Map<string, () => void>();
+  type PersistAck = {
+    resolve: () => void;
+    reject: (error: Error) => void;
+  };
+  const persistAcks = new Map<string, PersistAck>();
 
-  parentPort?.on("message", (msg: { type: string; id?: string }) => {
-    if (msg.type === "cancel") {
-      aborted = true;
-      for (const controller of activeControllers) {
-        controller.abort();
+  parentPort?.on(
+    "message",
+    (msg: {
+      type: string;
+      id?: string;
+      code?: string;
+      message?: string;
+    }) => {
+      if (msg.type === "cancel") {
+        aborted = true;
+        for (const controller of activeControllers) {
+          controller.abort();
+        }
+        for (const ack of persistAcks.values()) {
+          ack.resolve();
+        }
+        persistAcks.clear();
       }
-      for (const resolve of persistAcks.values()) {
-        resolve();
+      if (msg.type === "pause") paused = true;
+      if (msg.type === "resume") paused = false;
+      if (msg.type === "item-persisted" && typeof msg.id === "string") {
+        const ack = persistAcks.get(msg.id);
+        if (ack) {
+          persistAcks.delete(msg.id);
+          ack.resolve();
+        }
       }
-      persistAcks.clear();
+      if (msg.type === "item-persist-failed" && typeof msg.id === "string") {
+        const ack = persistAcks.get(msg.id);
+        if (ack) {
+          persistAcks.delete(msg.id);
+          const reason =
+            typeof msg.message === "string" && msg.message.length > 0
+              ? msg.message
+              : "Queue persist failed";
+          ack.reject(new Error(reason));
+        }
+      }
     }
-    if (msg.type === "pause") paused = true;
-    if (msg.type === "resume") paused = false;
-    if (msg.type === "item-persisted" && typeof msg.id === "string") {
-      const resolve = persistAcks.get(msg.id);
-      if (resolve) {
-        persistAcks.delete(msg.id);
-        resolve();
-      }
-    }
-  });
+  );
 
   const post = (m: WorkerOutboundMessage) => parentPort?.postMessage(m);
 
@@ -201,26 +224,52 @@ async function runWorker(): Promise<void> {
 
   const ITEM_PERSIST_ACK_TIMEOUT_MS = 10_000;
 
-  const markCompleted = async (filename: string) => {
-    completedIds.push(filename);
-    downloaded++;
+  const markCompleted = async (
+    item: { url: string; filename: string }
+  ): Promise<void> => {
+    const filename = item.filename;
     // File is already on disk. Notify Main, then wait for queue ack when Main owns persistence.
     if (!persistQueue) {
-      await new Promise<void>((resolve) => {
-        const timer = setTimeout(() => {
-          persistAcks.delete(filename);
-          resolve();
-        }, ITEM_PERSIST_ACK_TIMEOUT_MS);
-        persistAcks.set(filename, () => {
-          clearTimeout(timer);
-          resolve();
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(() => {
+            persistAcks.delete(filename);
+            reject(
+              new Error(
+                `Queue persist ack timed out after ${ITEM_PERSIST_ACK_TIMEOUT_MS}ms`
+              )
+            );
+          }, ITEM_PERSIST_ACK_TIMEOUT_MS);
+          persistAcks.set(filename, {
+            resolve: () => {
+              clearTimeout(timer);
+              resolve();
+            },
+            reject: (error: Error) => {
+              clearTimeout(timer);
+              reject(error);
+            },
+          });
+          post({ type: "item-completed", id: filename });
         });
-        post({ type: "item-completed", id: filename });
-      });
-    } else {
-      post({ type: "item-completed", id: filename });
-      await persistQueueState();
+        completedIds.push(filename);
+        downloaded++;
+      } catch (error: unknown) {
+        if (aborted) {
+          return;
+        }
+        const classified = classifyDownloadFailure(error);
+        recordFailure(item, {
+          code: "DISK",
+          message: classified.message || "Queue persist failed",
+        });
+      }
+      return;
     }
+    completedIds.push(filename);
+    downloaded++;
+    post({ type: "item-completed", id: filename });
+    await persistQueueState();
   };
 
   const recordFailure = (
@@ -275,7 +324,7 @@ async function runWorker(): Promise<void> {
       /* file doesn't exist */
     }
     if (fileExists && duplicateFileBehavior === "skip") {
-      await markCompleted(item.filename);
+      await markCompleted(item);
       post({
         type: "progress",
         id: item.filename,
@@ -351,7 +400,7 @@ async function runWorker(): Promise<void> {
           signal: abortController.signal,
         });
         clearIdleTimer();
-        await markCompleted(item.filename);
+        await markCompleted(item);
         post({
           type: "progress",
           id: item.filename,

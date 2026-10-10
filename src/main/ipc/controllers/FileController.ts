@@ -17,6 +17,7 @@ import {
   DOWNLOAD_SHUTDOWN_DRAIN_MS,
   USER_AGENT,
 } from "../../config/constants";
+import { waitForAtomicWriteIdle } from "../../lib/atomic-write";
 import {
   artistQueueInitial,
   listQueueInitial,
@@ -187,6 +188,7 @@ export class FileController extends BaseController {
     this.activeDownloads.clear();
 
     if (!this.downloadWorker) {
+      await waitForAtomicWriteIdle(this.getQueueFilePath());
       this.resolveBatchIdleWaiters();
       return { timedOut: false };
     }
@@ -221,6 +223,8 @@ export class FileController extends BaseController {
       }
       this.downloadWorker = null;
     }
+    // Final queue rename must finish before before-quit closes userData.
+    await waitForAtomicWriteIdle(this.getQueueFilePath());
     this.resolveBatchIdleWaiters();
     if (timedOut) {
       log.warn(
@@ -708,8 +712,9 @@ export class FileController extends BaseController {
           progressTotal: state.total,
           persistQueue: false,
           onItemCompleted: async (filename) => {
-            state = applyArtistItemCompleted(state, filename);
-            await this.writeQueueFile(state);
+            const next = applyArtistItemCompleted(state, filename);
+            await this.writeQueueFile(next);
+            state = next;
           },
         });
 
@@ -803,14 +808,16 @@ export class FileController extends BaseController {
         progressTotal: state.total,
         persistQueue: false,
         onItemCompleted: async (filename) => {
-          if (!state.completedIds.includes(filename)) {
-            state = {
-              ...state,
-              completedIds: [...state.completedIds, filename],
-              timestamp: Date.now(),
-            };
-            await this.writeQueueFile(state);
+          if (state.completedIds.includes(filename)) {
+            return;
           }
+          const next: DownloadQueueFileV3List = {
+            ...state,
+            completedIds: [...state.completedIds, filename],
+            timestamp: Date.now(),
+          };
+          await this.writeQueueFile(next);
+          state = next;
         },
       });
 
@@ -926,16 +933,25 @@ export class FileController extends BaseController {
               void (async () => {
                 try {
                   await params.onItemCompleted?.(completedId);
-                } catch (error: unknown) {
-                  log.error(
-                    "[FileController] Failed to persist queue after item:",
-                    error
-                  );
-                } finally {
                   if (this.downloadWorker === worker) {
                     worker.postMessage({
                       type: "item-persisted",
                       id: completedId,
+                    });
+                  }
+                } catch (error: unknown) {
+                  const message =
+                    error instanceof Error ? error.message : String(error);
+                  log.error(
+                    "[FileController] Failed to persist queue after item:",
+                    error
+                  );
+                  if (this.downloadWorker === worker) {
+                    worker.postMessage({
+                      type: "item-persist-failed",
+                      id: completedId,
+                      code: "DISK",
+                      message,
                     });
                   }
                 }

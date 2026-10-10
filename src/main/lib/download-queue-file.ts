@@ -1,4 +1,3 @@
-import { rename, writeFile } from "node:fs/promises";
 import { z } from "zod";
 import { DownloadAllItemSchema } from "../../shared/schemas/download";
 import { PostFilterSchema } from "../../shared/schemas/post";
@@ -9,6 +8,7 @@ import type {
   DownloadQueueFileV3List,
   DownloadQueueItem,
 } from "../../shared/types/download";
+import { writeFileAtomic } from "./atomic-write";
 
 const QueueItemArraySchema = z.array(DownloadAllItemSchema);
 
@@ -110,14 +110,12 @@ export function parseDownloadQueueFile(raw: unknown): ParsedDownloadQueue | null
   return { format: "v2-as-list", data: list };
 }
 
-/** Atomic write: tmp beside target then rename. */
+/** Atomic write: single-writer per path, unique tmp, retry on EPERM/EBUSY/EACCES. */
 export async function writeDownloadQueueAtomic(
   filePath: string,
   data: DownloadQueueFileV3 | DownloadQueueFileV2
 ): Promise<void> {
-  const tmpPath = `${filePath}.tmp`;
-  await writeFile(tmpPath, JSON.stringify(data), "utf-8");
-  await rename(tmpPath, filePath);
+  await writeFileAtomic(filePath, JSON.stringify(data));
 }
 
 export function artistQueueInitial(params: {
