@@ -44,7 +44,11 @@ export const Tracked = () => {
       });
 
       // Invalidate cache to refresh list
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["artists"] })
+        .catch((error: unknown) => {
+          log.error("[Tracked] Failed to invalidate artists:", error);
+        });
       setIsAddModalOpen(false);
     } catch (err) {
       log.error("[Tracked] Failed to add artist:", err);
@@ -53,7 +57,11 @@ export const Tracked = () => {
 
   // Handler for clicking a card
   const handleSelectArtist = (artist: TrackedArtist) => {
-    navigate(`/artist/${artist.id}`);
+    void Promise.resolve(navigate(`/artist/${artist.id}`)).catch(
+      (error: unknown) => {
+        log.error("[Tracked] Navigation to artist failed:", error);
+      }
+    );
   };
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -133,7 +141,9 @@ export const Tracked = () => {
       <AddArtistModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddArtist}
+        onAdd={(name, tag, type, provider) => {
+          void handleAddArtist(name, tag, type, provider);
+        }}
         returnFocusToRef={addModalReturnFocusRef}
       />
     </div>

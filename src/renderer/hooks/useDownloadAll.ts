@@ -75,16 +75,22 @@ export function useDownloadAll(posts: Post[]) {
   };
 
   const cancel = () => {
-    window.api.cancelDownloadAll();
+    void window.api.cancelDownloadAll().catch((error: unknown) => {
+      log.error("[useDownloadAll] cancelDownloadAll failed:", error);
+    });
   };
 
   const pause = () => {
-    window.api.pauseDownloadAll();
+    void window.api.pauseDownloadAll().catch((error: unknown) => {
+      log.error("[useDownloadAll] pauseDownloadAll failed:", error);
+    });
     setIsPaused(true);
   };
 
   const resume = () => {
-    window.api.resumeDownloadAll();
+    void window.api.resumeDownloadAll().catch((error: unknown) => {
+      log.error("[useDownloadAll] resumeDownloadAll failed:", error);
+    });
     setIsPaused(false);
   };
 
@@ -189,13 +195,21 @@ export function useDownloadAllFromBackend(
     }
   };
 
-  const cancel = () => window.api.cancelDownloadAll();
+  const cancel = () => {
+    void window.api.cancelDownloadAll().catch((error: unknown) => {
+      log.error("[useDownloadAllFromBackend] cancelDownloadAll failed:", error);
+    });
+  };
   const pause = () => {
-    window.api.pauseDownloadAll();
+    void window.api.pauseDownloadAll().catch((error: unknown) => {
+      log.error("[useDownloadAllFromBackend] pauseDownloadAll failed:", error);
+    });
     setIsPaused(true);
   };
   const resume = () => {
-    window.api.resumeDownloadAll();
+    void window.api.resumeDownloadAll().catch((error: unknown) => {
+      log.error("[useDownloadAllFromBackend] resumeDownloadAll failed:", error);
+    });
     setIsPaused(false);
   };
 

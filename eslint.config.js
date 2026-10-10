@@ -57,7 +57,7 @@ export default tseslint.config(
     },
   },
 
-  // 3. Type-aware assertion enforcement (src only — matches tsconfig include)
+  // 3. Type-aware rules (src only — matches tsconfig include)
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["**/*.d.ts"],
@@ -86,6 +86,38 @@ export default tseslint.config(
             'TSAsExpression:not(:has(> TSTypeReference[typeName.name="const"]))',
           message:
             '`as` type assertions are forbidden except the closed boundary allowlist in .cursorrules. Allowed sites need `// boundary: <reason>` and `eslint-disable-next-line` for every rule that fires (`no-restricted-syntax`; also `@typescript-eslint/no-unsafe-type-assertion` when it reports). Prefer upstream types or Zod.parse. `as const` is allowed.',
+        },
+      ],
+      // Async / promise correctness (require type info)
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-misused-promises": [
+        "error",
+        {
+          checksConditionals: true,
+          checksVoidReturn: true,
+          checksSpreads: true,
+        },
+      ],
+      "@typescript-eslint/switch-exhaustiveness-check": [
+        "error",
+        {
+          considerDefaultExhaustiveForUnions: false,
+        },
+      ],
+      // Unused catch bindings must be handled (log/rethrow) — no `_err` silence
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrors: "all",
+          caughtErrorsIgnorePattern: "^$",
+        },
+      ],
+      "no-empty": [
+        "error",
+        {
+          allowEmptyCatch: false,
         },
       ],
     },

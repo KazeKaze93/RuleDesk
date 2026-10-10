@@ -19,7 +19,17 @@ import {
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
 import type { PostFilterRequest } from "../../../shared/schemas/post";
+import {
+  asMillis,
+  asSeconds,
+  dateToMillis,
+  secondsToMillis,
+  type Millis,
+} from "../../../shared/types/time";
 import { buildPostsTagsFilterCondition } from "./post-tag-filter";
+
+/** Heuristic: values below this are unix Seconds; at/above are already Millis. */
+const UNIX_MS_THRESHOLD = 1_000_000_000_000;
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -239,10 +249,10 @@ export function markPostsViewedByIds(
 }
 
 /**
- * MAX(artists.last_checked) for tracked artists, as Unix ms (or null).
- * Drizzle timestamp columns are seconds on disk; Date.getTime() → ms for UI.
+ * MAX(artists.last_checked) for tracked artists, as Unix Millis (or null).
+ * Drizzle timestamp columns are Seconds on disk; Date → Millis for UI.
  */
-export function getLastTrackedArtistSyncAtMs(db: AppDatabase): number | null {
+export function getLastTrackedArtistSyncAtMs(db: AppDatabase): Millis | null {
   const row = db
     .select({ value: max(artists.lastChecked) })
     .from(artists)
@@ -254,11 +264,12 @@ export function getLastTrackedArtistSyncAtMs(db: AppDatabase): number | null {
     return null;
   }
   if (value instanceof Date) {
-    return value.getTime();
+    return dateToMillis(value);
   }
   if (typeof value === "number") {
-    // Seconds if below ms threshold; otherwise already ms.
-    return value < 1_000_000_000_000 ? value * 1000 : value;
+    return value < UNIX_MS_THRESHOLD
+      ? secondsToMillis(asSeconds(value))
+      : asMillis(value);
   }
   return null;
 }

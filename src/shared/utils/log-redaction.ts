@@ -245,10 +245,10 @@ function redactValue(
     case "symbol":
     case "function":
       return String(value);
+    case "undefined":
+      return value;
     case "object":
       break;
-    default:
-      return value;
   }
 
   if (seen.has(value)) {

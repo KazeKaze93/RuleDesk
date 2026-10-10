@@ -111,7 +111,11 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
         iconName: "",
       });
 
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["playlists"] })
+        .catch((error: unknown) => {
+          log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
+        });
           setNewPlaylistName("");
           setTagInputValue("");
           setSmartTags([]);
@@ -185,7 +189,11 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
         queryJson,
       });
 
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["playlists"] })
+        .catch((error: unknown) => {
+          log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
+        });
       setNewPlaylistName("");
       setTagInputValue("");
       setSmartTags([]);
@@ -205,7 +213,11 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     setIsDeleting(true);
     try {
       await window.api.deletePlaylist(playlistToDelete.id);
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      void queryClient
+        .invalidateQueries({ queryKey: ["playlists"] })
+        .catch((error: unknown) => {
+          log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
+        });
       setPlaylistToDelete(null);
       
       // If deleted playlist was selected, go back to list
@@ -274,7 +286,11 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     try {
       const result = await window.api.importPlaylist();
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["playlists"] });
+        void queryClient
+          .invalidateQueries({ queryKey: ["playlists"] })
+          .catch((error: unknown) => {
+            log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
+          });
 
         if (typeof result.playlistId === "number") {
           const importedPosts = await window.api.getPlaylistPosts({
@@ -342,7 +358,13 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             <h1 className="text-xl font-semibold">Playlists</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleImportPlaylist} disabled={isImporting}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void handleImportPlaylist();
+              }}
+              disabled={isImporting}
+            >
               {isImporting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -535,16 +557,17 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             <Button
               variant="destructive"
               disabled={clearingPlaylistId !== null}
-              onClick={async (e) => {
+              onClick={(e) => {
                 e.preventDefault();
                 if (!playlistToClear) {
                   return;
                 }
                 const pl = playlistToClear;
-                const ok = await handleClearAllPostsInPlaylist(pl);
-                if (ok) {
-                  setPlaylistToClear(null);
-                }
+                void handleClearAllPostsInPlaylist(pl).then((ok) => {
+                  if (ok) {
+                    setPlaylistToClear(null);
+                  }
+                });
               }}
             >
               {clearingPlaylistId !== null ? "Clearing…" : "Clear all"}
@@ -619,9 +642,13 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !isCreating && newPlaylistName.trim()) {
                     if (playlistType === "smart" && smartTags.length > 0) {
-                      handleCreatePlaylist();
+                      void handleCreatePlaylist().catch((error: unknown) => {
+                        log.error("[PlaylistsPage] Create playlist failed:", error);
+                      });
                     } else if (playlistType === "manual") {
-                      handleCreatePlaylist();
+                      void handleCreatePlaylist().catch((error: unknown) => {
+                        log.error("[PlaylistsPage] Create playlist failed:", error);
+                      });
                     }
                   }
                 }}
@@ -693,7 +720,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
               Cancel
             </Button>
             <Button
-              onClick={handleCreatePlaylist}
+              onClick={() => {
+                void handleCreatePlaylist();
+              }}
               disabled={
                 isCreating || 
                 !newPlaylistName.trim() || 
@@ -748,7 +777,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeletePlaylist}
+              onClick={() => {
+                void handleDeletePlaylist();
+              }}
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -874,7 +905,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
               Cancel
             </Button>
             <Button
-              onClick={handleUpdatePlaylist}
+              onClick={() => {
+                void handleUpdatePlaylist();
+              }}
               disabled={
                 isEditing || 
                 !newPlaylistName.trim() || 

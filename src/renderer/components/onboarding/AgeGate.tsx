@@ -127,7 +127,9 @@ export const AgeGate: React.FC<AgeGateProps> = ({ onComplete }) => {
             <CardFooter>
               <Button
                 type="button"
-                onClick={handleConfirm}
+                onClick={() => {
+                  void handleConfirm();
+                }}
                 disabled={isButtonDisabled}
                 className="w-full"
                 aria-label="Enter RuleDesk"

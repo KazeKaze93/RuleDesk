@@ -600,7 +600,7 @@ export abstract class BaseController {
               // If handler has internal cache (like SettingsController.getSettings), rapid calls are safe
 
               // Execute shared validation + handler asynchronously
-              (async () => {
+              void (async () => {
                 try {
                   const result = await this.runValidatedHandler(
                     channel,
@@ -628,7 +628,12 @@ export abstract class BaseController {
                   }
                   settle(ipcFailureFromUnknown(error, isProduction));
                 }
-              })();
+              })().catch((error: unknown) => {
+                log.error(
+                  `[IPC] Collapsed handler failed for channel "${channel}":`,
+                  error
+                );
+              });
 
               return promise;
             }

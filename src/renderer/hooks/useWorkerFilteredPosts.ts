@@ -84,7 +84,9 @@ export function useWorkerFilteredPosts(
       }
     };
 
-    processInWorker();
+    void processInWorker().catch((error: unknown) => {
+      log.error("[useWorkerFilteredPosts] Worker processing failed:", error);
+    });
 
     return () => {
       cancelledRef.current = true;

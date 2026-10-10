@@ -64,7 +64,9 @@ export function BackupControls() {
       <div className="flex gap-4">
         <Button
           type="button"
-          onClick={handleBackup}
+          onClick={() => {
+            void handleBackup();
+          }}
           disabled={isLoading}
           aria-label="Create a full backup of the database"
           className={
@@ -78,7 +80,9 @@ export function BackupControls() {
 
         <Button
           type="button"
-          onClick={handleRestore}
+          onClick={() => {
+            void handleRestore();
+          }}
           disabled={isLoading}
           aria-label="Restore database from a backup file"
           className={

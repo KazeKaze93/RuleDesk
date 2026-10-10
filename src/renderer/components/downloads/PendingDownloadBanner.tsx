@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import log from "electron-log/renderer";
 import { Button } from "../ui/button";
 import { Download, X } from "lucide-react";
 import { useDownloadStore } from "../../store/downloadStore";
@@ -71,10 +72,24 @@ export const PendingDownloadBanner: React.FC = () => {
         </span>
       </div>
       <div className="flex gap-2">
-        <Button variant="default" size="sm" onClick={handleResume}>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => {
+            void handleResume();
+          }}
+        >
           Resume
         </Button>
-        <Button variant="ghost" size="sm" onClick={handleDismiss}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            void handleDismiss().catch((error: unknown) => {
+              log.error("[PendingDownloadBanner] Failed to dismiss pending download:", error);
+            });
+          }}
+        >
           <X className="w-4 h-4" />
         </Button>
       </div>

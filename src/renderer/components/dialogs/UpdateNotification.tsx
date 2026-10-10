@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import log from "electron-log/renderer";
 import { z } from "zod";
 import { Download, RefreshCw, X, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -41,8 +42,16 @@ export const UpdateNotification: React.FC = () => {
   }, []);
 
   const handleClose = () => setVisible(false);
-  const handleDownload = () => window.api.startDownload();
-  const handleInstall = () => window.api.quitAndInstall();
+  const handleDownload = () => {
+    void window.api.startDownload().catch((error: unknown) => {
+      log.error("[UpdateNotification] Failed to start download:", error);
+    });
+  };
+  const handleInstall = () => {
+    void window.api.quitAndInstall().catch((error: unknown) => {
+      log.error("[UpdateNotification] Failed to quit and install:", error);
+    });
+  };
 
   if (!visible) return null;
 

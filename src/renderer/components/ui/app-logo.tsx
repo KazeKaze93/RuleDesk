@@ -72,7 +72,9 @@ export const AppLogo = ({ className, ...props }: AppLogoProps) => {
     };
 
     // Call immediately - no delay needed
-    loadIconPath();
+    void loadIconPath().catch((error: unknown) => {
+      log.error("[AppLogo] Uncaught error loading icon path:", error);
+    });
   }, [effectiveTheme]);
 
   if (!iconPath) {

@@ -6,6 +6,11 @@ import { postLookupCache } from "../db/schema";
 import { POST_LOOKUP_NOT_FOUND_TTL_MS } from "../config/post-lookup-constants";
 import type { ProviderId } from "../../shared/constants";
 import type { BooruPost } from "../../shared/schemas/booru";
+import {
+  dateToMillis,
+  nowMillis,
+  type Millis,
+} from "../../shared/types/time";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -24,8 +29,8 @@ function lookupKey(provider: ProviderId, postId: number): string {
   return `${provider}:${postId}`;
 }
 
-function isActiveNotFound(resolvedAt: Date, nowMs: number): boolean {
-  return nowMs - resolvedAt.getTime() < POST_LOOKUP_NOT_FOUND_TTL_MS;
+function isActiveNotFound(resolvedAt: Date, nowMs: Millis): boolean {
+  return nowMs - dateToMillis(resolvedAt) < POST_LOOKUP_NOT_FOUND_TTL_MS;
 }
 
 /**
@@ -43,7 +48,7 @@ export function loadPostLookupCache(
   db: AppDatabase,
   provider: ProviderId,
   postId: number,
-  nowMs: number = Date.now()
+  nowMs: Millis = nowMillis()
 ): PostLookupCacheState {
   const rows = db
     .select()
@@ -106,7 +111,7 @@ export async function resolvePostLookup(
   provider: ProviderId,
   postId: number,
   fetchFromProvider: () => Promise<BooruPost[]>,
-  nowMs: number = Date.now()
+  nowMs: Millis = nowMillis()
 ): Promise<ResolvedPostLookup> {
   const cached = loadPostLookupCache(db, provider, postId, nowMs);
   if (cached.status === "not_found") {

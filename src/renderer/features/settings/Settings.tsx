@@ -79,33 +79,43 @@ export const Settings = () => {
 
   useEffect(() => {
     const timersRef = statusTimersRef.current;
-    window.api.getSettings().then((s) => {
-      if (s?.downloadFolder) setDownloadFolder(s.downloadFolder);
-      if (s?.duplicateFileBehavior) setDuplicateFileBehavior(s.duplicateFileBehavior);
-      if (s?.downloadFolderStructure) setDownloadFolderStructure(s.downloadFolderStructure);
-      if (s?.autoSyncOnStartup !== undefined) {
-        setAutoSyncOnStartup(s.autoSyncOnStartup);
-      }
-      if (s?.autoSyncOnArtistAdd !== undefined) {
-        setAutoSyncOnArtistAdd(s.autoSyncOnArtistAdd);
-      }
-      if (s?.minimizeToTray !== undefined) {
-        setMinimizeToTray(s.minimizeToTray);
-      }
-      if (s?.syncIntervalMinutes !== undefined) {
-        setSyncIntervalMinutes(String(s.syncIntervalMinutes));
-      }
-      if (s?.backupRetention !== undefined) {
-        setBackupRetention(String(s.backupRetention));
-      }
-      setProxyUrl(s?.proxyUrl ?? null);
-      setHasApiKey(s?.hasApiKey ?? false);
-      setProvider(s?.provider ?? "rule34");
-      setUserId(s?.userId ?? "");
-    });
-    window.api.getDatabaseLocation().then((location) => {
-      setDatabaseLocation(location);
-    });
+    void window.api
+      .getSettings()
+      .then((s) => {
+        if (s?.downloadFolder) setDownloadFolder(s.downloadFolder);
+        if (s?.duplicateFileBehavior) setDuplicateFileBehavior(s.duplicateFileBehavior);
+        if (s?.downloadFolderStructure) setDownloadFolderStructure(s.downloadFolderStructure);
+        if (s?.autoSyncOnStartup !== undefined) {
+          setAutoSyncOnStartup(s.autoSyncOnStartup);
+        }
+        if (s?.autoSyncOnArtistAdd !== undefined) {
+          setAutoSyncOnArtistAdd(s.autoSyncOnArtistAdd);
+        }
+        if (s?.minimizeToTray !== undefined) {
+          setMinimizeToTray(s.minimizeToTray);
+        }
+        if (s?.syncIntervalMinutes !== undefined) {
+          setSyncIntervalMinutes(String(s.syncIntervalMinutes));
+        }
+        if (s?.backupRetention !== undefined) {
+          setBackupRetention(String(s.backupRetention));
+        }
+        setProxyUrl(s?.proxyUrl ?? null);
+        setHasApiKey(s?.hasApiKey ?? false);
+        setProvider(s?.provider ?? "rule34");
+        setUserId(s?.userId ?? "");
+      })
+      .catch((error: unknown) => {
+        log.error("[Settings] Failed to load settings:", error);
+      });
+    void window.api
+      .getDatabaseLocation()
+      .then((location) => {
+        setDatabaseLocation(location);
+      })
+      .catch((error: unknown) => {
+        log.error("[Settings] Failed to load database location:", error);
+      });
     window.api
       .getBackupSchedule()
       .then((interval) => {

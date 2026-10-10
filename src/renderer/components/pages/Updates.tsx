@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useInfiniteQuery,
   useQuery,
@@ -452,13 +452,34 @@ export const Updates = () => {
           newPostsCount: 0,
         }));
       });
-      void queryClient.invalidateQueries({ queryKey: ["artists"] });
-      void queryClient.invalidateQueries({
-        queryKey: UPDATES_UNREAD_COUNT_QUERY_KEY,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["updates", UPDATES_TOTAL_UNREAD_QUERY_KEY],
-      });
+      void queryClient
+        .invalidateQueries({ queryKey: ["artists"] })
+        .catch((error: unknown) => {
+          log.error(
+            "[Updates] Failed to invalidate artists after mark-all:",
+            error
+          );
+        });
+      void queryClient
+        .invalidateQueries({
+          queryKey: UPDATES_UNREAD_COUNT_QUERY_KEY,
+        })
+        .catch((error: unknown) => {
+          log.error(
+            "[Updates] Failed to invalidate unread count after mark-all:",
+            error
+          );
+        });
+      void queryClient
+        .invalidateQueries({
+          queryKey: ["updates", UPDATES_TOTAL_UNREAD_QUERY_KEY],
+        })
+        .catch((error: unknown) => {
+          log.error(
+            "[Updates] Failed to invalidate total unread after mark-all:",
+            error
+          );
+        });
     },
     onError: (err) => {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -466,7 +487,7 @@ export const Updates = () => {
     },
   });
 
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
     if (hasNextPage && !isFetchingNextPage) {
       log.info("[Updates] Viewer requested more posts. Fetching...");
 
@@ -494,7 +515,13 @@ export const Updates = () => {
         }
       }
     }
-  };
+  }, [
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    allPosts,
+    appendQueueIds,
+  ]);
 
   const handlePostClick = (index: number) => {
     const currentPosts = allPosts;
@@ -519,20 +546,42 @@ export const Updates = () => {
     });
   };
 
+  const triggerLoadMore = useCallback(() => {
+    void handleLoadMore().catch((error: unknown) => {
+      log.error("[Updates] Failed to load more posts:", error);
+    });
+  }, [handleLoadMore]);
+
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: handleLoadMore,
+    onLoadMore: triggerLoadMore,
   });
 
   useEffect(() => {
     const unsubscribeSyncEnd = window.api.onSyncEnd(() => {
-      queryClient.invalidateQueries({ queryKey: ["posts", "updates"] });
-      queryClient.invalidateQueries({ queryKey: ["artists"] });
-      queryClient.invalidateQueries({ queryKey: SYNC_LAST_COMPLETED_QUERY_KEY });
-      queryClient.invalidateQueries({
-        queryKey: UPDATES_UNREAD_COUNT_QUERY_KEY,
-      });
+      void queryClient
+        .invalidateQueries({ queryKey: ["posts", "updates"] })
+        .catch((error: unknown) => {
+          log.error("[Updates] Failed to invalidate updates posts:", error);
+        });
+      void queryClient
+        .invalidateQueries({ queryKey: ["artists"] })
+        .catch((error: unknown) => {
+          log.error("[Updates] Failed to invalidate artists:", error);
+        });
+      void queryClient
+        .invalidateQueries({ queryKey: SYNC_LAST_COMPLETED_QUERY_KEY })
+        .catch((error: unknown) => {
+          log.error("[Updates] Failed to invalidate sync last completed:", error);
+        });
+      void queryClient
+        .invalidateQueries({
+          queryKey: UPDATES_UNREAD_COUNT_QUERY_KEY,
+        })
+        .catch((error: unknown) => {
+          log.error("[Updates] Failed to invalidate unread count:", error);
+        });
     });
 
     return () => {
@@ -642,10 +691,16 @@ export const Updates = () => {
             artists={artists}
             isLoading={isArtistsLoading}
             onSyncAll={() => {
-              void window.api.syncAll();
+              void window.api.syncAll().catch((error: unknown) => {
+                log.error("[Updates] syncAll failed:", error);
+              });
             }}
             onViewArtist={(artist) => {
-              navigate(`/artist/${artist.id}`);
+              void Promise.resolve(navigate(`/artist/${artist.id}`)).catch(
+                (error: unknown) => {
+                  log.error("[Updates] Navigation to artist failed:", error);
+                }
+              );
             }}
           />
         ) : (isLoading || isFeedMetaLoading) && allPosts.length === 0 ? (
@@ -681,7 +736,7 @@ export const Updates = () => {
             className="h-full"
             aria-busy={listAriaBusy}
             totalCount={allPosts.length}
-            endReached={handleLoadMore}
+            endReached={triggerLoadMore}
             increaseViewportBy={600}
             components={{
               List: ListComponent,

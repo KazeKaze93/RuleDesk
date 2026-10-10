@@ -121,8 +121,8 @@ function getWorker(): Worker {
         // Clean up failed worker
         try {
           globalWorker?.terminate();
-        } catch (_e) {
-          // Ignore termination errors
+        } catch (error) {
+          log.debug("[useWorkerProcessor] Ignoring terminate error:", error);
         }
         globalWorker = null;
         
@@ -171,8 +171,8 @@ function getWorker(): Worker {
         workerRestartAttempts++;
         try {
           globalWorker?.terminate();
-        } catch (_e) {
-          // Ignore
+        } catch (error) {
+          log.debug("[useWorkerProcessor] Ignoring terminate error:", error);
         }
         globalWorker = null;
         setTimeout(() => {

@@ -220,7 +220,9 @@ export const PostNotFoundFallback = ({
       }
     };
 
-    performShadowInsert();
+    void performShadowInsert().catch((error: unknown) => {
+      log.error("[PostNotFoundFallback] Shadow insert failed:", error);
+    });
 
     // Cleanup: abort request on unmount or when currentPostId changes
     return () => {

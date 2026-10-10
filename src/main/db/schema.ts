@@ -67,7 +67,9 @@ export const artists = sqliteTable(
     lastSyncIncomplete: integer("last_sync_incomplete", { mode: "boolean" })
       .notNull()
       .default(false),
+    // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
     lastChecked: integer("last_checked", { mode: "timestamp" }),
+    // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -97,13 +99,16 @@ export const posts = sqliteTable(
     rating: text("rating").default(""),
     tags: text("tags").notNull(),
     mediaType: text("media_type", { enum: ["image", "video"] }),
+    // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
     publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
+    // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
     isViewed: integer("is_viewed", { mode: "boolean" })
       .notNull()
       .default(false),
+    // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
     lastViewedAt: integer("last_viewed_at", { mode: "timestamp" }),
     viewCount: integer("view_count").notNull().default(0),
     isFavorited: integer("is_favorited", { mode: "boolean" }) // Добавили поле
@@ -149,6 +154,7 @@ export const settings = sqliteTable("settings", {
   isAdultVerified: integer("is_adult_verified", { mode: "boolean" })
     .default(false)
     .notNull(),
+  // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
   tosAcceptedAt: integer("tos_accepted_at", { mode: "timestamp" }),
   downloadFolder: text("download_folder"),
   duplicateFileBehavior: text("duplicate_file_behavior").default("skip"),
@@ -238,9 +244,11 @@ export const playlists = sqliteTable(
     queryJson: text("query_json").default(""),
     querySchemaVersion: integer("query_schema_version").notNull().default(1),
     iconName: text("icon_name").default(""),
+    // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
+    // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
     updatedAt: integer("updated_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -261,6 +269,7 @@ export const playlistEntries = sqliteTable(
     postId: integer("post_id")
       .notNull()
       .references(() => posts.id, { onDelete: "cascade" }),
+    // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
     addedAt: integer("added_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),

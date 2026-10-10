@@ -32,6 +32,7 @@ import {
 } from "./provider-throttle";
 import { ProviderSearchError, isProviderSearchError } from "./provider-search-errors";
 import { getProxyAgent } from "../lib/proxy";
+import { asSeconds, secondsToDate } from "../../shared/types/time";
 import {
   assertRule34NotBlockedResponse,
   isAxiosTransportFailure,
@@ -598,7 +599,7 @@ export class Rule34Provider implements IBooruProvider {
           ? post.change
           : parseInt(String(post.change), 10);
       if (timestamp > 0) {
-        const parsedDate = new Date(timestamp * 1000);
+        const parsedDate = secondsToDate(asSeconds(timestamp));
         if (!isNaN(parsedDate.getTime())) {
           createdAt = parsedDate;
         }
@@ -650,10 +651,10 @@ export class Rule34Provider implements IBooruProvider {
       return null;
     }
 
-    // Date parsing with validation (Rule34 uses Unix timestamp in 'change' field)
+    // Date parsing with validation (Rule34 uses Unix Seconds in 'change' field)
     let createdAt = new Date();
     if (raw.change && raw.change > 0) {
-      const parsedDate = new Date(raw.change * 1000);
+      const parsedDate = secondsToDate(asSeconds(raw.change));
       if (!isNaN(parsedDate.getTime())) {
         createdAt = parsedDate;
       } else {
