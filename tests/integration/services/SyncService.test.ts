@@ -1310,7 +1310,8 @@ describe('SyncService Integration', () => {
           apiKey: expect.any(String),
         }),
         false,
-        PAGE_SIZE
+        PAGE_SIZE,
+        expect.any(AbortSignal)
       );
       expect(fetchPostsSpy).toHaveBeenCalledTimes(3);
 
