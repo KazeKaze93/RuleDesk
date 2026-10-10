@@ -531,4 +531,94 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
     expect(twinHits).toHaveLength(1);
     expect(twinHits[0]?.isViewed).toBe(true);
   });
+
+  it("ordered pages stay unique when remote feed order ≠ publishedAt (R2 19006749 skew)", async () => {
+    // Provider feed order is not publishedAt order. Expanding remoteFetchLimit with
+    // page*limit then re-sorting by date lets later-feed / newer posts reshuffle the
+    // merge so an id that ranked on page1 of the small window also lands on page2 of
+    // the large window — R2 RED: page1∩page2 = rule34:19006749.
+    const SKEW_ID = 19006749;
+
+    mockDb.db.delete(playlists).run();
+    mockDb.db
+      .insert(playlists)
+      .values({
+        name: "Hybrid multi-tag ordered",
+        isSmart: true,
+        queryJson: JSON.stringify({
+          tags: [
+            { tag: HYBRID_TAG, type: "include" },
+            { tag: "second_tag", type: "include" },
+          ],
+          provider: "rule34",
+        }),
+        querySchemaVersion: 1,
+        iconName: "",
+      })
+      .run();
+    const playlist = mockDb.db.select({ id: playlists.id }).from(playlists).all()[0];
+    if (playlist === undefined) {
+      throw new Error("Failed to insert multi-tag playlist");
+    }
+    playlistId = playlist.id;
+
+    // Clear seed locals so the merge is remote-dominated (false remote-only / window skew).
+    mockDb.db.delete(posts).run();
+
+    fetchPostsMock.mockImplementation(
+      async (
+        _tags: string,
+        apiPage: number,
+        _settings: unknown,
+        _isRandom: boolean,
+        limit: number
+      ) => {
+        // Feed order ≠ date order: SKEW_ID is early in the feed but mid-ranked by date;
+        // Y/Z/W appear later in the feed with newer publishedAt.
+        const feed = [
+          makeRemotePost(SKEW_ID, new Date("2024-01-08T00:00:00.000Z"), [HYBRID_TAG, "second_tag"]),
+          makeRemotePost(601, new Date("2024-01-07T00:00:00.000Z"), [HYBRID_TAG, "second_tag"]),
+          makeRemotePost(602, new Date("2024-01-06T00:00:00.000Z"), [HYBRID_TAG, "second_tag"]),
+          makeRemotePost(701, new Date("2024-01-20T00:00:00.000Z"), [HYBRID_TAG, "second_tag"]),
+          makeRemotePost(702, new Date("2024-01-15T00:00:00.000Z"), [HYBRID_TAG, "second_tag"]),
+          makeRemotePost(703, new Date("2024-01-12T00:00:00.000Z"), [HYBRID_TAG, "second_tag"]),
+          makeRemotePost(704, new Date("2024-01-05T00:00:00.000Z"), [HYBRID_TAG, "second_tag"]),
+          makeRemotePost(705, new Date("2024-01-04T00:00:00.000Z"), [HYBRID_TAG, "second_tag"]),
+        ];
+        const start = apiPage * limit;
+        return asResult(feed.slice(start, start + limit));
+      }
+    );
+
+    const page1 = await resolvePage(1);
+    const page2 = await resolvePage(2);
+    const keys1 = page1.map(identityKey);
+    const keys2 = page2.map(identityKey);
+
+    expect(keys1).toHaveLength(PAGE_LIMIT);
+    expect(new Set(keys1).size).toBe(keys1.length);
+    expect(new Set(keys2).size).toBe(keys2.length);
+    // Pre-fix expanding page*limit remote window: page1=[19006749,601,602],
+    // page2 large-window slice also contains 19006749 after date re-sort.
+    expect(keys2.filter((key) => keys1.includes(key))).toEqual([]);
+
+    const page1Again = await resolvePage(1);
+    expect(page1Again.map(identityKey)).toEqual(keys1);
+
+    const walkKeys: string[] = [];
+    let page = 1;
+    for (;;) {
+      const rows = await resolvePage(page);
+      if (rows.length === 0) {
+        break;
+      }
+      walkKeys.push(...rows.map(identityKey));
+      if (rows.length < PAGE_LIMIT) {
+        break;
+      }
+      page += 1;
+    }
+    expect(new Set(walkKeys).size).toBe(walkKeys.length);
+    expect(walkKeys.filter((key) => key === `rule34:${SKEW_ID}`)).toHaveLength(1);
+  });
 });

@@ -1862,7 +1862,7 @@ Smart playlists use a hybrid flow:
 
 1. Build include/exclude tag conditions from `queryJson`
 2. Query local cache (FTS5), materializing matches up to a cap so remote twins can be recognized beyond the current page prefix
-3. Query provider API (Rule34/Gelbooru): ordered pages walk a deterministic `page * limit` feed prefix; random materializes a capped union then seed-sorts
+3. Query provider API (Rule34/Gelbooru) with the same fixed capped window on every page (provider feed order ≠ `publishedAt` / seed rank, so an expanding `page * limit` prefix must not be re-sorted into the merge)
 4. Collapse to `(provider, postId)` (remote rows often have `id: 0`), prefer local status, cursor-merge / slice the page
 
 Provider/credential failures on the remote leg throw (typed IPC error) — they are never mapped to an empty post list. Same `(page, limit, sort/seed)` must return the same page; a sequential walk emits each `(provider, postId)` once.
