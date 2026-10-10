@@ -267,6 +267,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ## UI & Styling
 
+### Problem: User cannot find a core workflow because the section reads as secondary
+**Root Cause:** A key capability (artist tracking → sync all posts, full download, Updates feed) lived under a name/presentation users mapped to a side feature — Artists was read as "favorites" — while the default entry point is Browse.
+**Invariant Rule:** Core scenarios must be reachable from where the user starts (Browse), with an explicit bridge to the mechanism (e.g. Track & download all). Renaming/clarifying the destination section helps, but is not enough if the start surface never points at the path.
+
 ### Problem: "Panic mode" implemented with `visibility:hidden` / `opacity` still leaks media in screenshots
 **Root Cause:** OS and third-party screen capture tools read the rendered DOM and resource URLs; CSS-hidden nodes often remain in the accessibility/layout tree with `src` intact.
 **Invariant Rule:** Panic Mode must **wipe `src` on `img`, `video`, and `source` elements** (and restore from a data attribute if needed), not rely on CSS hiding. Screenshot tools capture rendered DOM, not stylesheet intent.

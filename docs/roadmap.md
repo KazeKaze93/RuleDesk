@@ -77,6 +77,16 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 - 🟡 **Optional polish (backlog, not “missing v1”):** additional tooltips for dense controls, item order tweaks for first-run discoverability, and density tuning on small windows. This is **UX refinement** on the current structure — we are **not** tracking alignment to an obsolete written wireframe; the product is what ships in the build.
 - ✅ **Masonry vs grid** — two explicit modes; **closed** as a gap ([Closed by design](#closed-by-design-not-backlog)).
 
+### Browse ↔ Tracked artists bridge (UX batch)
+
+Artists was often misread as a favorites-like side list; tracking (sync / full download / Updates) must be discoverable from Browse. Batch status lives only in this table.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| U1 | `ux/artists-section-clarity` | [#208](https://github.com/KazeKaze93/RuleDesk/pull/208) | ✅ merged |
+| U2 | `feat/browse-track-and-download` | [#210](https://github.com/KazeKaze93/RuleDesk/pull/210) | ✅ merged |
+| U3 | `chore/lessons-browse-bridge` | — | started |
+
 ## 📰 Updates feed
 
 ### Feed Enhancements
