@@ -107,6 +107,11 @@ function mapSettingsToIpc(
     theme: ThemePreferenceSchema.safeParse(dbSettings.theme).data ?? "system",
     autoSyncOnStartup: !!dbSettings.autoSyncOnStartup,
     autoSyncOnArtistAdd: !!dbSettings.autoSyncOnArtistAdd,
+    minimizeToTray:
+      dbSettings.minimizeToTray === undefined ||
+      dbSettings.minimizeToTray === null
+        ? true
+        : !!dbSettings.minimizeToTray,
     syncIntervalMinutes: dbSettings.syncIntervalMinutes ?? 0,
     backupRetention: dbSettings.backupRetention ?? 5,
   };
@@ -328,6 +333,8 @@ export class SettingsController extends BaseController {
             data.autoSyncOnStartup ?? existing.autoSyncOnStartup ?? false;
           const finalAutoSyncOnArtistAdd =
             data.autoSyncOnArtistAdd ?? existing.autoSyncOnArtistAdd ?? false;
+          const finalMinimizeToTray =
+            data.minimizeToTray ?? existing.minimizeToTray ?? true;
           const finalSyncIntervalMinutes =
             data.syncIntervalMinutes ?? existing.syncIntervalMinutes ?? 0;
           const finalBackupRetention =
@@ -350,6 +357,7 @@ export class SettingsController extends BaseController {
               theme: existing.theme ?? "system",
               autoSyncOnStartup: finalAutoSyncOnStartup,
               autoSyncOnArtistAdd: finalAutoSyncOnArtistAdd,
+              minimizeToTray: finalMinimizeToTray,
               syncIntervalMinutes: finalSyncIntervalMinutes,
               backupRetention: finalBackupRetention,
             })
@@ -371,6 +379,7 @@ export class SettingsController extends BaseController {
               theme: "system",
               autoSyncOnStartup: data.autoSyncOnStartup ?? false,
               autoSyncOnArtistAdd: data.autoSyncOnArtistAdd ?? false,
+              minimizeToTray: data.minimizeToTray ?? true,
               syncIntervalMinutes: data.syncIntervalMinutes ?? 0,
               backupRetention: data.backupRetention ?? 5,
             })

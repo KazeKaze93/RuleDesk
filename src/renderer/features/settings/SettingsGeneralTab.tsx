@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { toast } from "sonner";
 import log from "electron-log/renderer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
@@ -6,6 +9,7 @@ import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Checkbox } from "../../components/ui/checkbox";
+import { Switch } from "../../components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -25,6 +29,14 @@ import {
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 
+const MinimizeToTrayFormSchema = z.object({
+  minimizeToTray: z.boolean(),
+});
+
+type MinimizeToTrayFormValues = z.infer<typeof MinimizeToTrayFormSchema>;
+
+const OS_PLATFORM_DARWIN = "darwin";
+
 interface SettingsGeneralTabProps {
   downloadFolder: string | null;
   downloadFolderStatus: "idle" | "success" | "error";
@@ -33,6 +45,7 @@ interface SettingsGeneralTabProps {
   proxyUrl: string | null;
   proxyError: string | null;
   proxyStatus: "idle" | "success" | "error";
+  minimizeToTray: boolean;
   onSelectDownloadFolder: () => void;
   onResetDownloadFolder: () => void;
   onDuplicateFileBehaviorChange: (value: "skip" | "overwrite") => void;
@@ -40,6 +53,7 @@ interface SettingsGeneralTabProps {
   onProxyUrlChange: (value: string) => void;
   onProxyBlur: () => void;
   onSaveProxy: () => void;
+  onMinimizeToTrayChange: (checked: boolean) => void;
 }
 
 export const SettingsGeneralTab = ({
@@ -50,6 +64,7 @@ export const SettingsGeneralTab = ({
   proxyUrl,
   proxyError,
   proxyStatus,
+  minimizeToTray,
   onSelectDownloadFolder,
   onResetDownloadFolder,
   onDuplicateFileBehaviorChange,
@@ -57,10 +72,38 @@ export const SettingsGeneralTab = ({
   onProxyUrlChange,
   onProxyBlur,
   onSaveProxy,
+  onMinimizeToTrayChange,
 }: SettingsGeneralTabProps) => {
   const [wipeDialogOpen, setWipeDialogOpen] = useState(false);
   const [wipeAcknowledged, setWipeAcknowledged] = useState(false);
   const [wipeInProgress, setWipeInProgress] = useState(false);
+  const [isDarwin, setIsDarwin] = useState(false);
+
+  const { control, reset } = useForm<MinimizeToTrayFormValues>({
+    resolver: zodResolver(MinimizeToTrayFormSchema),
+    defaultValues: { minimizeToTray },
+  });
+
+  useEffect(() => {
+    reset({ minimizeToTray });
+  }, [minimizeToTray, reset]);
+
+  useEffect(() => {
+    let cancelled = false;
+    window.api
+      .getAppInfo()
+      .then((info) => {
+        if (!cancelled) {
+          setIsDarwin(info.osPlatform === OS_PLATFORM_DARWIN);
+        }
+      })
+      .catch((error: unknown) => {
+        log.error("[SettingsGeneralTab] Failed to load app info for tray setting:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleWipeDialogOpenChange = (open: boolean) => {
     if (wipeInProgress) {
@@ -153,6 +196,42 @@ export const SettingsGeneralTab = ({
                 <SelectItem value="{artist_id}">By artist (subfolder)</SelectItem>
               </SelectContent>
             </Select>
+          </section>
+
+          <Separator />
+
+          <section className="flex items-start justify-between gap-4 rounded-md border p-4">
+            <section className="space-y-1">
+              <Label htmlFor="minimize-to-tray">Minimize to tray on close</Label>
+              <p className="text-sm text-muted-foreground">
+                {isDarwin
+                  ? "On macOS, closing the window always hides the app (Dock convention). This option does not change quit behavior."
+                  : "When enabled, closing the window hides the app to the system tray. When disabled, closing the window quits the application."}
+              </p>
+            </section>
+            <Controller
+              name="minimizeToTray"
+              control={control}
+              render={({ field }) => (
+                <Switch
+                  id="minimize-to-tray"
+                  checked={isDarwin ? true : field.value}
+                  disabled={isDarwin}
+                  onCheckedChange={(checked) => {
+                    if (isDarwin) {
+                      return;
+                    }
+                    field.onChange(checked);
+                    onMinimizeToTrayChange(checked);
+                  }}
+                  aria-label={
+                    isDarwin
+                      ? "Minimize to tray on close (not applicable on macOS)"
+                      : "Minimize to tray on close"
+                  }
+                />
+              )}
+            />
           </section>
 
           <Separator />

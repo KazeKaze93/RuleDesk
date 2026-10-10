@@ -50,6 +50,7 @@ export const Settings = () => {
   const [databaseLocation, setDatabaseLocation] = useState<string>("");
   const [autoSyncOnStartup, setAutoSyncOnStartup] = useState(false);
   const [autoSyncOnArtistAdd, setAutoSyncOnArtistAdd] = useState(false);
+  const [minimizeToTray, setMinimizeToTray] = useState(true);
   const [syncIntervalMinutes, setSyncIntervalMinutes] = useState("0");
   const [backupRetention, setBackupRetention] = useState("5");
   const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>("never");
@@ -87,6 +88,9 @@ export const Settings = () => {
       }
       if (s?.autoSyncOnArtistAdd !== undefined) {
         setAutoSyncOnArtistAdd(s.autoSyncOnArtistAdd);
+      }
+      if (s?.minimizeToTray !== undefined) {
+        setMinimizeToTray(s.minimizeToTray);
       }
       if (s?.syncIntervalMinutes !== undefined) {
         setSyncIntervalMinutes(String(s.syncIntervalMinutes));
@@ -318,6 +322,17 @@ export const Settings = () => {
     }
   };
 
+  const handleMinimizeToTrayChange = async (checked: boolean): Promise<void> => {
+    const previousValue = minimizeToTray;
+    setMinimizeToTray(checked);
+    try {
+      await window.api.saveSettings({ minimizeToTray: checked });
+    } catch (error) {
+      log.error("[Settings] Failed to save minimize to tray:", error);
+      setMinimizeToTray(previousValue);
+    }
+  };
+
   const handleSyncIntervalChange = async (value: string): Promise<void> => {
     const previousValue = syncIntervalMinutes;
     setSyncIntervalMinutes(value);
@@ -522,6 +537,10 @@ export const Settings = () => {
             }}
             onSaveProxy={() => {
               void handleSaveProxy(true);
+            }}
+            minimizeToTray={minimizeToTray}
+            onMinimizeToTrayChange={(checked) => {
+              void handleMinimizeToTrayChange(checked);
             }}
           />
         </TabsContent>

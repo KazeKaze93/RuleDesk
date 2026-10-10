@@ -238,6 +238,7 @@ interface IpcBridge {
     proxyUrl?: string | null;
     autoSyncOnStartup?: boolean;
     autoSyncOnArtistAdd?: boolean;
+    minimizeToTray?: boolean;
     syncIntervalMinutes?: number;
   }) => Promise<boolean>;
   confirmLegal: () => Promise<IpcSettings>;
@@ -619,6 +620,7 @@ type IpcSettings = {
   theme: "system" | "light" | "dark";
   autoSyncOnStartup: boolean;
   autoSyncOnArtistAdd: boolean;
+  minimizeToTray: boolean;
   syncIntervalMinutes: number;
   backupRetention: number;
 };
@@ -705,6 +707,7 @@ Saves settings to the database. Supports partial updates (credentials, sync opti
 - `creds.proxyUrl?: string | null` - Optional outbound proxy URL
 - `creds.autoSyncOnStartup?: boolean` - Auto-sync startup toggle
 - `creds.autoSyncOnArtistAdd?: boolean` - Auto-sync newly added artists (default off)
+- `creds.minimizeToTray?: boolean` - When true (default), close hides to tray; when false, close quits (Windows/Linux)
 - `creds.syncIntervalMinutes?: number` - Periodic sync interval in minutes
 - `creds.backupRetention?: number` - Number of backups to keep (1..20)
 

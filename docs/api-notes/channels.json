@@ -4,7 +4,8 @@
   "maintenance:should-show-backup-prompt": "True when autoBackupInterval is never and hasSeenAutoBackupPrompt is false (existing installs that still inherit never). Read-only.",
   "maintenance:mark-backup-prompt-seen": "Sets hasSeenAutoBackupPrompt=true so the one-time auto-backup opt-in dialog is not shown again (Enable, Not now, or dismiss).",
   "db:create-backup": "Consistent SQLite snapshot via VACUUM INTO into RuleDesk-Backups/ (sibling of RuleDesk-Data). Opens the backup folder in the file explorer. Retention prune follows backupRetention.",
-  "app:get-settings-status": "Returns IPC-safe settings (no API key plaintext). Idempotent; cached until save.",
+  "app:get-settings-status": "Returns IPC-safe settings (no API key plaintext), including minimizeToTray (default true). Idempotent; cached until save.",
+  "app:save-settings": "Partial upsert. minimizeToTray: when true (default), win/linux close hides to tray; when false, close quits. Read at close time (no restart). macOS close never quits (Dock).",
   "db:get-posts": "Paginated posts with filters. Always limited — see MAX page size in PostsController.",
   "booru:search": "Provider search; auth/rate_limit errors surface as typed IPC errors to Browse UI."
 }

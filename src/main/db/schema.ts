@@ -160,6 +160,10 @@ export const settings = sqliteTable("settings", {
   autoSyncOnArtistAdd: integer("auto_sync_on_artist_add", { mode: "boolean" })
     .default(false)
     .notNull(),
+  /** When true, window close hides to tray; when false, close quits (win/linux). Default true = legacy. */
+  minimizeToTray: integer("minimize_to_tray", { mode: "boolean" })
+    .default(true)
+    .notNull(),
   syncIntervalMinutes: integer("sync_interval_minutes").default(0).notNull(),
   backupRetention: integer("backup_retention").default(5).notNull(),
   vacuumSchedule: text("vacuum_schedule").default("manual"),
