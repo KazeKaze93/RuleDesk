@@ -55,7 +55,6 @@ export type UpdateStatusData = {
 };
 
 export type UpdateStatusCallback = (data: UpdateStatusData) => void;
-export type UpdateProgressCallback = (percent: number) => void;
 export type SyncErrorCallback = (message: string) => void;
 export type AutoBackupInterval = "never" | "daily" | "weekly";
 
@@ -146,11 +145,10 @@ export interface IpcBridge {
   ) => Promise<{ success: boolean; error?: string }>;
 
   checkForUpdates: () => Promise<void>;
-  quitAndInstall: () => Promise<void>;
-  startDownload: () => Promise<void>;
+  /** Opens GitHub Releases for an optional semver (tag page) or /latest. */
+  openReleasePage: (version?: string) => Promise<void>;
 
   onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
-  onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
 
   onSyncStart: (callback: () => void) => () => void;
   onSyncEnd: (callback: () => void) => () => void;

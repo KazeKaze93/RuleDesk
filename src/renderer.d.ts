@@ -8,7 +8,6 @@ export type {
   TrackedArtist,
   PlaylistWithStats,
   UpdateStatusCallback,
-  UpdateProgressCallback,
   SyncErrorCallback,
   AutoBackupInterval,
   BackupResponse,

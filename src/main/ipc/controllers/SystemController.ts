@@ -36,6 +36,7 @@ import type { UpdaterService } from "../../services/updater-service";
 
 const GetIconPathArgsSchema = z.tuple([z.enum(["light", "dark"]).optional()]);
 const WriteClipboardArgsSchema = z.tuple([z.string().min(1)]);
+const OpenReleasePageArgsSchema = z.tuple([z.string().optional()]);
 
 const OPEN_LOGS_FOLDER_FAILED_MESSAGE = "Could not open the logs folder.";
 const DIAGNOSTICS_LOG_READ_FAILED_MESSAGE = "Could not read the application log.";
@@ -48,7 +49,7 @@ const DIAGNOSTICS_LOG_READ_FAILED_MESSAGE = "Could not read the application log.
  * - Logs folder + redacted diagnostics for bug reports
  * - Application lifecycle (wipe all local data)
  * - Clipboard operations
- * - Manual update checks / release-page openers
+ * - Update check (background-friendly) and open GitHub release page
  */
 export class SystemController extends BaseController {
   private readonly videoProxyServer: VideoProxyServer;
@@ -100,14 +101,12 @@ export class SystemController extends BaseController {
       this.checkForUpdates.bind(this)
     );
     this.handle(
-      IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD,
-      z.tuple([]),
-      this.startUpdateDownload.bind(this)
-    );
-    this.handle(
-      IPC_CHANNELS.APP.QUIT_AND_INSTALL,
-      z.tuple([]),
-      this.quitAndInstall.bind(this)
+      IPC_CHANNELS.APP.OPEN_RELEASE_PAGE,
+      OpenReleasePageArgsSchema,
+      (event, ...args) => {
+        const [version] = OpenReleasePageArgsSchema.parse(args);
+        return this.openReleasePage(event, version);
+      }
     );
 
     log.info("[SystemController] All handlers registered");
@@ -179,12 +178,11 @@ export class SystemController extends BaseController {
     await this.updaterService.checkForUpdates();
   }
 
-  private async startUpdateDownload(_event: IpcMainInvokeEvent): Promise<void> {
-    await this.updaterService.openReleasesPage("download");
-  }
-
-  private async quitAndInstall(_event: IpcMainInvokeEvent): Promise<void> {
-    await this.updaterService.openReleasesPage("install");
+  private async openReleasePage(
+    _event: IpcMainInvokeEvent,
+    version?: string
+  ): Promise<void> {
+    await this.updaterService.openReleasePage(version);
   }
 
   private async getAppInfo(_event: IpcMainInvokeEvent): Promise<AppInfo> {
