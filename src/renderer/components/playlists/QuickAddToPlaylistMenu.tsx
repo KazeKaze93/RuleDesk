@@ -1,7 +1,11 @@
 import React, { cloneElement, isValidElement } from "react";
 import { AddToPlaylistModal } from "./AddToPlaylistModal";
 
-type PostRef = { id: number; postId: number };
+type PostRef = {
+  id: number;
+  postId: number;
+  provider: "rule34" | "gelbooru";
+};
 
 interface QuickAddToPlaylistMenuProps {
   post: PostRef;

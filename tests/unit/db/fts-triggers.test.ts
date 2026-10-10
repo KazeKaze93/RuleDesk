@@ -203,7 +203,7 @@ describe("FTS triggers (posts content table)", () => {
         post_id, artist_id, file_url, preview_url, sample_url, tags, rating,
         media_type, published_at, created_at
       ) VALUES (?, ?, ?, ?, '', ?, 's', 'image', unixepoch(), unixepoch())
-      ON CONFLICT(artist_id, post_id) DO UPDATE SET tags = excluded.tags
+      ON CONFLICT(artist_id, provider, post_id) DO UPDATE SET tags = excluded.tags
     `);
 
     sqlite.transaction(() => {
@@ -313,7 +313,7 @@ describe("FTS triggers (posts content table)", () => {
           media_type, published_at, created_at
         ) VALUES (303, ?, 'https://example.com/303.jpg', 'https://example.com/303_preview.jpg',
                   '', 'new_tag', 's', 'image', unixepoch(), unixepoch())
-        ON CONFLICT(artist_id, post_id) DO UPDATE SET tags = excluded.tags
+        ON CONFLICT(artist_id, provider, post_id) DO UPDATE SET tags = excluded.tags
       `
       )
       .run(artistId);
@@ -467,7 +467,7 @@ describe("FTS triggers (posts content table)", () => {
         post_id, artist_id, file_url, preview_url, sample_url, tags, rating,
         media_type, published_at, created_at
       ) VALUES (?, ?, ?, ?, '', ?, 's', 'image', unixepoch(), unixepoch())
-      ON CONFLICT(artist_id, post_id) DO UPDATE SET tags = excluded.tags
+      ON CONFLICT(artist_id, provider, post_id) DO UPDATE SET tags = excluded.tags
     `);
 
     sqlite.transaction(() => {

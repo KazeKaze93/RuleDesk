@@ -35,6 +35,9 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `components/VirtuosoGrid-totalCount.test.ts` | Gallery sources wire `totalCount` to the displayed collection |
 | `controllers/posts-tag-query.test.ts` | Tag query helpers |
 | `controllers/PostsController.ai-filter.test.ts` | AI filter during FTS bulk-sync window |
+| `controllers/PostsController.provider-collision.test.ts` | External post identity `(artistId, provider, postId)` — fav/view/shadow-insert isolation |
+| `controllers/SearchController.provider-merge.test.ts` | Browse merge scopes `isFavorited`/`isViewed` by provider |
+| `db/posts-provider-identity.test.ts` | Playlist import key + sync upsert conflict target |
 | `store/searchStore.test.ts` | Search store |
 | `shared/provider-search-ipc-payload.test.ts` | Provider IPC JSON payload / explicit `providerKind` (no copy-matching) |
 | `shared/autocomplete-label-count.test.ts` | Rule34 autocomplete `(count)` label parse |
@@ -77,6 +80,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `controllers/SearchController.cache.test.ts` | `searchBooru` cache-first: repeat tags+page skips HTTP; 429 not stored as empty; untagged page 2 empty cached, page 1 empty not |
 | `db/search-results-cache-migration.test.ts` | `0035` overlay on populated pre-0035 DB; `sqlite_master` table + index |
 | `db/post-lookup-cache-migration.test.ts` | `0036` overlay on populated pre-0036 DB; `sqlite_master` table + index |
+| `db/posts-provider-migration.test.ts` | `0038` upgrade on real `data.bin` copy: counts, provider backfill, integrity/FTS/FK/indexes |
 | `controllers/SettingsController.test.ts` | Partial settings save |
 | `controllers/StatsController.timeline.test.ts` | Timeline bucket units |
 | `services/SyncService.queue.test.ts` | `runExclusive` — repair after full sync |

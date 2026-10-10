@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PROVIDER_IDS } from "../constants";
 
 /**
  * WorkerPost Schema
@@ -14,6 +15,7 @@ export const WorkerPostSchema = z
     id: z.number().int(),
     postId: z.number().int(),
     artistId: z.number().int(),
+    provider: z.enum(PROVIDER_IDS),
     fileUrl: z.string().min(1),
     previewUrl: z.string().min(1),
     sampleUrl: z.string().min(1),

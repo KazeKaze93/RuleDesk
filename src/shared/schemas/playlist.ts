@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PROVIDER_IDS, type ProviderId } from "../constants";
 import {
   IdSchema,
   PageSchema,
@@ -33,7 +34,7 @@ export type SmartPlaylistTag = z.infer<typeof SmartPlaylistTagSchema>;
  */
 export const SmartPlaylistQuerySchema = z.object({
   tags: z.array(SmartQueryTagSchema).min(1, "At least one tag is required"),
-  provider: z.enum(["rule34", "gelbooru"]).optional().default("rule34"),
+  provider: z.enum(PROVIDER_IDS).optional().default("rule34"),
 });
 
 export type SmartPlaylistQuery = SmartQueryV1;
@@ -200,7 +201,8 @@ export const ReorderPlaylistEntriesSchema = z.object({
 export type ReorderPlaylistEntriesRequest = z.infer<typeof ReorderPlaylistEntriesSchema>;
 
 export interface PlaylistExport {
-  version: 1;
+  /** v1: postId only. v2: post identity includes artistId + provider. */
+  version: 1 | 2;
   exportedAt: string;
   playlist: {
     name: string;
@@ -210,6 +212,8 @@ export interface PlaylistExport {
   };
   entries: Array<{
     postId: number;
+    artistId?: number;
+    provider?: ProviderId;
     addedAt: number;
   }>;
 }

@@ -237,11 +237,15 @@ export class SearchController extends BaseController {
    * @param booruPost - Post from external Booru API
    * @returns Post-compatible object
    */
-  private mapBooruPostToPost(booruPost: BooruPost): Post {
+  private mapBooruPostToPost(
+    booruPost: BooruPost,
+    provider: ProviderId
+  ): Post {
     return {
       id: -booruPost.id, // CRITICAL: Use negative ID to avoid collision with DB PRIMARY KEY
       postId: booruPost.id,
       artistId: EXTERNAL_ARTIST_ID, // Sentinel value for external posts (not in database)
+      provider,
       fileUrl: booruPost.fileUrl,
       previewUrl: booruPost.previewUrl,
       sampleUrl: booruPost.sampleUrl,
@@ -518,7 +522,7 @@ export class SearchController extends BaseController {
       const postIds = booruPosts.map((booruPost) => booruPost.id);
 
       // Fetch local DB state (isFavorite, isViewed) for these posts
-      // Search by postId and artistId = EXTERNAL_ARTIST_ID (external posts from Browse)
+      // Identity: (EXTERNAL_ARTIST_ID, provider, postId) — never merge across providers
       let localPostsState: Map<number, { isFavorited: boolean; isViewed: boolean }> = new Map();
 
       if (postIds.length > 0) {
@@ -533,7 +537,8 @@ export class SearchController extends BaseController {
           .where(
             and(
               inArray(posts.postId, postIds),
-              eq(posts.artistId, EXTERNAL_ARTIST_ID) // External posts from Browse have EXTERNAL_ARTIST_ID
+              eq(posts.artistId, EXTERNAL_ARTIST_ID),
+              eq(posts.provider, providerId)
             )
           )
           .all();
@@ -553,7 +558,7 @@ export class SearchController extends BaseController {
 
       // Convert BooruPost[] to Post[] format and merge with local DB state
       const enrichedPosts = booruPosts.map((booruPost) => {
-        const mappedPost = this.mapBooruPostToPost(booruPost);
+        const mappedPost = this.mapBooruPostToPost(booruPost, providerId);
         const localState = localPostsState.get(booruPost.id);
 
         // Merge local state if found, otherwise use defaults (false)

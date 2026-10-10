@@ -429,7 +429,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       >
         {context !== "playlist" && (
           <QuickAddToPlaylistMenu
-            post={{ id: post.id, postId: post.postId }}
+            post={{ id: post.id, postId: post.postId, provider: post.provider }}
             open={isPlaylistMenuOpen}
             onOpenChange={(open) => {
               setIsPlaylistMenuOpen(open);

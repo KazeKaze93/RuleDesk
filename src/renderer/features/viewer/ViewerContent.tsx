@@ -540,7 +540,7 @@ export const ViewerContent = ({
       <AddToPlaylistModal
         overlayClassName={cn(VIEWER_OVERLAY_Z, "bg-black/80")}
         className={cn(VIEWER_OVERLAY_Z, "sm:max-w-md gap-3")}
-        posts={[{ id: post.id, postId: post.postId }]}
+        posts={[{ id: post.id, postId: post.postId, provider: post.provider }]}
         open={showPlaylistDialog}
         onOpenChange={setShowPlaylistDialog}
         onSuccess={() => setShowPlaylistDialog(false)}

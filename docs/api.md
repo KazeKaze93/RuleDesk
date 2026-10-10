@@ -53,7 +53,7 @@
 | `db:get-playlist-download-items` | `DB.GET_PLAYLIST_DOWNLOAD_ITEMS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `db:get-playlist-posts` | `DB.GET_PLAYLIST_POSTS` | `z.tuple([GetPlaylistPostsSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlists` | `DB.GET_PLAYLISTS` | `[]` (no args) | yes | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
-| `db:get-playlists-containing-post` | `DB.GET_PLAYLISTS_CONTAINING_POST` | `z.tuple([z.number().int(), OptionalIdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
+| `db:get-playlists-containing-post` | `DB.GET_PLAYLISTS_CONTAINING_POST` | `z.tuple([ z.number().int(), OptionalIdSchema, z.enum(PROVIDER_IDS).optional(), ])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-posts` | `DB.GET_POSTS` | `z.tuple([GetPostsSchema])` | no | `PostsController` | Paginated posts with filters. Always limited — see MAX page size in PostsController. |
 | `db:get-posts-count` | `DB.GET_POSTS_COUNT` | `z.tuple([GetPostsCountSchema])` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:get-posts-count-with-filters` | `DB.GET_POSTS_COUNT_WITH_FILTERS` | `z.tuple([ GetPostsSchema.pick({ artistId: true, filters: true }), ])` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |

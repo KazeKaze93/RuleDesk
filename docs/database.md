@@ -122,6 +122,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 | `id`           | INTEGER (PK, AutoIncrement)            | Internal post ID                              |
 | `post_id`      | INTEGER (NOT NULL)                     | Post ID from external API                     |
 | `artist_id`    | INTEGER (FK → artists.id)              | Reference to artist                           |
+| `provider`     | TEXT (NOT NULL, DEFAULT 'rule34')     | Booru provider that owns this `post_id` namespace (`rule34` / `gelbooru`) |
 | `file_url`     | TEXT (NOT NULL)                        | Direct URL to full-resolution media file      |
 | `preview_url`  | TEXT (NOT NULL)                        | URL to low-resolution preview (blurred)       |
 | `sample_url`   | TEXT (NOT NULL, DEFAULT '')            | URL to medium-resolution sample               |
@@ -136,7 +137,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 | `view_count`   | INTEGER (NOT NULL, DEFAULT 0)          | Number of times post was viewed               |
 | `is_favorited` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been favorited               |
 
-**Unique Constraint:** `(artist_id, post_id)` - Prevents duplicate posts per artist.
+**Unique Constraint:** `(artist_id, provider, post_id)` — post identity spans artist, provider, and remote post id. External Browse posts share `artist_id = 0` but remain distinct across providers.
 
 **Indexes:**
 
@@ -162,6 +163,9 @@ export const posts = sqliteTable(
     artistId: integer("artist_id")
       .notNull()
       .references(() => artists.id, { onDelete: "cascade" }),
+    provider: text("provider", { enum: PROVIDER_IDS })
+      .notNull()
+      .default("rule34"),
     fileUrl: text("file_url").notNull(),
     previewUrl: text("preview_url").notNull(),
     sampleUrl: text("sample_url").notNull().default(""),
@@ -183,7 +187,7 @@ export const posts = sqliteTable(
       .notNull(),
   },
   (table) => ({
-    uniquePostPerArtist: unique().on(table.artistId, table.postId),
+    uniquePostPerArtist: unique().on(table.artistId, table.provider, table.postId),
     postIdIdx: index("postIdIdx").on(table.postId),
     artistIdIdx: index("artistIdIdx").on(table.artistId),
     isViewedIdx: index("isViewedIdx").on(table.isViewed),

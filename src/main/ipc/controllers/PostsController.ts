@@ -318,7 +318,7 @@ export class PostsController extends BaseController {
     }
 
     // If not found (or negative ID for external post) and postData is provided,
-    // try to find by postId and EXTERNAL_ARTIST_ID
+    // try to find by (EXTERNAL_ARTIST_ID, provider, postId)
     // SECURITY: Always use EXTERNAL_ARTIST_ID, never trust artistId from Renderer
     // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
     if (!existingPost && postData) {
@@ -328,7 +328,8 @@ export class PostsController extends BaseController {
         .where(
           and(
             eq(posts.postId, postData.postId),
-            eq(posts.artistId, EXTERNAL_ARTIST_ID)
+            eq(posts.artistId, EXTERNAL_ARTIST_ID),
+            eq(posts.provider, postData.provider)
           )
         )
         .limit(1)
@@ -660,6 +661,7 @@ export class PostsController extends BaseController {
             id: posts.id,
             postId: posts.postId,
             artistId: posts.artistId,
+            provider: posts.provider,
             fileUrl: posts.fileUrl,
             previewUrl: posts.previewUrl,
             sampleUrl: posts.sampleUrl,
@@ -713,6 +715,7 @@ export class PostsController extends BaseController {
           id: posts.id,
           postId: posts.postId,
           artistId: posts.artistId,
+          provider: posts.provider,
           fileUrl: posts.fileUrl,
           previewUrl: posts.previewUrl,
           sampleUrl: posts.sampleUrl,
@@ -902,6 +905,7 @@ export class PostsController extends BaseController {
             .where(
               and(
                 eq(posts.artistId, EXTERNAL_ARTIST_ID),
+                eq(posts.provider, postData.provider),
                 eq(posts.postId, postData.postId)
               )
             )
@@ -947,6 +951,7 @@ export class PostsController extends BaseController {
             .values({
               postId: postData.postId,
               artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
+              provider: postData.provider,
               fileUrl: postData.fileUrl,
               previewUrl: postData.previewUrl,
               sampleUrl: postData.sampleUrl ?? "",
@@ -1228,6 +1233,7 @@ export class PostsController extends BaseController {
           .values({
             postId: postData.postId,
             artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
+            provider: postData.provider,
             fileUrl: postData.fileUrl,
             previewUrl: postData.previewUrl,
             sampleUrl: postData.sampleUrl ?? "",
@@ -1367,21 +1373,22 @@ export class PostsController extends BaseController {
     try {
       const db = this.getDb();
 
-      // Step 1: Check if post already exists in DB
+      // Step 1: Check if post already exists in DB for this provider
       const existingPost = db
         .select()
         .from(posts)
         .where(
           and(
             eq(posts.postId, request.postId),
-            eq(posts.artistId, EXTERNAL_ARTIST_ID)
+            eq(posts.artistId, EXTERNAL_ARTIST_ID),
+            eq(posts.provider, request.provider)
           )
         )
         .limit(1)
         .get();
 
       if (existingPost) {
-        log.debug(`[PostsController] Shadow insert: Post already exists (id: ${existingPost.id}, postId: ${request.postId})`);
+        log.debug(`[PostsController] Shadow insert: Post already exists (id: ${existingPost.id}, postId: ${request.postId}, provider: ${request.provider})`);
         return toIpcSafe(existingPost);
       }
 
@@ -1485,6 +1492,7 @@ export class PostsController extends BaseController {
           .values({
             postId: request.postId,
             artistId: EXTERNAL_ARTIST_ID,
+            provider: request.provider,
             fileUrl: booruPost.fileUrl,
             previewUrl: booruPost.previewUrl,
             sampleUrl: booruPost.sampleUrl || "",
@@ -1498,7 +1506,7 @@ export class PostsController extends BaseController {
             isFavorited: false,
           })
           .onConflictDoUpdate({
-            target: [posts.artistId, posts.postId],
+            target: [posts.artistId, posts.provider, posts.postId],
             set: {
               // Update URLs if they changed
               fileUrl: sql`excluded.file_url`,

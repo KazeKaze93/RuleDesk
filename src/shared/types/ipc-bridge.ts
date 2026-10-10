@@ -260,7 +260,8 @@ export interface IpcBridge {
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
   getPlaylistsContainingPost: (
     postId: number,
-    rule34PostId?: number
+    externalPostId?: number,
+    provider?: "rule34" | "gelbooru"
   ) => Promise<number[]>;
   getManualPlaylistMembershipForPosts: (
     data: GetManualPlaylistMembershipForPostsRequest
