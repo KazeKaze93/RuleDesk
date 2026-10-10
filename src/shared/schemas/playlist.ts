@@ -5,6 +5,7 @@ import {
   PageSchema,
   LimitSchema,
   PostFiltersSchema,
+  RandomSeedSchema,
 } from "./ipc";
 import {
   SmartQueryTagSchema,
@@ -243,6 +244,8 @@ export const GetPlaylistPostsSchema = z.object({
   limit: LimitSchema.max(1000).default(50), // Increased max limit to 1000 for larger gallery views
   sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
   isRandom: z.boolean().optional().default(false),
+  /** Keep across pages for a stable shuffle; omit / change for a new shuffle. */
+  seed: RandomSeedSchema,
 });
 
 /**
@@ -266,6 +269,8 @@ export const ResolvePlaylistPostsSchema = z.object({
   filters: PostFiltersSchema.optional(),
   sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
   isRandom: z.boolean().optional().default(false),
+  /** Keep across pages for a stable shuffle; omit / change for a new shuffle. */
+  seed: RandomSeedSchema,
 });
 
 export const ReorderPlaylistEntriesSchema = z.object({

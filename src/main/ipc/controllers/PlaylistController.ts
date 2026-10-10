@@ -60,6 +60,10 @@ import { onDatabaseReopened } from "../../core/di/databaseRegistration";
 import { postsFtsTableExists } from "../../db/fts-table-check";
 import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
 import { escapeLikePattern } from "../../db/utils";
+import {
+  resolveRandomSeed,
+  seededOrderBy,
+} from "../../db/seeded-ordering";
 import { getProvider } from "../../providers";
 import { getDecryptedApiSettings } from "../../services/credentials";
 import { IdSchema, OptionalIdSchema } from "../../../shared/schemas/ipc";
@@ -1312,7 +1316,15 @@ export class PlaylistController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: GetPlaylistPostsRequest
   ): Promise<IpcPost[]> {
-    const { playlistId, page, filters, limit, sortOrder = "desc", isRandom } = params;
+    const {
+      playlistId,
+      page,
+      filters,
+      limit,
+      sortOrder = "desc",
+      isRandom,
+      seed,
+    } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -1365,7 +1377,11 @@ export class PlaylistController extends BaseController {
         .where(whereClause);
 
       const result = isRandom
-        ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+        ? queryBuilder
+            .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
+            .limit(limit)
+            .offset(offset)
+            .all()
         : queryBuilder
             .orderBy(
               sortOrder === "position"
@@ -1789,7 +1805,15 @@ export class PlaylistController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: ResolvePlaylistPostsRequest
   ): Promise<IpcPost[]> {
-    const { playlistId, page, limit, filters, sortOrder = "desc", isRandom } = params;
+    const {
+      playlistId,
+      page,
+      limit,
+      filters,
+      sortOrder = "desc",
+      isRandom,
+      seed,
+    } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -1857,7 +1881,11 @@ export class PlaylistController extends BaseController {
           .where(whereClause);
 
         const result = isRandom
-          ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+          ? queryBuilder
+              .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
+              .limit(limit)
+              .offset(offset)
+              .all()
           : queryBuilder
               .orderBy(
                 sortOrder === "position"
@@ -1986,7 +2014,11 @@ export class PlaylistController extends BaseController {
             .where(whereClause);
 
           const result = isRandom
-            ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+            ? queryBuilder
+                .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
+                .limit(limit)
+                .offset(offset)
+                .all()
             : queryBuilder
                 .orderBy(
                   smartSortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt)

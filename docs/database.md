@@ -1139,6 +1139,8 @@ const posts = await db.getPosts({
 });
 ```
 
+Local `isRandom` gallery/playlist queries use deterministic seed-based `ORDER BY` (`src/main/db/seeded-ordering.ts`) instead of SQLite `RANDOM()`. Pass the same optional `seed` on later pages for a stable shuffle; a new seed starts a new shuffle.
+
 ### Performance
 
 - **Index Size:** Minimal (external content table stores only index, not data)

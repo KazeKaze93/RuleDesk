@@ -60,6 +60,10 @@ import {
   buildPostsBlacklistFilterCondition,
   buildPostsTagsFilterCondition,
 } from "../../db/queries/post-tag-filter";
+import {
+  resolveRandomSeed,
+  seededOrderBy,
+} from "../../db/seeded-ordering";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -625,7 +629,8 @@ export class PostsController extends BaseController {
     _event: IpcMainInvokeEvent,
     params: GetPostsParams
   ): Promise<IpcPost[]> {
-    const { artistId, page, filters, limit, isRandom, sortOrder } = params;
+    const { artistId, page, filters, limit, isRandom, sortOrder, seed } =
+      params;
     const offset = (page - 1) * limit;
 
     try {
@@ -679,7 +684,13 @@ export class PostsController extends BaseController {
           .where(finalWhereClause);
 
         const result = isRandom
-          ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+          ? queryBuilder
+              .orderBy(
+                ...seededOrderBy(posts.id, resolveRandomSeed(seed))
+              )
+              .limit(limit)
+              .offset(offset)
+              .all()
           : queryBuilder
               .orderBy(
                 sortOrder === "asc" ? posts.publishedAt : desc(posts.publishedAt)
@@ -732,7 +743,11 @@ export class PostsController extends BaseController {
         .where(whereClause);
 
       const result = isRandom
-        ? queryBuilder.orderBy(sql`RANDOM()`).limit(limit).offset(offset).all()
+        ? queryBuilder
+            .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
+            .limit(limit)
+            .offset(offset)
+            .all()
         : queryBuilder
             .orderBy(
               sortOrder === "asc" ? posts.publishedAt : desc(posts.publishedAt)
