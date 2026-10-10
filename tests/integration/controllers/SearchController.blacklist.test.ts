@@ -5,6 +5,7 @@ import { settings, SETTINGS_ID } from "@/main/db/schema";
 import type Database from "better-sqlite3";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
 vi.mock("@/main/db/client", () => ({
   getSqliteInstance: () => {
@@ -12,6 +13,12 @@ vi.mock("@/main/db/client", () => ({
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -67,6 +74,7 @@ describe("SearchController blacklist integration", () => {
     container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
+    activeDb = mockDb.db;
     container.register(DI_TOKENS.DB, mockDb.db);
     await mockDb.db.insert(settings).values({
       id: SETTINGS_ID,
@@ -90,6 +98,7 @@ describe("SearchController blacklist integration", () => {
       }
     }
     activeSqlite = null;
+    activeDb = null;
     container.clear();
   });
 
