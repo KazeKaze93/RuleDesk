@@ -20,9 +20,12 @@ const WALL_CLOCK_MS = 180_000;
 
 const COUNT_FILE = path.join(ROOT, ".vitest-isolated-passed");
 
+function stripAnsi(text) {
+  return text.replace(/\x1b\[[0-9;]*m/g, "");
+}
 function parsePassed(text) {
-  const match = text.match(/Tests\s+(\d+)\s+passed/);
-  return match ? Number(match[1]) : 0;
+  const matches = [...stripAnsi(text).matchAll(/Tests\s+(\d+)\s+passed/g)];
+  return matches.length ? Number(matches[matches.length - 1][1]) : 0;
 }
 
 function runWithWallClock() {
