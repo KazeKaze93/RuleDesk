@@ -48,7 +48,7 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
         return <User className="w-4 h-4 text-primary" />;
       case "query":
         return <Search className="w-4 h-4 text-emerald-500" />;
-      default:
+      case "tag":
         return <Hash className="w-4 h-4 text-blue-500" />;
     }
   };
