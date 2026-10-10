@@ -234,9 +234,12 @@ export async function initializeDatabase(): Promise<AppDatabase> {
       } else {
         logger.info(`[DB] Database size: ${count.toLocaleString()} posts.`);
       }
-    } catch (_countError) {
+    } catch (countError) {
       // Table might not exist yet (first migration), ignore count check
-      logger.debug("[DB] Could not check post count (table may not exist yet)");
+      logger.debug(
+        "[DB] Could not check post count (table may not exist yet)",
+        countError
+      );
     }
     
     // Run migrations asynchronously to avoid blocking the event loop
