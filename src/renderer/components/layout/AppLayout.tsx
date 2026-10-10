@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { releaseRadixModalLock } from "@/lib/radix-modal-lock";
 import { useViewerStore } from "@/store/viewerStore";
+import { useArtistsSyncInvalidation } from "@/hooks/useArtistsSyncInvalidation";
 import { Sidebar } from "./Sidebar";
 import { GlobalTopBar } from "./GlobalTopBar";
 import { PanicButton } from "./PanicButton";
@@ -13,6 +14,8 @@ import { CredentialsErrorToast } from "../dialogs/CredentialsErrorToast";
 export const AppLayout = () => {
   const queryClient = useQueryClient();
   const location = useLocation();
+
+  useArtistsSyncInvalidation(queryClient);
 
   useEffect(() => {
     releaseRadixModalLock();
@@ -28,33 +31,6 @@ export const AppLayout = () => {
       cancelAnimationFrame(frameId);
     };
   }, [location.pathname]);
-
-  useEffect(() => {
-    const invalidateArtists = () => {
-      void queryClient.invalidateQueries({ queryKey: ["artists"] });
-    };
-
-    const unsubscribeSyncEnd = window.api.onSyncEnd(() => {
-      // Sync writes new posts into DB, so all post-based feeds must refresh.
-      // Smart playlists are dynamic queries over posts, so they must be invalidated too.
-      void queryClient.invalidateQueries({ queryKey: ["posts"] });
-      void queryClient.invalidateQueries({ queryKey: ["playlist-posts"] });
-      void queryClient.invalidateQueries({ queryKey: ["playlists"] });
-      invalidateArtists();
-      void queryClient.invalidateQueries({ queryKey: ["posts-count"] });
-    });
-
-    const unsubscribeSyncArtist = window.api.onSyncArtist(invalidateArtists);
-    const unsubscribeRepairStart = window.api.onRepairStart(invalidateArtists);
-    const unsubscribeRepairEnd = window.api.onRepairEnd(invalidateArtists);
-
-    return () => {
-      unsubscribeSyncEnd();
-      unsubscribeSyncArtist();
-      unsubscribeRepairStart();
-      unsubscribeRepairEnd();
-    };
-  }, [queryClient]);
 
   return (
     <div className="flex overflow-hidden w-full h-screen bg-background text-foreground">
