@@ -3,21 +3,22 @@ import {
   MAX_SEARCH_RESULTS_CACHE_ROWS,
   SEARCH_RESULTS_CACHE_TTL_MS,
 } from "../../config/search-results-cache-constants";
+import { asMillis, nowMillis, type Millis } from "../../../shared/types/time";
 
 type SqliteDatabase = InstanceType<typeof Database>;
 
 /**
  * Delete expired search_results_cache rows (found and not_found).
- * `resolved_at` is stored in milliseconds (schema mode timestamp_ms).
- * Cutoff uses Date.now()-based ms — must stay aligned with Drizzle writes.
+ * `resolved_at` is stored in Millis (schema mode timestamp_ms).
+ * Cutoff uses branded Millis — must stay aligned with Drizzle writes.
  *
  * @returns number of deleted rows
  */
 export function deleteExpiredSearchResultsCache(
   sqlite: SqliteDatabase,
-  nowMs: number = Date.now()
+  nowMs: Millis = nowMillis()
 ): number {
-  const cutoffMs = nowMs - SEARCH_RESULTS_CACHE_TTL_MS;
+  const cutoffMs = asMillis(nowMs - SEARCH_RESULTS_CACHE_TTL_MS);
   const result = sqlite
     .prepare(
       `DELETE FROM search_results_cache

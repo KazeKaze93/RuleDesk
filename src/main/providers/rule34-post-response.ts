@@ -4,6 +4,11 @@ import {
   RULE34_MISSING_AUTHENTICATION_MARKER,
   RULE34_RESPONSE_BODY_LOG_SNIPPET_CHARS,
 } from "../../shared/constants/rule34-api";
+import {
+  asSeconds,
+  secondsToMillis,
+  type Millis,
+} from "../../shared/types/time";
 import { ProviderSearchError } from "./provider-search-errors";
 
 export type Rule34HttpResponse = {
@@ -14,7 +19,7 @@ export type Rule34HttpResponse = {
 
 export function parseRule34RetryAfterMs(
   headers: Record<string, string | string[] | undefined>
-): number | undefined {
+): Millis | undefined {
   const retryAfterHeader = headers["retry-after"];
   const retryAfterRaw = Array.isArray(retryAfterHeader)
     ? retryAfterHeader[0]
@@ -26,7 +31,7 @@ export function parseRule34RetryAfterMs(
   if (!Number.isFinite(retryAfterSeconds) || retryAfterSeconds < 0) {
     return undefined;
   }
-  return retryAfterSeconds * 1000;
+  return secondsToMillis(asSeconds(retryAfterSeconds));
 }
 
 export function responseIncludesRule34AuthFailure(text: string): boolean {

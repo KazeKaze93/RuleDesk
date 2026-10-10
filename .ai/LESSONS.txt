@@ -32,6 +32,11 @@ Problem: Policy-violation counts from `grep`/`rg` for ` as ` were inflated by an
 Root Cause: Regex matches `import * as X`, SQL `AS alias`, and English prose, not TypeScript `TSAsExpression` nodes.
 Invariant Rule: Inventory of syntactic constructs (type assertions, etc.) MUST use AST (ESLint selector / parser). Grep totals are not decision inputs.
 
+3d) Type-Aware Lint and Branded Time Units
+Problem: Classes of bugs (unexpected async event handler Electron does not await, swallowed catch, incomplete switch on a union, Seconds mixed with Millis) only surfaced at runtime.
+Root Cause: Recommendations without enforcement; type-unaware ESLint cannot see floating/misused promises; plain `number` erases time units.
+Invariant Rule: Type-aware ESLint rules (`no-floating-promises`, `no-misused-promises` with `checksVoidReturn`, `switch-exhaustiveness-check`, unused catch bindings, `no-empty` without empty catch) and branded `Seconds`/`Millis` (`src/shared/types/time.ts`, constructors on the `.cursorrules` allowlist) are mandatory config, not optional guidance. Conversions go through named helpers only.
+
 4) Virtualized Gallery Holes
 Problem: Large empty scroll area in filtered lists.
 Root Cause: Virtualization total count used raw items while rendering filtered items.

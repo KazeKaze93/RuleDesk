@@ -27,6 +27,11 @@ import {
 import { isAxiosTransportFailure } from "./rule34-post-response";
 import { getProxyAgent } from "../lib/proxy";
 import { warnIfUnknownMediaHost } from "./warn-unknown-media-host";
+import {
+  asSeconds,
+  secondsToMillis,
+  type Millis,
+} from "../../shared/types/time";
 
 type GelbooruTagItem = {
   value: string;
@@ -42,10 +47,10 @@ function isGelbooruTagItem(item: unknown): item is GelbooruTagItem {
   return typeof v === "string" && typeof l === "string";
 }
 
-/** Same contract as parseRule34RetryAfterMs: seconds → ms; invalid/negative → undefined. */
+/** Same contract as parseRule34RetryAfterMs: Seconds → Millis; invalid/negative → undefined. */
 function parseGelbooruRetryAfterMs(
   headers: Record<string, string | string[] | undefined>
-): number | undefined {
+): Millis | undefined {
   const retryAfterHeader = headers["retry-after"];
   const retryAfterRaw = Array.isArray(retryAfterHeader)
     ? retryAfterHeader[0]
@@ -57,7 +62,7 @@ function parseGelbooruRetryAfterMs(
   if (!Number.isFinite(retryAfterSeconds) || retryAfterSeconds < 0) {
     return undefined;
   }
-  return retryAfterSeconds * 1000;
+  return secondsToMillis(asSeconds(retryAfterSeconds));
 }
 
 function axiosHeadersToRetryAfterRecord(

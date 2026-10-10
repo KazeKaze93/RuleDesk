@@ -24,6 +24,11 @@ import {
   TAG_RESOLVE_MAX_RETRY_AFTER_MS,
   TAG_RESOLVE_NOT_FOUND_TTL_MS,
 } from "../config/tag-resolve-constants";
+import {
+  dateToMillis,
+  nowMillis,
+  type Millis,
+} from "../../shared/types/time";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -105,8 +110,8 @@ function recordRateLimitBurst(retryAfterMs: number, attempt: number): void {
   }
 }
 
-function isActiveNotFound(resolvedAt: Date, nowMs: number): boolean {
-  return nowMs - resolvedAt.getTime() < TAG_RESOLVE_NOT_FOUND_TTL_MS;
+function isActiveNotFound(resolvedAt: Date, nowMs: Millis): boolean {
+  return nowMs - dateToMillis(resolvedAt) < TAG_RESOLVE_NOT_FOUND_TTL_MS;
 }
 
 /**
@@ -116,7 +121,7 @@ function isActiveNotFound(resolvedAt: Date, nowMs: number): boolean {
 export function loadTagMetadataCache(
   db: AppDatabase,
   uniqueTags: string[],
-  nowMs: number = Date.now()
+  nowMs: Millis = nowMillis()
 ): TagMetadataCacheState {
   const foundTypes = new Map<string, number>();
   const activeNotFound = new Set<string>();
