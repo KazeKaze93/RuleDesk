@@ -113,8 +113,36 @@ describe('ArtistsController Integration', () => {
       expect(repairArtist).not.toHaveBeenCalled();
     });
 
-    it('should update existing artist when tag already exists', async () => {
-      // Arrange - Insert an artist first
+    it('should allow the same tag on different providers', async () => {
+      const rule34Data: AddArtistRequest = {
+        name: 'Rule34 Artist',
+        tag: 'shared_tag',
+        provider: 'rule34',
+        type: 'tag',
+      };
+      const gelbooruData: AddArtistRequest = {
+        name: 'Gelbooru Artist',
+        tag: 'shared_tag',
+        provider: 'gelbooru',
+        type: 'uploader',
+      };
+
+      await controller.handleAddArtist(null, rule34Data);
+      await controller.handleAddArtist(null, gelbooruData);
+
+      const artistsInDb = await mockDb.db
+        .select()
+        .from(artists)
+        .where(eq(artists.tag, 'shared_tag'));
+
+      expect(artistsInDb).toHaveLength(2);
+      expect(artistsInDb.map((a) => a.provider).sort()).toEqual([
+        'gelbooru',
+        'rule34',
+      ]);
+    });
+
+    it('should update existing artist when provider+tag already exists', async () => {
       const initialData: AddArtistRequest = {
         name: 'Initial Artist',
         tag: 'existing_tag',
@@ -124,17 +152,15 @@ describe('ArtistsController Integration', () => {
 
       await controller.handleAddArtist(null, initialData);
 
-      // Act - Try to add artist with same tag but different name
       const updatedData: AddArtistRequest = {
         name: 'Updated Artist',
         tag: 'existing_tag',
-        provider: 'gelbooru',
+        provider: 'rule34',
         type: 'uploader',
       };
 
       const result = await controller.handleAddArtist(null, updatedData);
 
-      // Assert - Should have only one artist with this tag
       const artistsInDb = await mockDb.db
         .select()
         .from(artists)
@@ -142,10 +168,8 @@ describe('ArtistsController Integration', () => {
 
       expect(artistsInDb).toHaveLength(1);
       expect(artistsInDb[0].name).toBe('Updated Artist');
-      expect(artistsInDb[0].provider).toBe('gelbooru');
+      expect(artistsInDb[0].provider).toBe('rule34');
       expect(artistsInDb[0].type).toBe('uploader');
-
-      // Verify return value
       expect(result.name).toBe('Updated Artist');
     });
 
