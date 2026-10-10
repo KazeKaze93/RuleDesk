@@ -600,7 +600,7 @@ const posts = await db.query.posts.findMany({
 6. **App lifecycle (Main)**
 
    - Process-lifetime listeners such as `before-quit` are registered **once** at module scope (not inside window recreate paths)
-   - Quit path: if sync is running, `before-quit` `preventDefault`s, calls `syncService.requestCancel()`, awaits `waitUntilIdle(SYNC_SHUTDOWN_DRAIN_MS)`, then stops proxy/schedulers/tray and `closeDatabase()`. Tray Quit and `window-all-closed` only call `app.quit()` so drain ownership stays in `before-quit`.
+   - Quit path: if downloads or sync are active, `before-quit` `preventDefault`s, awaits `cancelAllDownloads()` (warn + continue on drain timeout) and/or sync cancel + `waitUntilIdle(SYNC_SHUTDOWN_DRAIN_MS)`, then sets `isShuttingDown`, stops proxy/schedulers/tray, `closeDatabase()`, and `app.quit()`; the second `before-quit` is a no-op. Idle quit closes the DB synchronously without `preventDefault`. Tray Quit and `window-all-closed` only call `app.quit()` so drain ownership stays in `before-quit`.
    - `closeDatabase` is idempotent; tray Show / `activate` may recreate the window and re-bind IPC (`removeHandler` first) without stacking quit handlers
 
 7. **Maintenance Queue** (`src/main/db/maintenance-queue.ts`)
@@ -1865,7 +1865,7 @@ Root:
 - ✅ **Settings:** Default download directory and related options available
 - ✅ **Mass download errors:** Worker posts structured failures to Main (no electron-log in worker); Main logs redacted URLs and returns `DownloadAllResult.failed[]` with codes `NETWORK` / `TIMEOUT` / `HTTP_403` / `HTTP_404` / `HTTP_429` / `HTTP_OTHER` / `DISK` / `CANCELLED`. Soft-fail must not toast as success. Cap 500 with UI warning (no Zod throw).
 - ✅ **429 gate:** First 429 closes a **global** queue gate (`DownloadRateLimitGate`); lanes do not take new items until pause ends. Pause = max(exponential backoff, `Retry-After`). Retries wait on the same gate (not per-request sleeps that keep starting siblings).
-- ✅ **Cancel:** `FileController.cancelAllDownloads()` is the sole cancel path (AbortController from request start). `before-quit` awaits it before `closeDatabase`.
+- ✅ **Cancel:** `FileController.cancelAllDownloads()` is the sole cancel path (AbortController from request start). `before-quit` uses `event.preventDefault()` when downloads/sync are active, awaits cancel (with timed-out warn), closes the DB, sets `isShuttingDown`, then `app.quit()`; the second `before-quit` is a no-op so Electron can exit.
 - ✅ **Resume queue v2:** `completedIds` by filename — concurrency-safe (not a success counter).
 
 **Status:** ✅ Core download functionality implemented. Individual and batch downloads work with progress tracking, typed failure codes, cancel-on-quit, and default directory settings.

@@ -17,6 +17,19 @@ import {
   DOWNLOAD_SHUTDOWN_DRAIN_MS,
   USER_AGENT,
 } from "../../config/constants";
+
+/** Allows quit-smoke to force a short cancel drain (milliseconds). */
+function resolveDownloadShutdownDrainMs(): number {
+  const raw = process.env.RULEDESK_DOWNLOAD_DRAIN_MS;
+  if (raw === undefined || raw === "") {
+    return DOWNLOAD_SHUTDOWN_DRAIN_MS;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DOWNLOAD_SHUTDOWN_DRAIN_MS;
+  }
+  return parsed;
+}
 import { IPC_CHANNELS } from "../channels";
 import { isResolvedPathWithinBase } from "../../utils/path-within-base";
 import { BATCH_DOWNLOAD_MAX_FILES } from "../../../shared/constants";
@@ -133,7 +146,7 @@ export class FileController extends BaseController {
    * Sole public cancel entry: aborts single-file downloads and the batch worker,
    * then waits until the worker settles (or drain timeout).
    */
-  public async cancelAllDownloads(): Promise<void> {
+  public async cancelAllDownloads(): Promise<{ timedOut: boolean }> {
     log.info(
       `[FileController] Canceling ${this.activeDownloads.size} single + batch downloads`
     );
@@ -145,17 +158,22 @@ export class FileController extends BaseController {
 
     if (!this.downloadWorker) {
       this.resolveBatchIdleWaiters();
-      return;
+      return { timedOut: false };
     }
 
     this.downloadWorker.postMessage({ type: "cancel" });
     const worker = this.downloadWorker;
+    const drainMs = resolveDownloadShutdownDrainMs();
+    let timedOut = false;
     await Promise.race([
       new Promise<void>((resolve) => {
         this.batchIdleWaiters.push(resolve);
       }),
       new Promise<void>((resolve) => {
-        setTimeout(resolve, DOWNLOAD_SHUTDOWN_DRAIN_MS);
+        setTimeout(() => {
+          timedOut = true;
+          resolve();
+        }, drainMs);
       }),
     ]);
 
@@ -174,6 +192,12 @@ export class FileController extends BaseController {
       this.downloadWorker = null;
     }
     this.resolveBatchIdleWaiters();
+    if (timedOut) {
+      log.warn(
+        `[FileController] cancelAllDownloads timed out after ${drainMs}ms`
+      );
+    }
+    return { timedOut };
   }
 
   private settleBatch(result: DownloadAllResult): void {
@@ -525,8 +549,17 @@ export class FileController extends BaseController {
    * Heavy I/O (network, disk) runs off Main process to avoid blocking UI.
    * Main only orchestrates: spawn Worker, forward progress, log failures, handle cancel.
    */
+  /**
+   * Start a mass download without an IPC event (resume / quit-smoke).
+   */
+  public runDownloadAll(
+    items: Array<{ url: string; filename: string }>
+  ): Promise<DownloadAllResult> {
+    return this.downloadAll(undefined, items);
+  }
+
   private async downloadAll(
-    _event: IpcMainInvokeEvent,
+    _event: IpcMainInvokeEvent | undefined,
     items: Array<{ url: string; filename: string }>
   ): Promise<DownloadAllResult> {
     const mainWindow = this.getMainWindow();

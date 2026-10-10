@@ -64,10 +64,7 @@ import { getFileController, registerAllHandlers } from "./ipc/index";
 import { initializeDatabase, closeDatabase, getDb } from "./db/client";
 import { getBackupDirectory, getDatabasePaths, getLegacyNeutralUserDataDir } from "./db/paths";
 import { migrateBackupDirectory } from "./db/backup-dir-migrate";
-import {
-  DOWNLOAD_SHUTDOWN_DRAIN_MS,
-  SYNC_SHUTDOWN_DRAIN_MS,
-} from "./config/constants";
+import { SYNC_SHUTDOWN_DRAIN_MS } from "./config/constants";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 import { SyncScheduler } from "./services/sync-scheduler";
@@ -122,9 +119,12 @@ function stopBackgroundServicesAndCloseDb(): void {
 
 // Single before-quit handler (module load once). Must not live inside initializeAppAndWindow —
 // tray re-open would stack duplicate listeners and call closeDatabase N times.
+//
+// Electron does not await async before-quit listeners. If cleanup needs await,
+// call event.preventDefault(), finish cleanup, set isShuttingDown, then app.quit().
+// The second before-quit sees the flag and returns immediately so quit proceeds.
 app.on("before-quit", (event) => {
   if (isShuttingDown) {
-    stopBackgroundServicesAndCloseDb();
     return;
   }
 
@@ -139,12 +139,14 @@ app.on("before-quit", (event) => {
         logger.info(
           "[Main] Downloads in progress — cancelAllDownloads before quit"
         );
-        await Promise.race([
-          fileController.cancelAllDownloads(),
-          new Promise<void>((resolve) => {
-            setTimeout(resolve, DOWNLOAD_SHUTDOWN_DRAIN_MS);
-          }),
-        ]);
+        const { timedOut } = await fileController.cancelAllDownloads();
+        if (timedOut) {
+          logger.warn(
+            "[Main] Download cancel timed out; closing database anyway"
+          );
+        } else {
+          logger.info("[Main] Downloads canceled before quit");
+        }
       }
       if (needsSyncDrain) {
         logger.info(
@@ -165,6 +167,7 @@ app.on("before-quit", (event) => {
     return;
   }
 
+  // No in-flight download/sync — sync path stays fast (no preventDefault).
   isShuttingDown = true;
   stopBackgroundServicesAndCloseDb();
 });
@@ -511,6 +514,18 @@ async function initializeAppAndWindow() {
       maintenanceService
     );
     reloadProxyFromSettings();
+
+    if (
+      process.env.RULEDESK_SMOKE_QUIT_DURING_DOWNLOAD === "1" ||
+      (process.env.RULEDESK_SMOKE_IDLE_QUIT_MS !== undefined &&
+        process.env.RULEDESK_SMOKE_IDLE_QUIT_MS !== "")
+    ) {
+      void import("./lib/quit-during-download-smoke").then(
+        ({ maybeRunQuitDuringDownloadSmoke }) => {
+          maybeRunQuitDuringDownloadSmoke();
+        }
+      );
+    }
 
     import("./db/backfill-media-type").then(({ backfillMediaType }) => {
       backfillMediaType().catch((error) => {
