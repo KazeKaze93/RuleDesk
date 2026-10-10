@@ -18,8 +18,30 @@ export type RevealableMainWindow = {
   focus: () => void;
 };
 
+export type MainWindowCloseAction = "allow-close" | "hide-to-tray";
+
+export type DecideMainWindowCloseInput = {
+  /** True once quit has started (before-quit / isShuttingDown). Do not touch DB. */
+  isQuitInProgress: boolean;
+  isTestMode: boolean;
+  platform: NodeJS.Platform;
+  readMinimizeToTrayEnabled: () => boolean;
+};
+
 /**
- * Read minimize-to-tray at close time (synchronous). Missing row → default true.
+ * NULL / undefined → default true (legacy tray-hide behavior).
+ */
+export function resolveMinimizeToTraySetting(
+  value: boolean | null | undefined
+): boolean {
+  if (value === undefined || value === null) {
+    return MINIMIZE_TO_TRAY_DEFAULT;
+  }
+  return value;
+}
+
+/**
+ * Read minimize-to-tray at close time (synchronous). Missing row / NULL → default true.
  */
 export function readMinimizeToTrayEnabled(db: AppDatabase): boolean {
   const row = db
@@ -31,7 +53,27 @@ export function readMinimizeToTrayEnabled(db: AppDatabase): boolean {
   if (row === undefined) {
     return MINIMIZE_TO_TRAY_DEFAULT;
   }
-  return row.minimizeToTray ?? MINIMIZE_TO_TRAY_DEFAULT;
+  return resolveMinimizeToTraySetting(row.minimizeToTray);
+}
+
+/**
+ * Window close policy. When quit is in progress: always allow-close and never call
+ * readMinimizeToTrayEnabled (DB may already be closed).
+ */
+export function decideMainWindowCloseAction(
+  input: DecideMainWindowCloseInput
+): MainWindowCloseAction {
+  if (input.isQuitInProgress || input.isTestMode) {
+    return "allow-close";
+  }
+  // macOS: closing the window must not quit the app (Dock convention).
+  if (input.platform === "darwin") {
+    return "hide-to-tray";
+  }
+  if (input.readMinimizeToTrayEnabled()) {
+    return "hide-to-tray";
+  }
+  return "allow-close";
 }
 
 export type RevealMainWindowOptions = {

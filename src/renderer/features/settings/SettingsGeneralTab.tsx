@@ -35,6 +35,8 @@ const MinimizeToTrayFormSchema = z.object({
 
 type MinimizeToTrayFormValues = z.infer<typeof MinimizeToTrayFormSchema>;
 
+const OS_PLATFORM_DARWIN = "darwin";
+
 interface SettingsGeneralTabProps {
   downloadFolder: string | null;
   downloadFolderStatus: "idle" | "success" | "error";
@@ -75,6 +77,7 @@ export const SettingsGeneralTab = ({
   const [wipeDialogOpen, setWipeDialogOpen] = useState(false);
   const [wipeAcknowledged, setWipeAcknowledged] = useState(false);
   const [wipeInProgress, setWipeInProgress] = useState(false);
+  const [isDarwin, setIsDarwin] = useState(false);
 
   const { control, reset } = useForm<MinimizeToTrayFormValues>({
     resolver: zodResolver(MinimizeToTrayFormSchema),
@@ -84,6 +87,23 @@ export const SettingsGeneralTab = ({
   useEffect(() => {
     reset({ minimizeToTray });
   }, [minimizeToTray, reset]);
+
+  useEffect(() => {
+    let cancelled = false;
+    window.api
+      .getAppInfo()
+      .then((info) => {
+        if (!cancelled) {
+          setIsDarwin(info.osPlatform === OS_PLATFORM_DARWIN);
+        }
+      })
+      .catch((error: unknown) => {
+        log.error("[SettingsGeneralTab] Failed to load app info for tray setting:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleWipeDialogOpenChange = (open: boolean) => {
     if (wipeInProgress) {
@@ -184,8 +204,9 @@ export const SettingsGeneralTab = ({
             <section className="space-y-1">
               <Label htmlFor="minimize-to-tray">Minimize to tray on close</Label>
               <p className="text-sm text-muted-foreground">
-                When enabled, closing the window hides the app to the system tray.
-                When disabled, closing the window quits the application.
+                {isDarwin
+                  ? "On macOS, closing the window always hides the app (Dock convention). This option does not change quit behavior."
+                  : "When enabled, closing the window hides the app to the system tray. When disabled, closing the window quits the application."}
               </p>
             </section>
             <Controller
@@ -194,12 +215,20 @@ export const SettingsGeneralTab = ({
               render={({ field }) => (
                 <Switch
                   id="minimize-to-tray"
-                  checked={field.value}
+                  checked={isDarwin ? true : field.value}
+                  disabled={isDarwin}
                   onCheckedChange={(checked) => {
+                    if (isDarwin) {
+                      return;
+                    }
                     field.onChange(checked);
                     onMinimizeToTrayChange(checked);
                   }}
-                  aria-label="Minimize to tray on close"
+                  aria-label={
+                    isDarwin
+                      ? "Minimize to tray on close (not applicable on macOS)"
+                      : "Minimize to tray on close"
+                  }
                 />
               )}
             />

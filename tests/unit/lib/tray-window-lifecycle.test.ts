@@ -4,7 +4,9 @@ import { createMockDb } from "../../helpers/mock-db";
 import { SETTINGS_ID, settings } from "../../../src/main/db/schema";
 import {
   MINIMIZE_TO_TRAY_DEFAULT,
+  decideMainWindowCloseAction,
   readMinimizeToTrayEnabled,
+  resolveMinimizeToTraySetting,
   revealMainWindow,
   type RevealableMainWindow,
 } from "../../../src/main/lib/tray-window-lifecycle";
@@ -22,6 +24,16 @@ function createRevealableWindow(
     ...overrides,
   };
 }
+
+describe("resolveMinimizeToTraySetting", () => {
+  it("treats null and undefined as true (legacy default)", () => {
+    expect(resolveMinimizeToTraySetting(null)).toBe(true);
+    expect(resolveMinimizeToTraySetting(undefined)).toBe(true);
+    expect(resolveMinimizeToTraySetting(null)).toBe(MINIMIZE_TO_TRAY_DEFAULT);
+    expect(resolveMinimizeToTraySetting(false)).toBe(false);
+    expect(resolveMinimizeToTraySetting(true)).toBe(true);
+  });
+});
 
 describe("readMinimizeToTrayEnabled", () => {
   it("returns default true when settings row is missing", () => {
@@ -53,6 +65,78 @@ describe("readMinimizeToTrayEnabled", () => {
 
     expect(readMinimizeToTrayEnabled(mockDb.db)).toBe(true);
     mockDb.sqlite.close();
+  });
+});
+
+describe("decideMainWindowCloseAction", () => {
+  it("allows close during quit and does not read the setting/DB", () => {
+    const readMinimizeToTrayEnabled = vi.fn(() => true);
+
+    expect(
+      decideMainWindowCloseAction({
+        isQuitInProgress: true,
+        isTestMode: false,
+        platform: "win32",
+        readMinimizeToTrayEnabled,
+      })
+    ).toBe("allow-close");
+    expect(readMinimizeToTrayEnabled).not.toHaveBeenCalled();
+
+    expect(
+      decideMainWindowCloseAction({
+        isQuitInProgress: true,
+        isTestMode: false,
+        platform: "darwin",
+        readMinimizeToTrayEnabled,
+      })
+    ).toBe("allow-close");
+    expect(readMinimizeToTrayEnabled).not.toHaveBeenCalled();
+  });
+
+  it("allows close in test mode without reading the setting", () => {
+    const readMinimizeToTrayEnabled = vi.fn(() => true);
+    expect(
+      decideMainWindowCloseAction({
+        isQuitInProgress: false,
+        isTestMode: true,
+        platform: "win32",
+        readMinimizeToTrayEnabled,
+      })
+    ).toBe("allow-close");
+    expect(readMinimizeToTrayEnabled).not.toHaveBeenCalled();
+  });
+
+  it("always hides on darwin when not quitting", () => {
+    const readMinimizeToTrayEnabled = vi.fn(() => false);
+    expect(
+      decideMainWindowCloseAction({
+        isQuitInProgress: false,
+        isTestMode: false,
+        platform: "darwin",
+        readMinimizeToTrayEnabled,
+      })
+    ).toBe("hide-to-tray");
+    expect(readMinimizeToTrayEnabled).not.toHaveBeenCalled();
+  });
+
+  it("hides or allows close on win32 from the setting", () => {
+    expect(
+      decideMainWindowCloseAction({
+        isQuitInProgress: false,
+        isTestMode: false,
+        platform: "win32",
+        readMinimizeToTrayEnabled: () => true,
+      })
+    ).toBe("hide-to-tray");
+
+    expect(
+      decideMainWindowCloseAction({
+        isQuitInProgress: false,
+        isTestMode: false,
+        platform: "win32",
+        readMinimizeToTrayEnabled: () => false,
+      })
+    ).toBe("allow-close");
   });
 });
 

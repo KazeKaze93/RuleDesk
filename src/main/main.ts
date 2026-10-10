@@ -63,6 +63,7 @@ import { getAppIconPath, getAppIconsDirectory } from "./lib/app-resources";
 import { getFileController, registerAllHandlers } from "./ipc/index";
 import { initializeDatabase, closeDatabase, getDb } from "./db/client";
 import {
+  decideMainWindowCloseAction,
   readMinimizeToTrayEnabled,
   revealMainWindow,
 } from "./lib/tray-window-lifecycle";
@@ -99,6 +100,11 @@ app.commandLine.appendSwitch("ignore-gpu-blacklist");
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+/**
+ * Set at the start of before-quit (before download/sync drain).
+ * Window close must allow quit and must not read settings/DB while this is true.
+ */
+let isQuitRequested = false;
 /** Set after sync drain (if any) so a second before-quit can finish cleanup idempotently. */
 let isShuttingDown = false;
 const syncScheduler = new SyncScheduler(syncService);
@@ -128,6 +134,9 @@ function stopBackgroundServicesAndCloseDb(): void {
 // call event.preventDefault(), finish cleanup, set isShuttingDown, then app.quit().
 // The second before-quit sees the flag and returns immediately so quit proceeds.
 app.on("before-quit", (event) => {
+  // Mark quit before any drain/closeDatabase so window "close" never hide-to-trays
+  // or reads settings after the DB is closed (Tray Quit + minimize-to-tray on).
+  isQuitRequested = true;
   if (isShuttingDown) {
     return;
   }
@@ -542,33 +551,29 @@ async function initializeAppAndWindow() {
     }
 
     mainWindow.on("close", (event) => {
-      if (isShuttingDown || isTestMode) {
+      const action = decideMainWindowCloseAction({
+        isQuitInProgress: isQuitRequested || isShuttingDown,
+        isTestMode,
+        platform: process.platform,
+        readMinimizeToTrayEnabled: () => {
+          try {
+            return readMinimizeToTrayEnabled(getDb());
+          } catch (error) {
+            logger.error(
+              "[Main] Failed to read minimizeToTray; defaulting to tray hide:",
+              error
+            );
+            return true;
+          }
+        },
+      });
+      if (action === "allow-close") {
         return;
       }
-      // macOS: closing the window must not quit the app (Dock convention).
-      if (process.platform === "darwin") {
-        event.preventDefault();
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.hide();
-        }
-        return;
+      event.preventDefault();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.hide();
       }
-      let minimizeToTray = true;
-      try {
-        minimizeToTray = readMinimizeToTrayEnabled(getDb());
-      } catch (error) {
-        logger.error(
-          "[Main] Failed to read minimizeToTray; defaulting to tray hide:",
-          error
-        );
-      }
-      if (minimizeToTray) {
-        event.preventDefault();
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.hide();
-        }
-      }
-      // Setting off: allow close → window-all-closed → app.quit()
     });
 
     mainWindow.on("closed", () => {
