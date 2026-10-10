@@ -41,6 +41,7 @@ import {
 } from "../../../shared/constants";
 import type { DownloadQueueItem } from "../../../shared/types/download";
 import { getSqliteInstance } from "../../db/client";
+import { onDatabaseReopened } from "../../core/di/databaseRegistration";
 import { postsFtsTableExists } from "../../db/fts-table-check";
 import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
 import { isVideoUrl } from "@shared/utils/media";
@@ -150,15 +151,11 @@ export class PostsController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
-  // Cache FTS table existence check (schema doesn't change at runtime)
-  // Initialized once at setup() to avoid blocking synchronous calls
+  // Schema existence caches — refreshed on restore/VACUUM reopen
   private ftsTableExistsCache: boolean = false;
-  // Cache optional view metadata columns presence for backward compatibility
-  // Initialized once at setup() to avoid runtime SQL errors on old DBs
+  // Optional view metadata columns (backward compat with pre-migration DBs)
   private viewMetadataColumnsAvailable: boolean = false;
-  
-  // Cache EXTERNAL_ARTIST_ID existence check (avoids repeated DB queries)
-  // Initialized once at first shadowInsertPost call
+  // EXTERNAL_ARTIST_ID row may be absent after restore from a backup without it
   private externalArtistExistsCache: boolean = false;
   
   // CRITICAL: In-flight request deduplication to prevent race conditions
@@ -176,10 +173,12 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Initialize posts view metadata columns existence check (called once at setup)
+   * Refresh schema existence caches after DB open / reopen.
    * Keeps markViewed backward-compatible with databases that haven't applied migration yet.
    */
-  private initializeViewMetadataColumnsCheck(): void {
+  private refreshSchemaCaches(): void {
+    this.ftsTableExistsCache = postsFtsTableExists(getSqliteInstance());
+    this.externalArtistExistsCache = false;
     try {
       // PRAGMA: no Drizzle equivalent
       const sqlite = getSqliteInstance();
@@ -190,7 +189,7 @@ export class PostsController extends BaseController {
       this.viewMetadataColumnsAvailable =
         columnNames.has("last_viewed_at") && columnNames.has("view_count");
       log.info(
-        `[PostsController] View metadata columns available: ${this.viewMetadataColumnsAvailable}`
+        `[PostsController] Schema caches refreshed (fts=${this.ftsTableExistsCache}, viewMetadata=${this.viewMetadataColumnsAvailable})`
       );
     } catch (error) {
       log.warn(
@@ -279,9 +278,9 @@ export class PostsController extends BaseController {
       }
     );
 
-    // Cache once at setup so runtime MATCH paths stay off the sqlite_master query.
-    this.ftsTableExistsCache = postsFtsTableExists(getSqliteInstance());
-    this.initializeViewMetadataColumnsCheck();
+    // Cache at setup; refresh again when restore/VACUUM reopens the DB.
+    this.refreshSchemaCaches();
+    onDatabaseReopened(() => this.refreshSchemaCaches());
 
     log.info("[PostsController] All handlers registered");
   }
@@ -1371,10 +1370,8 @@ export class PostsController extends BaseController {
     log.info(`[PostsController] Shadow insert attempt: postId=${request.postId}, provider=${request.provider}`);
     
     try {
-      const db = this.getDb();
-
       // Step 1: Check if post already exists in DB for this provider
-      const existingPost = db
+      const existingPost = this.getDb()
         .select()
         .from(posts)
         .where(
@@ -1404,7 +1401,6 @@ export class PostsController extends BaseController {
       // Most Booru APIs support id:postId query format.
       const tagsQuery = `id:${request.postId}`;
       const lookup = await resolvePostLookup(
-        db,
         request.provider,
         request.postId,
         async () =>
@@ -1447,6 +1443,9 @@ export class PostsController extends BaseController {
       if (booruPost.sampleUrl && booruPost.sampleUrl.trim() !== "" && !this.validateUrlProtocol(booruPost.sampleUrl)) {
         throw new Error(`Invalid sampleUrl protocol from API. Only HTTPS URLs are allowed.`);
       }
+
+      // After network await — fresh DI handle (restore/VACUUM may have reopened).
+      const db = this.getDb();
 
       // Step 4: Ensure EXTERNAL_ARTIST_ID exists (cached check)
       if (!this.externalArtistExistsCache) {

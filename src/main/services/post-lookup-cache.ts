@@ -2,6 +2,7 @@ import log from "electron-log";
 import { and, eq, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../db/schema";
+import { getDb } from "../db/client";
 import { postLookupCache } from "../db/schema";
 import { POST_LOOKUP_NOT_FOUND_TTL_MS } from "../config/post-lookup-constants";
 import type { ProviderId } from "../../shared/constants";
@@ -105,15 +106,17 @@ function upsertLookupStatus(
  * Matching post → persist found (clears a prior not_found) and return the body.
  * A cached `found` still fetches: no payload in this table.
  * Fetch throws (429/network/parse) → unresolved, not written.
+ *
+ * Writes always use getDb() after the network await — a caller-captured handle
+ * may be closed by restore/VACUUM while the fetch was in flight.
  */
 export async function resolvePostLookup(
-  db: AppDatabase,
   provider: ProviderId,
   postId: number,
   fetchFromProvider: () => Promise<BooruPost[]>,
   nowMs: Millis = nowMillis()
 ): Promise<ResolvedPostLookup> {
-  const cached = loadPostLookupCache(db, provider, postId, nowMs);
+  const cached = loadPostLookupCache(getDb(), provider, postId, nowMs);
   if (cached.status === "not_found") {
     log.info(
       `[PostLookup] hit not_found provider=${provider} postId=${postId}`
@@ -131,12 +134,13 @@ export async function resolvePostLookup(
 
   const lookupPromise = (async (): Promise<ResolvedPostLookup> => {
     const posts = await fetchFromProvider();
+    const writeDb = getDb();
     const match = posts.find((post) => post.id === postId);
     if (match === undefined) {
-      upsertLookupStatus(db, provider, postId, "not_found");
+      upsertLookupStatus(writeDb, provider, postId, "not_found");
       return { status: "not_found" };
     }
-    upsertLookupStatus(db, provider, postId, "found");
+    upsertLookupStatus(writeDb, provider, postId, "found");
     return { status: "found", post: match };
   })();
 

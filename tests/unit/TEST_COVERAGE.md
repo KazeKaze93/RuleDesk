@@ -38,6 +38,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `controllers/posts-tag-query.test.ts` | Tag query helpers |
 | `controllers/PostsController.ai-filter.test.ts` | AI filter during FTS bulk-sync window |
 | `controllers/PostsController.provider-collision.test.ts` | External post identity `(artistId, provider, postId)` — fav/view/shadow-insert isolation |
+| `controllers/PostsController.reopen-caches.test.ts` | Schema caches refresh on `onDatabaseReopened`; shadow-insert after restore without artist 0 |
 | `controllers/PostsController.silent-errors.test.ts` | Count/viewed/cache DB failures throw (not `0`/`false`/`{updatedCount:0}`) |
 | `controllers/ArtistsController.silent-errors.test.ts` | `searchArtists` DB failure throws (not `[]`) |
 | `controllers/SearchController.silent-errors.test.ts` | `resolveTagsForType` DB failure throws (not `[]`) |
@@ -53,7 +54,8 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `providers/throttle.test.ts` | Priority queue + 429 gate (`vi.useFakeTimers`) |
 | `services/tag-resolve-coordinator.test.ts` | Tag resolve dedup / rate limit |
 | `services/search-results-cache.test.ts` | Browse search SQLite TTL cache (found / not_found / unresolved, key isolation, maintenance ms) |
-| `services/post-lookup-cache.test.ts` | Single-post `id:` lookup TTL (not_found skip, 429/network unresolved, expired re-lookup, ms DELETE) |
+| `services/post-lookup-cache.test.ts` | Single-post `id:` lookup TTL (not_found skip, 429/network unresolved, expired re-lookup, getDb-after-await write, ms DELETE) |
+| `core/databaseRegistration.reopen.test.ts` | DI rebind + `onDatabaseReopened` notify after restore/VACUUM reinit |
 | `services/secure-storage.test.ts` | `SecureStorage` encrypt/decrypt |
 | `services/credentials.test.ts` | `getDecryptedApiSettings` fail-closed |
 | `services/video-proxy-server.test.ts` | Video proxy allowlist / cache / eviction |

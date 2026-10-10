@@ -22,6 +22,14 @@ vi.mock("electron-log", () => ({
   },
 }));
 
+const { getDbMock } = vi.hoisted(() => ({
+  getDbMock: vi.fn(),
+}));
+
+vi.mock("@/main/db/client", () => ({
+  getDb: () => getDbMock(),
+}));
+
 import {
   loadSearchResultsCache,
   parseSearchResultsCachePayload,
@@ -89,6 +97,7 @@ describe("search-results-cache", () => {
   beforeEach(() => {
     resetSearchResultsCacheForTests();
     mockDb = createMockDb();
+    getDbMock.mockImplementation(() => mockDb.db);
   });
 
   afterEach(() => {
@@ -103,9 +112,7 @@ describe("search-results-cache", () => {
     const cacheKey = buildSearchResultsCacheKey(baseKeyInput());
     const fetchFromProvider = vi.fn(async () => [makePost(42)]);
 
-    const first = await resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const first = await resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: true }
     );
@@ -120,9 +127,7 @@ describe("search-results-cache", () => {
     resetSearchResultsCacheForTests();
     fetchFromProvider.mockClear();
 
-    const second = await resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const second = await resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: true }
     );
@@ -138,7 +143,7 @@ describe("search-results-cache", () => {
     });
 
     await expect(
-      resolveCachedSearchPage(mockDb.db, cacheKey, fetchFromProvider, {
+      resolveCachedSearchPage(cacheKey, fetchFromProvider, {
         persistEmpty: true,
       })
     ).rejects.toMatchObject({ kind: "rate_limit" });
@@ -156,7 +161,7 @@ describe("search-results-cache", () => {
     });
 
     await expect(
-      resolveCachedSearchPage(mockDb.db, cacheKey, fetchFromProvider, {
+      resolveCachedSearchPage(cacheKey, fetchFromProvider, {
         persistEmpty: true,
       })
     ).rejects.toMatchObject({ kind: "network" });
@@ -170,9 +175,7 @@ describe("search-results-cache", () => {
     );
     const fetchFromProvider = vi.fn(async () => []);
 
-    const first = await resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const first = await resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: true }
     );
@@ -185,9 +188,7 @@ describe("search-results-cache", () => {
     expect(rows[0]?.responsePayload).toBeNull();
 
     fetchFromProvider.mockClear();
-    const second = await resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const second = await resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: true }
     );
@@ -199,9 +200,7 @@ describe("search-results-cache", () => {
     const cacheKey = buildSearchResultsCacheKey(baseKeyInput({ tags: "" }));
     const fetchFromProvider = vi.fn(async () => []);
 
-    const posts = await resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const posts = await resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: false }
     );
@@ -215,9 +214,7 @@ describe("search-results-cache", () => {
     );
     const fetchFromProvider = vi.fn(async () => []);
 
-    const first = await resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const first = await resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: true }
     );
@@ -228,9 +225,7 @@ describe("search-results-cache", () => {
     expect(row?.status).toBe("not_found");
 
     fetchFromProvider.mockClear();
-    const second = await resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const second = await resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: true }
     );
@@ -242,7 +237,7 @@ describe("search-results-cache", () => {
     const cacheKey = buildSearchResultsCacheKey(
       baseKeyInput({ tags: "empty_found_guard" })
     );
-    await resolveCachedSearchPage(mockDb.db, cacheKey, async () => [], {
+    await resolveCachedSearchPage(cacheKey, async () => [], {
       persistEmpty: true,
     });
 
@@ -275,9 +270,7 @@ describe("search-results-cache", () => {
       .run();
 
     const fetchFromProvider = vi.fn(async () => [makePost(8)]);
-    const posts = await resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const posts = await resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: true }
     );
@@ -299,15 +292,11 @@ describe("search-results-cache", () => {
       return [makePost(9)];
     });
 
-    const first = resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const first = resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: true }
     );
-    const second = resolveCachedSearchPage(
-      mockDb.db,
-      cacheKey,
+    const second = resolveCachedSearchPage(cacheKey,
       fetchFromProvider,
       { persistEmpty: true }
     );
@@ -332,9 +321,7 @@ describe("search-results-cache", () => {
     const freshKey = buildSearchResultsCacheKey(
       baseKeyInput({ tags: "fresh_page" })
     );
-    await resolveCachedSearchPage(
-      mockDb.db,
-      freshKey,
+    await resolveCachedSearchPage(freshKey,
       async () => [makePost(1)],
       { persistEmpty: true }
     );

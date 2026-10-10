@@ -2,6 +2,7 @@ import log from "electron-log";
 import { inArray, sql } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../db/schema";
+import { getDb } from "../db/client";
 import { TAG_TYPES, tagMetadata } from "../db/schema";
 import { getProvider } from "../providers";
 import type { IBooruProvider, ProviderSettings } from "../providers/types";
@@ -310,8 +311,12 @@ function upsertNotFoundEntries(
   }
 }
 
+/**
+ * Resolve missing tag_metadata rows via the Rule34 tag API.
+ * Persist uses getDb() after the network wave — a caller-captured handle may be
+ * closed by restore/VACUUM while lookups were in flight.
+ */
 export async function resolveTagMetadataWave(
-  db: AppDatabase,
   uniqueTags: string[],
   cache: TagMetadataCacheState,
   settings: ProviderSettings,
@@ -382,8 +387,9 @@ export async function resolveTagMetadataWave(
     item.result === null ? [item.tagName] : []
   );
 
-  upsertFoundEntries(db, resolvedEntries, foundTypes);
-  upsertNotFoundEntries(db, notFoundNames, activeNotFound);
+  const writeDb = getDb();
+  upsertFoundEntries(writeDb, resolvedEntries, foundTypes);
+  upsertNotFoundEntries(writeDb, notFoundNames, activeNotFound);
 
   for (const tagName of unresolvedNames) {
     log.debug(
