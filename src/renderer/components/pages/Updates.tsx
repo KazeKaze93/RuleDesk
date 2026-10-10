@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useInfiniteQuery,
   useQuery,
@@ -519,10 +519,16 @@ export const Updates = () => {
     });
   };
 
+  const triggerLoadMore = useCallback(() => {
+    void handleLoadMore().catch((error: unknown) => {
+      log.error("[Updates] Failed to load more posts:", error);
+    });
+  }, [handleLoadMore]);
+
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: handleLoadMore,
+    onLoadMore: triggerLoadMore,
   });
 
   useEffect(() => {
@@ -703,7 +709,7 @@ export const Updates = () => {
             className="h-full"
             aria-busy={listAriaBusy}
             totalCount={allPosts.length}
-            endReached={handleLoadMore}
+            endReached={triggerLoadMore}
             increaseViewportBy={600}
             components={{
               List: ListComponent,

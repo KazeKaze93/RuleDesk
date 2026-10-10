@@ -409,7 +409,11 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
                     preserveAspect={false}
                     context="playlist"
                     onRemoveFromPlaylist={
-                      !playlist.isSmart ? () => handleRemovePost(post.id) : undefined
+                      !playlist.isSmart
+                        ? () => {
+                            void handleRemovePost(post.id);
+                          }
+                        : undefined
                     }
                   />
                 </MasonryItemContainer>
@@ -438,7 +442,9 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
                       key={getPostCardKey(post)}
                       post={post}
                       onClick={() => handlePostClick(index)}
-                      onRemove={() => handleRemovePost(post.id)}
+                      onRemove={() => {
+                        void handleRemovePost(post.id);
+                      }}
                     />
                   ))}
                 </div>
@@ -473,7 +479,11 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
                   onClick={() => handlePostClick(index)}
                   context="playlist"
                   onRemoveFromPlaylist={
-                    !playlist.isSmart ? () => handleRemovePost(post.id) : undefined
+                    !playlist.isSmart
+                      ? () => {
+                          void handleRemovePost(post.id);
+                        }
+                      : undefined
                   }
                 />
               );

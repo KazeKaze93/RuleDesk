@@ -358,7 +358,13 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             <h1 className="text-xl font-semibold">Playlists</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleImportPlaylist} disabled={isImporting}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void handleImportPlaylist();
+              }}
+              disabled={isImporting}
+            >
               {isImporting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -551,16 +557,17 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             <Button
               variant="destructive"
               disabled={clearingPlaylistId !== null}
-              onClick={async (e) => {
+              onClick={(e) => {
                 e.preventDefault();
                 if (!playlistToClear) {
                   return;
                 }
                 const pl = playlistToClear;
-                const ok = await handleClearAllPostsInPlaylist(pl);
-                if (ok) {
-                  setPlaylistToClear(null);
-                }
+                void handleClearAllPostsInPlaylist(pl).then((ok) => {
+                  if (ok) {
+                    setPlaylistToClear(null);
+                  }
+                });
               }}
             >
               {clearingPlaylistId !== null ? "Clearing…" : "Clear all"}
@@ -713,7 +720,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
               Cancel
             </Button>
             <Button
-              onClick={handleCreatePlaylist}
+              onClick={() => {
+                void handleCreatePlaylist();
+              }}
               disabled={
                 isCreating || 
                 !newPlaylistName.trim() || 
@@ -768,7 +777,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeletePlaylist}
+              onClick={() => {
+                void handleDeletePlaylist();
+              }}
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -894,7 +905,9 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
               Cancel
             </Button>
             <Button
-              onClick={handleUpdatePlaylist}
+              onClick={() => {
+                void handleUpdatePlaylist();
+              }}
               disabled={
                 isEditing || 
                 !newPlaylistName.trim() || 

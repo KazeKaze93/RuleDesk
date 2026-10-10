@@ -77,7 +77,9 @@ export function BrowseErrorState({
         {showOpenSettings ? (
           <Button
             type="button"
-            onClick={() => navigate("/settings")}
+            onClick={() => {
+              void navigate("/settings");
+            }}
           >
             Open Settings
           </Button>

@@ -344,7 +344,11 @@ export const Browse = () => {
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: handleLoadMore,
+    onLoadMore: () => {
+      void handleLoadMore().catch((error: unknown) => {
+        log.error("[Browse] Failed to load more posts:", error);
+      });
+    },
   });
 
   const viewMutation = useMutation({

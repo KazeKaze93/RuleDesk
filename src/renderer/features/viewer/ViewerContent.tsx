@@ -170,7 +170,11 @@ export const ViewerContent = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleToggleFavorite}
+            onClick={() => {
+              void handleToggleFavorite().catch((error: unknown) => {
+                log.error("[ViewerContent] Failed to toggle favorite:", error);
+              });
+            }}
             className="text-white rounded-full hover:bg-white/10"
             aria-label={ctrl.isFavorited ? "Remove from favorites" : "Add to favorites"}
             title="Toggle Favorite (F)"
@@ -186,7 +190,9 @@ export const ViewerContent = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleMarkViewed}
+            onClick={() => {
+              void handleMarkViewed();
+            }}
             className="text-white rounded-full hover:bg-white/10"
             aria-label={post.isViewed ? "Mark as unviewed" : "Mark as viewed"}
             title="Mark as Viewed (V)"
@@ -233,7 +239,9 @@ export const ViewerContent = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={ctrl.downloadImage}
+            onClick={() => {
+              void ctrl.downloadImage();
+            }}
             disabled={ctrl.isCurrentlyDownloading}
             className="overflow-hidden relative text-white rounded-full hover:bg-white/10 group"
             aria-label={
@@ -306,31 +314,41 @@ export const ViewerContent = ({
                     )}
                   >
                     <DropdownMenuItem
-                      onClick={() => ctrl.handleCopyText(String(post.postId))}
+                      onClick={() => {
+                        void ctrl.handleCopyText(String(post.postId));
+                      }}
                     >
                       Copy post ID
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => ctrl.handleCopyText(ctrl.postPageUrl)}
+                      onClick={() => {
+                        void ctrl.handleCopyText(ctrl.postPageUrl);
+                      }}
                     >
                       Copy post link
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       disabled={!post.tags}
-                      onClick={() => ctrl.handleCopyText(post.tags || "")}
+                      onClick={() => {
+                        void ctrl.handleCopyText(post.tags || "");
+                      }}
                     >
                       Copy tags (all)
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!ctrl.tagQuery}
-                      onClick={() => ctrl.handleCopyText(ctrl.tagQuery)}
+                      onClick={() => {
+                        void ctrl.handleCopyText(ctrl.tagQuery);
+                      }}
                     >
                       Copy tags (query)
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => ctrl.handleCopyText(post.fileUrl)}
+                      onClick={() => {
+                        void ctrl.handleCopyText(post.fileUrl);
+                      }}
                     >
                       Copy file URL
                     </DropdownMenuItem>
@@ -342,12 +360,20 @@ export const ViewerContent = ({
 
               <DropdownMenuLabel>Open</DropdownMenuLabel>
               <DropdownMenuItem
-                onClick={() => ctrl.handleOpenExternal(ctrl.postPageUrl)}
+                onClick={() => {
+                  ctrl.handleOpenExternal(ctrl.postPageUrl);
+                }}
               >
                 <ExternalLink className="mr-2 w-4 h-4" />
                 Open post page
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={ctrl.openFolder}>
+              <DropdownMenuItem
+                onClick={() => {
+                  void ctrl.openFolder().catch((error: unknown) => {
+                    log.error("[ViewerContent] Failed to open folder:", error);
+                  });
+                }}
+              >
                 <Folder className="mr-2 w-4 h-4" />
                 Reveal in folder
               </DropdownMenuItem>
@@ -355,7 +381,11 @@ export const ViewerContent = ({
               <DropdownMenuSeparator />
 
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={ctrl.downloadImage}>
+              <DropdownMenuItem
+                onClick={() => {
+                  void ctrl.downloadImage();
+                }}
+              >
                 <Download className="mr-2 w-4 h-4" />
                 Re-download original
               </DropdownMenuItem>
@@ -365,15 +395,27 @@ export const ViewerContent = ({
               {isDeveloperMode && (
                 <>
                   <DropdownMenuLabel>Developer</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={ctrl.resetLocalCache}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      ctrl.resetLocalCache();
+                    }}
+                  >
                     <RefreshCw className="mr-2 w-4 h-4" />
                     Reset local cache
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={ctrl.handleCopyMetadata}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      void ctrl.handleCopyMetadata();
+                    }}
+                  >
                     <FileText className="mr-2 w-4 h-4" />
                     Show metadata
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={ctrl.handleCopyDebugInfo}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      void ctrl.handleCopyDebugInfo();
+                    }}
+                  >
                     <Bug className="mr-2 w-4 h-4" />
                     Copy debug info
                   </DropdownMenuItem>

@@ -363,22 +363,24 @@ function scheduleDeferredStartupTasks(window: BrowserWindow): void {
     backupService.checkAndRunAutoBackup();
   }, 5000);
 
-  setTimeout(async () => {
-    try {
-      const db = getDb();
-      const currentSettings = await db.query.settings.findFirst({
-        where: eq(settings.id, SETTINGS_ID),
-      });
-
-      if (currentSettings?.autoSyncOnStartup && !syncService.getIsSyncing()) {
-        logger.info("[Main] Auto-sync on startup triggered");
-        syncService.syncAllArtists().catch((error) => {
-          logger.error("[Main] Auto-sync on startup failed:", error);
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const db = getDb();
+        const currentSettings = await db.query.settings.findFirst({
+          where: eq(settings.id, SETTINGS_ID),
         });
+
+        if (currentSettings?.autoSyncOnStartup && !syncService.getIsSyncing()) {
+          logger.info("[Main] Auto-sync on startup triggered");
+          syncService.syncAllArtists().catch((error) => {
+            logger.error("[Main] Auto-sync on startup failed:", error);
+          });
+        }
+      } catch (error) {
+        logger.error("[Main] Failed to check auto-sync setting:", error);
       }
-    } catch (error) {
-      logger.error("[Main] Failed to check auto-sync setting:", error);
-    }
+    })();
   }, 2000);
 
   setTimeout(() => {

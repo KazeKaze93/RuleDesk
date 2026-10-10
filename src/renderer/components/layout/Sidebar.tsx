@@ -214,7 +214,9 @@ export const Sidebar = () => {
         {/* Sync Status Footer */}
         <div className="relative z-10 p-4 space-y-2 border-t bg-muted/20 shrink-0 [@media(max-height:700px)]:p-3">
           <button
-            onClick={handleSync}
+            onClick={() => {
+              void handleSync();
+            }}
             disabled={isSyncing}
             className={cn(
               "flex gap-3 items-center w-full text-left rounded-md transition-all hover:bg-background/50 p-1 -ml-1",
@@ -239,7 +241,9 @@ export const Sidebar = () => {
             {lastSyncText}
           </p>
           <button
-            onClick={handleLogout}
+            onClick={() => {
+              void handleLogout();
+            }}
             className="flex gap-3 items-center p-2 -ml-1 w-full text-left rounded-md transition-all text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             title="Log out"
           >

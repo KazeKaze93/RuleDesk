@@ -246,10 +246,16 @@ export const Favorites = () => {
     });
   };
 
+  const triggerLoadMore = useCallback(() => {
+    void handleLoadMore().catch((error: unknown) => {
+      log.error("[Favorites] Failed to load more posts:", error);
+    });
+  }, [handleLoadMore]);
+
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: handleLoadMore,
+    onLoadMore: triggerLoadMore,
   });
 
   const handleBulkRemove = useCallback(
@@ -360,7 +366,7 @@ export const Favorites = () => {
               className="h-full"
               aria-busy={listAriaBusy}
               totalCount={allPosts.length}
-              endReached={handleLoadMore}
+              endReached={triggerLoadMore}
               increaseViewportBy={600}
               components={{
                 List: ListComponent,

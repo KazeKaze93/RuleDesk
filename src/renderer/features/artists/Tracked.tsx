@@ -141,7 +141,9 @@ export const Tracked = () => {
       <AddArtistModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddArtist}
+        onAdd={(name, tag, type, provider) => {
+          void handleAddArtist(name, tag, type, provider);
+        }}
         returnFocusToRef={addModalReturnFocusRef}
       />
     </div>

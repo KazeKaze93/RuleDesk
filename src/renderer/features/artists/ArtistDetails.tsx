@@ -19,7 +19,12 @@ export const ArtistDetails = () => {
     return (
       <div className="flex flex-col gap-4 p-8">
         <div className="text-destructive">Artist not found (ID: {id})</div>
-        <Button variant="outline" onClick={() => navigate("/tracked")}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            void navigate("/tracked");
+          }}
+        >
           Back to Artists
         </Button>
       </div>
@@ -27,7 +32,12 @@ export const ArtistDetails = () => {
   }
   return (
     <div className="flex flex-col h-full">
-      <ArtistGallery artist={artist} onBack={() => navigate("/tracked")} />
+      <ArtistGallery
+        artist={artist}
+        onBack={() => {
+          void navigate("/tracked");
+        }}
+      />
     </div>
   );
 };

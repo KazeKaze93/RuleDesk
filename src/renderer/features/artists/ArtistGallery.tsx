@@ -176,7 +176,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: handleLoadMore,
+    onLoadMore: () => {
+      void handleLoadMore().catch((error: unknown) => {
+        log.error("[ArtistGallery] Failed to load more posts:", error);
+      });
+    },
   });
 
   const handlePostClick = (index: number) => {
@@ -291,7 +295,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
 
         <div className="flex gap-2">
           <DownloadAllButton
-            onClick={downloadAll}
+            onClick={() => {
+              void downloadAll();
+            }}
             onCancel={cancel}
             onPause={pause}
             onResume={resume}
@@ -305,7 +311,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRepairSync}
+            onClick={() => {
+              void handleRepairSync();
+            }}
             title="Resynchronize first pages to update low-quality previews"
           >
             <Wrench className="w-4 h-4 sm:mr-2" />
@@ -314,11 +322,15 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              window.api.openExternal(
-                `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
-              )
-            }
+            onClick={() => {
+              void window.api
+                .openExternal(
+                  `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
+                )
+                .catch((error: unknown) => {
+                  log.error("[ArtistGallery] Failed to open artist on web:", error);
+                });
+            }}
           >
             <ExternalLink className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Web</span>

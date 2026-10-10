@@ -132,7 +132,14 @@ export function AddArtistModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
+        <form
+          onSubmit={(event) => {
+            void handleSubmit((data) => {
+              onSubmit(data);
+            })(event);
+          }}
+          className="p-6 space-y-5"
+        >
           <div className="space-y-1.5">
             <Label htmlFor="provider-select" className="ml-1 text-xs font-medium text-muted-foreground">
               Provider
