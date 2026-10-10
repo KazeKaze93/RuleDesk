@@ -1,13 +1,18 @@
 /**
- * Opt-in smokes for before-quit (real Electron app.quit(), same entry as tray Quit).
+ * Manual before-quit smoke helpers (NOT imported by production main).
+ * Wire temporarily under `isTestMode` in main only for local verification, then remove.
  *
+ * Env:
  * - RULEDESK_SMOKE_QUIT_DURING_DOWNLOAD=1 — hung download, then app.quit()
  * - RULEDESK_SMOKE_IDLE_QUIT_MS=<ms> — app.quit() after delay with no downloads
+ * - RULEDESK_DOWNLOAD_DRAIN_MS=0 — force cancel drain timeout path (prod default remains DOWNLOAD_SHUTDOWN_DRAIN_MS)
+ *
+ * Import path when wired: `../../tests/manual/quit-during-download-smoke`
  */
 import http from "node:http";
 import { app } from "electron";
 import log from "electron-log";
-import { getFileController } from "../ipc/index";
+import { getFileController } from "../../src/main/ipc/index";
 
 const SMOKE_QUIT_DELAY_MS = 800;
 

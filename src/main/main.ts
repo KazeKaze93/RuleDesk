@@ -515,18 +515,6 @@ async function initializeAppAndWindow() {
     );
     reloadProxyFromSettings();
 
-    if (
-      process.env.RULEDESK_SMOKE_QUIT_DURING_DOWNLOAD === "1" ||
-      (process.env.RULEDESK_SMOKE_IDLE_QUIT_MS !== undefined &&
-        process.env.RULEDESK_SMOKE_IDLE_QUIT_MS !== "")
-    ) {
-      void import("./lib/quit-during-download-smoke").then(
-        ({ maybeRunQuitDuringDownloadSmoke }) => {
-          maybeRunQuitDuringDownloadSmoke();
-        }
-      );
-    }
-
     import("./db/backfill-media-type").then(({ backfillMediaType }) => {
       backfillMediaType().catch((error) => {
         logger.error("[Main] Background media_type backfill failed:", error);
