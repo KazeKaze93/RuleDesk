@@ -195,6 +195,7 @@ describe("PlaylistController smart remote resolve", () => {
 
     expect(fetchPostsMock.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(resolved).toHaveLength(3);
-    expect(resolved.map((p) => p.postId)).toEqual([3, 4, 5]);
+    // Default smart sort is publishedAt/postId desc; makePost shares one timestamp → postId desc.
+    expect(resolved.map((p) => p.postId)).toEqual([5, 4, 3]);
   });
 });
