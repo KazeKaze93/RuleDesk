@@ -3,7 +3,6 @@ import path from "path";
 import fs from "fs";
 import Database from "better-sqlite3";
 import { drizzle, BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import log from "electron-log";
 import * as schema from "./schema";
 import { logger } from "../lib/logger";
@@ -254,10 +253,10 @@ export async function initializeDatabase(): Promise<AppDatabase> {
 
           const migrationEntries = readMigrationJournal(migrationsFolder);
           if (!migrationEntries) {
-            logger.warn("[DB] Could not read migration journal, using standard migrate");
-            migrate(dbInstance, { migrationsFolder });
-            resolve();
-            return;
+            throw new Error(
+              `Could not read migration journal at ${path.join(migrationsFolder, "meta", "_journal.json")}. ` +
+                "Refusing to fall back to drizzle migrate(); fix or restore the journal before starting."
+            );
           }
 
           ensureDrizzleMigrationsTable(sqliteInstance);

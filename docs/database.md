@@ -792,6 +792,8 @@ This creates a new migration file in the `drizzle/` directory.
 
 Migrations are automatically run on application startup via `initializeDatabase()` in `src/main/db/client.ts`, using the manual runner in `src/main/db/migration-runner.ts` (not Drizzle's stock `migrate()` for the normal path).
 
+If `drizzle/meta/_journal.json` is missing or unreadable, startup **throws** an explicit error and does **not** fall back to Drizzle's stock `migrate()`. Fix or restore the journal before launching.
+
 **Safety guarantees on upgrade:**
 
 1. **Pre-migration snapshot** — If `__drizzle_migrations` already has rows and the journal still has unapplied tags, `VACUUM INTO` writes `${dbPath}.pre-migration-snapshot.bin` **before** applying any pending file. Fresh installs (empty migration table) skip the snapshot. The snapshot is deleted only after a fully successful `initializeDatabase()` (migrations + FTS trigger ensure + stale sync reset). On failure it remains on disk for recovery.
@@ -828,6 +830,8 @@ Migrations are stored in `drizzle/`:
   - `meta/*_snapshot.json` - Schema snapshots
 
 **Note:** Commit both SQL migrations and `drizzle/meta/` updates after `npm run db:generate`. There is no `drizzle/migrations.json` in this repo.
+
+**Journal tag numbers are historical, not monotonic:** Entry tags (e.g. `0000_…`, `0004_…`, two distinct `0008_…` / `0015_…` tags, a skipped `0028`) are stable identities recorded in `__drizzle_migrations`. Gaps, reused prefixes, and out-of-order numeric prefixes are expected legacy — **do not rewrite** `_journal.json` or rename applied SQL files to “fix” numbering. New migrations append a new unique tag; never renumber past entries.
 
 **Example Migration:**
 

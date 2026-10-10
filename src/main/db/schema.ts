@@ -80,10 +80,6 @@ export const artists = sqliteTable(
       t.provider,
       t.tag
     ),
-    // Note: Expression index for COALESCE(lastChecked, createdAt) is created via migration
-    // See drizzle/0003_add_artists_sort_index.sql
-    // Drizzle doesn't support expression indexes directly, so we use raw SQL in migration
-    // Individual column indexes are kept for other potential queries
     lastCheckedIdx: index("artists_lastChecked_idx").on(t.lastChecked),
     createdAtIdx: index("artists_createdAt_idx").on(t.createdAt),
   })
