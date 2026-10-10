@@ -5,7 +5,7 @@ import {
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
-import { Search, Loader2, CheckSquare } from "lucide-react";
+import { Search, Loader2, CheckSquare, ExternalLink } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { toast } from "sonner";
@@ -18,6 +18,8 @@ import {
   toBrowseSearchError,
 } from "../../utils/provider-search-error";
 import { BrowseErrorState } from "../browse/BrowseErrorState";
+import { TrackAndDownloadButton } from "../browse/TrackAndDownloadButton";
+import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { useViewerStore } from "../../store/viewerStore";
 import {
   buildBooruTagListForIpc,
@@ -34,14 +36,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
-import { ExternalLink } from "lucide-react";
 import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { useWorkerFilteredPosts } from "../../hooks/useWorkerFilteredPosts";
 import type { WorkerFilterConfig } from "../../hooks/useWorkerProcessor";
+import { useDownloadAll } from "../../hooks/useDownloadAll";
+import { useTrackAndDownloadArtist } from "../../hooks/useTrackAndDownloadArtist";
 import type { Post } from "@shared/types/db";
 import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
-import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import {
+  EXTERNAL_ARTIST_ID,
+  type ProviderId,
+} from "../../../shared/constants";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import type { SearchBooruPageResult, BrowseSearchPageParam } from "../../../shared/schemas/search";
@@ -124,7 +130,7 @@ export const Browse = () => {
     queryKey: ["settings"],
     queryFn: () => window.api.getSettings(),
   });
-  const provider = settings?.provider ?? "rule34";
+  const provider: ProviderId = settings?.provider ?? "rule34";
 
   const { tags: remoteSearchTags, aiInjected, mediaInjected } = useMemo(
     () =>
@@ -302,6 +308,31 @@ export const Browse = () => {
     () => displayPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
     [displayPosts, selectedIds]
   );
+
+  const {
+    downloadAll,
+    cancel: cancelLoadedDownload,
+    pause: pauseLoadedDownload,
+    resume: resumeLoadedDownload,
+    isDownloading: isDownloadingLoaded,
+    isPaused: isLoadedDownloadPaused,
+    progress: loadedDownloadProgress,
+    lastFailures: loadedDownloadFailures,
+    canDownload: canDownloadLoaded,
+    loadedCount,
+  } = useDownloadAll(displayPosts);
+
+  const {
+    canShowAction: canShowTrackAndDownload,
+    phase: trackAndDownloadPhase,
+    isPaused: isTrackAndDownloadPaused,
+    progress: trackAndDownloadProgress,
+    trackAndDownload,
+    cancel: cancelTrackAndDownload,
+    pause: pauseTrackAndDownload,
+    resume: resumeTrackAndDownload,
+  } = useTrackAndDownloadArtist(includeTags, provider);
+
   const hasFilteredOutResults =
     workerEnabled && rawPosts.length > 0 && displayPosts.length === 0;
   const isFatalSearchError = isSearchError && rawPosts.length === 0;
@@ -423,6 +454,34 @@ export const Browse = () => {
             Browse
           </h2>
           <div className="ml-auto flex items-center gap-2">
+            <DownloadAllButton
+              onClick={() => {
+                void downloadAll();
+              }}
+              onCancel={cancelLoadedDownload}
+              onPause={pauseLoadedDownload}
+              onResume={resumeLoadedDownload}
+              isDownloading={isDownloadingLoaded}
+              isPaused={isLoadedDownloadPaused}
+              progress={loadedDownloadProgress}
+              canDownload={canDownloadLoaded}
+              totalLabel={loadedCount}
+              labelMode="loaded"
+              failures={loadedDownloadFailures}
+            />
+            {canShowTrackAndDownload ? (
+              <TrackAndDownloadButton
+                onClick={() => {
+                  void trackAndDownload();
+                }}
+                onCancel={cancelTrackAndDownload}
+                onPause={pauseTrackAndDownload}
+                onResume={resumeTrackAndDownload}
+                phase={trackAndDownloadPhase}
+                isPaused={isTrackAndDownloadPaused}
+                progress={trackAndDownloadProgress}
+              />
+            ) : null}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

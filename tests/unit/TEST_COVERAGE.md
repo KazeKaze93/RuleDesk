@@ -15,7 +15,9 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `helpers/mock-db.test.ts` | Canonical in-memory `createMockDb` (migrations, isolation) |
 | `hooks/useGalleryInfiniteScroll.test.ts` | Real `useGalleryInfiniteScroll` (Browse next-page param, debounce, unmount cleanup) |
 | `hooks/useMasonryInfiniteScroll.test.ts` | Real `useMasonryInfiniteScroll` (threshold, debounce, leave-zone re-arm, no at-bottom cascade) |
+| `hooks/useTrackAndDownloadArtist.test.tsx` | Browse Track & download gating + add/sync/download orchestration (mocked IPC) |
 | `hooks/useWorkerFilteredPosts.test.ts` | Worker post → Post field mapping |
+| `lib/browse-track-download.test.ts` | Single-include-tag gate + ensureArtistTrackedAndSynced (no duplicate add; sync fail/cancel) |
 | `lib/filter-utils.test.ts` | AI tag tokens, video URL detection |
 | `lib/backup-retention-size-cap.test.ts` | Backup size-cap prune |
 | `lib/media-cache-eviction.test.ts` | Video-cache LRU last-accessed selection (not mtime; skip open readers) |
