@@ -11,6 +11,7 @@
 - The same artist name can be tracked separately on Rule34 and Gelbooru without overwriting each other.
 - More reliable database behavior: maintenance and repair no longer leave the library in a bad state; playlist import is safer; failures surface as real errors instead of empty results.
 - Faster artist galleries and Stats after sync, including smoother Sync All and blacklist filtering.
+- Download progress is saved reliably on Windows during large downloads (no more failed queue saves).
 
 ## Important
 
@@ -37,3 +38,5 @@ On first launch after this update, RuleDesk upgrades your database automatically
 - https://github.com/KazeKaze93/RuleDesk/pull/212
 - https://github.com/KazeKaze93/RuleDesk/pull/213
 - https://github.com/KazeKaze93/RuleDesk/pull/214
+- https://github.com/KazeKaze93/RuleDesk/pull/216
+- https://github.com/KazeKaze93/RuleDesk/pull/217
