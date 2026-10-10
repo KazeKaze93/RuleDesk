@@ -649,7 +649,7 @@ The application redirects `userData` to a neutral `RuleDesk-Data` directory. Dev
 
 - **Windows:**
   - Database: `%LOCALAPPDATA%\RuleDesk-Data\data.bin`
-  - Logs: `%LOCALAPPDATA%\RuleDesk-Data\logs\app.log`
+  - Logs (only active file): `%LOCALAPPDATA%\RuleDesk-Data\logs\app.log` — ignore any leftover `%APPDATA%\RuleDesk\logs\` from older builds or tools
   - Backup schedule: `%LOCALAPPDATA%\RuleDesk-Data\backup-settings.json`
   - DB backups: `%LOCALAPPDATA%\RuleDesk-Backups\`
 - **macOS:** `~/Library/Application Support/RuleDesk-Data/` (backups: `…/RuleDesk-Backups/`)

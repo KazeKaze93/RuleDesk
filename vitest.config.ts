@@ -39,6 +39,7 @@ export default defineConfig({
     // Node environment for Main Process testing (native modules work here)
     globals: true,
     environment: 'node',
+    setupFiles: ['./tests/vitest-setup-logger.ts'],
     
     // Timeout adjustment for Electron startup overhead and native module loading
     testTimeout: 15000,

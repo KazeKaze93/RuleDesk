@@ -4,24 +4,17 @@ import path from "path";
 import { app } from "electron";
 import { redactLogData } from "@shared/utils/log-redaction";
 
-// Disable separate main.log and renderer.log files (they're useless duplicates)
-// electron-log creates these by default, but we want a single unified app.log
-// This configuration applies to both main and renderer processes
-if (log.transports.main) {
-  log.transports.main.level = false; // Disable main.log (only contains DI init message)
-}
-if (log.transports.renderer) {
-  log.transports.renderer.level = false; // Disable renderer.log (duplicate of app.log)
-}
-
-// Configure unified app.log for all processes (main + renderer)
-// All logs from both processes will go to this single file, preserving chronological order
-//
-// SAFETY: electron-log handles concurrent writes safely:
-// - Renderer process logs are sent to main process via IPC (log.transports.ipc)
-// - Main process writes all logs (its own + received from renderer) to file sequentially
-// - This prevents race conditions and file corruption from concurrent writes
-// - electron-log uses internal queue for IPC log messages, ensuring order preservation
+/**
+ * Single log file for the app.
+ *
+ * electron-log v5 only exposes `console` / `file` / `ipc` / `remote` (no
+ * `transports.main` / `transports.renderer`). The file transport defaults to
+ * `{processType}.log` under Electron's product userData
+ * (`%APPDATA%\\RuleDesk\\logs\\main.log`). After bootstrap redirects userData
+ * to `RuleDesk-Data`, we force `logs/app.log` there so Help → Open logs folder
+ * and runtime writes share one path. Redaction hooks attach below.
+ */
+log.transports.file.fileName = "app.log";
 log.transports.file.resolvePathFn = () => {
   const userDataDir =
     process.type === "browser"

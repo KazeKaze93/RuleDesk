@@ -1,10 +1,12 @@
 import "./bootstrap-user-data";
+// Configure unified app.log + redaction before any other module logs.
+import { logger } from "./lib/logger";
 import { app, BrowserWindow, dialog, Tray, nativeImage, Menu, session } from "electron";
 import path from "node:path";
 import { existsSync, writeFileSync } from "fs";
 import log from "electron-log";
 
-// === Initialize electron-log first ===
+// === Initialize electron-log IPC bridge (path/hooks already set via logger import) ===
 log.initialize();
 
 // === E2E CRASH LOGGING ===
@@ -63,7 +65,6 @@ import { initializeDatabase, closeDatabase, getDb } from "./db/client";
 import { getBackupDirectory, getDatabasePaths, getLegacyNeutralUserDataDir } from "./db/paths";
 import { migrateBackupDirectory } from "./db/backup-dir-migrate";
 import { SYNC_SHUTDOWN_DRAIN_MS } from "./config/constants";
-import { logger } from "./lib/logger";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 import { SyncScheduler } from "./services/sync-scheduler";
