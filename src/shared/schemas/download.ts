@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { IdSchema } from "./ipc";
 import { PostFilterSchema } from "./post";
-import { BATCH_DOWNLOAD_LIST_MAX_FILES } from "../constants";
 
 const MAX_FILENAME_LENGTH = 200;
 
@@ -25,9 +24,13 @@ export const DownloadAllArtistRequestSchema = z.object({
   filters: PostFilterSchema.optional(),
 });
 
+/**
+ * No .max() on items — oversize must return a typed DownloadAllResult from the
+ * controller, not a Zod ValidationError across IPC.
+ */
 export const DownloadAllListRequestSchema = z.object({
   kind: z.literal("list"),
-  items: z.array(DownloadAllItemSchema).max(BATCH_DOWNLOAD_LIST_MAX_FILES),
+  items: z.array(DownloadAllItemSchema),
 });
 
 /** Discriminated union for mass-download IPC entry. */

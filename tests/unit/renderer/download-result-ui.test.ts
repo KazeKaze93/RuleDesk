@@ -26,6 +26,19 @@ describe("download-result-ui", () => {
     expect(toast.error).toHaveBeenCalledTimes(1);
   });
 
+  it("shows typed over-limit IPC error (not a generic exception toast)", async () => {
+    const { presentDownloadAllResult } = await import(
+      "../../../src/renderer/lib/download-result-ui"
+    );
+    const { buildListOverLimitResult } = await import(
+      "../../../src/shared/utils/download-list-limit"
+    );
+    const result = buildListOverLimitResult(5001);
+    presentDownloadAllResult(result);
+    expect(toast.error).toHaveBeenCalledWith(result.error);
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
   it("does not toast success for soft-fail results", async () => {
     const { presentDownloadAllResult } = await import(
       "../../../src/renderer/lib/download-result-ui"

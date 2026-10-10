@@ -129,15 +129,28 @@ async function runWorker(): Promise<void> {
       ? new HttpsProxyAgent(proxyUrl)
       : undefined;
 
-  parentPort?.on("message", (msg: { type: string }) => {
+  const persistAcks = new Map<string, () => void>();
+
+  parentPort?.on("message", (msg: { type: string; id?: string }) => {
     if (msg.type === "cancel") {
       aborted = true;
       for (const controller of activeControllers) {
         controller.abort();
       }
+      for (const resolve of persistAcks.values()) {
+        resolve();
+      }
+      persistAcks.clear();
     }
     if (msg.type === "pause") paused = true;
     if (msg.type === "resume") paused = false;
+    if (msg.type === "item-persisted" && typeof msg.id === "string") {
+      const resolve = persistAcks.get(msg.id);
+      if (resolve) {
+        persistAcks.delete(msg.id);
+        resolve();
+      }
+    }
   });
 
   const post = (m: WorkerOutboundMessage) => parentPort?.postMessage(m);
@@ -186,11 +199,28 @@ async function runWorker(): Promise<void> {
     });
   };
 
+  const ITEM_PERSIST_ACK_TIMEOUT_MS = 10_000;
+
   const markCompleted = async (filename: string) => {
     completedIds.push(filename);
     downloaded++;
-    post({ type: "item-completed", id: filename });
-    await persistQueueState();
+    // File is already on disk. Notify Main, then wait for queue ack when Main owns persistence.
+    if (!persistQueue) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          persistAcks.delete(filename);
+          resolve();
+        }, ITEM_PERSIST_ACK_TIMEOUT_MS);
+        persistAcks.set(filename, () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        post({ type: "item-completed", id: filename });
+      });
+    } else {
+      post({ type: "item-completed", id: filename });
+      await persistQueueState();
+    }
   };
 
   const recordFailure = (

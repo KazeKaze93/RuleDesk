@@ -23,7 +23,17 @@ import {
   parseDownloadQueueFile,
   writeDownloadQueueAtomic,
 } from "../../lib/download-queue-file";
+import {
+  advanceArtistCursor,
+  applyArtistItemCompleted,
+  planArtistChunk,
+  shouldAdvanceArtistCursorAfterChunk,
+} from "../../lib/mass-download-artist-state";
 import type { PostsController } from "./PostsController";
+import {
+  buildListOverLimitResult,
+  isListOverLimit,
+} from "../../../shared/utils/download-list-limit";
 
 /** Allows quit-smoke to force a short cancel drain (milliseconds). */
 function resolveDownloadShutdownDrainMs(): number {
@@ -39,10 +49,7 @@ function resolveDownloadShutdownDrainMs(): number {
 }
 import { IPC_CHANNELS } from "../channels";
 import { isResolvedPathWithinBase } from "../../utils/path-within-base";
-import {
-  BATCH_DOWNLOAD_CHUNK_SIZE,
-  BATCH_DOWNLOAD_LIST_MAX_FILES,
-} from "../../../shared/constants";
+import { BATCH_DOWNLOAD_CHUNK_SIZE } from "../../../shared/constants";
 import { isErrnoException } from "../../../shared/utils/type-guards";
 import {
   DownloadAllRequestSchema,
@@ -552,22 +559,17 @@ export class FileController extends BaseController {
   private async downloadAll(
     request: DownloadAllRequest
   ): Promise<DownloadAllResult> {
+    // Length cap before Zod so oversize never becomes an IPC ValidationError.
+    if (
+      request.kind === "list" &&
+      Array.isArray(request.items) &&
+      isListOverLimit(request.items.length)
+    ) {
+      return buildListOverLimitResult(request.items.length);
+    }
+
     const parsed = DownloadAllRequestSchema.safeParse(request);
     if (!parsed.success) {
-      if (
-        request.kind === "list" &&
-        Array.isArray(request.items) &&
-        request.items.length > BATCH_DOWNLOAD_LIST_MAX_FILES
-      ) {
-        return {
-          success: false,
-          downloaded: 0,
-          failed: [],
-          canceled: false,
-          truncatedFrom: request.items.length,
-          error: `Too many items (${request.items.length}). Maximum is ${BATCH_DOWNLOAD_LIST_MAX_FILES}.`,
-        };
-      }
       log.error("[FileController] DownloadAll validation failed", parsed.error);
       return {
         success: false,
@@ -687,48 +689,33 @@ export class FileController extends BaseController {
           break;
         }
 
-        const completedInChunk = new Set(state.chunkCompletedIds);
-        const remaining = chunk
-          .filter((row) => !completedInChunk.has(row.filename))
-          .map(({ url, filename }) => ({ url, filename }));
+        const plan = planArtistChunk(state, chunk);
+        if (!plan) {
+          break;
+        }
 
-        if (remaining.length === 0) {
-          const lastId = chunk[chunk.length - 1]?.id;
-          if (lastId === undefined) {
-            break;
-          }
-          state = {
-            ...state,
-            cursorId: lastId,
-            chunkCompletedIds: [],
-            timestamp: Date.now(),
-          };
+        if (plan.type === "advance") {
+          // Crash window: all items recorded, cursor not yet written — resume lands here.
+          state = plan.state;
           await this.writeQueueFile(state);
           continue;
         }
 
         const chunkResult = await this.runWorkerBatch({
-          items: remaining,
+          items: plan.remaining,
           folder: state.folder,
           progressDoneBase: state.doneCount,
           progressTotal: state.total,
           persistQueue: false,
           onItemCompleted: async (filename) => {
-            if (!state.chunkCompletedIds.includes(filename)) {
-              state = {
-                ...state,
-                chunkCompletedIds: [...state.chunkCompletedIds, filename],
-                doneCount: state.doneCount + 1,
-                timestamp: Date.now(),
-              };
-              await this.writeQueueFile(state);
-            }
+            state = applyArtistItemCompleted(state, filename);
+            await this.writeQueueFile(state);
           },
         });
 
         downloaded += chunkResult.downloaded;
         failed.push(...chunkResult.failed);
-        if (chunkResult.canceled) {
+        if (!shouldAdvanceArtistCursorAfterChunk(chunkResult.canceled)) {
           canceled = true;
           break;
         }
@@ -737,12 +724,9 @@ export class FileController extends BaseController {
         if (lastId === undefined) {
           break;
         }
-        state = {
-          ...state,
-          cursorId: lastId,
-          chunkCompletedIds: [],
-          timestamp: Date.now(),
-        };
+        // Advance even when the chunk had permanent failures (404) so the walk
+        // continues; a later full run (new queue) retries failed filenames.
+        state = advanceArtistCursor(state, lastId);
         await this.writeQueueFile(state);
       }
 
@@ -787,15 +771,8 @@ export class FileController extends BaseController {
       await this.deleteQueueFile();
       return { success: true, downloaded: 0, failed: [], canceled: false };
     }
-    if (items.length > BATCH_DOWNLOAD_LIST_MAX_FILES) {
-      return {
-        success: false,
-        downloaded: 0,
-        failed: [],
-        canceled: false,
-        truncatedFrom: items.length,
-        error: `Too many items (${items.length}). Maximum is ${BATCH_DOWNLOAD_LIST_MAX_FILES}.`,
-      };
+    if (isListOverLimit(items.length)) {
+      return buildListOverLimitResult(items.length);
     }
 
     const folderResult = await this.ensureDownloadFolder();
@@ -945,14 +922,24 @@ export class FileController extends BaseController {
             url?: string;
           }) => {
             if (msg.type === "item-completed" && msg.id) {
-              void Promise.resolve(params.onItemCompleted?.(msg.id)).catch(
-                (error: unknown) => {
+              const completedId = msg.id;
+              void (async () => {
+                try {
+                  await params.onItemCompleted?.(completedId);
+                } catch (error: unknown) {
                   log.error(
                     "[FileController] Failed to persist queue after item:",
                     error
                   );
+                } finally {
+                  if (this.downloadWorker === worker) {
+                    worker.postMessage({
+                      type: "item-persisted",
+                      id: completedId,
+                    });
+                  }
                 }
-              );
+              })();
             }
 
             if (msg.type === "progress" && !mainWindow.isDestroyed()) {
