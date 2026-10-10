@@ -887,7 +887,6 @@ export class PostsController extends BaseController {
       }
 
       // If postData is provided, handle external post by (artistId, postId).
-      // Decrement artist counter only when state transitions false -> true.
       if (postData) {
         db.transaction((tx) => {
           // Ensure external placeholder artist exists for FK constraint.
@@ -911,8 +910,6 @@ export class PostsController extends BaseController {
           const existingPost = tx
             .select({
               id: posts.id,
-              isViewed: posts.isViewed,
-              artistId: posts.artistId,
             })
             .from(posts)
             .where(
@@ -942,16 +939,7 @@ export class PostsController extends BaseController {
                 .run();
             }
 
-            if (existingPost.isViewed) {
-              return;
-            }
-
-            tx.update(artists)
-              .set({
-                newPostsCount: sql`MAX(0, ${artists.newPostsCount} - 1)`,
-              })
-              .where(eq(artists.id, existingPost.artistId))
-              .run();
+            // Unread counts derive from posts.isViewed; no artists.new_posts_count write.
             return;
           }
 
@@ -992,14 +980,12 @@ export class PostsController extends BaseController {
         return true;
       }
 
-      // For existing posts (positive ID), atomically update post and artist counter.
+      // For existing posts (positive ID), mark isViewed (+ optional view metadata).
       if (postId > 0) {
         const markViewedResult = db.transaction((tx) => {
           const post = tx
             .select({
               id: posts.id,
-              isViewed: posts.isViewed,
-              artistId: posts.artistId,
             })
             .from(posts)
             .where(eq(posts.id, postId))
@@ -1025,17 +1011,6 @@ export class PostsController extends BaseController {
               .where(eq(posts.id, postId))
               .run();
           }
-
-          if (post.isViewed) {
-            return true;
-          }
-
-          tx.update(artists)
-            .set({
-              newPostsCount: sql`MAX(0, ${artists.newPostsCount} - 1)`,
-            })
-            .where(eq(artists.id, post.artistId))
-            .run();
 
           return true;
         });
@@ -1073,8 +1048,7 @@ export class PostsController extends BaseController {
           .where(or(eq(posts.isViewed, false), sql`${posts.isViewed} IS NULL`))
           .run();
 
-        // Keep creators counters consistent with feed-wide "mark all read".
-        tx.update(artists).set({ newPostsCount: 0 }).run();
+        // Unread counts derive from posts.isViewed; column left unused.
         return updatedPosts;
       });
 

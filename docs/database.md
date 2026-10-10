@@ -86,6 +86,7 @@ export const artists = sqliteTable(
     type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
     apiEndpoint: text("api_endpoint").notNull(),
     lastPostId: integer("last_post_id").default(0).notNull(),
+    // Unused column (kept for schema compat). Live unread = posts aggregate in getTrackedArtistsWithStats.
     newPostsCount: integer("new_posts_count").default(0).notNull(),
     syncStatus: text("sync_status", { enum: ["idle", "syncing", "error"] })
       .notNull()
@@ -616,7 +617,7 @@ const postsList = await db.query.posts.findMany({
 
 #### Save Posts (Bulk Upsert)
 
-Saves posts for an artist using bulk upsert. Updates artist's `lastPostId` and increments `newPostsCount`.
+Saves posts for an artist using bulk upsert. Advances `lastPostId` only after natural pagination end. Unread counts are derived from `posts.isViewed` (Updates feed scope); `artists.new_posts_count` is unused.
 
 **Example:**
 
@@ -917,12 +918,13 @@ db
   .update(schema.artists)
   .set({
     lastPostId: newPostId,
-    newPostsCount: count,
     lastChecked: new Date(), // Uses timestamp mode
   })
   .where(eq(schema.artists.id, artistId))
   .run();
 ```
+
+UI `newPostsCount` on tracked artists is an aggregate of unread posts since tracking (`publishedAt >= artists.createdAt`), matching the Updates feed — not the unused `artists.new_posts_count` column.
 
 ## Database Studio
 
