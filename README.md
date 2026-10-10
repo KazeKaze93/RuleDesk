@@ -683,7 +683,7 @@ This project adheres to strict development principles:
 - **Security:** Context Isolation enabled, sandbox mode, CSP headers, no direct Node.js access from Renderer
 - **Database:** Type-safe queries via Drizzle ORM, no raw SQL (except migrations)
 - **UI:** Tailwind CSS only, no inline styles, shadcn/ui components, accessibility considerations
-- **Logging:** `electron-log` for all logging (no `console.log` in production code)
+- **Logging:** `electron-log` for all logging (no `console.log` in production code); credential/path redaction via hooks (`src/shared/utils/log-redaction.ts`) on main and renderer transports
 - **IPC:** Controller-based architecture with dependency injection
 
 **📖 For detailed guidelines, see [.cursorrules](./.cursorrules) and [.ai/LESSONS.txt](./.ai/LESSONS.txt).**

@@ -2,8 +2,11 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter as Router } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { setupRendererLogRedaction } from "./lib/setup-log-redaction";
 import App from "./App";
 import "./index.css";
+
+setupRendererLogRedaction();
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,6 +1,8 @@
 import log from "electron-log";
+import os from "os";
 import path from "path";
 import { app } from "electron";
+import { redactLogData } from "@shared/utils/log-redaction";
 
 // Disable separate main.log and renderer.log files (they're useless duplicates)
 // electron-log creates these by default, but we want a single unified app.log
@@ -30,6 +32,32 @@ log.transports.file.resolvePathFn = () => {
 
 log.transports.file.level = "info";
 log.transports.console.format = "[{h}:{i}:{s}.{ms}] [{level}] {text}";
+
+const homeDir = (() => {
+  try {
+    return app.getPath("home");
+  } catch {
+    return os.homedir();
+  }
+})();
+
+// Test mocks often stub electron-log without `hooks`; real runtime always has the array.
+if (Array.isArray(log.hooks)) {
+  const redactionAlreadyAttached = log.hooks.some(
+    (hook) => hook.name === "ruleDeskLogRedaction"
+  );
+  if (!redactionAlreadyAttached) {
+    function ruleDeskLogRedaction(
+      message: Parameters<(typeof log.hooks)[number]>[0]
+    ): typeof message {
+      return {
+        ...message,
+        data: redactLogData(message.data, homeDir),
+      };
+    }
+    log.hooks.push(ruleDeskLogRedaction);
+  }
+}
 
 // Перехват глобальных ошибок
 log.errorHandler.startCatching();
