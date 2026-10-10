@@ -239,7 +239,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| P5 | `perf/backup-integrity-worker` | — | started |
+| P5 | `perf/backup-integrity-worker` | [#219](https://github.com/KazeKaze93/RuleDesk/pull/219) | ✅ merged |
 
 ### Data-safety series (2026-09)
 
