@@ -31,6 +31,14 @@ vi.mock("electron-log", () => ({
   },
 }));
 
+const { getDbMock } = vi.hoisted(() => ({
+  getDbMock: vi.fn(),
+}));
+
+vi.mock("@/main/db/client", () => ({
+  getDb: () => getDbMock(),
+}));
+
 vi.mock("@/main/providers", () => ({
   getProvider: vi.fn(() => ({
     id: "rule34",
@@ -66,6 +74,7 @@ describe("tag-resolve-coordinator", () => {
     resetTagResolveCoordinatorForTests();
     fetchRule34TagMetadataMock.mockReset();
     mockDb = createMockDb();
+    getDbMock.mockImplementation(() => mockDb.db);
   });
 
   afterEach(() => {
@@ -82,9 +91,7 @@ describe("tag-resolve-coordinator", () => {
     );
 
     const cache = loadTagMetadataCache(mockDb.db, ["colored_skin"]);
-    await resolveTagMetadataWave(
-      mockDb.db,
-      ["colored_skin"],
+    await resolveTagMetadataWave(["colored_skin"],
       cache,
       { userId: "1", apiKey: "key" },
       "test-429-not-not-found"
@@ -103,9 +110,7 @@ describe("tag-resolve-coordinator", () => {
     });
 
     const cacheAfterRestart = loadTagMetadataCache(mockDb.db, ["colored_skin"]);
-    await resolveTagMetadataWave(
-      mockDb.db,
-      ["colored_skin"],
+    await resolveTagMetadataWave(["colored_skin"],
       cacheAfterRestart,
       { userId: "1", apiKey: "key" },
       "test-429-retry-next-session"
@@ -121,9 +126,7 @@ describe("tag-resolve-coordinator", () => {
     fetchRule34TagMetadataMock.mockRejectedValue(new Error("socket hang up"));
 
     const cache = loadTagMetadataCache(mockDb.db, ["flaky_tag"]);
-    await resolveTagMetadataWave(
-      mockDb.db,
-      ["flaky_tag"],
+    await resolveTagMetadataWave(["flaky_tag"],
       cache,
       { userId: "1", apiKey: "key" },
       "test-network-unresolved"
@@ -150,16 +153,12 @@ describe("tag-resolve-coordinator", () => {
     const settings = { userId: "1", apiKey: "key" };
     const cache = loadTagMetadataCache(mockDb.db, ["artist_one"]);
 
-    const firstWave = resolveTagMetadataWave(
-      mockDb.db,
-      ["artist_one"],
+    const firstWave = resolveTagMetadataWave(["artist_one"],
       cache,
       settings,
       "test-dedup-1"
     );
-    const secondWave = resolveTagMetadataWave(
-      mockDb.db,
-      ["artist_one"],
+    const secondWave = resolveTagMetadataWave(["artist_one"],
       cache,
       settings,
       "test-dedup-2"
@@ -178,9 +177,7 @@ describe("tag-resolve-coordinator", () => {
     const settings = { userId: "1", apiKey: "key" };
     const firstCache = loadTagMetadataCache(mockDb.db, ["ghost_tag"]);
 
-    await resolveTagMetadataWave(
-      mockDb.db,
-      ["ghost_tag"],
+    await resolveTagMetadataWave(["ghost_tag"],
       firstCache,
       settings,
       "test-not-found-persist-1"
@@ -199,9 +196,7 @@ describe("tag-resolve-coordinator", () => {
     const secondCache = loadTagMetadataCache(mockDb.db, ["ghost_tag"]);
     expect(secondCache.activeNotFound.has("ghost_tag")).toBe(true);
 
-    await resolveTagMetadataWave(
-      mockDb.db,
-      ["ghost_tag"],
+    await resolveTagMetadataWave(["ghost_tag"],
       secondCache,
       settings,
       "test-not-found-persist-2"
@@ -231,9 +226,7 @@ describe("tag-resolve-coordinator", () => {
     expect(cache.activeNotFound.has("stale_ghost")).toBe(false);
     expect(cache.foundTypes.has("stale_ghost")).toBe(false);
 
-    await resolveTagMetadataWave(
-      mockDb.db,
-      ["stale_ghost"],
+    await resolveTagMetadataWave(["stale_ghost"],
       cache,
       { userId: "1", apiKey: "key" },
       "test-expired-not-found"
@@ -268,9 +261,7 @@ describe("tag-resolve-coordinator", () => {
     fetchRule34TagMetadataMock.mockResolvedValue({ status: "not_found" });
 
     const freshCache = loadTagMetadataCache(mockDb.db, ["fresh_miss"]);
-    await resolveTagMetadataWave(
-      mockDb.db,
-      ["fresh_miss"],
+    await resolveTagMetadataWave(["fresh_miss"],
       freshCache,
       { userId: "1", apiKey: "key" },
       "test-maintenance-fresh"
@@ -312,9 +303,7 @@ describe("tag-resolve-coordinator", () => {
     });
     const abortController = new AbortController();
 
-    await resolveTagMetadataWave(
-      mockDb.db,
-      ["wlop"],
+    await resolveTagMetadataWave(["wlop"],
       loadTagMetadataCache(mockDb.db, ["wlop"]),
       { userId: "1", apiKey: "k" },
       "searchRemoteTags:artistOnly",

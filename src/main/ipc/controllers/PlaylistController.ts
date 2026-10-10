@@ -56,6 +56,7 @@ import {
   PROVIDER_IDS,
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
+import { onDatabaseReopened } from "../../core/di/databaseRegistration";
 import { postsFtsTableExists } from "../../db/fts-table-check";
 import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
 import { escapeLikePattern } from "../../db/utils";
@@ -212,9 +213,15 @@ export class PlaylistController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
-  // Cache FTS5 table existence check (schema doesn't change at runtime)
-  // Initialized once at setup() to avoid blocking synchronous calls
+  // Schema existence cache — refreshed on restore/VACUUM reopen
   private ftsTableExistsCache: boolean = false;
+
+  private refreshSchemaCaches(): void {
+    this.ftsTableExistsCache = postsFtsTableExists(getSqliteInstance());
+    log.info(
+      `[PlaylistController] Schema caches refreshed (fts=${this.ftsTableExistsCache})`
+    );
+  }
 
   /**
    * Build booru query string from smart playlist tags
@@ -402,10 +409,11 @@ export class PlaylistController extends BaseController {
       }
     );
 
-    log.info("[PlaylistController] All handlers registered");
+    // Cache at setup; refresh again when restore/VACUUM reopens the DB.
+    this.refreshSchemaCaches();
+    onDatabaseReopened(() => this.refreshSchemaCaches());
 
-    // Cache once at setup so runtime MATCH paths stay off the sqlite_master query.
-    this.ftsTableExistsCache = postsFtsTableExists(getSqliteInstance());
+    log.info("[PlaylistController] All handlers registered");
   }
 
   /**

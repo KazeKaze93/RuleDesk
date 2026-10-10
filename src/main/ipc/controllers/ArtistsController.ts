@@ -480,7 +480,6 @@ export class ArtistsController extends BaseController {
     if (providerSettings) {
       try {
         await resolveTagMetadataWave(
-          db,
           uniqueTags,
           cache,
           providerSettings,

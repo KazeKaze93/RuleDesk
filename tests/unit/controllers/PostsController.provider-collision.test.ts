@@ -69,7 +69,6 @@ vi.mock("@/main/services/credentials", () => ({
 vi.mock("@/main/services/post-lookup-cache", () => ({
   resolvePostLookup: vi.fn(
     async (
-      _db: unknown,
       _provider: string,
       postId: number,
       fetcher: () => Promise<unknown[]>

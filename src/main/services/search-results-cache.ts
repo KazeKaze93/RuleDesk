@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../db/schema";
+import { getDb } from "../db/client";
 import { searchResultsCache } from "../db/schema";
 import { BooruPostSchema, type BooruPost } from "../../shared/schemas/booru";
 import {
@@ -194,15 +195,17 @@ export type ResolveCachedSearchPageOptions = {
 /**
  * Cache-first search page: hit within TTL skips fetch; miss fetches then persists
  * found / not_found. Fetch failures (429/network) are unresolved — not written.
+ *
+ * Writes always use getDb() after the network await — a caller-captured handle
+ * may be closed by restore/VACUUM while the fetch was in flight.
  */
 export async function resolveCachedSearchPage(
-  db: AppDatabase,
   cacheKey: string,
   fetchFromProvider: () => Promise<BooruPost[]>,
   options: ResolveCachedSearchPageOptions
 ): Promise<BooruPost[]> {
   const nowMs = options.nowMs ?? Date.now();
-  const cached = loadSearchResultsCache(db, cacheKey, nowMs);
+  const cached = loadSearchResultsCache(getDb(), cacheKey, nowMs);
 
   if (cached.status === "found") {
     log.info(
@@ -224,7 +227,12 @@ export async function resolveCachedSearchPage(
 
   const lookupPromise = (async (): Promise<BooruPost[]> => {
     const posts = await fetchFromProvider();
-    persistSearchResultsOutcome(db, cacheKey, posts, options.persistEmpty);
+    persistSearchResultsOutcome(
+      getDb(),
+      cacheKey,
+      posts,
+      options.persistEmpty
+    );
     return posts;
   })();
 

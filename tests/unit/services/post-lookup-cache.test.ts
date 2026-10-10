@@ -15,6 +15,14 @@ vi.mock("electron-log", () => ({
   },
 }));
 
+const { getDbMock } = vi.hoisted(() => ({
+  getDbMock: vi.fn(),
+}));
+
+vi.mock("@/main/db/client", () => ({
+  getDb: () => getDbMock(),
+}));
+
 import {
   loadPostLookupCache,
   resetPostLookupCacheForTests,
@@ -43,6 +51,7 @@ describe("post-lookup-cache", () => {
   beforeEach(() => {
     resetPostLookupCacheForTests();
     mockDb = createMockDb();
+    getDbMock.mockImplementation(() => mockDb.db);
   });
 
   afterEach(() => {
@@ -56,9 +65,7 @@ describe("post-lookup-cache", () => {
   it("persists confirmed empty lookup as not_found and skips HTTP within TTL", async () => {
     const fetchFromProvider = vi.fn().mockResolvedValue([]);
 
-    const first = await resolvePostLookup(
-      mockDb.db,
-      "rule34",
+    const first = await resolvePostLookup("rule34",
       42,
       fetchFromProvider
     );
@@ -77,9 +84,7 @@ describe("post-lookup-cache", () => {
     const cached = loadPostLookupCache(mockDb.db, "rule34", 42);
     expect(cached.status).toBe("not_found");
 
-    const second = await resolvePostLookup(
-      mockDb.db,
-      "rule34",
+    const second = await resolvePostLookup("rule34",
       42,
       fetchFromProvider
     );
@@ -93,7 +98,7 @@ describe("post-lookup-cache", () => {
       .mockRejectedValue(new ProviderSearchError("rate_limit", "slow down", 1000));
 
     await expect(
-      resolvePostLookup(mockDb.db, "rule34", 7, fetchFromProvider)
+      resolvePostLookup("rule34", 7, fetchFromProvider)
     ).rejects.toBeInstanceOf(ProviderSearchError);
 
     expect(mockDb.db.select().from(postLookupCache).all()).toHaveLength(0);
@@ -106,7 +111,7 @@ describe("post-lookup-cache", () => {
       .mockRejectedValue(new ProviderSearchError("network"));
 
     await expect(
-      resolvePostLookup(mockDb.db, "gelbooru", 9, fetchFromProvider)
+      resolvePostLookup("gelbooru", 9, fetchFromProvider)
     ).rejects.toBeInstanceOf(ProviderSearchError);
 
     expect(mockDb.db.select().from(postLookupCache).all()).toHaveLength(0);
@@ -116,9 +121,7 @@ describe("post-lookup-cache", () => {
     const post = makePost(100);
     const fetchFromProvider = vi.fn().mockResolvedValue([post]);
 
-    const first = await resolvePostLookup(
-      mockDb.db,
-      "rule34",
+    const first = await resolvePostLookup("rule34",
       100,
       fetchFromProvider
     );
@@ -131,9 +134,7 @@ describe("post-lookup-cache", () => {
     const row = mockDb.db.select().from(postLookupCache).all()[0];
     expect(row?.status).toBe("found");
 
-    const second = await resolvePostLookup(
-      mockDb.db,
-      "rule34",
+    const second = await resolvePostLookup("rule34",
       100,
       fetchFromProvider
     );
@@ -159,9 +160,7 @@ describe("post-lookup-cache", () => {
 
     const post = makePost(55);
     const fetchFromProvider = vi.fn().mockResolvedValue([post]);
-    const result = await resolvePostLookup(
-      mockDb.db,
-      "rule34",
+    const result = await resolvePostLookup("rule34",
       55,
       fetchFromProvider
     );
@@ -182,15 +181,11 @@ describe("post-lookup-cache", () => {
       return [makePost(3)];
     });
 
-    const first = resolvePostLookup(
-      mockDb.db,
-      "rule34",
+    const first = resolvePostLookup("rule34",
       3,
       fetchFromProvider
     );
-    const second = resolvePostLookup(
-      mockDb.db,
-      "rule34",
+    const second = resolvePostLookup("rule34",
       3,
       fetchFromProvider
     );
@@ -202,9 +197,45 @@ describe("post-lookup-cache", () => {
     expect(b.status).toBe("found");
   });
 
+  it("writes through getDb() after await, not a stale captured handle", async () => {
+    const staleDb = createMockDb();
+    const liveDb = createMockDb();
+    getDbMock.mockImplementation(() => staleDb.db);
+
+    let releaseFetch: (() => void) | undefined;
+    const fetchGate = new Promise<void>((resolve) => {
+      releaseFetch = resolve;
+    });
+    const fetchFromProvider = vi.fn().mockImplementation(async () => {
+      await fetchGate;
+      return [];
+    });
+
+    const lookupPromise = resolvePostLookup("rule34", 99, fetchFromProvider);
+    getDbMock.mockImplementation(() => liveDb.db);
+    releaseFetch?.();
+    await lookupPromise;
+
+    expect(staleDb.db.select().from(postLookupCache).all()).toHaveLength(0);
+    const liveRows = liveDb.db.select().from(postLookupCache).all();
+    expect(liveRows).toHaveLength(1);
+    expect(liveRows[0]?.postId).toBe(99);
+
+    try {
+      staleDb.sqlite.close();
+    } catch {
+      // Ignore close errors in tests.
+    }
+    try {
+      liveDb.sqlite.close();
+    } catch {
+      // Ignore close errors in tests.
+    }
+  });
+
   it("maintenance DELETE keeps fresh Drizzle not_found and removes expired (ms units aligned)", async () => {
     const fetchFromProvider = vi.fn().mockResolvedValue([]);
-    await resolvePostLookup(mockDb.db, "rule34", 1, fetchFromProvider);
+    await resolvePostLookup("rule34", 1, fetchFromProvider);
 
     const rawFresh = mockDb.sqlite
       .prepare(

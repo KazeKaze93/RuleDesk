@@ -212,7 +212,6 @@ export class SearchController extends BaseController {
       }
 
       await resolveTagMetadataWave(
-        db,
         uniqueTags,
         cache,
         this.toProviderSettings(settings),
@@ -473,7 +472,6 @@ export class SearchController extends BaseController {
         return fetched;
       };
 
-      const db = this.getDb();
       let booruPosts: BooruPost[];
       if (isRandom) {
         booruPosts = await fetchFromProvider();
@@ -489,12 +487,13 @@ export class SearchController extends BaseController {
         // Untagged page 2+ empty is a real end-of-feed — persist so repeat scroll skips HTTP.
         const persistEmpty = !(page === 1 && safeInputTags.length === 0);
         booruPosts = await resolveCachedSearchPage(
-          db,
           cacheKey,
           fetchFromProvider,
           { persistEmpty }
         );
       }
+
+      const db = this.getDb();
       
       const apiFetchedCount = booruPosts.length;
       const hasMore = apiFetchedCount >= limit;
