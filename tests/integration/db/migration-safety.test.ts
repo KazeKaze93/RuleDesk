@@ -303,4 +303,29 @@ describe("migration safety (pre-snapshot + transactional apply)", () => {
 
     expect(readColumnNames(sqlite, "settings")).not.toContain("ok_col");
   });
+
+  it("unreadable journal returns null (no silent migrate path)", () => {
+    const tempDir = createTempDir("ruledesk-mig-bad-journal-");
+    tempDirs.push(tempDir);
+    const migrationsFolder = copyDrizzleFolder(tempDir);
+    fs.writeFileSync(
+      path.join(migrationsFolder, "meta", "_journal.json"),
+      "NOT_JSON{{{",
+      "utf-8"
+    );
+
+    expect(readMigrationJournal(migrationsFolder)).toBeNull();
+  });
+
+  it("client.ts refuses stock migrate() when journal is unreadable", () => {
+    const clientSrc = fs.readFileSync(
+      path.resolve(process.cwd(), "src/main/db/client.ts"),
+      "utf-8"
+    );
+    expect(clientSrc).not.toContain(
+      'from "drizzle-orm/better-sqlite3/migrator"'
+    );
+    expect(clientSrc).toMatch(/Refusing to fall back to drizzle migrate\(\)/);
+    expect(clientSrc).not.toMatch(/migrate\s*\(\s*dbInstance/);
+  });
 });
