@@ -154,7 +154,7 @@ Main-process `VideoProxyServer` serves local `http://127.0.0.1` URLs for `<video
 
 ### Sync cursor (`lastPostId`)
 
-Per-artist watermark for incremental sync (`id:>lastPostId`). Advanced **only** after pagination completes naturally (`postsData.length < PAGE_SIZE`). Mid-batch, error, and cooperative-cancel partial commits persist posts and `newPostsCount` but never move the cursor. Incomplete runs set `lastSyncIncomplete` so the next sync can refill gaps. App quit requests sync cancel and drains briefly before closing the DB; a hard kill can still interrupt mid-write (FTS insert/update triggers are recovered on next DB init, and stuck `artists.sync_status = 'syncing'` is reset to `'idle'`).
+Per-artist watermark for incremental sync (`id:>lastPostId`). Advanced **only** after pagination completes naturally (`postsData.length < PAGE_SIZE`). Mid-batch, error, and cooperative-cancel partial commits persist posts but never move the cursor. Incomplete runs set `lastSyncIncomplete` so the next sync can refill gaps. Unread counts for Updates badge/artist cards are live aggregates over `posts.isViewed` (since-tracking), not the unused `artists.new_posts_count` column. App quit requests sync cancel and drains briefly before closing the DB; a hard kill can still interrupt mid-write (FTS insert/update triggers are recovered on next DB init, and stuck `artists.sync_status = 'syncing'` is reset to `'idle'`).
 
 **Related:** [Architecture — Sync](./architecture.md), [Roadmap](./roadmap.md)
 

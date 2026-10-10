@@ -1024,15 +1024,9 @@ export class SyncService {
               allPostsToSave
             );
             // Mid-batch / in-loop commits never advance the sync cursor.
+            // Unread counts come from posts.isViewed aggregate (not artists.new_posts_count).
             db.transaction((tx) => {
               bulkUpsertPosts(allPostsToSave, tx);
-
-              tx.update(artists)
-                .set({
-                  newPostsCount: sql`${artists.newPostsCount} + ${insertedInBatch}`,
-                })
-                .where(eq(artists.id, artist.id))
-                .run();
             });
 
             rememberUpsertedPostIds(knownPostIds, allPostsToSave);
@@ -1079,20 +1073,10 @@ export class SyncService {
                 bulkUpsertPosts(allPostsToSave, tx);
               }
 
-              if (partialSize > 0) {
-                tx.update(artists)
-                  .set({
-                    newPostsCount: sql`${artists.newPostsCount} + ${partialSize}`,
-                    lastSyncIncomplete: true,
-                  })
-                  .where(eq(artists.id, artist.id))
-                  .run();
-              } else {
-                tx.update(artists)
-                  .set({ lastSyncIncomplete: true })
-                  .where(eq(artists.id, artist.id))
-                  .run();
-              }
+              tx.update(artists)
+                .set({ lastSyncIncomplete: true })
+                .where(eq(artists.id, artist.id))
+                .run();
             });
 
             if (partialSize > 0) {
@@ -1163,19 +1147,12 @@ export class SyncService {
         db.transaction((tx) => {
           bulkUpsertPosts(allPostsToSave, tx);
 
-          tx.update(artists)
-            .set(
-              paginationCompleted
-                ? {
-                    newPostsCount: sql`${artists.newPostsCount} + ${insertedInFinalBatch}`,
-                  }
-                : {
-                    newPostsCount: sql`${artists.newPostsCount} + ${insertedInFinalBatch}`,
-                    lastSyncIncomplete: true,
-                  }
-            )
-            .where(eq(artists.id, artist.id))
-            .run();
+          if (!paginationCompleted) {
+            tx.update(artists)
+              .set({ lastSyncIncomplete: true })
+              .where(eq(artists.id, artist.id))
+              .run();
+          }
         });
 
         rememberUpsertedPostIds(knownPostIds, allPostsToSave);

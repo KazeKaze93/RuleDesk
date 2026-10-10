@@ -602,7 +602,10 @@ describe('SyncService Integration', () => {
 
       expect(updatedArtist?.lastPostId).toBe(0);
       expect(updatedArtist?.lastSyncIncomplete).toBe(true);
-      expect(updatedArtist?.newPostsCount).toBe(500);
+      // artists.new_posts_count is unused; unread is derived from posts.isViewed.
+      expect(updatedArtist?.newPostsCount).toBe(0);
+      const unreadAfterPartial = savedPosts.filter((p) => !p.isViewed).length;
+      expect(unreadAfterPartial).toBe(500);
     } finally {
       fetchPostsSpy.mockRestore();
     }

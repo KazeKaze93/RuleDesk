@@ -17,6 +17,11 @@ export type TrackedArtistWithStats = ArtistRow & {
   lastPostAt: number | null;
 };
 
+/**
+ * Tracked artists with live unread counts.
+ * `newPostsCount` is an aggregate matching Updates feed scope
+ * (`publishedAt >= artists.createdAt` + unread), not `artists.new_posts_count`.
+ */
 export function getTrackedArtistsWithStats(db: AppDatabase): TrackedArtistWithStats[] {
   const rows = db
     .select({
@@ -27,11 +32,16 @@ export function getTrackedArtistsWithStats(db: AppDatabase): TrackedArtistWithSt
       type: artists.type,
       apiEndpoint: artists.apiEndpoint,
       lastPostId: artists.lastPostId,
+      // Column artists.new_posts_count is unused; aggregate is the sole source.
       newPostsCount: sql<number>`
         COALESCE(
           SUM(
             CASE
-              WHEN ${posts.isViewed} = 0 OR ${posts.isViewed} IS NULL THEN 1
+              WHEN (
+                ${posts.isViewed} = 0 OR ${posts.isViewed} IS NULL
+              )
+              AND ${posts.publishedAt} >= ${artists.createdAt}
+              THEN 1
               ELSE 0
             END
           ),

@@ -58,6 +58,7 @@ export const artists = sqliteTable(
     type: text("type", { enum: ARTIST_TYPES }).notNull(),
     apiEndpoint: text("api_endpoint").notNull(),
     lastPostId: integer("last_post_id").notNull().default(0),
+    /** Unused counter column (kept for schema compat). Live unread = posts aggregate. */
     newPostsCount: integer("new_posts_count").notNull().default(0),
     syncStatus: text("sync_status", { enum: ["idle", "syncing", "error"] })
       .notNull()

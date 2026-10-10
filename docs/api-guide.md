@@ -1053,7 +1053,7 @@ if (success) {
 
 **IPC Channel:** `db:sync-all`
 
-**Note:** This is an asynchronous operation. The method returns immediately, and synchronization runs in the background. Use event listeners (`onSyncStart`, `onSyncEnd`, `onSyncProgress`, `onSyncError`, `onSyncArtist`, `onRepairStart`, `onRepairEnd`) to track progress. Check artist `newPostsCount` / `syncStatus` to see results.
+**Note:** This is an asynchronous operation. The method returns immediately, and synchronization runs in the background. Use event listeners (`onSyncStart`, `onSyncEnd`, `onSyncProgress`, `onSyncError`, `onSyncArtist`, `onRepairStart`, `onRepairEnd`) to track progress. Check artist `syncStatus` and the aggregated `newPostsCount` from `getArtists` (unread since tracking) to see results.
 
 ---
 

@@ -325,19 +325,5 @@ describe("updates-feed queries (real schema)", () => {
     const updated = markUpdatesFeedPostsViewed(db);
     expect(updated).toBe(LARGE_MATCH_COUNT);
     expect(countUpdatesFeedPosts(db, { unreadOnly: true })).toBe(0);
-
-    const artistRows = db
-      .select({
-        id: artists.id,
-        newPostsCount: artists.newPostsCount,
-      })
-      .from(artists)
-      .all();
-    expect(artistRows).toEqual(
-      expect.arrayContaining([
-        { id: ARTIST_A, newPostsCount: 0 },
-        { id: ARTIST_B, newPostsCount: 0 },
-      ])
-    );
   });
 });

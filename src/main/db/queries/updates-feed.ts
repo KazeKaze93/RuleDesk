@@ -174,31 +174,10 @@ function buildMarkAllReadWhere(filters: PostFilterRequest | undefined): SQL {
 }
 
 /**
- * Correlated posts match for one outer `artists` row (sinceTracking + unread + filters).
- * Used inside set-based newPostsCount decrement — no id arrays in JS.
- */
-function buildCorrelatedMarkAllReadMatch(
-  filters: PostFilterRequest | undefined
-): SQL {
-  const where = and(
-    eq(posts.artistId, artists.id),
-    gte(posts.publishedAt, artists.createdAt),
-    buildUpdatesFeedPostScopeCondition(),
-    buildUnreadOrNullCondition(),
-    ...buildOptionalFeedFilterConditions(filters)
-  );
-  if (!where) {
-    throw new Error(
-      "[updates-feed] Failed to build correlated mark-all-read match"
-    );
-  }
-  return where;
-}
-
-/**
  * Mark all posts in the Updates feed scope (optional tag/media/ai filters).
- * Set-based: UPDATE … WHERE id IN (SELECT …) and artist counter via correlated
- * COUNT subquery. Synchronous transaction; no await; no id arrays in JS.
+ * Set-based: UPDATE … WHERE id IN (SELECT …). Unread badge/card counts are
+ * derived from posts.isViewed (artists.new_posts_count is unused).
+ * Synchronous transaction; no await; no id arrays in JS.
  */
 export function markUpdatesFeedPostsViewed(
   db: AppDatabase,
@@ -206,22 +185,6 @@ export function markUpdatesFeedPostsViewed(
 ): number {
   return db.transaction((tx) => {
     const matchWhere = buildMarkAllReadWhere(filters);
-    const correlatedMatch = buildCorrelatedMarkAllReadMatch(filters);
-
-    // Decrement while posts are still unread (correlated COUNT uses isViewed).
-    tx.update(artists)
-      .set({
-        newPostsCount: sql`MAX(0, ${artists.newPostsCount} - (
-          SELECT COUNT(*) FROM ${posts} WHERE ${correlatedMatch}
-        ))`,
-      })
-      .where(
-        and(
-          buildTrackedArtistsWhere(),
-          sql`EXISTS (SELECT 1 FROM ${posts} WHERE ${correlatedMatch})`
-        )
-      )
-      .run();
 
     const matchingIds = tx
       .select({ id: posts.id })
@@ -252,7 +215,7 @@ export function markPostsViewedByIds(
 
   return db.transaction((tx) => {
     const matching = tx
-      .select({ id: posts.id, artistId: posts.artistId })
+      .select({ id: posts.id })
       .from(posts)
       .where(
         and(
@@ -271,19 +234,6 @@ export function markPostsViewedByIds(
       .set({ isViewed: true })
       .where(inArray(posts.id, ids))
       .run();
-
-    const decrements = new Map<number, number>();
-    for (const row of matching) {
-      decrements.set(row.artistId, (decrements.get(row.artistId) ?? 0) + 1);
-    }
-    for (const [artistId, n] of decrements) {
-      tx.update(artists)
-        .set({
-          newPostsCount: sql`MAX(0, ${artists.newPostsCount} - ${n})`,
-        })
-        .where(eq(artists.id, artistId))
-        .run();
-    }
 
     return matching.length;
   });
