@@ -23,8 +23,14 @@ const COUNT_FILE = path.join(ROOT, ".vitest-isolated-passed");
 function stripAnsi(text) {
   return text.replace(/\x1b\[[0-9;]*m/g, "");
 }
+/** Prefer `N passed (N)` summary; avoid `Tests 1 failed | 126 passed` false digits. */
 function parsePassed(text) {
-  const matches = [...stripAnsi(text).matchAll(/Tests\s+(\d+)\s+passed/g)];
+  const plain = stripAnsi(text);
+  const withTotal = [...plain.matchAll(/(\d+)\s+passed\s*\(\d+\)/g)];
+  if (withTotal.length > 0) {
+    return Number(withTotal[withTotal.length - 1][1]);
+  }
+  const matches = [...plain.matchAll(/Tests\s+(\d+)\s+passed/g)];
   return matches.length ? Number(matches[matches.length - 1][1]) : 0;
 }
 

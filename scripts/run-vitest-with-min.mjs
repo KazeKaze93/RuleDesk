@@ -13,13 +13,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const COUNT_FILE = path.join(ROOT, ".vitest-main-passed");
 const JSON_FILE = path.join(ROOT, ".vitest-main-result.json");
+/** Forward slashes: `shell:true` on Windows treats `\` as escapes in --outputFile. */
+const JSON_FILE_ARG = JSON_FILE.replace(/\\/g, "/");
 
 const args = [
   "vitest",
   "run",
   "--reporter=default",
   "--reporter=json",
-  `--outputFile=${JSON_FILE}`,
+  `--outputFile=${JSON_FILE_ARG}`,
   "--reporter=./tests/vitest-force-exit-reporter.ts",
   ...process.argv.slice(2),
 ];
@@ -63,7 +65,9 @@ function passedFromText(text) {
   return Number(matches[matches.length - 1][1]);
 }
 
-const passed = passedFromJson() ?? passedFromText(out) ?? 0;
+const fromJson = passedFromJson();
+const fromText = passedFromText(out);
+const passed = fromJson ?? fromText ?? 0;
 writeFileSync(COUNT_FILE, String(passed), "utf8");
 try {
   unlinkSync(JSON_FILE);
@@ -72,6 +76,11 @@ try {
 }
 
 if (result.status !== 0 && result.status !== null) {
+  if (passed < MIN_MAIN_TESTS) {
+    console.error(
+      `FAIL: main Vitest exited ${result.status}; passed ${passed} (json=${fromJson} text=${fromText}); min ${MIN_MAIN_TESTS}.`,
+    );
+  }
   process.exit(result.status);
 }
 

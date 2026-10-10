@@ -328,12 +328,18 @@ describe("VideoProxyServer cache integrity", () => {
     expect(a.body.equals(PAYLOAD)).toBe(true);
     expect(b.body.equals(PAYLOAD)).toBe(true);
 
-    const bins = fs
-      .readdirSync(cacheDir)
-      .filter((n) => n.endsWith(".bin") && !n.includes(".tmp-"));
-    expect(bins.length).toBe(1);
-    const onDisk = fs.readFileSync(path.join(cacheDir, bins[0]));
-    expect(onDisk.equals(PAYLOAD)).toBe(true);
+    // Finalize (tmp → .bin) can lag the response body under CPU contention.
+    await vi.waitFor(
+      () => {
+        const bins = fs
+          .readdirSync(cacheDir)
+          .filter((n) => n.endsWith(".bin") && !n.includes(".tmp-"));
+        expect(bins.length).toBe(1);
+        const onDisk = fs.readFileSync(path.join(cacheDir, bins[0]));
+        expect(onDisk.equals(PAYLOAD)).toBe(true);
+      },
+      { timeout: 2000, interval: 50 },
+    );
   });
 
   it("evictCache removes aged orphan tmp files and keeps bins under the soft cap", () => {
