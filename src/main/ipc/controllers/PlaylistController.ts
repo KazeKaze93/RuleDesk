@@ -204,8 +204,10 @@ const HYBRID_REMOTE_MAX_PAGES_TO_SCAN = 20;
 /** Matches provider `fetchPosts` page-size cap (Rule34/Gelbooru). */
 const HYBRID_REMOTE_API_PAGE_CAP = 1000;
 /**
- * Cap for seeded-random hybrid materialization (full union before seed-sort).
- * Rank order ≠ provider feed order, so random pages cannot use feed prefixes.
+ * Cap for hybrid local materialization (and seeded-random remote union).
+ * Ordered hybrid must know the full local identity set so a remote twin that
+ * ranks high on the API feed is not treated as remote-only on early pages.
+ * Rank order ≠ provider feed order for random, so random also materializes both legs.
  */
 const HYBRID_RANDOM_MATERIALIZE_CAP = 50_000;
 
@@ -220,7 +222,7 @@ function hybridSeedRank(postId: number, seed: number): number {
 
 /**
  * Compare two hybrid candidates. Random uses seed ranks on postId; otherwise publishedAt
- * with postId tie-break so page walks are stable.
+ * with postId tie-break matching the local SQL ORDER BY (same direction as sortOrder).
  */
 function compareHybridPlaylistPosts(
   a: IpcPost,
@@ -240,7 +242,51 @@ function compareHybridPlaylistPosts(
   if (timeDiff !== 0) {
     return sortOrder === "asc" ? timeDiff : -timeDiff;
   }
-  return a.postId - b.postId;
+  const idDiff = a.postId - b.postId;
+  return sortOrder === "asc" ? idDiff : -idDiff;
+}
+
+/**
+ * Gallery identity is (provider, postId). The same booru post may exist under
+ * multiple artistId rows; keep one local winner (favorited → viewed → higher id).
+ */
+function preferLocalHybridRow(a: IpcPost, b: IpcPost): IpcPost {
+  if (a.isFavorited !== b.isFavorited) {
+    return a.isFavorited ? a : b;
+  }
+  if (a.isViewed !== b.isViewed) {
+    return a.isViewed ? a : b;
+  }
+  return a.id >= b.id ? a : b;
+}
+
+/**
+ * Collapse to one row per (provider, postId), preserving first-seen order of winners.
+ */
+function collapseHybridPostsByIdentity(
+  sourcePosts: IpcPost[],
+  prefer: (a: IpcPost, b: IpcPost) => IpcPost
+): IpcPost[] {
+  const bestByKey = new Map<string, IpcPost>();
+  for (const post of sourcePosts) {
+    const key = hybridPostMergeKey(post);
+    const existing = bestByKey.get(key);
+    bestByKey.set(key, existing === undefined ? post : prefer(existing, post));
+  }
+  const collapsed: IpcPost[] = [];
+  const emitted = new Set<string>();
+  for (const post of sourcePosts) {
+    const key = hybridPostMergeKey(post);
+    if (emitted.has(key)) {
+      continue;
+    }
+    emitted.add(key);
+    const winner = bestByKey.get(key);
+    if (winner !== undefined) {
+      collapsed.push(winner);
+    }
+  }
+  return collapsed;
 }
 
 /**
@@ -261,9 +307,10 @@ function dedupeHybridPostsPreferLocal(
 }
 
 /**
- * Deterministic merge of two pre-sorted source windows with per-source cursors.
- * Remote rows whose (provider, postId) already appear locally are dropped before
- * the merge so local status wins and truncated leftovers stay available for later pages.
+ * Deterministic merge of two source windows with per-source cursors.
+ * Identity is (provider, postId): collapse multi-artist local copies and drop
+ * remote twins that exist anywhere in the local materialization (not only the
+ * page-sized prefix). Re-sort after collapse so cursor-merge stays valid.
  */
 function mergeHybridPlaylistPage(
   localPosts: IpcPost[],
@@ -274,26 +321,29 @@ function mergeHybridPlaylistPage(
   isRandom: boolean,
   seed: number
 ): { pagePosts: IpcPost[]; localTaken: number; remoteTaken: number; mergedCount: number } {
-  const remoteOnly = dedupeHybridPostsPreferLocal(localPosts, remotePosts);
+  const localUnique = collapseHybridPostsByIdentity(localPosts, preferLocalHybridRow);
+  const remoteUnique = collapseHybridPostsByIdentity(remotePosts, (a) => a);
+  const remoteOnly = dedupeHybridPostsPreferLocal(localUnique, remoteUnique);
   const pageStart = (page - 1) * limit;
+
+  const compare = (left: IpcPost, right: IpcPost): number =>
+    compareHybridPlaylistPosts(left, right, sortOrder, isRandom, seed);
+
+  localUnique.sort(compare);
+  remoteOnly.sort(compare);
 
   // Seeded random cannot use API-feed prefixes: rank order ≠ feed order, so
   // materialize the deduped union, seed-sort, then slice the page.
   if (isRandom) {
-    const merged = [...localPosts, ...remoteOnly];
-    merged.sort((left, right) =>
-      compareHybridPlaylistPosts(left, right, sortOrder, true, seed)
-    );
+    const merged = [...localUnique, ...remoteOnly];
+    merged.sort(compare);
     return {
       pagePosts: merged.slice(pageStart, pageStart + limit),
-      localTaken: localPosts.length,
+      localTaken: localUnique.length,
       remoteTaken: remoteOnly.length,
       mergedCount: merged.length,
     };
   }
-
-  const compare = (left: IpcPost, right: IpcPost): number =>
-    compareHybridPlaylistPosts(left, right, sortOrder, false, seed);
 
   let localIdx = 0;
   let remoteIdx = 0;
@@ -302,9 +352,9 @@ function mergeHybridPlaylistPage(
 
   while (
     merged.length < neededEnd &&
-    (localIdx < localPosts.length || remoteIdx < remoteOnly.length)
+    (localIdx < localUnique.length || remoteIdx < remoteOnly.length)
   ) {
-    const localPost = localIdx < localPosts.length ? localPosts[localIdx] : undefined;
+    const localPost = localIdx < localUnique.length ? localUnique[localIdx] : undefined;
     const remotePost = remoteIdx < remoteOnly.length ? remoteOnly[remoteIdx] : undefined;
 
     if (localPost !== undefined && remotePost === undefined) {
@@ -2068,8 +2118,8 @@ export class PlaylistController extends BaseController {
       );
 
       // Smart playlist hybrid search:
-      // 1) Fetch a prefix window of page*limit from local and remote (same sort key)
-      // 2) Cursor-merge with local-preferred dedupe — leftovers stay for later pages
+      // 1) Materialize local matches (capped) + remote window (page*limit or random cap)
+      // 2) Collapse (provider, postId), cursor-merge with local-preferred dedupe
       // 3) Return the page slice of the merged stream (never slice(0, limit) of a double page)
 
       // Build tag conditions from smart playlist query
@@ -2115,9 +2165,11 @@ export class PlaylistController extends BaseController {
 
       const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;
 
-      // Sorted hybrid: worst case the page window is filled from one source → page*limit each.
-      // Seeded random: materialize both legs (capped) — rank order ≠ provider feed order.
-      const fetchLimit = isRandom
+      // Local leg: always materialize up to the cap so ordered pages can drop remote
+      // twins that exist later in the local ranking (window-only dedupe caused page overlap).
+      // Remote leg: ordered uses page*limit feed prefix; random materializes (capped).
+      const localFetchLimit = HYBRID_RANDOM_MATERIALIZE_CAP;
+      const remoteFetchLimit = isRandom
         ? HYBRID_RANDOM_MATERIALIZE_CAP
         : page * limit;
       const resolvedSeed = resolveRandomSeed(seed);
@@ -2153,7 +2205,7 @@ export class PlaylistController extends BaseController {
           const result = isRandom
             ? queryBuilder
                 .orderBy(...seededOrderBy(posts.postId, resolvedSeed))
-                .limit(fetchLimit)
+                .limit(localFetchLimit)
                 .offset(0)
                 .all()
             : queryBuilder
@@ -2161,7 +2213,7 @@ export class PlaylistController extends BaseController {
                   smartSortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt),
                   smartSortOrder === "asc" ? asc(posts.postId) : desc(posts.postId)
                 )
-                .limit(fetchLimit)
+                .limit(localFetchLimit)
                 .offset(0)
                 .all();
           log.info(
@@ -2172,7 +2224,7 @@ export class PlaylistController extends BaseController {
         this.resolveRemotePlaylistPosts(
           playlistId,
           query,
-          fetchLimit,
+          remoteFetchLimit,
           filters,
           smartSortOrder,
           isRandom,
@@ -2247,6 +2299,7 @@ export class PlaylistController extends BaseController {
       );
 
       const filteredPosts: IpcPost[] = [];
+      const seenRemoteKeys = new Set<string>();
       // Deterministic feed walk from pid/page 0 — hybrid pagination replays from the start.
       let apiPage = 0;
       let pagesScanned = 0;
@@ -2286,6 +2339,15 @@ export class PlaylistController extends BaseController {
               continue;
             }
           }
+
+          const mergeKey = hybridPostMergeKey({
+            provider: providerId,
+            postId: post.id,
+          });
+          if (seenRemoteKeys.has(mergeKey)) {
+            continue;
+          }
+          seenRemoteKeys.add(mergeKey);
 
           const isVideo = isVideoUrl(post.fileUrl);
           filteredPosts.push({

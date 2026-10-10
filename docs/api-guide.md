@@ -1861,11 +1861,11 @@ Playlist APIs are handled by `PlaylistController` and use shared Zod schemas fro
 Smart playlists use a hybrid flow:
 
 1. Build include/exclude tag conditions from `queryJson`
-2. Query local cache (FTS5)
-3. Query provider API (Rule34/Gelbooru), paging until the blacklist-filtered set fills `limit` (or the feed ends)
-4. Merge and deduplicate by `postId` (local entries have priority)
+2. Query local cache (FTS5), materializing matches up to a cap so remote twins can be recognized beyond the current page prefix
+3. Query provider API (Rule34/Gelbooru): ordered pages walk a deterministic `page * limit` feed prefix; random materializes a capped union then seed-sorts
+4. Collapse to `(provider, postId)` (remote rows often have `id: 0`), prefer local status, cursor-merge / slice the page
 
-Provider/credential failures on the remote leg throw (typed IPC error) — they are never mapped to an empty post list. This gives fast local results while still surfacing posts not yet cached locally.
+Provider/credential failures on the remote leg throw (typed IPC error) — they are never mapped to an empty post list. Same `(page, limit, sort/seed)` must return the same page; a sequential walk emits each `(provider, postId)` once.
 
 **Key channels:**
 
