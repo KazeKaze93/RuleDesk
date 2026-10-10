@@ -1,0 +1,142 @@
+# Release packaging only. Quality gate stays local (`.githooks/pre-push`).
+# Restored from 5d7a263^:.github/workflows/ci.yml release-* jobs (sans quality/e2e).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing git tag to package (e.g. v18.1.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            dist_script: dist:win
+            artifact_name: release-windows
+            artifact_path: release/RuleDesk-*-win.zip
+            install_fuse: false
+            rebuild_electron_native: false
+          - os: ubuntu-latest
+            dist_script: dist:linux
+            artifact_name: release-linux
+            artifact_path: release/*.AppImage
+            install_fuse: true
+            rebuild_electron_native: true
+    steps:
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          if [[ ! "$TAG" =~ ^v[0-9] ]]; then
+            echo "Invalid tag: $TAG (expected v*)"
+            exit 1
+          fi
+          echo "name=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.tag.outputs.name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install AppImage dependencies
+        if: matrix.install_fuse
+        run: sudo apt-get update && sudo apt-get install -y libfuse2
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # Linux: match former release-linux (explicit Electron rebuild).
+      # Windows: postinstall + electron-builder install-app-deps (same as former release-windows).
+      - name: Rebuild native modules for Electron
+        if: matrix.rebuild_electron_native
+        run: npm run db:rebuild
+
+      - name: Package
+        run: npm run ${{ matrix.dist_script }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Audit release artifact for sensitive data
+        run: npm run check:release-artifacts
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_path }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish Release
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          if [[ ! "$TAG" =~ ^v[0-9] ]]; then
+            echo "Invalid tag: $TAG (expected v*)"
+            exit 1
+          fi
+          echo "name=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.tag.outputs.name }}
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Create or update Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          # Tag push: generate notes. Manual backfill: keep existing body.
+          generate_release_notes: ${{ github.event_name == 'push' }}
+          draft: false
+          prerelease: false
+          make_latest: true
+          # Replace same-name assets on an existing release (e.g. re-upload win.zip).
+          overwrite_files: true
+          files: |
+            release-assets/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -601,11 +601,9 @@ If integration tests fail with `NODE_MODULE_VERSION` mismatch, run `npm run db:r
 
 ### CI/CD
 
-GitHub Actions workflow (`.github/workflows/ci.yml`):
+**Quality** is local (`.githooks/pre-push`): `validate` → `docs:api` freshness → Vitest. See [docs/development.md](./docs/development.md).
 
-1. **Quality** — `npm run validate`, `npm run docs:api` + freshness check on `docs/api.md`, `npm test`, `npm audit --omit=dev --audit-level=high`
-2. **E2E** — build app, run Playwright (needs `TEST_USER_ID` / `TEST_API_KEY` secrets for live API tests)
-3. **Release** (tags only) — Windows zip + Linux AppImage (parallel jobs), merged into one GitHub Release after quality + e2e pass
+**Release** — GitHub Actions [`.github/workflows/release.yml`](./.github/workflows/release.yml) on tag `v*` (or manual `workflow_dispatch` with an existing tag): Windows zip + Linux AppImage on native runners, then upload to the GitHub Release for that tag.
 
 ## 📜 License & Legal
 

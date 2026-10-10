@@ -99,6 +99,7 @@ Engineering materials are intentionally grouped here to keep the top-level index
 - [Database Documentation](./database.md) - Schema, migrations, and operational notes
 - [Rule34 API Reference](./rule34-api-reference.md) - External API specifics
 - [README — Development Setup](../README.md#-development-setup) - Local dev, quality gates, testing, pre-push hook
+- [Development — quality gate & release packaging](./development.md) - Local pre-push gate; CI release matrix; manual fallback
 - [Unit test guide](../tests/unit/README.md) - Vitest unit/property test layout
 - [Test coverage summary](../tests/unit/TEST_COVERAGE.md) - File inventory (case counts: `npm test`)
 - [Integration test notes](../tests/integration/README.md) - IPC + SQLite integration tests
@@ -116,7 +117,7 @@ Engineering materials are intentionally grouped here to keep the top-level index
 | Pre-PR full gate | `npm run test:verify` |
 | Production dependency audit | `npm audit --omit=dev --audit-level=high` |
 
-`.githooks/pre-push` runs **validate**, **docs:api freshness**, and **npm test**. GitHub Actions CI workflows are removed; releases are packaged locally (`npm run dist:win` / `dist:linux`) — see [user guide — Installation](./user-guide.md#installation).
+`.githooks/pre-push` runs **validate**, **docs:api freshness**, and **npm test**. Quality jobs are not on GitHub Actions. Tagged releases (`v*`) are packaged by the [Release](../.github/workflows/release.yml) workflow (Windows zip + Linux AppImage); see [development.md](./development.md) and [user guide — Installation](./user-guide.md#installation).
 
 ---
 
