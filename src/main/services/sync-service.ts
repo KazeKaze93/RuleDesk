@@ -23,6 +23,7 @@ import {
   backfillArtistFtsIndex,
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
+  rebuildFtsIndex,
 } from "../db/fts-triggers";
 
 // SQLite default limit: 999 variables per query (SQLITE_MAX_VARIABLE_NUMBER)
@@ -139,18 +140,49 @@ function bulkUpsertPosts(
   }
 }
 
-function countArtistPosts(
-  tx: BetterSQLite3Database<typeof schema>,
+/** Load known provider postIds for an artist (one query; batches use in-memory Set). */
+function loadArtistPostIds(
+  dbOrTx: AppDatabase,
   artistId: number
-): number {
-  const row = tx
-    .select({
-      count: sql<number>`COUNT(*)`,
-    })
+): Set<number> {
+  const rows = dbOrTx
+    .select({ postId: posts.postId })
     .from(posts)
     .where(eq(posts.artistId, artistId))
-    .all()[0];
-  return row?.count ?? 0;
+    .all();
+  return new Set(rows.map((row) => row.postId));
+}
+
+/** Count posts in batch that are not yet in knownPostIds (does not mutate the Set). */
+function countNewPostsInBatch(
+  knownPostIds: Set<number>,
+  batch: NewPost[]
+): number {
+  let inserted = 0;
+  for (const post of batch) {
+    if (!knownPostIds.has(post.postId)) {
+      inserted += 1;
+    }
+  }
+  return inserted;
+}
+
+function rememberUpsertedPostIds(
+  knownPostIds: Set<number>,
+  batch: NewPost[]
+): void {
+  for (const post of batch) {
+    knownPostIds.add(post.postId);
+  }
+}
+
+/**
+ * Initial sync = never completed a full pagination.
+ * lastPostId===0 alone is insufficient: zero-post artists stay at 0 after success.
+ * lastChecked is set only on paginationCompleted (explicit completedness).
+ */
+function isInitialArtistSync(artist: Artist): boolean {
+  return artist.lastPostId === 0 && artist.lastChecked === null;
 }
 
 async function retryWithBackoff<T>(
@@ -241,6 +273,11 @@ export class SyncService {
     number,
     Array<() => void>
   >();
+  /**
+   * When true, syncPosts must not drop/rebuild FTS — Sync All owns one window
+   * (drop at start, rebuild + ensureFtsTriggers in Sync All finally).
+   */
+  private syncAllOwnsFtsLifecycle = false;
 
   public getIsSyncing(): boolean {
     return this.isSyncing;
@@ -265,7 +302,8 @@ export class SyncService {
 
   /**
    * Cancel the artist's in-flight sync (if any) and wait until syncArtist's
-   * finally finished (includes FTS rebuild + trigger restore for initial sync).
+   * finally finished. Single-artist / repair restore FTS in that finally;
+   * during Sync All, FTS restore runs once in Sync All's finally instead.
    * @returns true if idle within timeout (or was not syncing), false on timeout
    */
   public async cancelArtistSyncAndWait(
@@ -469,6 +507,8 @@ export class SyncService {
     logger.info("SyncService: Start Full Sync");
     this.sendEvent(IPC_CHANNELS.SYNC.START);
 
+    let syncAllFtsWindowOpen = false;
+    this.syncAllOwnsFtsLifecycle = true;
     try {
       const db = getDb();
       const artistsList = await db.query.artists.findMany({
@@ -491,6 +531,20 @@ export class SyncService {
         throw error;
       }
       if (!settingsData?.userId) throw new Error("No API credentials");
+
+      // One shared FTS bulk window for the whole Sync All when any artist is
+      // still initial (lastPostId===0 && lastChecked===null). Completed
+      // zero-post artists have lastChecked set and must not reopen it.
+      const needsSharedFtsWindow = artistsList.some(isInitialArtistSync);
+      if (needsSharedFtsWindow) {
+        const sqlite = getSqliteInstance();
+        logger.info(
+          "SyncService: Sync All — dropping FTS insert/update/delete triggers once"
+        );
+        dropFtsTriggersForBulkInsert(sqlite);
+        syncAllFtsWindowOpen = true;
+      }
+
       for (const artist of artistsList) {
         if (this.cancelRequested) {
           logger.info("SyncService: Full sync cancelled — stopping artist loop");
@@ -548,12 +602,20 @@ export class SyncService {
     } finally {
       try {
         const sqlite = getSqliteInstance();
+        if (syncAllFtsWindowOpen) {
+          logger.info(
+            "SyncService: Sync All — rebuilding FTS index and restoring triggers once"
+          );
+          rebuildFtsIndex(sqlite);
+          ensureFtsTriggers(sqlite);
+        }
         // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
         sqlite.exec("PRAGMA wal_checkpoint(TRUNCATE);");
         logger.info("SyncService: WAL checkpoint truncated.");
       } catch (e) {
-        logger.warn("SyncService: WAL checkpoint failed", e);
+        logger.warn("SyncService: Sync All FTS restore / WAL checkpoint failed", e);
       }
+      this.syncAllOwnsFtsLifecycle = false;
       this.sendEvent(IPC_CHANNELS.SYNC.END);
     }
     });
@@ -589,10 +651,10 @@ export class SyncService {
       }
 
       if (artist && settingsData) {
-        // Repair: reset lastPostId to 0 and sync posts with safety limit.
+        // Repair: force initial sync window (lastChecked null = not yet completed).
         // REPAIR_START is emitted from syncArtist after syncStatus is written.
         await this.syncArtist(
-          { ...artist, lastPostId: 0 },
+          { ...artist, lastPostId: 0, lastChecked: null },
           settingsData,
           MAX_PAGES_SAFETY_LIMIT,
           { notifyRepairStart: true }
@@ -682,7 +744,7 @@ export class SyncService {
 
       // Track current lastPostId separately to avoid mutating artist object
       const currentLastPostId = artist.lastPostId;
-      const isInitialSync = currentLastPostId === 0;
+      const isInitialSync = isInitialArtistSync(artist);
 
       // Unified sync method - handles both initial and incremental sync
       return await this.syncPosts(artist, settings, provider, {
@@ -738,8 +800,11 @@ export class SyncService {
     // Batch size: 5 pages (500 posts) or until end of sync
     const BATCH_SIZE_PAGES = 5;
     const allPostsToSave: NewPost[] = [];
+    // One load of existing postIds; per-batch insert counts are in-memory.
+    const knownPostIds = loadArtistPostIds(db, artist.id);
 
-    if (isInitial) {
+    // Single-artist / repair: own the FTS bulk window. Sync All owns it instead.
+    if (isInitial && !this.syncAllOwnsFtsLifecycle) {
       logger.info(
         `SyncService: ${artist.name} - disabling initial-sync FTS insert/update/delete triggers`
       );
@@ -863,13 +928,13 @@ export class SyncService {
             !hasMore; // No more pages
 
           if (shouldCommitBatch && allPostsToSave.length > 0) {
-            let insertedInBatch = 0;
+            const insertedInBatch = countNewPostsInBatch(
+              knownPostIds,
+              allPostsToSave
+            );
             // Mid-batch / in-loop commits never advance the sync cursor.
             db.transaction((tx) => {
-              const postsCountBefore = countArtistPosts(tx, artist.id);
               bulkUpsertPosts(allPostsToSave, tx);
-              const postsCountAfter = countArtistPosts(tx, artist.id);
-              insertedInBatch = Math.max(0, postsCountAfter - postsCountBefore);
 
               tx.update(artists)
                 .set({
@@ -879,6 +944,7 @@ export class SyncService {
                 .run();
             });
 
+            rememberUpsertedPostIds(knownPostIds, allPostsToSave);
             newPostsCount += insertedInBatch;
             allPostsToSave.length = 0; // Clear batch
             
@@ -906,12 +972,12 @@ export class SyncService {
 
           try {
             let partialSize = 0;
+            if (allPostsToSave.length > 0) {
+              partialSize = countNewPostsInBatch(knownPostIds, allPostsToSave);
+            }
             db.transaction((tx) => {
               if (allPostsToSave.length > 0) {
-                const postsCountBefore = countArtistPosts(tx, artist.id);
                 bulkUpsertPosts(allPostsToSave, tx);
-                const postsCountAfter = countArtistPosts(tx, artist.id);
-                partialSize = Math.max(0, postsCountAfter - postsCountBefore);
               }
 
               if (partialSize > 0) {
@@ -931,6 +997,7 @@ export class SyncService {
             });
 
             if (partialSize > 0) {
+              rememberUpsertedPostIds(knownPostIds, allPostsToSave);
               newPostsCount += partialSize;
               logger.warn(
                 `SyncService: Partial commit of ${partialSize} posts after error for ${artist.name}`
@@ -990,12 +1057,12 @@ export class SyncService {
       
       // Commit any remaining posts in batch (cursor still deferred)
       if (allPostsToSave.length > 0) {
-        let insertedInFinalBatch = 0;
+        const insertedInFinalBatch = countNewPostsInBatch(
+          knownPostIds,
+          allPostsToSave
+        );
         db.transaction((tx) => {
-          const postsCountBefore = countArtistPosts(tx, artist.id);
           bulkUpsertPosts(allPostsToSave, tx);
-          const postsCountAfter = countArtistPosts(tx, artist.id);
-          insertedInFinalBatch = Math.max(0, postsCountAfter - postsCountBefore);
 
           tx.update(artists)
             .set(
@@ -1012,6 +1079,7 @@ export class SyncService {
             .run();
         });
 
+        rememberUpsertedPostIds(knownPostIds, allPostsToSave);
         newPostsCount += insertedInFinalBatch;
         allPostsToSave.length = 0;
         logger.debug(
@@ -1049,7 +1117,8 @@ export class SyncService {
         `(was: ${previousLastPostId}, paginationCompleted: ${paginationCompleted})`
       );
     } finally {
-      if (isInitial) {
+      // Per-artist FTS restore only for single-artist / repair. Sync All restores once.
+      if (isInitial && !this.syncAllOwnsFtsLifecycle) {
         logger.info(
           `SyncService: ${artist.name} - backfilling FTS index and restoring insert/update/delete triggers`
         );

@@ -45,6 +45,9 @@ type SqliteDatabase = InstanceType<typeof Database>;
 /**
  * Drop FTS insert/update/delete triggers that would fire per-row during bulk
  * initial sync or repair upsert.
+ *
+ * Call sites: Sync All drops once at start (restores once in its finally);
+ * single-artist / repair drop per artist around that artist's bulk window.
  */
 export function dropFtsTriggersForBulkInsert(sqlite: SqliteDatabase): void {
   for (const trigger of RUNTIME_DROPPABLE_FTS_TRIGGERS) {
@@ -120,8 +123,9 @@ export function backfillArtistFtsIndex(
 }
 
 /**
- * Full FTS rebuild from the content table. Used after hard-kill recovery and
- * after bulk sync/repair (see `backfillArtistFtsIndex`).
+ * Full FTS rebuild from the content table. Used after hard-kill recovery,
+ * after single-artist / repair bulk sync (`backfillArtistFtsIndex`), and once
+ * in Sync All's finally after the shared bulk window.
  */
 export function rebuildFtsIndex(sqlite: SqliteDatabase): void {
   sqlite.exec(`INSERT INTO posts_fts(posts_fts) VALUES('rebuild');`);
