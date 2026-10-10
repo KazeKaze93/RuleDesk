@@ -3,12 +3,15 @@ import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
+import { container, DI_TOKENS } from "../../core/di/Container";
 import { getSqliteInstance } from "../../db/client";
 import { getDatabasePaths } from "../../db/paths";
 import { buildPostsTimeline } from "../../db/queries/stats";
 import { IPC_CHANNELS } from "../channels";
 import type { ExtendedStats } from "../../../shared/schemas/stats";
 import { EXTERNAL_ARTIST_ID } from "../../../shared/constants";
+import type { SyncService } from "../../services/sync-service";
+import type Database from "better-sqlite3";
 
 type CountRow = { c: number };
 type RatingRow = { rating: string; c: number };
@@ -17,8 +20,74 @@ type ProviderRow = { provider: string; c: number };
 type TopArtistRow = { name: string; postCount: number };
 type TopTagRow = { tag: string; count: number };
 
+type TopTagsCacheEntry = {
+  tags: TopTagRow[];
+  expiresAtMs: number;
+};
+
+/** In-memory TTL for the expensive recursive top-tags CTE. */
+export const TOP_TAGS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const TOP_TAGS_SQL = `
+        WITH RECURSIVE plain_tags(post_id, tag, rest) AS (
+          SELECT id, '', trim(tags) || ' '
+          FROM posts
+          WHERE tags != '' AND NOT json_valid(tags)
+          UNION ALL
+          SELECT
+            post_id,
+            substr(rest, 0, instr(rest, ' ')),
+            substr(rest, instr(rest, ' ') + 1)
+          FROM plain_tags
+          WHERE rest != ''
+        ),
+        normalized_tags AS (
+          SELECT lower(trim(value)) as tag
+          FROM posts, json_each(posts.tags)
+          WHERE json_valid(posts.tags)
+          UNION ALL
+          SELECT lower(trim(tag)) as tag
+          FROM plain_tags
+          WHERE tag != ''
+        )
+        SELECT tag, COUNT(*) as count
+        FROM normalized_tags
+        WHERE tag != ''
+        GROUP BY tag
+        ORDER BY count DESC, tag ASC
+        LIMIT 20
+      `;
+
+const syncEndCacheInvalidators = new Set<() => void>();
+let wrappedSyncService: SyncService | null = null;
+
+function ensureSyncEndSendEventWrap(syncService: SyncService): void {
+  if (wrappedSyncService === syncService) {
+    return;
+  }
+  // New SyncService instance (tests / DI re-register): drop stale listeners.
+  if (wrappedSyncService !== null) {
+    syncEndCacheInvalidators.clear();
+  }
+  const previousSendEvent = syncService.sendEvent.bind(syncService);
+  syncService.sendEvent = (channel: string, data?: unknown) => {
+    if (channel === IPC_CHANNELS.SYNC.END) {
+      for (const invalidate of syncEndCacheInvalidators) {
+        invalidate();
+      }
+    }
+    previousSendEvent(channel, data);
+  };
+  wrappedSyncService = syncService;
+}
+
 // Query style: Drizzle Builder API only in this controller.
 export class StatsController extends BaseController {
+  private topTagsCache: TopTagsCacheEntry | null = null;
+  /** Increments only when the recursive CTE runs (not on TTL hits). */
+  private topTagsQueryCount = 0;
+  private syncEndInvalidator: (() => void) | null = null;
+
   public setup(): void {
     this.handle(IPC_CHANNELS.STATS.GET_EXTENDED, z.tuple([]), this.getExtendedStats.bind(this), {
       isIdempotent: true,
@@ -27,7 +96,68 @@ export class StatsController extends BaseController {
       isIdempotent: true,
     });
 
+    // SyncService is registered after setupIpc(); defer until the same turn finishes.
+    void Promise.resolve().then(() => {
+      this.ensureSyncEndInvalidationHook();
+    });
+
     log.info("[StatsController] All handlers registered");
+  }
+
+  private getSyncService(): SyncService {
+    return container.resolve(DI_TOKENS.SYNC_SERVICE);
+  }
+
+  /**
+   * Clear top-tags cache when SyncService emits sync:end.
+   * Main does not receive webContents.send, so controllers resolve SyncService
+   * (same DI path as Auth/Maintenance/Artists) and wrap sendEvent once.
+   */
+  private ensureSyncEndInvalidationHook(): void {
+    if (this.syncEndInvalidator !== null) {
+      return;
+    }
+    if (!container.has(DI_TOKENS.SYNC_SERVICE)) {
+      return;
+    }
+
+    const syncService = this.getSyncService();
+    ensureSyncEndSendEventWrap(syncService);
+
+    this.syncEndInvalidator = () => {
+      this.invalidateTopTagsCache();
+    };
+    syncEndCacheInvalidators.add(this.syncEndInvalidator);
+  }
+
+  private invalidateTopTagsCache(): void {
+    this.topTagsCache = null;
+  }
+
+  private queryTopTags(
+    sqlite: InstanceType<typeof Database>
+  ): TopTagRow[] {
+    this.topTagsQueryCount += 1;
+    return sqlite.prepare<[], TopTagRow>(TOP_TAGS_SQL).all();
+  }
+
+  private getTopTags(
+    sqlite: InstanceType<typeof Database>,
+    nowMs: number = Date.now()
+  ): TopTagRow[] {
+    this.ensureSyncEndInvalidationHook();
+
+    const cached = this.topTagsCache;
+    if (cached !== null && nowMs < cached.expiresAtMs) {
+      return cached.tags;
+    }
+
+    const tags = this.queryTopTags(sqlite);
+    this.topTagsCache = {
+      tags,
+      expiresAtMs: nowMs + TOP_TAGS_CACHE_TTL_MS,
+    };
+    return tags;
   }
 
   private getExtendedStats(_event: IpcMainInvokeEvent): ExtendedStats {
@@ -86,37 +216,7 @@ export class StatsController extends BaseController {
       `)
       .all();
 
-    const topTags = sqlite
-      .prepare<[], TopTagRow>(`
-        WITH RECURSIVE plain_tags(post_id, tag, rest) AS (
-          SELECT id, '', trim(tags) || ' '
-          FROM posts
-          WHERE tags != '' AND NOT json_valid(tags)
-          UNION ALL
-          SELECT
-            post_id,
-            substr(rest, 0, instr(rest, ' ')),
-            substr(rest, instr(rest, ' ') + 1)
-          FROM plain_tags
-          WHERE rest != ''
-        ),
-        normalized_tags AS (
-          SELECT lower(trim(value)) as tag
-          FROM posts, json_each(posts.tags)
-          WHERE json_valid(posts.tags)
-          UNION ALL
-          SELECT lower(trim(tag)) as tag
-          FROM plain_tags
-          WHERE tag != ''
-        )
-        SELECT tag, COUNT(*) as count
-        FROM normalized_tags
-        WHERE tag != ''
-        GROUP BY tag
-        ORDER BY count DESC, tag ASC
-        LIMIT 20
-      `)
-      .all();
+    const topTags = this.getTopTags(sqlite);
 
     const postsTimeline = buildPostsTimeline(sqlite);
 
