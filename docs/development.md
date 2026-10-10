@@ -12,6 +12,8 @@ Quality and tests are **not** run on GitHub Actions. After `git config core.hook
 
 ## Release packaging (CI)
 
+Release CI intentionally has no lint/typecheck/test/e2e steps — those stay on local `pre-push`; Actions quality jobs were dropped in `5d7a263` for cost and flake cost on every push, and only packaging was restored.
+
 Tagged releases are packaged by [`.github/workflows/release.yml`](../.github/workflows/release.yml):
 
 | Trigger | Behavior |

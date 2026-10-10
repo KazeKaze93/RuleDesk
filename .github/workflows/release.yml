@@ -1,5 +1,9 @@
-# Release packaging only. Quality gate stays local (`.githooks/pre-push`).
-# Restored from 5d7a263^:.github/workflows/ci.yml release-* jobs (sans quality/e2e).
+# Release packaging only — build + publish artifacts. Do NOT add lint, typecheck,
+# unit/integration tests, or e2e here.
+# Quality gate is the local `.githooks/pre-push` (validate, docs:api, Vitest).
+# CI quality/e2e jobs were removed in 5d7a263 because full checks on every push
+# were too costly and flake-prone; this workflow restores only the former
+# release-* jobs from 5d7a263^:.github/workflows/ci.yml.
 name: Release
 
 on:
