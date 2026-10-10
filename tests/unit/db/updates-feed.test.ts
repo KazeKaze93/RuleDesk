@@ -148,24 +148,27 @@ describe("updates-feed queries (real schema)", () => {
     expect(countUpdatesFeedPosts(db, { unreadOnly: false })).toBe(3);
   });
 
-  it("tag filter scopes header unread and mark-all-read", () => {
+  it("mark-all-read with tag X marks only X; badge becomes N-M", () => {
     const db = seedFeedFixture();
-    const withTag = countUpdatesFeedPosts(db, {
+    const n = countUpdatesFeedPosts(db, { unreadOnly: true });
+    const m = countUpdatesFeedPosts(db, {
       unreadOnly: true,
       filters: { tags: "1girl" },
     });
-    expect(withTag).toBe(1);
+    expect(n).toBe(2);
+    expect(m).toBe(1);
 
     const updated = markUpdatesFeedPostsViewed(db, { tags: "1girl" });
-    expect(updated).toBe(1);
+    expect(updated).toBe(m);
 
-    expect(countUpdatesFeedPosts(db, { unreadOnly: true })).toBe(1);
     expect(
       countUpdatesFeedPosts(db, {
         unreadOnly: true,
         filters: { tags: "1girl" },
       })
     ).toBe(0);
+    // Badge ignores the active tag filter
+    expect(countUpdatesFeedPosts(db, { unreadOnly: true })).toBe(n - m);
   });
 
   it("markPostsViewedByIds only touches the given ids", () => {
@@ -199,6 +202,46 @@ describe("updates-feed queries (real schema)", () => {
       .where(eq(posts.postId, 100))
       .get();
     expect(historyRow?.isViewed).toBe(false);
+  });
+
+  it("auto-mark loaded filtered ids leaves other feed unread for badge", () => {
+    const db = seedFeedFixture();
+    // N=2 unread sinceTracking (postIds 200=1girl, 201=male). M=1 with tag 1girl.
+    const n = countUpdatesFeedPosts(db, { unreadOnly: true });
+    const m = countUpdatesFeedPosts(db, {
+      unreadOnly: true,
+      filters: { tags: "1girl" },
+    });
+    expect(n).toBe(2);
+    expect(m).toBe(1);
+
+    // Simulate Updates feed page load under tag filter: only matching ids are marked.
+    const loadedFiltered = db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(eq(posts.postId, 200))
+      .all()
+      .map((row) => row.id);
+    expect(loadedFiltered).toHaveLength(m);
+
+    const updated = markPostsViewedByIds(db, loadedFiltered);
+    expect(updated).toBe(m);
+
+    expect(
+      countUpdatesFeedPosts(db, {
+        unreadOnly: true,
+        filters: { tags: "1girl" },
+      })
+    ).toBe(0);
+    // Badge ignores tags → remaining N−M
+    expect(countUpdatesFeedPosts(db, { unreadOnly: true })).toBe(n - m);
+
+    const otherFeedPost = db
+      .select({ isViewed: posts.isViewed })
+      .from(posts)
+      .where(eq(posts.postId, 201))
+      .get();
+    expect(otherFeedPost?.isViewed).toBe(false);
   });
 
   it("getLastTrackedArtistSyncAtMs returns ms and ignores only-external sync", () => {
