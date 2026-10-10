@@ -9,6 +9,10 @@ import {
   sql,
   not,
   or,
+  gt,
+  lte,
+  asc,
+  max,
   type SQL,
 } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
@@ -30,10 +34,12 @@ import {
   type PostFilterRequest,
 } from "../../../shared/schemas/post";
 import {
+  BATCH_DOWNLOAD_CHUNK_SIZE,
   BATCH_DOWNLOAD_MAX_FILES,
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
+import type { DownloadQueueItem } from "../../../shared/types/download";
 import { getSqliteInstance } from "../../db/client";
 import { postsFtsTableExists } from "../../db/fts-table-check";
 import { areRuntimeDroppableFtsTriggersPresent } from "../../db/fts-triggers";
@@ -68,6 +74,34 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  * Uses shared IpcSafe utility type for automatic Date -> number conversion.
  */
 type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
+
+function postRowToDownloadItem(p: {
+  postId: number;
+  artistId: number;
+  fileUrl: string;
+}): DownloadQueueItem {
+  const pathMatch = p.fileUrl.match(/^[^?#]+/);
+  const pathname = pathMatch ? pathMatch[0] : p.fileUrl;
+  const ext = pathname.split(".").pop()?.toLowerCase() || "jpg";
+  return {
+    url: p.fileUrl,
+    filename: `${p.artistId}_${p.postId}.${ext}`,
+  };
+}
+
+function rowsToDownloadItems(
+  rows: Array<{ postId: number; artistId: number; fileUrl: string | null }>
+): DownloadQueueItem[] {
+  return rows
+    .filter((p) => Boolean(p.fileUrl?.trim()))
+    .map((p) =>
+      postRowToDownloadItem({
+        postId: p.postId,
+        artistId: p.artistId,
+        fileUrl: p.fileUrl ?? "",
+      })
+    );
+}
 
 /** Exact AI tag tokens used by SQL aiFilter (FTS MATCH and posts.tags instr). */
 const AI_FILTER_TAGS = [
@@ -499,14 +533,13 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Get download items for batch download (all posts matching filters, up to 500)
-   * Returns { items } for use with Download All. Total for display comes from getArtistPostsCount.
+   * Legacy list fetch for download items (capped). Prefer cursor mass-download via FileController.
    */
   private async getDownloadItems(
     _event: IpcMainInvokeEvent,
     params: GetPostsParams & { limit?: number }
   ): Promise<{ items: Array<{ url: string; filename: string }> }> {
-    const posts = await this.getPosts(_event, {
+    const rows = await this.getPosts(_event, {
       ...params,
       page: 1,
       limit: Math.min(
@@ -514,18 +547,71 @@ export class PostsController extends BaseController {
         BATCH_DOWNLOAD_MAX_FILES
       ),
     });
-    const items = posts
+    return { items: rowsToDownloadItems(rows) };
+  }
+
+  /**
+   * Snapshot for artist mass-download: MAX(id) and COUNT under filters.
+   * upperBoundId freezes the walk so sync inserts with higher ids are deferred.
+   */
+  public snapshotArtistMassDownload(
+    artistId: number,
+    filters: PostFilterRequest | undefined
+  ): { upperBoundId: number; total: number } {
+    const db = this.getDb();
+    const conditions = this.buildPostFilterConditions(artistId, filters);
+    const whereClause =
+      conditions.length > 0 ? and(...conditions) : undefined;
+    const row = db
+      .select({
+        upperBoundId: max(posts.id),
+        total: count(),
+      })
+      .from(posts)
+      .where(whereClause)
+      .get();
+    const upperBoundId = row?.upperBoundId ?? 0;
+    const total = row?.total ?? 0;
+    return { upperBoundId, total };
+  }
+
+  /**
+   * Next chunk for artist mass-download: id > cursorId AND id <= upperBoundId, ORDER BY id ASC.
+   */
+  public fetchArtistMassDownloadChunk(params: {
+    artistId: number;
+    filters: PostFilterRequest | undefined;
+    cursorId: number;
+    upperBoundId: number;
+    limit?: number;
+  }): Array<DownloadQueueItem & { id: number }> {
+    const db = this.getDb();
+    const limit = params.limit ?? BATCH_DOWNLOAD_CHUNK_SIZE;
+    const conditions = this.buildPostFilterConditions(
+      params.artistId,
+      params.filters
+    );
+    conditions.push(gt(posts.id, params.cursorId));
+    conditions.push(lte(posts.id, params.upperBoundId));
+    const whereClause = and(...conditions);
+    const rows = db
+      .select({
+        id: posts.id,
+        postId: posts.postId,
+        artistId: posts.artistId,
+        fileUrl: posts.fileUrl,
+      })
+      .from(posts)
+      .where(whereClause)
+      .orderBy(asc(posts.id))
+      .limit(limit)
+      .all();
+    return rows
       .filter((p) => p.fileUrl?.trim())
       .map((p) => {
-        const pathMatch = (p.fileUrl || "").match(/^[^?#]+/);
-        const pathname = pathMatch ? pathMatch[0] : p.fileUrl || "";
-        const ext = pathname.split(".").pop()?.toLowerCase() || "jpg";
-        return {
-          url: p.fileUrl!,
-          filename: `${p.artistId}_${p.postId}.${ext}`,
-        };
+        const item = postRowToDownloadItem(p);
+        return { id: p.id, ...item };
       });
-    return { items };
   }
 
   /**

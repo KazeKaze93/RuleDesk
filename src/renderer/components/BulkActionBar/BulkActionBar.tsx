@@ -9,7 +9,7 @@ import type { Post } from "@shared/types/db";
 import { useDownloadStore } from "../../store/downloadStore";
 import {
   presentDownloadAllResult,
-  warnIfDownloadTruncated,
+  warnIfDownloadListOverLimit,
 } from "../../lib/download-result-ui";
 import { AddToPlaylistModal } from "../playlists/AddToPlaylistModal";
 import {
@@ -202,10 +202,12 @@ export const BulkActionBar = ({
       toast.info("No downloadable posts in selection");
       return;
     }
-    warnIfDownloadTruncated(items.length);
+    if (warnIfDownloadListOverLimit(items.length)) {
+      return;
+    }
     setGlobalDownloading(true);
     try {
-      const result = await window.api.downloadAll(items);
+      const result = await window.api.downloadAll({ kind: "list", items });
       presentDownloadAllResult(result);
       if (result.success || result.downloaded > 0) {
         clearSelection();

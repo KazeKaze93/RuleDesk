@@ -14,16 +14,16 @@ describe("download-result-ui", () => {
     vi.clearAllMocks();
   });
 
-  it("warns when selection exceeds batch cap", async () => {
-    const { warnIfDownloadTruncated } = await import(
+  it("blocks list selection over the safety cap with an explicit error", async () => {
+    const { warnIfDownloadListOverLimit } = await import(
       "../../../src/renderer/lib/download-result-ui"
     );
-    expect(warnIfDownloadTruncated(600)).toBe(500);
-    expect(toast.warning).toHaveBeenCalledWith(
-      "Will download 500 of 600 selected posts"
+    expect(warnIfDownloadListOverLimit(5001)).toBe(true);
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining("5000")
     );
-    expect(warnIfDownloadTruncated(10)).toBe(10);
-    expect(toast.warning).toHaveBeenCalledTimes(1);
+    expect(warnIfDownloadListOverLimit(10)).toBe(false);
+    expect(toast.error).toHaveBeenCalledTimes(1);
   });
 
   it("does not toast success for soft-fail results", async () => {

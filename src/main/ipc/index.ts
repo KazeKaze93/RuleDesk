@@ -80,6 +80,7 @@ export function setupIpc(
   viewerController.setup();
 
   const fileController = new FileController();
+  fileController.setPostsController(postsController);
   fileController.setup();
   activeFileController = fileController;
 

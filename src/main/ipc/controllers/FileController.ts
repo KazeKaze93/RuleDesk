@@ -17,6 +17,13 @@ import {
   DOWNLOAD_SHUTDOWN_DRAIN_MS,
   USER_AGENT,
 } from "../../config/constants";
+import {
+  artistQueueInitial,
+  listQueueInitial,
+  parseDownloadQueueFile,
+  writeDownloadQueueAtomic,
+} from "../../lib/download-queue-file";
+import type { PostsController } from "./PostsController";
 
 /** Allows quit-smoke to force a short cancel drain (milliseconds). */
 function resolveDownloadShutdownDrainMs(): number {
@@ -32,12 +39,22 @@ function resolveDownloadShutdownDrainMs(): number {
 }
 import { IPC_CHANNELS } from "../channels";
 import { isResolvedPathWithinBase } from "../../utils/path-within-base";
-import { BATCH_DOWNLOAD_MAX_FILES } from "../../../shared/constants";
+import {
+  BATCH_DOWNLOAD_CHUNK_SIZE,
+  BATCH_DOWNLOAD_LIST_MAX_FILES,
+} from "../../../shared/constants";
 import { isErrnoException } from "../../../shared/utils/type-guards";
+import {
+  DownloadAllRequestSchema,
+  type DownloadAllRequest,
+} from "../../../shared/schemas/download";
 import type {
   DownloadAllResult,
   DownloadFailure,
-  DownloadQueueFileV2,
+  DownloadQueueFileV3,
+  DownloadQueueFileV3Artist,
+  DownloadQueueFileV3List,
+  DownloadQueueItem,
 } from "../../../shared/types/download";
 import { remainingDownloadItems } from "../../../shared/utils/download-failure";
 
@@ -66,20 +83,13 @@ const DownloadFileSchema = z.object({
 
 const OpenFolderSchema = z.string().min(1);
 
-const DownloadAllItemSchema = z.object({
-  url: DownloadFileSchema.shape.url,
-  filename: DownloadFileSchema.shape.filename,
-});
-
-/** No .max() — oversized batches are truncated in downloadAll (not thrown). */
-const DownloadAllSchema = z.array(DownloadAllItemSchema);
 const DownloadFileArgsSchema = z.tuple([
   DownloadFileSchema.shape.url,
   DownloadFileSchema.shape.filename,
 ]);
 const OpenFolderArgSchema = OpenFolderSchema;
 const EmptyArgsSchema = z.tuple([]);
-const DownloadAllArgsSchema = z.tuple([DownloadAllSchema]);
+const DownloadAllArgsSchema = z.tuple([DownloadAllRequestSchema]);
 
 const DownloadFailureSchema = z.object({
   itemId: z.string().min(1),
@@ -112,6 +122,14 @@ export class FileController extends BaseController {
   private downloadWorker: Worker | null = null;
   private batchIdleWaiters: Array<() => void> = [];
   private batchFinish: ((result: DownloadAllResult) => void) | null = null;
+  private postsController: PostsController | null = null;
+  /** True while artist/list mass-download orchestration is running (incl. between chunks). */
+  private massDownloadActive = false;
+  private massDownloadCancelRequested = false;
+
+  public setPostsController(postsController: PostsController): void {
+    this.postsController = postsController;
+  }
 
   /**
    * Set main window reference (needed for download dialogs and progress events)
@@ -127,7 +145,11 @@ export class FileController extends BaseController {
   }
 
   public hasActiveDownloads(): boolean {
-    return this.downloadWorker !== null || this.activeDownloads.size > 0;
+    return (
+      this.massDownloadActive ||
+      this.downloadWorker !== null ||
+      this.activeDownloads.size > 0
+    );
   }
 
   /**
@@ -150,6 +172,7 @@ export class FileController extends BaseController {
     log.info(
       `[FileController] Canceling ${this.activeDownloads.size} single + batch downloads`
     );
+    this.massDownloadCancelRequested = true;
     for (const [filename, controller] of this.activeDownloads.entries()) {
       controller.abort();
       log.debug(`[FileController] Canceled download: ${filename}`);
@@ -243,60 +266,33 @@ export class FileController extends BaseController {
     return path.join(app.getPath("userData"), DOWNLOAD_QUEUE_FILE);
   }
 
-  private async readQueueFile(): Promise<DownloadQueueFileV2 | null> {
+  private async readQueueFile(): Promise<DownloadQueueFileV3 | null> {
     try {
       const p = this.getQueueFilePath();
       await access(p);
       const raw = await readFile(p, "utf-8");
       const data: unknown = JSON.parse(raw);
-      if (typeof data !== "object" || data === null) {
+      const parsed = parseDownloadQueueFile(data);
+      if (!parsed) {
+        log.warn("[FileController] Discarding unreadable download queue file");
         return null;
       }
-      if (!("items" in data) || !Array.isArray(data.items)) {
+      if (parsed.format === "v2-as-list") {
+        log.info("[FileController] Migrated V2 download queue to V3 list");
+      }
+      return parsed.data;
+    } catch (error: unknown) {
+      if (isErrnoException(error) && error.code === "ENOENT") {
         return null;
       }
-      const itemsParse = DownloadAllSchema.safeParse(data.items);
-      if (!itemsParse.success) {
-        return null;
-      }
-      const folder =
-        "folder" in data && typeof data.folder === "string" ? data.folder : "";
-      const timestamp =
-        "timestamp" in data && typeof data.timestamp === "number"
-          ? data.timestamp
-          : 0;
-      const total =
-        "total" in data && typeof data.total === "number"
-          ? data.total
-          : itemsParse.data.length;
-
-      let completedIds: string[] = [];
-      if (
-        "completedIds" in data &&
-        Array.isArray(data.completedIds) &&
-        data.completedIds.every((id) => typeof id === "string")
-      ) {
-        completedIds = data.completedIds;
-      } else if ("doneCount" in data && typeof data.doneCount === "number") {
-        // Legacy queue: best-effort map success count → leading filenames
-        completedIds = itemsParse.data
-          .slice(0, Math.max(0, data.doneCount))
-          .map((item) => item.filename);
-      } else {
-        return null;
-      }
-
-      return {
-        version: 2,
-        items: itemsParse.data,
-        completedIds,
-        total,
-        folder,
-        timestamp,
-      };
-    } catch {
+      log.warn("[FileController] Failed to read download queue:", error);
       return null;
     }
+  }
+
+  private async writeQueueFile(data: DownloadQueueFileV3): Promise<void> {
+    await writeDownloadQueueAtomic(this.getQueueFilePath(), data);
+    this.notifyPendingDownloadStateChanged();
   }
 
   private async deleteQueueFile(): Promise<void> {
@@ -319,6 +315,13 @@ export class FileController extends BaseController {
     }
   }
 
+  private queueHasRemaining(data: DownloadQueueFileV3): boolean {
+    if (data.kind === "list") {
+      return remainingDownloadItems(data.items, data.completedIds).length > 0;
+    }
+    return data.doneCount < data.total || data.cursorId < data.upperBoundId;
+  }
+
   private async getPendingDownload(): Promise<{
     hasPending: boolean;
     total: number;
@@ -329,27 +332,28 @@ export class FileController extends BaseController {
     if (!data) {
       return null;
     }
-    const remaining = remainingDownloadItems(data.items, data.completedIds);
-    if (remaining.length === 0) {
+    if (!this.queueHasRemaining(data)) {
       return null;
     }
     if (Date.now() - data.timestamp > DOWNLOAD_QUEUE_MAX_AGE_MS) {
       await this.deleteQueueFile();
       return null;
     }
+    const done =
+      data.kind === "list" ? data.completedIds.length : data.doneCount;
     return {
       hasPending: true,
       total: data.total,
-      done: data.completedIds.length,
+      done,
       folder: data.folder,
     };
   }
 
   private async resumePendingDownload(
-    event: IpcMainInvokeEvent
+    _event: IpcMainInvokeEvent
   ): Promise<DownloadAllResult> {
     const data = await this.readQueueFile();
-    if (!data) {
+    if (!data || !this.queueHasRemaining(data)) {
       await this.deleteQueueFile();
       return {
         success: false,
@@ -358,20 +362,14 @@ export class FileController extends BaseController {
         canceled: false,
         error: "No pending download",
       };
+    }
+    if (data.kind === "artist") {
+      return this.downloadAllArtistFromQueue(data);
     }
     const remaining = remainingDownloadItems(data.items, data.completedIds);
-    if (remaining.length === 0) {
-      await this.deleteQueueFile();
-      return {
-        success: false,
-        downloaded: 0,
-        failed: [],
-        canceled: false,
-        error: "No pending download",
-      };
-    }
-    await this.deleteQueueFile();
-    return this.downloadAll(event, remaining);
+    return this.downloadAllList(remaining, {
+      resumeFrom: data,
+    });
   }
 
   /**
@@ -474,9 +472,9 @@ export class FileController extends BaseController {
     this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD_ALL,
       DownloadAllArgsSchema,
-      (event, ...args) => {
-        const [items] = DownloadAllArgsSchema.parse(args);
-        return this.downloadAll(event, items);
+      (_event, ...args) => {
+        const [request] = DownloadAllArgsSchema.parse(args);
+        return this.downloadAll(request);
       }
     );
     this.handle(
@@ -545,22 +543,235 @@ export class FileController extends BaseController {
   }
 
   /**
-   * Download multiple files via Worker Thread.
-   * Heavy I/O (network, disk) runs off Main process to avoid blocking UI.
-   * Main only orchestrates: spawn Worker, forward progress, log failures, handle cancel.
+   * Start a list mass download without an IPC event (quit-smoke / tests).
    */
-  /**
-   * Start a mass download without an IPC event (resume / quit-smoke).
-   */
-  public runDownloadAll(
-    items: Array<{ url: string; filename: string }>
-  ): Promise<DownloadAllResult> {
-    return this.downloadAll(undefined, items);
+  public runDownloadAll(items: DownloadQueueItem[]): Promise<DownloadAllResult> {
+    return this.downloadAll({ kind: "list", items });
   }
 
   private async downloadAll(
-    _event: IpcMainInvokeEvent | undefined,
-    items: Array<{ url: string; filename: string }>
+    request: DownloadAllRequest
+  ): Promise<DownloadAllResult> {
+    const parsed = DownloadAllRequestSchema.safeParse(request);
+    if (!parsed.success) {
+      if (
+        request.kind === "list" &&
+        Array.isArray(request.items) &&
+        request.items.length > BATCH_DOWNLOAD_LIST_MAX_FILES
+      ) {
+        return {
+          success: false,
+          downloaded: 0,
+          failed: [],
+          canceled: false,
+          truncatedFrom: request.items.length,
+          error: `Too many items (${request.items.length}). Maximum is ${BATCH_DOWNLOAD_LIST_MAX_FILES}.`,
+        };
+      }
+      log.error("[FileController] DownloadAll validation failed", parsed.error);
+      return {
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: "Invalid download request",
+      };
+    }
+
+    if (this.massDownloadActive || this.downloadWorker) {
+      return {
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: "A mass download is already in progress",
+      };
+    }
+
+    if (parsed.data.kind === "artist") {
+      return this.downloadAllArtist(parsed.data.artistId, parsed.data.filters);
+    }
+    return this.downloadAllList(parsed.data.items, {});
+  }
+
+  private async ensureDownloadFolder(): Promise<
+    { ok: true; folder: string } | { ok: false; error: string }
+  > {
+    const folder = await this.getDownloadRoot();
+    try {
+      await access(folder);
+    } catch {
+      try {
+        await mkdir(folder, { recursive: true });
+      } catch (e) {
+        log.error("[FileController] Failed to create download directory", e);
+        return { ok: false, error: "Failed to create download directory" };
+      }
+    }
+    return { ok: true, folder };
+  }
+
+  private async downloadAllArtist(
+    artistId: number,
+    filters: DownloadQueueFileV3Artist["filters"]
+  ): Promise<DownloadAllResult> {
+    const posts = this.postsController;
+    if (!posts) {
+      return {
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: "Posts controller not bound",
+      };
+    }
+    const folderResult = await this.ensureDownloadFolder();
+    if (!folderResult.ok) {
+      return {
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: folderResult.error,
+      };
+    }
+    const snapshot = posts.snapshotArtistMassDownload(artistId, filters);
+    if (snapshot.total === 0 || snapshot.upperBoundId === 0) {
+      return { success: true, downloaded: 0, failed: [], canceled: false };
+    }
+    const state = artistQueueInitial({
+      artistId,
+      filters,
+      upperBoundId: snapshot.upperBoundId,
+      total: snapshot.total,
+      folder: folderResult.folder,
+    });
+    await this.writeQueueFile(state);
+    return this.downloadAllArtistFromQueue(state);
+  }
+
+  private async downloadAllArtistFromQueue(
+    initial: DownloadQueueFileV3Artist
+  ): Promise<DownloadAllResult> {
+    const posts = this.postsController;
+    const mainWindow = this.getMainWindow();
+    if (!posts || !mainWindow) {
+      return {
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: !posts
+          ? "Posts controller not bound"
+          : "Main window not available",
+      };
+    }
+
+    this.massDownloadActive = true;
+    this.massDownloadCancelRequested = false;
+    let state: DownloadQueueFileV3Artist = { ...initial };
+    let downloaded = 0;
+    const failed: DownloadFailure[] = [];
+    let canceled = false;
+
+    try {
+      while (!this.massDownloadCancelRequested) {
+        const chunk = posts.fetchArtistMassDownloadChunk({
+          artistId: state.artistId,
+          filters: state.filters,
+          cursorId: state.cursorId,
+          upperBoundId: state.upperBoundId,
+          limit: BATCH_DOWNLOAD_CHUNK_SIZE,
+        });
+        if (chunk.length === 0) {
+          break;
+        }
+
+        const completedInChunk = new Set(state.chunkCompletedIds);
+        const remaining = chunk
+          .filter((row) => !completedInChunk.has(row.filename))
+          .map(({ url, filename }) => ({ url, filename }));
+
+        if (remaining.length === 0) {
+          const lastId = chunk[chunk.length - 1]?.id;
+          if (lastId === undefined) {
+            break;
+          }
+          state = {
+            ...state,
+            cursorId: lastId,
+            chunkCompletedIds: [],
+            timestamp: Date.now(),
+          };
+          await this.writeQueueFile(state);
+          continue;
+        }
+
+        const chunkResult = await this.runWorkerBatch({
+          items: remaining,
+          folder: state.folder,
+          progressDoneBase: state.doneCount,
+          progressTotal: state.total,
+          persistQueue: false,
+          onItemCompleted: async (filename) => {
+            if (!state.chunkCompletedIds.includes(filename)) {
+              state = {
+                ...state,
+                chunkCompletedIds: [...state.chunkCompletedIds, filename],
+                doneCount: state.doneCount + 1,
+                timestamp: Date.now(),
+              };
+              await this.writeQueueFile(state);
+            }
+          },
+        });
+
+        downloaded += chunkResult.downloaded;
+        failed.push(...chunkResult.failed);
+        if (chunkResult.canceled) {
+          canceled = true;
+          break;
+        }
+
+        const lastId = chunk[chunk.length - 1]?.id;
+        if (lastId === undefined) {
+          break;
+        }
+        state = {
+          ...state,
+          cursorId: lastId,
+          chunkCompletedIds: [],
+          timestamp: Date.now(),
+        };
+        await this.writeQueueFile(state);
+      }
+
+      if (this.massDownloadCancelRequested) {
+        canceled = true;
+      }
+
+      if (!canceled && failed.length === 0) {
+        await this.deleteQueueFile();
+      } else {
+        await this.writeQueueFile(state);
+      }
+
+      return {
+        success: failed.length === 0 && !canceled,
+        downloaded,
+        failed,
+        canceled,
+      };
+    } finally {
+      this.massDownloadActive = false;
+      this.massDownloadCancelRequested = false;
+      this.notifyPendingDownloadStateChanged();
+    }
+  }
+
+  private async downloadAllList(
+    items: DownloadQueueItem[],
+    options: { resumeFrom?: DownloadQueueFileV3List }
   ): Promise<DownloadAllResult> {
     const mainWindow = this.getMainWindow();
     if (!mainWindow) {
@@ -572,65 +783,119 @@ export class FileController extends BaseController {
         error: "Main window not available",
       };
     }
-
-    const validation = DownloadAllSchema.safeParse(items);
-    if (!validation.success) {
-      log.error("[FileController] DownloadAll validation failed", validation.error);
-      return {
-        success: false,
-        downloaded: 0,
-        failed: [],
-        canceled: false,
-        error: "Invalid download items",
-      };
-    }
-
-    const truncatedFrom =
-      validation.data.length > BATCH_DOWNLOAD_MAX_FILES
-        ? validation.data.length
-        : undefined;
-    const validItems = validation.data.slice(0, BATCH_DOWNLOAD_MAX_FILES);
-    if (truncatedFrom !== undefined) {
-      log.info(
-        `[FileController] Mass download truncated ${truncatedFrom} → ${BATCH_DOWNLOAD_MAX_FILES}`
-      );
-    }
-
-    if (validItems.length === 0) {
+    if (items.length === 0) {
+      await this.deleteQueueFile();
       return { success: true, downloaded: 0, failed: [], canceled: false };
     }
-
-    if (this.downloadWorker) {
+    if (items.length > BATCH_DOWNLOAD_LIST_MAX_FILES) {
       return {
         success: false,
         downloaded: 0,
         failed: [],
         canceled: false,
-        error: "A mass download is already in progress",
+        truncatedFrom: items.length,
+        error: `Too many items (${items.length}). Maximum is ${BATCH_DOWNLOAD_LIST_MAX_FILES}.`,
       };
     }
 
-    const folder = await this.getDownloadRoot();
-    const { duplicateFileBehavior, downloadFolderStructure } =
-      this.getDownloadSettings();
-    try {
-      await access(folder);
-    } catch {
-      try {
-        await mkdir(folder, { recursive: true });
-      } catch (e) {
-        log.error("[FileController] Failed to create download directory", e);
-        return {
-          success: false,
-          downloaded: 0,
-          failed: [],
-          canceled: false,
-          error: "Failed to create download directory",
-          truncatedFrom,
-        };
-      }
+    const folderResult = await this.ensureDownloadFolder();
+    if (!folderResult.ok) {
+      return {
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: folderResult.error,
+      };
     }
 
+    let state: DownloadQueueFileV3List =
+      options.resumeFrom ??
+      listQueueInitial({ items, folder: folderResult.folder });
+    if (!options.resumeFrom) {
+      await this.writeQueueFile(state);
+    }
+
+    this.massDownloadActive = true;
+    this.massDownloadCancelRequested = false;
+    try {
+      const result = await this.runWorkerBatch({
+        items,
+        folder: state.folder,
+        progressDoneBase: state.completedIds.length,
+        progressTotal: state.total,
+        persistQueue: false,
+        onItemCompleted: async (filename) => {
+          if (!state.completedIds.includes(filename)) {
+            state = {
+              ...state,
+              completedIds: [...state.completedIds, filename],
+              timestamp: Date.now(),
+            };
+            await this.writeQueueFile(state);
+          }
+        },
+      });
+
+      if (
+        !result.canceled &&
+        result.failed.length === 0 &&
+        !this.massDownloadCancelRequested
+      ) {
+        await this.deleteQueueFile();
+      } else {
+        await this.writeQueueFile(state);
+      }
+
+      return {
+        success:
+          result.failed.length === 0 &&
+          !result.canceled &&
+          !this.massDownloadCancelRequested,
+        downloaded: result.downloaded,
+        failed: result.failed,
+        canceled: result.canceled || this.massDownloadCancelRequested,
+      };
+    } finally {
+      this.massDownloadActive = false;
+      this.massDownloadCancelRequested = false;
+      this.notifyPendingDownloadStateChanged();
+    }
+  }
+
+  /**
+   * Run one worker batch. Progress `done` is remapped with progressDoneBase.
+   * Queue persistence is owned by the caller via onItemCompleted.
+   */
+  private runWorkerBatch(params: {
+    items: DownloadQueueItem[];
+    folder: string;
+    progressDoneBase: number;
+    progressTotal: number;
+    persistQueue: boolean;
+    onItemCompleted?: (filename: string) => void | Promise<void>;
+  }): Promise<DownloadAllResult> {
+    const mainWindow = this.getMainWindow();
+    if (!mainWindow) {
+      return Promise.resolve({
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: "Main window not available",
+      });
+    }
+    if (params.items.length === 0) {
+      return Promise.resolve({
+        success: true,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+      });
+    }
+
+    const { duplicateFileBehavior, downloadFolderStructure } =
+      this.getDownloadSettings();
     const workerPath = path.join(__dirname, "workers", "downloadWorker.cjs");
     const proxyUrl = getProxyUrl();
 
@@ -644,18 +909,18 @@ export class FileController extends BaseController {
           failed: [],
           canceled: false,
           error,
-          truncatedFrom,
         });
 
       try {
         const worker = new Worker(workerPath, {
           workerData: {
-            items: validItems,
-            folder,
+            items: params.items,
+            folder: params.folder,
             duplicateFileBehavior,
             downloadFolderStructure,
             queueFilePath: this.getQueueFilePath(),
             proxyUrl,
+            persistQueue: params.persistQueue,
           },
         });
         this.downloadWorker = worker;
@@ -679,14 +944,26 @@ export class FileController extends BaseController {
             message?: string;
             url?: string;
           }) => {
+            if (msg.type === "item-completed" && msg.id) {
+              void Promise.resolve(params.onItemCompleted?.(msg.id)).catch(
+                (error: unknown) => {
+                  log.error(
+                    "[FileController] Failed to persist queue after item:",
+                    error
+                  );
+                }
+              );
+            }
+
             if (msg.type === "progress" && !mainWindow.isDestroyed()) {
+              const chunkDone = msg.done ?? 0;
               mainWindow.webContents.send(
                 IPC_CHANNELS.FILES.DOWNLOAD_ALL_PROGRESS,
                 {
                   id: msg.id,
                   percent: msg.percent ?? 0,
-                  done: msg.done ?? 0,
-                  total: msg.total ?? validItems.length,
+                  done: params.progressDoneBase + chunkDone,
+                  total: params.progressTotal,
                 }
               );
               return;
@@ -723,13 +1000,11 @@ export class FileController extends BaseController {
               const failed: DownloadFailure[] = failedParse.success
                 ? failedParse.data
                 : [];
-              this.notifyPendingDownloadStateChanged();
               this.settleBatch({
                 success: msg.success ?? false,
                 downloaded: msg.downloaded ?? 0,
                 failed,
                 canceled: msg.canceled ?? false,
-                truncatedFrom,
               });
               return;
             }

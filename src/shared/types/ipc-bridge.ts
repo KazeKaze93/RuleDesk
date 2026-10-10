@@ -7,6 +7,7 @@
  */
 import type { Artist, Post, Playlist } from "./db";
 import type { DownloadAllResult } from "./download";
+import type { DownloadAllRequest } from "../schemas/download";
 import type { ProviderId } from "../constants";
 import type { SearchResults } from "./providers";
 import type { AddArtistRequest } from "../schemas/artist";
@@ -175,9 +176,7 @@ export interface IpcBridge {
     error?: string;
     canceled?: boolean;
   }>;
-  downloadAll: (
-    items: Array<{ url: string; filename: string }>
-  ) => Promise<DownloadAllResult>;
+  downloadAll: (request: DownloadAllRequest) => Promise<DownloadAllResult>;
   cancelDownloadAll: () => Promise<boolean>;
   pauseDownloadAll: () => Promise<void>;
   resumeDownloadAll: () => Promise<void>;
