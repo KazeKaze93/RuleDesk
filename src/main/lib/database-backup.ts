@@ -101,10 +101,10 @@ export function selectAutoBackupFilenamesToDelete(
  * Consistent online SQLite snapshot via VACUUM INTO, then settings sidecar.
  * Does not perform retention pruning — callers own that policy.
  */
-export function createConsistentBackup(
+export async function createConsistentBackup(
   sqlite: InstanceType<typeof Database>,
   targetPath: string
-): void {
+): Promise<void> {
   sqlite.prepare("VACUUM INTO ?").run(targetPath);
-  writeBackupSidecar(targetPath);
+  await writeBackupSidecar(targetPath);
 }

@@ -7,7 +7,7 @@
 import { parentPort, workerData } from "worker_threads";
 import path from "path";
 import fs from "fs";
-import { access, mkdir, unlink, writeFile } from "fs/promises";
+import { access, mkdir, unlink } from "fs/promises";
 import axios, { type AxiosProgressEvent } from "axios";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { pipeline } from "stream/promises";
@@ -33,10 +33,14 @@ interface WorkerData {
   folder: string;
   duplicateFileBehavior: "skip" | "overwrite";
   downloadFolderStructure: "flat" | "{artist_id}";
+  /** Kept for workerData shape / tests; Main owns the on-disk queue file. */
   queueFilePath: string;
   /** Proxy URL string; worker builds its own agent. */
   proxyUrl: string | null;
-  /** When false, Main owns queue.json (artist/list orchestration). Default true for tests. */
+  /**
+   * Legacy flag. Worker never writes queue.json (Main uses writeFileAtomic).
+   * Always treated as Main-owned ack path; `true` is ignored.
+   */
   persistQueue?: boolean;
 }
 
@@ -112,9 +116,7 @@ async function runWorker(): Promise<void> {
     folder,
     duplicateFileBehavior,
     downloadFolderStructure,
-    queueFilePath,
     proxyUrl,
-    persistQueue = true,
   // boundary: worker message — workerData payload after trust/Zod
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: worker message
   } = workerData as WorkerData;
@@ -178,49 +180,9 @@ async function runWorker(): Promise<void> {
 
   const post = (m: WorkerOutboundMessage) => parentPort?.postMessage(m);
 
-  const writeQueueFile = async (data: {
-    version: 3;
-    kind: "list";
-    items: Array<{ url: string; filename: string }>;
-    completedIds: string[];
-    total: number;
-    folder: string;
-    timestamp: number;
-  }) => {
-    if (!persistQueue) {
-      return;
-    }
-    try {
-      await writeFile(queueFilePath, JSON.stringify(data), "utf-8");
-    } catch {
-      /* ignore queue write errors — Main owns diagnostics */
-    }
-  };
-
-  const deleteQueueFile = async () => {
-    try {
-      await access(queueFilePath);
-      await unlink(queueFilePath);
-    } catch {
-      /* ignore */
-    }
-  };
-
   let downloaded = 0;
   const failed: DownloadFailure[] = [];
   const completedIds: string[] = [];
-
-  const persistQueueState = async () => {
-    await writeQueueFile({
-      version: 3,
-      kind: "list",
-      items,
-      completedIds: [...completedIds],
-      total: items.length,
-      folder,
-      timestamp: Date.now(),
-    });
-  };
 
   const ITEM_PERSIST_ACK_TIMEOUT_MS = 10_000;
 
@@ -228,48 +190,41 @@ async function runWorker(): Promise<void> {
     item: { url: string; filename: string }
   ): Promise<void> => {
     const filename = item.filename;
-    // File is already on disk. Notify Main, then wait for queue ack when Main owns persistence.
-    if (!persistQueue) {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(() => {
-            persistAcks.delete(filename);
-            reject(
-              new Error(
-                `Queue persist ack timed out after ${ITEM_PERSIST_ACK_TIMEOUT_MS}ms`
-              )
-            );
-          }, ITEM_PERSIST_ACK_TIMEOUT_MS);
-          persistAcks.set(filename, {
-            resolve: () => {
-              clearTimeout(timer);
-              resolve();
-            },
-            reject: (error: Error) => {
-              clearTimeout(timer);
-              reject(error);
-            },
-          });
-          post({ type: "item-completed", id: filename });
+    // File is already on disk. Notify Main, then wait for queue ack (Main owns persistence).
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          persistAcks.delete(filename);
+          reject(
+            new Error(
+              `Queue persist ack timed out after ${ITEM_PERSIST_ACK_TIMEOUT_MS}ms`
+            )
+          );
+        }, ITEM_PERSIST_ACK_TIMEOUT_MS);
+        persistAcks.set(filename, {
+          resolve: () => {
+            clearTimeout(timer);
+            resolve();
+          },
+          reject: (error: Error) => {
+            clearTimeout(timer);
+            reject(error);
+          },
         });
-        completedIds.push(filename);
-        downloaded++;
-      } catch (error: unknown) {
-        if (aborted) {
-          return;
-        }
-        const classified = classifyDownloadFailure(error);
-        recordFailure(item, {
-          code: "DISK",
-          message: classified.message || "Queue persist failed",
-        });
+        post({ type: "item-completed", id: filename });
+      });
+      completedIds.push(filename);
+      downloaded++;
+    } catch (error: unknown) {
+      if (aborted) {
+        return;
       }
-      return;
+      const classified = classifyDownloadFailure(error);
+      recordFailure(item, {
+        code: "DISK",
+        message: classified.message || "Queue persist failed",
+      });
     }
-    completedIds.push(filename);
-    downloaded++;
-    post({ type: "item-completed", id: filename });
-    await persistQueueState();
   };
 
   const recordFailure = (
@@ -450,16 +405,6 @@ async function runWorker(): Promise<void> {
     }
   };
 
-  await writeQueueFile({
-    version: 3,
-    kind: "list",
-    items,
-    completedIds: [],
-    total: items.length,
-    folder,
-    timestamp: Date.now(),
-  });
-
   const queue = [...items];
   const workers: Promise<void>[] = [];
   for (let i = 0; i < BATCH_DOWNLOAD_CONCURRENCY; i++) {
@@ -486,14 +431,6 @@ async function runWorker(): Promise<void> {
   await Promise.all(workers);
 
   const canceled = aborted;
-  if (!canceled && failed.length === 0) {
-    if (persistQueue) {
-      await deleteQueueFile();
-    }
-  } else {
-    await persistQueueState();
-  }
-
   post({
     type: "complete",
     success: failed.length === 0 && !canceled,

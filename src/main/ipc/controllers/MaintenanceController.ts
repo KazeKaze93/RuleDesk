@@ -310,7 +310,7 @@ export class MaintenanceController extends BaseController {
       }
 
       const sqlite = getSqliteInstance();
-      createConsistentBackup(sqlite, backupPath);
+      await createConsistentBackup(sqlite, backupPath);
 
       // Send loading complete event
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {

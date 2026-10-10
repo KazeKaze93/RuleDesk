@@ -610,7 +610,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 
 1. Retry opening the post (proxy may fall back to the direct CDN URL while resolving)
 2. If problems persist across many videos, manually delete the `video-cache` folder under `RuleDesk-Data` and restart — or use **Settings → General → Danger zone → Delete all data** as a last resort (wipes all of `RuleDesk-Data`)
-3. Known limitation: if playback still fails after an interrupt, clear `video-cache` under `RuleDesk-Data` (or use Danger zone wipe). Cache writes are atomic (tmp + rename); incomplete downloads should not become hits.
+3. Known limitation: if playback still fails after an interrupt, clear `video-cache` under `RuleDesk-Data` (or use Danger zone wipe). Cache writes are atomic (tmp + rename with lock retry); incomplete downloads should not become hits.
 
 ### Artist sync seems to skip newer posts
 

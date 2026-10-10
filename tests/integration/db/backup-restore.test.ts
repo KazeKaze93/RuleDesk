@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/main/lib/backup-sidecar", () => ({
   BACKUP_SIDECAR_SUFFIX: ".settings.json",
   getBackupSidecarPath: (backupDbPath: string) => `${backupDbPath}.settings.json`,
-  writeBackupSidecar: vi.fn(),
-  restoreBackupSidecar: vi.fn(() => false),
+  writeBackupSidecar: vi.fn(async () => undefined),
+  restoreBackupSidecar: vi.fn(async () => false),
   logRestoredSettingsSnapshot: vi.fn(),
 }));
 
@@ -203,7 +203,7 @@ describe("backup/restore consistency", () => {
 
     const backupPath = path.join(tempDir, buildAutoBackupFilename(new Date()));
     const vacuumStartedAt = Date.now();
-    createConsistentBackup(openSqlite, backupPath);
+    await createConsistentBackup(openSqlite, backupPath);
     const vacuumMs = Date.now() - vacuumStartedAt;
     // Medium/small fixture — expect sub-second; recorded for PR notes.
     expect(vacuumMs).toBeLessThan(5000);
@@ -246,7 +246,7 @@ describe("backup/restore consistency", () => {
 
     openSqlite = new Database(dbPath);
     const legacyBinPath = path.join(tempDir, "data.backup.2026-01-15.bin");
-    createConsistentBackup(openSqlite, legacyBinPath);
+    await createConsistentBackup(openSqlite, legacyBinPath);
     openSqlite.close();
     openSqlite = null;
 
@@ -281,7 +281,7 @@ describe("backup/restore consistency", () => {
 
     openSqlite = new Database(dbPath);
     const backupPath = path.join(tempDir, ".ruledesk-backup-test.db");
-    createConsistentBackup(openSqlite, backupPath);
+    await createConsistentBackup(openSqlite, backupPath);
     openSqlite.close();
     openSqlite = null;
 
