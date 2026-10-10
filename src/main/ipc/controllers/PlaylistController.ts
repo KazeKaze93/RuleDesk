@@ -22,6 +22,11 @@ import {
   GetPlaylistPostsSchema,
   ResolvePlaylistPostsSchema,
   ReorderPlaylistEntriesSchema,
+  MAX_PLAYLIST_ADD_ENTRY_PRODUCT,
+  MAX_PLAYLIST_IMPORT_ENTRIES,
+  PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE,
+  PLAYLIST_IMPORT_LOOKUP_CHUNK_SIZE,
+  PlaylistQueryJsonWriteSchema,
   type CreatePlaylistRequest,
   type UpdatePlaylistRequest,
   type AddPostsToPlaylistRequest,
@@ -681,6 +686,8 @@ export class PlaylistController extends BaseController {
   ): Promise<IpcPlaylist> {
     try {
       const db = this.getDb();
+      // Defense in depth: Zod already validates at the IPC boundary.
+      PlaylistQueryJsonWriteSchema.parse(data.queryJson ?? "");
 
       const result = db
         .insert(playlists)
@@ -883,6 +890,8 @@ export class PlaylistController extends BaseController {
         updateData.name = data.name;
       }
       if (data.queryJson !== undefined) {
+        // Defense in depth: Zod already validates at the IPC boundary.
+        PlaylistQueryJsonWriteSchema.parse(data.queryJson);
         updateData.queryJson = data.queryJson;
         updateData.querySchemaVersion = CURRENT_SMART_QUERY_SCHEMA_VERSION;
       }
@@ -965,6 +974,15 @@ export class PlaylistController extends BaseController {
     data: AddPostsToPlaylistRequest
   ): Promise<number> {
     try {
+      const product = data.playlistIds.length * data.postIds.length;
+      if (product > MAX_PLAYLIST_ADD_ENTRY_PRODUCT) {
+        throw createCodedError(
+          `Too many playlist×post pairs (${product}). Maximum is ${MAX_PLAYLIST_ADD_ENTRY_PRODUCT}.`,
+          ErrorCode.VALIDATION_ERROR,
+          { name: "ValidationError" }
+        );
+      }
+
       const db = this.getDb();
 
       const entriesToInsert = data.playlistIds.flatMap((playlistId) =>
@@ -973,14 +991,24 @@ export class PlaylistController extends BaseController {
       let entriesCreated = 0;
 
       db.transaction((tx) => {
-        const result = tx
-          .insert(playlistEntries)
-          .values(entriesToInsert)
-          .onConflictDoNothing({
-            target: [playlistEntries.playlistId, playlistEntries.postId],
-          })
-          .run();
-        entriesCreated = result.changes;
+        for (
+          let offset = 0;
+          offset < entriesToInsert.length;
+          offset += PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE
+        ) {
+          const chunk = entriesToInsert.slice(
+            offset,
+            offset + PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE
+          );
+          const result = tx
+            .insert(playlistEntries)
+            .values(chunk)
+            .onConflictDoNothing({
+              target: [playlistEntries.playlistId, playlistEntries.postId],
+            })
+            .run();
+          entriesCreated += result.changes;
+        }
         tx.update(playlists)
           .set({ updatedAt: new Date() })
           .where(inArray(playlists.id, data.playlistIds))
@@ -1573,37 +1601,71 @@ export class PlaylistController extends BaseController {
       }
 
       const exportData = parsed;
-      const db = this.getDb();
-      const newPlaylist = db
-        .insert(playlists)
-        .values({
-          name: exportData.playlist.name,
-          isSmart: exportData.playlist.isSmart,
-          queryJson: exportData.playlist.queryJson,
-          querySchemaVersion: CURRENT_SMART_QUERY_SCHEMA_VERSION,
-          iconName: exportData.playlist.iconName,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning()
-        .get();
 
-      if (!newPlaylist) {
-        throw new Error("Failed to create playlist");
+      if (exportData.entries.length > MAX_PLAYLIST_IMPORT_ENTRIES) {
+        return {
+          success: false,
+          error: `Too many playlist entries (${exportData.entries.length}). Maximum is ${MAX_PLAYLIST_IMPORT_ENTRIES}.`,
+          code: ErrorCode.VALIDATION_ERROR,
+        };
       }
 
+      const queryJsonParse = PlaylistQueryJsonWriteSchema.safeParse(
+        exportData.playlist.queryJson
+      );
+      if (!queryJsonParse.success) {
+        return {
+          success: false,
+          error: "Invalid smart playlist queryJson",
+          code: ErrorCode.VALIDATION_ERROR,
+        };
+      }
+
+      const db = this.getDb();
+
+      // Resolve local post ids OUTSIDE the write transaction (reads only).
+      // Match by (artistId, provider, postId); v1 falls back to unambiguous postId.
+      type ImportEntryRow = {
+        playlistId: number;
+        postId: number;
+        addedAt: Date;
+        position: number;
+      };
+      let resolvedEntries: ImportEntryRow[] = [];
+
       if (!exportData.playlist.isSmart && exportData.entries.length > 0) {
-        const importedPostIds = exportData.entries.map((entry) => entry.postId);
-        const localPosts = db
-          .select({
-            id: posts.id,
-            postId: posts.postId,
-            artistId: posts.artistId,
-            provider: posts.provider,
-          })
-          .from(posts)
-          .where(inArray(posts.postId, importedPostIds))
-          .all();
+        const importedPostIds = [
+          ...new Set(exportData.entries.map((entry) => entry.postId)),
+        ];
+        const localPosts: Array<{
+          id: number;
+          postId: number;
+          artistId: number;
+          provider: (typeof PROVIDER_IDS)[number];
+        }> = [];
+
+        for (
+          let offset = 0;
+          offset < importedPostIds.length;
+          offset += PLAYLIST_IMPORT_LOOKUP_CHUNK_SIZE
+        ) {
+          const chunk = importedPostIds.slice(
+            offset,
+            offset + PLAYLIST_IMPORT_LOOKUP_CHUNK_SIZE
+          );
+          const rows = db
+            .select({
+              id: posts.id,
+              postId: posts.postId,
+              artistId: posts.artistId,
+              provider: posts.provider,
+            })
+            .from(posts)
+            .where(inArray(posts.postId, chunk))
+            .all();
+          localPosts.push(...rows);
+        }
+
         const localPostIdMap = new Map(
           localPosts.map((p) => [
             `${p.artistId}:${p.provider}:${p.postId}`,
@@ -1613,7 +1675,10 @@ export class PlaylistController extends BaseController {
         // Legacy v1 fallback: bare postId only when unambiguous
         const postIdOnlyCounts = new Map<number, number>();
         for (const p of localPosts) {
-          postIdOnlyCounts.set(p.postId, (postIdOnlyCounts.get(p.postId) ?? 0) + 1);
+          postIdOnlyCounts.set(
+            p.postId,
+            (postIdOnlyCounts.get(p.postId) ?? 0) + 1
+          );
         }
         const unambiguousPostIdMap = new Map(
           localPosts
@@ -1621,7 +1686,7 @@ export class PlaylistController extends BaseController {
             .map((p) => [p.postId, p.id])
         );
 
-        const entriesToInsert = exportData.entries
+        resolvedEntries = exportData.entries
           .map((entry, index) => {
             let localPostId: number | undefined;
             if (
@@ -1638,38 +1703,73 @@ export class PlaylistController extends BaseController {
               return null;
             }
             return {
-              playlistId: newPlaylist.id,
+              playlistId: 0, // filled inside the transaction after insert
               postId: localPostId,
               addedAt: new Date(entry.addedAt),
               position: index,
             };
           })
-          .filter(
-            (
-              entry
-            ): entry is {
-              playlistId: number;
-              postId: number;
-              addedAt: Date;
-              position: number;
-            } => entry !== null
-          );
-
-        if (entriesToInsert.length > 0) {
-          db.insert(playlistEntries)
-            .values(entriesToInsert)
-            .onConflictDoNothing({
-              target: [playlistEntries.playlistId, playlistEntries.postId],
-            })
-            .run();
-        }
+          .filter((entry): entry is ImportEntryRow => entry !== null);
       }
 
-      log.info(`[PlaylistController] Imported playlist as id=${newPlaylist.id}`);
-      return { success: true, playlistId: newPlaylist.id };
+      // ONE transaction: playlist row + chunked entry inserts. Failure rolls back all.
+      const newPlaylistId = db.transaction((tx) => {
+        const newPlaylist = tx
+          .insert(playlists)
+          .values({
+            name: exportData.playlist.name,
+            isSmart: exportData.playlist.isSmart,
+            queryJson: exportData.playlist.queryJson,
+            querySchemaVersion: CURRENT_SMART_QUERY_SCHEMA_VERSION,
+            iconName: exportData.playlist.iconName,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning()
+          .get();
+
+        if (!newPlaylist) {
+          throw createCodedError(
+            "Failed to create playlist",
+            ErrorCode.DATABASE_ERROR
+          );
+        }
+
+        if (resolvedEntries.length > 0) {
+          for (
+            let offset = 0;
+            offset < resolvedEntries.length;
+            offset += PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE
+          ) {
+            const chunk = resolvedEntries
+              .slice(offset, offset + PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE)
+              .map((entry) => ({
+                playlistId: newPlaylist.id,
+                postId: entry.postId,
+                addedAt: entry.addedAt,
+                position: entry.position,
+              }));
+            tx.insert(playlistEntries)
+              .values(chunk)
+              .onConflictDoNothing({
+                target: [playlistEntries.playlistId, playlistEntries.postId],
+              })
+              .run();
+          }
+        }
+
+        return newPlaylist.id;
+      });
+
+      log.info(`[PlaylistController] Imported playlist as id=${newPlaylistId}`);
+      return { success: true, playlistId: newPlaylistId };
     } catch (error) {
       log.error("[PlaylistController] Import failed:", error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        code: ErrorCode.DATABASE_ERROR,
+      };
     }
   }
 
