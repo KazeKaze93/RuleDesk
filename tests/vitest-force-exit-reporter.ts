@@ -1,7 +1,7 @@
 import type { Reporter, TestModule } from "vitest/node";
 
-/** Allow default reporter summary + pipe flush before hard exit (Windows spawnSync). */
-const FORCE_EXIT_DELAY_MS = 1500;
+/** Allow JSON report + default summary flush before hard exit (Windows spawnSync). */
+const FORCE_EXIT_DELAY_MS = 5000;
 
 /**
  * Vitest can hang forever on open handles after (or while draining) a suite.
