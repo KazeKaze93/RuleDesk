@@ -6,6 +6,11 @@ import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import type { Post } from "@shared/types/db";
+import { useDownloadStore } from "../../store/downloadStore";
+import {
+  presentDownloadAllResult,
+  warnIfDownloadTruncated,
+} from "../../lib/download-result-ui";
 import { AddToPlaylistModal } from "../playlists/AddToPlaylistModal";
 import {
   Dialog,
@@ -58,6 +63,7 @@ export const BulkActionBar = ({
   const isBulkMode = useBulkSelect((state) => state.isBulkMode);
   const deactivate = useBulkSelect((state) => state.deactivate);
   const clearSelection = useBulkSelect((state) => state.clearSelection);
+  const setGlobalDownloading = useDownloadStore((s) => s.setDownloading);
   const queryClient = useQueryClient();
   const [isAddPlaylistOpen, setIsAddPlaylistOpen] = useState(false);
   const [isMoveOpen, setIsMoveOpen] = useState(false);
@@ -196,14 +202,26 @@ export const BulkActionBar = ({
       toast.info("No downloadable posts in selection");
       return;
     }
+    warnIfDownloadTruncated(items.length);
+    setGlobalDownloading(true);
     try {
-      await window.api.downloadAll(items);
-      clearSelection();
-      toast.success(`Download started for ${items.length} posts`);
+      const result = await window.api.downloadAll(items);
+      presentDownloadAllResult(result);
+      if (result.success || result.downloaded > 0) {
+        clearSelection();
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       log.error("[BulkActionBar] Failed to download selected posts:", message);
-      toast.error("Failed to start bulk download");
+      presentDownloadAllResult({
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: message,
+      });
+    } finally {
+      setGlobalDownloading(false);
     }
   };
 

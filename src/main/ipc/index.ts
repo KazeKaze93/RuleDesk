@@ -31,6 +31,13 @@ import { container, DI_TOKENS } from "../core/di/Container";
  *
  * @returns Object with controllers that need window reference
  */
+let activeFileController: FileController | null = null;
+
+/** Active FileController for before-quit download drain (null before setupIpc). */
+export function getFileController(): FileController | null {
+  return activeFileController;
+}
+
 export function setupIpc(
   videoProxyServer: VideoProxyServer,
   updaterService: UpdaterService,
@@ -74,6 +81,7 @@ export function setupIpc(
 
   const fileController = new FileController();
   fileController.setup();
+  activeFileController = fileController;
 
   const searchController = new SearchController();
   searchController.setup();

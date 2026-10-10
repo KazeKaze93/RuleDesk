@@ -224,6 +224,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     isDownloading: isDownloadingAll,
     isPaused,
     progress: downloadAllProgress,
+    lastFailures,
     canDownload,
   } = useDownloadAllFromBackend(fetchParams, totalPosts);
 
@@ -283,6 +284,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             progress={downloadAllProgress}
             canDownload={canDownload}
             totalLabel={totalPosts}
+            failures={lastFailures}
           />
           <Button
             variant="outline"

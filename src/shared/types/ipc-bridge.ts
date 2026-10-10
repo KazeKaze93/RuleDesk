@@ -6,6 +6,7 @@
  * Do not duplicate method signatures in ambient `.d.ts` files.
  */
 import type { Artist, Post, Playlist } from "./db";
+import type { DownloadAllResult } from "./download";
 import type { ProviderId } from "../constants";
 import type { SearchResults } from "./providers";
 import type { AddArtistRequest } from "../schemas/artist";
@@ -170,13 +171,7 @@ export interface IpcBridge {
   }>;
   downloadAll: (
     items: Array<{ url: string; filename: string }>
-  ) => Promise<{
-    success: boolean;
-    downloaded: number;
-    failed: number;
-    canceled: boolean;
-    error?: string;
-  }>;
+  ) => Promise<DownloadAllResult>;
   cancelDownloadAll: () => Promise<boolean>;
   pauseDownloadAll: () => Promise<void>;
   resumeDownloadAll: () => Promise<void>;
@@ -186,7 +181,7 @@ export interface IpcBridge {
     done: number;
     folder: string;
   } | null>;
-  resumePendingDownload: () => Promise<{ success: boolean; error?: string }>;
+  resumePendingDownload: () => Promise<DownloadAllResult>;
   dismissPendingDownload: () => Promise<void>;
   saveDownloadSettings: (data: {
     duplicateFileBehavior?: "skip" | "overwrite";

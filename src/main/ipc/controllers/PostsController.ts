@@ -32,6 +32,7 @@ import {
   type PostFilterRequest,
 } from "../../../shared/schemas/post";
 import {
+  BATCH_DOWNLOAD_MAX_FILES,
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
@@ -83,7 +84,12 @@ type GetPostsParams = GetPostsRequest;
 const GetPostsArgsSchema = z.tuple([GetPostsSchema]);
 const GetDownloadItemsArgsSchema = z.tuple([
   GetPostsSchema.extend({
-    limit: z.number().int().min(1).max(500).default(500),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(BATCH_DOWNLOAD_MAX_FILES)
+      .default(BATCH_DOWNLOAD_MAX_FILES),
   }),
 ]);
 const GetPostsCountArgsSchema = z.tuple([GetPostsCountSchema]);
@@ -561,7 +567,10 @@ export class PostsController extends BaseController {
     const posts = await this.getPosts(_event, {
       ...params,
       page: 1,
-      limit: Math.min(params.limit ?? 500, 500),
+      limit: Math.min(
+        params.limit ?? BATCH_DOWNLOAD_MAX_FILES,
+        BATCH_DOWNLOAD_MAX_FILES
+      ),
     });
     const items = posts
       .filter((p) => p.fileUrl?.trim())

@@ -1863,8 +1863,12 @@ Root:
 - ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
 - ✅ "Download All" for current filter/artist (implemented with rate limits)
 - ✅ **Settings:** Default download directory and related options available
+- ✅ **Mass download errors:** Worker posts structured failures to Main (no electron-log in worker); Main logs redacted URLs and returns `DownloadAllResult.failed[]` with codes `NETWORK` / `TIMEOUT` / `HTTP_403` / `HTTP_404` / `HTTP_429` / `HTTP_OTHER` / `DISK` / `CANCELLED`. Soft-fail must not toast as success. Cap 500 with UI warning (no Zod throw).
+- ✅ **429 gate:** First 429 closes a **global** queue gate (`DownloadRateLimitGate`); lanes do not take new items until pause ends. Pause = max(exponential backoff, `Retry-After`). Retries wait on the same gate (not per-request sleeps that keep starting siblings).
+- ✅ **Cancel:** `FileController.cancelAllDownloads()` is the sole cancel path (AbortController from request start). `before-quit` awaits it before `closeDatabase`.
+- ✅ **Resume queue v2:** `completedIds` by filename — concurrency-safe (not a success counter).
 
-**Status:** ✅ Core download functionality implemented. Individual and batch downloads work with progress tracking, and default directory settings are available.
+**Status:** ✅ Core download functionality implemented. Individual and batch downloads work with progress tracking, typed failure codes, cancel-on-quit, and default directory settings.
 
 ### C. Playlists / Collections ✅ Implemented
 

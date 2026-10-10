@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
 import log from "electron-log/renderer";
 import type { Post } from "@shared/types/db";
+import type { DownloadFailure } from "@shared/types/download";
 import type { GetPostsRequest } from "@shared/schemas/post";
+import { BATCH_DOWNLOAD_MAX_FILES } from "@shared/constants";
 import { useDownloadStore } from "../store/downloadStore";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../shared/utils/type-guards";
+import {
+  presentDownloadAllResult,
+  warnIfDownloadTruncated,
+} from "../lib/download-result-ui";
 
 function postToDownloadItem(p: Post): { url: string; filename: string } | null {
   if (!p.fileUrl?.trim()) return null;
@@ -23,6 +29,7 @@ export function useDownloadAll(posts: Post[]) {
   const setGlobalDownloading = useDownloadStore((s) => s.setDownloading);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [lastFailures, setLastFailures] = useState<DownloadFailure[]>([]);
 
   useEffect(() => {
     if (!isDownloading) return;
@@ -37,17 +44,28 @@ export function useDownloadAll(posts: Post[]) {
       .map(postToDownloadItem)
       .filter((x): x is { url: string; filename: string } => x !== null);
     if (items.length === 0) return;
+    warnIfDownloadTruncated(items.length);
     setIsDownloading(true);
     setGlobalDownloading(true);
     setIsPaused(false);
+    setLastFailures([]);
     setProgress({ done: 0, total: items.length });
     try {
       const result = await window.api.downloadAll(items);
+      setLastFailures(result.failed);
       log.info(
-        `[useDownloadAll] Done: ${result.downloaded} ok, ${result.failed} failed, canceled=${result.canceled}`
+        `[useDownloadAll] Done: ${result.downloaded} ok, ${result.failed.length} failed, canceled=${result.canceled}`
       );
+      presentDownloadAllResult(result);
     } catch (e) {
       log.error("[useDownloadAll] Failed:", e);
+      presentDownloadAllResult({
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setIsDownloading(false);
       setGlobalDownloading(false);
@@ -78,6 +96,7 @@ export function useDownloadAll(posts: Post[]) {
     isDownloading,
     isPaused,
     progress,
+    lastFailures,
     canDownload: posts.length > 0,
   };
 }
@@ -118,6 +137,7 @@ export function useDownloadAllFromBackend(
   const setGlobalDownloading = useDownloadStore((s) => s.setDownloading);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [lastFailures, setLastFailures] = useState<DownloadFailure[]>([]);
 
   useEffect(() => {
     if (!isDownloading) return;
@@ -132,20 +152,35 @@ export function useDownloadAllFromBackend(
     setIsDownloading(true);
     setGlobalDownloading(true);
     setIsPaused(false);
+    setLastFailures([]);
     setProgress({ done: 0, total: 0 });
     try {
       const { items } = await window.api.getDownloadItems({
         ...fetchParams,
-        limit: 500,
+        limit: BATCH_DOWNLOAD_MAX_FILES,
       });
       if (items.length === 0) return;
+      if (totalCount > items.length) {
+        warnIfDownloadTruncated(totalCount);
+      } else {
+        warnIfDownloadTruncated(items.length);
+      }
       setProgress({ done: 0, total: items.length });
       const result = await window.api.downloadAll(items);
+      setLastFailures(result.failed);
       log.info(
-        `[useDownloadAllFromBackend] Done: ${result.downloaded} ok, ${result.failed} failed, canceled=${result.canceled}`
+        `[useDownloadAllFromBackend] Done: ${result.downloaded} ok, ${result.failed.length} failed, canceled=${result.canceled}`
       );
+      presentDownloadAllResult(result);
     } catch (e) {
       log.error("[useDownloadAllFromBackend] Failed:", e);
+      presentDownloadAllResult({
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setIsDownloading(false);
       setGlobalDownloading(false);
@@ -172,6 +207,7 @@ export function useDownloadAllFromBackend(
     isDownloading,
     isPaused,
     progress,
+    lastFailures,
     canDownload: totalCount > 0,
   };
 }

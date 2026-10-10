@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "../ui/button";
-import { Download, Loader2, Square, Pause, Play } from "lucide-react";
+import { Download, Loader2, Square, Pause, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { DownloadFailure } from "@shared/types/download";
+import { downloadFailureCodeLabel } from "@shared/utils/download-failure";
 import { useDownloadStore } from "../../store/downloadStore";
 
 export interface DownloadAllButtonProps {
@@ -14,6 +16,7 @@ export interface DownloadAllButtonProps {
   progress: { done: number; total: number };
   canDownload: boolean;
   totalLabel: string | number;
+  failures?: DownloadFailure[];
   size?: "default" | "sm";
   className?: string;
 }
@@ -28,10 +31,12 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
   progress,
   canDownload,
   totalLabel,
+  failures = [],
   size = "sm",
   className,
 }) => {
   const isAnyDownloadActive = useDownloadStore((s) => s.isDownloading);
+  const [failuresOpen, setFailuresOpen] = useState(false);
   const pct = progress.total > 0 ? Math.round((progress.done * 100) / progress.total) : 0;
   const disabled = !canDownload || (isAnyDownloadActive && !isDownloading);
 
@@ -131,6 +136,34 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
               className="fill-primary"
             />
           </svg>
+        </div>
+      )}
+      {!isDownloading && failures.length > 0 && (
+        <div className="max-w-md text-xs text-destructive">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto px-1 py-0.5 text-xs text-destructive"
+            onClick={() => setFailuresOpen((open) => !open)}
+            aria-expanded={failuresOpen}
+          >
+            {failuresOpen ? (
+              <ChevronUp className="w-3 h-3 mr-1" />
+            ) : (
+              <ChevronDown className="w-3 h-3 mr-1" />
+            )}
+            {failures.length} failed
+          </Button>
+          {failuresOpen ? (
+            <ul className="mt-1 max-h-32 overflow-y-auto pl-2 space-y-0.5 text-muted-foreground">
+              {failures.map((f) => (
+                <li key={f.itemId}>
+                  {f.itemId}: {downloadFailureCodeLabel(f.code)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       )}
     </div>

@@ -54,6 +54,12 @@ export type ArtistType = typeof ARTIST_TYPES[number];
 export const MAX_TRACKED_ARTISTS = 5000;
 
 /**
+ * Soft cap for one mass-download batch. Oversized selections are truncated
+ * (not rejected); UI must warn "N of M".
+ */
+export const BATCH_DOWNLOAD_MAX_FILES = 500;
+
+/**
  * SQLite TTL for confirmed `not_found` rows in `tag_metadata`, and the matching
  * React Query `staleTime` for TagsDrawer Artist/Character/Copyright resolve
  * queries. Keep client cache from outliving Main's negative-cache eviction.

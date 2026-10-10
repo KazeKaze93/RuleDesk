@@ -36,6 +36,27 @@ export const VIDEO_CACHE_EVICT_AFTER_START_MS = 15_000;
 /** Max time to wait for in-flight sync to finish after cancel on app quit. */
 export const SYNC_SHUTDOWN_DRAIN_MS = 8000;
 
+/** Max time to wait for in-flight mass download cancel/drain before closing DB on quit. */
+export const DOWNLOAD_SHUTDOWN_DRAIN_MS = 8000;
+
+/** Parallel axios downloads inside downloadWorker. */
+export const BATCH_DOWNLOAD_CONCURRENCY = 3;
+
+/** Pause between items on each worker lane (rate-limit hygiene). */
+export const BATCH_DOWNLOAD_DELAY_MS = 500;
+
+/** Axios timeout until response headers (connect / first byte). */
+export const DOWNLOAD_CONNECT_TIMEOUT_MS = 30_000;
+
+/** Abort if no download progress for this long (large files OK if bytes keep flowing). */
+export const DOWNLOAD_IDLE_TIMEOUT_MS = 60_000;
+
+/** 429 retries before the item is recorded as HTTP_429. */
+export const DOWNLOAD_429_MAX_RETRIES = 3;
+
+/** Base delay for exponential backoff on 429 (attempt 0 → base, then 2×, 4×, …). */
+export const DOWNLOAD_429_BASE_DELAY_MS = 1000;
+
 /**
  * Bytes of `app.log` included in Help diagnostics (tail only; file is append-only).
  * Kept at 32 KiB so header + redacted tail stay under GitHub's issue body limit

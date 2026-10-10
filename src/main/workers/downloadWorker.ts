@@ -2,18 +2,31 @@
  * Download Worker Thread
  *
  * Runs batch downloads off the Main process to avoid blocking the UI.
- * Receives config via workerData, listens for cancel/pause/resume via parentPort,
- * sends progress back to Main via parentPort.postMessage.
+ * Does NOT use electron-log — post structured failures to Main for logging/redaction.
  */
 import { parentPort, workerData } from "worker_threads";
 import path from "path";
 import fs from "fs";
 import { access, mkdir, unlink, writeFile } from "fs/promises";
 import axios, { type AxiosProgressEvent } from "axios";
+import { HttpsProxyAgent } from "https-proxy-agent";
 import { pipeline } from "stream/promises";
-
-const BATCH_DOWNLOAD_CONCURRENCY = 3;
-const BATCH_DOWNLOAD_DELAY_MS = 500;
+import {
+  BATCH_DOWNLOAD_CONCURRENCY,
+  BATCH_DOWNLOAD_DELAY_MS,
+  DOWNLOAD_429_BASE_DELAY_MS,
+  DOWNLOAD_429_MAX_RETRIES,
+  DOWNLOAD_CONNECT_TIMEOUT_MS,
+  DOWNLOAD_IDLE_TIMEOUT_MS,
+  USER_AGENT,
+} from "../config/constants";
+import type { DownloadFailure } from "@shared/types/download";
+import {
+  classifyDownloadFailure,
+  isRetryableDownloadFailure,
+  parseRetryAfterMs,
+} from "@shared/utils/download-failure";
+import { DownloadRateLimitGate } from "./download-rate-limit-gate";
 
 interface WorkerData {
   items: Array<{ url: string; filename: string }>;
@@ -21,20 +34,35 @@ interface WorkerData {
   duplicateFileBehavior: "skip" | "overwrite";
   downloadFolderStructure: "flat" | "{artist_id}";
   queueFilePath: string;
+  /** Proxy URL string; worker builds its own agent. */
+  proxyUrl: string | null;
 }
 
-interface WorkerMessage {
-  type: "progress" | "complete" | "error";
-  id?: string;
-  percent?: number;
-  done?: number;
-  total?: number;
-  success?: boolean;
-  downloaded?: number;
-  failed?: number;
-  canceled?: boolean;
-  error?: string;
-}
+type WorkerOutboundMessage =
+  | {
+      type: "progress";
+      id: string;
+      percent: number;
+      done: number;
+      total: number;
+    }
+  | {
+      type: "item-failed";
+      itemId: string;
+      code: DownloadFailure["code"];
+      httpStatus?: number;
+      message: string;
+      url: string;
+    }
+  | {
+      type: "complete";
+      success: boolean;
+      downloaded: number;
+      failed: DownloadFailure[];
+      canceled: boolean;
+      completedIds: string[];
+    }
+  | { type: "error"; error: string };
 
 function getFilePath(
   root: string,
@@ -57,6 +85,21 @@ function getFilePath(
   return fullPath;
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function unlinkIfExists(filePath: string): Promise<void> {
+  try {
+    await access(filePath);
+    await unlink(filePath);
+  } catch {
+    /* ignore */
+  }
+}
+
 async function runWorker(): Promise<void> {
   const {
     items,
@@ -64,24 +107,38 @@ async function runWorker(): Promise<void> {
     duplicateFileBehavior,
     downloadFolderStructure,
     queueFilePath,
+    proxyUrl,
   // boundary: worker message — workerData payload after trust/Zod
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: worker message
   } = workerData as WorkerData;
 
   let aborted = false;
   let paused = false;
+  const activeControllers = new Set<AbortController>();
+  const rateLimitGate = new DownloadRateLimitGate();
+  const attemptsByFilename = new Map<string, number>();
+  const httpsAgent =
+    proxyUrl !== null && proxyUrl.length > 0
+      ? new HttpsProxyAgent(proxyUrl)
+      : undefined;
 
   parentPort?.on("message", (msg: { type: string }) => {
-    if (msg.type === "cancel") aborted = true;
+    if (msg.type === "cancel") {
+      aborted = true;
+      for (const controller of activeControllers) {
+        controller.abort();
+      }
+    }
     if (msg.type === "pause") paused = true;
     if (msg.type === "resume") paused = false;
   });
 
-  const post = (m: WorkerMessage) => parentPort?.postMessage(m);
+  const post = (m: WorkerOutboundMessage) => parentPort?.postMessage(m);
 
   const writeQueueFile = async (data: {
+    version: 2;
     items: Array<{ url: string; filename: string }>;
-    doneCount: number;
+    completedIds: string[];
     total: number;
     folder: string;
     timestamp: number;
@@ -89,7 +146,7 @@ async function runWorker(): Promise<void> {
     try {
       await writeFile(queueFilePath, JSON.stringify(data), "utf-8");
     } catch {
-      /* ignore */
+      /* ignore queue write errors — Main owns diagnostics */
     }
   };
 
@@ -103,22 +160,53 @@ async function runWorker(): Promise<void> {
   };
 
   let downloaded = 0;
-  let failed = 0;
+  const failed: DownloadFailure[] = [];
+  const completedIds: string[] = [];
 
-  const updateQueueProgress = async () => {
+  const persistQueue = async () => {
     await writeQueueFile({
+      version: 2,
       items,
-      doneCount: downloaded,
+      completedIds: [...completedIds],
       total: items.length,
       folder,
       timestamp: Date.now(),
     });
   };
 
+  const markCompleted = async (filename: string) => {
+    completedIds.push(filename);
+    downloaded++;
+    await persistQueue();
+  };
+
+  const recordFailure = (
+    item: { url: string; filename: string },
+    classified: ReturnType<typeof classifyDownloadFailure>
+  ) => {
+    const entry: DownloadFailure = {
+      itemId: item.filename,
+      code: classified.code,
+      message: classified.message,
+    };
+    if (classified.httpStatus !== undefined) {
+      entry.httpStatus = classified.httpStatus;
+    }
+    failed.push(entry);
+    post({
+      type: "item-failed",
+      itemId: entry.itemId,
+      code: entry.code,
+      httpStatus: entry.httpStatus,
+      message: entry.message,
+      url: item.url,
+    });
+  };
+
   const runOne = async (item: { url: string; filename: string }): Promise<void> => {
     if (aborted) return;
     while (paused && !aborted) {
-      await new Promise((r) => setTimeout(r, 200));
+      await delay(200);
     }
     if (aborted) return;
 
@@ -129,8 +217,9 @@ async function runWorker(): Promise<void> {
     } catch {
       try {
         await mkdir(dir, { recursive: true });
-      } catch {
-        failed++;
+      } catch (err) {
+        if (aborted) return;
+        recordFailure(item, classifyDownloadFailure(err));
         return;
       }
     }
@@ -143,80 +232,136 @@ async function runWorker(): Promise<void> {
       /* file doesn't exist */
     }
     if (fileExists && duplicateFileBehavior === "skip") {
-      downloaded++;
-      await updateQueueProgress();
+      await markCompleted(item.filename);
       post({
         type: "progress",
         id: item.filename,
         percent: 100,
-        done: downloaded,
+        done: completedIds.length,
         total: items.length,
       });
       return;
     }
 
-    const abortController = new AbortController();
-    try {
-      const response = await axios({
-        method: "GET",
-        url: item.url,
-        responseType: "stream",
-        signal: abortController.signal,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-        onDownloadProgress: (ev: AxiosProgressEvent) => {
-          if (aborted) {
-            abortController.abort();
-            return;
-          }
-          if (ev.total) {
-            const pct = Math.round((ev.loaded * 100) / ev.total);
-            post({
-              type: "progress",
-              id: item.filename,
-              percent: pct,
-              done: downloaded + (pct >= 100 ? 1 : 0),
-              total: items.length,
-            });
-          }
-        },
-      });
-      const writer = fs.createWriteStream(filePath);
-      await pipeline(response.data, writer, {
-        signal: abortController.signal,
-      });
-      downloaded++;
-      await updateQueueProgress();
-      post({
-        type: "progress",
-        id: item.filename,
-        percent: 100,
-        done: downloaded,
-        total: items.length,
-      });
-    } catch (err) {
-      if (aborted) return;
-      failed++;
-      const isAborted =
-        (err instanceof Error && err.name === "AbortError") ||
-        (axios.isAxiosError(err) && err.code === "ERR_CANCELED");
-      if (isAborted) return;
+    while (!aborted) {
+      const abortController = new AbortController();
+      activeControllers.add(abortController);
+      let idleTimedOut = false;
+      let idleTimer: ReturnType<typeof setTimeout> | undefined;
+
+      const clearIdleTimer = () => {
+        if (idleTimer !== undefined) {
+          clearTimeout(idleTimer);
+          idleTimer = undefined;
+        }
+      };
+
+      const armIdleTimer = () => {
+        clearIdleTimer();
+        idleTimer = setTimeout(() => {
+          idleTimedOut = true;
+          abortController.abort();
+        }, DOWNLOAD_IDLE_TIMEOUT_MS);
+      };
+
       try {
-        await access(filePath);
-        await unlink(filePath);
-      } catch {
-        /* ignore */
+        armIdleTimer();
+        const response = await axios({
+          method: "GET",
+          url: item.url,
+          responseType: "stream",
+          signal: abortController.signal,
+          timeout: DOWNLOAD_CONNECT_TIMEOUT_MS,
+          httpsAgent,
+          headers: {
+            "User-Agent": USER_AGENT,
+          },
+          onDownloadProgress: (ev: AxiosProgressEvent) => {
+            if (aborted) {
+              abortController.abort();
+              return;
+            }
+            armIdleTimer();
+            if (ev.total) {
+              const pct = Math.round((ev.loaded * 100) / ev.total);
+              post({
+                type: "progress",
+                id: item.filename,
+                percent: pct,
+                done: completedIds.length + (pct >= 100 ? 1 : 0),
+                total: items.length,
+              });
+            }
+          },
+        });
+        const writer = fs.createWriteStream(filePath);
+        abortController.signal.addEventListener(
+          "abort",
+          () => {
+            if (!writer.destroyed) {
+              writer.destroy();
+            }
+          },
+          { once: true }
+        );
+        await pipeline(response.data, writer, {
+          signal: abortController.signal,
+        });
+        clearIdleTimer();
+        await markCompleted(item.filename);
+        post({
+          type: "progress",
+          id: item.filename,
+          percent: 100,
+          done: completedIds.length,
+          total: items.length,
+        });
+        return;
+      } catch (err) {
+        clearIdleTimer();
+        await unlinkIfExists(filePath);
+
+        if (aborted && !idleTimedOut) {
+          return;
+        }
+
+        const classified = classifyDownloadFailure(err, {
+          aborted: aborted && !idleTimedOut,
+          idleTimedOut,
+        });
+
+        if (isRetryableDownloadFailure(classified.code)) {
+          const nextAttempt = (attemptsByFilename.get(item.filename) ?? 0) + 1;
+          attemptsByFilename.set(item.filename, nextAttempt);
+          // Global pause: other lanes will not take new queue items until open.
+          rateLimitGate.schedulePause({
+            baseDelayMs: DOWNLOAD_429_BASE_DELAY_MS,
+            retryAfterMs: parseRetryAfterMs(err),
+          });
+          if (nextAttempt <= DOWNLOAD_429_MAX_RETRIES) {
+            await rateLimitGate.waitUntilOpen(() => aborted, delay);
+            continue;
+          }
+          recordFailure(item, classified);
+          return;
+        }
+
+        if (classified.code === "CANCELLED") {
+          return;
+        }
+        recordFailure(item, classified);
+        return;
+      } finally {
+        clearIdleTimer();
+        activeControllers.delete(abortController);
       }
     }
   };
 
-  const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
   await writeQueueFile({
+    version: 2,
     items,
-    doneCount: 0,
+    completedIds: [],
     total: items.length,
     folder,
     timestamp: Date.now(),
@@ -227,11 +372,20 @@ async function runWorker(): Promise<void> {
   for (let i = 0; i < BATCH_DOWNLOAD_CONCURRENCY; i++) {
     workers.push(
       (async () => {
-        while (queue.length > 0 && !aborted) {
+        while (!aborted) {
+          // Do not start new downloads while the global 429 gate is closed.
+          await rateLimitGate.waitUntilOpen(() => aborted, delay);
+          if (aborted) break;
+          while (paused && !aborted) {
+            await delay(200);
+          }
+          if (aborted) break;
           const item = queue.shift();
           if (!item) break;
           await runOne(item);
-          await delay(BATCH_DOWNLOAD_DELAY_MS);
+          if (!aborted) {
+            await delay(BATCH_DOWNLOAD_DELAY_MS);
+          }
         }
       })()
     );
@@ -239,16 +393,19 @@ async function runWorker(): Promise<void> {
   await Promise.all(workers);
 
   const canceled = aborted;
-  if (!canceled && failed === 0) {
+  if (!canceled && failed.length === 0) {
     await deleteQueueFile();
+  } else {
+    await persistQueue();
   }
 
   post({
     type: "complete",
-    success: failed === 0 && !canceled,
+    success: failed.length === 0 && !canceled,
     downloaded,
     failed,
     canceled,
+    completedIds: [...completedIds],
   });
 }
 

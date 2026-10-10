@@ -16,6 +16,14 @@ export function getProxyAgent(): HttpsProxyAgent<string> | undefined {
 }
 
 /**
+ * Proxy URL string for workerData (workers must build their own agent — do not
+ * pass Agent instances across the worker boundary).
+ */
+export function getProxyUrl(): string | null {
+  return cachedProxyUrl;
+}
+
+/**
  * Load proxy URL from settings and rebuild cache.
  * Call at app startup and after settings changes.
  */

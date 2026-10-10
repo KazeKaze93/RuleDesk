@@ -49,7 +49,7 @@
 | `db:export-playlist` | `DB.EXPORT_PLAYLIST` | `z.tuple([IdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-api-key-encrypted` | `DB.GET_API_KEY_ENCRYPTED` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `db:get-artists` | `DB.GET_ARTISTS` | `[]` (no args) | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
-| `db:get-download-items` | `DB.GET_DOWNLOAD_ITEMS` | `z.tuple([ GetPostsSchema.extend({ limit: z.number().int().min(1).max(500).default(500), }), ])` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
+| `db:get-download-items` | `DB.GET_DOWNLOAD_ITEMS` | `z.tuple([ GetPostsSchema.extend({ limit: z .number() .int() .min(1) .max(BATCH_DOWNLOAD_MAX_FILES) .default(BATCH_DOW...` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:get-manual-playlist-membership-for-posts` | `DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS` | schema: see source (`GetManualPlaylistMembershipForPostsSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlist` | `DB.GET_PLAYLIST` | `z.tuple([IdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlist-download-items` | `DB.GET_PLAYLIST_DOWNLOAD_ITEMS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |

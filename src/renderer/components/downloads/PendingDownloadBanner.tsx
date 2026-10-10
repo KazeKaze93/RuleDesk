@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Download, X } from "lucide-react";
 import { useDownloadStore } from "../../store/downloadStore";
+import { presentDownloadAllResult } from "../../lib/download-result-ui";
 
 const checkPending = async () => {
   try {
@@ -37,25 +38,18 @@ export const PendingDownloadBanner: React.FC = () => {
     setPending(null);
     try {
       const result = await window.api.resumePendingDownload();
-      if (result.success) {
-        const unsub = window.api.onDownloadAllProgress((data) => {
-          if (data.total > 0 && data.done >= data.total) {
-            clearTimeout(timeout);
-            setDownloading(false);
-            unsub();
-          }
-        });
-        const timeout = setTimeout(() => {
-          setDownloading(false);
-          unsub();
-        }, 600_000);
-      } else {
-        setDownloading(false);
-      }
-    } catch {
-      setDownloading(false);
+      presentDownloadAllResult(result);
+    } catch (error) {
+      presentDownloadAllResult({
+        success: false,
+        downloaded: 0,
+        failed: [],
+        canceled: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
     } finally {
       setDownloading(false);
+      void checkPending().then(setPending);
     }
   };
 
@@ -72,7 +66,8 @@ export const PendingDownloadBanner: React.FC = () => {
       <div className="flex items-center gap-2">
         <Download className="w-4 h-4 text-primary" />
         <span>
-          Interrupted download: {pending.done}/{pending.total} done. {remaining} remaining.
+          Interrupted download: {pending.done}/{pending.total} done. {remaining}{" "}
+          remaining.
         </span>
       </div>
       <div className="flex gap-2">

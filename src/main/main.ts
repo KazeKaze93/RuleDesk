@@ -60,11 +60,14 @@ if (isTestMode) {
 
 import { getAppIconPath, getAppIconsDirectory } from "./lib/app-resources";
 
-import { registerAllHandlers } from "./ipc/index";
+import { getFileController, registerAllHandlers } from "./ipc/index";
 import { initializeDatabase, closeDatabase, getDb } from "./db/client";
 import { getBackupDirectory, getDatabasePaths, getLegacyNeutralUserDataDir } from "./db/paths";
 import { migrateBackupDirectory } from "./db/backup-dir-migrate";
-import { SYNC_SHUTDOWN_DRAIN_MS } from "./config/constants";
+import {
+  DOWNLOAD_SHUTDOWN_DRAIN_MS,
+  SYNC_SHUTDOWN_DRAIN_MS,
+} from "./config/constants";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 import { SyncScheduler } from "./services/sync-scheduler";
@@ -125,18 +128,35 @@ app.on("before-quit", (event) => {
     return;
   }
 
-  if (syncService.getIsSyncing()) {
+  const fileController = getFileController();
+  const needsDownloadDrain = fileController?.hasActiveDownloads() === true;
+  const needsSyncDrain = syncService.getIsSyncing();
+
+  if (needsDownloadDrain || needsSyncDrain) {
     event.preventDefault();
     void (async () => {
-      logger.info(
-        "[Main] Sync in progress — requesting cancel and draining before quit"
-      );
-      syncService.requestCancel();
-      const idle = await syncService.waitUntilIdle(SYNC_SHUTDOWN_DRAIN_MS);
-      if (!idle) {
-        logger.warn(
-          `[Main] Sync drain timed out after ${SYNC_SHUTDOWN_DRAIN_MS}ms; closing database anyway`
+      if (needsDownloadDrain && fileController) {
+        logger.info(
+          "[Main] Downloads in progress — cancelAllDownloads before quit"
         );
+        await Promise.race([
+          fileController.cancelAllDownloads(),
+          new Promise<void>((resolve) => {
+            setTimeout(resolve, DOWNLOAD_SHUTDOWN_DRAIN_MS);
+          }),
+        ]);
+      }
+      if (needsSyncDrain) {
+        logger.info(
+          "[Main] Sync in progress — requesting cancel and draining before quit"
+        );
+        syncService.requestCancel();
+        const idle = await syncService.waitUntilIdle(SYNC_SHUTDOWN_DRAIN_MS);
+        if (!idle) {
+          logger.warn(
+            `[Main] Sync drain timed out after ${SYNC_SHUTDOWN_DRAIN_MS}ms; closing database anyway`
+          );
+        }
       }
       isShuttingDown = true;
       stopBackgroundServicesAndCloseDb();
