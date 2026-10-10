@@ -77,9 +77,9 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** (1) Collapse cleanup deleted the map entry but never settled the shared Promise. (2) A ``Promise.race`` timeout peer left forever-pending Promises after successful handlers — Vitest waited on them until the job timeout. (3) Tests that used ``new Promise(() => {})`` left orphaned handler Promises.
 **Invariant Rule:** Collapse timeout must **settle** the shared Promise (failure envelope) via single-flight ``settle()``. Do not leave auxiliary forever-pending Promises in the collapse path. Hang-simulation tests must release their deferred handler after asserting timeout settlement.
 
-### Problem: Provider errors returned as empty results create silent failure loops
-**Root Cause:** Handlers returned `[]` on provider failure instead of throwing; the UI interpreted emptiness as "no data", retried, and amplified into a 429 storm. Smart playlists swallowed remote failures inside `Promise.all` the same way.
-**Invariant Rule:** Errors must surface, not swallow. On provider/IPC failure throw a typed error (`ProviderSearchError` with kind); never map failure to an empty-success shape. Smart remote resolve must keep fetching pages until the filtered set fills `limit` (or the feed ends). Rate-limit responses must propagate `retryAfterMs` and back off globally, not per-call.
+### Problem: Provider or DB failures returned as empty-success create silent failure loops
+**Root Cause:** Handlers caught provider/DB errors and returned success-shaped fallbacks (`[]` / `0` / `false` / `{updatedCount:0}`) instead of letting BaseController wrap a throw; the UI interpreted emptiness as "no data", retried, or showed confirmed-absent, and amplified into 429 storms or ignored real failures. Smart playlists swallowed remote failures inside `Promise.all` the same way.
+**Invariant Rule:** Errors must surface, not swallow. On provider/DB/IPC failure throw a typed error (or return an explicit `{ok:false,…}` envelope when that is the channel contract); never map failure to an empty-success shape. Renderer must treat rejection/error state separately from empty data. Smart remote resolve must keep fetching pages until the filtered set fills `limit` (or the feed ends). Rate-limit responses must propagate `retryAfterMs` and back off globally, not per-call.
 
 ### Problem: Renderer AbortController around ipcRenderer.invoke does not cancel Main work
 **Root Cause:** `invoke` is not abortable; the renderer flag only skips `setState`. Debounced autocomplete still left previous Main waves on `ProviderThrottle` (N×1200–1600 ms each). `Promise.all` does not parallelize those waves — one host throttle serializes slots.
@@ -167,13 +167,17 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** Unique `(artist_id, post_id)` with a single `EXTERNAL_ARTIST_ID` glued Rule34 and Gelbooru posts that shared a numeric `post_id`, so shadow-insert / fav / viewed / Browse merge wrote the wrong row.
 **Invariant Rule:** Post identity is `(artist_id, provider, post_id)`. `provider` is a first-class column on `posts` and must travel from renderer (`PostData` / shadow-insert request) through to every SQL lookup and sync upsert conflict target. Do not invent a second sentinel artist per provider — exclusions for `artist_id = 0` stay one predicate.
 
+### Problem: UNIQUE on a partial multi-tenant key silently overwrites the other tenant
+**Root Cause:** `artists` uniqueness was `UNIQUE(tag)` only; upsert/`onConflict` targeted that single column, so the same tag on Rule34 vs Gelbooru collided and overwrote the other provider's row.
+**Invariant Rule:** Composite identity, UNIQUE index, and upsert conflict target must match the full multi-tenant key (e.g. artists `(provider, tag)`; posts `(artist_id, provider, post_id)`). Never UNIQUE a single column of a multi-provider key.
+
 ### Problem: Delayed-only viewed persistence is lost on fast tab switches
 **Root Cause:** Browse relied on delayed viewer timer; request was canceled before DB write, while UI already showed optimistic viewed state.
 **Invariant Rule:** Persist viewed state immediately on card click in list pages. Viewer delayed mark can be only a backup path, not primary persistence.
 
 ### Problem: Freeform JSON in DB columns locks data to the first DSL shape
-**Root Cause:** Smart playlist queries were stored as raw JSON without schema versioning, so parser changes could break old records or misinterpret fields.
-**Invariant Rule:** Any JSON-in-column stored as user data MUST include a version column and be parsed only through a versioned resolver, never through raw JSON.parse.
+**Root Cause:** Smart playlist queries were stored as raw JSON without schema versioning, and write paths trusted raw `queryJson` strings so invalid shapes were only noticed on read.
+**Invariant Rule:** Any JSON-in-column stored as user data MUST include a version column and be Zod-validated on every write and parsed only through a versioned resolver on read — never raw `JSON.parse` and never write-without-validate.
 
 ### Problem: Negative cache died with the process while rate-limit failures risked being cached as absent
 **Root Cause:** Tag resolve outcomes collapsed to found/miss; confirmed empty API responses lived only in an in-memory Map (TTL), and unresolved failures (429/network) could be confused with not_found if classification stayed binary.
@@ -182,6 +186,26 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 ### Problem: Raw-SQL maintenance deleted every fresh not_found row within seconds of startup
 **Root Cause:** Drizzle `mode: "timestamp"` stores seconds while maintenance DELETE compared `resolved_at` to a `Date.now()`-based millisecond cutoff — seconds are always below that cutoff, so the first tick wiped the entire negative cache.
 **Invariant Rule:** Timestamp columns touched by raw SQL use `mode: "timestamp_ms"` with an explicit unit comment in the schema when the column is authored as ms; otherwise raw SQL must match the column's actual unit (`timestamp` = seconds). Any raw-SQL time comparison — DELETE **and** SELECT/aggregations — MUST have a test that writes via the ORM path and asserts against the production query helper, never a hand-copied SQL string alone.
+
+### Problem: Unbounded playlist IPC arrays and non-atomic import leave corrupt or empty playlists
+**Root Cause:** Array Zod schemas lacked `.max()`, `addPostsToPlaylist` built an unbounded cartesian product in one INSERT (SQLite variable limits), and import created the playlist row outside the entry-write transaction — mid-import failure left an orphan empty playlist.
+**Invariant Rule:** Playlist id arrays and add-entry products must be capped with typed `VALIDATION_ERROR` results; multi-step playlist writes (import) must be one transaction with binds chunked below `SQLITE_MAX_VARIABLE_NUMBER`. Same class as mass `UPDATE`/`DELETE` set-based SQL — never load unbounded id arrays into one statement.
+
+### Problem: Sync All rebuilt FTS once per initial artist
+**Root Cause:** Per-artist initial-sync `finally` always called `rebuildFtsIndex`; Sync All did not hoist one shared FTS bulk window, so a full Sync All was O(artists) rebuilds (including zero-post artists with `lastPostId===0`).
+**Invariant Rule:** Sync All owns one FTS bulk window for the whole run (drop triggers once, rebuild once in a shared `finally`, including cancel/error). Single-artist sync may keep a local window. Never rebuild FTS once per artist inside Sync All.
+
+### Problem: Schema / connection caches go stale after restore or VACUUM reopen
+**Root Cause:** Controllers cached FTS / view-metadata / `externalArtistExists` checks only at `setup()`; cache services captured a `db` handle across network `await` while restore/VACUUM replaced the connection via `registerDatabaseInContainerAfterReinit`.
+**Invariant Rule:** After every DB reopen, notify subscribers to refresh schema-existence caches. Never persist a captured DB handle across a network `await` — call `getDb()` at write time.
+
+### Problem: Hot filter+order queries pay TEMP B-TREE because indexes cover only one side
+**Root Cause:** Artist gallery used `WHERE artist_id = ? ORDER BY published_at` with only single-column indexes, so SQLite searched by `artist_id` then built a TEMP B-TREE for the sort.
+**Invariant Rule:** Hot paths that filter by one column and order by another need a dedicated composite index covering both (e.g. `(artist_id, published_at)`). Add via `CREATE INDEX IF NOT EXISTS` migration — never rebuild the posts table for an index-only change.
+
+### Problem: Duplicated correlated blacklist SQL rescanned `tag_blacklist` per candidate row
+**Root Cause:** The same `NOT EXISTS … FROM tag_blacklist … instr(…)` fragment lived in four Posts/Playlist call sites; each also called `getAllBlacklistedTags()` only for emptiness while SQL re-joined the table per row.
+**Invariant Rule:** Local post blacklist exclusion belongs in one shared `post-tag-filter` builder that takes an already-read tag list (bound params), preserves space-wrapped `instr` token semantics, and is reused by every Posts/Playlist page+COUNT path. Do not reintroduce inline `FROM tag_blacklist` blacklist filters in controllers.
 
 ## Security (credentials)
 
@@ -264,6 +288,14 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 ### Problem: forwardRef factory declared inside render remounts virtualized lists
 **Root Cause:** Creating `forwardRef` component types inside component render (or `useMemo`) produces a new React component identity on each render, so React/Virtuoso remounts list internals.
 **Invariant Rule:** Define all `forwardRef` component types at module scope only; inside render choose between pre-defined components, never create new component types.
+
+### Problem: High-frequency sync status events refetch expensive aggregates on every emit
+**Root Cause:** `AppLayout` invalidated `["artists"]` immediately on every `sync:artist` (2× per artist during Sync All); putting fresh callbacks in `useEffect` deps also risked re-subscribe / infinite-render loops.
+**Invariant Rule:** Debounce high-frequency sync-status → aggregate invalidations with a named constant; always flush on `sync:end` (and on repair start/end when freshness matters). Keep IPC subscription callbacks / `QueryClient` in refs outside the mount-scoped effect deps.
+
+### Problem: Expensive Main stats recompute on every Stats open, and Main cannot listen to its own `webContents.send`
+**Root Cause:** No in-memory TTL for the recursive top-tags CTE; sync completion notifies the renderer via `webContents.send`, so Main-side caches cannot invalidate with `ipcMain.on` of that channel.
+**Invariant Rule:** Cache expensive Main stats with a named TTL; invalidate by wrapping `SyncService.sendEvent` for `SYNC.END` (or a dedicated Main-side emitter) — do not assume IPC event channels are bidirectional.
 
 ## UI & Styling
 
