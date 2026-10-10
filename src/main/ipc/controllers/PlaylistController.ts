@@ -52,7 +52,6 @@ import {
 import { isVideoUrl } from "@shared/utils/media";
 import {
   EXTERNAL_ARTIST_ID,
-  MAX_RANDOM_PAGES,
   PROVIDER_IDS,
 } from "../../../shared/constants";
 import { getSqliteInstance } from "../../db/client";
@@ -195,6 +194,148 @@ type IpcPlaylistWithStats = IpcPlaylist & {
  * Uses shared IpcSafe utility type for automatic Date -> number conversion.
  */
 type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
+
+/** Same Knuth constant as `seeded-ordering` — hybrid random ranks must match SQL order. */
+const HYBRID_SEED_HASH_MULTIPLIER = 2654435761;
+/** 32-bit mask for hybrid seed ranks (uint32). */
+const HYBRID_SEED_HASH_MASK = 4294967295;
+/** Max API pages scanned while filling a hybrid remote window after filters. */
+const HYBRID_REMOTE_MAX_PAGES_TO_SCAN = 20;
+/** Matches provider `fetchPosts` page-size cap (Rule34/Gelbooru). */
+const HYBRID_REMOTE_API_PAGE_CAP = 1000;
+/**
+ * Cap for seeded-random hybrid materialization (full union before seed-sort).
+ * Rank order ≠ provider feed order, so random pages cannot use feed prefixes.
+ */
+const HYBRID_RANDOM_MATERIALIZE_CAP = 50_000;
+
+function hybridPostMergeKey(post: { provider: string; postId: number }): string {
+  return `${post.provider}:${post.postId}`;
+}
+
+/** Deterministic rank matching `seededOrderBy(postId, seed)` primary key. */
+function hybridSeedRank(postId: number, seed: number): number {
+  return (((postId + seed) * HYBRID_SEED_HASH_MULTIPLIER) & HYBRID_SEED_HASH_MASK) >>> 0;
+}
+
+/**
+ * Compare two hybrid candidates. Random uses seed ranks on postId; otherwise publishedAt
+ * with postId tie-break so page walks are stable.
+ */
+function compareHybridPlaylistPosts(
+  a: IpcPost,
+  b: IpcPost,
+  sortOrder: "asc" | "desc",
+  isRandom: boolean,
+  seed: number
+): number {
+  if (isRandom) {
+    const rankDiff = hybridSeedRank(a.postId, seed) - hybridSeedRank(b.postId, seed);
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+    return a.postId - b.postId;
+  }
+  const timeDiff = a.publishedAt - b.publishedAt;
+  if (timeDiff !== 0) {
+    return sortOrder === "asc" ? timeDiff : -timeDiff;
+  }
+  return a.postId - b.postId;
+}
+
+/**
+ * Prefer local rows, then append remote-only rows (same provider:postId dropped).
+ */
+function dedupeHybridPostsPreferLocal(
+  localPosts: IpcPost[],
+  remotePosts: IpcPost[]
+): IpcPost[] {
+  const localKeys = new Set(localPosts.map(hybridPostMergeKey));
+  const remoteOnly: IpcPost[] = [];
+  for (const post of remotePosts) {
+    if (!localKeys.has(hybridPostMergeKey(post))) {
+      remoteOnly.push(post);
+    }
+  }
+  return remoteOnly;
+}
+
+/**
+ * Deterministic merge of two pre-sorted source windows with per-source cursors.
+ * Remote rows whose (provider, postId) already appear locally are dropped before
+ * the merge so local status wins and truncated leftovers stay available for later pages.
+ */
+function mergeHybridPlaylistPage(
+  localPosts: IpcPost[],
+  remotePosts: IpcPost[],
+  page: number,
+  limit: number,
+  sortOrder: "asc" | "desc",
+  isRandom: boolean,
+  seed: number
+): { pagePosts: IpcPost[]; localTaken: number; remoteTaken: number; mergedCount: number } {
+  const remoteOnly = dedupeHybridPostsPreferLocal(localPosts, remotePosts);
+  const pageStart = (page - 1) * limit;
+
+  // Seeded random cannot use API-feed prefixes: rank order ≠ feed order, so
+  // materialize the deduped union, seed-sort, then slice the page.
+  if (isRandom) {
+    const merged = [...localPosts, ...remoteOnly];
+    merged.sort((left, right) =>
+      compareHybridPlaylistPosts(left, right, sortOrder, true, seed)
+    );
+    return {
+      pagePosts: merged.slice(pageStart, pageStart + limit),
+      localTaken: localPosts.length,
+      remoteTaken: remoteOnly.length,
+      mergedCount: merged.length,
+    };
+  }
+
+  const compare = (left: IpcPost, right: IpcPost): number =>
+    compareHybridPlaylistPosts(left, right, sortOrder, false, seed);
+
+  let localIdx = 0;
+  let remoteIdx = 0;
+  const merged: IpcPost[] = [];
+  const neededEnd = page * limit;
+
+  while (
+    merged.length < neededEnd &&
+    (localIdx < localPosts.length || remoteIdx < remoteOnly.length)
+  ) {
+    const localPost = localIdx < localPosts.length ? localPosts[localIdx] : undefined;
+    const remotePost = remoteIdx < remoteOnly.length ? remoteOnly[remoteIdx] : undefined;
+
+    if (localPost !== undefined && remotePost === undefined) {
+      merged.push(localPost);
+      localIdx += 1;
+      continue;
+    }
+    if (remotePost !== undefined && localPost === undefined) {
+      merged.push(remotePost);
+      remoteIdx += 1;
+      continue;
+    }
+    if (localPost === undefined || remotePost === undefined) {
+      break;
+    }
+    if (compare(localPost, remotePost) <= 0) {
+      merged.push(localPost);
+      localIdx += 1;
+    } else {
+      merged.push(remotePost);
+      remoteIdx += 1;
+    }
+  }
+
+  return {
+    pagePosts: merged.slice(pageStart, pageStart + limit),
+    localTaken: localIdx,
+    remoteTaken: remoteIdx,
+    mergedCount: merged.length,
+  };
+}
 
 /**
  * Playlist Controller
@@ -1926,17 +2067,11 @@ export class PlaylistController extends BaseController {
         JSON.stringify(query)
       );
 
-      // Smart playlist: Hybrid Search - always query both local DB and remote API concurrently
-      // Step 1: Query local DB using FTS5
-      // Step 2: Concurrently fetch from remote API
-      // Step 3: Merge and deduplicate results (prioritize local entries for isViewed/isFavorited status)
-      // 
-      // PERFORMANCE NOTE: resolveRemotePlaylistPosts fetches a full page (limit) of posts from API.
-      // This is NOT an N+1 query - we fetch all posts for the page in a single API call.
-      // The remote posts are then merged with local DB results and deduplicated.
-      // If a remote post is not found in local cache, it will be shadow-inserted when opened in viewer,
-      // but that's a separate operation and doesn't cause N+1 during playlist resolution.
-      
+      // Smart playlist hybrid search:
+      // 1) Fetch a prefix window of page*limit from local and remote (same sort key)
+      // 2) Cursor-merge with local-preferred dedupe — leftovers stay for later pages
+      // 3) Return the page slice of the merged stream (never slice(0, limit) of a double page)
+
       // Build tag conditions from smart playlist query
       const { includeConditions, excludeConditions } = this.buildSmartPlaylistTagConditions(query);
       
@@ -1980,6 +2115,13 @@ export class PlaylistController extends BaseController {
 
       const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;
 
+      // Sorted hybrid: worst case the page window is filled from one source → page*limit each.
+      // Seeded random: materialize both legs (capped) — rank order ≠ provider feed order.
+      const fetchLimit = isRandom
+        ? HYBRID_RANDOM_MATERIALIZE_CAP
+        : page * limit;
+      const resolvedSeed = resolveRandomSeed(seed);
+
       // Execute local DB query and remote API query concurrently.
       // Provider/creds failures must throw — never map to [] (silent empty success).
       const [localPosts, remotePosts] = await Promise.all([
@@ -2007,18 +2149,20 @@ export class PlaylistController extends BaseController {
             .from(posts)
             .where(whereClause);
 
+          // Hybrid random orders by postId so the rank matches remote-only rows.
           const result = isRandom
             ? queryBuilder
-                .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
-                .limit(limit)
-                .offset(offset)
+                .orderBy(...seededOrderBy(posts.postId, resolvedSeed))
+                .limit(fetchLimit)
+                .offset(0)
                 .all()
             : queryBuilder
                 .orderBy(
-                  smartSortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt)
+                  smartSortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt),
+                  smartSortOrder === "asc" ? asc(posts.postId) : desc(posts.postId)
                 )
-                .limit(limit)
-                .offset(offset)
+                .limit(fetchLimit)
+                .offset(0)
                 .all();
           log.info(
             `[PlaylistController] Local DB query returned ${result.length} posts for smart playlist ${playlistId}`
@@ -2028,68 +2172,31 @@ export class PlaylistController extends BaseController {
         this.resolveRemotePlaylistPosts(
           playlistId,
           query,
-          page,
-          limit,
+          fetchLimit,
           filters,
           smartSortOrder,
-          isRandom
+          isRandom,
+          resolvedSeed
         ),
       ]);
 
-      // Merge and deduplicate results
-      // Key by (provider, postId) — same postId on different boorus are distinct
-      // Prioritize local entries (they have isViewed/isFavorited status)
-      const mergeKey = (post: { provider: string; postId: number }): string =>
-        `${post.provider}:${post.postId}`;
-      const mergedMap = new Map<string, IpcPost>();
-
-      // First, add all local posts (these have priority)
-      for (const post of localPosts) {
-        mergedMap.set(mergeKey(post), post);
-      }
-
-      // Then, add remote posts that aren't already in the map
-      for (const post of remotePosts) {
-        const key = mergeKey(post);
-        if (!mergedMap.has(key)) {
-          mergedMap.set(key, post);
-        } else {
-          log.debug(
-            `[PlaylistController] Deduplicated remote post (provider: ${post.provider}, postId: ${post.postId}) - local entry exists`
-          );
-        }
-      }
-
-      // Convert map back to array and sort/shuffle
-      const mergedPosts = Array.from(mergedMap.values());
-      
-      if (isRandom) {
-        // Shuffle merged results for true randomization
-        for (let i = mergedPosts.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [mergedPosts[i], mergedPosts[j]] = [mergedPosts[j], mergedPosts[i]];
-        }
-      } else {
-        // Sort by publishedAt
-        mergedPosts.sort((a, b) => {
-          if (smartSortOrder === "asc") {
-            return a.publishedAt - b.publishedAt;
-          } else {
-            return b.publishedAt - a.publishedAt;
-          }
-        });
-      }
-
-      // Local and remote queries are already paginated for the requested page.
-      // Applying offset again here drops valid results on page > 1.
-      const paginatedPosts = mergedPosts.slice(0, limit);
-
-      log.info(
-        `[PlaylistController] Hybrid search resolved ${paginatedPosts.length} posts for smart playlist ${playlistId} ` +
-        `(local: ${localPosts.length}, remote: ${remotePosts.length}, merged: ${mergedPosts.length}, page ${page})`
+      const { pagePosts, localTaken, remoteTaken, mergedCount } = mergeHybridPlaylistPage(
+        localPosts,
+        remotePosts,
+        page,
+        limit,
+        smartSortOrder,
+        isRandom,
+        resolvedSeed
       );
 
-      return paginatedPosts;
+      log.info(
+        `[PlaylistController] Hybrid search resolved ${pagePosts.length} posts for smart playlist ${playlistId} ` +
+          `(localWindow: ${localPosts.length}, remoteWindow: ${remotePosts.length}, ` +
+          `mergedPrefix: ${mergedCount}, localTaken: ${localTaken}, remoteTaken: ${remoteTaken}, page ${page})`
+      );
+
+      return pagePosts;
     } catch (error) {
       log.error(`[PlaylistController] Failed to resolve playlist posts for ${playlistId}:`, error);
       throw error;
@@ -2097,27 +2204,20 @@ export class PlaylistController extends BaseController {
   }
 
   /**
-   * Resolve smart playlist posts from remote API
-   * 
-   * Fetches posts from booru API using the tag query string.
-   * Applies global filters (media type) after fetching.
-   * 
-   * @param playlistId - Playlist ID
-   * @param query - Smart playlist query
-   * @param page - Page number (1-indexed)
-   * @param limit - Number of posts per page
-   * @param filters - Global filters (media type)
-   * @param sortOrder - Sort order (asc/desc)
-   * @returns Array of posts from remote API
+   * Resolve a sorted remote window for hybrid smart-playlist merge.
+   *
+   * Always walks the provider feed from the start (deterministic) until
+   * `fetchLimit` posts remain after blacklist/media filters, then sorts by the
+   * same criterion the local leg uses so cursor-merge is valid.
    */
   private async resolveRemotePlaylistPosts(
     playlistId: number,
     query: SmartPlaylistQuery,
-    page: number,
-    limit: number,
-    filters?: ResolvePlaylistPostsRequest["filters"],
-    sortOrder: "asc" | "desc" = "desc",
-    isRandom: boolean = false
+    fetchLimit: number,
+    filters: ResolvePlaylistPostsRequest["filters"] | undefined,
+    sortOrder: "asc" | "desc",
+    isRandom: boolean,
+    seed: number
   ): Promise<IpcPost[]> {
     try {
       // Build booru query string from tags
@@ -2147,22 +2247,22 @@ export class PlaylistController extends BaseController {
       );
 
       const filteredPosts: IpcPost[] = [];
-      // Start at the requested page; keep fetching until we fill ``limit`` after filters
-      // (blacklist / media type can drop many items from a raw API page).
-      let apiPage = isRandom
-        ? Math.floor(Math.random() * MAX_RANDOM_PAGES) + 1
-        : page - 1;
-      const maxPagesToScan = isRandom ? 1 : 20;
+      // Deterministic feed walk from pid/page 0 — hybrid pagination replays from the start.
+      let apiPage = 0;
       let pagesScanned = 0;
       let rawFetchedTotal = 0;
+      const apiRequestLimit = Math.min(HYBRID_REMOTE_API_PAGE_CAP, Math.max(1, fetchLimit));
 
-      while (filteredPosts.length < limit && pagesScanned < maxPagesToScan) {
+      while (
+        filteredPosts.length < fetchLimit &&
+        pagesScanned < HYBRID_REMOTE_MAX_PAGES_TO_SCAN
+      ) {
         const { posts: booruPosts, rawItemCount } = await provider.fetchPosts(
           booruQuery,
           apiPage,
           providerSettings,
-          isRandom,
-          limit
+          false,
+          apiRequestLimit
         );
         pagesScanned += 1;
         rawFetchedTotal += booruPosts.length;
@@ -2208,42 +2308,30 @@ export class PlaylistController extends BaseController {
             viewCount: 0,
           });
 
-          if (filteredPosts.length >= limit) {
+          if (filteredPosts.length >= fetchLimit) {
             break;
           }
         }
 
-        if (rawItemCount < limit || booruPosts.length === 0) {
-          break;
-        }
-        if (isRandom) {
+        // End of feed: short *API* page (not fetchLimit — random materialize uses a large cap).
+        if (rawItemCount < apiRequestLimit || booruPosts.length === 0) {
           break;
         }
         apiPage += 1;
       }
 
-      if (isRandom) {
-        for (let i = filteredPosts.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [filteredPosts[i], filteredPosts[j]] = [filteredPosts[j], filteredPosts[i]];
-        }
-      } else {
-        filteredPosts.sort((a, b) => {
-          if (sortOrder === "asc") {
-            return a.publishedAt - b.publishedAt;
-          }
-          return b.publishedAt - a.publishedAt;
-        });
-      }
-
-      const paginatedPosts = filteredPosts.slice(0, limit);
-
-      log.info(
-        `[PlaylistController] Resolved ${paginatedPosts.length} posts from remote API for smart playlist ${playlistId} ` +
-          `(page ${page}, scanned ${pagesScanned} API page(s), raw ${rawFetchedTotal})`
+      filteredPosts.sort((a, b) =>
+        compareHybridPlaylistPosts(a, b, sortOrder, isRandom, seed)
       );
 
-      return paginatedPosts;
+      const windowPosts = filteredPosts.slice(0, fetchLimit);
+
+      log.info(
+        `[PlaylistController] Resolved ${windowPosts.length} posts from remote API for smart playlist ${playlistId} ` +
+          `(fetchLimit ${fetchLimit}, scanned ${pagesScanned} API page(s), raw ${rawFetchedTotal})`
+      );
+
+      return windowPosts;
     } catch (error) {
       log.error(`[PlaylistController] Failed to resolve remote playlist posts for ${playlistId}:`, error);
       throw error;
