@@ -10,7 +10,65 @@ import {
   SmartQueryTagSchema,
   type SmartQueryV1,
   parseSmartQuery,
+  CURRENT_SMART_QUERY_SCHEMA_VERSION,
 } from "./smart-playlist-query";
+
+/**
+ * Caps for playlist IPC id arrays. Exceeding these fails Zod with a typed
+ * ValidationError (ErrorCode.VALIDATION_ERROR via BaseController), not an
+ * untyped generic throw from the controller body.
+ */
+export const MAX_PLAYLIST_POST_IDS = 10_000;
+export const MAX_PLAYLIST_TARGET_IDS = 100;
+/** Max playlistIds × postIds pairs accepted by addPostsToPlaylist. */
+export const MAX_PLAYLIST_ADD_ENTRY_PRODUCT = 10_000;
+/** Max entries allowed in a playlist import file. */
+export const MAX_PLAYLIST_IMPORT_ENTRIES = 50_000;
+/**
+ * SQLite default SQLITE_MAX_VARIABLE_NUMBER is 999.
+ * playlist_entries rows bind up to 4 columns → stay well under the limit.
+ */
+export const PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE = 200;
+/** inArray(postId) lookup chunk — 1 bind per id. */
+export const PLAYLIST_IMPORT_LOOKUP_CHUNK_SIZE = 400;
+
+const playlistPostIdsArraySchema = z
+  .array(IdSchema)
+  .min(1, "At least one post required")
+  .max(
+    MAX_PLAYLIST_POST_IDS,
+    `At most ${MAX_PLAYLIST_POST_IDS} post ids allowed`
+  );
+
+const playlistTargetIdsArraySchema = z
+  .array(IdSchema)
+  .min(1, "At least one playlist required")
+  .max(
+    MAX_PLAYLIST_TARGET_IDS,
+    `At most ${MAX_PLAYLIST_TARGET_IDS} playlist ids allowed`
+  );
+
+/**
+ * Non-empty queryJson must parse as the current smart-query schema.
+ * Empty string is allowed (manual playlists / unfinished smart drafts).
+ */
+export const PlaylistQueryJsonWriteSchema = z
+  .string()
+  .superRefine((value, ctx) => {
+    if (value.trim() === "") {
+      return;
+    }
+    const parsed = parseSmartQuery(
+      value,
+      CURRENT_SMART_QUERY_SCHEMA_VERSION
+    );
+    if (!parsed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid smart playlist queryJson",
+      });
+    }
+  });
 
 /**
  * Smart Playlist Tag Schema
@@ -51,7 +109,7 @@ export type SmartPlaylistQuery = SmartQueryV1;
 export const CreatePlaylistSchema = z.object({
   name: z.string().trim().min(1, "Name cannot be empty").max(200, "Name too long"),
   isSmart: z.boolean().default(true), // Default to Smart Collection
-  queryJson: z.string().optional().default(""),
+  queryJson: PlaylistQueryJsonWriteSchema.optional().default(""),
   iconName: z.string().max(50).optional().default(""),
 });
 
@@ -71,7 +129,7 @@ export type CreatePlaylistRequest = z.infer<typeof CreatePlaylistSchema>;
  */
 export const UpdatePlaylistSchema = z.object({
   name: z.string().trim().min(1, "Name cannot be empty").max(200, "Name too long").optional(),
-  queryJson: z.string().optional(),
+  queryJson: PlaylistQueryJsonWriteSchema.optional(),
   iconName: z.string().max(50).optional(),
 });
 
@@ -87,11 +145,23 @@ export type UpdatePlaylistRequest = z.infer<typeof UpdatePlaylistSchema>;
  *
  * Single source of truth for adding posts to playlists validation and typing.
  * Supports adding multiple posts to multiple playlists simultaneously.
+ * Caps array lengths and the cartesian product (playlistIds × postIds).
  */
-export const AddPostsToPlaylistSchema = z.object({
-  playlistIds: z.array(IdSchema).min(1, "At least one playlist required"),
-  postIds: z.array(IdSchema).min(1, "At least one post required"),
-});
+export const AddPostsToPlaylistSchema = z
+  .object({
+    playlistIds: playlistTargetIdsArraySchema,
+    postIds: playlistPostIdsArraySchema,
+  })
+  .superRefine((data, ctx) => {
+    const product = data.playlistIds.length * data.postIds.length;
+    if (product > MAX_PLAYLIST_ADD_ENTRY_PRODUCT) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Too many playlist×post pairs (${product}). Maximum is ${MAX_PLAYLIST_ADD_ENTRY_PRODUCT}.`,
+        path: ["postIds"],
+      });
+    }
+  });
 
 /**
  * Add Posts to Playlist Request Type
@@ -107,7 +177,7 @@ export type AddPostsToPlaylistRequest = z.infer<typeof AddPostsToPlaylistSchema>
  */
 export const RemovePostsFromPlaylistSchema = z.object({
   playlistId: IdSchema,
-  postIds: z.array(IdSchema).min(1, "At least one post required"),
+  postIds: playlistPostIdsArraySchema,
 });
 
 /**
@@ -122,8 +192,13 @@ export type RemovePostsFromPlaylistRequest = z.infer<typeof RemovePostsFromPlayl
  * Adds to checked playlists, removes from all other manual playlists.
  */
 export const SyncManualPlaylistMembershipSchema = z.object({
-  postIds: z.array(IdSchema).min(1, "At least one post required"),
-  manualPlaylistIds: z.array(IdSchema),
+  postIds: playlistPostIdsArraySchema,
+  manualPlaylistIds: z
+    .array(IdSchema)
+    .max(
+      MAX_PLAYLIST_TARGET_IDS,
+      `At most ${MAX_PLAYLIST_TARGET_IDS} playlist ids allowed`
+    ),
 });
 
 export type SyncManualPlaylistMembershipRequest = z.infer<typeof SyncManualPlaylistMembershipSchema>;
@@ -132,7 +207,7 @@ export type SyncManualPlaylistMembershipRequest = z.infer<typeof SyncManualPlayl
  * How many of the given posts are in each manual playlist (for bulk UI pre-check / indeterminate).
  */
 export const GetManualPlaylistMembershipForPostsSchema = z.object({
-  postIds: z.array(IdSchema).min(1, "At least one post required"),
+  postIds: playlistPostIdsArraySchema,
 });
 
 export type GetManualPlaylistMembershipForPostsRequest = z.infer<
@@ -148,7 +223,7 @@ export type ClearManualPlaylistRequest = z.infer<typeof ClearManualPlaylistSchem
 export const MovePostsBetweenManualPlaylistsSchema = z.object({
   fromPlaylistId: IdSchema,
   toPlaylistId: IdSchema,
-  postIds: z.array(IdSchema).min(1, "At least one post required"),
+  postIds: playlistPostIdsArraySchema,
 });
 
 export type MovePostsBetweenManualPlaylistsRequest = z.infer<
@@ -195,7 +270,13 @@ export const ResolvePlaylistPostsSchema = z.object({
 
 export const ReorderPlaylistEntriesSchema = z.object({
   playlistId: IdSchema,
-  orderedPostIds: z.array(IdSchema).min(1),
+  orderedPostIds: z
+    .array(IdSchema)
+    .min(1)
+    .max(
+      MAX_PLAYLIST_POST_IDS,
+      `At most ${MAX_PLAYLIST_POST_IDS} post ids allowed`
+    ),
 });
 
 export type ReorderPlaylistEntriesRequest = z.infer<typeof ReorderPlaylistEntriesSchema>;
