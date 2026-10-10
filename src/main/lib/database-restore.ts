@@ -1,7 +1,7 @@
 import fs from "fs";
-import Database from "better-sqlite3";
 import log from "electron-log";
 import { isErrnoException } from "../../shared/utils/type-guards";
+import { runBackupIntegrityWorker } from "../workers/runBackupIntegrityWorker";
 import {
   logRestoredSettingsSnapshot,
   restoreBackupSidecar,
@@ -103,31 +103,21 @@ export async function restoreDatabaseFromBackup(
   try {
     await fs.promises.copyFile(backupPath, tempDbPath);
 
-    let tempDb: InstanceType<typeof Database> | null = null;
-    try {
-      tempDb = new Database(tempDbPath, { readonly: true });
-
-      // boundary: better-sqlite3 raw row
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
-      const integrityRows = tempDb
-        .prepare("PRAGMA integrity_check")
-        .all() as { integrity_check: string }[];
-      const isValid =
-        integrityRows.length === 1 && integrityRows[0]?.integrity_check === "ok";
-
-      if (!isValid) {
-        const errorMsg = integrityRows.map((r) => r.integrity_check).join("; ");
-        throw new Error(
-          `Database integrity check failed: ${errorMsg || "unknown result"}`
-        );
-      }
-
-      log.info("[DatabaseRestore] Backup file integrity check passed");
-    } finally {
-      if (tempDb) {
-        tempDb.close();
-      }
+    const integrityResult = await runBackupIntegrityWorker({
+      op: "integrityCheck",
+      dbPath: tempDbPath,
+    });
+    if (!integrityResult.success) {
+      throw new Error(
+        `Database integrity check failed: ${integrityResult.error}`
+      );
     }
+    if (!integrityResult.ok) {
+      throw new Error(
+        `Database integrity check failed: ${integrityResult.details || "unknown result"}`
+      );
+    }
+    log.info("[DatabaseRestore] Backup file integrity check passed");
 
     await fs.promises.rename(tempDbPath, dbPath);
 

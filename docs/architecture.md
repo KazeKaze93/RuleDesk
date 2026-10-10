@@ -608,7 +608,7 @@ const posts = await db.query.posts.findMany({
    - Sequential execution queue for database maintenance operations
    - Prevents race conditions and "Database is closed" errors
    - Promise-based queue ensures operations complete before next starts
-   - Used for backup, restore, and user-visible VACUUM (`MaintenanceService.runVacuum` → worker). Serializes those ops with each other; does **not** gate ordinary CRUD IPC. VACUUM / restore / wipe also call `SyncService.pauseForDbMaintenance` so sync cannot touch a closed SQLite handle.
+   - Used for backup, restore, integrity check, and user-visible VACUUM (`MaintenanceService.runVacuum` → `vacuumWorker`; backup `VACUUM INTO` / `PRAGMA integrity_check` → `backupIntegrityWorker`). Serializes those ops with each other; does **not** gate ordinary CRUD IPC. VACUUM / backup / integrity check / restore / wipe also call `SyncService.pauseForDbMaintenance` so sync cannot touch a closed SQLite handle.
 
 8. **Booru Providers** (`src/main/providers/`)
 
@@ -1645,7 +1645,8 @@ src/
 │   │   └── video-proxy-server.ts   # Local video proxy + disk cache
 │   ├── workers/                   # Worker threads
 │   │   ├── downloadWorker.ts       # Batch download worker
-│   │   └── vacuumWorker.ts         # VACUUM worker
+│   │   ├── vacuumWorker.ts         # VACUUM worker
+│   │   └── backupIntegrityWorker.ts # VACUUM INTO + integrity_check worker
 │   ├── lib/                       # Utilities
 │   │   ├── logger.ts              # electron-log setup + redaction hook (main)
 │   │   └── proxy.ts               # Proxy config helpers

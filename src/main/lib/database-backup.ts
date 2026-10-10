@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import type Database from "better-sqlite3";
 import { BACKUP_FILE_PREFIX } from "../db/paths";
+import { runBackupIntegrityWorker } from "../workers/runBackupIntegrityWorker";
 import { writeBackupSidecar } from "./backup-sidecar";
 
 /** Legacy auto-backup names written by copyFileSync (pre consistency fix). */
@@ -98,13 +98,21 @@ export function selectAutoBackupFilenamesToDelete(
 }
 
 /**
- * Consistent online SQLite snapshot via VACUUM INTO, then settings sidecar.
- * Does not perform retention pruning — callers own that policy.
+ * Consistent SQLite snapshot via `VACUUM INTO` in `backupIntegrityWorker`,
+ * then settings sidecar on Main. Caller must close the Main DB handle first
+ * (same connect/close protocol as VACUUM). Does not prune retention.
  */
 export async function createConsistentBackup(
-  sqlite: InstanceType<typeof Database>,
+  dbPath: string,
   targetPath: string
 ): Promise<void> {
-  sqlite.prepare("VACUUM INTO ?").run(targetPath);
+  const result = await runBackupIntegrityWorker({
+    op: "vacuumInto",
+    dbPath,
+    targetPath,
+  });
+  if (!result.success) {
+    throw new Error(result.error);
+  }
   await writeBackupSidecar(targetPath);
 }

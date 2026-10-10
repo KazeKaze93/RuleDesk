@@ -82,3 +82,9 @@ export const DIAGNOSTICS_LOG_TAIL_BYTES = 32 * 1024;
 /** GitHub issue / comment body character limit — diagnostics paste must stay under this. */
 export const GITHUB_ISSUE_BODY_MAX_CHARS = 65_536;
 
+/**
+ * Max acceptable Main event-loop lag (ms) while `VACUUM INTO` / `PRAGMA integrity_check`
+ * run in `backupIntegrityWorker`. Sync SQLite for those ops must not run on Main.
+ */
+export const MAX_MAIN_EVENT_LOOP_LAG_DURING_BACKUP_MS = 100;
+

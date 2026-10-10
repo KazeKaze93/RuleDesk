@@ -18,6 +18,7 @@ import type { SyncService } from "../../services/sync-service";
 import type { BackupService, AutoBackupInterval } from "../../services/backup-service";
 import type { MaintenanceService } from "../../services/MaintenanceService";
 import { getBackupDirectory, getDatabasePaths } from "../../db/paths";
+import { runBackupIntegrityWorker } from "../../workers/runBackupIntegrityWorker";
 import {
   getBackupSidecarPath,
   logRestoredSettingsSnapshot,
@@ -279,44 +280,49 @@ export class MaintenanceController extends BaseController {
     // Execute backup operation in maintenance queue to prevent race conditions
     return maintenanceQueue.execute(async () => {
       try {
-      const backupDir = getBackupDirectory();
-      const backupPath = path.join(backupDir, buildManualBackupFilename());
+        const backupDir = getBackupDirectory();
+        const backupPath = path.join(backupDir, buildManualBackupFilename());
 
-      // Ensure backup directory exists (getBackupDirectory already mkdir's; keep access check for races)
-      try {
-        await fs.promises.access(backupDir);
-      } catch {
-        await fs.promises.mkdir(backupDir, { recursive: true });
-      }
-
-      // Validate path is absolute and within the backup directory
-      const normalizedBackupPath = path.resolve(backupPath);
-      const normalizedBackupDir = path.resolve(backupDir);
-      if (!normalizedBackupPath.startsWith(normalizedBackupDir)) {
-        throw new Error("Backup path validation failed: path outside backup directory");
-      }
-
-      // Send loading event before VACUUM (which freezes the UI)
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.mainWindow.webContents.send("APP:LOADING", {
-          loading: true,
-          message: "Creating backup...",
-        });
-        // Notify OS that app is busy (prevents "app not responding" warnings)
-        if (this.mainWindow.isVisible()) {
-          this.mainWindow.flashFrame(true);
+        // Ensure backup directory exists (getBackupDirectory already mkdir's; keep access check for races)
+        try {
+          await fs.promises.access(backupDir);
+        } catch {
+          await fs.promises.mkdir(backupDir, { recursive: true });
         }
-        app.focus({ steal: false });
-      }
 
-      const sqlite = getSqliteInstance();
-      await createConsistentBackup(sqlite, backupPath);
+        // Validate path is absolute and within the backup directory
+        const normalizedBackupPath = path.resolve(backupPath);
+        const normalizedBackupDir = path.resolve(backupDir);
+        if (!normalizedBackupPath.startsWith(normalizedBackupDir)) {
+          throw new Error("Backup path validation failed: path outside backup directory");
+        }
 
-      // Send loading complete event
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.mainWindow.webContents.send("APP:LOADING", { loading: false });
-        this.mainWindow.flashFrame(false);
-      }
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send("APP:LOADING", {
+            loading: true,
+            message: "Creating backup...",
+          });
+          if (this.mainWindow.isVisible()) {
+            this.mainWindow.flashFrame(true);
+          }
+          app.focus({ steal: false });
+        }
+
+        const { dbPath } = getDatabasePaths();
+        await withSyncPausedForDbWork(this.getSyncService(), async () => {
+          closeDatabase();
+          try {
+            await createConsistentBackup(dbPath, backupPath);
+          } finally {
+            await initializeDatabase();
+            registerDatabaseInContainerAfterReinit();
+          }
+        });
+
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send("APP:LOADING", { loading: false });
+          this.mainWindow.flashFrame(false);
+        }
 
         await this.cleanupOldBackups(backupDir);
         log.info(`[MaintenanceController] Backup created at ${backupPath}`);
@@ -328,6 +334,7 @@ export class MaintenanceController extends BaseController {
         // Ensure loading state is cleared on error
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.mainWindow.webContents.send("APP:LOADING", { loading: false });
+          this.mainWindow.flashFrame(false);
         }
         log.error("[MaintenanceController] Backup failed:", error);
         return {
@@ -497,32 +504,39 @@ export class MaintenanceController extends BaseController {
     });
   }
 
-  private integrityCheck(
+  private async integrityCheck(
     _event: IpcMainInvokeEvent
-  ): { ok: boolean; details: string } {
-    try {
-      const sqlite = getSqliteInstance();
-      // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
-      // PRAGMA integrity_check returns rows: [{ integrity_check: "ok" }] if healthy
-      // or multiple rows with problem descriptions if corrupted
-      const rows = sqlite
-        .prepare<[], { integrity_check: string }>("PRAGMA integrity_check")
-        .all();
+  ): Promise<{ ok: boolean; details: string }> {
+    return maintenanceQueue.execute(async () => {
+      try {
+        const { dbPath } = getDatabasePaths();
+        return await withSyncPausedForDbWork(this.getSyncService(), async () => {
+          closeDatabase();
+          try {
+            const result = await runBackupIntegrityWorker({
+              op: "integrityCheck",
+              dbPath,
+            });
+            if (!result.success) {
+              throw new Error(result.error);
+            }
 
-      const isOk = rows.length === 1 && rows[0]?.integrity_check === "ok";
-      const details = rows.map((r) => r.integrity_check).join("\n");
-
-      log.info(
-        `[MaintenanceController] Integrity check result: ${
-          isOk ? "ok" : "ISSUES FOUND"
-        }`
-      );
-
-      return { ok: isOk, details };
-    } catch (error) {
-      log.error("[MaintenanceController] Integrity check failed:", error);
-      throw error;
-    }
+            log.info(
+              `[MaintenanceController] Integrity check result: ${
+                result.ok ? "ok" : "ISSUES FOUND"
+              }`
+            );
+            return { ok: result.ok, details: result.details };
+          } finally {
+            await initializeDatabase();
+            registerDatabaseInContainerAfterReinit();
+          }
+        });
+      } catch (error) {
+        log.error("[MaintenanceController] Integrity check failed:", error);
+        throw error;
+      }
+    });
   }
 
   /**

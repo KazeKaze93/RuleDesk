@@ -24,6 +24,10 @@ export default defineConfig({
           main: resolve(__dirname, "src/main/main.ts"),
           "workers/downloadWorker": resolve(__dirname, "src/main/workers/downloadWorker.ts"),
           "workers/vacuumWorker": resolve(__dirname, "src/main/workers/vacuumWorker.ts"),
+          "workers/backupIntegrityWorker": resolve(
+            __dirname,
+            "src/main/workers/backupIntegrityWorker.ts"
+          ),
         },
         output: {
           dir: "out/main",
