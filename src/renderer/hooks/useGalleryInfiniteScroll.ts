@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
-// Constants
 const POSTS_PER_PAGE = 50;
-const DEBOUNCE_DELAY = 150; // ms
+const DEBOUNCE_DELAY_MS = 150;
 
 type GalleryInfiniteScrollQueryOptions = {
   staleTime?: number;
@@ -16,19 +15,19 @@ type GalleryInfiniteScrollQueryOptions = {
 };
 
 /**
- * Generic hook for infinite scroll with pagination
+ * Generic hook for infinite scroll with pagination.
  *
- * @template TPost - The post type
- * @template TQueryKey - The query key type for react-query
+ * `flattenPage` is intentionally omitted from the `allPosts` `useMemo`
+ * dependency list (see exhaustive-deps disable). Callers may pass an inline
+ * lambda without causing a new `allPosts` array identity on every render.
  *
- * @param options - Configuration options
- * @param options.queryKey - React Query key array
- * @param options.fetchFn - Function to fetch a page of posts
- * @param options.enabled - Whether the query should be enabled (default: true)
- * @param options.postsPerPage - Number of posts per page (default: 50)
- * @param options.debounceDelay - Debounce delay in ms (default: 150)
+ * Constraint: `flattenPage` must be a pure projection of `page`. Changing
+ * `flattenPage` without a corresponding `data` change does **not** recompute
+ * `allPosts` until the next query-data update. The memo reads `flattenPage`
+ * from the render that last invalidated `data` (latest-callback-via-closure).
  *
- * @returns Object containing query data and handlers
+ * `handleEndReached` is gated by in-flight fetch / exhausted pages so a pinned
+ * Virtuoso `endReached` cannot schedule overlapping `fetchNextPage` calls.
  */
 export function useGalleryInfiniteScroll<
   TPage,
@@ -40,7 +39,7 @@ export function useGalleryInfiniteScroll<
   fetchFn,
   enabled = true,
   postsPerPage = POSTS_PER_PAGE,
-  debounceDelay = DEBOUNCE_DELAY,
+  debounceDelay = DEBOUNCE_DELAY_MS,
   getNextPageParam,
   flattenPage,
   initialPageParam,
@@ -67,6 +66,11 @@ export function useGalleryInfiniteScroll<
   const endReachedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasNextPageRef = useRef(false);
   const isFetchingNextPageRef = useRef(false);
+  // Latest-ref for default getNextPageParam (runs outside render).
+  const flattenPageRef = useRef(flattenPage);
+  useEffect(() => {
+    flattenPageRef.current = flattenPage;
+  });
 
   const {
     data,
@@ -89,8 +93,9 @@ export function useGalleryInfiniteScroll<
     getNextPageParam:
       getNextPageParam ??
       ((lastPage, allPages) => {
-        const items = flattenPage
-          ? flattenPage(lastPage)
+        const flatten = flattenPageRef.current;
+        const items = flatten
+          ? flatten(lastPage)
           : Array.isArray(lastPage)
             ? // boundary: TanStack Query generic inference — default path assumes TPage is TItem[]
               // eslint-disable-next-line no-restricted-syntax -- boundary: TanStack Query generic inference
@@ -137,6 +142,9 @@ export function useGalleryInfiniteScroll<
   }, [fetchNextPage, debounceDelay]);
 
   const handleEndReached = useCallback(() => {
+    if (!hasNextPageRef.current || isFetchingNextPageRef.current) {
+      return;
+    }
     scheduleLoadMore();
   }, [scheduleLoadMore]);
 
@@ -161,7 +169,9 @@ export function useGalleryInfiniteScroll<
             (page as TItem[])
           : []
     );
-  }, [data, flattenPage]);
+    // flattenPage identity must not invalidate this memo — see hook JSDoc constraint.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- latest flattenPage via render closure when data changes
+  }, [data]);
 
   return {
     data,

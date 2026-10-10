@@ -220,7 +220,11 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ### Problem: Gallery infinite scroll cascades fetchNextPage without user scroll
 **Root Cause:** Browse wired Virtuoso `atBottomStateChange` (documented as tail-f for live feeds where new items appear at the bottom) plus an `allPosts.length` effect that re-schedules while `atBottomRef` stays true. Downward pagination of existing pages is not that pattern; a sticky `atBottom=true` pumps `searchBooru` until `hasNextPage` is false. Masonry made it visible (O(n) DOM); grid hid it (windowing keeps the same visible index range at unchanged `scrollTop`).
-**Invariant Rule:** Downward gallery infinite scroll is `VirtuosoGrid.endReached` / `handleEndReached` (debounced) only. Do not use `atBottomStateChange` or a length-while-pinned effect. Masonry overflow-auto uses `useMasonryInfiniteScroll` (threshold + leave-zone guard + debounce), never the Virtuoso at-bottom contract.
+**Invariant Rule:** Downward gallery infinite scroll is `VirtuosoGrid.endReached` / `handleEndReached` (debounced) only. Do not use `atBottomStateChange` or a length-while-pinned effect. Masonry overflow-auto uses `useMasonryInfiniteScroll` (threshold + leave-zone guard + debounce), never the Virtuoso at-bottom contract. `handleEndReached` must no-op while `isFetchingNextPage` or `hasNextPage === false`.
+
+### Problem: Infinite re-render loop when Browse search has an active tag
+**Root Cause:** `useGalleryInfiniteScroll` held caller-supplied `flattenPage` in the `allPosts` `useMemo` deps; Browse passed an inline `(page) => page.posts`. Each render produced a new `allPosts` array identity → `useWorkerFilteredPosts` effect → `setFilteredPosts` → re-render → thousands of worker runs; without a tag `workerEnabled` is false so the loop stayed latent.
+**Invariant Rule:** Hooks that accept callbacks must not list those callbacks in `useMemo`/`useEffect` dependency arrays (latest-ref outside render, or intentional exhaustive-deps omit with JSDoc). Document that changing the callback without a `data` change does not recompute. `endReached` is gated by the in-flight request.
 
 ## Viewer queue pagination
 

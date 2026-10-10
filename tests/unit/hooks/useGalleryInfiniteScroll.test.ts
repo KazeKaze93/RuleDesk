@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
-import { createElement, act, type ReactNode } from "react";
+import {
+  createElement,
+  act,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -342,6 +348,156 @@ describe("useGalleryInfiniteScroll", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+
+  describe("flattenPage identity and endReached in-flight guard", () => {
+    it("keeps allPosts referentially stable across re-renders when flattenPage is inline", async () => {
+      type Api = ReturnType<
+        typeof useGalleryInfiniteScroll<BrowsePage, PostItem, unknown[], number>
+      >;
+      const apiRef: { current: Api | null } = { current: null };
+      const forceRenderRef: { current: (() => void) | null } = { current: null };
+      const effectRunsRef: { current: number } = { current: 0 };
+
+      const fetchFn = vi.fn(
+        async (): Promise<BrowsePage> => ({
+          posts: makeItems(12),
+          hasMore: false,
+          apiFetchedCount: 12,
+        })
+      );
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      function Harness(): ReactNode {
+        const [, setTick] = useState(0);
+        const gallery = useGalleryInfiniteScroll<
+          BrowsePage,
+          PostItem,
+          unknown[],
+          number
+        >({
+          queryKey: ["gallery-inline-flatten-stable"],
+          fetchFn,
+          initialPageParam: 1,
+          // Inline lambda every render — must not churn allPosts identity.
+          flattenPage: (page) => page.posts,
+          getNextPageParam: (lastPage, allPages) =>
+            getSearchBrowseNextPageParam(lastPage, allPages, POSTS_PER_PAGE),
+        });
+        useEffect(() => {
+          forceRenderRef.current = () => {
+            setTick((tick) => tick + 1);
+          };
+          apiRef.current = gallery;
+        });
+        useEffect(() => {
+          effectRunsRef.current += 1;
+        }, [gallery.allPosts]);
+        return null;
+      }
+
+      act(() => {
+        root.render(
+          createElement(
+            QueryClientProvider,
+            { client: queryClient },
+            createElement(Harness)
+          )
+        );
+      });
+
+      await waitForCondition(() => {
+        expect(apiRef.current?.allPosts).toHaveLength(12);
+      });
+
+      const firstAllPosts = apiRef.current?.allPosts;
+      const runsAfterLoad = effectRunsRef.current;
+
+      act(() => {
+        forceRenderRef.current?.();
+      });
+      act(() => {
+        forceRenderRef.current?.();
+      });
+      act(() => {
+        forceRenderRef.current?.();
+      });
+      await flushAct();
+
+      expect(apiRef.current?.allPosts).toBe(firstAllPosts);
+      expect(effectRunsRef.current).toBe(runsAfterLoad);
+
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    });
+
+    it("does not call fetchNextPage again while a next-page request is in flight", async () => {
+      let resolvePage2: (() => void) | null = null;
+      const fetchFn = vi.fn(async (page: number) => {
+        if (page === 1) {
+          return makeItems(POSTS_PER_PAGE);
+        }
+        await new Promise<void>((resolve) => {
+          resolvePage2 = resolve;
+        });
+        return makeItems(POSTS_PER_PAGE, POSTS_PER_PAGE + 1);
+      });
+
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["gallery-inflight-guard"],
+          fetchFn,
+          initialPageParam: 1,
+          debounceDelay: 20,
+        })
+      );
+
+      await waitForCondition(() => {
+        expect(result.current?.hasNextPage).toBe(true);
+        expect(result.current?.isFetchingNextPage).toBe(false);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        result.current?.handleEndReached();
+      });
+      await act(async () => {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 30);
+        });
+      });
+
+      await waitForCondition(() => {
+        expect(fetchFn).toHaveBeenCalledTimes(2);
+        expect(result.current?.isFetchingNextPage).toBe(true);
+      });
+
+      act(() => {
+        result.current?.handleEndReached();
+        result.current?.handleEndReached();
+      });
+      await act(async () => {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 40);
+        });
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        resolvePage2?.();
+        await Promise.resolve();
+      });
+      await waitForCondition(() => {
+        expect(result.current?.isFetchingNextPage).toBe(false);
+      });
+
+      unmount();
     });
   });
 });

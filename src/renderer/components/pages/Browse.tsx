@@ -61,6 +61,10 @@ const BROWSE_SEARCH_GC_TIME_MS = 30 * 60 * 1000;
 
 type BrowseGalleryPage = SearchBooruPageResult<Post>;
 
+function flattenBrowseGalleryPage(page: BrowseGalleryPage): Post[] {
+  return page.posts;
+}
+
 function isBrowseCursorPageParam(
   pageParam: BrowseSearchPageParam
 ): pageParam is { beforePostId: number } {
@@ -179,7 +183,7 @@ export const Browse = () => {
   >({
     queryKey: [...browseSearchQueryKey],
     initialPageParam: 1,
-    flattenPage: (page) => page.posts,
+    flattenPage: flattenBrowseGalleryPage,
     fetchFn: async (pageParam) => {
       if (source === "favorites") {
         const page =
