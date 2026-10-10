@@ -83,6 +83,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `services/SyncService.test.ts` | Sync pagination, graceful errors, auth → `SYNC.ERROR`, per-artist `syncStatus` / `lastError` |
 | `services/SyncService.artist-cancel.test.ts` | Per-artist cancel+wait during initial sync; FTS triggers restored; other-artist delete in bulk window; cancel timeout |
 | `ipc/ArtistsController.delete-artist.test.ts` | deleteArtist waits for sync drain / timeout refuse / idle fast-path |
+| `db/backfill-media-type.test.ts` | Cursor-by-id backfill exits with undetermined NULLs; multi-batch; batch errors logged |
 
 ## Running tests
 

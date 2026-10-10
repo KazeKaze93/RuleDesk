@@ -3,123 +3,140 @@ import { getSqliteInstance } from "./client";
 import { getMediaTypeFromUrl } from "@shared/utils/media";
 
 /**
- * Background process to backfill media_type column for existing posts
- * 
- * This runs after app startup to avoid blocking Main Process during migration.
- * Updates media_type in batches (chunks) to prevent database lock.
- * 
- * Strategy:
- * - Process in small chunks (100-200 rows) to prevent Main Process blocking
- * - Use file extension to determine media_type (image vs video)
- * - Update only NULL values to avoid overwriting existing data
- * - Use setImmediate to yield control between batches, allowing IPC to process
- * - CRITICAL: better-sqlite3 is synchronous and blocks Event Loop
- *   Small batches + setImmediate prevent UI freezes on slow HDDs
+ * Background backfill of posts.media_type after startup.
+ * Cursor by id so rows that stay NULL (URL yields no type) are visited once.
  */
-const BATCH_SIZE = 150; // Reduced from 1000 to prevent Main Process blocking
-const BATCH_DELAY_MS = 10; // Reduced delay, setImmediate provides better yielding
+export const BACKFILL_MEDIA_TYPE_BATCH_SIZE = 150;
+const BATCH_DELAY_MS = 10;
+
+type NullMediaPostRow = {
+  id: number;
+  file_url: string | null;
+};
 
 /**
- * Backfill media_type column for existing posts
- * 
- * Runs in background after app startup. Processes in batches to avoid blocking.
- * 
- * @returns Promise that resolves when backfill completes
+ * Fill media_type where NULL. Completes in one pass over NULL rows.
+ * Undetermined types remain NULL (no placeholder). Batch errors are logged;
+ * they do not abort the app or the remaining cursor walk.
  */
 export async function backfillMediaType(): Promise<void> {
   const sqlite = getSqliteInstance();
   if (!sqlite) {
-    log.warn("[backfillMediaType] SQLite instance not available, skipping backfill");
+    log.warn(
+      "[backfillMediaType] SQLite instance not available, skipping backfill"
+    );
     return;
   }
 
-  try {
-    // Check how many posts need backfill
-    // boundary: better-sqlite3 raw row — prepare().get() row typing
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
-    const countResult = sqlite
-      .prepare("SELECT COUNT(*) as count FROM posts WHERE media_type IS NULL")
-      .get() as { count: number } | undefined;
-    
-    const totalNulls = countResult?.count ?? 0;
-    
-    if (totalNulls === 0) {
-      log.info("[backfillMediaType] All posts already have media_type, skipping backfill");
-      return;
-    }
-    
+  // boundary: better-sqlite3 raw row — prepare().get() row typing
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
+  const countResult = sqlite
+    .prepare("SELECT COUNT(*) as count FROM posts WHERE media_type IS NULL")
+    .get() as { count: number } | undefined;
+
+  const totalNulls = countResult?.count ?? 0;
+
+  if (totalNulls === 0) {
     log.info(
-      `[backfillMediaType] Starting backfill for ${totalNulls.toLocaleString()} posts ` +
-      `(processing in batches of ${BATCH_SIZE})`
+      "[backfillMediaType] All posts already have media_type, skipping backfill"
     );
-    
-    let processed = 0;
-    let updated = 0;
-    
-    // Process in batches to avoid blocking Main Process
-    // CRITICAL: Use setImmediate to yield control after each batch
-    // This allows IPC handlers to process while backfill runs
-    while (true) {
-      // Yield control before each batch to allow IPC to process
-      await new Promise<void>((resolve) => setImmediate(resolve));
-      
-      // Get batch of posts with NULL media_type
-      // CRITICAL: This is synchronous and blocks Event Loop
-      // Small BATCH_SIZE (150) minimizes blocking time
+    return;
+  }
+
+  log.info(
+    `[backfillMediaType] Starting backfill for ${totalNulls.toLocaleString()} posts ` +
+      `(batches of ${BACKFILL_MEDIA_TYPE_BATCH_SIZE}, cursor by id)`
+  );
+
+  let lastId = 0;
+  let processed = 0;
+  let filled = 0;
+  let undetermined = 0;
+  let batches = 0;
+
+  const selectBatch = sqlite.prepare(
+    `SELECT id, file_url FROM posts
+     WHERE media_type IS NULL AND id > ?
+     ORDER BY id
+     LIMIT ?`
+  );
+  const updateStmt = sqlite.prepare(
+    "UPDATE posts SET media_type = ? WHERE id = ?"
+  );
+
+  while (true) {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    let batch: NullMediaPostRow[];
+    try {
       // boundary: better-sqlite3 raw row
       // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
-      const batch = sqlite
-        .prepare(
-          `SELECT id, file_url FROM posts 
-           WHERE media_type IS NULL 
-           LIMIT ?`
-        )
-        .all(BATCH_SIZE) as Array<{ id: number; file_url: string | null }>;
-      
-      if (batch.length === 0) {
-        break; // No more rows to process
-      }
-      
-      // Update each post in the batch
-      // Bulk batch update: raw SQL for performance, Drizzle overhead unacceptable
-      const updateStmt = sqlite.prepare(
-        "UPDATE posts SET media_type = ? WHERE id = ?"
+      batch = selectBatch.all(
+        lastId,
+        BACKFILL_MEDIA_TYPE_BATCH_SIZE
+      ) as NullMediaPostRow[];
+    } catch (error) {
+      log.error(
+        `[backfillMediaType] SELECT failed after lastId=${lastId}:`,
+        error
       );
-      
-      const updateBatch = sqlite.transaction((posts) => {
+      break;
+    }
+
+    if (batch.length === 0) {
+      break;
+    }
+
+    batches += 1;
+    const batchFirstId = batch[0].id;
+    const batchLastId = batch[batch.length - 1].id;
+
+    try {
+      let batchFilled = 0;
+      let batchUndetermined = 0;
+
+      const updateBatch = sqlite.transaction((posts: NullMediaPostRow[]) => {
         for (const post of posts) {
           const mediaType = getMediaTypeFromUrl(post.file_url);
           if (mediaType) {
             updateStmt.run(mediaType, post.id);
-            updated++;
+            batchFilled += 1;
+          } else {
+            batchUndetermined += 1;
           }
         }
       });
-      
+
       updateBatch(batch);
+      filled += batchFilled;
+      undetermined += batchUndetermined;
       processed += batch.length;
-      
-      // Log progress every 20 batches (reduced frequency due to smaller batches)
-      if (processed % (BATCH_SIZE * 20) === 0) {
-        log.info(
-          `[backfillMediaType] Progress: ${processed.toLocaleString()}/${totalNulls.toLocaleString()} ` +
-          `(${Math.round((processed / totalNulls) * 100)}%)`
-        );
-      }
-      
-      // Additional delay for very slow systems (optional)
-      if (batch.length === BATCH_SIZE && BATCH_DELAY_MS > 0) {
-        await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
-      }
+      lastId = batchLastId;
+    } catch (error) {
+      log.error(
+        `[backfillMediaType] Batch failed ids ${batchFirstId}..${batchLastId} (lastId was ${lastId}):`,
+        error
+      );
+      // Advance past this batch so a sticky bad row cannot spin forever
+      lastId = batchLastId;
+      processed += batch.length;
     }
-    
-    log.info(
-      `[backfillMediaType] Backfill complete: ${updated.toLocaleString()} posts updated ` +
-      `out of ${processed.toLocaleString()} processed`
-    );
-  } catch (error) {
-    log.error("[backfillMediaType] Backfill failed:", error);
-    // Don't throw - backfill failure shouldn't crash the app
-    // Filter will handle NULL values gracefully
+
+    if (processed % (BACKFILL_MEDIA_TYPE_BATCH_SIZE * 20) === 0) {
+      log.info(
+        `[backfillMediaType] Progress: ${processed.toLocaleString()}/${totalNulls.toLocaleString()} ` +
+          `(${Math.round((processed / totalNulls) * 100)}%)`
+      );
+    }
+
+    if (batch.length === BACKFILL_MEDIA_TYPE_BATCH_SIZE && BATCH_DELAY_MS > 0) {
+      await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
+    }
   }
+
+  log.info(
+    `[backfillMediaType] Backfill complete: filled ${filled.toLocaleString()}, ` +
+      `undetermined ${undetermined.toLocaleString()} ` +
+      `(processed ${processed.toLocaleString()} NULL rows in ${batches} batches)`
+  );
 }
