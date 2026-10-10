@@ -9,6 +9,7 @@ import { SettingsBackupTab } from "./SettingsBackupTab";
 import { SettingsAccountTab } from "./SettingsAccountTab";
 import { normalizeCredentialsInput } from "../../lib/parseCredentialsFromText";
 import { SettingsBlacklistTab } from "./SettingsBlacklistTab";
+import { SettingsHelpTab } from "./SettingsHelpTab";
 import { useTheme } from "../../hooks/useTheme";
 import type { ProviderId } from "../../../shared/constants";
 
@@ -488,6 +489,7 @@ export const Settings = () => {
           <TabsTrigger value="backup">Backup</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
+          <TabsTrigger value="help">Help</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -612,6 +614,10 @@ export const Settings = () => {
 
         <TabsContent value="blacklist">
           <SettingsBlacklistTab />
+        </TabsContent>
+
+        <TabsContent value="help">
+          <SettingsHelpTab />
         </TabsContent>
       </Tabs>
     </section>

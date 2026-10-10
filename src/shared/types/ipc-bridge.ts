@@ -39,6 +39,11 @@ import type {
   VacuumSchedule,
   VacuumStatusResponse,
 } from "../schemas/maintenance";
+import type {
+  AppInfo,
+  Diagnostics,
+  OpenLogsFolderResult,
+} from "../schemas/system";
 import type { ErrorCode } from "./error-codes";
 
 export type UpdateStatusData = {
@@ -81,8 +86,10 @@ export interface PostQueryFilters {
 }
 
 export interface IpcBridge {
-  getAppVersion: () => Promise<string>;
+  getAppInfo: () => Promise<AppInfo>;
   getDatabaseLocation: () => Promise<string>;
+  openLogsFolder: () => Promise<OpenLogsFolderResult>;
+  getDiagnostics: () => Promise<Diagnostics>;
   getIconPath: (theme?: "light" | "dark") => Promise<string>;
   wipeAllData: () => Promise<void>;
 

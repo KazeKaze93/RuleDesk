@@ -21,6 +21,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `lib/media-cache-eviction.test.ts` | Video-cache LRU last-accessed selection (not mtime; skip open readers) |
 | `lib/filter-artist-autocomplete.test.ts` | Add Artist artist-only filter |
 | `shared/log-redaction.test.ts` | Central log redaction (query keys, userinfo, paths, AxiosError) |
+| `lib/diagnostics.test.ts` | Help diagnostics: redacted log tail / clipboard formatting |
 | `utils/decrypted-credentials.test.ts` | API key decrypt fail-safe |
 | `utils/parse-credentials.test.ts` | Credential paste parsing |
 | `utils/react-query-cache.test.ts` | Browse pagination / cursor helpers |
