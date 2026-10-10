@@ -119,7 +119,7 @@ FTS tokenizer / seeded random / cache eviction / schema SQL sync / backup worker
 | P6 | `fix/sync-cancel-responsive` | [#227](https://github.com/KazeKaze93/RuleDesk/pull/227) ([#229](https://github.com/KazeKaze93/RuleDesk/pull/229) flake) | ✅ merged |
 | P7 | `fix/hybrid-smart-playlist-merge` | [#226](https://github.com/KazeKaze93/RuleDesk/pull/226) | ✅ merged |
 | P8 | `fix/new-posts-count-single-source` | [#230](https://github.com/KazeKaze93/RuleDesk/pull/230) | ✅ merged |
-| P9 | `chore/lessons-p2` | — | started |
+| P9 | `chore/lessons-p2` | [#231](https://github.com/KazeKaze93/RuleDesk/pull/231) | ✅ merged |
 
 ## 📰 Updates feed
 
