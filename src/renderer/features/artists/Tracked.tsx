@@ -11,6 +11,21 @@ import { TooltipProvider } from "../../components/ui/tooltip";
 import type { TrackedArtist } from "@shared/types/bridge";
 import type { ProviderId } from "../../../shared/constants";
 
+const PAGE_TITLE = "Tracked artists";
+const PAGE_SUBTITLE =
+  "Tracking syncs all posts, enables full download, and fills the Updates feed.";
+const ADD_ARTIST_LABEL = "Add Artist";
+const ADD_ARTIST_ARIA_LABEL = "Add a tracked artist";
+const EMPTY_TITLE = "No tracked artists yet";
+const EMPTY_DESCRIPTION =
+  "Track an artist to sync all of their posts, download everything, and see new work in Updates. Click Add Artist to get started.";
+const EMPTY_CTA_LABEL = "Add your first artist";
+const SEARCH_PLACEHOLDER = "Search artists...";
+const SEARCH_ARIA_LABEL = "Search artists by name";
+const NO_MATCH_MESSAGE = "No artists match";
+const LOADING_MESSAGE = "Loading artists...";
+const ERROR_MESSAGE = "Error loading artists";
+
 export const Tracked = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -64,6 +79,11 @@ export const Tracked = () => {
     );
   };
 
+  const openAddModal = (trigger: HTMLElement) => {
+    addModalReturnFocusRef.current = trigger;
+    setIsAddModalOpen(true);
+  };
+
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredArtists =
     artists?.filter((artist) =>
@@ -71,42 +91,54 @@ export const Tracked = () => {
     ) ?? [];
 
   if (isLoading)
-    return <div className="p-8 text-muted-foreground">Loading artists...</div>;
+    return <div className="p-8 text-muted-foreground">{LOADING_MESSAGE}</div>;
 
   if (error)
-    return <div className="p-8 text-destructive">Error loading artists</div>;
+    return <div className="p-8 text-destructive">{ERROR_MESSAGE}</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="flex gap-2 items-center text-2xl font-bold tracking-tight">
-          <Users className="w-6 h-6 text-primary" />
-          Artists
-        </h1>
+      <div className="flex justify-between items-start gap-4">
+        <div className="space-y-1">
+          <h1 className="flex gap-2 items-center text-2xl font-bold tracking-tight">
+            <Users className="w-6 h-6 text-primary" aria-hidden="true" />
+            {PAGE_TITLE}
+          </h1>
+          <p className="text-sm text-muted-foreground">{PAGE_SUBTITLE}</p>
+        </div>
         <Button
           onClick={(e) => {
-            addModalReturnFocusRef.current = e.currentTarget;
-            setIsAddModalOpen(true);
+            openAddModal(e.currentTarget);
           }}
           variant="default"
-          className="gap-2"
+          className="gap-2 shrink-0"
+          aria-label={ADD_ARTIST_ARIA_LABEL}
         >
-          <Plus className="w-4 h-4" />
-          Add Artist
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          {ADD_ARTIST_LABEL}
         </Button>
       </div>
 
       {!artists || artists.length === 0 ? (
-        <div className="flex flex-col justify-center items-center h-64 rounded-lg border-2 border-dashed bg-muted/10 text-muted-foreground">
-          <p>No tracked sources yet.</p>
+        <div
+          className="flex flex-col gap-4 justify-center items-center h-64 px-6 rounded-lg border-2 border-dashed bg-muted/10 text-muted-foreground"
+          role="status"
+        >
+          <Users className="w-16 h-16 opacity-50" aria-hidden="true" />
+          <div className="max-w-md space-y-2 text-center">
+            <p className="text-lg font-semibold text-foreground">{EMPTY_TITLE}</p>
+            <p className="text-sm">{EMPTY_DESCRIPTION}</p>
+          </div>
           <Button
-            variant="link"
+            variant="default"
+            className="gap-2"
             onClick={(e) => {
-              addModalReturnFocusRef.current = e.currentTarget;
-              setIsAddModalOpen(true);
+              openAddModal(e.currentTarget);
             }}
+            aria-label={ADD_ARTIST_ARIA_LABEL}
           >
-            Add your first one
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            {EMPTY_CTA_LABEL}
           </Button>
         </div>
       ) : (
@@ -114,17 +146,24 @@ export const Tracked = () => {
           <Input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search artists..."
-            aria-label="Search artists by name"
+            placeholder={SEARCH_PLACEHOLDER}
+            aria-label={SEARCH_ARIA_LABEL}
             className="max-w-sm"
           />
           {filteredArtists.length === 0 ? (
-            <div className="flex flex-col justify-center items-center h-64 rounded-lg border-2 border-dashed bg-muted/10 text-muted-foreground">
-              <p>No artists match</p>
+            <div
+              className="flex flex-col justify-center items-center h-64 rounded-lg border-2 border-dashed bg-muted/10 text-muted-foreground"
+              role="status"
+            >
+              <p>{NO_MATCH_MESSAGE}</p>
             </div>
           ) : (
             <TooltipProvider delayDuration={200}>
-              <div className="w-full max-w-full overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
+              <div
+                className="w-full max-w-full overflow-hidden rounded-lg border border-border bg-card text-card-foreground"
+                role="list"
+                aria-label={PAGE_TITLE}
+              >
                 {filteredArtists.map((artist) => (
                   <ArtistListRow
                     key={artist.id}

@@ -6,6 +6,16 @@ import type { DownloadFailure } from "@shared/types/download";
 import { downloadFailureCodeLabel } from "@shared/utils/download-failure";
 import { useDownloadStore } from "../../store/downloadStore";
 
+const DOWNLOAD_IN_PROGRESS_TITLE = "Download in progress";
+const LOADED_IDLE_LABEL = (count: string | number): string =>
+  `Download ${count} loaded posts`;
+const LOADED_IDLE_HELP = (count: string | number): string =>
+  `Downloads ${count} loaded posts. To download everything from an artist, track them.`;
+const ALL_IDLE_LABEL = (count: string | number): string =>
+  `Download All (${count})`;
+const ALL_IDLE_HELP = (count: string | number): string =>
+  `Download ${count} files`;
+
 export interface DownloadAllButtonProps {
   onClick: () => void;
   onCancel?: () => void;
@@ -46,14 +56,14 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
   const disabled = !canDownload || (isAnyDownloadActive && !isDownloading);
   const idleLabel =
     labelMode === "loaded"
-      ? `Download ${totalLabel} loaded posts`
-      : `Download All (${totalLabel})`;
+      ? LOADED_IDLE_LABEL(totalLabel)
+      : ALL_IDLE_LABEL(totalLabel);
   const idleTitle =
     disabled && isAnyDownloadActive
-      ? "Download in progress"
+      ? DOWNLOAD_IN_PROGRESS_TITLE
       : labelMode === "loaded"
-        ? `Download ${totalLabel} loaded posts`
-        : `Download ${totalLabel} files`;
+        ? LOADED_IDLE_HELP(totalLabel)
+        : ALL_IDLE_HELP(totalLabel);
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
@@ -65,8 +75,9 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
             onClick={onClick}
             disabled={disabled}
             title={idleTitle}
+            aria-label={idleTitle}
           >
-            <Download className="w-4 h-4 sm:mr-2" />
+            <Download className="w-4 h-4 sm:mr-2" aria-hidden="true" />
             <span className="hidden sm:inline">{idleLabel}</span>
           </Button>
         ) : (

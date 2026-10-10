@@ -121,11 +121,11 @@ That's it! You're now ready to use RuleDesk.
 
 ### Adding Artists to Track
 
-**What is "tracking"?** Tracking means RuleDesk will automatically check for new posts from specific artists or tags.
+**What is "tracking"?** Tracking an artist lets RuleDesk sync all of their posts into your local library, download everything from that artist (not only posts already loaded in Browse), and show new work in the **Updates** feed.
 
 **How to add an artist:**
 
-1. Click the **"Artists"** button in the sidebar (left side of the screen)
+1. Click **"Tracked artists"** in the sidebar (left side of the screen)
 
 2. Click the **"+ Add Artist"** button (top right)
 
@@ -174,7 +174,7 @@ You can still run **Sync All** manually at any time; automatic runs use the same
 
 **To view posts from a tracked artist:**
 
-1. Go to **"Artists"** page
+1. Go to the **"Tracked artists"** page
 2. Click on an artist card
 3. You'll see a gallery of all their posts
 
@@ -203,7 +203,7 @@ Each post card shows:
 
 **Search for artists locally:**
 
-1. Go to **"Artists"** page
+1. Go to the **"Tracked artists"** page
 2. Use the search box at the top
 3. Type the artist name or tag
 4. Results appear as you type
@@ -321,6 +321,7 @@ The download will start, and you'll see a progress indicator.
 **Mass download (Download All / selected posts):**
 
 - Runs in a background worker (UI stays responsive). Progress shows on the button.
+- On **Browse**, download applies only to posts already loaded in the feed (see the button tooltip). To download everything from an artist, track them under **Tracked artists**, then use Download All on that artist's gallery.
 - At most **500** files per batch. If you select more, the app warns and downloads the first 500.
 - Partial failures do not discard successful files. The toast shows `Downloaded X, failed Y` with reason codes (network, 403/404/429, disk, timeout). Artist gallery can expand the failed list under the button.
 - HTTP **429** pauses the whole download queue (no new files start) for max(backoff, Retry-After), then retries; after retries are exhausted the file is listed as failed.
@@ -404,7 +405,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 - **Favorites** - Your favorited posts collection
 - **Playlists** - Manual playlists and smart collections
 - **Statistics** - Local library aggregates and charts (`/stats`)
-- **Artists** - Manage your tracked artists and tags
+- **Tracked artists** - Manage tracked artists and tags (sync all posts, full download, Updates feed)
 - **Settings** - App configuration and preferences
 
 **Unread badge behavior (Updates):**
