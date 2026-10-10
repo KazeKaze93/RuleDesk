@@ -8,6 +8,7 @@ import {
 import { Search, Loader2, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
+import { toast } from "sonner";
 import { resolveErrorMessage } from "../../utils/error-message";
 import {
   assertBrowseSearchError,
@@ -382,8 +383,8 @@ export const Browse = () => {
       if (errorCode === ErrorCode.RATE_LIMIT) {
         return;
       }
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      log.error("[Browse] Failed to mark post as viewed:", errorMessage);
+      log.error("[Browse] Failed to mark post as viewed:", err);
+      toast.error(resolveErrorMessage(err, "Failed to mark post as viewed"));
     },
   });
 

@@ -1128,7 +1128,7 @@ Marks a post as viewed in the database. Optionally accepts post data for optimiz
 - `postId: number` - Post ID to mark as viewed
 - `postData?: PostData` - Optional post data to avoid additional database query
 
-**Returns:** `Promise<boolean>`
+**Returns:** `Promise<boolean>` — `false` when the post is missing and no `postData` was provided (business miss). Database failures reject.
 
 **Example:**
 
@@ -1224,6 +1224,8 @@ Searches for artists in the local database by name or tag.
 - `query: string` - Search query string
 
 **Returns:** `Promise<{ id: number; label: string }[]>`
+
+**Errors:** Database failures reject (preload rethrows `Error` with `code` from the BaseController failure envelope). Callers must not treat rejection as an empty result list.
 
 **Example:**
 
@@ -1339,13 +1341,15 @@ Resolves tags to their canonical form using the booru API. Returns artist tags (
 
 **When to use:** When you need to identify which tags in a post are artist tags. Used in viewer to highlight artist names.
 
-**Typical scenario:** User opens a post in viewer → component calls `resolveTags` with all post tags → receives list of artist tags → highlights artist names in UI. While that React Query is `isLoading`, Post Metadata shows a resolving indicator instead of “No artist detected”.
+**Typical scenario:** User opens a post in viewer → component calls `resolveTags` with all post tags → receives list of artist tags → highlights artist names in UI. While that React Query is `isLoading`, Post Metadata shows a resolving indicator instead of “No artist detected”. On resolve failure, Post Metadata shows the error reason (not “No artist detected”).
 
 **Parameters:**
 
 - `tags: string[]` - Array of tags to resolve
 
 **Returns:** `Promise<string[]>` - Array of resolved artist tag names
+
+**Errors:** Database / resolve failures reject. An empty array means “none of these tags are artists”, not a failed request.
 
 **Example:**
 
@@ -1678,6 +1682,8 @@ Gets the total count of posts for an artist (or all posts when `artistId` is omi
 
 **Returns:** `Promise<number>`
 
+**Errors:** Database failures reject (not `0`). `0` means a successful count of zero rows.
+
 **Example:**
 
 ```typescript
@@ -1769,6 +1775,8 @@ Resets the cache for a specific post (clears viewed/favorite status).
 - `postId: number` - Post ID to reset
 
 **Returns:** `Promise<boolean>`
+
+**Errors:** Database failures reject (not `false`).
 
 **Example:**
 

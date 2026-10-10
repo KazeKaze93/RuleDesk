@@ -178,6 +178,31 @@ describe("TagsDrawer artist/character resolve states", () => {
     ).toBeNull();
   });
 
+  it("shows error reason instead of confirmed-absent when resolve rejects", async () => {
+    installResolveApi({
+      resolveTags: async () => {
+        throw new Error("DB exploded while resolving artists");
+      },
+      resolveCharacterTags: async () => {
+        throw new Error("DB exploded while resolving characters");
+      },
+      resolveCopyrightTags: async () => [],
+    });
+    const queryClient = createQueryClient();
+    renderDrawer(untrackedPost("wlop 2b general_tag"), queryClient);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("DB exploded while resolving artists")
+      ).toBeTruthy();
+      expect(
+        screen.getByText("DB exploded while resolving characters")
+      ).toBeTruthy();
+    });
+    expect(screen.queryByText("No artist detected")).toBeNull();
+    expect(screen.queryByText("No character detected")).toBeNull();
+  });
+
   it("renders cached found tags on the first paint without a loading status", () => {
     installResolveApi();
     const tagsString = "wlop 2b general_tag";

@@ -792,7 +792,7 @@ export class PostsController extends BaseController {
       return total;
     } catch (error) {
       log.error("[PostsController] Failed to get posts count:", error);
-      return 0;
+      throw error;
     }
   }
 
@@ -840,7 +840,7 @@ export class PostsController extends BaseController {
       return total;
     } catch (error) {
       log.error("[PostsController] Failed to get posts count with filters:", error);
-      return 0;
+      throw error;
     }
   }
 
@@ -1040,7 +1040,7 @@ export class PostsController extends BaseController {
       return false;
     } catch (error) {
       log.error("[PostsController] Failed to mark post as viewed:", error);
-      return false;
+      throw error;
     }
   }
 
@@ -1070,7 +1070,7 @@ export class PostsController extends BaseController {
       return { updatedCount };
     } catch (error) {
       log.error("[PostsController] Failed to mark all posts as viewed:", error);
-      return { updatedCount: 0 };
+      throw error;
     }
   }
 
@@ -1103,7 +1103,7 @@ export class PostsController extends BaseController {
       return true;
     } catch (error) {
       log.error("[PostsController] Failed to reset post cache:", error);
-      return false;
+      throw error;
     }
   }
 

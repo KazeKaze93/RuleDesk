@@ -375,7 +375,7 @@ export class ArtistsController extends BaseController {
       return toIpcSafe(result);
     } catch (error) {
       log.error("[ArtistsController] Search failed:", error);
-      return [];
+      throw error;
     }
   }
 

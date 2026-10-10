@@ -42,10 +42,12 @@ import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
+import { toast } from "sonner";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { UpdatesFeedEmptyState } from "../updates/UpdatesFeedEmptyState";
 import { resolveUpdatesFeedEmptyKind } from "../../lib/updates-feed-empty";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 const POSTS_PER_PAGE = 50;
 const UPDATES_UNREAD_COUNT_QUERY_KEY = ["updates", "unreadCount"] as const;
@@ -249,6 +251,8 @@ export const Updates = () => {
   const {
     data: unfilteredFeedCount = 0,
     isLoading: isUnfilteredCountLoading,
+    isError: isUnfilteredCountError,
+    error: unfilteredCountError,
   } = useQuery({
     queryKey: ["posts", "updates", "unfilteredCount"],
     queryFn: () =>
@@ -256,6 +260,7 @@ export const Updates = () => {
         filters: { sinceTracking: true },
       }),
     staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
   });
 
   const isFeedMetaLoading =
@@ -417,8 +422,8 @@ export const Updates = () => {
       if (getErrorCode(err) === ErrorCode.RATE_LIMIT) {
         return;
       }
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      log.error("[Updates] Failed to mark post as viewed:", errorMessage);
+      log.error("[Updates] Failed to mark post as viewed:", err);
+      toast.error(resolveErrorMessage(err, "Failed to mark post as viewed"));
     },
   });
 
@@ -707,6 +712,15 @@ export const Updates = () => {
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
+        ) : isUnfilteredCountError ? (
+          <Alert variant="destructive">
+            <AlertDescription>
+              {resolveErrorMessage(
+                unfilteredCountError,
+                "Failed to load updates feed count"
+              )}
+            </AlertDescription>
+          </Alert>
         ) : allPosts.length === 0 ? (
           <UpdatesFeedEmptyState
             kind={emptyKind}

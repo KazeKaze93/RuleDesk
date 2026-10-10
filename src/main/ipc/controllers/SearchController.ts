@@ -222,7 +222,7 @@ export class SearchController extends BaseController {
       return uniqueTags.filter((tag) => cache.foundTypes.get(tag) === tagType);
     } catch (error) {
       log.error(`[SearchController] Failed to resolve tags (${context}):`, error);
-      return [];
+      throw error;
     }
   }
 
