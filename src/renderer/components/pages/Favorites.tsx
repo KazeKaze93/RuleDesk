@@ -193,7 +193,7 @@ export const Favorites = () => {
     },
   });
 
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
     if (hasNextPage && !isFetchingNextPage) {
       log.info("[Favorites] Viewer requested more posts. Fetching...");
 
@@ -219,7 +219,14 @@ export const Favorites = () => {
         }
       }
     }
-  };
+  }, [
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    aiFilter,
+    mediaType,
+    appendQueueIds,
+  ]);
 
   const handlePostClick = (index: number) => {
     const currentPosts = allPosts;

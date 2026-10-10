@@ -466,7 +466,7 @@ export const Updates = () => {
     },
   });
 
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
     if (hasNextPage && !isFetchingNextPage) {
       log.info("[Updates] Viewer requested more posts. Fetching...");
 
@@ -494,7 +494,13 @@ export const Updates = () => {
         }
       }
     }
-  };
+  }, [
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    allPosts,
+    appendQueueIds,
+  ]);
 
   const handlePostClick = (index: number) => {
     const currentPosts = allPosts;
