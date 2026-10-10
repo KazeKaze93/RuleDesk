@@ -56,7 +56,10 @@ import {
   buildUpdatesFeedJoinOn,
   buildUpdatesFeedPostScopeCondition,
 } from "../../db/queries/updates-feed";
-import { buildPostsTagsFilterCondition } from "../../db/queries/post-tag-filter";
+import {
+  buildPostsBlacklistFilterCondition,
+  buildPostsTagsFilterCondition,
+} from "../../db/queries/post-tag-filter";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -494,15 +497,11 @@ export class PostsController extends BaseController {
       if (imageOrNull) conditions.push(imageOrNull);
     }
 
-    const blacklistedTags = getAllBlacklistedTags();
-    if (blacklistedTags.length > 0) {
-      conditions.push(
-        sql`NOT EXISTS (
-          SELECT 1
-          FROM tag_blacklist bl
-          WHERE instr(' ' || lower(${posts.tags}) || ' ', ' ' || lower(bl.tag) || ' ') > 0
-        )`
-      );
+    const blacklistCondition = buildPostsBlacklistFilterCondition(
+      getAllBlacklistedTags()
+    );
+    if (blacklistCondition) {
+      conditions.push(blacklistCondition);
     }
 
     return conditions;
