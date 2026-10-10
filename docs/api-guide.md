@@ -1320,7 +1320,7 @@ await window.api.searchBooru({
 });
 ```
 
-**Persistent cache:** Successful pages are stored in SQLite `search_results_cache` with TTL `SEARCH_RESULTS_CACHE_TTL_MS` (24 hours). A later `searchBooru` with the same provider + formatted tags + page + limit + cursor reads SQLite and does **not** call the booru HTTP API. Confirmed empty tagged pages persist as `not_found` (same TTL). Untagged **page 1** empty is not persisted (throttle-blip). Untagged **page 2+** empty is persisted as `not_found` (end of feed). HTTP 429 / network / parse failures are **unresolved** and are never written as empty/valid results. `isRandom` skips the cache. Blacklist filtering and local favorite/viewed flags are applied after a hit. IPC request/response shape is unchanged. `sortOrder` / `rating` are not cache-key fields — they are not passed over this IPC.
+**Persistent cache:** Successful pages are stored in SQLite `search_results_cache` with TTL `SEARCH_RESULTS_CACHE_FOUND_TTL_MS` (7 days). A later `searchBooru` with the same provider + formatted tags + page + limit + cursor reads SQLite and does **not** call the booru HTTP API. Confirmed empty tagged pages persist as `not_found` with shorter TTL `SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS` (24 hours). Untagged **page 1** empty is not persisted (throttle-blip). Untagged **page 2+** empty is persisted as `not_found` (end of feed). HTTP 429 / network / parse failures are **unresolved** and are never written as empty/valid results. `isRandom` skips the cache. Blacklist filtering and local favorite/viewed flags are applied after a hit. IPC request/response shape is unchanged. `sortOrder` / `rating` are not cache-key fields — they are not passed over this IPC. Maintenance also enforces `MAX_SEARCH_RESULTS_CACHE_ROWS` (2000) and `MAX_SEARCH_RESULTS_CACHE_PAYLOAD_BYTES` (32 MiB).
 
 **IPC Channel:** `booru:search`
 
@@ -1367,7 +1367,7 @@ const artistTags = await window.api.resolveTags(["tag1", "tag2", "tag3"]);
 - All tag lookups share the same `ProviderThrottle` instance as `fetchPosts`.
 - Concurrent IPC calls for the same tag share one in-flight promise (cross-call dedup).
 - HTTP 429 is retried with `Retry-After` or exponential backoff; rate-limited / network failures are **unresolved** — not written to `tag_metadata` (must not be confused with `not_found`).
-- Confirmed empty API responses (`not_found`) are persisted in `tag_metadata` with `status='not_found'` and `resolved_at` in **milliseconds** (`mode: "timestamp_ms"`, TTL `TAG_RESOLVE_NOT_FOUND_TTL_MS`, 7 days). Expired rows are cache-misses; maintenance DELETEs them via `deleteExpiredNotFoundTagMetadata`.
+- Confirmed empty API responses (`not_found`) are persisted in `tag_metadata` with `status='not_found'` and `resolved_at` in **milliseconds** (`mode: "timestamp_ms"`, TTL `TAG_RESOLVE_NOT_FOUND_TTL_MS`, 7 days). Expired rows are cache-misses; maintenance DELETEs them via `deleteExpiredTagMetadata` (also expires `found` after `TAG_RESOLVE_FOUND_TTL_MS`, 90 days) and `enforceTagMetadataRowCap` (`MAX_TAG_METADATA_ROWS`, 50_000).
 
 
 ---

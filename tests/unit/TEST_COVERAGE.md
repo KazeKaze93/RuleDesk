@@ -53,9 +53,9 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `providers/assert-cdn-domains-subset.test.ts` | `cdnDomains ⊆ allowedDomains` throw vs live registry |
 | `providers/warn-unknown-media-host.test.ts` | Fetch-time unknown-host warn + per-hostname dedup |
 | `providers/throttle.test.ts` | Priority queue + 429 gate (`vi.useFakeTimers`) |
-| `services/tag-resolve-coordinator.test.ts` | Tag resolve dedup / rate limit |
-| `services/search-results-cache.test.ts` | Browse search SQLite TTL cache (found / not_found / unresolved, key isolation, maintenance ms) |
-| `services/post-lookup-cache.test.ts` | Single-post `id:` lookup TTL (not_found skip, 429/network unresolved, expired re-lookup, getDb-after-await write, ms DELETE) |
+| `services/tag-resolve-coordinator.test.ts` | Tag resolve dedup / rate limit; found/not_found TTL eviction + row cap (fresh rows skipped) |
+| `services/search-results-cache.test.ts` | Browse search SQLite TTL cache (found / not_found / unresolved, key isolation, status TTLs, row + payload-byte caps) |
+| `services/post-lookup-cache.test.ts` | Single-post `id:` lookup TTL (not_found skip, found TTL, 429/network unresolved, expired re-lookup, row cap, ms DELETE) |
 | `core/databaseRegistration.reopen.test.ts` | DI rebind + `onDatabaseReopened` notify after restore/VACUUM reinit |
 | `services/secure-storage.test.ts` | `SecureStorage` encrypt/decrypt |
 | `services/credentials.test.ts` | `getDecryptedApiSettings` fail-closed |

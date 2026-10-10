@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { tagMetadata, TAG_TYPES } from "@/main/db/schema";
-import { TAG_RESOLVE_NOT_FOUND_TTL_MS } from "@/main/config/tag-resolve-constants";
+import {
+  TAG_RESOLVE_FOUND_TTL_MS,
+  TAG_RESOLVE_NOT_FOUND_TTL_MS,
+} from "@/main/config/tag-resolve-constants";
 
 const { fetchRule34TagMetadataMock, MockRule34TagRateLimitError } = vi.hoisted(
   () => {
@@ -65,7 +68,10 @@ import {
   resetTagResolveCoordinatorForTests,
   resolveTagMetadataWave,
 } from "@/main/services/tag-resolve-coordinator";
-import { deleteExpiredNotFoundTagMetadata } from "@/main/db/queries/tag-metadata";
+import {
+  deleteExpiredTagMetadata,
+  enforceTagMetadataRowCap,
+} from "@/main/db/queries/tag-metadata";
 
 describe("tag-resolve-coordinator", () => {
   let mockDb: ReturnType<typeof createMockDb>;
@@ -257,11 +263,12 @@ describe("tag-resolve-coordinator", () => {
     expect(row?.resolvedAt).toBeInstanceOf(Date);
   });
 
-  it("maintenance DELETE keeps fresh Drizzle not_found and removes expired (ms units aligned)", async () => {
+  it("maintenance DELETE keeps fresh rows and removes expired found/not_found (ms units aligned)", async () => {
     fetchRule34TagMetadataMock.mockResolvedValue({ status: "not_found" });
 
     const freshCache = loadTagMetadataCache(mockDb.db, ["fresh_miss"]);
-    await resolveTagMetadataWave(["fresh_miss"],
+    await resolveTagMetadataWave(
+      ["fresh_miss"],
       freshCache,
       { userId: "1", apiKey: "key" },
       "test-maintenance-fresh"
@@ -272,28 +279,95 @@ describe("tag-resolve-coordinator", () => {
       .get("fresh_miss") as { resolved_at: number } | undefined;
     expect(rawFresh?.resolved_at).toBeGreaterThan(1_000_000_000_000);
 
-    const deletedFresh = deleteExpiredNotFoundTagMetadata(mockDb.sqlite);
+    const deletedFresh = deleteExpiredTagMetadata(mockDb.sqlite);
     expect(deletedFresh).toBe(0);
     expect(
-      mockDb.db.select().from(tagMetadata).all().some((row) => row.name === "fresh_miss")
+      mockDb.db
+        .select()
+        .from(tagMetadata)
+        .all()
+        .some((row) => row.name === "fresh_miss")
     ).toBe(true);
 
-    const expiredAt = new Date(Date.now() - TAG_RESOLVE_NOT_FOUND_TTL_MS - 60_000);
+    const expiredNotFoundAt = new Date(
+      Date.now() - TAG_RESOLVE_NOT_FOUND_TTL_MS - 60_000
+    );
     mockDb.db
       .insert(tagMetadata)
       .values({
         name: "expired_miss",
         type: TAG_TYPES.GENERAL,
         status: "not_found",
-        resolvedAt: expiredAt,
+        resolvedAt: expiredNotFoundAt,
       })
       .run();
 
-    const deletedExpired = deleteExpiredNotFoundTagMetadata(mockDb.sqlite);
-    expect(deletedExpired).toBe(1);
+    mockDb.db
+      .insert(tagMetadata)
+      .values({
+        name: "mid_age_found",
+        type: TAG_TYPES.ARTIST,
+        status: "found",
+        resolvedAt: expiredNotFoundAt,
+      })
+      .run();
+
+    mockDb.db
+      .insert(tagMetadata)
+      .values({
+        name: "expired_found",
+        type: TAG_TYPES.ARTIST,
+        status: "found",
+        resolvedAt: new Date(Date.now() - TAG_RESOLVE_FOUND_TTL_MS - 60_000),
+      })
+      .run();
+
+    const deletedExpired = deleteExpiredTagMetadata(mockDb.sqlite);
+    expect(deletedExpired).toBe(2);
     const remaining = mockDb.db.select().from(tagMetadata).all();
     expect(remaining.some((row) => row.name === "fresh_miss")).toBe(true);
+    expect(remaining.some((row) => row.name === "mid_age_found")).toBe(true);
     expect(remaining.some((row) => row.name === "expired_miss")).toBe(false);
+    expect(remaining.some((row) => row.name === "expired_found")).toBe(false);
+  });
+
+  it("row cap evicts oldest resolved_at first and leaves newest", () => {
+    const now = Date.now();
+    for (let i = 0; i < 5; i += 1) {
+      mockDb.db
+        .insert(tagMetadata)
+        .values({
+          name: `cap_${i}`,
+          type: TAG_TYPES.GENERAL,
+          status: "found",
+          resolvedAt: new Date(now - (5 - i) * 60_000),
+        })
+        .run();
+    }
+
+    expect(enforceTagMetadataRowCap(mockDb.sqlite, 3)).toBe(2);
+    const remaining = mockDb.db
+      .select()
+      .from(tagMetadata)
+      .all()
+      .map((row) => row.name)
+      .sort();
+    expect(remaining).toEqual(["cap_2", "cap_3", "cap_4"]);
+  });
+
+  it("row cap is a no-op when at or under the limit", () => {
+    mockDb.db
+      .insert(tagMetadata)
+      .values({
+        name: "under_cap",
+        type: TAG_TYPES.GENERAL,
+        status: "found",
+        resolvedAt: new Date(),
+      })
+      .run();
+
+    expect(enforceTagMetadataRowCap(mockDb.sqlite, 10)).toBe(0);
+    expect(mockDb.db.select().from(tagMetadata).all()).toHaveLength(1);
   });
 
   it("forwards user priority and abort signal to tag metadata fetch", async () => {
