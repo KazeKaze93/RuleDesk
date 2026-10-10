@@ -7,6 +7,11 @@ import { redactLogData } from "@shared/utils/log-redaction";
  * still apply. Main-process hooks also re-run on IPC-received messages for app.log.
  */
 export function setupRendererLogRedaction(): void {
+  // Test mocks / partial stubs may omit `hooks`.
+  if (!Array.isArray(log.hooks)) {
+    return;
+  }
+
   const alreadyAttached = log.hooks.some(
     (hook) => hook.name === "ruleDeskLogRedaction"
   );

@@ -41,20 +41,22 @@ const homeDir = (() => {
   }
 })();
 
-function ruleDeskLogRedaction(
-  message: Parameters<(typeof log.hooks)[number]>[0]
-): typeof message {
-  return {
-    ...message,
-    data: redactLogData(message.data, homeDir),
-  };
-}
-
-const redactionAlreadyAttached = log.hooks.some(
-  (hook) => hook.name === "ruleDeskLogRedaction"
-);
-if (!redactionAlreadyAttached) {
-  log.hooks.push(ruleDeskLogRedaction);
+// Test mocks often stub electron-log without `hooks`; real runtime always has the array.
+if (Array.isArray(log.hooks)) {
+  const redactionAlreadyAttached = log.hooks.some(
+    (hook) => hook.name === "ruleDeskLogRedaction"
+  );
+  if (!redactionAlreadyAttached) {
+    function ruleDeskLogRedaction(
+      message: Parameters<(typeof log.hooks)[number]>[0]
+    ): typeof message {
+      return {
+        ...message,
+        data: redactLogData(message.data, homeDir),
+      };
+    }
+    log.hooks.push(ruleDeskLogRedaction);
+  }
 }
 
 // Перехват глобальных ошибок
