@@ -35,7 +35,7 @@ Invariant Rule: Inventory of syntactic constructs (type assertions, etc.) MUST u
 3d) Type-Aware Lint and Branded Time Units
 Problem: Classes of bugs (unexpected async event handler Electron does not await, swallowed catch, incomplete switch on a union, Seconds mixed with Millis) only surfaced at runtime.
 Root Cause: Recommendations without enforcement; type-unaware ESLint cannot see floating/misused promises; plain `number` erases time units.
-Invariant Rule: Type-aware ESLint rules (`no-floating-promises`, `no-misused-promises` with `checksVoidReturn`, `switch-exhaustiveness-check`, unused catch bindings, `no-empty` without empty catch) and branded `Seconds`/`Millis` (`src/shared/types/time.ts`, constructors on the `.cursorrules` allowlist) are mandatory config, not optional guidance. Conversions go through named helpers only.
+Invariant Rule: Type-aware ESLint rules (`no-floating-promises`, `no-misused-promises` with `checksVoidReturn`, `switch-exhaustiveness-check`, unused catch bindings, `no-empty` without empty catch) and branded `Seconds`/`Millis` (`src/shared/types/time.ts`, constructors on the `.cursorrules` allowlist) are mandatory config, not optional guidance. Conversions go through named helpers only. Branded types do not protect `sql\`...\`` template parameters (they accept any number); timestamps in raw SQL must go through `secondsToX`/`millisToX` (or `asSeconds`/`asMillis` at the boundary) — enforced on review, not by the type checker.
 
 4) Virtualized Gallery Holes
 Problem: Large empty scroll area in filtered lists.
