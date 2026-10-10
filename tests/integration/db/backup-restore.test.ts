@@ -200,18 +200,17 @@ describe("backup/restore consistency", () => {
 
     openSqlite = new Database(dbPath);
     openSqlite.pragma("journal_mode = WAL");
+    openSqlite.close();
+    openSqlite = null;
 
     const backupPath = path.join(tempDir, buildAutoBackupFilename(new Date()));
     const vacuumStartedAt = Date.now();
-    await createConsistentBackup(openSqlite, backupPath);
+    await createConsistentBackup(dbPath, backupPath);
     const vacuumMs = Date.now() - vacuumStartedAt;
     // Medium/small fixture — expect sub-second; recorded for PR notes.
     expect(vacuumMs).toBeLessThan(5000);
     expect(fs.existsSync(backupPath)).toBe(true);
     expect(writeBackupSidecar).toHaveBeenCalledWith(backupPath);
-
-    openSqlite.close();
-    openSqlite = null;
     fs.rmSync(dbPath, { force: true });
     fs.rmSync(`${dbPath}-wal`, { force: true });
     fs.rmSync(`${dbPath}-shm`, { force: true });
@@ -244,11 +243,8 @@ describe("backup/restore consistency", () => {
     const dbPath = path.join(tempDir, "data.bin");
     seedDatabase(dbPath);
 
-    openSqlite = new Database(dbPath);
     const legacyBinPath = path.join(tempDir, "data.backup.2026-01-15.bin");
-    await createConsistentBackup(openSqlite, legacyBinPath);
-    openSqlite.close();
-    openSqlite = null;
+    await createConsistentBackup(dbPath, legacyBinPath);
 
     // Mutate live DB so restore is observable
     const live = new Database(dbPath);
@@ -279,11 +275,8 @@ describe("backup/restore consistency", () => {
     const dbPath = path.join(tempDir, "data.bin");
     seedDatabase(dbPath);
 
-    openSqlite = new Database(dbPath);
     const backupPath = path.join(tempDir, ".ruledesk-backup-test.db");
-    await createConsistentBackup(openSqlite, backupPath);
-    openSqlite.close();
-    openSqlite = null;
+    await createConsistentBackup(dbPath, backupPath);
 
     // Live DB has distinct marker value
     const live = new Database(dbPath);

@@ -325,7 +325,7 @@ A SQLite maintenance command that rewrites and compacts the database file, recla
 
 ### Integrity Check
 
-A SQLite operation (`PRAGMA integrity_check`) that verifies database file integrity. RuleDesk runs integrity checks before restore operations.
+A SQLite operation (`PRAGMA integrity_check`) that verifies database file integrity. RuleDesk runs integrity checks before restore and from Settings; both paths execute in `backupIntegrityWorker` so the Main IPC loop is not blocked.
 
 **Related:** [Backup and Recovery](./database.md#backup-and-recovery)
 

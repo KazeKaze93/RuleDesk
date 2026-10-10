@@ -1476,7 +1476,7 @@ if (result.success) {
 
 **IPC Channel:** `db:create-backup`
 
-**Note:** The backup file is created under `RuleDesk-Backups/` (sibling of `RuleDesk-Data`), via consistent `VACUUM INTO`. The file explorer will open to show the backup location.
+**Note:** The backup file is created under `RuleDesk-Backups/` (sibling of `RuleDesk-Data`), via consistent `VACUUM INTO` in `backupIntegrityWorker` (Main closes the DB handle around the worker so the IPC loop stays responsive). The file explorer will open to show the backup location.
 After each successful backup, old backup files are pruned and only the most recent `backupRetention` files are kept.
 
 ---

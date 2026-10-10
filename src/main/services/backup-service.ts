@@ -2,8 +2,12 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import log from "electron-log";
-import { getBackupDirectory } from "../db/paths";
-import { getSqliteInstance } from "../db/client";
+import { getBackupDirectory, getDatabasePaths } from "../db/paths";
+import {
+  closeDatabase,
+  initializeDatabase,
+} from "../db/client";
+import { registerDatabaseInContainerAfterReinit } from "../core/di/databaseRegistration";
 import { maintenanceQueue } from "../db/maintenance-queue";
 import { getBackupRetention } from "../lib/backup-retention";
 import {
@@ -16,6 +20,7 @@ import {
   getBackupSidecarPath,
   getElectronStoreConfigPath,
 } from "../lib/backup-sidecar";
+import { withSyncPausedForDbWork } from "../lib/sync-db-maintenance";
 import type { SyncService } from "./sync-service";
 
 export type AutoBackupInterval = "never" | "daily" | "weekly";
@@ -203,8 +208,18 @@ export class BackupService {
     const backupPath = path.join(backupDir, backupFilename);
 
     try {
-      const sqlite = getSqliteInstance();
-      await createConsistentBackup(sqlite, backupPath);
+      await maintenanceQueue.execute(async () => {
+        const { dbPath } = getDatabasePaths();
+        await withSyncPausedForDbWork(this.syncService, async () => {
+          closeDatabase();
+          try {
+            await createConsistentBackup(dbPath, backupPath);
+          } finally {
+            await initializeDatabase();
+            registerDatabaseInContainerAfterReinit();
+          }
+        });
+      });
       backupStore.set("lastAutoBackupAt", now);
       this.cleanupOldAutoBackups(backupDir);
       log.info(`[BackupService] Auto-backup created at ${backupPath}`);
