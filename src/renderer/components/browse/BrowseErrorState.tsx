@@ -4,6 +4,7 @@ import {
   KeyRound,
   WifiOff,
 } from "lucide-react";
+import log from "electron-log/renderer";
 import { useNavigate } from "react-router-dom";
 import type { ProviderErrorKind } from "@shared/schemas/provider-errors";
 import { getBrowseSearchErrorPresentation } from "../../utils/provider-search-error";
@@ -78,7 +79,14 @@ export function BrowseErrorState({
           <Button
             type="button"
             onClick={() => {
-              void navigate("/settings");
+              void Promise.resolve(navigate("/settings")).catch(
+                (error: unknown) => {
+                  log.error(
+                    "[BrowseErrorState] Navigation to settings failed:",
+                    error
+                  );
+                }
+              );
             }}
           >
             Open Settings

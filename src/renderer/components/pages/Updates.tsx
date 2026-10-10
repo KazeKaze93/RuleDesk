@@ -452,13 +452,34 @@ export const Updates = () => {
           newPostsCount: 0,
         }));
       });
-      void queryClient.invalidateQueries({ queryKey: ["artists"] });
-      void queryClient.invalidateQueries({
-        queryKey: UPDATES_UNREAD_COUNT_QUERY_KEY,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["updates", UPDATES_TOTAL_UNREAD_QUERY_KEY],
-      });
+      void queryClient
+        .invalidateQueries({ queryKey: ["artists"] })
+        .catch((error: unknown) => {
+          log.error(
+            "[Updates] Failed to invalidate artists after mark-all:",
+            error
+          );
+        });
+      void queryClient
+        .invalidateQueries({
+          queryKey: UPDATES_UNREAD_COUNT_QUERY_KEY,
+        })
+        .catch((error: unknown) => {
+          log.error(
+            "[Updates] Failed to invalidate unread count after mark-all:",
+            error
+          );
+        });
+      void queryClient
+        .invalidateQueries({
+          queryKey: ["updates", UPDATES_TOTAL_UNREAD_QUERY_KEY],
+        })
+        .catch((error: unknown) => {
+          log.error(
+            "[Updates] Failed to invalidate total unread after mark-all:",
+            error
+          );
+        });
     },
     onError: (err) => {
       const errorMessage = err instanceof Error ? err.message : String(err);

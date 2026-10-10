@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import log from "electron-log/renderer";
 import { ArtistGallery } from "./ArtistGallery";
 import { Button } from "../../components/ui/button";
 
@@ -22,7 +23,14 @@ export const ArtistDetails = () => {
         <Button
           variant="outline"
           onClick={() => {
-            void navigate("/tracked");
+            void Promise.resolve(navigate("/tracked")).catch(
+              (error: unknown) => {
+                log.error(
+                  "[ArtistDetails] Navigation to tracked failed:",
+                  error
+                );
+              }
+            );
           }}
         >
           Back to Artists
@@ -35,7 +43,14 @@ export const ArtistDetails = () => {
       <ArtistGallery
         artist={artist}
         onBack={() => {
-          void navigate("/tracked");
+          void Promise.resolve(navigate("/tracked")).catch(
+            (error: unknown) => {
+              log.error(
+                "[ArtistDetails] Navigation to tracked failed:",
+                error
+              );
+            }
+          );
         }}
       />
     </div>

@@ -1,5 +1,6 @@
 import type { MutableRefObject } from "react";
 import { X } from "lucide-react";
+import log from "electron-log/renderer";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { normalizeTag } from "../../lib/tag-utils";
@@ -136,7 +137,9 @@ export function AddArtistModal({
           onSubmit={(event) => {
             void handleSubmit((data) => {
               onSubmit(data);
-            })(event);
+            })(event).catch((error: unknown) => {
+              log.error("[AddArtistModal] Form submit failed:", error);
+            });
           }}
           className="p-6 space-y-5"
         >
