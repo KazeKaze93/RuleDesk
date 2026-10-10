@@ -255,4 +255,89 @@ describe("updates-feed queries (real schema)", () => {
       .run();
     expect(getLastTrackedArtistSyncAtMs(db)).toBeNull();
   });
+
+  it("mark-all-read handles 40000 matching posts without SQLite variable limit", () => {
+    const LARGE_MATCH_COUNT = 40_000;
+    const ARTIST_A = 1;
+    const ARTIST_B = 2;
+    const COUNT_A = 25_000;
+    const COUNT_B = LARGE_MATCH_COUNT - COUNT_A;
+
+    const mock = createMockDb();
+    sqlite = mock.sqlite;
+    const { db } = mock;
+
+    db.insert(artists)
+      .values([
+        {
+          id: ARTIST_A,
+          name: "Bulk A",
+          tag: "bulk_a",
+          provider: "rule34",
+          type: "tag",
+          apiEndpoint: "https://api.rule34.xxx/",
+          createdAt: new Date(ARTIST_CREATED_SEC * SECOND_MS),
+          lastChecked: new Date(LAST_CHECKED_SEC * SECOND_MS),
+          newPostsCount: COUNT_A,
+        },
+        {
+          id: ARTIST_B,
+          name: "Bulk B",
+          tag: "bulk_b",
+          provider: "rule34",
+          type: "tag",
+          apiEndpoint: "https://api.rule34.xxx/",
+          createdAt: new Date(ARTIST_CREATED_SEC * SECOND_MS),
+          lastChecked: new Date(LAST_CHECKED_SEC * SECOND_MS),
+          newPostsCount: COUNT_B,
+        },
+      ])
+      .run();
+
+    const insert = sqlite.prepare(`
+      INSERT INTO posts (
+        post_id, artist_id, file_url, preview_url, sample_url, tags, rating,
+        media_type, published_at, created_at, is_viewed, is_favorited, view_count
+      ) VALUES (?, ?, '', '', '', 'solo bulk', 's', 'image', ?, ?, 0, 0, 0)
+    `);
+    const publishedAt = AFTER_TRACKING_SEC;
+    const insertMany = sqlite.transaction(
+      (rows: ReadonlyArray<{ postId: number; artistId: number }>) => {
+        for (const row of rows) {
+          insert.run(row.postId, row.artistId, publishedAt, publishedAt);
+        }
+      }
+    );
+
+    const batch: { postId: number; artistId: number }[] = [];
+    for (let i = 0; i < COUNT_A; i += 1) {
+      batch.push({ postId: 1_000_000 + i, artistId: ARTIST_A });
+    }
+    for (let i = 0; i < COUNT_B; i += 1) {
+      batch.push({ postId: 2_000_000 + i, artistId: ARTIST_B });
+    }
+    insertMany(batch);
+
+    expect(countUpdatesFeedPosts(db, { unreadOnly: true })).toBe(
+      LARGE_MATCH_COUNT
+    );
+
+    const updated = markUpdatesFeedPostsViewed(db);
+    expect(updated).toBe(LARGE_MATCH_COUNT);
+    expect(countUpdatesFeedPosts(db, { unreadOnly: true })).toBe(0);
+
+    const artistRows = db
+      .select({
+        id: artists.id,
+        newPostsCount: artists.newPostsCount,
+      })
+      .from(artists)
+      .all();
+    expect(artistRows).toEqual(
+      expect.arrayContaining([
+        { id: ARTIST_A, newPostsCount: 0 },
+        { id: ARTIST_B, newPostsCount: 0 },
+      ])
+    );
+  });
 });

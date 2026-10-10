@@ -10,7 +10,6 @@ export const IPC_CHANNELS = {
     LOGOUT: "app:logout",
     VERIFY_CREDS: "app:verify-creds",
     GET_ICON_PATH: "app:get-icon-path",
-    QUIT: "app:quit",
     CHECK_FOR_UPDATES: "app:check-for-updates",
     START_UPDATE_DOWNLOAD: "app:start-download",
     QUIT_AND_INSTALL: "app:quit-and-install",

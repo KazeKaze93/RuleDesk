@@ -22,7 +22,6 @@
 | `app:logout` | `APP.LOGOUT` | `[]` (no args) | no | `AuthController` | `src/main/ipc/controllers/AuthController.ts` |
 | `app:open-external` | `APP.OPEN_EXTERNAL` | `z.string().url().min(1)` | no | `ViewerController` | `src/main/ipc/controllers/ViewerController.ts` |
 | `app:open-logs-folder` | `APP.OPEN_LOGS_FOLDER` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
-| `app:quit` | `APP.QUIT` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:quit-and-install` | `APP.QUIT_AND_INSTALL` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:save-settings` | `SETTINGS.SAVE` | `z.tuple([SaveSettingsSchema])` | no | `SettingsController` | Partial upsert. minimizeToTray: when true (default), win/linux close hides to tray; when false, close quits. Read at close time (no restart). macOS close never quits (Dock). |
 | `app:start-download` | `APP.START_UPDATE_DOWNLOAD` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
@@ -122,9 +121,9 @@
 
 ## Coverage
 
-- Channels in `channels.ts`: **108**
-- Channels with at least one scanned `handle` registration: **92**
-- Handler rows extracted: **92**
+- Channels in `channels.ts`: **107**
+- Channels with at least one scanned `handle` registration: **91**
+- Handler rows extracted: **91**
 
 ## Regenerating
 

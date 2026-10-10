@@ -46,7 +46,7 @@ const DIAGNOSTICS_LOG_READ_FAILED_MESSAGE = "Could not read the application log.
  * Handles system-level IPC operations:
  * - Application / runtime version info (Help)
  * - Logs folder + redacted diagnostics for bug reports
- * - Application lifecycle (quit, wipe all local data)
+ * - Application lifecycle (wipe all local data)
  * - Clipboard operations
  * - Manual update checks / release-page openers
  */
@@ -81,7 +81,6 @@ export class SystemController extends BaseController {
         return this.getIconPath(event, theme);
       }
     );
-    this.handle(IPC_CHANNELS.APP.QUIT, z.tuple([]), this.quitApp.bind(this));
     this.handle(
       IPC_CHANNELS.APP.WIPE_ALL_DATA,
       z.tuple([]),
@@ -319,12 +318,6 @@ export class SystemController extends BaseController {
       });
       throw new Error(`Failed to load icon: ${errorMessage}`);
     }
-  }
-
-  private async quitApp(_event: IpcMainInvokeEvent): Promise<void> {
-    log.info("[SystemController] Application quit requested");
-    closeDatabase();
-    app.quit();
   }
 
   /**

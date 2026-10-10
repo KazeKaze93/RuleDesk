@@ -7,8 +7,10 @@ import log from "electron-log";
  * are executed sequentially to prevent race conditions and "Database is closed" errors.
  *
  * Uses a simple Promise-based queue: each operation waits for the previous one to complete.
+ * The queue tail always absorbs rejection so one failure cannot poison later work;
+ * callers still receive their own operation's error.
  */
-class MaintenanceQueue {
+export class MaintenanceQueue {
   private queue: Promise<unknown> = Promise.resolve();
   private isLocked = false;
 
@@ -19,30 +21,26 @@ class MaintenanceQueue {
    * @returns Promise that resolves when operation completes
    */
   public async execute<T>(operation: () => Promise<T>): Promise<T> {
-    // Add operation to queue
     const previousOperation = this.queue;
-    
-    // Create new promise that waits for previous operation and then executes current one
-    const currentOperation: Promise<T> = previousOperation
-      .then(async () => {
-        this.isLocked = true;
-        log.debug("[MaintenanceQueue] Operation started");
-        try {
-          const result = await operation();
-          return result;
-        } finally {
-          this.isLocked = false;
-          log.debug("[MaintenanceQueue] Operation completed");
-        }
-      })
-      .catch((error: unknown) => {
-        this.isLocked = false;
-        log.error("[MaintenanceQueue] Operation failed:", error);
-        throw error;
-      });
 
-    // Update queue to include current operation
-    this.queue = currentOperation;
+    const currentOperation: Promise<T> = previousOperation.then(async () => {
+      this.isLocked = true;
+      log.debug("[MaintenanceQueue] Operation started");
+      try {
+        return await operation();
+      } finally {
+        this.isLocked = false;
+        log.debug("[MaintenanceQueue] Operation completed");
+      }
+    });
+
+    // Keep the chain alive: a rejected op must not leave `this.queue` rejected.
+    this.queue = currentOperation.then(
+      () => undefined,
+      (error: unknown) => {
+        log.error("[MaintenanceQueue] Operation failed:", error);
+      }
+    );
 
     return currentOperation;
   }
@@ -68,4 +66,3 @@ class MaintenanceQueue {
 
 // Singleton instance
 export const maintenanceQueue = new MaintenanceQueue();
-
