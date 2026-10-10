@@ -34,7 +34,7 @@
     "pretest": "npm run db:rebuild:node",
     "test": "node scripts/run-vitest-with-min.mjs",
     "posttest": "npm run db:rebuild",
-    "test:isolated": "node scripts/run-vitest-isolated.mjs",
+    "test:isolated": "npm run db:rebuild:node && node scripts/run-vitest-isolated.mjs",
     "test:watch": "npm run db:rebuild:node && vitest",
     "test:ui": "npm run db:rebuild:node && vitest --ui",
     "test:run": "npm run db:rebuild:node && vitest run",
