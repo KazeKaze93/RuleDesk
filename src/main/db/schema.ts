@@ -50,7 +50,7 @@ export const artists = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
-    tag: text("tag").notNull().unique(),
+    tag: text("tag").notNull(),
     // Provider ID with enum constraint
     provider: text("provider", { enum: PROVIDER_IDS })
       .notNull()
@@ -75,6 +75,11 @@ export const artists = sqliteTable(
       .$defaultFn(() => new Date()),
   },
   (t) => ({
+    // Same tag may exist on different providers; conflict target is (provider, tag).
+    providerTagUnique: unique("artists_provider_tag_unique").on(
+      t.provider,
+      t.tag
+    ),
     // Note: Expression index for COALESCE(lastChecked, createdAt) is created via migration
     // See drizzle/0003_add_artists_sort_index.sql
     // Drizzle doesn't support expression indexes directly, so we use raw SQL in migration

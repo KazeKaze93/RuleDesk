@@ -211,16 +211,15 @@ export class ArtistsController extends BaseController {
         apiEndpoint: finalApiEndpoint,
       };
 
-      // Use onConflictDoUpdate to handle duplicate tags
+      // Conflict on (provider, tag) so the same tag can exist per provider.
       const result = await db
         .insert(artists)
         .values(artistData)
         .onConflictDoUpdate({
-          target: artists.tag,
+          target: [artists.provider, artists.tag],
           set: {
             name: args.name,
             type: args.type,
-            provider: args.provider,
             apiEndpoint: finalApiEndpoint,
           },
         })
