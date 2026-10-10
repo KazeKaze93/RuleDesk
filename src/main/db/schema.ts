@@ -127,6 +127,11 @@ export const posts = sqliteTable(
     isViewedIdx: index("isViewedIdx").on(t.isViewed),
     lastViewedAtIdx: index("posts_last_viewed_at_idx").on(t.lastViewedAt),
     publishedAtIdx: index("publishedAtIdx").on(t.publishedAt),
+    // Artist gallery: WHERE artist_id = ? ORDER BY published_at (avoids TEMP B-TREE)
+    artistPublishedAtIdx: index("posts_artist_published_at_idx").on(
+      t.artistId,
+      t.publishedAt
+    ),
     isFavoritedIdx: index("isFavoritedIdx").on(t.isFavorited),
     // Composite index for common filter combination: artistId + rating + isViewed
     // Optimizes queries filtering by these columns simultaneously
