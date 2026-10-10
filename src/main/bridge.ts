@@ -44,8 +44,10 @@ export type {
 export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "./types/ipc";
 
 const ipcBridge: IpcBridge = {
-  getAppVersion: () => invokeIpc(IPC_CHANNELS.APP.GET_VERSION),
+  getAppInfo: () => invokeIpc(IPC_CHANNELS.APP.GET_APP_INFO),
   getDatabaseLocation: () => invokeIpc(IPC_CHANNELS.APP.GET_DB_LOCATION),
+  openLogsFolder: () => invokeIpc(IPC_CHANNELS.APP.OPEN_LOGS_FOLDER),
+  getDiagnostics: () => invokeIpc(IPC_CHANNELS.APP.GET_DIAGNOSTICS),
   getIconPath: (theme) => {
     return invokeIpc(IPC_CHANNELS.APP.GET_ICON_PATH, theme);
   },

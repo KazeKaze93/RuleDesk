@@ -507,7 +507,7 @@ const posts = await db.query.posts.findMany({
    - `MaintenanceController.ts` - Database backup/restore, VACUUM, and read-only orphan detection
    - `ViewerController.ts` - Viewer-related operations
    - `FileController.ts` - File download and management
-   - `SystemController.ts` - System-level ops (version, clipboard, icon path, quit, **`wipeAllData`** — `RuleDesk-Data` only; does not delete `RuleDesk-Backups`)
+   - `SystemController.ts` - System-level ops (version / **`getAppInfo`**, **`openLogsFolder`**, **`getDiagnostics`** with redacted log tail, clipboard, icon path, quit, **`wipeAllData`** — `RuleDesk-Data` only; does not delete `RuleDesk-Backups`)
    - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination and SQLite `search_results_cache` TTL layer, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
    - `PlaylistController.ts` - Playlist CRUD, smart queries, import/export
    - `StatsController.ts` - Extended stats for `/stats`
@@ -733,6 +733,7 @@ const posts = await db.query.posts.findMany({
 
     - **Settings.tsx** - Tab container and settings orchestration
     - **SettingsGeneralTab.tsx** - Downloads, proxy, and Danger zone (`wipeAllData`)
+    - **SettingsHelpTab.tsx** - App/runtime versions, open logs folder, copy redacted diagnostics
     - **SettingsSyncTab.tsx** - Startup/interval sync (manual Sync All remains in the sidebar)
     - **SettingsAppearanceTab.tsx** - Theme selection (`System` / `Light` / `Dark`)
     - **SettingsBlacklistTab.tsx** - Tag blacklist management
@@ -749,7 +750,7 @@ const posts = await db.query.posts.findMany({
 3. **IPC Client** (`window.api`)
    - Typed interface to Main process
    - All communication goes through this bridge
-   - Channel inventory is generated into [`docs/api.md`](./api.md) via `npm run docs:api` — do not maintain a hand-copied method list here. Notable domains: settings/auth, artists/posts, search/tags, playlists, backup/VACUUM/orphan detection, updates, `getVideoProxyUrl`, `wipeAllData` (`system:wipe-all-data`; does not delete `RuleDesk-Backups`).
+   - Channel inventory is generated into [`docs/api.md`](./api.md) via `npm run docs:api` — do not maintain a hand-copied method list here. Notable domains: settings/auth, artists/posts, search/tags, playlists, backup/VACUUM/orphan detection, updates, Help diagnostics (`getAppInfo` / `openLogsFolder` / `getDiagnostics`), `getVideoProxyUrl`, `wipeAllData` (`system:wipe-all-data`; does not delete `RuleDesk-Backups`).
 
 ## Security Architecture
 

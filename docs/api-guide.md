@@ -222,7 +222,9 @@ The IPC bridge is exposed to the Renderer process via `window.api`. All methods 
 ```typescript
 interface IpcBridge {
   // App
-  getAppVersion: () => Promise<string>;
+  getAppInfo: () => Promise<AppInfo>;
+  openLogsFolder: () => Promise<OpenLogsFolderResult>;
+  getDiagnostics: () => Promise<Diagnostics>;
   wipeAllData: () => Promise<void>;
   writeToClipboard: (text: string) => Promise<boolean>;
   verifyCredentials: () => Promise<boolean>;
@@ -372,32 +374,48 @@ interface IpcBridge {
 
 ## API Methods
 
-### `getAppVersion()`
+### `getAppInfo()`
 
-Returns the current application version.
+Returns application and runtime versions for Settings → Help (Electron, Chromium, Node, OS). Collected in Main only — do not read `process.versions` in the renderer.
 
-**When to use:** Display the app version in About dialog, update notifications, or debug information.
-
-**Typical scenario:** Show version number in Settings page or About dialog.
-
-**Returns:** `Promise<string>`
-
-**Example:**
+**IPC Channel:** `app:get-app-info`  
+**Returns:** `Promise<AppInfo>` (`src/shared/schemas/system.ts`)
 
 ```typescript
-const version = await window.api.getAppVersion();
-console.log(version); // "1.0.0"
+const info = await window.api.getAppInfo();
 ```
 
-**Real-world usage in React component:**
+---
+
+### `openLogsFolder()`
+
+Opens the directory that contains `app.log` (path from `electron-log` `transports.file.getFile()`, typically under `RuleDesk-Data/logs`).
+
+**IPC Channel:** `app:open-logs-folder`  
+**Returns:** `Promise<OpenLogsFolderResult>` — `{ ok: true }` or `{ ok: false, error }` (no stack). `shell.openPath` reports failures as a non-empty string; Main redacts that string (paths / credentials) before returning it for toasts.
 
 ```typescript
-// In Settings or About component
-const { data: version } = useQuery<string>({
-  queryKey: ["app-version"],
-  queryFn: () => window.api.getAppVersion(),
-});
+const result = await window.api.openLogsFolder();
+if (!result.ok) {
+  toast.error(result.error);
+}
 ```
+
+---
+
+### `getDiagnostics()`
+
+Builds a redacted diagnostics payload in Main: versions, redacted log path, and a **tail** of `app.log` (`DIAGNOSTICS_LOG_TAIL_BYTES` = 32 KiB). Oversized files drop the partial first line (and leading UTF-8 continuation bytes) before redaction. `clipboardText` is fitted under `GITHUB_ISSUE_BODY_MAX_CHARS` (65_536) by dropping whole lines from the start of the tail. Prefer `clipboardText` for bug-report paste.
+
+**IPC Channel:** `app:get-diagnostics`  
+**Returns:** `Promise<Diagnostics>`
+
+```typescript
+const diag = await window.api.getDiagnostics();
+await window.api.writeToClipboard(diag.clipboardText);
+```
+
+---
 
 ### `wipeAllData()`
 
@@ -2161,7 +2179,7 @@ export function setupIpc(
 
 **Available Controllers:**
 
-- `SystemController` - System-level operations (version, clipboard, wipe-all-data, etc.)
+- `SystemController` - System-level operations (version / app info, logs folder, diagnostics, clipboard, wipe-all-data, etc.)
 - `ArtistsController` - Artist management operations
 - `PostsController` - Post-related operations
 - `SettingsController` - Settings management
@@ -2182,7 +2200,7 @@ All IPC channels are defined in `src/main/ipc/channels.ts`:
 ```typescript
 export const IPC_CHANNELS = {
   APP: {
-    GET_VERSION: "app:get-version",
+    GET_APP_INFO: "app:get-app-info",
     OPEN_EXTERNAL: "app:open-external",
     // ... other channels
   },

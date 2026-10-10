@@ -439,6 +439,12 @@ Access Settings by clicking **"Settings"** in the sidebar.
 
 Settings are split into tabs:
 
+### Help
+
+- **Versions** — application, Electron, Chromium, Node, and OS (from Main; not from the renderer process)
+- **Open logs folder** — opens the folder that contains `app.log` (under `RuleDesk-Data/logs`)
+- **Copy diagnostics** — copies versions, OS, the redacted log path, and a redacted **tail** of `app.log` (~32 KiB, fitted under GitHub’s issue size limit) to the clipboard for bug reports. Historical log lines are re-redacted when read, so old paths/credentials should not appear in the paste
+
 ### General
 
 - **Default download folder** - Choose a folder or reset to default

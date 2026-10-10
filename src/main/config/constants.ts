@@ -36,3 +36,13 @@ export const VIDEO_CACHE_EVICT_AFTER_START_MS = 15_000;
 /** Max time to wait for in-flight sync to finish after cancel on app quit. */
 export const SYNC_SHUTDOWN_DRAIN_MS = 8000;
 
+/**
+ * Bytes of `app.log` included in Help diagnostics (tail only; file is append-only).
+ * Kept at 32 KiB so header + redacted tail stay under GitHub's issue body limit
+ * (`GITHUB_ISSUE_BODY_MAX_CHARS` = 65_536). Read path re-applies log redaction.
+ */
+export const DIAGNOSTICS_LOG_TAIL_BYTES = 32 * 1024;
+
+/** GitHub issue / comment body character limit — diagnostics paste must stay under this. */
+export const GITHUB_ISSUE_BODY_MAX_CHARS = 65_536;
+
