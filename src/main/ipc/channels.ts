@@ -11,8 +11,7 @@ export const IPC_CHANNELS = {
     VERIFY_CREDS: "app:verify-creds",
     GET_ICON_PATH: "app:get-icon-path",
     CHECK_FOR_UPDATES: "app:check-for-updates",
-    START_UPDATE_DOWNLOAD: "app:start-download",
-    QUIT_AND_INSTALL: "app:quit-and-install",
+    OPEN_RELEASE_PAGE: "app:open-release-page",
     WIPE_ALL_DATA: "system:wipe-all-data",
   },
   SETTINGS: {
@@ -94,7 +93,6 @@ export const IPC_CHANNELS = {
   },
   UPDATER: {
     STATUS: "updater:status",
-    PROGRESS: "updater:progress",
   },
   SYNC: {
     REPAIR: "sync:repair-artist",

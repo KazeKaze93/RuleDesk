@@ -48,7 +48,7 @@ const DIAGNOSTICS_LOG_READ_FAILED_MESSAGE = "Could not read the application log.
  * - Logs folder + redacted diagnostics for bug reports
  * - Application lifecycle (wipe all local data)
  * - Clipboard operations
- * - Manual update checks / release-page openers
+ * - Update check (background-friendly) and open GitHub release page
  */
 export class SystemController extends BaseController {
   private readonly videoProxyServer: VideoProxyServer;
@@ -100,14 +100,9 @@ export class SystemController extends BaseController {
       this.checkForUpdates.bind(this)
     );
     this.handle(
-      IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD,
+      IPC_CHANNELS.APP.OPEN_RELEASE_PAGE,
       z.tuple([]),
-      this.startUpdateDownload.bind(this)
-    );
-    this.handle(
-      IPC_CHANNELS.APP.QUIT_AND_INSTALL,
-      z.tuple([]),
-      this.quitAndInstall.bind(this)
+      this.openReleasePage.bind(this)
     );
 
     log.info("[SystemController] All handlers registered");
@@ -179,12 +174,8 @@ export class SystemController extends BaseController {
     await this.updaterService.checkForUpdates();
   }
 
-  private async startUpdateDownload(_event: IpcMainInvokeEvent): Promise<void> {
-    await this.updaterService.openReleasesPage("download");
-  }
-
-  private async quitAndInstall(_event: IpcMainInvokeEvent): Promise<void> {
-    await this.updaterService.openReleasesPage("install");
+  private async openReleasePage(_event: IpcMainInvokeEvent): Promise<void> {
+    await this.updaterService.openReleasePage();
   }
 
   private async getAppInfo(_event: IpcMainInvokeEvent): Promise<AppInfo> {

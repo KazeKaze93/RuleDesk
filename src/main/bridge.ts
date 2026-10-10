@@ -29,7 +29,6 @@ export type {
   IpcBridge,
   UpdateStatusData,
   UpdateStatusCallback,
-  UpdateProgressCallback,
   SyncErrorCallback,
   AutoBackupInterval,
   BackupResponse,
@@ -208,23 +207,12 @@ const ipcBridge: IpcBridge = {
 
   // Updater Implementation
   checkForUpdates: () => invokeIpc(IPC_CHANNELS.APP.CHECK_FOR_UPDATES),
-  quitAndInstall: () => invokeIpc(IPC_CHANNELS.APP.QUIT_AND_INSTALL),
-  startDownload: () => invokeIpc(IPC_CHANNELS.APP.START_UPDATE_DOWNLOAD),
+  openReleasePage: () => invokeIpc(IPC_CHANNELS.APP.OPEN_RELEASE_PAGE),
 
   onUpdateStatus: (callback) => {
     const channel = IPC_CHANNELS.UPDATER.STATUS;
     const subscription = (_: IpcRendererEvent, data: UpdateStatusData) =>
       callback(data);
-    ipcRenderer.on(channel, subscription);
-    return () => {
-      ipcRenderer.removeListener(channel, subscription);
-    };
-  },
-
-  onUpdateProgress: (callback) => {
-    const channel = IPC_CHANNELS.UPDATER.PROGRESS;
-    const subscription = (_: IpcRendererEvent, percent: number) =>
-      callback(percent);
     ipcRenderer.on(channel, subscription);
     return () => {
       ipcRenderer.removeListener(channel, subscription);

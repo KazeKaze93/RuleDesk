@@ -629,10 +629,10 @@ const posts = await db.query.posts.findMany({
 
 10. **Updater Service** (`src/main/services/updater-service.ts`)
 
-   - Manages automatic update checking via `electron-updater`
-   - Handles update download and installation
-   - Emits IPC events for update status and progress
-   - User-controlled download (manual download trigger)
+   - Background update *check* via `electron-updater` (`autoDownload` / `autoInstallOnAppQuit` stay false)
+   - No in-app download/install (win.zip is unsupported; AppImage install not shipped)
+   - Emits `updater:status` for `available` (with version); check/not-available stay quiet in UI; errors are logged only
+   - `app:open-release-page` (no args) opens a constant GitHub Releases URL from Main's last `update-available` version (`/tag/v{semver}` or `/latest`) via `shell.openExternal`
 
 11. **Secure Storage** (`src/main/services/secure-storage.ts`) and **credential helpers** (`src/main/utils/decrypted-credentials.ts`, `src/main/services/credentials.ts`)
 
@@ -1823,7 +1823,7 @@ Root:
 5. ✅ **Browse:** Live booru search with infinite scroll (Rule34 cursor pagination after offset cap)
 6. ✅ **Progressive Image Loading:** 3-layer loading system (Preview → Sample → Original) for instant viewing
 7. ✅ **Artist Repair:** Resync functionality to update previews and fix sync issues
-8. ✅ **Auto-Updater:** Automatic update checking and installation via electron-updater
+8. ✅ **Auto-Updater:** Background update check via electron-updater; user opens the GitHub release page for ZIP/AppImage (no in-app install)
 9. ✅ **Event System:** Real-time IPC events for sync progress, update status, and download progress
 10. ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
 11. ✅ **Secure Storage:** API credentials encrypted at rest using Electron's `safeStorage` API

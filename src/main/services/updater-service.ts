@@ -3,11 +3,12 @@ const { autoUpdater } = pkg;
 import { logger } from "../lib/logger";
 import { BrowserWindow, shell } from "electron";
 import { IPC_CHANNELS } from "../ipc/channels";
-
-const RELEASES_URL = "https://github.com/KazeKaze93/ruledesk/releases/latest";
+import { buildGitHubReleasePageUrl } from "../lib/github-release-url";
 
 export class UpdaterService {
   private window: BrowserWindow | null = null;
+  /** Last version from update-available; sole source for openReleasePage URL. */
+  private lastAvailableVersion: string | null = null;
 
   constructor() {
     this.initListeners();
@@ -30,6 +31,7 @@ export class UpdaterService {
 
     autoUpdater.on("update-available", (info) => {
       logger.info(`UPDATER: Update available: ${info.version}`);
+      this.lastAvailableVersion = info.version;
       this.sendPayload(IPC_CHANNELS.UPDATER.STATUS, {
         status: "available",
         version: info.version,
@@ -42,8 +44,8 @@ export class UpdaterService {
     });
 
     autoUpdater.on("error", (err) => {
+      // Background (and unused IPC) checks must not surface errors in the UI.
       logger.error("UPDATER: Error:", err);
-      this.sendStatus("error", err.message);
     });
   }
 
@@ -59,15 +61,14 @@ export class UpdaterService {
     }
   }
 
-  public async openReleasesPage(reason: "download" | "install"): Promise<void> {
-    if (reason === "download") {
-      logger.info("UPDATER: Opening GitHub releases for manual ZIP update.");
-    } else {
-      logger.info(
-        "UPDATER: Opening GitHub releases (no in-app installer for ZIP build)."
-      );
-    }
-    await shell.openExternal(RELEASES_URL);
+  /**
+   * Open the GitHub release page for the last update-available version (or /latest).
+   * Version never comes from the renderer — only from autoUpdater + semver validation.
+   */
+  public async openReleasePage(): Promise<void> {
+    const url = buildGitHubReleasePageUrl(this.lastAvailableVersion);
+    logger.info(`UPDATER: Opening release page: ${url}`);
+    await shell.openExternal(url);
   }
 
   private sendStatus(status: string, message?: string) {

@@ -22,9 +22,8 @@
 | `app:logout` | `APP.LOGOUT` | `[]` (no args) | no | `AuthController` | `src/main/ipc/controllers/AuthController.ts` |
 | `app:open-external` | `APP.OPEN_EXTERNAL` | `z.string().url().min(1)` | no | `ViewerController` | `src/main/ipc/controllers/ViewerController.ts` |
 | `app:open-logs-folder` | `APP.OPEN_LOGS_FOLDER` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
-| `app:quit-and-install` | `APP.QUIT_AND_INSTALL` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
+| `app:open-release-page` | `APP.OPEN_RELEASE_PAGE` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:save-settings` | `SETTINGS.SAVE` | `z.tuple([SaveSettingsSchema])` | no | `SettingsController` | Partial upsert. minimizeToTray: when true (default), win/linux close hides to tray; when false, close quits. Read at close time (no restart). macOS close never quits (Dock). |
-| `app:start-download` | `APP.START_UPDATE_DOWNLOAD` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:verify-creds` | `APP.VERIFY_CREDS` | `z.tuple([z.enum(["rule34", "gelbooru"]).optional()])` | no | `AuthController` | `src/main/ipc/controllers/AuthController.ts` |
 | `app:write-to-clipboard` | `APP.WRITE_CLIPBOARD` | `z.tuple([z.string().min(1)])` | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `backup:getSchedule` | `BACKUP.GET_SCHEDULE` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
@@ -110,7 +109,6 @@
 | `sync:repair:start` | `SYNC.REPAIR_START` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `sync:start` | `SYNC.START` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `system:wipe-all-data` | `APP.WIPE_ALL_DATA` | `[]` (no args) | no | `SystemController` | Deletes all children of userData (RuleDesk-Data), then app.exit(0). Order: closeDatabase → stop video proxy → rm → exit. Does not touch media download folders or DB backups under RuleDesk-Backups (sibling of RuleDesk-Data). |
-| `updater:progress` | `UPDATER.PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `updater:status` | `UPDATER.STATUS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `updates:getLastSyncAt` | `UPDATES.GET_LAST_SYNC_AT` | `[]` (no args) | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
 | `updates:getTotalUnreadCount` | `UPDATES.GET_TOTAL_UNREAD_COUNT` | `z .object({ filters: PostFilterSchema.optional(), }) .optional() .default({})` | yes | `UpdatesController` | `src/main/ipc/controllers/UpdatesController.ts` |
@@ -121,9 +119,9 @@
 
 ## Coverage
 
-- Channels in `channels.ts`: **107**
-- Channels with at least one scanned `handle` registration: **91**
-- Handler rows extracted: **91**
+- Channels in `channels.ts`: **105**
+- Channels with at least one scanned `handle` registration: **90**
+- Handler rows extracted: **90**
 
 ## Regenerating
 

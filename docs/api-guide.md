@@ -364,14 +364,12 @@ interface IpcBridge {
   // Video (localhost proxy; see architecture docs for cache and host allowlist)
   getVideoProxyUrl: (fileUrl: string) => Promise<string>;
 
-  // Updater
+  // Updater (check + open GitHub release page; no in-app download/install)
   checkForUpdates: () => Promise<void>;
-  quitAndInstall: () => Promise<void>;
-  startDownload: () => Promise<void>;
+  openReleasePage: () => Promise<void>;
 
   // Event Listeners
   onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
-  onUpdateProgress: (callback: UpdateProgressCallback) => () => void;
   onSyncStart: (callback: () => void) => () => void;
   onSyncEnd: (callback: () => void) => () => void;
   onSyncProgress: (callback: (message: string) => void) => () => void;
@@ -1078,7 +1076,7 @@ try {
 
 ### `checkForUpdates()`
 
-Checks for available application updates from the GitHub releases.
+Checks for available application updates via `electron-updater` (GitHub provider). Does not download or install. Background startup checks log errors only; the UI shows a notification only when status is `available`.
 
 **Returns:** `Promise<void>`
 
@@ -1090,43 +1088,23 @@ await window.api.checkForUpdates();
 
 **IPC Channel:** `app:check-for-updates`
 
-**Note:** Use `onUpdateStatus` event listener to receive update status notifications.
+**Note:** Use `onUpdateStatus` for `available` (+ `version`). There is no in-app download/install path.
 
 ---
 
-### `startDownload()`
+### `openReleasePage()`
 
-Starts downloading an available update. Must be called after `checkForUpdates()` indicates an update is available.
+Opens the GitHub Releases page in the system browser. Main uses the last version from `update-available` (validated semver → `/releases/tag/v{version}`); otherwise `/releases/latest`. The renderer does not pass a version — the URL is built only from Main state + a fixed repository constant.
 
 **Returns:** `Promise<void>`
 
 **Example:**
 
 ```typescript
-await window.api.startDownload();
+await window.api.openReleasePage();
 ```
 
-**IPC Channel:** `app:start-download`
-
-**Note:** Use `onUpdateProgress` event listener to track download progress.
-
----
-
-### `quitAndInstall()`
-
-Quits the application and installs the downloaded update. Should only be called after the update has been fully downloaded.
-
-**Returns:** `Promise<void>`
-
-**Example:**
-
-```typescript
-await window.api.quitAndInstall();
-```
-
-**IPC Channel:** `app:quit-and-install`
-
-**Warning:** This will immediately quit the application. Ensure all user data is saved before calling.
+**IPC Channel:** `app:open-release-page`
 
 ---
 
@@ -1901,9 +1879,9 @@ Listens for update status changes.
 type UpdateStatusCallback = (data: UpdateStatusData) => void;
 
 type UpdateStatusData = {
-  status: string; // "checking" | "available" | "not-available" | "downloaded" | "error"
+  status: string; // "checking" | "available" | "not-available" (UI shows only "available")
   message?: string;
-  version?: string; // Available when status is "available"
+  version?: string; // When status is "available"
 };
 ```
 
@@ -1923,33 +1901,6 @@ unsubscribe();
 ```
 
 **IPC Channel:** `updater:status`
-
----
-
-#### `onUpdateProgress(callback: UpdateProgressCallback)`
-
-Listens for download progress updates.
-
-**Callback Type:**
-
-```typescript
-type UpdateProgressCallback = (percent: number) => void;
-```
-
-**Returns:** `() => void` - Unsubscribe function
-
-**Example:**
-
-```typescript
-const unsubscribe = window.api.onUpdateProgress((percent) => {
-  console.log(`Download progress: ${percent}%`);
-});
-
-// Later, to unsubscribe:
-unsubscribe();
-```
-
-**IPC Channel:** `updater:progress`
 
 ---
 
