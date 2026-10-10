@@ -103,7 +103,7 @@ Integrity / silent-error / sync-FTS / index / cache / uniqueness / blacklist bat
 | T7 | `fix/db-caches-after-restore-vacuum` | [#212](https://github.com/KazeKaze93/RuleDesk/pull/212) | ✅ merged |
 | T8 | `fix/artists-unique-provider-tag` | [#209](https://github.com/KazeKaze93/RuleDesk/pull/209) | ✅ merged |
 | T9 | `perf/blacklist-filter` | [#213](https://github.com/KazeKaze93/RuleDesk/pull/213) | ✅ merged |
-| T10 | `chore/lessons-db-review-waves` | — | started |
+| T10 | `chore/lessons-db-review-waves` | [#214](https://github.com/KazeKaze93/RuleDesk/pull/214) | started |
 
 ## 📰 Updates feed
 
