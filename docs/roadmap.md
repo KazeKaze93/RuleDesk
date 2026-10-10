@@ -85,7 +85,25 @@ Artists was often misread as a favorites-like side list; tracking (sync / full d
 |---|--------|----|--------|
 | U1 | `ux/artists-section-clarity` | [#208](https://github.com/KazeKaze93/RuleDesk/pull/208) | ✅ merged |
 | U2 | `feat/browse-track-and-download` | [#210](https://github.com/KazeKaze93/RuleDesk/pull/210) | ✅ merged |
-| U3 | `chore/lessons-browse-bridge` | [#211](https://github.com/KazeKaze93/RuleDesk/pull/211) | started |
+| U3 | `chore/lessons-browse-bridge` | [#211](https://github.com/KazeKaze93/RuleDesk/pull/211) | ✅ merged |
+
+### DB review waves (P1)
+
+Integrity / silent-error / sync-FTS / index / cache / uniqueness / blacklist batch. Status lives only in this table. Architectural lessons harvested in T10.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| T0 | `fix/external-posts-provider-collision` | [#201](https://github.com/KazeKaze93/RuleDesk/pull/201) | ✅ merged |
+| T1 | `fix/playlist-ipc-bounds-atomic-import` | [#207](https://github.com/KazeKaze93/RuleDesk/pull/207) | ✅ merged |
+| T2 | `fix/db-silent-errors` | [#206](https://github.com/KazeKaze93/RuleDesk/pull/206) | ✅ merged |
+| T3 | `perf/sync-fts-rebuild-once` | [#205](https://github.com/KazeKaze93/RuleDesk/pull/205) | ✅ merged |
+| T4 | `perf/posts-artist-published-index` | [#202](https://github.com/KazeKaze93/RuleDesk/pull/202) | ✅ merged |
+| T5 | `perf/artist-aggregates-debounce` | [#204](https://github.com/KazeKaze93/RuleDesk/pull/204) | ✅ merged |
+| T6 | `perf/stats-top-tags-cache` | [#203](https://github.com/KazeKaze93/RuleDesk/pull/203) | ✅ merged |
+| T7 | `fix/db-caches-after-restore-vacuum` | [#212](https://github.com/KazeKaze93/RuleDesk/pull/212) | ✅ merged |
+| T8 | `fix/artists-unique-provider-tag` | [#209](https://github.com/KazeKaze93/RuleDesk/pull/209) | ✅ merged |
+| T9 | `perf/blacklist-filter` | [#213](https://github.com/KazeKaze93/RuleDesk/pull/213) | ✅ merged |
+| T10 | `chore/lessons-db-review-waves` | [#214](https://github.com/KazeKaze93/RuleDesk/pull/214) | started |
 
 ## 📰 Updates feed
 
