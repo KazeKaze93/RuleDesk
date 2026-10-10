@@ -204,15 +204,19 @@ describe("SyncService per-artist cancel + FTS window", () => {
     assertIntegrityOk(mockDb.sqlite);
   });
 
-  it("cancelArtistSyncAndWait times out while fetch never returns", async () => {
+  it("cancelArtistSyncAndWait ends hung fetchPosts that honors AbortSignal", async () => {
     const provider = getProvider("rule34");
-    let releaseFetch: (() => void) | null = null;
     vi.spyOn(provider, "fetchPosts").mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          releaseFetch = () => {
-            resolve(EMPTY_PAGE);
+      (_tags, _page, _settings, _isRandom, _limit, signal) =>
+        new Promise((_resolve, reject) => {
+          if (signal?.aborted) {
+            reject(new DOMException("The operation was aborted.", "AbortError"));
+            return;
+          }
+          const onAbort = () => {
+            reject(new DOMException("The operation was aborted.", "AbortError"));
           };
+          signal?.addEventListener("abort", onAbort, { once: true });
         })
     );
 
@@ -222,12 +226,13 @@ describe("SyncService per-artist cancel + FTS window", () => {
       expect(service.isArtistSyncActive(artistId)).toBe(true);
     });
 
-    const drained = await service.cancelArtistSyncAndWait(artistId, 80);
-    expect(drained).toBe(false);
-    expect(service.isArtistSyncActive(artistId)).toBe(true);
-
-    releaseFetch?.();
+    const started = Date.now();
+    const drained = await service.cancelArtistSyncAndWait(artistId, 1000);
+    const elapsed = Date.now() - started;
     await syncPromise;
+
+    expect(drained).toBe(true);
+    expect(elapsed).toBeLessThan(1000);
     expect(service.isArtistSyncActive(artistId)).toBe(false);
   });
 

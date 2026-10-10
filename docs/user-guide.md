@@ -170,6 +170,8 @@ The artist will appear in your tracked list. Until the first successful sync fin
 
 You can still run **Sync All** manually at any time; automatic runs use the same engine and rate limits.
 
+Cancel and quit stop sync promptly: in-flight API requests and long rate-limit waits are aborted (not left sleeping for a full Retry-After). Quitting the app cancels sync, waits briefly, then closes the database.
+
 ### Viewing Posts
 
 **To view posts from a tracked artist:**

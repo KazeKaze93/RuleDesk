@@ -19,7 +19,12 @@ import {
 } from "../../shared/utils/provider-tag-sanitize";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
-import { ProviderThrottle, pickRandomUA, ProviderRateLimitGateError } from "./provider-throttle";
+import {
+  ProviderThrottle,
+  pickRandomUA,
+  ProviderRateLimitGateError,
+  isAbortError,
+} from "./provider-throttle";
 import {
   isProviderSearchError,
   ProviderSearchError,
@@ -201,10 +206,11 @@ export class GelbooruProvider implements IBooruProvider {
     page: number,
     settings: ProviderSettings,
     isRandom: boolean,
-    limit: number
+    limit: number,
+    signal?: AbortSignal
   ): Promise<FetchPostsResult> {
     try {
-      await this.throttle.wait("user");
+      await this.throttle.wait("user", signal);
     } catch (error) {
       if (error instanceof ProviderRateLimitGateError) {
         throw new ProviderSearchError("rate_limit", undefined, error.retryAfterMs);
@@ -239,6 +245,7 @@ export class GelbooruProvider implements IBooruProvider {
 
     try {
       const response = await axios.get(`${this.baseUrl}?${params}`, {
+        signal,
         timeout: REQUEST_TIMEOUT,
         headers: { "User-Agent": this.sessionUA },
         validateStatus: (status) => status < 500,
@@ -331,6 +338,9 @@ export class GelbooruProvider implements IBooruProvider {
       
       return { posts, rawItemCount: rawPosts.length, rejectedPostIds };
     } catch (error) {
+      if (axios.isCancel(error) || isAbortError(error)) {
+        throw error;
+      }
       if (isProviderSearchError(error)) {
         if (error.kind === "rate_limit") {
           this.throttle.notifyRateLimited(error.retryAfterMs);

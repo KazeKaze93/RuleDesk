@@ -63,3 +63,5 @@ repomix-output.txt
 
 # --- Documentation ---
 LESSONS.md
+.vitest-main-result.json
+.vitest-isolated-result.json
