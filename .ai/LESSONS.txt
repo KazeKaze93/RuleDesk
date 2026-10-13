@@ -15,7 +15,7 @@ Invariant Rule: Any filter contract change requires synchronized updates across 
 3) Idempotent IPC Under Strict Mode
 Problem: Duplicate startup calls trigger throttling and unstable UX; partial collapse keys leak wrong results across concurrent calls.
 Root Cause: Idempotent handlers were treated like mutating ones, or collapse keys used only `id`/`type` and ignored other fields.
-Invariant Rule: Mark truly idempotent handlers; collapse in-flight calls by hashing the full canonical args; space mutating calls with delay (never reject).
+Invariant Rule: Mark truly idempotent handlers; collapse in-flight calls by key = channel + full canonical serialized args (no lossy hash); space mutating calls with delay (never reject).
 
 3a) Shared IPC Validation
 Problem: Repeated ad-hoc Zod schemas diverge across handlers over time; parallel registration helpers beside `BaseController.handle` let contracts and error paths drift again.
@@ -470,5 +470,5 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 **Invariant Rule:** Prefer one shared `AI_TAGS` (`src/shared/ai-tags.ts`); workers use relative shared imports (no duplicate lists).
 
 ### Problem: IPC collapse/throttle races and wrong prod detection
-**Root Cause:** Collapse keyed only part of args; throttle slot reserved after await; production envelope gated on `NODE_ENV` instead of packaging.
-**Invariant Rule:** IPC collapse key = channel + canonical JSON args; reserve throttle slot before await; production envelope via `app.isPackaged` (not `process.env.NODE_ENV === "production"`).
+**Root Cause:** Collapse keyed only part of args (or a lossy hash of them); throttle slot reserved after await; production envelope gated on `NODE_ENV` instead of packaging.
+**Invariant Rule:** IPC collapse key = channel + full canonical serialized args (no lossy hash); reserve throttle slot before await; space mutating calls with delay (never reject); production envelope via `app.isPackaged` (not `process.env.NODE_ENV === "production"`).

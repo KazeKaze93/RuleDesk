@@ -150,13 +150,13 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 | S1 | `chore/release-via-pr` | [#243](https://github.com/KazeKaze93/RuleDesk/pull/243) | ✅ merged |
 | S2 | `chore/enable-master-protection` | [#245](https://github.com/KazeKaze93/RuleDesk/pull/245) | ✅ protection enabled |
 
-### UI/UX + architecture debt audits (on 18.3.1) — closed on branch
+### UI/UX + architecture debt audits (on 18.3.1)
 
-Both audits (UI/UX sans keyboard + architecture review) are **closed on this branch** (`fix/ui-and-arch-debt`). Status lives only in this table + HANDOFF below.
+Both audits (UI/UX sans keyboard + architecture review) are addressed on this branch. **Status lives only in the tracking table** — narrative below must not invent a second status.
 
-| # | Branch | PR | Status |
-|---|--------|----|--------|
-| UI+Arch | `fix/ui-and-arch-debt` | (this PR) | 🟡 open — merge only after user manual checks |
+| Branch | PR | Status |
+|--------|----|--------|
+| `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — merge only after user manual checks |
 
 #### HANDOFF (follow-ups — do not silent-fix)
 
@@ -168,12 +168,11 @@ Both audits (UI/UX sans keyboard + architecture review) are **closed on this bra
 | `SyncService.checkCredentials` orphan | Auth IPC removal left the method without a bridge consumer |
 | `AddPostsToPlaylistSchema` unused optional cleanup | Schema leftover after bridge surface cleanup |
 | preload→main channels import → optional `@shared` move | Optional hygiene; not blocking |
-| IPC `BaseController` throttle necessity | **Open question:** keep vs remove (see note below) |
 | Playlists smart query hardcoded `rule34` | Provider choice / out-of-pack; not fixed here |
 
-**Open question (IPC throttle):** whether mutating-handler throttle in `BaseController` is still necessary after collapse-key + `app.isPackaged` envelope fixes — keep for now; revisit with measurements before deleting.
-
 #### Сознательно вне задачи (original OUT OF SCOPE)
+
+These items were never in scope for this branch (no separate status row — they are not tracking-table work):
 
 - Hover-only actions / focus keyboard reveal / Panic shortcut hint / account gate branding
 - BrowserView integration
@@ -181,6 +180,10 @@ Both audits (UI/UX sans keyboard + architecture review) are **closed on this bra
 - Migration journal renumber; dead `fts5_*` tables; `new_posts_count`; `playlist_entries` indexes
 - Triple service binding (singleton / DI / ctor)
 - Hook folders / pages vs features boundary; page random search; `tag_blacklist` outside Drizzle
+
+#### Открытый вопрос: IPC-троттлинг
+
+Whether mutating-handler throttle in `BaseController` is still necessary after collapse-key + `app.isPackaged` envelope fixes. Keep current behavior (space mutating calls with delay, never reject) for now; revisit with measurements before deleting. This is **not** a tracking-table status and is not a HANDOFF task row.
 
 ## 📰 Updates feed
 
@@ -239,7 +242,7 @@ Both audits (UI/UX sans keyboard + architecture review) are **closed on this bra
 
 ### Shipped (Jul 2026 — audit v17 PRs #105–#115)
 
-- ✅ **IPC collapse + throttle** (#105): idempotent handlers collapse by full canonical args hash; mutating handlers space calls (~100ms sleep), never reject with rate-limit errors.
+- ✅ **IPC collapse + throttle** (#105): idempotent handlers collapse by channel + full canonical serialized args (no lossy hash); mutating handlers space calls (~100ms sleep), never reject with rate-limit errors.
 - ✅ **Type assertion policy** (#106): ESLint `no-unsafe-type-assertion` on `src/**`; closed `as` boundary allowlist in `.cursorrules` / LESSONS 3b.
 - ✅ **Crypto unify** (#107): single `SecureStorage` path; `src/main/lib/crypto.ts` removed.
 - ✅ **DI container slim** (#108): typed instance registry keyed by `token.id` (no dead cycle-detection theater).
