@@ -1,5 +1,9 @@
 # Development
 
+## Process
+
+`master` is intended to require pull requests (no direct push, including for admins; 0 required reviews for solo flow), but branch protection must stay off until `release:patch|minor|major` no longer run `npm version … && git push --follow-tags` on `master` — those scripts commit and push the version bump directly, which PR-required protection would reject while tag-only `v*` packaging in `.github/workflows/release.yml` would still be fine.
+
 ## Quality gate (local)
 
 Quality and tests are **not** run on GitHub Actions. After `git config core.hooksPath .githooks`, every push runs `.githooks/pre-push`:
