@@ -218,7 +218,11 @@ export class SearchController extends BaseController {
         context
       );
 
-      return uniqueTags.filter((tag) => cache.foundTypes.get(tag) === tagType);
+      // Re-read tag_metadata after the wave so the IPC payload matches what was
+      // persisted. Parallel artist/character/copyright invokes share in-flight
+      // lookups; the caller-local `cache` map can lag the SQLite write.
+      const fresh = loadTagMetadataCache(this.getDb(), uniqueTags);
+      return uniqueTags.filter((tag) => fresh.foundTypes.get(tag) === tagType);
     } catch (error) {
       log.error(`[SearchController] Failed to resolve tags (${context}):`, error);
       throw error;
