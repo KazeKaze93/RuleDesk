@@ -2,7 +2,7 @@
 
 ## Process
 
-`master` is intended to require pull requests (no direct push, including for admins; 0 required reviews for solo flow), but branch protection must stay off until `release:patch|minor|major` no longer run `npm version … && git push --follow-tags` on `master` — those scripts commit and push the version bump directly, which PR-required protection would reject while tag-only `v*` packaging in `.github/workflows/release.yml` would still be fine.
+`master` requires pull requests (no direct push, including for admins; 0 required reviews for solo flow). Version bumps use the same rule: `release:patch|minor|major` open a `release/<version>` PR; the Release workflow still starts only from a pushed `v*` tag (see below).
 
 ## Quality gate (local)
 
@@ -32,20 +32,35 @@ Artifacts (electron-builder `directories.output` = `release`):
 
 Native `better-sqlite3` is rebuilt on each runner (`postinstall` / `electron-builder install-app-deps`; Linux also runs `npm run db:rebuild` before package, matching the former release job).
 
-Typical flow after quality is green locally:
+### Release flow (PR + tag)
+
+Preconditions (enforced by `scripts/release.mjs`): clean worktree, current branch `master`, `master` == `origin/master`.
 
 ```bash
 npm run release:patch   # or release:minor / release:major
-# → npm version … && git push --follow-tags
+# → branch release/<version>, npm version --no-git-tag-version, commit "<version>"
+# → push branch, open PR, merge (or wait until merged)
+# → tag v<version> on the PR merge commit on origin/master and push the tag
 # → Release workflow packages and publishes both platforms
 ```
 
-## Fallback: manual package and upload
-
-If Actions is unavailable, package on the target OS and attach to the release:
+Dry-run (branch + PR only; **no** tag):
 
 ```bash
-npm run release:patch          # version bump + tag push (or use an existing tag)
+npm run release:patch -- --dry-run
+# Cleanup afterwards:
+gh pr close <n> --delete-branch
+git checkout master && git fetch origin && git reset --hard origin/master
+```
+
+The script refuses to push a tag when `v<version>` does not match `package.json` `version` on the tagged commit, and removes any local tag if the remote push fails.
+
+## Fallback: manual package and upload
+
+If Actions is unavailable, finish the version PR + tag as usual (or tag an existing merge commit), then package on the target OS and attach to the release:
+
+```bash
+npm run release:patch          # PR + tag (or tag an existing merge commit as vX.Y.Z)
 npm run dist:win               # on Windows → release/RuleDesk-*-win.zip
 npm run dist:linux             # on Linux → release/*.AppImage
 npm run check:release-artifacts

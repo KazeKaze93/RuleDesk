@@ -137,7 +137,7 @@ R4 GREEN after F fixes. Post-P9 lessons harvested in L (do not re-open P2). Conc
 
 ### Post-18.3.0 polish + release (Q / R / T)
 
-R smoke GREEN on tip `1ab4108`. Q4 branch protection **not** enabled (STOP: `release:*` still `git push` version commits to `master`). Lessons harvested into `.ai/LESSONS.txt` with this release. Status lives only in this table.
+R smoke GREEN on tip `1ab4108`. Q4 branch protection **not** enabled until S1 lands (`release:*` must not `git push` version commits to `master`). Lessons harvested into `.ai/LESSONS.txt` with this release. Status lives only in this table.
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
@@ -147,6 +147,7 @@ R smoke GREEN on tip `1ab4108`. Q4 branch protection **not** enabled (STOP: `rel
 | Q4 | `chore/protect-master` | [#238](https://github.com/KazeKaze93/RuleDesk/pull/238) | ✅ merged (docs only; protection deferred) |
 | R | (packed/unpackaged smoke on `1ab4108`) | — | ✅ GREEN |
 | T | `18.3.1` (version bump on master via `release:patch`) | — | ✅ merged (`0d535b9`) |
+| S1 | `chore/release-via-pr` | — | 🔄 in progress |
 
 ## 📰 Updates feed
 

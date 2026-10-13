@@ -49,9 +49,9 @@
     "dist": "npm run build && electron-builder --win zip",
     "dist:win": "npm run build && electron-builder --win zip --publish never",
     "dist:linux": "npm run build && electron-builder --linux AppImage --publish never",
-    "release:minor": "npm version minor && git push --follow-tags",
-    "release:patch": "npm version patch && git push --follow-tags",
-    "release:major": "npm version major && git push --follow-tags"
+    "release:minor": "node scripts/release.mjs minor",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:major": "node scripts/release.mjs major"
   },
   "keywords": [
     "electron",
