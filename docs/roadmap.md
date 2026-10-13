@@ -147,7 +147,7 @@ R smoke GREEN on tip `1ab4108`. Q4 branch protection **not** enabled until S1 la
 | Q4 | `chore/protect-master` | [#238](https://github.com/KazeKaze93/RuleDesk/pull/238) | ✅ merged (docs only; protection deferred) |
 | R | (packed/unpackaged smoke on `1ab4108`) | — | ✅ GREEN |
 | T | `18.3.1` (version bump on master via `release:patch`) | — | ✅ merged (`0d535b9`) |
-| S1 | `chore/release-via-pr` | — | 🔄 in progress |
+| S1 | `chore/release-via-pr` | [#243](https://github.com/KazeKaze93/RuleDesk/pull/243) | 🔄 in progress |
 
 ## 📰 Updates feed
 
