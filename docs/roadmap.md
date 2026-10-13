@@ -315,6 +315,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | `feat/backups-outside-cache-dir` | [#182](https://github.com/KazeKaze93/RuleDesk/pull/182) | ✅ merged | Backups under `RuleDesk-Backups/` (sibling of `.rdcache`); deferred migrate from cache dir |
 | `feat/orphan-detection-report` | [#183](https://github.com/KazeKaze93/RuleDesk/pull/183) | ✅ merged | Read-only orphan report in Settings; live probe all-zeros — cleanup deferred |
 | `feat/backup-default-opt-in-prompt` | [#185](https://github.com/KazeKaze93/RuleDesk/pull/185) | ✅ merged | New installs default auto-backup to daily; existing `never` users get a one-time dismissible opt-in prompt |
+| `feat/auto-backup-default-on` | [#250](https://github.com/KazeKaze93/RuleDesk/pull/250) | started | Unify default to daily; `backupPolicyVersion` migrates unseen `never` → daily; free-space guard (≥2× DB) before auto-backup close |
 | `feat/relocate-live-db-out-of-rdcache` | [#186](https://github.com/KazeKaze93/RuleDesk/pull/186) | ✅ merged | Live `data.bin` moves from `.rdcache` to `RuleDesk-Data`; light sidecars prefer `.rdcache` |
 | `fix/remove-dead-verify-signature-override` | [#187](https://github.com/KazeKaze93/RuleDesk/pull/187) | ✅ merged | Remove dead `verifyUpdateCodeSignature=false` (NsisUpdater ignores falsy) |
 | `docs/rollback-version-warning` | [#188](https://github.com/KazeKaze93/RuleDesk/pull/188) | ✅ merged | README + `docs/database.md` downgrade boundaries for path moves |

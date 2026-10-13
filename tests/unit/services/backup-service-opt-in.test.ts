@@ -6,12 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const require = createRequire(import.meta.url);
 
-/** Path only — created on disk in beforeEach so vi.hoisted needs no Node requires. */
-const { testUserDataDir } = vi.hoisted(() => {
+/** Paths only — created on disk in beforeEach so vi.hoisted needs no Node requires. */
+const { testUserDataDir, testDbPath } = vi.hoisted(() => {
   const tmpRoot = process.env.TEMP || process.env.TMP || process.env.TMPDIR || ".";
   const needsSep = !(tmpRoot.endsWith("\\") || tmpRoot.endsWith("/"));
+  const dir = `${tmpRoot}${needsSep ? "/" : ""}ruledesk-backup-store-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return {
-    testUserDataDir: `${tmpRoot}${needsSep ? "/" : ""}ruledesk-backup-store-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    testUserDataDir: dir,
+    testDbPath: `${dir}/data.bin`,
   };
 });
 
@@ -50,17 +52,33 @@ vi.mock("electron-log", () => ({
   },
 }));
 
+const closeDatabaseMock = vi.fn();
+const createConsistentBackupMock = vi.fn();
+
 vi.mock("@/main/db/client", () => ({
   getSqliteInstance: vi.fn(),
+  closeDatabase: (...args: unknown[]) => closeDatabaseMock(...args),
+  initializeDatabase: vi.fn(async () => undefined),
+}));
+
+vi.mock("@/main/core/di/databaseRegistration", () => ({
+  registerDatabaseInContainerAfterReinit: vi.fn(),
 }));
 
 vi.mock("@/main/db/paths", () => ({
   getBackupDirectory: () => testUserDataDir,
+  getDatabasePaths: () => ({
+    userDataDir: testUserDataDir,
+    dbPath: testDbPath,
+    walPath: `${testDbPath}-wal`,
+    shmPath: `${testDbPath}-shm`,
+  }),
 }));
 
 vi.mock("@/main/db/maintenance-queue", () => ({
   maintenanceQueue: {
     isProcessing: () => false,
+    execute: async <T>(operation: () => Promise<T>): Promise<T> => operation(),
   },
 }));
 
@@ -69,19 +87,28 @@ vi.mock("@/main/lib/backup-retention", () => ({
 }));
 
 vi.mock("@/main/lib/database-backup", () => ({
-  buildAutoBackupFilename: vi.fn(),
-  createConsistentBackup: vi.fn(),
+  buildAutoBackupFilename: vi.fn(() => "test-auto-backup.db"),
+  createConsistentBackup: (...args: unknown[]) => createConsistentBackupMock(...args),
   listAutoBackupFilesOldestFirst: vi.fn(() => []),
   selectAutoBackupFilenamesToDelete: vi.fn(() => []),
 }));
 
+vi.mock("@/main/lib/sync-db-maintenance", () => ({
+  withSyncPausedForDbWork: async <T>(
+    _sync: unknown,
+    work: () => Promise<T>
+  ): Promise<T> => work(),
+}));
+
 import type { SyncService } from "@/main/services/sync-service";
+import log from "electron-log";
 import {
   BACKUP_SETTINGS_STORE_NAME,
   BackupService,
-  backupSettingsFileExistedBeforeInit,
+  CURRENT_BACKUP_POLICY_VERSION,
   buildBackupStoreDefaultsForTests,
   resetBackupStoreForTests,
+  setAutoBackupFreeSpaceProbeForTests,
   setBackupStoreForTests,
   type BackupStoreContract,
 } from "@/main/services/backup-service";
@@ -139,9 +166,11 @@ function createBackupService(): BackupService {
 }
 
 function installStoreFromDisk(): void {
-  // Probe before constructing Conf — same ordering rule as production.
-  backupSettingsFileExistedBeforeInit();
   setBackupStoreForTests(openBackupConfStore());
+}
+
+function writeDbStub(byteLength: number): void {
+  fs.writeFileSync(testDbPath, Buffer.alloc(byteLength));
 }
 
 describe("conf persist semantics", () => {
@@ -163,6 +192,7 @@ describe("conf persist semantics", () => {
         autoBackupInterval: "daily",
         lastAutoBackupAt: null,
         hasSeenAutoBackupPrompt: false,
+        backupPolicyVersion: 0,
       },
     });
 
@@ -178,11 +208,14 @@ describe("conf persist semantics", () => {
   });
 });
 
-describe("BackupService auto-backup default + opt-in prompt", () => {
+describe("BackupService auto-backup default + policy migration", () => {
   beforeEach(() => {
     fs.mkdirSync(testUserDataDir, { recursive: true });
     wipeSettingsFile();
     resetBackupStoreForTests();
+    closeDatabaseMock.mockReset();
+    createConsistentBackupMock.mockReset();
+    createConsistentBackupMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -193,49 +226,117 @@ describe("BackupService auto-backup default + opt-in prompt", () => {
   it("new install (no settings file): defaults to daily and does not show prompt", () => {
     expect(fs.existsSync(settingsPath())).toBe(false);
     installStoreFromDisk();
-    expect(backupSettingsFileExistedBeforeInit()).toBe(false);
 
     const service = createBackupService();
     expect(service.getAutoBackupSchedule()).toBe("daily");
     expect(service.shouldShowAutoBackupPrompt()).toBe(false);
+    expect(openBackupConfStore().get("backupPolicyVersion")).toBe(
+      CURRENT_BACKUP_POLICY_VERSION
+    );
   });
 
-  it("existing install with never: keeps never and shows prompt once", () => {
+  it("migrates never + hasSeen=false → daily and bumps policy version", () => {
     writeSettingsFile({
       autoBackupInterval: "never",
       lastAutoBackupAt: null,
+      hasSeenAutoBackupPrompt: false,
+      backupPolicyVersion: 0,
     });
     resetBackupStoreForTests();
     installStoreFromDisk();
-    expect(backupSettingsFileExistedBeforeInit()).toBe(true);
+
+    const service = createBackupService();
+    expect(service.getAutoBackupSchedule()).toBe("daily");
+    expect(service.shouldShowAutoBackupPrompt()).toBe(false);
+
+    const store = openBackupConfStore();
+    expect(store.get("autoBackupInterval")).toBe("daily");
+    expect(store.get("backupPolicyVersion")).toBe(CURRENT_BACKUP_POLICY_VERSION);
+  });
+
+  it("never + hasSeen=true stays never; still bumps policy version", () => {
+    writeSettingsFile({
+      autoBackupInterval: "never",
+      lastAutoBackupAt: null,
+      hasSeenAutoBackupPrompt: true,
+      backupPolicyVersion: 0,
+    });
+    resetBackupStoreForTests();
+    installStoreFromDisk();
 
     const service = createBackupService();
     expect(service.getAutoBackupSchedule()).toBe("never");
-    expect(service.shouldShowAutoBackupPrompt()).toBe(true);
-
-    service.markAutoBackupPromptSeen();
     expect(service.shouldShowAutoBackupPrompt()).toBe(false);
 
-    // Simulate a new process: clear singleton, keep the same file on disk.
+    const store = openBackupConfStore();
+    expect(store.get("autoBackupInterval")).toBe("never");
+    expect(store.get("backupPolicyVersion")).toBe(CURRENT_BACKUP_POLICY_VERSION);
+  });
+
+  it("policy migration is idempotent across sessions", () => {
+    writeSettingsFile({
+      autoBackupInterval: "never",
+      lastAutoBackupAt: null,
+      hasSeenAutoBackupPrompt: false,
+      backupPolicyVersion: 0,
+    });
     resetBackupStoreForTests();
     installStoreFromDisk();
-    expect(backupSettingsFileExistedBeforeInit()).toBe(true);
-    const nextSession = createBackupService();
-    expect(nextSession.getAutoBackupSchedule()).toBe("never");
-    expect(nextSession.shouldShowAutoBackupPrompt()).toBe(false);
+
+    const first = createBackupService();
+    expect(first.getAutoBackupSchedule()).toBe("daily");
+
+    resetBackupStoreForTests();
+    installStoreFromDisk();
+    const second = createBackupService();
+    expect(second.getAutoBackupSchedule()).toBe("daily");
+    expect(second.shouldShowAutoBackupPrompt()).toBe(false);
+
+    const store = openBackupConfStore();
+    expect(store.get("autoBackupInterval")).toBe("daily");
+    expect(store.get("backupPolicyVersion")).toBe(CURRENT_BACKUP_POLICY_VERSION);
   });
 
   it("existing install already on daily/weekly: never shows prompt", () => {
     writeSettingsFile({
       autoBackupInterval: "weekly",
       lastAutoBackupAt: 1,
+      hasSeenAutoBackupPrompt: false,
+      backupPolicyVersion: 0,
     });
     resetBackupStoreForTests();
     installStoreFromDisk();
-    expect(backupSettingsFileExistedBeforeInit()).toBe(true);
 
     const service = createBackupService();
     expect(service.getAutoBackupSchedule()).toBe("weekly");
     expect(service.shouldShowAutoBackupPrompt()).toBe(false);
+  });
+
+  it("skips auto-backup when free space is below 2× DB size (no closeDatabase)", async () => {
+    writeSettingsFile({
+      autoBackupInterval: "daily",
+      lastAutoBackupAt: null,
+      hasSeenAutoBackupPrompt: false,
+      backupPolicyVersion: CURRENT_BACKUP_POLICY_VERSION,
+    });
+    resetBackupStoreForTests();
+    installStoreFromDisk();
+
+    const dbBytes = 1024;
+    writeDbStub(dbBytes);
+    setAutoBackupFreeSpaceProbeForTests(() => dbBytes * 2 - 1);
+
+    const service = createBackupService();
+    service.checkAndRunAutoBackup();
+
+    await vi.waitFor(() => {
+      expect(log.warn).toHaveBeenCalled();
+    });
+
+    expect(closeDatabaseMock).not.toHaveBeenCalled();
+    expect(createConsistentBackupMock).not.toHaveBeenCalled();
+
+    const store = openBackupConfStore();
+    expect(store.get("lastAutoBackupAt")).toBeNull();
   });
 });
