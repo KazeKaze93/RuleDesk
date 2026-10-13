@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import { ConfirmActionDialog } from "../../components/dialogs/ConfirmActionDialog";
 import { DatabaseMaintenanceCard } from "./components/DatabaseMaintenanceCard";
 import type {
   RunVacuumResponse,
@@ -33,7 +35,7 @@ interface SettingsBackupTabProps {
   backupRetention: string;
   autoBackupInterval: AutoBackupInterval;
   onBackup: () => void;
-  onRestore: () => void;
+  onRestore: () => void | Promise<void>;
   onIntegrityCheck: () => void;
   onBackupRetentionChange: (value: string) => void;
   onBackupRetentionBlur: () => void;
@@ -58,6 +60,7 @@ export const SettingsBackupTab = ({
   onAutoBackupIntervalChange,
 }: SettingsBackupTabProps) => {
   const queryClient = useQueryClient();
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const vacuumScheduleQuery = useQuery<VacuumSchedule>({
     queryKey: ["maintenance", "vacuum-schedule"],
     queryFn: () => window.api.getVacuumSchedule(),
@@ -110,6 +113,7 @@ export const SettingsBackupTab = ({
   const vacuumStatus = vacuumStatusQuery.data;
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Backup</CardTitle>
@@ -145,32 +149,31 @@ export const SettingsBackupTab = ({
             {isBackingUp ? "Creating backup..." : "Create Backup"}
           </Button>
           {backupStatus === "success" ? (
-            <Badge className="border-green-600/30 bg-green-600/15 text-green-700 dark:text-green-300">
-              Backup created
-            </Badge>
+            <Badge variant="success">Backup created</Badge>
           ) : null}
           {backupStatus === "error" ? (
-            <Badge className="border-red-600/30 bg-red-600/15 text-red-700 dark:text-red-300">
-              Backup failed
-            </Badge>
+            <Badge variant="destructive">Backup failed</Badge>
           ) : null}
         </section>
 
         <Separator />
 
         <section className="space-y-2">
-          <Button type="button" variant="outline" onClick={onRestore} disabled={isRestoring}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setRestoreDialogOpen(true);
+            }}
+            disabled={isRestoring}
+          >
             {isRestoring ? "Restoring..." : "Restore Backup"}
           </Button>
           {restoreStatus === "success" ? (
-            <Badge className="border-green-600/30 bg-green-600/15 text-green-700 dark:text-green-300">
-              Restore completed, reloading
-            </Badge>
+            <Badge variant="success">Restore completed, reloading</Badge>
           ) : null}
           {restoreStatus === "error" ? (
-            <Badge className="border-red-600/30 bg-red-600/15 text-red-700 dark:text-red-300">
-              Restore failed
-            </Badge>
+            <Badge variant="destructive">Restore failed</Badge>
           ) : null}
         </section>
 
@@ -186,13 +189,7 @@ export const SettingsBackupTab = ({
             {isCheckingIntegrity ? "Checking integrity..." : "Check Integrity"}
           </Button>
           {integrityResult ? (
-            <Badge
-              className={
-                integrityResult.ok
-                  ? "border-green-600/30 bg-green-600/15 text-green-700 dark:text-green-300"
-                  : "border-red-600/30 bg-red-600/15 text-red-700 dark:text-red-300"
-              }
-            >
+            <Badge variant={integrityResult.ok ? "success" : "destructive"}>
               {integrityResult.ok ? "Database integrity OK" : "Integrity issues detected"}
             </Badge>
           ) : null}
@@ -241,5 +238,17 @@ export const SettingsBackupTab = ({
         />
       </CardContent>
     </Card>
+
+      <ConfirmActionDialog
+        open={restoreDialogOpen}
+        onOpenChange={setRestoreDialogOpen}
+        title="Restore database?"
+        description="Restoring will overwrite the current database. The application will reload. Continue?"
+        confirmLabel="Restore"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={onRestore}
+      />
+    </>
   );
 };

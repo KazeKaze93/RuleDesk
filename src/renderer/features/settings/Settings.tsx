@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import log from "electron-log/renderer";
 import { useQueryClient } from "@tanstack/react-query";
+import { Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { PageHeader } from "../../components/layout/PageHeader";
 import { SettingsGeneralTab } from "./SettingsGeneralTab";
 import { SettingsSyncTab } from "./SettingsSyncTab";
 import { SettingsAppearanceTab } from "./SettingsAppearanceTab";
@@ -55,7 +57,6 @@ export const Settings = () => {
   const [backupRetention, setBackupRetention] = useState("5");
   const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>("never");
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
-  const [proxyError, setProxyError] = useState<string | null>(null);
   const [proxyStatus, setProxyStatus] = useState<"idle" | "success" | "error">("idle");
   const [apiKey, setApiKey] = useState("");
   const [userId, setUserId] = useState("");
@@ -247,7 +248,6 @@ export const Settings = () => {
       try {
         await window.api.saveSettings({ proxyUrl: null });
         setProxyUrl(null);
-        setProxyError(null);
         if (showStatus) {
           setProxyStatus("success");
           scheduleStatusReset("proxy", () => setProxyStatus("idle"));
@@ -263,14 +263,12 @@ export const Settings = () => {
     }
 
     if (!validateProxyUrl(normalized)) {
-      setProxyError("Please enter a valid HTTP/HTTPS URL.");
       return;
     }
 
     try {
       await window.api.saveSettings({ proxyUrl: normalized });
       setProxyUrl(normalized);
-      setProxyError(null);
       if (showStatus) {
         setProxyStatus("success");
         scheduleStatusReset("proxy", () => setProxyStatus("idle"));
@@ -499,12 +497,11 @@ export const Settings = () => {
 
   return (
     <section className="container max-w-4xl space-y-6 py-8">
-      <section>
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">
-          Manage application preferences in focused sections.
-        </p>
-      </section>
+      <PageHeader
+        title="Settings"
+        description="Manage application preferences in focused sections."
+        icon={SettingsIcon}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="flex w-full flex-wrap justify-start gap-1">
@@ -524,7 +521,6 @@ export const Settings = () => {
             duplicateFileBehavior={duplicateFileBehavior}
             downloadFolderStructure={downloadFolderStructure}
             proxyUrl={proxyUrl}
-            proxyError={proxyError}
             proxyStatus={proxyStatus}
             onSelectDownloadFolder={() => {
               void handleSelectDownloadFolder();
@@ -540,7 +536,6 @@ export const Settings = () => {
             }}
             onProxyUrlChange={(value) => {
               setProxyUrl(value.length > 0 ? value : null);
-              setProxyError(null);
             }}
             onProxyBlur={() => {
               void handleSaveProxy(false);
@@ -596,9 +591,7 @@ export const Settings = () => {
             onBackup={() => {
               void handleBackup();
             }}
-            onRestore={() => {
-              void handleRestore();
-            }}
+            onRestore={handleRestore}
             onIntegrityCheck={() => {
               void handleIntegrityCheck();
             }}

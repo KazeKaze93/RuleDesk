@@ -123,12 +123,12 @@ export const DatabaseMaintenanceCard = ({
         </section>
 
         <Badge
-          className={
+          variant={
             lastVacuumStatus === "success"
-              ? "border-green-600/30 bg-green-600/15 text-green-700 dark:text-green-300"
+              ? "success"
               : lastVacuumStatus === "error"
-                ? "border-red-600/30 bg-red-600/15 text-red-700 dark:text-red-300"
-                : "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300"
+                ? "destructive"
+                : "secondary"
           }
         >
           {statusLabel}

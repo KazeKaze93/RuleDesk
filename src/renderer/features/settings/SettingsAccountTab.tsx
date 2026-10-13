@@ -1,9 +1,21 @@
-import type { ClipboardEvent } from "react";
+import { useEffect, type ClipboardEvent } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../../components/ui/form";
 import {
   Select,
   SelectContent,
@@ -12,6 +24,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
+import { SaveSettingsSchema } from "../../../shared/schemas/settings";
 import { normalizeCredentialsInput } from "../../lib/parseCredentialsFromText";
 import {
   AlertDialog,
@@ -23,6 +36,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
+
+const CredentialsFormSchema = z
+  .object({
+    userId: z.string(),
+    apiKey: z.string(),
+  })
+  .superRefine((values, ctx) => {
+    const payload = {
+      userId: values.userId.trim() === "" ? undefined : values.userId.trim(),
+      apiKey: values.apiKey.trim() === "" ? undefined : values.apiKey.trim(),
+    };
+    const result = SaveSettingsSchema.pick({ userId: true, apiKey: true }).safeParse(
+      payload
+    );
+    if (result.success) {
+      return;
+    }
+    for (const issue of result.error.issues) {
+      const field = issue.path[0];
+      if (field !== "userId" && field !== "apiKey") {
+        continue;
+      }
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: issue.message,
+        path: [field],
+      });
+    }
+  });
+
+type CredentialsFormValues = z.infer<typeof CredentialsFormSchema>;
 
 interface SettingsAccountTabProps {
   provider: ProviderId;
@@ -63,9 +107,18 @@ export const SettingsAccountTab = ({
   onResetOnboarding,
   showUserIdField = true,
 }: SettingsAccountTabProps) => {
+  const form = useForm<CredentialsFormValues>({
+    resolver: zodResolver(CredentialsFormSchema),
+    defaultValues: { userId, apiKey },
+    mode: "onSubmit",
+  });
+  const { reset: resetCredentialsForm } = form;
+
+  useEffect(() => {
+    resetCredentialsForm({ userId, apiKey });
+  }, [userId, apiKey, resetCredentialsForm]);
+
   const normalizedUserId = userId.trim();
-  const isUserIdInvalid =
-    normalizedUserId.length > 0 && !/^\d+$/.test(normalizedUserId);
 
   const applyParsedCredentials = (text: string): boolean => {
     const credentials = normalizeCredentialsInput({ apiKey: text, userId });
@@ -74,9 +127,11 @@ export const SettingsAccountTab = ({
     }
     if (credentials.userId) {
       onUserIdChange?.(credentials.userId);
+      form.setValue("userId", credentials.userId, { shouldValidate: true });
     }
     if (credentials.apiKey) {
       onApiKeyChange(credentials.apiKey);
+      form.setValue("apiKey", credentials.apiKey, { shouldValidate: true });
     }
     return true;
   };
@@ -89,12 +144,9 @@ export const SettingsAccountTab = ({
     event.preventDefault();
   };
 
-  const handleApiKeyChange = (value: string) => {
-    if (applyParsedCredentials(value)) {
-      return;
-    }
-    onApiKeyChange(value);
-  };
+  const handleSave = form.handleSubmit(() => {
+    onSaveApiKey();
+  });
 
   return (
     <Card>
@@ -105,13 +157,7 @@ export const SettingsAccountTab = ({
       <CardContent className="space-y-3">
         <section className="flex flex-wrap items-center gap-2">
           <Label>API key status</Label>
-          <Badge
-            className={
-              hasApiKey
-                ? "border-green-600/30 bg-green-600/15 text-green-700 dark:text-green-300"
-                : "border-red-600/30 bg-red-600/15 text-red-700 dark:text-red-300"
-            }
-          >
+          <Badge variant={hasApiKey ? "success" : "destructive"}>
             {hasApiKey ? "Configured" : "Not configured"}
           </Badge>
         </section>
@@ -135,70 +181,110 @@ export const SettingsAccountTab = ({
           </Select>
         </section>
 
-        {showUserIdField ? (
-          <section className="space-y-2">
-            <Label htmlFor="user-id">User ID</Label>
-            <Input
-              id="user-id"
-              type="text"
-              value={userId}
-              onChange={(event) => onUserIdChange?.(event.target.value)}
-              onPaste={handleCredentialsPaste}
-              placeholder="Enter User ID"
-            />
-            {isUserIdInvalid ? (
-              <p className="text-xs text-red-500">User ID must contain digits only.</p>
+        <Form {...form}>
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSave();
+            }}
+          >
+            {showUserIdField ? (
+              <FormField
+                control={form.control}
+                name="userId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>User ID</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Enter User ID"
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onPaste={handleCredentialsPaste}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          field.onChange(next);
+                          onUserIdChange?.(next);
+                        }}
+                        name={field.name}
+                        ref={field.ref}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             ) : null}
-          </section>
-        ) : null}
-        {!showUserIdField && normalizedUserId ? (
-          <p className="text-xs text-muted-foreground">
-            Detected User ID: <span className="font-mono text-foreground">{normalizedUserId}</span>
-          </p>
-        ) : null}
+            {!showUserIdField && normalizedUserId ? (
+              <p className="text-xs text-muted-foreground">
+                Detected User ID:{" "}
+                <span className="font-mono text-foreground">{normalizedUserId}</span>
+              </p>
+            ) : null}
 
-        <section className="space-y-2">
-          <Label htmlFor="api-key">API key</Label>
-          <Input
-            id="api-key"
-            type={showApiKey ? "text" : "password"}
-            value={apiKey}
-            onChange={(event) => handleApiKeyChange(event.target.value)}
-            onPaste={handleCredentialsPaste}
-            placeholder="api_key=...&user_id=... or API key only"
-          />
-          <p className="text-xs text-muted-foreground">
-            Tip: paste the full account page URL into either field — both User ID and API Key will be filled in automatically.
-          </p>
-          <section className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={onToggleApiKeyVisibility}>
-              {showApiKey ? "Hide" : "Show"}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={onSaveApiKey}
-              disabled={
-                isUserIdInvalid ||
-                (!showUserIdField && normalizedUserId.length === 0 && apiKey.trim().length > 0)
-              }
-            >
-              Save API Key
-            </Button>
-            {accountStatus === "success" ? (
-              <Badge className="border-green-600/30 bg-green-600/15 text-green-700 dark:text-green-300">
-                Saved
-              </Badge>
-            ) : null}
-            {accountStatus === "error" ? (
-              <Badge className="border-red-600/30 bg-red-600/15 text-red-700 dark:text-red-300">
-                Save failed
-              </Badge>
-            ) : null}
-          </section>
-        </section>
+            <FormField
+              control={form.control}
+              name="apiKey"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>API key</FormLabel>
+                  <FormControl>
+                    <Input
+                      type={showApiKey ? "text" : "password"}
+                      placeholder="api_key=...&user_id=... or API key only"
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onPaste={handleCredentialsPaste}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        if (applyParsedCredentials(next)) {
+                          return;
+                        }
+                        field.onChange(next);
+                        onApiKeyChange(next);
+                      }}
+                      name={field.name}
+                      ref={field.ref}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Tip: paste the full account page URL into either field — both User ID and API
+                    Key will be filled in automatically.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <section className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={onToggleApiKeyVisibility}>
+                {showApiKey ? "Hide" : "Show"}
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={
+                  Boolean(form.formState.errors.userId) ||
+                  (!showUserIdField &&
+                    normalizedUserId.length === 0 &&
+                    apiKey.trim().length > 0)
+                }
+              >
+                Save API Key
+              </Button>
+              {accountStatus === "success" ? (
+                <Badge variant="success">Saved</Badge>
+              ) : null}
+              {accountStatus === "error" ? (
+                <Badge variant="destructive">Save failed</Badge>
+              ) : null}
+            </section>
+          </form>
+        </Form>
         {isDevMode ? (
-          <section className="pt-2 border-t">
+          <section className="border-t pt-2">
             <Button type="button" variant="destructive" size="sm" onClick={onResetOnboarding}>
               Reset onboarding
             </Button>
