@@ -25,7 +25,7 @@ import {
 } from "../../components/ui/select";
 import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
 import { SaveSettingsSchema } from "../../../shared/schemas/settings";
-import { normalizeCredentialsInput } from "../../lib/parseCredentialsFromText";
+import { normalizeCredentialsInput } from "@shared/utils/parse-credentials";
 import {
   AlertDialog,
   AlertDialogAction,
