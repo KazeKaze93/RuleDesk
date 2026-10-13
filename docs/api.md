@@ -12,8 +12,6 @@
 | Channel | Token | Args (Zod) | Idempotent | Handler | Notes |
 | --- | --- | --- | --- | --- | --- |
 | `api:search-remote-tags` | `API.SEARCH_REMOTE` | `z.tuple([ z.string().trim().min(2), z.enum(["rule34", "gelbooru"]).optional(), z.boolean().optional(), ])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
-| `app:check-for-updates` | `APP.CHECK_FOR_UPDATES` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
-| `app:download-file` | `APP.DOWNLOAD_FILE` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `app:get-app-info` | `APP.GET_APP_INFO` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:get-db-location` | `APP.GET_DB_LOCATION` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:get-diagnostics` | `APP.GET_DIAGNOSTICS` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
@@ -24,7 +22,6 @@
 | `app:open-logs-folder` | `APP.OPEN_LOGS_FOLDER` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:open-release-page` | `APP.OPEN_RELEASE_PAGE` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:save-settings` | `SETTINGS.SAVE` | `z.tuple([SaveSettingsSchema])` | no | `SettingsController` | Partial upsert. minimizeToTray: when true (default), win/linux close hides to tray; when false, close quits. Read at close time (no restart). macOS close never quits (Dock). |
-| `app:verify-creds` | `APP.VERIFY_CREDS` | `z.tuple([z.enum(["rule34", "gelbooru"]).optional()])` | no | `AuthController` | `src/main/ipc/controllers/AuthController.ts` |
 | `app:write-to-clipboard` | `APP.WRITE_CLIPBOARD` | `z.tuple([z.string().min(1)])` | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `backup:getSchedule` | `BACKUP.GET_SCHEDULE` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `backup:integrity-check` | `BACKUP.INTEGRITY_CHECK` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
@@ -35,31 +32,24 @@
 | `booru:resolve-character-tags` | `API.RESOLVE_CHARACTER_TAGS` | `z.tuple([z.array(z.string().min(1)).max(100)])` | no | `SearchController` | `src/main/ipc/controllers/SearchController.ts` |
 | `booru:resolve-copyright-tags` | `API.RESOLVE_COPYRIGHT_TAGS` | `z.tuple([z.array(z.string().min(1)).max(100)])` | no | `SearchController` | `src/main/ipc/controllers/SearchController.ts` |
 | `booru:resolve-tags` | `API.RESOLVE_TAGS` | `z.tuple([z.array(z.string().min(1)).max(100)])` | no | `SearchController` | `src/main/ipc/controllers/SearchController.ts` |
-| `booru:resolve-tags-by-type` | `API.RESOLVE_TAGS_BY_TYPE` | `z.tuple([ z.array(z.string().min(1)).max(100), z.number().int().refine((n): n is TagType => { return Object.values(TA...` | no | `SearchController` | `src/main/ipc/controllers/SearchController.ts` |
 | `booru:search` | `API.SEARCH_POSTS` | `z.tuple([SearchPostsSchema])` | no | `SearchController` | Provider search; auth/rate_limit errors surface as typed IPC errors to Browse UI. |
 | `db:add-artist` | `DB.ADD_ARTIST` | `z.tuple([AddArtistSchema])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
-| `db:add-posts-to-playlist` | `DB.ADD_POSTS_TO_PLAYLIST` | `z.tuple([AddPostsToPlaylistSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:clear-manual-playlist` | `DB.CLEAR_MANUAL_PLAYLIST` | schema: see source (`ClearManualPlaylistSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:create-backup` | `BACKUP.CREATE` | `[]` (no args) | yes | `MaintenanceController` | Consistent SQLite snapshot via VACUUM INTO into RuleDesk-Backups/ (sibling of RuleDesk-Data). Opens the backup folder in the file explorer. Retention prune follows backupRetention. |
 | `db:create-playlist` | `DB.CREATE_PLAYLIST` | `z.tuple([CreatePlaylistSchema])` | yes | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:delete-artist` | `DB.DELETE_ARTIST` | `z.tuple([IdSchema])` | no | `ArtistsController` | Deletes artist + cascaded posts. If that artist is mid-sync, cancels only their sync and waits for FTS finally (timeout → { ok:false, reason:sync_busy_timeout }); does not globally cancel Sync All. |
 | `db:delete-playlist` | `DB.DELETE_PLAYLIST` | `z.tuple([IdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:export-playlist` | `DB.EXPORT_PLAYLIST` | `z.tuple([IdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
-| `db:get-api-key-encrypted` | `DB.GET_API_KEY_ENCRYPTED` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `db:get-artists` | `DB.GET_ARTISTS` | `[]` (no args) | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
-| `db:get-download-items` | `DB.GET_DOWNLOAD_ITEMS` | `z.tuple([ GetPostsSchema.extend({ limit: z .number() .int() .min(1) .max(BATCH_DOWNLOAD_MAX_FILES) .default(BATCH_DOW...` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:get-manual-playlist-membership-for-posts` | `DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS` | schema: see source (`GetManualPlaylistMembershipForPostsSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlist` | `DB.GET_PLAYLIST` | `z.tuple([IdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
-| `db:get-playlist-download-items` | `DB.GET_PLAYLIST_DOWNLOAD_ITEMS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `db:get-playlist-posts` | `DB.GET_PLAYLIST_POSTS` | `z.tuple([GetPlaylistPostsSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlists` | `DB.GET_PLAYLISTS` | `[]` (no args) | yes | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlists-containing-post` | `DB.GET_PLAYLISTS_CONTAINING_POST` | `z.tuple([ z.number().int(), OptionalIdSchema, z.enum(PROVIDER_IDS).optional(), ])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
-| `db:get-posts` | `DB.GET_POSTS` | `z.tuple([GetPostsSchema])` | no | `PostsController` | Paginated posts with filters. Always limited — see MAX page size in PostsController. |
+| `db:get-posts` | `DB.GET_POSTS` | `z.tuple([GetPostsSchema])` | yes | `PostsController` | Paginated posts with filters. Always limited — see MAX page size in PostsController. |
 | `db:get-posts-count` | `DB.GET_POSTS_COUNT` | `z.tuple([GetPostsCountSchema])` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:get-posts-count-with-filters` | `DB.GET_POSTS_COUNT_WITH_FILTERS` | `z.tuple([ GetPostsSchema.pick({ artistId: true, filters: true }), ])` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
-| `db:get-stats` | `DB.GET_STATS` | `[]` (no args) | yes | `StatsController` | `src/main/ipc/controllers/StatsController.ts` |
 | `db:import-playlist` | `DB.IMPORT_PLAYLIST` | `z.tuple([])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
-| `db:mark-all-viewed` | `DB.MARK_ALL_VIEWED` | `z.tuple([])` | no | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:mark-post-viewed` | `DB.MARK_VIEWED` | `z.tuple([ z.number().int(), PostDataSchema.optional(), ])` | no | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:move-posts-between-manual-playlists` | `DB.MOVE_POSTS_BETWEEN_MANUAL_PLAYLISTS` | schema: see source (`MovePostsBetweenManualPlaylistsSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:remove-posts-from-playlist` | `DB.REMOVE_POSTS_FROM_PLAYLIST` | `z.tuple([RemovePostsFromPlaylistSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
@@ -67,17 +57,15 @@
 | `db:reset-post-cache` | `DB.RESET_POST_CACHE` | `z.tuple([IdSchema])` | no | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:resolve-playlist-posts` | `DB.RESOLVE_PLAYLIST_POSTS` | `z.tuple([ResolvePlaylistPostsSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:restore-backup` | `BACKUP.RESTORE` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
-| `db:search-tags` | `DB.SEARCH_TAGS` | `z.tuple([z.string().trim().min(1)])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
 | `db:shadow-insert-post` | `DB.SHADOW_INSERT_POST` | `z.tuple([ShadowInsertRequestSchema])` | no | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:sync-all` | `DB.SYNC_ALL` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `db:sync-manual-playlist-membership` | `DB.SYNC_MANUAL_PLAYLIST_MEMBERSHIP` | schema: see source (`SyncManualPlaylistMembershipSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:toggle-post-favorite` | `DB.TOGGLE_FAVORITE` | `z.tuple([ z.number().int(), PostDataSchema.optional(), ])` | no | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
-| `db:toggle-post-viewed` | `DB.TOGGLE_POST_VIEWED` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `db:update-playlist` | `DB.UPDATE_PLAYLIST` | `z.tuple([IdSchema, UpdatePlaylistSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `files:cancel-download-all` | `FILES.CANCEL_DOWNLOAD_ALL` | `[]` (no args) | yes | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:dismiss-pending-download` | `FILES.DISMISS_PENDING_DOWNLOAD` | `[]` (no args) | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:download` | `FILES.DOWNLOAD` | `z.tuple([ DownloadFileSchema.shape.url, DownloadFileSchema.shape.filename, ])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
-| `files:download-all` | `FILES.DOWNLOAD_ALL` | `z.tuple([DownloadAllRequestSchema])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
+| `files:download-all` | `FILES.DOWNLOAD_ALL` | `z.tuple([DownloadAllRequestSchema])` | yes | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:download-all-progress` | `FILES.DOWNLOAD_ALL_PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `files:download-progress` | `FILES.DOWNLOAD_PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `files:get-pending-download` | `FILES.GET_PENDING_DOWNLOAD` | `[]` (no args) | yes | `FileController` | `src/main/ipc/controllers/FileController.ts` |
@@ -119,9 +107,9 @@
 
 ## Coverage
 
-- Channels in `channels.ts`: **105**
-- Channels with at least one scanned `handle` registration: **90**
-- Handler rows extracted: **90**
+- Channels in `channels.ts`: **93**
+- Channels with at least one scanned `handle` registration: **82**
+- Handler rows extracted: **82**
 
 ## Regenerating
 
