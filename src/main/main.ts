@@ -61,7 +61,12 @@ if (isTestMode) {
 import { getAppIconPath, getAppIconsDirectory } from "./lib/app-resources";
 
 import { getFileController, registerAllHandlers } from "./ipc/index";
-import { initializeDatabase, closeDatabase, getDb } from "./db/client";
+import {
+  initializeDatabase,
+  closeDatabase,
+  getDb,
+  isHeadlessEnvironment,
+} from "./db/client";
 import {
   decideMainWindowCloseAction,
   readMinimizeToTrayEnabled,
@@ -96,7 +101,6 @@ if (process.platform === "linux") {
   // Enable hardware video decode where supported
   app.commandLine.appendSwitch("enable-features", "VaapiVideoDecodeLinuxGL");
 }
-app.commandLine.appendSwitch("ignore-gpu-blacklist");
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -598,10 +602,9 @@ async function initializeAppAndWindow() {
     });
   } catch (e) {
     logger.error("FATAL: Failed to initialize application or database.", e);
-    
-    // Don't show error dialog in headless/test mode (blocks process in CI)
-    const isHeadless = isTestMode || process.env.CI === "true" || !process.env.DISPLAY;
-    if (!isHeadless) {
+
+    // Sole fatal-error dialog site. Headless = Linux without DISPLAY/WAYLAND_DISPLAY.
+    if (!isHeadlessEnvironment()) {
       dialog.showErrorBox(
         "Fatal Error",
         `App initialization failed:\n${
@@ -609,7 +612,7 @@ async function initializeAppAndWindow() {
         }`
       );
     }
-    
+
     // In test mode, don't exit immediately - let Playwright handle the error
     // This allows tests to catch and report the error properly
     if (isTestMode) {
@@ -619,7 +622,7 @@ async function initializeAppAndWindow() {
       // Don't call app.exit() - let Playwright detect the failure and clean up
       return;
     }
-    
+
     app.exit(1);
   }
 }
