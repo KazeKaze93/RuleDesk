@@ -103,11 +103,11 @@ Integrity / silent-error / sync-FTS / index / cache / uniqueness / blacklist bat
 | T7 | `fix/db-caches-after-restore-vacuum` | [#212](https://github.com/KazeKaze93/RuleDesk/pull/212) | ✅ merged |
 | T8 | `fix/artists-unique-provider-tag` | [#209](https://github.com/KazeKaze93/RuleDesk/pull/209) | ✅ merged |
 | T9 | `perf/blacklist-filter` | [#213](https://github.com/KazeKaze93/RuleDesk/pull/213) | ✅ merged |
-| T10 | `chore/lessons-db-review-waves` | [#214](https://github.com/KazeKaze93/RuleDesk/pull/214) | started |
+| T10 | `chore/lessons-db-review-waves` | [#214](https://github.com/KazeKaze93/RuleDesk/pull/214) | ✅ merged |
 
-### DB review waves (P2)
+### DB review waves (P2) — closed
 
-FTS tokenizer / seeded random / cache eviction / schema SQL sync / backup worker / sync cancel / hybrid playlist merge / newPostsCount single source / lessons. Status lives only in this table. Architectural lessons harvested in P9.
+FTS tokenizer / seeded random / cache eviction / schema SQL sync / backup worker / sync cancel / hybrid playlist merge / newPostsCount single source / lessons. Status lives only in this table. Architectural lessons harvested in P9. **Pack closed** (P1–P9 all merged).
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
@@ -120,6 +120,20 @@ FTS tokenizer / seeded random / cache eviction / schema SQL sync / backup worker
 | P7 | `fix/hybrid-smart-playlist-merge` | [#226](https://github.com/KazeKaze93/RuleDesk/pull/226) | ✅ merged |
 | P8 | `fix/new-posts-count-single-source` | [#230](https://github.com/KazeKaze93/RuleDesk/pull/230) | ✅ merged |
 | P9 | `chore/lessons-p2` | [#231](https://github.com/KazeKaze93/RuleDesk/pull/231) | ✅ merged |
+
+### Post-P9 hotfixes + R4 (after DB-review P2)
+
+R4 GREEN after F fixes. Post-P9 lessons harvested in L (do not re-open P2). Concurrent release T shipped `18.3.0` on master (docs PR rebased onto tip).
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| F-backup | `fix/backup-worker-path` | [#232](https://github.com/KazeKaze93/RuleDesk/pull/232) | ✅ merged |
+| F-playlist | `fix/playlist-page-uniqueness` | [#233](https://github.com/KazeKaze93/RuleDesk/pull/233) | ✅ merged |
+| F-hybrid-ordered | `fix/hybrid-ordered-page-uniqueness` | [#234](https://github.com/KazeKaze93/RuleDesk/pull/234) | ✅ merged |
+| F-ordered-paging-drift | `fix/ordered-playlist-stable-pages` | [#235](https://github.com/KazeKaze93/RuleDesk/pull/235) | ✅ merged |
+| R4 | (packed/unpackaged smoke) | — | ✅ GREEN |
+| L | `chore/lessons-p2-fixes` | — | started |
+| T | `18.3.0` (version bump on master) | — | ✅ merged (`d426de7`) |
 
 ## 📰 Updates feed
 
