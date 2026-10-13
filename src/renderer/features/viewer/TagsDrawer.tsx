@@ -35,6 +35,10 @@ import { useViewerStore, type ViewerOrigin } from "../../store/viewerStore";
 import { cn } from "../../lib/utils";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { VIEWER_OVERLAY_Z, viewerOverlayClass } from "./viewer-layers";
+import {
+  buildPostMetadataResolveQueryKey,
+  canonicalizePostTagsForResolve,
+} from "./postMetadataQueryKeys";
 
 const VIEWER_TAG_HINT_SEEN_KEY = "hasSeenTagHint";
 const RESOLVE_TAGS_BATCH_SIZE = 100;
@@ -188,14 +192,23 @@ export const TagsDrawer = ({
   }, [artists, post.artistId]);
 
 
-  // Lazy batch resolver for artist tags (only for untracked posts)
-  // Uses React Query to cache results and batch multiple tags in one request
-  // staleTime matches Main tag_metadata not_found TTL (shared constant) so a
-  // long session cannot keep "No X detected" after server-side re-resolution.
-  // Uses IPC to call Main Process which has full access to credentials and persistent DB cache
-  // Post.tags is always a string in the schema, but handle edge cases
-  const tagsString = typeof post?.tags === "string" ? post.tags : '';
+  // Lazy batch resolver for artist tags (only for untracked posts).
+  // staleTime matches Main tag_metadata not_found TTL (shared constant).
+  // Canonicalize tags so string | string[] share one query key (factory).
+  const tagsString = canonicalizePostTagsForResolve(post?.tags);
   const hasKnownArtist = !!artist;
+  const artistResolveQueryKey = buildPostMetadataResolveQueryKey(
+    "artist",
+    tagsString
+  );
+  const characterResolveQueryKey = buildPostMetadataResolveQueryKey(
+    "character",
+    tagsString
+  );
+  const copyrightResolveQueryKey = buildPostMetadataResolveQueryKey(
+    "copyright",
+    tagsString
+  );
 
   // Clean IPC call - no credentials passed from UI
   // Main Process handles authentication and persistent SQLite cache internally
@@ -206,10 +219,10 @@ export const TagsDrawer = ({
     isError: isArtistResolveError,
     error: artistResolveError,
   } = useQuery<string[]>({
-    queryKey: ['resolve-tags-ipc', tagsString],
+    queryKey: artistResolveQueryKey,
     queryFn: async () => {
       if (!tagsString) return [];
-      const tagsToAsk = tagsString.split(' ').filter((t: string) => t.length > 0);
+      const tagsToAsk = tagsString.split(" ").filter((t: string) => t.length > 0);
       if (tagsToAsk.length === 0) return [];
 
       const tagChunks = chunkTags(tagsToAsk, RESOLVE_TAGS_BATCH_SIZE);
@@ -230,10 +243,10 @@ export const TagsDrawer = ({
     isError: isCharacterResolveError,
     error: characterResolveError,
   } = useQuery<string[]>({
-    queryKey: ['resolve-character-tags-ipc', tagsString],
+    queryKey: characterResolveQueryKey,
     queryFn: async () => {
       if (!tagsString) return [];
-      const tagsToAsk = tagsString.split(' ').filter((t: string) => t.length > 0);
+      const tagsToAsk = tagsString.split(" ").filter((t: string) => t.length > 0);
       if (tagsToAsk.length === 0) return [];
 
       const tagChunks = chunkTags(tagsToAsk, RESOLVE_TAGS_BATCH_SIZE);
@@ -254,10 +267,10 @@ export const TagsDrawer = ({
     isError: isCopyrightResolveError,
     error: copyrightResolveError,
   } = useQuery<string[]>({
-    queryKey: ['resolve-copyright-tags-ipc', tagsString],
+    queryKey: copyrightResolveQueryKey,
     queryFn: async () => {
       if (!tagsString) return [];
-      const tagsToAsk = tagsString.split(' ').filter((t: string) => t.length > 0);
+      const tagsToAsk = tagsString.split(" ").filter((t: string) => t.length > 0);
       if (tagsToAsk.length === 0) return [];
 
       const tagChunks = chunkTags(tagsToAsk, RESOLVE_TAGS_BATCH_SIZE);
@@ -274,11 +287,8 @@ export const TagsDrawer = ({
   // Group all tags by type in a single useMemo for better performance
   // This avoids multiple useMemo dependencies and reduces re-computation overhead
   const groupedTags = useMemo(() => {
-    // Parse all tags from post
-    const allTags: string[] = post?.tags
-      ? (typeof post.tags === 'string' 
-          ? post.tags.split(' ').filter(t => t.length > 0)
-          : Array.isArray(post.tags) ? post.tags : [])
+    const allTags: string[] = tagsString.length > 0
+      ? tagsString.split(" ").filter((t) => t.length > 0)
       : [];
 
     // Copyright tags (type=3)
@@ -324,7 +334,7 @@ export const TagsDrawer = ({
       general,
     };
   }, [
-    post.tags,
+    tagsString,
     artist,
     resolvedArtistTags,
     resolvedCharacterTags,

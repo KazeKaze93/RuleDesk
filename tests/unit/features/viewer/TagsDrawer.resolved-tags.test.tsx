@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Post } from "@shared/types/db";
 import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
 import { TagsDrawer } from "@/renderer/features/viewer/TagsDrawer";
+import { buildPostMetadataResolveQueryKey } from "@/renderer/features/viewer/postMetadataQueryKeys";
 import { makePost } from "../../components/PostCard/makePost";
 
 vi.mock("electron-log/renderer", () => ({
@@ -208,12 +209,18 @@ describe("TagsDrawer artist/character resolve states", () => {
     const tagsString = "wlop 2b general_tag";
     const queryClient = createQueryClient();
     queryClient.setQueryData(["artists"], []);
-    queryClient.setQueryData(["resolve-tags-ipc", tagsString], ["wlop"]);
     queryClient.setQueryData(
-      ["resolve-character-tags-ipc", tagsString],
+      buildPostMetadataResolveQueryKey("artist", tagsString),
+      ["wlop"]
+    );
+    queryClient.setQueryData(
+      buildPostMetadataResolveQueryKey("character", tagsString),
       ["2b"]
     );
-    queryClient.setQueryData(["resolve-copyright-tags-ipc", tagsString], []);
+    queryClient.setQueryData(
+      buildPostMetadataResolveQueryKey("copyright", tagsString),
+      []
+    );
 
     renderDrawer(untrackedPost(tagsString), queryClient);
 
@@ -238,9 +245,18 @@ describe("TagsDrawer artist/character resolve states", () => {
     });
     const queryClient = createQueryClient();
     queryClient.setQueryData(["artists"], []);
-    queryClient.setQueryData(["resolve-tags-ipc", postBTags], ["wlop"]);
-    queryClient.setQueryData(["resolve-character-tags-ipc", postBTags], []);
-    queryClient.setQueryData(["resolve-copyright-tags-ipc", postBTags], []);
+    queryClient.setQueryData(
+      buildPostMetadataResolveQueryKey("artist", postBTags),
+      ["wlop"]
+    );
+    queryClient.setQueryData(
+      buildPostMetadataResolveQueryKey("character", postBTags),
+      []
+    );
+    queryClient.setQueryData(
+      buildPostMetadataResolveQueryKey("copyright", postBTags),
+      []
+    );
 
     const view = renderDrawer(untrackedPost(postATags), queryClient);
     await screen.findByRole("status", { name: "Resolving artist" });
@@ -261,5 +277,82 @@ describe("TagsDrawer artist/character resolve states", () => {
     expect(screen.getByRole("button", { name: "wlop" })).toBeTruthy();
     expect(screen.queryByRole("status", { name: "Resolving artist" })).toBeNull();
     expect(screen.queryByText("No artist detected")).toBeNull();
+  });
+
+  it("first open with unresolved metadata shows artist/character after resolve without reopen", async () => {
+    const artist = createDeferred<string[]>();
+    const character = createDeferred<string[]>();
+    const api = installResolveApi({
+      resolveTags: () => artist.promise,
+      resolveCharacterTags: () => character.promise,
+      resolveCopyrightTags: async () => [],
+    });
+    const queryClient = createQueryClient();
+    renderDrawer(untrackedPost("wlop 2b general_tag"), queryClient);
+
+    await screen.findByRole("status", { name: "Resolving artist" });
+    expect(api.resolveTags).toHaveBeenCalledTimes(1);
+
+    artist.resolve(["wlop"]);
+    character.resolve(["2b"]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "wlop" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "2b" })).toBeTruthy();
+    });
+  });
+
+  it("resolves when post.tags arrives as a string[] (not only space-joined string)", async () => {
+    const artist = createDeferred<string[]>();
+    installResolveApi({
+      resolveTags: () => artist.promise,
+      resolveCharacterTags: async () => ["2b"],
+      resolveCopyrightTags: async () => [],
+    });
+    const queryClient = createQueryClient();
+    const post = makePost({
+      artistId: EXTERNAL_ARTIST_ID,
+      tags: "ignored",
+    });
+    // Runtime edge: some paths historically handed arrays through IPC
+    const postWithArrayTags: Post = {
+      ...post,
+      tags: ["wlop", "2b", "general_tag"] as unknown as string,
+    };
+    // Keep a real array at runtime for canonicalizePostTagsForResolve
+    Object.assign(postWithArrayTags, { tags: ["wlop", "2b", "general_tag"] });
+    renderDrawer(postWithArrayTags, queryClient);
+
+    await screen.findByRole("status", { name: "Resolving artist" });
+    artist.resolve(["wlop"]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "wlop" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "2b" })).toBeTruthy();
+    });
+  });
+
+  it("re-open of the same post does not fire redundant resolve requests", async () => {
+    const api = installResolveApi({
+      resolveTags: async () => ["wlop"],
+      resolveCharacterTags: async () => ["2b"],
+      resolveCopyrightTags: async () => [],
+    });
+    const queryClient = createQueryClient();
+    const tagsString = "wlop 2b general_tag";
+
+    const first = renderDrawer(untrackedPost(tagsString), queryClient);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "wlop" })).toBeTruthy();
+    });
+    expect(api.resolveTags).toHaveBeenCalledTimes(1);
+    expect(api.resolveCharacterTags).toHaveBeenCalledTimes(1);
+    first.unmount();
+
+    renderDrawer(untrackedPost(tagsString), queryClient);
+    expect(screen.getByRole("button", { name: "wlop" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "2b" })).toBeTruthy();
+    expect(api.resolveTags).toHaveBeenCalledTimes(1);
+    expect(api.resolveCharacterTags).toHaveBeenCalledTimes(1);
   });
 });

@@ -20,6 +20,7 @@ import {
 import { releaseRadixModalLock } from "../../lib/radix-modal-lock";
 import { VIEWER_SHELL_Z } from "./viewer-layers";
 import { buildViewerOriginQueryKey } from "./buildViewerOriginQueryKey";
+import { canonicalizePostTagsForResolve } from "./postMetadataQueryKeys";
 import { useCurrentPost } from "./hooks/useCurrentPost";
 import { PostNotFoundFallback } from "./PostNotFoundFallback";
 import { ViewerContent } from "./ViewerContent";
@@ -79,15 +80,27 @@ export const ViewerDialog = () => {
   const cachedPost = useCurrentPost(currentPostId, queue?.origin);
   const queryClient = useQueryClient();
 
-  // Fallback to the snapshot captured when the viewer opened. This guarantees a
-  // post the user just clicked is always renderable, even if the React Query
-  // cache lookup misses (e.g. key drift), instead of showing "not found in cache".
+  // Prefer live gallery cache; fall back to the open-time snapshot when the
+  // lookup misses (key drift). If the cache hit has empty tags but the snapshot
+  // still has them, keep the snapshot so Post Metadata resolve can run.
   const post = useMemo(() => {
+    const snapshot =
+      currentPostId === null || !queue?.posts
+        ? undefined
+        : queue.posts.find(
+            (p) => p.id === currentPostId || p.postId === currentPostId
+          );
+
+    if (cachedPost && snapshot) {
+      const cachedTags = canonicalizePostTagsForResolve(cachedPost.tags);
+      const snapshotTags = canonicalizePostTagsForResolve(snapshot.tags);
+      if (cachedTags.length === 0 && snapshotTags.length > 0) {
+        return snapshot;
+      }
+      return cachedPost;
+    }
     if (cachedPost) return cachedPost;
-    if (currentPostId === null || !queue?.posts) return undefined;
-    return queue.posts.find(
-      (p) => p.id === currentPostId || p.postId === currentPostId
-    );
+    return snapshot;
   }, [cachedPost, currentPostId, queue]);
 
   // Get infiniteData for fallback lookup (for remote posts)
