@@ -148,7 +148,7 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 | R | (packed/unpackaged smoke on `1ab4108`) | — | ✅ GREEN |
 | T | `18.3.1` (version bump on master via `release:patch`) | — | ✅ merged (`0d535b9`) |
 | S1 | `chore/release-via-pr` | [#243](https://github.com/KazeKaze93/RuleDesk/pull/243) | ✅ merged |
-| S2 | `chore/enable-master-protection` | (this PR) | ✅ protection enabled |
+| S2 | `chore/enable-master-protection` | [#245](https://github.com/KazeKaze93/RuleDesk/pull/245) | ✅ protection enabled |
 
 ## 📰 Updates feed
 
