@@ -9,7 +9,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/lib/logger", () => ({
+vi.mock("../../../src/main/lib/logger", () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -18,12 +18,12 @@ vi.mock("@/main/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/main/lib/proxy", () => ({
+vi.mock("../../../src/main/lib/proxy", () => ({
   getProxyAgent: vi.fn(() => undefined),
 }));
 
-import { assertCdnDomainsAreSubsetOfAllowed } from "@/main/providers/assert-cdn-domains-subset";
-import { getProvider } from "@/main/providers";
+import { assertCdnDomainsAreSubsetOfAllowed } from "../../../src/main/providers/assert-cdn-domains-subset";
+import { getProvider } from "../../../src/main/providers";
 
 describe("assertCdnDomainsAreSubsetOfAllowed", () => {
   it("throws when a cdn host is missing from allowedDomains", () => {

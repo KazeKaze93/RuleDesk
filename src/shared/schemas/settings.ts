@@ -105,7 +105,6 @@ export const IpcSettingsSchema = z.object({
   provider: z.enum(PROVIDER_IDS),
   hasApiKey: z.boolean(),
   proxyUrl: z.string().url().nullable(),
-  isSafeMode: z.boolean(),
   isAdultConfirmed: z.boolean(),
   isAdultVerified: z.boolean(),
   tosAcceptedAt: z.number().nullable(), // Timestamp in milliseconds
@@ -133,7 +132,6 @@ export const DEFAULT_IPC_SETTINGS: IpcSettings = {
   provider: "rule34",
   hasApiKey: false,
   proxyUrl: null,
-  isSafeMode: true,
   isAdultConfirmed: false,
   isAdultVerified: false,
   tosAcceptedAt: null,

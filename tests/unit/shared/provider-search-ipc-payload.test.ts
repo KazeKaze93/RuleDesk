@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { ProviderSearchError } from "@/main/providers/provider-search-errors";
+import { ProviderSearchError } from "../../../src/main/providers/provider-search-errors";
 import {
   throwProviderSearchIpcError,
   toProviderSearchSerializableError,
-} from "@/main/providers/provider-search-errors";
+} from "../../../src/main/providers/provider-search-errors";
 import {
   BrowseSearchError,
   toBrowseSearchError,
-} from "@/renderer/utils/provider-search-error";
-import { PROVIDER_SEARCH_ERROR_TITLES, PROVIDER_SEARCH_USER_MESSAGES } from "@/shared/schemas/provider-errors";
-import { parseProviderSearchErrorPayload } from "@/shared/utils/provider-search-ipc";
+} from "@/utils/provider-search-error";
+import { PROVIDER_SEARCH_ERROR_TITLES, PROVIDER_SEARCH_USER_MESSAGES } from "@shared/schemas/provider-errors";
+import { parseProviderSearchErrorPayload } from "@shared/utils/provider-search-ipc";
 
 describe("provider search IPC payload hygiene", () => {
   it("toProviderSearchSerializableError omits stack and originalError", () => {

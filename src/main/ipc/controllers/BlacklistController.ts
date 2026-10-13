@@ -30,18 +30,12 @@ export class BlacklistController extends BaseController {
     this.handle(
       IPC_CHANNELS.BLACKLIST.ADD,
       BlacklistTagArgsSchema,
-      (event, ...args) => {
-        const [tag] = BlacklistTagArgsSchema.parse(args);
-        return this.add(event, tag);
-      }
+      (event, tag) => this.add(event, tag)
     );
     this.handle(
       IPC_CHANNELS.BLACKLIST.REMOVE,
       BlacklistTagArgsSchema,
-      (event, ...args) => {
-        const [tag] = BlacklistTagArgsSchema.parse(args);
-        return this.remove(event, tag);
-      }
+      (event, tag) => this.remove(event, tag)
     );
 
     log.info("[BlacklistController] All handlers registered");

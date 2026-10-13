@@ -117,7 +117,7 @@ export const posts = sqliteTable(
     // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
     lastViewedAt: integer("last_viewed_at", { mode: "timestamp" }),
     viewCount: integer("view_count").notNull().default(0),
-    isFavorited: integer("is_favorited", { mode: "boolean" }) // Добавили поле
+    isFavorited: integer("is_favorited", { mode: "boolean" })
       .notNull()
       .default(false),
   },

@@ -20,6 +20,15 @@ import {
 import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
 import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../../components/ui/form";
+import {
   AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
@@ -28,12 +37,51 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
+import { SaveSettingsSchema } from "../../../shared/schemas/settings";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 const MinimizeToTrayFormSchema = z.object({
   minimizeToTray: z.boolean(),
 });
 
 type MinimizeToTrayFormValues = z.infer<typeof MinimizeToTrayFormSchema>;
+
+const PROXY_URL_INVALID_MESSAGE = "Please enter a valid HTTP/HTTPS URL.";
+
+const ProxyFormSchema = z.object({
+  proxyUrl: z.string().superRefine((value, ctx) => {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return;
+    }
+    const parsed = SaveSettingsSchema.pick({ proxyUrl: true }).safeParse({
+      proxyUrl: trimmed,
+    });
+    if (!parsed.success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: PROXY_URL_INVALID_MESSAGE,
+      });
+      return;
+    }
+    try {
+      const protocol = new URL(trimmed).protocol;
+      if (protocol !== "http:" && protocol !== "https:") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: PROXY_URL_INVALID_MESSAGE,
+        });
+      }
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: PROXY_URL_INVALID_MESSAGE,
+      });
+    }
+  }),
+});
+
+type ProxyFormValues = z.infer<typeof ProxyFormSchema>;
 
 const OS_PLATFORM_DARWIN = "darwin";
 
@@ -43,7 +91,6 @@ interface SettingsGeneralTabProps {
   duplicateFileBehavior: "skip" | "overwrite";
   downloadFolderStructure: "flat" | "{artist_id}";
   proxyUrl: string | null;
-  proxyError: string | null;
   proxyStatus: "idle" | "success" | "error";
   minimizeToTray: boolean;
   onSelectDownloadFolder: () => void;
@@ -62,7 +109,6 @@ export const SettingsGeneralTab = ({
   duplicateFileBehavior,
   downloadFolderStructure,
   proxyUrl,
-  proxyError,
   proxyStatus,
   minimizeToTray,
   onSelectDownloadFolder,
@@ -84,9 +130,21 @@ export const SettingsGeneralTab = ({
     defaultValues: { minimizeToTray },
   });
 
+  const proxyForm = useForm<ProxyFormValues>({
+    resolver: zodResolver(ProxyFormSchema),
+    defaultValues: { proxyUrl: proxyUrl ?? "" },
+    mode: "onSubmit",
+  });
+
+  const { reset: resetProxyForm } = proxyForm;
+
   useEffect(() => {
     reset({ minimizeToTray });
   }, [minimizeToTray, reset]);
+
+  useEffect(() => {
+    resetProxyForm({ proxyUrl: proxyUrl ?? "" });
+  }, [proxyUrl, resetProxyForm]);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,13 +181,18 @@ export const SettingsGeneralTab = ({
     try {
       await window.api.wipeAllData();
       // Process exits on success; if we return, something went wrong upstream.
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete application data.";
+    } catch (error: unknown) {
+      const message = resolveErrorMessage(error, "Failed to delete application data.");
       log.error("[Settings] wipeAllData failed:", message);
       toast.error(message);
       setWipeInProgress(false);
     }
+  };
+
+  const saveProxyIfValid = (then: () => void): void => {
+    void proxyForm.handleSubmit(() => {
+      then();
+    })();
   };
 
   return (
@@ -142,7 +205,7 @@ export const SettingsGeneralTab = ({
         <CardContent className="space-y-4">
           <section className="space-y-3">
             <Label>Default download folder</Label>
-            <p className="text-sm text-muted-foreground break-all">
+            <p className="break-all text-sm text-muted-foreground">
               {downloadFolder ?? "Default (Downloads/BooruClient)"}
             </p>
             <section className="flex flex-wrap gap-2">
@@ -155,14 +218,10 @@ export const SettingsGeneralTab = ({
                 </Button>
               ) : null}
               {downloadFolderStatus === "success" ? (
-                <Badge className="border-green-600/30 bg-green-600/15 text-green-700 dark:text-green-300">
-                  Updated
-                </Badge>
+                <Badge variant="success">Updated</Badge>
               ) : null}
               {downloadFolderStatus === "error" ? (
-                <Badge className="border-red-600/30 bg-red-600/15 text-red-700 dark:text-red-300">
-                  Update failed
-                </Badge>
+                <Badge variant="destructive">Update failed</Badge>
               ) : null}
             </section>
           </section>
@@ -236,35 +295,55 @@ export const SettingsGeneralTab = ({
 
           <Separator />
 
-          <section className="space-y-2">
-            <Label htmlFor="proxy-url">Proxy URL</Label>
-            <Input
-              id="proxy-url"
-              placeholder="https://proxy.example.com:8080"
-              value={proxyUrl ?? ""}
-              onChange={(event) => onProxyUrlChange(event.target.value)}
-              onBlur={onProxyBlur}
-            />
-            <p className="text-xs text-muted-foreground">
-              Optional HTTP/HTTPS proxy for requests and downloads.
-            </p>
-            {proxyError ? <p className="text-sm text-destructive">{proxyError}</p> : null}
-            <section className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={onSaveProxy}>
-                Save Proxy
-              </Button>
-              {proxyStatus === "success" ? (
-                <Badge className="border-green-600/30 bg-green-600/15 text-green-700 dark:text-green-300">
-                  Saved
-                </Badge>
-              ) : null}
-              {proxyStatus === "error" ? (
-                <Badge className="border-red-600/30 bg-red-600/15 text-red-700 dark:text-red-300">
-                  Save failed
-                </Badge>
-              ) : null}
-            </section>
-          </section>
+          <Form {...proxyForm}>
+            <form
+              className="space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveProxyIfValid(onSaveProxy);
+              }}
+            >
+              <FormField
+                control={proxyForm.control}
+                name="proxyUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Proxy URL</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="https://proxy.example.com:8080"
+                        name={field.name}
+                        ref={field.ref}
+                        value={field.value}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          field.onChange(next);
+                          onProxyUrlChange(next);
+                        }}
+                        onBlur={() => {
+                          field.onBlur();
+                          saveProxyIfValid(onProxyBlur);
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Optional HTTP/HTTPS proxy for requests and downloads.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <section className="flex flex-wrap items-center gap-2">
+                <Button type="submit" variant="outline" size="sm">
+                  Save Proxy
+                </Button>
+                {proxyStatus === "success" ? <Badge variant="success">Saved</Badge> : null}
+                {proxyStatus === "error" ? (
+                  <Badge variant="destructive">Save failed</Badge>
+                ) : null}
+              </section>
+            </form>
+          </Form>
         </CardContent>
       </Card>
 

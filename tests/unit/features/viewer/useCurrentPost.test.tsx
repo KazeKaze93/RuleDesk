@@ -8,8 +8,8 @@ import {
 import { createElement, type ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Post } from "@shared/types/db";
-import { useCurrentPost } from "@/renderer/features/viewer/hooks/useCurrentPost";
-import { buildViewerOriginQueryKey } from "@/renderer/features/viewer/buildViewerOriginQueryKey";
+import { useCurrentPost } from "@/features/viewer/hooks/useCurrentPost";
+import { buildViewerOriginQueryKey } from "@/features/viewer/buildViewerOriginQueryKey";
 import { makePost } from "../../components/PostCard/makePost";
 
 function createQueryClient(): QueryClient {

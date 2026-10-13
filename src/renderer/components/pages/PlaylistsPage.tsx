@@ -1,36 +1,62 @@
 import React, { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
-  useQueryClient,
-} from "@tanstack/react-query";
-import { ArrowLeft, Loader2, List, Sparkles, Plus, Trash2, X, Check, Minus, Pencil, Download, Upload, Eraser } from "lucide-react";
+  ArrowLeft,
+  Loader2,
+  List,
+  Sparkles,
+  Plus,
+  Trash2,
+  X,
+  Check,
+  Minus,
+  Pencil,
+  Download,
+  Upload,
+  Eraser,
+} from "lucide-react";
 import log from "electron-log/renderer";
 import { Button } from "../../components/ui/button";
 import type { PlaylistWithStats } from "@shared/types/bridge";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { cn } from "../../lib/utils";
-import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "../../components/ui/dialog";
+import { Input } from "../../components/ui/input";
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../../components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "../../components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { AsyncAutocomplete } from "../../components/inputs/AsyncAutocomplete";
 import type { SmartPlaylistQuery, SmartPlaylistTag } from "../../../shared/schemas/playlist";
-import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
+import { SmartPlaylistTagSchema, parsePlaylistQuery } from "../../../shared/schemas/playlist";
 import { usePlaylists } from "../../lib/hooks/usePlaylists";
 import type { SearchResults } from "@shared/types/providers";
 import { toast } from "sonner";
 import { PlaylistCard } from "../playlists/PlaylistCard";
 import { PlaylistGallery } from "../playlists/PlaylistGallery";
+import { PageHeader } from "../layout/PageHeader";
+import { Skeleton } from "../ui/skeleton";
+import { ConfirmActionDialog } from "../dialogs/ConfirmActionDialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../ui/form";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 interface PlaylistsPageProps {
   onBack?: () => void;
@@ -38,214 +64,500 @@ interface PlaylistsPageProps {
 
 const INVALID_PLAYLIST_TOAST = "Invalid playlist file";
 const EMPTY_IMPORTED_PLAYLIST_TOAST = "Playlist imported but contains no posts";
+const CREATE_FAILED_TOAST = "Failed to create playlist";
+const UPDATE_FAILED_TOAST = "Failed to update playlist";
+const DELETE_FAILED_TOAST = "Failed to delete playlist";
 
-// Main Playlists Page Component
-export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
-  const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistWithStats | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newPlaylistName, setNewPlaylistName] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [playlistType, setPlaylistType] = useState<"smart" | "manual">("manual");
-  const [tagInputValue, setTagInputValue] = useState("");
-  
-  // Smart Collection tags state
-  const [smartTags, setSmartTags] = useState<SmartPlaylistTag[]>([]);
-  
-  // Filter state for playlist type
-  const [playlistFilter, setPlaylistFilter] = useState<"all" | "smart" | "manual">("all");
-  
-  const [playlistToDelete, setPlaylistToDelete] = useState<PlaylistWithStats | null>(null);
-  const [playlistToClear, setPlaylistToClear] = useState<PlaylistWithStats | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [playlistToEdit, setPlaylistToEdit] = useState<PlaylistWithStats | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [exportingPlaylistId, setExportingPlaylistId] = useState<number | null>(null);
-  const [clearingPlaylistId, setClearingPlaylistId] = useState<number | null>(null);
-  const queryClient = useQueryClient();
-
-  // Use optimized usePlaylists hook with caching
-  const { data: playlists = [], isLoading } = usePlaylists();
-
-  // Filter playlists based on playlistFilter
-  const filteredPlaylists = useMemo(() => {
-    if (playlistFilter === "all") {
-      return playlists;
-    }
-    return playlists.filter((playlist: PlaylistWithStats) => 
-      playlistFilter === "smart" ? playlist.isSmart : !playlist.isSmart
-    );
-  }, [playlists, playlistFilter]);
-
-  const handleCreatePlaylist = async () => {
-    if (!newPlaylistName.trim()) {
-      return;
-    }
-
-    // Smart collections require at least one tag
-    if (playlistType === "smart" && smartTags.length === 0) {
-      log.error("[PlaylistsPage] Smart collection must have at least one tag");
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      // Normalize tags (trim + lowercase) for consistency with FTS5 unicode61 tokenizer
-      const normalizedTags = playlistType === "smart"
-        ? smartTags.map(tag => ({
-            tag: tag.tag.trim().toLowerCase(),
-            type: tag.type,
-          }))
-        : [];
-      
-      const queryObj: SmartPlaylistQuery = { tags: normalizedTags, provider: "rule34" };
-      const queryJson = playlistType === "smart" 
-        ? JSON.stringify(queryObj)
-        : "";
-      
-      await window.api.createPlaylist({
-        name: newPlaylistName.trim(),
-        isSmart: playlistType === "smart",
-        queryJson,
-        iconName: "",
+const PlaylistFormSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Name cannot be empty")
+      .max(200, "Name too long"),
+    playlistType: z.enum(["smart", "manual"]),
+    tags: z.array(SmartPlaylistTagSchema),
+  })
+  .superRefine((data, ctx) => {
+    if (data.playlistType === "smart" && data.tags.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one tag is required",
+        path: ["tags"],
       });
-
-      void queryClient
-        .invalidateQueries({ queryKey: ["playlists"] })
-        .catch((error: unknown) => {
-          log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
-        });
-          setNewPlaylistName("");
-          setTagInputValue("");
-          setSmartTags([]);
-          setPlaylistType("manual"); // Reset to manual for next creation
-          setIsDialogOpen(false);
-    } catch (error) {
-      log.error("[PlaylistsPage] Failed to create playlist:", error);
-    } finally {
-      setIsCreating(false);
     }
+  });
+
+type PlaylistFormValues = z.infer<typeof PlaylistFormSchema>;
+
+const DEFAULT_FORM_VALUES: PlaylistFormValues = {
+  name: "",
+  playlistType: "manual",
+  tags: [],
+};
+
+function normalizeSmartTags(tags: SmartPlaylistTag[]): SmartPlaylistTag[] {
+  return tags.map((tag) => ({
+    tag: tag.tag.trim().toLowerCase(),
+    type: tag.type,
+  }));
+}
+
+function buildQueryJson(
+  playlistType: "smart" | "manual",
+  tags: SmartPlaylistTag[]
+): string {
+  if (playlistType !== "smart") {
+    return "";
+  }
+  const queryObj: SmartPlaylistQuery = {
+    tags: normalizeSmartTags(tags),
+    provider: "rule34",
   };
+  return JSON.stringify(queryObj);
+}
+
+type PlaylistFormDialogProps = {
+  open: boolean;
+  mode: "create" | "edit";
+  initialValues: PlaylistFormValues;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (values: PlaylistFormValues) => Promise<void>;
+};
+
+const PlaylistFormDialog = ({
+  open,
+  mode,
+  initialValues,
+  onOpenChange,
+  onSubmit,
+}: PlaylistFormDialogProps) => {
+  const [tagInputValue, setTagInputValue] = useState("");
+  const form = useForm<PlaylistFormValues>({
+    resolver: zodResolver(PlaylistFormSchema),
+    defaultValues: initialValues,
+    mode: "onChange",
+  });
+
+  const playlistType =
+    useWatch({ control: form.control, name: "playlistType" }) ?? "manual";
+  const smartTags =
+    useWatch({ control: form.control, name: "tags" }) ?? [];
+  const isSubmitting = form.formState.isSubmitting;
+  const isValid = form.formState.isValid;
+  const isTypeLocked = mode === "edit";
+
+  React.useEffect(() => {
+    if (!open) {
+      return;
+    }
+    form.reset(initialValues);
+    setTagInputValue("");
+    void form.trigger();
+  }, [open, initialValues, form]);
 
   const handleTagSelect = (option: SearchResults | null) => {
-    if (!option) return;
+    if (!option) {
+      return;
+    }
 
     const tagName = option.value.trim();
-    if (!tagName) return;
+    if (!tagName) {
+      return;
+    }
 
-    // Check if tag already exists
-    if (smartTags.some((t) => t.tag.toLowerCase() === tagName.toLowerCase())) {
+    const currentTags = form.getValues("tags");
+    if (currentTags.some((t) => t.tag.toLowerCase() === tagName.toLowerCase())) {
       setTagInputValue("");
       return;
     }
 
-    // Add tag with default "include" type
-    setSmartTags((prev) => [...prev, { tag: tagName, type: "include" }]);
+    form.setValue(
+      "tags",
+      [...currentTags, { tag: tagName, type: "include" }],
+      { shouldValidate: true, shouldDirty: true }
+    );
     setTagInputValue("");
   };
 
   const toggleTagType = (index: number) => {
-    setSmartTags((prev) =>
-      prev.map((tag, i) =>
-        i === index ? { ...tag, type: tag.type === "include" ? "exclude" : "include" } : tag
-      )
+    const currentTags = form.getValues("tags");
+    form.setValue(
+      "tags",
+      currentTags.map((tag, i) =>
+        i === index
+          ? { ...tag, type: tag.type === "include" ? "exclude" : "include" }
+          : tag
+      ),
+      { shouldValidate: true, shouldDirty: true }
     );
   };
 
   const removeTag = (index: number) => {
-    setSmartTags((prev) => prev.filter((_, i) => i !== index));
+    const currentTags = form.getValues("tags");
+    form.setValue(
+      "tags",
+      currentTags.filter((_, i) => i !== index),
+      { shouldValidate: true, shouldDirty: true }
+    );
   };
 
-  const handleUpdatePlaylist = async () => {
-    if (!playlistToEdit) return;
-    if (!newPlaylistName.trim()) {
-      return;
-    }
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && isSubmitting) {
+          return;
+        }
+        onOpenChange(nextOpen);
+      }}
+    >
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {mode === "create" ? (
+              <Plus className="w-5 h-5 text-primary" />
+            ) : (
+              <Pencil className="w-5 h-5 text-primary" />
+            )}
+            {mode === "create" ? "Create Playlist" : "Edit Playlist"}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === "create"
+              ? "Create a manual playlist or a smart collection that automatically updates based on tags."
+              : "Update playlist name and tags. Smart collections automatically update based on tags."}
+          </DialogDescription>
+        </DialogHeader>
 
-    // Smart collections require at least one tag
-    if (playlistType === "smart" && smartTags.length === 0) {
-      log.error("[PlaylistsPage] Smart collection must have at least one tag");
-      return;
-    }
+        <Form {...form}>
+          <form
+            className="space-y-6"
+            onSubmit={(event) => {
+              void form
+                .handleSubmit(async (values) => {
+                  await onSubmit(values);
+                })(event)
+                .catch((error: unknown) => {
+                  log.error("[PlaylistsPage] Form submit failed:", error);
+                });
+            }}
+          >
+            <FormField
+              control={form.control}
+              name="playlistType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Playlist Type</FormLabel>
+                  <ToggleGroup
+                    type="single"
+                    value={field.value}
+                    onValueChange={(value) => {
+                      if (isTypeLocked) {
+                        return;
+                      }
+                      if (value === "smart" || value === "manual") {
+                        field.onChange(value);
+                        if (value === "manual") {
+                          form.setValue("tags", [], {
+                            shouldValidate: true,
+                            shouldDirty: true,
+                          });
+                          setTagInputValue("");
+                        }
+                      }
+                    }}
+                    size="default"
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <ToggleGroupItem
+                      value="manual"
+                      className="flex-1"
+                      disabled={isTypeLocked && field.value !== "manual"}
+                    >
+                      <List className="w-4 h-4 mr-2" />
+                      Manual Playlist
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="smart"
+                      className="flex-1"
+                      disabled={isTypeLocked && field.value !== "smart"}
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Smart Collection
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-    setIsEditing(true);
-    try {
-      // Normalize tags (trim + lowercase) for consistency with FTS5 unicode61 tokenizer
-      const normalizedTags = playlistType === "smart"
-        ? smartTags.map(tag => ({
-            tag: tag.tag.trim().toLowerCase(),
-            type: tag.type,
-          }))
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {playlistType === "smart"
+                      ? mode === "create"
+                        ? "Collection Name"
+                        : "Name"
+                      : mode === "create"
+                        ? "Playlist Name"
+                        : "Name"}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={
+                        playlistType === "smart"
+                          ? "My Smart Collection"
+                          : "My Playlist"
+                      }
+                      disabled={isSubmitting}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {playlistType === "smart" ? (
+              <FormField
+                control={form.control}
+                name="tags"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Tags</FormLabel>
+                    <FormControl>
+                      <AsyncAutocomplete
+                        label=""
+                        value={tagInputValue}
+                        onQueryChange={setTagInputValue}
+                        onSelect={handleTagSelect}
+                        placeholder="Search for tags..."
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Click tags to toggle between Include (green) and Exclude (red)
+                    </FormDescription>
+                    {smartTags.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/50 min-h-[60px]">
+                        {smartTags.map((tag, index) => (
+                          <Badge
+                            key={`${tag.type}-${tag.tag}`}
+                            variant={
+                              tag.type === "include" ? "success" : "destructive"
+                            }
+                            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
+                            onClick={() => toggleTagType(index)}
+                          >
+                            {tag.type === "include" ? (
+                              <Check className="w-3 h-3" />
+                            ) : (
+                              <Minus className="w-3 h-3" />
+                            )}
+                            <span>{tag.tag}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeTag(index);
+                              }}
+                              className="ml-1 h-auto w-auto rounded-full p-0.5 hover:bg-foreground/20"
+                              aria-label={`Remove tag ${tag.tag}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !isValid}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {mode === "create" ? "Creating..." : "Updating..."}
+                  </>
+                ) : mode === "create" ? (
+                  playlistType === "smart" ? (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Create Collection
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Playlist
+                    </>
+                  )
+                ) : (
+                  <>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Update Playlist
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
+  const [selectedPlaylist, setSelectedPlaylist] =
+    useState<PlaylistWithStats | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [playlistFilter, setPlaylistFilter] = useState<"all" | "smart" | "manual">(
+    "all"
+  );
+  const [playlistToDelete, setPlaylistToDelete] =
+    useState<PlaylistWithStats | null>(null);
+  const [playlistToClear, setPlaylistToClear] =
+    useState<PlaylistWithStats | null>(null);
+  const [playlistToEdit, setPlaylistToEdit] =
+    useState<PlaylistWithStats | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [exportingPlaylistId, setExportingPlaylistId] = useState<number | null>(
+    null
+  );
+  const [clearingPlaylistId, setClearingPlaylistId] = useState<number | null>(
+    null
+  );
+  const queryClient = useQueryClient();
+
+  const { data: playlists = [], isLoading } = usePlaylists();
+
+  const filteredPlaylists = useMemo(() => {
+    if (playlistFilter === "all") {
+      return playlists;
+    }
+    return playlists.filter((playlist: PlaylistWithStats) =>
+      playlistFilter === "smart" ? playlist.isSmart : !playlist.isSmart
+    );
+  }, [playlists, playlistFilter]);
+
+  const editInitialValues = useMemo<PlaylistFormValues>(() => {
+    if (!playlistToEdit) {
+      return DEFAULT_FORM_VALUES;
+    }
+    const tags =
+      playlistToEdit.isSmart && playlistToEdit.queryJson
+        ? parsePlaylistQuery(
+            playlistToEdit.queryJson,
+            playlistToEdit.querySchemaVersion
+          )?.tags ?? []
         : [];
-      
-      const queryObj: SmartPlaylistQuery = { tags: normalizedTags, provider: "rule34" };
-      const queryJson = playlistType === "smart" 
-        ? JSON.stringify(queryObj)
-        : "";
-      
-      await window.api.updatePlaylist(playlistToEdit.id, {
-        name: newPlaylistName.trim(),
-        queryJson,
-      });
+    return {
+      name: playlistToEdit.name,
+      playlistType: playlistToEdit.isSmart ? "smart" : "manual",
+      tags,
+    };
+  }, [playlistToEdit]);
 
-      void queryClient
-        .invalidateQueries({ queryKey: ["playlists"] })
-        .catch((error: unknown) => {
-          log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
-        });
-      setNewPlaylistName("");
-      setTagInputValue("");
-      setSmartTags([]);
-      setPlaylistType("manual");
+  const invalidatePlaylists = () => {
+    void queryClient
+      .invalidateQueries({ queryKey: ["playlists"] })
+      .catch((error: unknown) => {
+        log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
+      });
+  };
+
+  const handleCreatePlaylist = async (values: PlaylistFormValues) => {
+    try {
+      await window.api.createPlaylist({
+        name: values.name.trim(),
+        isSmart: values.playlistType === "smart",
+        queryJson: buildQueryJson(values.playlistType, values.tags),
+        iconName: "",
+      });
+      invalidatePlaylists();
+      setIsDialogOpen(false);
+    } catch (error: unknown) {
+      log.error("[PlaylistsPage] Failed to create playlist:", error);
+      toast.error(resolveErrorMessage(error, CREATE_FAILED_TOAST));
+      throw error;
+    }
+  };
+
+  const handleUpdatePlaylist = async (values: PlaylistFormValues) => {
+    if (!playlistToEdit) {
+      return;
+    }
+    try {
+      await window.api.updatePlaylist(playlistToEdit.id, {
+        name: values.name.trim(),
+        queryJson: buildQueryJson(values.playlistType, values.tags),
+      });
+      invalidatePlaylists();
       setPlaylistToEdit(null);
       setIsEditDialogOpen(false);
-    } catch (error) {
+    } catch (error: unknown) {
       log.error("[PlaylistsPage] Failed to update playlist:", error);
-    } finally {
-      setIsEditing(false);
+      toast.error(resolveErrorMessage(error, UPDATE_FAILED_TOAST));
+      throw error;
     }
   };
 
   const handleDeletePlaylist = async () => {
-    if (!playlistToDelete) return;
-
-    setIsDeleting(true);
+    if (!playlistToDelete) {
+      return;
+    }
     try {
       await window.api.deletePlaylist(playlistToDelete.id);
-      void queryClient
-        .invalidateQueries({ queryKey: ["playlists"] })
-        .catch((error: unknown) => {
-          log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
-        });
-      setPlaylistToDelete(null);
-      
-      // If deleted playlist was selected, go back to list
+      invalidatePlaylists();
       if (selectedPlaylist?.id === playlistToDelete.id) {
         setSelectedPlaylist(null);
       }
-    } catch (error) {
+      setPlaylistToDelete(null);
+    } catch (error: unknown) {
       log.error("[PlaylistsPage] Failed to delete playlist:", error);
-    } finally {
-      setIsDeleting(false);
+      toast.error(resolveErrorMessage(error, DELETE_FAILED_TOAST));
+      throw error;
     }
   };
 
-  const handleClearAllPostsInPlaylist = async (pl: PlaylistWithStats): Promise<boolean> => {
+  const handleClearAllPostsInPlaylist = async (
+    pl: PlaylistWithStats
+  ): Promise<void> => {
     if (pl.isSmart) {
-      return false;
+      return;
     }
     setClearingPlaylistId(pl.id);
     try {
       await window.api.clearManualPlaylist({ playlistId: pl.id });
       await queryClient.invalidateQueries({ queryKey: ["playlists"] });
-      await queryClient.invalidateQueries({ queryKey: ["playlist-posts", pl.id] });
+      await queryClient.invalidateQueries({
+        queryKey: ["playlist-posts", pl.id],
+      });
       toast.success(`Removed all posts from "${pl.name}"`);
-      return true;
-    } catch (error) {
+    } catch (error: unknown) {
       log.error("[PlaylistsPage] Failed to clear playlist posts:", error);
       toast.error("Failed to clear playlist");
-      return false;
+      throw error;
     } finally {
       setClearingPlaylistId(null);
     }
@@ -268,7 +580,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
       if (result.error && result.error !== "Cancelled") {
         toast.error(`Failed to export playlist: ${result.error}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       log.error("[PlaylistsPage] Failed to export playlist:", error);
       toast.error("Failed to export playlist");
     } finally {
@@ -286,11 +598,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     try {
       const result = await window.api.importPlaylist();
       if (result.success) {
-        void queryClient
-          .invalidateQueries({ queryKey: ["playlists"] })
-          .catch((error: unknown) => {
-            log.error("[PlaylistsPage] Failed to invalidate playlists:", error);
-          });
+        invalidatePlaylists();
 
         if (typeof result.playlistId === "number") {
           const importedPosts = await window.api.getPlaylistPosts({
@@ -321,7 +629,7 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
       if (result.error) {
         toast.error(`Failed to import playlist: ${result.error}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       log.error("[PlaylistsPage] Failed to import playlist:", error);
       if (getErrorCode(error) === ErrorCode.PARSE_ERROR) {
         toast.error(INVALID_PLAYLIST_TOAST);
@@ -333,7 +641,6 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     }
   };
 
-  // If a playlist is selected, show its gallery
   if (selectedPlaylist) {
     return (
       <PlaylistGallery
@@ -343,43 +650,51 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
     );
   }
 
-  // Show playlist list
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="flex flex-col gap-4 p-4 border-b bg-background">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {onBack && (
-              <Button variant="ghost" size="icon" onClick={onBack}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            )}
-            <h1 className="text-xl font-semibold">Playlists</h1>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="flex items-start gap-2">
+          {onBack ? (
             <Button
-              variant="outline"
-              onClick={() => {
-                void handleImportPlaylist();
-              }}
-              disabled={isImporting}
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              className="mt-0.5 shrink-0"
+              aria-label="Go back"
             >
-              {isImporting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="mr-2 h-4 w-4" />
-              )}
-              {isImporting ? "Importing..." : "Import Playlist"}
+              <ArrowLeft className="w-5 h-5" />
             </Button>
-            <Button onClick={() => setIsDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Playlist
-            </Button>
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <PageHeader
+              title="Playlists"
+              icon={List}
+              actions={
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      void handleImportPlaylist();
+                    }}
+                    disabled={isImporting}
+                  >
+                    {isImporting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 h-4 w-4" />
+                    )}
+                    {isImporting ? "Importing..." : "Import Playlist"}
+                  </Button>
+                  <Button onClick={() => setIsDialogOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Playlist
+                  </Button>
+                </>
+              }
+            />
           </div>
         </div>
-        
-        {/* Playlist Type Filter */}
+
         <div className="flex items-center gap-2">
           <Label className="text-sm text-muted-foreground">Filter:</Label>
           <ToggleGroup
@@ -408,11 +723,12 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Playlist List */}
       <div className="flex-1 overflow-auto p-4">
         {isLoading ? (
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="w-8 h-8 animate-spin" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }, (_, index) => (
+              <Skeleton key={index} className="h-28 w-full" />
+            ))}
           </div>
         ) : playlists.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -428,8 +744,8 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
               <List className="w-16 h-16 mb-4 opacity-50" />
             )}
             <p className="text-lg">
-              {playlistFilter === "smart" 
-                ? "No smart collections yet" 
+              {playlistFilter === "smart"
+                ? "No smart collections yet"
                 : "No manual playlists yet"}
             </p>
             <p className="text-sm mt-2">
@@ -480,20 +796,6 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
                       e.stopPropagation();
                       setPlaylistToEdit(playlist);
                       setIsEditDialogOpen(true);
-                      // Load playlist data into edit form
-                      setNewPlaylistName(playlist.name);
-                      setPlaylistType(playlist.isSmart ? "smart" : "manual");
-                      if (playlist.isSmart && playlist.queryJson) {
-                        // Use shared utility to parse queryJson (Renderer shouldn't know DB format)
-                        const queryJson = parsePlaylistQuery(
-                          playlist.queryJson,
-                          playlist.querySchemaVersion
-                        );
-                        setSmartTags(queryJson?.tags || []);
-                      } else {
-                        setSmartTags([]);
-                      }
-                      setTagInputValue("");
                     }}
                     title="Edit playlist"
                   >
@@ -537,398 +839,69 @@ export const PlaylistsPage: React.FC<PlaylistsPageProps> = ({ onBack }) => {
         )}
       </div>
 
-      <AlertDialog
-        open={!!playlistToClear}
-        onOpenChange={(o) => {
-          if (!o) {
+      <ConfirmActionDialog
+        open={playlistToClear !== null}
+        onOpenChange={(open) => {
+          if (!open) {
             setPlaylistToClear(null);
           }
         }}
-      >
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Clear all posts?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Remove all posts from {playlistToClear?.name ?? ""}? This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={clearingPlaylistId !== null}>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              disabled={clearingPlaylistId !== null}
-              onClick={(e) => {
-                e.preventDefault();
-                if (!playlistToClear) {
-                  return;
-                }
-                const pl = playlistToClear;
-                void handleClearAllPostsInPlaylist(pl).then((ok) => {
-                  if (ok) {
-                    setPlaylistToClear(null);
-                  }
-                });
-              }}
-            >
-              {clearingPlaylistId !== null ? "Clearing…" : "Clear all"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="Clear all posts?"
+        description={`Remove all posts from ${playlistToClear?.name ?? ""}? This cannot be undone.`}
+        confirmLabel="Clear all"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={async () => {
+          if (!playlistToClear) {
+            return;
+          }
+          await handleClearAllPostsInPlaylist(playlistToClear);
+        }}
+      />
 
-      {/* Create Playlist Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
-        setIsDialogOpen(open);
-        if (!open) {
-          // Reset form when closing
-          setNewPlaylistName("");
-          setTagInputValue("");
-          setSmartTags([]);
-          setPlaylistType("manual");
+      <ConfirmActionDialog
+        open={playlistToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPlaylistToDelete(null);
+          }
+        }}
+        title="Delete Playlist"
+        description={
+          playlistToDelete
+            ? `Are you sure you want to delete "${playlistToDelete.name}"? This action cannot be undone.${
+                playlistToDelete.isSmart
+                  ? ""
+                  : " All posts will be removed from this playlist."
+              }`
+            : ""
         }
-      }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary" />
-              Create Playlist
-            </DialogTitle>
-            <DialogDescription>
-              Create a manual playlist or a smart collection that automatically updates based on tags.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6">
-            {/* Playlist Type Toggle */}
-            <div className="space-y-2">
-              <Label>Playlist Type</Label>
-              <ToggleGroup
-                type="single"
-                value={playlistType}
-                onValueChange={(value) => {
-                  if (value === "smart" || value === "manual") {
-                    setPlaylistType(value);
-                    // Clear tags when switching to manual
-                    if (value === "manual") {
-                      setSmartTags([]);
-                      setTagInputValue("");
-                    }
-                  }
-                }}
-                size="default"
-                variant="outline"
-                className="w-full"
-              >
-                <ToggleGroupItem value="manual" className="flex-1">
-                  <List className="w-4 h-4 mr-2" />
-                  Manual Playlist
-                </ToggleGroupItem>
-                <ToggleGroupItem value="smart" className="flex-1">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Smart Collection
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleDeletePlaylist}
+      />
 
-            {/* Playlist Name */}
-            <div className="space-y-2">
-              <Label htmlFor="playlist-name">
-                {playlistType === "smart" ? "Collection Name" : "Playlist Name"}
-              </Label>
-              <Input
-                id="playlist-name"
-                placeholder={playlistType === "smart" ? "My Smart Collection" : "My Playlist"}
-                value={newPlaylistName}
-                onChange={(e) => setNewPlaylistName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isCreating && newPlaylistName.trim()) {
-                    if (playlistType === "smart" && smartTags.length > 0) {
-                      void handleCreatePlaylist().catch((error: unknown) => {
-                        log.error("[PlaylistsPage] Create playlist failed:", error);
-                      });
-                    } else if (playlistType === "manual") {
-                      void handleCreatePlaylist().catch((error: unknown) => {
-                        log.error("[PlaylistsPage] Create playlist failed:", error);
-                      });
-                    }
-                  }
-                }}
-                disabled={isCreating}
-              />
-            </div>
+      <PlaylistFormDialog
+        open={isDialogOpen}
+        mode="create"
+        initialValues={DEFAULT_FORM_VALUES}
+        onOpenChange={setIsDialogOpen}
+        onSubmit={handleCreatePlaylist}
+      />
 
-            {/* Tag Input - Only for Smart Collections */}
-            {playlistType === "smart" && (
-              <>
-                <div className="space-y-2">
-                  <Label>Tags</Label>
-                  <AsyncAutocomplete
-                    label=""
-                    value={tagInputValue}
-                    onQueryChange={setTagInputValue}
-                    onSelect={handleTagSelect}
-                    placeholder="Search for tags..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Click tags to toggle between Include (green) and Exclude (red)
-                  </p>
-                </div>
-
-                {/* Tag Badges */}
-                {smartTags.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Selected Tags</Label>
-                    <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/50 min-h-[60px]">
-                      {smartTags.map((tag, index) => (
-                        <Badge
-                          key={`${tag.type}-${tag.tag}`}
-                          variant={tag.type === "include" ? "default" : "destructive"}
-                          className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5"
-                          onClick={() => toggleTagType(index)}
-                        >
-                          {tag.type === "include" ? (
-                            <Check className="w-3 h-3" />
-                          ) : (
-                            <Minus className="w-3 h-3" />
-                          )}
-                          <span>{tag.tag}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeTag(index);
-                            }}
-                            className="ml-1 h-auto w-auto rounded-full p-0.5 hover:bg-black/20"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDialogOpen(false)}
-              disabled={isCreating}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                void handleCreatePlaylist();
-              }}
-              disabled={
-                isCreating || 
-                !newPlaylistName.trim() || 
-                (playlistType === "smart" && smartTags.length === 0)
-              }
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  {playlistType === "smart" ? (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Create Collection
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Playlist
-                    </>
-                  )}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Playlist Confirmation Dialog */}
-      <Dialog open={!!playlistToDelete} onOpenChange={(open) => !open && setPlaylistToDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="w-5 h-5" />
-              Delete Playlist
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{playlistToDelete?.name}"? This action cannot be undone.
-              {!playlistToDelete?.isSmart && " All posts will be removed from this playlist."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setPlaylistToDelete(null)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                void handleDeletePlaylist();
-              }}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Playlist Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
-        setIsEditDialogOpen(open);
-        if (!open) {
-          // Reset form when closing
-          setNewPlaylistName("");
-          setTagInputValue("");
-          setSmartTags([]);
-          setPlaylistType("manual");
-          setPlaylistToEdit(null);
-        }
-      }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="w-5 h-5 text-primary" />
-              Edit Playlist
-            </DialogTitle>
-            <DialogDescription>
-              Update playlist name and tags. Smart collections automatically update based on tags.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6">
-            {/* Playlist Name */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-playlist-name">Name</Label>
-              <Input
-                id="edit-playlist-name"
-                value={newPlaylistName}
-                onChange={(e) => setNewPlaylistName(e.target.value)}
-                placeholder="Enter playlist name..."
-                disabled={isEditing}
-              />
-            </div>
-
-            {/* Playlist Type Toggle - Disabled for editing (can't change type) */}
-            <div className="space-y-2">
-              <Label>Playlist Type</Label>
-              <ToggleGroup
-                type="single"
-                value={playlistType}
-                size="default"
-                variant="outline"
-                className="w-full"
-              >
-                <ToggleGroupItem value="manual" className="flex-1">
-                  <List className="w-4 h-4 mr-2" />
-                  Manual Playlist
-                </ToggleGroupItem>
-                <ToggleGroupItem value="smart" className="flex-1">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Smart Collection
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            {/* Tag Input - Only for Smart Collections */}
-            {playlistType === "smart" && (
-              <>
-                <div className="space-y-2">
-                  <Label>Tags</Label>
-                  <AsyncAutocomplete
-                    label=""
-                    value={tagInputValue}
-                    onQueryChange={setTagInputValue}
-                    onSelect={handleTagSelect}
-                    placeholder="Search for tags..."
-                  />
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {smartTags.map((tag, index) => (
-                      <Badge
-                        key={`${tag.type}-${tag.tag}`}
-                        variant={tag.type === "include" ? "default" : "destructive"}
-                        className="cursor-pointer flex items-center gap-1"
-                        onClick={() => toggleTagType(index)}
-                      >
-                        {tag.type === "include" ? (
-                          <Check className="w-3 h-3" />
-                        ) : (
-                          <Minus className="w-3 h-3" />
-                        )}
-                        <span>{tag.tag}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeTag(index);
-                          }}
-                          className="ml-1 h-auto w-auto rounded-full p-0.5 hover:bg-black/20"
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(false)}
-              disabled={isEditing}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                void handleUpdatePlaylist();
-              }}
-              disabled={
-                isEditing || 
-                !newPlaylistName.trim() || 
-                (playlistType === "smart" && smartTags.length === 0)
-              }
-            >
-              {isEditing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Update Playlist
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PlaylistFormDialog
+        open={isEditDialogOpen}
+        mode="edit"
+        initialValues={editInitialValues}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            setPlaylistToEdit(null);
+          }
+        }}
+        onSubmit={handleUpdatePlaylist}
+      />
     </div>
   );
 };

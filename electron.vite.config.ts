@@ -48,7 +48,7 @@ export default defineConfig({
       sourcemap: isDevelopment,
       watch: isDevelopment ? {} : undefined,
       lib: {
-        entry: "src/main/bridge.ts",
+        entry: "src/preload/bridge.ts",
         formats: ["cjs"],
       },
       rollupOptions: {

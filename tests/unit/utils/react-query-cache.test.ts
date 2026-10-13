@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildBrowseSearchQueryKey,
   getSearchBrowseNextPageParam,
-} from "@/renderer/utils/react-query-cache";
+} from "@/utils/react-query-cache";
 import type { Post } from "@shared/types/db";
 
 const POSTS_PER_PAGE = 50;

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ARTISTS_SYNC_INVALIDATION_DEBOUNCE_MS,
   useArtistsSyncInvalidation,
-} from "@/renderer/hooks/useArtistsSyncInvalidation";
+} from "@/hooks/useArtistsSyncInvalidation";
 
 type SyncListener = () => void;
 

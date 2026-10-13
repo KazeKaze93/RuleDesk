@@ -9,7 +9,7 @@ import {
   redactForLog,
   redactLogData,
   redactString,
-} from "@/shared/utils/log-redaction";
+} from "@shared/utils/log-redaction";
 
 const WINDOWS_HOME = "C:\\Users\\alice";
 const MAC_HOME = "/Users/alice";

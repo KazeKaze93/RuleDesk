@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts } from "@/main/db/schema";
+import { artists, posts } from "../../../src/main/db/schema";
 import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
-} from "@/shared/constants";
+} from "@shared/constants";
 import {
   countUpdatesFeedPosts,
   getLastTrackedArtistSyncAtMs,
   markPostsViewedByIds,
   markUpdatesFeedPostsViewed,
-} from "@/main/db/queries/updates-feed";
+} from "../../../src/main/db/queries/updates-feed";
 
 const SECOND_MS = 1000;
 const ARTIST_CREATED_SEC = 1_700_000_000;
@@ -254,6 +254,69 @@ describe("updates-feed queries (real schema)", () => {
       .where(eq(artists.id, 1))
       .run();
     expect(getLastTrackedArtistSyncAtMs(db)).toBeNull();
+  });
+
+  it("aiFilter hide/only matches pre-unify AI tag token set", () => {
+    const mock = createMockDb();
+    sqlite = mock.sqlite;
+    const { db } = mock;
+
+    db.insert(artists)
+      .values({
+        id: 1,
+        name: "Tracked",
+        tag: "tracked_artist",
+        provider: "rule34",
+        type: "tag",
+        apiEndpoint: "https://api.rule34.xxx/",
+        createdAt: new Date(ARTIST_CREATED_SEC * SECOND_MS),
+        lastChecked: new Date(LAST_CHECKED_SEC * SECOND_MS),
+        newPostsCount: 0,
+      })
+      .run();
+
+    const insertPost = (postId: number, tags: string) => {
+      db.insert(posts)
+        .values({
+          postId,
+          artistId: 1,
+          fileUrl: `https://example.com/${postId}.jpg`,
+          previewUrl: `https://example.com/${postId}_p.jpg`,
+          sampleUrl: "",
+          tags,
+          rating: "s",
+          mediaType: "image",
+          publishedAt: new Date(AFTER_TRACKING_SEC * SECOND_MS),
+          createdAt: new Date(AFTER_TRACKING_SEC * SECOND_MS),
+          isViewed: false,
+          isFavorited: false,
+          viewCount: 0,
+        })
+        .run();
+    };
+
+    insertPost(401, "solo 1girl");
+    insertPost(402, "ai_generated rating_safe");
+    insertPost(403, "tag1 ai-generated tag2");
+    insertPost(404, "ai_generation landscape");
+    insertPost(405, "ai-generated_content");
+    insertPost(406, "ai generated");
+    insertPost(407, "prefix_ai_generated_suffix");
+
+    expect(countUpdatesFeedPosts(db, { unreadOnly: false })).toBe(7);
+    // Same four tokens as pre-unify local list: hide drops exact AI posts only.
+    expect(
+      countUpdatesFeedPosts(db, {
+        unreadOnly: false,
+        filters: { aiFilter: "hide" },
+      })
+    ).toBe(3);
+    expect(
+      countUpdatesFeedPosts(db, {
+        unreadOnly: false,
+        filters: { aiFilter: "only" },
+      })
+    ).toBe(4);
   });
 
   it("mark-all-read handles 40000 matching posts without SQLite variable limit", () => {

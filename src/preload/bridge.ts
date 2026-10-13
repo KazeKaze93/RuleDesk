@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import { invokeIpc } from "../preload/invoke-ipc";
-import { IPC_CHANNELS } from "./ipc/channels";
+import { invokeIpc } from "./invoke-ipc";
+import { IPC_CHANNELS } from "../main/ipc/channels";
 import type {
   GetPostsRequestInput,
   GetPostsCountRequest,
@@ -8,7 +8,6 @@ import type {
 import type {
   CreatePlaylistRequest,
   UpdatePlaylistRequest,
-  AddPostsToPlaylistRequest,
   RemovePostsFromPlaylistRequest,
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
@@ -40,7 +39,7 @@ export type {
 } from "../shared/types/ipc-bridge";
 
 // Re-export IPC DTOs for callers that historically imported from bridge.ts
-export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "./types/ipc";
+export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "../main/types/ipc";
 
 const ipcBridge: IpcBridge = {
   getAppInfo: () => invokeIpc(IPC_CHANNELS.APP.GET_APP_INFO),
@@ -76,17 +75,12 @@ const ipcBridge: IpcBridge = {
   resolveCopyrightTags: (tags) =>
     invokeIpc(IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS, tags),
 
-  resolveTagsByType: (tags, type) =>
-    invokeIpc(IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE, tags, type),
   getBlacklistedTags: () =>
     invokeIpc(IPC_CHANNELS.BLACKLIST.GET_ALL),
   addTagToBlacklist: (tag) =>
     invokeIpc(IPC_CHANNELS.BLACKLIST.ADD, tag),
   removeTagFromBlacklist: (tag) =>
     invokeIpc(IPC_CHANNELS.BLACKLIST.REMOVE, tag),
-
-  verifyCredentials: (providerId) =>
-    invokeIpc(IPC_CHANNELS.APP.VERIFY_CREDS, providerId),
 
   getSettings: () => invokeIpc(IPC_CHANNELS.SETTINGS.GET),
   saveDownloadFolder: (path) =>
@@ -104,18 +98,13 @@ const ipcBridge: IpcBridge = {
   addArtist: (artist) => invokeIpc(IPC_CHANNELS.DB.ADD_ARTIST, artist),
   deleteArtist: (id) => invokeIpc(IPC_CHANNELS.DB.DELETE_ARTIST, id),
 
-  searchArtists: (query) => invokeIpc(IPC_CHANNELS.DB.SEARCH_TAGS, query),
-
   getArtistPosts: (params: GetPostsRequestInput) =>
     invokeIpc(IPC_CHANNELS.DB.GET_POSTS, params),
   getArtistPostsCount: (params: GetPostsCountRequest) =>
     invokeIpc(IPC_CHANNELS.DB.GET_POSTS_COUNT, params),
-  getDownloadItems: (params: GetPostsRequestInput) =>
-    invokeIpc(IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS, params),
   getPostsCountWithFilters: (
     params: Pick<GetPostsRequestInput, "artistId" | "filters">
   ) => invokeIpc(IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS, params),
-  getStats: () => invokeIpc(IPC_CHANNELS.DB.GET_STATS),
   getExtendedStats: () => invokeIpc(IPC_CHANNELS.STATS.GET_EXTENDED),
 
   openExternal: (url) => invokeIpc(IPC_CHANNELS.APP.OPEN_EXTERNAL, url),
@@ -131,10 +120,6 @@ const ipcBridge: IpcBridge = {
   shadowInsertPost: (request: ShadowInsertRequest) =>
     invokeIpc(IPC_CHANNELS.DB.SHADOW_INSERT_POST, request),
 
-  togglePostViewed: (postId) =>
-    invokeIpc(IPC_CHANNELS.DB.TOGGLE_POST_VIEWED, postId),
-  markAllPostsAsViewed: () =>
-    invokeIpc(IPC_CHANNELS.DB.MARK_ALL_VIEWED),
   getUpdatesUnreadCount: () =>
     invokeIpc(IPC_CHANNELS.UPDATES.GET_UNREAD_COUNT),
   getUpdatesTotalUnreadCount: (params) =>
@@ -206,7 +191,6 @@ const ipcBridge: IpcBridge = {
     invokeIpc(IPC_CHANNELS.SYNC.REPAIR, artistId),
 
   // Updater Implementation
-  checkForUpdates: () => invokeIpc(IPC_CHANNELS.APP.CHECK_FOR_UPDATES),
   openReleasePage: () => invokeIpc(IPC_CHANNELS.APP.OPEN_RELEASE_PAGE),
 
   onUpdateStatus: (callback) => {
@@ -303,8 +287,6 @@ const ipcBridge: IpcBridge = {
     invokeIpc(IPC_CHANNELS.DB.UPDATE_PLAYLIST, playlistId, data),
   deletePlaylist: (playlistId: number) =>
     invokeIpc(IPC_CHANNELS.DB.DELETE_PLAYLIST, playlistId),
-  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) =>
-    invokeIpc(IPC_CHANNELS.DB.ADD_POSTS_TO_PLAYLIST, data),
   removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) =>
     invokeIpc(IPC_CHANNELS.DB.REMOVE_POSTS_FROM_PLAYLIST, data),
   reorderPlaylistEntries: (params: ReorderPlaylistEntriesRequest) =>

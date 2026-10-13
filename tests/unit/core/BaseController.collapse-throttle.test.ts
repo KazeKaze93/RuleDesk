@@ -1,15 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ipcMain, type IpcMainInvokeEvent } from "electron";
+import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 import log from "electron-log";
-import { BaseController } from "@/main/core/ipc/BaseController";
-import { ErrorCode } from "@/main/types/ipc";
-import { isIpcFailureResult } from "@/shared/utils/ipc-result";
+import { BaseController } from "../../../src/main/core/ipc/BaseController";
+import { ErrorCode } from "../../../src/main/types/ipc";
+import { isIpcFailureResult } from "@shared/utils/ipc-result";
 
 vi.mock("electron", () => ({
   ipcMain: {
     handle: vi.fn(),
     removeHandler: vi.fn(),
+  },
+  app: {
+    isPackaged: false,
   },
 }));
 
@@ -34,7 +37,6 @@ type BaseControllerInternals = {
   requestCollapseMap: Map<string, CollapseEntry>;
   REQUEST_COLLAPSE_TIMEOUT_MS: number;
   THROTTLE_MS: number;
-  callCount: number;
 };
 
 function getInternals(): BaseControllerInternals {
@@ -48,7 +50,6 @@ function clearControllerState(): void {
   }
   internals.requestCollapseMap.clear();
   internals.throttleMap.clear();
-  internals.callCount = 0;
 }
 
 function getRegisteredHandler(
@@ -99,6 +100,7 @@ describe("BaseController request collapsing and throttle", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(app).isPackaged = false;
     clearControllerState();
     controller = new TestController();
   });
@@ -137,7 +139,7 @@ describe("BaseController request collapsing and throttle", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it("does not mix results when id matches but other fields differ", async () => {
+  it("does not collapse when args differ", async () => {
     const handler = vi.fn(
       async (
         _event: IpcMainInvokeEvent,
@@ -232,6 +234,37 @@ describe("BaseController request collapsing and throttle", () => {
       (error: unknown) => error
     );
     expect(thrown).toBeNull();
+  });
+
+  it("spaces parallel mutating calls via synchronous slot reservation", async () => {
+    vi.useFakeTimers();
+    const starts: number[] = [];
+    const handler = vi.fn(async () => {
+      starts.push(Date.now());
+      return starts.length;
+    });
+
+    controller.registerMutating("test:parallel-throttle", z.tuple([]), handler);
+
+    const invoke = getRegisteredHandler("test:parallel-throttle");
+    const p1 = invoke(mockEvent);
+    const p2 = invoke(mockEvent);
+    const p3 = invoke(mockEvent);
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(getInternals().THROTTLE_MS);
+    expect(handler).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(getInternals().THROTTLE_MS);
+    expect(handler).toHaveBeenCalledTimes(3);
+
+    await expect(Promise.all([p1, p2, p3])).resolves.toEqual([1, 2, 3]);
+
+    const throttleMs = getInternals().THROTTLE_MS;
+    expect(starts[1]! - starts[0]!).toBeGreaterThanOrEqual(throttleMs);
+    expect(starts[2]! - starts[1]!).toBeGreaterThanOrEqual(throttleMs);
   });
 
   it("removes stuck collapse promises after timeout", async () => {

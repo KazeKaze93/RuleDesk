@@ -1,21 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { playlists, settings, SETTINGS_ID } from "@/main/db/schema";
+import { playlists, settings, SETTINGS_ID } from "../../../src/main/db/schema";
 import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
-import { ProviderSearchError } from "@/main/providers/provider-search-errors";
-import type { BooruPost, FetchPostsResult } from "@/main/providers/types";
+import { ProviderSearchError } from "../../../src/main/providers/provider-search-errors";
+import type { BooruPost, FetchPostsResult } from "../../../src/main/providers/types";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 const fetchPostsMock = vi.fn();
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -49,7 +55,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     formatTag: (tag: string) => tag.trim().toLowerCase(),
     fetchPosts: fetchPostsMock,
@@ -57,11 +63,11 @@ vi.mock("@/main/providers", () => ({
   })),
 }));
 
-vi.mock("@/main/db/queries/blacklist", () => ({
+vi.mock("../../../src/main/db/queries/blacklist", () => ({
   getAllBlacklistedTags: () => ["blocked_tag"],
 }));
 
-import { PlaylistController } from "@/main/ipc/controllers/PlaylistController";
+import { PlaylistController } from "../../../src/main/ipc/controllers/PlaylistController";
 
 type PlaylistControllerInternals = {
   setup: () => void;
@@ -103,10 +109,9 @@ describe("PlaylistController smart remote resolve", () => {
   let playlistId: number;
 
   beforeEach(async () => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     fetchPostsMock.mockReset();
 
     await mockDb.db.insert(settings).values({
@@ -149,7 +154,7 @@ describe("PlaylistController smart remote resolve", () => {
       }
     }
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   it("surfaces provider failure instead of returning []", async () => {

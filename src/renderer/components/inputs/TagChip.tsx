@@ -122,8 +122,8 @@ export function TagChip({
           variant="outline"
           className={cn(
             "h-7 min-w-0 max-w-[14rem] flex-1 flex-row items-center justify-start gap-0 px-2 py-0 text-left text-xs font-normal sm:max-w-xs",
-            variant === "include" && "ring-2 ring-green-600/40",
-            variant === "exclude" && "ring-2 ring-red-600/50"
+            variant === "include" && "ring-2 ring-success/40",
+            variant === "exclude" && "ring-2 ring-destructive/50"
           )}
           aria-label={labelForAria(variant, tag)}
           title={titleForHint(variant, tag)}

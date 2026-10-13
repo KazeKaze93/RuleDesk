@@ -16,7 +16,6 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -35,12 +34,12 @@ import {
 } from "../../../shared/schemas/post";
 import {
   BATCH_DOWNLOAD_CHUNK_SIZE,
-  BATCH_DOWNLOAD_MAX_FILES,
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
+import { AI_TAGS } from "../../../shared/ai-tags";
 import type { DownloadQueueItem } from "../../../shared/types/download";
-import { getSqliteInstance } from "../../db/client";
+import { getDb, getSqliteInstance } from "../../db/client";
 import { onDatabaseReopened } from "../../core/di/databaseRegistration";
 import { postsFtsTableExists } from "../../db/fts-table-check";
 import {
@@ -100,41 +99,9 @@ function postRowToDownloadItem(p: {
   };
 }
 
-function rowsToDownloadItems(
-  rows: Array<{ postId: number; artistId: number; fileUrl: string | null }>
-): DownloadQueueItem[] {
-  return rows
-    .filter((p) => Boolean(p.fileUrl?.trim()))
-    .map((p) =>
-      postRowToDownloadItem({
-        postId: p.postId,
-        artistId: p.artistId,
-        fileUrl: p.fileUrl ?? "",
-      })
-    );
-}
-
-/** Exact AI tag tokens used by SQL aiFilter (FTS MATCH and posts.tags instr). */
-const AI_FILTER_TAGS = [
-  "ai_generated",
-  "ai-generated",
-  "ai_generation",
-  "ai-generated_content",
-] as const;
-
 // Internal types (not exported - use types from src/main/types/ipc.ts instead)
 type GetPostsParams = GetPostsRequest;
 const GetPostsArgsSchema = z.tuple([GetPostsSchema]);
-const GetDownloadItemsArgsSchema = z.tuple([
-  GetPostsSchema.extend({
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(BATCH_DOWNLOAD_MAX_FILES)
-      .default(BATCH_DOWNLOAD_MAX_FILES),
-  }),
-]);
 const GetPostsCountArgsSchema = z.tuple([GetPostsCountSchema]);
 const GetPostsCountWithFiltersArgsSchema = z.tuple([
   GetPostsSchema.pick({ artistId: true, filters: true }),
@@ -143,7 +110,6 @@ const PostActionArgsSchema = z.tuple([
   z.number().int(),
   PostDataSchema.optional(),
 ]);
-const MarkAllViewedArgsSchema = z.tuple([]);
 const ResetPostCacheArgsSchema = z.tuple([IdSchema]);
 const ShadowInsertPostArgsSchema = z.tuple([ShadowInsertRequestSchema]);
 
@@ -157,10 +123,6 @@ const ShadowInsertPostArgsSchema = z.tuple([ShadowInsertRequestSchema]);
  */
 // Query style: Drizzle Builder API only in this controller.
 export class PostsController extends BaseController {
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
-  }
-
   // Schema existence caches — refreshed on restore/VACUUM reopen
   private ftsTableExistsCache: boolean = false;
   // Optional view metadata columns (backward compat with pre-migration DBs)
@@ -217,75 +179,38 @@ export class PostsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS,
       GetPostsArgsSchema,
-      (event, ...args) => {
-        const [params] = GetPostsArgsSchema.parse(args);
-        return this.getPosts(event, params);
-      }
-    );
-    this.handle(
-      IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS,
-      GetDownloadItemsArgsSchema,
-      (event, ...args) => {
-        const [params] = GetDownloadItemsArgsSchema.parse(args);
-        return this.getDownloadItems(event, params);
-      }
+      (event, params) => this.getPosts(event, params)
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
       GetPostsCountArgsSchema,
-      (event, ...args) => {
-        const [params] = GetPostsCountArgsSchema.parse(args);
-        return this.getPostsCount(event, params);
-      }
+      (event, params) => this.getPostsCount(event, params)
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS,
       GetPostsCountWithFiltersArgsSchema,
-      (event, ...args) => {
-        const [params] = GetPostsCountWithFiltersArgsSchema.parse(args);
-        return this.getPostsCountWithFilters(event, params);
-      },
+      (event, params) => this.getPostsCountWithFilters(event, params),
       { isIdempotent: true }
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
       PostActionArgsSchema, // Allow negative IDs for external posts from Browse
-      (event, ...args) => {
-        const [postId, postData] = PostActionArgsSchema.parse(args);
-        return this.markViewed(event, postId, postData);
-      }
-    );
-    this.handle(
-      IPC_CHANNELS.DB.MARK_ALL_VIEWED,
-      MarkAllViewedArgsSchema,
-      (event, ...args) => {
-        MarkAllViewedArgsSchema.parse(args);
-        return this.markAllViewed(event);
-      }
+      (event, postId, postData) => this.markViewed(event, postId, postData)
     );
     this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
       ResetPostCacheArgsSchema,
-      (event, ...args) => {
-        const [postId] = ResetPostCacheArgsSchema.parse(args);
-        return this.resetPostCache(event, postId);
-      }
+      (event, postId) => this.resetPostCache(event, postId)
     );
     this.handle(
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
       PostActionArgsSchema, // Allow negative IDs for external posts from Browse
-      (event, ...args) => {
-        const [postId, postData] = PostActionArgsSchema.parse(args);
-        return this.toggleFavorite(event, postId, postData);
-      }
+      (event, postId, postData) => this.toggleFavorite(event, postId, postData)
     );
     this.handle(
       IPC_CHANNELS.DB.SHADOW_INSERT_POST,
       ShadowInsertPostArgsSchema,
-      (event, ...args) => {
-        const [request] = ShadowInsertPostArgsSchema.parse(args);
-        return this.shadowInsertPost(event, request);
-      }
+      (event, request) => this.shadowInsertPost(event, request)
     );
 
     // Cache at setup; refresh again when restore/VACUUM reopens the DB.
@@ -437,7 +362,7 @@ export class PostsController extends BaseController {
         areRuntimeDroppableFtsTriggersPresent(getSqliteInstance());
 
       if (useFtsMatch) {
-        const ftsQuery = this.buildFts5OrQuery([...AI_FILTER_TAGS]);
+        const ftsQuery = this.buildFts5OrQuery([...AI_TAGS]);
 
         if (!ftsQuery || ftsQuery.trim().length === 0) {
           log.warn(
@@ -520,7 +445,7 @@ export class PostsController extends BaseController {
     conditions: SQL[],
     aiFilter: "hide" | "only"
   ): void {
-    const aiTagConditions = AI_FILTER_TAGS.map(
+    const aiTagConditions = AI_TAGS.map(
       (tag) =>
         sql`instr(' ' || lower(${posts.tags}) || ' ', ' ' || ${tag} || ' ') > 0`
     );
@@ -536,24 +461,6 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Legacy list fetch for download items (capped). Prefer cursor mass-download via FileController.
-   */
-  private async getDownloadItems(
-    _event: IpcMainInvokeEvent,
-    params: GetPostsParams & { limit?: number }
-  ): Promise<{ items: Array<{ url: string; filename: string }> }> {
-    const rows = await this.getPosts(_event, {
-      ...params,
-      page: 1,
-      limit: Math.min(
-        params.limit ?? BATCH_DOWNLOAD_MAX_FILES,
-        BATCH_DOWNLOAD_MAX_FILES
-      ),
-    });
-    return { items: rowsToDownloadItems(rows) };
-  }
-
-  /**
    * Snapshot for artist mass-download: MAX(id) and COUNT under filters.
    * upperBoundId freezes the walk so sync inserts with higher ids are deferred.
    */
@@ -561,7 +468,7 @@ export class PostsController extends BaseController {
     artistId: number,
     filters: PostFilterRequest | undefined
   ): { upperBoundId: number; total: number } {
-    const db = this.getDb();
+    const db = getDb();
     const conditions = this.buildPostFilterConditions(artistId, filters);
     const whereClause =
       conditions.length > 0 ? and(...conditions) : undefined;
@@ -588,7 +495,7 @@ export class PostsController extends BaseController {
     upperBoundId: number;
     limit?: number;
   }): Array<DownloadQueueItem & { id: number }> {
-    const db = this.getDb();
+    const db = getDb();
     const limit = params.limit ?? BATCH_DOWNLOAD_CHUNK_SIZE;
     const conditions = this.buildPostFilterConditions(
       params.artistId,
@@ -634,7 +541,7 @@ export class PostsController extends BaseController {
     const offset = (page - 1) * limit;
 
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // If sinceTracking filter is enabled, we need to use join
       if (filters?.sinceTracking === true) {
@@ -784,7 +691,7 @@ export class PostsController extends BaseController {
     params: GetPostsCountRequest
   ): Promise<number> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const { artistId, filters } = params;
       const baseConditions = this.buildPostFilterConditions(artistId, filters);
       const whereClause =
@@ -817,7 +724,7 @@ export class PostsController extends BaseController {
     params: Pick<GetPostsRequest, "artistId" | "filters">
   ): Promise<number> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const { artistId, filters } = params;
 
       if (filters?.sinceTracking === true) {
@@ -875,7 +782,7 @@ export class PostsController extends BaseController {
     postData?: PostData
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // CRITICAL: For external posts (negative ID), we need postData to create/update
       // For existing posts (positive ID), we can use onConflictDoUpdate with postId lookup
@@ -1033,35 +940,6 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Mark all posts as viewed in one batch operation.
-   * Uses synchronous better-sqlite3 statement to avoid async transaction overhead.
-   */
-  private async markAllViewed(
-    _event: IpcMainInvokeEvent
-  ): Promise<{ updatedCount: number }> {
-    try {
-      const db = this.getDb();
-      const result = db.transaction((tx) => {
-        const updatedPosts = tx
-          .update(posts)
-          .set({ isViewed: true })
-          .where(or(eq(posts.isViewed, false), sql`${posts.isViewed} IS NULL`))
-          .run();
-
-        // Unread counts derive from posts.isViewed; column left unused.
-        return updatedPosts;
-      });
-
-      const updatedCount = result.changes;
-      log.info(`[PostsController] Mark all viewed completed. Updated: ${updatedCount}`);
-      return { updatedCount };
-    } catch (error) {
-      log.error("[PostsController] Failed to mark all posts as viewed:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Reset post cache (mark post as not viewed)
    *
    * @param _event - IPC event (unused)
@@ -1074,7 +952,7 @@ export class PostsController extends BaseController {
     postId: number
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
       db.transaction((tx) => {
@@ -1112,7 +990,7 @@ export class PostsController extends BaseController {
     postData?: PostData
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
       // All queries must be inside transaction for atomicity and efficiency
@@ -1359,7 +1237,7 @@ export class PostsController extends BaseController {
     
     try {
       // Step 1: Check if post already exists in DB for this provider
-      const existingPost = this.getDb()
+      const existingPost = getDb()
         .select()
         .from(posts)
         .where(
@@ -1379,7 +1257,7 @@ export class PostsController extends BaseController {
 
       // Step 2: Fetch post data from API (Main process controls data source)
       const provider = getProvider(request.provider);
-      const apiSettings = await getDecryptedApiSettings(this.getDb());
+      const apiSettings = await getDecryptedApiSettings(getDb());
       
       if (!apiSettings) {
         throw new Error("API credentials not configured. Cannot fetch post data from provider.");
@@ -1433,7 +1311,7 @@ export class PostsController extends BaseController {
       }
 
       // After network await — fresh DI handle (restore/VACUUM may have reopened).
-      const db = this.getDb();
+      const db = getDb();
 
       // Step 4: Ensure EXTERNAL_ARTIST_ID exists (cached check)
       if (!this.externalArtistExistsCache) {

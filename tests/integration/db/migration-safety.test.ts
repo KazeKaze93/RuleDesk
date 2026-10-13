@@ -14,7 +14,7 @@ import {
   splitMigrationStatements,
   executeMigrationStatement,
   applyMigrationInTransaction,
-} from "@/main/db/migration-runner";
+} from "../../../src/main/db/migration-runner";
 
 const PROJECT_DRIZZLE = path.resolve(process.cwd(), "drizzle");
 

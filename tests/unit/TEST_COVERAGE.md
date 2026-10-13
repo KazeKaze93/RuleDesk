@@ -43,7 +43,6 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `controllers/PostsController.provider-collision.test.ts` | External post identity `(artistId, provider, postId)` — fav/view/shadow-insert isolation |
 | `controllers/PostsController.reopen-caches.test.ts` | Schema caches refresh on `onDatabaseReopened`; shadow-insert after restore without artist 0 |
 | `controllers/PostsController.silent-errors.test.ts` | Count/viewed/cache DB failures throw (not `0`/`false`/`{updatedCount:0}`) |
-| `controllers/ArtistsController.silent-errors.test.ts` | `searchArtists` DB failure throws (not `[]`) |
 | `controllers/SearchController.silent-errors.test.ts` | `resolveTagsForType` DB failure throws (not `[]`) |
 | `controllers/SearchController.provider-merge.test.ts` | Browse merge scopes `isFavorited`/`isViewed` by provider |
 | `db/posts-provider-identity.test.ts` | Playlist import key + sync upsert conflict target |

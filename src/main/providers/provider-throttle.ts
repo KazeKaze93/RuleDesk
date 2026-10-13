@@ -9,15 +9,6 @@ export const DEFAULT_RATE_LIMIT_GATE_MS = 5_000;
 
 export type ThrottlePriority = "user" | "background";
 
-const SHARED_USER_AGENTS = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.119 Safari/537.36",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.118 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 13.6; rv:124.0) Gecko/20100101 Firefox/124.0",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.155 Safari/537.36",
-  "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0",
-];
-
 export class ProviderRateLimitGateError extends Error {
   readonly retryAfterMs: number;
 
@@ -247,10 +238,4 @@ export class ProviderThrottle {
     }
     this.lastRequestAt = Date.now();
   }
-}
-
-export function pickRandomUA(): string {
-  return SHARED_USER_AGENTS[
-    Math.floor(Math.random() * SHARED_USER_AGENTS.length)
-  ];
 }

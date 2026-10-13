@@ -1,14 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { artists, posts, settings, SETTINGS_ID } from "@/main/db/schema";
-import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
+import { artists, posts, settings, SETTINGS_ID } from "../../../src/main/db/schema";
+import { EXTERNAL_ARTIST_ID } from "@shared/constants";
 import type Database from "better-sqlite3";
 
 let activeSqlite: Database.Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -57,7 +56,7 @@ vi.mock("electron-log", () => ({
 
 const fetchPostsMock = vi.fn();
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn((id: string) => ({
     id,
     formatTag: (tag: string) => tag.trim().toLowerCase(),
@@ -66,7 +65,7 @@ vi.mock("@/main/providers", () => ({
   })),
 }));
 
-import { SearchController } from "@/main/ipc/controllers/SearchController";
+import { SearchController } from "../../../src/main/ipc/controllers/SearchController";
 
 const SHARED_POST_ID = 12345;
 
@@ -75,11 +74,9 @@ describe("SearchController Browse merge is provider-scoped", () => {
   let controller: SearchController;
 
   beforeEach(async () => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
     activeDb = mockDb.db;
-    container.register(DI_TOKENS.DB, mockDb.db);
     await mockDb.db.insert(settings).values({
       id: SETTINGS_ID,
       userId: "12345",
@@ -128,7 +125,6 @@ describe("SearchController Browse merge is provider-scoped", () => {
     mockDb.sqlite.close();
     activeSqlite = null;
     activeDb = null;
-    container.clear();
   });
 
   it("does not merge Rule34 fav/viewed onto Gelbooru Browse results with the same postId", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mapWorkerPostToPost } from "@/renderer/lib/map-worker-post";
-import type { WorkerPost } from "@/shared/types/post";
+import { mapWorkerPostToPost } from "@/lib/map-worker-post";
+import type { WorkerPost } from "@shared/types/post";
 
 describe("mapWorkerPostToPost", () => {
   const workerPost: WorkerPost = {

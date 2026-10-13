@@ -19,6 +19,7 @@
  */
 
 // Worker cannot use path aliases, use relative path
+import { AI_TAGS } from "../../shared/ai-tags";
 import type { WorkerPost } from "../../shared/types/post";
 
 // Worker message types
@@ -48,28 +49,20 @@ interface FilterAndSortPayload {
   filters: FilterConfig;
 }
 
-// Exact booru tokens (`_` / `-`). Keep in sync with PostsController AI_FILTER_TAGS
-// and BOORU_AI_FILTER_TAGS. Space phrases cannot match after split(/\s+/).
-const AI_TAG_PATTERNS = [
-  "ai_generated",
-  "ai-generated",
-  "ai_generation",
-  "ai-generated_content",
-];
-
 /**
  * Check if post has AI generated tag
- * Optimized for worker context (no external dependencies)
+ * Exact booru tokens from shared AI_TAGS (`_` / `-`).
+ * Space phrases cannot match after split(/\s+/).
  */
 function hasAiGeneratedTag(tags: string | undefined | null): boolean {
   if (!tags) return false;
-  
+
   const tagArray = tags
     .toLowerCase()
     .split(/\s+/)
     .filter((tag) => tag.length > 0);
-  
-  return AI_TAG_PATTERNS.some((aiTag) => tagArray.includes(aiTag));
+
+  return AI_TAGS.some((aiTag) => tagArray.includes(aiTag));
 }
 
 /**

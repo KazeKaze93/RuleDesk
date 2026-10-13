@@ -46,14 +46,14 @@ describe("SecureStorage.encrypt", () => {
   });
 
   it("returns empty string for empty plaintext", async () => {
-    const { SecureStorage } = await import("@/main/services/secure-storage");
+    const { SecureStorage } = await import("../../../src/main/services/secure-storage");
     expect(SecureStorage.encrypt("")).toBe("");
   });
 
   it("uses test credential encoding when safeStorage is unavailable in test runtime", async () => {
-    const { SecureStorage } = await import("@/main/services/secure-storage");
+    const { SecureStorage } = await import("../../../src/main/services/secure-storage");
     const { decodeTestCredential } = await import(
-      "@/main/lib/test-credential-cipher"
+      "../../../src/main/lib/test-credential-cipher"
     );
 
     const encoded = SecureStorage.encrypt("secret-api-key");
@@ -63,7 +63,7 @@ describe("SecureStorage.encrypt", () => {
 
   it("throws when safeStorage is unavailable outside test runtime", async () => {
     process.env.NODE_ENV = "production";
-    const { SecureStorage } = await import("@/main/services/secure-storage");
+    const { SecureStorage } = await import("../../../src/main/services/secure-storage");
 
     expect(() => SecureStorage.encrypt("secret-api-key")).toThrow(
       /Encryption is not available/i

@@ -3,7 +3,7 @@ import {
   GITHUB_RELEASES_LATEST_URL,
   GITHUB_REPO_RELEASES_BASE,
   buildGitHubReleasePageUrl,
-} from "@/main/lib/github-release-url";
+} from "../../../src/main/lib/github-release-url";
 
 describe("buildGitHubReleasePageUrl", () => {
   it("builds a tag URL for a valid semver", () => {

@@ -4,9 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Post } from "@shared/types/db";
-import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
-import { TagsDrawer } from "@/renderer/features/viewer/TagsDrawer";
-import { buildPostMetadataResolveQueryKey } from "@/renderer/features/viewer/postMetadataQueryKeys";
+import { EXTERNAL_ARTIST_ID } from "@shared/constants";
+import { TagsDrawer } from "@/features/viewer/TagsDrawer";
+import { buildPostMetadataResolveQueryKey } from "@/features/viewer/postMetadataQueryKeys";
 import { makePost } from "../../components/PostCard/makePost";
 
 vi.mock("electron-log/renderer", () => ({

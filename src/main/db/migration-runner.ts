@@ -2,6 +2,8 @@ import fs from "fs";
 import path from "path";
 import type Database from "better-sqlite3";
 import log from "electron-log";
+import { ErrorCode } from "../../shared/types/error-codes";
+import { createCodedError } from "../../shared/utils/coded-error";
 
 function logDebug(message: string): void {
   if (typeof log.debug === "function") {
@@ -186,23 +188,161 @@ export function readMigrationJournal(
   }
 }
 
-function stripLineComments(sqlChunk: string): string {
-  return sqlChunk
-    .split("\n")
-    .map((line) => {
-      const commentIdx = line.indexOf("--");
-      if (commentIdx === -1) {
-        return line;
+function isSqlWordChar(ch: string | undefined): boolean {
+  if (ch === undefined || ch.length === 0) {
+    return false;
+  }
+  const code = ch.charCodeAt(0);
+  return (
+    (code >= 65 && code <= 90) ||
+    (code >= 97 && code <= 122) ||
+    (code >= 48 && code <= 57) ||
+    code === 95
+  );
+}
+
+function matchesSqlKeywordAt(
+  sql: string,
+  index: number,
+  keyword: string
+): boolean {
+  if (index + keyword.length > sql.length) {
+    return false;
+  }
+  if (isSqlWordChar(sql[index - 1])) {
+    return false;
+  }
+  if (isSqlWordChar(sql[index + keyword.length])) {
+    return false;
+  }
+  for (let offset = 0; offset < keyword.length; offset += 1) {
+    const actual = sql[index + offset];
+    const expected = keyword[offset];
+    if (actual.toUpperCase() !== expected) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Split SQL into statements on `;` outside strings/comments, respecting
+ * `BEGIN`…`END` nesting (trigger bodies). Strips `--` and block comments
+ * from the emitted statement text (parity with the former line-comment strip).
+ */
+function splitSqlStatementsRespectingBeginEnd(sql: string): string[] {
+  const statements: string[] = [];
+  let current = "";
+  let beginDepth = 0;
+  let i = 0;
+
+  const flush = (): void => {
+    const trimmed = current.trim();
+    if (trimmed.length > 0) {
+      statements.push(trimmed);
+    }
+    current = "";
+  };
+
+  while (i < sql.length) {
+    const ch = sql[i];
+
+    // -- line comment (not emitted)
+    if (ch === "-" && sql[i + 1] === "-") {
+      i += 2;
+      while (i < sql.length && sql[i] !== "\n") {
+        i += 1;
       }
-      return line.slice(0, commentIdx);
-    })
-    .join("\n");
+      continue;
+    }
+
+    // /* block comment */ (not emitted)
+    if (ch === "/" && sql[i + 1] === "*") {
+      i += 2;
+      while (i < sql.length) {
+        if (sql[i] === "*" && sql[i + 1] === "/") {
+          i += 2;
+          break;
+        }
+        i += 1;
+      }
+      continue;
+    }
+
+    // '…' string ('' escape); do not split on interior `;`
+    if (ch === "'") {
+      current += ch;
+      i += 1;
+      while (i < sql.length) {
+        const inner = sql[i];
+        current += inner;
+        if (inner === "'") {
+          if (sql[i + 1] === "'") {
+            current += sql[i + 1];
+            i += 2;
+            continue;
+          }
+          i += 1;
+          break;
+        }
+        i += 1;
+      }
+      continue;
+    }
+
+    // "…" string/identifier ("" escape); do not split on interior `;`
+    if (ch === '"') {
+      current += ch;
+      i += 1;
+      while (i < sql.length) {
+        const inner = sql[i];
+        current += inner;
+        if (inner === '"') {
+          if (sql[i + 1] === '"') {
+            current += sql[i + 1];
+            i += 2;
+            continue;
+          }
+          i += 1;
+          break;
+        }
+        i += 1;
+      }
+      continue;
+    }
+
+    if (matchesSqlKeywordAt(sql, i, "BEGIN")) {
+      beginDepth += 1;
+      current += sql.slice(i, i + 5);
+      i += 5;
+      continue;
+    }
+
+    if (matchesSqlKeywordAt(sql, i, "END")) {
+      beginDepth = Math.max(0, beginDepth - 1);
+      current += sql.slice(i, i + 3);
+      i += 3;
+      continue;
+    }
+
+    if (ch === ";" && beginDepth === 0) {
+      flush();
+      i += 1;
+      continue;
+    }
+
+    current += ch;
+    i += 1;
+  }
+
+  flush();
+  return statements;
 }
 
 /**
  * Split a migration file into executable statements.
  * Honors Drizzle `--> statement-breakpoint` markers.
- * Does not split on `;` inside `BEGIN`…`END` trigger/procedure bodies.
+ * Does not split on `;` inside strings, comments, or `BEGIN`…`END` bodies.
  */
 export function splitMigrationStatements(migrationSQL: string): string[] {
   const normalized = migrationSQL.replace(/\r\n/g, "\n");
@@ -212,47 +352,7 @@ export function splitMigrationStatements(migrationSQL: string): string[] {
 
   const statements: string[] = [];
   for (const chunk of chunks) {
-    const withoutComments = stripLineComments(chunk);
-    statements.push(...splitSqlStatementsRespectingBeginEnd(withoutComments));
-  }
-  return statements;
-}
-
-function splitSqlStatementsRespectingBeginEnd(sql: string): string[] {
-  const statements: string[] = [];
-  let current = "";
-  let beginDepth = 0;
-  const tokens = sql.split(/(\bBEGIN\b|\bEND\b|;)/i);
-
-  for (const token of tokens) {
-    if (token.length === 0) {
-      continue;
-    }
-    const upper = token.toUpperCase();
-    if (upper === "BEGIN") {
-      beginDepth += 1;
-      current += token;
-      continue;
-    }
-    if (upper === "END") {
-      beginDepth = Math.max(0, beginDepth - 1);
-      current += token;
-      continue;
-    }
-    if (token === ";" && beginDepth === 0) {
-      const trimmed = current.trim();
-      if (trimmed.length > 0) {
-        statements.push(trimmed);
-      }
-      current = "";
-      continue;
-    }
-    current += token;
-  }
-
-  const trailing = current.trim();
-  if (trailing.length > 0) {
-    statements.push(trailing);
+    statements.push(...splitSqlStatementsRespectingBeginEnd(chunk));
   }
   return statements;
 }
@@ -404,6 +504,19 @@ export function applyMigrationInTransaction(
 }
 
 /**
+ * Fail loud when a journal tag has no matching `.sql` on disk.
+ * Startup surfaces this via main.ts fatal dialog.
+ */
+export function requireMigrationFile(migrationFile: string): void {
+  if (fs.existsSync(migrationFile)) {
+    return;
+  }
+  const message = `Migration file not found: ${migrationFile}`;
+  log.error(`[DB] ${message}`);
+  throw createCodedError(message, ErrorCode.DATABASE_ERROR);
+}
+
+/**
  * Run all journal migrations that are not yet recorded in __drizzle_migrations.
  * Does not create/delete the pre-migration snapshot — caller owns that lifecycle.
  */
@@ -416,11 +529,7 @@ export function runManualMigrations(
 
   for (const entry of migrationEntries) {
     const migrationFile = path.join(migrationsFolder, `${entry.tag}.sql`);
-
-    if (!fs.existsSync(migrationFile)) {
-      log.warn(`[DB] Migration file not found: ${migrationFile}`);
-      continue;
-    }
+    requireMigrationFile(migrationFile);
 
     const existing = sqlite
       .prepare("SELECT hash FROM __drizzle_migrations WHERE hash = ?")

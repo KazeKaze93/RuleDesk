@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { escapeLikePattern } from '@/main/db/utils';
-import { AddArtistSchema } from '@/shared/schemas/artist';
-import { PROVIDER_IDS, ARTIST_TYPES, type ProviderId, type ArtistType } from '@/shared/constants';
+import { escapeLikePattern } from '../../src/main/db/utils';
+import { AddArtistSchema } from '@shared/schemas/artist';
+import { PROVIDER_IDS, ARTIST_TYPES, type ProviderId, type ArtistType } from '@shared/constants';
 
 describe('Property-Based Testing (Fuzzing)', () => {
   

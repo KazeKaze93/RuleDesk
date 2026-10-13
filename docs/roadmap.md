@@ -46,7 +46,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 **Current state:** ✅ implemented, ongoing regression/polish
 
-- ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
+- ✅ Global top bar exists and is used across core pages; global sync busy state is the Sidebar sync indicator.
 - ✅ `FiltersPanel`: AI, media, source; wired to `searchStore` and post pipelines.
 - ✅ **Browse → Source (Favorites / Browse Source Subscriptions filter):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Local AI/media filters run in SQL before `LIMIT`. The Browse Source Subscriptions filter is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)). Distinct from [tag-combination subscriptions](#closed-by-design-not-backlog) (closed — superseded by smart playlists).
 - ✅ Search is chip-based and supports include/exclude, OR-groups, wildcard/fuzzy token forms (`*`, `~`) in query tokens.
@@ -72,7 +72,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### D. Navigation, layout, shell
 
-- ✅ **App shell** — `AppLayout` with **sidebar** (primary navigation) and **global top bar** (`GlobalTopBar`: search, filters, sort, grid/masonry, `SyncStatusBadge`). Routes and layout are **complete** for the shipped feature set.
+- ✅ **App shell** — `AppLayout` with **sidebar** (primary navigation + sync indicator) and **global top bar** (`GlobalTopBar`: search, filters, sort, grid/masonry). Routes and layout are **complete** for the shipped feature set.
 - ✅ Sidebar information architecture includes grouped sections (**Discover / Library / System**).
 - 🟡 **Optional polish (backlog, not “missing v1”):** additional tooltips for dense controls, item order tweaks for first-run discoverability, and density tuning on small windows. This is **UX refinement** on the current structure — we are **not** tracking alignment to an obsolete written wireframe; the product is what ships in the build.
 - ✅ **Masonry vs grid** — two explicit modes; **closed** as a gap ([Closed by design](#closed-by-design-not-backlog)).
@@ -152,20 +152,46 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 
 ### Critical DB safety + UI/arch debt (post-S2)
 
-Merge order: **this hotfix first**, then `#247`. Do not put the hotfix into `#247` (rollback of the large PR must not drop data-loss protection).
-
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| H-db | `fix/db-never-delete-on-open-error` | [#249](https://github.com/KazeKaze93/RuleDesk/pull/249) | 🟡 open — merge before `#247` |
-| UI/arch | `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — blocked on H-db |
+| H-db | `fix/db-never-delete-on-open-error` | [#249](https://github.com/KazeKaze93/RuleDesk/pull/249) | ✅ merged |
+| Auto-backup | `feat/auto-backup-default-on` | [#250](https://github.com/KazeKaze93/RuleDesk/pull/250) | ✅ merged |
+| UI/arch | `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — user overrode prior Electron-hold; merge after master conflict resolve |
 
-HANDOFF (H-db, do not treat as fixed here):
+#### HANDOFF (UI/arch follow-ups — do not silent-fix)
+
+| Task | Notes |
+|------|-------|
+| TagChip cursor menu → ContextMenu UI | Style mutations (`anchor.style.left/top`) remain; needs proper ContextMenu primitive |
+| UpdateNotification still slate custom toast | Custom `bg-slate-*` card; not sonner / design-system toast |
+| C2 gate: provider UI / errors / invalidation divergences | Do **not** silent-fix; track remaining provider-path inconsistencies |
+| `SyncService.checkCredentials` orphan | Auth IPC removal left the method without a bridge consumer |
+| `AddPostsToPlaylistSchema` unused optional cleanup | Schema leftover after bridge surface cleanup |
+| preload→main channels import → optional `@shared` move | Optional hygiene; not blocking |
+| Playlists smart query hardcoded `rule34` | Provider choice / out-of-pack; not fixed here |
+
+#### HANDOFF (H-db residual risk — not treated as fixed by #249)
 
 | Item | Risk |
 |------|------|
 | `database-restore.ts` `rm` of live path on failed reinit / rollback | High if `.bak` restore then fails |
 | `SystemController` wipe-all under userData | High by design (explicit user wipe) |
 | `migration-runner` / `backup-service` / `backupIntegrityWorker` temp/snapshot `rmSync` | Medium — not live `data.bin` paths by design; verify paths stay scoped |
+
+#### Сознательно вне scope (original OUT OF SCOPE)
+
+These items were never in scope for `#247` (no separate status row — they are not tracking-table work):
+
+- Hover-only actions / focus keyboard reveal / Panic shortcut hint / account gate branding
+- BrowserView integration
+- Per-provider credentials / three credential load paths
+- Migration journal renumber; dead `fts5_*` tables; `new_posts_count`; `playlist_entries` indexes
+- Triple service binding (singleton / DI / ctor)
+- Hook folders / pages vs features boundary; page random search; `tag_blacklist` outside Drizzle
+
+#### Открытый вопрос: IPC-троттлинг
+
+Whether mutating-handler throttle in `BaseController` is still necessary after collapse-key + `app.isPackaged` envelope fixes. Keep current behavior (space mutating calls with delay, never reject) for now; revisit with measurements before deleting. This is **not** a tracking-table status and is not a HANDOFF task row.
 
 ## 📰 Updates feed
 
@@ -197,7 +223,7 @@ HANDOFF (H-db, do not treat as fixed here):
 ### Next Hardening Steps
 
 - ✅ **User-configurable backup retention** is shipped (`settings.backupRetention`, range `1..20`, applied in `MaintenanceController` cleanup).
-- ✅ **Shared request pacing / UA rotation** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
+- ✅ **Shared request pacing / single `USER_AGENT`** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
 - ✅ Explicit VACUUM policy is shipped (manual run + persisted schedule + last-run telemetry in Settings).
 - 🔧 `audit/maintenance-vacuum-queue`: VACUUM joined to `maintenanceQueue` (serialize with backup/restore); status cache while DB closed; auto-backup skips when queue busy. Weekly/monthly VACUUM is checked on the existing `MaintenanceScheduler` daily tick via `MaintenanceService.runVacuumIfScheduleDue` (`settings.last_vacuum_at` + `vacuum_schedule`; `manual` skips).
 
@@ -224,7 +250,7 @@ HANDOFF (H-db, do not treat as fixed here):
 
 ### Shipped (Jul 2026 — audit v17 PRs #105–#115)
 
-- ✅ **IPC collapse + throttle** (#105): idempotent handlers collapse by full canonical args hash; mutating handlers space calls (~100ms sleep), never reject with rate-limit errors.
+- ✅ **IPC collapse + throttle** (#105): idempotent handlers collapse by channel + full canonical serialized args (no lossy hash); mutating handlers space calls (~100ms sleep), never reject with rate-limit errors.
 - ✅ **Type assertion policy** (#106): ESLint `no-unsafe-type-assertion` on `src/**`; closed `as` boundary allowlist in `.cursorrules` / LESSONS 3b.
 - ✅ **Crypto unify** (#107): single `SecureStorage` path; `src/main/lib/crypto.ts` removed.
 - ✅ **DI container slim** (#108): typed instance registry keyed by `token.id` (no dead cycle-detection theater).

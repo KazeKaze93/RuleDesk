@@ -1,8 +1,49 @@
 import { describe, it, expect } from 'vitest';
-import { hasAiGeneratedTag, isVideoPost } from '@/renderer/lib/filter-utils';
+import { hasAiGeneratedTag, isVideoPost } from '@/lib/filter-utils';
+import { AI_TAGS } from '@shared/ai-tags';
+
+/** Pre-unify local list composition (P0-C: all copies identical). */
+const PREVIOUS_AI_TAG_LIST = [
+  'ai_generated',
+  'ai-generated',
+  'ai_generation',
+  'ai-generated_content',
+] as const;
+
+function hasAiTagWithList(
+  tags: string,
+  list: readonly string[]
+): boolean {
+  const tagArray = tags
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((tag) => tag.length > 0);
+  return list.some((aiTag) => tagArray.includes(aiTag));
+}
 
 describe('filter-utils', () => {
   describe('hasAiGeneratedTag', () => {
+    it('matches pre-unify list composition on a fixture', () => {
+      expect([...AI_TAGS]).toEqual([...PREVIOUS_AI_TAG_LIST]);
+
+      const fixtureTags = [
+        'solo 1girl',
+        'ai_generated rating_safe',
+        'tag1 ai-generated tag2',
+        'ai_generation',
+        'prefix ai-generated_content suffix',
+        'ai generated',
+        'prefix_ai_generated_suffix',
+        'AI_GENERATED',
+      ];
+
+      for (const tags of fixtureTags) {
+        expect(hasAiGeneratedTag(tags)).toBe(
+          hasAiTagWithList(tags, PREVIOUS_AI_TAG_LIST)
+        );
+      }
+    });
+
     it('should return false for null or undefined tags', () => {
       expect(hasAiGeneratedTag(null)).toBe(false);
       expect(hasAiGeneratedTag(undefined)).toBe(false);

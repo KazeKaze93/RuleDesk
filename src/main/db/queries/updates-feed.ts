@@ -14,6 +14,7 @@ import {
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../schema";
 import { artists, posts } from "../schema";
+import { AI_TAGS } from "../../../shared/ai-tags";
 import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
@@ -97,14 +98,8 @@ function buildOptionalFeedFilterConditions(
   }
 
   if (filters?.aiFilter === "hide" || filters?.aiFilter === "only") {
-    const aiTags = [
-      "ai_generated",
-      "ai-generated",
-      "ai_generation",
-      "ai-generated_content",
-    ] as const;
     const aiOr = or(
-      ...aiTags.map(
+      ...AI_TAGS.map(
         (tag) =>
           sql`instr(' ' || lower(${posts.tags}) || ' ', ' ' || ${tag} || ' ') > 0`
       )

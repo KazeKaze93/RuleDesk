@@ -4,16 +4,17 @@ import path from 'path';
 
 /**
  * Vitest Configuration for Electron Main Process Testing
- * 
+ *
  * Architecture: Separates E2E (Playwright) from Unit/Integration (Vitest)
- * 
- * CRITICAL: Tests run in Node.js environment, but better-sqlite3 must be
- * rebuilt for Electron ABI. Use `npm run db:rebuild` after installing dependencies.
- * 
- * For native modules to work correctly:
- * 1. Ensure better-sqlite3 is in dependencies (not devDependencies)
- * 2. Run `npm run db:rebuild` to rebuild for Electron ABI
- * 3. Tests use Node.js environment but native modules are Electron-compatible
+ *
+ * Path aliases match tsconfig / electron-vite renderer:
+ *   `@`  → `src/renderer`
+ *   `@shared` → `src/shared`
+ * Main/preload test imports use relative `src/main` / `src/preload` paths.
+ *
+ * Native ABI: `npm test` runs `pretest` → `db:rebuild:node` (better-sqlite3 for
+ * Node) before Vitest, then `posttest` → `db:rebuild` (Electron ABI) after.
+ * Direct `vitest` / `npx vitest` skips those hooks — use `npm test` instead.
  */
 export default defineConfig({
   plugins: [tsconfigPaths()],
@@ -54,10 +55,7 @@ export default defineConfig({
       exclude: ['node_modules/', 'tests/', '**/*.d.ts', '**/out/**', '**/dist/**'],
     },
     alias: {
-      // Renderer sources use tsconfig `@/*` → `src/renderer/*` (`@/lib/utils`).
-      // Test files use `@/main` and `@/renderer`, so `@` stays `src/`.
-      '@/lib': path.resolve(__dirname, './src/renderer/lib'),
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(__dirname, './src/renderer'),
       '@shared': path.resolve(__dirname, './src/shared'),
     },
   },

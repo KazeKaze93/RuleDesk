@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAutocompleteLabelCount } from "@/shared/utils/autocomplete-label-count";
+import { parseAutocompleteLabelCount } from "@shared/utils/autocomplete-label-count";
 
 describe("parseAutocompleteLabelCount", () => {
   it("parses Rule34 autocomplete label suffix", () => {

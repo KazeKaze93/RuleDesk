@@ -52,7 +52,7 @@ if (Array.isArray(log.hooks)) {
   }
 }
 
-// Перехват глобальных ошибок
+// Intercept global errors
 log.errorHandler.startCatching();
 
 export const logger = log;

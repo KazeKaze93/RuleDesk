@@ -1,6 +1,4 @@
 import log from "electron-log";
-import { getDb } from "../../db/client";
-import { container, DI_TOKENS } from "./Container";
 
 type DatabaseReopenedListener = () => void;
 
@@ -21,12 +19,12 @@ export function onDatabaseReopened(
 }
 
 /**
- * Re-bind DI DB token and notify subscribers after initializeDatabase().
+ * Notify subscribers after initializeDatabase() on restore / VACUUM.
+ * Controllers call getDb() at handler time — no DI DB token to rebind.
  * Called from restore and VACUUM completion paths (not on first app boot —
- * controllers initialize caches in setup() after the first register).
+ * controllers initialize caches in setup() after the first open).
  */
 export function registerDatabaseInContainerAfterReinit(): void {
-  container.register(DI_TOKENS.DB, getDb());
   for (const listener of databaseReopenedListeners) {
     try {
       listener();

@@ -3,7 +3,7 @@ import {
   isAbortError,
   ProviderRateLimitGateError,
   ProviderThrottle,
-} from "@/main/providers/provider-throttle";
+} from "../../../src/main/providers/provider-throttle";
 
 const FAKE_NOW_MS = Date.UTC(2026, 0, 1);
 

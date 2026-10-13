@@ -29,6 +29,8 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { Alert, AlertDescription } from "../ui/alert";
+import { Skeleton } from "../ui/skeleton";
+import { PageHeader } from "../layout/PageHeader";
 import {
   Tooltip,
   TooltipContent,
@@ -118,8 +120,10 @@ const CreatorsView = ({
       </div>
 
       {isLoading ? (
-        <div className="flex flex-1 justify-center items-center">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <div className="flex flex-1 flex-col gap-3 justify-center items-center p-6">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-16 w-full max-w-xl" />
+          ))}
         </div>
       ) : artists.length === 0 ? (
         <div className="flex flex-1 justify-center items-center text-muted-foreground">
@@ -602,62 +606,59 @@ export const Updates = () => {
   }, [hasActiveTagFilter, tags]);
 
   return (
-    <div className="flex flex-col -m-6 h-full bg-background text-foreground">
-      <div className="flex z-[5] justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
-        <div className="flex gap-4 items-center">
-          <div>
-            <h2 className="flex gap-2 items-center text-xl font-bold">
-              <RefreshCw className="w-5 h-5 text-primary" />
-              Updates
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Latest posts from tracked artists
-            </p>
-            <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
-              <span className="text-sm font-medium text-muted-foreground">
-                {totalUnreadCount === 0
-                  ? "No new posts"
-                  : `${totalUnreadCount.toLocaleString()} ${totalUnreadCount === 1 ? "new post" : "new posts"}`}
-              </span>
-            </div>
-          </div>
-        </div>
-        {activeView === FEED_VIEW && (
-          <div className="flex gap-2 items-center ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => markAllMutation.mutate()}
-              disabled={allPosts.length === 0 || markAllMutation.isPending}
-              aria-label="Mark all posts as read"
-            >
-              <CheckCheck className="mr-2 w-4 h-4" />
-              Mark all read
-            </Button>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
+    <div className="flex flex-col h-full bg-background text-foreground">
+      <div className="flex z-[5] items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
+        <div className="w-full">
+          <PageHeader
+            title="Updates"
+            icon={RefreshCw}
+            description={
+              totalUnreadCount === 0
+                ? "Latest posts from tracked artists · No new posts"
+                : `Latest posts from tracked artists · ${totalUnreadCount.toLocaleString()} ${
+                    totalUnreadCount === 1 ? "new post" : "new posts"
+                  }`
+            }
+            actions={
+              activeView === FEED_VIEW ? (
+                <>
                   <Button
-                    type="button"
-                    variant={isBulkMode ? "default" : "outline"}
-                    size="icon"
-                    aria-label="Toggle bulk selection mode"
-                    onClick={() => {
-                      if (isBulkMode) {
-                        deactivateBulkMode();
-                        return;
-                      }
-                      activateBulkMode();
-                    }}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => markAllMutation.mutate()}
+                    disabled={allPosts.length === 0 || markAllMutation.isPending}
+                    aria-label="Mark all posts as read"
                   >
-                    <CheckSquare className="h-4 w-4" />
+                    <CheckCheck className="mr-2 w-4 h-4" />
+                    Mark all read
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>Bulk selection</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        )}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant={isBulkMode ? "default" : "outline"}
+                          size="icon"
+                          aria-label="Toggle bulk selection mode"
+                          onClick={() => {
+                            if (isBulkMode) {
+                              deactivateBulkMode();
+                              return;
+                            }
+                            activateBulkMode();
+                          }}
+                        >
+                          <CheckSquare className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Bulk selection</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </>
+              ) : undefined
+            }
+          />
+        </div>
       </div>
 
       <div className="flex-1 min-h-0">
@@ -709,8 +710,14 @@ export const Updates = () => {
             }}
           />
         ) : (isLoading || isFeedMetaLoading) && allPosts.length === 0 ? (
-          <div className="flex justify-center items-center h-full text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin" />
+          <div className="flex flex-col gap-3 justify-center items-center h-full px-6">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+            <div className="grid w-full max-w-3xl grid-cols-3 gap-3 pt-4">
+              {Array.from({ length: 6 }, (_, index) => (
+                <Skeleton key={index} className="aspect-square w-full" />
+              ))}
+            </div>
           </div>
         ) : isUnfilteredCountError ? (
           <Alert variant="destructive">

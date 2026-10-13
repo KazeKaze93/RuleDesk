@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { createVirtuosoGridFactories } from "@/renderer/components/gallery/virtuoso-factories";
+import { createVirtuosoGridFactories } from "@/components/gallery/virtuoso-factories";
 
 const {
   GridContainer,

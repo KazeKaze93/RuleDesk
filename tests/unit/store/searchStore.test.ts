@@ -9,7 +9,8 @@ import {
   buildRemoteMediaTypeTagInjection,
   parseSearchQuery,
   useSearchStore,
-} from "@/renderer/store/searchStore";
+} from "@/store/searchStore";
+import { AI_TAGS } from "@shared/ai-tags";
 
 vi.mock("electron-log/renderer", () => ({
   default: {
@@ -53,6 +54,18 @@ describe("buildBooruTagListForIpc", () => {
     expect(buildBooruTagListForIpc(["1girl"], ["ai_generated"])).toEqual([
       "1girl",
       "-ai_generated",
+    ]);
+  });
+});
+
+describe("BOORU_AI_FILTER_TAGS shared wiring", () => {
+  it("is the shared AI_TAGS list (pre-unify composition)", () => {
+    expect(BOORU_AI_FILTER_TAGS).toBe(AI_TAGS);
+    expect([...BOORU_AI_FILTER_TAGS]).toEqual([
+      "ai_generated",
+      "ai-generated",
+      "ai_generation",
+      "ai-generated_content",
     ]);
   });
 });

@@ -11,6 +11,7 @@ import type { AddressInfo } from "node:net";
 import { tryParseHttpsUrlHostname } from "../../shared/utils/url-host";
 import { getAllProviderCdnDomains } from "../providers";
 import {
+  USER_AGENT,
   VIDEO_CACHE_EVICT_AFTER_START_MS,
   VIDEO_CACHE_MAX_BYTES,
   VIDEO_CACHE_SWEEP_ORPHAN_TMP_AGE_MS,
@@ -536,7 +537,7 @@ export class VideoProxyServer {
     cachePath: string,
   ): void {
     const proxyHeaders: http.OutgoingHttpHeaders = {
-      "User-Agent": "Mozilla/5.0",
+      "User-Agent": USER_AGENT,
     };
     if (req.headers.range !== undefined) {
       proxyHeaders.range = req.headers.range;

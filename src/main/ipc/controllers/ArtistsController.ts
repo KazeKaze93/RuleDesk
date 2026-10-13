@@ -1,11 +1,11 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, or, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
+import { getDb } from "../../db/client";
 import { artists, settings, SETTINGS_ID, TAG_TYPES } from "../../db/schema";
-import { escapeLikePattern } from "../../db/utils";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
   getProvider,
@@ -13,8 +13,6 @@ import {
   type SearchResults,
 } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { getTrackedArtistsWithStats } from "../../db/queries/artists";
@@ -39,14 +37,12 @@ import type { ProviderSettings } from "../../providers/types";
 import { isAbortError } from "../../providers/provider-throttle";
 import { DELETE_ARTIST_SYNC_DRAIN_MS } from "../../config/constants";
 
-type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
 // This ensures types always match the schema, even if schema changes
 type Artist = InferSelectModel<typeof artists>;
 type NewArtist = InferInsertModel<typeof artists>;
 const AddArtistArgsSchema = z.tuple([AddArtistSchema]);
 const DeleteArtistArgsSchema = z.tuple([IdSchema]);
-const SearchArtistsArgsSchema = z.tuple([z.string().trim().min(1)]);
 const SearchRemoteTagsArgsSchema = z.tuple([
   z.string().trim().min(2),
   z.enum(["rule34", "gelbooru"]).optional(),
@@ -81,7 +77,6 @@ type IpcArtist = {
  * - Get all artists (ordered by last checked date)
  * - Add new artist (with conflict resolution)
  * - Delete artist by ID
- * - Search artists by name/tag
  * - Search remote tags via API (Rule34/Gelbooru)
  */
 export class ArtistsController extends BaseController {
@@ -93,10 +88,6 @@ export class ArtistsController extends BaseController {
   private artistAutocompleteAbort: AbortController | null = null;
 
   // Query style: Drizzle Builder API only in this controller.
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
-  }
-
   private getSyncService(): SyncService {
     return container.resolve(DI_TOKENS.SYNC_SERVICE);
   }
@@ -113,35 +104,17 @@ export class ArtistsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.ADD_ARTIST,
       AddArtistArgsSchema,
-      async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
-        const [data] = AddArtistArgsSchema.parse(args);
-        return this.handleAddArtist(event, data);
-      }
+      async (event, data) => this.handleAddArtist(event, data)
     );
     this.handle(
       IPC_CHANNELS.DB.DELETE_ARTIST,
       DeleteArtistArgsSchema,
-      (event, ...args) => {
-        const [id] = DeleteArtistArgsSchema.parse(args);
-        return this.deleteArtist(event, id);
-      }
-    );
-    this.handle(
-      IPC_CHANNELS.DB.SEARCH_TAGS,
-      SearchArtistsArgsSchema,
-      (event, ...args) => {
-        const [query] = SearchArtistsArgsSchema.parse(args);
-        return this.searchArtists(event, query);
-      }
+      (event, id) => this.deleteArtist(event, id)
     );
     this.handle(
       IPC_CHANNELS.API.SEARCH_REMOTE,
       SearchRemoteTagsArgsSchema,
-      (event, ...args) => {
-        const [query, providerId, artistOnly] =
-          SearchRemoteTagsArgsSchema.parse(args);
-        return this.searchRemoteTags(event, query, providerId, artistOnly);
-      }
+      (event, query, providerId, artistOnly) => this.searchRemoteTags(event, query, providerId, artistOnly)
     );
 
     log.info("[ArtistsController] All handlers registered");
@@ -154,7 +127,7 @@ export class ArtistsController extends BaseController {
    * @returns Array of artists
    */
   private async getArtists(_event: IpcMainInvokeEvent): Promise<IpcArtist[]> {
-    const db = this.getDb();
+    const db = getDb();
     try {
       // Use COALESCE with integer columns (both are integer with timestamp mode)
       // This matches the expression index: COALESCE(last_checked, created_at) DESC
@@ -202,7 +175,7 @@ export class ArtistsController extends BaseController {
     );
 
     try {
-      const db = this.getDb();
+      const db = getDb();
       const artistData: NewArtist = {
         name: args.name,
         tag: args.tag,
@@ -245,7 +218,7 @@ export class ArtistsController extends BaseController {
    */
   private maybeQueueAutoSyncOnArtistAdd(artistId: number): void {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const currentSettings = db
         .select()
         .from(settings)
@@ -326,7 +299,7 @@ export class ArtistsController extends BaseController {
     }
 
     try {
-      const db = this.getDb();
+      const db = getDb();
       db.delete(artists).where(eq(artists.id, id)).run();
       log.info(`[ArtistsController] Artist deleted: ID ${id}`);
       return DeleteArtistResultSchema.parse({ ok: true });
@@ -336,47 +309,6 @@ export class ArtistsController extends BaseController {
     }
   }
 
-
-  /**
-   * Search artists by name or tag (LIKE query)
-   *
-   * @param _event - IPC event (unused)
-   * @param query - Search query string (validated)
-   * @returns Array of matching artists (limited to 20)
-   */
-  private async searchArtists(
-    _event: IpcMainInvokeEvent,
-    query: string
-  ): Promise<IpcArtist[]> {
-    try {
-      const db = this.getDb();
-      // Escape special LIKE characters before wrapping with %
-      const escapedQuery = escapeLikePattern(query);
-      const searchPattern = `%${escapedQuery}%`;
-
-      // Use sql template with ESCAPE clause for proper LIKE escaping
-      const result = await db
-        .select()
-        .from(artists)
-        .where(
-          or(
-            sql`${artists.tag} LIKE ${searchPattern} ESCAPE '\\'`,
-            sql`${artists.name} LIKE ${searchPattern} ESCAPE '\\'`
-          )
-        )
-        .limit(20)
-        .all();
-      log.info(
-        `[ArtistsController] Search "${query}" returned ${result.length} results`
-      );
-
-      // Convert Date objects to numbers for Electron 39+ IPC serialization
-      return toIpcSafe(result);
-    } catch (error) {
-      log.error("[ArtistsController] Search failed:", error);
-      throw error;
-    }
-  }
 
   /**
    * Search remote tags via Booru provider autocomplete API.
@@ -428,7 +360,7 @@ export class ArtistsController extends BaseController {
 
   private getDecryptedProviderSettings(): ProviderSettings | null {
     try {
-      const settingsRecord = this.getDb()
+      const settingsRecord = getDb()
         .select()
         .from(settings)
         .where(eq(settings.id, SETTINGS_ID))
@@ -474,7 +406,7 @@ export class ArtistsController extends BaseController {
       return [];
     }
 
-    const db = this.getDb();
+    const db = getDb();
     const cache = loadTagMetadataCache(db, uniqueTags);
     const providerSettings = this.getDecryptedProviderSettings();
     if (providerSettings) {

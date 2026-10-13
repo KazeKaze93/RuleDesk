@@ -9,9 +9,9 @@ import {
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useGalleryInfiniteScroll } from "@/renderer/hooks/useGalleryInfiniteScroll";
-import { getSearchBrowseNextPageParam } from "@/renderer/utils/react-query-cache";
-import type { SearchBooruPageResult } from "@/shared/schemas/search";
+import { useGalleryInfiniteScroll } from "@/hooks/useGalleryInfiniteScroll";
+import { getSearchBrowseNextPageParam } from "@/utils/react-query-cache";
+import type { SearchBooruPageResult } from "@shared/schemas/search";
 
 const POSTS_PER_PAGE = 50;
 const DEFAULT_DEBOUNCE_MS = 150;

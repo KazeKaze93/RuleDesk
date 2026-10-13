@@ -2,6 +2,7 @@ import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import log from "electron-log/renderer";
 import { Loader2, Trash2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -63,36 +64,33 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
         if (!mutation.isPending) onOpenChange(open);
       }}
     >
-      <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-700 text-slate-100">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex gap-2 items-center text-red-500">
+          <DialogTitle className="flex gap-2 items-center text-destructive">
             <Trash2 className="w-5 h-5" />
             {DELETE_ARTIST_LABEL}
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription>
             {`Are you sure you want to delete ${artist.name}? All posts will be removed.`}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-3 mb-2 rounded border bg-slate-950 border-slate-800">
-          <span className="font-bold text-white">{artist.name}</span>
-          <div className="mt-1 text-xs text-slate-500">Tag: {artist.tag}</div>
+        <div className="mb-2 rounded border border-border bg-muted p-3">
+          <span className="font-bold text-foreground">{artist.name}</span>
+          <div className="mt-1 text-xs text-muted-foreground">Tag: {artist.tag}</div>
         </div>
 
         {mutation.isPending && (
-          <p className="mb-2 text-sm text-slate-400" aria-live="polite">
+          <p className="mb-2 text-sm text-muted-foreground" aria-live="polite">
             Deleting… If this artist is syncing, waiting for sync to stop first.
           </p>
         )}
 
         {mutation.isError && (
-          <div
-            className="flex gap-2 items-center p-3 mb-2 text-sm text-red-200 rounded border border-red-800 bg-red-900/50"
-            role="alert"
-          >
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{getErrorMessage(mutation.error)}</span>
-          </div>
+          <Alert variant="destructive" className="mb-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{getErrorMessage(mutation.error)}</AlertDescription>
+          </Alert>
         )}
 
         <DialogFooter>
@@ -100,7 +98,6 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={mutation.isPending}
-            className="border-slate-700 hover:bg-slate-800 text-slate-200"
           >
             Cancel
           </Button>
@@ -108,7 +105,6 @@ export const DeleteArtistDialog: React.FC<DeleteArtistDialogProps> = ({
             variant="destructive"
             onClick={() => mutation.mutate(artist.id)}
             disabled={mutation.isPending}
-            className="text-white bg-red-600 hover:bg-red-700"
             aria-label={
               mutation.isPending ? "Deleting artist" : DELETE_ARTIST_LABEL
             }

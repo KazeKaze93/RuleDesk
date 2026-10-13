@@ -43,6 +43,7 @@ import { useViewerController } from "./hooks/useViewerController";
 import { VIEWER_OVERLAY_Z, viewerOverlayClass } from "./viewer-layers";
 import { ViewerMedia } from "./ViewerMedia";
 import { TagsDrawer } from "./TagsDrawer";
+import { getRatingMeta } from "../../lib/rating";
 
 export const ViewerContent = ({
   post,
@@ -68,13 +69,20 @@ export const ViewerContent = ({
   isTagsDrawerOpen: boolean;
 }) => {
   const ctrl = useViewerController({ post, queue });
-  const isDeveloperMode = true;
+  const isDeveloperMode = import.meta.env.DEV;
   const isPlaylistSurface = queue?.origin?.kind === "playlist";
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
   const playlistDialogTriggerRef = useRef<HTMLButtonElement | null>(null);
   // Local state for randomization in viewer (not synced with global store)
   const isRandom = (queue && "isRandom" in queue) ? queue.isRandom ?? false : false;
   const setQueueIsRandom = useViewerStore((state) => state.setQueueIsRandom);
+  const ratingMeta = getRatingMeta(post.rating);
+  const ratingBadgeBgClass =
+    ratingMeta.badgeVariant === "success"
+      ? "bg-success/20"
+      : ratingMeta.badgeVariant === "warning"
+        ? "bg-warning/20"
+        : "bg-destructive/20";
 
   const handleToggleRandom = useCallback(() => {
     const newIsRandom = !isRandom;
@@ -184,7 +192,9 @@ export const ViewerContent = ({
             <Heart
               className={cn(
                 "w-5 h-5 transition-colors",
-                ctrl.isFavorited ? "text-red-500 fill-red-500" : "text-white"
+                ctrl.isFavorited
+                  ? "text-destructive fill-destructive"
+                  : "text-white"
               )}
             />
           </Button>
@@ -253,7 +263,7 @@ export const ViewerContent = ({
             }
             title={
               ctrl.isCurrentlyDownloading
-                ? `Скачивание ${ctrl.downloadProgress}%`
+                ? `Downloading ${ctrl.downloadProgress}%`
                 : "Download Original"
             }
           >
@@ -269,7 +279,7 @@ export const ViewerContent = ({
                   y={0}
                   width={ctrl.downloadProgress}
                   height={1}
-                  className="fill-green-500/50"
+                  className="fill-success/50"
                 />
               </svg>
             )}
@@ -439,16 +449,11 @@ export const ViewerContent = ({
             <span
               className={cn(
                 "px-2 py-0.5 rounded text-xs font-bold uppercase",
-                post.rating === "e"
-                  ? "bg-red-500/20 text-red-400"
-                  : "bg-green-500/20 text-green-400"
+                ratingBadgeBgClass,
+                ratingMeta.textClassName
               )}
             >
-              {post.rating === "s"
-                ? "Safe"
-                : post.rating === "q"
-                ? "Questionable"
-                : "Explicit"}
+              {ratingMeta.label}
             </span>
             {post.publishedAt && (() => {
               let date: Date;

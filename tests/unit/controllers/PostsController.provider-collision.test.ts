@@ -1,21 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { artists, posts } from "@/main/db/schema";
-import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
+import { artists, posts } from "../../../src/main/db/schema";
+import { EXTERNAL_ARTIST_ID } from "@shared/constants";
 import { and, eq } from "drizzle-orm";
 import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
-import type { PostData } from "@/shared/schemas/post";
+import type { PostData } from "@shared/schemas/post";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -49,7 +55,7 @@ vi.mock("electron-log", () => ({
 
 const fetchPostsMock = vi.fn();
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn((id: string) => ({
     id,
     formatTag: (tag: string) => tag.trim().toLowerCase(),
@@ -59,14 +65,14 @@ vi.mock("@/main/providers", () => ({
   PROVIDER_IDS: ["rule34", "gelbooru"],
 }));
 
-vi.mock("@/main/services/credentials", () => ({
+vi.mock("../../../src/main/services/credentials", () => ({
   getDecryptedApiSettings: vi.fn(async () => ({
     userId: "u",
     apiKey: "k",
   })),
 }));
 
-vi.mock("@/main/services/post-lookup-cache", () => ({
+vi.mock("../../../src/main/services/post-lookup-cache", () => ({
   resolvePostLookup: vi.fn(
     async (
       _provider: string,
@@ -79,7 +85,7 @@ vi.mock("@/main/services/post-lookup-cache", () => ({
   ),
 }));
 
-import { PostsController } from "@/main/ipc/controllers/PostsController";
+import { PostsController } from "../../../src/main/ipc/controllers/PostsController";
 
 type PostsControllerInternals = {
   setup: () => void;
@@ -124,10 +130,9 @@ describe("PostsController provider collision identity", () => {
   let controller: PostsControllerInternals;
 
   beforeEach(() => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     controller = new PostsController() as unknown as PostsControllerInternals;
     controller.setup();
     fetchPostsMock.mockReset();
@@ -136,7 +141,7 @@ describe("PostsController provider collision identity", () => {
   afterEach(() => {
     mockDb.sqlite.close();
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   it("stores Rule34 and Gelbooru external posts with the same postId as two rows", async () => {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Play, Check, Heart, List, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,8 +11,10 @@ import { isVideoUrl } from "../../../../shared/utils/media";
 import { useVideoProxyUrl } from "../../../lib/hooks/useVideoProxyUrl";
 import { QuickAddToPlaylistMenu } from "../../../components/playlists/QuickAddToPlaylistMenu";
 import { Checkbox } from "../../../components/ui/checkbox";
+import { Button } from "../../../components/ui/button";
 import { useBulkSelect } from "../../../hooks/useBulkSelect";
 import { getBulkSelectId } from "../../../lib/bulkSelect";
+import { getRatingMeta } from "../../../lib/rating";
 
 const loadedSampleUrls = new Set<string>();
 const LONG_PRESS_DELAY_MS = 300;
@@ -43,8 +45,8 @@ const PostCardBadges: React.FC<PostCardBadgesProps> = ({
 }) => (
   <div className="flex absolute top-2 left-2 z-10 gap-1 items-center">
     {isFavorited && context !== "favorites" && (
-      <div className="p-1 rounded-full shadow-sm bg-red-500/90">
-        <Heart className="w-3 h-3 text-white fill-white" />
+      <div className="p-1 rounded-full shadow-sm bg-destructive/90">
+        <Heart className="w-3 h-3 text-destructive-foreground fill-destructive-foreground" />
       </div>
     )}
     {isViewed && (
@@ -70,10 +72,10 @@ export const PostCard: React.FC<PostCardProps> = ({
       blurAmount: s.blurAmount,
     })),
   );
-  // Optimize: subscribe only to viewType, not entire store
   const viewType = useSearchStore((state) => state.viewType);
   const shouldPreserveAspect = preserveAspect ?? viewType === "grid";
   const normalizedRating = normalizeRating(post.rating);
+  const ratingMeta = getRatingMeta(post.rating);
   const shouldBlur = shouldBlurPost(normalizedRating, safeMode, panicMode);
   const effectiveBlur = getEffectiveBlurAmount(safeMode, panicMode, blurAmount);
   const blurFilterClass =
@@ -81,7 +83,6 @@ export const PostCard: React.FC<PostCardProps> = ({
       ? `[filter:blur(${Math.min(100, Math.round(effectiveBlur))}px)]`
       : undefined;
 
-  // Video hover preview state
   const [isHovered, setIsHovered] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
   const [isInViewport, setIsInViewport] = useState(false);
@@ -89,12 +90,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [sampleSrc, setSampleSrc] = useState<string | null>(null);
   const [videoError, setVideoError] = useState(false);
   const [isPlaylistMenuOpen, setIsPlaylistMenuOpen] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const contextMenuAnchorRef = useRef<HTMLSpanElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -111,7 +107,6 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
-  // Determine video preview URL: prefer sampleUrl if it's a video, otherwise use fileUrl
   const videoPreviewUrl = isVid
     ? (post.sampleUrl && isVideoUrl(post.sampleUrl) ? post.sampleUrl : post.fileUrl)
     : null;
@@ -120,7 +115,6 @@ export const PostCard: React.FC<PostCardProps> = ({
     isVid && videoPreviewUrl ? videoPreviewUrl : null,
   );
 
-  // IntersectionObserver: only initialize video when card is in viewport
   useEffect(() => {
     if (!cardRef.current) return;
 
@@ -128,14 +122,13 @@ export const PostCard: React.FC<PostCardProps> = ({
       (entries) => {
         entries.forEach((entry) => {
           setIsInViewport(entry.isIntersecting);
-          // Only allow video loading when in viewport
           if (entry.isIntersecting) {
             setShouldLoadVideo(true);
           }
         });
       },
       {
-        rootMargin: "100px", // Start loading slightly before entering viewport
+        rootMargin: "100px",
         threshold: 0.01,
       }
     );
@@ -148,7 +141,6 @@ export const PostCard: React.FC<PostCardProps> = ({
   }, [isVid, videoPreviewUrl]);
 
   useEffect(() => {
-    // Only upgrade if: in viewport, not a video, sampleUrl exists and is different from previewUrl
     if (!isInViewport || isVid || !post.sampleUrl || post.sampleUrl === post.previewUrl) return;
     if (sampleLoaded) return;
     if (loadedSampleUrls.has(post.sampleUrl)) {
@@ -173,7 +165,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       decodeResult.then(promoteSample).catch(promoteSample);
     };
     img.onerror = () => {
-      // Sample failed to load — keep showing preview, no error shown to user
+      // Sample failed to load — keep showing preview.
     };
     img.src = post.sampleUrl;
 
@@ -184,43 +176,24 @@ export const PostCard: React.FC<PostCardProps> = ({
     };
   }, [isInViewport, isVid, post.sampleUrl, post.previewUrl, sampleLoaded]);
 
-  // Handle video playback on hover
   useEffect(() => {
     if (!videoRef.current || !shouldLoadVideo || !isHovered) return;
 
     const video = videoRef.current;
-    
-    // Play video on hover
+
     const playPromise = video.play();
     if (playPromise !== undefined) {
       playPromise.catch(() => {
-        // Video play failed (e.g., autoplay policy, network error)
-        // Silently handle - we'll fallback to static image
         setVideoError(true);
       });
     }
 
     return () => {
-      // Pause video when not hovered
       if (video && !video.paused) {
         video.pause();
       }
     };
   }, [isHovered, shouldLoadVideo]);
-
-  useLayoutEffect(() => {
-    const el = contextMenuAnchorRef.current;
-    if (!el) {
-      return;
-    }
-    if (contextMenuPosition) {
-      el.style.left = `${contextMenuPosition.x}px`;
-      el.style.top = `${contextMenuPosition.y}px`;
-    } else {
-      el.style.removeProperty("left");
-      el.style.removeProperty("top");
-    }
-  }, [contextMenuPosition]);
 
   useEffect(() => {
     return () => {
@@ -228,17 +201,13 @@ export const PostCard: React.FC<PostCardProps> = ({
     };
   }, []);
 
-  // Use key prop on video element to reset state when post changes
-  // This avoids useEffect setState (which causes cascading renders)
-  // The key prop will cause React to unmount/remount the video element when post.id changes,
-  // which naturally resets the video error state
+  // Key remounts the video when the post changes, resetting error state without cascading setState.
   const videoKey = `${post.id}`;
 
-  // Show video preview only if: video post, in viewport, hovered, video URL available, and no error
-  const showVideoPreview = isVid && 
-    shouldLoadVideo && 
-    isHovered && 
-    videoPreviewUrl && 
+  const showVideoPreview = isVid &&
+    shouldLoadVideo &&
+    isHovered &&
+    videoPreviewUrl &&
     !videoError;
 
   return (
@@ -303,19 +272,20 @@ export const PostCard: React.FC<PostCardProps> = ({
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        setContextMenuPosition({ x: e.clientX, y: e.clientY });
-        setIsPlaylistMenuOpen(true);
+        // Opens centered AddToPlaylist modal — no cursor-anchored trigger needed.
+        if (context !== "playlist") {
+          setIsPlaylistMenuOpen(true);
+        }
       }}
-      aria-label={`View post ${post.id}. Rating: ${post.rating}. ${
+      aria-label={`View post ${post.id}. Rating: ${ratingMeta.label}. ${
         isVid ? "Video" : "Image"
       }.`}
       className={cn(
         "group relative w-full overflow-hidden rounded-[var(--card-radius)] border bg-card transition-all cursor-pointer",
-        // Grid: fixed aspect ratio, Masonry: natural aspect ratio (height auto)
         shouldPreserveAspect ? "aspect-[2/3]" : "",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
         "hover:border-primary hover:shadow-md hover:shadow-primary/10",
-        "select-none", // Prevent text selection via CSS (user-select: none)
+        "select-none",
         post.isViewed && "border-muted-foreground/20",
         isBulkMode && isSelected && "ring-2 ring-primary ring-offset-2"
       )}
@@ -325,7 +295,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           <Checkbox
             checked={isSelected}
             aria-label={`Select post ${post.id}`}
-            className="h-5 w-5 rounded-sm border-white/70 bg-black/60 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=checked]:border-white data-[state=checked]:bg-primary"
+            className="h-5 w-5 rounded-sm border-primary-foreground/70 bg-background/60 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary"
             onCheckedChange={() => {
               toggleId(bulkSelectId);
             }}
@@ -335,7 +305,6 @@ export const PostCard: React.FC<PostCardProps> = ({
           />
         </div>
       )}
-      {/* --- Media Layer (Image + Video Preview) --- */}
       {post.previewUrl ? (
         <div
           className={cn(
@@ -344,7 +313,6 @@ export const PostCard: React.FC<PostCardProps> = ({
             blurFilterClass,
           )}
         >
-          {/* Static Preview Image */}
           <img
             src={sampleSrc ?? post.previewUrl}
             alt={`Post ${post.id}`}
@@ -355,16 +323,13 @@ export const PostCard: React.FC<PostCardProps> = ({
               shouldPreserveAspect
                 ? "h-full object-contain"
                 : "h-auto",
-              // Only scale on hover when video preview is not showing
               !showVideoPreview && "group-hover:scale-105",
               post.isViewed && "opacity-60 grayscale-[0.3]",
-              // Cross-fade: hide image when video is showing
               showVideoPreview && "opacity-0",
               sampleLoaded && "opacity-100"
             )}
           />
 
-          {/* Video Preview (overlay on hover) */}
           {isVid && shouldLoadVideo && videoPreviewUrl && (
             <video
               key={videoKey}
@@ -379,14 +344,12 @@ export const PostCard: React.FC<PostCardProps> = ({
                 shouldPreserveAspect
                   ? "h-full object-contain"
                   : "h-auto",
-                // Cross-fade: show video when hovered, hide otherwise
                 showVideoPreview ? "opacity-100" : "opacity-0 pointer-events-none"
               )}
               onError={() => {
                 setVideoError(true);
               }}
               onLoadedData={() => {
-                // Reset error state if video loads successfully
                 setVideoError(false);
               }}
             />
@@ -404,16 +367,17 @@ export const PostCard: React.FC<PostCardProps> = ({
         </div>
       )}
 
-      {/* --- Overlays --- */}
-
-      {/* 1. Video Indicator (Top Right) */}
       {isVid && (
-        <div className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 backdrop-blur-sm z-20">
-          <Play className="w-3 h-3 text-white fill-white" />
+        <div className="absolute right-2 top-2 rounded-full bg-background/50 p-1.5 backdrop-blur-sm z-20">
+          <Play className="w-3 h-3 text-foreground fill-foreground" />
         </div>
       )}
 
-      {/* 1.5. Playlist actions (Top Right, below video indicator if present) */}
+      {/*
+        Nested interactive decision: card root stays role="button" for the primary
+        open-viewer action (click / Enter / Space). Overlay actions are real Buttons
+        with stopPropagation so they do not activate the card.
+      */}
       <div
         className={cn(
           "absolute right-2 z-20 flex flex-col gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100",
@@ -431,49 +395,35 @@ export const PostCard: React.FC<PostCardProps> = ({
           <QuickAddToPlaylistMenu
             post={{ id: post.id, postId: post.postId, provider: post.provider }}
             open={isPlaylistMenuOpen}
-            onOpenChange={(open) => {
-              setIsPlaylistMenuOpen(open);
-              if (!open) {
-                setContextMenuPosition(null);
-              }
-            }}
+            onOpenChange={setIsPlaylistMenuOpen}
             trigger={
-              <span
-                ref={contextMenuAnchorRef}
-                className={cn(
-                  "inline-flex items-center justify-center rounded-full bg-black/50 p-1.5 backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer",
-                  contextMenuPosition && "fixed w-0 h-0 overflow-hidden p-0 opacity-0 pointer-events-none"
-                )}
-                role="button"
-                tabIndex={0}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-auto w-auto min-h-0 min-w-0 rounded-full bg-background/50 p-1.5 backdrop-blur-sm hover:bg-background/70"
                 aria-label="Add to playlist"
                 title="Add to playlist"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setContextMenuPosition(null);
                 }}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }
-                }}
               >
-                <List className="w-3 h-3 text-white" />
-              </span>
+                <List className="w-3 h-3 text-foreground" />
+              </Button>
             }
           />
         )}
         {onRemoveFromPlaylist && (
-          <span
-            className="inline-flex items-center justify-center rounded-full bg-red-500/90 p-1.5 backdrop-blur-sm hover:bg-red-600 transition-colors cursor-pointer"
-            role="button"
-            tabIndex={0}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-auto w-auto min-h-0 min-w-0 rounded-full bg-destructive/90 p-1.5 backdrop-blur-sm hover:bg-destructive"
             aria-label="Remove from playlist"
             title="Remove from playlist"
             onClick={(e) => {
@@ -485,44 +435,27 @@ export const PostCard: React.FC<PostCardProps> = ({
               e.preventDefault();
               e.stopPropagation();
             }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                onRemoveFromPlaylist();
-              }
-            }}
           >
-            <Trash2 className="w-3 h-3 text-white" />
-          </span>
+            <Trash2 className="w-3 h-3 text-destructive-foreground" />
+          </Button>
         )}
       </div>
 
-      {/* 2. Viewed & Favorite Indicator (Top Left/Top Right) */}
       <PostCardBadges
         isFavorited={post.isFavorited}
         isViewed={post.isViewed}
         context={context}
       />
 
-      {/* 3. Gradient & Rating (Bottom - visible on hover) */}
-      <div className="flex absolute inset-0 flex-col justify-end p-[var(--card-padding)] bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-black/80 group-hover:opacity-100 pointer-events-none">
+      <div className="flex absolute inset-0 flex-col justify-end p-[var(--card-padding)] bg-gradient-to-t via-transparent to-transparent opacity-0 transition-opacity duration-200 from-background/80 group-hover:opacity-100 pointer-events-none">
         <div className="flex justify-between items-end">
           <span
             className={cn(
               "text-[length:var(--card-meta-size)] font-bold uppercase tracking-wider",
-              post.rating === "e"
-                ? "text-red-400"
-                : post.rating === "q"
-                ? "text-yellow-400"
-                : "text-green-400"
+              ratingMeta.textClassName
             )}
           >
-            {post.rating === "s"
-              ? "Safe"
-              : post.rating === "q"
-              ? "Quest."
-              : "Explicit"}
+            {ratingMeta.shortLabel}
           </span>
         </div>
       </div>

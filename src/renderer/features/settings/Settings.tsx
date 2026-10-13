@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import log from "electron-log/renderer";
-import { useQueryClient } from "@tanstack/react-query";
+import { Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { PageHeader } from "../../components/layout/PageHeader";
 import { SettingsGeneralTab } from "./SettingsGeneralTab";
 import { SettingsSyncTab } from "./SettingsSyncTab";
 import { SettingsAppearanceTab } from "./SettingsAppearanceTab";
 import { SettingsBackupTab } from "./SettingsBackupTab";
 import { SettingsAccountTab } from "./SettingsAccountTab";
-import { normalizeCredentialsInput } from "../../lib/parseCredentialsFromText";
 import { SettingsBlacklistTab } from "./SettingsBlacklistTab";
 import { SettingsHelpTab } from "./SettingsHelpTab";
 import { useTheme } from "../../hooks/useTheme";
+import { useCredentialsActions } from "../../hooks/useCredentialsActions";
 import type { ProviderId } from "../../../shared/constants";
 
 const STATUS_FEEDBACK_TIMEOUT_MS = 5000;
@@ -24,7 +25,6 @@ type StatusTimerKey =
 type AutoBackupInterval = "never" | "daily" | "weekly";
 
 export const Settings = () => {
-  const queryClient = useQueryClient();
   const { theme, setTheme, isSaving: isThemeSaving } = useTheme();
   const [activeTab, setActiveTab] = useState("general");
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -55,7 +55,6 @@ export const Settings = () => {
   const [backupRetention, setBackupRetention] = useState("5");
   const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>("never");
   const [proxyUrl, setProxyUrl] = useState<string | null>(null);
-  const [proxyError, setProxyError] = useState<string | null>(null);
   const [proxyStatus, setProxyStatus] = useState<"idle" | "success" | "error">("idle");
   const [apiKey, setApiKey] = useState("");
   const [userId, setUserId] = useState("");
@@ -76,6 +75,29 @@ export const Settings = () => {
       delete statusTimersRef.current[key];
     }, STATUS_FEEDBACK_TIMEOUT_MS);
   };
+
+  const { saveApiKey, changeProvider } = useCredentialsActions({
+    setAccountStatus,
+    requireUserId: false,
+    includeProviderOnSave: false,
+    resolveSaveUserId: ({ normalizedUserId, rawUserId }) =>
+      normalizedUserId ?? rawUserId.trim(),
+    onAfterSaveSuccess: () => {
+      setHasApiKey(true);
+      setApiKey("");
+    },
+    extraProviderInvalidationRoots: ["updates", "stats"],
+    applyProviderOptimistic: {
+      getCurrent: () => provider,
+      setCurrent: setProvider,
+    },
+    reportProviderChangeStatus: true,
+    onAccountStatusSettled: () => {
+      scheduleStatusReset("account", () => setAccountStatus("idle"));
+    },
+    logSaveFailure: "[Settings] Failed to save API key:",
+    logProviderFailure: "[Settings] Failed to change provider:",
+  });
 
   useEffect(() => {
     const timersRef = statusTimersRef.current;
@@ -247,7 +269,6 @@ export const Settings = () => {
       try {
         await window.api.saveSettings({ proxyUrl: null });
         setProxyUrl(null);
-        setProxyError(null);
         if (showStatus) {
           setProxyStatus("success");
           scheduleStatusReset("proxy", () => setProxyStatus("idle"));
@@ -263,14 +284,12 @@ export const Settings = () => {
     }
 
     if (!validateProxyUrl(normalized)) {
-      setProxyError("Please enter a valid HTTP/HTTPS URL.");
       return;
     }
 
     try {
       await window.api.saveSettings({ proxyUrl: normalized });
       setProxyUrl(normalized);
-      setProxyError(null);
       if (showStatus) {
         setProxyStatus("success");
         scheduleStatusReset("proxy", () => setProxyStatus("idle"));
@@ -411,78 +430,11 @@ export const Settings = () => {
     }
   };
 
-  const handleSaveApiKey = async (): Promise<void> => {
-    setAccountStatus("idle");
-    try {
-      const normalized = normalizeCredentialsInput({
-        userId,
-        apiKey,
-      });
-      if (!normalized.apiKey) {
-        setAccountStatus("error");
-        scheduleStatusReset("account", () => setAccountStatus("idle"));
-        return;
-      }
-      const saved = await window.api.saveSettings({
-        userId: normalized.userId ?? userId.trim(),
-        apiKey: normalized.apiKey,
-      });
-      if (!saved) {
-        setAccountStatus("error");
-        scheduleStatusReset("account", () => setAccountStatus("idle"));
-        return;
-      }
-      setHasApiKey(true);
-      setApiKey("");
-      await queryClient.invalidateQueries({ queryKey: ["settings"] });
-      setAccountStatus("success");
-      scheduleStatusReset("account", () => setAccountStatus("idle"));
-    } catch (error) {
-      log.error("[Settings] Failed to save API key:", error);
-      setAccountStatus("error");
-      scheduleStatusReset("account", () => setAccountStatus("idle"));
-    }
-  };
-
   const handleProviderSelect = (value: ProviderId): void => {
     if (value === provider) {
       return;
     }
     setPendingProvider(value);
-  };
-
-  const handleProviderChangeConfirm = async (): Promise<void> => {
-    if (!pendingProvider) {
-      return;
-    }
-    const nextProvider = pendingProvider;
-    const previousProvider = provider;
-    setProvider(nextProvider);
-    setPendingProvider(null);
-    try {
-      await queryClient.invalidateQueries({
-        predicate: ({ queryKey }) => {
-          const root = queryKey[0];
-          return (
-            root === "posts" ||
-            root === "search" ||
-            root === "playlist-posts" ||
-            root === "artists" ||
-            root === "updates" ||
-            root === "stats"
-          );
-        },
-      });
-      await window.api.saveSettings({ provider: nextProvider });
-      await queryClient.invalidateQueries({ queryKey: ["settings"] });
-      setAccountStatus("success");
-      scheduleStatusReset("account", () => setAccountStatus("idle"));
-    } catch (error) {
-      log.error("[Settings] Failed to change provider:", error);
-      setProvider(previousProvider);
-      setAccountStatus("error");
-      scheduleStatusReset("account", () => setAccountStatus("idle"));
-    }
   };
 
   const handleResetOnboarding = async (): Promise<void> => {
@@ -499,12 +451,11 @@ export const Settings = () => {
 
   return (
     <section className="container max-w-4xl space-y-6 py-8">
-      <section>
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">
-          Manage application preferences in focused sections.
-        </p>
-      </section>
+      <PageHeader
+        title="Settings"
+        description="Manage application preferences in focused sections."
+        icon={SettingsIcon}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="flex w-full flex-wrap justify-start gap-1">
@@ -524,7 +475,6 @@ export const Settings = () => {
             duplicateFileBehavior={duplicateFileBehavior}
             downloadFolderStructure={downloadFolderStructure}
             proxyUrl={proxyUrl}
-            proxyError={proxyError}
             proxyStatus={proxyStatus}
             onSelectDownloadFolder={() => {
               void handleSelectDownloadFolder();
@@ -540,7 +490,6 @@ export const Settings = () => {
             }}
             onProxyUrlChange={(value) => {
               setProxyUrl(value.length > 0 ? value : null);
-              setProxyError(null);
             }}
             onProxyBlur={() => {
               void handleSaveProxy(false);
@@ -596,9 +545,7 @@ export const Settings = () => {
             onBackup={() => {
               void handleBackup();
             }}
-            onRestore={() => {
-              void handleRestore();
-            }}
+            onRestore={handleRestore}
             onIntegrityCheck={() => {
               void handleIntegrityCheck();
             }}
@@ -626,11 +573,20 @@ export const Settings = () => {
               setShowApiKey((current) => !current);
             }}
             onSaveApiKey={() => {
-              void handleSaveApiKey();
+              void saveApiKey({
+                userId,
+                apiKey,
+                provider,
+              });
             }}
             onProviderSelect={handleProviderSelect}
             onProviderChangeConfirm={() => {
-              void handleProviderChangeConfirm();
+              if (!pendingProvider) {
+                return;
+              }
+              const nextProvider = pendingProvider;
+              setPendingProvider(null);
+              void changeProvider(nextProvider);
             }}
             onProviderChangeCancel={() => {
               setPendingProvider(null);

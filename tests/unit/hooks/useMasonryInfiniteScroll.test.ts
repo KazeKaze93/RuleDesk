@@ -7,7 +7,7 @@ import {
   MASONRY_SCROLL_DEBOUNCE_MS,
   useMasonryInfiniteScroll,
   type MasonryScrollEvent,
-} from "@/renderer/hooks/useMasonryInfiniteScroll";
+} from "@/hooks/useMasonryInfiniteScroll";
 
 type HookProps = {
   hasNextPage: boolean;

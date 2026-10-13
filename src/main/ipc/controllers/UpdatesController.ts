@@ -54,25 +54,19 @@ export class UpdatesController extends BaseController {
       IPC_CHANNELS.UPDATES.MARK_ALL_SEEN,
       MarkAllSeenParamsSchema,
       (event, params) => {
-        return this.markAllSeen(event, MarkAllSeenParamsSchema.parse(params));
+        return this.markAllSeen(event, params);
       }
     );
     this.handle(
       IPC_CHANNELS.UPDATES.MARK_SEEN_BY_IDS,
       MarkSeenByIdsArgsSchema,
-      (event, ...args) => {
-        const [ids] = MarkSeenByIdsArgsSchema.parse(args);
-        return this.markSeenByIds(event, ids);
-      }
+      (event, ids) => this.markSeenByIds(event, ids)
     );
     this.handle(
       IPC_CHANNELS.UPDATES.GET_TOTAL_UNREAD_COUNT,
       TotalUnreadCountParamsSchema,
       (event, params) => {
-        return this.getTotalUnreadCount(
-          event,
-          TotalUnreadCountParamsSchema.parse(params)
-        );
+        return this.getTotalUnreadCount(event, params);
       },
       { isIdempotent: true }
     );

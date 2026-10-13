@@ -4,23 +4,23 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import * as schema from "@/main/db/schema";
-import { artists, posts } from "@/main/db/schema";
+import * as schema from "../../../src/main/db/schema";
+import { artists, posts } from "../../../src/main/db/schema";
 import {
   ensureDrizzleMigrationsTable,
   readMigrationJournal,
   runManualMigrations,
-} from "@/main/db/migration-runner";
-import { getTrackedArtistsWithStats } from "@/main/db/queries/artists";
+} from "../../../src/main/db/migration-runner";
+import { getTrackedArtistsWithStats } from "../../../src/main/db/queries/artists";
 import {
   countUpdatesFeedPosts,
   markPostsViewedByIds,
   markUpdatesFeedPostsViewed,
-} from "@/main/db/queries/updates-feed";
+} from "../../../src/main/db/queries/updates-feed";
 import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
-} from "@/shared/constants";
+} from "@shared/constants";
 
 const P8_TEMP_ROOT = path.join(
   process.env.TEMP ?? process.env.TMP ?? "",

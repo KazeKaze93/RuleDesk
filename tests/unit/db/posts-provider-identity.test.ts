@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts } from "@/main/db/schema";
-import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
+import { artists, posts } from "../../../src/main/db/schema";
+import { EXTERNAL_ARTIST_ID } from "@shared/constants";
 import { and, eq, sql } from "drizzle-orm";
 
 /**

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists } from "@/main/db/schema";
-import { MAX_TRACKED_ARTISTS } from "@/shared/constants";
-import { getTrackedArtistsWithStats } from "@/main/db/queries/artists";
+import { artists } from "../../../src/main/db/schema";
+import { MAX_TRACKED_ARTISTS } from "@shared/constants";
+import { getTrackedArtistsWithStats } from "../../../src/main/db/queries/artists";
 import log from "electron-log";
 
 vi.mock("electron-log", () => ({

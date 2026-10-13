@@ -15,7 +15,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../ui/popover";
-import { buildApiQueryString, useSearchStore } from "../../store/searchStore";
+import {
+  buildApiQueryString,
+  getTopBarChrome,
+  useSearchStore,
+  type TabType,
+} from "../../store/searchStore";
 import { TagAutocomplete } from "../inputs/TagAutocomplete";
 import { FiltersPanel } from "./FiltersPanel";
 import { cn } from "../../lib/utils";
@@ -70,6 +75,31 @@ const METATAGS_SYNTAX_SECTION = SEARCH_SYNTAX_SECTIONS.find(
   (section) => section.title === "Metatags"
 );
 
+function resolveTabFromPath(pathname: string): TabType | null {
+  if (pathname === "/browse") {
+    return "browse";
+  }
+  if (pathname === "/updates") {
+    return "updates";
+  }
+  if (pathname === "/favorites") {
+    return "favorites";
+  }
+  if (pathname === "/tracked" || pathname.startsWith("/artist/")) {
+    return "tracked";
+  }
+  if (pathname === "/playlists") {
+    return "playlists";
+  }
+  if (pathname === "/stats") {
+    return "stats";
+  }
+  if (pathname === "/settings") {
+    return "settings";
+  }
+  return null;
+}
+
 export const GlobalTopBar = () => {
   const location = useLocation();
   const includeTags = useSearchStore((state) => state.includeTags);
@@ -82,6 +112,8 @@ export const GlobalTopBar = () => {
   const setViewType = useSearchStore((state) => state.setViewType);
   const filters = useSearchStore((state) => state.filters);
 
+  const chrome = useMemo(() => getTopBarChrome(activeTab), [activeTab]);
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.aiFilter !== "all") count++;
@@ -90,24 +122,8 @@ export const GlobalTopBar = () => {
     return count;
   }, [filters]);
 
-  // Determine current tab from location
   useEffect(() => {
-    const path = location.pathname;
-    if (path === "/browse" || path === "/") {
-      setActiveTab("browse");
-    } else if (path === "/updates") {
-      setActiveTab("updates");
-    } else if (path === "/favorites") {
-      setActiveTab("favorites");
-    } else if (path === "/tracked" || path.startsWith("/artist/")) {
-      setActiveTab("tracked");
-    } else if (path === "/playlists") {
-      setActiveTab("browse"); // Use "browse" tab type for playlists to enable filters
-    } else if (path === "/settings") {
-      setActiveTab("settings");
-    } else {
-      setActiveTab(null);
-    }
+    setActiveTab(resolveTabFromPath(location.pathname));
   }, [location.pathname, setActiveTab]);
 
   const apiQueryString = useMemo(
@@ -115,157 +131,188 @@ export const GlobalTopBar = () => {
     [includeTags, excludeTags]
   );
 
-  // Determine if sort button should be enabled
   const isSortEnabled = useMemo(() => {
+    if (!chrome.showSort) {
+      return false;
+    }
     if (activeTab === "browse") {
       return apiQueryString.trim().length > 0;
     }
-    // On all other tabs, always enable
-    return activeTab !== null && activeTab !== "settings";
-  }, [activeTab, apiQueryString]);
+    // Playlists and other chrome tabs: sort without requiring a query.
+    return true;
+  }, [activeTab, apiQueryString, chrome.showSort]);
 
   const handleSortToggle = () => {
     toggleSortOrder();
   };
 
-  // Get appropriate sort icon based on sort order
   const SortIcon = sortOrder === "desc" ? ArrowDownNarrowWide : ArrowUpNarrowWide;
+
+  const hasAnyChrome =
+    chrome.showSearch ||
+    chrome.showFilters ||
+    chrome.showSort ||
+    chrome.showView;
+
+  if (!hasAnyChrome) {
+    return (
+      <header className="min-h-14 border-b bg-background/95 px-6 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10" />
+    );
+  }
 
   return (
     <header className="min-h-14 border-b bg-background/95 px-6 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between sticky top-0 z-10">
-      {/* Left: Search */}
-      <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
-        <TagAutocomplete
-          showClearButton={true}
-          placeholder="Search posts by tags..."
-          className="w-full"
-        />
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 shrink-0"
-              aria-label="Search syntax help"
-              title="Search syntax help"
-            >
-              <CircleHelp className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[600px] p-5" align="start">
-            <div>
-              <h4 className="text-sm font-semibold leading-none">Search Syntax</h4>
-              <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-0">
-                {[BASIC_SYNTAX_SECTION, METATAGS_SYNTAX_SECTION].map((section) => (
-                  <div key={section?.title ?? "search-syntax"}>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pb-1 pt-3 first:pt-0">
-                      {section?.title ?? ""}
-                    </p>
-                    <div>
-                      {(section?.rows ?? []).map((row) => (
-                        <div key={row.syntax} className="py-1.5 border-b border-border last:border-0">
-                          <code className="font-mono text-xs font-semibold text-foreground">
-                            {row.syntax}
-                          </code>
-                          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                            {row.description}
-                          </p>
-                        </div>
-                      ))}
+      {chrome.showSearch ? (
+        <div className="flex min-w-0 flex-1 items-center gap-2 pr-2">
+          <TagAutocomplete
+            showClearButton={true}
+            placeholder="Search posts by tags..."
+            className="w-full"
+          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                aria-label="Search syntax help"
+                title="Search syntax help"
+              >
+                <CircleHelp className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[600px] p-5" align="start">
+              <div>
+                <h4 className="text-sm font-semibold leading-none">Search Syntax</h4>
+                <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-0">
+                  {[BASIC_SYNTAX_SECTION, METATAGS_SYNTAX_SECTION].map((section) => (
+                    <div key={section?.title ?? "search-syntax"}>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest pb-1 pt-3 first:pt-0">
+                        {section?.title ?? ""}
+                      </p>
+                      <div>
+                        {(section?.rows ?? []).map((row) => (
+                          <div key={row.syntax} className="py-1.5 border-b border-border last:border-0">
+                            <code className="font-mono text-xs font-semibold text-foreground">
+                              {row.syntax}
+                            </code>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                              {row.description}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      {/* Right: Actions */}
-      <div className="flex gap-2 items-center">
-        {/* Sort Button - Sort by date */}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleSortToggle}
-          disabled={!isSortEnabled}
-          className={cn(
-            "h-9 w-9",
-            !isSortEnabled && "opacity-50 cursor-not-allowed"
-          )}
-          title={
-            isSortEnabled
-              ? `Sort by date (${sortOrder === "desc" ? "newest first" : "oldest first"})`
-              : "Sorting not available"
-          }
-        >
-          <SortIcon className="w-4 h-4" />
-        </Button>
-
-        {/* Filters Trigger */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 h-9 text-xs relative">
-              <Filter className="w-3.5 h-3.5" />
-              Filters
-              {activeFiltersCount > 0 && (
-                <Badge
-                  variant="default"
-                  className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-bold"
-                >
-                  {activeFiltersCount}
-                </Badge>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80" align="end">
-            <div className="space-y-1 mb-4">
-              <h4 className="font-medium text-sm leading-none">Filters And Settings</h4>
-            </div>
-            <FiltersPanel />
-          </PopoverContent>
-        </Popover>
-
-        <div className="mx-1 w-px h-4 bg-border" />
-
-        {/* View Toggle - Grid/Masonry */}
-        <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "w-7 h-7 rounded-sm",
-              viewType === "grid"
-                ? "bg-background shadow-sm"
-                : "hover:bg-background/50"
-            )}
-            onClick={() => setViewType("grid")}
-            title="Grid Layout"
-          >
-            <LayoutGrid className={cn(
-              "w-4 h-4",
-              viewType === "grid" ? "text-foreground" : "text-muted-foreground"
-            )} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "w-7 h-7 rounded-sm",
-              viewType === "masonry"
-                ? "bg-background shadow-sm"
-                : "hover:bg-background/50"
-            )}
-            onClick={() => setViewType("masonry")}
-            title="Masonry Layout"
-          >
-            <LayoutList className={cn(
-              "w-4 h-4",
-              viewType === "masonry" ? "text-foreground" : "text-muted-foreground"
-            )} />
-          </Button>
+            </PopoverContent>
+          </Popover>
         </div>
+      ) : (
+        <div className="flex-1" />
+      )}
 
+      <div className="flex gap-2 items-center">
+        {chrome.showSort ? (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleSortToggle}
+            disabled={!isSortEnabled}
+            className={cn(
+              "h-9 w-9",
+              !isSortEnabled && "opacity-50 cursor-not-allowed"
+            )}
+            aria-label={
+              isSortEnabled
+                ? `Sort by date (${sortOrder === "desc" ? "newest first" : "oldest first"})`
+                : "Sorting not available"
+            }
+            title={
+              isSortEnabled
+                ? `Sort by date (${sortOrder === "desc" ? "newest first" : "oldest first"})`
+                : "Sorting not available"
+            }
+          >
+            <SortIcon className="w-4 h-4" />
+          </Button>
+        ) : null}
+
+        {chrome.showFilters ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 h-9 text-xs relative">
+                <Filter className="w-3.5 h-3.5" />
+                Filters
+                {activeFiltersCount > 0 && (
+                  <Badge
+                    variant="default"
+                    className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-bold"
+                  >
+                    {activeFiltersCount}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-1 mb-4">
+                <h4 className="font-medium text-sm leading-none">Filters</h4>
+              </div>
+              <FiltersPanel />
+            </PopoverContent>
+          </Popover>
+        ) : null}
+
+        {chrome.showView ? (
+          <>
+            <div className="mx-1 w-px h-4 bg-border" />
+            <div
+              className="flex items-center border rounded-md p-0.5 bg-muted/50"
+              role="group"
+              aria-label="View layout"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "w-7 h-7 rounded-sm",
+                  viewType === "grid"
+                    ? "bg-background shadow-sm"
+                    : "hover:bg-background/50"
+                )}
+                onClick={() => setViewType("grid")}
+                aria-label="Grid"
+                aria-pressed={viewType === "grid"}
+                title="Grid Layout"
+              >
+                <LayoutGrid className={cn(
+                  "w-4 h-4",
+                  viewType === "grid" ? "text-foreground" : "text-muted-foreground"
+                )} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "w-7 h-7 rounded-sm",
+                  viewType === "masonry"
+                    ? "bg-background shadow-sm"
+                    : "hover:bg-background/50"
+                )}
+                onClick={() => setViewType("masonry")}
+                aria-label="Masonry"
+                aria-pressed={viewType === "masonry"}
+                title="Masonry Layout"
+              >
+                <LayoutList className={cn(
+                  "w-4 h-4",
+                  viewType === "masonry" ? "text-foreground" : "text-muted-foreground"
+                )} />
+              </Button>
+            </div>
+          </>
+        ) : null}
       </div>
     </header>
   );

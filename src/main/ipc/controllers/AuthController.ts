@@ -3,46 +3,22 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getDb } from "../../db/client";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "../../db/schema";
-import type { SyncService } from "../../services/sync-service";
-import type { ProviderId } from "../../providers";
-const VerifyCredsArgsSchema = z.tuple([z.enum(["rule34", "gelbooru"]).optional()]);
-
-type AppDatabase = BetterSQLite3Database<typeof schema>;
 
 /**
  * Auth Controller
  *
  * Handles authentication-related IPC operations:
- * - Verify credentials
  * - Logout (clear API key)
  */
 // Query style: Drizzle Builder API only in this controller.
 export class AuthController extends BaseController {
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
-  }
-
-  private getSyncService(): SyncService {
-    return container.resolve(DI_TOKENS.SYNC_SERVICE);
-  }
-
   /**
    * Setup IPC handlers for auth operations
    */
   public setup(): void {
-    this.handle(
-      IPC_CHANNELS.APP.VERIFY_CREDS,
-      VerifyCredsArgsSchema,
-      (event, ...args) => {
-        const [providerId] = VerifyCredsArgsSchema.parse(args);
-        return this.verifyCredentials(event, providerId);
-      }
-    );
     this.handle(
       IPC_CHANNELS.APP.LOGOUT,
       z.tuple([]),
@@ -53,25 +29,6 @@ export class AuthController extends BaseController {
   }
 
   /**
-   * Verify user credentials
-   *
-   * @param _event - IPC event (unused)
-   * @returns true if credentials are valid, false otherwise
-   */
-  private async verifyCredentials(
-    _event: IpcMainInvokeEvent,
-    providerId?: ProviderId
-  ): Promise<boolean> {
-    try {
-      const syncService = this.getSyncService();
-      return await syncService.checkCredentials(providerId);
-    } catch (error) {
-      log.error("[AuthController] Failed to verify credentials:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Logout user by clearing API key
    *
    * @param _event - IPC event (unused)
@@ -79,7 +36,7 @@ export class AuthController extends BaseController {
    */
   private async logout(_event: IpcMainInvokeEvent): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       
       // Clear API key atomically
       await db
@@ -96,4 +53,3 @@ export class AuthController extends BaseController {
     }
   }
 }
-

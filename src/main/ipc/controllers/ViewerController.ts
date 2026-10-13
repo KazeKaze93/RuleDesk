@@ -6,6 +6,8 @@ import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { IPC_CHANNELS } from "../channels";
 import { ALLOWED_HOSTS_SET } from "../../config/allowed-hosts";
+import { ErrorCode } from "../../../shared/types/error-codes";
+import { createCodedError } from "../../../shared/utils/coded-error";
 
 // Dangerous protocols that should never be allowed
 const DANGEROUS_PROTOCOLS = [
@@ -36,7 +38,7 @@ export class ViewerController extends BaseController {
     this.handle(
       IPC_CHANNELS.APP.OPEN_EXTERNAL,
       OpenExternalArgSchema, // Single argument schema
-      (event, urlString) => this.openExternal(event, OpenExternalArgSchema.parse(urlString))
+      (event, urlString) => this.openExternal(event, urlString)
     );
 
     log.info("[ViewerController] All handlers registered");
@@ -86,8 +88,14 @@ export class ViewerController extends BaseController {
 
     // Step 6: Verify hostname is in whitelist (exact match, no subdomains)
     if (!ALLOWED_HOSTS_SET.has(hostname)) {
-      log.warn(`[ViewerController] Blocked request to unauthorized hostname: ${hostname} (URL: ${urlString})`);
-      return null;
+      log.warn(
+        `[ViewerController] Blocked request to unauthorized hostname: ${hostname} (URL: ${urlString})`
+      );
+      throw createCodedError(
+        `External URL host is not allowed: ${hostname}`,
+        ErrorCode.VALIDATION_ERROR,
+        { name: "ValidationError" }
+      );
     }
 
     // Step 7: Additional security checks

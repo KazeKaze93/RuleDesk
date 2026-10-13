@@ -9,13 +9,13 @@ import {
   readMigrationJournal,
   runManualMigrations,
   stampUserVersion,
-} from "@/main/db/migration-runner";
+} from "../../../src/main/db/migration-runner";
 import {
   databaseLooksInitialized,
   migrateLegacyDatabase,
   moveFileWithExdevFallback,
   type LegacyMigrateFs,
-} from "@/main/db/legacy-database-migrate";
+} from "../../../src/main/db/legacy-database-migrate";
 
 const PROJECT_DRIZZLE = path.resolve(process.cwd(), "drizzle");
 

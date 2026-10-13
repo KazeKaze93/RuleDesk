@@ -7,9 +7,9 @@ import {
   ensureDrizzleMigrationsTable,
   readMigrationJournal,
   runManualMigrations,
-} from "@/main/db/migration-runner";
-import { detectOrphans } from "@/main/db/orphan-detection";
-import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
+} from "../../../src/main/db/migration-runner";
+import { detectOrphans } from "../../../src/main/db/orphan-detection";
+import { EXTERNAL_ARTIST_ID } from "@shared/constants";
 
 const PROJECT_DRIZZLE = path.resolve(process.cwd(), "drizzle");
 

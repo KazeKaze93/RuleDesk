@@ -1,17 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { TAG_TYPES } from "@/main/db/schema";
+import { TAG_TYPES } from "../../../src/main/db/schema";
 import type Database from "better-sqlite3";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -43,7 +49,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     id: "rule34",
     formatTag: (tag: string) => tag.trim().toLowerCase(),
@@ -53,14 +59,14 @@ vi.mock("@/main/providers", () => ({
   PROVIDER_IDS: ["rule34", "gelbooru"],
 }));
 
-vi.mock("@/main/services/tag-resolve-coordinator", () => ({
+vi.mock("../../../src/main/services/tag-resolve-coordinator", () => ({
   loadTagMetadataCache: vi.fn(() => {
     throw new Error("DB exploded while loading tag metadata");
   }),
   resolveTagMetadataWave: vi.fn(),
 }));
 
-import { SearchController } from "@/main/ipc/controllers/SearchController";
+import { SearchController } from "../../../src/main/ipc/controllers/SearchController";
 
 type SearchControllerInternals = {
   setup: () => void;
@@ -76,10 +82,9 @@ describe("SearchController.resolveTagsForType DB errors", () => {
   let controller: SearchControllerInternals;
 
   beforeEach(() => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     controller = new SearchController() as unknown as SearchControllerInternals;
     controller.setup();
   });
@@ -87,7 +92,7 @@ describe("SearchController.resolveTagsForType DB errors", () => {
   afterEach(() => {
     mockDb.sqlite.close();
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   it("rejects on DB error instead of returning []", async () => {

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   useQuery,
   useQueryClient,
@@ -11,6 +11,8 @@ import { useShallow } from "zustand/react/shallow";
 import log from "electron-log/renderer";
 import { toast } from "sonner";
 import { Button } from "../../components/ui/button";
+import { ConfirmActionDialog } from "../../components/dialogs/ConfirmActionDialog";
+import { PageHeader } from "../../components/layout/PageHeader";
 import type { Artist, Post } from "@shared/types/db";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
@@ -24,6 +26,8 @@ import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../../components/gallery/virtuoso-factories";
 import { resolveErrorMessage } from "../../utils/error-message";
+import { openExternalSafe } from "../../lib/open-external";
+import { buildSiteTagSearchUrl } from "@shared/utils/site-urls";
 
 interface ArtistGalleryProps {
   artist: Artist;
@@ -38,15 +42,13 @@ const {
   MasonryVirtuosoList,
 } = createVirtuosoGridFactories("ArtistGallery");
 
-// --- Основной компонент ---
-
 export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   artist,
   onBack,
 }) => {
   const queryClient = useQueryClient();
-  // ArtistGallery should show ALL posts for the artist, not filtered by global search query
-  // The global search query is only for Browse tab, not for Tracked Artists
+  const [repairDialogOpen, setRepairDialogOpen] = useState(false);
+  // ArtistGallery shows all posts for the artist, not filtered by the global Browse search query.
 
   const { open: openViewer, appendQueueIds } = useViewerStore(
     useShallow((state) => ({
@@ -55,7 +57,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     }))
   );
 
-  // Use atomic selectors to prevent unnecessary re-renders
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const aiFilter = useSearchStore((state) => state.filters.aiFilter);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
@@ -82,8 +83,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     retry: false,
   });
 
-  // Use the new infinite scroll hook
-  // AI and Media Type filters are now applied at SQL level for better performance
+  // AI and media-type filters are applied at SQL level for performance.
   const {
     allPosts: rawPosts,
     fetchNextPage,
@@ -100,10 +100,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         page: pageParam,
         sortOrder,
         filters: {
-          // No tag filtering - show all posts for this artist
-          // No tag filter - tag search is not supported in ArtistGallery context
+          // Tag search is not supported in ArtistGallery.
           tags: undefined,
-          // AI and Media Type filters applied only if not in 'all' mode
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
           mediaType: mediaType === "all" ? undefined : mediaType,
           isFavorited: source === "favorites" ? true : undefined,
@@ -144,10 +142,10 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         });
     },
     onError: (err) => {
-      // Ignore rate limit errors - use typed errorCode, NOT string parsing
+      // Ignore rate limit errors — use typed errorCode, not string parsing.
       const errorCode = getErrorCode(err);
       if (errorCode === ErrorCode.RATE_LIMIT) {
-        return; // Silently ignore rate limit errors
+        return;
       }
       log.error("[ArtistGallery] Failed to mark post as viewed:", err);
       toast.error(resolveErrorMessage(err, "Failed to mark post as viewed"));
@@ -158,12 +156,9 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     if (hasNextPage && !isFetchingNextPage) {
       log.info("[Gallery] Viewer requested more posts. Fetching...");
 
-      // Ждем завершения загрузки и получаем результат
       const result = await fetchNextPage();
 
-      // Если загрузка прошла успешно и есть данные
       if (result.data) {
-        // Берем последнюю страницу (новую)
         const newPage = result.data.pages[result.data.pages.length - 1];
 
         if (newPage && newPage.length > 0) {
@@ -172,7 +167,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
             `[Gallery] Fetched ${newIds.length} new posts. Appending to Viewer queue.`
           );
 
-          // ЯВНО обновляем очередь вьювера
           appendQueueIds(newIds);
         }
       }
@@ -201,7 +195,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       origin: {
         kind: "artist",
         artistId: artist.id,
-        tags: undefined, // No tag filtering in artist gallery
+        tags: undefined,
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
         mediaType: mediaType === "all" ? undefined : mediaType,
         source,
@@ -212,7 +206,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       listKey: `artist-${artist.id}`,
       totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
       hasNextPage: hasNextPage,
-      onLoadMore: handleLoadMore, // Передаем обновленный хендлер
+      onLoadMore: handleLoadMore,
     });
   };
 
@@ -243,115 +237,100 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   } = useDownloadAllFromBackend(fetchParams, totalPosts);
 
   const handleRepairSync = async () => {
-    if (isLoading) return;
-    if (
-      !confirm(
-        `Are you sure you want to run a repair sync for ${artist.name}? This may take time and update old entries.`
-      )
-    ) {
-      return;
+    if (isLoading) {
+      throw new Error("Gallery is still loading");
     }
     queryClient.removeQueries({ queryKey: ["posts", artist.id] });
-    try {
-      await window.api.repairArtist(artist.id);
-      void queryClient
-        .invalidateQueries({ queryKey: ["artists"] })
-        .catch((error: unknown) => {
-          log.error("[ArtistGallery] Failed to invalidate artists:", error);
-        });
-      void queryClient
-        .invalidateQueries({ queryKey: ["posts", artist.id] })
-        .catch((error: unknown) => {
-          log.error("[ArtistGallery] Failed to invalidate posts:", error);
-        });
-      void queryClient
-        .invalidateQueries({ queryKey: ["posts-count", artist.id] })
-        .catch((error: unknown) => {
-          log.error("[ArtistGallery] Failed to invalidate posts count:", error);
-        });
-    } catch (e) {
-      log.error("[ArtistGallery] Repair sync failed:", e);
-    }
+    await window.api.repairArtist(artist.id);
+    await queryClient.invalidateQueries({ queryKey: ["artists"] });
+    await queryClient.invalidateQueries({ queryKey: ["posts", artist.id] });
+    await queryClient.invalidateQueries({ queryKey: ["posts-count", artist.id] });
   };
+
+  const headerDescription =
+    !isPostsCountError && totalPosts > 0 ? `Total: ${totalPosts}` : undefined;
+
+  const headerActions = (
+    <>
+      <DownloadAllButton
+        onClick={() => {
+          void downloadAll();
+        }}
+        onCancel={cancel}
+        onPause={pause}
+        onResume={resume}
+        isDownloading={isDownloadingAll}
+        isPaused={isPaused}
+        progress={downloadAllProgress}
+        canDownload={canDownload}
+        totalLabel={totalPosts}
+        failures={lastFailures}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setRepairDialogOpen(true)}
+        title="Resynchronize first pages to update low-quality previews"
+      >
+        <Wrench className="w-4 h-4 sm:mr-2" />
+        <span className="hidden sm:inline">Repair</span>
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          void openExternalSafe(
+            buildSiteTagSearchUrl(artist.provider, [artist.tag])
+          );
+        }}
+      >
+        <ExternalLink className="w-4 h-4 sm:mr-2" />
+        <span className="hidden sm:inline">Web</span>
+      </Button>
+    </>
+  );
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground">
-      {/* Header */}
-      <div className="flex z-[5] justify-between items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
-        <div className="flex gap-4 items-center">
+      <div className="z-[5] shrink-0 border-b border-border bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-start gap-4">
           <Button
             variant="ghost"
             size="sm"
             onClick={onBack}
             aria-label="Back to artists list"
+            className="mt-0.5 shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
-            <h2 className="text-xl font-bold">{artist.name}</h2>
-            <div className="flex gap-2 text-xs text-muted-foreground">
-              {isPostsCountError ? (
-                <span className="text-sm font-medium text-destructive">
-                  {resolveErrorMessage(
-                    postsCountError,
-                    "Failed to load post count"
-                  )}
-                </span>
-              ) : totalPosts > 0 ? (
-                <span className="text-sm font-medium text-muted-foreground">
-                  Total: {totalPosts}
-                </span>
-              ) : null}
-            </div>
+          <div className="min-w-0 flex-1">
+            <PageHeader
+              title={artist.name}
+              description={headerDescription}
+              actions={headerActions}
+            />
+            {isPostsCountError ? (
+              <p className="mt-1 text-sm font-medium text-destructive">
+                {resolveErrorMessage(
+                  postsCountError,
+                  "Failed to load post count"
+                )}
+              </p>
+            ) : null}
           </div>
-        </div>
-
-        <div className="flex gap-2">
-          <DownloadAllButton
-            onClick={() => {
-              void downloadAll();
-            }}
-            onCancel={cancel}
-            onPause={pause}
-            onResume={resume}
-            isDownloading={isDownloadingAll}
-            isPaused={isPaused}
-            progress={downloadAllProgress}
-            canDownload={canDownload}
-            totalLabel={totalPosts}
-            failures={lastFailures}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void handleRepairSync();
-            }}
-            title="Resynchronize first pages to update low-quality previews"
-          >
-            <Wrench className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Repair</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void window.api
-                .openExternal(
-                  `https://rule34.xxx/index.php?page=post&s=list&tags=${artist.tag}`
-                )
-                .catch((error: unknown) => {
-                  log.error("[ArtistGallery] Failed to open artist on web:", error);
-                });
-            }}
-          >
-            <ExternalLink className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Web</span>
-          </Button>
         </div>
       </div>
 
-      {/* Grid Content */}
+      <ConfirmActionDialog
+        open={repairDialogOpen}
+        onOpenChange={setRepairDialogOpen}
+        title="Repair sync"
+        description={`Are you sure you want to run a repair sync for ${artist.name}? This may take time and update old entries.`}
+        confirmLabel="Repair"
+        cancelLabel="Cancel"
+        onConfirm={handleRepairSync}
+      />
+
       <div className="flex-1 min-h-0">
         {isLoading && allPosts.length === 0 ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">

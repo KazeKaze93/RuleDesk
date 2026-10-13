@@ -1,16 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { postLookupCache } from "@/main/db/schema";
+import { postLookupCache } from "../../../src/main/db/schema";
 import {
   POST_LOOKUP_FOUND_TTL_MS,
   POST_LOOKUP_NOT_FOUND_TTL_MS,
-} from "@/main/config/post-lookup-constants";
+} from "../../../src/main/config/post-lookup-constants";
 import {
   deleteExpiredPostLookupCache,
   enforcePostLookupCacheRowCap,
-} from "@/main/db/queries/post-lookup-cache";
-import type { BooruPost } from "@/shared/schemas/booru";
-import { ProviderSearchError } from "@/main/providers/provider-search-errors";
+} from "../../../src/main/db/queries/post-lookup-cache";
+import type { BooruPost } from "@shared/schemas/booru";
+import { ProviderSearchError } from "../../../src/main/providers/provider-search-errors";
 
 vi.mock("electron-log", () => ({
   default: {
@@ -25,7 +25,7 @@ const { getDbMock } = vi.hoisted(() => ({
   getDbMock: vi.fn(),
 }));
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getDb: () => getDbMock(),
 }));
 
@@ -33,7 +33,7 @@ import {
   loadPostLookupCache,
   resetPostLookupCacheForTests,
   resolvePostLookup,
-} from "@/main/services/post-lookup-cache";
+} from "../../../src/main/services/post-lookup-cache";
 
 function makePost(id: number): BooruPost {
   return {

@@ -1,15 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { settings, SETTINGS_ID } from "@/main/db/schema";
-import { ProviderSearchError } from "@/main/providers/provider-search-errors";
-import type { BooruPost } from "@/shared/schemas/booru";
+import { settings, SETTINGS_ID } from "../../../src/main/db/schema";
+import { ProviderSearchError } from "../../../src/main/providers/provider-search-errors";
+import type { BooruPost } from "@shared/schemas/booru";
 import type Database from "better-sqlite3";
 
 let activeSqlite: Database.Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -59,7 +58,7 @@ vi.mock("electron-log", () => ({
 const fetchPostsMock = vi.fn();
 const searchTagsMock = vi.fn();
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     formatTag: (tag: string, type?: string) => {
       const clean = tag.trim().toLowerCase();
@@ -73,8 +72,8 @@ vi.mock("@/main/providers", () => ({
   })),
 }));
 
-import { SearchController } from "@/main/ipc/controllers/SearchController";
-import { resetSearchResultsCacheForTests } from "@/main/services/search-results-cache";
+import { SearchController } from "../../../src/main/ipc/controllers/SearchController";
+import { resetSearchResultsCacheForTests } from "../../../src/main/services/search-results-cache";
 
 function makePost(id: number): BooruPost {
   return {
@@ -113,12 +112,10 @@ describe("SearchController search_results_cache wiring", () => {
   let controller: SearchController;
 
   beforeEach(async () => {
-    container.clear();
     resetSearchResultsCacheForTests();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
     activeDb = mockDb.db;
-    container.register(DI_TOKENS.DB, mockDb.db);
     await mockDb.db.insert(settings).values({
       id: SETTINGS_ID,
       userId: "12345",
@@ -144,7 +141,6 @@ describe("SearchController search_results_cache wiring", () => {
     }
     activeSqlite = null;
     activeDb = null;
-    container.clear();
     resetSearchResultsCacheForTests();
   });
 

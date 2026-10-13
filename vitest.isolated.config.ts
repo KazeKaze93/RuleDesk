@@ -5,6 +5,15 @@ import path from "path";
 /**
  * Isolated suite only: jsdom renderer tests + video-proxy (open-handle risk).
  * Invoked by `npm run test:isolated` under a hard wall-clock in pre-push.
+ *
+ * Path aliases match tsconfig / electron-vite renderer:
+ *   `@`  → `src/renderer`
+ *   `@shared` → `src/shared`
+ * Main/preload test imports use relative `src/main` / `src/preload` paths.
+ *
+ * Native ABI: `npm test` runs `pretest` → `db:rebuild:node` (better-sqlite3 for
+ * Node) before Vitest, then `posttest` → `db:rebuild` (Electron ABI) after.
+ * Direct `vitest` / `npx vitest` skips those hooks — use `npm test` instead.
  */
 export default defineConfig({
   plugins: [tsconfigPaths()],
@@ -26,8 +35,7 @@ export default defineConfig({
     hookTimeout: 15000,
     teardownTimeout: 5000,
     alias: {
-      "@/lib": path.resolve(__dirname, "./src/renderer/lib"),
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(__dirname, "./src/renderer"),
       "@shared": path.resolve(__dirname, "./src/shared"),
     },
   },

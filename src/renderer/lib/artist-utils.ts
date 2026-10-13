@@ -5,9 +5,9 @@ export function getArtistTag(
   const trimmedName = name.trim();
 
   if (type === "uploader") {
-    // Для Uploader: 'user:username'
+    // Uploader form: 'user:username'
     return `user:${trimmedName}`;
   }
-  // Для Tag: 'tag_name' (нижний регистр, пробелы в подчеркивания)
+  // Tag form: lowercase 'tag_name' with spaces as underscores
   return trimmedName.toLowerCase().replace(/ /g, "_");
 }

@@ -5,6 +5,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
+import { getDb } from "../../db/client";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { SecureStorage } from "../../services/secure-storage";
 import { reloadProxyFromSettings } from "../../lib/proxy";
@@ -17,14 +18,10 @@ import {
   type SaveSettings,
   type ThemePreference,
 } from "../../../shared/schemas/settings";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "../../db/schema";
 import { z } from "zod";
 import { PROVIDER_IDS } from "../../../shared/constants";
 import { normalizeCredentialsInput } from "../../../shared/utils/parse-credentials";
 import { getDecryptedCredentialsFromRecord, hasConfiguredApiKey } from "../../utils/decrypted-credentials";
-
-type AppDatabase = BetterSQLite3Database<typeof schema>;
 
 const SaveDownloadFolderArgSchema = z.union([
   z.null(),
@@ -80,9 +77,9 @@ function mapSettingsToIpc(
     proxyUrl: dbSettings.proxyUrl ?? null,
     // Convert SQLite integer booleans (0/1) to JavaScript booleans
     // Drizzle with mode: "boolean" already returns boolean, but ensure type safety
-    // Schema: isSafeMode has .default(true), isAdultConfirmed has .default(false), isAdultVerified is .notNull()
+    // Schema: isAdultConfirmed has .default(false), isAdultVerified is .notNull()
     // Drizzle ensures defaults are applied, so no ?? needed for fields with defaults
-    isSafeMode: !!dbSettings.isSafeMode, // .default(true) in schema - Drizzle ensures value exists
+    // isSafeMode: unused by renderer (Zustand safeModeStore), kept on DB for downgrade safety
     isAdultConfirmed: !!dbSettings.isAdultConfirmed, // .default(false) in schema - Drizzle ensures value exists
     isAdultVerified: !!dbSettings.isAdultVerified, // .notNull() in schema - always present
     // Convert Date to number for IPC serialization.
@@ -128,10 +125,6 @@ function mapSettingsToIpc(
  */
 export class SettingsController extends BaseController {
   // Query style: Drizzle Builder API only in this controller.
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
-  }
-
 
   /**
    * Setup IPC handlers for settings operations
@@ -154,18 +147,12 @@ export class SettingsController extends BaseController {
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE,
       SaveSettingsArgsSchema, // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
-      (event, ...args) => {
-        const [payload] = SaveSettingsArgsSchema.parse(args);
-        return this.saveSettings(event, payload);
-      }
+      (event, payload) => this.saveSettings(event, payload)
     );
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_THEME,
       SaveThemeArgsSchema,
-      (event, ...args) => {
-        const [theme] = SaveThemeArgsSchema.parse(args);
-        return this.saveTheme(event, theme);
-      }
+      (event, theme) => this.saveTheme(event, theme)
     );
     // settings:confirm-legal - confirms Age Gate & ToS acceptance
     this.handle(
@@ -182,19 +169,13 @@ export class SettingsController extends BaseController {
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER,
       SaveDownloadFolderArgsSchema,
-      (event, ...args) => {
-        const [folderPath] = SaveDownloadFolderArgsSchema.parse(args);
-        return this.saveDownloadFolder(event, folderPath);
-      }
+      (event, folderPath) => this.saveDownloadFolder(event, folderPath)
     );
     // settings:save-download-settings - saves duplicate/folder structure
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS,
       SaveDownloadSettingsArgsSchema,
-      (event, ...args) => {
-        const [payload] = SaveDownloadSettingsArgsSchema.parse(args);
-        return this.saveDownloadSettings(event, payload);
-      }
+      (event, payload) => this.saveDownloadSettings(event, payload)
     );
 
     log.info("[SettingsController] All handlers registered");
@@ -211,7 +192,7 @@ export class SettingsController extends BaseController {
    */
   private async getSettings(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
       const currentSettings = db
         .select()
@@ -268,7 +249,7 @@ export class SettingsController extends BaseController {
     }
 
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // PERFORMANCE: Prepare all data BEFORE transaction to minimize I/O wait inside transaction
       // Encryption and logging are CPU-bound operations that should not block the database
@@ -372,6 +353,7 @@ export class SettingsController extends BaseController {
               provider: provider ?? "rule34",
               encryptedApiKey: encryptedKey ?? "",
               proxyUrl: "proxyUrl" in data ? (data.proxyUrl ?? null) : null,
+              // unused by renderer, kept for downgrade safety
               isSafeMode: true,
               isAdultConfirmed: false,
               isAdultVerified: false,
@@ -434,7 +416,7 @@ export class SettingsController extends BaseController {
     theme: ThemePreference
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const existing = db
         .select()
         .from(settings)
@@ -455,6 +437,7 @@ export class SettingsController extends BaseController {
             id: SETTINGS_ID,
             userId: "",
             encryptedApiKey: "",
+            // unused by renderer, kept for downgrade safety
             isSafeMode: true,
             isAdultConfirmed: false,
             isAdultVerified: false,
@@ -479,7 +462,7 @@ export class SettingsController extends BaseController {
     folderPath: string | null
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const existing = db
         .select()
         .from(settings)
@@ -511,7 +494,7 @@ export class SettingsController extends BaseController {
     data: { duplicateFileBehavior?: "skip" | "overwrite"; downloadFolderStructure?: "flat" | "{artist_id}" }
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const existing = db
         .select()
         .from(settings)
@@ -554,7 +537,7 @@ export class SettingsController extends BaseController {
    */
   private async confirmLegal(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const now = new Date();
 
       // Get existing settings BEFORE transaction to preserve userId and encryptedApiKey
@@ -587,6 +570,7 @@ export class SettingsController extends BaseController {
               // These should not be overwritten when confirming legal
               userId: existing.userId ?? "",
               encryptedApiKey: existing.encryptedApiKey ?? "",
+              // unused by renderer, kept for downgrade safety
               isSafeMode: existing.isSafeMode ?? true,
               isAdultConfirmed: existing.isAdultConfirmed ?? false,
               provider: existing.provider ?? "rule34",
@@ -602,6 +586,7 @@ export class SettingsController extends BaseController {
               userId: "",
               encryptedApiKey: "",
               provider: "rule34",
+              // unused by renderer, kept for downgrade safety
               isSafeMode: true,
               isAdultConfirmed: false,
               isAdultVerified: true,
@@ -641,7 +626,7 @@ export class SettingsController extends BaseController {
 
   private async resetOnboarding(_event: IpcMainInvokeEvent): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       db.delete(settings).where(eq(settings.id, SETTINGS_ID)).run();
       return true;
     } catch (error) {

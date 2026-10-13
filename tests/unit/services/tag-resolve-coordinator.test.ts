@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { tagMetadata, TAG_TYPES } from "@/main/db/schema";
+import { tagMetadata, TAG_TYPES } from "../../../src/main/db/schema";
 import {
   TAG_RESOLVE_FOUND_TTL_MS,
   TAG_RESOLVE_NOT_FOUND_TTL_MS,
-} from "@/main/config/tag-resolve-constants";
+} from "../../../src/main/config/tag-resolve-constants";
 
 const { fetchRule34TagMetadataMock, MockRule34TagRateLimitError } = vi.hoisted(
   () => {
@@ -38,11 +38,11 @@ const { getDbMock } = vi.hoisted(() => ({
   getDbMock: vi.fn(),
 }));
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getDb: () => getDbMock(),
 }));
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     id: "rule34",
     getRequestThrottle: () => ({
@@ -57,7 +57,7 @@ vi.mock("@/main/providers", () => ({
   })),
 }));
 
-vi.mock("@/main/providers/rule34-tag-metadata", () => ({
+vi.mock("../../../src/main/providers/rule34-tag-metadata", () => ({
   fetchRule34TagMetadata: (...args: unknown[]) =>
     fetchRule34TagMetadataMock(...args),
   Rule34TagRateLimitError: MockRule34TagRateLimitError,
@@ -67,11 +67,11 @@ import {
   loadTagMetadataCache,
   resetTagResolveCoordinatorForTests,
   resolveTagMetadataWave,
-} from "@/main/services/tag-resolve-coordinator";
+} from "../../../src/main/services/tag-resolve-coordinator";
 import {
   deleteExpiredTagMetadata,
   enforceTagMetadataRowCap,
-} from "@/main/db/queries/tag-metadata";
+} from "../../../src/main/db/queries/tag-metadata";
 
 describe("tag-resolve-coordinator", () => {
   let mockDb: ReturnType<typeof createMockDb>;

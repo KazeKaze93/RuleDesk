@@ -4,8 +4,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useTrackAndDownloadArtist } from "@/renderer/hooks/useTrackAndDownloadArtist";
-import type { ProviderId } from "@/shared/constants";
+import { useTrackAndDownloadArtist } from "@/hooks/useTrackAndDownloadArtist";
+import type { ProviderId } from "@shared/constants";
 
 vi.mock("electron-log/renderer", () => ({
   default: {

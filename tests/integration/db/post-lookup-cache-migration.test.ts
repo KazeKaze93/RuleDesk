@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { settings, SETTINGS_ID } from "@/main/db/schema";
+import { settings, SETTINGS_ID } from "../../../src/main/db/schema";
 
 const POST_LOOKUP_CACHE_MIGRATION_TAG = "0036_add_post_lookup_cache";
 

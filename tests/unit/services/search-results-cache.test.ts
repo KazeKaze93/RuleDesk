@@ -1,21 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { searchResultsCache } from "@/main/db/schema";
+import { searchResultsCache } from "../../../src/main/db/schema";
 import {
   SEARCH_RESULTS_CACHE_FOUND_TTL_MS,
   SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS,
-} from "@/main/config/search-results-cache-constants";
+} from "../../../src/main/config/search-results-cache-constants";
 import {
   deleteExpiredSearchResultsCache,
   enforceSearchResultsCachePayloadByteCap,
   enforceSearchResultsCacheRowCap,
-} from "@/main/db/queries/search-results-cache";
+} from "../../../src/main/db/queries/search-results-cache";
 import {
   buildSearchResultsCacheKey,
   type SearchResultsCacheKeyInput,
-} from "@/shared/search-results-cache-key";
-import type { BooruPost } from "@/shared/schemas/booru";
-import { ProviderSearchError } from "@/main/providers/provider-search-errors";
+} from "@shared/search-results-cache-key";
+import type { BooruPost } from "@shared/schemas/booru";
+import { ProviderSearchError } from "../../../src/main/providers/provider-search-errors";
 
 vi.mock("electron-log", () => ({
   default: {
@@ -30,7 +30,7 @@ const { getDbMock } = vi.hoisted(() => ({
   getDbMock: vi.fn(),
 }));
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getDb: () => getDbMock(),
 }));
 
@@ -39,7 +39,7 @@ import {
   parseSearchResultsCachePayload,
   resetSearchResultsCacheForTests,
   resolveCachedSearchPage,
-} from "@/main/services/search-results-cache";
+} from "../../../src/main/services/search-results-cache";
 
 function makePost(id: number): BooruPost {
   return {

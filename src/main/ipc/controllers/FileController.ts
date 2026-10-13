@@ -10,7 +10,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getDb } from "../../db/client";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { getProxyAgent, getProxyUrl } from "../../lib/proxy";
 import {
@@ -391,7 +391,7 @@ export class FileController extends BaseController {
     downloadFolderStructure: "flat" | "{artist_id}";
   } {
     try {
-      const db = container.resolve(DI_TOKENS.DB);
+      const db = getDb();
       const row = db
         .select({
           duplicateFileBehavior: settings.duplicateFileBehavior,
@@ -418,7 +418,7 @@ export class FileController extends BaseController {
    */
   private async getDownloadRoot(): Promise<string> {
     try {
-      const db = container.resolve(DI_TOKENS.DB);
+      const db = getDb();
       const row = db
         .select({ downloadFolder: settings.downloadFolder })
         .from(settings)
@@ -461,32 +461,23 @@ export class FileController extends BaseController {
     this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD,
       DownloadFileArgsSchema,
-      (event, ...args) => {
-        const [url, filename] = DownloadFileArgsSchema.parse(args);
-        return this.downloadFile(event, url, filename);
-      }
+      (event, url, filename) => this.downloadFile(event, url, filename)
     );
     this.handle(
       IPC_CHANNELS.FILES.OPEN_FOLDER,
       OpenFolderArgSchema, // Single argument schema
       (event, filePathOrName) =>
-        this.openFolder(event, OpenFolderArgSchema.parse(filePathOrName))
+        this.openFolder(event, filePathOrName)
     );
     this.handle(
       IPC_CHANNELS.FILES.SELECT_DOWNLOAD_FOLDER,
       EmptyArgsSchema,
-      (event, ...args) => {
-        EmptyArgsSchema.parse(args);
-        return this.selectDownloadFolder(event);
-      }
+      (event) => this.selectDownloadFolder(event)
     );
     this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD_ALL,
       DownloadAllArgsSchema,
-      (_event, ...args) => {
-        const [request] = DownloadAllArgsSchema.parse(args);
-        return this.downloadAll(request);
-      }
+      (_event, request) => this.downloadAll(request)
     );
     this.handle(
       IPC_CHANNELS.FILES.CANCEL_DOWNLOAD_ALL,
@@ -518,10 +509,7 @@ export class FileController extends BaseController {
     this.handle(
       IPC_CHANNELS.FILES.RESUME_PENDING_DOWNLOAD,
       EmptyArgsSchema,
-      (event, ...args) => {
-        EmptyArgsSchema.parse(args);
-        return this.resumePendingDownload(event);
-      }
+      (event) => this.resumePendingDownload(event)
     );
     this.handle(
       IPC_CHANNELS.FILES.DISMISS_PENDING_DOWNLOAD,
@@ -1083,9 +1071,9 @@ export class FileController extends BaseController {
       const defaultPath = path.join(defaultDir, validFilename);
 
       const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-        title: "Скачать файл",
+        title: "Download file",
         defaultPath: defaultPath,
-        buttonLabel: "Скачать",
+        buttonLabel: "Download",
         filters: [
           {
             name: "Media Files",

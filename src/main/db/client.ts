@@ -1,4 +1,4 @@
-import { app, dialog } from "electron";
+import { app } from "electron";
 import path from "path";
 import fs from "fs";
 import Database from "better-sqlite3";
@@ -21,6 +21,12 @@ import {
 } from "./migration-runner";
 import { migrateLegacyDatabase } from "./legacy-database-migrate";
 import { assertNativeSqliteLoadable } from "./native-module-check";
+
+export {
+  DISPLAY_ENV,
+  WAYLAND_DISPLAY_ENV,
+  isHeadlessEnvironment,
+} from "./headless-env";
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -246,8 +252,8 @@ export async function initializeDatabase(): Promise<AppDatabase> {
       );
     }
     
-    // Run migrations asynchronously to avoid blocking the event loop
-    // Use setImmediate to yield control and allow UI to update
+    // Defer the synchronous migration work to the next event-loop turn so
+    // prior macrotasks can flush; setImmediate does not parallelize SQLite work.
     await new Promise<void>((resolve, reject) => {
       setImmediate(() => {
         try {
@@ -316,22 +322,7 @@ export async function initializeDatabase(): Promise<AppDatabase> {
     }
   } catch (e) {
     logger.error("[DB] Migration failed:", e);
-    
-    // Don't show error dialog in headless/test mode (blocks process in CI)
-    const isHeadless = process.env.NODE_ENV === "test" || process.env.CI === "true" || !process.env.DISPLAY;
-    
-    if (!isHeadless) {
-      // Show error dialog to user in production (critical error)
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      const errorDetails = `Database migration failed. The application cannot start.\n\nError: ${errorMessage}\n\nPlease check the logs for more details.`;
-      
-      // Use showErrorBox for synchronous display (works even if app is crashing)
-      dialog.showErrorBox(
-        "Database Migration Error",
-        errorDetails
-      );
-    }
-    
+    // Fatal dialog is owned by main.ts initializeAppAndWindow catch — throw only.
     throw e;
   }
 

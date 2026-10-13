@@ -1,7 +1,54 @@
 import { create } from "zustand";
 import log from "electron-log/renderer";
+import { AI_TAGS } from "@shared/ai-tags";
 
-type TabType = "browse" | "updates" | "favorites" | "tracked" | "settings";
+export type TabType =
+  | "browse"
+  | "updates"
+  | "favorites"
+  | "tracked"
+  | "settings"
+  | "playlists"
+  | "stats";
+
+export type TopBarChromeFlags = {
+  showSearch: boolean;
+  showFilters: boolean;
+  showSort: boolean;
+  showView: boolean;
+};
+
+const TOP_BAR_CHROME_HIDDEN: TopBarChromeFlags = {
+  showSearch: false,
+  showFilters: false,
+  showSort: false,
+  showView: false,
+};
+
+const TOP_BAR_CHROME_FULL: TopBarChromeFlags = {
+  showSearch: true,
+  showFilters: true,
+  showSort: true,
+  showView: true,
+};
+
+/** Exhaustive tab → top-bar chrome map (settings/stats have no chrome). */
+export const TOP_BAR_CHROME_BY_TAB: Record<TabType, TopBarChromeFlags> = {
+  browse: TOP_BAR_CHROME_FULL,
+  updates: TOP_BAR_CHROME_FULL,
+  favorites: TOP_BAR_CHROME_FULL,
+  tracked: TOP_BAR_CHROME_FULL,
+  playlists: TOP_BAR_CHROME_FULL,
+  settings: TOP_BAR_CHROME_HIDDEN,
+  stats: TOP_BAR_CHROME_HIDDEN,
+};
+
+export function getTopBarChrome(tab: TabType | null): TopBarChromeFlags {
+  if (tab === null) {
+    return TOP_BAR_CHROME_HIDDEN;
+  }
+  return TOP_BAR_CHROME_BY_TAB[tab];
+}
 type SortOrder = "asc" | "desc";
 type MediaType = "all" | "images" | "videos";
 type SourceType = "all" | "favorites" | "subscriptions";
@@ -15,14 +62,9 @@ interface PostFilters {
 
 /**
  * Exact AI tag tokens for Rule34 remote AI-filter injection (live API verified).
- * Keep in sync with PostsController AI_FILTER_TAGS; do not add space variants here.
+ * Shared canonical list; do not add space variants here.
  */
-export const BOORU_AI_FILTER_TAGS = [
-  "ai_generated",
-  "ai-generated",
-  "ai_generation",
-  "ai-generated_content",
-] as const;
+export const BOORU_AI_FILTER_TAGS = AI_TAGS;
 
 const BOORU_AI_FILTER_TAG_SET = new Set<string>(BOORU_AI_FILTER_TAGS);
 

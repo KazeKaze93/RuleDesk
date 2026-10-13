@@ -15,7 +15,7 @@ npm-debug.log
 /dist-electron
 /release
 
-# Логи и кэш
+# Logs and cache
 .electron-builder
 .electron-vite
 
@@ -37,11 +37,10 @@ Thumbs.db
 
 /settings.json
 
-# --- Локальная Конфигурация и Секреты ---
+# --- Local config and secrets ---
 .env
 .env.*
 
-# Portable data folder
 /data
 /dist
 /release

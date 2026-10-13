@@ -13,9 +13,8 @@
 export const ALLOWED_HOSTS = [
   "rule34.xxx",
   "www.rule34.xxx",
-  // Add other booru sites here as needed
-  // "gelbooru.com",
-  // "www.gelbooru.com",
+  "gelbooru.com",
+  "www.gelbooru.com",
 ] as const;
 
 /**

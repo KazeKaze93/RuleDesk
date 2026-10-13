@@ -1,23 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { artists, posts } from "@/main/db/schema";
+import { artists, posts } from "../../../src/main/db/schema";
 import {
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
   rebuildFtsIndex,
-} from "@/main/db/fts-triggers";
+} from "../../../src/main/db/fts-triggers";
 import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -49,7 +55,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     formatTag: (tag: string) => tag.trim().toLowerCase(),
     fetchPosts: vi.fn().mockResolvedValue({ posts: [], rawItemCount: 0, rejectedPostIds: [] }),
@@ -58,7 +64,7 @@ vi.mock("@/main/providers", () => ({
   PROVIDER_IDS: ["rule34", "gelbooru"],
 }));
 
-import { PostsController } from "@/main/ipc/controllers/PostsController";
+import { PostsController } from "../../../src/main/ipc/controllers/PostsController";
 
 type PostsControllerInternals = {
   setup: () => void;
@@ -113,10 +119,9 @@ describe("PostsController aiFilter during FTS bulk-sync window", () => {
   let artistId: number;
 
   beforeEach(() => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     controller = new PostsController() as unknown as PostsControllerInternals;
     controller.setup();
 
@@ -146,7 +151,7 @@ describe("PostsController aiFilter during FTS bulk-sync window", () => {
       }
     }
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   async function queryAiFilter(aiFilter: "hide" | "only") {

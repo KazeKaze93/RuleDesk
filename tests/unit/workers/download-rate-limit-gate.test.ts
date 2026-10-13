@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DownloadRateLimitGate } from "@/main/workers/download-rate-limit-gate";
+import { DownloadRateLimitGate } from "../../../src/main/workers/download-rate-limit-gate";
 
 describe("DownloadRateLimitGate", () => {
   it("blocks until scheduled pause elapses", async () => {

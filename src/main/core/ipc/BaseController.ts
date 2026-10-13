@@ -1,4 +1,4 @@
-import { ipcMain, type IpcMainInvokeEvent } from "electron";
+import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z, type ZodErrorMap, type ZodTypeAny } from "zod";
 import { ErrorCode } from "../../../shared/types/error-codes";
@@ -13,10 +13,24 @@ type IpcHandlerSchema =
   | z.ZodTuple<[ZodTypeAny, ...ZodTypeAny[]] | [], ZodTypeAny | null>
   | ZodTypeAny;
 
-type IpcHandlerFn = (
+/** Rest args for a handler registered with `schema` (tuple → tuple; else single arg). */
+type HandlerArgsOf<TSchema extends IpcHandlerSchema> = TSchema extends z.ZodTuple
+  ? z.infer<TSchema>
+  : [z.infer<TSchema>];
+
+type TypedIpcHandler<TSchema extends IpcHandlerSchema> = (
   event: IpcMainInvokeEvent,
-  ...args: unknown[]
+  ...args: HandlerArgsOf<TSchema> extends infer A
+    ? A extends unknown[]
+      ? A
+      : never
+    : never
 ) => Promise<unknown> | unknown;
+
+/** Packaged Electron build — omit stacks from IPC failure envelopes. */
+function isProductionBuild(): boolean {
+  return app.isPackaged;
+}
 
 /** Local alias — BaseController never rejects; envelope carries the code. */
 function createIpcError(
@@ -87,7 +101,7 @@ function throwZodValidationError(
     })),
   });
 
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = isProductionBuild();
   const originalErrorJson = isProduction
     ? JSON.stringify({
         name: validationError.name,
@@ -252,7 +266,7 @@ export abstract class BaseController {
   private static readonly throttleMap = new Map<string, number>();
 
   // Request Collapsing: For idempotent handlers, reuse in-flight Promise to prevent duplicate work
-  // Key = channel + fastHash(stableStringify(args)) so different payloads never share a Promise
+  // Key = channel + stableStringify(args) so different payloads never share a Promise
   // MEMORY LEAK PREVENTION: Each promise has its own setTimeout; timeout also settles the
   // Promise (failure envelope) so awaiters / Vitest do not hang forever on a stuck handler.
   private static readonly requestCollapseMap = new Map<
@@ -335,7 +349,7 @@ export abstract class BaseController {
   }
 
   /**
-   * Collapse key from channel + full canonical args hash.
+   * Collapse key from channel + full canonical JSON args.
    * Returns null when args cannot be serialized (collapsing disabled, no warn).
    */
   private static getCollapseKey(channel: string, args: unknown[]): string | null {
@@ -343,48 +357,21 @@ export abstract class BaseController {
     if (canonical === null) {
       return null;
     }
-    return `${channel}:${this.fastHash(canonical)}`;
-  }
-
-  /**
-   * Fast non-cryptographic hash (djb2 algorithm)
-   * Used for hashing IPC collapse keys without blocking Main Process
-   *
-   * @param str - String to hash
-   * @returns 16-character hex hash
-   */
-  private static fastHash(str: string): string {
-    let hash = 5381;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) + hash) + str.charCodeAt(i);
-      // Convert to 32-bit integer (prevent overflow)
-      hash = hash & hash;
-    }
-    // Convert to positive hex string and take first 16 chars
-    return Math.abs(hash).toString(16).substring(0, 16);
+    return `${channel}:${canonical}`;
   }
 
   // Minimum spacing between non-idempotent calls on the same channel (delay, never reject)
   private static readonly THROTTLE_MS = 100;
-
-  // TTL for throttle map entries (1 hour) - prevents memory leak from dynamic channel names
-  private static readonly THROTTLE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-  // Cleanup interval: cleanup throttle map every N calls to prevent memory leak
-  // Use counter instead of random to ensure predictable cleanup behavior
-  // Reduced from 1000 to 200 to prevent map bloat with dynamic channels
-  private static readonly CLEANUP_INTERVAL_CALLS = 200; // Cleanup every 200 calls
-  private static callCount = 0; // Counter for tracking IPC calls
 
   /**
    * Shared validation + handler execution for both collapsed (idempotent) and
    * throttled registration paths. Throws typed validation errors; callers own
    * the failure-envelope catch.
    */
-  private async runValidatedHandler(
+  private async runValidatedHandler<TSchema extends IpcHandlerSchema>(
     channel: string,
-    schema: IpcHandlerSchema,
-    handler: IpcHandlerFn,
+    schema: TSchema,
+    handler: TypedIpcHandler<TSchema>,
     event: IpcMainInvokeEvent,
     args: unknown[]
   ): Promise<unknown> {
@@ -406,8 +393,7 @@ export abstract class BaseController {
     }
 
     const normalizedSchema = isTuple ? schema : z.tuple([schema]);
-    type ValidatedArgs = z.infer<typeof normalizedSchema>;
-    let validatedArgs: ValidatedArgs;
+    let validatedArgs: unknown;
     try {
       validatedArgs = normalizedSchema.parse(args, {
         errorMap: sanitizedErrorMap,
@@ -419,10 +405,24 @@ export abstract class BaseController {
       throw validationError;
     }
 
-    const handlerArgs = isTuple ? validatedArgs : [validatedArgs[0]];
-    const result = await handler(event, ...handlerArgs);
+    if (!Array.isArray(validatedArgs)) {
+      throw createIpcError(
+        `Internal validation error: expected tuple result for channel "${channel}"`,
+        ErrorCode.VALIDATION_ERROR,
+        { name: "ValidationError" }
+      );
+    }
+
+    // Forward Zod-validated args into the typed handler. Function.prototype.apply
+    // is the call boundary (no `as`); args were validated above.
+    const callArgs: unknown[] = [event, ...validatedArgs];
+    const invoked: unknown = await Function.prototype.apply.call(
+      handler,
+      undefined,
+      callArgs
+    );
     log.debug(`[IPC] Request completed: ${channel}`);
-    return result;
+    return invoked;
   }
 
   /**
@@ -448,10 +448,10 @@ export abstract class BaseController {
    * @param handler - Async handler function with validated, typed arguments
    * @param options - Optional configuration (e.g., isIdempotent for cached/idempotent handlers)
    */
-  protected handle(
+  protected handle<TSchema extends IpcHandlerSchema>(
     channel: string,
-    schema: IpcHandlerSchema,
-    handler: IpcHandlerFn,
+    schema: TSchema,
+    handler: TypedIpcHandler<TSchema>,
     options?: { isIdempotent?: boolean }
   ): void {
     // Critical: Remove existing handler to prevent "duplicate handler" crash
@@ -470,63 +470,6 @@ export abstract class BaseController {
       channel,
       async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
         try {
-          // Cleanup old entries to prevent memory leak (TTL-based cleanup)
-          // Use call counter instead of random for predictable cleanup behavior
-          // Perform cleanup asynchronously to avoid blocking Main Process Event Loop
-          BaseController.callCount++;
-          if (
-            BaseController.throttleMap.size > 100 &&
-            BaseController.callCount >= BaseController.CLEANUP_INTERVAL_CALLS
-          ) {
-            BaseController.callCount = 0; // Reset counter
-
-            // Schedule cleanup asynchronously to avoid blocking Event Loop
-            // Use setImmediate to yield control and allow other IPC calls to proceed
-            setImmediate(() => {
-              const cleanupNow = Date.now();
-              const keysToDelete: string[] = [];
-
-              // Collect keys to delete (avoid modifying Map during iteration)
-              for (const [
-                key,
-                timestamp,
-              ] of BaseController.throttleMap.entries()) {
-                if (cleanupNow - timestamp > BaseController.THROTTLE_TTL_MS) {
-                  keysToDelete.push(key);
-                }
-              }
-
-              // Delete collected keys
-              for (const key of keysToDelete) {
-                BaseController.throttleMap.delete(key);
-              }
-              
-              // MEMORY LEAK PREVENTION: Clean up stuck promises in requestCollapseMap
-              // Note: Each promise has its own setTimeout, but we also check here as backup
-              const now = Date.now();
-              const stuckKeys: string[] = [];
-              for (const [key, entry] of BaseController.requestCollapseMap.entries()) {
-                const age = now - entry.createdAt;
-                if (age >= BaseController.REQUEST_COLLAPSE_TIMEOUT_MS) {
-                  stuckKeys.push(key);
-                }
-              }
-              
-              // Delete stuck promises and clear their timeouts
-              for (const key of stuckKeys) {
-                const entry = BaseController.requestCollapseMap.get(key);
-                if (entry) {
-                  clearTimeout(entry.timeoutId); // Clear individual timeout
-                  log.warn(
-                    `[IPC] Cleaning up stuck promise with key "${key}" ` +
-                    `(age: ${now - entry.createdAt}ms)`
-                  );
-                  BaseController.requestCollapseMap.delete(key);
-                }
-              }
-            });
-          }
-
           const isIdempotent = options?.isIdempotent === true;
 
           // Request Collapsing: reuse in-flight Promise for identical (channel + args) on idempotent handlers
@@ -632,7 +575,7 @@ export abstract class BaseController {
                   settle(result);
                 } catch (error: unknown) {
                   // Resolve with failure envelope (do not reject — Electron drops Error.code).
-                  const isProduction = process.env.NODE_ENV === "production";
+                  const isProduction = isProductionBuild();
                   if (!hasIpcErrorCode(error)) {
                     log.error(`[IPC] Error in channel "${channel}":`, {
                       message:
@@ -659,25 +602,23 @@ export abstract class BaseController {
             }
           }
 
-          // Spacing for non-idempotent (and unserializable idempotent) calls: delay, never reject
-          while (true) {
-            const lastCall = BaseController.throttleMap.get(channel);
-            if (lastCall === undefined) {
-              break;
-            }
-            const elapsed = Date.now() - lastCall;
-            if (elapsed >= BaseController.THROTTLE_MS) {
-              break;
-            }
-            const waitTime = BaseController.THROTTLE_MS - elapsed;
+          // Spacing for non-idempotent (and unserializable idempotent) calls: delay, never reject.
+          // Reserve the slot synchronously before await so parallel callers cannot share one slot.
+          const now = Date.now();
+          const lastCall = BaseController.throttleMap.get(channel);
+          const wait =
+            lastCall === undefined
+              ? 0
+              : Math.max(0, lastCall + BaseController.THROTTLE_MS - now);
+          BaseController.throttleMap.set(channel, now + wait);
+          if (wait > 0) {
             log.debug(
-              `[IPC] Throttling channel "${channel}" - waiting ${waitTime}ms`
+              `[IPC] Throttling channel "${channel}" - waiting ${wait}ms`
             );
             await new Promise<void>((resolve) => {
-              setTimeout(resolve, waitTime);
+              setTimeout(resolve, wait);
             });
           }
-          BaseController.throttleMap.set(channel, Date.now());
 
           return await this.runValidatedHandler(
             channel,
@@ -689,7 +630,7 @@ export abstract class BaseController {
         } catch (error: unknown) {
           // Never reject the handle Promise — return a clone-safe failure envelope.
           // Preload ``invokeIpc`` rethrows as Error with ``code`` on the renderer side.
-          const isProduction = process.env.NODE_ENV === "production";
+          const isProduction = isProductionBuild();
           if (!hasIpcErrorCode(error)) {
             log.error(`[IPC] Error in channel "${channel}":`, {
               message:

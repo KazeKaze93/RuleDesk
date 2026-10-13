@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ipcMain } from "electron";
 import { z } from "zod";
-import { BaseController } from "@/main/core/ipc/BaseController";
+import { BaseController } from "../../../src/main/core/ipc/BaseController";
 
 vi.mock("electron", () => ({
   ipcMain: {
@@ -12,6 +12,7 @@ vi.mock("electron", () => ({
   app: {
     getPath: vi.fn(() => "/tmp"),
     getVersion: vi.fn(() => "0.0.0"),
+    isPackaged: false,
   },
   clipboard: { writeText: vi.fn() },
   shell: { openPath: vi.fn(), openExternal: vi.fn() },
@@ -44,7 +45,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     id: "rule34",
     formatTag: (tag: string) => tag.trim().toLowerCase(),
@@ -54,30 +55,30 @@ vi.mock("@/main/providers", () => ({
   PROVIDER_IDS: ["rule34", "gelbooru"],
 }));
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getDb: vi.fn(),
   getSqliteInstance: vi.fn(),
   closeDatabase: vi.fn(),
   initializeDatabase: vi.fn(),
 }));
 
-import { ArtistsController } from "@/main/ipc/controllers/ArtistsController";
-import { AuthController } from "@/main/ipc/controllers/AuthController";
-import { BlacklistController } from "@/main/ipc/controllers/BlacklistController";
-import { FileController } from "@/main/ipc/controllers/FileController";
-import { MaintenanceController } from "@/main/ipc/controllers/MaintenanceController";
-import { PlaylistController } from "@/main/ipc/controllers/PlaylistController";
-import { PostsController } from "@/main/ipc/controllers/PostsController";
-import { SearchController } from "@/main/ipc/controllers/SearchController";
-import { SettingsController } from "@/main/ipc/controllers/SettingsController";
-import { StatsController } from "@/main/ipc/controllers/StatsController";
-import { SystemController } from "@/main/ipc/controllers/SystemController";
-import { UpdatesController } from "@/main/ipc/controllers/UpdatesController";
-import { VideoProxyController } from "@/main/ipc/controllers/VideoProxyController";
-import { ViewerController } from "@/main/ipc/controllers/ViewerController";
-import type { MaintenanceService } from "@/main/services/MaintenanceService";
-import type { UpdaterService } from "@/main/services/updater-service";
-import type { VideoProxyServer } from "@/main/services/video-proxy-server";
+import { ArtistsController } from "../../../src/main/ipc/controllers/ArtistsController";
+import { AuthController } from "../../../src/main/ipc/controllers/AuthController";
+import { BlacklistController } from "../../../src/main/ipc/controllers/BlacklistController";
+import { FileController } from "../../../src/main/ipc/controllers/FileController";
+import { MaintenanceController } from "../../../src/main/ipc/controllers/MaintenanceController";
+import { PlaylistController } from "../../../src/main/ipc/controllers/PlaylistController";
+import { PostsController } from "../../../src/main/ipc/controllers/PostsController";
+import { SearchController } from "../../../src/main/ipc/controllers/SearchController";
+import { SettingsController } from "../../../src/main/ipc/controllers/SettingsController";
+import { StatsController } from "../../../src/main/ipc/controllers/StatsController";
+import { SystemController } from "../../../src/main/ipc/controllers/SystemController";
+import { UpdatesController } from "../../../src/main/ipc/controllers/UpdatesController";
+import { VideoProxyController } from "../../../src/main/ipc/controllers/VideoProxyController";
+import { ViewerController } from "../../../src/main/ipc/controllers/ViewerController";
+import type { MaintenanceService } from "../../../src/main/services/MaintenanceService";
+import type { UpdaterService } from "../../../src/main/services/updater-service";
+import type { VideoProxyServer } from "../../../src/main/services/video-proxy-server";
 
 /**
  * Mirror `setupIpc()` controller registration so the inventory covers every
@@ -158,6 +159,6 @@ describe("IPC channel Zod schema inventory", () => {
     expect(missingSchema).toEqual([]);
 
     // Stable inventory size: bump intentionally when adding a handle() registration.
-    expect(inventory.size).toBe(90);
+    expect(inventory.size).toBe(82);
   });
 });

@@ -392,9 +392,9 @@ export const TagsDrawer = ({
         className={cn(
           wrapperClassName,
           colorClassName,
-          isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+          isTagIncluded(tag) && "ring-1 ring-success bg-success/10",
           isTagExcluded(tag) &&
-            "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+            "ring-1 ring-destructive bg-destructive/10 line-through opacity-60"
         )}
         title={
           isTagExcluded(tag)
@@ -418,9 +418,8 @@ export const TagsDrawer = ({
         overlayClassName={cn(VIEWER_OVERLAY_Z, "bg-black/80")}
         className={cn(
           VIEWER_OVERLAY_Z,
-          "w-full overflow-y-auto sm:max-w-md"
+          "w-full overflow-y-auto sm:max-w-md [scrollbar-gutter:stable]"
         )}
-        style={{ scrollbarGutter: "stable" }}
       >
         <SheetHeader>
           <SheetTitle>Post Metadata</SheetTitle>
@@ -496,7 +495,7 @@ export const TagsDrawer = ({
               renderTagActionButton(
                 tag,
                 "link",
-                "text-purple-600 hover:underline",
+                "text-primary hover:underline",
                 "h-auto min-h-0 w-full justify-start p-0 text-sm"
               )
             }
@@ -516,7 +515,7 @@ export const TagsDrawer = ({
               renderTagActionButton(
                 tag,
                 "link",
-                "text-green-600 hover:underline",
+                "text-success hover:underline",
                 "h-auto min-h-0 w-full justify-start p-0 text-sm"
               )
             }
@@ -536,7 +535,7 @@ export const TagsDrawer = ({
               renderTagActionButton(
                 tag,
                 "link",
-                "text-red-600 hover:underline",
+                "text-destructive hover:underline",
                 "h-auto min-h-0 w-full justify-start p-0 text-sm"
               )
             }
@@ -546,10 +545,7 @@ export const TagsDrawer = ({
             <h3 className="mb-2 text-sm font-semibold">
               Tags ({generalTags.length})
             </h3>
-            <div
-              className="max-h-[400px] overflow-y-auto rounded-md border pr-2"
-              style={{ scrollbarGutter: "stable" }}
-            >
+            <div className="max-h-[400px] overflow-y-auto rounded-md border pr-2 [scrollbar-gutter:stable]">
               <div>
                 {generalTags.map((tag) => (
                   <Button
@@ -563,9 +559,9 @@ export const TagsDrawer = ({
                     }}
                     className={cn(
                       "h-auto min-h-0 w-full justify-start rounded-none px-3 py-2 text-sm text-left font-normal border-b last:border-b-0 hover:bg-muted/50",
-                      isTagIncluded(tag) && "ring-1 ring-green-500 bg-green-500/10",
+                      isTagIncluded(tag) && "ring-1 ring-success bg-success/10",
                       isTagExcluded(tag) &&
-                        "ring-1 ring-red-500 bg-red-500/10 line-through opacity-60"
+                        "ring-1 ring-destructive bg-destructive/10 line-through opacity-60"
                     )}
                     title={
                       isTagExcluded(tag)

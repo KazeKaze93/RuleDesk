@@ -10,15 +10,15 @@ import {
 } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { server } from "../../mocks/server";
-import { artists, posts, settings, SETTINGS_ID } from "@/main/db/schema";
+import { artists, posts, settings, SETTINGS_ID } from "../../../src/main/db/schema";
 import { eq } from "drizzle-orm";
-import { getProvider } from "@/main/providers";
-import type { FetchPostsResult } from "@/main/providers/types";
+import { getProvider } from "../../../src/main/providers";
+import type { FetchPostsResult } from "../../../src/main/providers/types";
 import {
   areRuntimeDroppableFtsTriggersPresent,
   ensureFtsTriggers,
-} from "@/main/db/fts-triggers";
-import { SyncService } from "@/main/services/sync-service";
+} from "../../../src/main/db/fts-triggers";
+import { SyncService } from "../../../src/main/services/sync-service";
 
 vi.mock("electron", () => ({
   app: { getPath: () => "/tmp" },
@@ -53,7 +53,7 @@ vi.mock("electron-log", () => ({
 let mockDbInstance: ReturnType<typeof createMockDb>["db"] | null = null;
 let mockSqliteInstance: ReturnType<typeof createMockDb>["sqlite"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getDb: () => {
     if (!mockDbInstance) {
       throw new Error("Mock DB not set");

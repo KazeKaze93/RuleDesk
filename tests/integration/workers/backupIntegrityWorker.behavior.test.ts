@@ -18,7 +18,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-vi.mock("@/main/lib/backup-sidecar", () => ({
+vi.mock("../../../src/main/lib/backup-sidecar", () => ({
   BACKUP_SIDECAR_SUFFIX: ".settings.json",
   getBackupSidecarPath: (backupDbPath: string) => `${backupDbPath}.settings.json`,
   writeBackupSidecar: vi.fn(async () => undefined),

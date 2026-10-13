@@ -53,7 +53,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
 | **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups under `%LOCALAPPDATA%\RuleDesk-Backups\` (sibling of `RuleDesk-Data`, not inside the cache dir); retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup — **manual and automatic file sets are counted separately** (same `N` each, not summed). Restore replaces the live DB (with checks) and reloads the app.                                                                               |
 | **🧹 DB Maintenance (VACUUM)**    | User-visible maintenance card in Settings: shows last VACUUM run, allows manual `Run VACUUM now`, and supports schedule policy (`manual`, `weekly`, `monthly`). Lightweight auto-maintenance (`wal_checkpoint` + `optimize`) remains automatic in Main process.                                                                                     |
-| **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`) with infinite scroll on Browse. Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
+| **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`) with infinite scroll on Browse. Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
 | **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                                                                           |
 | **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                                                                                                 |
 | **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                                                                          |
@@ -126,7 +126,7 @@ A unified Top Bar appears on all content pages providing:
 - **Sort** - Newest/oldest (`sortOrder` on date-oriented lists)
 - **View Toggle** - Switch between grid and masonry layouts
 - **Sync Status** - Real-time sync progress indicator with last sync timestamp
-*✅ `SyncStatusBadge` is in the top bar. Sorting is handled by the dedicated date sort control in the top bar (outside Filters). Search stretches across the available left section and chip rows can expand to a second line when needed.*
+*✅ Global sync busy state is the Sidebar sync indicator. Sorting is handled by the dedicated date sort control in the top bar (outside Filters). Search stretches across the available left section and chip rows can expand to a second line when needed.*
 
 ### Viewer Experience
 
@@ -279,16 +279,16 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Timestamp Handling:** All timestamps use Drizzle timestamp mode with proper milliseconds precision
 - ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
 - ✅ **Rate Limiting:** Shared `ProviderThrottle` (~1200ms + 0–400ms jitter per request) across providers
-- ✅ **Anti-Bot Measures:** Session User-Agent from a shared pool (`pickRandomUA`) plus jittered request pacing.
+- ✅ **Anti-Bot Measures:** Shared `USER_AGENT` for API+CDN plus jittered request pacing via `ProviderThrottle`.
 - ✅ **Sync integrity:** `lastPostId` advances only after complete pagination; unfinished runs set `lastSyncIncomplete`. Per-artist `syncStatus` / `lastError` are written during sync; hard-kill recovery resets stuck `syncing` → `idle` on DB init. Video-cache writes are atomic (tmp+rename) with size-capped **LRU last-accessed** eviction — see [Roadmap](./docs/roadmap.md).
 
 ### UI/UX
 
 - ✅ **Progressive image loading (stills):** `PostCard` upgrades preview → sample in viewport; original in viewer
 - ✅ **Virtualization:** `react-virtuoso` implemented for efficient large list rendering
-- ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`)
+- ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`)
 - ✅ **Sidebar Navigation:** Persistent grouped sidebar structure (Discover / Library / System) with the current shipped IA.
-- ✅ **Global Top Bar:** Search (chip-based include/exclude with OR-group tokens), syntax-help popover, `FiltersPanel` (AI, media, source), dedicated date sort control, view toggle, `SyncStatusBadge`
+- ✅ **Global Top Bar:** Search (chip-based include/exclude with OR-group tokens), syntax-help popover, `FiltersPanel` (AI, media, source), dedicated date sort control, view toggle; Sidebar owns the sync indicator
 - ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), and source (all / favorites / Browse Source Subscriptions filter)
 - ✅ **Sorting:** Sort by date order (newest/oldest) across main feeds
 - ✅ **View Modes:** Grid (virtualized) and masonry (CSS columns) are both shipped and user-selectable.

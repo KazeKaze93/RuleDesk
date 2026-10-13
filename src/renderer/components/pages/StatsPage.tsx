@@ -2,13 +2,13 @@ import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   HardDrive,
-  Loader2,
   Image,
   Video,
   Users,
   FileText,
   Heart,
   EyeOff,
+  BarChart3,
 } from "lucide-react";
 import {
   PieChart,
@@ -26,6 +26,11 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Button } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
+import { PageHeader } from "../layout/PageHeader";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 const PIE_COLORS = {
   safe: "hsl(var(--primary))",
@@ -40,6 +45,15 @@ const STATUS_COLORS = {
   muted: "hsl(var(--muted-foreground))",
 };
 
+const PAGE_TITLE = "Statistics Dashboard";
+const PAGE_DESCRIPTION =
+  "Extended overview of local library distribution and growth.";
+const NO_DATA_TITLE = "No data yet";
+const NO_DATA_DESCRIPTION =
+  "Track artists and sync posts to populate library statistics.";
+const ERROR_TITLE = "Could not load statistics";
+const RETRY_LABEL = "Retry";
+
 const formatDbSize = (bytes: number): string =>
   `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 
@@ -50,29 +64,123 @@ const getPercent = (value: number, total: number): string => {
   return `${((value / total) * 100).toFixed(1)}%`;
 };
 
+const StatsLoadingSkeleton = () => (
+  <div className="space-y-6">
+    <PageHeader title={PAGE_TITLE} description={PAGE_DESCRIPTION} icon={BarChart3} />
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {Array.from({ length: 4 }, (_, index) => (
+        <Skeleton key={index} className="h-24 w-full" />
+      ))}
+    </div>
+    <div className="grid gap-4 md:grid-cols-2">
+      {Array.from({ length: 4 }, (_, index) => (
+        <Skeleton key={index} className="h-[18rem] w-full" />
+      ))}
+    </div>
+    <div className="grid gap-4 md:grid-cols-2">
+      <Skeleton className="h-[10.5rem] w-full" />
+      <Skeleton className="h-[10.5rem] w-full" />
+    </div>
+  </div>
+);
+
 export const StatsPage = () => {
-  const { data: stats, isLoading } = useQuery({
+  const {
+    data: stats,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ["stats"],
     queryFn: () => window.api.getExtendedStats(),
     staleTime: 30_000,
   });
 
-  if (isLoading || !stats) {
+  if (isLoading) {
+    return <StatsLoadingSkeleton />;
+  }
+
+  if (isError) {
     return (
-      <div className="flex justify-center items-center h-full">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        <PageHeader
+          title={PAGE_TITLE}
+          description={PAGE_DESCRIPTION}
+          icon={BarChart3}
+        />
+        <Alert variant="destructive">
+          <AlertTitle>{ERROR_TITLE}</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>
+              {resolveErrorMessage(error, "Failed to load statistics.")}
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={isFetching}
+              onClick={() => {
+                void refetch();
+              }}
+            >
+              {RETRY_LABEL}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title={PAGE_TITLE}
+          description={PAGE_DESCRIPTION}
+          icon={BarChart3}
+        />
+        <div
+          className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-12 text-center text-muted-foreground"
+          role="status"
+        >
+          <p className="text-lg font-semibold text-foreground">{NO_DATA_TITLE}</p>
+          <p className="text-sm">{NO_DATA_DESCRIPTION}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const hasLibraryData = stats.totalArtists > 0 || stats.totalPosts > 0;
+
+  if (!hasLibraryData) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title={PAGE_TITLE}
+          description={PAGE_DESCRIPTION}
+          icon={BarChart3}
+        />
+        <div
+          className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-12 text-center text-muted-foreground"
+          role="status"
+        >
+          <BarChart3 className="h-12 w-12 opacity-50" aria-hidden />
+          <p className="text-lg font-semibold text-foreground">{NO_DATA_TITLE}</p>
+          <p className="text-sm">{NO_DATA_DESCRIPTION}</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Statistics Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Extended overview of local library distribution and growth.
-        </p>
-      </div>
+      <PageHeader
+        title={PAGE_TITLE}
+        description={PAGE_DESCRIPTION}
+        icon={BarChart3}
+      />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard title="Artists" value={stats.totalArtists.toLocaleString()} icon={<Users className="w-4 h-4" />} />

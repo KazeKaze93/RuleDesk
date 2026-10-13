@@ -1,6 +1,7 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import log from "electron-log/renderer";
+import { Loader2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProviderId } from "@shared/constants";
 
@@ -17,13 +18,34 @@ import { PlaylistsPage } from "./components/pages/PlaylistsPage";
 import { StatsPage } from "./components/pages/StatsPage";
 import { useTheme } from "./hooks/useTheme";
 import { useApplyAppearance } from "./hooks/useApplyAppearance";
+import { useCredentialsActions } from "./hooks/useCredentialsActions";
 import { Toaster } from "./components/ui/sonner";
 import { RENDERER_WINDOW_EVENTS } from "@shared/constants";
 import { SettingsAccountTab } from "./features/settings/SettingsAccountTab";
 import { useSearchStore } from "./store/searchStore";
-import { normalizeCredentialsInput } from "./lib/parseCredentialsFromText";
 import { Button } from "./components/ui/button";
-import type { IpcSettings } from "@shared/schemas/settings";
+
+const NotFoundPage = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <p className="text-lg font-semibold text-foreground">Page not found</p>
+      <p className="max-w-md text-sm text-muted-foreground">
+        This URL does not match any screen in RuleDesk.
+      </p>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => {
+          void navigate("/browse");
+        }}
+      >
+        Go to Browse
+      </Button>
+    </div>
+  );
+};
 
 const AccountGate = ({
   provider,
@@ -113,6 +135,26 @@ function App() {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
+  const { saveApiKey, changeProvider } = useCredentialsActions({
+    setAccountStatus,
+    requireUserId: true,
+    includeProviderOnSave: true,
+    resolveSaveUserId: ({ normalizedUserId, rawUserId }) =>
+      normalizedUserId ?? rawUserId,
+    onAfterSaveSuccess: () => {
+      setApiKey("");
+      setGateUserId("");
+      setForceAccountGate(false);
+      clearTagChips();
+      resetFilters();
+    },
+    patchSettingsCacheOnSave: true,
+    refetchSettingsAfterSave: true,
+    invalidateSearchAfterSave: true,
+    logSaveFailure: "[App] Failed to save API key in account gate:",
+    logProviderFailure: "[App] Failed to change provider in account gate:",
+  });
+
   useEffect(() => {
     const openOnboarding = () => {
       setForceAccountGate(true);
@@ -127,8 +169,15 @@ function App() {
   // Loading state: waiting for settings to load
   if (isSettingsLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-muted-foreground">Loading...</div>
+      <div
+        className="flex justify-center items-center h-screen"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <Loader2
+          className="w-8 h-8 animate-spin text-muted-foreground"
+          aria-label="Loading"
+        />
       </div>
     );
   }
@@ -177,70 +226,6 @@ function App() {
 
   const activeProvider = pendingProvider ?? settings.provider;
   const shouldShowAccountGate = forceAccountGate || !settings.hasApiKey;
-  const handleSaveApiKey = async () => {
-    setAccountStatus("idle");
-    try {
-      const normalized = normalizeCredentialsInput({
-        userId: gateUserId || settings.userId,
-        apiKey,
-      });
-      if (!normalized.apiKey || !normalized.userId) {
-        setAccountStatus("error");
-        return;
-      }
-      const saved = await window.api.saveSettings({
-        userId: normalized.userId,
-        apiKey: normalized.apiKey,
-        provider: activeProvider,
-      });
-      if (!saved) {
-        setAccountStatus("error");
-        return;
-      }
-      setApiKey("");
-      setGateUserId("");
-      setForceAccountGate(false);
-      clearTagChips();
-      resetFilters();
-      queryClient.setQueryData<IpcSettings>(["settings"], (current) => {
-        if (!current) {
-          return current;
-        }
-        return {
-          ...current,
-          userId: normalized.userId ?? current.userId,
-          hasApiKey: true,
-        };
-      });
-      await queryClient.invalidateQueries({ queryKey: ["settings"] });
-      await queryClient.refetchQueries({ queryKey: ["settings"] });
-      await queryClient.invalidateQueries({ queryKey: ["search"] });
-      setAccountStatus("success");
-    } catch (error) {
-      log.error("[App] Failed to save API key in account gate:", error);
-      setAccountStatus("error");
-    }
-  };
-
-  const handleProviderChangeConfirm = async () => {
-    if (!pendingProvider) {
-      return;
-    }
-    const nextProvider = pendingProvider;
-    setPendingProvider(null);
-    try {
-      await queryClient.invalidateQueries({
-        predicate: ({ queryKey }) => {
-          const root = queryKey[0];
-          return root === "posts" || root === "search" || root === "playlist-posts" || root === "artists";
-        },
-      });
-      await window.api.saveSettings({ provider: nextProvider });
-      await queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch (error) {
-      log.error("[App] Failed to change provider in account gate:", error);
-    }
-  };
 
   if (shouldShowAccountGate) {
     return (
@@ -253,7 +238,12 @@ function App() {
         }}
         pendingProvider={pendingProvider}
         onProviderChangeConfirm={() => {
-          void handleProviderChangeConfirm();
+          if (!pendingProvider) {
+            return;
+          }
+          const nextProvider = pendingProvider;
+          setPendingProvider(null);
+          void changeProvider(nextProvider);
         }}
         onProviderChangeCancel={() => setPendingProvider(null)}
         userId={gateUserId || settings.userId}
@@ -263,7 +253,11 @@ function App() {
         showApiKey={showApiKey}
         onToggleApiKeyVisibility={() => setShowApiKey((current) => !current)}
         onSaveApiKey={() => {
-          void handleSaveApiKey();
+          void saveApiKey({
+            userId: gateUserId || settings.userId,
+            apiKey,
+            provider: activeProvider,
+          });
         }}
         accountStatus={accountStatus}
         onResetOnboarding={() => {
@@ -281,7 +275,7 @@ function App() {
     <>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Browse />} />
+          <Route index element={<Navigate to="/browse" replace />} />
           <Route path="tracked" element={<Tracked />} />
           <Route path="artist/:id" element={<ArtistDetails />} />
           <Route path="browse" element={<Browse />} />
@@ -290,10 +284,7 @@ function App() {
           <Route path="playlists" element={<PlaylistsPage />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="settings" element={<Settings />} />
-          <Route
-            path="*"
-            element={<div className="p-10">Page Not Found (Check URL)</div>}
-          />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
       <AutoBackupOptInPrompt />

@@ -1,17 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
 import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -43,7 +49,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     id: "rule34",
     formatTag: (tag: string) => tag.trim().toLowerCase(),
@@ -53,14 +59,14 @@ vi.mock("@/main/providers", () => ({
   PROVIDER_IDS: ["rule34", "gelbooru"],
 }));
 
-vi.mock("@/main/services/credentials", () => ({
+vi.mock("../../../src/main/services/credentials", () => ({
   getDecryptedApiSettings: vi.fn(async () => ({
     userId: "u",
     apiKey: "k",
   })),
 }));
 
-import { PostsController } from "@/main/ipc/controllers/PostsController";
+import { PostsController } from "../../../src/main/ipc/controllers/PostsController";
 
 type PostsControllerInternals = {
   setup: () => void;
@@ -76,9 +82,6 @@ type PostsControllerInternals = {
     event: IpcMainInvokeEvent,
     postId: number
   ) => Promise<boolean>;
-  markAllViewed: (
-    event: IpcMainInvokeEvent
-  ) => Promise<{ updatedCount: number }>;
   resetPostCache: (
     event: IpcMainInvokeEvent,
     postId: number
@@ -92,10 +95,9 @@ describe("PostsController DB errors do not become empty success", () => {
   let controller: PostsControllerInternals;
 
   beforeEach(() => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     controller = new PostsController() as unknown as PostsControllerInternals;
     controller.setup();
   });
@@ -107,12 +109,13 @@ describe("PostsController DB errors do not become empty success", () => {
       // already closed in tests that force DB failure
     }
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   function closeDb(): void {
     mockDb.sqlite.close();
     activeSqlite = null;
+    activeDb = null;
   }
 
   it("getPostsCount rejects on DB error (not 0)", async () => {
@@ -136,13 +139,6 @@ describe("PostsController DB errors do not become empty success", () => {
     await expect(controller.markViewed(dummyEvent, 1)).rejects.toBeInstanceOf(
       Error
     );
-  });
-
-  it("markAllViewed rejects on DB error (not {updatedCount:0})", async () => {
-    closeDb();
-    await expect(
-      controller.markAllViewed(dummyEvent)
-    ).rejects.toBeInstanceOf(Error);
   });
 
   it("resetPostCache rejects on DB error (not false)", async () => {

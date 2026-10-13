@@ -92,9 +92,6 @@ export class StatsController extends BaseController {
     this.handle(IPC_CHANNELS.STATS.GET_EXTENDED, z.tuple([]), this.getExtendedStats.bind(this), {
       isIdempotent: true,
     });
-    this.handle(IPC_CHANNELS.DB.GET_STATS, z.tuple([]), this.getExtendedStats.bind(this), {
-      isIdempotent: true,
-    });
 
     // SyncService is registered after setupIpc(); defer until the same turn finishes.
     void Promise.resolve().then(() => {

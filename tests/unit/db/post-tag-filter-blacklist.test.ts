@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { and, eq, sql } from "drizzle-orm";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts } from "@/main/db/schema";
-import { buildPostsBlacklistFilterCondition } from "@/main/db/queries/post-tag-filter";
+import { artists, posts } from "../../../src/main/db/schema";
+import { buildPostsBlacklistFilterCondition } from "../../../src/main/db/queries/post-tag-filter";
 
 /**
  * Legacy correlated `tag_blacklist` filter kept only for equivalence fixtures.

@@ -2,10 +2,29 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { ipcMain } from "electron";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { settings, SETTINGS_ID } from "@/main/db/schema";
-import { IPC_CHANNELS } from "@/main/ipc/channels";
-import { SettingsController } from "@/main/ipc/controllers/SettingsController";
+import { container, DI_TOKENS } from "../../../src/main/core/di/Container";
+import { settings, SETTINGS_ID } from "../../../src/main/db/schema";
+import { IPC_CHANNELS } from "../../../src/main/ipc/channels";
+import { SettingsController } from "../../../src/main/ipc/controllers/SettingsController";
+
+
+let activeSqlite: import("better-sqlite3").Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
+
+vi.mock("../../../src/main/db/client", () => ({
+  getSqliteInstance: () => {
+    if (!activeSqlite) {
+      throw new Error("Test sqlite instance is not initialized");
+    }
+    return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
+  },
+}));
 
 vi.mock("electron", () => ({
   ipcMain: {
@@ -52,7 +71,8 @@ describe("SettingsController Integration", () => {
     container.clear();
 
     mockDb = createMockDb();
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeSqlite = mockDb.sqlite;
+    activeDb = mockDb.db;
     container.register(DI_TOKENS.SYNC_SCHEDULER, scheduler);
 
     await mockDb.db
@@ -80,6 +100,8 @@ describe("SettingsController Integration", () => {
     if (mockDb?.sqlite) {
       try {
         mockDb.sqlite.close();
+    activeSqlite = null;
+    activeDb = null;
       } catch {
         // ignore close errors in tests
       }

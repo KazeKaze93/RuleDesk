@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { markBackupsExceedingSizeCap } from "@/main/lib/backup-retention-size-cap";
+import { markBackupsExceedingSizeCap } from "../../../src/main/lib/backup-retention-size-cap";
 
 const MB = 1024 * 1024;
 

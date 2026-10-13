@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts } from "@/main/db/schema";
+import { artists, posts } from "../../../src/main/db/schema";
 import {
   createRandomSeed,
   resolveRandomSeed,
   seededOrderBy,
-} from "@/main/db/seeded-ordering";
-import { MAX_RANDOM_SEED } from "@/shared/schemas/ipc";
+} from "../../../src/main/db/seeded-ordering";
+import { MAX_RANDOM_SEED } from "@shared/schemas/ipc";
 
 const TOTAL_POSTS = 1000;
 const PAGE_SIZE = 50;

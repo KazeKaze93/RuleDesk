@@ -7,10 +7,10 @@ import {
   redactDiagnosticsPath,
   skipLeadingUtf8Continuation,
   trimPartialFirstLine,
-} from "@/main/lib/diagnostics";
-import { GITHUB_ISSUE_BODY_MAX_CHARS } from "@/main/config/constants";
-import { REDACTED_VALUE } from "@/shared/utils/log-redaction";
-import type { AppInfo } from "@/shared/schemas/system";
+} from "../../../src/main/lib/diagnostics";
+import { GITHUB_ISSUE_BODY_MAX_CHARS } from "../../../src/main/config/constants";
+import { REDACTED_VALUE } from "@shared/utils/log-redaction";
+import type { AppInfo } from "@shared/schemas/system";
 
 const WINDOWS_HOME = "C:\\Users\\alice";
 
