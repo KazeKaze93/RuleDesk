@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ipcMain, type IpcMainInvokeEvent } from "electron";
+import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 import { BaseController } from "@/main/core/ipc/BaseController";
 import { ErrorCode } from "@/shared/types/error-codes";
@@ -18,6 +18,9 @@ vi.mock("electron", () => ({
   },
   ipcRenderer: {
     invoke: vi.fn(),
+  },
+  app: {
+    isPackaged: false,
   },
 }));
 
@@ -64,11 +67,13 @@ describe("BaseController IPC error shape", () => {
 
   beforeEach(() => {
     vi.mocked(ipcMain.handle).mockClear();
+    vi.mocked(app).isPackaged = false;
     controller = new TestController();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.mocked(app).isPackaged = false;
   });
 
   it("returns a failure envelope with message and code (does not throw)", async () => {
@@ -167,5 +172,24 @@ describe("BaseController IPC error shape", () => {
     }
     expect(caught).toBeInstanceOf(Error);
     expect(getErrorCode(caught)).toBe(ErrorCode.RATE_LIMIT);
+  });
+
+  it("prod envelope (app.isPackaged) omits stack", async () => {
+    vi.mocked(app).isPackaged = true;
+
+    controller.register("test:prod-stack", z.tuple([]), async () => {
+      throw createCodedError("hidden stack", ErrorCode.UNKNOWN_ERROR);
+    });
+
+    const handler = getHandler("test:prod-stack");
+    const result = await handler({} as IpcMainInvokeEvent);
+
+    expect(isIpcFailureResult(result)).toBe(true);
+    if (!isIpcFailureResult(result)) {
+      throw new Error("expected failure envelope");
+    }
+    expect(result.error.message).toBe("hidden stack");
+    expect(result.error.code).toBe(ErrorCode.UNKNOWN_ERROR);
+    expect(result.error.stack).toBeUndefined();
   });
 });

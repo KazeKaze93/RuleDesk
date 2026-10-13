@@ -12,6 +12,7 @@ vi.mock("electron", () => ({
   app: {
     getPath: vi.fn(() => "/tmp"),
     getVersion: vi.fn(() => "0.0.0"),
+    isPackaged: false,
   },
   clipboard: { writeText: vi.fn() },
   shell: { openPath: vi.fn(), openExternal: vi.fn() },

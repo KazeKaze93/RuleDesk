@@ -75,46 +75,31 @@ export class SearchController extends BaseController {
     this.handle(
       IPC_CHANNELS.API.SEARCH_POSTS,
       SearchPostsArgsSchema,
-      (event, ...args) => {
-        const [params] = SearchPostsArgsSchema.parse(args);
-        return this.search(event, params);
-      }
+      (event, params) => this.search(event, params)
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS,
       ResolveTagsArgsSchema, // Limit to 100 tags to prevent DoS
-      (event, ...args) => {
-        const [tags] = ResolveTagsArgsSchema.parse(args);
-        return this.resolveTags(event, tags);
-      }
+      (event, tags) => this.resolveTags(event, tags)
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_CHARACTER_TAGS,
       ResolveTagsArgsSchema, // Limit to 100 tags to prevent DoS
-      (event, ...args) => {
-        const [tags] = ResolveTagsArgsSchema.parse(args);
-        return this.resolveCharacterTags(event, tags);
-      }
+      (event, tags) => this.resolveCharacterTags(event, tags)
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_COPYRIGHT_TAGS,
       ResolveTagsArgsSchema, // Limit to 100 tags to prevent DoS
-      (event, ...args) => {
-        const [tags] = ResolveTagsArgsSchema.parse(args);
-        return this.resolveCopyrightTags(event, tags);
-      }
+      (event, tags) => this.resolveCopyrightTags(event, tags)
     );
 
     this.handle(
       IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE,
       ResolveTagsByTypeArgsSchema,
-      (event, ...args) => {
-        const [tags, tagType] = ResolveTagsByTypeArgsSchema.parse(args);
-        return this.resolveTagsByTypeHandler(event, tags, tagType);
-      }
+      (event, tags, tagType) => this.resolveTagsByTypeHandler(event, tags, tagType)
     );
 
   }

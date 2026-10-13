@@ -113,35 +113,22 @@ export class ArtistsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.ADD_ARTIST,
       AddArtistArgsSchema,
-      async (event: IpcMainInvokeEvent, ...args: unknown[]) => {
-        const [data] = AddArtistArgsSchema.parse(args);
-        return this.handleAddArtist(event, data);
-      }
+      async (event, data) => this.handleAddArtist(event, data)
     );
     this.handle(
       IPC_CHANNELS.DB.DELETE_ARTIST,
       DeleteArtistArgsSchema,
-      (event, ...args) => {
-        const [id] = DeleteArtistArgsSchema.parse(args);
-        return this.deleteArtist(event, id);
-      }
+      (event, id) => this.deleteArtist(event, id)
     );
     this.handle(
       IPC_CHANNELS.DB.SEARCH_TAGS,
       SearchArtistsArgsSchema,
-      (event, ...args) => {
-        const [query] = SearchArtistsArgsSchema.parse(args);
-        return this.searchArtists(event, query);
-      }
+      (event, query) => this.searchArtists(event, query)
     );
     this.handle(
       IPC_CHANNELS.API.SEARCH_REMOTE,
       SearchRemoteTagsArgsSchema,
-      (event, ...args) => {
-        const [query, providerId, artistOnly] =
-          SearchRemoteTagsArgsSchema.parse(args);
-        return this.searchRemoteTags(event, query, providerId, artistOnly);
-      }
+      (event, query, providerId, artistOnly) => this.searchRemoteTags(event, query, providerId, artistOnly)
     );
 
     log.info("[ArtistsController] All handlers registered");

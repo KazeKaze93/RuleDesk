@@ -76,10 +76,7 @@ export class SystemController extends BaseController {
     this.handle(
       IPC_CHANNELS.APP.GET_ICON_PATH,
       GetIconPathArgsSchema,
-      (event, ...args) => {
-        const [theme] = GetIconPathArgsSchema.parse(args);
-        return this.getIconPath(event, theme);
-      }
+      (event, theme) => this.getIconPath(event, theme)
     );
     this.handle(
       IPC_CHANNELS.APP.WIPE_ALL_DATA,
@@ -89,10 +86,7 @@ export class SystemController extends BaseController {
     this.handle(
       IPC_CHANNELS.APP.WRITE_CLIPBOARD,
       WriteClipboardArgsSchema,
-      (event, ...args) => {
-        const [text] = WriteClipboardArgsSchema.parse(args);
-        return this.writeToClipboard(event, text);
-      }
+      (event, text) => this.writeToClipboard(event, text)
     );
     this.handle(
       IPC_CHANNELS.APP.CHECK_FOR_UPDATES,

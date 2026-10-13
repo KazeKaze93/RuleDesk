@@ -512,10 +512,7 @@ export class PlaylistController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.CREATE_PLAYLIST,
       CreatePlaylistArgsSchema,
-      (event, ...args) => {
-        const [data] = CreatePlaylistArgsSchema.parse(args);
-        return this.createPlaylist(event, data);
-      }
+      (event, data) => this.createPlaylist(event, data)
     );
 
     this.handle(
@@ -528,143 +525,91 @@ export class PlaylistController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLIST,
       IdArgsSchema,
-      (event, ...args) => {
-        const [playlistId] = IdArgsSchema.parse(args);
-        return this.getPlaylist(event, playlistId);
-      }
+      (event, playlistId) => this.getPlaylist(event, playlistId)
     );
 
     this.handle(
       IPC_CHANNELS.DB.UPDATE_PLAYLIST,
       UpdatePlaylistArgsSchema,
-      (event, ...args) => {
-        const [playlistId, data] = UpdatePlaylistArgsSchema.parse(args);
-        return this.updatePlaylist(event, playlistId, data);
-      }
+      (event, playlistId, data) => this.updatePlaylist(event, playlistId, data)
     );
 
     this.handle(
       IPC_CHANNELS.DB.DELETE_PLAYLIST,
       IdArgsSchema,
-      (event, ...args) => {
-        const [playlistId] = IdArgsSchema.parse(args);
-        return this.deletePlaylist(event, playlistId);
-      }
+      (event, playlistId) => this.deletePlaylist(event, playlistId)
     );
 
     this.handle(
       IPC_CHANNELS.DB.ADD_POSTS_TO_PLAYLIST,
       AddPostsToPlaylistArgsSchema,
-      (event, ...args) => {
-        const [data] = AddPostsToPlaylistArgsSchema.parse(args);
-        return this.addPostsToPlaylist(event, data);
-      }
+      (event, data) => this.addPostsToPlaylist(event, data)
     );
 
     this.handle(
       IPC_CHANNELS.DB.REMOVE_POSTS_FROM_PLAYLIST,
       RemovePostsFromPlaylistArgsSchema,
-      (event, ...args) => {
-        const [data] = RemovePostsFromPlaylistArgsSchema.parse(args);
-        return this.removePostsFromPlaylist(event, data);
-      }
+      (event, data) => this.removePostsFromPlaylist(event, data)
     );
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLIST_POSTS,
       GetPlaylistPostsArgsSchema,
-      (event, ...args) => {
-        const [params] = GetPlaylistPostsArgsSchema.parse(args);
-        return this.getPlaylistPosts(event, params);
-      }
+      (event, params) => this.getPlaylistPosts(event, params)
     );
 
     this.handle(
       IPC_CHANNELS.DB.REORDER_PLAYLIST_ENTRIES,
       ReorderPlaylistEntriesArgsSchema,
-      (event, ...args) => {
-        const [params] = ReorderPlaylistEntriesArgsSchema.parse(args);
-        return this.reorderPlaylistEntries(event, params);
-      }
+      (event, params) => this.reorderPlaylistEntries(event, params)
     );
 
     this.handle(
       IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS,
       ResolvePlaylistPostsArgsSchema,
-      (event, ...args) => {
-        const [params] = ResolvePlaylistPostsArgsSchema.parse(args);
-        return this.resolvePlaylistPosts(event, params);
-      }
+      (event, params) => this.resolvePlaylistPosts(event, params)
     );
 
     this.handle(
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
       GetPlaylistsContainingPostArgsSchema,
-      (event, ...args) => {
-        const [postId, externalPostId, provider] =
-          GetPlaylistsContainingPostArgsSchema.parse(args);
-        return this.getPlaylistsContainingPost(
-          event,
-          postId,
-          externalPostId,
-          provider
-        );
-      }
+      (event, postId, externalPostId, provider) => this.getPlaylistsContainingPost(event, postId, externalPostId, provider)
     );
 
     this.handle(
       IPC_CHANNELS.DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS,
       GetManualPlaylistMembershipForPostsSchema,
-      (event, data) =>
-        this.getManualPlaylistMembershipForPosts(
-          event,
-          GetManualPlaylistMembershipForPostsSchema.parse(data)
-        )
+      (event, data) => this.getManualPlaylistMembershipForPosts(event, data)
     );
 
     this.handle(
       IPC_CHANNELS.DB.SYNC_MANUAL_PLAYLIST_MEMBERSHIP,
       SyncManualPlaylistMembershipSchema,
-      (event, data) =>
-        this.syncManualPlaylistMembership(
-          event,
-          SyncManualPlaylistMembershipSchema.parse(data)
-        )
+      (event, data) => this.syncManualPlaylistMembership(event, data)
     );
 
     this.handle(
       IPC_CHANNELS.DB.CLEAR_MANUAL_PLAYLIST,
       ClearManualPlaylistSchema,
-      (event, data) =>
-        this.clearManualPlaylist(event, ClearManualPlaylistSchema.parse(data))
+      (event, data) => this.clearManualPlaylist(event, data)
     );
 
     this.handle(
       IPC_CHANNELS.DB.MOVE_POSTS_BETWEEN_MANUAL_PLAYLISTS,
       MovePostsBetweenManualPlaylistsSchema,
-      (event, data) =>
-        this.movePostsBetweenManualPlaylists(
-          event,
-          MovePostsBetweenManualPlaylistsSchema.parse(data)
-        )
+      (event, data) => this.movePostsBetweenManualPlaylists(event, data)
     );
 
     this.handle(
       IPC_CHANNELS.DB.EXPORT_PLAYLIST,
       IdArgsSchema,
-      (event, ...args) => {
-        const [playlistId] = IdArgsSchema.parse(args);
-        return this.exportPlaylist(event, playlistId);
-      }
+      (event, playlistId) => this.exportPlaylist(event, playlistId)
     );
 
     this.handle(
       IPC_CHANNELS.DB.IMPORT_PLAYLIST,
       ImportPlaylistArgsSchema,
-      (event, ...args) => {
-        ImportPlaylistArgsSchema.parse(args);
-        return this.importPlaylist(event);
-      }
+      (event) => this.importPlaylist(event)
     );
 
     // Cache at setup; refresh again when restore/VACUUM reopens the DB.

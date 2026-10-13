@@ -104,7 +104,7 @@ export class MaintenanceController extends BaseController {
     this.handle(
       IPC_CHANNELS.SYNC.REPAIR,
       z.tuple([IdSchema]),
-      (event, ...args) => this.repairArtist(event, IdSchema.parse(args[0]))
+      (event, value) => this.repairArtist(event, value)
     );
     this.handle(
       IPC_CHANNELS.BACKUP.CREATE,
@@ -130,8 +130,7 @@ export class MaintenanceController extends BaseController {
     this.handle(
       IPC_CHANNELS.BACKUP.SET_SCHEDULE,
       z.tuple([AutoBackupIntervalSchema]),
-      (event, ...args) =>
-        this.setBackupSchedule(event, AutoBackupIntervalSchema.parse(args[0]))
+      (event, value) => this.setBackupSchedule(event, value)
     );
     this.handle(
       IPC_CHANNELS.MAINTENANCE.GET_VACUUM_STATUS,
@@ -153,11 +152,7 @@ export class MaintenanceController extends BaseController {
     this.handle(
       IPC_CHANNELS.MAINTENANCE.SET_VACUUM_SCHEDULE,
       SetVacuumScheduleArgsSchema,
-      (event, args) => {
-        // BaseController already validated; re-parse narrows unknown → typed (handle args are unknown[]).
-        const payload = SetVacuumScheduleArgsSchema.parse(args);
-        return this.setVacuumSchedule(event, payload.schedule);
-      }
+      (event, payload) => this.setVacuumSchedule(event, payload.schedule)
     );
     this.handle(
       IPC_CHANNELS.MAINTENANCE.DETECT_ORPHANS,

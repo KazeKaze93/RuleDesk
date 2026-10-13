@@ -38,10 +38,7 @@ export class AuthController extends BaseController {
     this.handle(
       IPC_CHANNELS.APP.VERIFY_CREDS,
       VerifyCredsArgsSchema,
-      (event, ...args) => {
-        const [providerId] = VerifyCredsArgsSchema.parse(args);
-        return this.verifyCredentials(event, providerId);
-      }
+      (event, providerId) => this.verifyCredentials(event, providerId)
     );
     this.handle(
       IPC_CHANNELS.APP.LOGOUT,

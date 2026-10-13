@@ -217,75 +217,48 @@ export class PostsController extends BaseController {
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS,
       GetPostsArgsSchema,
-      (event, ...args) => {
-        const [params] = GetPostsArgsSchema.parse(args);
-        return this.getPosts(event, params);
-      }
+      (event, params) => this.getPosts(event, params)
     );
     this.handle(
       IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS,
       GetDownloadItemsArgsSchema,
-      (event, ...args) => {
-        const [params] = GetDownloadItemsArgsSchema.parse(args);
-        return this.getDownloadItems(event, params);
-      }
+      (event, params) => this.getDownloadItems(event, params)
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
       GetPostsCountArgsSchema,
-      (event, ...args) => {
-        const [params] = GetPostsCountArgsSchema.parse(args);
-        return this.getPostsCount(event, params);
-      }
+      (event, params) => this.getPostsCount(event, params)
     );
     this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT_WITH_FILTERS,
       GetPostsCountWithFiltersArgsSchema,
-      (event, ...args) => {
-        const [params] = GetPostsCountWithFiltersArgsSchema.parse(args);
-        return this.getPostsCountWithFilters(event, params);
-      },
+      (event, params) => this.getPostsCountWithFilters(event, params),
       { isIdempotent: true }
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_VIEWED,
       PostActionArgsSchema, // Allow negative IDs for external posts from Browse
-      (event, ...args) => {
-        const [postId, postData] = PostActionArgsSchema.parse(args);
-        return this.markViewed(event, postId, postData);
-      }
+      (event, postId, postData) => this.markViewed(event, postId, postData)
     );
     this.handle(
       IPC_CHANNELS.DB.MARK_ALL_VIEWED,
       MarkAllViewedArgsSchema,
-      (event, ...args) => {
-        MarkAllViewedArgsSchema.parse(args);
-        return this.markAllViewed(event);
-      }
+      (event) => this.markAllViewed(event)
     );
     this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
       ResetPostCacheArgsSchema,
-      (event, ...args) => {
-        const [postId] = ResetPostCacheArgsSchema.parse(args);
-        return this.resetPostCache(event, postId);
-      }
+      (event, postId) => this.resetPostCache(event, postId)
     );
     this.handle(
       IPC_CHANNELS.DB.TOGGLE_FAVORITE,
       PostActionArgsSchema, // Allow negative IDs for external posts from Browse
-      (event, ...args) => {
-        const [postId, postData] = PostActionArgsSchema.parse(args);
-        return this.toggleFavorite(event, postId, postData);
-      }
+      (event, postId, postData) => this.toggleFavorite(event, postId, postData)
     );
     this.handle(
       IPC_CHANNELS.DB.SHADOW_INSERT_POST,
       ShadowInsertPostArgsSchema,
-      (event, ...args) => {
-        const [request] = ShadowInsertPostArgsSchema.parse(args);
-        return this.shadowInsertPost(event, request);
-      }
+      (event, request) => this.shadowInsertPost(event, request)
     );
 
     // Cache at setup; refresh again when restore/VACUUM reopens the DB.

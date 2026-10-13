@@ -154,18 +154,12 @@ export class SettingsController extends BaseController {
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE,
       SaveSettingsArgsSchema, // Validates: userId is numeric string (1-20 chars), apiKey is 10-200 chars, no whitespace
-      (event, ...args) => {
-        const [payload] = SaveSettingsArgsSchema.parse(args);
-        return this.saveSettings(event, payload);
-      }
+      (event, payload) => this.saveSettings(event, payload)
     );
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_THEME,
       SaveThemeArgsSchema,
-      (event, ...args) => {
-        const [theme] = SaveThemeArgsSchema.parse(args);
-        return this.saveTheme(event, theme);
-      }
+      (event, theme) => this.saveTheme(event, theme)
     );
     // settings:confirm-legal - confirms Age Gate & ToS acceptance
     this.handle(
@@ -182,19 +176,13 @@ export class SettingsController extends BaseController {
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_FOLDER,
       SaveDownloadFolderArgsSchema,
-      (event, ...args) => {
-        const [folderPath] = SaveDownloadFolderArgsSchema.parse(args);
-        return this.saveDownloadFolder(event, folderPath);
-      }
+      (event, folderPath) => this.saveDownloadFolder(event, folderPath)
     );
     // settings:save-download-settings - saves duplicate/folder structure
     this.handle(
       IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS,
       SaveDownloadSettingsArgsSchema,
-      (event, ...args) => {
-        const [payload] = SaveDownloadSettingsArgsSchema.parse(args);
-        return this.saveDownloadSettings(event, payload);
-      }
+      (event, payload) => this.saveDownloadSettings(event, payload)
     );
 
     log.info("[SettingsController] All handlers registered");
