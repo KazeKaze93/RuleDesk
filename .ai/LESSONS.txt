@@ -18,9 +18,9 @@ Root Cause: Idempotent handlers were treated like mutating ones, or collapse key
 Invariant Rule: Mark truly idempotent handlers; collapse in-flight calls by hashing the full canonical args; space mutating calls with delay (never reject).
 
 3a) Shared IPC Validation
-Problem: Repeated ad-hoc Zod schemas diverge across handlers over time.
-Root Cause: Contracts copy-pasted per handler instead of shared.
-Invariant Rule: Extract shared Zod schemas into shared modules and reuse them across handlers.
+Problem: Repeated ad-hoc Zod schemas diverge across handlers over time; parallel registration helpers beside `BaseController.handle` let contracts and error paths drift again.
+Root Cause: Contracts copy-pasted per handler instead of shared; a second validation entry point (`createValidatedHandler` / `parseNoArgs` / `parseSingleArg`) beside the canonical controller API.
+Invariant Rule: Extract shared Zod schemas into shared modules and reuse them across handlers. Register every invoke channel only via `BaseController.handle(channel, zodSchema, handler)` with an explicit Zod schema (empty args: `z.tuple([])`). Keep a channel→schema inventory test green; do not reintroduce alternate validation helpers.
 
 3b) Type Assertion Policy
 Problem: Project rules banned all `as` casts while the codebase kept assertions — the rule read as decorative when the gate only banned narrowing.
@@ -58,9 +58,9 @@ Root Cause: Extension checks run on full URL string.
 Invariant Rule: Parse URL pathname first, then detect media extension.
 
 8) Documentation Drift
-Problem: Docs describe behavior that no longer matches implementation; hand-maintained IPC tables drift from controllers.
-Root Cause: Code changes ship without synchronized documentation updates; large manual api.md cannot stay in sync with channels.ts.
-Invariant Rule: Any behavior/API/workflow change must update `README.md`, `docs/*`, and lessons in the same task. The IPC channel reference (`docs/api.md`) is **generated** via `npm run docs:api` from `channels.ts` + handler registrations — hand-editing it is forbidden; regenerate after IPC changes and keep narrative in `docs/api-guide.md` / `docs/api-notes/`.
+Problem: Docs describe behavior that no longer matches implementation; hand-maintained IPC tables drift from controllers; retention/caps/sync wording invents pooled or missing capabilities.
+Root Cause: Code changes ship without synchronized documentation updates; large manual api.md cannot stay in sync with channels.ts; copy that says "keep last N" without naming independent file sets (or invents sync channels) drifts from the owning controller/service.
+Invariant Rule: Any behavior/API/workflow change must update `README.md`, `docs/*`, and lessons in the same task. The IPC channel reference (`docs/api.md`) is **generated** via `npm run docs:api` from `channels.ts` + handler registrations — hand-editing it is forbidden; regenerate after IPC changes and keep narrative in `docs/api-guide.md` / `docs/api-notes/`. Docs that describe retention, caps, or sync paths must cite the owning code path (separate matchers / named constants / real IPC channels); never imply a summed pool or a channel that does not exist.
 
 9) Unused Code Debt
 Problem: Dead imports/variables increase noise and hide real issues.
@@ -162,6 +162,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 ### Problem: React Query key drift resets optimistic post state
 **Root Cause:** Cache updates used partial keys while active queries used parameterized keys (tags/source/sortOrder), so refreshed data overwrote local viewed/favorited flags.
 **Invariant Rule:** Cache write keys must match read keys exactly. For parameterized feeds, use `setQueriesData({ queryKey: <prefix> })` to update all key variants.
+
+### Problem: Post Metadata empty on first open; reopen shows it; waiting does not help
+**Root Cause:** Viewer post lookup hijacked the gallery infinite-query key with `useQuery` (stale snapshot that never updated when async cache/resolve completed), resolve keys were not canonicalized (`string` vs `string[]` → `enabled: false`), and IPC could return a lagging caller-local `cache` map after parallel artist/character/copyright waves.
+**Invariant Rule:** Never share one React Query key between `useInfiniteQuery` and `useQuery` — subscribe to the gallery cache via `useSyncExternalStore` (or equivalent) instead. Post Metadata resolve keys come from one factory over canonicalized tags. After a resolve wave, IPC return values must be read from SQLite (or an equivalently refreshed view), not a possibly stale caller-local map.
 
 ### Problem: Viewer cannot resolve posts from cache after list remount
 **Root Cause:** `ViewerOrigin -> queryKey` mapping and manual cache writes (`setQueryData`) diverged from page query key composition (missing dimensions such as `source`, `sortOrder`, `rating`, `aiFilter`).
@@ -386,6 +390,10 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 2. Literal output of `git status -sb` (or the `git push` result showing the remote ref)
 3. **Full actual diff inventory** — every path touched (e.g. `git diff --name-only origin/<base>...HEAD`), not only the prompt's planned file list. Doc-sync and incidental wiring count; call them out explicitly.
 A report without (1)–(3) is an **incomplete task**. Do not claim a branch "landed" from memory, conversation summary, or docs narrative — verify with `git ls-remote --heads origin <branch>` / code criteria.
+
+### Problem: Enabling require-PR master protection would break the current release path
+**Root Cause:** `npm run release:patch|minor|major` runs `npm version … && git push --follow-tags`, which commits and pushes the version bump directly to `master`. Require-PR (even with 0 reviews) rejects that direct push while tag-only packaging (`push: tags: [v*]`) would still work.
+**Invariant Rule:** Do **not** enable GitHub branch protection on `master` until `release:*` no longer pushes version commits to `master` (bump on a release branch/PR, or push tags only after merging a version PR). Document the STOP in `docs/development.md`; keep using the existing `release:*` path until that rewrite lands.
 
 ### Problem: Part of a prompt batch was never started, and the gap went unnoticed
 **Root Cause:** N prompts issued into chat with no dispatcher-side status tracking; execution began mid-queue, the two skipped P0 prompts left no git trace, and later doc narrative ("video-cache through i18n") fabricated a memory of a full run.
