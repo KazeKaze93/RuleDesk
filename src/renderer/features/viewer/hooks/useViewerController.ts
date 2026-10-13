@@ -15,6 +15,7 @@ import {
 } from "../../../utils/react-query-cache";
 import type { SearchBooruPageResult } from "../../../../shared/schemas/search";
 import { resolveErrorMessage } from "../../../utils/error-message";
+import { openExternalSafe } from "../../../lib/open-external";
 
 interface ViewerQueue {
   ids: number[];
@@ -322,9 +323,7 @@ export function useViewerController({
 
   const handleOpenExternal = (url: string) => {
     if (!url) return;
-    void window.api.openExternal(url).catch((error: unknown) => {
-      log.error("[ViewerController] Failed to open external URL:", error);
-    });
+    void openExternalSafe(url);
   };
 
   const resetLocalCache = () => {

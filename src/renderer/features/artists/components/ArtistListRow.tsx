@@ -47,9 +47,9 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
       case "uploader":
         return <User className="w-4 h-4 text-primary" />;
       case "query":
-        return <Search className="w-4 h-4 text-emerald-500" />;
+        return <Search className="w-4 h-4 text-success" />;
       case "tag":
-        return <Hash className="w-4 h-4 text-blue-500" />;
+        return <Hash className="w-4 h-4 text-warning" />;
     }
   };
 
@@ -97,7 +97,7 @@ export const ArtistListRow: React.FC<ArtistListRowProps> = ({
     }
 
     return (
-      <Badge className="h-6 shrink-0 gap-1 border-green-200 bg-green-100 text-xs text-green-700 hover:bg-green-100">
+      <Badge variant="success" className="h-6 shrink-0 gap-1 text-xs">
         <CheckCircle2 className="w-3 h-3" />
         Synced
       </Badge>

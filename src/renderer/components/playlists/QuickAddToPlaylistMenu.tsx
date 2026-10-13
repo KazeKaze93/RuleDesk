@@ -1,4 +1,5 @@
 import React, { cloneElement, isValidElement } from "react";
+import { Button } from "../ui/button";
 import { AddToPlaylistModal } from "./AddToPlaylistModal";
 
 type PostRef = {
@@ -38,7 +39,13 @@ export const QuickAddToPlaylistMenu: React.FC<QuickAddToPlaylistMenuProps> = ({
   };
 
   const defaultTrigger = (
-    <span role="button" className="inline-flex" tabIndex={0} aria-label="Add to playlist" />
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="inline-flex"
+      aria-label="Add to playlist"
+    />
   );
 
   const raw = trigger ?? defaultTrigger;
