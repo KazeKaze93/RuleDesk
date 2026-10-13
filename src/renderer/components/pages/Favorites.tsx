@@ -292,7 +292,7 @@ export const Favorites = () => {
   );
 
   return (
-    <div className="flex flex-col h-full -m-6 bg-background text-foreground">
+    <div className="flex flex-col h-full bg-background text-foreground">
       {/* Header */}
       <div className="flex z-[5] items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <div className="w-full">

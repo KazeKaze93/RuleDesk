@@ -449,7 +449,7 @@ export const Browse = () => {
   };
 
   return (
-    <div className="flex flex-col -m-6 h-full bg-background text-foreground">
+    <div className="flex flex-col h-full bg-background text-foreground">
       {/* Header */}
       <div className="flex z-[5] flex-col gap-4 px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
         <PageHeader
