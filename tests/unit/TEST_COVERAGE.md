@@ -30,6 +30,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `utils/react-query-cache.test.ts` | Browse pagination / cursor helpers |
 | `core/di-container.test.ts` | Slim DI registry (`token.id` Map keys) |
 | `core/BaseController.collapse-throttle.test.ts` | Idempotent collapse (full-args hash) + mutate spacing |
+| `core/ipc-channel-schema-inventory.test.ts` | Every production `BaseController.handle` channel has a Zod schema |
 | `components/filters/SourceSwitcher.test.tsx` | Real `SourceSwitcher` (RTL) |
 | `components/filters/FilterToggleGroup.test.tsx` | Real `FilterToggleGroup` (RTL) |
 | `components/layout/GridContainer.test.tsx` | Real `createVirtuosoGridFactories`: CSS columns masonry + `w-full mb-4 break-inside-avoid` items |
