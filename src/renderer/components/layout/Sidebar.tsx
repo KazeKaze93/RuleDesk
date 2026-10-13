@@ -12,11 +12,16 @@ import {
   BarChart2,
 } from "lucide-react";
 import log from "electron-log/renderer";
+import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "../../lib/utils";
 import { releaseRadixModalLock } from "../../lib/radix-modal-lock";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
+import { resolveErrorMessage } from "../../utils/error-message";
 import { useSearchStore } from "../../store/searchStore";
+import { ConfirmActionDialog } from "../dialogs/ConfirmActionDialog";
 
 const NAV_ITEM_BASE_CLASS =
   "flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition-colors [@media(max-height:700px)]:py-2.5 [@media(max-height:599px)]:py-2";
@@ -50,7 +55,7 @@ const navGroups = [
 
 const isNavRouteActive = (pathname: string, to: string): boolean => {
   if (to === "/browse") {
-    return pathname === "/" || pathname === "/browse";
+    return pathname === "/browse";
   }
   return pathname === to || pathname.startsWith(`${to}/`);
 };
@@ -58,6 +63,7 @@ const isNavRouteActive = (pathname: string, to: string): boolean => {
 export const Sidebar = () => {
   const location = useLocation();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [relativeTimeTick, setRelativeTimeTick] = useState(0);
   const queryClient = useQueryClient();
   const { data: unreadCount = 0 } = useQuery({
@@ -114,10 +120,10 @@ export const Sidebar = () => {
     try {
       log.info("[Sidebar] Triggering Sync...");
       await window.api.syncAll();
-    } catch (error) {
+    } catch (error: unknown) {
       log.error("[Sidebar] Sync failed:", error);
-    } finally {
       setIsSyncing(false);
+      toast.error(resolveErrorMessage(error, "Failed to start sync"));
     }
   };
 
@@ -128,12 +134,7 @@ export const Sidebar = () => {
       : `Last sync: ${formatRelativeTime(lastSyncTimestamp)}`;
   }, [lastSyncTimestamp, relativeTimeTick]);
 
-  const handleLogout = async () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to log out? You will need to enter your API credentials again."
-    );
-    if (!confirmed) return;
-
+  const handleLogoutConfirm = async () => {
     try {
       await window.api.logout();
       clearTagChips();
@@ -141,9 +142,12 @@ export const Sidebar = () => {
       queryClient.clear();
       await queryClient.invalidateQueries({ queryKey: ["settings"] });
       window.location.reload();
-    } catch (error) {
+    } catch (error: unknown) {
       log.error("[Sidebar] Failed to logout:", error);
-      alert("Failed to log out. Please try again.");
+      // ConfirmActionDialog surfaces toast.error from the thrown error.
+      throw error instanceof Error
+        ? error
+        : new Error(resolveErrorMessage(error, "Failed to log out. Please try again."));
     }
   };
 
@@ -161,100 +165,112 @@ export const Sidebar = () => {
 
   return (
     <>
-    <aside className="pointer-events-auto fixed inset-y-0 left-0 z-[200] flex w-56 flex-col h-screen border-r bg-background overflow-hidden">
-      {/* Logo Area */}
-      <div className="flex items-center px-4 h-14 border-b bg-transparent shrink-0">
-        <span className="text-4xl font-black leading-none tracking-tight">
-          RuleDesk
-        </span>
-      </div>
+      <aside className="pointer-events-auto fixed inset-y-0 left-0 z-[200] flex w-56 flex-col h-screen border-r bg-background overflow-hidden">
+        <div className="flex items-center px-4 h-14 border-b bg-transparent shrink-0">
+          <span className="text-4xl font-black leading-none tracking-tight">
+            RuleDesk
+          </span>
+        </div>
 
-      <div className="flex flex-col flex-1 min-h-0">
-        {/* Navigation */}
-        <nav
-          className="relative z-10 overflow-y-auto flex-1 px-3 py-4 [@media(max-height:700px)]:py-3"
-          aria-label="Основная навигация"
-        >
-          <div className="space-y-4">
-            {navGroups.map((group) => (
-              <section key={group.label} className="space-y-2">
-                <div className="px-1 space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {group.label}
-                  </p>
-                  <Separator />
-                </div>
-
-                <div className="space-y-1">
-                  {group.items.map((item) => {
-                    const isActive = isNavRouteActive(location.pathname, item.to);
-                    return (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        onClick={handleNavClick}
-                        className={navItemClassName(isActive)}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span>{item.label}</span>
-                        {item.to === "/updates" && unreadCount > 0 && (
-                          <span className="inline-flex justify-center items-center px-2 py-0.5 ml-auto text-xs font-semibold text-white bg-violet-600 rounded-full min-w-5">
-                            {unreadCount > 99 ? "99+" : unreadCount}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
-        </nav>
-
-        {/* Sync Status Footer */}
-        <div className="relative z-10 p-4 space-y-2 border-t bg-muted/20 shrink-0 [@media(max-height:700px)]:p-3">
-          <button
-            onClick={() => {
-              void handleSync();
-            }}
-            disabled={isSyncing}
-            className={cn(
-              "flex gap-3 items-center w-full text-left rounded-md transition-all hover:bg-background/50 p-1 -ml-1",
-              isSyncing
-                ? "opacity-70 cursor-wait"
-                : "cursor-pointer hover:opacity-100"
-            )}
+        <div className="flex flex-col flex-1 min-h-0">
+          <nav
+            className="relative z-10 overflow-y-auto flex-1 px-3 py-4 [@media(max-height:700px)]:py-3"
+            aria-label="Main navigation"
           >
-            <div
+            <div className="space-y-4">
+              {navGroups.map((group) => (
+                <section key={group.label} className="space-y-2">
+                  <div className="px-1 space-y-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {group.label}
+                    </p>
+                    <Separator />
+                  </div>
+
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const isActive = isNavRouteActive(
+                        location.pathname,
+                        item.to
+                      );
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={handleNavClick}
+                          className={navItemClassName(isActive)}
+                        >
+                          <item.icon className="w-4 h-4 shrink-0" />
+                          <span>{item.label}</span>
+                          {item.to === "/updates" && unreadCount > 0 && (
+                            <Badge
+                              variant="default"
+                              className="ml-auto min-w-5 justify-center px-2 py-0.5"
+                            >
+                              {unreadCount > 99 ? "99+" : unreadCount}
+                            </Badge>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </nav>
+
+          <div className="relative z-10 p-4 space-y-2 border-t bg-muted/20 shrink-0 [@media(max-height:700px)]:p-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                void handleSync();
+              }}
+              disabled={isSyncing}
               className={cn(
-                "p-2 rounded-full bg-background border shadow-sm",
-                isSyncing && "animate-spin text-primary border-primary"
+                "flex h-auto w-full justify-start gap-3 rounded-md p-1 -ml-1 text-left hover:bg-background/50",
+                isSyncing && "opacity-70 cursor-wait"
               )}
             >
-              <RefreshCw className="w-4 h-4" />
-            </div>
-            <span className="text-sm font-medium">
-              {isSyncing ? "Syncing..." : "Sync now"}
-            </span>
-          </button>
-          <p className="pl-1 text-xs text-muted-foreground" aria-live="polite">
-            {lastSyncText}
-          </p>
-          <button
-            onClick={() => {
-              void handleLogout();
-            }}
-            className="flex gap-3 items-center p-2 -ml-1 w-full text-left rounded-md transition-all text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            title="Log out"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm font-medium">Log Out</span>
-          </button>
+              <div
+                className={cn(
+                  "p-2 rounded-full bg-background border shadow-sm",
+                  isSyncing && "animate-spin text-primary border-primary"
+                )}
+              >
+                <RefreshCw className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-medium">
+                {isSyncing ? "Syncing..." : "Sync now"}
+              </span>
+            </Button>
+            <p className="pl-1 text-xs text-muted-foreground" aria-live="polite">
+              {lastSyncText}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setLogoutDialogOpen(true)}
+              className="flex h-auto w-full justify-start gap-3 p-2 -ml-1 text-left text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              title="Log out"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-sm font-medium">Log Out</span>
+            </Button>
           </div>
-      </div>
-    </aside>
-    {/* Reserves horizontal space while the rail stays fixed above content */}
-    <div className="w-56 shrink-0" aria-hidden="true" />
+        </div>
+      </aside>
+      <div className="w-56 shrink-0" aria-hidden="true" />
+      <ConfirmActionDialog
+        open={logoutDialogOpen}
+        onOpenChange={setLogoutDialogOpen}
+        title="Log out?"
+        description="Are you sure you want to log out? You will need to enter your API credentials again."
+        confirmLabel="Log out"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleLogoutConfirm}
+      />
     </>
   );
 };

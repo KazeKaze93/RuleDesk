@@ -10,6 +10,7 @@ import { PanicButton } from "./PanicButton";
 import { ViewerDialog } from "@/features/viewer/ViewerDialog";
 import { PendingDownloadBanner } from "../downloads/PendingDownloadBanner";
 import { CredentialsErrorToast } from "../dialogs/CredentialsErrorToast";
+import { SyncErrorAggregator } from "../dialogs/SyncErrorAggregator";
 
 export const AppLayout = () => {
   const queryClient = useQueryClient();
@@ -34,23 +35,20 @@ export const AppLayout = () => {
 
   return (
     <div className="flex overflow-hidden w-full h-screen bg-background text-foreground">
-      {/* Left Rail */}
       <Sidebar />
 
-      {/* Main Content Area */}
       <div className="relative z-0 flex flex-col flex-1 min-w-0">
         <PendingDownloadBanner />
         <GlobalTopBar />
 
-        {/* Scrollable Content */}
         <main className="overflow-auto flex-1 p-6 bg-background">
           <Outlet />
         </main>
       </div>
 
-      {/* ViewerDialog must always be rendered - it manages visibility internally via Dialog */}
       <ViewerDialog />
       <CredentialsErrorToast />
+      <SyncErrorAggregator />
       <PanicButton />
     </div>
   );

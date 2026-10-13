@@ -1,5 +1,9 @@
 import { useMemo } from "react";
-import { buildApiQueryString, useSearchStore } from "../../store/searchStore";
+import {
+  buildApiQueryString,
+  getTopBarChrome,
+  useSearchStore,
+} from "../../store/searchStore";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import { FilterSection } from "./filters/FilterSection";
@@ -24,15 +28,24 @@ export const FiltersPanel = () => {
   const includeTags = useSearchStore((state) => state.includeTags);
   const excludeTags = useSearchStore((state) => state.excludeTags);
 
+  const chrome = useMemo(() => getTopBarChrome(activeTab), [activeTab]);
+
   const apiQueryString = useMemo(
     () => buildApiQueryString(includeTags, excludeTags),
     [includeTags, excludeTags]
   );
 
   const hasActiveSearch = useMemo(() => {
-    if (activeTab !== "browse") return true;
-    return apiQueryString.trim().length > 0;
-  }, [activeTab, apiQueryString]);
+    if (!chrome.showFilters) {
+      return false;
+    }
+    // Browse still gates SourceSwitcher on a non-empty query; playlists and
+    // other filter-enabled tabs keep filters usable without a query.
+    if (activeTab === "browse") {
+      return apiQueryString.trim().length > 0;
+    }
+    return true;
+  }, [activeTab, apiQueryString, chrome.showFilters]);
 
   const isDirty = useMemo(() => {
     return (

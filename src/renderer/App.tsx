@@ -1,6 +1,7 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import log from "electron-log/renderer";
+import { Loader2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProviderId } from "@shared/constants";
 
@@ -24,6 +25,28 @@ import { useSearchStore } from "./store/searchStore";
 import { normalizeCredentialsInput } from "./lib/parseCredentialsFromText";
 import { Button } from "./components/ui/button";
 import type { IpcSettings } from "@shared/schemas/settings";
+
+const NotFoundPage = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+      <p className="text-lg font-semibold text-foreground">Page not found</p>
+      <p className="max-w-md text-sm text-muted-foreground">
+        This URL does not match any screen in RuleDesk.
+      </p>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => {
+          void navigate("/browse");
+        }}
+      >
+        Go to Browse
+      </Button>
+    </div>
+  );
+};
 
 const AccountGate = ({
   provider,
@@ -127,8 +150,15 @@ function App() {
   // Loading state: waiting for settings to load
   if (isSettingsLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-muted-foreground">Loading...</div>
+      <div
+        className="flex justify-center items-center h-screen"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <Loader2
+          className="w-8 h-8 animate-spin text-muted-foreground"
+          aria-label="Loading"
+        />
       </div>
     );
   }
@@ -281,7 +311,7 @@ function App() {
     <>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Browse />} />
+          <Route index element={<Navigate to="/browse" replace />} />
           <Route path="tracked" element={<Tracked />} />
           <Route path="artist/:id" element={<ArtistDetails />} />
           <Route path="browse" element={<Browse />} />
@@ -290,10 +320,7 @@ function App() {
           <Route path="playlists" element={<PlaylistsPage />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="settings" element={<Settings />} />
-          <Route
-            path="*"
-            element={<div className="p-10">Page Not Found (Check URL)</div>}
-          />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
       <AutoBackupOptInPrompt />
