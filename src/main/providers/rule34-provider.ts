@@ -6,6 +6,7 @@ import { isRecord } from "../../shared/utils/type-guards";
 import {
   REQUEST_TIMEOUT,
   AUTOCOMPLETE_TIMEOUT,
+  USER_AGENT,
 } from "../config/constants";
 import {
   IBooruProvider,
@@ -26,7 +27,6 @@ import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 import {
   ProviderThrottle,
-  pickRandomUA,
   ProviderRateLimitGateError,
   isAbortError,
 } from "./provider-throttle";
@@ -79,7 +79,6 @@ export class Rule34Provider implements IBooruProvider {
   ];
   private readonly baseUrl = "https://api.rule34.xxx/index.php";
   private readonly throttle = new ProviderThrottle();
-  private readonly sessionUA = pickRandomUA();
 
   /**
    * XML Parser with correct settings for Rule34 API
@@ -94,12 +93,12 @@ export class Rule34Provider implements IBooruProvider {
   });
 
   /**
-   * Get standard headers for API requests
-   * Prevents API blocking by using consistent User-Agent and headers
+   * Get standard headers for API requests.
+   * Uses the shared USER_AGENT so API and CDN share one fingerprint.
    */
   private getHeaders() {
     return {
-      "User-Agent": this.sessionUA,
+      "User-Agent": USER_AGENT,
       "Accept": "application/json, application/xml, text/html, */*",
       "Accept-Encoding": "identity",
       "Connection": "keep-alive",

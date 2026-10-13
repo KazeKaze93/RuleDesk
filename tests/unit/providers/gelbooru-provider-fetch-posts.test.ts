@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import axios, { AxiosError } from "axios";
+import { USER_AGENT } from "@/main/config/constants";
 import { GelbooruProvider } from "@/main/providers/gelbooru-provider";
 import { getAllProviderCdnDomains, getAllProviderDomains } from "@/main/providers";
 import { ProviderThrottle } from "@/main/providers/provider-throttle";
@@ -119,6 +120,9 @@ describe("GelbooruProvider.fetchPosts rate-limit classification", () => {
 
     expect(notifySpy).toHaveBeenCalledWith(12_000);
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
+    expect(axiosGetMock.mock.calls[0]?.[1]).toMatchObject({
+      headers: { "User-Agent": USER_AGENT },
+    });
     notifySpy.mockRestore();
   });
 

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import axios, { AxiosError } from "axios";
+import { USER_AGENT } from "@/main/config/constants";
 import { RULE34_MISSING_AUTHENTICATION_MARKER } from "@/shared/constants/rule34-api";
 import { Rule34Provider } from "@/main/providers/rule34-provider";
 import { ProviderThrottle } from "@/main/providers/provider-throttle";
@@ -83,6 +84,29 @@ describe("Rule34Provider.fetchPosts error classification", () => {
     });
 
     expect(notifySpy).toHaveBeenCalledWith(12_000);
+    expect(axiosGetMock).toHaveBeenCalledTimes(1);
+    expect(axiosGetMock.mock.calls[0]?.[1]).toMatchObject({
+      headers: { "User-Agent": USER_AGENT },
+    });
+    notifySpy.mockRestore();
+  });
+
+  it("treats invalid Retry-After as undefined retryAfterMs on 429", async () => {
+    const notifySpy = vi.spyOn(ProviderThrottle.prototype, "notifyRateLimited");
+    axiosGetMock.mockResolvedValueOnce({
+      status: 429,
+      headers: { "retry-after": "not-a-number" },
+      data: "",
+    });
+
+    await expect(
+      provider.fetchPosts("test_tag", 1, settings, false, 50)
+    ).rejects.toMatchObject({
+      kind: "rate_limit",
+      retryAfterMs: undefined,
+    });
+
+    expect(notifySpy).toHaveBeenCalledWith(undefined);
     expect(axiosGetMock).toHaveBeenCalledTimes(1);
     notifySpy.mockRestore();
   });

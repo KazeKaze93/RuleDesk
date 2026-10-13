@@ -1,7 +1,7 @@
 import axios from "axios";
 import { logger } from "../lib/logger";
 import { selectBestPreview } from "../lib/media-utils";
-import { REQUEST_TIMEOUT } from "../config/constants";
+import { REQUEST_TIMEOUT, USER_AGENT } from "../config/constants";
 import {
   IBooruProvider,
   BooruPost,
@@ -17,11 +17,11 @@ import {
   sanitizeProviderTagQuery,
   sanitizeProviderTagToken,
 } from "../../shared/utils/provider-tag-sanitize";
+import { parseRetryAfterMs } from "../../shared/utils/download-failure";
 import { MAX_RANDOM_PAGES } from "../../shared/constants";
 import { z } from "zod";
 import {
   ProviderThrottle,
-  pickRandomUA,
   ProviderRateLimitGateError,
   isAbortError,
 } from "./provider-throttle";
@@ -32,11 +32,6 @@ import {
 import { isAxiosTransportFailure } from "./rule34-post-response";
 import { getProxyAgent } from "../lib/proxy";
 import { warnIfUnknownMediaHost } from "./warn-unknown-media-host";
-import {
-  asSeconds,
-  secondsToMillis,
-  type Millis,
-} from "../../shared/types/time";
 
 type GelbooruTagItem = {
   value: string;
@@ -50,44 +45,6 @@ function isGelbooruTagItem(item: unknown): item is GelbooruTagItem {
   const v = Reflect.get(item, "value");
   const l = Reflect.get(item, "label");
   return typeof v === "string" && typeof l === "string";
-}
-
-/** Same contract as parseRule34RetryAfterMs: Seconds → Millis; invalid/negative → undefined. */
-function parseGelbooruRetryAfterMs(
-  headers: Record<string, string | string[] | undefined>
-): Millis | undefined {
-  const retryAfterHeader = headers["retry-after"];
-  const retryAfterRaw = Array.isArray(retryAfterHeader)
-    ? retryAfterHeader[0]
-    : retryAfterHeader;
-  if (typeof retryAfterRaw !== "string") {
-    return undefined;
-  }
-  const retryAfterSeconds = parseInt(retryAfterRaw, 10);
-  if (!Number.isFinite(retryAfterSeconds) || retryAfterSeconds < 0) {
-    return undefined;
-  }
-  return secondsToMillis(asSeconds(retryAfterSeconds));
-}
-
-function axiosHeadersToRetryAfterRecord(
-  headers: unknown
-): Record<string, string | string[] | undefined> {
-  if (typeof headers !== "object" || headers === null) {
-    return {};
-  }
-  const normalized: Record<string, string | string[] | undefined> = {};
-  for (const [key, value] of Object.entries(headers)) {
-    if (value === null || value === undefined) {
-      continue;
-    }
-    if (typeof value === "string" || Array.isArray(value)) {
-      normalized[key] = value;
-      continue;
-    }
-    normalized[key] = String(value);
-  }
-  return normalized;
 }
 
 export class GelbooruProvider implements IBooruProvider {
@@ -104,7 +61,6 @@ export class GelbooruProvider implements IBooruProvider {
   ];
   private readonly baseUrl = "https://gelbooru.com/index.php";
   private readonly throttle = new ProviderThrottle();
-  private readonly sessionUA = pickRandomUA();
 
   /** Shared throttle for post search (tests reset the 429 gate between cases). */
   getRequestThrottle(): ProviderThrottle {
@@ -141,7 +97,7 @@ export class GelbooruProvider implements IBooruProvider {
 
       const { status, data } = await axios.get(`${this.baseUrl}?${params}`, {
         timeout: REQUEST_TIMEOUT,
-        headers: { "User-Agent": this.sessionUA },
+        headers: { "User-Agent": USER_AGENT },
         httpsAgent: getProxyAgent(),
       });
 
@@ -167,7 +123,7 @@ export class GelbooruProvider implements IBooruProvider {
         `https://gelbooru.com/index.php?${params.toString()}`,
         {
           signal,
-          headers: { "User-Agent": this.sessionUA },
+          headers: { "User-Agent": USER_AGENT },
           httpsAgent: getProxyAgent(),
         }
       );
@@ -247,7 +203,7 @@ export class GelbooruProvider implements IBooruProvider {
       const response = await axios.get(`${this.baseUrl}?${params}`, {
         signal,
         timeout: REQUEST_TIMEOUT,
-        headers: { "User-Agent": this.sessionUA },
+        headers: { "User-Agent": USER_AGENT },
         validateStatus: (status) => status < 500,
         httpsAgent: getProxyAgent(),
       });
@@ -256,9 +212,7 @@ export class GelbooruProvider implements IBooruProvider {
         throw new ProviderSearchError(
           "rate_limit",
           undefined,
-          parseGelbooruRetryAfterMs(
-            axiosHeadersToRetryAfterRecord(response.headers)
-          )
+          parseRetryAfterMs({ response })
         );
       }
 
