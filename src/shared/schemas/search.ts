@@ -26,6 +26,11 @@ export function formatRule34BeforePostIdTag(beforePostId: number): string {
   return `id:<${beforePostId}`;
 }
 
+/** Rule34/Gelbooru meta-tag: inclusive upper bound for a frozen ordered walk. */
+export function formatRule34UpperBoundPostIdTag(upperBoundPostId: number): string {
+  return `id:<=${upperBoundPostId}`;
+}
+
 /**
  * Search Posts Request Type
  *

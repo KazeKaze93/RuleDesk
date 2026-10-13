@@ -69,6 +69,7 @@ import {
 import { getProvider } from "../../providers";
 import { getDecryptedApiSettings } from "../../services/credentials";
 import { IdSchema, OptionalIdSchema } from "../../../shared/schemas/ipc";
+import { formatRule34UpperBoundPostIdTag } from "../../../shared/schemas/search";
 import { sanitizeProviderTagToken } from "../../../shared/utils/provider-tag-sanitize";
 import {
   getManualPlaylistsWithStats,
@@ -204,15 +205,16 @@ const HYBRID_REMOTE_MAX_PAGES_TO_SCAN = 20;
 /** Matches provider `fetchPosts` page-size cap (Rule34/Gelbooru). */
 const HYBRID_REMOTE_API_PAGE_CAP = 1000;
 /**
- * Cap for hybrid local + remote materialization.
- * Ordered hybrid must know the full local identity set so a remote twin that
- * ranks high on the API feed is not treated as remote-only on early pages.
- * Remote must use the same fixed window on every page: provider feed order ≠
- * publishedAt, so expanding `page * limit` then re-sorting lets later-feed
- * newer posts reshuffle the merge (R2 page1∩page2). Random ranks also need
- * both legs materialized because rank order ≠ feed order.
+ * Cap for hybrid local (+ remote window) materialization.
+ * Local may materialize wholly in DB so remote twins past a page prefix are
+ * recognized. Remote uses the same fixed window size on every page (provider
+ * feed order ≠ publishedAt); live inserts are frozen via upperBoundPostId
+ * rather than caching a rematerialized stream. Random ranks also need both
+ * legs because rank order ≠ feed order.
  */
 const HYBRID_RANDOM_MATERIALIZE_CAP = 50_000;
+/** Safety-net issued `provider:postId` keys retained per ordered sequence. */
+const HYBRID_ORDERED_ISSUED_KEY_CAP = 50_000;
 
 function hybridPostMergeKey(post: { provider: string; postId: number }): string {
   return `${post.provider}:${post.postId}`;
@@ -224,8 +226,9 @@ function hybridSeedRank(postId: number, seed: number): number {
 }
 
 /**
- * Compare two hybrid candidates. Random uses seed ranks on postId; otherwise publishedAt
- * with postId tie-break matching the local SQL ORDER BY (same direction as sortOrder).
+ * Compare two hybrid candidates. Order is (sortKey, provider, postId):
+ * random uses seed rank on postId; otherwise publishedAt. Tie-breaks match
+ * local SQL ORDER BY (same direction as sortOrder for time/id; provider ASC).
  */
 function compareHybridPlaylistPosts(
   a: IpcPost,
@@ -239,14 +242,47 @@ function compareHybridPlaylistPosts(
     if (rankDiff !== 0) {
       return rankDiff;
     }
-    return a.postId - b.postId;
+  } else {
+    const timeDiff = a.publishedAt - b.publishedAt;
+    if (timeDiff !== 0) {
+      return sortOrder === "asc" ? timeDiff : -timeDiff;
+    }
   }
-  const timeDiff = a.publishedAt - b.publishedAt;
-  if (timeDiff !== 0) {
-    return sortOrder === "asc" ? timeDiff : -timeDiff;
+  const providerDiff = a.provider.localeCompare(b.provider);
+  if (providerDiff !== 0) {
+    return providerDiff;
   }
   const idDiff = a.postId - b.postId;
+  if (isRandom) {
+    return idDiff;
+  }
   return sortOrder === "asc" ? idDiff : -idDiff;
+}
+
+function maxRemotePostId(remotePosts: IpcPost[]): number | undefined {
+  let maxId = 0;
+  for (const post of remotePosts) {
+    if (post.postId > maxId) {
+      maxId = post.postId;
+    }
+  }
+  return maxId > 0 ? maxId : undefined;
+}
+
+function buildHybridOrderedSequenceKey(params: {
+  playlistId: number;
+  queryJson: string;
+  querySchemaVersion: number;
+  mediaType: string | undefined;
+  sortOrder: string;
+}): string {
+  return [
+    params.playlistId,
+    params.querySchemaVersion,
+    params.queryJson,
+    params.mediaType ?? "all",
+    params.sortOrder,
+  ].join("\u0001");
 }
 
 /**
@@ -403,6 +439,12 @@ function mergeHybridPlaylistPage(
  * - Remove posts from playlist
  * - Get posts in playlist with filters
  */
+type HybridOrderedSequenceState = {
+  upperBoundPostId: number;
+  /** Keys returned per page number; union of pages `< N` is the safety-net filter for page N. */
+  keysByPage: Map<number, string[]>;
+};
+
 export class PlaylistController extends BaseController {
   // Query style: Drizzle Builder API only in this controller.
   private mainWindow: BrowserWindow | null = null;
@@ -418,8 +460,16 @@ export class PlaylistController extends BaseController {
   // Schema existence cache — refreshed on restore/VACUUM reopen
   private ftsTableExistsCache: boolean = false;
 
+  /**
+   * Per-walk snapshot for ordered smart/hybrid paging: upperBoundPostId freezes
+   * the live remote feed; issuedKeys is a size-capped uniqueness safety net.
+   * Page 1 (or a new client bound like a new seed) starts a fresh snapshot.
+   */
+  private hybridOrderedSequences = new Map<string, HybridOrderedSequenceState>();
+
   private refreshSchemaCaches(): void {
     this.ftsTableExistsCache = postsFtsTableExists(getSqliteInstance());
+    this.hybridOrderedSequences.clear();
     log.info(
       `[PlaylistController] Schema caches refreshed (fts=${this.ftsTableExistsCache})`
     );
@@ -434,7 +484,10 @@ export class PlaylistController extends BaseController {
    * @param query - Smart playlist query with tags
    * @returns Booru query string
    */
-  private buildBooruQueryString(query: SmartPlaylistQuery): string {
+  private buildBooruQueryString(
+    query: SmartPlaylistQuery,
+    upperBoundPostId?: number
+  ): string {
     const includeTags = query.tags
       .filter((t) => t.type === "include")
       .map((t) => sanitizeProviderTagToken(t.tag).trim().toLowerCase())
@@ -446,6 +499,9 @@ export class PlaylistController extends BaseController {
       .filter(Boolean);
     
     const allTags = [...includeTags, ...excludeTags];
+    if (upperBoundPostId !== undefined) {
+      allTags.push(formatRule34UpperBoundPostIdTag(upperBoundPostId));
+    }
     return allTags.join(" ");
   }
 
@@ -2001,6 +2057,7 @@ export class PlaylistController extends BaseController {
       sortOrder = "desc",
       isRandom,
       seed,
+      upperBoundPostId: requestUpperBoundPostId,
     } = params;
     const offset = (page - 1) * limit;
 
@@ -2121,9 +2178,10 @@ export class PlaylistController extends BaseController {
       );
 
       // Smart playlist hybrid search:
-      // 1) Materialize local + remote matches (same capped window every page)
+      // 1) Materialize local matches (DB). Remote: fixed capped window + optional
+      //    upperBoundPostId so live feed inserts between pages cannot shift the merge.
       // 2) Collapse (provider, postId), cursor-merge with local-preferred dedupe
-      // 3) Return the page slice of the merged stream (never slice(0, limit) of a double page)
+      // 3) Slice the page; issued-key set is a size-capped uniqueness safety net
 
       // Build tag conditions from smart playlist query
       const { includeConditions, excludeConditions } = this.buildSmartPlaylistTagConditions(query);
@@ -2168,12 +2226,34 @@ export class PlaylistController extends BaseController {
 
       const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;
 
-      // Both legs: always materialize up to the cap. Local must expose twins past
-      // any page prefix; remote must be a fixed window so publishedAt re-sort after
-      // an expanding page*limit feed prefix cannot reshuffle earlier pages.
+      // Local may materialize wholly in DB. Remote keeps a fixed window size (not an
+      // expanding page*limit prefix) and freezes newer inserts via upperBoundPostId.
       const localFetchLimit = HYBRID_RANDOM_MATERIALIZE_CAP;
       const remoteFetchLimit = HYBRID_RANDOM_MATERIALIZE_CAP;
       const resolvedSeed = resolveRandomSeed(seed);
+
+      const orderedSequenceKey = !isRandom
+        ? buildHybridOrderedSequenceKey({
+            playlistId,
+            queryJson: playlist.queryJson,
+            querySchemaVersion: playlist.querySchemaVersion,
+            mediaType: filters?.mediaType,
+            sortOrder: smartSortOrder,
+          })
+        : null;
+
+      // Page 1 = new snapshot (like a new seed). Later pages reuse bound from
+      // request contract or the in-memory sequence started on page 1.
+      if (orderedSequenceKey !== null && page === 1) {
+        this.hybridOrderedSequences.delete(orderedSequenceKey);
+      }
+      const existingOrderedSequence =
+        orderedSequenceKey !== null
+          ? this.hybridOrderedSequences.get(orderedSequenceKey)
+          : undefined;
+      const remoteUpperBoundPostId = !isRandom
+        ? (requestUpperBoundPostId ?? existingOrderedSequence?.upperBoundPostId)
+        : undefined;
 
       // Execute local DB query and remote API query concurrently.
       // Provider/creds failures must throw — never map to [] (silent empty success).
@@ -2203,6 +2283,7 @@ export class PlaylistController extends BaseController {
             .where(whereClause);
 
           // Hybrid random orders by postId so the rank matches remote-only rows.
+          // Ordered: (publishedAt, provider, postId) — matches compareHybridPlaylistPosts.
           const result = isRandom
             ? queryBuilder
                 .orderBy(...seededOrderBy(posts.postId, resolvedSeed))
@@ -2212,6 +2293,7 @@ export class PlaylistController extends BaseController {
             : queryBuilder
                 .orderBy(
                   smartSortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt),
+                  asc(posts.provider),
                   smartSortOrder === "asc" ? asc(posts.postId) : desc(posts.postId)
                 )
                 .limit(localFetchLimit)
@@ -2229,24 +2311,72 @@ export class PlaylistController extends BaseController {
           filters,
           smartSortOrder,
           isRandom,
-          resolvedSeed
+          resolvedSeed,
+          remoteUpperBoundPostId
         ),
       ]);
 
-      const { pagePosts, localTaken, remoteTaken, mergedCount } = mergeHybridPlaylistPage(
-        localPosts,
-        remotePosts,
-        page,
-        limit,
-        smartSortOrder,
-        isRandom,
-        resolvedSeed
-      );
+      if (orderedSequenceKey !== null) {
+        const snapshotBound =
+          requestUpperBoundPostId ??
+          existingOrderedSequence?.upperBoundPostId ??
+          maxRemotePostId(remotePosts);
+        if (snapshotBound !== undefined) {
+          const sequence =
+            this.hybridOrderedSequences.get(orderedSequenceKey) ??
+            ({
+              upperBoundPostId: snapshotBound,
+              keysByPage: new Map<number, string[]>(),
+            } satisfies HybridOrderedSequenceState);
+          sequence.upperBoundPostId = snapshotBound;
+          this.hybridOrderedSequences.set(orderedSequenceKey, sequence);
+        }
+      }
+
+      const { pagePosts: mergedPagePosts, localTaken, remoteTaken, mergedCount } =
+        mergeHybridPlaylistPage(
+          localPosts,
+          remotePosts,
+          page,
+          limit,
+          smartSortOrder,
+          isRandom,
+          resolvedSeed
+        );
+
+      let pagePosts = mergedPagePosts;
+      if (orderedSequenceKey !== null) {
+        const sequence = this.hybridOrderedSequences.get(orderedSequenceKey);
+        if (sequence !== undefined) {
+          const priorIssued = new Set<string>();
+          let priorCount = 0;
+          for (const [priorPage, keys] of sequence.keysByPage) {
+            if (priorPage >= page) {
+              continue;
+            }
+            for (const key of keys) {
+              if (priorCount >= HYBRID_ORDERED_ISSUED_KEY_CAP) {
+                break;
+              }
+              priorIssued.add(key);
+              priorCount += 1;
+            }
+          }
+          pagePosts = mergedPagePosts.filter(
+            (post) => !priorIssued.has(hybridPostMergeKey(post))
+          );
+          sequence.keysByPage.set(
+            page,
+            pagePosts.map((post) => hybridPostMergeKey(post))
+          );
+        }
+      }
 
       log.info(
         `[PlaylistController] Hybrid search resolved ${pagePosts.length} posts for smart playlist ${playlistId} ` +
           `(localWindow: ${localPosts.length}, remoteWindow: ${remotePosts.length}, ` +
-          `mergedPrefix: ${mergedCount}, localTaken: ${localTaken}, remoteTaken: ${remoteTaken}, page ${page})`
+          `mergedPrefix: ${mergedCount}, localTaken: ${localTaken}, remoteTaken: ${remoteTaken}, ` +
+          `upperBound: ${remoteUpperBoundPostId ?? "none"}, page ${page})`
       );
 
       return pagePosts;
@@ -2270,11 +2400,12 @@ export class PlaylistController extends BaseController {
     filters: ResolvePlaylistPostsRequest["filters"] | undefined,
     sortOrder: "asc" | "desc",
     isRandom: boolean,
-    seed: number
+    seed: number,
+    upperBoundPostId?: number
   ): Promise<IpcPost[]> {
     try {
-      // Build booru query string from tags
-      const booruQuery = this.buildBooruQueryString(query);
+      // Build booru query string from tags (+ optional id:<=upperBound snapshot).
+      const booruQuery = this.buildBooruQueryString(query, upperBoundPostId);
       log.info(`[PlaylistController] Fetching remote posts for playlist ${playlistId} with query: "${booruQuery}"`);
 
       // Get provider from query (defaults to rule34 if not specified)
@@ -2322,6 +2453,12 @@ export class PlaylistController extends BaseController {
         rawFetchedTotal += booruPosts.length;
 
         for (const post of booruPosts) {
+          // Belt-and-suspenders: drop ids above the snapshot even if the meta-tag
+          // is ignored by a provider quirk.
+          if (upperBoundPostId !== undefined && post.id > upperBoundPostId) {
+            continue;
+          }
+
           if (blacklistedTagSet.size > 0) {
             const hasBlacklistedTag = post.tags.some((tag) =>
               blacklistedTagSet.has(tag.trim().toLowerCase())
