@@ -132,7 +132,7 @@ R4 GREEN after F fixes. Post-P9 lessons harvested in L (do not re-open P2). Conc
 | F-hybrid-ordered | `fix/hybrid-ordered-page-uniqueness` | [#234](https://github.com/KazeKaze93/RuleDesk/pull/234) | ✅ merged |
 | F-ordered-paging-drift | `fix/ordered-playlist-stable-pages` | [#235](https://github.com/KazeKaze93/RuleDesk/pull/235) | ✅ merged |
 | R4 | (packed/unpackaged smoke) | — | ✅ GREEN |
-| L | `chore/lessons-p2-fixes` | — | started |
+| L | `chore/lessons-p2-fixes` | [#236](https://github.com/KazeKaze93/RuleDesk/pull/236) | ✅ merged |
 | T | `18.3.0` (version bump on master) | — | ✅ merged (`d426de7`) |
 
 ## 📰 Updates feed
