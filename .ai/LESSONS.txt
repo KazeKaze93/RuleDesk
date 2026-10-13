@@ -373,7 +373,7 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ### Problem: Type-only renderer imports from main/ still risk bundling Node natives
 **Root Cause:** Type-only imports are erased at compile time, so the Main/Renderer module boundary was discipline-only. A later value import of the same module (table, enum, constant) pulls Drizzle and better-sqlite3 into the renderer bundle; that fails at runtime in the packaged app, not at typecheck.
-**Invariant Rule:** `src/renderer/**` must not import from `src/main/**`, including type-only. DB row types are `export type` re-exports from `src/shared/types/db.ts` (source of truth stays `src/main/db/schema.ts` `$inferSelect`). IPC extras (`TrackedArtist`, `PlaylistWithStats`) from `src/shared/types/bridge.ts`. Provider DTOs (`SearchResults`) from `src/shared/types/providers.ts` (re-export `providers/types.ts`, not the runtime registry). Enforced by ESLint `no-restricted-imports` on `src/renderer/**`. `src/main/bridge.ts` may import schema (preload lives in Main). `src/renderer.d.ts` is outside that glob and may reference the preload contract.
+**Invariant Rule:** `src/renderer/**` must not import from `src/main/**`, including type-only. DB row types are `export type` re-exports from `src/shared/types/db.ts` (source of truth stays `src/main/db/schema.ts` `$inferSelect`). IPC extras (`TrackedArtist`, `PlaylistWithStats`) from `src/shared/types/bridge.ts`. Provider DTOs (`SearchResults`) from `src/shared/types/providers.ts` (re-export `providers/types.ts`, not the runtime registry). Enforced by ESLint `no-restricted-imports` on `src/renderer/**`. `src/preload/bridge.ts` is the preload entry (thin; no Zod/schemas); Main controllers own schema/DB access. `src/renderer.d.ts` is outside that glob and may reference the preload contract.
 
 ### Problem: Green typecheck misses dead imports in project .d.ts files
 **Root Cause:** `tsconfig.json` sets `skipLibCheck: true`. TypeScript then skips **all** `.d.ts` files, not only `node_modules` — including `src/renderer.d.ts` and any other ambient declarations in the repo. A removed export (`AddArtistPayload` deleted from `bridge.ts` in Dec 2025) stayed imported in `renderer.d.ts` for months with `npm run typecheck` still green. Turning `skipLibCheck` off globally is not a substitute: `drizzle-orm` and other package `.d.ts` fail that pass on their own.
@@ -414,3 +414,61 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 ### Problem: Secrets in logs leak through raw Error / AxiosError serialization
 **Root Cause:** Axios embeds credentials in `config.url`, `config.params`, and `request.path` / `_header`. Logging the raw error (or relying on a few call-site redactors) misses most `log.error(..., error)` sites; substring username masks (e.g. OS name `user`) can also corrupt `user_id` / `users` if applied before query-key masks.
 **Invariant Rule:** Redact only via a centralized `electron-log` hook (main + renderer) over every transport. Masks are segment-based (path segments / query params / URL userinfo), never bare substrings. Apply sensitive keys/query params before username path-segment masks. Do not depend on call-site discipline for disk-safe logs.
+
+## UI / IPC / DB (Phase 5 audit closeout)
+
+### Problem: Native `confirm` / `alert` break Electron UX and a11y
+**Root Cause:** Renderer used `window.confirm` / `alert` for destructive actions and errors.
+**Invariant Rule:** Ban native confirm/alert in renderer. Use `ConfirmActionDialog` for destructive confirms and toast (sonner) for transient feedback.
+
+### Problem: Background Main ops reported only the first error (or none)
+**Root Cause:** Sync/batch loops logged or toasted per-item failures without a single end-of-operation summary, so users missed partial failures.
+**Invariant Rule:** Aggregate background Main operation errors and surface one summary at operation end (sync aggregator pattern).
+
+### Problem: Inline `style={{…}}` reintroduced layout magic
+**Root Cause:** Convenience transforms and scrollbar tweaks bypassed the design-system ban.
+**Invariant Rule:** `style={style}` is allowed only for dnd-kit transforms (e.g. `PlaylistVirtuosoComponents`). No other inline `style={{…}}` in renderer.
+
+### Problem: Topbar chrome drifted per tab with ad-hoc conditionals
+**Root Cause:** Per-page special cases for search/filters/sort visibility duplicated and diverged.
+**Invariant Rule:** Topbar chrome is an exhaustive map on `TabType` — adding a tab forces a compile-time update.
+
+### Problem: Pages cancelled layout padding with negative margins
+**Root Cause:** Flush galleries used `-m-6` (and similar) to undo `AppLayout` padding, fighting the shell.
+**Invariant Rule:** Pages must not cancel layout padding with negative margin; layout owns `contentVariant` (`padded` / `flush`).
+
+### Problem: Hardcoded booru site URLs duplicated across features
+**Root Cause:** Feature code embedded `https://rule34.xxx/...` strings, drifting from allowlists and Gelbooru parity.
+**Invariant Rule:** Site URLs only via `buildSiteTagSearchUrl` / `buildSitePostViewUrl` in `src/shared/utils/site-urls.ts` (hosts stay aligned with `allowed-hosts.ts`).
+
+### Problem: API and CDN User-Agents diverged
+**Root Cause:** Providers rotated UA pools (`pickRandomUA`) or set different strings for API vs media, creating fingerprint splits.
+**Invariant Rule:** One shared `USER_AGENT` for API + CDN.
+
+### Problem: Controllers held a stale DB handle via DI
+**Root Cause:** Constructor/`container.resolve(DI_TOKENS.DB)` captured a handle that went stale across reopen/restore/VACUUM.
+**Invariant Rule:** DB only via `getDb()` at call time (no DI DB token).
+
+### Problem: Headless fatal-dialog gate assumed Linux `DISPLAY` semantics everywhere
+**Root Cause:** Checking only `DISPLAY` misclassified Windows/macOS (or Wayland-only Linux) for `dialog.showErrorBox`.
+**Invariant Rule:** Headless check is platform-aware (`linux` + `DISPLAY`/`WAYLAND_DISPLAY`); Windows/macOS are never headless for fatal dialogs. Sole fatal dialog site is `main.ts`.
+
+### Problem: SQL migration splitter drifted from on-disk `drizzle/*.sql`
+**Root Cause:** Splitter changes were untested against the full inventory, so multi-statement files silently mis-split.
+**Invariant Rule:** SQL splitter must keep an inventory parity test on all `drizzle/*.sql` files.
+
+### Problem: Dead Chromium flags were "fixed" by renaming
+**Root Cause:** Renaming obsolete flags preserved dead code and false confidence that the flag still did something.
+**Invariant Rule:** Delete dead Chromium flags; do not rename them.
+
+### Problem: Vitest `@` alias drifted from tsconfig
+**Root Cause:** Only one of `vitest.config` / `vitest.isolated.config` (or tsconfig paths) was updated after a path move.
+**Invariant Rule:** Vitest `@` must match tsconfig; update **both** Vitest configs together.
+
+### Problem: AI tag lists were copied into workers/renderer
+**Root Cause:** Local arrays drifted from the shared filter set after autocomplete research.
+**Invariant Rule:** Prefer one shared `AI_TAGS` (`src/shared/ai-tags.ts`); workers use relative shared imports (no duplicate lists).
+
+### Problem: IPC collapse/throttle races and wrong prod detection
+**Root Cause:** Collapse keyed only part of args; throttle slot reserved after await; production envelope gated on `NODE_ENV` instead of packaging.
+**Invariant Rule:** IPC collapse key = channel + canonical JSON args; reserve throttle slot before await; production envelope via `app.isPackaged` (not `process.env.NODE_ENV === "production"`).

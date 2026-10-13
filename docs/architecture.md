@@ -488,7 +488,7 @@ const posts = await db.query.posts.findMany({
    - Updates artist post counts
    - `syncAllArtists()` and `repairArtist()` run through `runExclusive()` — a promise-chain mutex: if one operation is in flight, the next **waits** until it finishes (no silent drop). Covered by `tests/integration/services/SyncService.queue.test.ts` (timing: repair’s `syncArtist` runs only after full sync completes).
    - Cooperative cancel: `requestCancel()` / `requestArtistCancel()` abort the active sync `AbortController`; that signal is passed into `provider.fetchPosts` (throttle wait + axios) and into interruptible `retryWithBackoff` sleeps (including long `Retry-After`). Cancel is checked before each page request and after each sleep; abort/cancel errors become `SyncCancelledError`. `waitUntilIdle()` — app quit drains in-flight sync (up to `SYNC_SHUTDOWN_DRAIN_MS`) before `closeDatabase()`. Hard kill still bypasses cancel; runtime-droppable FTS triggers (`posts_fts_insert`, `posts_fts_update`) are recovered on DB init via `ensureFtsTriggers` (`src/main/db/fts-triggers.ts`), then `rebuildFtsIndex` (`VALUES('rebuild')`). Successful initial/repair sync calls `backfillArtistFtsIndex` (also `rebuild` — blind artist `INSERT…SELECT` leaves stale terms after repair conflicts) before restoring triggers. While those triggers are dropped, `PostsController` AI filter (`hide`/`only`) and `PlaylistController` smart-playlist tag MATCH do not run — `areRuntimeDroppableFtsTriggersPresent` reads `sqlite_master` and falls back to `instr`/`LIKE` on `posts.tags` so hide/exclude cannot fail-open. `getIsSyncing()` is not that signal (incremental sync keeps triggers live). Same init path also runs `resetStaleSyncingArtists` (`UPDATE artists SET sync_status = 'idle' WHERE sync_status = 'syncing'`) so a hard-kill cannot leave a permanent **Syncing** badge; `'error'`, `lastError`, and `lastSyncIncomplete` are left alone.
-   - Per-artist `syncStatus` (`idle` / `syncing` / `error`) and `lastError` are written by `SyncService.setArtistSyncStatus`: `"syncing"` at the start of `syncArtist` (before network / FTS drop); `"idle"` + `lastError: null` on successful pagination end (same tx as `lastPostId` / `lastChecked`) and on incomplete-without-throw (`lastSyncIncomplete: true`) or cancel; `"error"` + message on provider/network rethrow. Not written on credentials early-return or invalid-provider fallback. After each persist, Main emits void `sync:artist` (and `sync:repair:start` after the syncing write when repairing). `AppLayout` invalidates React Query `["artists"]` on `sync:artist` / `sync:repair:start` / `sync:repair:end` (plus full feed refresh on `sync:end`). `sync:progress` remains a **string** for the global Sidebar/`SyncStatusBadge` indicator — do not overload it with artist status.
+   - Per-artist `syncStatus` (`idle` / `syncing` / `error`) and `lastError` are written by `SyncService.setArtistSyncStatus`: `"syncing"` at the start of `syncArtist` (before network / FTS drop); `"idle"` + `lastError: null` on successful pagination end (same tx as `lastPostId` / `lastChecked`) and on incomplete-without-throw (`lastSyncIncomplete: true`) or cancel; `"error"` + message on provider/network rethrow. Not written on credentials early-return or invalid-provider fallback. After each persist, Main emits void `sync:artist` (and `sync:repair:start` after the syncing write when repairing). `AppLayout` invalidates React Query `["artists"]` on `sync:artist` / `sync:repair:start` / `sync:repair:end` (plus full feed refresh on `sync:end`). `sync:progress` remains a **string** for the global Sidebar sync indicator — do not overload it with artist status.
    - Emits IPC events for sync progress tracking
 
 4. **IPC Controllers** (`src/main/ipc/controllers/`)
@@ -508,7 +508,7 @@ const posts = await db.query.posts.findMany({
    - `ViewerController.ts` - Viewer-related operations
    - `FileController.ts` - File download and management. Mass-download queue (`download-queue.json`) uses single-writer atomic tmp+rename (`src/main/lib/atomic-write.ts`); worker gets `item-persisted` only after a successful queue write that includes the item (persist failure → `item-persist-failed` / DISK in the batch summary).
    - `SystemController.ts` - System-level ops (version / **`getAppInfo`**, **`openLogsFolder`**, **`getDiagnostics`** with redacted log tail, clipboard, icon path, **`wipeAllData`** — `RuleDesk-Data` only; does not delete `RuleDesk-Backups`). Process quit is tray/`app.quit()` → `before-quit` only (no dedicated quit IPC channel).
-   - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination and SQLite `search_results_cache` TTL layer, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, `resolveTagsByType`, blacklist filtering)
+   - `SearchController.ts` - Booru search and tag resolution (`searchBooru` with Rule34 cursor pagination and SQLite `search_results_cache` TTL layer, `resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`, blacklist filtering)
    - `PlaylistController.ts` - Playlist CRUD, smart queries, import/export
    - `StatsController.ts` - Extended stats for `/stats`
    - `BlacklistController.ts` - Tag blacklist CRUD
@@ -617,7 +617,7 @@ const posts = await db.query.posts.findMany({
    - Implementations: `Rule34Provider`, `GelbooruProvider`
    - `allowedDomains` is the full host list for CSP (`getAllProviderDomains`: API + CDN). `cdnDomains` is the media-CDN subset for video-proxy `isAllowedCdnUrl` (`getAllProviderCdnDomains`; exact hostname match, no suffix wildcard). `api-cdn.rule34.xxx` does not cover `api-cdn-mp4.rule34.xxx` (Rule34 MP4 CDN). Gelbooru media CDN is `img4.gelbooru.com`; `gelbooru.com` is the API/site host and is not proxied. Registry load throws if any provider's `cdnDomains` is not a subset of `allowedDomains`. After mapping `file_url`, unknown hostnames (exact match, not CSP `*.domain`) `log.warn` once: missing from `allowedDomains`, or video URL missing from `cdnDomains`.
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
-   - Shared request pacing via `ProviderThrottle` (~1200ms + jitter) and session UA via `pickRandomUA()`
+   - Shared request pacing via `ProviderThrottle` (~1200ms + jitter) and shared `USER_AGENT` for API+CDN
    - **Priorities:** `user` (Sync `fetchPosts`, Browse/search `fetchPosts`, autocomplete, Add Artist DAPI second-pass) drains before `background` (Browse tag-resolve). Same min-interval; order only. Add Artist aborts superseded throttle waiters; intervals are unchanged.
    - **Host 429 gate:** any consumer calls `notifyRateLimited(retryAfterMs?)`; all waiters honor it (`background` fails fast, `user` waits up to `USER_GATE_WAIT_CEILING_MS` then fails with typed rate_limit)
 
@@ -656,11 +656,11 @@ const posts = await db.query.posts.findMany({
    - **Provider search failures** (auth, rate limit, network, parse): both providers throw typed `ProviderSearchError` with an explicit `kind`. `SearchController` rethrows via `throwProviderSearchIpcError()` — JSON-encoded `ProviderSearchErrorPayload` in `Error.message` (Electron drops custom fields; kind is not inferred from user copy). Renderer `parseProviderSearchErrorPayload()` unwraps JSON / explicit `providerKind` and shows `BrowseErrorState`. User strings in `PROVIDER_SEARCH_USER_MESSAGES` are provider-agnostic display copy (no hardcoded "Rule34").
    - **Worker filter/sort failures** (client-side only): partial failure uses a neutral `Alert` above loaded posts; fatal query failure uses `BrowseErrorState`.
    - **Track & download all:** when Browse has exactly one include tag and `resolveTags` classifies it as an artist tag, header shows **Track & download all** beside loaded-posts `DownloadAllButton`. Bridge: `addArtist` (skip if already tracked for provider) → `repairArtist` → on success only `downloadAll { kind: "artist" }` (existing folder/progress/toasts). Sync error or cancel surfaces the reason and does not start download. Helpers: `browse-track-download.ts`, `useTrackAndDownloadArtist`.
-   - **Preload constraint:** `src/main/bridge.ts` must stay thin — do **not** import shared Zod/schemas in preload (breaks `contextBridge.exposeInMainWorld` → perpetual Loading).
+   - **Preload constraint:** `src/preload/bridge.ts` must stay thin — do **not** import shared Zod/schemas in preload (breaks `contextBridge.exposeInMainWorld` → perpetual Loading).
    - **Removed:** local rating / date-range / orientation filters (no UI; dead plumbing removed from `searchStore`, worker `FilterConfig`, IPC `PostFilterSchema` / `PostFiltersSchema`, gallery pages, and viewer query keys). Post `rating` as data (column, badges, Stats, Safe Mode blur) is unchanged. Booru search metatags (`rating:`, `width:`, `aspectratio:`) are unchanged.
    - Unit tests: `tests/unit/hooks/useWorkerFilteredPosts.test.ts`, `tests/unit/hooks/useMasonryInfiniteScroll.test.ts`, `tests/unit/hooks/useTrackAndDownloadArtist.test.tsx`, `tests/unit/lib/browse-track-download.test.ts`, `tests/unit/utils/react-query-cache.test.ts`, `tests/unit/store/searchStore.test.ts`.
 
-13. **Bridge** (`src/main/bridge.ts`, built to `out/preload/bridge.cjs`)
+13. **Bridge** (`src/preload/bridge.ts`, built to `out/preload/bridge.cjs`)
 
 - Defines the IPC interface exposed as `window.api`
 - Preload forwards `ipcRenderer.invoke` / event subscriptions only — no business logic, no shared-schema imports
@@ -709,7 +709,7 @@ const posts = await db.query.posts.findMany({
 
     - **AppLayout.tsx** - Main application layout with sidebar and global top bar
     - **Sidebar.tsx** - Persistent sidebar navigation with sync button and logout
-    - **GlobalTopBar.tsx** - Unified top bar with search, `FiltersPanel`, sort, view toggle, and `SyncStatusBadge` (wired to `searchStore` / gallery pipelines)
+    - **GlobalTopBar.tsx** - Unified top bar with search, `FiltersPanel`, sort, view toggle (wired to `searchStore` / gallery pipelines); global sync busy state lives in **Sidebar**
 
   - **Gallery:**
 
@@ -1836,7 +1836,7 @@ Root:
 16. ✅ **Download Manager:** Download full-resolution files with progress tracking
 17. ✅ **Full-Screen Viewer:** Immersive viewer with keyboard shortcuts, download, favorites, and tag management
 18. ✅ **Sidebar Navigation:** Persistent sidebar with main navigation sections (Browse, Updates, Artists, Favorites, Playlists, Statistics, Settings)
-19. ✅ **Global Top Bar:** Search, `FiltersPanel` (AI, media, source), sort, view toggle, `SyncStatusBadge` — filters consumed by gallery/browse pipelines.
+19. ✅ **Global Top Bar:** Search, `FiltersPanel` (AI, media, source), sort, view toggle — filters consumed by gallery/browse pipelines. Global sync busy state is the Sidebar sync indicator.
 20. ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 21. ✅ **Clipboard Integration:** Copy metadata and debug information to clipboard
 22. ✅ **Logout Functionality:** Clear stored credentials and return to account gate
@@ -1947,7 +1947,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 - **Safe Mode / NSFW Filter:** blur logic and safe mode state in gallery/viewer (`safeModeStore`, `PanicButton`, `PostCard`, `ViewerMedia`)
 - **Age Gate:** `src/renderer/components/onboarding/AgeGate.tsx` and `confirmLegal` IPC method
 - **User Data Path:** Neutral `RuleDesk-Data` via `bootstrap-user-data.ts` (not next to the executable); DB backups in sibling `RuleDesk-Backups/`
-- **Anti-Bot Measures:** Shared `ProviderThrottle` (~1200ms + jitter) and session UA rotation via `pickRandomUA()` across current providers. One throttle instance per provider host serializes Sync/Browse/autocomplete (`user` priority) ahead of tag-resolve (`background`). A single host 429 gate (`notifyRateLimited`) is written by any consumer and checked by every `wait()` — local rate-limit copies are forbidden.
+- **Anti-Bot Measures:** Shared `ProviderThrottle` (~1200ms + jitter) and shared `USER_AGENT` across current providers. One throttle instance per provider host serializes Sync/Browse/autocomplete (`user` priority) ahead of tag-resolve (`background`). A single host 429 gate (`notifyRateLimited`) is written by any consumer and checked by every `wait()` — local rate-limit copies are forbidden.
 - **DB Optimization (FTS5):** FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
 - **Composite Indexes:** Composite index on `(artist_id, rating, is_viewed)` for optimized filter queries
 - **Centralized Validation:** No single monolithic validation module by design; current direction is shared schemas + typed controller wrappers at IPC boundaries.

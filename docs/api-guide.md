@@ -203,7 +203,7 @@ await window.api.addArtist({
 
 ## Architecture
 
-The application uses Electron's IPC (Inter-Process Communication) with Context Isolation enabled. The Renderer process cannot directly access Node.js APIs. Instead, it communicates with the Main process through a secure bridge: contract in `src/shared/types/ipc-bridge.ts`, runtime wiring in `src/main/bridge.ts`, ambient `Window.api` in `src/bridge.d.ts`.
+The application uses Electron's IPC (Inter-Process Communication) with Context Isolation enabled. The Renderer process cannot directly access Node.js APIs. Instead, it communicates with the Main process through a secure bridge: contract in `src/shared/types/ipc-bridge.ts`, runtime wiring in `src/preload/bridge.ts` (entry in `electron.vite.config.ts`; artifact `out/preload/bridge.cjs`), ambient `Window.api` in `src/bridge.d.ts`.
 
 **IPC Architecture:**
 
@@ -219,166 +219,13 @@ The IPC bridge is exposed to the Renderer process via `window.api`. All methods 
 
 ### Type Definitions
 
-```typescript
-interface IpcBridge {
-  // App
-  getAppInfo: () => Promise<AppInfo>;
-  openLogsFolder: () => Promise<OpenLogsFolderResult>;
-  getDiagnostics: () => Promise<Diagnostics>;
-  wipeAllData: () => Promise<void>;
-  writeToClipboard: (text: string) => Promise<boolean>;
-  verifyCredentials: () => Promise<boolean>;
-  logout: () => Promise<void>;
+The live `window.api` contract is **`src/shared/types/ipc-bridge.ts`** (`IpcBridge`).
+Channel tables are generated into [`api.md`](./api.md) via `npm run docs:api` — do not hand-maintain a duplicate interface dump here.
 
-  // Settings
-  getSettings: () => Promise<IpcSettings | null>;
-  saveSettings: (creds: {
-    userId?: string;
-    apiKey?: string;
-    proxyUrl?: string | null;
-    autoSyncOnStartup?: boolean;
-    autoSyncOnArtistAdd?: boolean;
-    minimizeToTray?: boolean;
-    syncIntervalMinutes?: number;
-  }) => Promise<boolean>;
-  confirmLegal: () => Promise<IpcSettings>;
+Deleted / never-bridge methods (do not reintroduce in docs examples):
+`togglePostViewed`, `resolveTagsByType`, `verifyCredentials`, `searchArtists`, `getDownloadItems`, `getStats`, `markAllPostsAsViewed`, `checkForUpdates`, `addPostsToPlaylist`, and channels `DOWNLOAD_FILE` / `GET_API_KEY_ENCRYPTED` / `GET_PLAYLIST_DOWNLOAD_ITEMS`.
 
-  // Artists
-  getTrackedArtists: () => Promise<Artist[]>;
-  addArtist: (artist: NewArtist) => Promise<Artist | undefined>;
-  deleteArtist: (id: number) => Promise<DeleteArtistResult>;
-  searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
-
-  // Posts
-  getArtistPosts: (params: {
-    artistId: number;
-    page?: number;
-  }) => Promise<Post[]>;
-  getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
-  getStats: () => Promise<ExtendedStats>; // backward-compatible alias
-  getExtendedStats: () => Promise<ExtendedStats>;
-  markPostAsViewed: (postId: number, postData?: PostData) => Promise<boolean>;
-  togglePostViewed: (postId: number) => Promise<boolean>;
-  togglePostFavorite: (postId: number, postData?: PostData) => Promise<boolean>;
-  getUpdatesUnreadCount: () => Promise<number>;
-  getUpdatesTotalUnreadCount: (params: {
-    filters?: PostFilterRequest;
-  }) => Promise<number>;
-  markAllUpdatesSeen: (params?: {
-    filters?: PostFilterRequest;
-  }) => Promise<{ updatedCount: number }>;
-  markUpdatesSeenByIds: (
-    ids: number[]
-  ) => Promise<{ updatedCount: number }>;
-  getUpdatesLastSyncAt: () => Promise<number | null>;
-  resetPostCache: (postId: number) => Promise<boolean>;
-
-  // External
-  openExternal: (url: string) => Promise<void>;
-  searchRemoteTags: (
-    query: string,
-    provider?: ProviderId,
-    artistOnly?: boolean
-  ) => Promise<SearchResults[]>;
-  searchBooru: (params: {
-    tags: string[];
-    page: number;
-    isRandom?: boolean;
-    limit?: number;
-    beforePostId?: number;
-  }) => Promise<{
-    posts: Post[];
-    hasMore: boolean;
-    apiFetchedCount?: number;
-    nextBeforePostId?: number;
-  }>;
-  resolveTags: (tags: string[]) => Promise<string[]>;
-  resolveCharacterTags: (tags: string[]) => Promise<string[]>;
-  resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
-  resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
-  getBlacklistedTags: () => Promise<string[]>;
-  addTagToBlacklist: (tag: string) => Promise<void>;
-  removeTagFromBlacklist: (tag: string) => Promise<void>;
-
-  // Sync
-  syncAll: () => Promise<boolean>;
-  repairArtist: (
-    artistId: number
-  ) => Promise<{ success: boolean; error?: string }>;
-
-  // Downloads
-  downloadFile: (
-    url: string,
-    filename: string
-  ) => Promise<{
-    success: boolean;
-    path?: string;
-    error?: string;
-    canceled?: boolean;
-  }>;
-  openFileInFolder: (path: string) => Promise<boolean>;
-  onDownloadProgress: (callback: DownloadProgressCallback) => () => void;
-
-  // Backup
-  createBackup: () => Promise<BackupResponse>;
-  restoreBackup: () => Promise<BackupResponse>;
-  getVacuumStatus: () => Promise<{
-    lastVacuumAt: number | null;
-    lastRunStatus: "never" | "success" | "error";
-    lastError: string | null;
-    isRunning: boolean;
-  }>;
-  runVacuum: () => Promise<{
-    success: boolean;
-    startedAt: number;
-    finishedAt?: number;
-    durationMs?: number;
-    error?: string;
-  }>;
-  getVacuumSchedule: () => Promise<"manual" | "weekly" | "monthly">;
-  setVacuumSchedule: (args: {
-    schedule: "manual" | "weekly" | "monthly";
-  }) => Promise<boolean>;
-  detectOrphans: () => Promise<OrphanDetectionReport>;
-
-  // Playlists
-  createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
-  getPlaylists: () => Promise<Playlist[]>;
-  getPlaylist: (playlistId: number) => Promise<Playlist | null>;
-  updatePlaylist: (playlistId: number, data: UpdatePlaylistRequest) => Promise<Playlist>;
-  deletePlaylist: (playlistId: number) => Promise<boolean>;
-  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
-  removePostsFromPlaylist: (data: RemovePostsFromPlaylistRequest) => Promise<number>;
-  reorderPlaylistEntries: (params: ReorderPlaylistEntriesRequest) => Promise<void>;
-  getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
-  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
-  getPlaylistsContainingPost: (postId: number, rule34PostId?: number) => Promise<number[]>;
-  exportPlaylist: (playlistId: number) => Promise<{ success: boolean; path?: string; error?: string }>;
-  importPlaylist: () => Promise<{
-    success: boolean;
-    playlistId?: number;
-    error?: string;
-    code?: ErrorCode; // CANCELLED | PARSE_ERROR | …
-  }>;
-
-  // Video (localhost proxy; see architecture docs for cache and host allowlist)
-  getVideoProxyUrl: (fileUrl: string) => Promise<string>;
-
-  // Updater (check + open GitHub release page; no in-app download/install)
-  checkForUpdates: () => Promise<void>;
-  openReleasePage: () => Promise<void>;
-
-  // Event Listeners
-  onUpdateStatus: (callback: UpdateStatusCallback) => () => void;
-  onSyncStart: (callback: () => void) => () => void;
-  onSyncEnd: (callback: () => void) => () => void;
-  onSyncProgress: (callback: (message: string) => void) => () => void;
-  onSyncError: (callback: SyncErrorCallback) => () => void;
-  onSyncArtist: (callback: () => void) => () => void;
-  onRepairStart: (callback: (artistName: string) => void) => () => void;
-  onRepairEnd: (callback: () => void) => () => void;
-}
-```
+Use `getExtendedStats` (not `getStats`), typed resolve helpers (`resolveTags` / `resolveCharacterTags` / `resolveCopyrightTags`), playlist membership APIs (`syncManualPlaylistMembership` / `removePostsFromPlaylist`), and Settings account flows instead of `verifyCredentials`. Update checks are Main-owned (`UpdaterService`); renderer only listens via `onUpdateStatus` / `openReleasePage`.
 
 ## API Methods
 
@@ -1086,23 +933,6 @@ try {
 
 ---
 
-### `checkForUpdates()`
-
-Checks for available application updates via `electron-updater` (GitHub provider). Does not download or install. Background startup checks log errors only; the UI shows a notification only when status is `available`.
-
-**Returns:** `Promise<void>`
-
-**Example:**
-
-```typescript
-await window.api.checkForUpdates();
-```
-
-**IPC Channel:** `app:check-for-updates`
-
-**Note:** Use `onUpdateStatus` for `available` (+ `version`). There is no in-app download/install path.
-
----
 
 ### `openReleasePage()`
 
@@ -1216,30 +1046,6 @@ Returns `MAX(artists.last_checked)` for tracked artists as Unix milliseconds, or
 
 ---
 
-### `searchArtists(query: string)`
-
-Searches for artists in the local database by name or tag.
-
-**Parameters:**
-
-- `query: string` - Search query string
-
-**Returns:** `Promise<{ id: number; label: string }[]>`
-
-**Errors:** Database failures reject (preload rethrows `Error` with `code` from the BaseController failure envelope). Callers must not treat rejection as an empty result list.
-
-**Example:**
-
-```typescript
-const results = await window.api.searchArtists("artist");
-results.forEach((result) => {
-  console.log(result.id, result.label);
-});
-```
-
-**IPC Channel:** `db:search-tags`
-
----
 
 ### `searchRemoteTags(query: string, provider?: ProviderId, artistOnly?: boolean)`
 
@@ -1416,37 +1222,6 @@ const copyrightTags = await window.api.resolveCopyrightTags(["tag1", "tag2"]);
 
 ---
 
-### `resolveTagsByType(tags: string[], type: number)`
-
-Resolves tags to their canonical form, filtering by a specific tag type.
-
-**When to use:** When you need tags of a specific type. More flexible than the specific resolve methods above.
-
-**Parameters:**
-
-- `tags: string[]` - Array of tags to resolve
-- `type: number` - Tag type to filter by:
-  - `0` - General
-  - `1` - Artist
-  - `3` - Copyright
-  - `4` - Character
-  - `5` - Meta
-
-**Returns:** `Promise<string[]>` - Array of resolved tag names of the specified type
-
-**Example:**
-
-```typescript
-// Get artist tags (type=1)
-const artistTags = await window.api.resolveTagsByType(tags, 1);
-
-// Get character tags (type=4)
-const characterTags = await window.api.resolveTagsByType(tags, 4);
-```
-
-**IPC Channel:** `booru:resolve-tags-by-type`
-
----
 
 ### `createBackup()`
 
@@ -1634,26 +1409,6 @@ await window.api.writeToClipboard("Copied text");
 
 ---
 
-### `verifyCredentials()`
-
-Verifies API credentials by making a test API call.
-
-**Returns:** `Promise<boolean>`
-
-**Example:**
-
-```typescript
-const isValid = await window.api.verifyCredentials();
-if (isValid) {
-  console.log("Credentials are valid");
-} else {
-  console.log("Credentials are invalid or expired");
-}
-```
-
-**IPC Channel:** `app:verify-creds`
-
----
 
 ### `logout()`
 
@@ -1713,35 +1468,7 @@ console.log(stats.totalPosts, stats.ratingCounts.explicit, stats.dbSizeBytes);
 
 ---
 
-### `getStats()`
 
-Backward-compatible alias for `getExtendedStats()`.
-
-**Returns:** `Promise<ExtendedStats>`
-
-**IPC Channel:** `db:get-stats`
-
----
-
-### `togglePostViewed(postId: number)`
-
-Toggles the viewed status of a post.
-
-**Parameters:**
-
-- `postId: number` - Post ID to toggle
-
-**Returns:** `Promise<boolean>`
-
-**Example:**
-
-```typescript
-const success = await window.api.togglePostViewed(123);
-```
-
-**IPC Channel:** `db:toggle-post-viewed`
-
----
 
 ### `togglePostFavorite(postId: number, postData?: PostData)`
 
@@ -1849,7 +1576,7 @@ Playlist APIs are handled by `PlaylistController` and use shared Zod schemas fro
 - `createPlaylist(data)` -> Create manual or smart playlist
 - `getPlaylists()` / `getPlaylist(playlistId)` -> Read playlists
 - `updatePlaylist(playlistId, data)` / `deletePlaylist(playlistId)` -> Update or delete playlist
-- `addPostsToPlaylist(data)` / `removePostsFromPlaylist(data)` -> Manage manual playlist entries
+- `syncManualPlaylistMembership(data)` / `removePostsFromPlaylist(data)` -> Manage manual playlist entries
 - `reorderPlaylistEntries(params)` -> Persist drag-and-drop order for manual playlists
 - `getPlaylistPosts(params)` -> Fetch static playlist posts with filters/sort. When `isRandom` is true, pass optional `seed` (and reuse it on later pages) for a stable shuffle; a new seed starts a new shuffle.
 - `resolvePlaylistPosts(params)` -> Resolve static or smart playlist posts. Local `isRandom` ordering uses the same optional `seed` contract as `getPlaylistPosts` / `getPosts`. Ordered smart/hybrid walks accept optional `upperBoundPostId` (keep across pages like `seed`; omit / page 1 for a new feed snapshot).
@@ -1976,7 +1703,7 @@ const unsubscribe = window.api.onSyncProgress((message) => {
 
 **IPC Channel:** `sync:progress`
 
-Payload is always a **string** (human-readable progress). Do not change this shape — Sidebar / `SyncStatusBadge` use it only to toggle global `isSyncing`. Per-artist `syncStatus` uses `onSyncArtist` / repair events + DB refetch.
+Payload is always a **string** (human-readable progress). Do not change this shape — Sidebar sync indicator uses it only to toggle global `isSyncing`. Per-artist `syncStatus` uses `onSyncArtist` / repair events + DB refetch.
 
 ---
 
@@ -2231,7 +1958,7 @@ To avoid drift, this document no longer keeps long legacy snippets for handler r
 - **IPC handler registration:** `src/main/ipc/index.ts`
 - **Maintenance (VACUUM):** `src/main/ipc/controllers/MaintenanceController.ts`
 - **Channel constants:** `src/main/ipc/channels.ts`
-- **Renderer bridge (`window.api`):** `src/main/bridge.ts`
+- **Renderer bridge (`window.api`):** `src/preload/bridge.ts` (configured in `electron.vite.config.ts`; built to `out/preload/bridge.cjs`)
 
 Use these files as the canonical implementation reference for exact BaseController registration and `ipcRenderer.invoke` wiring.
 

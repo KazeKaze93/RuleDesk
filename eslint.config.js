@@ -127,8 +127,8 @@ export default tseslint.config(
   // Accidental value imports of schema/providers pull Drizzle / better-sqlite3
   // into the browser bundle. Use @shared/types/* and @shared/schemas/*.
   // src/renderer.d.ts is outside this glob (src/renderer.d.ts ≠ src/renderer/**);
-  // it may reference the preload contract in src/main/bridge.ts.
-  // src/main/bridge.ts is Main — this rule does not apply to it.
+  // it may reference the preload contract in src/preload/bridge.ts.
+  // src/preload/bridge.ts is Main — this rule does not apply to it.
   {
     files: ["src/renderer/**/*.{ts,tsx}"],
     rules: {

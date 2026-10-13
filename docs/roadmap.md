@@ -46,7 +46,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 **Current state:** ✅ implemented, ongoing regression/polish
 
-- ✅ Global top bar exists and is used across core pages (includes `SyncStatusBadge`).
+- ✅ Global top bar exists and is used across core pages; global sync busy state is the Sidebar sync indicator.
 - ✅ `FiltersPanel`: AI, media, source; wired to `searchStore` and post pipelines.
 - ✅ **Browse → Source (Favorites / Browse Source Subscriptions filter):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Local AI/media filters run in SQL before `LIMIT`. The Browse Source Subscriptions filter is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)). Distinct from [tag-combination subscriptions](#closed-by-design-not-backlog) (closed — superseded by smart playlists).
 - ✅ Search is chip-based and supports include/exclude, OR-groups, wildcard/fuzzy token forms (`*`, `~`) in query tokens.
@@ -72,7 +72,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 ### D. Navigation, layout, shell
 
-- ✅ **App shell** — `AppLayout` with **sidebar** (primary navigation) and **global top bar** (`GlobalTopBar`: search, filters, sort, grid/masonry, `SyncStatusBadge`). Routes and layout are **complete** for the shipped feature set.
+- ✅ **App shell** — `AppLayout` with **sidebar** (primary navigation + sync indicator) and **global top bar** (`GlobalTopBar`: search, filters, sort, grid/masonry). Routes and layout are **complete** for the shipped feature set.
 - ✅ Sidebar information architecture includes grouped sections (**Discover / Library / System**).
 - 🟡 **Optional polish (backlog, not “missing v1”):** additional tooltips for dense controls, item order tweaks for first-run discoverability, and density tuning on small windows. This is **UX refinement** on the current structure — we are **not** tracking alignment to an obsolete written wireframe; the product is what ships in the build.
 - ✅ **Masonry vs grid** — two explicit modes; **closed** as a gap ([Closed by design](#closed-by-design-not-backlog)).
@@ -150,6 +150,38 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 | S1 | `chore/release-via-pr` | [#243](https://github.com/KazeKaze93/RuleDesk/pull/243) | ✅ merged |
 | S2 | `chore/enable-master-protection` | [#245](https://github.com/KazeKaze93/RuleDesk/pull/245) | ✅ protection enabled |
 
+### UI/UX + architecture debt audits (on 18.3.1) — closed on branch
+
+Both audits (UI/UX sans keyboard + architecture review) are **closed on this branch** (`fix/ui-and-arch-debt`). Status lives only in this table + HANDOFF below.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| UI+Arch | `fix/ui-and-arch-debt` | (this PR) | 🟡 open — merge only after user manual checks |
+
+#### HANDOFF (follow-ups — do not silent-fix)
+
+| Task | Notes |
+|------|-------|
+| TagChip cursor menu → ContextMenu UI | Style mutations (`anchor.style.left/top`) remain; needs proper ContextMenu primitive |
+| UpdateNotification still slate custom toast | Custom `bg-slate-*` card; not sonner / design-system toast |
+| C2 gate: provider UI / errors / invalidation divergences | Do **not** silent-fix; track remaining provider-path inconsistencies |
+| `SyncService.checkCredentials` orphan | Auth IPC removal left the method without a bridge consumer |
+| `AddPostsToPlaylistSchema` unused optional cleanup | Schema leftover after bridge surface cleanup |
+| preload→main channels import → optional `@shared` move | Optional hygiene; not blocking |
+| IPC `BaseController` throttle necessity | **Open question:** keep vs remove (see note below) |
+| Playlists smart query hardcoded `rule34` | Provider choice / out-of-pack; not fixed here |
+
+**Open question (IPC throttle):** whether mutating-handler throttle in `BaseController` is still necessary after collapse-key + `app.isPackaged` envelope fixes — keep for now; revisit with measurements before deleting.
+
+#### Сознательно вне задачи (original OUT OF SCOPE)
+
+- Hover-only actions / focus keyboard reveal / Panic shortcut hint / account gate branding
+- BrowserView integration
+- Per-provider credentials / three credential load paths
+- Migration journal renumber; dead `fts5_*` tables; `new_posts_count`; `playlist_entries` indexes
+- Triple service binding (singleton / DI / ctor)
+- Hook folders / pages vs features boundary; page random search; `tag_blacklist` outside Drizzle
+
 ## 📰 Updates feed
 
 ### Feed Enhancements
@@ -180,7 +212,7 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 ### Next Hardening Steps
 
 - ✅ **User-configurable backup retention** is shipped (`settings.backupRetention`, range `1..20`, applied in `MaintenanceController` cleanup).
-- ✅ **Shared request pacing / UA rotation** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
+- ✅ **Shared request pacing / single `USER_AGENT`** via `ProviderThrottle` in `Rule34Provider` and `GelbooruProvider` (tune as new sites are added).
 - ✅ Explicit VACUUM policy is shipped (manual run + persisted schedule + last-run telemetry in Settings).
 - 🔧 `audit/maintenance-vacuum-queue`: VACUUM joined to `maintenanceQueue` (serialize with backup/restore); status cache while DB closed; auto-backup skips when queue busy. Weekly/monthly VACUUM is checked on the existing `MaintenanceScheduler` daily tick via `MaintenanceService.runVacuumIfScheduleDue` (`settings.last_vacuum_at` + `vacuum_schedule`; `manual` skips).
 
