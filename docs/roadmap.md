@@ -135,6 +135,19 @@ R4 GREEN after F fixes. Post-P9 lessons harvested in L (do not re-open P2). Conc
 | L | `chore/lessons-p2-fixes` | [#236](https://github.com/KazeKaze93/RuleDesk/pull/236) | ✅ merged |
 | T | `18.3.0` (version bump on master) | — | ✅ merged (`d426de7`) |
 
+### Post-18.3.0 polish + release (Q / R / T)
+
+R smoke GREEN on tip `1ab4108`. Q4 branch protection **not** enabled (STOP: `release:*` still `git push` version commits to `master`). Lessons harvested into `.ai/LESSONS.txt` with this release. Status lives only in this table.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| Q1 | `fix/post-metadata-first-open` | [#240](https://github.com/KazeKaze93/RuleDesk/pull/240) | ✅ merged |
+| Q2 | `refactor/ipc-validation-single-path` | [#241](https://github.com/KazeKaze93/RuleDesk/pull/241) | ✅ merged |
+| Q3 | `docs/truth-pass` | [#239](https://github.com/KazeKaze93/RuleDesk/pull/239) | ✅ merged |
+| Q4 | `chore/protect-master` | [#238](https://github.com/KazeKaze93/RuleDesk/pull/238) | ✅ merged (docs only; protection deferred) |
+| R | (packed/unpackaged smoke on `1ab4108`) | — | ✅ GREEN |
+| T | `18.3.1` (version bump on master via `release:patch`) | — | 🔄 in progress |
+
 ## 📰 Updates feed
 
 ### Feed Enhancements
