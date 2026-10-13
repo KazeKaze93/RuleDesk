@@ -1792,7 +1792,7 @@ Root:
 **Security & Reliability:**
 
 - **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API (Windows Credential Manager, macOS Keychain, Linux libsecret)
-- **Database Backup/Restore:** Manual/auto backups via `VACUUM INTO` into `RuleDesk-Backups/` (outside live userData); integrity checks; automatic rotation using configurable `backupRetention` (`1..20`); read-only orphan detection in Settings
+- **Database Backup/Restore:** Manual/auto backups via `VACUUM INTO` into `RuleDesk-Backups/` (outside live userData); integrity checks; automatic rotation using configurable `backupRetention` (`1..20`) with **manual and automatic filename sets counted separately** (same `N` each, not summed); read-only orphan detection in Settings
 - **DB Maintenance (VACUUM):** User-visible status, manual trigger, and persisted schedule (`manual`, `weekly`, `monthly`)
 - **Context Isolation:** Enabled globally with sandbox mode
 - **CSP:** Built from `getAllProviderDomains()` (`img-src` / `media-src` / `connect-src`); production is strict, development is relaxed for HMR

@@ -237,7 +237,7 @@ A full-screen immersive viewer for viewing posts with keyboard shortcuts, downlo
 
 ### Favorites
 
-A system for marking and managing favorite posts. Favorites are stored locally in the database and can be toggled via UI or keyboard shortcut (`F`).
+A system for marking and managing favorite posts. Favorites are stored locally in the database (`posts.is_favorited`) and can be toggled via UI or keyboard shortcut (`F`). There is **no** booru account-favorites sync path (no `sync:booru-favorites` IPC channel).
 
 **Related:** [Favorites System](../README.md#-favorites-system), [Database Schema - Posts](./database.md#table-posts)
 

@@ -111,7 +111,7 @@ RuleDesk needs your Rule34.xxx account credentials to fetch posts. These credent
    - A tip under the User ID and API key fields reminds you: paste the full account page URL into either field and both values are filled in automatically
    - Or manually enter them in the fields
 
-6. **Click "Save and Login"**
+6. **Click "Save API Key"**
 
 That's it! You're now ready to use RuleDesk.
 
@@ -249,13 +249,13 @@ Each post card shows:
 - The clear button in the search bar clears tag chips.
 - Click a chip to put it back into the input for editing; right-click still toggles include/exclude.
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
-- **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically). Repeating the same tags and page within about a week uses a local cache for successful pages (empty pages expire after a day) and does not re-request the booru until that cache expires.
+- **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically). Repeating the same tags and page within **24 hours** uses a local SQLite cache (`SEARCH_RESULTS_CACHE_TTL_MS`) for successful pages and confirmed empty tagged pages (same TTL); untagged page-1 empties are not cached. Until that TTL expires, RuleDesk does not re-request the booru for that key.
 - **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings** when credentials are invalid).
 - Browse source modes **Favorites** / **Browse Source Subscriptions filter** (panel label **Subscriptions**) query your **local cache** (SQL `isFavorited` / `sinceTracking`) and still require a non-empty tag query in the Source switcher by design. AI and Media filters on those modes run in SQL before pagination. On **Source: All**, Rule34 AI hide/only and Rule34/Gelbooru Videos/Images are sent as booru tags in the live search (so pages stay full). Gelbooru still filters AI client-side after each page. The Browse Source Subscriptions filter means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name. Tag-combination subscriptions are **Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)** — use smart playlists for tag-combo collections.
 
 ### Favorites
 
-**What are favorites?** Mark posts you like so you can easily find them later.
+**What are favorites?** Mark posts you like so you can easily find them later. Favorites are **local only** (`isFavorited` in SQLite). There is no booru account-favorites sync path (`sync:booru-favorites` does not exist).
 
 **How to favorite a post:**
 
@@ -324,7 +324,7 @@ The download will start, and you'll see a progress indicator.
 
 - Runs in a background worker (UI stays responsive). Progress shows on the button.
 - On **Browse**, download applies only to posts already loaded in the feed (see the button tooltip). To download everything from an artist, track them under **Tracked artists**, then use Download All on that artist's gallery.
-- At most **500** files per batch. If you select more, the app warns and downloads the first 500.
+- List downloads (Browse / Favorites / Updates / playlist selection of already-loaded posts): at most **5000** files (`BATCH_DOWNLOAD_LIST_MAX_FILES`). If you select more, the app shows an error and does **not** start the batch (no silent truncate). Artist gallery **Download All** walks the local DB for that artist and is not limited by this list cap.
 - Partial failures do not discard successful files. The toast shows `Downloaded X, failed Y` with reason codes (network, 403/404/429, disk, timeout). Artist gallery can expand the failed list under the button.
 - HTTP **429** pauses the whole download queue (no new files start) for max(backoff, Retry-After), then retries; after retries are exhausted the file is listed as failed.
 - Queue progress is written atomically (unique temp file + rename, with retries on Windows file locks). If the queue file cannot be updated after retries, that item is listed as a **disk** failure even if the media file already landed — resume can still skip an existing file when duplicate handling is **skip**.
@@ -405,7 +405,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 
 - **Updates** - See new posts from your tracked sources. A purple badge shows unread count and auto-refreshes periodically.
 - **Browse** - Search the live booru (Source: All) or filter cached posts (Favorites / Browse Source Subscriptions filter); infinite scroll, filters, and sorting
-- **Favorites** - Your favorited posts collection
+- **Favorites** - Local favorited posts only (`isFavorited`); no booru account-favorites sync
 - **Playlists** - Manual playlists and smart collections
 - **Statistics** - Local library aggregates and charts (`/stats`)
 - **Tracked artists** - Manage tracked artists and tags (sync all posts, full download, Updates feed)
@@ -496,7 +496,7 @@ Settings are split into tabs:
 - **Check Integrity** - Verify database is not corrupted
 - **Orphaned data check** - Read-only report of posts/playlist entries/FTS rows without parents (no automatic cleanup)
 - **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup). New installs default to Daily. If you upgraded from an older build that left auto-backup off, RuleDesk may ask once whether to enable daily backups — you can dismiss or change the setting later under Settings → Backup.
-- **Retention** - Older files are rotated automatically according to `Retention` value (`backupRetention`, range `1..20`)
+- **Retention** - Keep the last `N` **manual** backups and the last `N` **automatic** backups independently (`backupRetention`, range `1..20`). The two file sets are counted separately and are not summed into one pool
 - **Database Maintenance (VACUUM)** - See last VACUUM run status/time, run VACUUM manually, and choose maintenance schedule (`Manual`, `Weekly`, `Monthly`)
 
 ### Account
@@ -600,7 +600,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 **Solutions:**
 
 1. Confirm API credentials in **Settings → Account**
-2. Clear restrictive filters (AI, media). On Browse Favorites / Browse Source Subscriptions filter those filters run in SQL before pagination. On Source: All with Rule34, AI hide/only is applied in the live API tag query (fuller pages); Gelbooru and conflict cases still filter client-side after each API page. Media filters on Source: All remain client-side.
+2. Clear restrictive filters (AI, media). On Browse Favorites / Browse Source Subscriptions filter those filters run in SQL before pagination. On Source: All with Rule34, AI hide/only is applied in the live API tag query (fuller pages); Gelbooru AI still filters client-side after each API page. On Source: All, Videos / Images inject the live-verified `video` / `-video` tag for Rule34 and Gelbooru (worker/client filter only on chip conflict).
 3. If using **Favorites** / **Browse Source Subscriptions filter**, add at least one tag in the search bar (required by design)
 4. If Browse shows a centered error screen (not the empty “no posts” state), use **Retry** or **Open Settings** for auth failures — messages distinguish invalid API credentials, rate limits, and network errors
 

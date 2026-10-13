@@ -206,7 +206,9 @@ export const SettingsBackupTab = ({
         <section className="space-y-1">
           <p className="text-sm font-medium">Retention</p>
           <label className="space-y-2">
-            <span className="text-sm text-muted-foreground">Keep last N backups</span>
+            <span className="text-sm text-muted-foreground">
+              Keep last N of each set (manual and automatic counted separately, not summed)
+            </span>
             <Input
               type="number"
               min={1}

@@ -707,7 +707,7 @@ Saves settings to the database. Supports partial updates (credentials, sync opti
 - `creds.autoSyncOnArtistAdd?: boolean` - Auto-sync newly added artists (default off)
 - `creds.minimizeToTray?: boolean` - When true (default), close hides to tray; when false, close quits (Windows/Linux)
 - `creds.syncIntervalMinutes?: number` - Periodic sync interval in minutes
-- `creds.backupRetention?: number` - Number of backups to keep (1..20)
+- `creds.backupRetention?: number` - Keep last N **per** backup set (manual and automatic counted separately, not summed; 1..20)
 
 **Returns:** `Promise<boolean>`
 
@@ -1478,7 +1478,7 @@ if (result.success) {
 **IPC Channel:** `db:create-backup`
 
 **Note:** The backup file is created under `RuleDesk-Backups/` (sibling of `RuleDesk-Data`), via consistent `VACUUM INTO` in `backupIntegrityWorker` (Main closes the DB handle around the worker so the IPC loop stays responsive). The file explorer will open to show the backup location.
-After each successful backup, old backup files are pruned and only the most recent `backupRetention` files are kept.
+After each successful **manual** backup, old **manual** backup files are pruned to the most recent `backupRetention` names (`isManualBackupFilename`). Auto-backup cleanup runs separately after scheduled backups and keeps the most recent `backupRetention` **auto** files (`listAutoBackupFilesOldestFirst`). The two sets are not summed.
 
 ---
 
