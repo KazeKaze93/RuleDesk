@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
 import { artists, playlists, posts, settings, SETTINGS_ID } from "@/main/db/schema";
 import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
 import type { BooruPost, FetchPostsResult } from "@/main/providers/types";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 const fetchPostsMock = vi.fn();
 
 vi.mock("@/main/db/client", () => ({
@@ -15,6 +15,12 @@ vi.mock("@/main/db/client", () => ({
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -146,10 +152,9 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
   let playlistId: number;
 
   beforeEach(async () => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     fetchPostsMock.mockReset();
 
     fetchPostsMock.mockImplementation(
@@ -251,7 +256,7 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
       }
     }
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   async function resolvePage(

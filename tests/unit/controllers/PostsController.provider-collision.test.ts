@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
 import { artists, posts } from "@/main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
 import { and, eq } from "drizzle-orm";
@@ -9,6 +8,7 @@ import type { IpcMainInvokeEvent } from "electron";
 import type { PostData } from "@/shared/schemas/post";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
 vi.mock("@/main/db/client", () => ({
   getSqliteInstance: () => {
@@ -16,6 +16,12 @@ vi.mock("@/main/db/client", () => ({
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -124,10 +130,9 @@ describe("PostsController provider collision identity", () => {
   let controller: PostsControllerInternals;
 
   beforeEach(() => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     controller = new PostsController() as unknown as PostsControllerInternals;
     controller.setup();
     fetchPostsMock.mockReset();
@@ -136,7 +141,7 @@ describe("PostsController provider collision identity", () => {
   afterEach(() => {
     mockDb.sqlite.close();
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   it("stores Rule34 and Gelbooru external posts with the same postId as two rows", async () => {

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { artists, posts } from "../../../src/main/db/schema";
-import { container, DI_TOKENS } from "../../../src/main/core/di/Container";
 import { BATCH_DOWNLOAD_CHUNK_SIZE } from "../../../src/shared/constants";
 
 vi.mock("electron", () => ({
@@ -40,6 +39,7 @@ let mockDb: ReturnType<typeof createMockDb>;
 
 vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => mockDb.sqlite,
+  getDb: () => mockDb.db,
 }));
 
 import { PostsController } from "../../../src/main/ipc/controllers/PostsController";
@@ -48,9 +48,7 @@ describe("artist mass-download cursor", () => {
   let artistId: number;
 
   beforeEach(() => {
-    container.clear();
     mockDb = createMockDb();
-    container.register(DI_TOKENS.DB, mockDb.db);
 
     const inserted = mockDb.db
       .insert(artists)
@@ -85,7 +83,6 @@ describe("artist mass-download cursor", () => {
 
   afterEach(() => {
     mockDb.sqlite.close();
-    container.clear();
   });
 
   it("snapshots upperBound and walks id ASC in fixed chunks without including later inserts", () => {

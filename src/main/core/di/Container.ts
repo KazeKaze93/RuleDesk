@@ -1,16 +1,11 @@
 import log from "electron-log";
 import { Token } from "./Token";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import type { SyncScheduler } from "../../services/sync-scheduler";
 import type { BackupService } from "../../services/backup-service";
 
-type AppDatabase = BetterSQLite3Database<typeof schema>;
-
 /** Compile-time typed keys. Map uses token.id (stable across module reload). */
 export const DI_TOKENS = {
-  DB: new Token<AppDatabase>("Database", "SQLite database instance"),
   SYNC_SERVICE: new Token<SyncService>("SyncService", "Artist synchronization service"),
   SYNC_SCHEDULER: new Token<SyncScheduler>("SyncScheduler", "Periodic synchronization scheduler"),
   BACKUP_SERVICE: new Token<BackupService>("BackupService", "Backup automation service"),

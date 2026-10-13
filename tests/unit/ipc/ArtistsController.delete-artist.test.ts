@@ -7,6 +7,25 @@ import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
 import { container, DI_TOKENS } from "@/main/core/di/Container";
 import { DELETE_ARTIST_SYNC_DRAIN_MS } from "@/main/config/constants";
 
+
+let activeSqlite: import("better-sqlite3").Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
+
+vi.mock("@/main/db/client", () => ({
+  getSqliteInstance: () => {
+    if (!activeSqlite) {
+      throw new Error("Test sqlite instance is not initialized");
+    }
+    return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
+  },
+}));
+
 vi.mock("electron", () => ({
   app: { getPath: () => "/tmp" },
   ipcMain: {
@@ -51,7 +70,8 @@ describe("ArtistsController.deleteArtist sync coordination", () => {
   beforeEach(() => {
     container.clear();
     mockDb = createMockDb();
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeSqlite = mockDb.sqlite;
+    activeDb = mockDb.db;
 
     cancelArtistSyncAndWait = vi.fn();
     isArtistSyncActive = vi.fn();
@@ -78,6 +98,8 @@ describe("ArtistsController.deleteArtist sync coordination", () => {
   afterEach(() => {
     try {
       mockDb.sqlite.close();
+    activeSqlite = null;
+    activeDb = null;
     } catch {
       // ignore
     }

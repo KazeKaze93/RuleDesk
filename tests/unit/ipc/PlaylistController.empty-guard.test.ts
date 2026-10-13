@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
 import { artists, playlists, posts, settings, SETTINGS_ID } from "@/main/db/schema";
 import {
   dropFtsTriggersForBulkInsert,
@@ -12,6 +11,7 @@ import type { IpcMainInvokeEvent } from "electron";
 import type { SQL } from "drizzle-orm";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
 vi.mock("@/main/db/client", () => ({
   getSqliteInstance: () => {
@@ -19,6 +19,12 @@ vi.mock("@/main/db/client", () => ({
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -106,10 +112,9 @@ describe("PlaylistController FTS empty-guard", () => {
   let controller: PlaylistControllerInternals;
 
   beforeEach(async () => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     await mockDb.db.insert(settings).values({
       id: SETTINGS_ID,
       userId: "12345",
@@ -130,7 +135,7 @@ describe("PlaylistController FTS empty-guard", () => {
       }
     }
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   it("returns 1 = 0 when posts_fts is empty", () => {

@@ -10,7 +10,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getDb } from "../../db/client";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { getProxyAgent, getProxyUrl } from "../../lib/proxy";
 import {
@@ -391,7 +391,7 @@ export class FileController extends BaseController {
     downloadFolderStructure: "flat" | "{artist_id}";
   } {
     try {
-      const db = container.resolve(DI_TOKENS.DB);
+      const db = getDb();
       const row = db
         .select({
           duplicateFileBehavior: settings.duplicateFileBehavior,
@@ -418,7 +418,7 @@ export class FileController extends BaseController {
    */
   private async getDownloadRoot(): Promise<string> {
     try {
-      const db = container.resolve(DI_TOKENS.DB);
+      const db = getDb();
       const row = db
         .select({ downloadFolder: settings.downloadFolder })
         .from(settings)

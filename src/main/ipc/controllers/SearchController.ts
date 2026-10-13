@@ -2,7 +2,7 @@ import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getDb } from "../../db/client";
 import { settings, SETTINGS_ID, posts, TAG_TYPES } from "../../db/schema";
 import {
   loadTagMetadataCache,
@@ -13,8 +13,6 @@ import { buildSearchResultsCacheKey } from "../../../shared/search-results-cache
 import { eq, inArray, and } from "drizzle-orm";
 import { getProvider } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "../../db/schema";
 import type { BooruPost } from "../../providers/types";
 import type { Post } from "../../db/schema";
 import {
@@ -39,8 +37,6 @@ import {
   throwProviderSearchIpcError,
 } from "../../providers/provider-search-errors";
 
-type AppDatabase = BetterSQLite3Database<typeof schema>;
-
 // Internal type alias
 type SearchPostsParams = z.infer<typeof SearchPostsSchema>;
 
@@ -58,9 +54,6 @@ const ResolveTagsArgsSchema = z.tuple([z.array(z.string().min(1)).max(100)]);
  */
 export class SearchController extends BaseController {
   // Query style: Drizzle Builder API only in this controller.
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
-  }
 
   /**
    * Setup IPC handlers for search operations
@@ -102,7 +95,7 @@ export class SearchController extends BaseController {
     provider: ProviderId;
   } | null> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const settingsRecord = db
         .select()
         .from(settings)
@@ -172,7 +165,7 @@ export class SearchController extends BaseController {
         return [];
       }
 
-      const db = this.getDb();
+      const db = getDb();
       const cache = loadTagMetadataCache(db, uniqueTags);
 
       const settings = await this.getDecryptedSettings();
@@ -193,7 +186,7 @@ export class SearchController extends BaseController {
       // Re-read tag_metadata after the wave so the IPC payload matches what was
       // persisted. Parallel artist/character/copyright invokes share in-flight
       // lookups; the caller-local `cache` map can lag the SQLite write.
-      const fresh = loadTagMetadataCache(this.getDb(), uniqueTags);
+      const fresh = loadTagMetadataCache(getDb(), uniqueTags);
       return uniqueTags.filter((tag) => fresh.foundTypes.get(tag) === tagType);
     } catch (error) {
       log.error(`[SearchController] Failed to resolve tags (${context}):`, error);
@@ -469,7 +462,7 @@ export class SearchController extends BaseController {
         );
       }
 
-      const db = this.getDb();
+      const db = getDb();
       
       const apiFetchedCount = booruPosts.length;
       const hasMore = apiFetchedCount >= limit;

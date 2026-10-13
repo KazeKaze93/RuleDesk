@@ -4,11 +4,8 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq, desc, and, inArray, sql, or, not, asc, type SQL } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
 import { playlists, playlistEntries, posts } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "../../db/schema";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import type { InferSelectModel } from "drizzle-orm";
 import type { IpcSafe } from "../../../shared/types/ipc";
@@ -51,7 +48,7 @@ import {
   EXTERNAL_ARTIST_ID,
   PROVIDER_IDS,
 } from "../../../shared/constants";
-import { getSqliteInstance } from "../../db/client";
+import { getDb, getSqliteInstance } from "../../db/client";
 import { onDatabaseReopened } from "../../core/di/databaseRegistration";
 import { postsFtsTableExists } from "../../db/fts-table-check";
 import {
@@ -76,7 +73,6 @@ import {
 import { getAllBlacklistedTags } from "../../db/queries/blacklist";
 import { buildPostsBlacklistFilterCondition } from "../../db/queries/post-tag-filter";
 
-type AppDatabase = BetterSQLite3Database<typeof schema>;
 type UnknownRecord = Record<string, unknown>;
 const CreatePlaylistArgsSchema = z.tuple([CreatePlaylistSchema]);
 const IdArgsSchema = z.tuple([IdSchema]);
@@ -447,10 +443,6 @@ export class PlaylistController extends BaseController {
 
   public setMainWindow(window: BrowserWindow): void {
     this.mainWindow = window;
-  }
-
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
   }
 
   // Schema existence cache — refreshed on restore/VACUUM reopen
@@ -877,7 +869,7 @@ export class PlaylistController extends BaseController {
     data: CreatePlaylistRequest
   ): Promise<IpcPlaylist> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       // Defense in depth: Zod already validates at the IPC boundary.
       PlaylistQueryJsonWriteSchema.parse(data.queryJson ?? "");
 
@@ -958,7 +950,7 @@ export class PlaylistController extends BaseController {
    */
   private async getPlaylists(_event: IpcMainInvokeEvent): Promise<IpcPlaylistWithStats[]> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const manualPlaylists = getManualPlaylistsWithStats(db);
       const smartPlaylists = getSmartPlaylists(db);
 
@@ -1037,7 +1029,7 @@ export class PlaylistController extends BaseController {
     playlistId: number
   ): Promise<IpcPlaylist | null> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       const result = db
         .select()
@@ -1071,7 +1063,7 @@ export class PlaylistController extends BaseController {
     data: UpdatePlaylistRequest
   ): Promise<IpcPlaylist> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       const updateData: Partial<typeof playlists.$inferInsert> = {};
       if (data.name !== undefined) {
@@ -1129,7 +1121,7 @@ export class PlaylistController extends BaseController {
     playlistId: number
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
       // Cascade delete will automatically remove playlist_entries due to foreign key constraint
@@ -1159,7 +1151,7 @@ export class PlaylistController extends BaseController {
     data: RemovePostsFromPlaylistRequest
   ): Promise<number> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
       let entriesRemoved = 0;
@@ -1201,7 +1193,7 @@ export class PlaylistController extends BaseController {
     data: GetManualPlaylistMembershipForPostsRequest
   ): Promise<{ playlistId: number; matchCount: number }[]> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const rows = db
         .select({
           playlistId: playlistEntries.playlistId,
@@ -1233,7 +1225,7 @@ export class PlaylistController extends BaseController {
     _event: IpcMainInvokeEvent,
     data: SyncManualPlaylistMembershipRequest
   ): Promise<void> {
-    const db = this.getDb();
+    const db = getDb();
     const desired = new Set(data.manualPlaylistIds);
     if (desired.size !== data.manualPlaylistIds.length) {
       throw new Error("Duplicate playlist ids in manualPlaylistIds");
@@ -1320,7 +1312,7 @@ export class PlaylistController extends BaseController {
     _event: IpcMainInvokeEvent,
     data: ClearManualPlaylistRequest
   ): Promise<void> {
-    const db = this.getDb();
+    const db = getDb();
     const [row] = db
       .select({ id: playlists.id, isSmart: playlists.isSmart })
       .from(playlists)
@@ -1359,7 +1351,7 @@ export class PlaylistController extends BaseController {
       throw new Error("Source and target playlist must differ");
     }
 
-    const db = this.getDb();
+    const db = getDb();
     const pair = db
       .select({ id: playlists.id, isSmart: playlists.isSmart })
       .from(playlists)
@@ -1440,7 +1432,7 @@ export class PlaylistController extends BaseController {
     const offset = (page - 1) * limit;
 
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // Build WHERE conditions array
       const conditions = [eq(playlistEntries.playlistId, playlistId)];
@@ -1522,7 +1514,7 @@ export class PlaylistController extends BaseController {
     params: ReorderPlaylistEntriesRequest
   ): Promise<void> {
     const { playlistId, orderedPostIds } = params;
-    const db = this.getDb();
+    const db = getDb();
 
     const reorderedEntries = orderedPostIds.map((postId, index) => ({
       playlistId,
@@ -1571,7 +1563,7 @@ export class PlaylistController extends BaseController {
     provider?: (typeof PROVIDER_IDS)[number]
   ): Promise<number[]> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       let result: { playlistId: number }[];
       if (postId <= 0 && externalPostId != null && externalPostId > 0 && provider) {
@@ -1615,7 +1607,7 @@ export class PlaylistController extends BaseController {
     playlistId: number
   ): Promise<{ success: boolean; path?: string; error?: string }> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const playlist = db
         .select()
         .from(playlists)
@@ -1750,7 +1742,7 @@ export class PlaylistController extends BaseController {
         };
       }
 
-      const db = this.getDb();
+      const db = getDb();
 
       // Resolve local post ids OUTSIDE the write transaction (reads only).
       // Match by (artistId, provider, postId); v1 falls back to unambiguous postId.
@@ -1930,7 +1922,7 @@ export class PlaylistController extends BaseController {
     const offset = (page - 1) * limit;
 
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // Get playlist to check if it's smart
       const playlist = db
@@ -2280,7 +2272,7 @@ export class PlaylistController extends BaseController {
       // CRITICAL: Provider must match the actual source of posts to prevent 404 or invalid data
       const providerId = query.provider ?? "rule34";
       const provider = getProvider(providerId);
-      const apiSettings = await getDecryptedApiSettings(this.getDb());
+      const apiSettings = await getDecryptedApiSettings(getDb());
       
       if (!apiSettings) {
         throw createCodedError(

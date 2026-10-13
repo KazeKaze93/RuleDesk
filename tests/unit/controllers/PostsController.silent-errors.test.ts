@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
 import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
 vi.mock("@/main/db/client", () => ({
   getSqliteInstance: () => {
@@ -12,6 +12,12 @@ vi.mock("@/main/db/client", () => ({
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -89,10 +95,9 @@ describe("PostsController DB errors do not become empty success", () => {
   let controller: PostsControllerInternals;
 
   beforeEach(() => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     controller = new PostsController() as unknown as PostsControllerInternals;
     controller.setup();
   });
@@ -104,12 +109,13 @@ describe("PostsController DB errors do not become empty success", () => {
       // already closed in tests that force DB failure
     }
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   function closeDb(): void {
     mockDb.sqlite.close();
     activeSqlite = null;
+    activeDb = null;
   }
 
   it("getPostsCount rejects on DB error (not 0)", async () => {

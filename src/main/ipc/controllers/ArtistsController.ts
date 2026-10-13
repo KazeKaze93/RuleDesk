@@ -4,6 +4,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
+import { getDb } from "../../db/client";
 import { artists, settings, SETTINGS_ID, TAG_TYPES } from "../../db/schema";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
@@ -12,8 +13,6 @@ import {
   type SearchResults,
 } from "../../providers";
 import { IPC_CHANNELS } from "../channels";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "../../db/schema";
 import type { SyncService } from "../../services/sync-service";
 import { toIpcSafe } from "../../utils/ipc-serialization";
 import { getTrackedArtistsWithStats } from "../../db/queries/artists";
@@ -38,7 +37,6 @@ import type { ProviderSettings } from "../../providers/types";
 import { isAbortError } from "../../providers/provider-throttle";
 import { DELETE_ARTIST_SYNC_DRAIN_MS } from "../../config/constants";
 
-type AppDatabase = BetterSQLite3Database<typeof schema>;
 // Use Drizzle's type inference instead of manual imports for type safety
 // This ensures types always match the schema, even if schema changes
 type Artist = InferSelectModel<typeof artists>;
@@ -90,10 +88,6 @@ export class ArtistsController extends BaseController {
   private artistAutocompleteAbort: AbortController | null = null;
 
   // Query style: Drizzle Builder API only in this controller.
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
-  }
-
   private getSyncService(): SyncService {
     return container.resolve(DI_TOKENS.SYNC_SERVICE);
   }
@@ -133,7 +127,7 @@ export class ArtistsController extends BaseController {
    * @returns Array of artists
    */
   private async getArtists(_event: IpcMainInvokeEvent): Promise<IpcArtist[]> {
-    const db = this.getDb();
+    const db = getDb();
     try {
       // Use COALESCE with integer columns (both are integer with timestamp mode)
       // This matches the expression index: COALESCE(last_checked, created_at) DESC
@@ -181,7 +175,7 @@ export class ArtistsController extends BaseController {
     );
 
     try {
-      const db = this.getDb();
+      const db = getDb();
       const artistData: NewArtist = {
         name: args.name,
         tag: args.tag,
@@ -224,7 +218,7 @@ export class ArtistsController extends BaseController {
    */
   private maybeQueueAutoSyncOnArtistAdd(artistId: number): void {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const currentSettings = db
         .select()
         .from(settings)
@@ -305,7 +299,7 @@ export class ArtistsController extends BaseController {
     }
 
     try {
-      const db = this.getDb();
+      const db = getDb();
       db.delete(artists).where(eq(artists.id, id)).run();
       log.info(`[ArtistsController] Artist deleted: ID ${id}`);
       return DeleteArtistResultSchema.parse({ ok: true });
@@ -366,7 +360,7 @@ export class ArtistsController extends BaseController {
 
   private getDecryptedProviderSettings(): ProviderSettings | null {
     try {
-      const settingsRecord = this.getDb()
+      const settingsRecord = getDb()
         .select()
         .from(settings)
         .where(eq(settings.id, SETTINGS_ID))
@@ -412,7 +406,7 @@ export class ArtistsController extends BaseController {
       return [];
     }
 
-    const db = this.getDb();
+    const db = getDb();
     const cache = loadTagMetadataCache(db, uniqueTags);
     const providerSettings = this.getDecryptedProviderSettings();
     if (providerSettings) {

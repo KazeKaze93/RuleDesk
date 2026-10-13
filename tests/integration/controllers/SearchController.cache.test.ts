@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
 import { settings, SETTINGS_ID } from "@/main/db/schema";
 import { ProviderSearchError } from "@/main/providers/provider-search-errors";
 import type { BooruPost } from "@/shared/schemas/booru";
@@ -113,12 +112,10 @@ describe("SearchController search_results_cache wiring", () => {
   let controller: SearchController;
 
   beforeEach(async () => {
-    container.clear();
     resetSearchResultsCacheForTests();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
     activeDb = mockDb.db;
-    container.register(DI_TOKENS.DB, mockDb.db);
     await mockDb.db.insert(settings).values({
       id: SETTINGS_ID,
       userId: "12345",
@@ -144,7 +141,6 @@ describe("SearchController search_results_cache wiring", () => {
     }
     activeSqlite = null;
     activeDb = null;
-    container.clear();
     resetSearchResultsCacheForTests();
   });
 

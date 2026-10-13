@@ -20,7 +20,6 @@ import { UpdaterService } from "../services/updater-service";
 import { VideoProxyServer } from "../services/video-proxy-server";
 import type { BackupService } from "../services/backup-service";
 import type { MaintenanceService } from "../services/MaintenanceService";
-import { getDb } from "../db/client";
 import { container, DI_TOKENS } from "../core/di/Container";
 
 /**
@@ -28,6 +27,9 @@ import { container, DI_TOKENS } from "../core/di/Container";
  *
  * Initializes DI Container and registers all IPC controllers.
  * Called once during application startup.
+ *
+ * Controllers obtain the live DB via getDb() at handler invocation time
+ * (no DI DB token — survives restore/VACUUM reopen without rebind).
  *
  * @returns Object with controllers that need window reference
  */
@@ -48,11 +50,6 @@ export function setupIpc(
   playlistController: PlaylistController;
 } {
   log.info("[IPC] Setting up IPC handlers...");
-
-  // Register database in DI container (using type-safe tokens)
-  const db = getDb();
-  container.register(DI_TOKENS.DB, db);
-  log.info("[IPC] Database registered in DI container");
 
   // Register core controllers
   const videoProxyController = new VideoProxyController(videoProxyServer);

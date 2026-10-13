@@ -5,6 +5,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
+import { getDb } from "../../db/client";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { SecureStorage } from "../../services/secure-storage";
 import { reloadProxyFromSettings } from "../../lib/proxy";
@@ -17,14 +18,10 @@ import {
   type SaveSettings,
   type ThemePreference,
 } from "../../../shared/schemas/settings";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "../../db/schema";
 import { z } from "zod";
 import { PROVIDER_IDS } from "../../../shared/constants";
 import { normalizeCredentialsInput } from "../../../shared/utils/parse-credentials";
 import { getDecryptedCredentialsFromRecord, hasConfiguredApiKey } from "../../utils/decrypted-credentials";
-
-type AppDatabase = BetterSQLite3Database<typeof schema>;
 
 const SaveDownloadFolderArgSchema = z.union([
   z.null(),
@@ -128,10 +125,6 @@ function mapSettingsToIpc(
  */
 export class SettingsController extends BaseController {
   // Query style: Drizzle Builder API only in this controller.
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
-  }
-
 
   /**
    * Setup IPC handlers for settings operations
@@ -199,7 +192,7 @@ export class SettingsController extends BaseController {
    */
   private async getSettings(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       // CRITICAL: Always query by SETTINGS_ID to ensure we get the correct record
       const currentSettings = db
         .select()
@@ -256,7 +249,7 @@ export class SettingsController extends BaseController {
     }
 
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // PERFORMANCE: Prepare all data BEFORE transaction to minimize I/O wait inside transaction
       // Encryption and logging are CPU-bound operations that should not block the database
@@ -423,7 +416,7 @@ export class SettingsController extends BaseController {
     theme: ThemePreference
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const existing = db
         .select()
         .from(settings)
@@ -469,7 +462,7 @@ export class SettingsController extends BaseController {
     folderPath: string | null
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const existing = db
         .select()
         .from(settings)
@@ -501,7 +494,7 @@ export class SettingsController extends BaseController {
     data: { duplicateFileBehavior?: "skip" | "overwrite"; downloadFolderStructure?: "flat" | "{artist_id}" }
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const existing = db
         .select()
         .from(settings)
@@ -544,7 +537,7 @@ export class SettingsController extends BaseController {
    */
   private async confirmLegal(_event: IpcMainInvokeEvent): Promise<IpcSettings> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const now = new Date();
 
       // Get existing settings BEFORE transaction to preserve userId and encryptedApiKey
@@ -633,7 +626,7 @@ export class SettingsController extends BaseController {
 
   private async resetOnboarding(_event: IpcMainInvokeEvent): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       db.delete(settings).where(eq(settings.id, SETTINGS_ID)).run();
       return true;
     } catch (error) {

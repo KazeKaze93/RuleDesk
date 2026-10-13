@@ -3,13 +3,9 @@ import log from "electron-log";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
+import { getDb } from "../../db/client";
 import { settings, SETTINGS_ID } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import type * as schema from "../../db/schema";
-
-type AppDatabase = BetterSQLite3Database<typeof schema>;
 
 /**
  * Auth Controller
@@ -19,10 +15,6 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  */
 // Query style: Drizzle Builder API only in this controller.
 export class AuthController extends BaseController {
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
-  }
-
   /**
    * Setup IPC handlers for auth operations
    */
@@ -44,7 +36,7 @@ export class AuthController extends BaseController {
    */
   private async logout(_event: IpcMainInvokeEvent): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       
       // Clear API key atomically
       await db

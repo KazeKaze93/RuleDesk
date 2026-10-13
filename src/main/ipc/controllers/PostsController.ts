@@ -16,7 +16,6 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
-import { container, DI_TOKENS } from "../../core/di/Container";
 import { posts, artists } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
@@ -40,7 +39,7 @@ import {
 } from "../../../shared/constants";
 import { AI_TAGS } from "../../../shared/ai-tags";
 import type { DownloadQueueItem } from "../../../shared/types/download";
-import { getSqliteInstance } from "../../db/client";
+import { getDb, getSqliteInstance } from "../../db/client";
 import { onDatabaseReopened } from "../../core/di/databaseRegistration";
 import { postsFtsTableExists } from "../../db/fts-table-check";
 import {
@@ -124,10 +123,6 @@ const ShadowInsertPostArgsSchema = z.tuple([ShadowInsertRequestSchema]);
  */
 // Query style: Drizzle Builder API only in this controller.
 export class PostsController extends BaseController {
-  private getDb(): AppDatabase {
-    return container.resolve(DI_TOKENS.DB);
-  }
-
   // Schema existence caches — refreshed on restore/VACUUM reopen
   private ftsTableExistsCache: boolean = false;
   // Optional view metadata columns (backward compat with pre-migration DBs)
@@ -473,7 +468,7 @@ export class PostsController extends BaseController {
     artistId: number,
     filters: PostFilterRequest | undefined
   ): { upperBoundId: number; total: number } {
-    const db = this.getDb();
+    const db = getDb();
     const conditions = this.buildPostFilterConditions(artistId, filters);
     const whereClause =
       conditions.length > 0 ? and(...conditions) : undefined;
@@ -500,7 +495,7 @@ export class PostsController extends BaseController {
     upperBoundId: number;
     limit?: number;
   }): Array<DownloadQueueItem & { id: number }> {
-    const db = this.getDb();
+    const db = getDb();
     const limit = params.limit ?? BATCH_DOWNLOAD_CHUNK_SIZE;
     const conditions = this.buildPostFilterConditions(
       params.artistId,
@@ -546,7 +541,7 @@ export class PostsController extends BaseController {
     const offset = (page - 1) * limit;
 
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // If sinceTracking filter is enabled, we need to use join
       if (filters?.sinceTracking === true) {
@@ -696,7 +691,7 @@ export class PostsController extends BaseController {
     params: GetPostsCountRequest
   ): Promise<number> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const { artistId, filters } = params;
       const baseConditions = this.buildPostFilterConditions(artistId, filters);
       const whereClause =
@@ -729,7 +724,7 @@ export class PostsController extends BaseController {
     params: Pick<GetPostsRequest, "artistId" | "filters">
   ): Promise<number> {
     try {
-      const db = this.getDb();
+      const db = getDb();
       const { artistId, filters } = params;
 
       if (filters?.sinceTracking === true) {
@@ -787,7 +782,7 @@ export class PostsController extends BaseController {
     postData?: PostData
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // CRITICAL: For external posts (negative ID), we need postData to create/update
       // For existing posts (positive ID), we can use onConflictDoUpdate with postId lookup
@@ -957,7 +952,7 @@ export class PostsController extends BaseController {
     postId: number
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
       db.transaction((tx) => {
@@ -995,7 +990,7 @@ export class PostsController extends BaseController {
     postData?: PostData
   ): Promise<boolean> {
     try {
-      const db = this.getDb();
+      const db = getDb();
 
       // CRITICAL: better-sqlite3 requires synchronous transaction callbacks
       // All queries must be inside transaction for atomicity and efficiency
@@ -1242,7 +1237,7 @@ export class PostsController extends BaseController {
     
     try {
       // Step 1: Check if post already exists in DB for this provider
-      const existingPost = this.getDb()
+      const existingPost = getDb()
         .select()
         .from(posts)
         .where(
@@ -1262,7 +1257,7 @@ export class PostsController extends BaseController {
 
       // Step 2: Fetch post data from API (Main process controls data source)
       const provider = getProvider(request.provider);
-      const apiSettings = await getDecryptedApiSettings(this.getDb());
+      const apiSettings = await getDecryptedApiSettings(getDb());
       
       if (!apiSettings) {
         throw new Error("API credentials not configured. Cannot fetch post data from provider.");
@@ -1316,7 +1311,7 @@ export class PostsController extends BaseController {
       }
 
       // After network await — fresh DI handle (restore/VACUUM may have reopened).
-      const db = this.getDb();
+      const db = getDb();
 
       // Step 4: Ensure EXTERNAL_ARTIST_ID exists (cached check)
       if (!this.externalArtistExistsCache) {

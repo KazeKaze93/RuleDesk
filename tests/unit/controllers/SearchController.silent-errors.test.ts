@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
 import { TAG_TYPES } from "@/main/db/schema";
 import type Database from "better-sqlite3";
 
 let activeSqlite: Database.Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
 vi.mock("@/main/db/client", () => ({
   getSqliteInstance: () => {
@@ -12,6 +12,12 @@ vi.mock("@/main/db/client", () => ({
       throw new Error("Test sqlite instance is not initialized");
     }
     return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
   },
 }));
 
@@ -76,10 +82,9 @@ describe("SearchController.resolveTagsForType DB errors", () => {
   let controller: SearchControllerInternals;
 
   beforeEach(() => {
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeDb = mockDb.db;
     controller = new SearchController() as unknown as SearchControllerInternals;
     controller.setup();
   });
@@ -87,7 +92,7 @@ describe("SearchController.resolveTagsForType DB errors", () => {
   afterEach(() => {
     mockDb.sqlite.close();
     activeSqlite = null;
-    container.clear();
+    activeDb = null;
   });
 
   it("rejects on DB error instead of returning []", async () => {

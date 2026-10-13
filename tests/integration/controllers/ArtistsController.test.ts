@@ -6,6 +6,25 @@ import { artists, settings, SETTINGS_ID } from '@/main/db/schema';
 import { eq } from 'drizzle-orm';
 
 // Mock Electron BEFORE imports
+
+let activeSqlite: import("better-sqlite3").Database | null = null;
+let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
+
+vi.mock("@/main/db/client", () => ({
+  getSqliteInstance: () => {
+    if (!activeSqlite) {
+      throw new Error("Test sqlite instance is not initialized");
+    }
+    return activeSqlite;
+  },
+  getDb: () => {
+    if (!activeDb) {
+      throw new Error("Test db is not initialized");
+    }
+    return activeDb;
+  },
+}));
+
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp' },
   ipcMain: { 
@@ -55,15 +74,13 @@ describe('ArtistsController Integration', () => {
 
     // Create fresh in-memory database (:memory: guarantees clean slate)
     mockDb = createMockDb();
-
-    // Register mock DB in DI container
-    // Container.register expects the instance directly, not wrapped in an object
-    container.register(DI_TOKENS.DB, mockDb.db);
+    activeSqlite = mockDb.sqlite;
+    activeDb = mockDb.db;
 
     repairArtist = vi.fn().mockResolvedValue(undefined);
     container.register(DI_TOKENS.SYNC_SERVICE, { repairArtist });
 
-    // Instantiate controller (will use the fresh DB from container)
+    // Instantiate controller (handlers call getDb() → activeDb mock)
     controller = new ArtistsController();
   });
 
@@ -72,6 +89,8 @@ describe('ArtistsController Integration', () => {
     if (mockDb?.sqlite) {
       try {
         mockDb.sqlite.close();
+    activeSqlite = null;
+    activeDb = null;
       } catch (_error) {
         // Ignore errors when closing (database might already be closed)
       }

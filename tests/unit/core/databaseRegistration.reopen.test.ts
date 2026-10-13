@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createMockDb } from "../../helpers/mock-db";
 
 vi.mock("electron-log", () => ({
   default: {
@@ -10,46 +9,27 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-const { getDbMock } = vi.hoisted(() => ({
-  getDbMock: vi.fn(),
-}));
-
-vi.mock("@/main/db/client", () => ({
-  getDb: () => getDbMock(),
-}));
-
 import {
   onDatabaseReopened,
   registerDatabaseInContainerAfterReinit,
   resetDatabaseReopenedListenersForTests,
 } from "@/main/core/di/databaseRegistration";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
 
 describe("databaseRegistration reopen notify", () => {
-  let mockDb: ReturnType<typeof createMockDb>;
-
   beforeEach(() => {
     resetDatabaseReopenedListenersForTests();
-    mockDb = createMockDb();
-    getDbMock.mockImplementation(() => mockDb.db);
   });
 
   afterEach(() => {
     resetDatabaseReopenedListenersForTests();
-    try {
-      mockDb.sqlite.close();
-    } catch {
-      // Ignore close errors in tests.
-    }
   });
 
-  it("rebinds DI DB and notifies subscribers after reinit", () => {
+  it("notifies subscribers after reinit (no DI DB rebind)", () => {
     const listener = vi.fn();
     onDatabaseReopened(listener);
 
     registerDatabaseInContainerAfterReinit();
 
-    expect(container.resolve(DI_TOKENS.DB)).toBe(mockDb.db);
     expect(listener).toHaveBeenCalledTimes(1);
   });
 

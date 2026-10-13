@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
 import { artists, posts } from "@/main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
 import { eq } from "drizzle-orm";
@@ -94,6 +93,10 @@ import {
 
 type PostsControllerInternals = {
   setup: () => void;
+  getPostsCount: (
+    event: IpcMainInvokeEvent,
+    params: { artistId?: number }
+  ) => Promise<number>;
   shadowInsertPost: (
     event: IpcMainInvokeEvent,
     request: { postId: number; provider: "rule34" | "gelbooru" }
@@ -110,11 +113,9 @@ describe("PostsController reopen schema caches", () => {
 
   beforeEach(() => {
     resetDatabaseReopenedListenersForTests();
-    container.clear();
     mockDb = createMockDb();
     activeSqlite = mockDb.sqlite;
     activeDb = mockDb.db;
-    container.register(DI_TOKENS.DB, mockDb.db);
     controller = new PostsController() as unknown as PostsControllerInternals;
     controller.setup();
   });
@@ -124,7 +125,6 @@ describe("PostsController reopen schema caches", () => {
     mockDb.sqlite.close();
     activeSqlite = null;
     activeDb = null;
-    container.clear();
   });
 
   it("clears externalArtistExistsCache on DB reopen so restore without artist 0 can re-ensure", async () => {
@@ -179,5 +179,51 @@ describe("PostsController reopen schema caches", () => {
         .where(eq(artists.id, EXTERNAL_ARTIST_ID))
         .all()
     ).toHaveLength(1);
+  });
+
+  it("handler uses getDb() after reopen, not a stale closed handle", async () => {
+    const stale = mockDb;
+    expect(await controller.getPostsCount(dummyEvent, {})).toBe(0);
+
+    const live = createMockDb();
+    const artistId = live.db
+      .insert(artists)
+      .values({
+        id: 7,
+        name: "Live Artist",
+        tag: "live_artist",
+        provider: "rule34",
+        type: "tag",
+        apiEndpoint: "",
+        lastPostId: 0,
+        newPostsCount: 0,
+        createdAt: new Date(),
+      })
+      .returning({ id: artists.id })
+      .get().id;
+
+    live.db
+      .insert(posts)
+      .values({
+        postId: 9001,
+        artistId,
+        fileUrl: "https://example.com/9001.jpg",
+        previewUrl: "https://example.com/9001_p.jpg",
+        tags: "tag_a",
+        publishedAt: new Date(),
+        createdAt: new Date(),
+      })
+      .run();
+
+    // Simulate restore/VACUUM: close old connection and point getDb() at the new one.
+    stale.sqlite.close();
+    activeSqlite = live.sqlite;
+    activeDb = live.db;
+    mockDb = live;
+
+    registerDatabaseInContainerAfterReinit();
+
+    // Stale closed handle would throw; live getDb() returns the new connection's count.
+    expect(await controller.getPostsCount(dummyEvent, { artistId })).toBe(1);
   });
 });
