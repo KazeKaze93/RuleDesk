@@ -16,6 +16,8 @@ import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import type { Post } from "@shared/types/db";
 import { Button } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
+import { PageHeader } from "../layout/PageHeader";
 import {
   Tooltip,
   TooltipContent,
@@ -63,7 +65,7 @@ const {
   MasonryVirtuosoList,
 } = createVirtuosoGridFactories("Favorites");
 
-// --- Основной компонент ---
+// --- Main component ---
 
 export const Favorites = () => {
   const queryClient = useQueryClient();
@@ -293,52 +295,54 @@ export const Favorites = () => {
     <div className="flex flex-col h-full -m-6 bg-background text-foreground">
       {/* Header */}
       <div className="flex z-[5] items-center px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
-        <div className="flex gap-4 items-center">
-          <div>
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
-              Favorites
-            </h2>
-            {allPosts.length > 0 && (
-              <div className="flex gap-2 text-xs text-muted-foreground">
-                <span className="text-sm font-medium text-muted-foreground">
-                  {allPosts.length} {allPosts.length === 1 ? "post" : "posts"}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant={isBulkMode ? "default" : "outline"}
-                  size="icon"
-                  aria-label="Toggle bulk selection mode"
-                  onClick={() => {
-                    if (isBulkMode) {
-                      deactivateBulkMode();
-                      return;
-                    }
-                    activateBulkMode();
-                  }}
-                >
-                  <CheckSquare className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Bulk selection</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="w-full">
+          <PageHeader
+            title="Favorites"
+            icon={Heart}
+            description={
+              allPosts.length > 0
+                ? `${allPosts.length} ${allPosts.length === 1 ? "post" : "posts"}`
+                : undefined
+            }
+            actions={
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant={isBulkMode ? "default" : "outline"}
+                      size="icon"
+                      aria-label="Toggle bulk selection mode"
+                      onClick={() => {
+                        if (isBulkMode) {
+                          deactivateBulkMode();
+                          return;
+                        }
+                        activateBulkMode();
+                      }}
+                    >
+                      <CheckSquare className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Bulk selection</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            }
+          />
         </div>
       </div>
 
       {/* Grid Content */}
       <div className="flex-1 min-h-0">
         {isLoading && allPosts.length === 0 ? (
-          <div className="flex justify-center items-center h-full text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin" />
+          <div className="flex flex-col gap-3 justify-center items-center h-full px-6">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+            <div className="grid w-full max-w-3xl grid-cols-3 gap-3 pt-4">
+              {Array.from({ length: 6 }, (_, index) => (
+                <Skeleton key={index} className="aspect-square w-full" />
+              ))}
+            </div>
           </div>
         ) : allPosts.length === 0 ? (
           <div className="flex flex-col justify-center items-center h-full text-muted-foreground gap-4">

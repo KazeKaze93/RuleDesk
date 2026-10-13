@@ -2,6 +2,7 @@ import { List, Sparkles } from "lucide-react";
 import type { PlaylistWithStats } from "@shared/types/bridge";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { cn } from "../../lib/utils";
+import { Button } from "../ui/button";
 
 interface PlaylistCardProps {
   playlist: PlaylistWithStats;
@@ -29,11 +30,12 @@ export const PlaylistCard = ({
       : `${playlist.postCount} posts · Updated ${formatRelativeTime(updatedAtMs)}`;
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={() => onOpen(playlist)}
       className={cn(
-        "flex w-full min-w-0 flex-col items-start gap-2 text-left",
+        "flex h-auto w-full min-w-0 flex-col items-start gap-2 px-0 py-0 text-left hover:bg-transparent",
         actionPaddingClassName
       )}
     >
@@ -49,6 +51,6 @@ export const PlaylistCard = ({
       {playlist.isSmart && (
         <span className="text-xs font-medium text-primary">Smart Collection</span>
       )}
-    </button>
+    </Button>
   );
 };

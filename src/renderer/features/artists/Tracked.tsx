@@ -3,13 +3,18 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Plus, Users } from "lucide-react";
 import log from "electron-log/renderer";
+import { toast } from "sonner";
 import { ArtistListRow } from "./components/ArtistListRow";
 import { AddArtistModal } from "../../components/dialogs/AddArtistModal";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Skeleton } from "../../components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { PageHeader } from "../../components/layout/PageHeader";
 import { TooltipProvider } from "../../components/ui/tooltip";
 import type { TrackedArtist } from "@shared/types/bridge";
 import type { ProviderId } from "../../../shared/constants";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 const PAGE_TITLE = "Tracked artists";
 const PAGE_SUBTITLE =
@@ -23,8 +28,9 @@ const EMPTY_CTA_LABEL = "Add your first artist";
 const SEARCH_PLACEHOLDER = "Search artists...";
 const SEARCH_ARIA_LABEL = "Search artists by name";
 const NO_MATCH_MESSAGE = "No artists match";
-const LOADING_MESSAGE = "Loading artists...";
-const ERROR_MESSAGE = "Error loading artists";
+const ERROR_TITLE = "Could not load artists";
+const RETRY_LABEL = "Retry";
+const ADD_FAILED_TOAST = "Failed to add artist";
 
 export const Tracked = () => {
   const navigate = useNavigate();
@@ -33,17 +39,18 @@ export const Tracked = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const addModalReturnFocusRef = useRef<HTMLElement | null>(null);
 
-  // Fetch artists
   const {
     data: artists,
     isLoading,
+    isError,
     error,
+    refetch,
+    isFetching,
   } = useQuery({
     queryKey: ["artists"],
     queryFn: () => window.api.getTrackedArtists(),
   });
 
-  // Handler for adding artist
   const handleAddArtist = async (
     name: string,
     tag: string,
@@ -58,23 +65,22 @@ export const Tracked = () => {
         provider,
       });
 
-      // Invalidate cache to refresh list
       void queryClient
         .invalidateQueries({ queryKey: ["artists"] })
-        .catch((error: unknown) => {
-          log.error("[Tracked] Failed to invalidate artists:", error);
+        .catch((invalidateError: unknown) => {
+          log.error("[Tracked] Failed to invalidate artists:", invalidateError);
         });
       setIsAddModalOpen(false);
-    } catch (err) {
+    } catch (err: unknown) {
       log.error("[Tracked] Failed to add artist:", err);
+      toast.error(resolveErrorMessage(err, ADD_FAILED_TOAST));
     }
   };
 
-  // Handler for clicking a card
   const handleSelectArtist = (artist: TrackedArtist) => {
     void Promise.resolve(navigate(`/artist/${artist.id}`)).catch(
-      (error: unknown) => {
-        log.error("[Tracked] Navigation to artist failed:", error);
+      (navError: unknown) => {
+        log.error("[Tracked] Navigation to artist failed:", navError);
       }
     );
   };
@@ -90,34 +96,73 @@ export const Tracked = () => {
       artist.name.toLowerCase().includes(normalizedQuery)
     ) ?? [];
 
-  if (isLoading)
-    return <div className="p-8 text-muted-foreground">{LOADING_MESSAGE}</div>;
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title={PAGE_TITLE}
+          description={PAGE_SUBTITLE}
+          icon={Users}
+        />
+        <Skeleton className="h-10 w-full max-w-sm" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }, (_, index) => (
+            <Skeleton key={index} className="h-14 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  if (error)
-    return <div className="p-8 text-destructive">{ERROR_MESSAGE}</div>;
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title={PAGE_TITLE}
+          description={PAGE_SUBTITLE}
+          icon={Users}
+        />
+        <Alert variant="destructive">
+          <AlertTitle>{ERROR_TITLE}</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>{resolveErrorMessage(error, "Failed to load tracked artists.")}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={isFetching}
+              onClick={() => {
+                void refetch();
+              }}
+            >
+              {RETRY_LABEL}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start gap-4">
-        <div className="space-y-1">
-          <h1 className="flex gap-2 items-center text-2xl font-bold tracking-tight">
-            <Users className="w-6 h-6 text-primary" aria-hidden="true" />
-            {PAGE_TITLE}
-          </h1>
-          <p className="text-sm text-muted-foreground">{PAGE_SUBTITLE}</p>
-        </div>
-        <Button
-          onClick={(e) => {
-            openAddModal(e.currentTarget);
-          }}
-          variant="default"
-          className="gap-2 shrink-0"
-          aria-label={ADD_ARTIST_ARIA_LABEL}
-        >
-          <Plus className="w-4 h-4" aria-hidden="true" />
-          {ADD_ARTIST_LABEL}
-        </Button>
-      </div>
+      <PageHeader
+        title={PAGE_TITLE}
+        description={PAGE_SUBTITLE}
+        icon={Users}
+        actions={
+          <Button
+            onClick={(e) => {
+              openAddModal(e.currentTarget);
+            }}
+            variant="default"
+            className="gap-2 shrink-0"
+            aria-label={ADD_ARTIST_ARIA_LABEL}
+          >
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            {ADD_ARTIST_LABEL}
+          </Button>
+        }
+      />
 
       {!artists || artists.length === 0 ? (
         <div

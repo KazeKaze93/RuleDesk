@@ -30,6 +30,10 @@ import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import { Button } from "../ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Skeleton } from "../ui/skeleton";
+import { PageHeader } from "../layout/PageHeader";
+import { openExternalSafe } from "../../lib/open-external";
+import { buildSiteTagSearchUrl } from "../../../shared/utils/site-urls";
 import {
   Tooltip,
   TooltipContent,
@@ -86,7 +90,7 @@ const {
   MasonryVirtuosoList,
 } = createVirtuosoGridFactories("Browse");
 
-// --- Основной компонент ---
+// --- Main component ---
 
 export const Browse = () => {
   useReleaseRadixModalLockOnMount();
@@ -448,64 +452,64 @@ export const Browse = () => {
     <div className="flex flex-col -m-6 h-full bg-background text-foreground">
       {/* Header */}
       <div className="flex z-[5] flex-col gap-4 px-6 py-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-border">
-        <div className="flex items-center">
-          <h2 className="flex gap-2 items-center text-xl font-bold">
-            <Search className="w-5 h-5 text-primary" />
-            Browse
-          </h2>
-          <div className="ml-auto flex items-center gap-2">
-            <DownloadAllButton
-              onClick={() => {
-                void downloadAll();
-              }}
-              onCancel={cancelLoadedDownload}
-              onPause={pauseLoadedDownload}
-              onResume={resumeLoadedDownload}
-              isDownloading={isDownloadingLoaded}
-              isPaused={isLoadedDownloadPaused}
-              progress={loadedDownloadProgress}
-              canDownload={canDownloadLoaded}
-              totalLabel={loadedCount}
-              labelMode="loaded"
-              failures={loadedDownloadFailures}
-            />
-            {canShowTrackAndDownload ? (
-              <TrackAndDownloadButton
+        <PageHeader
+          title="Browse"
+          icon={Search}
+          actions={
+            <>
+              <DownloadAllButton
                 onClick={() => {
-                  void trackAndDownload();
+                  void downloadAll();
                 }}
-                onCancel={cancelTrackAndDownload}
-                onPause={pauseTrackAndDownload}
-                onResume={resumeTrackAndDownload}
-                phase={trackAndDownloadPhase}
-                isPaused={isTrackAndDownloadPaused}
-                progress={trackAndDownloadProgress}
+                onCancel={cancelLoadedDownload}
+                onPause={pauseLoadedDownload}
+                onResume={resumeLoadedDownload}
+                isDownloading={isDownloadingLoaded}
+                isPaused={isLoadedDownloadPaused}
+                progress={loadedDownloadProgress}
+                canDownload={canDownloadLoaded}
+                totalLabel={loadedCount}
+                labelMode="loaded"
+                failures={loadedDownloadFailures}
               />
-            ) : null}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant={isBulkMode ? "default" : "outline"}
-                    size="icon"
-                    aria-label="Toggle bulk selection mode"
-                    onClick={() => {
-                      if (isBulkMode) {
-                        deactivateBulkMode();
-                        return;
-                      }
-                      activateBulkMode();
-                    }}
-                  >
-                    <CheckSquare className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Bulk selection</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
+              {canShowTrackAndDownload ? (
+                <TrackAndDownloadButton
+                  onClick={() => {
+                    void trackAndDownload();
+                  }}
+                  onCancel={cancelTrackAndDownload}
+                  onPause={pauseTrackAndDownload}
+                  onResume={resumeTrackAndDownload}
+                  phase={trackAndDownloadPhase}
+                  isPaused={isTrackAndDownloadPaused}
+                  progress={trackAndDownloadProgress}
+                />
+              ) : null}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant={isBulkMode ? "default" : "outline"}
+                      size="icon"
+                      aria-label="Toggle bulk selection mode"
+                      onClick={() => {
+                        if (isBulkMode) {
+                          deactivateBulkMode();
+                          return;
+                        }
+                        activateBulkMode();
+                      }}
+                    >
+                      <CheckSquare className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Bulk selection</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </>
+          }
+        />
       </div>
 
       {/* Grid Content */}
@@ -547,8 +551,14 @@ export const Browse = () => {
           (workerEnabled && workerLoading)) &&
         displayPosts.length === 0 &&
         !isFatalSearchError ? (
-          <div className="flex justify-center items-center h-full text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin" />
+          <div className="flex flex-col gap-3 justify-center items-center h-full px-6">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+            <div className="grid w-full max-w-3xl grid-cols-3 gap-3 pt-4">
+              {Array.from({ length: 6 }, (_, index) => (
+                <Skeleton key={index} className="aspect-square w-full" />
+              ))}
+            </div>
           </div>
         ) : displayPosts.length === 0 && !isFatalSearchError && !isFetching ? (
           <div className="flex flex-col gap-4 justify-center items-center h-full px-6">
@@ -578,17 +588,16 @@ export const Browse = () => {
                 </div>
                 <Button
                   onClick={() => {
-                    const tagString = tags.join("+");
-                    const url = `https://rule34.xxx/index.php?page=post&s=list&tags=${encodeURIComponent(tagString)}`;
-                    void window.api.openExternal(url).catch((error: unknown) => {
-                      log.error("[Browse] Failed to open external URL:", error);
-                    });
+                    void openExternalSafe(
+                      buildSiteTagSearchUrl(provider, tags)
+                    );
                   }}
                   variant="default"
                   className="gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Open {tags[0]} on Rule34.xxx
+                  Open {tags[0]} on{" "}
+                  {provider === "gelbooru" ? "Gelbooru" : "Rule34.xxx"}
                 </Button>
               </div>
             ) : (
