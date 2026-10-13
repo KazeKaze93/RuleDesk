@@ -2,7 +2,8 @@
  * Shared IPC bridge contract (`window.api` / preload expose).
  *
  * Source of truth for the renderer-facing API surface. Runtime wiring lives in
- * `src/main/bridge.ts`; ambient `Window.api` is declared in `src/bridge.d.ts`.
+ * `src/preload/bridge.ts` (entry in `electron.vite.config.ts`; built artifact
+ * `out/preload/bridge.cjs`); ambient `Window.api` is declared in `src/bridge.d.ts`.
  * Do not duplicate method signatures in ambient `.d.ts` files.
  */
 import type { Artist, Post, Playlist } from "./db";

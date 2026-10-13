@@ -40,12 +40,12 @@ export const PostNotFoundFallback = ({
   const [insertedPost, setInsertedPost] = useState<Post | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // AbortController для отмены запросов при быстром переключении постов
-  // Предотвращает забивание очереди ненужными запросами
+  // AbortController cancels in-flight lookups when switching posts quickly
+  // so the request queue is not filled with obsolete work
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    // Отменить предыдущий запрос при изменении currentPostId
+    // Abort the previous request when currentPostId changes
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;

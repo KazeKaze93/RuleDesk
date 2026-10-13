@@ -85,11 +85,11 @@ export class Rule34Provider implements IBooruProvider {
    * Rule34 stores all data in attributes, so we need to read them without prefix
    */
   private readonly parser = new XMLParser({
-    ignoreAttributes: false,       // ВАЖНО: читать атрибуты (Rule34 хранит всё там)
-    attributeNamePrefix: "",       // ВАЖНО: не добавлять префиксы типа "@_"
-    parseAttributeValue: true,     // Парсить числа и булевы значения автоматически
-    trimValues: true,              // Обрезать пробелы в значениях
-    textNodeName: "text",          // На всякий случай, если есть текст внутри тегов
+    ignoreAttributes: false, // Rule34 stores fields as XML attributes
+    attributeNamePrefix: "", // Do not prefix attribute names with "@_"
+    parseAttributeValue: true, // Coerce numbers/booleans from attribute strings
+    trimValues: true, // Trim whitespace in values
+    textNodeName: "text", // Fallback text node name if present
   });
 
   /**

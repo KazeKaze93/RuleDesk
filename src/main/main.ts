@@ -408,10 +408,9 @@ function scheduleDeferredStartupTasks(window: BrowserWindow): void {
 }
 
 /**
- * Генерирует Content Security Policy в зависимости от режима работы приложения.
- * В режиме разработки ослабляет политику для поддержки HMR (Vite).
- * 
- * Кешируется один раз при инициализации для избежания оверхеда на каждый запрос.
+ * Builds Content-Security-Policy for the current app mode.
+ * In development, relaxes the policy for Vite HMR.
+ * Cached once at init to avoid per-request overhead.
  */
 let isCspHandlerConfigured = false;
 
@@ -449,9 +448,9 @@ function buildCspPolicy(): string {
     `media-src ${mediaOrigins}`,
     "worker-src 'self' blob:",
     scriptSrc,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "style-src 'self' 'unsafe-inline'",
     `connect-src ${connectOrigins.join(" ")}`,
-    "font-src 'self' https://fonts.gstatic.com",
+    "font-src 'self'",
   ];
 
   return directives.join("; ");
@@ -475,8 +474,7 @@ function configureDynamicCspHeaders(): void {
 }
 
 /**
- * Асинхронная функция, которая запускается после app.ready.
- * Отвечает за инициализацию Worker и создание главного окна.
+ * Runs after app.ready: initializes workers and creates the main window.
  */
 async function initializeAppAndWindow() {
   try {

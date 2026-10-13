@@ -31,7 +31,7 @@ export type ViewerOrigin =
       provider?: "rule34" | "gelbooru";
     };
 
-// Очередь просмотра
+// Viewer queue
 export interface ViewerQueue {
   origin: ViewerOrigin;
   ids: number[];

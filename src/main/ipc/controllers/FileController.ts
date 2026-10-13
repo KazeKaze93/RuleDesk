@@ -1071,9 +1071,9 @@ export class FileController extends BaseController {
       const defaultPath = path.join(defaultDir, validFilename);
 
       const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-        title: "Скачать файл",
+        title: "Download file",
         defaultPath: defaultPath,
-        buttonLabel: "Скачать",
+        buttonLabel: "Download",
         filters: [
           {
             name: "Media Files",

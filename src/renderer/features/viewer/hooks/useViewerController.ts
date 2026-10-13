@@ -16,6 +16,7 @@ import {
 import type { SearchBooruPageResult } from "../../../../shared/schemas/search";
 import { resolveErrorMessage } from "../../../utils/error-message";
 import { openExternalSafe } from "../../../lib/open-external";
+import { buildSitePostViewUrl } from "../../../../shared/utils/site-urls";
 
 interface ViewerQueue {
   ids: number[];
@@ -68,7 +69,7 @@ export function useViewerController({
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
-  const postPageUrl = `https://rule34.xxx/index.php?page=post&s=view&id=${post.postId}`;
+  const postPageUrl = buildSitePostViewUrl(post.provider, post.postId);
   const tagQuery = tagsToQuery(post.tags);
   const isCurrentlyDownloading =
     isDownloading && downloadProgress > 0 && downloadProgress < 100;
