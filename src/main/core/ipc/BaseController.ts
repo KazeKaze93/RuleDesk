@@ -229,6 +229,24 @@ export abstract class BaseController {
    */
   public abstract setup(): void;
 
+  /**
+   * Channel → Zod schema for every successful `handle()` registration.
+   * Inventory tests assert every production channel has an entry here.
+   */
+  private static readonly channelSchemas = new Map<string, IpcHandlerSchema>();
+
+  /**
+   * Read-only inventory of channel → schema from `handle()` registrations.
+   */
+  public static getRegisteredChannelSchemas(): ReadonlyMap<string, IpcHandlerSchema> {
+    return BaseController.channelSchemas;
+  }
+
+  /** Clear schema inventory (unit tests only). */
+  public static clearRegisteredChannelSchemasForTests(): void {
+    BaseController.channelSchemas.clear();
+  }
+
   // Throttling: Track last call time per channel to prevent DoS attacks
   // Map<channel, lastCallTimestamp>
   private static readonly throttleMap = new Map<string, number>();
@@ -445,6 +463,8 @@ export abstract class BaseController {
       // Handler doesn't exist yet, which is fine
       log.debug(`[IPC] No existing handler to remove for channel: ${channel}`);
     }
+
+    BaseController.channelSchemas.set(channel, schema);
 
     ipcMain.handle(
       channel,
