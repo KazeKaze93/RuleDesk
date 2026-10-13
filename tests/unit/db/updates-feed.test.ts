@@ -256,6 +256,69 @@ describe("updates-feed queries (real schema)", () => {
     expect(getLastTrackedArtistSyncAtMs(db)).toBeNull();
   });
 
+  it("aiFilter hide/only matches pre-unify AI tag token set", () => {
+    const mock = createMockDb();
+    sqlite = mock.sqlite;
+    const { db } = mock;
+
+    db.insert(artists)
+      .values({
+        id: 1,
+        name: "Tracked",
+        tag: "tracked_artist",
+        provider: "rule34",
+        type: "tag",
+        apiEndpoint: "https://api.rule34.xxx/",
+        createdAt: new Date(ARTIST_CREATED_SEC * SECOND_MS),
+        lastChecked: new Date(LAST_CHECKED_SEC * SECOND_MS),
+        newPostsCount: 0,
+      })
+      .run();
+
+    const insertPost = (postId: number, tags: string) => {
+      db.insert(posts)
+        .values({
+          postId,
+          artistId: 1,
+          fileUrl: `https://example.com/${postId}.jpg`,
+          previewUrl: `https://example.com/${postId}_p.jpg`,
+          sampleUrl: "",
+          tags,
+          rating: "s",
+          mediaType: "image",
+          publishedAt: new Date(AFTER_TRACKING_SEC * SECOND_MS),
+          createdAt: new Date(AFTER_TRACKING_SEC * SECOND_MS),
+          isViewed: false,
+          isFavorited: false,
+          viewCount: 0,
+        })
+        .run();
+    };
+
+    insertPost(401, "solo 1girl");
+    insertPost(402, "ai_generated rating_safe");
+    insertPost(403, "tag1 ai-generated tag2");
+    insertPost(404, "ai_generation landscape");
+    insertPost(405, "ai-generated_content");
+    insertPost(406, "ai generated");
+    insertPost(407, "prefix_ai_generated_suffix");
+
+    expect(countUpdatesFeedPosts(db, { unreadOnly: false })).toBe(7);
+    // Same four tokens as pre-unify local list: hide drops exact AI posts only.
+    expect(
+      countUpdatesFeedPosts(db, {
+        unreadOnly: false,
+        filters: { aiFilter: "hide" },
+      })
+    ).toBe(3);
+    expect(
+      countUpdatesFeedPosts(db, {
+        unreadOnly: false,
+        filters: { aiFilter: "only" },
+      })
+    ).toBe(4);
+  });
+
   it("mark-all-read handles 40000 matching posts without SQLite variable limit", () => {
     const LARGE_MATCH_COUNT = 40_000;
     const ARTIST_A = 1;

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import log from "electron-log/renderer";
+import { AI_TAGS } from "@shared/ai-tags";
 
 export type TabType =
   | "browse"
@@ -61,14 +62,9 @@ interface PostFilters {
 
 /**
  * Exact AI tag tokens for Rule34 remote AI-filter injection (live API verified).
- * Keep in sync with PostsController AI_FILTER_TAGS; do not add space variants here.
+ * Shared canonical list; do not add space variants here.
  */
-export const BOORU_AI_FILTER_TAGS = [
-  "ai_generated",
-  "ai-generated",
-  "ai_generation",
-  "ai-generated_content",
-] as const;
+export const BOORU_AI_FILTER_TAGS = AI_TAGS;
 
 const BOORU_AI_FILTER_TAG_SET = new Set<string>(BOORU_AI_FILTER_TAGS);
 
