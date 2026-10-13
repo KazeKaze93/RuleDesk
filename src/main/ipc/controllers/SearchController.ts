@@ -3,7 +3,7 @@ import log from "electron-log";
 import { z } from "zod";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
-import { settings, SETTINGS_ID, posts, TAG_TYPES, type TagType } from "../../db/schema";
+import { settings, SETTINGS_ID, posts, TAG_TYPES } from "../../db/schema";
 import {
   loadTagMetadataCache,
   resolveTagMetadataWave,
@@ -46,12 +46,6 @@ type SearchPostsParams = z.infer<typeof SearchPostsSchema>;
 
 const SearchPostsArgsSchema = z.tuple([SearchPostsSchema]);
 const ResolveTagsArgsSchema = z.tuple([z.array(z.string().min(1)).max(100)]);
-const ResolveTagsByTypeArgsSchema = z.tuple([
-  z.array(z.string().min(1)).max(100),
-  z.number().int().refine((n): n is TagType => {
-    return Object.values(TAG_TYPES).some((v) => v === n);
-  }, "Invalid tag type"),
-]);
 
 // Use toIpcSafe return type instead of manual type definition
 // This ensures type safety and automatic updates when Post schema changes
@@ -95,13 +89,6 @@ export class SearchController extends BaseController {
       ResolveTagsArgsSchema, // Limit to 100 tags to prevent DoS
       (event, tags) => this.resolveCopyrightTags(event, tags)
     );
-
-    this.handle(
-      IPC_CHANNELS.API.RESOLVE_TAGS_BY_TYPE,
-      ResolveTagsByTypeArgsSchema,
-      (event, tags, tagType) => this.resolveTagsByTypeHandler(event, tags, tagType)
-    );
-
   }
 
   /**
@@ -631,14 +618,6 @@ export class SearchController extends BaseController {
     tags: string[]
   ): Promise<string[]> {
     return this.resolveTagsByType(event, tags, TAG_TYPES.COPYRIGHT);
-  }
-
-  private resolveTagsByTypeHandler(
-    event: IpcMainInvokeEvent,
-    tags: string[],
-    tagType: TagType
-  ): Promise<string[]> {
-    return this.resolveTagsByType(event, tags, tagType);
   }
 }
 

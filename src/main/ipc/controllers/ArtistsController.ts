@@ -1,11 +1,10 @@
 import { type IpcMainInvokeEvent } from "electron";
 import log from "electron-log";
 import { z } from "zod";
-import { eq, or, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { BaseController } from "../../core/ipc/BaseController";
 import { container, DI_TOKENS } from "../../core/di/Container";
 import { artists, settings, SETTINGS_ID, TAG_TYPES } from "../../db/schema";
-import { escapeLikePattern } from "../../db/utils";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
   getProvider,
@@ -46,7 +45,6 @@ type Artist = InferSelectModel<typeof artists>;
 type NewArtist = InferInsertModel<typeof artists>;
 const AddArtistArgsSchema = z.tuple([AddArtistSchema]);
 const DeleteArtistArgsSchema = z.tuple([IdSchema]);
-const SearchArtistsArgsSchema = z.tuple([z.string().trim().min(1)]);
 const SearchRemoteTagsArgsSchema = z.tuple([
   z.string().trim().min(2),
   z.enum(["rule34", "gelbooru"]).optional(),
@@ -81,7 +79,6 @@ type IpcArtist = {
  * - Get all artists (ordered by last checked date)
  * - Add new artist (with conflict resolution)
  * - Delete artist by ID
- * - Search artists by name/tag
  * - Search remote tags via API (Rule34/Gelbooru)
  */
 export class ArtistsController extends BaseController {
@@ -119,11 +116,6 @@ export class ArtistsController extends BaseController {
       IPC_CHANNELS.DB.DELETE_ARTIST,
       DeleteArtistArgsSchema,
       (event, id) => this.deleteArtist(event, id)
-    );
-    this.handle(
-      IPC_CHANNELS.DB.SEARCH_TAGS,
-      SearchArtistsArgsSchema,
-      (event, query) => this.searchArtists(event, query)
     );
     this.handle(
       IPC_CHANNELS.API.SEARCH_REMOTE,
@@ -323,47 +315,6 @@ export class ArtistsController extends BaseController {
     }
   }
 
-
-  /**
-   * Search artists by name or tag (LIKE query)
-   *
-   * @param _event - IPC event (unused)
-   * @param query - Search query string (validated)
-   * @returns Array of matching artists (limited to 20)
-   */
-  private async searchArtists(
-    _event: IpcMainInvokeEvent,
-    query: string
-  ): Promise<IpcArtist[]> {
-    try {
-      const db = this.getDb();
-      // Escape special LIKE characters before wrapping with %
-      const escapedQuery = escapeLikePattern(query);
-      const searchPattern = `%${escapedQuery}%`;
-
-      // Use sql template with ESCAPE clause for proper LIKE escaping
-      const result = await db
-        .select()
-        .from(artists)
-        .where(
-          or(
-            sql`${artists.tag} LIKE ${searchPattern} ESCAPE '\\'`,
-            sql`${artists.name} LIKE ${searchPattern} ESCAPE '\\'`
-          )
-        )
-        .limit(20)
-        .all();
-      log.info(
-        `[ArtistsController] Search "${query}" returned ${result.length} results`
-      );
-
-      // Convert Date objects to numbers for Electron 39+ IPC serialization
-      return toIpcSafe(result);
-    } catch (error) {
-      log.error("[ArtistsController] Search failed:", error);
-      throw error;
-    }
-  }
 
   /**
    * Search remote tags via Booru provider autocomplete API.

@@ -17,19 +17,16 @@ import { createCodedError } from "../../../shared/utils/coded-error";
 import {
   CreatePlaylistSchema,
   UpdatePlaylistSchema,
-  AddPostsToPlaylistSchema,
   RemovePostsFromPlaylistSchema,
   GetPlaylistPostsSchema,
   ResolvePlaylistPostsSchema,
   ReorderPlaylistEntriesSchema,
-  MAX_PLAYLIST_ADD_ENTRY_PRODUCT,
   MAX_PLAYLIST_IMPORT_ENTRIES,
   PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE,
   PLAYLIST_IMPORT_LOOKUP_CHUNK_SIZE,
   PlaylistQueryJsonWriteSchema,
   type CreatePlaylistRequest,
   type UpdatePlaylistRequest,
-  type AddPostsToPlaylistRequest,
   type RemovePostsFromPlaylistRequest,
   type GetPlaylistPostsRequest,
   type ResolvePlaylistPostsRequest,
@@ -84,7 +81,6 @@ type UnknownRecord = Record<string, unknown>;
 const CreatePlaylistArgsSchema = z.tuple([CreatePlaylistSchema]);
 const IdArgsSchema = z.tuple([IdSchema]);
 const UpdatePlaylistArgsSchema = z.tuple([IdSchema, UpdatePlaylistSchema]);
-const AddPostsToPlaylistArgsSchema = z.tuple([AddPostsToPlaylistSchema]);
 const RemovePostsFromPlaylistArgsSchema = z.tuple([RemovePostsFromPlaylistSchema]);
 const GetPlaylistPostsArgsSchema = z.tuple([GetPlaylistPostsSchema]);
 const ReorderPlaylistEntriesArgsSchema = z.tuple([ReorderPlaylistEntriesSchema]);
@@ -538,12 +534,6 @@ export class PlaylistController extends BaseController {
       IPC_CHANNELS.DB.DELETE_PLAYLIST,
       IdArgsSchema,
       (event, playlistId) => this.deletePlaylist(event, playlistId)
-    );
-
-    this.handle(
-      IPC_CHANNELS.DB.ADD_POSTS_TO_PLAYLIST,
-      AddPostsToPlaylistArgsSchema,
-      (event, data) => this.addPostsToPlaylist(event, data)
     );
 
     this.handle(
@@ -1153,73 +1143,6 @@ export class PlaylistController extends BaseController {
       return true;
     } catch (error) {
       log.error(`[PlaylistController] Failed to delete playlist ${playlistId}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Add posts to one or more playlists
-   *
-   * Supports adding a single post to multiple playlists simultaneously.
-   * Duplicate entries are automatically prevented by unique constraint.
-   *
-   * @param _event - IPC event (unused)
-   * @param data - Request data (playlistIds array, postIds array)
-   * @returns Number of entries created
-   */
-  private async addPostsToPlaylist(
-    _event: IpcMainInvokeEvent,
-    data: AddPostsToPlaylistRequest
-  ): Promise<number> {
-    try {
-      const product = data.playlistIds.length * data.postIds.length;
-      if (product > MAX_PLAYLIST_ADD_ENTRY_PRODUCT) {
-        throw createCodedError(
-          `Too many playlist×post pairs (${product}). Maximum is ${MAX_PLAYLIST_ADD_ENTRY_PRODUCT}.`,
-          ErrorCode.VALIDATION_ERROR,
-          { name: "ValidationError" }
-        );
-      }
-
-      const db = this.getDb();
-
-      const entriesToInsert = data.playlistIds.flatMap((playlistId) =>
-        data.postIds.map((postId) => ({ playlistId, postId }))
-      );
-      let entriesCreated = 0;
-
-      db.transaction((tx) => {
-        for (
-          let offset = 0;
-          offset < entriesToInsert.length;
-          offset += PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE
-        ) {
-          const chunk = entriesToInsert.slice(
-            offset,
-            offset + PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE
-          );
-          const result = tx
-            .insert(playlistEntries)
-            .values(chunk)
-            .onConflictDoNothing({
-              target: [playlistEntries.playlistId, playlistEntries.postId],
-            })
-            .run();
-          entriesCreated += result.changes;
-        }
-        tx.update(playlists)
-          .set({ updatedAt: new Date() })
-          .where(inArray(playlists.id, data.playlistIds))
-          .run();
-      });
-
-      log.info(
-        `[PlaylistController] Added ${entriesCreated} post(s) to ${data.playlistIds.length} playlist(s)`
-      );
-
-      return entriesCreated;
-    } catch (error) {
-      log.error("[PlaylistController] Failed to add posts to playlist:", error);
       throw error;
     }
   }

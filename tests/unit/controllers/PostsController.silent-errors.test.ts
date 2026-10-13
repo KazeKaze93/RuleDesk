@@ -76,9 +76,6 @@ type PostsControllerInternals = {
     event: IpcMainInvokeEvent,
     postId: number
   ) => Promise<boolean>;
-  markAllViewed: (
-    event: IpcMainInvokeEvent
-  ) => Promise<{ updatedCount: number }>;
   resetPostCache: (
     event: IpcMainInvokeEvent,
     postId: number
@@ -136,13 +133,6 @@ describe("PostsController DB errors do not become empty success", () => {
     await expect(controller.markViewed(dummyEvent, 1)).rejects.toBeInstanceOf(
       Error
     );
-  });
-
-  it("markAllViewed rejects on DB error (not {updatedCount:0})", async () => {
-    closeDb();
-    await expect(
-      controller.markAllViewed(dummyEvent)
-    ).rejects.toBeInstanceOf(Error);
   });
 
   it("resetPostCache rejects on DB error (not false)", async () => {

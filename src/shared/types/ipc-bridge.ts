@@ -23,7 +23,6 @@ import type { IpcSettings, SaveSettings, ThemePreference } from "../schemas/sett
 import type {
   CreatePlaylistRequest,
   UpdatePlaylistRequest,
-  AddPostsToPlaylistRequest,
   RemovePostsFromPlaylistRequest,
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
@@ -108,21 +107,13 @@ export interface IpcBridge {
   addArtist: (artist: AddArtistRequest) => Promise<Artist | undefined>;
   deleteArtist: (id: number) => Promise<DeleteArtistResult>;
 
-  searchArtists: (query: string) => Promise<{ id: number; label: string }[]>;
-
   getArtistPosts: (params: GetPostsRequestInput) => Promise<Post[]>;
   getArtistPostsCount: (params: GetPostsCountRequest) => Promise<number>;
-  getDownloadItems: (
-    params: GetPostsRequestInput
-  ) => Promise<{ items: Array<{ url: string; filename: string }> }>;
   getPostsCountWithFilters: (
     params: Pick<GetPostsRequestInput, "artistId" | "filters">
   ) => Promise<number>;
-  getStats: () => Promise<ExtendedStats>;
   getExtendedStats: () => Promise<ExtendedStats>;
 
-  togglePostViewed: (postId: number) => Promise<boolean>;
-  markAllPostsAsViewed: () => Promise<{ updatedCount: number }>;
   getUpdatesUnreadCount: () => Promise<number>;
   getUpdatesTotalUnreadCount: (params: {
     filters?: PostFilterRequest;
@@ -144,7 +135,6 @@ export interface IpcBridge {
     artistId: number
   ) => Promise<{ success: boolean; error?: string }>;
 
-  checkForUpdates: () => Promise<void>;
   /** Opens GitHub Releases for the last update-available version (or /latest). */
   openReleasePage: () => Promise<void>;
 
@@ -221,7 +211,6 @@ export interface IpcBridge {
   resolveTags: (tags: string[]) => Promise<string[]>;
   resolveCharacterTags: (tags: string[]) => Promise<string[]>;
   resolveCopyrightTags: (tags: string[]) => Promise<string[]>;
-  resolveTagsByType: (tags: string[], type: number) => Promise<string[]>;
   getBlacklistedTags: () => Promise<string[]>;
   addTagToBlacklist: (tag: string) => Promise<void>;
   removeTagFromBlacklist: (tag: string) => Promise<void>;
@@ -239,8 +228,6 @@ export interface IpcBridge {
   setVacuumSchedule: (args: SetVacuumScheduleArgs) => Promise<boolean>;
   detectOrphans: () => Promise<OrphanDetectionReport>;
 
-  verifyCredentials: (providerId?: ProviderId) => Promise<boolean>;
-
   createPlaylist: (data: CreatePlaylistRequest) => Promise<Playlist>;
   getPlaylists: () => Promise<PlaylistWithStats[]>;
   getPlaylist: (playlistId: number) => Promise<Playlist | null>;
@@ -249,7 +236,6 @@ export interface IpcBridge {
     data: UpdatePlaylistRequest
   ) => Promise<Playlist>;
   deletePlaylist: (playlistId: number) => Promise<boolean>;
-  addPostsToPlaylist: (data: AddPostsToPlaylistRequest) => Promise<number>;
   removePostsFromPlaylist: (
     data: RemovePostsFromPlaylistRequest
   ) => Promise<number>;

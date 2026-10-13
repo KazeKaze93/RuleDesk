@@ -8,9 +8,6 @@ import { settings, SETTINGS_ID } from "../../db/schema";
 import { IPC_CHANNELS } from "../channels";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import type * as schema from "../../db/schema";
-import type { SyncService } from "../../services/sync-service";
-import type { ProviderId } from "../../providers";
-const VerifyCredsArgsSchema = z.tuple([z.enum(["rule34", "gelbooru"]).optional()]);
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
@@ -18,7 +15,6 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
  * Auth Controller
  *
  * Handles authentication-related IPC operations:
- * - Verify credentials
  * - Logout (clear API key)
  */
 // Query style: Drizzle Builder API only in this controller.
@@ -27,19 +23,10 @@ export class AuthController extends BaseController {
     return container.resolve(DI_TOKENS.DB);
   }
 
-  private getSyncService(): SyncService {
-    return container.resolve(DI_TOKENS.SYNC_SERVICE);
-  }
-
   /**
    * Setup IPC handlers for auth operations
    */
   public setup(): void {
-    this.handle(
-      IPC_CHANNELS.APP.VERIFY_CREDS,
-      VerifyCredsArgsSchema,
-      (event, providerId) => this.verifyCredentials(event, providerId)
-    );
     this.handle(
       IPC_CHANNELS.APP.LOGOUT,
       z.tuple([]),
@@ -47,25 +34,6 @@ export class AuthController extends BaseController {
     );
 
     log.info("[AuthController] All handlers registered");
-  }
-
-  /**
-   * Verify user credentials
-   *
-   * @param _event - IPC event (unused)
-   * @returns true if credentials are valid, false otherwise
-   */
-  private async verifyCredentials(
-    _event: IpcMainInvokeEvent,
-    providerId?: ProviderId
-  ): Promise<boolean> {
-    try {
-      const syncService = this.getSyncService();
-      return await syncService.checkCredentials(providerId);
-    } catch (error) {
-      log.error("[AuthController] Failed to verify credentials:", error);
-      throw error;
-    }
   }
 
   /**
@@ -93,4 +61,3 @@ export class AuthController extends BaseController {
     }
   }
 }
-

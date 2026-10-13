@@ -115,6 +115,7 @@ export class MaintenanceService {
           userId: "",
           provider: "rule34",
           encryptedApiKey: "",
+          // unused by renderer, kept for downgrade safety
           isSafeMode: true,
           isAdultConfirmed: false,
           isAdultVerified: false,

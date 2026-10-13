@@ -80,9 +80,9 @@ function mapSettingsToIpc(
     proxyUrl: dbSettings.proxyUrl ?? null,
     // Convert SQLite integer booleans (0/1) to JavaScript booleans
     // Drizzle with mode: "boolean" already returns boolean, but ensure type safety
-    // Schema: isSafeMode has .default(true), isAdultConfirmed has .default(false), isAdultVerified is .notNull()
+    // Schema: isAdultConfirmed has .default(false), isAdultVerified is .notNull()
     // Drizzle ensures defaults are applied, so no ?? needed for fields with defaults
-    isSafeMode: !!dbSettings.isSafeMode, // .default(true) in schema - Drizzle ensures value exists
+    // isSafeMode: unused by renderer (Zustand safeModeStore), kept on DB for downgrade safety
     isAdultConfirmed: !!dbSettings.isAdultConfirmed, // .default(false) in schema - Drizzle ensures value exists
     isAdultVerified: !!dbSettings.isAdultVerified, // .notNull() in schema - always present
     // Convert Date to number for IPC serialization.
@@ -360,6 +360,7 @@ export class SettingsController extends BaseController {
               provider: provider ?? "rule34",
               encryptedApiKey: encryptedKey ?? "",
               proxyUrl: "proxyUrl" in data ? (data.proxyUrl ?? null) : null,
+              // unused by renderer, kept for downgrade safety
               isSafeMode: true,
               isAdultConfirmed: false,
               isAdultVerified: false,
@@ -443,6 +444,7 @@ export class SettingsController extends BaseController {
             id: SETTINGS_ID,
             userId: "",
             encryptedApiKey: "",
+            // unused by renderer, kept for downgrade safety
             isSafeMode: true,
             isAdultConfirmed: false,
             isAdultVerified: false,
@@ -575,6 +577,7 @@ export class SettingsController extends BaseController {
               // These should not be overwritten when confirming legal
               userId: existing.userId ?? "",
               encryptedApiKey: existing.encryptedApiKey ?? "",
+              // unused by renderer, kept for downgrade safety
               isSafeMode: existing.isSafeMode ?? true,
               isAdultConfirmed: existing.isAdultConfirmed ?? false,
               provider: existing.provider ?? "rule34",
@@ -590,6 +593,7 @@ export class SettingsController extends BaseController {
               userId: "",
               encryptedApiKey: "",
               provider: "rule34",
+              // unused by renderer, kept for downgrade safety
               isSafeMode: true,
               isAdultConfirmed: false,
               isAdultVerified: true,

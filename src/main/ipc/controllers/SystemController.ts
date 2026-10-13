@@ -89,11 +89,6 @@ export class SystemController extends BaseController {
       (event, text) => this.writeToClipboard(event, text)
     );
     this.handle(
-      IPC_CHANNELS.APP.CHECK_FOR_UPDATES,
-      z.tuple([]),
-      this.checkForUpdates.bind(this)
-    );
-    this.handle(
       IPC_CHANNELS.APP.OPEN_RELEASE_PAGE,
       z.tuple([]),
       this.openReleasePage.bind(this)
@@ -162,10 +157,6 @@ export class SystemController extends BaseController {
         await handle.close();
       }
     }
-  }
-
-  private async checkForUpdates(_event: IpcMainInvokeEvent): Promise<void> {
-    await this.updaterService.checkForUpdates();
   }
 
   private async openReleasePage(_event: IpcMainInvokeEvent): Promise<void> {

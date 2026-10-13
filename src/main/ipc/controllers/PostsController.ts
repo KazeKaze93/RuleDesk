@@ -35,10 +35,10 @@ import {
 } from "../../../shared/schemas/post";
 import {
   BATCH_DOWNLOAD_CHUNK_SIZE,
-  BATCH_DOWNLOAD_MAX_FILES,
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
 } from "../../../shared/constants";
+import { AI_TAGS } from "../../../shared/ai-tags";
 import type { DownloadQueueItem } from "../../../shared/types/download";
 import { getSqliteInstance } from "../../db/client";
 import { onDatabaseReopened } from "../../core/di/databaseRegistration";
@@ -100,41 +100,9 @@ function postRowToDownloadItem(p: {
   };
 }
 
-function rowsToDownloadItems(
-  rows: Array<{ postId: number; artistId: number; fileUrl: string | null }>
-): DownloadQueueItem[] {
-  return rows
-    .filter((p) => Boolean(p.fileUrl?.trim()))
-    .map((p) =>
-      postRowToDownloadItem({
-        postId: p.postId,
-        artistId: p.artistId,
-        fileUrl: p.fileUrl ?? "",
-      })
-    );
-}
-
-/** Exact AI tag tokens used by SQL aiFilter (FTS MATCH and posts.tags instr). */
-const AI_FILTER_TAGS = [
-  "ai_generated",
-  "ai-generated",
-  "ai_generation",
-  "ai-generated_content",
-] as const;
-
 // Internal types (not exported - use types from src/main/types/ipc.ts instead)
 type GetPostsParams = GetPostsRequest;
 const GetPostsArgsSchema = z.tuple([GetPostsSchema]);
-const GetDownloadItemsArgsSchema = z.tuple([
-  GetPostsSchema.extend({
-    limit: z
-      .number()
-      .int()
-      .min(1)
-      .max(BATCH_DOWNLOAD_MAX_FILES)
-      .default(BATCH_DOWNLOAD_MAX_FILES),
-  }),
-]);
 const GetPostsCountArgsSchema = z.tuple([GetPostsCountSchema]);
 const GetPostsCountWithFiltersArgsSchema = z.tuple([
   GetPostsSchema.pick({ artistId: true, filters: true }),
@@ -143,7 +111,6 @@ const PostActionArgsSchema = z.tuple([
   z.number().int(),
   PostDataSchema.optional(),
 ]);
-const MarkAllViewedArgsSchema = z.tuple([]);
 const ResetPostCacheArgsSchema = z.tuple([IdSchema]);
 const ShadowInsertPostArgsSchema = z.tuple([ShadowInsertRequestSchema]);
 
@@ -220,11 +187,6 @@ export class PostsController extends BaseController {
       (event, params) => this.getPosts(event, params)
     );
     this.handle(
-      IPC_CHANNELS.DB.GET_DOWNLOAD_ITEMS,
-      GetDownloadItemsArgsSchema,
-      (event, params) => this.getDownloadItems(event, params)
-    );
-    this.handle(
       IPC_CHANNELS.DB.GET_POSTS_COUNT,
       GetPostsCountArgsSchema,
       (event, params) => this.getPostsCount(event, params)
@@ -239,11 +201,6 @@ export class PostsController extends BaseController {
       IPC_CHANNELS.DB.MARK_VIEWED,
       PostActionArgsSchema, // Allow negative IDs for external posts from Browse
       (event, postId, postData) => this.markViewed(event, postId, postData)
-    );
-    this.handle(
-      IPC_CHANNELS.DB.MARK_ALL_VIEWED,
-      MarkAllViewedArgsSchema,
-      (event) => this.markAllViewed(event)
     );
     this.handle(
       IPC_CHANNELS.DB.RESET_POST_CACHE,
@@ -410,7 +367,7 @@ export class PostsController extends BaseController {
         areRuntimeDroppableFtsTriggersPresent(getSqliteInstance());
 
       if (useFtsMatch) {
-        const ftsQuery = this.buildFts5OrQuery([...AI_FILTER_TAGS]);
+        const ftsQuery = this.buildFts5OrQuery([...AI_TAGS]);
 
         if (!ftsQuery || ftsQuery.trim().length === 0) {
           log.warn(
@@ -493,7 +450,7 @@ export class PostsController extends BaseController {
     conditions: SQL[],
     aiFilter: "hide" | "only"
   ): void {
-    const aiTagConditions = AI_FILTER_TAGS.map(
+    const aiTagConditions = AI_TAGS.map(
       (tag) =>
         sql`instr(' ' || lower(${posts.tags}) || ' ', ' ' || ${tag} || ' ') > 0`
     );
@@ -506,24 +463,6 @@ export class PostsController extends BaseController {
     } else {
       conditions.push(aiOrCondition);
     }
-  }
-
-  /**
-   * Legacy list fetch for download items (capped). Prefer cursor mass-download via FileController.
-   */
-  private async getDownloadItems(
-    _event: IpcMainInvokeEvent,
-    params: GetPostsParams & { limit?: number }
-  ): Promise<{ items: Array<{ url: string; filename: string }> }> {
-    const rows = await this.getPosts(_event, {
-      ...params,
-      page: 1,
-      limit: Math.min(
-        params.limit ?? BATCH_DOWNLOAD_MAX_FILES,
-        BATCH_DOWNLOAD_MAX_FILES
-      ),
-    });
-    return { items: rowsToDownloadItems(rows) };
   }
 
   /**
@@ -1001,35 +940,6 @@ export class PostsController extends BaseController {
       return false;
     } catch (error) {
       log.error("[PostsController] Failed to mark post as viewed:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Mark all posts as viewed in one batch operation.
-   * Uses synchronous better-sqlite3 statement to avoid async transaction overhead.
-   */
-  private async markAllViewed(
-    _event: IpcMainInvokeEvent
-  ): Promise<{ updatedCount: number }> {
-    try {
-      const db = this.getDb();
-      const result = db.transaction((tx) => {
-        const updatedPosts = tx
-          .update(posts)
-          .set({ isViewed: true })
-          .where(or(eq(posts.isViewed, false), sql`${posts.isViewed} IS NULL`))
-          .run();
-
-        // Unread counts derive from posts.isViewed; column left unused.
-        return updatedPosts;
-      });
-
-      const updatedCount = result.changes;
-      log.info(`[PostsController] Mark all viewed completed. Updated: ${updatedCount}`);
-      return { updatedCount };
-    } catch (error) {
-      log.error("[PostsController] Failed to mark all posts as viewed:", error);
       throw error;
     }
   }
