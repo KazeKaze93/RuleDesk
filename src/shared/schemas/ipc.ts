@@ -31,6 +31,13 @@ export const RandomSeedSchema = z
   .max(MAX_RANDOM_SEED)
   .optional();
 
+/**
+ * Optional inclusive remote post-id upper bound for a smart/hybrid ordered
+ * gallery walk. Keep across pages like `seed`; omit / change for a new snapshot
+ * (refresh). Freezes out newer live-feed inserts that would otherwise shift OFFSET.
+ */
+export const UpperBoundPostIdSchema = z.number().int().positive().optional();
+
 export const RatingSchema = z.enum(["s", "q", "e"]);
 export const MediaTypeSchema = z.enum(["all", "images", "videos"]);
 export const PostFiltersSchema = z.object({

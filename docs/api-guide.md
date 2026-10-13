@@ -1852,7 +1852,7 @@ Playlist APIs are handled by `PlaylistController` and use shared Zod schemas fro
 - `addPostsToPlaylist(data)` / `removePostsFromPlaylist(data)` -> Manage manual playlist entries
 - `reorderPlaylistEntries(params)` -> Persist drag-and-drop order for manual playlists
 - `getPlaylistPosts(params)` -> Fetch static playlist posts with filters/sort. When `isRandom` is true, pass optional `seed` (and reuse it on later pages) for a stable shuffle; a new seed starts a new shuffle.
-- `resolvePlaylistPosts(params)` -> Resolve static or smart playlist posts. Local `isRandom` ordering uses the same optional `seed` contract as `getPlaylistPosts` / `getPosts`.
+- `resolvePlaylistPosts(params)` -> Resolve static or smart playlist posts. Local `isRandom` ordering uses the same optional `seed` contract as `getPlaylistPosts` / `getPosts`. Ordered smart/hybrid walks accept optional `upperBoundPostId` (keep across pages like `seed`; omit / page 1 for a new feed snapshot).
 - `getPlaylistsContainingPost(postId, rule34PostId?)` -> Check membership for local/external posts
 - `exportPlaylist(playlistId)` / `importPlaylist()` -> JSON transfer via native file dialogs
 
@@ -1862,10 +1862,10 @@ Smart playlists use a hybrid flow:
 
 1. Build include/exclude tag conditions from `queryJson`
 2. Query local cache (FTS5), materializing matches up to a cap so remote twins can be recognized beyond the current page prefix
-3. Query provider API (Rule34/Gelbooru) with the same fixed capped window on every page (provider feed order ≠ `publishedAt` / seed rank, so an expanding `page * limit` prefix must not be re-sorted into the merge)
-4. Collapse to `(provider, postId)` (remote rows often have `id: 0`), prefer local status, cursor-merge / slice the page
+3. Query provider API (Rule34/Gelbooru) with the same fixed capped window on every page; ordered walks snapshot `upperBoundPostId` (max remote id on page 1 / request bound) and pass `id:<=N` on later pages so live feed inserts cannot shift the merge
+4. Collapse to `(provider, postId)` (remote rows often have `id: 0`), prefer local status, cursor-merge / slice the page with order `(sortKey, provider, postId)`; issued-key set is a size-capped uniqueness safety net
 
-Provider/credential failures on the remote leg throw (typed IPC error) — they are never mapped to an empty post list. Same `(page, limit, sort/seed)` must return the same page; a sequential walk emits each `(provider, postId)` once.
+Provider/credential failures on the remote leg throw (typed IPC error) — they are never mapped to an empty post list. Same `(page, limit, sort/seed/upperBound)` must return the same page; a sequential walk emits each `(provider, postId)` once.
 
 **Key channels:**
 

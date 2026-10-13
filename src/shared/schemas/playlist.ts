@@ -6,6 +6,7 @@ import {
   LimitSchema,
   PostFiltersSchema,
   RandomSeedSchema,
+  UpperBoundPostIdSchema,
 } from "./ipc";
 import {
   SmartQueryTagSchema,
@@ -271,6 +272,11 @@ export const ResolvePlaylistPostsSchema = z.object({
   isRandom: z.boolean().optional().default(false),
   /** Keep across pages for a stable shuffle; omit / change for a new shuffle. */
   seed: RandomSeedSchema,
+  /**
+   * Ordered smart/hybrid walks: keep across pages to freeze the remote feed
+   * snapshot; omit / change (or request page 1) for a new snapshot like `seed`.
+   */
+  upperBoundPostId: UpperBoundPostIdSchema,
 });
 
 export const ReorderPlaylistEntriesSchema = z.object({

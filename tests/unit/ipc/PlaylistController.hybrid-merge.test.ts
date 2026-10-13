@@ -91,6 +91,7 @@ type PlaylistControllerInternals = {
       sortOrder?: "asc" | "desc" | "position";
       isRandom?: boolean;
       seed?: number;
+      upperBoundPostId?: number;
     }
   ) => Promise<ResolvedPost[]>;
 };
@@ -253,7 +254,10 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
     container.clear();
   });
 
-  async function resolvePage(page: number, extras?: { isRandom?: boolean; seed?: number }) {
+  async function resolvePage(
+    page: number,
+    extras?: { isRandom?: boolean; seed?: number; upperBoundPostId?: number }
+  ) {
     return controller.resolvePlaylistPosts({} as IpcMainInvokeEvent, {
       playlistId,
       page,
@@ -261,6 +265,7 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
       sortOrder: "desc",
       isRandom: extras?.isRandom ?? false,
       seed: extras?.seed,
+      upperBoundPostId: extras?.upperBoundPostId,
     });
   }
 
@@ -620,5 +625,274 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
     }
     expect(new Set(walkKeys).size).toBe(walkKeys.length);
     expect(walkKeys.filter((key) => key === `rule34:${SKEW_ID}`)).toHaveLength(1);
+  });
+
+  it("ordered pages stay unique when live remote feed drifts between page IPC calls (R3)", async () => {
+    // R3 LIVE failure: each ordered page re-fetches the provider. A newer post
+    // appearing on top between page1 and page2 shifts the feed (OFFSET / merge
+    // window), so page1 freshest ids also land on page2 (smart: 19006907/19006906;
+    // hybrid: 19004801). Identity is provider:postId (remote rows often id: 0).
+    const OVERLAP_A = 19006907;
+    const OVERLAP_B = 19006906;
+    const DRIFT_NEW = 19009999;
+
+    mockDb.db.delete(playlists).run();
+    mockDb.db
+      .insert(playlists)
+      .values({
+        name: "Hybrid live-drift ordered",
+        isSmart: true,
+        queryJson: JSON.stringify({
+          tags: [
+            { tag: HYBRID_TAG, type: "include" },
+            { tag: "drift_tag", type: "include" },
+          ],
+          provider: "rule34",
+        }),
+        querySchemaVersion: 1,
+        iconName: "",
+      })
+      .run();
+    const playlist = mockDb.db.select({ id: playlists.id }).from(playlists).all()[0];
+    if (playlist === undefined) {
+      throw new Error("Failed to insert drift playlist");
+    }
+    playlistId = playlist.id;
+
+    // One local twin + remote-only peers — close to smoke hybrid (remote+local).
+    mockDb.db.delete(posts).run();
+    const artist = mockDb.db.select({ id: artists.id }).from(artists).all()[0];
+    if (artist === undefined) {
+      throw new Error("expected seed artist");
+    }
+    mockDb.db
+      .insert(posts)
+      .values({
+        postId: 19004801,
+        artistId: artist.id,
+        provider: "rule34",
+        fileUrl: "https://local.example.com/19004801.jpg",
+        previewUrl: "",
+        sampleUrl: "",
+        tags: `${HYBRID_TAG} drift_tag local`,
+        rating: "s",
+        mediaType: "image",
+        publishedAt: new Date("2024-01-09T00:00:00.000Z"),
+        isViewed: true,
+      })
+      .run();
+
+    const baseFeed: BooruPost[] = [
+      makeRemotePost(OVERLAP_A, new Date("2024-01-12T00:00:00.000Z"), [
+        HYBRID_TAG,
+        "drift_tag",
+      ]),
+      makeRemotePost(OVERLAP_B, new Date("2024-01-11T00:00:00.000Z"), [
+        HYBRID_TAG,
+        "drift_tag",
+      ]),
+      makeRemotePost(19006905, new Date("2024-01-10T00:00:00.000Z"), [
+        HYBRID_TAG,
+        "drift_tag",
+      ]),
+      makeRemotePost(19004801, new Date("2024-01-09T00:00:00.000Z"), [
+        HYBRID_TAG,
+        "drift_tag",
+      ]),
+      makeRemotePost(19002862, new Date("2024-01-08T00:00:00.000Z"), [
+        HYBRID_TAG,
+        "drift_tag",
+      ]),
+      makeRemotePost(19006901, new Date("2024-01-07T00:00:00.000Z"), [
+        HYBRID_TAG,
+        "drift_tag",
+      ]),
+      makeRemotePost(19006889, new Date("2024-01-06T00:00:00.000Z"), [
+        HYBRID_TAG,
+        "drift_tag",
+      ]),
+      makeRemotePost(19006877, new Date("2024-01-05T00:00:00.000Z"), [
+        HYBRID_TAG,
+        "drift_tag",
+      ]),
+    ];
+
+    let resolveCallCount = 0;
+    fetchPostsMock.mockImplementation(
+      async (
+        tags: string,
+        apiPage: number,
+        _settings: unknown,
+        _isRandom: boolean,
+        limit: number
+      ) => {
+        // Count top-level resolve pages via pid=0 starts (each hybrid resolve
+        // walks the feed from apiPage 0).
+        if (apiPage === 0) {
+          resolveCallCount += 1;
+        }
+        // After page1, live feed gains a newer head — without an upper-bound
+        // snapshot this pushes OVERLAP_A/B from page1 into page2.
+        let feed =
+          resolveCallCount <= 1
+            ? baseFeed
+            : [
+                makeRemotePost(DRIFT_NEW, new Date("2024-01-20T00:00:00.000Z"), [
+                  HYBRID_TAG,
+                  "drift_tag",
+                ]),
+                ...baseFeed,
+              ];
+        // Honor id:<=N / id:<N upper-bound meta-tags when present (fix path).
+        const leMatch = /\bid:<=(\d+)\b/.exec(tags);
+        const ltMatch = /\bid:<(\d+)\b/.exec(tags);
+        if (leMatch) {
+          const bound = Number(leMatch[1]);
+          feed = feed.filter((post) => post.id <= bound);
+        } else if (ltMatch) {
+          const bound = Number(ltMatch[1]);
+          feed = feed.filter((post) => post.id < bound);
+        }
+        const start = apiPage * limit;
+        return asResult(feed.slice(start, start + limit));
+      }
+    );
+
+    const page1 = await resolvePage(1);
+    const page2 = await resolvePage(2);
+    const keys1 = page1.map(identityKey);
+    const keys2 = page2.map(identityKey);
+
+    expect(keys1).toHaveLength(PAGE_LIMIT);
+    expect(new Set(keys1).size).toBe(keys1.length);
+    expect(new Set(keys2).size).toBe(keys2.length);
+    expect(keys1).toContain(`rule34:${OVERLAP_A}`);
+    expect(keys1).toContain(`rule34:${OVERLAP_B}`);
+    // Snapshot-bound / issued-key walk: page2 must not re-emit page1 identities
+    // after live feed drift, and must not introduce posts above the snapshot.
+    expect(keys2.filter((key) => keys1.includes(key))).toEqual([]);
+    expect(keys2).not.toContain(`rule34:${DRIFT_NEW}`);
+
+    const walkKeys: string[] = [];
+    let page = 1;
+    for (;;) {
+      const rows = await resolvePage(page);
+      if (rows.length === 0) {
+        break;
+      }
+      walkKeys.push(...rows.map(identityKey));
+      if (rows.length < PAGE_LIMIT) {
+        break;
+      }
+      page += 1;
+    }
+    expect(new Set(walkKeys).size).toBe(walkKeys.length);
+    expect(walkKeys.filter((key) => key === `rule34:${OVERLAP_A}`)).toHaveLength(1);
+    expect(walkKeys.filter((key) => key === `rule34:${OVERLAP_B}`)).toHaveLength(1);
+    expect(walkKeys.filter((key) => key === "rule34:19004801")).toHaveLength(1);
+  });
+
+  it("ordered merge tie-breaks equal publishedAt by provider then postId", async () => {
+    mockDb.db.delete(posts).run();
+    const artist = mockDb.db.select({ id: artists.id }).from(artists).all()[0];
+    if (artist === undefined) {
+      throw new Error("expected seed artist");
+    }
+    const TIE_TIME = new Date("2024-03-01T00:00:00.000Z");
+    // Two local rows, same publishedAt; provider tie-break is identical, so postId desc.
+    mockDb.db
+      .insert(posts)
+      .values([
+        {
+          postId: 5002,
+          artistId: artist.id,
+          provider: "rule34",
+          fileUrl: "https://local.example.com/5002.jpg",
+          previewUrl: "",
+          sampleUrl: "",
+          tags: `${HYBRID_TAG} tie`,
+          rating: "s",
+          mediaType: "image",
+          publishedAt: TIE_TIME,
+        },
+        {
+          postId: 5001,
+          artistId: artist.id,
+          provider: "rule34",
+          fileUrl: "https://local.example.com/5001.jpg",
+          previewUrl: "",
+          sampleUrl: "",
+          tags: `${HYBRID_TAG} tie`,
+          rating: "s",
+          mediaType: "image",
+          publishedAt: TIE_TIME,
+        },
+      ])
+      .run();
+
+    fetchPostsMock.mockImplementation(async () =>
+      asResult([
+        makeRemotePost(6001, TIE_TIME),
+        makeRemotePost(6002, TIE_TIME),
+      ])
+    );
+
+    const page1 = await resolvePage(1);
+    // desc publishedAt (tied) → provider ASC (all rule34) → postId DESC
+    expect(page1.map((row) => row.postId)).toEqual([6002, 6001, 5002]);
+  });
+
+  it("ordered page 1 refresh starts a new remote upper-bound snapshot", async () => {
+    mockDb.db.delete(posts).run();
+    const REFRESH_HEAD = 19008888;
+    const BASE_HEAD = 19007000;
+
+    let generation = 0;
+    fetchPostsMock.mockImplementation(
+      async (
+        tags: string,
+        apiPage: number,
+        _settings: unknown,
+        _isRandom: boolean,
+        limit: number
+      ) => {
+        if (apiPage === 0) {
+          generation += 1;
+        }
+        let feed =
+          generation === 1
+            ? [
+                makeRemotePost(BASE_HEAD, new Date("2024-01-12T00:00:00.000Z")),
+                makeRemotePost(19006999, new Date("2024-01-11T00:00:00.000Z")),
+                makeRemotePost(19006998, new Date("2024-01-10T00:00:00.000Z")),
+                makeRemotePost(19006997, new Date("2024-01-09T00:00:00.000Z")),
+              ]
+            : [
+                makeRemotePost(REFRESH_HEAD, new Date("2024-01-20T00:00:00.000Z")),
+                makeRemotePost(BASE_HEAD, new Date("2024-01-12T00:00:00.000Z")),
+                makeRemotePost(19006999, new Date("2024-01-11T00:00:00.000Z")),
+                makeRemotePost(19006998, new Date("2024-01-10T00:00:00.000Z")),
+              ];
+        const leMatch = /\bid:<=(\d+)\b/.exec(tags);
+        if (leMatch) {
+          const bound = Number(leMatch[1]);
+          feed = feed.filter((post) => post.id <= bound);
+        }
+        const start = apiPage * limit;
+        return asResult(feed.slice(start, start + limit));
+      }
+    );
+
+    const firstWalkPage1 = await resolvePage(1);
+    expect(firstWalkPage1.map((row) => row.postId)).toContain(BASE_HEAD);
+    expect(firstWalkPage1.map((row) => row.postId)).not.toContain(REFRESH_HEAD);
+
+    // Page 2 of the first snapshot must not see REFRESH_HEAD (bound freezes feed).
+    const firstWalkPage2 = await resolvePage(2);
+    expect(firstWalkPage2.map((row) => row.postId)).not.toContain(REFRESH_HEAD);
+
+    // Page 1 again = refresh = new snapshot that may include newer head.
+    const refreshedPage1 = await resolvePage(1);
+    expect(refreshedPage1.map((row) => row.postId)).toContain(REFRESH_HEAD);
   });
 });
