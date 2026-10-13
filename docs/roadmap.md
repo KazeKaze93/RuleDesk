@@ -156,7 +156,7 @@ Merge order: **this hotfix first**, then `#247`. Do not put the hotfix into `#24
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| H-db | `fix/db-never-delete-on-open-error` | (this PR) | 🟡 open — merge before `#247` |
+| H-db | `fix/db-never-delete-on-open-error` | [#249](https://github.com/KazeKaze93/RuleDesk/pull/249) | 🟡 open — merge before `#247` |
 | UI/arch | `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — blocked on H-db |
 
 HANDOFF (H-db, do not treat as fixed here):
