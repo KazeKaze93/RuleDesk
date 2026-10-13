@@ -6,14 +6,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   databaseLooksInitialized,
   migrateLegacyDatabase,
-} from "@/main/db/legacy-database-migrate";
+} from "../../../src/main/db/legacy-database-migrate";
 import {
   ensureDrizzleMigrationsTable,
   readMigrationJournal,
   runManualMigrations,
-} from "@/main/db/migration-runner";
-import { ErrorCode } from "@/shared/types/error-codes";
-import { getErrorCode } from "@/shared/utils/type-guards";
+} from "../../../src/main/db/migration-runner";
+import { ErrorCode } from "../../../src/shared/types/error-codes";
+import { getErrorCode } from "../../../src/shared/utils/type-guards";
 
 const PROJECT_DRIZZLE = path.resolve(process.cwd(), "drizzle");
 
