@@ -123,7 +123,7 @@ FTS tokenizer / seeded random / cache eviction / schema SQL sync / backup worker
 
 ### Post-P9 hotfixes + R4 (after DB-review P2)
 
-R4 GREEN after F fixes. Post-P9 lessons harvested in L (do not re-open P2). Concurrent version-bump agent T: unknown / no open PR at L ship.
+R4 GREEN after F fixes. Post-P9 lessons harvested in L (do not re-open P2). Concurrent release T shipped `18.3.0` on master (docs PR rebased onto tip).
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
@@ -133,7 +133,7 @@ R4 GREEN after F fixes. Post-P9 lessons harvested in L (do not re-open P2). Conc
 | F-ordered-paging-drift | `fix/ordered-playlist-stable-pages` | [#235](https://github.com/KazeKaze93/RuleDesk/pull/235) | ✅ merged |
 | R4 | (packed/unpackaged smoke) | — | ✅ GREEN |
 | L | `chore/lessons-p2-fixes` | — | started |
-| T | (version bump / `package.json`) | — | unknown (no open PR) |
+| T | `18.3.0` (version bump on master) | — | ✅ merged (`d426de7`) |
 
 ## 📰 Updates feed
 
