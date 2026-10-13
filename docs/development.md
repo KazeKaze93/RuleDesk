@@ -2,7 +2,7 @@
 
 ## Process
 
-`master` requires pull requests (no direct push, including for admins; 0 required reviews for solo flow). Version bumps use the same rule: `release:patch|minor|major` open a `release/<version>` PR; the Release workflow still starts only from a pushed `v*` tag (see below).
+Branch protection on `master` is **enabled**: pull requests required (including for admins), 0 required approving reviews for solo flow, force pushes and branch deletion blocked. Version bumps use the same rule: `release:patch|minor|major` open a `release/<version>` PR; the Release workflow still starts only from a pushed `v*` tag (see below). Tag pushes are not restricted.
 
 ## Quality gate (local)
 

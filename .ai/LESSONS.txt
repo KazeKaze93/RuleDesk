@@ -391,9 +391,9 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 3. **Full actual diff inventory** — every path touched (e.g. `git diff --name-only origin/<base>...HEAD`), not only the prompt's planned file list. Doc-sync and incidental wiring count; call them out explicitly.
 A report without (1)–(3) is an **incomplete task**. Do not claim a branch "landed" from memory, conversation summary, or docs narrative — verify with `git ls-remote --heads origin <branch>` / code criteria.
 
-### Problem: Enabling require-PR master protection would break the current release path
-**Root Cause:** `npm run release:patch|minor|major` runs `npm version … && git push --follow-tags`, which commits and pushes the version bump directly to `master`. Require-PR (even with 0 reviews) rejects that direct push while tag-only packaging (`push: tags: [v*]`) would still work.
-**Invariant Rule:** Do **not** enable GitHub branch protection on `master` until `release:*` no longer pushes version commits to `master` (bump on a release branch/PR, or push tags only after merging a version PR). Document the STOP in `docs/development.md`; keep using the existing `release:*` path until that rewrite lands.
+### Problem: Require-PR master protection rejects direct version pushes
+**Root Cause:** A release path that commits and pushes the version bump directly to `master` (`npm version … && git push --follow-tags`) is incompatible with require-PR branch protection (even with 0 reviews and enforce_admins). Tag-only packaging (`push: tags: [v*]`) still works.
+**Invariant Rule:** Keep `master` protected (require PR, enforce admins). Version bumps must land via a `release/<version>` PR; tag `v*` only on the merge commit. Do not reintroduce direct pushes to `master` in `release:*`.
 
 ### Problem: Part of a prompt batch was never started, and the gap went unnoticed
 **Root Cause:** N prompts issued into chat with no dispatcher-side status tracking; execution began mid-queue, the two skipped P0 prompts left no git trace, and later doc narrative ("video-cache through i18n") fabricated a memory of a full run.
