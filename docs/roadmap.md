@@ -137,17 +137,18 @@ R4 GREEN after F fixes. Post-P9 lessons harvested in L (do not re-open P2). Conc
 
 ### Post-18.3.0 polish + release (Q / R / T)
 
-R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit tag (Q4 branch protection can be enabled next). Lessons harvested into `.ai/LESSONS.txt` with this release. Status lives only in this table.
+R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit tag. S2 enabled GitHub branch protection on `master` (require PR, 0 reviews, enforce admins). Lessons harvested into `.ai/LESSONS.txt` with this release. Status lives only in this table.
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
 | Q1 | `fix/post-metadata-first-open` | [#240](https://github.com/KazeKaze93/RuleDesk/pull/240) | ✅ merged |
 | Q2 | `refactor/ipc-validation-single-path` | [#241](https://github.com/KazeKaze93/RuleDesk/pull/241) | ✅ merged |
 | Q3 | `docs/truth-pass` | [#239](https://github.com/KazeKaze93/RuleDesk/pull/239) | ✅ merged |
-| Q4 | `chore/protect-master` | [#238](https://github.com/KazeKaze93/RuleDesk/pull/238) | ✅ merged (docs only; protection deferred) |
+| Q4 | `chore/protect-master` | [#238](https://github.com/KazeKaze93/RuleDesk/pull/238) | ✅ merged (docs only; protection deferred → S2) |
 | R | (packed/unpackaged smoke on `1ab4108`) | — | ✅ GREEN |
 | T | `18.3.1` (version bump on master via `release:patch`) | — | ✅ merged (`0d535b9`) |
 | S1 | `chore/release-via-pr` | [#243](https://github.com/KazeKaze93/RuleDesk/pull/243) | ✅ merged |
+| S2 | `chore/enable-master-protection` | (this PR) | ✅ protection enabled |
 
 ## 📰 Updates feed
 
