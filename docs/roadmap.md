@@ -150,6 +150,23 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 | S1 | `chore/release-via-pr` | [#243](https://github.com/KazeKaze93/RuleDesk/pull/243) | ✅ merged |
 | S2 | `chore/enable-master-protection` | [#245](https://github.com/KazeKaze93/RuleDesk/pull/245) | ✅ protection enabled |
 
+### Critical DB safety + UI/arch debt (post-S2)
+
+Merge order: **this hotfix first**, then `#247`. Do not put the hotfix into `#247` (rollback of the large PR must not drop data-loss protection).
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| H-db | `fix/db-never-delete-on-open-error` | (this PR) | 🟡 open — merge before `#247` |
+| UI/arch | `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — blocked on H-db |
+
+HANDOFF (H-db, do not treat as fixed here):
+
+| Item | Risk |
+|------|------|
+| `database-restore.ts` `rm` of live path on failed reinit / rollback | High if `.bak` restore then fails |
+| `SystemController` wipe-all under userData | High by design (explicit user wipe) |
+| `migration-runner` / `backup-service` / `backupIntegrityWorker` temp/snapshot `rmSync` | Medium — not live `data.bin` paths by design; verify paths stay scoped |
+
 ## 📰 Updates feed
 
 ### Feed Enhancements
