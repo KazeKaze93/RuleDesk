@@ -6,6 +6,7 @@ export interface ButtonProps
   variant?:
     | "default"
     | "destructive"
+    | "success"
     | "outline"
     | "secondary"
     | "ghost"
@@ -23,6 +24,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             "bg-primary text-primary-foreground hover:bg-primary/90",
           variant === "destructive" &&
             "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          variant === "success" &&
+            "bg-success text-success-foreground hover:bg-success/90",
           variant === "outline" &&
             "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
           variant === "secondary" &&

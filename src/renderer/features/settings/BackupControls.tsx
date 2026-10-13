@@ -60,16 +60,12 @@ export function BackupControls() {
       <div className="flex gap-4">
         <Button
           type="button"
+          variant="success"
           onClick={() => {
             void handleBackup();
           }}
           disabled={isLoading}
           aria-label="Create a full backup of the database"
-          className={
-            isLoading
-              ? "cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted"
-              : "bg-emerald-600 text-white hover:bg-emerald-700"
-          }
         >
           {isLoading ? "Loading…" : "Create backup"}
         </Button>

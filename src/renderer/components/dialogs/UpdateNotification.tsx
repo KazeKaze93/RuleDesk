@@ -48,37 +48,39 @@ export const UpdateNotification: React.FC = () => {
   return (
     <div
       className={cn(
-        "fixed right-4 bottom-4 z-50 p-4 w-80 rounded-lg border shadow-xl bg-slate-900 border-slate-700 animate-in slide-in-from-bottom-5 text-slate-100"
+        "fixed right-4 bottom-4 z-50 p-4 w-80 rounded-lg border shadow-xl bg-card text-card-foreground border-border animate-in slide-in-from-bottom-5"
       )}
     >
       <div className="flex justify-between items-start mb-3">
         <div className="flex gap-3 items-center">
-          <Download className="w-5 h-5 text-yellow-400" aria-hidden />
+          <Download className="w-5 h-5 text-warning" aria-hidden />
           <div>
             <h4 className="text-sm font-semibold">
               {version
                 ? `Update v${version} available`
                 : "Update available"}
             </h4>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Open the GitHub release page to download the ZIP or AppImage.
             </p>
           </div>
         </div>
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={handleClose}
-          className="text-slate-500 hover:text-slate-300"
           aria-label="Close update notification"
         >
           <X className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-2 mt-3">
         <Button
           size="sm"
           onClick={handleOpenRelease}
-          className="w-full bg-blue-600 hover:bg-blue-500"
+          className="w-full"
           aria-label={openReleaseLabel}
         >
           Open release page
@@ -87,7 +89,7 @@ export const UpdateNotification: React.FC = () => {
           size="sm"
           variant="outline"
           onClick={handleClose}
-          className="w-full border-slate-700 hover:bg-slate-800"
+          className="w-full"
           aria-label="Dismiss update notification"
         >
           Later
