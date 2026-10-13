@@ -93,7 +93,7 @@
 | `maintenance:mark-backup-prompt-seen` | `MAINTENANCE.MARK_BACKUP_PROMPT_SEEN` | `[]` (no args) | no | `MaintenanceController` | Sets hasSeenAutoBackupPrompt=true so the one-time auto-backup opt-in dialog is not shown again (Enable, Not now, or dismiss). |
 | `maintenance:run-vacuum` | `MAINTENANCE.RUN_VACUUM` | `[]` (no args) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
 | `maintenance:set-vacuum-schedule` | `MAINTENANCE.SET_VACUUM_SCHEDULE` | schema: see source (`SetVacuumScheduleArgsSchema`) | yes | `MaintenanceController` | `src/main/ipc/controllers/MaintenanceController.ts` |
-| `maintenance:should-show-backup-prompt` | `MAINTENANCE.SHOULD_SHOW_BACKUP_PROMPT` | `[]` (no args) | yes | `MaintenanceController` | True when autoBackupInterval is never and hasSeenAutoBackupPrompt is false (existing installs that still inherit never). Read-only. |
+| `maintenance:should-show-backup-prompt` | `MAINTENANCE.SHOULD_SHOW_BACKUP_PROMPT` | `[]` (no args) | yes | `MaintenanceController` | True when autoBackupInterval is never and hasSeenAutoBackupPrompt is false (after backupPolicyVersion migration, mostly edge cases). Read-only. |
 | `settings:confirm-legal` | `SETTINGS.CONFIRM_LEGAL` | `[]` (no args) | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `settings:reset-onboarding` | `SETTINGS.RESET_ONBOARDING` | `[]` (no args) | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |
 | `settings:save-download-folder` | `SETTINGS.SAVE_DOWNLOAD_FOLDER` | `z.tuple([SaveDownloadFolderArgSchema])` | no | `SettingsController` | `src/main/ipc/controllers/SettingsController.ts` |

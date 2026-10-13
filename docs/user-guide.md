@@ -495,7 +495,7 @@ Settings are split into tabs:
 - **Restore Backup** - Restore from a backup file (dialog opens in `RuleDesk-Backups`; app reloads after success)
 - **Check Integrity** - Verify database is not corrupted
 - **Orphaned data check** - Read-only report of posts/playlist entries/FTS rows without parents (no automatic cleanup)
-- **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup). New installs default to Daily. If you upgraded from an older build that left auto-backup off, RuleDesk may ask once whether to enable daily backups — you can dismiss or change the setting later under Settings → Backup.
+- **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup). Default is Daily (including upgrades that still had Never and had never answered the opt-in prompt). If you previously dismissed that prompt and kept Never, RuleDesk leaves your choice alone. You can change the schedule anytime under Settings → Backup.
 - **Retention** - Keep the last `N` **manual** backups and the last `N` **automatic** backups independently (`backupRetention`, range `1..20`). The two file sets are counted separately and are not summed into one pool
 - **Database Maintenance (VACUUM)** - See last VACUUM run status/time, run VACUUM manually, and choose maintenance schedule (`Manual`, `Weekly`, `Monthly`)
 

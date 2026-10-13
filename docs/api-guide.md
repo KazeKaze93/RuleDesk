@@ -1532,7 +1532,7 @@ Sets automatic backup schedule used by startup auto-backup check.
 
 ### `shouldShowBackupPrompt()`
 
-Whether the one-time auto-backup opt-in dialog should be shown: `autoBackupInterval === "never"` and the user has not yet been asked (`hasSeenAutoBackupPrompt === false`).
+Whether the one-time auto-backup opt-in dialog should be shown: `autoBackupInterval === "never"` and the user has not yet been asked (`hasSeenAutoBackupPrompt === false`). After `backupPolicyVersion` migration (v1), upgrades that still had unseen `"never"` are flipped to `"daily"`, so this is mainly for remaining edge cases.
 
 **Returns:** `Promise<boolean>`
 
