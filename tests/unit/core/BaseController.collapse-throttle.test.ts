@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
 import log from "electron-log";
-import { BaseController } from "@/main/core/ipc/BaseController";
-import { ErrorCode } from "@/main/types/ipc";
-import { isIpcFailureResult } from "@/shared/utils/ipc-result";
+import { BaseController } from "../../../src/main/core/ipc/BaseController";
+import { ErrorCode } from "../../../src/main/types/ipc";
+import { isIpcFailureResult } from "@shared/utils/ipc-result";
 
 vi.mock("electron", () => ({
   ipcMain: {

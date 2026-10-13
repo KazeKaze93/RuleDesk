@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveUpdatesFeedEmptyKind,
   UPDATES_FEED_EMPTY_KIND,
-} from "@/renderer/lib/updates-feed-empty";
+} from "@/lib/updates-feed-empty";
 
 describe("resolveUpdatesFeedEmptyKind", () => {
   it("returns no_artists when nothing is tracked", () => {

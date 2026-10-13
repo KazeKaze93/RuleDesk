@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, playlists, posts, settings, SETTINGS_ID } from "@/main/db/schema";
+import { artists, playlists, posts, settings, SETTINGS_ID } from "../../../src/main/db/schema";
 import {
   dropFtsTriggersForBulkInsert,
   ensureFtsTriggers,
   rebuildFtsIndex,
-} from "@/main/db/fts-triggers";
+} from "../../../src/main/db/fts-triggers";
 import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
 import type { SQL } from "drizzle-orm";
@@ -13,7 +13,7 @@ import type { SQL } from "drizzle-orm";
 let activeSqlite: Database.Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -60,7 +60,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     formatTag: (tag: string) => tag.trim().toLowerCase(),
     fetchPosts: vi.fn().mockResolvedValue({ posts: [], rawItemCount: 0, rejectedPostIds: [] }),
@@ -68,7 +68,7 @@ vi.mock("@/main/providers", () => ({
   })),
 }));
 
-import { PlaylistController } from "@/main/ipc/controllers/PlaylistController";
+import { PlaylistController } from "../../../src/main/ipc/controllers/PlaylistController";
 
 type TagConditions = {
   includeConditions: SQL[];

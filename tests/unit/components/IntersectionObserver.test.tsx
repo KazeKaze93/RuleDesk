@@ -2,7 +2,7 @@
 import { act, cleanup, render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PostCard } from "@/renderer/features/artists/components/PostCard";
+import { PostCard } from "@/features/artists/components/PostCard";
 import { makePost } from "./PostCard/makePost";
 
 vi.mock("electron-log/renderer", () => ({
@@ -14,11 +14,11 @@ vi.mock("electron-log/renderer", () => ({
   },
 }));
 
-vi.mock("@/renderer/lib/hooks/useVideoProxyUrl", () => ({
+vi.mock("@/lib/hooks/useVideoProxyUrl", () => ({
   useVideoProxyUrl: () => null,
 }));
 
-vi.mock("@/renderer/components/playlists/QuickAddToPlaylistMenu", () => ({
+vi.mock("@/components/playlists/QuickAddToPlaylistMenu", () => ({
   QuickAddToPlaylistMenu: ({ trigger }: { trigger?: ReactNode }) =>
     trigger ?? null,
 }));

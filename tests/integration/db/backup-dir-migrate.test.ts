@@ -2,17 +2,17 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterEach, describe, expect, it } from "vitest";
-import { migrateBackupDirectory } from "@/main/db/backup-dir-migrate";
+import { migrateBackupDirectory } from "../../../src/main/db/backup-dir-migrate";
 import {
   BACKUP_DIR_NAME,
   BACKUP_FILE_PREFIX,
   LEGACY_USER_DATA_DIR_NAMES,
-} from "@/main/db/paths";
+} from "../../../src/main/db/paths";
 import {
   buildAutoBackupFilename,
   buildManualBackupFilename,
-} from "@/main/lib/database-backup";
-import { getBackupSidecarPath } from "@/main/lib/backup-sidecar";
+} from "../../../src/main/lib/database-backup";
+import { getBackupSidecarPath } from "../../../src/main/lib/backup-sidecar";
 
 function createTempDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));

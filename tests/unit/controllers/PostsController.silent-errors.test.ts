@@ -6,7 +6,7 @@ import type { IpcMainInvokeEvent } from "electron";
 let activeSqlite: Database.Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -49,7 +49,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     id: "rule34",
     formatTag: (tag: string) => tag.trim().toLowerCase(),
@@ -59,14 +59,14 @@ vi.mock("@/main/providers", () => ({
   PROVIDER_IDS: ["rule34", "gelbooru"],
 }));
 
-vi.mock("@/main/services/credentials", () => ({
+vi.mock("../../../src/main/services/credentials", () => ({
   getDecryptedApiSettings: vi.fn(async () => ({
     userId: "u",
     apiKey: "k",
   })),
 }));
 
-import { PostsController } from "@/main/ipc/controllers/PostsController";
+import { PostsController } from "../../../src/main/ipc/controllers/PostsController";
 
 type PostsControllerInternals = {
   setup: () => void;

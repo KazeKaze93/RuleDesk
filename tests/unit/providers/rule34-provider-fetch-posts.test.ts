@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import axios, { AxiosError } from "axios";
-import { USER_AGENT } from "@/main/config/constants";
-import { RULE34_MISSING_AUTHENTICATION_MARKER } from "@/shared/constants/rule34-api";
-import { Rule34Provider } from "@/main/providers/rule34-provider";
-import { ProviderThrottle } from "@/main/providers/provider-throttle";
+import { USER_AGENT } from "../../../src/main/config/constants";
+import { RULE34_MISSING_AUTHENTICATION_MARKER } from "@shared/constants/rule34-api";
+import { Rule34Provider } from "../../../src/main/providers/rule34-provider";
+import { ProviderThrottle } from "../../../src/main/providers/provider-throttle";
 
 vi.mock("electron-log", () => ({
   default: {
@@ -14,7 +14,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/lib/logger", () => ({
+vi.mock("../../../src/main/lib/logger", () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock("@/main/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/main/lib/proxy", () => ({
+vi.mock("../../../src/main/lib/proxy", () => ({
   getProxyAgent: vi.fn(() => undefined),
 }));
 

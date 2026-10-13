@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { withSyncPausedForDbWork } from "@/main/lib/sync-db-maintenance";
-import type { SyncService } from "@/main/services/sync-service";
+import { withSyncPausedForDbWork } from "../../../src/main/lib/sync-db-maintenance";
+import type { SyncService } from "../../../src/main/services/sync-service";
 
 describe("withSyncPausedForDbWork", () => {
   let pauseForDbMaintenance: ReturnType<typeof vi.fn>;

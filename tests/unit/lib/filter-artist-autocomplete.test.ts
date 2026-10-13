@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SearchResults } from "@/main/providers/types";
+import type { SearchResults } from "../../../src/main/providers/types";
 import {
   ARTIST_AUTOCOMPLETE_RESOLVE_LIMIT,
   applyArtistOnlyAutocompleteFilter,
   filterGelbooruArtistTags,
   selectTopAutocompleteByPostCount,
-} from "@/main/lib/filter-artist-autocomplete";
+} from "../../../src/main/lib/filter-artist-autocomplete";
 
 function tag(
   value: string,

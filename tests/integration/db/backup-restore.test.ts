@@ -4,7 +4,7 @@ import path from "path";
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/main/lib/backup-sidecar", () => ({
+vi.mock("../../../src/main/lib/backup-sidecar", () => ({
   BACKUP_SIDECAR_SUFFIX: ".settings.json",
   getBackupSidecarPath: (backupDbPath: string) => `${backupDbPath}.settings.json`,
   writeBackupSidecar: vi.fn(async () => undefined),
@@ -20,14 +20,14 @@ import {
   isLegacyAutoBackupFilename,
   listAutoBackupFilesOldestFirst,
   selectAutoBackupFilenamesToDelete,
-} from "@/main/lib/database-backup";
-import { restoreDatabaseFromBackup } from "@/main/lib/database-restore";
-import { writeBackupSidecar } from "@/main/lib/backup-sidecar";
+} from "../../../src/main/lib/database-backup";
+import { restoreDatabaseFromBackup } from "../../../src/main/lib/database-restore";
+import { writeBackupSidecar } from "../../../src/main/lib/backup-sidecar";
 import {
   ensureDrizzleMigrationsTable,
   readMigrationJournal,
   runManualMigrations,
-} from "@/main/db/migration-runner";
+} from "../../../src/main/db/migration-runner";
 
 const PROJECT_DRIZZLE = path.resolve(process.cwd(), "drizzle");
 

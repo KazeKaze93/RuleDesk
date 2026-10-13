@@ -1,12 +1,12 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import * as schema from "@/main/db/schema";
+import * as schema from "../../src/main/db/schema";
 import path from "path";
 import {
   ensureDrizzleMigrationsTable,
   readMigrationJournal,
   runManualMigrations,
-} from "@/main/db/migration-runner";
+} from "../../src/main/db/migration-runner";
 
 /**
  * Creates a fresh in-memory database for testing via the production migration runner.

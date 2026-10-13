@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTagFilterQuery } from "@/main/ipc/controllers/posts-tag-query";
+import { parseTagFilterQuery } from "../../../src/main/ipc/controllers/posts-tag-query";
 
 describe("parseTagFilterQuery", () => {
   it("marks -token as exclude token", () => {

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SourceSwitcher } from "@/renderer/components/layout/filters/SourceSwitcher";
+import { SourceSwitcher } from "@/components/layout/filters/SourceSwitcher";
 
 afterEach(() => {
   cleanup();

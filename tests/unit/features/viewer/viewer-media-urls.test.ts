@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildViewerFullImageChain } from "@/renderer/features/viewer/viewer-media-urls";
+import { buildViewerFullImageChain } from "@/features/viewer/viewer-media-urls";
 
 describe("buildViewerFullImageChain", () => {
   it("rewrites api-cdn-mp4.rule34.xxx fileUrl to image CDN mirrors", () => {

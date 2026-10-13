@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AI_TAGS } from "@/shared/ai-tags";
+import { AI_TAGS } from "@shared/ai-tags";
 
 describe("AI_TAGS", () => {
   it("locks the exact token list composition and order", () => {

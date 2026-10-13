@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildViewerOriginQueryKey } from "@/renderer/features/viewer/buildViewerOriginQueryKey";
-import { buildBrowseSearchQueryKey } from "@/renderer/utils/react-query-cache";
+import { buildViewerOriginQueryKey } from "@/features/viewer/buildViewerOriginQueryKey";
+import { buildBrowseSearchQueryKey } from "@/utils/react-query-cache";
 
 describe("buildViewerOriginQueryKey", () => {
   it("returns null for undefined origin", () => {

@@ -10,12 +10,12 @@ import {
 } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
 import { server } from "../../mocks/server";
-import { artists, settings, SETTINGS_ID } from "@/main/db/schema";
+import { artists, settings, SETTINGS_ID } from "../../../src/main/db/schema";
 import { eq } from "drizzle-orm";
 import {
   SyncCancelledError,
   SyncService,
-} from "@/main/services/sync-service";
+} from "../../../src/main/services/sync-service";
 
 vi.mock("electron", () => ({
   app: { getPath: () => "/tmp" },
@@ -46,7 +46,7 @@ vi.mock("electron-log", () => ({
 let mockDbInstance: ReturnType<typeof createMockDb>["db"] | null = null;
 let mockSqliteInstance: ReturnType<typeof createMockDb>["sqlite"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getDb: () => {
     if (!mockDbInstance) {
       throw new Error("Mock DB not set");

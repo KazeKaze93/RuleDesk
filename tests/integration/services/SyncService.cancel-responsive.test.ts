@@ -14,12 +14,12 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { createMockDb } from "../../helpers/mock-db";
 import { server } from "../../mocks/server";
-import { artists, settings, SETTINGS_ID } from "@/main/db/schema";
-import { getProvider } from "@/main/providers";
-import type { FetchPostsResult } from "@/main/providers/types";
-import { ProviderSearchError } from "@/main/providers/provider-search-errors";
-import { SyncService } from "@/main/services/sync-service";
-import { withSyncPausedForDbWork } from "@/main/lib/sync-db-maintenance";
+import { artists, settings, SETTINGS_ID } from "../../../src/main/db/schema";
+import { getProvider } from "../../../src/main/providers";
+import type { FetchPostsResult } from "../../../src/main/providers/types";
+import { ProviderSearchError } from "../../../src/main/providers/provider-search-errors";
+import { SyncService } from "../../../src/main/services/sync-service";
+import { withSyncPausedForDbWork } from "../../../src/main/lib/sync-db-maintenance";
 
 vi.mock("electron", () => ({
   app: { getPath: () => "/tmp" },
@@ -54,7 +54,7 @@ vi.mock("electron-log", () => ({
 let mockDbInstance: ReturnType<typeof createMockDb>["db"] | null = null;
 let mockSqliteInstance: ReturnType<typeof createMockDb>["sqlite"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getDb: () => {
     if (!mockDbInstance) {
       throw new Error("Mock DB not set");
@@ -245,7 +245,7 @@ describe("SyncService cancel-responsive", () => {
   });
 
   it("quit drain order: cancel then closeDatabase (app.log sequence)", async () => {
-    const { logger } = await import("@/main/lib/logger");
+    const { logger } = await import("../../../src/main/lib/logger");
     const logLines: string[] = [];
     vi.spyOn(logger, "info").mockImplementation((message: unknown) => {
       if (typeof message === "string") {

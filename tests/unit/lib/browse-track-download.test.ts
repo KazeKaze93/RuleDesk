@@ -4,7 +4,7 @@ import {
   ensureArtistTrackedAndSynced,
   getTrackAndDownloadCandidateTag,
   isResolvedArtistIncludeTag,
-} from "@/renderer/lib/browse-track-download";
+} from "@/lib/browse-track-download";
 
 function makeArtist(overrides: Partial<Artist> & Pick<Artist, "id" | "tag">): Artist {
   return {

@@ -9,8 +9,8 @@ import {
   buildRemoteMediaTypeTagInjection,
   parseSearchQuery,
   useSearchStore,
-} from "@/renderer/store/searchStore";
-import { AI_TAGS } from "@/shared/ai-tags";
+} from "@/store/searchStore";
+import { AI_TAGS } from "@shared/ai-tags";
 
 vi.mock("electron-log/renderer", () => ({
   default: {

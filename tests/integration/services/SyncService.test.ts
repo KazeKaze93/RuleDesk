@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { createMockDb } from '../../helpers/mock-db';
 import { server } from '../../mocks/server';
-import { artists, posts, settings, SETTINGS_ID } from '@/main/db/schema';
+import { artists, posts, settings, SETTINGS_ID } from '../../../src/main/db/schema';
 import { eq } from 'drizzle-orm';
-import { getProvider } from '@/main/providers';
-import type { BooruPost, FetchPostsResult } from '@/main/providers/types';
-import { PAGE_SIZE } from '@/main/providers/types';
-import { ProviderSearchError } from '@/main/providers/provider-search-errors';
-import { IPC_CHANNELS } from '@/main/ipc/channels';
+import { getProvider } from '../../../src/main/providers';
+import type { BooruPost, FetchPostsResult } from '../../../src/main/providers/types';
+import { PAGE_SIZE } from '../../../src/main/providers/types';
+import { ProviderSearchError } from '../../../src/main/providers/provider-search-errors';
+import { IPC_CHANNELS } from '../../../src/main/ipc/channels';
 
 // Mock Electron BEFORE imports
 vi.mock('electron', () => ({
@@ -55,7 +55,7 @@ vi.mock('electron-log', () => ({
 let mockDbInstance: ReturnType<typeof createMockDb>['db'] | null = null;
 let mockSqliteInstance: ReturnType<typeof createMockDb>['sqlite'] | null = null;
 
-vi.mock('@/main/db/client', () => ({
+vi.mock('../../../src/main/db/client', () => ({
   getDb: () => {
     if (!mockDbInstance) {
       throw new Error('Mock DB not set. Call setMockDbInstance() first.');
@@ -77,7 +77,7 @@ import {
   SyncCancelledError,
   SyncService,
   isSyncCancelledError,
-} from '@/main/services/sync-service';
+} from '../../../src/main/services/sync-service';
 
 describe('SyncService Integration', () => {
   const asFetchResult = (

@@ -3,7 +3,7 @@ import {
   DISPLAY_ENV,
   WAYLAND_DISPLAY_ENV,
   isHeadlessEnvironment,
-} from "@/main/db/headless-env";
+} from "../../../src/main/db/headless-env";
 
 describe("isHeadlessEnvironment (platform matrix)", () => {
   it("exports named DISPLAY / WAYLAND_DISPLAY env keys", () => {

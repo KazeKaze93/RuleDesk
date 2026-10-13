@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createMockDb } from '../../helpers/mock-db';
-import { ARTIST_TYPES, PROVIDER_IDS } from '@/shared/constants';
-import { container, DI_TOKENS } from '@/main/core/di/Container';
-import { artists, settings, SETTINGS_ID } from '@/main/db/schema';
+import { ARTIST_TYPES, PROVIDER_IDS } from '@shared/constants';
+import { container, DI_TOKENS } from '../../../src/main/core/di/Container';
+import { artists, settings, SETTINGS_ID } from '../../../src/main/db/schema';
 import { eq } from 'drizzle-orm';
 
 // Mock Electron BEFORE imports
@@ -10,7 +10,7 @@ import { eq } from 'drizzle-orm';
 let activeSqlite: import("better-sqlite3").Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -59,8 +59,8 @@ vi.mock('electron-log', () => ({
   },
 }));
 
-import { ArtistsController } from '@/main/ipc/controllers/ArtistsController';
-import type { AddArtistRequest } from '@/shared/schemas/artist';
+import { ArtistsController } from '../../../src/main/ipc/controllers/ArtistsController';
+import type { AddArtistRequest } from '@shared/schemas/artist';
 
 describe('ArtistsController Integration', () => {
   let mockDb: ReturnType<typeof createMockDb>;

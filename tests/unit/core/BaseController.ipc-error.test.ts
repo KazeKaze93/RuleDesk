@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
 import { z } from "zod";
-import { BaseController } from "@/main/core/ipc/BaseController";
-import { ErrorCode } from "@/shared/types/error-codes";
-import { createCodedError } from "@/shared/utils/coded-error";
-import { invokeIpc } from "@/preload/invoke-ipc";
+import { BaseController } from "../../../src/main/core/ipc/BaseController";
+import { ErrorCode } from "@shared/types/error-codes";
+import { createCodedError } from "@shared/utils/coded-error";
+import { invokeIpc } from "../../../src/preload/invoke-ipc";
 import {
   isIpcFailureResult,
   unwrapIpcInvokeResult,
-} from "@/shared/utils/ipc-result";
-import { getErrorCode } from "@/shared/utils/type-guards";
+} from "@shared/utils/ipc-result";
+import { getErrorCode } from "@shared/utils/type-guards";
 
 vi.mock("electron", () => ({
   ipcMain: {

@@ -50,32 +50,32 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: vi.fn(),
 }));
 
-vi.mock("@/main/db/paths", () => ({
+vi.mock("../../../src/main/db/paths", () => ({
   getBackupDirectory: () => testUserDataDir,
 }));
 
-vi.mock("@/main/db/maintenance-queue", () => ({
+vi.mock("../../../src/main/db/maintenance-queue", () => ({
   maintenanceQueue: {
     isProcessing: () => false,
   },
 }));
 
-vi.mock("@/main/lib/backup-retention", () => ({
+vi.mock("../../../src/main/lib/backup-retention", () => ({
   getBackupRetention: () => 5,
 }));
 
-vi.mock("@/main/lib/database-backup", () => ({
+vi.mock("../../../src/main/lib/database-backup", () => ({
   buildAutoBackupFilename: vi.fn(),
   createConsistentBackup: vi.fn(),
   listAutoBackupFilesOldestFirst: vi.fn(() => []),
   selectAutoBackupFilenamesToDelete: vi.fn(() => []),
 }));
 
-import type { SyncService } from "@/main/services/sync-service";
+import type { SyncService } from "../../../src/main/services/sync-service";
 import {
   BACKUP_SETTINGS_STORE_NAME,
   BackupService,
@@ -84,7 +84,7 @@ import {
   resetBackupStoreForTests,
   setBackupStoreForTests,
   type BackupStoreContract,
-} from "@/main/services/backup-service";
+} from "../../../src/main/services/backup-service";
 
 type ConfConstructor = new (options: {
   cwd: string;

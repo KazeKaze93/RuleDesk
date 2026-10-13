@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { settings, SETTINGS_ID } from "@/main/db/schema";
-import { encodeTestCredential } from "@/main/lib/test-credential-cipher";
-import { getDecryptedApiSettings } from "@/main/services/credentials";
+import { settings, SETTINGS_ID } from "../../../src/main/db/schema";
+import { encodeTestCredential } from "../../../src/main/lib/test-credential-cipher";
+import { getDecryptedApiSettings } from "../../../src/main/services/credentials";
 
 vi.mock("electron", () => ({
   safeStorage: {

@@ -27,14 +27,14 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-import { SecureStorage } from "@/main/services/secure-storage";
+import { SecureStorage } from "../../../src/main/services/secure-storage";
 import {
   CredentialDecryptionError,
   decryptStoredApiKey,
   getDecryptedCredentialsFromRecord,
   getDecryptedCredentialsStrict,
   hasConfiguredApiKey,
-} from "@/main/utils/decrypted-credentials";
+} from "../../../src/main/utils/decrypted-credentials";
 
 describe("decrypted-credentials", () => {
   const corruptedBase64 = Buffer.from("not-a-real-ciphertext").toString("base64");

@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts } from "@/main/db/schema";
+import { artists, posts } from "../../../src/main/db/schema";
 import {
   buildPostsTimeline,
   queryPostsCreatedAtTimeline,
-} from "@/main/db/queries/stats";
+} from "../../../src/main/db/queries/stats";
 import type Database from "better-sqlite3";
 
 let activeSqlite: InstanceType<typeof Database> | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -18,7 +18,7 @@ vi.mock("@/main/db/client", () => ({
   },
 }));
 
-vi.mock("@/main/db/paths", () => ({
+vi.mock("../../../src/main/db/paths", () => ({
   getDatabasePaths: () => ({
     dbPath: "C:\\fake\\data.bin",
     userDataPath: "C:\\fake",
@@ -55,7 +55,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-import { StatsController } from "@/main/ipc/controllers/StatsController";
+import { StatsController } from "../../../src/main/ipc/controllers/StatsController";
 
 function monthKey(date: Date): string {
   const year = date.getFullYear();

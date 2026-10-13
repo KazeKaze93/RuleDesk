@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { settings, SETTINGS_ID } from "@/main/db/schema";
+import { settings, SETTINGS_ID } from "../../../src/main/db/schema";
 
 const SEARCH_RESULTS_CACHE_MIGRATION_TAG = "0035_add_search_results_cache";
 

@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts } from "@/main/db/schema";
+import { artists, posts } from "../../../src/main/db/schema";
 import {
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
-} from "@/shared/constants";
+} from "@shared/constants";
 import {
   countUpdatesFeedPosts,
   getLastTrackedArtistSyncAtMs,
   markPostsViewedByIds,
   markUpdatesFeedPostsViewed,
-} from "@/main/db/queries/updates-feed";
+} from "../../../src/main/db/queries/updates-feed";
 
 const SECOND_MS = 1000;
 const ARTIST_CREATED_SEC = 1_700_000_000;

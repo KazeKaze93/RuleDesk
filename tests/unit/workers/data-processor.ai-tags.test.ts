@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AI_TAGS } from "@/shared/ai-tags";
+import { AI_TAGS } from "@shared/ai-tags";
 
 /**
  * Pre-unify worker AI_TAG_PATTERNS composition (P0-C: identical to other copies).

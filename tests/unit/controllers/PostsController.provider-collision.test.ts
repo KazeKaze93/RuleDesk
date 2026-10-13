@@ -1,16 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts } from "@/main/db/schema";
-import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
+import { artists, posts } from "../../../src/main/db/schema";
+import { EXTERNAL_ARTIST_ID } from "@shared/constants";
 import { and, eq } from "drizzle-orm";
 import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
-import type { PostData } from "@/shared/schemas/post";
+import type { PostData } from "@shared/schemas/post";
 
 let activeSqlite: Database.Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -55,7 +55,7 @@ vi.mock("electron-log", () => ({
 
 const fetchPostsMock = vi.fn();
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn((id: string) => ({
     id,
     formatTag: (tag: string) => tag.trim().toLowerCase(),
@@ -65,14 +65,14 @@ vi.mock("@/main/providers", () => ({
   PROVIDER_IDS: ["rule34", "gelbooru"],
 }));
 
-vi.mock("@/main/services/credentials", () => ({
+vi.mock("../../../src/main/services/credentials", () => ({
   getDecryptedApiSettings: vi.fn(async () => ({
     userId: "u",
     apiKey: "k",
   })),
 }));
 
-vi.mock("@/main/services/post-lookup-cache", () => ({
+vi.mock("../../../src/main/services/post-lookup-cache", () => ({
   resolvePostLookup: vi.fn(
     async (
       _provider: string,
@@ -85,7 +85,7 @@ vi.mock("@/main/services/post-lookup-cache", () => ({
   ),
 }));
 
-import { PostsController } from "@/main/ipc/controllers/PostsController";
+import { PostsController } from "../../../src/main/ipc/controllers/PostsController";
 
 type PostsControllerInternals = {
   setup: () => void;

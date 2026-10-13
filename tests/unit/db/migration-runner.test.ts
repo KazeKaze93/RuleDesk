@@ -2,11 +2,11 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ErrorCode } from "@/shared/types/error-codes";
+import { ErrorCode } from "@shared/types/error-codes";
 import {
   requireMigrationFile,
   splitMigrationStatements,
-} from "@/main/db/migration-runner";
+} from "../../../src/main/db/migration-runner";
 
 vi.mock("electron-log", () => ({
   default: {

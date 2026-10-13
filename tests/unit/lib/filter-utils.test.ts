@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { hasAiGeneratedTag, isVideoPost } from '@/renderer/lib/filter-utils';
-import { AI_TAGS } from '@/shared/ai-tags';
+import { hasAiGeneratedTag, isVideoPost } from '@/lib/filter-utils';
+import { AI_TAGS } from '@shared/ai-tags';
 
 /** Pre-unify local list composition (P0-C: all copies identical). */
 const PREVIOUS_AI_TAG_LIST = [

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { ALLOWED_HOSTS_SET } from "@/main/config/allowed-hosts";
-import { PROVIDER_IDS } from "@/shared/constants";
-import { buildSiteTagSearchUrl } from "@/shared/utils/site-urls";
-import { tryParseHttpsUrlHostname } from "@/shared/utils/url-host";
+import { ALLOWED_HOSTS_SET } from "../../../src/main/config/allowed-hosts";
+import { PROVIDER_IDS } from "@shared/constants";
+import { buildSiteTagSearchUrl } from "@shared/utils/site-urls";
+import { tryParseHttpsUrlHostname } from "@shared/utils/url-host";
 
 describe("buildSiteTagSearchUrl", () => {
   it("builds a Rule34 tag-list URL", () => {

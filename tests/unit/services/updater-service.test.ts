@@ -25,7 +25,7 @@ vi.mock("electron-updater", () => ({
   },
 }));
 
-vi.mock("@/main/lib/logger", () => ({
+vi.mock("../../../src/main/lib/logger", () => ({
   logger: {
     info: vi.fn(),
     error: vi.fn(),
@@ -43,7 +43,7 @@ describe("UpdaterService", () => {
   });
 
   async function loadService() {
-    const mod = await import("@/main/services/updater-service");
+    const mod = await import("../../../src/main/services/updater-service");
     return new mod.UpdaterService();
   }
 

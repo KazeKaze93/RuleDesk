@@ -11,7 +11,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/lib/logger", () => ({
+vi.mock("../../../src/main/lib/logger", () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -20,19 +20,19 @@ vi.mock("@/main/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/main/lib/proxy", () => ({
+vi.mock("../../../src/main/lib/proxy", () => ({
   getProxyAgent: vi.fn(() => undefined),
 }));
 
-import { logger } from "@/main/lib/logger";
+import { logger } from "../../../src/main/lib/logger";
 import {
   UNKNOWN_ALLOWED_HOST_LOG,
   UNKNOWN_CDN_VIDEO_HOST_LOG,
   resetUnknownMediaHostWarningDedup,
   warnIfUnknownMediaHost,
-} from "@/main/providers/warn-unknown-media-host";
-import { Rule34Provider } from "@/main/providers/rule34-provider";
-import { GelbooruProvider } from "@/main/providers/gelbooru-provider";
+} from "../../../src/main/providers/warn-unknown-media-host";
+import { Rule34Provider } from "../../../src/main/providers/rule34-provider";
+import { GelbooruProvider } from "../../../src/main/providers/gelbooru-provider";
 
 const UNKNOWN_HOST = "cdn-unknown.example";
 const provider = {

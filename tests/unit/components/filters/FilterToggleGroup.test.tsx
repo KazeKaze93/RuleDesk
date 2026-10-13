@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Image } from "lucide-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FilterToggleGroup } from "@/renderer/components/layout/filters/FilterToggleGroup";
+import { FilterToggleGroup } from "@/components/layout/filters/FilterToggleGroup";
 
 afterEach(() => {
   cleanup();

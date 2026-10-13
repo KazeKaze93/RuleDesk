@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import axios, { AxiosError } from "axios";
-import { USER_AGENT } from "@/main/config/constants";
-import { GelbooruProvider } from "@/main/providers/gelbooru-provider";
-import { getAllProviderCdnDomains, getAllProviderDomains } from "@/main/providers";
-import { ProviderThrottle } from "@/main/providers/provider-throttle";
+import { USER_AGENT } from "../../../src/main/config/constants";
+import { GelbooruProvider } from "../../../src/main/providers/gelbooru-provider";
+import { getAllProviderCdnDomains, getAllProviderDomains } from "../../../src/main/providers";
+import { ProviderThrottle } from "../../../src/main/providers/provider-throttle";
 
 vi.mock("electron-log", () => ({
   default: {
@@ -14,7 +14,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/lib/logger", () => ({
+vi.mock("../../../src/main/lib/logger", () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock("@/main/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/main/lib/proxy", () => ({
+vi.mock("../../../src/main/lib/proxy", () => ({
   getProxyAgent: vi.fn(() => undefined),
 }));
 

@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { TAG_TYPES } from "@/main/db/schema";
+import { TAG_TYPES } from "../../../src/main/db/schema";
 import type Database from "better-sqlite3";
 
 let activeSqlite: Database.Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -49,7 +49,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/providers", () => ({
+vi.mock("../../../src/main/providers", () => ({
   getProvider: vi.fn(() => ({
     id: "rule34",
     formatTag: (tag: string) => tag.trim().toLowerCase(),
@@ -59,14 +59,14 @@ vi.mock("@/main/providers", () => ({
   PROVIDER_IDS: ["rule34", "gelbooru"],
 }));
 
-vi.mock("@/main/services/tag-resolve-coordinator", () => ({
+vi.mock("../../../src/main/services/tag-resolve-coordinator", () => ({
   loadTagMetadataCache: vi.fn(() => {
     throw new Error("DB exploded while loading tag metadata");
   }),
   resolveTagMetadataWave: vi.fn(),
 }));
 
-import { SearchController } from "@/main/ipc/controllers/SearchController";
+import { SearchController } from "../../../src/main/ipc/controllers/SearchController";
 
 type SearchControllerInternals = {
   setup: () => void;

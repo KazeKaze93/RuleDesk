@@ -8,11 +8,11 @@ import {
   migrateLegacyDatabase,
   moveFileWithExdevFallback,
   type LegacyMigrateFs,
-} from "@/main/db/legacy-database-migrate";
+} from "../../../src/main/db/legacy-database-migrate";
 import {
   LOCAL_STATE_FILE_NAME,
   migrateLightUserDataSidecars,
-} from "@/main/lib/light-user-data-migrate";
+} from "../../../src/main/lib/light-user-data-migrate";
 import {
   BACKUP_DIR_NAME,
   DB_FILE_NAME,
@@ -20,7 +20,7 @@ import {
   LEGACY_NEUTRAL_USER_DATA_DIR_NAME,
   LEGACY_USER_DATA_DIR_NAMES,
   USER_DATA_DIR_NAME,
-} from "@/main/db/paths";
+} from "../../../src/main/db/paths";
 
 function createTempDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));

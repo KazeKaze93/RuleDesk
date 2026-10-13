@@ -2,16 +2,16 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { ipcMain } from "electron";
 import { createMockDb } from "../../helpers/mock-db";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { settings, SETTINGS_ID } from "@/main/db/schema";
-import { IPC_CHANNELS } from "@/main/ipc/channels";
-import { SettingsController } from "@/main/ipc/controllers/SettingsController";
+import { container, DI_TOKENS } from "../../../src/main/core/di/Container";
+import { settings, SETTINGS_ID } from "../../../src/main/db/schema";
+import { IPC_CHANNELS } from "../../../src/main/ipc/channels";
+import { SettingsController } from "../../../src/main/ipc/controllers/SettingsController";
 
 
 let activeSqlite: import("better-sqlite3").Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");

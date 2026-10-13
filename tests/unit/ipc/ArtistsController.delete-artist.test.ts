@@ -2,16 +2,16 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import type { IpcMainInvokeEvent } from "electron";
 import { eq } from "drizzle-orm";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, SETTINGS_ID, settings } from "@/main/db/schema";
-import { EXTERNAL_ARTIST_ID } from "@/shared/constants";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { DELETE_ARTIST_SYNC_DRAIN_MS } from "@/main/config/constants";
+import { artists, SETTINGS_ID, settings } from "../../../src/main/db/schema";
+import { EXTERNAL_ARTIST_ID } from "@shared/constants";
+import { container, DI_TOKENS } from "../../../src/main/core/di/Container";
+import { DELETE_ARTIST_SYNC_DRAIN_MS } from "../../../src/main/config/constants";
 
 
 let activeSqlite: import("better-sqlite3").Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -56,7 +56,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-import { ArtistsController } from "@/main/ipc/controllers/ArtistsController";
+import { ArtistsController } from "../../../src/main/ipc/controllers/ArtistsController";
 
 // boundary: test stub for unused IpcMainInvokeEvent parameter
 const dummyEvent = {} as IpcMainInvokeEvent;

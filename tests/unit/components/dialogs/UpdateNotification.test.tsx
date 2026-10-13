@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { UpdateNotification } from "@/renderer/components/dialogs/UpdateNotification";
-import type { UpdateStatusCallback } from "@/shared/types/ipc-bridge";
+import { UpdateNotification } from "@/components/dialogs/UpdateNotification";
+import type { UpdateStatusCallback } from "@shared/types/ipc-bridge";
 
 vi.mock("electron-log/renderer", () => ({
   default: {

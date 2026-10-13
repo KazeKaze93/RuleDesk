@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MaintenanceQueue } from "@/main/db/maintenance-queue";
+import { MaintenanceQueue } from "../../../src/main/db/maintenance-queue";
 
 describe("MaintenanceQueue", () => {
   it("runs the next operation after a prior failure; caller still gets the error", async () => {

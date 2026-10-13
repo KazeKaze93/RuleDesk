@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Token } from "@/main/core/di/Token";
-import { container } from "@/main/core/di/Container";
+import { Token } from "../../../src/main/core/di/Token";
+import { container } from "../../../src/main/core/di/Container";
 import log from "electron-log";
 
 vi.mock("electron-log", () => ({

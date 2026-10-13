@@ -13,7 +13,7 @@ import {
   onDatabaseReopened,
   registerDatabaseInContainerAfterReinit,
   resetDatabaseReopenedListenersForTests,
-} from "@/main/core/di/databaseRegistration";
+} from "../../../src/main/core/di/databaseRegistration";
 
 describe("databaseRegistration reopen notify", () => {
   beforeEach(() => {

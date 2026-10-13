@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildPostMetadataResolveQueryKey,
   canonicalizePostTagsForResolve,
-} from "@/renderer/features/viewer/postMetadataQueryKeys";
+} from "@/features/viewer/postMetadataQueryKeys";
 
 describe("postMetadataQueryKeys", () => {
   it("canonicalizes string and string[] tags to the same key token", () => {

@@ -31,7 +31,7 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-vi.mock("@/main/lib/logger", () => ({
+vi.mock("../../../src/main/lib/logger", () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -40,7 +40,7 @@ vi.mock("@/main/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/main/lib/proxy", () => ({
+vi.mock("../../../src/main/lib/proxy", () => ({
   getProxyAgent: vi.fn(() => undefined),
 }));
 

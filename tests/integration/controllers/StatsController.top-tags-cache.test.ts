@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts } from "@/main/db/schema";
-import { container, DI_TOKENS } from "@/main/core/di/Container";
-import { IPC_CHANNELS } from "@/main/ipc/channels";
+import { artists, posts } from "../../../src/main/db/schema";
+import { container, DI_TOKENS } from "../../../src/main/core/di/Container";
+import { IPC_CHANNELS } from "../../../src/main/ipc/channels";
 import {
   StatsController,
   TOP_TAGS_CACHE_TTL_MS,
-} from "@/main/ipc/controllers/StatsController";
+} from "../../../src/main/ipc/controllers/StatsController";
 import type Database from "better-sqlite3";
 
 let activeSqlite: InstanceType<typeof Database> | null = null;
 
-vi.mock("@/main/db/client", () => ({
+vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
     if (!activeSqlite) {
       throw new Error("Test sqlite instance is not initialized");
@@ -20,7 +20,7 @@ vi.mock("@/main/db/client", () => ({
   },
 }));
 
-vi.mock("@/main/db/paths", () => ({
+vi.mock("../../../src/main/db/paths", () => ({
   getDatabasePaths: () => ({
     dbPath: "C:\\fake\\data.bin",
     userDataPath: "C:\\fake",

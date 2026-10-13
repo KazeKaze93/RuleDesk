@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   selectMediaCacheFilesToEvict,
   type MediaCacheFileEntry,
-} from "@/main/lib/media-cache-eviction";
+} from "../../../src/main/lib/media-cache-eviction";
 
 function entry(
   name: string,
