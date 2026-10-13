@@ -2,6 +2,8 @@ import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
 import log from "electron-log";
+import { ErrorCode } from "../../shared/types/error-codes";
+import { createCodedError } from "../../shared/utils/coded-error";
 import { isErrnoException } from "../../shared/utils/type-guards";
 
 export type LegacyDbCandidate = {
@@ -19,7 +21,6 @@ export type LegacyMigrateFs = {
   stat: (path: string) => Promise<fs.Stats>;
   readdir: (path: string) => Promise<string[]>;
   rmdir: (path: string) => Promise<void>;
-  rmSync: (path: string, options: { force: boolean }) => void;
   existsSync: (path: string) => boolean;
 };
 
@@ -27,6 +28,15 @@ export type LegacyMigrateDeps = {
   fs?: LegacyMigrateFs;
   openDatabase?: (dbPath: string) => InstanceType<typeof Database>;
 };
+
+/** Probe result for schema / migration history on an existing DB file. */
+export type DatabaseInitializedProbe =
+  | "initialized"
+  | "uninitialized"
+  | "unreadable";
+
+/** Probe result for whether the DB holds real user state. */
+export type DatabaseContentProbe = "has_content" | "empty" | "unreadable";
 
 const defaultFs: LegacyMigrateFs = {
   access: (p) => fs.promises.access(p),
@@ -37,7 +47,6 @@ const defaultFs: LegacyMigrateFs = {
   stat: (p) => fs.promises.stat(p),
   readdir: (p) => fs.promises.readdir(p),
   rmdir: (p) => fs.promises.rmdir(p),
-  rmSync: (p, options) => fs.rmSync(p, options),
   existsSync: (p) => fs.existsSync(p),
 };
 
@@ -45,21 +54,54 @@ function defaultOpenDatabase(dbPath: string): InstanceType<typeof Database> {
   return new Database(dbPath);
 }
 
+function formatProbeCause(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function throwDatabaseUnreadable(dbPath: string, cause: unknown): never {
+  const causeText = formatProbeCause(cause);
+  throw createCodedError(
+    `Cannot open or read database at ${dbPath}: ${causeText}. ` +
+      `The file was left untouched. Close any program using it and restart RuleDesk.`,
+    ErrorCode.DATABASE_UNREADABLE,
+    {
+      name: "DatabaseUnreadableError",
+      extra: { dbPath, cause: causeText },
+    }
+  );
+}
+
+type InitializedProbeInternal =
+  | { status: "initialized" }
+  | { status: "uninitialized" }
+  | { status: "unreadable"; cause: unknown };
+
 /**
- * True when the DB file looks like a real RuleDesk database (not an empty stub
- * created after a failed legacy migrate attempt).
+ * Three-way probe: real RuleDesk DB vs empty stub vs open/read failure.
  *
- * Note: a fresh `runManualMigrations` on an empty file also passes this check
- * (artists table exists, __drizzle_migrations has rows). Callers that care about
- * orphaning legacy data must also use `databaseHasUserContent` / leftover-legacy
- * handling in `migrateLegacyDatabase`.
+ * `uninitialized` ONLY when the DB opened successfully and has no `artists`
+ * table and no rows in `__drizzle_migrations`. Any open/read exception is
+ * `unreadable` — never treat probe failures as empty (that used to delete
+ * live user databases).
+ *
+ * Absent path: `uninitialized` (no file to probe; callers usually gate on exists).
  */
 export function databaseLooksInitialized(
   dbPath: string,
   openDatabase: (dbPath: string) => InstanceType<typeof Database> = defaultOpenDatabase
-): boolean {
+): DatabaseInitializedProbe {
+  return probeDatabaseInitialized(dbPath, openDatabase).status;
+}
+
+function probeDatabaseInitialized(
+  dbPath: string,
+  openDatabase: (dbPath: string) => InstanceType<typeof Database>
+): InitializedProbeInternal {
   if (!fs.existsSync(dbPath)) {
-    return false;
+    return { status: "uninitialized" };
   }
   let sqlite: InstanceType<typeof Database> | null = null;
   try {
@@ -70,7 +112,7 @@ export function databaseLooksInitialized(
       )
       .get();
     if (artists) {
-      return true;
+      return { status: "initialized" };
     }
     const migrations = sqlite
       .prepare(
@@ -78,34 +120,51 @@ export function databaseLooksInitialized(
       )
       .get();
     if (!migrations) {
-      return false;
+      return { status: "uninitialized" };
     }
     // boundary: better-sqlite3 raw row
     // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: better-sqlite3 raw row
     const countRow = sqlite
       .prepare("SELECT COUNT(*) AS count FROM __drizzle_migrations")
       .get() as { count: number } | undefined;
-    return (countRow?.count ?? 0) > 0;
-  } catch {
-    return false;
+    return (countRow?.count ?? 0) > 0
+      ? { status: "initialized" }
+      : { status: "uninitialized" };
+  } catch (error) {
+    log.error(`[DB] databaseLooksInitialized failed for ${dbPath}:`, error);
+    return { status: "unreadable", cause: error };
   } finally {
     sqlite?.close();
   }
 }
 
+type ContentProbeInternal =
+  | { status: "has_content" }
+  | { status: "empty" }
+  | { status: "unreadable"; cause: unknown };
+
 /**
- * True when the DB holds real user state — not a fresh post-migrate stub.
+ * Whether the DB holds real user state — not a fresh post-migrate stub.
  *
  * Artists alone are insufficient: AgeGate writes ToS / adult flags into
  * `settings` before the user can add any artist; empty playlists are also
  * valid user data with zero artists.
+ *
+ * Open/read failures return `unreadable` — never `empty`.
  */
 export function databaseHasUserContent(
   dbPath: string,
   openDatabase: (dbPath: string) => InstanceType<typeof Database> = defaultOpenDatabase
-): boolean {
+): DatabaseContentProbe {
+  return probeDatabaseHasUserContent(dbPath, openDatabase).status;
+}
+
+function probeDatabaseHasUserContent(
+  dbPath: string,
+  openDatabase: (dbPath: string) => InstanceType<typeof Database>
+): ContentProbeInternal {
   if (!fs.existsSync(dbPath)) {
-    return false;
+    return { status: "empty" };
   }
   let sqlite: InstanceType<typeof Database> | null = null;
   try {
@@ -118,7 +177,7 @@ export function databaseHasUserContent(
         .prepare("SELECT COUNT(*) AS count FROM artists")
         .get() as { count: number } | undefined;
       if ((artistsCount?.count ?? 0) > 0) {
-        return true;
+        return { status: "has_content" };
       }
     }
 
@@ -129,7 +188,7 @@ export function databaseHasUserContent(
         .prepare("SELECT COUNT(*) AS count FROM playlists")
         .get() as { count: number } | undefined;
       if ((playlistsCount?.count ?? 0) > 0) {
-        return true;
+        return { status: "has_content" };
       }
     }
 
@@ -156,13 +215,14 @@ export function databaseHasUserContent(
         )
         .get();
       if (customized) {
-        return true;
+        return { status: "has_content" };
       }
     }
 
-    return false;
-  } catch {
-    return false;
+    return { status: "empty" };
+  } catch (error) {
+    log.error(`[DB] databaseHasUserContent failed for ${dbPath}:`, error);
+    return { status: "unreadable", cause: error };
   } finally {
     sqlite?.close();
   }
@@ -181,10 +241,34 @@ function tableExists(
   );
 }
 
-function removeDbSidecars(dbPath: string, fileFs: LegacyMigrateFs): void {
-  fileFs.rmSync(dbPath, { force: true });
-  fileFs.rmSync(`${dbPath}-wal`, { force: true });
-  fileFs.rmSync(`${dbPath}-shm`, { force: true });
+/**
+ * Quarantine DB + WAL/SHM by rename. Never delete here.
+ *
+ * Deleting on "looks empty" / open failure permanently destroyed user data when
+ * better-sqlite3 threw (ABI mismatch, EBUSY, corrupt header). Quarantine keeps
+ * bytes recoverable as `${name}.quarantine-${Date.now()}`.
+ */
+async function quarantineDbSidecars(
+  dbPath: string,
+  fileFs: LegacyMigrateFs
+): Promise<void> {
+  const stamp = Date.now();
+  await quarantineOneFile(dbPath, stamp, fileFs);
+  await quarantineOneFile(`${dbPath}-wal`, stamp, fileFs);
+  await quarantineOneFile(`${dbPath}-shm`, stamp, fileFs);
+}
+
+async function quarantineOneFile(
+  filePath: string,
+  stamp: number,
+  fileFs: LegacyMigrateFs
+): Promise<void> {
+  if (!fileFs.existsSync(filePath)) {
+    return;
+  }
+  const targetPath = `${filePath}.quarantine-${stamp}`;
+  await fileFs.rename(filePath, targetPath);
+  log.warn(`[DB] Quarantined ${filePath} → ${targetPath}`);
 }
 
 async function legacyFileIsAccessible(
@@ -285,6 +369,8 @@ function checkpointLegacyWal(
  * Checkpoint failure leaves legacy files untouched and reports
  * `blockedLegacyPath` so the caller can refuse to create an empty new DB
  * (which would permanently orphan the legacy file on the next launch).
+ *
+ * Unreadable target DB: throw DATABASE_UNREADABLE — never mutate files.
  */
 export type LegacyMigrateResult = {
   migrated: boolean;
@@ -306,11 +392,20 @@ export async function migrateLegacyDatabase(params: {
   );
 
   if (fileFs.existsSync(newDbPath)) {
-    if (databaseLooksInitialized(newDbPath, openDatabase)) {
+    const initializedProbe = probeDatabaseInitialized(newDbPath, openDatabase);
+    if (initializedProbe.status === "unreadable") {
+      throwDatabaseUnreadable(newDbPath, initializedProbe.cause);
+    }
+
+    if (initializedProbe.status === "initialized") {
       if (!leftoverLegacy) {
         return { migrated: false, blockedLegacyPath: null };
       }
-      if (databaseHasUserContent(newDbPath, openDatabase)) {
+      const contentProbe = probeDatabaseHasUserContent(newDbPath, openDatabase);
+      if (contentProbe.status === "unreadable") {
+        throwDatabaseUnreadable(newDbPath, contentProbe.cause);
+      }
+      if (contentProbe.status === "has_content") {
         // Both sides have real data — do not overwrite; surface to the caller.
         return {
           migrated: false,
@@ -318,7 +413,7 @@ export async function migrateLegacyDatabase(params: {
         };
       }
       // Empty-but-migrated stub + leftover legacy. Confirm legacy is reachable
-      // before deleting the stub so a failed retry does not leave zero DBs.
+      // before quarantining the stub so a failed retry does not leave zero DBs.
       if (!(await legacyFileIsAccessible(leftoverLegacy.dbPath, fileFs))) {
         return {
           migrated: false,
@@ -326,11 +421,12 @@ export async function migrateLegacyDatabase(params: {
         };
       }
       log.warn(
-        `[DB] Removing empty initialized stub at ${newDbPath} to retry legacy migrate ` +
+        `[DB] Quarantining empty initialized stub at ${newDbPath} to retry legacy migrate ` +
           `(legacy still present at ${leftoverLegacy.dbPath})`
       );
-      removeDbSidecars(newDbPath, fileFs);
+      await quarantineDbSidecars(newDbPath, fileFs);
     } else if (leftoverLegacy) {
+      // uninitialized stub + accessible legacy → quarantine stub, then move.
       if (!(await legacyFileIsAccessible(leftoverLegacy.dbPath, fileFs))) {
         return {
           migrated: false,
@@ -338,16 +434,12 @@ export async function migrateLegacyDatabase(params: {
         };
       }
       log.warn(
-        `[DB] Removing uninitialized stub at ${newDbPath} to retry legacy migrate`
+        `[DB] Quarantining uninitialized stub at ${newDbPath} to retry legacy migrate`
       );
-      removeDbSidecars(newDbPath, fileFs);
-    } else {
-      // No legacy candidate — drop an empty stub so a fresh open can create cleanly.
-      log.warn(
-        `[DB] Removing uninitialized stub at ${newDbPath} (no legacy candidate)`
-      );
-      removeDbSidecars(newDbPath, fileFs);
+      await quarantineDbSidecars(newDbPath, fileFs);
     }
+    // No legacy candidate: leave the existing file alone (never delete/quarantine).
+    // A prior branch wiped "empty" stubs with no legacy and destroyed unreadable DBs.
   }
 
   let blockedLegacyPath: string | null = null;
