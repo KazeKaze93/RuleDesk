@@ -219,7 +219,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **Restore backup** - Restore from backup file (dialog defaults to `RuleDesk-Backups`) and reload app
 - **Integrity check** - Run `PRAGMA integrity_check`
 - **Orphaned data check** - Read-only report of posts/playlist entries/FTS rows without parents (Settings → Database Maintenance); no automatic cleanup
-- **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (evaluated on app startup)
+- **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (evaluated on app startup; default **Daily** for new installs and for upgrades that still had `never` with the opt-in prompt never seen)
 - **Automatic backup rotation** - Keep the last `N` **manual** backups and the last `N` **automatic** backups independently (`backupRetention`, configurable in UI, range `1..20`). The two filename sets are not summed into one pool
 - **Optional storage cap (env)** - `BACKUP_RETENTION_MAX_TOTAL_MB` can enforce a total size ceiling for **manual** backup files in addition to `keep last N` on that set (newest is always kept even if a single file exceeds the cap)
 - **Database maintenance (VACUUM)** - Last run timestamp/status/error, manual run button, and schedule (`manual` / `weekly` / `monthly`)

@@ -200,7 +200,7 @@ describe("downgrade guard and legacy migrate", () => {
     expect(result.blockedLegacyPath).toBeNull();
     expect(fs.existsSync(newDbPath)).toBe(true);
     expect(fs.existsSync(legacyDbPath)).toBe(false);
-    expect(databaseLooksInitialized(newDbPath)).toBe(true);
+    expect(databaseLooksInitialized(newDbPath)).toBe("initialized");
 
     const opened = new Database(newDbPath, { readonly: true });
     openDbs.push(opened);
@@ -232,7 +232,6 @@ describe("downgrade guard and legacy migrate", () => {
       stat: (p) => fs.promises.stat(p),
       readdir: (p) => fs.promises.readdir(p),
       rmdir: (p) => fs.promises.rmdir(p),
-      rmSync: (p, options) => fs.rmSync(p, options),
       existsSync: (p) => fs.existsSync(p),
     };
 
@@ -331,7 +330,7 @@ describe("downgrade guard and legacy migrate", () => {
     emptyNew.close();
     openDbs.pop();
 
-    expect(databaseLooksInitialized(newDbPath)).toBe(true);
+    expect(databaseLooksInitialized(newDbPath)).toBe("initialized");
     expect(fs.existsSync(legacyDbPath)).toBe(true);
 
     const second = await migrateLegacyDatabase({
@@ -349,6 +348,11 @@ describe("downgrade guard and legacy migrate", () => {
     expect(second.blockedLegacyPath).toBeNull();
     expect(fs.existsSync(legacyDbPath)).toBe(false);
     expect(fs.existsSync(newDbPath)).toBe(true);
+    // Stub was quarantined, not deleted.
+    const quarantined = fs
+      .readdirSync(newDir)
+      .filter((name) => name.startsWith("data.bin.quarantine-"));
+    expect(quarantined.length).toBe(1);
 
     const opened = new Database(newDbPath, { readonly: true });
     openDbs.push(opened);

@@ -16,6 +16,10 @@ const LIVE_DB = path.join(
   "data.bin"
 );
 
+/** Golden counts from the machine-local fixture this suite was authored against. */
+const EXPECTED_LIVE_POSTS_TOTAL = 2011;
+const EXPECTED_LIVE_EXTERNAL_POSTS = 21;
+
 function count(sqlite: InstanceType<typeof Database>, sql: string): number {
   const row: unknown = sqlite.prepare(sql).get();
   if (
@@ -27,6 +31,29 @@ function count(sqlite: InstanceType<typeof Database>, sql: string): number {
     throw new Error(`unexpected count row for: ${sql}`);
   }
   return row.c;
+}
+
+/**
+ * True when LOCALAPPDATA has a populated RuleDesk data.bin matching the golden
+ * fixture size. Empty / wiped / foreign DBs must skip — hard-coded counts are
+ * not meaningful there (and must not block pre-push).
+ */
+function liveDbMatchesGoldenFixture(): boolean {
+  if (!fs.existsSync(LIVE_DB)) {
+    return false;
+  }
+  let sqlite: InstanceType<typeof Database> | null = null;
+  try {
+    sqlite = new Database(LIVE_DB, { readonly: true });
+    return (
+      count(sqlite, "SELECT COUNT(*) AS c FROM posts") ===
+      EXPECTED_LIVE_POSTS_TOTAL
+    );
+  } catch {
+    return false;
+  } finally {
+    sqlite?.close();
+  }
 }
 
 describe("posts.provider migration on real DB copy", () => {
@@ -50,7 +77,7 @@ describe("posts.provider migration on real DB copy", () => {
     }
   });
 
-  it.skipIf(!fs.existsSync(LIVE_DB))(
+  it.skipIf(!liveDbMatchesGoldenFixture())(
     "upgrades copy: row counts, provider distribution, integrity, FTS, FK, indexes",
     () => {
       const tempDir = fs.mkdtempSync(
@@ -85,8 +112,8 @@ describe("posts.provider migration on real DB copy", () => {
       );
       expect(afterTotal).toBe(beforeTotal);
       expect(afterExternal).toBe(beforeExternal);
-      expect(afterTotal).toBe(2011);
-      expect(afterExternal).toBe(21);
+      expect(afterTotal).toBe(EXPECTED_LIVE_POSTS_TOTAL);
+      expect(afterExternal).toBe(EXPECTED_LIVE_EXTERNAL_POSTS);
 
       const externalByProvider = sqlite
         .prepare(

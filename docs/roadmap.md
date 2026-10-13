@@ -150,15 +150,15 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 | S1 | `chore/release-via-pr` | [#243](https://github.com/KazeKaze93/RuleDesk/pull/243) | ✅ merged |
 | S2 | `chore/enable-master-protection` | [#245](https://github.com/KazeKaze93/RuleDesk/pull/245) | ✅ protection enabled |
 
-### UI/UX + architecture debt audits (on 18.3.1)
+### Critical DB safety + UI/arch debt (post-S2)
 
-Both audits (UI/UX sans keyboard + architecture review) are addressed on this branch. **Status lives only in the tracking table** — narrative below must not invent a second status.
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| H-db | `fix/db-never-delete-on-open-error` | [#249](https://github.com/KazeKaze93/RuleDesk/pull/249) | ✅ merged |
+| Auto-backup | `feat/auto-backup-default-on` | [#250](https://github.com/KazeKaze93/RuleDesk/pull/250) | ✅ merged |
+| UI/arch | `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — user overrode prior Electron-hold; merge after master conflict resolve |
 
-| Branch | PR | Status |
-|--------|----|--------|
-| `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — merge only after user manual checks |
-
-#### HANDOFF (follow-ups — do not silent-fix)
+#### HANDOFF (UI/arch follow-ups — do not silent-fix)
 
 | Task | Notes |
 |------|-------|
@@ -170,9 +170,17 @@ Both audits (UI/UX sans keyboard + architecture review) are addressed on this br
 | preload→main channels import → optional `@shared` move | Optional hygiene; not blocking |
 | Playlists smart query hardcoded `rule34` | Provider choice / out-of-pack; not fixed here |
 
-#### Сознательно вне задачи (original OUT OF SCOPE)
+#### HANDOFF (H-db residual risk — not treated as fixed by #249)
 
-These items were never in scope for this branch (no separate status row — they are not tracking-table work):
+| Item | Risk |
+|------|------|
+| `database-restore.ts` `rm` of live path on failed reinit / rollback | High if `.bak` restore then fails |
+| `SystemController` wipe-all under userData | High by design (explicit user wipe) |
+| `migration-runner` / `backup-service` / `backupIntegrityWorker` temp/snapshot `rmSync` | Medium — not live `data.bin` paths by design; verify paths stay scoped |
+
+#### Сознательно вне scope (original OUT OF SCOPE)
+
+These items were never in scope for `#247` (no separate status row — they are not tracking-table work):
 
 - Hover-only actions / focus keyboard reveal / Panic shortcut hint / account gate branding
 - BrowserView integration
@@ -333,6 +341,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | `feat/backups-outside-cache-dir` | [#182](https://github.com/KazeKaze93/RuleDesk/pull/182) | ✅ merged | Backups under `RuleDesk-Backups/` (sibling of `.rdcache`); deferred migrate from cache dir |
 | `feat/orphan-detection-report` | [#183](https://github.com/KazeKaze93/RuleDesk/pull/183) | ✅ merged | Read-only orphan report in Settings; live probe all-zeros — cleanup deferred |
 | `feat/backup-default-opt-in-prompt` | [#185](https://github.com/KazeKaze93/RuleDesk/pull/185) | ✅ merged | New installs default auto-backup to daily; existing `never` users get a one-time dismissible opt-in prompt |
+| `feat/auto-backup-default-on` | [#250](https://github.com/KazeKaze93/RuleDesk/pull/250) | started | Unify default to daily; `backupPolicyVersion` migrates unseen `never` → daily; free-space guard (≥2× DB) before auto-backup close |
 | `feat/relocate-live-db-out-of-rdcache` | [#186](https://github.com/KazeKaze93/RuleDesk/pull/186) | ✅ merged | Live `data.bin` moves from `.rdcache` to `RuleDesk-Data`; light sidecars prefer `.rdcache` |
 | `fix/remove-dead-verify-signature-override` | [#187](https://github.com/KazeKaze93/RuleDesk/pull/187) | ✅ merged | Remove dead `verifyUpdateCodeSignature=false` (NsisUpdater ignores falsy) |
 | `docs/rollback-version-warning` | [#188](https://github.com/KazeKaze93/RuleDesk/pull/188) | ✅ merged | README + `docs/database.md` downgrade boundaries for path moves |

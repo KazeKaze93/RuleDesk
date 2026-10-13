@@ -20,6 +20,7 @@ import {
   stampUserVersion,
 } from "./migration-runner";
 import { migrateLegacyDatabase } from "./legacy-database-migrate";
+import { assertNativeSqliteLoadable } from "./native-module-check";
 
 export {
   DISPLAY_ENV,
@@ -120,6 +121,10 @@ async function migrateRdcacheDatabaseIfNeeded(newDbPath: string): Promise<void> 
 
 export async function initializeDatabase(): Promise<AppDatabase> {
   if (dbInstance) return dbInstance;
+
+  // ABI / NODE_MODULE_VERSION probe before any on-disk DB path work.
+  // Fatal dialog stays in main.ts — do not show a second dialog here.
+  assertNativeSqliteLoadable();
 
   const { dbPath } = getDatabasePaths();
   await migrateLegacyDatabaseIfNeeded(dbPath);

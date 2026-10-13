@@ -147,7 +147,7 @@ describe("relocate live DB out of .rdcache", () => {
     expect(result.blockedLegacyPath).toBeNull();
     expect(fs.existsSync(newDbPath)).toBe(true);
     expect(fs.existsSync(sourceDb)).toBe(false);
-    expect(databaseLooksInitialized(newDbPath)).toBe(true);
+    expect(databaseLooksInitialized(newDbPath)).toBe("initialized");
 
     const opened = new Database(newDbPath, { readonly: true });
     openDbs.push(opened);
@@ -267,7 +267,6 @@ describe("relocate live DB out of .rdcache", () => {
       stat: (p) => fs.promises.stat(p),
       readdir: (p) => fs.promises.readdir(p),
       rmdir: (p) => fs.promises.rmdir(p),
-      rmSync: (p, options) => fs.rmSync(p, options),
       existsSync: (p) => fs.existsSync(p),
     };
 
