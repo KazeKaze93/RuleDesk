@@ -113,7 +113,10 @@ export const SettingsBackupTab = ({
     <Card>
       <CardHeader>
         <CardTitle>Backup</CardTitle>
-        <CardDescription>Manage backups and verify database integrity.</CardDescription>
+        <CardDescription>
+          Manage backups and verify database integrity. Automatic daily backups are on by
+          default; you can change the interval or turn them off below.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <section className="space-y-1 rounded-md border p-3">
@@ -123,6 +126,10 @@ export const SettingsBackupTab = ({
 
         <section className="space-y-2">
           <Label htmlFor="auto-backup-schedule">Auto-backup</Label>
+          <p className="text-sm text-muted-foreground">
+            Default is Daily. Choose Never to disable, or Weekly for less frequent
+            snapshots. Checked when the app starts.
+          </p>
           <Select
             value={autoBackupInterval}
             onValueChange={(value: AutoBackupInterval) => {
@@ -207,7 +214,8 @@ export const SettingsBackupTab = ({
           <p className="text-sm font-medium">Retention</p>
           <label className="space-y-2">
             <span className="text-sm text-muted-foreground">
-              Keep last N of each set (manual and automatic counted separately, not summed)
+              Keep the last N manual backups and the last N automatic backups separately
+              (not one shared pool). Range 1–20.
             </span>
             <Input
               type="number"
