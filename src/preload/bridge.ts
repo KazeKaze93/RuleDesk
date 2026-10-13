@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
-import { invokeIpc } from "../preload/invoke-ipc";
-import { IPC_CHANNELS } from "./ipc/channels";
+import { invokeIpc } from "./invoke-ipc";
+import { IPC_CHANNELS } from "../main/ipc/channels";
 import type {
   GetPostsRequestInput,
   GetPostsCountRequest,
@@ -39,7 +39,7 @@ export type {
 } from "../shared/types/ipc-bridge";
 
 // Re-export IPC DTOs for callers that historically imported from bridge.ts
-export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "./types/ipc";
+export type { GetPostsRequest, AddArtistRequest, PostFilterRequest } from "../main/types/ipc";
 
 const ipcBridge: IpcBridge = {
   getAppInfo: () => invokeIpc(IPC_CHANNELS.APP.GET_APP_INFO),
