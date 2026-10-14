@@ -1796,7 +1796,7 @@ Maintainer identifiers relocated from user-facing README sections (Features, Pro
 | Multi-provider | `IBooruProvider` (`Rule34Provider`, `GelbooruProvider`) |
 | IPC bridge file | `src/preload/bridge.ts` (built to `out/preload/bridge.cjs`); contract `src/shared/types/ipc-bridge.ts` — **not** `src/main/bridge.ts` |
 | Auto-updater | `electron-updater` checks and notifies; opens GitHub release page — manual zip/AppImage install (no seamless in-app install) |
-| Daily auto-backup | Once per app launch if 24h passed since `lastAutoBackupAt` (no in-session timer until Batch 2) |
+| Daily / Weekly auto-backup | When 24h / 7d passed since `lastAutoBackupAt` (startup check + hourly in-session timer; sync/`maintenanceQueue` guards) |
 
 ## Current Status
 

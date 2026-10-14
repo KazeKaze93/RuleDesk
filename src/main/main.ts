@@ -124,6 +124,7 @@ function stopBackgroundServicesAndCloseDb(): void {
   void videoProxyServer.stop();
   syncScheduler.stop();
   maintenanceScheduler.stop();
+  backupService.stopPeriodicCheck();
   if (tray) {
     tray.destroy();
     tray = null;
@@ -365,6 +366,7 @@ function scheduleDeferredStartupTasks(window: BrowserWindow): void {
 
   setTimeout(() => {
     backupService.checkAndRunAutoBackup();
+    backupService.startPeriodicCheck();
   }, 5000);
 
   setTimeout(() => {
@@ -561,6 +563,7 @@ async function initializeAppAndWindow() {
     if (isTestMode) {
       await videoProxyServer.start();
       backupService.checkAndRunAutoBackup();
+      backupService.startPeriodicCheck();
       if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
         mainWindow.show();
       }

@@ -221,7 +221,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **Restore backup** - Restore from backup file (dialog defaults to `RuleDesk-Backups`) and reload app. A backup made by a **newer** app version fails with an error and rolls back — update the app first, then restore
 - **Integrity check** - Verify the database is not corrupted
 - **Orphaned data check** - Read-only report of posts/playlist entries/search-index rows without parents (Settings → Database Maintenance); no automatic cleanup
-- **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (evaluated on app startup; default **Daily** for new installs and for upgrades that still had Never with the opt-in prompt never seen). **Daily** = once per app launch if 24 hours have passed since the last automatic backup (no in-session timer yet)
+- **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (checked on app startup and every hour while the app stays open; default **Daily** for new installs and for upgrades that still had Never with the opt-in prompt never seen). **Daily** = when 24 hours have passed since the last automatic backup; **Weekly** = when 7 days have passed
 - **Automatic backup rotation** - Keep the last N **manual** backups and the last N **automatic** backups independently (configurable in Settings, range 1–20). The two sets are not summed into one pool
 - **Optional storage cap** - Advanced deployments may set an environment variable to cap total **manual** backup size in addition to keep-last-N (see [Development Setup](#-development-setup) and [architecture](./docs/architecture.md))
 - **Database maintenance (VACUUM)** - Last run timestamp/status/error, manual run button, and schedule (`manual` / `weekly` / `monthly`)

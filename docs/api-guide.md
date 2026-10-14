@@ -1293,7 +1293,7 @@ Returns the current automatic backup schedule.
 
 ### `setBackupSchedule(interval: "never" | "daily" | "weekly")`
 
-Sets automatic backup schedule used by startup auto-backup check.
+Sets automatic backup schedule used by startup and hourly in-session auto-backup checks.
 
 **Parameters:**
 

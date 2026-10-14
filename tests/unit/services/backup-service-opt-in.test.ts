@@ -75,9 +75,13 @@ vi.mock("../../../src/main/db/paths", () => ({
   }),
 }));
 
+const maintenanceQueueState = vi.hoisted(() => ({
+  isProcessing: false,
+}));
+
 vi.mock("../../../src/main/db/maintenance-queue", () => ({
   maintenanceQueue: {
-    isProcessing: () => false,
+    isProcessing: () => maintenanceQueueState.isProcessing,
     execute: async <T>(operation: () => Promise<T>): Promise<T> => operation(),
   },
 }));
@@ -103,6 +107,7 @@ vi.mock("../../../src/main/lib/sync-db-maintenance", () => ({
 import type { SyncService } from "../../../src/main/services/sync-service";
 import log from "electron-log";
 import {
+  AUTO_BACKUP_CHECK_INTERVAL_MS,
   BACKUP_SETTINGS_STORE_NAME,
   BackupService,
   CURRENT_BACKUP_POLICY_VERSION,
@@ -157,9 +162,11 @@ function openBackupConfStore(): BackupStoreContract {
   });
 }
 
-function createBackupService(): BackupService {
+function createBackupService(options?: {
+  isSyncing?: () => boolean;
+}): BackupService {
   const syncService = {
-    getIsSyncing: () => false,
+    getIsSyncing: options?.isSyncing ?? (() => false),
   };
   // boundary: SyncService stub for BackupService constructor (only getIsSyncing used)
   return new BackupService(syncService as SyncService);
@@ -213,12 +220,14 @@ describe("BackupService auto-backup default + policy migration", () => {
     fs.mkdirSync(testUserDataDir, { recursive: true });
     wipeSettingsFile();
     resetBackupStoreForTests();
+    maintenanceQueueState.isProcessing = false;
     closeDatabaseMock.mockReset();
     createConsistentBackupMock.mockReset();
     createConsistentBackupMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     resetBackupStoreForTests();
     fs.rmSync(testUserDataDir, { recursive: true, force: true });
   });
@@ -338,5 +347,105 @@ describe("BackupService auto-backup default + policy migration", () => {
 
     const store = openBackupConfStore();
     expect(store.get("lastAutoBackupAt")).toBeNull();
+  });
+});
+
+describe("BackupService hourly periodic check", () => {
+  let activeService: BackupService | null = null;
+
+  beforeEach(() => {
+    fs.mkdirSync(testUserDataDir, { recursive: true });
+    wipeSettingsFile();
+    resetBackupStoreForTests();
+    maintenanceQueueState.isProcessing = false;
+    closeDatabaseMock.mockReset();
+    createConsistentBackupMock.mockReset();
+    createConsistentBackupMock.mockResolvedValue(undefined);
+    activeService = null;
+  });
+
+  afterEach(() => {
+    activeService?.stopPeriodicCheck();
+    activeService = null;
+    vi.useRealTimers();
+    resetBackupStoreForTests();
+    fs.rmSync(testUserDataDir, { recursive: true, force: true });
+  });
+
+  function prepareDueDailySchedule(): void {
+    const dayMs = 24 * 60 * 60 * 1000;
+    writeSettingsFile({
+      autoBackupInterval: "daily",
+      lastAutoBackupAt: Date.now() - dayMs - 1,
+      hasSeenAutoBackupPrompt: true,
+      backupPolicyVersion: CURRENT_BACKUP_POLICY_VERSION,
+    });
+    resetBackupStoreForTests();
+    installStoreFromDisk();
+    writeDbStub(1024);
+    setAutoBackupFreeSpaceProbeForTests(() => 1024 * 10);
+  }
+
+  it("timer fires auto-backup when the policy period has elapsed", async () => {
+    prepareDueDailySchedule();
+    vi.useFakeTimers();
+    activeService = createBackupService();
+    activeService.startPeriodicCheck();
+
+    expect(createConsistentBackupMock).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(AUTO_BACKUP_CHECK_INTERVAL_MS);
+
+    expect(createConsistentBackupMock).toHaveBeenCalledTimes(1);
+    expect(closeDatabaseMock).toHaveBeenCalled();
+  });
+
+  it("timer does not fire auto-backup when the policy period has not elapsed", async () => {
+    writeSettingsFile({
+      autoBackupInterval: "daily",
+      lastAutoBackupAt: Date.now() - 60_000,
+      hasSeenAutoBackupPrompt: true,
+      backupPolicyVersion: CURRENT_BACKUP_POLICY_VERSION,
+    });
+    resetBackupStoreForTests();
+    installStoreFromDisk();
+    writeDbStub(1024);
+    setAutoBackupFreeSpaceProbeForTests(() => 1024 * 10);
+
+    vi.useFakeTimers();
+    activeService = createBackupService();
+    activeService.startPeriodicCheck();
+
+    await vi.advanceTimersByTimeAsync(AUTO_BACKUP_CHECK_INTERVAL_MS);
+
+    expect(createConsistentBackupMock).not.toHaveBeenCalled();
+    expect(closeDatabaseMock).not.toHaveBeenCalled();
+  });
+
+  it("timer respects sync mutex (skips when sync is in progress)", async () => {
+    prepareDueDailySchedule();
+    vi.useFakeTimers();
+    activeService = createBackupService({ isSyncing: () => true });
+    activeService.startPeriodicCheck();
+
+    await vi.advanceTimersByTimeAsync(AUTO_BACKUP_CHECK_INTERVAL_MS);
+
+    expect(createConsistentBackupMock).not.toHaveBeenCalled();
+    expect(closeDatabaseMock).not.toHaveBeenCalled();
+    expect(log.warn).toHaveBeenCalled();
+  });
+
+  it("timer respects maintenanceQueue mutex (skips when queue is busy)", async () => {
+    prepareDueDailySchedule();
+    maintenanceQueueState.isProcessing = true;
+    vi.useFakeTimers();
+    activeService = createBackupService();
+    activeService.startPeriodicCheck();
+
+    await vi.advanceTimersByTimeAsync(AUTO_BACKUP_CHECK_INTERVAL_MS);
+
+    expect(createConsistentBackupMock).not.toHaveBeenCalled();
+    expect(closeDatabaseMock).not.toHaveBeenCalled();
+    expect(log.warn).toHaveBeenCalled();
   });
 });
