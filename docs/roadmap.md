@@ -351,7 +351,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 ### Baseline DX (earlier)
 
 - ✅ **Testing:** Vitest (unit, integration, property/fuzzing) + Playwright; ABI rebuild scripts for Node vs Electron.
-- ✅ **Quality gate:** local `pre-push` — `validate` → `docs:api` freshness → `npm test` / `test:isolated`; production `npm audit --omit=dev --audit-level=high` as needed. **Release CI:** tag `v*` (or dispatch) packages Windows zip + Linux AppImage — see [development.md](./development.md).
+- ✅ **Quality gate:** local `pre-push` — `validate` → `docs:api` freshness → `npm test` → `test:isolated` → `assert-vitest-min-total` (Node 20); production `npm audit --omit=dev --audit-level=high` as needed. **Release CI:** tag `v*` (or dispatch) packages Windows zip + Linux AppImage — see [development.md](./development.md).
 - ✅ **Post-audit regression tests:** Vitest unit + integration + property suites (includes collapse/throttle + `SecureStorage` + video-proxy). File inventory in [`TEST_COVERAGE.md`](../tests/unit/TEST_COVERAGE.md); case counts: `npm test`.
 - ✅ **Main process HMR/watch**, Zod IPC validation via `BaseController.handle` only (checked 2026-09-12: 85 production `this.handle(` across 14 controllers; `createValidatedHandler` / `parseNoArgs` / `parseSingleArg` deleted in [#124](https://github.com/KazeKaze93/RuleDesk/pull/124)), provider search typed errors, video pipeline baseline (`<video>` attrs / hardware decode flags).
 
@@ -395,6 +395,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
+| **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |
