@@ -12,9 +12,9 @@ import path from 'path';
  *   `@shared` → `src/shared`
  * Main/preload test imports use relative `src/main` / `src/preload` paths.
  *
- * Native ABI: `npm test` runs `pretest` → `db:rebuild:node` (better-sqlite3 for
- * Node) before Vitest, then `posttest` → `db:rebuild` (Electron ABI) after.
- * Direct `vitest` / `npx vitest` skips those hooks — use `npm test` instead.
+ * Native ABI: Vitest npm scripts use `scripts/with-node-sqlite.mjs`
+ * (`db:rebuild:node` → suite → always `db:rebuild` for Electron).
+ * Direct `vitest` / `npx vitest` skips that — use `npm test` instead.
  */
 export default defineConfig({
   plugins: [tsconfigPaths()],

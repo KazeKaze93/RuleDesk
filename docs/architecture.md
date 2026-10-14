@@ -1436,7 +1436,7 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 **Playwright** — `tests/e2e/`; requires `npm run build` and Chromium; live API tests need `TEST_USER_ID` / `TEST_API_KEY` when hitting live providers. Helpers must remove temp `userData` dirs (`cleanupTestApp` / per-spec `rmSync`) after each run — do not leave `%TEMP%\ruledesk-*` behind.
 
-**Native module ABI:** Vitest uses Node; the app uses Electron. Scripts call `db:rebuild:node` before Vitest and `db:rebuild` after `npm test` so local dev keeps working.
+**Native module ABI:** Vitest uses Node; the app uses Electron. All Vitest npm scripts run via `scripts/with-node-sqlite.mjs` (`db:rebuild:node` before, always `db:rebuild` after — including failed/interrupted runs). `npm run dev` auto-heals a leftover Node ABI before starting Electron.
 
 **Local gate (`.githooks/pre-push`):** Node.js **v20** LTS. After `git config core.hooksPath .githooks`, every push runs exactly: `npm run validate` → `npm run docs:api` + `git diff --exit-code docs/api.md` → `npm test` → `npm run test:isolated` (happy-dom + video-proxy, forks, hard wall-clock; hang dumps verbose/`why-is-node-running`) → `node scripts/assert-vitest-min-total.mjs`. Quality/e2e are not on GitHub Actions; maintainers own that gate locally. `npm run test:verify` matches that Vitest path. **Release packaging** is CI-only on `v*` tags (or `workflow_dispatch` with an existing tag): Windows zip + Linux AppImage via `.github/workflows/release.yml`, with `npm run check:release-artifacts` before upload — see [development.md](./development.md).
 ## State Management

@@ -545,16 +545,16 @@ npm run test:verify
 **Vitest** covers unit, integration, and property-based tests. **Playwright** covers E2E flows. Main: `npm test`. Isolated (happy-dom + video-proxy): `npm run test:isolated`. Combined floor: `scripts/vitest-min-counts.mjs`. [`tests/unit/TEST_COVERAGE.md`](tests/unit/TEST_COVERAGE.md) is a file inventory (no case totals).
 
 ```bash
-# Main suite: rebuild for Node → Vitest (excl. isolated) → rebuild for Electron
+# Main suite: Node ABI → Vitest (excl. isolated) → always restore Electron ABI
 npm test
 
-# Isolated suite (forks + wall-clock in pre-push)
+# Isolated suite (forks + wall-clock in pre-push); also restores Electron ABI
 npm run test:isolated
 
-# Same main Vitest run without posttest Electron rebuild (still rebuilds Node first)
+# Same main Vitest run via with-node-sqlite (restore on exit)
 npm run test:run
 
-# Watch / UI / coverage (each rebuilds better-sqlite3 for Node before running)
+# Watch / UI / coverage (Node ABI for the run, Electron ABI restored on exit)
 npm run test:watch
 npm run test:ui
 npm run test:coverage
@@ -595,10 +595,10 @@ npm run test:e2e
 
 Vitest runs under **Node.js**; the packaged app uses **Electron**. Native module ABI must match the runtime:
 
-- `pretest` / `test:run` / `test:watch` / `test:coverage` → `npm run db:rebuild:node` before Vitest
-- `posttest` (on `npm test` only) → `npm run db:rebuild` so `npm run dev` works immediately after
+- All Vitest npm scripts go through `scripts/with-node-sqlite.mjs` → `db:rebuild:node` before the suite, then always `db:rebuild` (Electron) in `finally` / on SIGINT
+- `npm run dev` probes Electron loadability and auto-runs `db:rebuild` if the ABI is still wrong
 
-If integration tests fail with `NODE_MODULE_VERSION` mismatch, run `npm run db:rebuild:node` and retry.
+If integration tests fail with `NODE_MODULE_VERSION` mismatch mid-suite, stop other Node/Electron processes locking `better_sqlite3.node` and retry via `npm test` (not bare `vitest`).
 
 ### CI/CD
 
