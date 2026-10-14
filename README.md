@@ -517,7 +517,7 @@ Local packaging scripts: `npm run dist:win`, `npm run dist:linux` (after `npm ru
 
 If you already rolled back: stop, use backups under `RuleDesk-Backups`, or contact support before continuing. Maintainer detail: [docs/database.md — Downgrade limitation](./docs/database.md#database-location).
 
-**Release hygiene:** Production builds disable source maps (`electron.vite.config.ts`). `electron-builder` excludes `.env*`, databases, logs, tests, `.cursorrules`, `.ai/`, and `*.map` from `app.asar`. Run `npm run check:release-artifacts` on packaged builds before upload. User API keys are never bundled — they are entered at runtime and stored encrypted in the local user data directory (`RuleDesk-Data`), not in the installer.
+**Release hygiene:** Production builds disable source maps (`electron.vite.config.ts`). `electron-builder` excludes `.env*`, databases, logs, tests, `.cursorrules`, `.ai/`, `.cursor/`, and `*.map` from `app.asar`. Run `npm run check:release-artifacts` on packaged builds before upload. User API keys are never bundled — they are entered at runtime and stored encrypted in the local user data directory (`RuleDesk-Data`), not in the installer.
 
 ### Quality Checks
 

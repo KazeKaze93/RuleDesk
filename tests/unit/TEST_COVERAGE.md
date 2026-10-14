@@ -25,6 +25,7 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `lib/filter-artist-autocomplete.test.ts` | Add Artist artist-only filter |
 | `shared/log-redaction.test.ts` | Central log redaction (query keys, userinfo, paths, AxiosError) |
 | `scripts/release-lib.test.ts` | Release PR flow helpers (tag↔version assert, argv) |
+| `scripts/check-release-artifacts-lib.test.ts` | Forbidden asar path list (`.cursor/`, `.ai/`, tests, maps, env) |
 | `services/backup-service-opt-in.test.ts` | Auto-backup default/policy migration, free-space guard, hourly due-check timer + sync/queue mutex |
 | `lib/diagnostics.test.ts` | Help diagnostics: redacted log tail / clipboard formatting |
 | `utils/decrypted-credentials.test.ts` | API key decrypt fail-safe |

@@ -1743,7 +1743,8 @@ Root:
 ├── scripts/                        # Build and utility scripts
 │   ├── generate-api-docs.mjs       # IPC docs generator
 │   ├── check-img-loading-decoding.mjs
-│   └── check-release-artifacts.mjs
+│   ├── check-release-artifacts.mjs
+│   └── check-release-artifacts-lib.mjs  # Forbidden asar path helpers (incl. .cursor/)
 ├── .githooks/                      # Local git hooks (core.hooksPath)
 │   └── pre-push                    # validate + docs:api + vitest
 │       └── ci.yml
