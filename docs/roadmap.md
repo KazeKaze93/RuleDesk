@@ -156,6 +156,8 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 |---|--------|----|--------|
 | H-db | `fix/db-never-delete-on-open-error` | [#249](https://github.com/KazeKaze93/RuleDesk/pull/249) | ✅ merged |
 | Auto-backup | `feat/auto-backup-default-on` | [#250](https://github.com/KazeKaze93/RuleDesk/pull/250) | ✅ merged |
+| Audit docs B1 | `docs/audit-batch-1` | [#251](https://github.com/KazeKaze93/RuleDesk/pull/251) | 🟡 open |
+| Audit R1 B2 | `fix/audit-batch-2` | — | 🟡 open — stacked on #251; merge after #251 |
 | UI/arch | `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — user overrode prior Electron-hold; merge after master conflict resolve |
 
 #### HANDOFF (UI/arch follow-ups — do not silent-fix)

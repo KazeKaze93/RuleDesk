@@ -51,6 +51,12 @@ const AUTO_BACKUP_INTERVAL_MS: Record<Exclude<AutoBackupInterval, "never">, numb
   weekly: 7 * 24 * 60 * 60 * 1000,
 };
 
+/**
+ * How often to re-evaluate whether the Daily/Weekly policy period has elapsed
+ * while the app stays open (startup still runs an immediate check).
+ */
+export const AUTO_BACKUP_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+
 export type BackupStoreContract = {
   get<K extends keyof BackupStoreSchema>(key: K): BackupStoreSchema[K];
   set<K extends keyof BackupStoreSchema>(key: K, value: BackupStoreSchema[K]): void;
@@ -178,6 +184,7 @@ export function buildBackupStoreDefaultsForTests(): BackupStoreSchema {
 
 export class BackupService {
   private readonly syncService: SyncService;
+  private checkTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(syncService: SyncService) {
     this.syncService = syncService;
@@ -206,6 +213,28 @@ export class BackupService {
   public markAutoBackupPromptSeen(): void {
     getBackupStore().set("hasSeenAutoBackupPrompt", true);
     log.info("[BackupService] Auto-backup opt-in prompt marked as seen");
+  }
+
+  /**
+   * Start the hourly due-check timer. Does not run an immediate check —
+   * callers still invoke `checkAndRunAutoBackup` on startup.
+   */
+  public startPeriodicCheck(): void {
+    this.stopPeriodicCheck();
+    this.checkTimer = setInterval(() => {
+      this.checkAndRunAutoBackup();
+    }, AUTO_BACKUP_CHECK_INTERVAL_MS);
+    log.info(
+      `[BackupService] Periodic auto-backup check started (every ${AUTO_BACKUP_CHECK_INTERVAL_MS}ms)`
+    );
+  }
+
+  public stopPeriodicCheck(): void {
+    if (this.checkTimer !== null) {
+      clearInterval(this.checkTimer);
+      this.checkTimer = null;
+      log.info("[BackupService] Periodic auto-backup check stopped");
+    }
   }
 
   public checkAndRunAutoBackup(): void {

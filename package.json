@@ -187,6 +187,7 @@
       "!**/.gitattributes",
       "!.cursorrules",
       "!**/.ai/**",
+      "!**/.cursor/**",
       "!**/repomix.config.json",
       "!**/.cursorrules",
       "!**/repomix-output.*"

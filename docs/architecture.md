@@ -1743,7 +1743,8 @@ Root:
 ├── scripts/                        # Build and utility scripts
 │   ├── generate-api-docs.mjs       # IPC docs generator
 │   ├── check-img-loading-decoding.mjs
-│   └── check-release-artifacts.mjs
+│   ├── check-release-artifacts.mjs
+│   └── check-release-artifacts-lib.mjs  # Forbidden asar path helpers (incl. .cursor/)
 ├── .githooks/                      # Local git hooks (core.hooksPath)
 │   └── pre-push                    # validate + docs:api + vitest
 │       └── ci.yml
@@ -1796,7 +1797,7 @@ Maintainer identifiers relocated from user-facing README sections (Features, Pro
 | Multi-provider | `IBooruProvider` (`Rule34Provider`, `GelbooruProvider`) |
 | IPC bridge file | `src/preload/bridge.ts` (built to `out/preload/bridge.cjs`); contract `src/shared/types/ipc-bridge.ts` — **not** `src/main/bridge.ts` |
 | Auto-updater | `electron-updater` checks and notifies; opens GitHub release page — manual zip/AppImage install (no seamless in-app install) |
-| Daily auto-backup | Once per app launch if 24h passed since `lastAutoBackupAt` (no in-session timer until Batch 2) |
+| Daily / Weekly auto-backup | When 24h / 7d passed since `lastAutoBackupAt` (startup check + hourly in-session timer; sync/`maintenanceQueue` guards) |
 
 ## Current Status
 

@@ -2,14 +2,13 @@ import { createRequire } from "node:module";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { isForbiddenRelativePath } from "./check-release-artifacts-lib.mjs";
 
 const require = createRequire(import.meta.url);
 const asar = require("@electron/asar");
 
 const ROOT_DIR = process.cwd();
 const RELEASE_DIR = path.join(ROOT_DIR, "release");
-
-const FORBIDDEN_RELATIVE_PATH = /(?:^|[\\/])(?:tests|playwright-report|test-results|\.ai)(?:[\\/]|$)|\.cursorrules$|\.env(?:\.|$)|\.map$/i;
 
 const FORBIDDEN_APP_CONTENT = [
   { label: "test fixture API key", pattern: /test-api-key-12345/ },
@@ -97,7 +96,7 @@ function auditExtractedApp(extractDir) {
     const relativePath = path.relative(extractDir, filePath);
     const posixPath = relativePath.split(path.sep).join("/");
 
-    if (FORBIDDEN_RELATIVE_PATH.test(posixPath)) {
+    if (isForbiddenRelativePath(posixPath)) {
       violations.push(`forbidden path: ${posixPath}`);
       continue;
     }
