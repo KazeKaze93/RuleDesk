@@ -60,12 +60,12 @@ npm test -- tests/property
 # Single file
 npm test -- tests/unit/lib/filter-utils.test.ts
 
-# Watch / coverage (rebuilds better-sqlite3 for Node first)
+# Watch / coverage (Node ABI for the run; Electron ABI restored on exit)
 npm run test:watch
 npm run test:coverage
 ```
 
-`npm run test:run` is equivalent to the Vitest portion of `npm test` but skips the posttest Electron rebuild.
+`npm run test:run` is the same Vitest invocation as the main suite (without the min-pass gate wrapper) and still restores the Electron ABI via `with-node-sqlite`.
 
 ## Conventions
 

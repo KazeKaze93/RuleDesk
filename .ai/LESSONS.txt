@@ -362,12 +362,12 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Invariant Rule:** Integration tests involving native modules (better-sqlite3) should ideally run inside Electron via Playwright/electron-vitest. If staying with dual-ABI for speed, document the gap explicitly and add end-to-end Electron tests for critical DB paths.
 
 ### Problem: `npm run dev` fails with better-sqlite3 NODE_MODULE_VERSION mismatch after running tests
-**Root Cause:** Direct `vitest` / `npx vitest` bypasses npm `pretest`/`posttest` hooks that run `db:rebuild:node` before tests and `db:rebuild` (Electron ABI) after — the native module stays on the Node ABI and Electron cannot load it.
-**Invariant Rule:** Run tests only via `npm test` / `npm run test:run` / `npm run test:watch` (and their derivatives). Direct `vitest` / `npx vitest` is forbidden unless `db:rebuild:node` is run before and `db:rebuild` after, manually. For a single file: `npm test -- <path>`.
+**Root Cause:** Vitest needs the Node ABI; Electron needs its own. Scripts that only ran `db:rebuild:node` (or bare `vitest` / a failed/`&&`-skipped restore) left the native module on the Node ABI. `pretest`/`posttest` covered only `npm test`, so `test:isolated` / pre-push / `test:run` often ended on Node ABI.
+**Invariant Rule:** Every Vitest npm script must go through `scripts/with-node-sqlite.mjs` (Node rebuild → command → always Electron restore in `finally`/SIGINT). Direct `vitest` / `npx vitest` is forbidden. For a single file: `npm test -- <path>`. `npm run dev` must probe Electron loadability and auto-`db:rebuild` if mismatched.
 
 ### Problem: Parallel worktrees / shared `node_modules` corrupt better-sqlite3 ABI and fake-green pre-push counts
-**Root Cause:** Junctions or shared `node_modules` across worktrees lock `better_sqlite3.node` under concurrent eslint/tsc/vitest; `posttest` flips the binary to Electron ABI so the next Node isolated suite fails or writes `.vitest-main-passed=0`. Vitest force-exit can also truncate the spawnSync text summary so the count gate reads 0 while the suite looked green.
-**Invariant Rule:** Each worktree owns a real `npm install` — never junction/symlink another tree's `node_modules`. Before pre-push in a worktree: stop only that worktree's node/electron processes; confirm `node_modules` is not a reparse point; `npm run db:rebuild:node` before isolated Vitest after Electron `posttest`. Passed-count floors must use a durable reporter artifact (JSON), not only the force-exit-truncated text summary.
+**Root Cause:** Junctions or shared `node_modules` across worktrees lock `better_sqlite3.node` under concurrent eslint/tsc/vitest; an Electron restore mid-gate flips the binary so the next Node suite fails or writes `.vitest-main-passed=0`. Vitest force-exit can also truncate the spawnSync text summary so the count gate reads 0 while the suite looked green.
+**Invariant Rule:** Each worktree owns a real `npm install` — never junction/symlink another tree's `node_modules`. Before pre-push in a worktree: stop only that worktree's node/electron processes; confirm `node_modules` is not a reparse point. Rely on `with-node-sqlite` per suite (Node at start, Electron at end) — do not share one ABI across sequential suites via a global `posttest` only. Passed-count floors must use a durable reporter artifact (JSON), not only the force-exit-truncated text summary.
 
 ## Architecture & Agent Workflow
 
@@ -417,7 +417,7 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 
 ### Problem: Open/read failure on the live DB was treated as an empty stub and deleted
 **Root Cause:** Probe helpers ended in `catch { return false/empty }`, so ABI mismatch, EBUSY, or EPERM looked like "uninitialized". `migrateLegacyDatabase` then `rmSync`'d `data.bin` (including a "no legacy candidate → drop stub" branch that deleted without a migrate target).
-**Invariant Rule:** Any decision that removes or replaces a user DB file must follow a **successful** content probe (`initialized` / `uninitialized` / `unreadable`). Open/read exceptions are `unreadable` — never "empty". Do not delete live DB + WAL/SHM; quarantine via rename. Assert native `better-sqlite3` loadability before any migrate/file logic. After `npm test` / Node rebuild, run `npm run db:rebuild` before `npm run dev`.
+**Invariant Rule:** Any decision that removes or replaces a user DB file must follow a **successful** content probe (`initialized` / `uninitialized` / `unreadable`). Open/read exceptions are `unreadable` — never "empty". Do not delete live DB + WAL/SHM; quarantine via rename. Assert native `better-sqlite3` loadability before any migrate/file logic. After any Node ABI rebuild outside `with-node-sqlite` (e.g. `db:studio`), restore Electron via `npm run db:rebuild` (or start via `npm run dev`, which auto-heals).
 
 ## UI / IPC / DB (Phase 5 audit closeout)
 

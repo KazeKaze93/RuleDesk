@@ -29,7 +29,7 @@ Project rules: .cursorrules and .ai/LESSONS.txt apply in full. This skill only d
 - Edit ONLY files owned by your package. Need another file → do not touch it; report under HANDOFF (file, what, why).
 - Forbidden:
   - git commit, rebase, stash, checkout, push;
-  - npm install, npm test and any test:* script (pretest/posttest rebuild better-sqlite3 and break parallel agents);
+  - npm install, npm test and any test:* script (with-node-sqlite rebuilds better-sqlite3 and breaks parallel agents);
   - npm run build;
   - editing package.json, lockfiles, .cursorrules, .ai/LESSONS.txt, docs/*, or existing files in drizzle/.
 - Allowed: npm run typecheck, npm run lint. Errors in files you do not own: report, do not fix.
