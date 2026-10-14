@@ -42,27 +42,29 @@ This project is **unofficial** and **not affiliated** with any external website 
 
 | Feature                           | Description                                                                                                                                                                                                                                                                                                                                            |
 | :-------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **🔐 API Authentication**         | Secure onboarding flow for Rule34.xxx API credentials (User ID and API Key). Credentials encrypted using Electron's `safeStorage` API and stored securely. Decryption only happens in Main Process when needed for API calls.                                                                                                                          |
-| **👤 Artist Tracking**            | Track artists/uploaders by tag or username. Add, view, and delete tracked artists. Add Artist autocomplete suggests **artist tags only** (Gelbooru `category`, Rule34 DAPI second-pass on top matches). Tag normalization automatically strips metadata like "(123)" from tag names.                                                                                                |
-| **🔄 Background Synchronization** | Sync service fetches new posts from Rule34.xxx API with shared `ProviderThrottle` pacing (~1200ms minimum + 0–400ms jitter per request) and exponential backoff on retries. Real-time sync progress updates via IPC events.                                                                                                                      |
-| **💾 Local Metadata Database**    | Uses **SQLite** via **Drizzle ORM** (TypeScript mandatory). Direct synchronous access via `better-sqlite3` in Main Process. Stores artists, posts metadata (tags, ratings, URLs, sample URLs), and settings. WAL mode enabled for concurrent reads.                                                                                                    |
-| **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid layout. Shows preview images, ratings, and metadata. Click to open external link to Rule34.xxx. Supports pagination and artist repair/resync functionality. Mark posts as viewed for better organization.                                                                               |
-| **🎨 Progressive Image Loading**  | Stills: `PostCard` loads **preview** first, then upgrades to **sample** when the card is in the viewport. Viewer uses file URL for full quality. Video posts use sample/file for hover preview as applicable.                                                                                                                                       |
-| **🌍 Rule34 CDN host fallback**   | Viewer builds an alternate-host URL chain for Rule34 media (`wimg.rule34.xxx`, `img.rule34.xxx`, `us.rule34.xxx`, `api-cdn.rule34.xxx`) when the primary host fails (`ViewerMedia` / `viewer-media-urls.ts`). No Main-process CDN probe/rewrite service.                                                                                                                        |
-| **📊 Post Metadata**              | Cached posts include file URLs, preview URLs, sample URLs, tags, ratings, and publication timestamps. Enables offline browsing and fast filtering.                                                                                                                                                                                                     |
-| **🔧 Artist Repair**              | Repair/resync functionality to update low-quality previews or fix synchronization issues. Resets artist's last post ID and re-fetches initial pages.                                                                                                                                                                                                   |
-| **💾 Backup & Restore**           | Manual database backup and restore. Timestamped backups under `%LOCALAPPDATA%\RuleDesk-Backups\` (sibling of `RuleDesk-Data`, not inside the cache dir); retention is configurable in Settings (`backupRetention`, range `1..20`) and enforced after each successful backup — **manual and automatic file sets are counted separately** (same `N` each, not summed). Restore replaces the live DB (with checks) and reloads the app.                                                                               |
-| **🧹 DB Maintenance (VACUUM)**    | User-visible maintenance card in Settings: shows last VACUUM run, allows manual `Run VACUUM now`, and supports schedule policy (`manual`, `weekly`, `monthly`). Lightweight auto-maintenance (`wal_checkpoint` + `optimize`) remains automatic in Main process.                                                                                     |
-| **🔍 Search Functionality**       | Search for artists locally, search for tags remotely via booru autocomplete API, and search posts directly on booru (`searchBooru`) with infinite scroll on Browse. Tag resolution methods (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`) for identifying artist, character, and copyright tags. Multi-provider support (Rule34.xxx, Gelbooru). |
-| **⭐ Favorites System**           | Mark posts as favorites and manage your favorite collection. Toggle favorite status with keyboard shortcut (`F`) in viewer or via UI controls. Favorites are stored locally in the database.                                                                                                                                                           |
-| **⬇️ Download Manager**           | Download full-resolution media files to your local file system. Download individual posts or manage download queue. Files are saved to user-selected directory with progress tracking.                                                                                                                                                                 |
-| **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download controls, favorite toggling, and tag management. Auto-hide controls, navigation between posts, and comprehensive media viewing experience.                                                                                                                                                          |
-| **🧭 Navigation & Layout**        | ✅ Implemented — Sidebar and global top bar are used across core pages. `Updates` sidebar item includes an unread badge (polling-based) that clears when the user explicitly opens Updates. Optional IA polish (labels/grouping/density) remains a UX refinement task, not a missing core feature.                                                  |
-| **📋 Playlists & Collections**    | Create curated collections of posts independent of Artists/Trackers. Create, rename, delete, export, and import playlists. Add posts via quick menu on Post Cards or in viewer. View playlist galleries with filtering/sorting, drag-and-drop reorder for manual playlists, and smart playlists with hybrid local+remote tag queries.                                                                                   |
-| **📊 Statistics**                 | **Statistics** page (`/stats`): extended aggregates via `getExtendedStats` IPC — totals (artists/posts/favorites/unviewed), rating/media/viewed/favorites pie charts, provider split (`rule34 artists`, `gelbooru artists`), top artists/tags, and DB file size. Service placeholder `Artist 0` is excluded from Top Artists.                       |
-| **🔄 Auto-Updater**               | Built-in automatic update checker using `electron-updater`. Notifies users of available updates, supports manual download, and provides seamless installation on app restart.                                                                                                                                                                          |
-| **🌐 Clean English UI**           | English-only UI copy as inline literals (or local constants when reused 3+ times). No i18n stack.                                                                                                                                                                                                                  |
-| **🔌 Multi-Source Ready**         | Provider pattern abstraction for multi-booru support. Current implementations: Rule34.xxx, Gelbooru. `IBooruProvider` interface allows adding new sources (Danbooru, etc.) without core database changes.                                                                                                                                              |
+| **🔐 API Authentication**         | Secure onboarding for Rule34.xxx API credentials (User ID and API Key). Credentials are encrypted at rest and only decrypted when the app needs them for API calls.                                                                                                                                                                                     |
+| **👤 Artist Tracking**            | Track artists by **tag**. Add, view, and delete tracked artists. Add Artist autocomplete suggests **artist tags only**; tag names are normalized (e.g. metadata like "(123)" is stripped).                                                                                                                                                              |
+| **🔄 Background Synchronization** | Fetches new posts from the booru API with rate limiting and exponential backoff on retries. Live sync progress appears in the UI.                                                                                                                                                                                                                      |
+| **💾 Local Metadata Database**    | Local SQLite library for artists, post metadata (tags, ratings, URLs), and settings. Supports concurrent reads while sync runs.                                                                                                                                                                                                                        |
+| **🖼️ Artist Gallery**             | View cached posts for each tracked artist in a responsive grid. Shows previews, ratings, and metadata. Open the source site link; paginate; repair/resync an artist; mark posts as viewed.                                                                                                                                                             |
+| **🎨 Progressive Image Loading**  | Stills load a low-res **preview** first, then upgrade to **sample** when the card is visible. The viewer uses the full-resolution file. Video posts use sample/file for hover preview as applicable.                                                                                                                                                   |
+| **🌍 Rule34 CDN host fallback**   | If a Rule34 media host fails, the viewer retries known alternate hosts so images and videos keep loading when possible.                                                                                                                                                                                                                                |
+| **📊 Post Metadata**              | Cached posts include file, preview, and sample URLs, tags, ratings, and publication timestamps for offline browsing and fast filtering.                                                                                                                                                                                                                |
+| **🔧 Artist Repair**              | Repair/resync to refresh low-quality previews or fix sync gaps by re-fetching from the start of that artist's feed.                                                                                                                                                                                                                                    |
+| **💾 Backup & Restore**           | Manual and automatic database backups under `RuleDesk-Backups` (sibling of `RuleDesk-Data`). Retention is configurable in Settings (keep last N manual and last N automatic backups separately). Restore replaces the live DB (with checks) and reloads the app.                                                                                      |
+| **🧹 DB Maintenance (VACUUM)**    | Settings shows last VACUUM run, **Run VACUUM now**, and schedule (`manual` / `weekly` / `monthly`). Lightweight automatic maintenance still runs in the background.                                                                                                                                                                                      |
+| **🔍 Search Functionality**       | Search artists locally, tags via booru autocomplete, and posts on Browse with infinite scroll. Artist / character / copyright tags are resolved for the viewer drawer. Multi-provider support (Rule34.xxx, Gelbooru).                                                                                                                                   |
+| **⭐ Favorites System**           | Mark posts as favorites and browse your collection. Toggle with **F** in the viewer or via UI. Favorites are stored locally only.                                                                                                                                                                                                                      |
+| **⬇️ Download Manager**           | Download full-resolution media to a folder you choose, with progress tracking and queue management.                                                                                                                                                                                                                                                    |
+| **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download, favorites, and tag management. Auto-hide controls and navigation between posts.                                                                                                                                                                                                                    |
+| **🧭 Navigation & Layout**        | Sidebar and global top bar across core pages. **Updates** shows an unread badge that clears when you open Updates. Optional IA polish remains a refinement task, not a missing core feature.                                                                                                                                                           |
+| **📋 Playlists & Collections**    | Curated collections independent of tracked artists. Create, rename, delete, export, and import. Add posts from cards or the viewer. Filter/sort galleries; drag-and-drop reorder for manual playlists; smart playlists resolve tags locally and remotely.                                                                                              |
+| **📊 Statistics**                 | Statistics page with totals (artists/posts/favorites/unviewed), distribution charts, provider split, top artists/tags, and database file size.                                                                                                                                                                                                         |
+| **🔄 Auto-Updater**               | Checks for updates and notifies when a newer release is available. Choosing download opens the GitHub Releases page; you install manually (extract the Windows zip / replace the Linux AppImage). There is no automatic in-app install.                                                                                                              |
+| **🌐 Clean English UI**           | English-only user-facing copy (no i18n stack).                                                                                                                                                                                                                                                                                                         |
+| **🔌 Multi-Source Ready**         | Multi-booru support today: Rule34.xxx and Gelbooru. New sources can be added without rewriting the core library schema.                                                                                                                                                                                                                                |
+
+Internal identifiers for maintainers (component names, IPC methods, constants, file paths) live in [Architecture Documentation](./docs/architecture.md#readme-feature-internals).
 
 ---
 
@@ -95,7 +97,7 @@ This is the sandboxed browser environment. It handles presentation.
 ### 3. Security Boundary (The Gatekeeper)
 
 - **IPC Architecture:** Controller-based IPC handlers with `BaseController` for centralized error handling and validation. Type-safe dependency injection via DI Container.
-- **IPC Bridge:** Strictly typed TypeScript interface (`bridge.ts`) used by the Renderer to communicate with the Main Process.
+- **IPC Bridge:** Strictly typed TypeScript interface used by the Renderer to communicate with the Main Process (`src/preload/bridge.ts`; see [architecture](./docs/architecture.md#readme-feature-internals)).
 - **Security:** **Context Isolation** enforced globally; no direct Node.js access from the Renderer.
 - **Encryption:** API credentials encrypted using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
 - **Provider Pattern:** Multi-booru support via `IBooruProvider` interface. Current implementations: Rule34.xxx, Gelbooru.
@@ -108,9 +110,9 @@ The application is organized into the following main sections accessible via the
 
 - **Updates** - View new posts from tracked artists
 - **Browse (All posts)** - Search the live booru API with chip-based tags, infinite scroll, and advanced filters; Favorites / Browse Source Subscriptions filter modes search the local cache
-- **Favorites** - Local favorites only (`isFavorited` in SQLite). There is no booru account-favorites sync path
+- **Favorites** - Local favorites only. There is no booru account-favorites sync path
 - **Playlists (Collections)** - Create and manage curated collections of posts
-- **Statistics** - Extended local metrics and distribution charts via `getExtendedStats` (counts, pie charts, top artists/tags, provider artist split, DB size)
+- **Statistics** - Extended local metrics and distribution charts (counts, pie charts, top artists/tags, provider artist split, DB size)
 - **Tracked (Artists/Tags management)** - Manage tracked artists and tags
 - **Settings** - Configure downloads, sync, appearance, account, backup/restore, and Danger-zone wipe
 
@@ -211,26 +213,26 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 
 ### Blacklist
 
-- **Tag blacklist** - Hide posts containing listed tags from Browse and local galleries (enforced in Main after fetch). Maximum **100** tags (`MAX_BLACKLIST_TAGS`)
+- **Tag blacklist** - Hide posts containing listed tags from Browse and local galleries. Maximum **100** tags
 
 ### Backup
 
 - **Create backup** - Manual timestamped backup (written to `RuleDesk-Backups`)
-- **Restore backup** - Restore from backup file (dialog defaults to `RuleDesk-Backups`) and reload app
-- **Integrity check** - Run `PRAGMA integrity_check`
-- **Orphaned data check** - Read-only report of posts/playlist entries/FTS rows without parents (Settings → Database Maintenance); no automatic cleanup
-- **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (evaluated on app startup; default **Daily** for new installs and for upgrades that still had `never` with the opt-in prompt never seen)
-- **Automatic backup rotation** - Keep the last `N` **manual** backups and the last `N` **automatic** backups independently (`backupRetention`, configurable in UI, range `1..20`). The two filename sets are not summed into one pool
-- **Optional storage cap (env)** - `BACKUP_RETENTION_MAX_TOTAL_MB` can enforce a total size ceiling for **manual** backup files in addition to `keep last N` on that set (newest is always kept even if a single file exceeds the cap)
+- **Restore backup** - Restore from backup file (dialog defaults to `RuleDesk-Backups`) and reload app. A backup made by a **newer** app version fails with an error and rolls back — update the app first, then restore
+- **Integrity check** - Verify the database is not corrupted
+- **Orphaned data check** - Read-only report of posts/playlist entries/search-index rows without parents (Settings → Database Maintenance); no automatic cleanup
+- **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (evaluated on app startup; default **Daily** for new installs and for upgrades that still had Never with the opt-in prompt never seen). **Daily** = once per app launch if 24 hours have passed since the last automatic backup (no in-session timer yet)
+- **Automatic backup rotation** - Keep the last N **manual** backups and the last N **automatic** backups independently (configurable in Settings, range 1–20). The two sets are not summed into one pool
+- **Optional storage cap** - Advanced deployments may set an environment variable to cap total **manual** backup size in addition to keep-last-N (see [Development Setup](#-development-setup) and [architecture](./docs/architecture.md))
 - **Database maintenance (VACUUM)** - Last run timestamp/status/error, manual run button, and schedule (`manual` / `weekly` / `monthly`)
 
 ### Account
 
-- **Provider** - `rule34` or `gelbooru`; changing provider invalidates React Query feed caches and persists the selection
+- **Provider** - Rule34 or Gelbooru; changing provider refreshes feed caches and saves the selection
 - **User ID** - Required for providers that use it (shown when applicable)
 - **API key update** - Password-style input with show/hide toggle
 - **Paste URL** - Paste the full account page URL into either field; User ID and API Key are extracted automatically
-- **Key status badge** - `Configured` / `Not configured` via safe `hasApiKey` contract
+- **Key status badge** - Configured / Not configured
 
 ### Feedback timing
 
@@ -246,7 +248,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Build System:** electron-vite for optimal build performance
 - ✅ **Database Architecture:** Direct synchronous access via `better-sqlite3` in Main Process with WAL mode for concurrent reads
 - ✅ **User Data Path:** Neutral `RuleDesk-Data` directory for dev and packaged builds (same location on a given machine)
-- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); local `pre-push` hook runs `validate`, `docs:api` freshness, `npm test`, then `npm run test:isolated` (pinned combined pass count)
+- ✅ **Testing Architecture:** Vitest (unit, integration, property/fuzzing), Playwright (E2E); local `pre-push` hook runs `validate` → `docs:api` freshness → `npm test` → `npm run test:isolated` → `assert-vitest-min-total` (Node 20)
 - ✅ **Dual ABI Support:** Automatic switching between Node.js and Electron ABI for `better-sqlite3` during testing
 - ✅ **HMR Status:** Renderer HMR is enabled, and Main/Preload sources are watched in development for faster backend iteration.
 
@@ -259,7 +261,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Composite Indexes:** Composite indexes on `(artist_id, rating, is_viewed)` and `(artist_id, media_type)` for optimized multi-column filter queries
 - ✅ **FTS5 Full-Text Search:** FTS5 virtual table `posts_fts` with `unicode61` tokenizer for fast tag searching
 - ✅ **Provider Support:** Multi-booru support with `provider` field in artists table (rule34, gelbooru)
-- ✅ **Artist Types:** Support for `tag`, `uploader`, and `query` types
+- ✅ **Artist Types:** UI tracks artists by **tag** (schema still allows legacy `uploader` / `query` rows; see [roadmap backlog](./docs/roadmap.md#backlog-not-implemented-yet))
 
 ### Security & Reliability
 
@@ -319,16 +321,15 @@ The application is stable and production-ready (see **`package.json`** → `vers
 2. **Age Gate and account:**
 
    - Launch the application
-   - Confirm legal age / ToS in the mandatory Age Gate (`AgeGate.tsx`)
-   - If no API key is stored, AccountGate (`SettingsAccountTab` in `App.tsx`) requires User ID + API Key — **Save API Key** (or paste the account page URL into either field). There is no Skip; the main shell loads only after `hasApiKey` is true
+   - Confirm legal age / ToS in the mandatory Age Gate
+   - If no API key is stored, enter User ID + API Key and click **Save API Key** (or paste the account page URL into either field). There is no Skip; the main shell loads only after credentials are configured
    - Credentials can be updated later in Settings → Account
 
 3. **Add Artists:**
 
    - Click "Add Artist" button
    - Search for an **artist** tag (character/copyright tags are filtered out)
-   - Select type (tag or uploader)
-   - Click "Add"
+   - Confirm the tag and click "Add"
 
 4. **Sync Posts:**
    - Click "Sync All" to fetch posts from Rule34.xxx
@@ -448,7 +449,7 @@ This project uses **electron-vite** as the build tool for both the Electron Main
 git config core.hooksPath .githooks
 ```
 
-`pre-push` runs `validate`, `docs:api` freshness, main Vitest (`npm test`), then isolated Vitest (`npm run test:isolated` — happy-dom + video-proxy under a hard wall-clock). Combined passed count must meet the pinned floor; a failing gate aborts the push.
+`pre-push` runs exactly: `npm run validate` → `npm run docs:api` + `git diff --exit-code docs/api.md` → `npm test` → `npm run test:isolated` → `node scripts/assert-vitest-min-total.mjs`. A failing gate aborts the push. Node.js **v20** LTS required.
 - **npm:** v9 or higher
 - **Git:** For version control
 
@@ -479,7 +480,7 @@ The application stores configuration in SQLite database:
   - macOS: `~/Library/Application Support/RuleDesk-Data/data.bin` (backups: `…/RuleDesk-Backups/`)
   - Linux: `~/.config/RuleDesk-Data/data.bin` (backups: `…/RuleDesk-Backups/`)
 - **Database Architecture:** Direct synchronous access via `better-sqlite3` with WAL mode for concurrent reads
-- **No Environment Variables Required:** All configuration is handled through the UI
+- **Environment variables:** None are required for normal use — configuration is handled through the UI. Optional advanced override: `BACKUP_RETENTION_MAX_TOTAL_MB` can cap total **manual** backup file size in addition to keep-last-N (newest backup is always kept even if a single file exceeds the cap). See [architecture](./docs/architecture.md#readme-feature-internals).
 
 ### Building the Binary
 
@@ -601,7 +602,7 @@ If integration tests fail with `NODE_MODULE_VERSION` mismatch, run `npm run db:r
 
 ### CI/CD
 
-**Quality** is local (`.githooks/pre-push`): `validate` → `docs:api` freshness → Vitest. See [docs/development.md](./docs/development.md).
+**Quality** is local (`.githooks/pre-push`): `validate` → `docs:api` freshness → `npm test` → `test:isolated` → `assert-vitest-min-total`. See [docs/development.md](./docs/development.md).
 
 **Release** — GitHub Actions [`.github/workflows/release.yml`](./.github/workflows/release.yml) on tag `v*` (or manual `workflow_dispatch` with an existing tag): Windows zip + Linux AppImage on native runners, then upload to the GitHub Release for that tag.
 

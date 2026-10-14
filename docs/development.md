@@ -6,11 +6,15 @@ Branch protection on `master` is **enabled**: pull requests required (including 
 
 ## Quality gate (local)
 
-Quality and tests are **not** run on GitHub Actions. After `git config core.hooksPath .githooks`, every push runs `.githooks/pre-push`:
+**Requirement:** Node.js **v20** LTS.
+
+Quality and tests are **not** run on GitHub Actions. After `git config core.hooksPath .githooks`, every push runs `.githooks/pre-push` exactly:
 
 1. `npm run validate` (typecheck, lint, img attrs)
-2. `docs:api` freshness (`git diff --exit-code docs/api.md`)
-3. `npm test` and `npm run test:isolated` (see `architecture.md`)
+2. `npm run docs:api` then `git diff --exit-code docs/api.md` (IPC API docs freshness)
+3. `npm test` (main Vitest suite; min pass count enforced)
+4. `npm run test:isolated` (jsdom/happy-dom + video-proxy, wall-clock)
+5. `node scripts/assert-vitest-min-total.mjs` (combined Vitest min total)
 
 `npm run test:verify` matches that Vitest path for a full local check. Pushing ordinary branches does **not** start a packaging build.
 

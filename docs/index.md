@@ -108,16 +108,20 @@ Engineering materials are intentionally grouped here to keep the top-level index
 
 ### Quality gates (local pre-push)
 
+**Requirement:** Node.js **v20** LTS.
+
 | Step | Command |
 |------|---------|
 | Enable hooks (once per clone) | `git config core.hooksPath .githooks` |
 | Typecheck + lint + img policy | `npm run validate` |
 | IPC API docs freshness | `npm run docs:api` then `git diff --exit-code docs/api.md` |
-| All Vitest suites (min pass count) | `npm test` |
-| Pre-PR full gate | `npm run test:verify` |
-| Production dependency audit | `npm audit --omit=dev --audit-level=high` |
+| Main Vitest suite (min pass count) | `npm test` |
+| Isolated Vitest (jsdom/happy-dom + video-proxy, wall-clock) | `npm run test:isolated` |
+| Combined Vitest min total | `node scripts/assert-vitest-min-total.mjs` |
+| Pre-PR full gate (matches Vitest path) | `npm run test:verify` |
+| Production dependency audit (optional; not in pre-push) | `npm audit --omit=dev --audit-level=high` |
 
-`.githooks/pre-push` runs **validate**, **docs:api freshness**, and **npm test**. Quality jobs are not on GitHub Actions. Tagged releases (`v*`) are packaged by the [Release](../.github/workflows/release.yml) workflow (Windows zip + Linux AppImage); see [development.md](./development.md) and [user guide — Installation](./user-guide.md#installation).
+`.githooks/pre-push` runs exactly: **validate** → **docs:api** freshness → **`npm test`** → **`npm run test:isolated`** → **`node scripts/assert-vitest-min-total.mjs`**. Quality jobs are not on GitHub Actions. Tagged releases (`v*`) are packaged by the [Release](../.github/workflows/release.yml) workflow (Windows zip + Linux AppImage); see [development.md](./development.md) and [user guide — Installation](./user-guide.md#installation).
 
 ---
 

@@ -15,6 +15,7 @@
 - [State Management](#state-management)
 - [File Structure](#file-structure)
 - [Design Principles](#design-principles)
+- [README feature internals](#readme-feature-internals)
 - [Current Status](#current-status)
 
 ---
@@ -1437,7 +1438,7 @@ The project uses **electron-vite** for building both Main and Renderer processes
 
 **Native module ABI:** Vitest uses Node; the app uses Electron. Scripts call `db:rebuild:node` before Vitest and `db:rebuild` after `npm test` so local dev keeps working.
 
-**Local gate (`.githooks/pre-push`):** after `git config core.hooksPath .githooks`, every push runs `validate` → `docs:api` freshness → `npm test` → `npm run test:isolated` (happy-dom + video-proxy, forks, hard wall-clock; hang dumps verbose/`why-is-node-running`) → combined min pass count. Quality/e2e are not on GitHub Actions; maintainers own that gate locally. `npm run test:verify` matches that Vitest path. **Release packaging** is CI-only on `v*` tags (or `workflow_dispatch` with an existing tag): Windows zip + Linux AppImage via `.github/workflows/release.yml`, with `npm run check:release-artifacts` before upload — see [development.md](./development.md).
+**Local gate (`.githooks/pre-push`):** Node.js **v20** LTS. After `git config core.hooksPath .githooks`, every push runs exactly: `npm run validate` → `npm run docs:api` + `git diff --exit-code docs/api.md` → `npm test` → `npm run test:isolated` (happy-dom + video-proxy, forks, hard wall-clock; hang dumps verbose/`why-is-node-running`) → `node scripts/assert-vitest-min-total.mjs`. Quality/e2e are not on GitHub Actions; maintainers own that gate locally. `npm run test:verify` matches that Vitest path. **Release packaging** is CI-only on `v*` tags (or `workflow_dispatch` with an existing tag): Windows zip + Linux AppImage via `.github/workflows/release.yml`, with `npm run check:release-artifacts` before upload — see [development.md](./development.md).
 ## State Management
 
 ### Renderer State
@@ -1650,9 +1651,12 @@ src/
 │   ├── lib/                       # Utilities
 │   │   ├── logger.ts              # electron-log setup + redaction hook (main)
 │   │   └── proxy.ts               # Proxy config helpers
-│   ├── bridge.ts                  # IPC bridge interface definition
 │   ├── main.d.ts                  # Main process type definitions
 │   └── main.ts                    # Main process entry point
+│
+├── preload/                       # Preload (Context Isolation bridge)
+│   ├── bridge.ts                  # Runtime IPC bridge (`window.api`; built to `out/preload/bridge.cjs`)
+│   └── invoke-ipc.ts              # Shared invoke helper for preload
 │
 ├── renderer/                      # Electron Renderer Process
 │   ├── components/                # React components
@@ -1769,6 +1773,31 @@ Root:
 - Reusable components and utilities
 - No code duplication
 
+## README feature internals
+
+Maintainer identifiers relocated from user-facing README sections (Features, Product Structure, Settings, Quick Start). Behavior stays in README; this section keeps the wiring map.
+
+| Area | Internals |
+|------|-----------|
+| API credentials | Electron `safeStorage`; decrypt only in Main |
+| Artist autocomplete | Gelbooru `category`; Rule34 DAPI second-pass on top matches (`artistOnly`) |
+| Sync pacing | Shared `ProviderThrottle` (~1200ms + 0–400ms jitter); sync progress via IPC events |
+| Database | Drizzle ORM + `better-sqlite3` in Main; WAL mode |
+| Progressive stills | `PostCard` preview → sample in viewport; viewer file URL for full quality |
+| Rule34 CDN fallback | `ViewerMedia` / `viewer-media-urls.ts` alternate-host chain (`wimg` / `img` / `us` / `api-cdn`); no Main CDN probe |
+| Backup retention | Settings `backupRetention` (`1..20`); manual vs auto filename sets counted separately |
+| Optional backup size cap | Env `BACKUP_RETENTION_MAX_TOTAL_MB` (optional advanced override; app needs no env vars otherwise) |
+| Lightweight maintenance | `PRAGMA wal_checkpoint` + `PRAGMA optimize` in Main |
+| Search / tag resolve | IPC `searchBooru`; `resolveTags` / `resolveCharacterTags` / `resolveCopyrightTags` |
+| Favorites storage | Local SQLite `isFavorited` (no booru account-favorites sync) |
+| Statistics | Route `/stats`; IPC `getExtendedStats`; placeholder `Artist 0` excluded from Top Artists |
+| Blacklist cap | `MAX_BLACKLIST_TAGS` (100) |
+| Account gate | `AgeGate.tsx`; AccountGate / `SettingsAccountTab` in `App.tsx`; `hasApiKey` contract |
+| Multi-provider | `IBooruProvider` (`Rule34Provider`, `GelbooruProvider`) |
+| IPC bridge file | `src/preload/bridge.ts` (built to `out/preload/bridge.cjs`); contract `src/shared/types/ipc-bridge.ts` — **not** `src/main/bridge.ts` |
+| Auto-updater | `electron-updater` checks and notifies; opens GitHub release page — manual zip/AppImage install (no seamless in-app install) |
+| Daily auto-backup | Once per app launch if 24h passed since `lastAutoBackupAt` (no in-session timer until Batch 2) |
+
 ## Current Status
 
 ### ✅ Completed Features
@@ -1784,10 +1813,10 @@ Root:
 
 - **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `search_results_cache` (Browse `searchBooru` page TTL cache, found|not_found, versioned JSON payload), `post_lookup_cache` (single-post `id:` lookup TTL, found|not_found, 30-day not_found), `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
-- **Testing & local gate:** Vitest (unit, integration, property), Playwright (E2E); `pre-push` runs `validate` + `docs:api` + `npm test`
+- **Testing & local gate:** Vitest (unit, integration, property), Playwright (E2E); `.githooks/pre-push` runs `npm run validate` → `npm run docs:api` + `git diff --exit-code docs/api.md` → `npm test` → `npm run test:isolated` → `node scripts/assert-vitest-min-total.mjs`. Node.js **v20** LTS required.
 - **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
 - **Provider Support:** Multi-booru support with `provider` field (rule34, gelbooru)
-- **Artist Types:** Support for `tag`, `uploader`, and `query` types
+- **Artist Types:** UI exposes **tag** only; schema enum still includes legacy `uploader` / `query` (not offered in Add Artist UI — see [roadmap backlog](./roadmap.md#backlog-not-implemented-yet))
 
 **Security & Reliability:**
 

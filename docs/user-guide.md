@@ -43,7 +43,9 @@ Tagged [Releases](https://github.com/KazeKaze93/ruledesk/releases) ship **pre-bu
 2. Extract the archive
 3. Run `RuleDesk.exe`
 
-Application data is stored in the same location as the dev build (`%LOCALAPPDATA%/RuleDesk-Data` on Windows). Updates: use **Download** in the in-app notification to open the latest release on GitHub.
+**Unsigned builds / SmartScreen:** Windows builds are not code-signed. Microsoft Defender SmartScreen may show “Windows protected your PC”. Click **More info**, then **Run anyway** to continue. This is expected until signing is set up.
+
+Application data is stored in the same location as the dev build (`%LOCALAPPDATA%/RuleDesk-Data` on Windows). Updates: use **Download** in the in-app notification to open the latest release on GitHub, then extract the new zip (or replace files) manually — there is no automatic in-app install.
 
 ### Linux
 
@@ -132,12 +134,10 @@ That's it! You're now ready to use RuleDesk.
 3. Fill in the form:
 
    - **Name** - A friendly name for this artist (e.g., "My Favorite Artist")
-   - **Tag** - The tag or username to track (e.g., "artist_name" or "tag_name")
-   - **Type** - Choose:
-     - **Tag** - Track posts with this tag
-     - **Uploader** - Track posts uploaded by this user
-     - **Query** - Track posts matching a custom query
+   - **Tag** - The artist tag to track (e.g., "artist_name")
    - **Source** - Choose which site to use (Rule34.xxx or Gelbooru)
+
+   Tracking is by **tag** only in the UI (uploader/query types are not offered).
 
 4. Click **"Add"**
 
@@ -495,7 +495,7 @@ Settings are split into tabs:
 - **Restore Backup** - Restore from a backup file (dialog opens in `RuleDesk-Backups`; app reloads after success)
 - **Check Integrity** - Verify database is not corrupted
 - **Orphaned data check** - Read-only report of posts/playlist entries/FTS rows without parents (no automatic cleanup)
-- **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup). Default is Daily (including upgrades that still had Never and had never answered the opt-in prompt). If you previously dismissed that prompt and kept Never, RuleDesk leaves your choice alone. You can change the schedule anytime under Settings → Backup.
+- **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup). Default is Daily (including upgrades that still had Never and had never answered the opt-in prompt). If you previously dismissed that prompt and kept Never, RuleDesk leaves your choice alone. You can change the schedule anytime under Settings → Backup. **Daily** = once per app launch if 24 hours have passed since the last automatic backup (no in-session timer yet).
 - **Retention** - Keep the last `N` **manual** backups and the last `N` **automatic** backups independently (`backupRetention`, range `1..20`). The two file sets are counted separately and are not summed into one pool
 - **Database Maintenance (VACUUM)** - See last VACUUM run status/time, run VACUUM manually, and choose maintenance schedule (`Manual`, `Weekly`, `Monthly`)
 
@@ -527,6 +527,8 @@ Settings are split into tabs:
 3. Select a backup file (dialog defaults to `RuleDesk-Backups`)
 4. Confirm restore
 5. The app reloads automatically
+
+**Newer-app backups:** If the backup was made by a **newer** RuleDesk version than the one you are running, restore fails with an error and rolls back to your current database. Update the app first, then restore again.
 
 ---
 
