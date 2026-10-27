@@ -201,4 +201,53 @@ describe("Rule34Provider.searchTags", () => {
     expect(calledUrl).toContain("autocomplete.php");
     expect(calledUrl).toContain("q=wlop");
   });
+
+  it("returns [] on abort without throwing", async () => {
+    const abortError = new DOMException("The operation was aborted.", "AbortError");
+    axiosGetMock.mockRejectedValueOnce(abortError);
+
+    await expect(provider.searchTags("wlop")).resolves.toEqual([]);
+  });
+
+  it("throws rate_limit with retryAfterMs on HTTP 429 and notifies throttle", async () => {
+    const notifySpy = vi.spyOn(ProviderThrottle.prototype, "notifyRateLimited");
+    const rateLimitError = new AxiosError("Request failed with status code 429");
+    rateLimitError.response = {
+      status: 429,
+      statusText: "Too Many Requests",
+      headers: { "retry-after": "12" },
+      data: "",
+      config: { headers: {} },
+    };
+    axiosGetMock.mockRejectedValueOnce(rateLimitError);
+
+    await expect(provider.searchTags("wlop")).rejects.toMatchObject({
+      kind: "rate_limit",
+      retryAfterMs: 12_000,
+    });
+
+    expect(notifySpy).toHaveBeenCalledWith(12_000);
+    notifySpy.mockRestore();
+  });
+
+  it("throws ProviderSearchError network on transport failure", async () => {
+    const timeoutError = new AxiosError("timeout of 10000ms exceeded");
+    timeoutError.code = "ECONNABORTED";
+    axiosGetMock.mockRejectedValueOnce(timeoutError);
+
+    await expect(provider.searchTags("wlop")).rejects.toMatchObject({
+      kind: "network",
+    });
+  });
+
+  it("throws ProviderSearchError parse for non-array response", async () => {
+    axiosGetMock.mockResolvedValueOnce({
+      status: 200,
+      data: "<html>error</html>",
+    });
+
+    await expect(provider.searchTags("wlop")).rejects.toMatchObject({
+      kind: "parse",
+    });
+  });
 });
