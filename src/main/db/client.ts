@@ -56,8 +56,10 @@ export function resetStaleSyncingArtists(
 /**
  * After hard-kill mid-initial-sync left runtime FTS triggers dropped:
  * backfill missing posts_fts rows so MATCH sees real index data.
+ * One retry on rebuild failure; second failure throws so initializeDatabase
+ * leaves the pre-migration snapshot on disk and main.ts shows the fatal dialog.
  */
-function recoverAfterRecreatedFtsTriggers(
+export function recoverAfterRecreatedFtsTriggers(
   sqlite: InstanceType<typeof Database>,
   recreated: string[]
 ): void {
@@ -67,10 +69,16 @@ function recoverAfterRecreatedFtsTriggers(
 
   try {
     rebuildFtsIndex(sqlite);
-    logger.info("[DB] FTS index rebuilt after restoring runtime-dropped triggers");
-  } catch (error) {
-    logger.warn("[DB] FTS rebuild failed", error);
+  } catch (firstError) {
+    logger.warn("[DB] FTS rebuild failed, retrying once", firstError);
+    try {
+      rebuildFtsIndex(sqlite);
+    } catch (secondError) {
+      logger.error("[DB] FTS rebuild failed after retry", secondError);
+      throw secondError;
+    }
   }
+  logger.info("[DB] FTS index rebuilt after restoring runtime-dropped triggers");
 }
 
 async function migrateLegacyDatabaseIfNeeded(newDbPath: string): Promise<void> {
