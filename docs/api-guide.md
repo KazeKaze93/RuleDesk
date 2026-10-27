@@ -1522,7 +1522,7 @@ Downloads a file from a URL to the local file system. Opens a save dialog for th
 
 **Parameters:**
 
-- `url: string` - HTTPS URL of the file; hostname must pass shared CDN allowlist (`isAllowedCdnUrl` / `provider.cdnDomains`) — same gate as video-proxy and downloadWorker
+- `url: string` - HTTPS URL of the file; hostname must pass shared CDN allowlist (`isAllowedCdnUrl` / `provider.cdnDomains`) — same gate as video-proxy and downloadWorker (worker also re-checks every redirect hop)
 - `filename: string` - Suggested filename for the download
 
 **Returns:** `Promise<{ success: boolean; path?: string; error?: string; canceled?: boolean }>`
