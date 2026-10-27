@@ -27,7 +27,6 @@ import { Button } from "../ui/button";
 import type { Playlist, Post } from "@shared/types/db";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
-import { useShallow } from "zustand/react/shallow";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import {
@@ -46,6 +45,7 @@ import { GalleryLoadError } from "../gallery/GalleryLoadError";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { SortablePostCard } from "./PlaylistVirtuosoComponents";
 import { resolveErrorMessage } from "../../utils/error-message";
+import { POSTS_PAGE_SIZE } from "../../../shared/constants";
 
 const {
   GridContainer,
@@ -83,15 +83,10 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   const selectAll = useBulkSelect((state) => state.selectAll);
   const clearSelection = useBulkSelect((state) => state.clearSelection);
 
-  // Use useShallow for combined selector to prevent multiple re-renders
-  // This ensures all three values are selected atomically, preventing cascading re-renders
-  const { viewType, filters, sortOrder } = useSearchStore(
-    useShallow((state) => ({
-      viewType: state.viewType,
-      filters: state.filters,
-      sortOrder: state.sortOrder,
-    }))
-  );
+  const viewType = useSearchStore((state) => state.viewType);
+  const sortOrder = useSearchStore((state) => state.sortOrder);
+  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const mediaType = useSearchStore((state) => state.filters.mediaType);
   const queryClient = useQueryClient();
 
   // Build filters for API call from search store state
@@ -99,12 +94,12 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     const result: { mediaType?: "all" | "images" | "videos" } = {};
 
     // Map mediaType filter from current search store state
-    if (filters.mediaType && filters.mediaType !== "all") {
-      result.mediaType = filters.mediaType;
+    if (mediaType && mediaType !== "all") {
+      result.mediaType = mediaType;
     }
     
     return result;
-  }, [filters.mediaType]);
+  }, [mediaType]);
 
   const {
     data,
@@ -120,8 +115,8 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     queryKey: [
       "playlist-posts",
       playlist.id,
-      filters.mediaType,
-      filters.aiFilter,
+      mediaType,
+      aiFilter,
       sortOrder,
     ],
     initialPageParam: 1,
@@ -129,14 +124,14 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       return await window.api.resolvePlaylistPosts({
         playlistId: playlist.id,
         page: pageParam,
-        limit: 50,
+        limit: POSTS_PAGE_SIZE,
         filters: Object.keys(apiFilters).length > 0 ? apiFilters : undefined,
         sortOrder,
         isRandom: false,
       });
     },
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < 50) return undefined;
+      if (lastPage.length < POSTS_PAGE_SIZE) return undefined;
       return allPages.length + 1;
     },
   });
@@ -144,14 +139,14 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   const allPosts = useMemo(() => {
     let posts = data?.pages.flat() ?? [];
 
-    if (filters.aiFilter === "hide") {
+    if (aiFilter === "hide") {
       posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
-    } else if (filters.aiFilter === "only") {
+    } else if (aiFilter === "only") {
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
     }
 
     return posts;
-  }, [data, filters.aiFilter]);
+  }, [data, aiFilter]);
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -193,7 +188,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
         const filteredIds = newPage
           .filter((post) =>
             shouldIncludePostInPlaylistQueue(post, {
-              aiFilter: filters.aiFilter,
+              aiFilter,
             })
           )
           .map((post) => (post.id === 0 && post.postId ? post.postId : post.id));
@@ -226,8 +221,8 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       origin: {
         kind: "playlist",
         playlistId: playlist.id,
-        mediaType: filters.mediaType,
-        aiFilter: filters.aiFilter,
+        mediaType,
+        aiFilter,
         sortOrder,
         provider, // Pass provider to origin for shadow insert operations
       },

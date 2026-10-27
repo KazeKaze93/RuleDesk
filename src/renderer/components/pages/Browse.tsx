@@ -50,6 +50,7 @@ import type { Post } from "@shared/types/db";
 import { normalizePostToPostData } from "../../../shared/utils/post-normalization";
 import {
   EXTERNAL_ARTIST_ID,
+  POSTS_PAGE_SIZE,
   type ProviderId,
 } from "../../../shared/constants";
 import { ErrorCode } from "@shared/types/error-codes";
@@ -66,7 +67,6 @@ import {
 } from "../../utils/react-query-cache";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 
-const POSTS_PER_PAGE = 50;
 const BROWSE_SEARCH_STALE_TIME_MS = 5 * 60 * 1000;
 const BROWSE_SEARCH_GC_TIME_MS = 30 * 60 * 1000;
 
@@ -209,7 +209,7 @@ export const Browse = () => {
         });
         return {
           posts,
-          hasMore: posts.length >= POSTS_PER_PAGE,
+          hasMore: posts.length >= POSTS_PAGE_SIZE,
         };
       }
 
@@ -226,7 +226,7 @@ export const Browse = () => {
         });
         return {
           posts,
-          hasMore: posts.length >= POSTS_PER_PAGE,
+          hasMore: posts.length >= POSTS_PAGE_SIZE,
         };
       }
 
@@ -236,21 +236,21 @@ export const Browse = () => {
             tags: remoteSearchTags,
             page: 1,
             beforePostId: pageParam.beforePostId,
-            limit: POSTS_PER_PAGE,
+            limit: POSTS_PAGE_SIZE,
           });
         }
 
         return await window.api.searchBooru({
           tags: remoteSearchTags,
           page: pageParam,
-          limit: POSTS_PER_PAGE,
+          limit: POSTS_PAGE_SIZE,
         });
       } catch (error) {
         assertBrowseSearchError(error);
       }
     },
     getNextPageParam: (lastPage, allPages) =>
-      getSearchBrowseNextPageParam(lastPage, allPages, POSTS_PER_PAGE),
+      getSearchBrowseNextPageParam(lastPage, allPages, POSTS_PAGE_SIZE),
     staleTime: BROWSE_SEARCH_STALE_TIME_MS,
     gcTime: BROWSE_SEARCH_GC_TIME_MS,
     refetchOnReconnect: false,

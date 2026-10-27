@@ -71,8 +71,14 @@ export const BATCH_DOWNLOAD_LIST_MAX_FILES = 5000;
 export const BATCH_DOWNLOAD_CHUNK_SIZE = 100;
 
 /**
+ * Default posts page size for gallery infinite queries / playlist schemas.
+ * Keep in sync with GetPostsSchema / playlist limit defaults (value must stay 50).
+ */
+export const POSTS_PAGE_SIZE = 50;
+
+/**
  * Max post ids accepted by `updates:markSeenByIds` in one IPC call.
- * Matches a generous multi-page Updates feed load (page size 50).
+ * Matches a generous multi-page Updates feed load (`POSTS_PAGE_SIZE`).
  */
 export const UPDATES_MARK_SEEN_BY_IDS_MAX = 500;
 

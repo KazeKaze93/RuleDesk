@@ -11,6 +11,20 @@ import { isVideoPost } from "../../lib/filter-utils";
 import { useVideoProxyUrl } from "../../lib/hooks/useVideoProxyUrl";
 import { buildViewerFullImageChain } from "./viewer-media-urls";
 
+/**
+ * Expected autoplay policy block or play interrupted by pause/new load.
+ * Other play() rejections are unexpected and should be logged.
+ */
+function handleVideoPlayError(error: unknown): void {
+  if (
+    error instanceof DOMException &&
+    (error.name === "NotAllowedError" || error.name === "AbortError")
+  ) {
+    return;
+  }
+  log.warn("[ViewerMedia] video.play() failed:", error);
+}
+
 export const ViewerMedia = ({
   post,
   onBackgroundClick,
@@ -128,8 +142,11 @@ export const ViewerMedia = ({
               }}
               ref={(el) => {
                 if (el) {
-                  if (isVideoPlaying && el.paused) el.play().catch(() => {});
-                  else if (!isVideoPlaying && !el.paused) el.pause();
+                  if (isVideoPlaying && el.paused) {
+                    el.play().catch(handleVideoPlayError);
+                  } else if (!isVideoPlaying && !el.paused) {
+                    el.pause();
+                  }
                 }
               }}
             />

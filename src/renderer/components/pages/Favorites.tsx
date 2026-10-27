@@ -33,11 +33,7 @@ import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { GalleryLoadError } from "../gallery/GalleryLoadError";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { resolveErrorMessage } from "../../utils/error-message";
-
-// --- Constants ---
-// Should ideally come from a shared constant or backend config
-// This matches the default limit in GetPostsSchema
-const POSTS_PER_PAGE = 50;
+import { POSTS_PAGE_SIZE } from "../../../shared/constants";
 
 const shouldIncludePostInFavoritesQueue = (
   post: Post,
@@ -99,7 +95,8 @@ export const Favorites = () => {
   // This is more efficient than useShallow when fields are used in different parts of the tree
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const viewType = useSearchStore((state) => state.viewType);
-  const filters = useSearchStore((state) => state.filters);
+  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const mediaType = useSearchStore((state) => state.filters.mediaType);
 
   const {
     data,
@@ -124,12 +121,10 @@ export const Favorites = () => {
     },
     getNextPageParam: (lastPage, allPages) => {
       // Check if the last page returned the full limit
-      return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
+      return lastPage.length === POSTS_PAGE_SIZE ? allPages.length + 1 : undefined;
     },
     initialPageParam: 1,
   });
-  
-  const { aiFilter, mediaType } = filters;
 
   const allPosts = useMemo(() => {
     let posts = data?.pages.flatMap((page) => page) || [];

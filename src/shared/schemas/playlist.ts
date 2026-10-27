@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PROVIDER_IDS, type ProviderId } from "../constants";
+import { POSTS_PAGE_SIZE, PROVIDER_IDS, type ProviderId } from "../constants";
 import {
   IdSchema,
   PageSchema,
@@ -242,7 +242,7 @@ export const GetPlaylistPostsSchema = z.object({
   playlistId: IdSchema,
   page: PageSchema.default(1),
   filters: PostFiltersSchema.optional(),
-  limit: LimitSchema.max(1000).default(50), // Increased max limit to 1000 for larger gallery views
+  limit: LimitSchema.max(1000).default(POSTS_PAGE_SIZE), // Increased max limit to 1000 for larger gallery views
   sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
   isRandom: z.boolean().optional().default(false),
   /** Keep across pages for a stable shuffle; omit / change for a new shuffle. */
@@ -266,7 +266,7 @@ export type GetPlaylistPostsRequest = z.infer<typeof GetPlaylistPostsSchema>;
 export const ResolvePlaylistPostsSchema = z.object({
   playlistId: IdSchema,
   page: PageSchema.default(1),
-  limit: LimitSchema.max(1000).default(50), // Increased max limit to 1000 for larger gallery views
+  limit: LimitSchema.max(1000).default(POSTS_PAGE_SIZE), // Increased max limit to 1000 for larger gallery views
   filters: PostFiltersSchema.optional(),
   sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
   isRandom: z.boolean().optional().default(false),

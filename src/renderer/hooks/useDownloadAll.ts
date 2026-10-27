@@ -5,7 +5,10 @@ import type { Post } from "@shared/types/db";
 import type { DownloadFailure } from "@shared/types/download";
 import type { GetPostsRequest } from "@shared/schemas/post";
 import type { PostFilterRequest } from "@shared/schemas/post";
-import { BATCH_DOWNLOAD_LIST_MAX_FILES } from "@shared/constants";
+import {
+  BATCH_DOWNLOAD_LIST_MAX_FILES,
+  POSTS_PAGE_SIZE,
+} from "@shared/constants";
 import { useDownloadStore } from "../store/downloadStore";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../shared/utils/type-guards";
@@ -225,7 +228,7 @@ export function useDownloadAllWithFilters(
 
   const backendResult = useDownloadAllFromBackend(
     fetchParams
-      ? { ...fetchParams, page: 1, limit: 50, isRandom: false }
+      ? { ...fetchParams, page: 1, limit: POSTS_PAGE_SIZE, isRandom: false }
       : null,
     effectiveTotalCount
   );

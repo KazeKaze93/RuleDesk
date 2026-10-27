@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { POSTS_PAGE_SIZE } from "../../shared/constants";
 
-const POSTS_PER_PAGE = 50;
 const DEBOUNCE_DELAY_MS = 150;
 
 type GalleryInfiniteScrollQueryOptions = {
@@ -38,7 +38,7 @@ export function useGalleryInfiniteScroll<
   queryKey,
   fetchFn,
   enabled = true,
-  postsPerPage = POSTS_PER_PAGE,
+  postsPerPage = POSTS_PAGE_SIZE,
   debounceDelay = DEBOUNCE_DELAY_MS,
   getNextPageParam,
   flattenPage,

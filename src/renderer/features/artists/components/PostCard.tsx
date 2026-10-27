@@ -12,11 +12,15 @@ import { useVideoProxyUrl } from "../../../lib/hooks/useVideoProxyUrl";
 import { QuickAddToPlaylistMenu } from "../../../components/playlists/QuickAddToPlaylistMenu";
 import { Checkbox } from "../../../components/ui/checkbox";
 import { Button } from "../../../components/ui/button";
+import { MediaLoadPlaceholder } from "../../../components/gallery/MediaLoadPlaceholder";
 import { useBulkSelect } from "../../../hooks/useBulkSelect";
 import { getBulkSelectId } from "../../../lib/bulkSelect";
 import { getRatingMeta } from "../../../lib/rating";
+import {
+  failedSampleUrls,
+  loadedSampleUrls,
+} from "./postCardSampleUrlCache";
 
-const loadedSampleUrls = new Set<string>();
 const LONG_PRESS_DELAY_MS = 300;
 const POINTER_MOVE_CANCEL_PX = 5;
 
@@ -88,6 +92,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [isInViewport, setIsInViewport] = useState(false);
   const [sampleLoaded, setSampleLoaded] = useState(false);
   const [sampleSrc, setSampleSrc] = useState<string | null>(null);
+  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isPlaylistMenuOpen, setIsPlaylistMenuOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -142,9 +147,12 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   useEffect(() => {
     if (!isInViewport || isVid || !post.sampleUrl || post.sampleUrl === post.previewUrl) return;
+    // Hard stop after a visible preview image rejected this sample (avoids onError ↔ promote loop).
+    if (failedSampleUrls.has(post.sampleUrl)) return;
     if (sampleLoaded) return;
     if (loadedSampleUrls.has(post.sampleUrl)) {
       queueMicrotask(() => {
+        if (failedSampleUrls.has(post.sampleUrl)) return;
         setSampleSrc(post.sampleUrl);
         setSampleLoaded(true);
       });
@@ -156,11 +164,14 @@ export const PostCard: React.FC<PostCardProps> = ({
     img.onload = () => {
       const promoteSample = () => {
         if (cancelled) return;
+        if (failedSampleUrls.has(post.sampleUrl)) return;
         loadedSampleUrls.add(post.sampleUrl);
         setSampleSrc(post.sampleUrl);
         setSampleLoaded(true);
       };
 
+      // Promote even when decode() rejects: some formats still paint in the preview image.
+      // If the visible image later errors, failedSampleUrls stops re-promotion.
       const decodeResult = img.decode();
       decodeResult.then(promoteSample).catch(promoteSample);
     };
@@ -313,46 +324,70 @@ export const PostCard: React.FC<PostCardProps> = ({
             blurFilterClass,
           )}
         >
-          <img
-            src={sampleSrc ?? post.previewUrl}
-            alt={`Post ${post.id}`}
-            loading="lazy"
-            decoding="async"
-            className={cn(
-              "w-full transition-all duration-500",
-              shouldPreserveAspect
-                ? "h-full object-contain"
-                : "h-auto",
-              !showVideoPreview && "group-hover:scale-105",
-              post.isViewed && "opacity-60 grayscale-[0.3]",
-              showVideoPreview && "opacity-0",
-              sampleLoaded && "opacity-100"
-            )}
-          />
-
-          {isVid && shouldLoadVideo && videoPreviewUrl && (
-            <video
-              key={videoKey}
-              ref={videoRef}
-              src={videoProxySrc ?? videoPreviewUrl}
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              className={cn(
-                "absolute inset-0 w-full transition-opacity duration-300 z-10",
-                shouldPreserveAspect
-                  ? "h-full object-contain"
-                  : "h-auto",
-                showVideoPreview ? "opacity-100" : "opacity-0 pointer-events-none"
-              )}
-              onError={() => {
-                setVideoError(true);
-              }}
-              onLoadedData={() => {
-                setVideoError(false);
-              }}
+          {previewLoadFailed ? (
+            <MediaLoadPlaceholder
+              className={shouldPreserveAspect ? "h-full" : "min-h-[200px]"}
+              aria-label={`Failed to load preview for post ${post.id}`}
             />
+          ) : (
+            <>
+              <img
+                src={sampleSrc ?? post.previewUrl}
+                alt={`Post ${post.id}`}
+                loading="lazy"
+                decoding="async"
+                className={cn(
+                  "w-full transition-all duration-500",
+                  shouldPreserveAspect
+                    ? "h-full object-contain"
+                    : "h-auto",
+                  !showVideoPreview && "group-hover:scale-105",
+                  post.isViewed && "opacity-60 grayscale-[0.3]",
+                  showVideoPreview && "opacity-0",
+                  sampleLoaded && "opacity-100"
+                )}
+                onError={() => {
+                  // sampleSrc → previewUrl chain: advance fallback before placeholder
+                  if (sampleSrc !== null) {
+                    const failedSample = sampleSrc;
+                    loadedSampleUrls.delete(failedSample);
+                    failedSampleUrls.add(failedSample);
+                    // Drop sample; do not clear sampleLoaded in a way that re-promotes —
+                    // failedSampleUrls gates the effect; keep sampleLoaded true so we
+                    // stay on previewUrl without re-entering the load path.
+                    setSampleSrc(null);
+                    setSampleLoaded(true);
+                    return;
+                  }
+                  setPreviewLoadFailed(true);
+                }}
+              />
+
+              {isVid && shouldLoadVideo && videoPreviewUrl && (
+                <video
+                  key={videoKey}
+                  ref={videoRef}
+                  src={videoProxySrc ?? videoPreviewUrl}
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  className={cn(
+                    "absolute inset-0 w-full transition-opacity duration-300 z-10",
+                    shouldPreserveAspect
+                      ? "h-full object-contain"
+                      : "h-auto",
+                    showVideoPreview ? "opacity-100" : "opacity-0 pointer-events-none"
+                  )}
+                  onError={() => {
+                    setVideoError(true);
+                  }}
+                  onLoadedData={() => {
+                    setVideoError(false);
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
       ) : (

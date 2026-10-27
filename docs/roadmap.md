@@ -160,6 +160,7 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 | Audit R1 B2 | `fix/audit-batch-2` | — | 🟡 open — stacked on #251; merge after #251 |
 | Audit W1 FTS | `fix/audit-w1-fts-integrity` | [#256](https://github.com/KazeKaze93/RuleDesk/pull/256) | ✅ merged (squash) — Sync All FTS restore only after successful rebuild; init rebuild fail-loud; smart-playlist tag-condition throws |
 | Audit W2 | `fix/audit-w2-quit-download-renderer` | [#257](https://github.com/KazeKaze93/RuleDesk/pull/257) | ✅ merged (squash) — quit `maintenanceQueue.close` + restore always reinits; CDN allowlist on redirect hops; gallery fatal vs partial (`isFetchNextPageError`) |
+| Audit W3 | `fix/audit-w3-errors-hardening` | [#259](https://github.com/KazeKaze93/RuleDesk/pull/259) | 🟡 open — surface Search/Artists errors; deny window.open/will-navigate; renderer announce/placeholder/`POSTS_PAGE_SIZE` |
 | UI/arch | `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — user overrode prior Electron-hold; merge after master conflict resolve |
 
 #### HANDOFF (UI/arch follow-ups — do not silent-fix)

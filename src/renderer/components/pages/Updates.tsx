@@ -51,8 +51,8 @@ import { getErrorCode } from "../../../shared/utils/type-guards";
 import { UpdatesFeedEmptyState } from "../updates/UpdatesFeedEmptyState";
 import { resolveUpdatesFeedEmptyKind } from "../../lib/updates-feed-empty";
 import { resolveErrorMessage } from "../../utils/error-message";
+import { POSTS_PAGE_SIZE } from "../../../shared/constants";
 
-const POSTS_PER_PAGE = 50;
 const UPDATES_UNREAD_COUNT_QUERY_KEY = ["updates", "unreadCount"] as const;
 const UPDATES_TOTAL_UNREAD_QUERY_KEY = "totalUnreadCount";
 const SYNC_LAST_COMPLETED_QUERY_KEY = ["sync", "lastCompletedAt"] as const;
@@ -201,7 +201,8 @@ export const Updates = () => {
 
   const sortOrder = useSearchStore((state) => state.sortOrder);
   const viewType = useSearchStore((state) => state.viewType);
-  const filters = useSearchStore((state) => state.filters);
+  const aiFilter = useSearchStore((state) => state.filters.aiFilter);
+  const mediaType = useSearchStore((state) => state.filters.mediaType);
 
   const feedFilters = useMemo(
     () => ({
@@ -230,14 +231,12 @@ export const Updates = () => {
       });
     },
     getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-      return lastPage.length === POSTS_PER_PAGE
+      return lastPage.length === POSTS_PAGE_SIZE
         ? Number(lastPageParam) + 1
         : undefined;
     },
     initialPageParam: 1,
   });
-
-  const { aiFilter, mediaType } = filters;
 
   useEffect(() => {
     return () => {
