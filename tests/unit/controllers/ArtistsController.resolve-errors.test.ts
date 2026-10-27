@@ -147,6 +147,22 @@ describe("ArtistsController.getDecryptedProviderSettings error split", () => {
   });
 });
 
+function emptyWaveStats(
+  overrides: {
+    unresolvedNames?: string[];
+    rateLimitedCount?: number;
+  } = {}
+) {
+  return {
+    requested: 1,
+    tagMetadataHits: 0,
+    inFlightHits: 0,
+    apiCalls: 1,
+    rateLimitedCount: overrides.rateLimitedCount ?? 0,
+    unresolvedNames: overrides.unresolvedNames ?? [],
+  };
+}
+
 describe("ArtistsController.resolveArtistTagNames error surfacing", () => {
   let mockDb: ReturnType<typeof createMockDb>;
   let controller: ArtistsControllerInternals;
@@ -209,12 +225,80 @@ describe("ArtistsController.resolveArtistTagNames error surfacing", () => {
     ).rejects.toBe(rateLimit);
   });
 
+  it("throws rate_limit when wave leaves tags unresolved due to 429", async () => {
+    resolveTagMetadataWaveMock.mockResolvedValueOnce(
+      emptyWaveStats({
+        unresolvedNames: ["wlop"],
+        rateLimitedCount: 1,
+      })
+    );
+    const signal = new AbortController().signal;
+
+    await expect(
+      controller.resolveArtistTagNames(["wlop", "cached_artist"], signal)
+    ).rejects.toMatchObject({
+      name: "ProviderSearchError",
+      kind: "rate_limit",
+    });
+  });
+
+  it("throws network when wave leaves tags unresolved without 429", async () => {
+    resolveTagMetadataWaveMock.mockResolvedValueOnce(
+      emptyWaveStats({
+        unresolvedNames: ["wlop"],
+        rateLimitedCount: 0,
+      })
+    );
+    const signal = new AbortController().signal;
+
+    await expect(
+      controller.resolveArtistTagNames(["wlop"], signal)
+    ).rejects.toMatchObject({
+      name: "ProviderSearchError",
+      kind: "network",
+    });
+  });
+
+  it("returns ARTIST-only tags when wave resolves found/not_found without unresolved", async () => {
+    loadTagMetadataCacheMock.mockReturnValue({
+      foundTypes: new Map<string, number>([
+        ["wlop", TAG_TYPES.ARTIST],
+        ["general_tag", TAG_TYPES.GENERAL],
+      ]),
+      activeNotFound: new Set<string>(["ghost_tag"]),
+    });
+    resolveTagMetadataWaveMock.mockResolvedValueOnce(emptyWaveStats());
+    const signal = new AbortController().signal;
+
+    await expect(
+      controller.resolveArtistTagNames(
+        ["wlop", "general_tag", "ghost_tag"],
+        signal
+      )
+    ).resolves.toEqual(["wlop"]);
+  });
+
   it("returns [] on abort error from resolve wave", async () => {
     resolveTagMetadataWaveMock.mockRejectedValueOnce(createAbortError());
     const signal = new AbortController().signal;
 
     await expect(
       controller.resolveArtistTagNames(["wlop"], signal)
+    ).resolves.toEqual([]);
+  });
+
+  it("returns [] when signal aborts after a successful wave with unresolved", async () => {
+    const abortController = new AbortController();
+    resolveTagMetadataWaveMock.mockImplementationOnce(async () => {
+      abortController.abort();
+      return emptyWaveStats({
+        unresolvedNames: ["wlop"],
+        rateLimitedCount: 1,
+      });
+    });
+
+    await expect(
+      controller.resolveArtistTagNames(["wlop"], abortController.signal)
     ).resolves.toEqual([]);
   });
 

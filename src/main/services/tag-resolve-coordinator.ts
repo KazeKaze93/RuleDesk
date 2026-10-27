@@ -35,12 +35,14 @@ type AppDatabase = BetterSQLite3Database<typeof schema>;
 
 type TagLookupResult = Rule34TagMetadataLookupResult;
 
-type TagResolveWaveStats = {
+export type TagResolveWaveStats = {
   requested: number;
   tagMetadataHits: number;
   inFlightHits: number;
   apiCalls: number;
   rateLimitedCount: number;
+  /** Tags that failed lookup (429/network/abort) — never persisted as not_found. */
+  unresolvedNames: string[];
 };
 
 /** Session view of tag_metadata for one resolve wave (single SQLite source of truth). */
@@ -329,6 +331,7 @@ export async function resolveTagMetadataWave(
     inFlightHits: 0,
     apiCalls: 0,
     rateLimitedCount: 0,
+    unresolvedNames: [],
   };
 
   const { foundTypes, activeNotFound } = cache;
@@ -386,6 +389,7 @@ export async function resolveTagMetadataWave(
   const unresolvedNames = lookupResults.flatMap((item) =>
     item.result === null ? [item.tagName] : []
   );
+  stats.unresolvedNames = unresolvedNames;
 
   const writeDb = getDb();
   upsertFoundEntries(writeDb, resolvedEntries, foundTypes);

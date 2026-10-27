@@ -35,6 +35,7 @@ import {
 import { getDecryptedCredentialsFromRecord } from "../../utils/decrypted-credentials";
 import type { ProviderSettings } from "../../providers/types";
 import { isAbortError } from "../../providers/provider-throttle";
+import { ProviderSearchError } from "../../providers/provider-search-errors";
 import { DELETE_ARTIST_SYNC_DRAIN_MS } from "../../config/constants";
 
 // Use Drizzle's type inference instead of manual imports for type safety
@@ -410,15 +411,19 @@ export class ArtistsController extends BaseController {
     const db = getDb();
     const cache = loadTagMetadataCache(db, uniqueTags);
     const providerSettings = this.getDecryptedProviderSettings();
+    let unresolvedNames: string[] = [];
+    let rateLimitedCount = 0;
     if (providerSettings) {
       try {
-        await resolveTagMetadataWave(
+        const waveStats = await resolveTagMetadataWave(
           uniqueTags,
           cache,
           providerSettings,
           "searchRemoteTags:artistOnly",
           { priority: "user", signal }
         );
+        unresolvedNames = waveStats.unresolvedNames;
+        rateLimitedCount = waveStats.rateLimitedCount;
       } catch (error) {
         if (isAbortError(error) || signal.aborted) {
           return [];
@@ -435,6 +440,16 @@ export class ArtistsController extends BaseController {
     if (signal.aborted) {
       return [];
     }
+
+    // Unresolved ≠ not_found: do not return a partial ARTIST list after 429/network miss.
+    if (unresolvedNames.length > 0) {
+      if (rateLimitedCount > 0) {
+        // Wave stats expose rateLimitedCount only — no retryAfterMs on TagResolveWaveStats.
+        throw new ProviderSearchError("rate_limit");
+      }
+      throw new ProviderSearchError("network");
+    }
+
     return uniqueTags.filter(
       (tag) => cache.foundTypes.get(tag) === TAG_TYPES.ARTIST
     );
