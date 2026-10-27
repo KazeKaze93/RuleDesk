@@ -678,21 +678,59 @@ export class SyncService {
         );
       }
     } finally {
+      if (syncAllFtsWindowOpen) {
+        let rebuildFailed = false;
+        let ensureFailed = false;
+
+        try {
+          const sqlite = getSqliteInstance();
+
+          try {
+            logger.info(
+              "SyncService: Sync All — rebuilding FTS index and restoring triggers once"
+            );
+            rebuildFtsIndex(sqlite);
+          } catch (e) {
+            rebuildFailed = true;
+            logger.error("SyncService: Sync All — rebuildFtsIndex failed", e);
+          }
+
+          // Triggers must restore even when rebuild failed — otherwise MATCH stays broken until restart.
+          try {
+            ensureFtsTriggers(sqlite);
+          } catch (e) {
+            ensureFailed = true;
+            logger.error("SyncService: Sync All — ensureFtsTriggers failed", e);
+          }
+        } catch (e) {
+          rebuildFailed = true;
+          ensureFailed = true;
+          logger.error(
+            "SyncService: Sync All — FTS restore could not open SQLite",
+            e
+          );
+        }
+
+        if (rebuildFailed || ensureFailed) {
+          logger.error(
+            "SyncService: FTS index restore failed; search may be incomplete until restart"
+          );
+          this.sendEvent(
+            IPC_CHANNELS.SYNC.ERROR,
+            "FTS index restore failed; search may be incomplete until restart"
+          );
+        }
+      }
+
       try {
         const sqlite = getSqliteInstance();
-        if (syncAllFtsWindowOpen) {
-          logger.info(
-            "SyncService: Sync All — rebuilding FTS index and restoring triggers once"
-          );
-          rebuildFtsIndex(sqlite);
-          ensureFtsTriggers(sqlite);
-        }
         // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
         sqlite.exec("PRAGMA wal_checkpoint(TRUNCATE);");
         logger.info("SyncService: WAL checkpoint truncated.");
       } catch (e) {
-        logger.warn("SyncService: Sync All FTS restore / WAL checkpoint failed", e);
+        logger.warn("SyncService: WAL checkpoint failed", e);
       }
+
       this.syncAllOwnsFtsLifecycle = false;
       this.sendEvent(IPC_CHANNELS.SYNC.END);
     }

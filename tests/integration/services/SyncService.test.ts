@@ -78,6 +78,7 @@ import {
   SyncService,
   isSyncCancelledError,
 } from '../../../src/main/services/sync-service';
+import * as ftsTriggers from '../../../src/main/db/fts-triggers';
 
 describe('SyncService Integration', () => {
   const asFetchResult = (
@@ -1768,6 +1769,52 @@ describe('SyncService Integration', () => {
       );
       expect(sendEventSpy).toHaveBeenCalledWith(IPC_CHANNELS.SYNC.REPAIR_END);
     } finally {
+      sendEventSpy.mockRestore();
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('still restores FTS triggers and ends Sync All when rebuildFtsIndex throws', async () => {
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi
+      .spyOn(provider, 'fetchPosts')
+      .mockResolvedValue(asFetchResult([]));
+
+    const rebuildSpy = vi
+      .spyOn(ftsTriggers, 'rebuildFtsIndex')
+      .mockImplementation(() => {
+        throw new Error('simulated FTS rebuild failure');
+      });
+    const ensureSpy = vi.spyOn(ftsTriggers, 'ensureFtsTriggers');
+    const sendEventSpy = vi
+      .spyOn(service, 'sendEvent')
+      .mockImplementation(() => undefined);
+
+    try {
+      await service.syncAllArtists();
+
+      expect(rebuildSpy).toHaveBeenCalled();
+      expect(ensureSpy).toHaveBeenCalled();
+      expect(sendEventSpy).toHaveBeenCalledWith(
+        IPC_CHANNELS.SYNC.ERROR,
+        'FTS index restore failed; search may be incomplete until restart'
+      );
+      expect(sendEventSpy).toHaveBeenCalledWith(IPC_CHANNELS.SYNC.END);
+
+      const endCallIndex = sendEventSpy.mock.calls.findIndex(
+        ([channel]) => channel === IPC_CHANNELS.SYNC.END
+      );
+      const ftsErrorCallIndex = sendEventSpy.mock.calls.findIndex(
+        ([channel, data]) =>
+          channel === IPC_CHANNELS.SYNC.ERROR &&
+          data ===
+            'FTS index restore failed; search may be incomplete until restart'
+      );
+      expect(ftsErrorCallIndex).toBeGreaterThanOrEqual(0);
+      expect(endCallIndex).toBeGreaterThan(ftsErrorCallIndex);
+    } finally {
+      rebuildSpy.mockRestore();
+      ensureSpy.mockRestore();
       sendEventSpy.mockRestore();
       fetchPostsSpy.mockRestore();
     }

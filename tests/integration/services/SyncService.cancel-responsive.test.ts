@@ -222,21 +222,31 @@ describe("SyncService cancel-responsive", () => {
       expect(service.getIsSyncing()).toBe(true);
     });
 
-    const copyDir = path.join(os.tmpdir(), "rd-p6");
+    // Self-seeded copy — must not depend on a manually placed machine path.
+    const copyDir = fs.mkdtempSync(path.join(os.tmpdir(), "rd-p6-"));
     const copyDbPath = path.join(copyDir, "data.bin");
-    expect(fs.existsSync(copyDbPath)).toBe(true);
+    const seed = new Database(copyDbPath);
+    try {
+      seed.exec("CREATE TABLE t(x INTEGER); INSERT INTO t VALUES (1);");
+    } finally {
+      seed.close();
+    }
 
     const started = Date.now();
-    await withSyncPausedForDbWork(service, async () => {
-      const db = new Database(copyDbPath);
-      try {
-        db.exec("VACUUM;");
-        const rows = db.pragma("integrity_check");
-        expect(rows).toEqual([{ integrity_check: "ok" }]);
-      } finally {
-        db.close();
-      }
-    }, CANCEL_BUDGET_MS);
+    try {
+      await withSyncPausedForDbWork(service, async () => {
+        const db = new Database(copyDbPath);
+        try {
+          db.exec("VACUUM;");
+          const rows = db.pragma("integrity_check");
+          expect(rows).toEqual([{ integrity_check: "ok" }]);
+        } finally {
+          db.close();
+        }
+      }, CANCEL_BUDGET_MS);
+    } finally {
+      fs.rmSync(copyDir, { recursive: true, force: true });
+    }
     const elapsed = Date.now() - started;
 
     await syncPromise;
