@@ -143,6 +143,9 @@ function stopBackgroundServicesAndCloseDb(): void {
 }
 
 async function drainMaintenanceQueueBeforeQuit(): Promise<void> {
+  // Reject new / not-yet-started jobs; in-flight work still drains below.
+  maintenanceQueue.close();
+
   const currentKind = maintenanceQueue.getCurrentJobKind();
   if (currentKind === MAINTENANCE_JOB_KIND.RESTORE) {
     logger.info(
@@ -166,15 +169,22 @@ async function drainMaintenanceQueueBeforeQuit(): Promise<void> {
 async function stopVideoProxyBeforeQuit(): Promise<void> {
   try {
     let timedOut = false;
-    await Promise.race([
-      videoProxyServer.stop(),
-      new Promise<void>((resolve) => {
-        setTimeout(() => {
-          timedOut = true;
-          resolve();
-        }, VIDEO_PROXY_STOP_SHUTDOWN_MS);
-      }),
-    ]);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        videoProxyServer.stop(),
+        new Promise<void>((resolve) => {
+          timeoutId = setTimeout(() => {
+            timedOut = true;
+            resolve();
+          }, VIDEO_PROXY_STOP_SHUTDOWN_MS);
+        }),
+      ]);
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    }
     if (timedOut) {
       logger.warn(
         `[Main] VideoProxyServer.stop timed out after ${VIDEO_PROXY_STOP_SHUTDOWN_MS}ms`

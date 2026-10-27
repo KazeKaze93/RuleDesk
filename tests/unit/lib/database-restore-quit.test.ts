@@ -41,7 +41,7 @@ vi.mock("../../../src/main/workers/runBackupIntegrityWorker", () => ({
     runBackupIntegrityWorkerMock(...args),
 }));
 
-describe("restoreDatabaseFromBackup quit skip-reinit", () => {
+describe("restoreDatabaseFromBackup under quit", () => {
   let tempDir: string;
   let dbPath: string;
   let walPath: string;
@@ -71,9 +71,15 @@ describe("restoreDatabaseFromBackup quit skip-reinit", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("skips initializeDatabase when quit was requested", async () => {
-    const initializeDatabase = vi.fn().mockResolvedValue(undefined);
-    const afterSuccessfulReinit = vi.fn();
+  it("still calls initializeDatabase before deleting .bak when quit was requested", async () => {
+    const callOrder: string[] = [];
+    const initializeDatabase = vi.fn().mockImplementation(async () => {
+      callOrder.push("initializeDatabase");
+      expect(fs.existsSync(`${dbPath}.bak`)).toBe(true);
+    });
+    const afterSuccessfulReinit = vi.fn().mockImplementation(() => {
+      callOrder.push("afterSuccessfulReinit");
+    });
     setQuitRequested();
 
     const result = await restoreDatabaseFromBackup(backupPath, {
@@ -86,8 +92,10 @@ describe("restoreDatabaseFromBackup quit skip-reinit", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(initializeDatabase).not.toHaveBeenCalled();
-    expect(afterSuccessfulReinit).not.toHaveBeenCalled();
+    expect(initializeDatabase).toHaveBeenCalledTimes(1);
+    expect(afterSuccessfulReinit).toHaveBeenCalledTimes(1);
+    expect(callOrder).toEqual(["initializeDatabase", "afterSuccessfulReinit"]);
+    expect(fs.existsSync(`${dbPath}.bak`)).toBe(false);
   });
 
   it("calls initializeDatabase when quit was not requested", async () => {

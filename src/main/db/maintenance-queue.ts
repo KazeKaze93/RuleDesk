@@ -1,4 +1,6 @@
 import log from "electron-log";
+import { ErrorCode } from "../../shared/types/error-codes";
+import { createCodedError } from "../../shared/utils/coded-error";
 
 /**
  * Database Maintenance Queue
@@ -28,10 +30,30 @@ export type WaitForCompletionResult = {
   timedOut: boolean;
 };
 
+const QUEUE_CLOSED_MESSAGE = "maintenance queue closed: quit in progress";
+
+function createQueueClosedError(): Error {
+  return createCodedError(QUEUE_CLOSED_MESSAGE, ErrorCode.CANCELLED);
+}
+
 export class MaintenanceQueue {
   private queue: Promise<unknown> = Promise.resolve();
   private isLocked = false;
   private currentJobKind: MaintenanceJobKind | null = null;
+  private closed = false;
+
+  /**
+   * Stop accepting new work. Idempotent.
+   * In-flight operations run to completion; queued-but-not-started jobs
+   * reject when their turn begins without invoking the operation.
+   */
+  public close(): void {
+    if (this.closed) {
+      return;
+    }
+    this.closed = true;
+    log.info("[MaintenanceQueue] Closed — quit in progress");
+  }
 
   /**
    * Execute a maintenance operation in the queue
@@ -44,10 +66,18 @@ export class MaintenanceQueue {
     operation: () => Promise<T>,
     options?: MaintenanceExecuteOptions
   ): Promise<T> {
+    if (this.closed) {
+      throw createQueueClosedError();
+    }
+
     const kind = options?.kind ?? MAINTENANCE_JOB_KIND.INTERRUPTIBLE;
     const previousOperation = this.queue;
 
     const currentOperation: Promise<T> = previousOperation.then(async () => {
+      // Closed after enqueue: reject before starting so the op never runs.
+      if (this.closed) {
+        throw createQueueClosedError();
+      }
       this.isLocked = true;
       this.currentJobKind = kind;
       log.debug(`[MaintenanceQueue] Operation started (kind=${kind})`);
@@ -102,15 +132,22 @@ export class MaintenanceQueue {
     }
 
     let timedOut = false;
-    await Promise.race([
-      this.queue.then(() => undefined),
-      new Promise<void>((resolve) => {
-        setTimeout(() => {
-          timedOut = true;
-          resolve();
-        }, timeoutMs);
-      }),
-    ]);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        this.queue.then(() => undefined),
+        new Promise<void>((resolve) => {
+          timeoutId = setTimeout(() => {
+            timedOut = true;
+            resolve();
+          }, timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    }
     return { timedOut };
   }
 }
