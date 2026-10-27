@@ -28,6 +28,7 @@ import {
 } from "@shared/utils/download-failure";
 import {
   DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
+  assertCdnUrlAllowedForRedirect,
   isAllowedCdnUrl,
 } from "../providers/cdn-allowlist";
 import { DownloadRateLimitGate } from "./download-rate-limit-gate";
@@ -47,7 +48,8 @@ interface WorkerData {
    */
   persistQueue?: boolean;
   /**
-   * Test-only: skip CDN allowlist before axios (local HTTP loopback suites).
+   * Test-only: skip CDN allowlist for the *initial* URL only (local HTTP loopback suites).
+   * Redirect hops always run `assertCdnUrlAllowedForRedirect` regardless of this flag.
    * Production Main must never set this.
    */
   bypassCdnAllowlist?: boolean;
@@ -340,6 +342,10 @@ async function runWorker(): Promise<void> {
           httpsAgent,
           headers: {
             "User-Agent": USER_AGENT,
+          },
+          // Always enforce CDN allowlist on redirect hops (ignore bypassCdnAllowlist).
+          beforeRedirect: (options) => {
+            assertCdnUrlAllowedForRedirect(options);
           },
           onDownloadProgress: (ev: AxiosProgressEvent) => {
             if (aborted) {

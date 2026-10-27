@@ -25,6 +25,8 @@ vi.mock("../../../src/main/lib/proxy", () => ({
 
 import {
   DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
+  assertCdnUrlAllowedForRedirect,
+  buildRedirectUrlFromFollowRedirectsOptions,
   isAllowedCdnUrl,
 } from "../../../src/main/providers/cdn-allowlist";
 import { getAllProviderCdnDomains } from "../../../src/main/providers";
@@ -87,5 +89,65 @@ describe("DownloadFileSchema URL refine (CDN)", () => {
         }
       }
     }
+  });
+});
+
+describe("assertCdnUrlAllowedForRedirect", () => {
+  it("allows a redirect to an allowlisted CDN host", () => {
+    const host = getAllProviderCdnDomains()[0];
+    expect(() =>
+      assertCdnUrlAllowedForRedirect({
+        href: `https://${host}/file.mp4`,
+        protocol: "https:",
+        hostname: host,
+        path: "/file.mp4",
+      })
+    ).not.toThrow();
+  });
+
+  it("rejects loopback, link-local metadata, foreign HTTPS, and HTTP", () => {
+    const denied = [
+      {
+        href: "https://127.0.0.1/x",
+        protocol: "https:",
+        hostname: "127.0.0.1",
+        path: "/x",
+      },
+      {
+        href: "http://169.254.169.254/latest/meta-data/",
+        protocol: "http:",
+        hostname: "169.254.169.254",
+        path: "/latest/meta-data/",
+      },
+      {
+        href: "https://evil.example/steal",
+        protocol: "https:",
+        hostname: "evil.example",
+        path: "/steal",
+      },
+      {
+        href: "http://img.rule34.xxx/a.jpg",
+        protocol: "http:",
+        hostname: "img.rule34.xxx",
+        path: "/a.jpg",
+      },
+    ];
+
+    for (const options of denied) {
+      expect(() => assertCdnUrlAllowedForRedirect(options)).toThrow(
+        DOWNLOAD_URL_NOT_ALLOWED_MESSAGE
+      );
+    }
+  });
+
+  it("builds URL from protocol/hostname/path when href is absent", () => {
+    const host = getAllProviderCdnDomains()[0];
+    expect(
+      buildRedirectUrlFromFollowRedirectsOptions({
+        protocol: "https:",
+        hostname: host,
+        path: "/media/a.mp4",
+      })
+    ).toBe(`https://${host}/media/a.mp4`);
   });
 });
