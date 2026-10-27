@@ -156,12 +156,12 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 |---|--------|----|--------|
 | H-db | `fix/db-never-delete-on-open-error` | [#249](https://github.com/KazeKaze93/RuleDesk/pull/249) | ✅ merged |
 | Auto-backup | `feat/auto-backup-default-on` | [#250](https://github.com/KazeKaze93/RuleDesk/pull/250) | ✅ merged |
-| Audit docs B1 | `docs/audit-batch-1` | [#251](https://github.com/KazeKaze93/RuleDesk/pull/251) | 🟡 open |
-| Audit R1 B2 | `fix/audit-batch-2` | — | 🟡 open — stacked on #251; merge after #251 |
+| Audit docs B1 | `docs/audit-batch-1` | [#251](https://github.com/KazeKaze93/RuleDesk/pull/251) | ✅ merged (2026-10-14) |
+| Audit R1 B2 | `fix/audit-batch-2` | — | ❌ superseded — remote branch gone; no open PR (was stacked on #251) |
 | Audit W1 FTS | `fix/audit-w1-fts-integrity` | [#256](https://github.com/KazeKaze93/RuleDesk/pull/256) | ✅ merged (squash) — Sync All FTS restore only after successful rebuild; init rebuild fail-loud; smart-playlist tag-condition throws |
 | Audit W2 | `fix/audit-w2-quit-download-renderer` | [#257](https://github.com/KazeKaze93/RuleDesk/pull/257) | ✅ merged (squash) — quit `maintenanceQueue.close` + restore always reinits; CDN allowlist on redirect hops; gallery fatal vs partial (`isFetchNextPageError`) |
 | Audit W3 | `fix/audit-w3-errors-hardening` | [#259](https://github.com/KazeKaze93/RuleDesk/pull/259) | ✅ merged (squash) — surface Search/Artists errors; deny window.open/will-navigate; renderer announce/placeholder/`POSTS_PAGE_SIZE` |
-| Audit W4 | `fix/audit-w4-provider-autocomplete-errors` | [#260](https://github.com/KazeKaze93/RuleDesk/pull/260) | 🟡 open — searchTags surface ProviderSearchError; Add Artist throw on unresolved wave |
+| Audit W4 | `fix/audit-w4-provider-autocomplete-errors` | [#260](https://github.com/KazeKaze93/RuleDesk/pull/260) | ✅ merged (squash) — searchTags ProviderSearchError; Add Artist throw on unresolved wave |
 | UI/arch | `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — user overrode prior Electron-hold; merge after master conflict resolve |
 
 #### HANDOFF (UI/arch follow-ups — do not silent-fix)
