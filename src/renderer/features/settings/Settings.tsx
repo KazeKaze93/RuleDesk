@@ -246,7 +246,8 @@ export const Settings = () => {
       const result = await window.api.checkDatabaseIntegrity();
       setIntegrityResult(result);
       scheduleStatusReset("integrity", () => setIntegrityResult(null));
-    } catch {
+    } catch (error: unknown) {
+      log.error("[Settings] Failed to run integrity check:", error);
       setIntegrityResult({ ok: false, details: "Failed to run integrity check." });
       scheduleStatusReset("integrity", () => setIntegrityResult(null));
     } finally {

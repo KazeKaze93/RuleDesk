@@ -42,8 +42,10 @@ import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
+import { GalleryLoadError } from "../gallery/GalleryLoadError";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { SortablePostCard } from "./PlaylistVirtuosoComponents";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 const {
   GridContainer,
@@ -110,6 +112,9 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    isError,
+    error,
+    refetch,
   } = useInfiniteQuery<Post[], Error, InfiniteData<Post[]>, QueryKey, number>({
     queryKey: [
       "playlist-posts",
@@ -199,9 +204,12 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   };
 
   const handlePostClick = (index: number) => {
+    const currentDisplayedPosts = displayedPosts;
     // For remote posts (id=0), use postId as identifier; for local posts, use id
-    const postIds = displayedPosts.map((p) => (p.id === 0 && p.postId ? p.postId : p.id));
-    
+    const postIds = currentDisplayedPosts.map((p) =>
+      p.id === 0 && p.postId ? p.postId : p.id
+    );
+
     // CRITICAL: Extract provider from playlist queryJson for shadow insert operations
     // Provider must match the actual source of posts to prevent 404 or invalid data
     let provider: "rule34" | "gelbooru" | undefined = undefined;
@@ -212,7 +220,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       );
       provider = parsedQuery?.provider;
     }
-    
+
     openViewer({
       origin: {
         kind: "playlist",
@@ -227,6 +235,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       listKey: `playlist-${playlist.id}`,
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
+      posts: currentDisplayedPosts,
     });
   };
 
@@ -398,6 +407,14 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
+        ) : isError ? (
+          <GalleryLoadError
+            title="Could not load playlist"
+            description={resolveErrorMessage(error, "Failed to load playlist posts.")}
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : viewType === "masonry" ? (
           <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
             <GridContainer viewType="masonry">

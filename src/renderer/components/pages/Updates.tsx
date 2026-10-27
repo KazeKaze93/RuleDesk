@@ -43,6 +43,7 @@ import { getBulkSelectId } from "../../lib/bulkSelect";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { useReleaseRadixModalLockOnMount } from "../../hooks/useReleaseRadixModalLockOnMount";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
+import { GalleryLoadError } from "../gallery/GalleryLoadError";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { toast } from "sonner";
 import { ErrorCode } from "@shared/types/error-codes";
@@ -210,22 +211,30 @@ export const Updates = () => {
     [hasActiveTagFilter, tags]
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["posts", "updates", tags],
-      queryFn: async ({ pageParam = 1 }) => {
-        return await window.api.getArtistPosts({
-          page: pageParam,
-          filters: feedFilters,
-        });
-      },
-      getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-        return lastPage.length === POSTS_PER_PAGE
-          ? Number(lastPageParam) + 1
-          : undefined;
-      },
-      initialPageParam: 1,
-    });
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["posts", "updates", tags],
+    queryFn: async ({ pageParam = 1 }) => {
+      return await window.api.getArtistPosts({
+        page: pageParam,
+        filters: feedFilters,
+      });
+    },
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      return lastPage.length === POSTS_PER_PAGE
+        ? Number(lastPageParam) + 1
+        : undefined;
+    },
+    initialPageParam: 1,
+  });
 
   const { aiFilter, mediaType } = filters;
 
@@ -533,8 +542,8 @@ export const Updates = () => {
   ]);
 
   const handlePostClick = (index: number) => {
-    const currentPosts = allPosts;
-    const post = currentPosts[index];
+    const currentDisplayedPosts = allPosts;
+    const post = currentDisplayedPosts[index];
 
     if (!post) {
       log.warn("[Updates] handlePostClick: post not found at index", index);
@@ -547,11 +556,12 @@ export const Updates = () => {
 
     openViewer({
       origin: { kind: "updates", tags: tags.length > 0 ? tags : undefined },
-      ids: currentPosts.map((p) => p.id),
+      ids: currentDisplayedPosts.map((p) => p.id),
       initialIndex: index,
       listKey: "updates-list",
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
+      posts: currentDisplayedPosts,
     });
   };
 
@@ -719,6 +729,14 @@ export const Updates = () => {
               ))}
             </div>
           </div>
+        ) : isError ? (
+          <GalleryLoadError
+            title="Could not load updates"
+            description={resolveErrorMessage(error, "Failed to load updates feed.")}
+            onRetry={() => {
+              void refetch();
+            }}
+          />
         ) : isUnfilteredCountError ? (
           <Alert variant="destructive">
             <AlertDescription>
