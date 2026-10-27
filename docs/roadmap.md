@@ -158,6 +158,7 @@ R smoke GREEN on tip `1ab4108`. S1 routes `release:*` through PR + merge-commit 
 | Auto-backup | `feat/auto-backup-default-on` | [#250](https://github.com/KazeKaze93/RuleDesk/pull/250) | ✅ merged |
 | Audit docs B1 | `docs/audit-batch-1` | [#251](https://github.com/KazeKaze93/RuleDesk/pull/251) | 🟡 open |
 | Audit R1 B2 | `fix/audit-batch-2` | — | 🟡 open — stacked on #251; merge after #251 |
+| Audit W1 FTS | `fix/audit-w1-fts-integrity` | — | 🟡 open — Sync All FTS restore independent of rebuild; init rebuild fail-loud; smart-playlist tag-condition throws; W2 trace (quit/downloads/renderer) in PR |
 | UI/arch | `fix/ui-and-arch-debt` | [#247](https://github.com/KazeKaze93/RuleDesk/pull/247) | 🟡 open — user overrode prior Electron-hold; merge after master conflict resolve |
 
 #### HANDOFF (UI/arch follow-ups — do not silent-fix)
