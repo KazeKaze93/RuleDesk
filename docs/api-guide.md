@@ -1522,7 +1522,7 @@ Downloads a file from a URL to the local file system. Opens a save dialog for th
 
 **Parameters:**
 
-- `url: string` - URL of the file to download
+- `url: string` - HTTPS URL of the file; hostname must pass shared CDN allowlist (`isAllowedCdnUrl` / `provider.cdnDomains`) — same gate as video-proxy and downloadWorker (worker also re-checks every redirect hop)
 - `filename: string` - Suggested filename for the download
 
 **Returns:** `Promise<{ success: boolean; path?: string; error?: string; canceled?: boolean }>`
@@ -1531,7 +1531,7 @@ Downloads a file from a URL to the local file system. Opens a save dialog for th
 
 ```typescript
 const result = await window.api.downloadFile(
-  "https://example.com/image.jpg",
+  "https://img.rule34.xxx/images/1/example.jpg",
   "image.jpg"
 );
 if (result.success && result.path) {
@@ -1545,7 +1545,7 @@ if (result.success && result.path) {
 
 **IPC Channel:** `files:download`
 
-**Note:** Downloads run in the Main Process with progress tracking via `onDownloadProgress` event.
+**Note:** Downloads run in the Main Process with progress tracking via `onDownloadProgress` event. Non-CDN hosts are rejected at Zod validation (and again in the worker) without listing allowlist hosts in the error.
 
 ---
 

@@ -13,7 +13,10 @@ import {
   closeDatabase,
   initializeDatabase,
 } from "../../db/client";
-import { maintenanceQueue } from "../../db/maintenance-queue";
+import {
+  MAINTENANCE_JOB_KIND,
+  maintenanceQueue,
+} from "../../db/maintenance-queue";
 import type { SyncService } from "../../services/sync-service";
 import type { BackupService, AutoBackupInterval } from "../../services/backup-service";
 import type { MaintenanceService } from "../../services/MaintenanceService";
@@ -32,6 +35,7 @@ import {
   isManualBackupFilename,
 } from "../../lib/database-backup";
 import { restoreDatabaseFromBackup } from "../../lib/database-restore";
+import { isQuitRequested } from "../../lib/quit-state";
 import { withSyncPausedForDbWork } from "../../lib/sync-db-maintenance";
 import { IdSchema } from "../../../shared/schemas/ipc";
 import {
@@ -306,11 +310,22 @@ export class MaintenanceController extends BaseController {
         const { dbPath } = getDatabasePaths();
         await withSyncPausedForDbWork(this.getSyncService(), async () => {
           closeDatabase();
+          let backupError: unknown;
           try {
             await createConsistentBackup(dbPath, backupPath);
-          } finally {
+          } catch (error) {
+            backupError = error;
+          }
+          if (isQuitRequested()) {
+            log.info(
+              "[MaintenanceController] Skipping initializeDatabase after backup — quit requested"
+            );
+          } else {
             await initializeDatabase();
             registerDatabaseInContainerAfterReinit();
+          }
+          if (backupError !== undefined) {
+            throw backupError;
           }
         });
 
@@ -447,56 +462,69 @@ export class MaintenanceController extends BaseController {
       return { success: false, error: "Canceled by user" };
     }
 
-    // Execute restore operation in maintenance queue to prevent race conditions
-    return maintenanceQueue.execute(async () => {
-      try {
-        const backupPath = filePaths[0];
-
-        // Send loading event before restore operation
-        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send("APP:LOADING", {
-            loading: true,
-            message: "Restoring database...",
-          });
-        }
-
-        const result = await withSyncPausedForDbWork(
-          this.getSyncService(),
-          () =>
-            restoreDatabaseFromBackup(backupPath, {
-              getPaths: getDatabasePaths,
-              closeDatabase,
-              initializeDatabase,
-              afterSuccessfulReinit: registerDatabaseInContainerAfterReinit,
-              restoreSidecar: restoreBackupSidecar,
-              logSettingsSnapshot: logRestoredSettingsSnapshot,
-            })
-        );
-
-        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send("APP:LOADING", { loading: false });
-        }
-
-        return result;
-      } catch (error) {
-        // Ensure loading state is cleared on error
-        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.webContents.send("APP:LOADING", { loading: false });
-        }
-        log.error("[MaintenanceController] Restore failed:", error);
-        // Attempt to reinitialize database even if restore failed (within queue, safe from concurrent access)
+    // Execute restore operation in maintenance queue to prevent race conditions.
+    // kind=restore: before-quit waits without timeout (interrupt risks corruption).
+    return maintenanceQueue.execute(
+      async () => {
         try {
-          await initializeDatabase();
-          registerDatabaseInContainerAfterReinit();
-        } catch (initError) {
-          log.error("[MaintenanceController] Failed to reinitialize database after restore error:", initError);
+          const backupPath = filePaths[0];
+
+          // Send loading event before restore operation
+          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send("APP:LOADING", {
+              loading: true,
+              message: "Restoring database...",
+            });
+          }
+
+          const result = await withSyncPausedForDbWork(
+            this.getSyncService(),
+            () =>
+              restoreDatabaseFromBackup(backupPath, {
+                getPaths: getDatabasePaths,
+                closeDatabase,
+                initializeDatabase,
+                afterSuccessfulReinit: registerDatabaseInContainerAfterReinit,
+                restoreSidecar: restoreBackupSidecar,
+                logSettingsSnapshot: logRestoredSettingsSnapshot,
+              })
+          );
+
+          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send("APP:LOADING", { loading: false });
+          }
+
+          return result;
+        } catch (error) {
+          // Ensure loading state is cleared on error
+          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send("APP:LOADING", { loading: false });
+          }
+          log.error("[MaintenanceController] Restore failed:", error);
+          // Attempt to reinitialize database even if restore failed (within queue, safe from concurrent access)
+          try {
+            if (isQuitRequested()) {
+              log.info(
+                "[MaintenanceController] Skipping initializeDatabase after restore error — quit requested"
+              );
+            } else {
+              await initializeDatabase();
+              registerDatabaseInContainerAfterReinit();
+            }
+          } catch (initError) {
+            log.error(
+              "[MaintenanceController] Failed to reinitialize database after restore error:",
+              initError
+            );
+          }
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
         }
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
-    });
+      },
+      { kind: MAINTENANCE_JOB_KIND.RESTORE }
+    );
   }
 
   private async integrityCheck(
@@ -507,6 +535,8 @@ export class MaintenanceController extends BaseController {
         const { dbPath } = getDatabasePaths();
         return await withSyncPausedForDbWork(this.getSyncService(), async () => {
           closeDatabase();
+          let integrityError: unknown;
+          let integrityResult: { ok: boolean; details: string } | undefined;
           try {
             const result = await runBackupIntegrityWorker({
               op: "integrityCheck",
@@ -521,11 +551,25 @@ export class MaintenanceController extends BaseController {
                 result.ok ? "ok" : "ISSUES FOUND"
               }`
             );
-            return { ok: result.ok, details: result.details };
-          } finally {
+            integrityResult = { ok: result.ok, details: result.details };
+          } catch (error) {
+            integrityError = error;
+          }
+          if (isQuitRequested()) {
+            log.info(
+              "[MaintenanceController] Skipping initializeDatabase after integrity check — quit requested"
+            );
+          } else {
             await initializeDatabase();
             registerDatabaseInContainerAfterReinit();
           }
+          if (integrityError !== undefined) {
+            throw integrityError;
+          }
+          if (integrityResult === undefined) {
+            throw new Error("Integrity check produced no result");
+          }
+          return integrityResult;
         });
       } catch (error) {
         log.error("[MaintenanceController] Integrity check failed:", error);

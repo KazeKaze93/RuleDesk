@@ -30,6 +30,7 @@ import { getBulkSelectId } from "../../lib/bulkSelect";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
+import { GalleryLoadError } from "../gallery/GalleryLoadError";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { resolveErrorMessage } from "../../utils/error-message";
 
@@ -100,24 +101,33 @@ export const Favorites = () => {
   const viewType = useSearchStore((state) => state.viewType);
   const filters = useSearchStore((state) => state.filters);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery({
-      queryKey: ["posts", "favorites", tags],
-      queryFn: async ({ pageParam = 1 }) => {
-        return await window.api.getArtistPosts({
-          filters: {
-            isFavorited: true,
-            tags: tags.length > 0 ? tags.join(" ") : undefined,
-          },
-          page: pageParam,
-        });
-      },
-      getNextPageParam: (lastPage, allPages) => {
-        // Check if the last page returned the full limit
-        return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
-      },
-      initialPageParam: 1,
-    });
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["posts", "favorites", tags],
+    queryFn: async ({ pageParam = 1 }) => {
+      return await window.api.getArtistPosts({
+        filters: {
+          isFavorited: true,
+          tags: tags.length > 0 ? tags.join(" ") : undefined,
+        },
+        page: pageParam,
+      });
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      // Check if the last page returned the full limit
+      return lastPage.length === POSTS_PER_PAGE ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+  });
   
   const { aiFilter, mediaType } = filters;
 
@@ -159,6 +169,15 @@ export const Favorites = () => {
   const selectedPosts = useMemo(
     () => allPosts.filter((post) => selectedIds.has(getBulkSelectId(post))),
     [allPosts, selectedIds]
+  );
+
+  const hasLoadedPosts =
+    data?.pages.some((page) => page.length > 0) === true;
+  const isFatalGalleryError = isError && !hasLoadedPosts;
+  const showNextPageError = isFetchNextPageError && hasLoadedPosts;
+  const galleryErrorDescription = resolveErrorMessage(
+    error,
+    "Failed to load favorites."
   );
 
   const listAriaBusy = isLoading || isFetchingNextPage;
@@ -232,8 +251,8 @@ export const Favorites = () => {
   ]);
 
   const handlePostClick = (index: number) => {
-    const currentPosts = allPosts;
-    const post = currentPosts[index];
+    const currentDisplayedPosts = allPosts;
+    const post = currentDisplayedPosts[index];
 
     if (!post) {
       log.warn("[Favorites] handlePostClick: post not found at index", index);
@@ -248,11 +267,12 @@ export const Favorites = () => {
     // Open viewer with favorites origin
     openViewer({
       origin: { kind: "favorites", tags: tags.length > 0 ? tags : undefined },
-      ids: currentPosts.map((p) => p.id),
+      ids: currentDisplayedPosts.map((p) => p.id),
       initialIndex: index,
       listKey: "favorites-list",
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
+      posts: currentDisplayedPosts,
     });
   };
 
@@ -333,8 +353,27 @@ export const Favorites = () => {
       </div>
 
       {/* Grid Content */}
-      <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
+      <div className="flex flex-col flex-1 min-h-0">
+        {isFatalGalleryError ? (
+          <GalleryLoadError
+            title="Could not load favorites"
+            description={galleryErrorDescription}
+            onRetry={() => {
+              void refetch();
+            }}
+          />
+        ) : null}
+        {showNextPageError ? (
+          <GalleryLoadError
+            variant="inline"
+            title="Could not load more favorites"
+            description={`${galleryErrorDescription}. Showing previously loaded posts.`}
+            onRetry={() => {
+              void fetchNextPage();
+            }}
+          />
+        ) : null}
+        {isLoading && allPosts.length === 0 && !isFatalGalleryError ? (
           <div className="flex flex-col gap-3 justify-center items-center h-full px-6">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-64" />
@@ -344,7 +383,7 @@ export const Favorites = () => {
               ))}
             </div>
           </div>
-        ) : allPosts.length === 0 ? (
+        ) : allPosts.length === 0 && !isFatalGalleryError ? (
           <div className="flex flex-col justify-center items-center h-full text-muted-foreground gap-4">
             <Heart className="w-16 h-16 opacity-50" />
             <div className="text-center">
@@ -352,7 +391,7 @@ export const Favorites = () => {
               <p className="text-sm">Go explore and mark posts as favorites!</p>
             </div>
           </div>
-        ) : (
+        ) : !isFatalGalleryError ? (
           viewType === "masonry" ? (
             <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
               <GridContainer viewType="masonry">
@@ -405,7 +444,7 @@ export const Favorites = () => {
               }}
             />
           )
-        )}
+        ) : null}
       </div>
       <BulkActionBar
         selectedPosts={selectedPosts}

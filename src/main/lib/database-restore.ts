@@ -122,6 +122,8 @@ export async function restoreDatabaseFromBackup(
     await fs.promises.rename(tempDbPath, dbPath);
 
     // Reinit BEFORE deleting .bak — if this throws, catch rolls back from .bak.
+    // Quit waits for in-flight restore without timeout, so reinit before deleting
+    // .bak is required (validates restored DB / enables rollback).
     await deps.initializeDatabase();
     deps.afterSuccessfulReinit?.();
     await (deps.restoreSidecar ?? restoreBackupSidecar)(backupPath);
@@ -160,6 +162,8 @@ export async function restoreDatabaseFromBackup(
     await restoreFromBak(bakPaths.shm, shmPath);
 
     try {
+      // Same as success path: quit drain waits for restore; reinit validates DB
+      // and enables a consistent rollback before process teardown.
       await deps.initializeDatabase();
       deps.afterSuccessfulReinit?.();
     } catch (initError) {

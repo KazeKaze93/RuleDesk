@@ -9,7 +9,7 @@ import { app } from "electron";
 import log from "electron-log";
 import type { AddressInfo } from "node:net";
 import { tryParseHttpsUrlHostname } from "../../shared/utils/url-host";
-import { getAllProviderCdnDomains } from "../providers";
+import { isAllowedCdnUrl } from "../providers/cdn-allowlist";
 import {
   USER_AGENT,
   VIDEO_CACHE_EVICT_AFTER_START_MS,
@@ -21,8 +21,6 @@ import { renameTmpFileAtomic } from "../lib/atomic-write";
 
 const VIDEO_PATH = "/video";
 const PROXY_HOST = "127.0.0.1";
-/** Cached at module load — `isAllowedCdnUrl` is on the video request hot path. */
-const ALLOWED_CDN_HOSTS = new Set(getAllProviderCdnDomains());
 
 const VIDEO_CONTENT_TYPE = "video/mp4";
 const CACHE_BIN_SUFFIX = ".bin";
@@ -39,14 +37,6 @@ function toTcpAddress(
 
 function getListeningPort(server: http.Server): number {
   return toTcpAddress(server.address()).port;
-}
-
-function isAllowedCdnUrl(urlString: string): boolean {
-  const host = tryParseHttpsUrlHostname(urlString);
-  if (!host) {
-    return false;
-  }
-  return ALLOWED_CDN_HOSTS.has(host);
 }
 
 type RangeResult =

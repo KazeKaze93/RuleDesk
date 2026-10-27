@@ -11,8 +11,8 @@ const checkPending = async () => {
     if (p?.hasPending) {
       return { total: p.total, done: p.done, folder: p.folder };
     }
-  } catch {
-    /* ignore */
+  } catch (error: unknown) {
+    log.error("[PendingDownloadBanner] Failed to check pending download:", error);
   }
   return null;
 };

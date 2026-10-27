@@ -42,8 +42,10 @@ import { useBulkSelect } from "../../hooks/useBulkSelect";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
+import { GalleryLoadError } from "../gallery/GalleryLoadError";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { SortablePostCard } from "./PlaylistVirtuosoComponents";
+import { resolveErrorMessage } from "../../utils/error-message";
 
 const {
   GridContainer,
@@ -109,7 +111,11 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
     isLoading,
+    isError,
+    error,
+    refetch,
   } = useInfiniteQuery<Post[], Error, InfiniteData<Post[]>, QueryKey, number>({
     queryKey: [
       "playlist-posts",
@@ -199,9 +205,12 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   };
 
   const handlePostClick = (index: number) => {
+    const currentDisplayedPosts = displayedPosts;
     // For remote posts (id=0), use postId as identifier; for local posts, use id
-    const postIds = displayedPosts.map((p) => (p.id === 0 && p.postId ? p.postId : p.id));
-    
+    const postIds = currentDisplayedPosts.map((p) =>
+      p.id === 0 && p.postId ? p.postId : p.id
+    );
+
     // CRITICAL: Extract provider from playlist queryJson for shadow insert operations
     // Provider must match the actual source of posts to prevent 404 or invalid data
     let provider: "rule34" | "gelbooru" | undefined = undefined;
@@ -212,7 +221,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       );
       provider = parsedQuery?.provider;
     }
-    
+
     openViewer({
       origin: {
         kind: "playlist",
@@ -227,6 +236,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       listKey: `playlist-${playlist.id}`,
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
+      posts: currentDisplayedPosts,
     });
   };
 
@@ -333,6 +343,15 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     [localPosts, playlist.id, playlist.isSmart]
   );
 
+  const hasLoadedPosts =
+    data?.pages.some((page) => page.length > 0) === true;
+  const isFatalGalleryError = isError && !hasLoadedPosts;
+  const showNextPageError = isFetchNextPageError && hasLoadedPosts;
+  const galleryErrorDescription = resolveErrorMessage(
+    error,
+    "Failed to load playlist posts."
+  );
+
   const listAriaBusy = isLoading || isFetchingNextPage;
   const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
   const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
@@ -393,20 +412,110 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       </div>
 
       {/* Grid Content */}
-      <div className="flex-1 min-h-0">
-        {isLoading && displayedPosts.length === 0 ? (
+      <div className="flex flex-col flex-1 min-h-0">
+        {isFatalGalleryError ? (
+          <GalleryLoadError
+            title="Could not load playlist"
+            description={galleryErrorDescription}
+            onRetry={() => {
+              void refetch();
+            }}
+          />
+        ) : null}
+        {showNextPageError ? (
+          <GalleryLoadError
+            variant="inline"
+            title="Could not load more playlist posts"
+            description={`${galleryErrorDescription}. Showing previously loaded posts.`}
+            onRetry={() => {
+              void fetchNextPage();
+            }}
+          />
+        ) : null}
+        {isLoading && displayedPosts.length === 0 && !isFatalGalleryError ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-        ) : viewType === "masonry" ? (
-          <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
-            <GridContainer viewType="masonry">
-              {displayedPosts.map((post, index) => (
-                <MasonryItemContainer key={getPostCardKey(post)}>
+        ) : !isFatalGalleryError ? (
+          viewType === "masonry" ? (
+            <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
+              <GridContainer viewType="masonry">
+                {displayedPosts.map((post, index) => (
+                  <MasonryItemContainer key={getPostCardKey(post)}>
+                    <PostCard
+                      post={post}
+                      onClick={() => handlePostClick(index)}
+                      preserveAspect={false}
+                      context="playlist"
+                      onRemoveFromPlaylist={
+                        !playlist.isSmart
+                          ? () => {
+                              void handleRemovePost(post.id);
+                            }
+                          : undefined
+                      }
+                    />
+                  </MasonryItemContainer>
+                ))}
+              </GridContainer>
+              {isFetchingNextPage && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+          ) : !playlist.isSmart ? (
+            <div className="overflow-auto h-full">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={displayedPosts.map((post) => post.id)}
+                  strategy={rectSortingStrategy}
+                >
+                  <div className="grid grid-cols-2 gap-4 p-4 pb-44 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    {displayedPosts.map((post, index) => (
+                      <SortablePostCard
+                        key={getPostCardKey(post)}
+                        post={post}
+                        onClick={() => handlePostClick(index)}
+                        onRemove={() => {
+                          void handleRemovePost(post.id);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          ) : (
+            <VirtuosoGrid
+              className="h-full"
+              aria-busy={listAriaBusy}
+              totalCount={displayedPosts.length}
+              endReached={handleLoadMore}
+              increaseViewportBy={600}
+              components={{
+                List: ListComponent,
+                Item: ItemComponent,
+                Footer: () =>
+                  isFetchingNextPage ? (
+                    <div className="flex col-span-full justify-center py-4 w-full">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : null,
+              }}
+              itemContent={(index) => {
+                const post = displayedPosts[index];
+                if (!post) return null;
+
+                return (
                   <PostCard
+                    key={getPostCardKey(post)}
                     post={post}
                     onClick={() => handlePostClick(index)}
-                    preserveAspect={false}
                     context="playlist"
                     onRemoveFromPlaylist={
                       !playlist.isSmart
@@ -416,80 +525,11 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
                         : undefined
                     }
                   />
-                </MasonryItemContainer>
-              ))}
-            </GridContainer>
-            {isFetchingNextPage && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            )}
-          </div>
-        ) : !playlist.isSmart ? (
-          <div className="overflow-auto h-full">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={displayedPosts.map((post) => post.id)}
-                strategy={rectSortingStrategy}
-              >
-                <div className="grid grid-cols-2 gap-4 p-4 pb-44 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {displayedPosts.map((post, index) => (
-                    <SortablePostCard
-                      key={getPostCardKey(post)}
-                      post={post}
-                      onClick={() => handlePostClick(index)}
-                      onRemove={() => {
-                        void handleRemovePost(post.id);
-                      }}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </div>
-        ) : (
-          <VirtuosoGrid
-            className="h-full"
-            aria-busy={listAriaBusy}
-            totalCount={displayedPosts.length}
-            endReached={handleLoadMore}
-            increaseViewportBy={600}
-            components={{
-              List: ListComponent,
-              Item: ItemComponent,
-              Footer: () =>
-                isFetchingNextPage ? (
-                  <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : null,
-            }}
-            itemContent={(index) => {
-              const post = displayedPosts[index];
-              if (!post) return null;
-
-              return (
-                <PostCard
-                  key={getPostCardKey(post)}
-                  post={post}
-                  onClick={() => handlePostClick(index)}
-                  context="playlist"
-                  onRemoveFromPlaylist={
-                    !playlist.isSmart
-                      ? () => {
-                          void handleRemovePost(post.id);
-                        }
-                      : undefined
-                  }
-                />
-              );
-            }}
-          />
-        )}
+                );
+              }}
+            />
+          )
+        ) : null}
       </div>
       <BulkActionBar
         selectedPosts={selectedPosts}

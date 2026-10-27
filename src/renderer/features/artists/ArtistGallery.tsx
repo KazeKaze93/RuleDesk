@@ -25,6 +25,7 @@ import { DownloadAllButton } from "../../components/downloads/DownloadAllButton"
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../../components/gallery/virtuoso-factories";
+import { GalleryLoadError } from "../../components/gallery/GalleryLoadError";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { openExternalSafe } from "../../lib/open-external";
 import { buildSiteTagSearchUrl } from "@shared/utils/site-urls";
@@ -89,7 +90,11 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
     isLoading,
+    isError,
+    error,
+    refetch,
     handleEndReached,
   } = useGalleryInfiniteScroll({
     queryKey: ["posts", artist.id, aiFilter, mediaType, source, sortOrder],
@@ -111,6 +116,13 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   });
 
   const allPosts = rawPosts;
+  const hasLoadedPosts = allPosts.length > 0;
+  const isFatalGalleryError = isError && !hasLoadedPosts;
+  const showNextPageError = isFetchNextPageError && hasLoadedPosts;
+  const galleryErrorDescription = resolveErrorMessage(
+    error,
+    "Failed to load posts."
+  );
 
   const listAriaBusy = isLoading || isFetchingNextPage;
   const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
@@ -184,9 +196,10 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   });
 
   const handlePostClick = (index: number) => {
-    const postIds = allPosts.map((p) => p.id);
+    const currentDisplayedPosts = allPosts;
+    const postIds = currentDisplayedPosts.map((p) => p.id);
 
-    const post = allPosts[index];
+    const post = currentDisplayedPosts[index];
     if (post && !post.isViewed) {
       viewMutation.mutate(post.id);
     }
@@ -207,6 +220,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
       totalGlobalCount: totalPosts > 0 ? totalPosts : undefined,
       hasNextPage: hasNextPage,
       onLoadMore: handleLoadMore,
+      posts: currentDisplayedPosts,
     });
   };
 
@@ -331,61 +345,82 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         onConfirm={handleRepairSync}
       />
 
-      <div className="flex-1 min-h-0">
-        {isLoading && allPosts.length === 0 ? (
+      <div className="flex flex-col flex-1 min-h-0">
+        {isFatalGalleryError ? (
+          <GalleryLoadError
+            title="Could not load artist posts"
+            description={galleryErrorDescription}
+            onRetry={() => {
+              void refetch();
+            }}
+          />
+        ) : null}
+        {showNextPageError ? (
+          <GalleryLoadError
+            variant="inline"
+            title="Could not load more posts"
+            description={`${galleryErrorDescription}. Showing previously loaded posts.`}
+            onRetry={() => {
+              void fetchNextPage();
+            }}
+          />
+        ) : null}
+        {isLoading && allPosts.length === 0 && !isFatalGalleryError ? (
           <div className="flex justify-center items-center h-full text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-        ) : viewType === "masonry" ? (
-          <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
-            <GridContainer viewType="masonry">
-              {allPosts.map((post, index) => (
-                <MasonryItemContainer key={getPostCardKey(post)}>
+        ) : !isFatalGalleryError ? (
+          viewType === "masonry" ? (
+            <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
+              <GridContainer viewType="masonry">
+                {allPosts.map((post, index) => (
+                  <MasonryItemContainer key={getPostCardKey(post)}>
+                    <PostCard
+                      post={post}
+                      onClick={() => handlePostClick(index)}
+                      preserveAspect={false}
+                    />
+                  </MasonryItemContainer>
+                ))}
+              </GridContainer>
+              {isFetchingNextPage && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+          ) : (
+            <VirtuosoGrid
+              className="h-full"
+              aria-busy={listAriaBusy}
+              totalCount={allPosts.length}
+              endReached={handleEndReached}
+              increaseViewportBy={600}
+              components={{
+                List: ListComponent,
+                Item: ItemComponent,
+                Footer: () =>
+                  isFetchingNextPage ? (
+                    <div className="flex col-span-full justify-center py-4 w-full">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : null,
+              }}
+              itemContent={(index) => {
+                const post = allPosts[index];
+                if (!post) return null;
+
+                return (
                   <PostCard
+                    key={getPostCardKey(post)}
                     post={post}
                     onClick={() => handlePostClick(index)}
-                    preserveAspect={false}
                   />
-                </MasonryItemContainer>
-              ))}
-            </GridContainer>
-            {isFetchingNextPage && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            )}
-          </div>
-        ) : (
-          <VirtuosoGrid
-            className="h-full"
-            aria-busy={listAriaBusy}
-            totalCount={allPosts.length}
-            endReached={handleEndReached}
-            increaseViewportBy={600}
-            components={{
-              List: ListComponent,
-              Item: ItemComponent,
-              Footer: () =>
-                isFetchingNextPage ? (
-                  <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : null,
-            }}
-            itemContent={(index) => {
-              const post = allPosts[index];
-              if (!post) return null;
-
-              return (
-                <PostCard
-                  key={getPostCardKey(post)}
-                  post={post}
-                  onClick={() => handlePostClick(index)}
-                />
-              );
-            }}
-          />
-        )}
+                );
+              }}
+            />
+          )
+        ) : null}
       </div>
     </div>
   );

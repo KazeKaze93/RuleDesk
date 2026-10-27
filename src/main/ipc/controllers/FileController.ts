@@ -65,6 +65,10 @@ import type {
   DownloadQueueItem,
 } from "../../../shared/types/download";
 import { remainingDownloadItems } from "../../../shared/utils/download-failure";
+import {
+  DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
+  isAllowedCdnUrl,
+} from "../../providers/cdn-allowlist";
 
 const DEFAULT_DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 const DOWNLOAD_QUEUE_FILE = "download-queue.json";
@@ -81,6 +85,9 @@ const DownloadFileSchema = z.object({
     .url()
     .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
       message: "Only HTTP/HTTPS protocols are allowed for downloads.",
+    })
+    .refine((val) => isAllowedCdnUrl(val), {
+      message: DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
     }),
   filename: z
     .string()
@@ -570,6 +577,22 @@ export class FileController extends BaseController {
         canceled: false,
         error: "Invalid download request",
       };
+    }
+
+    if (parsed.data.kind === "list") {
+      const disallowed = parsed.data.items.find((item) => !isAllowedCdnUrl(item.url));
+      if (disallowed !== undefined) {
+        log.error("[FileController] DownloadAll rejected non-CDN URL", {
+          filename: disallowed.filename,
+        });
+        return {
+          success: false,
+          downloaded: 0,
+          failed: [],
+          canceled: false,
+          error: "Invalid download request",
+        };
+      }
     }
 
     if (this.massDownloadActive || this.downloadWorker) {

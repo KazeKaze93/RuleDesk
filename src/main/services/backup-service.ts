@@ -10,6 +10,7 @@ import {
 import { registerDatabaseInContainerAfterReinit } from "../core/di/databaseRegistration";
 import { maintenanceQueue } from "../db/maintenance-queue";
 import { getBackupRetention } from "../lib/backup-retention";
+import { isQuitRequested } from "../lib/quit-state";
 import {
   buildAutoBackupFilename,
   createConsistentBackup,
@@ -312,11 +313,24 @@ export class BackupService {
       await maintenanceQueue.execute(async () => {
         await withSyncPausedForDbWork(this.syncService, async () => {
           closeDatabase();
+          let backupError: unknown;
           try {
             await createConsistentBackup(dbPath, backupPath);
-          } finally {
+          } catch (error) {
+            backupError = error;
+          }
+          // Reinit outside `finally` so a rejected await cannot mask backupError
+          // (eslint no-unsafe-finally) and quit can skip reopen cleanly.
+          if (isQuitRequested()) {
+            log.info(
+              "[BackupService] Skipping initializeDatabase after backup — quit requested"
+            );
+          } else {
             await initializeDatabase();
             registerDatabaseInContainerAfterReinit();
+          }
+          if (backupError !== undefined) {
+            throw backupError;
           }
         });
       });
