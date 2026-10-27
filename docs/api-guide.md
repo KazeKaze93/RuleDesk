@@ -1070,7 +1070,7 @@ results.forEach((result) => {
 
 **IPC Channel:** `api:search-remote-tags`
 
-**Note:** Requires at least 2 characters. Returns empty array if the query is too short, the request was aborted, or providers return no matches. **Abort** mid-type → `[]` (not an error). **Missing credentials** (no settings row / decrypt-null) → empty / credentials path as before. **DB or decrypt exceptions**, provider/search failures that throw, and failed `artistOnly` second-pass resolve waves **reject** the IPC promise (typed / logged) — they must not look like “no tags”. Supports multiple booru providers via provider pattern. Default `artistOnly=false` keeps general tag search unchanged.
+**Note:** Requires at least 2 characters. Returns empty array if the query is too short, the request was aborted, or providers return **successful** empty matches. **Abort** mid-type → `[]` (not an error). **Missing credentials** (no settings row / decrypt-null) → empty / credentials path as before. Provider `searchTags` failures (429/`rate_limit` with `retryAfterMs`, network, non-array body → `parse`) throw the same classified `ProviderSearchError` path as `fetchPosts` (throttle + `AUTOCOMPLETE_TIMEOUT` on Gelbooru). **DB/decrypt exceptions** and failed `artistOnly` second-pass waves that leave tags **unresolved** (`TagResolveWaveStats.unresolvedNames`) **reject** the IPC promise (`rate_limit` if the wave saw rate limits, else `network`) — never a partial “not an artist” list. Supports multiple booru providers via provider pattern. Default `artistOnly=false` keeps general tag search unchanged.
 
 ---
 
