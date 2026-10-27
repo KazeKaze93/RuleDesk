@@ -378,11 +378,12 @@ export class ArtistsController extends BaseController {
         apiKey: credentials.apiKey,
       };
     } catch (error) {
+      // Missing row / decrypt-null return null above; DB/decrypt exceptions must surface.
       log.error(
         "[ArtistsController] Failed to load credentials for artist autocomplete:",
         error
       );
-      return null;
+      throw error;
     }
   }
 
@@ -419,12 +420,15 @@ export class ArtistsController extends BaseController {
           { priority: "user", signal }
         );
       } catch (error) {
-        if (!isAbortError(error) && !signal.aborted) {
-          log.error(
-            "[ArtistsController] Artist tag resolve failed:",
-            error
-          );
+        if (isAbortError(error) || signal.aborted) {
+          return [];
         }
+        // Do not return a cache subset as a full response — surface provider/DB failures.
+        log.error(
+          "[ArtistsController] Artist tag resolve failed:",
+          error
+        );
+        throw error;
       }
     }
 

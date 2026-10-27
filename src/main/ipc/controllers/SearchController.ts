@@ -36,6 +36,7 @@ import {
   ProviderSearchError,
   throwProviderSearchIpcError,
 } from "../../providers/provider-search-errors";
+import { isAbortError } from "../../providers/provider-throttle";
 
 // Internal type alias
 type SearchPostsParams = z.infer<typeof SearchPostsSchema>;
@@ -126,9 +127,28 @@ export class SearchController extends BaseController {
         provider,
       };
     } catch (error) {
+      // Missing row / empty credentials return null above; DB/decrypt exceptions must surface.
       log.error("[SearchController] Error fetching settings:", error);
-      return null;
+      throw error;
     }
+  }
+
+  /**
+   * Fallback attempt catch policy: abort continues; ProviderSearchError rethrows;
+   * any other failure logs + throws (no silent skip to the next heuristic).
+   */
+  private handleSearchFallbackAttemptError(
+    error: unknown,
+    attemptContext: string
+  ): void {
+    if (isAbortError(error)) {
+      return;
+    }
+    if (isProviderSearchError(error)) {
+      throw error;
+    }
+    log.error(`[SearchController] ${attemptContext}:`, error);
+    throw error;
   }
 
   private normalizeUniqueResolveTags(tags: string[]): string[] {
@@ -376,9 +396,10 @@ export class SearchController extends BaseController {
               }
             }
           } catch (autocompleteError) {
-            if (isProviderSearchError(autocompleteError)) {
-              throw autocompleteError;
-            }
+            this.handleSearchFallbackAttemptError(
+              autocompleteError,
+              "Autocomplete fallback attempt failed"
+            );
           }
 
           // Attempt B: User Account Search
@@ -403,9 +424,10 @@ export class SearchController extends BaseController {
                 tagsString = formattedUserTag;
               }
             } catch (userSearchError) {
-              if (isProviderSearchError(userSearchError)) {
-                throw userSearchError;
-              }
+              this.handleSearchFallbackAttemptError(
+                userSearchError,
+                "User-account fallback attempt failed"
+              );
             }
           }
 
@@ -431,9 +453,10 @@ export class SearchController extends BaseController {
                 tagsString = formatted;
               }
             } catch (artistStripError) {
-              if (isProviderSearchError(artistStripError)) {
-                throw artistStripError;
-              }
+              this.handleSearchFallbackAttemptError(
+                artistStripError,
+                "Artist-strip fallback attempt failed"
+              );
             }
           }
         }
