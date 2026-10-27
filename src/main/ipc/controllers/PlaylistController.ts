@@ -602,18 +602,6 @@ export class PlaylistController extends BaseController {
   }
 
   /**
-   * True when the posts content table has no rows (external-content FTS
-   * SELECT without MATCH is a content passthrough).
-   * Safe only while insert/update triggers are live — then content emptiness
-   * equals index emptiness. Never use this as a bulk-sync-window probe.
-   */
-  private isFtsIndexEmpty(): boolean {
-    const sqlite = getSqliteInstance();
-    const row = sqlite.prepare("SELECT 1 FROM posts_fts LIMIT 1").get();
-    return row === undefined;
-  }
-
-  /**
    * Exact-token or prefix match on posts.tags (content table).
    * Used when FTS MATCH is not trustworthy: bulk-sync window with
    * posts_fts_insert / posts_fts_update dropped.
@@ -706,13 +694,6 @@ export class PlaylistController extends BaseController {
       log.debug(
         "[PlaylistController] FTS bulk-insert triggers absent; using posts.tags for smart playlist"
       );
-    } else if (this.isFtsIndexEmpty()) {
-      // Live triggers ⇒ content emptiness equals index emptiness.
-      log.warn(
-        "[PlaylistController] FTS5 table exists but is empty. " +
-          "Returning empty smart-playlist result until posts_fts has rows."
-      );
-      return { includeConditions: [sql`1 = 0`], excludeConditions: [] };
     }
 
     // Build include tags query: combine all include tags with AND inside FTS5
@@ -788,6 +769,10 @@ export class PlaylistController extends BaseController {
           `[PlaylistController] Failed to build include tags condition:`,
           error
         );
+        throw createCodedError(
+          "Failed to build include tag condition",
+          ErrorCode.VALIDATION_ERROR
+        );
       }
     }
 
@@ -850,6 +835,10 @@ export class PlaylistController extends BaseController {
         log.error(
           `[PlaylistController] Failed to build exclude tags condition:`,
           error
+        );
+        throw createCodedError(
+          "Failed to build exclude tag condition",
+          ErrorCode.VALIDATION_ERROR
         );
       }
     }
