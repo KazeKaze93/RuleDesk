@@ -1,7 +1,11 @@
 import axios from "axios";
 import { logger } from "../lib/logger";
 import { selectBestPreview } from "../lib/media-utils";
-import { REQUEST_TIMEOUT, USER_AGENT } from "../config/constants";
+import {
+  AUTOCOMPLETE_TIMEOUT,
+  REQUEST_TIMEOUT,
+  USER_AGENT,
+} from "../config/constants";
 import {
   IBooruProvider,
   BooruPost,
@@ -109,9 +113,74 @@ export class GelbooruProvider implements IBooruProvider {
     }
   }
 
+  private async waitForUserSlot(signal?: AbortSignal): Promise<void> {
+    try {
+      await this.throttle.wait("user", signal);
+    } catch (error) {
+      if (error instanceof ProviderRateLimitGateError) {
+        throw new ProviderSearchError("rate_limit", undefined, error.retryAfterMs);
+      }
+      throw error;
+    }
+  }
+
+  private notifyIfRateLimited(error: unknown): void {
+    if (isProviderSearchError(error) && error.kind === "rate_limit") {
+      this.throttle.notifyRateLimited(error.retryAfterMs);
+    }
+  }
+
+  /**
+   * Same 429 classification as fetchPosts: status + Retry-After → rate_limit.
+   */
+  private throwIfRateLimitedResponse(response: {
+    status: number;
+    headers?: unknown;
+  }): void {
+    if (response.status === 429) {
+      throw new ProviderSearchError(
+        "rate_limit",
+        undefined,
+        parseRetryAfterMs({ response })
+      );
+    }
+  }
+
+  /**
+   * Axios throw path for searchTags (default validateStatus): 429 + Retry-After,
+   * transport → network, else parse. Matches fetchPosts catch classification.
+   */
+  private classifyAxiosFailure(error: unknown): ProviderSearchError {
+    if (isProviderSearchError(error)) {
+      return error;
+    }
+    if (axios.isAxiosError(error) && error.response !== undefined) {
+      try {
+        this.throwIfRateLimitedResponse(error.response);
+      } catch (rateLimited) {
+        if (isProviderSearchError(rateLimited)) {
+          return rateLimited;
+        }
+        throw rateLimited;
+      }
+    }
+    if (isAxiosTransportFailure(error)) {
+      return new ProviderSearchError("network");
+    }
+    return new ProviderSearchError("parse");
+  }
+
   async searchTags(query: string, signal?: AbortSignal): Promise<SearchResults[]> {
     const safeQuery = sanitizeProviderTagQuery(query);
     if (safeQuery.length < 2) return [];
+    try {
+      await this.waitForUserSlot(signal);
+    } catch (error) {
+      if (axios.isCancel(error) || isAbortError(error)) {
+        return [];
+      }
+      throw error;
+    }
     try {
       const params = new URLSearchParams({
         page: "autocomplete2",
@@ -123,11 +192,12 @@ export class GelbooruProvider implements IBooruProvider {
         `https://gelbooru.com/index.php?${params.toString()}`,
         {
           signal,
+          timeout: AUTOCOMPLETE_TIMEOUT,
           headers: { "User-Agent": USER_AGENT },
           httpsAgent: getProxyAgent(),
         }
       );
-      
+
       if (Array.isArray(data)) {
         // Live autocomplete2: { value, label, type: "tag", category: "artist"|"character"|"copyright"|"tag", post_count }.
         // `type=tag_query` query param is the search mode — do not overwrite it.
@@ -147,13 +217,24 @@ export class GelbooruProvider implements IBooruProvider {
         }
         return results;
       }
-      return [];
+      logger.warn("[GelbooruProvider] Autocomplete non-array response", {
+        responseType: typeof data,
+      });
+      throw new ProviderSearchError("parse");
     } catch (error) {
-      if (axios.isCancel(error)) {
-        return []; // Request was cancelled, return empty array
+      if (axios.isCancel(error) || isAbortError(error)) {
+        return [];
       }
-      logger.error("[GelbooruProvider] Autocomplete failed", error);
-      return [];
+      const classified = this.classifyAxiosFailure(error);
+      this.notifyIfRateLimited(classified);
+      if (classified.kind === "rate_limit") {
+        logger.warn("[GelbooruProvider] Autocomplete rate limited", {
+          retryAfterMs: classified.retryAfterMs,
+        });
+      } else {
+        logger.error("[GelbooruProvider] Autocomplete failed", classified);
+      }
+      throw classified;
     }
   }
 
@@ -165,14 +246,7 @@ export class GelbooruProvider implements IBooruProvider {
     limit: number,
     signal?: AbortSignal
   ): Promise<FetchPostsResult> {
-    try {
-      await this.throttle.wait("user", signal);
-    } catch (error) {
-      if (error instanceof ProviderRateLimitGateError) {
-        throw new ProviderSearchError("rate_limit", undefined, error.retryAfterMs);
-      }
-      throw error;
-    }
+    await this.waitForUserSlot(signal);
 
     // Pseudo-random fallback: If isRandom is true, use a random page number (1-MAX_RANDOM_PAGES) for better randomization
     // NOTE: This is a fallback approach. True randomization on large datasets in Booru APIs
@@ -208,13 +282,7 @@ export class GelbooruProvider implements IBooruProvider {
         httpsAgent: getProxyAgent(),
       });
 
-      if (response.status === 429) {
-        throw new ProviderSearchError(
-          "rate_limit",
-          undefined,
-          parseRetryAfterMs({ response })
-        );
-      }
+      this.throwIfRateLimitedResponse(response);
 
       // Gelbooru sometimes returns XML instead of JSON when API fails
       const rawContentType = response.headers["content-type"];
@@ -296,16 +364,11 @@ export class GelbooruProvider implements IBooruProvider {
         throw error;
       }
       if (isProviderSearchError(error)) {
-        if (error.kind === "rate_limit") {
-          this.throttle.notifyRateLimited(error.retryAfterMs);
-        }
+        this.notifyIfRateLimited(error);
         throw error;
       }
       logger.error(`[Gelbooru] Error fetching page ${page}`, error);
-      if (isAxiosTransportFailure(error)) {
-        throw new ProviderSearchError("network");
-      }
-      throw new ProviderSearchError("parse");
+      throw this.classifyAxiosFailure(error);
     }
   }
 

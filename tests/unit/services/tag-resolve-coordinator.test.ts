@@ -97,7 +97,7 @@ describe("tag-resolve-coordinator", () => {
     );
 
     const cache = loadTagMetadataCache(mockDb.db, ["colored_skin"]);
-    await resolveTagMetadataWave(["colored_skin"],
+    const stats = await resolveTagMetadataWave(["colored_skin"],
       cache,
       { userId: "1", apiKey: "key" },
       "test-429-not-not-found"
@@ -107,6 +107,8 @@ describe("tag-resolve-coordinator", () => {
     expect(rows).toHaveLength(0);
     expect(cache.foundTypes.has("colored_skin")).toBe(false);
     expect(cache.activeNotFound.has("colored_skin")).toBe(false);
+    expect(stats.unresolvedNames).toEqual(["colored_skin"]);
+    expect(stats.rateLimitedCount).toBeGreaterThan(0);
 
     resetTagResolveCoordinatorForTests();
     fetchRule34TagMetadataMock.mockReset();
@@ -132,7 +134,7 @@ describe("tag-resolve-coordinator", () => {
     fetchRule34TagMetadataMock.mockRejectedValue(new Error("socket hang up"));
 
     const cache = loadTagMetadataCache(mockDb.db, ["flaky_tag"]);
-    await resolveTagMetadataWave(["flaky_tag"],
+    const stats = await resolveTagMetadataWave(["flaky_tag"],
       cache,
       { userId: "1", apiKey: "key" },
       "test-network-unresolved"
@@ -140,6 +142,8 @@ describe("tag-resolve-coordinator", () => {
 
     expect(mockDb.db.select().from(tagMetadata).all()).toHaveLength(0);
     expect(cache.activeNotFound.has("flaky_tag")).toBe(false);
+    expect(stats.unresolvedNames).toEqual(["flaky_tag"]);
+    expect(stats.rateLimitedCount).toBe(0);
   });
 
   it("deduplicates concurrent lookups for the same tag", async () => {

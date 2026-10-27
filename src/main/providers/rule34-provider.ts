@@ -176,6 +176,33 @@ export class Rule34Provider implements IBooruProvider {
     }
   }
 
+  /**
+   * Same axios→ProviderSearchError path as fetchPosts:
+   * toRule34HttpResponseFromAxiosError + assertRule34NotBlockedResponse (429/auth),
+   * else isAxiosTransportFailure → network, else parse.
+   */
+  private classifyAxiosFailure(error: unknown): ProviderSearchError {
+    if (isProviderSearchError(error)) {
+      return error;
+    }
+    const httpResponse = toRule34HttpResponseFromAxiosError(error);
+    if (httpResponse !== null) {
+      try {
+        assertRule34NotBlockedResponse(httpResponse);
+      } catch (blocked) {
+        if (isProviderSearchError(blocked)) {
+          return blocked;
+        }
+        throw blocked;
+      }
+      return new ProviderSearchError("network");
+    }
+    if (isAxiosTransportFailure(error)) {
+      return new ProviderSearchError("network");
+    }
+    return new ProviderSearchError("parse");
+  }
+
   async searchTags(
     query: string,
     signal?: AbortSignal
@@ -184,6 +211,13 @@ export class Rule34Provider implements IBooruProvider {
     if (safeQuery.length < 2) return [];
     try {
       await this.waitForUserSlot(signal);
+    } catch (error) {
+      if (axios.isCancel(error) || isAbortError(error)) {
+        return [];
+      }
+      throw error;
+    }
+    try {
       const params = new URLSearchParams({ q: safeQuery });
       const { data } = await axios.get<R34AutocompleteItem[]>(
         `https://api.rule34.xxx/autocomplete.php?${params.toString()}`,
@@ -204,16 +238,24 @@ export class Rule34Provider implements IBooruProvider {
             : {}),
         }));
       }
-      return [];
+      logger.warn("[Rule34Provider] Autocomplete non-array response", {
+        responseType: typeof data,
+      });
+      throw new ProviderSearchError("parse");
     } catch (error) {
       if (axios.isCancel(error) || isAbortError(error)) {
         return [];
       }
-      if (error instanceof ProviderSearchError) {
-        throw error;
+      const classified = this.classifyAxiosFailure(error);
+      this.notifyIfRateLimited(classified);
+      if (classified.kind === "rate_limit") {
+        logger.warn("[Rule34Provider] Autocomplete rate limited", {
+          retryAfterMs: classified.retryAfterMs,
+        });
+      } else {
+        logger.error("[Rule34Provider] Autocomplete failed", classified);
       }
-      logger.error("[Rule34Provider] Autocomplete failed", error);
-      return [];
+      throw classified;
     }
   }
 
