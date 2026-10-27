@@ -1774,11 +1774,14 @@ describe('SyncService Integration', () => {
     }
   });
 
-  it('still restores FTS triggers and ends Sync All when rebuildFtsIndex throws', async () => {
+  it('leaves FTS triggers dropped and ends Sync All when rebuildFtsIndex throws', async () => {
     const provider = getProvider('rule34');
     const fetchPostsSpy = vi
       .spyOn(provider, 'fetchPosts')
       .mockResolvedValue(asFetchResult([]));
+
+    const rebuildFailedMessage =
+      'FTS index rebuild failed; search uses slower fallback until RuleDesk restarts and rebuilds the index';
 
     const rebuildSpy = vi
       .spyOn(ftsTriggers, 'rebuildFtsIndex')
@@ -1794,10 +1797,63 @@ describe('SyncService Integration', () => {
       await service.syncAllArtists();
 
       expect(rebuildSpy).toHaveBeenCalled();
+      expect(ensureSpy).not.toHaveBeenCalled();
+      expect(sendEventSpy).toHaveBeenCalledWith(
+        IPC_CHANNELS.SYNC.ERROR,
+        rebuildFailedMessage
+      );
+      expect(sendEventSpy).toHaveBeenCalledWith(IPC_CHANNELS.SYNC.END);
+      expect(
+        ftsTriggers.areRuntimeDroppableFtsTriggersPresent(mockDb.sqlite)
+      ).toBe(false);
+
+      const endCallIndex = sendEventSpy.mock.calls.findIndex(
+        ([channel]) => channel === IPC_CHANNELS.SYNC.END
+      );
+      const ftsErrorCallIndex = sendEventSpy.mock.calls.findIndex(
+        ([channel, data]) =>
+          channel === IPC_CHANNELS.SYNC.ERROR && data === rebuildFailedMessage
+      );
+      expect(ftsErrorCallIndex).toBeGreaterThanOrEqual(0);
+      expect(endCallIndex).toBeGreaterThan(ftsErrorCallIndex);
+      expect(service.getIsSyncing()).toBe(false);
+    } finally {
+      rebuildSpy.mockRestore();
+      ensureSpy.mockRestore();
+      sendEventSpy.mockRestore();
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
+  it('surfaces SYNC.ERROR when rebuild succeeds but ensureFtsTriggers throws', async () => {
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi
+      .spyOn(provider, 'fetchPosts')
+      .mockResolvedValue(asFetchResult([]));
+
+    const ensureFailedMessage =
+      'FTS trigger restore failed; search may be incomplete until restart';
+
+    const rebuildSpy = vi
+      .spyOn(ftsTriggers, 'rebuildFtsIndex')
+      .mockImplementation(() => undefined);
+    const ensureSpy = vi
+      .spyOn(ftsTriggers, 'ensureFtsTriggers')
+      .mockImplementation(() => {
+        throw new Error('simulated ensureFtsTriggers failure');
+      });
+    const sendEventSpy = vi
+      .spyOn(service, 'sendEvent')
+      .mockImplementation(() => undefined);
+
+    try {
+      await service.syncAllArtists();
+
+      expect(rebuildSpy).toHaveBeenCalled();
       expect(ensureSpy).toHaveBeenCalled();
       expect(sendEventSpy).toHaveBeenCalledWith(
         IPC_CHANNELS.SYNC.ERROR,
-        'FTS index restore failed; search may be incomplete until restart'
+        ensureFailedMessage
       );
       expect(sendEventSpy).toHaveBeenCalledWith(IPC_CHANNELS.SYNC.END);
 
@@ -1806,12 +1862,11 @@ describe('SyncService Integration', () => {
       );
       const ftsErrorCallIndex = sendEventSpy.mock.calls.findIndex(
         ([channel, data]) =>
-          channel === IPC_CHANNELS.SYNC.ERROR &&
-          data ===
-            'FTS index restore failed; search may be incomplete until restart'
+          channel === IPC_CHANNELS.SYNC.ERROR && data === ensureFailedMessage
       );
       expect(ftsErrorCallIndex).toBeGreaterThanOrEqual(0);
       expect(endCallIndex).toBeGreaterThan(ftsErrorCallIndex);
+      expect(service.getIsSyncing()).toBe(false);
     } finally {
       rebuildSpy.mockRestore();
       ensureSpy.mockRestore();
