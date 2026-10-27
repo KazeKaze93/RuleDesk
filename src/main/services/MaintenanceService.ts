@@ -11,6 +11,7 @@ import {
 import { maintenanceQueue } from "../db/maintenance-queue";
 import { settings, SETTINGS_ID } from "../db/schema";
 import { registerDatabaseInContainerAfterReinit } from "../core/di/databaseRegistration";
+import { isQuitRequested } from "../lib/quit-state";
 import { withSyncPausedForDbWork } from "../lib/sync-db-maintenance";
 import type { SyncService } from "./sync-service";
 import type {
@@ -219,8 +220,14 @@ export class MaintenanceService {
         errorMessage = workerResult.error ?? null;
 
         try {
-          await initializeDatabase();
-          registerDatabaseInContainerAfterReinit();
+          if (isQuitRequested()) {
+            log.info(
+              "[MaintenanceService] Skipping initializeDatabase after VACUUM — quit requested"
+            );
+          } else {
+            await initializeDatabase();
+            registerDatabaseInContainerAfterReinit();
+          }
         } catch (error) {
           success = false;
           const reinitErrorMessage =
@@ -241,8 +248,14 @@ export class MaintenanceService {
       errorMessage = error instanceof Error ? error.message : "VACUUM failed";
       log.error("[MaintenanceService] VACUUM worker execution failed:", error);
       try {
-        await initializeDatabase();
-        registerDatabaseInContainerAfterReinit();
+        if (isQuitRequested()) {
+          log.info(
+            "[MaintenanceService] Skipping initializeDatabase after VACUUM error — quit requested"
+          );
+        } else {
+          await initializeDatabase();
+          registerDatabaseInContainerAfterReinit();
+        }
       } catch (reinitError) {
         log.error(
           "[MaintenanceService] Failed to reinitialize database after VACUUM error:",

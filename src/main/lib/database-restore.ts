@@ -6,6 +6,7 @@ import {
   logRestoredSettingsSnapshot,
   restoreBackupSidecar,
 } from "./backup-sidecar";
+import { isQuitRequested } from "./quit-state";
 
 export type DatabaseFilePaths = {
   dbPath: string;
@@ -122,8 +123,15 @@ export async function restoreDatabaseFromBackup(
     await fs.promises.rename(tempDbPath, dbPath);
 
     // Reinit BEFORE deleting .bak — if this throws, catch rolls back from .bak.
-    await deps.initializeDatabase();
-    deps.afterSuccessfulReinit?.();
+    // Quit drain waits for restore without timeout, then closes DB — skip reopen.
+    if (isQuitRequested()) {
+      log.info(
+        "[DatabaseRestore] Skipping initializeDatabase after restore — quit requested"
+      );
+    } else {
+      await deps.initializeDatabase();
+      deps.afterSuccessfulReinit?.();
+    }
     await (deps.restoreSidecar ?? restoreBackupSidecar)(backupPath);
     (deps.logSettingsSnapshot ?? logRestoredSettingsSnapshot)();
 
@@ -160,8 +168,14 @@ export async function restoreDatabaseFromBackup(
     await restoreFromBak(bakPaths.shm, shmPath);
 
     try {
-      await deps.initializeDatabase();
-      deps.afterSuccessfulReinit?.();
+      if (isQuitRequested()) {
+        log.info(
+          "[DatabaseRestore] Skipping initializeDatabase after rollback — quit requested"
+        );
+      } else {
+        await deps.initializeDatabase();
+        deps.afterSuccessfulReinit?.();
+      }
     } catch (initError) {
       log.error(
         "[DatabaseRestore] Failed to reinitialize database after rollback:",

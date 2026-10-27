@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { MaintenanceQueue } from "../../../src/main/db/maintenance-queue";
+import {
+  MAINTENANCE_JOB_KIND,
+  MaintenanceQueue,
+} from "../../../src/main/db/maintenance-queue";
 
 describe("MaintenanceQueue", () => {
   it("runs the next operation after a prior failure; caller still gets the error", async () => {
@@ -49,7 +52,52 @@ describe("MaintenanceQueue", () => {
     ).rejects.toThrow("boom");
 
     expect(queue.isProcessing()).toBe(false);
-    await queue.waitForCompletion();
+    const { timedOut } = await queue.waitForCompletion();
+    expect(timedOut).toBe(false);
     expect(queue.isProcessing()).toBe(false);
   });
+
+  it("exposes current job kind while an operation runs", async () => {
+    const queue = new MaintenanceQueue();
+    let kindDuringRun: ReturnType<MaintenanceQueue["getCurrentJobKind"]> =
+      null;
+
+    const running = queue.execute(
+      async () => {
+        kindDuringRun = queue.getCurrentJobKind();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return "done";
+      },
+      { kind: MAINTENANCE_JOB_KIND.RESTORE }
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(queue.getCurrentJobKind()).toBe(MAINTENANCE_JOB_KIND.RESTORE);
+    await running;
+    expect(kindDuringRun).toBe(MAINTENANCE_JOB_KIND.RESTORE);
+    expect(queue.getCurrentJobKind()).toBeNull();
+  });
+
+  it("waitForCompletion with timeout returns control while the job keeps running", async () => {
+    const queue = new MaintenanceQueue();
+    let finished = false;
+
+    void queue.execute(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      finished = true;
+    });
+
+    const startedAt = Date.now();
+    const { timedOut } = await queue.waitForCompletion(30);
+    const elapsedMs = Date.now() - startedAt;
+
+    expect(timedOut).toBe(true);
+    expect(elapsedMs).toBeLessThan(150);
+    expect(finished).toBe(false);
+    expect(queue.isProcessing()).toBe(true);
+
+    await queue.waitForCompletion();
+    expect(finished).toBe(true);
+  });
 });
+

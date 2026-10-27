@@ -39,6 +39,15 @@ export const VIDEO_CACHE_EVICT_AFTER_START_MS = 15_000;
 export const SYNC_SHUTDOWN_DRAIN_MS = 8000;
 
 /**
+ * Max time to wait for an interruptible maintenanceQueue job (backup /
+ * integrity / VACUUM-into-tmp) before terminating the backupIntegrityWorker
+ * and closing the DB on quit. Slightly above sync drain: DB copy/check is
+ * heavier, but still bounded so quit cannot hang forever. Restore jobs wait
+ * without this timeout (corrupt-on-interrupt risk).
+ */
+export const MAINTENANCE_SHUTDOWN_DRAIN_MS = 10_000;
+
+/**
  * Max time deleteArtist waits for a per-artist sync cancel + finally
  * (FTS rebuild + trigger restore) before refusing the delete.
  */

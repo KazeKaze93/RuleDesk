@@ -74,7 +74,14 @@ import {
 } from "./lib/tray-window-lifecycle";
 import { getBackupDirectory, getDatabasePaths, getLegacyNeutralUserDataDir } from "./db/paths";
 import { migrateBackupDirectory } from "./db/backup-dir-migrate";
-import { SYNC_SHUTDOWN_DRAIN_MS } from "./config/constants";
+import {
+  MAINTENANCE_SHUTDOWN_DRAIN_MS,
+  SYNC_SHUTDOWN_DRAIN_MS,
+} from "./config/constants";
+import {
+  MAINTENANCE_JOB_KIND,
+  maintenanceQueue,
+} from "./db/maintenance-queue";
 import { updaterService } from "./services/updater-service";
 import { syncService } from "./services/sync-service";
 import { SyncScheduler } from "./services/sync-scheduler";
@@ -85,8 +92,13 @@ import { eq } from "drizzle-orm";
 import { settings, SETTINGS_ID } from "./db/schema";
 import { container, DI_TOKENS } from "./core/di/Container";
 import { reloadProxyFromSettings } from "./lib/proxy";
+import {
+  isQuitRequested,
+  setQuitRequested,
+} from "./lib/quit-state";
 import { VideoProxyServer } from "./services/video-proxy-server";
 import { MaintenanceService } from "./services/MaintenanceService";
+import { terminateBackupIntegrityWorker } from "./workers/runBackupIntegrityWorker";
 
 logger.info("🚀 Application starting...");
 
@@ -104,12 +116,7 @@ if (process.platform === "linux") {
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
-/**
- * Set at the start of before-quit (before download/sync drain).
- * Window close must allow quit and must not read settings/DB while this is true.
- */
-let isQuitRequested = false;
-/** Set after sync drain (if any) so a second before-quit can finish cleanup idempotently. */
+/** Set after drain so a second before-quit can finish cleanup idempotently. */
 let isShuttingDown = false;
 const syncScheduler = new SyncScheduler(syncService);
 const backupService = new BackupService(syncService);
@@ -119,6 +126,9 @@ const maintenanceScheduler = new MaintenanceScheduler(
   maintenanceService
 );
 container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
+
+/** Bound for awaited VideoProxyServer.stop during quit (stop() already caps close at 1s). */
+const VIDEO_PROXY_STOP_SHUTDOWN_MS = 2_000;
 
 function stopBackgroundServicesAndCloseDb(): void {
   void videoProxyServer.stop();
@@ -132,6 +142,49 @@ function stopBackgroundServicesAndCloseDb(): void {
   closeDatabase();
 }
 
+async function drainMaintenanceQueueBeforeQuit(): Promise<void> {
+  const currentKind = maintenanceQueue.getCurrentJobKind();
+  if (currentKind === MAINTENANCE_JOB_KIND.RESTORE) {
+    logger.info(
+      "[Main] Restore in progress — waiting without timeout before quit (interrupt would risk corruption)"
+    );
+    await maintenanceQueue.waitForCompletion();
+    return;
+  }
+
+  const { timedOut } = await maintenanceQueue.waitForCompletion(
+    MAINTENANCE_SHUTDOWN_DRAIN_MS
+  );
+  if (timedOut) {
+    logger.warn(
+      `[Main] Maintenance drain timed out after ${MAINTENANCE_SHUTDOWN_DRAIN_MS}ms; terminating backupIntegrityWorker`
+    );
+    terminateBackupIntegrityWorker();
+  }
+}
+
+async function stopVideoProxyBeforeQuit(): Promise<void> {
+  try {
+    let timedOut = false;
+    await Promise.race([
+      videoProxyServer.stop(),
+      new Promise<void>((resolve) => {
+        setTimeout(() => {
+          timedOut = true;
+          resolve();
+        }, VIDEO_PROXY_STOP_SHUTDOWN_MS);
+      }),
+    ]);
+    if (timedOut) {
+      logger.warn(
+        `[Main] VideoProxyServer.stop timed out after ${VIDEO_PROXY_STOP_SHUTDOWN_MS}ms`
+      );
+    }
+  } catch (error: unknown) {
+    logger.error("[Main] VideoProxyServer.stop failed during quit:", error);
+  }
+}
+
 // Single before-quit handler (module load once). Must not live inside initializeAppAndWindow —
 // tray re-open would stack duplicate listeners and call closeDatabase N times.
 //
@@ -141,58 +194,55 @@ function stopBackgroundServicesAndCloseDb(): void {
 app.on("before-quit", (event) => {
   // Mark quit before any drain/closeDatabase so window "close" never hide-to-trays
   // or reads settings after the DB is closed (Tray Quit + minimize-to-tray on).
-  isQuitRequested = true;
+  setQuitRequested();
   if (isShuttingDown) {
     return;
   }
 
-  const fileController = getFileController();
-  const needsDownloadDrain = fileController?.hasActiveDownloads() === true;
-  const needsSyncDrain = syncService.getIsSyncing();
+  event.preventDefault();
+  void (async () => {
+    const fileController = getFileController();
+    const needsDownloadDrain = fileController?.hasActiveDownloads() === true;
+    const needsSyncDrain = syncService.getIsSyncing();
 
-  if (needsDownloadDrain || needsSyncDrain) {
-    event.preventDefault();
-    void (async () => {
-      if (needsDownloadDrain && fileController) {
-        logger.info(
-          "[Main] Downloads in progress — cancelAllDownloads before quit"
+    if (needsDownloadDrain && fileController) {
+      logger.info(
+        "[Main] Downloads in progress — cancelAllDownloads before quit"
+      );
+      const { timedOut } = await fileController.cancelAllDownloads();
+      if (timedOut) {
+        logger.warn(
+          "[Main] Download cancel timed out; continuing quit drain"
         );
-        const { timedOut } = await fileController.cancelAllDownloads();
-        if (timedOut) {
-          logger.warn(
-            "[Main] Download cancel timed out; closing database anyway"
-          );
-        } else {
-          logger.info("[Main] Downloads canceled before quit");
-        }
+      } else {
+        logger.info("[Main] Downloads canceled before quit");
       }
-      if (needsSyncDrain) {
-        logger.info(
-          "[Main] Sync in progress — requesting cancel and draining before quit"
+    }
+    if (needsSyncDrain) {
+      logger.info(
+        "[Main] Sync in progress — requesting cancel and draining before quit"
+      );
+      syncService.requestCancel();
+      const idle = await syncService.waitUntilIdle(SYNC_SHUTDOWN_DRAIN_MS);
+      if (!idle) {
+        logger.warn(
+          `[Main] Sync drain timed out after ${SYNC_SHUTDOWN_DRAIN_MS}ms; continuing quit drain`
         );
-        syncService.requestCancel();
-        const idle = await syncService.waitUntilIdle(SYNC_SHUTDOWN_DRAIN_MS);
-        if (!idle) {
-          logger.warn(
-            `[Main] Sync drain timed out after ${SYNC_SHUTDOWN_DRAIN_MS}ms; closing database anyway`
-          );
-        }
       }
-      isShuttingDown = true;
-      stopBackgroundServicesAndCloseDb();
-      app.quit();
-    })().catch((error: unknown) => {
-      logger.error("[Main] Error during quit drain:", error);
-      isShuttingDown = true;
-      stopBackgroundServicesAndCloseDb();
-      app.quit();
-    });
-    return;
-  }
+    }
 
-  // No in-flight download/sync — sync path stays fast (no preventDefault).
-  isShuttingDown = true;
-  stopBackgroundServicesAndCloseDb();
+    await drainMaintenanceQueueBeforeQuit();
+    await stopVideoProxyBeforeQuit();
+
+    isShuttingDown = true;
+    stopBackgroundServicesAndCloseDb();
+    app.quit();
+  })().catch((error: unknown) => {
+    logger.error("[Main] Error during quit drain:", error);
+    isShuttingDown = true;
+    stopBackgroundServicesAndCloseDb();
+    app.quit();
+  });
 });
 
 // In test mode, skip single instance lock to allow multiple test instances
@@ -574,7 +624,7 @@ async function initializeAppAndWindow() {
 
     mainWindow.on("close", (event) => {
       const action = decideMainWindowCloseAction({
-        isQuitInProgress: isQuitRequested || isShuttingDown,
+        isQuitInProgress: isQuitRequested() || isShuttingDown,
         isTestMode,
         platform: process.platform,
         readMinimizeToTrayEnabled: () => {
