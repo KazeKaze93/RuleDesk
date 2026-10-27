@@ -1070,7 +1070,7 @@ results.forEach((result) => {
 
 **IPC Channel:** `api:search-remote-tags`
 
-**Note:** Requires at least 2 characters. Returns empty array if query is too short or API call fails. Supports multiple booru providers via provider pattern. Default `artistOnly=false` keeps general tag search unchanged.
+**Note:** Requires at least 2 characters. Returns empty array if the query is too short, the request was aborted, or providers return no matches. **Abort** mid-type → `[]` (not an error). **Missing credentials** (no settings row / decrypt-null) → empty / credentials path as before. **DB or decrypt exceptions**, provider/search failures that throw, and failed `artistOnly` second-pass resolve waves **reject** the IPC promise (typed / logged) — they must not look like “no tags”. Supports multiple booru providers via provider pattern. Default `artistOnly=false` keeps general tag search unchanged.
 
 ---
 
@@ -1130,7 +1130,7 @@ await window.api.searchBooru({
 
 **IPC Channel:** `booru:search`
 
-**Errors:** On provider failures `SearchController` calls `throwProviderSearchIpcError()` — `Error.message` is `JSON.stringify(ProviderSearchErrorPayload)` (`name`, `message`, `code`, `providerKind`, optional `retryAfterMs`) because Electron invoke drops custom Error fields. Enumerable `code` / `providerKind` remain for in-process callers. **No** `stack`, `originalError`, or raw API body crosses IPC. Preload does not parse or reshape these errors. Renderer `parseProviderSearchErrorPayload()` unwraps the JSON payload; `providerKind` is never inferred from user-facing copy. `PROVIDER_SEARCH_USER_MESSAGES` is display-only and must not name a specific provider.
+**Errors:** On provider failures `SearchController` calls `throwProviderSearchIpcError()` — `Error.message` is `JSON.stringify(ProviderSearchErrorPayload)` (`name`, `message`, `code`, `providerKind`, optional `retryAfterMs`) because Electron invoke drops custom Error fields. Enumerable `code` / `providerKind` remain for in-process callers. **No** `stack`, `originalError`, or raw API body crosses IPC. Preload does not parse or reshape these errors. Renderer `parseProviderSearchErrorPayload()` unwraps the JSON payload; `providerKind` is never inferred from user-facing copy. `PROVIDER_SEARCH_USER_MESSAGES` is display-only and must not name a specific provider. Single-tag **fallback** attempts (autocomplete rewrite / `user:` / `*_artist` strip) rethrow `ProviderSearchError` and any unexpected error after `log.error`; only abort continues to the next attempt. Empty results after successful attempts remain empty-success — network/DB failure must not.
 
 Renderer flow:
 
