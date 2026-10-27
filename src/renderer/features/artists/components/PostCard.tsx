@@ -12,6 +12,7 @@ import { useVideoProxyUrl } from "../../../lib/hooks/useVideoProxyUrl";
 import { QuickAddToPlaylistMenu } from "../../../components/playlists/QuickAddToPlaylistMenu";
 import { Checkbox } from "../../../components/ui/checkbox";
 import { Button } from "../../../components/ui/button";
+import { MediaLoadPlaceholder } from "../../../components/gallery/MediaLoadPlaceholder";
 import { useBulkSelect } from "../../../hooks/useBulkSelect";
 import { getBulkSelectId } from "../../../lib/bulkSelect";
 import { getRatingMeta } from "../../../lib/rating";
@@ -88,6 +89,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [isInViewport, setIsInViewport] = useState(false);
   const [sampleLoaded, setSampleLoaded] = useState(false);
   const [sampleSrc, setSampleSrc] = useState<string | null>(null);
+  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isPlaylistMenuOpen, setIsPlaylistMenuOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -313,46 +315,64 @@ export const PostCard: React.FC<PostCardProps> = ({
             blurFilterClass,
           )}
         >
-          <img
-            src={sampleSrc ?? post.previewUrl}
-            alt={`Post ${post.id}`}
-            loading="lazy"
-            decoding="async"
-            className={cn(
-              "w-full transition-all duration-500",
-              shouldPreserveAspect
-                ? "h-full object-contain"
-                : "h-auto",
-              !showVideoPreview && "group-hover:scale-105",
-              post.isViewed && "opacity-60 grayscale-[0.3]",
-              showVideoPreview && "opacity-0",
-              sampleLoaded && "opacity-100"
-            )}
-          />
-
-          {isVid && shouldLoadVideo && videoPreviewUrl && (
-            <video
-              key={videoKey}
-              ref={videoRef}
-              src={videoProxySrc ?? videoPreviewUrl}
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              className={cn(
-                "absolute inset-0 w-full transition-opacity duration-300 z-10",
-                shouldPreserveAspect
-                  ? "h-full object-contain"
-                  : "h-auto",
-                showVideoPreview ? "opacity-100" : "opacity-0 pointer-events-none"
-              )}
-              onError={() => {
-                setVideoError(true);
-              }}
-              onLoadedData={() => {
-                setVideoError(false);
-              }}
+          {previewLoadFailed ? (
+            <MediaLoadPlaceholder
+              className={shouldPreserveAspect ? "h-full" : "min-h-[200px]"}
+              aria-label={`Failed to load preview for post ${post.id}`}
             />
+          ) : (
+            <>
+              <img
+                src={sampleSrc ?? post.previewUrl}
+                alt={`Post ${post.id}`}
+                loading="lazy"
+                decoding="async"
+                className={cn(
+                  "w-full transition-all duration-500",
+                  shouldPreserveAspect
+                    ? "h-full object-contain"
+                    : "h-auto",
+                  !showVideoPreview && "group-hover:scale-105",
+                  post.isViewed && "opacity-60 grayscale-[0.3]",
+                  showVideoPreview && "opacity-0",
+                  sampleLoaded && "opacity-100"
+                )}
+                onError={() => {
+                  // sampleSrc → previewUrl chain: advance fallback before placeholder
+                  if (sampleSrc !== null) {
+                    setSampleSrc(null);
+                    setSampleLoaded(false);
+                    return;
+                  }
+                  setPreviewLoadFailed(true);
+                }}
+              />
+
+              {isVid && shouldLoadVideo && videoPreviewUrl && (
+                <video
+                  key={videoKey}
+                  ref={videoRef}
+                  src={videoProxySrc ?? videoPreviewUrl}
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  className={cn(
+                    "absolute inset-0 w-full transition-opacity duration-300 z-10",
+                    shouldPreserveAspect
+                      ? "h-full object-contain"
+                      : "h-auto",
+                    showVideoPreview ? "opacity-100" : "opacity-0 pointer-events-none"
+                  )}
+                  onError={() => {
+                    setVideoError(true);
+                  }}
+                  onLoadedData={() => {
+                    setVideoError(false);
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
       ) : (

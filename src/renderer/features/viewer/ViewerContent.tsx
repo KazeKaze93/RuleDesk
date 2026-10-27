@@ -45,6 +45,8 @@ import { ViewerMedia } from "./ViewerMedia";
 import { TagsDrawer } from "./TagsDrawer";
 import { getRatingMeta } from "../../lib/rating";
 
+const VIEWER_ANNOUNCE_CLEAR_MS = 3000;
+
 export const ViewerContent = ({
   post,
   queue,
@@ -107,7 +109,31 @@ export const ViewerContent = ({
 
   // Handle keyboard shortcuts with aria-live announcements
   const [announcement, setAnnouncement] = useState<string>("");
-  
+  const announceClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+
+  const clearAnnounceTimer = useCallback(() => {
+    if (announceClearTimerRef.current !== null) {
+      clearTimeout(announceClearTimerRef.current);
+      announceClearTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleAnnounceClear = useCallback(() => {
+    clearAnnounceTimer();
+    announceClearTimerRef.current = setTimeout(() => {
+      setAnnouncement("");
+      announceClearTimerRef.current = null;
+    }, VIEWER_ANNOUNCE_CLEAR_MS);
+  }, [clearAnnounceTimer]);
+
+  useEffect(() => {
+    return () => {
+      clearAnnounceTimer();
+    };
+  }, [clearAnnounceTimer]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -124,8 +150,10 @@ export const ViewerContent = ({
             log.error("[ViewerContent] Failed to toggle favorite:", error);
           });
           // Announce action for screen readers and accessibility
-          setAnnouncement(post.isFavorited ? "Removed from favorites" : "Added to favorites");
-          setTimeout(() => setAnnouncement(""), 3000);
+          setAnnouncement(
+            post.isFavorited ? "Removed from favorites" : "Added to favorites"
+          );
+          scheduleAnnounceClear();
           break;
         case "v":
         case "V":
@@ -135,13 +163,18 @@ export const ViewerContent = ({
           });
           // Announce action for screen readers and accessibility
           setAnnouncement("Marked as viewed");
-          setTimeout(() => setAnnouncement(""), 3000);
+          scheduleAnnounceClear();
           break;
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleToggleFavorite, handleMarkViewed, post.isFavorited]);
+  }, [
+    handleToggleFavorite,
+    handleMarkViewed,
+    post.isFavorited,
+    scheduleAnnounceClear,
+  ]);
 
   return (
     <>

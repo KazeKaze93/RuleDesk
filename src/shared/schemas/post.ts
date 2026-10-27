@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PROVIDER_IDS } from "../constants";
+import { POSTS_PAGE_SIZE, PROVIDER_IDS } from "../constants";
 import {
   IdSchema,
   OptionalArtistScopeIdSchema,
@@ -82,7 +82,7 @@ export const GetPostsSchema = z.object({
   page: PageSchema.default(1),
   sortOrder: z.enum(["asc", "desc"]).optional(),
   filters: PostFilterSchema.optional(),
-  limit: LimitSchema.max(100).default(50),
+  limit: LimitSchema.max(100).default(POSTS_PAGE_SIZE),
   isRandom: z.boolean().optional().default(false),
   /** Keep across pages for a stable shuffle; omit / change for a new shuffle. */
   seed: RandomSeedSchema,

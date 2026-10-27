@@ -24,8 +24,7 @@ import { canonicalizePostTagsForResolve } from "./postMetadataQueryKeys";
 import { useCurrentPost } from "./hooks/useCurrentPost";
 import { PostNotFoundFallback } from "./PostNotFoundFallback";
 import { ViewerContent } from "./ViewerContent";
-
-const BROWSE_POSTS_PER_PAGE = 50;
+import { POSTS_PAGE_SIZE } from "../../../shared/constants";
 
 const VIEWER_DIALOG_CONTENT_CLASS = cn(
   VIEWER_SHELL_Z,
@@ -123,7 +122,7 @@ export const ViewerDialog = () => {
       return false;
     }
     if (queue.origin?.kind === "search" && infiniteData) {
-      return searchBrowseHasNextPage(infiniteData, BROWSE_POSTS_PER_PAGE);
+      return searchBrowseHasNextPage(infiniteData, POSTS_PAGE_SIZE);
     }
     return queue.hasNextPage ?? false;
   }, [queue, infiniteData]);

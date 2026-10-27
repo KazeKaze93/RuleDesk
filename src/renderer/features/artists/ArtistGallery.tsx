@@ -22,6 +22,7 @@ import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { useDownloadAllFromBackend } from "../../hooks/useDownloadAll";
 import { DownloadAllButton } from "../../components/downloads/DownloadAllButton";
+import { POSTS_PAGE_SIZE } from "../../../shared/constants";
 import { ErrorCode } from "@shared/types/error-codes";
 import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../../components/gallery/virtuoso-factories";
@@ -228,7 +229,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     () => ({
       artistId: artist.id,
       page: 1,
-      limit: 50,
+      limit: POSTS_PAGE_SIZE,
       isRandom: false,
       filters: {
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
