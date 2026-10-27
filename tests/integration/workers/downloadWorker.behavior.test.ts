@@ -54,6 +54,11 @@ function runWorkerBatch(params: {
   items: Array<{ url: string; filename: string }>;
   folder: string;
   persistQueue?: boolean;
+  /**
+   * Local HTTP suites need this; production Main never sets it.
+   * Default true so hang/429/persist loopback tests keep working.
+   */
+  bypassCdnAllowlist?: boolean;
   /** When persistQueue is false: how Main answers item-completed. */
   onItemCompletedAck?: "persisted" | "persist-failed";
   onWorker?: (worker: Worker) => void;
@@ -62,6 +67,7 @@ function runWorkerBatch(params: {
   // Main-owned ack path (worker no longer writes queue.json).
   const persistQueue = params.persistQueue ?? false;
   const ackMode = params.onItemCompletedAck ?? "persisted";
+  const bypassCdnAllowlist = params.bypassCdnAllowlist ?? true;
   return new Promise((resolve, reject) => {
     const worker = new Worker(WORKER_PATH, {
       workerData: {
@@ -72,6 +78,7 @@ function runWorkerBatch(params: {
         queueFilePath,
         proxyUrl: null,
         persistQueue,
+        bypassCdnAllowlist,
       },
     });
     params.onWorker?.(worker);
@@ -250,5 +257,50 @@ describe("downloadWorker behavior", () => {
       }),
     ]);
     expect(fs.existsSync(path.join(folder, filename))).toBe(true);
+  }, 15_000);
+
+  it("rejects non-CDN hosts before requesting (allowlist)", async () => {
+    folder = fs.mkdtempSync(path.join(os.tmpdir(), "rd-dl-cdn-deny-"));
+    let hits = 0;
+    const { server, port } = await listen((_req, res) => {
+      hits += 1;
+      res.writeHead(200, { "Content-Length": "2" });
+      res.end("ok");
+    });
+    servers.push(server);
+
+    const cases = [
+      { url: "https://127.0.0.1/x", filename: "0_loopback.bin" },
+      { url: "https://evil.com/x", filename: "0_evil.bin" },
+      {
+        url: "http://169.254.169.254/latest/meta-data/",
+        filename: "0_meta.bin",
+      },
+      {
+        url: `http://127.0.0.1:${port}/should-not-hit`,
+        filename: "0_local.bin",
+      },
+    ];
+
+    const result = await runWorkerBatch({
+      items: cases,
+      folder,
+      bypassCdnAllowlist: false,
+    });
+
+    expect(hits).toBe(0);
+    expect(result.success).toBe(false);
+    expect(result.downloaded).toBe(0);
+    expect(result.failed).toHaveLength(cases.length);
+    for (const item of cases) {
+      expect(result.failed).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            itemId: item.filename,
+            code: "NETWORK",
+          }),
+        ])
+      );
+    }
   }, 15_000);
 });

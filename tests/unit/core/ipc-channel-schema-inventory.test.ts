@@ -53,6 +53,7 @@ vi.mock("../../../src/main/providers", () => ({
     searchTags: vi.fn().mockResolvedValue([]),
   })),
   PROVIDER_IDS: ["rule34", "gelbooru"],
+  getAllProviderCdnDomains: vi.fn(() => ["img.rule34.xxx"]),
 }));
 
 vi.mock("../../../src/main/db/client", () => ({

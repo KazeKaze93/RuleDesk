@@ -26,6 +26,10 @@ import {
   isRetryableDownloadFailure,
   parseRetryAfterMs,
 } from "@shared/utils/download-failure";
+import {
+  DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
+  isAllowedCdnUrl,
+} from "../providers/cdn-allowlist";
 import { DownloadRateLimitGate } from "./download-rate-limit-gate";
 
 interface WorkerData {
@@ -42,6 +46,11 @@ interface WorkerData {
    * Always treated as Main-owned ack path; `true` is ignored.
    */
   persistQueue?: boolean;
+  /**
+   * Test-only: skip CDN allowlist before axios (local HTTP loopback suites).
+   * Production Main must never set this.
+   */
+  bypassCdnAllowlist?: boolean;
 }
 
 type WorkerOutboundMessage =
@@ -117,6 +126,7 @@ async function runWorker(): Promise<void> {
     duplicateFileBehavior,
     downloadFolderStructure,
     proxyUrl,
+    bypassCdnAllowlist = false,
   // boundary: worker message — workerData payload after trust/Zod
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: worker message
   } = workerData as WorkerData;
@@ -286,6 +296,14 @@ async function runWorker(): Promise<void> {
         percent: 100,
         done: completedIds.length,
         total: items.length,
+      });
+      return;
+    }
+
+    if (!bypassCdnAllowlist && !isAllowedCdnUrl(item.url)) {
+      recordFailure(item, {
+        code: "NETWORK",
+        message: DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
       });
       return;
     }
