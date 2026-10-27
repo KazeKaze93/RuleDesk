@@ -1,25 +1,48 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { WebContents } from "electron";
 import { logger } from "./logger";
-
-/**
- * Marker used when the renderer is loaded via loadFile (production / packaged).
- * Node's URL API reports file: origins as the string "null", so we key off protocol.
- */
-export const FILE_PROTOCOL_ORIGIN = "file://";
 
 const WINDOW_OPEN_DENY = { action: "deny" } as const;
 
 /**
- * Allowed navigation origin for the renderer webContents.
- * Mirrors loadRendererUrl: ELECTRON_RENDERER_URL in electron-vite dev, else file://.
+ * Absolute path to the packaged renderer entry — same relative join as
+ * `BrowserWindow.loadFile` in main (`__dirname` of the main bundle, not this file).
  */
-export function resolveAllowedRendererOrigin(
-  electronRendererUrl: string | undefined = process.env["ELECTRON_RENDERER_URL"]
-): string {
+export function resolveRendererIndexHtmlPath(mainProcessDirname: string): string {
+  return path.join(mainProcessDirname, "../renderer/index.html");
+}
+
+export type NavigationAllowlist =
+  | { kind: "dev-origin"; origin: string }
+  | { kind: "prod-file"; filePath: string };
+
+/**
+ * Allowed navigation target for the renderer webContents.
+ * Mirrors loadRendererUrl: ELECTRON_RENDERER_URL in electron-vite dev, else the
+ * exact index.html path passed to loadFile.
+ */
+export function resolveNavigationAllowlist(
+  electronRendererUrl: string | undefined = process.env["ELECTRON_RENDERER_URL"],
+  mainProcessDirname: string
+): NavigationAllowlist {
   if (electronRendererUrl !== undefined && electronRendererUrl.length > 0) {
-    return new URL(electronRendererUrl).origin;
+    return {
+      kind: "dev-origin",
+      origin: new URL(electronRendererUrl).origin,
+    };
   }
-  return FILE_PROTOCOL_ORIGIN;
+  return {
+    kind: "prod-file",
+    filePath: resolveRendererIndexHtmlPath(mainProcessDirname),
+  };
+}
+
+export function describeNavigationAllowlist(allowlist: NavigationAllowlist): string {
+  if (allowlist.kind === "dev-origin") {
+    return allowlist.origin;
+  }
+  return `file:${allowlist.filePath}`;
 }
 
 /**
@@ -37,22 +60,37 @@ export function hostForNavigationLog(urlString: string): string {
   }
 }
 
-export function isAllowedRendererNavigation(
-  urlString: string,
-  allowedOrigin: string
-): boolean {
+function isSameProdRendererFile(urlString: string, allowedFilePath: string): boolean {
   let parsed: URL;
   try {
     parsed = new URL(urlString);
   } catch {
     return false;
   }
+  if (parsed.protocol !== "file:") {
+    return false;
+  }
+  // fileURLToPath ignores hash/query — hash routing (#/…) stays allowed.
+  const navigatedPath = path.normalize(fileURLToPath(parsed));
+  const allowedPath = path.normalize(path.resolve(allowedFilePath));
+  return navigatedPath === allowedPath;
+}
 
-  if (allowedOrigin === FILE_PROTOCOL_ORIGIN) {
-    return parsed.protocol === "file:";
+export function isAllowedRendererNavigation(
+  urlString: string,
+  allowlist: NavigationAllowlist
+): boolean {
+  if (allowlist.kind === "dev-origin") {
+    let parsed: URL;
+    try {
+      parsed = new URL(urlString);
+    } catch {
+      return false;
+    }
+    return parsed.origin === allowlist.origin;
   }
 
-  return parsed.origin === allowedOrigin;
+  return isSameProdRendererFile(urlString, allowlist.filePath);
 }
 
 /**
@@ -62,7 +100,7 @@ export function isAllowedRendererNavigation(
  */
 export function attachWebContentsNavigationGuards(
   contents: WebContents,
-  allowedOrigin: string
+  allowlist: NavigationAllowlist
 ): void {
   contents.setWindowOpenHandler(({ url }) => {
     logger.warn(
@@ -72,7 +110,7 @@ export function attachWebContentsNavigationGuards(
   });
 
   contents.on("will-navigate", (event, url) => {
-    if (isAllowedRendererNavigation(url, allowedOrigin)) {
+    if (isAllowedRendererNavigation(url, allowlist)) {
       return;
     }
     event.preventDefault();

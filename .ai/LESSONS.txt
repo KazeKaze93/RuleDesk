@@ -265,7 +265,7 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ### Problem: Unrestricted window.open / in-page navigation bypasses openExternal allowlist
 **Root Cause:** Renderer could open popups or navigate the BrowserWindow to arbitrary URLs; that path never hit `ALLOWED_HOSTS` / `openExternalSafe`. Mixing `shell.openExternal` into `setWindowOpenHandler` / `will-navigate` either double-opens or invents a second allowlist.
-**Invariant Rule:** Attach navigation guards on `web-contents-created` (`src/main/lib/navigation-guard.ts`): `setWindowOpenHandler` → `{ action: "deny" }` + `log.warn` (host only); `will-navigate` `preventDefault` for any URL outside the renderer allow-origin (dev: `ELECTRON_RENDERER_URL` origin; prod: `file:`). External links stay exclusively on the existing IPC `openExternal` / `openExternalSafe` path — do not call `openExternal` from those deny handlers. Keep `webSecurity: true` next to `contextIsolation` / `sandbox`.
+**Invariant Rule:** Attach navigation guards on `web-contents-created` (`src/main/lib/navigation-guard.ts`): `setWindowOpenHandler` → `{ action: "deny" }` + `log.warn` (host only); `will-navigate` `preventDefault` for any URL outside the renderer allowlist (dev: `ELECTRON_RENDERER_URL` origin; prod: exact `resolveRendererIndexHtmlPath` / `loadFile` pathname — hash/query ignored; other `file:` denied). External links stay exclusively on the existing IPC `openExternal` / `openExternalSafe` path — do not call `openExternal` from those deny handlers. Keep `webSecurity: true` next to `contextIsolation` / `sandbox`.
 
 ## Renderer / Workers
 

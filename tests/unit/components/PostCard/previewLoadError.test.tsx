@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PostCard } from "@/features/artists/components/PostCard";
+import { resetPostCardSampleCachesForTests } from "@/features/artists/components/postCardSampleUrlCache";
 import { useSearchStore } from "@/store/searchStore";
 import { makePost } from "./makePost";
 
@@ -29,11 +30,13 @@ const OriginalImage = globalThis.Image;
 
 afterEach(() => {
   cleanup();
+  resetPostCardSampleCachesForTests();
   globalThis.IntersectionObserver = originalIntersectionObserver;
   globalThis.Image = OriginalImage;
 });
 
 beforeEach(() => {
+  resetPostCardSampleCachesForTests();
   useSearchStore.setState({ viewType: "grid" });
   globalThis.IntersectionObserver = class {
     readonly root = null;
@@ -103,10 +106,10 @@ describe("PostCard preview onError", () => {
     ).toBeTruthy();
   });
 
-  it("advances sampleSrc → previewUrl before showing placeholder", async () => {
+  it("does not re-promote a sample URL after <img> onError; preview failure shows placeholder", async () => {
     const post = makePost({
-      previewUrl: "https://example.com/preview.jpg",
-      sampleUrl: "https://example.com/sample.jpg",
+      previewUrl: "https://example.com/preview-stable.jpg",
+      sampleUrl: "https://example.com/sample-fails-visible.jpg",
     });
 
     render(<PostCard post={post} onClick={vi.fn()} />);
@@ -117,16 +120,26 @@ describe("PostCard preview onError", () => {
       );
     });
 
-    const sampleImage = screen.getByAltText("Post 1");
     act(() => {
-      fireEvent.error(sampleImage);
+      fireEvent.error(screen.getByAltText("Post 1"));
     });
 
-    const previewImage = screen.getByAltText("Post 1");
-    expect(previewImage.getAttribute("src")).toBe(post.previewUrl);
+    expect(screen.getByAltText("Post 1").getAttribute("src")).toBe(
+      post.previewUrl
+    );
+
+    // Several ticks: effect must not put sampleUrl back (failedSampleUrls hard stop).
+    for (let i = 0; i < 5; i += 1) {
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(screen.getByAltText("Post 1").getAttribute("src")).toBe(
+        post.previewUrl
+      );
+    }
 
     act(() => {
-      fireEvent.error(previewImage);
+      fireEvent.error(screen.getByAltText("Post 1"));
     });
 
     expect(screen.queryByAltText("Post 1")).toBeNull();

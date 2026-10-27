@@ -16,8 +16,11 @@ import { MediaLoadPlaceholder } from "../../../components/gallery/MediaLoadPlace
 import { useBulkSelect } from "../../../hooks/useBulkSelect";
 import { getBulkSelectId } from "../../../lib/bulkSelect";
 import { getRatingMeta } from "../../../lib/rating";
+import {
+  failedSampleUrls,
+  loadedSampleUrls,
+} from "./postCardSampleUrlCache";
 
-const loadedSampleUrls = new Set<string>();
 const LONG_PRESS_DELAY_MS = 300;
 const POINTER_MOVE_CANCEL_PX = 5;
 
@@ -144,9 +147,12 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   useEffect(() => {
     if (!isInViewport || isVid || !post.sampleUrl || post.sampleUrl === post.previewUrl) return;
+    // Hard stop after a visible preview image rejected this sample (avoids onError ↔ promote loop).
+    if (failedSampleUrls.has(post.sampleUrl)) return;
     if (sampleLoaded) return;
     if (loadedSampleUrls.has(post.sampleUrl)) {
       queueMicrotask(() => {
+        if (failedSampleUrls.has(post.sampleUrl)) return;
         setSampleSrc(post.sampleUrl);
         setSampleLoaded(true);
       });
@@ -158,11 +164,14 @@ export const PostCard: React.FC<PostCardProps> = ({
     img.onload = () => {
       const promoteSample = () => {
         if (cancelled) return;
+        if (failedSampleUrls.has(post.sampleUrl)) return;
         loadedSampleUrls.add(post.sampleUrl);
         setSampleSrc(post.sampleUrl);
         setSampleLoaded(true);
       };
 
+      // Promote even when decode() rejects: some formats still paint in the preview image.
+      // If the visible image later errors, failedSampleUrls stops re-promotion.
       const decodeResult = img.decode();
       decodeResult.then(promoteSample).catch(promoteSample);
     };
@@ -340,8 +349,14 @@ export const PostCard: React.FC<PostCardProps> = ({
                 onError={() => {
                   // sampleSrc → previewUrl chain: advance fallback before placeholder
                   if (sampleSrc !== null) {
+                    const failedSample = sampleSrc;
+                    loadedSampleUrls.delete(failedSample);
+                    failedSampleUrls.add(failedSample);
+                    // Drop sample; do not clear sampleLoaded in a way that re-promotes —
+                    // failedSampleUrls gates the effect; keep sampleLoaded true so we
+                    // stay on previewUrl without re-entering the load path.
                     setSampleSrc(null);
-                    setSampleLoaded(false);
+                    setSampleLoaded(true);
                     return;
                   }
                   setPreviewLoadFailed(true);

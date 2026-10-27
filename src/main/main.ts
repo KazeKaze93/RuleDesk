@@ -74,7 +74,9 @@ import {
 } from "./lib/tray-window-lifecycle";
 import {
   attachWebContentsNavigationGuards,
-  resolveAllowedRendererOrigin,
+  describeNavigationAllowlist,
+  resolveNavigationAllowlist,
+  resolveRendererIndexHtmlPath,
 } from "./lib/navigation-guard";
 import { getBackupDirectory, getDatabasePaths, getLegacyNeutralUserDataDir } from "./db/paths";
 import { migrateBackupDirectory } from "./db/backup-dir-migrate";
@@ -283,9 +285,12 @@ if (!gotTheLock) {
   }
 
   // Before any BrowserWindow: deny popups + off-origin navigations for every webContents.
-  const allowedRendererOrigin = resolveAllowedRendererOrigin();
+  const navigationAllowlist = resolveNavigationAllowlist(
+    process.env["ELECTRON_RENDERER_URL"],
+    __dirname
+  );
   app.on("web-contents-created", (_event, contents) => {
-    attachWebContentsNavigationGuards(contents, allowedRendererOrigin);
+    attachWebContentsNavigationGuards(contents, navigationAllowlist);
   });
 
   app.on("ready", () => {
@@ -294,7 +299,7 @@ if (!gotTheLock) {
       app.setAppUserModelId("com.kaze.ruledesk");
     }
     logger.info(
-      `[Main] Renderer navigation allow-origin: ${allowedRendererOrigin}`
+      `[Main] Renderer navigation allowlist: ${describeNavigationAllowlist(navigationAllowlist)}`
     );
     void initializeAppAndWindow().catch((error: unknown) => {
       logger.error("[Main] Failed to initialize app on ready:", error);
@@ -356,7 +361,7 @@ function loadRendererUrl(window: BrowserWindow): Promise<void> {
   if (process.env["ELECTRON_RENDERER_URL"]) {
     return window.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   }
-  return window.loadFile(path.join(__dirname, "../renderer/index.html"));
+  return window.loadFile(resolveRendererIndexHtmlPath(__dirname));
 }
 
 function createMainWindowShowController(window: BrowserWindow): {

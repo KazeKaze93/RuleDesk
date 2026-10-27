@@ -825,7 +825,7 @@ webPreferences: {
 **Navigation guards** (`src/main/lib/navigation-guard.ts`, attached on `app.on("web-contents-created")`):
 
 - `setWindowOpenHandler` → `{ action: "deny" }` (log host only; no query)
-- `will-navigate` → `preventDefault` unless URL matches the renderer allow-origin: electron-vite **dev** = `new URL(ELECTRON_RENDERER_URL).origin`; **prod** = any `file:` URL (via `loadFile`)
+- `will-navigate` → `preventDefault` unless URL matches the renderer allowlist: electron-vite **dev** = `new URL(ELECTRON_RENDERER_URL).origin`; **prod** = the exact `index.html` path from `resolveRendererIndexHtmlPath` / `loadFile` (hash/query ignored so `#/` routing works; other `file:` paths denied)
 - Do **not** call `shell.openExternal` from these handlers — user-facing external links stay on IPC `openExternal` / `openExternalSafe` + `ALLOWED_HOSTS`
 
 ### IPC Security
