@@ -1,8 +1,47 @@
 // @vitest-environment happy-dom
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const refetch = vi.fn();
+const fetchNextPage = vi.fn();
+
+type InfiniteQueryMockResult = {
+  data:
+    | {
+        pages: Array<
+          Array<{
+            id: number;
+            tags: string;
+            fileUrl: string;
+            publishedAt: number;
+            isViewed: boolean;
+            isFavorited: boolean;
+          }>
+        >;
+        pageParams: number[];
+      }
+    | undefined;
+  fetchNextPage: typeof fetchNextPage;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  isFetchNextPageError: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  refetch: typeof refetch;
+};
+
+const useInfiniteQueryMock = vi.fn((): InfiniteQueryMockResult => ({
+  data: undefined,
+  fetchNextPage,
+  hasNextPage: false,
+  isFetchingNextPage: false,
+  isFetchNextPageError: false,
+  isLoading: false,
+  isError: true,
+  error: new Error("favorites IPC rejected"),
+  refetch,
+}));
 
 vi.mock("electron-log/renderer", () => ({
   default: {
@@ -18,16 +57,7 @@ vi.mock("@tanstack/react-query", async () => {
   );
   return {
     ...actual,
-    useInfiniteQuery: () => ({
-      data: undefined,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      isLoading: false,
-      isError: true,
-      error: new Error("favorites IPC rejected"),
-      refetch,
-    }),
+    useInfiniteQuery: () => useInfiniteQueryMock(),
     useMutation: () => ({
       mutate: vi.fn(),
       isPending: false,
@@ -86,7 +116,10 @@ vi.mock("@/hooks/useMasonryInfiniteScroll", () => ({
 }));
 
 vi.mock("react-virtuoso", () => ({
-  VirtuosoGrid: () => null,
+  VirtuosoGrid: ({ totalCount }: { totalCount: number }) =>
+    totalCount > 0 ? (
+      <div data-testid="favorites-grid">{`grid:${totalCount}`}</div>
+    ) : null,
 }));
 
 vi.mock("@/features/artists/components/PostCard", () => ({
@@ -102,15 +135,71 @@ import { Favorites } from "@/components/pages/Favorites";
 afterEach(() => {
   cleanup();
   refetch.mockClear();
+  fetchNextPage.mockClear();
+});
+
+beforeEach(() => {
+  useInfiniteQueryMock.mockReset();
+  useInfiniteQueryMock.mockReturnValue({
+    data: undefined,
+    fetchNextPage,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+    isLoading: false,
+    isError: true,
+    error: new Error("favorites IPC rejected"),
+    refetch,
+  });
 });
 
 describe("Favorites error vs empty UI", () => {
-  it("shows GalleryLoadError and not the empty favorites copy when the query errors", () => {
+  it("shows fullscreen GalleryLoadError and not the empty favorites copy when the query errors with no posts", () => {
     render(<Favorites />);
 
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.getByText("Could not load favorites")).toBeTruthy();
     expect(screen.getByText("favorites IPC rejected")).toBeTruthy();
+    expect(screen.queryByText("No favorites yet")).toBeNull();
+    expect(screen.queryByTestId("favorites-grid")).toBeNull();
+    expect(screen.queryByText("Could not load more favorites")).toBeNull();
+  });
+
+  it("keeps the grid and shows inline next-page error when posts are already loaded", () => {
+    useInfiniteQueryMock.mockReturnValue({
+      data: {
+        pages: [
+          [
+            {
+              id: 42,
+              tags: "example",
+              fileUrl: "https://example.com/42.jpg",
+              publishedAt: 1_700_000_000,
+              isViewed: false,
+              isFavorited: true,
+            },
+          ],
+        ],
+        pageParams: [1],
+      },
+      fetchNextPage,
+      hasNextPage: true,
+      isFetchingNextPage: false,
+      isFetchNextPageError: true,
+      isLoading: false,
+      isError: true,
+      error: new Error("next page rejected"),
+      refetch,
+    });
+
+    render(<Favorites />);
+
+    expect(screen.getByTestId("favorites-grid")).toBeTruthy();
+    expect(screen.getByText("Could not load more favorites")).toBeTruthy();
+    expect(
+      screen.getByText("next page rejected. Showing previously loaded posts.")
+    ).toBeTruthy();
+    expect(screen.queryByText("Could not load favorites")).toBeNull();
     expect(screen.queryByText("No favorites yet")).toBeNull();
   });
 });

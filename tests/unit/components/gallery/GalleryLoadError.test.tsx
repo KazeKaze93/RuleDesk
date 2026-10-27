@@ -19,7 +19,7 @@ describe("GalleryLoadError", () => {
     );
 
     const alert = screen.getByRole("alert");
-    expect(alert.getAttribute("aria-live")).toBe("polite");
+    expect(alert.hasAttribute("aria-live")).toBe(false);
     expect(screen.getByText("Could not load favorites")).toBeTruthy();
     expect(screen.getByText("IPC rejected")).toBeTruthy();
 
@@ -32,5 +32,28 @@ describe("GalleryLoadError", () => {
 
     expect(screen.getByText("Could not load gallery")).toBeTruthy();
     expect(screen.getByText("Failed to load posts.")).toBeTruthy();
+  });
+
+  it("renders inline variant without fullscreen layout and without aria-live", () => {
+    const onRetry = vi.fn();
+    render(
+      <GalleryLoadError
+        variant="inline"
+        title="Could not load more favorites"
+        description="Next page failed. Showing previously loaded posts."
+        onRetry={onRetry}
+      />
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert.hasAttribute("aria-live")).toBe(false);
+    expect(screen.getByText("Could not load more favorites")).toBeTruthy();
+    expect(
+      screen.getByText("Next page failed. Showing previously loaded posts.")
+    ).toBeTruthy();
+    expect(alert.className.includes("h-full")).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

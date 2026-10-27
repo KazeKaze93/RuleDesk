@@ -216,6 +216,7 @@ export const Updates = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
     isLoading,
     isError,
     error,
@@ -409,6 +410,15 @@ export const Updates = () => {
         unfilteredFeedCount,
       }),
     [artists.length, lastSyncAtMs, hasActiveTagFilter, unfilteredFeedCount]
+  );
+
+  const hasLoadedPosts =
+    data?.pages.some((page) => page.length > 0) === true;
+  const isFatalGalleryError = isError && !hasLoadedPosts;
+  const showNextPageError = isFetchNextPageError && hasLoadedPosts;
+  const galleryErrorDescription = resolveErrorMessage(
+    error,
+    "Failed to load updates feed."
   );
 
   const listAriaBusy = isLoading || isFetchingNextPage;
@@ -719,87 +729,109 @@ export const Updates = () => {
               );
             }}
           />
-        ) : (isLoading || isFeedMetaLoading) && allPosts.length === 0 ? (
-          <div className="flex flex-col gap-3 justify-center items-center h-full px-6">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-64" />
-            <div className="grid w-full max-w-3xl grid-cols-3 gap-3 pt-4">
-              {Array.from({ length: 6 }, (_, index) => (
-                <Skeleton key={index} className="aspect-square w-full" />
-              ))}
-            </div>
-          </div>
-        ) : isError ? (
-          <GalleryLoadError
-            title="Could not load updates"
-            description={resolveErrorMessage(error, "Failed to load updates feed.")}
-            onRetry={() => {
-              void refetch();
-            }}
-          />
-        ) : isUnfilteredCountError ? (
-          <Alert variant="destructive">
-            <AlertDescription>
-              {resolveErrorMessage(
-                unfilteredCountError,
-                "Failed to load updates feed count"
-              )}
-            </AlertDescription>
-          </Alert>
-        ) : allPosts.length === 0 ? (
-          <UpdatesFeedEmptyState
-            kind={emptyKind}
-            onClearFilter={() => clearTagChips()}
-          />
-        ) : viewType === "masonry" ? (
-          <div className="overflow-auto h-full" onScroll={handleMasonryScroll}>
-            <GridContainer viewType="masonry">
-              {allPosts.map((post, index) => (
-                <MasonryItemContainer key={getPostCardKey(post)}>
-                  <PostCard
-                    post={post}
-                    onClick={() => handlePostClick(index)}
-                    preserveAspect={false}
-                  />
-                </MasonryItemContainer>
-              ))}
-            </GridContainer>
-            {isFetchingNextPage && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            )}
-          </div>
         ) : (
-          <VirtuosoGrid
-            className="h-full"
-            aria-busy={listAriaBusy}
-            totalCount={allPosts.length}
-            endReached={triggerLoadMore}
-            increaseViewportBy={600}
-            components={{
-              List: ListComponent,
-              Item: ItemComponent,
-              Footer: () =>
-                isFetchingNextPage ? (
-                  <div className="flex col-span-full justify-center py-4 w-full">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                ) : null,
-            }}
-            itemContent={(index) => {
-              const post = allPosts[index];
-              if (!post) return null;
+          <div className="flex flex-col flex-1 min-h-0">
+            {isFatalGalleryError ? (
+              <GalleryLoadError
+                title="Could not load updates"
+                description={galleryErrorDescription}
+                onRetry={() => {
+                  void refetch();
+                }}
+              />
+            ) : null}
+            {showNextPageError ? (
+              <GalleryLoadError
+                variant="inline"
+                title="Could not load more updates"
+                description={`${galleryErrorDescription}. Showing previously loaded posts.`}
+                onRetry={() => {
+                  void fetchNextPage();
+                }}
+              />
+            ) : null}
+            {(isLoading || isFeedMetaLoading) &&
+            allPosts.length === 0 &&
+            !isFatalGalleryError ? (
+              <div className="flex flex-col gap-3 justify-center items-center h-full px-6">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-64" />
+                <div className="grid w-full max-w-3xl grid-cols-3 gap-3 pt-4">
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <Skeleton key={index} className="aspect-square w-full" />
+                  ))}
+                </div>
+              </div>
+            ) : isUnfilteredCountError && !isFatalGalleryError ? (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {resolveErrorMessage(
+                    unfilteredCountError,
+                    "Failed to load updates feed count"
+                  )}
+                </AlertDescription>
+              </Alert>
+            ) : allPosts.length === 0 && !isFatalGalleryError ? (
+              <UpdatesFeedEmptyState
+                kind={emptyKind}
+                onClearFilter={() => clearTagChips()}
+              />
+            ) : !isFatalGalleryError ? (
+              viewType === "masonry" ? (
+                <div
+                  className="overflow-auto h-full"
+                  onScroll={handleMasonryScroll}
+                >
+                  <GridContainer viewType="masonry">
+                    {allPosts.map((post, index) => (
+                      <MasonryItemContainer key={getPostCardKey(post)}>
+                        <PostCard
+                          post={post}
+                          onClick={() => handlePostClick(index)}
+                          preserveAspect={false}
+                        />
+                      </MasonryItemContainer>
+                    ))}
+                  </GridContainer>
+                  {isFetchingNextPage && (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <VirtuosoGrid
+                  className="h-full"
+                  aria-busy={listAriaBusy}
+                  totalCount={allPosts.length}
+                  endReached={triggerLoadMore}
+                  increaseViewportBy={600}
+                  components={{
+                    List: ListComponent,
+                    Item: ItemComponent,
+                    Footer: () =>
+                      isFetchingNextPage ? (
+                        <div className="flex col-span-full justify-center py-4 w-full">
+                          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                        </div>
+                      ) : null,
+                  }}
+                  itemContent={(index) => {
+                    const post = allPosts[index];
+                    if (!post) return null;
 
-              return (
-                <PostCard
-                  key={getPostCardKey(post)}
-                  post={post}
-                  onClick={() => handlePostClick(index)}
+                    return (
+                      <PostCard
+                        key={getPostCardKey(post)}
+                        post={post}
+                        onClick={() => handlePostClick(index)}
+                      />
+                    );
+                  }}
                 />
-              );
-            }}
-          />
+              )
+            ) : null}
+          </div>
         )}
       </div>
       <BulkActionBar
