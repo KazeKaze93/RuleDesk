@@ -69,6 +69,7 @@ vi.mock("../../../src/main/providers", () => ({
 }));
 
 import { PlaylistController } from "../../../src/main/ipc/controllers/PlaylistController";
+import { ErrorCode } from "../../../src/shared/types/error-codes";
 
 type TagConditions = {
   includeConditions: SQL[];
@@ -107,6 +108,17 @@ function isEmptyGuardCondition(condition: SQL): boolean {
   }
 }
 
+function expectValidationBuildError(
+  error: unknown,
+  message: "Failed to build include tag condition" | "Failed to build exclude tag condition"
+): void {
+  expect(error).toBeInstanceOf(Error);
+  expect(error).toMatchObject({
+    message,
+    code: ErrorCode.VALIDATION_ERROR,
+  });
+}
+
 describe("PlaylistController FTS empty-guard", () => {
   let mockDb: ReturnType<typeof createMockDb>;
   let controller: PlaylistControllerInternals;
@@ -138,14 +150,73 @@ describe("PlaylistController FTS empty-guard", () => {
     activeDb = null;
   });
 
-  it("returns 1 = 0 when posts_fts is empty", () => {
+  it("builds MATCH when posts_fts is empty (no content-empty short-circuit)", () => {
     const conditions = controller.buildSmartPlaylistTagConditions({
       tags: [{ tag: "test_tag", type: "include" }],
       provider: "rule34",
     });
 
     expect(conditions.includeConditions).toHaveLength(1);
-    expect(isEmptyGuardCondition(conditions.includeConditions[0])).toBe(true);
+    expect(isEmptyGuardCondition(conditions.includeConditions[0])).toBe(false);
+  });
+
+  it("throws VALIDATION_ERROR when include tag condition build fails", () => {
+    let thrown: unknown;
+    try {
+      controller.buildSmartPlaylistTagConditions({
+        tags: [{ tag: "*", type: "include" }],
+        provider: "rule34",
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expectValidationBuildError(thrown, "Failed to build include tag condition");
+  });
+
+  it("throws VALIDATION_ERROR when exclude tag condition build fails", () => {
+    let thrown: unknown;
+    try {
+      controller.buildSmartPlaylistTagConditions({
+        tags: [{ tag: "bad@tag", type: "exclude" }],
+        provider: "rule34",
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expectValidationBuildError(thrown, "Failed to build exclude tag condition");
+  });
+
+  it("resolvePlaylistPosts propagates include tag build failure (not a post list)", async () => {
+    const { db } = mockDb;
+    db.insert(playlists)
+      .values({
+        name: "Invalid include tags",
+        isSmart: true,
+        queryJson: JSON.stringify({
+          tags: [{ tag: "*", type: "include" }],
+          provider: "rule34",
+        }),
+        querySchemaVersion: 1,
+        iconName: "",
+      })
+      .run();
+    const playlist = db.select({ id: playlists.id }).from(playlists).all()[0];
+    if (playlist === undefined) {
+      throw new Error("Failed to insert playlist");
+    }
+
+    const event = {} as IpcMainInvokeEvent;
+    let thrown: unknown;
+    try {
+      await controller.resolvePlaylistPosts(event, {
+        playlistId: playlist.id,
+        page: 1,
+        limit: 50,
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expectValidationBuildError(thrown, "Failed to build include tag condition");
   });
 
   it("builds MATCH and resolve returns three posts for an existing tag", async () => {

@@ -1,7 +1,11 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { createMockDb } from "../../helpers/mock-db";
 import { artists } from "../../../src/main/db/schema";
+
+const { rebuildFtsIndexMock } = vi.hoisted(() => ({
+  rebuildFtsIndexMock: vi.fn(),
+}));
 
 vi.mock("electron", () => ({
   app: {
@@ -28,7 +32,15 @@ vi.mock("electron-log", () => ({
   },
 }));
 
-import { resetStaleSyncingArtists } from "../../../src/main/db/client";
+vi.mock("../../../src/main/db/fts-triggers", () => ({
+  ensureFtsTriggers: vi.fn(() => ({ recreated: [] })),
+  rebuildFtsIndex: rebuildFtsIndexMock,
+}));
+
+import {
+  recoverAfterRecreatedFtsTriggers,
+  resetStaleSyncingArtists,
+} from "../../../src/main/db/client";
 
 describe("resetStaleSyncingArtists (hard-kill recovery)", () => {
   let mockDb: ReturnType<typeof createMockDb> | null = null;
@@ -127,5 +139,77 @@ describe("resetStaleSyncingArtists (hard-kill recovery)", () => {
     expect(idle?.syncStatus).toBe("idle");
     expect(idle?.lastError).toBeNull();
     expect(idle?.lastSyncIncomplete).toBe(false);
+  });
+});
+
+describe("recoverAfterRecreatedFtsTriggers (FTS rebuild retry)", () => {
+  const RECREATED_TRIGGERS = ["posts_ai_fts_insert"] as const;
+  let mockDb: ReturnType<typeof createMockDb> | null = null;
+
+  beforeEach(() => {
+    rebuildFtsIndexMock.mockReset();
+  });
+
+  afterEach(() => {
+    try {
+      mockDb?.sqlite.close();
+    } catch {
+      // ignore
+    }
+    mockDb = null;
+  });
+
+  it("throws when rebuildFtsIndex fails twice (no silent swallow)", () => {
+    mockDb = createMockDb();
+    const sqlite = mockDb.sqlite;
+    const firstError = new Error("rebuild attempt 1 failed");
+    const secondError = new Error("rebuild attempt 2 failed");
+    rebuildFtsIndexMock
+      .mockImplementationOnce(() => {
+        throw firstError;
+      })
+      .mockImplementationOnce(() => {
+        throw secondError;
+      });
+
+    expect(() =>
+      recoverAfterRecreatedFtsTriggers(sqlite, [...RECREATED_TRIGGERS])
+    ).toThrow(secondError);
+
+    expect(rebuildFtsIndexMock).toHaveBeenCalledTimes(2);
+    expect(rebuildFtsIndexMock).toHaveBeenNthCalledWith(1, sqlite);
+    expect(rebuildFtsIndexMock).toHaveBeenNthCalledWith(2, sqlite);
+  });
+
+  it("succeeds when first rebuild fails and retry succeeds", () => {
+    mockDb = createMockDb();
+    const sqlite = mockDb.sqlite;
+    rebuildFtsIndexMock
+      .mockImplementationOnce(() => {
+        throw new Error("transient rebuild failure");
+      })
+      .mockImplementationOnce(() => {
+        // success
+      });
+
+    expect(() =>
+      recoverAfterRecreatedFtsTriggers(sqlite, [...RECREATED_TRIGGERS])
+    ).not.toThrow();
+
+    expect(rebuildFtsIndexMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("succeeds on first rebuild without a second call", () => {
+    mockDb = createMockDb();
+    const sqlite = mockDb.sqlite;
+    rebuildFtsIndexMock.mockImplementation(() => {
+      // success
+    });
+
+    expect(() =>
+      recoverAfterRecreatedFtsTriggers(sqlite, [...RECREATED_TRIGGERS])
+    ).not.toThrow();
+
+    expect(rebuildFtsIndexMock).toHaveBeenCalledTimes(1);
   });
 });

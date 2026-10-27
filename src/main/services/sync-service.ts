@@ -40,6 +40,18 @@ const CHUNK_SIZE = 75;
 const MAX_PAGES_SAFETY_LIMIT = 1000;
 const SYNC_CANCEL_POLL_MS = 50;
 
+/** Emitted on SYNC.ERROR when Sync All rebuildFtsIndex fails (triggers left dropped). */
+const SYNC_ALL_FTS_REBUILD_FAILED_MESSAGE =
+  "FTS index rebuild failed; search uses slower fallback until RuleDesk restarts and rebuilds the index";
+
+/** Emitted on SYNC.ERROR when rebuild succeeded but ensureFtsTriggers failed. */
+const SYNC_ALL_FTS_ENSURE_FAILED_MESSAGE =
+  "FTS trigger restore failed; search may be incomplete until restart";
+
+/** Emitted on SYNC.ERROR when Sync All finally cannot open SQLite for FTS teardown. */
+const SYNC_ALL_FTS_SQLITE_UNAVAILABLE_MESSAGE =
+  "FTS index restore failed; search may be incomplete until restart";
+
 type DecryptedSettings = { userId: string; apiKey: string };
 
 const ARTIST_SYNC_STATUS = {
@@ -678,21 +690,70 @@ export class SyncService {
         );
       }
     } finally {
+      if (syncAllFtsWindowOpen) {
+        try {
+          const sqlite = getSqliteInstance();
+
+          let rebuildOk = false;
+          try {
+            logger.info(
+              "SyncService: Sync All — rebuilding FTS index and restoring triggers once"
+            );
+            rebuildFtsIndex(sqlite);
+            rebuildOk = true;
+          } catch (e) {
+            logger.error("SyncService: Sync All — rebuildFtsIndex failed", e);
+            // Do NOT call ensureFtsTriggers here. MATCH guards key on trigger
+            // presence (areRuntimeDroppableFtsTriggersPresent): restoring
+            // triggers over a stale/partial index would silently run wrong
+            // MATCH. Leaving them dropped routes smart-playlist / AI filter to
+            // posts.tags fallback in-session, and the next start sees missing
+            // triggers → client.ts recoverAfterRecreatedFtsTriggers (rebuild
+            // with retry, else fatal) — same outcome as single-artist backfill
+            // throwing before ensureFtsTriggers.
+            logger.error(SYNC_ALL_FTS_REBUILD_FAILED_MESSAGE);
+            this.sendEvent(
+              IPC_CHANNELS.SYNC.ERROR,
+              SYNC_ALL_FTS_REBUILD_FAILED_MESSAGE
+            );
+          }
+
+          if (rebuildOk) {
+            try {
+              ensureFtsTriggers(sqlite);
+            } catch (e) {
+              logger.error(
+                "SyncService: Sync All — ensureFtsTriggers failed",
+                e
+              );
+              logger.error(SYNC_ALL_FTS_ENSURE_FAILED_MESSAGE);
+              this.sendEvent(
+                IPC_CHANNELS.SYNC.ERROR,
+                SYNC_ALL_FTS_ENSURE_FAILED_MESSAGE
+              );
+            }
+          }
+        } catch (e) {
+          logger.error(
+            "SyncService: Sync All — FTS restore could not open SQLite",
+            e
+          );
+          this.sendEvent(
+            IPC_CHANNELS.SYNC.ERROR,
+            SYNC_ALL_FTS_SQLITE_UNAVAILABLE_MESSAGE
+          );
+        }
+      }
+
       try {
         const sqlite = getSqliteInstance();
-        if (syncAllFtsWindowOpen) {
-          logger.info(
-            "SyncService: Sync All — rebuilding FTS index and restoring triggers once"
-          );
-          rebuildFtsIndex(sqlite);
-          ensureFtsTriggers(sqlite);
-        }
         // PRAGMA/VACUUM: no Drizzle equivalent, raw SQL required
         sqlite.exec("PRAGMA wal_checkpoint(TRUNCATE);");
         logger.info("SyncService: WAL checkpoint truncated.");
       } catch (e) {
-        logger.warn("SyncService: Sync All FTS restore / WAL checkpoint failed", e);
+        logger.warn("SyncService: WAL checkpoint failed", e);
       }
+
       this.syncAllOwnsFtsLifecycle = false;
       this.sendEvent(IPC_CHANNELS.SYNC.END);
     }
