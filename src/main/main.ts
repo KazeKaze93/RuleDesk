@@ -72,6 +72,10 @@ import {
   readMinimizeToTrayEnabled,
   revealMainWindow,
 } from "./lib/tray-window-lifecycle";
+import {
+  attachWebContentsNavigationGuards,
+  resolveAllowedRendererOrigin,
+} from "./lib/navigation-guard";
 import { getBackupDirectory, getDatabasePaths, getLegacyNeutralUserDataDir } from "./db/paths";
 import { migrateBackupDirectory } from "./db/backup-dir-migrate";
 import {
@@ -278,11 +282,20 @@ if (!gotTheLock) {
     });
   }
 
+  // Before any BrowserWindow: deny popups + off-origin navigations for every webContents.
+  const allowedRendererOrigin = resolveAllowedRendererOrigin();
+  app.on("web-contents-created", (_event, contents) => {
+    attachWebContentsNavigationGuards(contents, allowedRendererOrigin);
+  });
+
   app.on("ready", () => {
     // Set app user model ID for Windows taskbar (helps with icon display)
     if (process.platform === "win32") {
       app.setAppUserModelId("com.kaze.ruledesk");
     }
+    logger.info(
+      `[Main] Renderer navigation allow-origin: ${allowedRendererOrigin}`
+    );
     void initializeAppAndWindow().catch((error: unknown) => {
       logger.error("[Main] Failed to initialize app on ready:", error);
     });
@@ -562,6 +575,8 @@ async function initializeAppAndWindow() {
         nodeIntegration: false,
         preload: path.join(__dirname, "../preload/bridge.cjs"),
         sandbox: true,
+        // Explicit: keep Chromium web security (same-origin / CORS) enabled.
+        webSecurity: true,
       },
     });
 
