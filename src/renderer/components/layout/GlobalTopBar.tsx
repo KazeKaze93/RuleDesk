@@ -17,8 +17,8 @@ import {
 } from "../ui/popover";
 import {
   buildApiQueryString,
+  getSourceOptionsForPath,
   getTopBarChrome,
-  sourceAppliesToPath,
   useSearchStore,
   type TabType,
 } from "../../store/searchStore";
@@ -114,8 +114,8 @@ export const GlobalTopBar = () => {
   const filters = useSearchStore((state) => state.filters);
 
   const chrome = useMemo(() => getTopBarChrome(activeTab), [activeTab]);
-  const sourceApplies = useMemo(
-    () => sourceAppliesToPath(location.pathname),
+  const sourceOptions = useMemo(
+    () => getSourceOptionsForPath(location.pathname),
     [location.pathname]
   );
 
@@ -123,10 +123,16 @@ export const GlobalTopBar = () => {
     let count = 0;
     if (filters.aiFilter !== "all") count++;
     if (filters.mediaType !== "all") count++;
-    // Keep filters.source stored when Source is hidden; only omit it from the badge.
-    if (sourceApplies && filters.source !== "all") count++;
+    // Keep filters.source stored when unavailable on this route; only count when
+    // the current Source option is actually offered (and not "all").
+    if (
+      filters.source !== "all" &&
+      sourceOptions.includes(filters.source)
+    ) {
+      count++;
+    }
     return count;
-  }, [filters, sourceApplies]);
+  }, [filters, sourceOptions]);
 
   useEffect(() => {
     setActiveTab(resolveTabFromPath(location.pathname));

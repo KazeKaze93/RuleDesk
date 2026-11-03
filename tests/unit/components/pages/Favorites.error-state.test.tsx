@@ -77,6 +77,11 @@ vi.mock("@/store/viewerStore", () => ({
 
 vi.mock("@/store/searchStore", () => ({
   buildBooruTagListForIpc: () => [],
+  DEFAULT_FILTERS: {
+    aiFilter: "all",
+    mediaType: "all",
+    source: "all",
+  },
   useSearchStore: (selector: (state: {
     includeTags: unknown[];
     excludeTags: unknown[];
@@ -84,7 +89,7 @@ vi.mock("@/store/searchStore", () => ({
     viewType: string;
     filters: { aiFilter: string; mediaType: string };
     clearTagChips: unknown;
-    resetFilters: unknown;
+    setFilters: unknown;
   }) => unknown) =>
     selector({
       includeTags: [],
@@ -93,7 +98,7 @@ vi.mock("@/store/searchStore", () => ({
       viewType: "grid",
       filters: { aiFilter: "all", mediaType: "all" },
       clearTagChips: vi.fn(),
-      resetFilters: vi.fn(),
+      setFilters: vi.fn(),
     }),
 }));
 

@@ -7,6 +7,7 @@ import {
   buildRemoteAiFilterTagInjection,
   buildRemoteBooruTagListForIpc,
   buildRemoteMediaTypeTagInjection,
+  getSourceOptionsForPath,
   parseSearchQuery,
   useSearchStore,
 } from "@/store/searchStore";
@@ -17,6 +18,31 @@ vi.mock("electron-log/renderer", () => ({
     warn: vi.fn(),
   },
 }));
+
+describe("getSourceOptionsForPath", () => {
+  it("returns all three Source options on Browse", () => {
+    expect(getSourceOptionsForPath("/browse")).toEqual([
+      "all",
+      "favorites",
+      "subscriptions",
+    ]);
+  });
+
+  it("returns All and Favorites on artist gallery (no Since tracked)", () => {
+    expect(getSourceOptionsForPath("/artist/1")).toEqual([
+      "all",
+      "favorites",
+    ]);
+  });
+
+  it("returns no Source options on routes where Source is hidden", () => {
+    expect(getSourceOptionsForPath("/tracked")).toEqual([]);
+    expect(getSourceOptionsForPath("/favorites")).toEqual([]);
+    expect(getSourceOptionsForPath("/updates")).toEqual([]);
+    expect(getSourceOptionsForPath("/playlists")).toEqual([]);
+    expect(getSourceOptionsForPath("/settings")).toEqual([]);
+  });
+});
 
 describe("searchStore parseSearchQuery", () => {
   it("splits include and exclude tags", () => {

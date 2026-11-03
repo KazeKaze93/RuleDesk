@@ -14,6 +14,8 @@ type SourceValue = "all" | "favorites" | "subscriptions";
 const DISABLED_SOURCE_TOOLTIP =
   "Enter at least one tag to search local favorites / posts since tracking";
 
+const SOURCE_VALUE_ALL: SourceValue = "all";
+
 function isSourceValue(v: string): v is SourceValue {
   return v === "all" || v === "favorites" || v === "subscriptions";
 }
@@ -22,6 +24,7 @@ interface SourceSwitcherProps {
   value: SourceValue;
   onValueChange: (value: SourceValue) => void;
   hasActiveSearch: boolean;
+  options: readonly SourceValue[];
 }
 
 interface GatedSourceItemProps {
@@ -76,12 +79,18 @@ export const SourceSwitcher: React.FC<SourceSwitcherProps> = ({
   value,
   onValueChange,
   hasActiveSearch,
+  options,
 }) => {
+  const displayValue = options.includes(value) ? value : SOURCE_VALUE_ALL;
+  const showAll = options.includes("all");
+  const showFavorites = options.includes("favorites");
+  const showSubscriptions = options.includes("subscriptions");
+
   return (
     <TooltipProvider delayDuration={200}>
       <ToggleGroup
         type="single"
-        value={value}
+        value={displayValue}
         onValueChange={(val) => {
           const stringVal = typeof val === "string" ? val : val[0] || "";
           if (stringVal && isSourceValue(stringVal)) onValueChange(stringVal);
@@ -91,28 +100,34 @@ export const SourceSwitcher: React.FC<SourceSwitcherProps> = ({
         className="w-full"
         aria-label="Source filter"
       >
-        <ToggleGroupItem
-          value="all"
-          aria-label="All sources"
-          className="flex-1 gap-2"
-        >
-          <Grid3x3 className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-xs">All</span>
-        </ToggleGroupItem>
-        <GatedSourceItem
-          value="favorites"
-          label="Favorites"
-          ariaLabel="Favorites"
-          icon={<Heart className="w-3.5 h-3.5 shrink-0" />}
-          enabled={hasActiveSearch}
-        />
-        <GatedSourceItem
-          value="subscriptions"
-          label="Since tracked"
-          ariaLabel="Since tracked"
-          icon={<Users className="w-3.5 h-3.5 shrink-0" />}
-          enabled={hasActiveSearch}
-        />
+        {showAll ? (
+          <ToggleGroupItem
+            value="all"
+            aria-label="All sources"
+            className="flex-1 gap-2"
+          >
+            <Grid3x3 className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-xs">All</span>
+          </ToggleGroupItem>
+        ) : null}
+        {showFavorites ? (
+          <GatedSourceItem
+            value="favorites"
+            label="Favorites"
+            ariaLabel="Favorites"
+            icon={<Heart className="w-3.5 h-3.5 shrink-0" />}
+            enabled={hasActiveSearch}
+          />
+        ) : null}
+        {showSubscriptions ? (
+          <GatedSourceItem
+            value="subscriptions"
+            label="Since tracked"
+            ariaLabel="Since tracked"
+            icon={<Users className="w-3.5 h-3.5 shrink-0" />}
+            enabled={hasActiveSearch}
+          />
+        ) : null}
       </ToggleGroup>
     </TooltipProvider>
   );

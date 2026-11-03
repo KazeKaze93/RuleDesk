@@ -50,30 +50,54 @@ export function getTopBarChrome(tab: TabType | null): TopBarChromeFlags {
   return TOP_BAR_CHROME_BY_TAB[tab];
 }
 
-/**
- * Whether the Source filter (All / Favorites / Since tracked) applies on this route.
- * Pathname-based on purpose: resolveTabFromPath maps both /tracked and /artist/:id to
- * tab "tracked", but ArtistGallery still reads filters.source — a tab-only gate would
- * hide Source on artist pages incorrectly.
- */
-export function sourceAppliesToPath(pathname: string): boolean {
-  if (pathname === "/browse") {
-    return true;
-  }
-  if (pathname.startsWith("/artist/")) {
-    return true;
-  }
-  return false;
-}
 type SortOrder = "asc" | "desc";
 type MediaType = "all" | "images" | "videos";
-type SourceType = "all" | "favorites" | "subscriptions";
+export type SourceType = "all" | "favorites" | "subscriptions";
 type ViewType = "grid" | "masonry";
 type AiFilterType = "all" | "hide" | "only";
 interface PostFilters {
   aiFilter: AiFilterType;
   mediaType: MediaType;
   source: SourceType;
+}
+
+/**
+ * Source switcher options for Browse (All / Favorites / Since tracked).
+ * Pathname-based on purpose: resolveTabFromPath maps both /tracked and /artist/:id to
+ * tab "tracked", but ArtistGallery still reads filters.source — a tab-only gate would
+ * hide Source on artist pages incorrectly.
+ */
+const SOURCE_OPTIONS_BROWSE = [
+  "all",
+  "favorites",
+  "subscriptions",
+] as const satisfies readonly SourceType[];
+
+/**
+ * Artist gallery Source options. ArtistGallery passes isFavorited for Favorites but
+ * does not pass sinceTracking (see ArtistGallery.tsx) — Since tracked would be dead UI.
+ */
+const SOURCE_OPTIONS_ARTIST = [
+  "all",
+  "favorites",
+] as const satisfies readonly SourceType[];
+
+const SOURCE_OPTIONS_NONE = [] as const satisfies readonly SourceType[];
+
+/**
+ * Which Source filter options apply on this route.
+ * Empty = hide the Source section. Does not clear stored filters.source.
+ */
+export function getSourceOptionsForPath(
+  pathname: string
+): readonly SourceType[] {
+  if (pathname === "/browse") {
+    return SOURCE_OPTIONS_BROWSE;
+  }
+  if (pathname.startsWith("/artist/")) {
+    return SOURCE_OPTIONS_ARTIST;
+  }
+  return SOURCE_OPTIONS_NONE;
 }
 
 /**
@@ -300,7 +324,7 @@ export interface SearchState {
   toggleIsRandom: () => void;
 }
 
-const DEFAULT_FILTERS: PostFilters = {
+export const DEFAULT_FILTERS: PostFilters = {
   aiFilter: "all",
   mediaType: "all",
   source: "all",

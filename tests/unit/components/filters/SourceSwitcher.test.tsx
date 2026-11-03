@@ -7,19 +7,55 @@ afterEach(() => {
   cleanup();
 });
 
+const BROWSE_OPTIONS = ["all", "favorites", "subscriptions"] as const;
+const ARTIST_OPTIONS = ["all", "favorites"] as const;
+
 describe("SourceSwitcher", () => {
-  it("renders All, Favorites, and Since tracked options", () => {
+  it("renders All, Favorites, and Since tracked when options include all three", () => {
     render(
       <SourceSwitcher
         value="all"
         onValueChange={vi.fn()}
         hasActiveSearch={true}
+        options={BROWSE_OPTIONS}
       />
     );
 
     expect(screen.getByRole("button", { name: /all/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /favorites/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /since tracked/i })).toBeTruthy();
+  });
+
+  it("renders only All and Favorites when options omit subscriptions", () => {
+    render(
+      <SourceSwitcher
+        value="all"
+        onValueChange={vi.fn()}
+        hasActiveSearch={true}
+        options={ARTIST_OPTIONS}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /all/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /favorites/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /since tracked/i })).toBeNull();
+  });
+
+  it("shows All visually when value is not in options without calling onValueChange", () => {
+    const onValueChange = vi.fn();
+    render(
+      <SourceSwitcher
+        value="subscriptions"
+        onValueChange={onValueChange}
+        hasActiveSearch={true}
+        options={ARTIST_OPTIONS}
+      />
+    );
+
+    const all = screen.getByRole("button", { name: /all/i });
+    expect(all.getAttribute("data-state")).toBe("on");
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /since tracked/i })).toBeNull();
   });
 
   it('calls onValueChange with "favorites" when that option is clicked', () => {
@@ -29,6 +65,7 @@ describe("SourceSwitcher", () => {
         value="all"
         onValueChange={onValueChange}
         hasActiveSearch={true}
+        options={BROWSE_OPTIONS}
       />
     );
 
@@ -44,6 +81,7 @@ describe("SourceSwitcher", () => {
         value="all"
         onValueChange={onValueChange}
         hasActiveSearch={true}
+        options={BROWSE_OPTIONS}
       />
     );
 
@@ -59,6 +97,7 @@ describe("SourceSwitcher", () => {
         value="all"
         onValueChange={onValueChange}
         hasActiveSearch={true}
+        options={BROWSE_OPTIONS}
       />
     );
 
@@ -73,6 +112,7 @@ describe("SourceSwitcher", () => {
         value="all"
         onValueChange={vi.fn()}
         hasActiveSearch={false}
+        options={BROWSE_OPTIONS}
       />
     );
 
@@ -98,6 +138,7 @@ describe("SourceSwitcher", () => {
         value="all"
         onValueChange={onValueChange}
         hasActiveSearch={false}
+        options={BROWSE_OPTIONS}
       />
     );
 
@@ -112,6 +153,7 @@ describe("SourceSwitcher", () => {
         value="all"
         onValueChange={vi.fn()}
         hasActiveSearch={true}
+        options={BROWSE_OPTIONS}
       />
     );
 
@@ -131,6 +173,7 @@ describe("SourceSwitcher", () => {
         value="all"
         onValueChange={vi.fn()}
         hasActiveSearch={true}
+        options={BROWSE_OPTIONS}
       />
     );
 

@@ -240,7 +240,6 @@ export const ViewerContent = ({
             }}
             className="text-white rounded-full hover:bg-white/10"
             aria-label={post.isViewed ? "Viewed" : "Mark as viewed"}
-            aria-pressed={post.isViewed}
             title={post.isViewed ? "Viewed (V)" : "Mark as viewed (V)"}
           >
             <Eye

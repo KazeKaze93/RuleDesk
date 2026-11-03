@@ -16,7 +16,11 @@ import {
   resolveFavoritesEmptyKind,
 } from "../../lib/favorites-empty";
 import { useViewerStore } from "../../store/viewerStore";
-import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
+import {
+  buildBooruTagListForIpc,
+  DEFAULT_FILTERS,
+  useSearchStore,
+} from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import type { Post } from "@shared/types/db";
@@ -84,7 +88,7 @@ export const Favorites = () => {
   const includeTags = useSearchStore((state) => state.includeTags);
   const excludeTags = useSearchStore((state) => state.excludeTags);
   const clearTagChips = useSearchStore((state) => state.clearTagChips);
-  const resetFilters = useSearchStore((state) => state.resetFilters);
+  const setFilters = useSearchStore((state) => state.setFilters);
   const tags = useMemo(
     () => buildBooruTagListForIpc(includeTags, excludeTags),
     [includeTags, excludeTags]
@@ -127,8 +131,11 @@ export const Favorites = () => {
 
   const handleClearFavoritesFilters = useCallback(() => {
     clearTagChips();
-    resetFilters();
-  }, [clearTagChips, resetFilters]);
+    setFilters({
+      aiFilter: DEFAULT_FILTERS.aiFilter,
+      mediaType: DEFAULT_FILTERS.mediaType,
+    });
+  }, [clearTagChips, setFilters]);
 
   const {
     data,

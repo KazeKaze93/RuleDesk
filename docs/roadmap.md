@@ -48,7 +48,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ Global top bar exists and is used across core pages; global sync busy state is the Sidebar sync indicator.
 - ✅ `FiltersPanel`: AI, media, source; wired to `searchStore` and post pipelines.
-- ✅ **Browse → Source (Favorites / Since tracked):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Panel label is **Since tracked** (internal value still `subscriptions`). Local AI/media filters run in SQL before `LIMIT`. **Since tracked** is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)). Distinct from [tag-combination subscriptions](#closed-by-design-not-backlog) (closed — superseded by smart playlists). Source UI is shown only on `/browse` and `/artist/:id` (`sourceAppliesToPath`); hidden on Tracked list / Favorites / Updates / Playlists without clearing stored `filters.source`.
+- ✅ **Browse → Source (Favorites / Since tracked):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Panel label is **Since tracked** (internal value still `subscriptions`). Local AI/media filters run in SQL before `LIMIT`. **Since tracked** is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)). Distinct from [tag-combination subscriptions](#closed-by-design-not-backlog) (closed — superseded by smart playlists). Source options come from `getSourceOptionsForPath`: **Since tracked** only on `/browse`; `/artist/:id` shows All + Favorites only (ArtistGallery does not pass `sinceTracking`); hidden on Tracked list / Favorites / Updates / Playlists without clearing stored `filters.source`.
 - ✅ Search is chip-based and supports include/exclude, OR-groups, wildcard/fuzzy token forms (`*`, `~`) in query tokens.
 
 ### B. Viewer and Gallery Polish - High Priority
@@ -388,7 +388,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 
 | Topic | Status |
 |-------|--------|
-| **Browse Source Since tracked** (panel label; value `subscriptions`) and Favorites | Requires a **non-empty tag query** in `SourceSwitcher` so those modes are selected in the context of a search. Local results come from SQL (`isFavorited` / `sinceTracking`) with AI/media applied before pagination. **Since tracked** is **sinceTracking-only** (join by artist + publish date), not tag-intersection with tracked artist names. Source UI only on `/browse` and `/artist/:id`. **Working as designed.** Distinct from tag-combination subscriptions (closed below). |
+| **Browse Source Since tracked** (panel label; value `subscriptions`) and Favorites | Requires a **non-empty tag query** in `SourceSwitcher` so those modes are selected in the context of a search. Local results come from SQL (`isFavorited` / `sinceTracking`) with AI/media applied before pagination. **Since tracked** is **sinceTracking-only** (join by artist + publish date), not tag-intersection with tracked artist names. **Since tracked** only on `/browse`; artist gallery Source is All + Favorites only. **Working as designed.** Distinct from tag-combination subscriptions (closed below). |
 | **tag-combination subscriptions feature/table** | **Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit).** Docs never defined positive behavior (only “not Browse Source Since tracked”); Features.md / Product_Strategy.md had no entry. Tag-combo follow behavior is already covered by smart playlists — closed as duplicate, not as an open gap. |
 | **Masonry vs grid** | Two **first-class** view toggles. No silent fallback; no open “masonry not implemented” item. |
 | **Viewer tags / progressive cards** | Shipped (`TagsDrawer`, `PostCard`). |
@@ -410,6 +410,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | Area | What is still open |
 |------|--------------------|
 | **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
+| **Artist gallery: Since tracked** | Since tracked (`sinceTracking` pass-through) on `/artist/:id` — needs trace of PostsController `sinceTracking` path with `artistId` before enabling the option in `getSourceOptionsForPath`. |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |

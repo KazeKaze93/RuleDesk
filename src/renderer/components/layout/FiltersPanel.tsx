@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import {
   buildApiQueryString,
+  getSourceOptionsForPath,
   getTopBarChrome,
-  sourceAppliesToPath,
   useSearchStore,
 } from "../../store/searchStore";
 import { Button } from "../ui/button";
@@ -32,10 +32,13 @@ export const FiltersPanel = () => {
   const excludeTags = useSearchStore((state) => state.excludeTags);
 
   const chrome = useMemo(() => getTopBarChrome(activeTab), [activeTab]);
-  const sourceApplies = useMemo(
-    () => sourceAppliesToPath(location.pathname),
+  const sourceOptions = useMemo(
+    () => getSourceOptionsForPath(location.pathname),
     [location.pathname]
   );
+  const showSource = sourceOptions.length > 0;
+  const sourceCountsAsActive =
+    filters.source !== "all" && sourceOptions.includes(filters.source);
 
   const apiQueryString = useMemo(
     () => buildApiQueryString(includeTags, excludeTags),
@@ -43,33 +46,34 @@ export const FiltersPanel = () => {
   );
 
   const hasActiveSearch = useMemo(() => {
-    if (!chrome.showFilters || !sourceApplies) {
+    if (!chrome.showFilters || !showSource) {
       return false;
     }
     // Browse gates Favorites / Since tracked on a non-empty query (closed by design).
-    // Artist gallery (/artist/:id) shares Source visibility but not the tag gate.
+    // Artist gallery (/artist/:id) shows Source without the tag gate.
     if (activeTab === "browse") {
       return apiQueryString.trim().length > 0;
     }
     return true;
-  }, [activeTab, apiQueryString, chrome.showFilters, sourceApplies]);
+  }, [activeTab, apiQueryString, chrome.showFilters, showSource]);
 
   const isDirty = useMemo(() => {
     return (
       filters.aiFilter !== "all" ||
       filters.mediaType !== "all" ||
-      (sourceApplies && filters.source !== "all")
+      sourceCountsAsActive
     );
-  }, [filters, sourceApplies]);
+  }, [filters.aiFilter, filters.mediaType, sourceCountsAsActive]);
 
   return (
     <div className="space-y-4">
-      {sourceApplies ? (
+      {showSource ? (
         <FilterSection label="Source" showSeparator={true}>
           <SourceSwitcher
             value={filters.source}
             onValueChange={(value) => setFilters({ source: value })}
             hasActiveSearch={hasActiveSearch}
+            options={sourceOptions}
           />
         </FilterSection>
       ) : null}
