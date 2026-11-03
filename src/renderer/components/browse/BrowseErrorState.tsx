@@ -7,6 +7,7 @@ import {
 import log from "electron-log/renderer";
 import { useNavigate } from "react-router-dom";
 import type { ProviderErrorKind } from "@shared/schemas/provider-errors";
+import { SETTINGS_ACCOUNT_DEEPLINK } from "../../lib/settings-tab";
 import { getBrowseSearchErrorPresentation } from "../../utils/provider-search-error";
 import { Button } from "../ui/button";
 
@@ -79,7 +80,7 @@ export function BrowseErrorState({
           <Button
             type="button"
             onClick={() => {
-              void Promise.resolve(navigate("/settings")).catch(
+              void Promise.resolve(navigate(SETTINGS_ACCOUNT_DEEPLINK)).catch(
                 (error: unknown) => {
                   log.error(
                     "[BrowseErrorState] Navigation to settings failed:",

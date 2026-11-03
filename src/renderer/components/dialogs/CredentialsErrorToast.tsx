@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import log from "electron-log/renderer";
 import { toast } from "sonner";
 import { RENDERER_WINDOW_EVENTS } from "@shared/constants";
+import { SETTINGS_ACCOUNT_DEEPLINK } from "../../lib/settings-tab";
 import { SYNC_ERROR_CREDENTIALS_KEYWORD } from "./syncErrorKeywords";
 
 const CREDENTIALS_TOAST_ID = "sync-credentials-error";
@@ -31,7 +32,7 @@ export const CredentialsErrorToast = () => {
         cancel: {
           label: "Open settings",
           onClick: () => {
-            void Promise.resolve(navigate("/settings")).catch(
+            void Promise.resolve(navigate(SETTINGS_ACCOUNT_DEEPLINK)).catch(
               (error: unknown) => {
                 log.error(
                   "[CredentialsErrorToast] Navigation to settings failed:",
