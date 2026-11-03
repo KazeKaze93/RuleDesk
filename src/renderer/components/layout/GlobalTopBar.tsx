@@ -18,6 +18,7 @@ import {
 import {
   buildApiQueryString,
   getTopBarChrome,
+  sourceAppliesToPath,
   useSearchStore,
   type TabType,
 } from "../../store/searchStore";
@@ -113,14 +114,19 @@ export const GlobalTopBar = () => {
   const filters = useSearchStore((state) => state.filters);
 
   const chrome = useMemo(() => getTopBarChrome(activeTab), [activeTab]);
+  const sourceApplies = useMemo(
+    () => sourceAppliesToPath(location.pathname),
+    [location.pathname]
+  );
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.aiFilter !== "all") count++;
     if (filters.mediaType !== "all") count++;
-    if (filters.source !== "all") count++;
+    // Keep filters.source stored when Source is hidden; only omit it from the badge.
+    if (sourceApplies && filters.source !== "all") count++;
     return count;
-  }, [filters]);
+  }, [filters, sourceApplies]);
 
   useEffect(() => {
     setActiveTab(resolveTabFromPath(location.pathname));

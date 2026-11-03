@@ -1,7 +1,9 @@
 import { useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import {
   buildApiQueryString,
   getTopBarChrome,
+  sourceAppliesToPath,
   useSearchStore,
 } from "../../store/searchStore";
 import { Button } from "../ui/button";
@@ -21,6 +23,7 @@ const isMediaFilterValue = (value: string): value is MediaFilterValue =>
   value === "all" || value === "images" || value === "videos";
 
 export const FiltersPanel = () => {
+  const location = useLocation();
   const filters = useSearchStore((state) => state.filters);
   const setFilters = useSearchStore((state) => state.setFilters);
   const resetFilters = useSearchStore((state) => state.resetFilters);
@@ -29,6 +32,10 @@ export const FiltersPanel = () => {
   const excludeTags = useSearchStore((state) => state.excludeTags);
 
   const chrome = useMemo(() => getTopBarChrome(activeTab), [activeTab]);
+  const sourceApplies = useMemo(
+    () => sourceAppliesToPath(location.pathname),
+    [location.pathname]
+  );
 
   const apiQueryString = useMemo(
     () => buildApiQueryString(includeTags, excludeTags),
@@ -36,34 +43,36 @@ export const FiltersPanel = () => {
   );
 
   const hasActiveSearch = useMemo(() => {
-    if (!chrome.showFilters) {
+    if (!chrome.showFilters || !sourceApplies) {
       return false;
     }
-    // Browse still gates SourceSwitcher on a non-empty query; playlists and
-    // other filter-enabled tabs keep filters usable without a query.
+    // Browse gates Favorites / Since tracked on a non-empty query (closed by design).
+    // Artist gallery (/artist/:id) shares Source visibility but not the tag gate.
     if (activeTab === "browse") {
       return apiQueryString.trim().length > 0;
     }
     return true;
-  }, [activeTab, apiQueryString, chrome.showFilters]);
+  }, [activeTab, apiQueryString, chrome.showFilters, sourceApplies]);
 
   const isDirty = useMemo(() => {
     return (
       filters.aiFilter !== "all" ||
       filters.mediaType !== "all" ||
-      filters.source !== "all"
+      (sourceApplies && filters.source !== "all")
     );
-  }, [filters]);
+  }, [filters, sourceApplies]);
 
   return (
     <div className="space-y-4">
-      <FilterSection label="Source" showSeparator={true}>
-        <SourceSwitcher
-          value={filters.source}
-          onValueChange={(value) => setFilters({ source: value })}
-          hasActiveSearch={hasActiveSearch}
-        />
-      </FilterSection>
+      {sourceApplies ? (
+        <FilterSection label="Source" showSeparator={true}>
+          <SourceSwitcher
+            value={filters.source}
+            onValueChange={(value) => setFilters({ source: value })}
+            hasActiveSearch={hasActiveSearch}
+          />
+        </FilterSection>
+      ) : null}
 
       <FilterSection label="AI Posts" showSeparator={true}>
         <FilterToggleGroup

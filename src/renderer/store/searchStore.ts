@@ -49,6 +49,22 @@ export function getTopBarChrome(tab: TabType | null): TopBarChromeFlags {
   }
   return TOP_BAR_CHROME_BY_TAB[tab];
 }
+
+/**
+ * Whether the Source filter (All / Favorites / Since tracked) applies on this route.
+ * Pathname-based on purpose: resolveTabFromPath maps both /tracked and /artist/:id to
+ * tab "tracked", but ArtistGallery still reads filters.source — a tab-only gate would
+ * hide Source on artist pages incorrectly.
+ */
+export function sourceAppliesToPath(pathname: string): boolean {
+  if (pathname === "/browse") {
+    return true;
+  }
+  if (pathname.startsWith("/artist/")) {
+    return true;
+  }
+  return false;
+}
 type SortOrder = "asc" | "desc";
 type MediaType = "all" | "images" | "videos";
 type SourceType = "all" | "favorites" | "subscriptions";
