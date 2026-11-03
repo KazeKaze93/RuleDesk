@@ -93,7 +93,7 @@ Favorites empty NONE vs FILTERED; Source pathname scope + **Since tracked** labe
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| W1 | `fix/ux-audit-wave1` | — | 🟡 open |
+| W1 | `fix/ux-audit-wave1` | [#263](https://github.com/KazeKaze93/RuleDesk/pull/263) | 🟡 open |
 
 ### DB review waves (P1)
 
