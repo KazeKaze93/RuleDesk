@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe("SourceSwitcher", () => {
-  it("renders All, Favorites, and Subscriptions options", () => {
+  it("renders All, Favorites, and Since tracked options", () => {
     render(
       <SourceSwitcher
         value="all"
@@ -19,7 +19,7 @@ describe("SourceSwitcher", () => {
 
     expect(screen.getByRole("button", { name: /all/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /favorites/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /subscriptions/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /since tracked/i })).toBeTruthy();
   });
 
   it('calls onValueChange with "favorites" when that option is clicked', () => {
@@ -37,7 +37,7 @@ describe("SourceSwitcher", () => {
     expect(onValueChange).toHaveBeenCalledWith("favorites");
   });
 
-  it('calls onValueChange with "subscriptions" when that option is clicked', () => {
+  it('calls onValueChange with "subscriptions" when Since tracked is clicked', () => {
     const onValueChange = vi.fn();
     render(
       <SourceSwitcher
@@ -47,7 +47,7 @@ describe("SourceSwitcher", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /subscriptions/i }));
+    fireEvent.click(screen.getByRole("button", { name: /since tracked/i }));
 
     expect(onValueChange).toHaveBeenCalledWith("subscriptions");
   });
@@ -67,7 +67,7 @@ describe("SourceSwitcher", () => {
     expect(onValueChange).not.toHaveBeenCalled();
   });
 
-  it("disables Favorites and Subscriptions when hasActiveSearch is false", () => {
+  it("disables Favorites and Since tracked when hasActiveSearch is false", () => {
     render(
       <SourceSwitcher
         value="all"
@@ -78,17 +78,17 @@ describe("SourceSwitcher", () => {
 
     const all = screen.getByRole("button", { name: /all/i });
     const favorites = screen.getByRole("button", { name: /favorites/i });
-    const subscriptions = screen.getByRole("button", {
-      name: /subscriptions/i,
+    const sinceTracked = screen.getByRole("button", {
+      name: /since tracked/i,
     });
 
     expect(all.hasAttribute("disabled")).toBe(false);
     expect(favorites.hasAttribute("disabled")).toBe(true);
-    expect(subscriptions.hasAttribute("disabled")).toBe(true);
+    expect(sinceTracked.hasAttribute("disabled")).toBe(true);
     expect(favorites.className).toContain("opacity-50");
     expect(favorites.className).toContain("cursor-not-allowed");
-    expect(subscriptions.className).toContain("opacity-50");
-    expect(subscriptions.className).toContain("cursor-not-allowed");
+    expect(sinceTracked.className).toContain("opacity-50");
+    expect(sinceTracked.className).toContain("cursor-not-allowed");
   });
 
   it("does not call onValueChange when a disabled option is clicked", () => {
@@ -120,7 +120,7 @@ describe("SourceSwitcher", () => {
     ).toBe(false);
     expect(
       screen
-        .getByRole("button", { name: /subscriptions/i })
+        .getByRole("button", { name: /since tracked/i })
         .hasAttribute("disabled")
     ).toBe(false);
   });
@@ -134,7 +134,7 @@ describe("SourceSwitcher", () => {
       />
     );
 
-    for (const name of [/all/i, /favorites/i, /subscriptions/i]) {
+    for (const name of [/all/i, /favorites/i, /since tracked/i]) {
       const button = screen.getByRole("button", { name });
       expect(button.className).toContain("flex-1");
       expect(button.className).toContain("gap-2");
