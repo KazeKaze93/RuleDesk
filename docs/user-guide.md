@@ -292,6 +292,8 @@ Use playlists to organize posts outside of tracked artists.
 
 **Smart collections:**
 
+Smart collections are a **live query** (local cache + booru API) evaluated each time you open them — they are not a synced artist gallery, so Sync All does not “fill” them. Newest/oldest sort follows provider post id (same as the site for that query). The **Total** figure in the header is how many posts are currently loaded in the gallery, not a full corpus count from the server.
+
 1. Open **Playlists** -> **New Playlist**
 2. Select **Smart Collection**
 3. Add include/exclude tags
@@ -364,7 +366,7 @@ On Browse **Source: All**, Videos / Images are applied in the live API search ta
 **Sort posts:**
 
 1. Use the dedicated **sort** button in the top bar (outside Filters)
-2. Click to toggle between newest-first and oldest-first where sorting is available (artist gallery and remote Browse follow provider post id; Favorites / Updates / playlists follow first-seen publish time, with post id as a stable tiebreaker)
+2. Click to toggle between newest-first and oldest-first where sorting is available (artist gallery, remote Browse, and smart collections follow provider post id; Favorites / Updates follow first-seen publish time with post id as a stable tiebreaker; manual playlists sort by date added)
 
 **Filter by tags:**
 

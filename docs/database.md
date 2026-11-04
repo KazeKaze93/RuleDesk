@@ -140,7 +140,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 
 **Unique Constraint:** `(artist_id, provider, post_id)` — post identity spans artist, provider, and remote post id. External Browse posts share `artist_id = 0` but remain distinct across providers.
 
-**Sort keys:** Provider-scoped queries (artist gallery `WHERE artist_id = ?`, remote Browse for the current provider) order by `post_id`. Cross-artist feeds without a provider filter (Favorites, Updates, playlists) order by `published_at`, then `post_id` as tiebreaker — never by bare `post_id` across providers.
+**Sort keys:** Provider-scoped queries (artist gallery `WHERE artist_id = ?`, remote Browse for the current provider, smart collections scoped by `query.provider`) order by `post_id`. Cross-artist feeds without a provider filter (Favorites, Updates, manual playlist date sort uses `playlist_entries.added_at`) order by `published_at` then `post_id` where applicable — never by bare `post_id` across providers.
 
 **Indexes:**
 
@@ -376,7 +376,7 @@ Stores playlist/collection information for curated post collections.
 | `id`          | INTEGER (PK, AutoIncrement)      | Primary key                                    |
 | `name`        | TEXT (NOT NULL)                   | Playlist display name                          |
 | `is_smart`    | INTEGER (BOOLEAN, DEFAULT 0)      | Smart playlist flag (dynamic tag-based queries) |
-| `query_json`  | TEXT (DEFAULT '')                 | JSON-encoded smart playlist query              |
+| `query_json`  | TEXT (DEFAULT '')                 | JSON-encoded smart playlist query (includes `provider`; hybrid local+remote resolve filters local rows by that provider and orders by `post_id`) |
 | `query_schema_version` | INTEGER (NOT NULL, DEFAULT 1) | Version of smart playlist query DSL for safe parsing/migrations |
 | `icon_name`   | TEXT (DEFAULT '')                 | Icon name for playlist display                 |
 | `created_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Creation time (`mode: "timestamp"` = **seconds**) |

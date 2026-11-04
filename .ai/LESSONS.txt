@@ -225,7 +225,11 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 
 ### Problem: One gallery sort key for both provider-scoped and cross-provider feeds
 **Root Cause:** Rule34 JSON API has no created_at; sync stored `change` (last edit time) into published_at and every list sorted by it, so edited posts jumped above newer uploads; upsert also overwrote published_at on resync. post_id namespaces differ per provider, so bare post_id is valid only inside one provider.
-**Invariant Rule:** Decide the provider filter first. Provider-scoped (artist `WHERE artist_id = ?`, remote Browse for current provider) → `ORDER BY post_id`. Cross-artist with no provider filter → `ORDER BY published_at`, then `post_id` (same direction). Do not re-sort remote Browse by `published_at`.
+**Invariant Rule:** Decide the provider filter first. Provider-scoped (artist `WHERE artist_id = ?`, remote Browse for current provider) → `ORDER BY post_id`. Cross-artist with no provider filter → `ORDER BY published_at`, then `post_id` (same direction). Do not re-sort remote Browse by `published_at`. Smart collections are provider-scoped by `query.provider`; filter the local hybrid leg by it and order by `post_id` (same as the site for that query).
+
+### Problem: Closing a portal modal rendered inside a card toggled bulk mode
+**Root Cause:** React synthetic events bubble through portals along the React tree, so overlay `pointerdown` reached the card's long-press handler and `pointerup` never did.
+**Invariant Rule:** Card-level pointer/click/context handlers must ignore events whose target is not DOM-contained in the card (`currentTarget.contains(target)` after `instanceof Node`). Do not “fix” by `stopPropagation` on every modal project-wide.
 
 ### Problem: Re-sync rewrote `published_at` from provider `change`
 **Root Cause:** Sync upsert `onConflictDoUpdate` set `publishedAt: excluded.published_at`, so first-seen time drifted whenever Rule34 `change` moved.
