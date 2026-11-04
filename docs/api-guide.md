@@ -1579,7 +1579,9 @@ Playlist APIs are handled by `PlaylistController` and use shared Zod schemas fro
 - `syncManualPlaylistMembership(data)` / `removePostsFromPlaylist(data)` -> Manage manual playlist entries
 - `reorderPlaylistEntries(params)` -> Persist drag-and-drop order for manual playlists
 - `getPlaylistPosts(params)` -> Fetch static playlist posts with filters/sort. When `isRandom` is true, pass optional `seed` (and reuse it on later pages) for a stable shuffle; a new seed starts a new shuffle.
-- `resolvePlaylistPosts(params)` -> Resolve static or smart playlist posts. Returns `{ posts, total }`: `posts` is the page slice (not AI-filtered); `total` is `{ count, aiCount, kind: "exact" | "lowerBound" }` for smart hybrid windows (merged local∪remote after dedupe/media/blacklist), or `null` for manual playlists / when the remote walk did not complete. `aiCount` is the number of window posts matching shared `hasAiGeneratedTag` — the gallery applies AI hide/only on the client and derives the header count from `count`/`aiCount` without re-fetching. Local `isRandom` ordering uses the same optional `seed` contract as `getPlaylistPosts` / `getPosts`. Ordered smart/hybrid walks accept optional `upperBoundPostId` (keep across pages like `seed`; omit / page 1 for a new feed snapshot).
+- `resolvePlaylistPosts(params)` -> Resolve static or smart playlist posts. Returns `{ posts, total }`: `posts` is the page slice (not AI-filtered); `total` is `{ count, aiCount, kind: "exact" | "lowerBound" }` when the hybrid remote walk has finished, or `null` for manual playlists / while the walk is still running / on unknown. `aiCount` is the number of window posts matching shared `hasAiGeneratedTag` — the gallery applies AI hide/only on the client and derives the header count from `count`/`aiCount` without re-fetching. Local `isRandom` ordering uses the same optional `seed` contract as `getPlaylistPosts` / `getPosts`. Ordered smart/hybrid walks accept optional `upperBoundPostId` on page 1 (omit / page 1 for a new feed snapshot).
+- `getPlaylistResolveTotal(params)` -> Wait for the current hybrid snapshot walk for `playlistId` (+ same `filters.mediaType` / `sortOrder` as resolve) and return the non-null window total. Does not start a second walk. Missing / superseded / released snapshot → typed `ErrorCode.SNAPSHOT_SUPERSEDED`.
+- `releasePlaylistSnapshot({ playlistId })` -> Abort and drop the hybrid snapshot for that playlist (gallery unmount).
 - `getPlaylistsContainingPost(postId, rule34PostId?)` -> Check membership for local/external posts
 - `exportPlaylist(playlistId)` / `importPlaylist()` -> JSON transfer via native file dialogs
 
@@ -1588,11 +1590,12 @@ Playlist APIs are handled by `PlaylistController` and use shared Zod schemas fro
 Smart playlists use a hybrid flow:
 
 1. Build include/exclude tag conditions from `queryJson`
-2. Query local cache (FTS5), materializing matches up to a cap so remote twins can be recognized beyond the current page prefix
-3. Query provider API (Rule34/Gelbooru) with the same fixed capped window on every page; ordered walks snapshot `upperBoundPostId` (max remote id on page 1 / request bound) and pass `id:<=N` on later pages so live feed inserts cannot shift the merge. Walk ends when the API page is short (feed exhausted → `total.kind = exact`) or when `HYBRID_REMOTE_MAX_PAGES_TO_SCAN` / materialize cap stops the walk (`lowerBound`)
-4. Collapse to `(provider, postId)` (remote rows often have `id: 0`), prefer local status, cursor-merge / slice the page with order `(sortKey, provider, postId)`; issued-key set is a size-capped uniqueness safety net. `total.count` / `total.aiCount` describe the full merged window for the snapshot (stable across pages of the same `upperBoundPostId` walk). AI hide/only stays on the renderer
+2. Query local cache (FTS5) on **every** page request (local window is not cached), materializing matches up to a cap so remote twins can be recognized beyond the current page prefix
+3. Start / reuse a bounded `HybridRemoteSnapshotStore` walk for the remote window (one active snapshot per playlist; LRU cap `MAX_HYBRID_SNAPSHOTS`, idle TTL `HYBRID_SNAPSHOT_IDLE_TTL_MS`). The walk passes `AbortSignal` into `provider.fetchPosts` (throttle priority stays `"user"`). Page 1 supersedes any prior snapshot for that playlist. Ordered walks freeze `upperBoundPostId` on the snapshot. Walk ends when the API page is short (feed exhausted → `exact`) or when `HYBRID_REMOTE_MAX_PAGES_TO_SCAN` / materialize cap stops the walk (`lowerBound`)
+4. **Ordered desc:** serve page N as soon as merge coverage on remote-so-far is enough (`postId >= lowestFetchedPostId` prefix ≥ `N × limit`), without waiting for the full walk. **Ordered asc** and **random:** wait for walk completion before returning a page. `resolvePlaylistPosts.total` is `null` until the walk finishes; the gallery then awaits `getPlaylistResolveTotal`
+5. Collapse to `(provider, postId)` (remote rows often have `id: 0`), prefer local status, reuse `mergeHybridPlaylistPage` / `summarizeHybridMergedWindow`; issued-key set lives on the snapshot. AI hide/only stays on the renderer
 
-Provider/credential failures on the remote leg throw (typed IPC error) — they are never mapped to an empty post list. Same `(page, limit, sort/seed/upperBound)` must return the same page; a sequential walk emits each `(provider, postId)` once.
+Provider/credential failures on the remote leg throw (typed IPC error) — they are never mapped to an empty post list. Aborted / superseded snapshots throw `SNAPSHOT_SUPERSEDED`, not an empty success. Same `(page, limit, sort/seed)` against one live snapshot must return the same page; a sequential walk emits each `(provider, postId)` once.
 
 **Key channels:**
 
@@ -1606,6 +1609,8 @@ Provider/credential failures on the remote leg throw (typed IPC error) — they 
 - `db:reorder-playlist-entries`
 - `db:get-playlist-posts`
 - `db:resolve-playlist-posts`
+- `db:get-playlist-resolve-total`
+- `db:release-playlist-snapshot`
 - `db:get-playlists-containing-post`
 - `db:export-playlist`
 - `db:import-playlist`

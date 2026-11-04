@@ -496,3 +496,7 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 ### Problem: IPC collapse/throttle races and wrong prod detection
 **Root Cause:** Collapse keyed only part of args (or a lossy hash of them); throttle slot reserved after await; production envelope gated on `NODE_ENV` instead of packaging.
 **Invariant Rule:** IPC collapse key = channel + full canonical serialized args (no lossy hash); reserve throttle slot before await; space mutating calls with delay (never reject); production envelope via `app.isPackaged` (not `process.env.NODE_ENV === "production"`).
+
+### Problem: smart collection page 1 waited the whole remote walk; walk was not abortable and competed with Sync on the user throttle lane
+**Root Cause:** per-request full walk without cache or AbortSignal
+**Invariant Rule:** long provider walks live in a bounded snapshot store (LRU + idle TTL), always receive an AbortSignal, are aborted on supersede/release, and pages are served from coverage, not from a fresh walk.

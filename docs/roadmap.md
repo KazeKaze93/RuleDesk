@@ -101,7 +101,8 @@ Unify `PlaylistGallery` on `useGalleryInfiniteScroll` (debounce / endReached gat
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| G | `fix/playlist-infinite-scroll` | [#265](https://github.com/KazeKaze93/RuleDesk/pull/265) | 🟡 open |
+| G | `fix/playlist-infinite-scroll` | [#265](https://github.com/KazeKaze93/RuleDesk/pull/265) | ✅ merged |
+| H | `feat/hybrid-snapshot-store` | — | 🟡 open |
 
 ### DB review waves (P1)
 
@@ -418,8 +419,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | Area | What is still open |
 |------|--------------------|
 | **Provider switch** | Dialog says "will clear all cached data", but `useCredentialsActions.changeProvider` only invalidates React Query and saves `settings.provider` — posts/artists of the old provider stay in SQLite. Needs trace: are old-provider artists/posts shown after switch. |
-| **Smart collection UX** | Header shows hybrid window Total / N+ from `resolvePlaylistPosts.total` + live-search subtitle + Refresh (`#265`). Still no indication when new remote posts appear while the gallery stays open. |
-| **Hybrid smart collection remote window** | Every page re-fetches the full remote window (measured: 3 API pages / 2818 raw posts / ~3–4.4 s per 50-post page, playlist "liz"). Candidate fix: cache the snapshot window in main per `hybridOrderedSequences` key. |
+| **Smart collection UX** | Header shows hybrid window Total / N+ (`resolvePlaylistPosts.total` or `getPlaylistResolveTotal` while the walk runs) + live-search subtitle + Refresh (`#265` / `feat/hybrid-snapshot-store`). Still no indication when new remote posts appear while the gallery stays open. |
 | **Smart collection total (XML)** | Needed only when the remote walk hits `HYBRID_REMOTE_MAX_PAGES_TO_SCAN` (total shown as lower bound). Rule34 JSON has no count; verify XML root `posts count` to upgrade lower-bound headers to exact. |
 | **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
 | **Artist gallery: Since tracked** | Since tracked (`sinceTracking` pass-through) on `/artist/:id` — needs trace of PostsController `sinceTracking` path with `artistId` before enabling the option in `getSourceOptionsForPath`. |

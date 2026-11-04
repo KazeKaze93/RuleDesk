@@ -44,6 +44,7 @@
 | `db:get-manual-playlist-membership-for-posts` | `DB.GET_MANUAL_PLAYLIST_MEMBERSHIP_FOR_POSTS` | schema: see source (`GetManualPlaylistMembershipForPostsSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlist` | `DB.GET_PLAYLIST` | `z.tuple([IdSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlist-posts` | `DB.GET_PLAYLIST_POSTS` | `z.tuple([GetPlaylistPostsSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
+| `db:get-playlist-resolve-total` | `DB.GET_PLAYLIST_RESOLVE_TOTAL` | `z.tuple([GetPlaylistResolveTotalSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlists` | `DB.GET_PLAYLISTS` | `[]` (no args) | yes | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlists-containing-post` | `DB.GET_PLAYLISTS_CONTAINING_POST` | `z.tuple([ z.number().int(), OptionalIdSchema, z.enum(PROVIDER_IDS).optional(), ])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-posts` | `DB.GET_POSTS` | `z.tuple([GetPostsSchema])` | yes | `PostsController` | Paginated posts with filters. Always limited — see MAX page size in PostsController. |
@@ -52,6 +53,7 @@
 | `db:import-playlist` | `DB.IMPORT_PLAYLIST` | `z.tuple([])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:mark-post-viewed` | `DB.MARK_VIEWED` | `z.tuple([ z.number().int(), PostDataSchema.optional(), ])` | no | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:move-posts-between-manual-playlists` | `DB.MOVE_POSTS_BETWEEN_MANUAL_PLAYLISTS` | schema: see source (`MovePostsBetweenManualPlaylistsSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
+| `db:release-playlist-snapshot` | `DB.RELEASE_PLAYLIST_SNAPSHOT` | `z.tuple([ReleasePlaylistSnapshotSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:remove-posts-from-playlist` | `DB.REMOVE_POSTS_FROM_PLAYLIST` | `z.tuple([RemovePostsFromPlaylistSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:reorder-playlist-entries` | `DB.REORDER_PLAYLIST_ENTRIES` | `z.tuple([ReorderPlaylistEntriesSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:reset-post-cache` | `DB.RESET_POST_CACHE` | `z.tuple([IdSchema])` | no | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
@@ -107,9 +109,9 @@
 
 ## Coverage
 
-- Channels in `channels.ts`: **93**
-- Channels with at least one scanned `handle` registration: **82**
-- Handler rows extracted: **82**
+- Channels in `channels.ts`: **95**
+- Channels with at least one scanned `handle` registration: **84**
+- Handler rows extracted: **84**
 
 ## Regenerating
 
