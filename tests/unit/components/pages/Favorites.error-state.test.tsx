@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { cleanup, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const refetch = vi.fn();
@@ -76,12 +77,19 @@ vi.mock("@/store/viewerStore", () => ({
 
 vi.mock("@/store/searchStore", () => ({
   buildBooruTagListForIpc: () => [],
+  DEFAULT_FILTERS: {
+    aiFilter: "all",
+    mediaType: "all",
+    source: "all",
+  },
   useSearchStore: (selector: (state: {
     includeTags: unknown[];
     excludeTags: unknown[];
     sortOrder: string;
     viewType: string;
     filters: { aiFilter: string; mediaType: string };
+    clearTagChips: unknown;
+    setFilters: unknown;
   }) => unknown) =>
     selector({
       includeTags: [],
@@ -89,6 +97,8 @@ vi.mock("@/store/searchStore", () => ({
       sortOrder: "desc",
       viewType: "grid",
       filters: { aiFilter: "all", mediaType: "all" },
+      clearTagChips: vi.fn(),
+      setFilters: vi.fn(),
     }),
 }));
 
@@ -155,7 +165,11 @@ beforeEach(() => {
 
 describe("Favorites error vs empty UI", () => {
   it("shows fullscreen GalleryLoadError and not the empty favorites copy when the query errors with no posts", () => {
-    render(<Favorites />);
+    render(
+      <MemoryRouter>
+        <Favorites />
+      </MemoryRouter>
+    );
 
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.getByText("Could not load favorites")).toBeTruthy();
@@ -192,7 +206,11 @@ describe("Favorites error vs empty UI", () => {
       refetch,
     });
 
-    render(<Favorites />);
+    render(
+      <MemoryRouter>
+        <Favorites />
+      </MemoryRouter>
+    );
 
     expect(screen.getByTestId("favorites-grid")).toBeTruthy();
     expect(screen.getByText("Could not load more favorites")).toBeTruthy();

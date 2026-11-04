@@ -239,8 +239,8 @@ export const ViewerContent = ({
               void handleMarkViewed();
             }}
             className="text-white rounded-full hover:bg-white/10"
-            aria-label={post.isViewed ? "Mark as unviewed" : "Mark as viewed"}
-            title="Mark as Viewed (V)"
+            aria-label={post.isViewed ? "Viewed" : "Mark as viewed"}
+            title={post.isViewed ? "Viewed (V)" : "Mark as viewed (V)"}
           >
             <Eye
               className={cn(

@@ -5,13 +5,22 @@ import {
   useMutation,
   InfiniteData,
 } from "@tanstack/react-query";
-import { Heart, Loader2, CheckSquare } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Heart, Loader2, CheckSquare, FilterX } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import { toast } from "sonner";
 import { hasAiGeneratedTag, isVideoPost } from "../../lib/filter-utils";
+import {
+  FAVORITES_EMPTY_KIND,
+  resolveFavoritesEmptyKind,
+} from "../../lib/favorites-empty";
 import { useViewerStore } from "../../store/viewerStore";
-import { buildBooruTagListForIpc, useSearchStore } from "../../store/searchStore";
+import {
+  buildBooruTagListForIpc,
+  DEFAULT_FILTERS,
+  useSearchStore,
+} from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
 import type { Post } from "@shared/types/db";
@@ -34,6 +43,15 @@ import { GalleryLoadError } from "../gallery/GalleryLoadError";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { POSTS_PAGE_SIZE } from "../../../shared/constants";
+
+const FAVORITES_EMPTY_NONE_TITLE = "No favorites yet";
+const FAVORITES_EMPTY_NONE_HINT =
+  "Open a post in the viewer and press F to add it to favorites.";
+const FAVORITES_EMPTY_NONE_BROWSE_LABEL = "Go to Browse";
+const FAVORITES_EMPTY_FILTERED_TITLE =
+  "No favorites match the current filters";
+const FAVORITES_EMPTY_CLEAR_FILTERS_LABEL = "Clear filters";
+const BROWSE_PATH = "/browse";
 
 const shouldIncludePostInFavoritesQueue = (
   post: Post,
@@ -66,8 +84,11 @@ const {
 
 export const Favorites = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const includeTags = useSearchStore((state) => state.includeTags);
   const excludeTags = useSearchStore((state) => state.excludeTags);
+  const clearTagChips = useSearchStore((state) => state.clearTagChips);
+  const setFilters = useSearchStore((state) => state.setFilters);
   const tags = useMemo(
     () => buildBooruTagListForIpc(includeTags, excludeTags),
     [includeTags, excludeTags]
@@ -97,6 +118,24 @@ export const Favorites = () => {
   const viewType = useSearchStore((state) => state.viewType);
   const aiFilter = useSearchStore((state) => state.filters.aiFilter);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
+
+  const hasActiveFilter =
+    includeTags.length > 0 ||
+    excludeTags.length > 0 ||
+    aiFilter !== "all" ||
+    mediaType !== "all";
+  const emptyKind = useMemo(
+    () => resolveFavoritesEmptyKind({ hasActiveFilter }),
+    [hasActiveFilter]
+  );
+
+  const handleClearFavoritesFilters = useCallback(() => {
+    clearTagChips();
+    setFilters({
+      aiFilter: DEFAULT_FILTERS.aiFilter,
+      mediaType: DEFAULT_FILTERS.mediaType,
+    });
+  }, [clearTagChips, setFilters]);
 
   const {
     data,
@@ -380,11 +419,47 @@ export const Favorites = () => {
           </div>
         ) : allPosts.length === 0 && !isFatalGalleryError ? (
           <div className="flex flex-col justify-center items-center h-full text-muted-foreground gap-4">
-            <Heart className="w-16 h-16 opacity-50" />
+            {emptyKind === FAVORITES_EMPTY_KIND.FILTERED ? (
+              <FilterX className="w-16 h-16 opacity-50" aria-hidden="true" />
+            ) : (
+              <Heart className="w-16 h-16 opacity-50" aria-hidden="true" />
+            )}
             <div className="text-center">
-              <p className="text-lg font-semibold mb-2">No favorites yet</p>
-              <p className="text-sm">Go explore and mark posts as favorites!</p>
+              {emptyKind === FAVORITES_EMPTY_KIND.FILTERED ? (
+                <p className="text-lg font-semibold mb-2">
+                  {FAVORITES_EMPTY_FILTERED_TITLE}
+                </p>
+              ) : (
+                <>
+                  <p className="text-lg font-semibold mb-2">
+                    {FAVORITES_EMPTY_NONE_TITLE}
+                  </p>
+                  <p className="text-sm">{FAVORITES_EMPTY_NONE_HINT}</p>
+                </>
+              )}
             </div>
+            {emptyKind === FAVORITES_EMPTY_KIND.FILTERED ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleClearFavoritesFilters}
+                aria-label={FAVORITES_EMPTY_CLEAR_FILTERS_LABEL}
+              >
+                <FilterX className="mr-2 w-4 h-4" />
+                {FAVORITES_EMPTY_CLEAR_FILTERS_LABEL}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => {
+                  void navigate(BROWSE_PATH);
+                }}
+              >
+                {FAVORITES_EMPTY_NONE_BROWSE_LABEL}
+              </Button>
+            )}
           </div>
         ) : !isFatalGalleryError ? (
           viewType === "masonry" ? (

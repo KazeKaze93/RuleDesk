@@ -1,6 +1,8 @@
 import { useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import {
   buildApiQueryString,
+  getSourceOptionsForPath,
   getTopBarChrome,
   useSearchStore,
 } from "../../store/searchStore";
@@ -21,6 +23,7 @@ const isMediaFilterValue = (value: string): value is MediaFilterValue =>
   value === "all" || value === "images" || value === "videos";
 
 export const FiltersPanel = () => {
+  const location = useLocation();
   const filters = useSearchStore((state) => state.filters);
   const setFilters = useSearchStore((state) => state.setFilters);
   const resetFilters = useSearchStore((state) => state.resetFilters);
@@ -29,6 +32,13 @@ export const FiltersPanel = () => {
   const excludeTags = useSearchStore((state) => state.excludeTags);
 
   const chrome = useMemo(() => getTopBarChrome(activeTab), [activeTab]);
+  const sourceOptions = useMemo(
+    () => getSourceOptionsForPath(location.pathname),
+    [location.pathname]
+  );
+  const showSource = sourceOptions.length > 0;
+  const sourceCountsAsActive =
+    filters.source !== "all" && sourceOptions.includes(filters.source);
 
   const apiQueryString = useMemo(
     () => buildApiQueryString(includeTags, excludeTags),
@@ -36,34 +46,37 @@ export const FiltersPanel = () => {
   );
 
   const hasActiveSearch = useMemo(() => {
-    if (!chrome.showFilters) {
+    if (!chrome.showFilters || !showSource) {
       return false;
     }
-    // Browse still gates SourceSwitcher on a non-empty query; playlists and
-    // other filter-enabled tabs keep filters usable without a query.
+    // Browse gates Favorites / Since tracked on a non-empty query (closed by design).
+    // Artist gallery (/artist/:id) shows Source without the tag gate.
     if (activeTab === "browse") {
       return apiQueryString.trim().length > 0;
     }
     return true;
-  }, [activeTab, apiQueryString, chrome.showFilters]);
+  }, [activeTab, apiQueryString, chrome.showFilters, showSource]);
 
   const isDirty = useMemo(() => {
     return (
       filters.aiFilter !== "all" ||
       filters.mediaType !== "all" ||
-      filters.source !== "all"
+      sourceCountsAsActive
     );
-  }, [filters]);
+  }, [filters.aiFilter, filters.mediaType, sourceCountsAsActive]);
 
   return (
     <div className="space-y-4">
-      <FilterSection label="Source" showSeparator={true}>
-        <SourceSwitcher
-          value={filters.source}
-          onValueChange={(value) => setFilters({ source: value })}
-          hasActiveSearch={hasActiveSearch}
-        />
-      </FilterSection>
+      {showSource ? (
+        <FilterSection label="Source" showSeparator={true}>
+          <SourceSwitcher
+            value={filters.source}
+            onValueChange={(value) => setFilters({ source: value })}
+            hasActiveSearch={hasActiveSearch}
+            options={sourceOptions}
+          />
+        </FilterSection>
+      ) : null}
 
       <FilterSection label="AI Posts" showSeparator={true}>
         <FilterToggleGroup

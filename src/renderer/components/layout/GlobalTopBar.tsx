@@ -17,6 +17,7 @@ import {
 } from "../ui/popover";
 import {
   buildApiQueryString,
+  getSourceOptionsForPath,
   getTopBarChrome,
   useSearchStore,
   type TabType,
@@ -113,14 +114,25 @@ export const GlobalTopBar = () => {
   const filters = useSearchStore((state) => state.filters);
 
   const chrome = useMemo(() => getTopBarChrome(activeTab), [activeTab]);
+  const sourceOptions = useMemo(
+    () => getSourceOptionsForPath(location.pathname),
+    [location.pathname]
+  );
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.aiFilter !== "all") count++;
     if (filters.mediaType !== "all") count++;
-    if (filters.source !== "all") count++;
+    // Keep filters.source stored when unavailable on this route; only count when
+    // the current Source option is actually offered (and not "all").
+    if (
+      filters.source !== "all" &&
+      sourceOptions.includes(filters.source)
+    ) {
+      count++;
+    }
     return count;
-  }, [filters]);
+  }, [filters, sourceOptions]);
 
   useEffect(() => {
     setActiveTab(resolveTabFromPath(location.pathname));

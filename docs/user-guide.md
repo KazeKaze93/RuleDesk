@@ -250,8 +250,8 @@ Each post card shows:
 - Click a chip to put it back into the input for editing; right-click still toggles include/exclude.
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
 - **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically). Repeating the same tags and page within **24 hours** uses a local SQLite cache (`SEARCH_RESULTS_CACHE_TTL_MS`) for successful pages and confirmed empty tagged pages (same TTL); untagged page-1 empties are not cached. Until that TTL expires, RuleDesk does not re-request the booru for that key.
-- **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings** when credentials are invalid).
-- Browse source modes **Favorites** / **Browse Source Subscriptions filter** (panel label **Subscriptions**) query your **local cache** (SQL `isFavorited` / `sinceTracking`) and still require a non-empty tag query in the Source switcher by design. AI and Media filters on those modes run in SQL before pagination. On **Source: All**, Rule34 AI hide/only and Rule34/Gelbooru Videos/Images are sent as booru tags in the live search (so pages stay full). Gelbooru still filters AI client-side after each page. The Browse Source Subscriptions filter means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name. Tag-combination subscriptions are **Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)** — use smart playlists for tag-combo collections.
+- **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings**, which opens **Settings → Account** via `/settings?tab=account`, when credentials are invalid).
+- Browse source modes **Favorites** / **Since tracked** (internal value still `subscriptions`; SQL `isFavorited` / `sinceTracking`) query your **local cache** and still require a non-empty tag query in the Source switcher by design. **Since tracked** is available only on **Browse**. Artist galleries (`/artist/:id`) show Source **All** and **Favorites** only (the gallery does not pass `sinceTracking`). Source is hidden on the Tracked list, Favorites, Updates, and Playlists pages. AI and Media filters on those modes run in SQL before pagination. On **Source: All**, Rule34 AI hide/only and Rule34/Gelbooru Videos/Images are sent as booru tags in the live search (so pages stay full). Gelbooru still filters AI client-side after each page. **Since tracked** means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name. Tag-combination subscriptions are **Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)** — use smart playlists for tag-combo collections.
 
 ### Favorites
 
@@ -267,6 +267,11 @@ Each post card shows:
 
 1. Click **"Favorites"** in the sidebar
 2. You'll see all your favorited posts
+
+**Empty states:**
+
+- If you have no favorites and no active filters: **No favorites yet**, with a hint that **F** favorites in the viewer and a **Go to Browse** button.
+- If tag chips or AI/Media filters hide every favorite: **No favorites match the current filters**, with **Clear filters** (clears tag chips and resets AI/Media filters). The app does not claim favorites exist when it cannot count them without an extra query.
 
 **Remove from favorites:**
 
@@ -338,9 +343,10 @@ The download will start, and you'll see a progress indicator.
 
 **Filter by source:**
 
-1. In views that show the filter panel, open the top bar **Filters** control
-2. Choose **All** (live booru API), **Favorites** (local cache), or **Subscriptions** (Browse Source Subscriptions filter: local cache, posts published after you started tracking the artist)
-3. Gallery updates automatically
+1. On **Browse** or an **artist gallery**, open the top bar **Filters** control (Source is hidden on Tracked list, Favorites, Updates, and Playlists)
+2. On **Browse**, choose **All** (live booru API), **Favorites** (local cache), or **Since tracked** (local cache: posts published after you started tracking the artist). On an **artist gallery**, only **All** and **Favorites** are shown
+3. On Browse, Favorites / Since tracked stay disabled until you enter at least one tag (tooltip explains why); the tag gate is intentional
+4. Gallery updates automatically
 
 **Filter by media type:**
 
@@ -348,7 +354,7 @@ The download will start, and you'll see a progress indicator.
 2. Choose **"Images"** or **"Videos"**
 3. Gallery updates automatically
 
-On Browse **Source: All**, Videos / Images are applied in the live API search tags (pages stay full). Local Favorites / Subscriptions still filter in SQL before pagination. If your search chips already include or exclude `video` in a way that conflicts with the filter, the app skips API injection and filters in the client instead so results are not unexplained empty.
+On Browse **Source: All**, Videos / Images are applied in the live API search tags (pages stay full). Local Favorites / Since tracked still filter in SQL before pagination. If your search chips already include or exclude `video` in a way that conflicts with the filter, the app skips API injection and filters in the client instead so results are not unexplained empty.
 
 **Filter by AI content:**
 
@@ -404,7 +410,7 @@ RuleDesk has a **sidebar** on the left side with the main sections:
 ### Sidebar Sections
 
 - **Updates** - See new posts from your tracked sources. A purple badge shows unread count and auto-refreshes periodically.
-- **Browse** - Search the live booru (Source: All) or filter cached posts (Favorites / Browse Source Subscriptions filter); infinite scroll, filters, and sorting
+- **Browse** - Search the live booru (Source: All) or filter cached posts (Favorites / Since tracked); infinite scroll, filters, and sorting
 - **Favorites** - Local favorited posts only (`isFavorited`); no booru account-favorites sync
 - **Playlists** - Manual playlists and smart collections
 - **Statistics** - Local library aggregates and charts (`/stats`)
@@ -453,6 +459,8 @@ Use the **Safe Mode** control in the app shell (`PanicButton`) to blur sensitive
 ## Settings
 
 Access Settings by clicking **"Settings"** in the sidebar.
+
+Deep links: `/settings` opens **General**. `/settings?tab=<id>` opens a specific tab (`general`, `sync`, `appearance`, `backup`, `account`, `blacklist`, `help`). Unknown or missing `tab` falls back to General. Changing tabs updates the query with history replace (Back does not replay each tab). Credential error CTAs (**Open Settings**) use `/settings?tab=account` (HashRouter: `#/settings?tab=account`).
 
 Settings are split into tabs:
 
@@ -602,9 +610,9 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 **Solutions:**
 
 1. Confirm API credentials in **Settings → Account**
-2. Clear restrictive filters (AI, media). On Browse Favorites / Browse Source Subscriptions filter those filters run in SQL before pagination. On Source: All with Rule34, AI hide/only is applied in the live API tag query (fuller pages); Gelbooru AI still filters client-side after each API page. On Source: All, Videos / Images inject the live-verified `video` / `-video` tag for Rule34 and Gelbooru (worker/client filter only on chip conflict).
-3. If using **Favorites** / **Browse Source Subscriptions filter**, add at least one tag in the search bar (required by design)
-4. If Browse shows a centered error screen (not the empty “no posts” state), use **Retry** or **Open Settings** for auth failures — messages distinguish invalid API credentials, rate limits, and network errors
+2. Clear restrictive filters (AI, media). On Browse Favorites / Since tracked those filters run in SQL before pagination. On Source: All with Rule34, AI hide/only is applied in the live API tag query (fuller pages); Gelbooru AI still filters client-side after each API page. On Source: All, Videos / Images inject the live-verified `video` / `-video` tag for Rule34 and Gelbooru (worker/client filter only on chip conflict).
+3. If using **Favorites** / **Since tracked**, add at least one tag in the search bar (required by design)
+4. If Browse shows a centered error screen (not the empty “no posts” state), use **Retry** or **Open Settings** for auth failures (opens **Settings → Account**) — messages distinguish invalid API credentials, rate limits, and network errors
 
 ### Video playback glitches / stuck loading
 

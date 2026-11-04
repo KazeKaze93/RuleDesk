@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import log from "electron-log/renderer";
 import { Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -13,6 +14,12 @@ import { SettingsHelpTab } from "./SettingsHelpTab";
 import { useTheme } from "../../hooks/useTheme";
 import { useCredentialsActions } from "../../hooks/useCredentialsActions";
 import type { ProviderId } from "../../../shared/constants";
+import {
+  SETTINGS_TAB,
+  SETTINGS_TAB_QUERY_PARAM,
+  parseSettingsTab,
+  type SettingsTab,
+} from "../../lib/settings-tab";
 
 const STATUS_FEEDBACK_TIMEOUT_MS = 5000;
 type StatusTimerKey =
@@ -26,7 +33,17 @@ type AutoBackupInterval = "never" | "daily" | "weekly";
 
 export const Settings = () => {
   const { theme, setTheme, isSaving: isThemeSaving } = useTheme();
-  const [activeTab, setActiveTab] = useState("general");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = parseSettingsTab(searchParams.get(SETTINGS_TAB_QUERY_PARAM));
+
+  const handleTabChange = (value: string): void => {
+    const nextTab: SettingsTab = parseSettingsTab(value);
+    if (nextTab === SETTINGS_TAB.GENERAL) {
+      setSearchParams({}, { replace: true });
+      return;
+    }
+    setSearchParams({ [SETTINGS_TAB_QUERY_PARAM]: nextTab }, { replace: true });
+  };
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isCheckingIntegrity, setIsCheckingIntegrity] = useState(false);
@@ -458,18 +475,18 @@ export const Settings = () => {
         icon={SettingsIcon}
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="flex w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="sync">Sync</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="backup">Backup</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="blacklist">Blacklist</TabsTrigger>
-          <TabsTrigger value="help">Help</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.GENERAL}>General</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.SYNC}>Sync</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.APPEARANCE}>Appearance</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.BACKUP}>Backup</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.ACCOUNT}>Account</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.BLACKLIST}>Blacklist</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.HELP}>Help</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general">
+        <TabsContent value={SETTINGS_TAB.GENERAL}>
           <SettingsGeneralTab
             downloadFolder={downloadFolder}
             downloadFolderStatus={downloadFolderStatus}
@@ -505,7 +522,7 @@ export const Settings = () => {
           />
         </TabsContent>
 
-        <TabsContent value="sync">
+        <TabsContent value={SETTINGS_TAB.SYNC}>
           <SettingsSyncTab
             autoSyncOnStartup={autoSyncOnStartup}
             autoSyncOnArtistAdd={autoSyncOnArtistAdd}
@@ -522,7 +539,7 @@ export const Settings = () => {
           />
         </TabsContent>
 
-        <TabsContent value="appearance">
+        <TabsContent value={SETTINGS_TAB.APPEARANCE}>
           <SettingsAppearanceTab
             theme={theme}
             isThemeSaving={isThemeSaving}
@@ -532,7 +549,7 @@ export const Settings = () => {
           />
         </TabsContent>
 
-        <TabsContent value="backup">
+        <TabsContent value={SETTINGS_TAB.BACKUP}>
           <SettingsBackupTab
             databaseLocation={databaseLocation}
             isBackingUp={isBackingUp}
@@ -558,7 +575,7 @@ export const Settings = () => {
           />
         </TabsContent>
 
-        <TabsContent value="account">
+        <TabsContent value={SETTINGS_TAB.ACCOUNT}>
           <SettingsAccountTab
             provider={provider}
             pendingProvider={pendingProvider}
@@ -598,11 +615,11 @@ export const Settings = () => {
           />
         </TabsContent>
 
-        <TabsContent value="blacklist">
+        <TabsContent value={SETTINGS_TAB.BLACKLIST}>
           <SettingsBlacklistTab />
         </TabsContent>
 
-        <TabsContent value="help">
+        <TabsContent value={SETTINGS_TAB.HELP}>
           <SettingsHelpTab />
         </TabsContent>
       </Tabs>
