@@ -1,0 +1,4 @@
+export const TRACKED_PATH = "/tracked";
+export const ADD_ARTIST_QUERY_PARAM = "add";
+export const ADD_ARTIST_QUERY_VALUE = "1";
+export const TRACKED_ADD_ARTIST_DEEPLINK = `${TRACKED_PATH}?${ADD_ARTIST_QUERY_PARAM}=${ADD_ARTIST_QUERY_VALUE}`;

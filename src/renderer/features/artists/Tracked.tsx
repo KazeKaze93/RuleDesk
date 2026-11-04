@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Users } from "lucide-react";
 import log from "electron-log/renderer";
 import { toast } from "sonner";
@@ -15,6 +15,10 @@ import { TooltipProvider } from "../../components/ui/tooltip";
 import type { TrackedArtist } from "@shared/types/bridge";
 import type { ProviderId } from "../../../shared/constants";
 import { resolveErrorMessage } from "../../utils/error-message";
+import {
+  ADD_ARTIST_QUERY_PARAM,
+  ADD_ARTIST_QUERY_VALUE,
+} from "../../lib/tracked-route";
 
 const PAGE_TITLE = "Tracked artists";
 const PAGE_SUBTITLE =
@@ -35,9 +39,11 @@ const ADD_FAILED_TOAST = "Failed to add artist";
 export const Tracked = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const addModalReturnFocusRef = useRef<HTMLElement | null>(null);
+  const addButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const {
     data: artists,
@@ -89,6 +95,32 @@ export const Tracked = () => {
     addModalReturnFocusRef.current = trigger;
     setIsAddModalOpen(true);
   };
+
+  const hasAddDeeplink =
+    searchParams.get(ADD_ARTIST_QUERY_PARAM) === ADD_ARTIST_QUERY_VALUE;
+  const isPageReady = !isLoading && !isError;
+
+  // Deeplink (e.g. from Updates empty state): open like the Add button, then drop the param.
+  // Waits for the page header so the Add button exists as the focus-return target.
+  const shouldConsumeAddDeeplink = hasAddDeeplink && isPageReady;
+  if (shouldConsumeAddDeeplink && !isAddModalOpen) {
+    setIsAddModalOpen(true);
+  }
+
+  useEffect(() => {
+    if (!shouldConsumeAddDeeplink) {
+      return;
+    }
+    addModalReturnFocusRef.current = addButtonRef.current;
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete(ADD_ARTIST_QUERY_PARAM);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [shouldConsumeAddDeeplink, setSearchParams]);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredArtists =
@@ -151,6 +183,7 @@ export const Tracked = () => {
         icon={Users}
         actions={
           <Button
+            ref={addButtonRef}
             onClick={(e) => {
               openAddModal(e.currentTarget);
             }}

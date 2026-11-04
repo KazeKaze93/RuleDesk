@@ -52,6 +52,9 @@ import { UpdatesFeedEmptyState } from "../updates/UpdatesFeedEmptyState";
 import { resolveUpdatesFeedEmptyKind } from "../../lib/updates-feed-empty";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { POSTS_PAGE_SIZE } from "../../../shared/constants";
+import { useSyncAll } from "../../hooks/useSyncAll";
+import { useDownloadAll } from "../../hooks/useDownloadAll";
+import { DownloadAllButton } from "../downloads/DownloadAllButton";
 
 const UPDATES_UNREAD_COUNT_QUERY_KEY = ["updates", "unreadCount"] as const;
 const UPDATES_TOTAL_UNREAD_QUERY_KEY = "totalUnreadCount";
@@ -179,6 +182,7 @@ export const Updates = () => {
   useReleaseRadixModalLockOnMount();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isSyncing, startSync } = useSyncAll();
   const includeTags = useSearchStore((state) => state.includeTags);
   const excludeTags = useSearchStore((state) => state.excludeTags);
   const clearTagChips = useSearchStore((state) => state.clearTagChips);
@@ -345,6 +349,19 @@ export const Updates = () => {
       return sortOrder === "desc" ? b.postId - a.postId : a.postId - b.postId;
     });
   }, [data, sortOrder, aiFilter, mediaType]);
+
+  const {
+    downloadAll,
+    cancel: cancelLoadedDownload,
+    pause: pauseLoadedDownload,
+    resume: resumeLoadedDownload,
+    isDownloading: isDownloadingLoaded,
+    isPaused: isLoadedDownloadPaused,
+    progress: loadedDownloadProgress,
+    lastFailures: loadedDownloadFailures,
+    canDownload: canDownloadLoaded,
+    loadedCount,
+  } = useDownloadAll(allPosts);
 
   useEffect(() => {
     if (!data?.pages.length) {
@@ -645,6 +662,21 @@ export const Updates = () => {
             actions={
               activeView === FEED_VIEW ? (
                 <>
+                  <DownloadAllButton
+                    onClick={() => {
+                      void downloadAll();
+                    }}
+                    onCancel={cancelLoadedDownload}
+                    onPause={pauseLoadedDownload}
+                    onResume={resumeLoadedDownload}
+                    isDownloading={isDownloadingLoaded}
+                    isPaused={isLoadedDownloadPaused}
+                    progress={loadedDownloadProgress}
+                    canDownload={canDownloadLoaded}
+                    totalLabel={loadedCount}
+                    labelMode="loaded"
+                    failures={loadedDownloadFailures}
+                  />
                   <Button
                     variant="outline"
                     size="sm"
@@ -720,9 +752,7 @@ export const Updates = () => {
             artists={artists}
             isLoading={isArtistsLoading}
             onSyncAll={() => {
-              void window.api.syncAll().catch((error: unknown) => {
-                log.error("[Updates] syncAll failed:", error);
-              });
+              void startSync();
             }}
             onViewArtist={(artist) => {
               void Promise.resolve(navigate(`/artist/${artist.id}`)).catch(
@@ -778,6 +808,10 @@ export const Updates = () => {
               <UpdatesFeedEmptyState
                 kind={emptyKind}
                 onClearFilter={() => clearTagChips()}
+                onSyncNow={() => {
+                  void startSync();
+                }}
+                isSyncing={isSyncing}
               />
             ) : !isFatalGalleryError ? (
               viewType === "masonry" ? (
