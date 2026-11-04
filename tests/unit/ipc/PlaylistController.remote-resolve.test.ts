@@ -71,7 +71,11 @@ import { PlaylistController } from "../../../src/main/ipc/controllers/PlaylistCo
 
 type ResolvePlaylistPostsPage = {
   posts: Array<{ postId: number; tags: string }>;
-  total: { count: number; kind: "exact" | "lowerBound" } | null;
+  total: {
+    count: number;
+    aiCount: number;
+    kind: "exact" | "lowerBound";
+  } | null;
 };
 
 type PlaylistControllerInternals = {
@@ -222,8 +226,32 @@ describe("PlaylistController smart remote resolve", () => {
     expect(resolved.posts).toHaveLength(3);
     // Default smart sort is publishedAt/postId desc; makePost shares one timestamp → postId desc.
     expect(resolved.posts.map((p) => p.postId)).toEqual([6, 5, 4]);
-    // Feed ended on a short API page → exact hybrid window total.
-    expect(resolved.total).toEqual({ count: 4, kind: "exact" });
+    // Feed ended on a short API page → exact hybrid window total (no AI tags in fixture).
+    expect(resolved.total).toEqual({ count: 4, aiCount: 0, kind: "exact" });
+  });
+
+  it("counts aiCount on the window but does not AI-filter page posts", async () => {
+    fetchPostsMock.mockImplementation(async () =>
+      asResult([
+        makePost(10, ["solo", "ai_generated"]),
+        makePost(11, ["solo"]),
+        makePost(12, ["solo", "ai-generated"]),
+      ])
+    );
+
+    const resolved = await controller.resolvePlaylistPosts(
+      {} as IpcMainInvokeEvent,
+      {
+        playlistId,
+        page: 1,
+        limit: 10,
+      }
+    );
+
+    expect(resolved.posts.map((p) => p.postId).sort((a, b) => a - b)).toEqual([
+      10, 11, 12,
+    ]);
+    expect(resolved.total).toEqual({ count: 3, aiCount: 2, kind: "exact" });
   });
 
   it("marks total as lowerBound when remote walk hits the scan page cap", async () => {

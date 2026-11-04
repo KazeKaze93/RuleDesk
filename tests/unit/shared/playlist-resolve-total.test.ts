@@ -8,6 +8,7 @@ describe("buildPlaylistResolveTotal", () => {
         isSmart: false,
         remoteCompleteness: "exact",
         mergedWindowCount: 10,
+        aiCount: 2,
         localHitMaterializeCap: false,
       })
     ).toBeNull();
@@ -19,9 +20,10 @@ describe("buildPlaylistResolveTotal", () => {
         isSmart: true,
         remoteCompleteness: "exact",
         mergedWindowCount: 42,
+        aiCount: 7,
         localHitMaterializeCap: false,
       })
-    ).toEqual({ count: 42, kind: "exact" });
+    ).toEqual({ count: 42, aiCount: 7, kind: "exact" });
   });
 
   it("returns lowerBound when remote hit the scan limit", () => {
@@ -30,9 +32,10 @@ describe("buildPlaylistResolveTotal", () => {
         isSmart: true,
         remoteCompleteness: "lowerBound",
         mergedWindowCount: 1000,
+        aiCount: 100,
         localHitMaterializeCap: false,
       })
-    ).toEqual({ count: 1000, kind: "lowerBound" });
+    ).toEqual({ count: 1000, aiCount: 100, kind: "lowerBound" });
   });
 
   it("returns null when remote walk failed", () => {
@@ -41,6 +44,7 @@ describe("buildPlaylistResolveTotal", () => {
         isSmart: true,
         remoteCompleteness: "failed",
         mergedWindowCount: 0,
+        aiCount: 0,
         localHitMaterializeCap: false,
       })
     ).toBeNull();
@@ -52,8 +56,9 @@ describe("buildPlaylistResolveTotal", () => {
         isSmart: true,
         remoteCompleteness: "exact",
         mergedWindowCount: 50_000,
+        aiCount: 12,
         localHitMaterializeCap: true,
       })
-    ).toEqual({ count: 50_000, kind: "lowerBound" });
+    ).toEqual({ count: 50_000, aiCount: 12, kind: "lowerBound" });
   });
 });

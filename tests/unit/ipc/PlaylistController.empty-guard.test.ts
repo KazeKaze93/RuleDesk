@@ -93,7 +93,11 @@ type PlaylistControllerInternals = {
     }
   ) => Promise<{
     posts: Array<{ postId: number; tags: string }>;
-    total: { count: number; kind: "exact" | "lowerBound" } | null;
+    total: {
+      count: number;
+      aiCount: number;
+      kind: "exact" | "lowerBound";
+    } | null;
   }>;
 };
 

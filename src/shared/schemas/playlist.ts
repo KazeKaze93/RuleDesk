@@ -318,13 +318,15 @@ export interface PlaylistExport {
 export type ResolvePlaylistPostsRequest = z.infer<typeof ResolvePlaylistPostsSchema>;
 
 /**
- * Hybrid smart-collection window total after local∪remote merge + filters.
- * `exact` — remote walk exhausted the provider feed; `lowerBound` — hit scan/materialize cap.
- * `null` — remote failed / unknown (manual playlists always null; UI uses postCount).
+ * Hybrid smart-collection window total after local∪remote merge + main filters
+ * (media/blacklist). AI is client-side; `aiCount` lets the header derive hide/only
+ * without re-walking remote. `exact` / `lowerBound` / `null` — same walk rules as before.
  */
 export const PlaylistResolveTotalSchema = z
   .object({
     count: z.number().int().nonnegative(),
+    /** Posts in the merged window that match `hasAiGeneratedTag`. */
+    aiCount: z.number().int().nonnegative(),
     kind: z.enum(["exact", "lowerBound"]),
   })
   .nullable();

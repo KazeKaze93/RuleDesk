@@ -426,32 +426,26 @@ function mergeHybridPlaylistPage(
 }
 
 /**
- * Full local∪remote window size after identity collapse + local-prefer dedupe.
+ * Full local∪remote window after identity collapse + local-prefer dedupe.
  * Unlike mergeHybridPlaylistPage.mergedCount (ordered prefix up to page*limit),
- * this is the complete snapshot window used for the header total.
+ * this is the complete snapshot window used for the header total (+ aiCount).
+ * Pages are not AI-filtered; aiCount is for the client header only.
  */
-function countHybridMergedWindow(
+function summarizeHybridMergedWindow(
   localPosts: IpcPost[],
   remotePosts: IpcPost[]
-): number {
+): { count: number; aiCount: number } {
   const localUnique = collapseHybridPostsByIdentity(localPosts, preferLocalHybridRow);
   const remoteUnique = collapseHybridPostsByIdentity(remotePosts, (a) => a);
   const remoteOnly = dedupeHybridPostsPreferLocal(localUnique, remoteUnique);
-  return localUnique.length + remoteOnly.length;
-}
-
-/** Apply the same AI hide/only predicate the renderer uses, before counting. */
-function filterHybridPostsByAi(
-  posts: IpcPost[],
-  aiFilter: "all" | "hide" | "only" | undefined
-): IpcPost[] {
-  if (aiFilter === undefined || aiFilter === "all") {
-    return posts;
+  const merged = [...localUnique, ...remoteOnly];
+  let aiCount = 0;
+  for (const post of merged) {
+    if (hasAiGeneratedTag(post.tags)) {
+      aiCount += 1;
+    }
   }
-  if (aiFilter === "hide") {
-    return posts.filter((post) => !hasAiGeneratedTag(post.tags));
-  }
-  return posts.filter((post) => hasAiGeneratedTag(post.tags));
+  return { count: merged.length, aiCount };
 }
 
 /**
@@ -2239,14 +2233,11 @@ export class PlaylistController extends BaseController {
         }
       }
 
-      const aiFilter = filters?.aiFilter;
-      const localForMerge = filterHybridPostsByAi(localPosts, aiFilter);
-      const remoteForMerge = filterHybridPostsByAi(remotePosts, aiFilter);
-
+      // Pages are not AI-filtered (client filters after flatten). aiCount is for the header.
       const { pagePosts: mergedPagePosts, localTaken, remoteTaken, mergedCount } =
         mergeHybridPlaylistPage(
-          localForMerge,
-          remoteForMerge,
+          localPosts,
+          remotePosts,
           page,
           limit,
           smartSortOrder,
@@ -2282,21 +2273,20 @@ export class PlaylistController extends BaseController {
         }
       }
 
-      const mergedWindowCount = countHybridMergedWindow(
-        localForMerge,
-        remoteForMerge
-      );
+      const windowSummary = summarizeHybridMergedWindow(localPosts, remotePosts);
       const total = buildPlaylistResolveTotal({
         isSmart: true,
         remoteCompleteness: remoteWalk.completeness,
-        mergedWindowCount,
+        mergedWindowCount: windowSummary.count,
+        aiCount: windowSummary.aiCount,
         localHitMaterializeCap: localPosts.length >= localFetchLimit,
       });
 
       log.info(
         `[PlaylistController] Hybrid search resolved ${pagePosts.length} posts for smart playlist ${playlistId} ` +
           `(localWindow: ${localPosts.length}, remoteWindow: ${remotePosts.length}, ` +
-          `mergedPrefix: ${mergedCount}, mergedWindow: ${mergedWindowCount}, ` +
+          `mergedPrefix: ${mergedCount}, mergedWindow: ${windowSummary.count}, ` +
+          `aiCount: ${windowSummary.aiCount}, ` +
           `total: ${total === null ? "null" : `${total.kind}:${total.count}`}, ` +
           `localTaken: ${localTaken}, remoteTaken: ${remoteTaken}, ` +
           `upperBound: ${remoteUpperBoundPostId ?? "none"}, page ${page})`

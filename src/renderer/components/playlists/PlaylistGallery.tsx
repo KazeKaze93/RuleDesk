@@ -108,26 +108,19 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   // on the same key, so the grid would keep the scrolled pages until refetch.
   const [refreshEpoch, setRefreshEpoch] = useState(0);
 
-  // Build filters for API call from search store state (AI counted on main).
+  // mediaType stays on main (and in queryKey). AI is client-only — toggling it must
+  // not re-walk the hybrid remote window.
   const apiFilters = useMemo(() => {
-    const result: {
-      mediaType?: "all" | "images" | "videos";
-      aiFilter?: "all" | "hide" | "only";
-    } = {};
-
+    const result: { mediaType?: "all" | "images" | "videos" } = {};
     if (mediaType && mediaType !== "all") {
       result.mediaType = mediaType;
     }
-    if (aiFilter && aiFilter !== "all") {
-      result.aiFilter = aiFilter;
-    }
-
     return result;
-  }, [mediaType, aiFilter]);
+  }, [mediaType]);
 
   const {
     data,
-    allPosts,
+    allPosts: rawPosts,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -145,7 +138,6 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       "playlist-posts",
       playlist.id,
       mediaType,
-      aiFilter,
       sortOrder,
       refreshEpoch,
     ],
@@ -162,17 +154,31 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       });
     },
     flattenPage: (page) => page.posts,
+    // Raw page length before client AI filter (pagination must not shrink with AI).
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.posts.length < POSTS_PAGE_SIZE) return undefined;
       return allPages.length + 1;
     },
   });
 
+  const allPosts = useMemo(() => {
+    let posts = rawPosts;
+    if (aiFilter === "hide") {
+      posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
+    } else if (aiFilter === "only") {
+      posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
+    }
+    return posts;
+  }, [rawPosts, aiFilter]);
+
   const smartResolveTotal: PlaylistResolveTotal =
     playlist.isSmart && data?.pages[0] !== undefined
       ? data.pages[0].total
       : null;
-  const smartTotalLabel = formatSmartPlaylistTotalLabel(smartResolveTotal);
+  const smartTotalLabel = formatSmartPlaylistTotalLabel(
+    smartResolveTotal,
+    aiFilter
+  );
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
