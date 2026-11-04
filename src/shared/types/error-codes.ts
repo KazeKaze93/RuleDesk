@@ -16,5 +16,7 @@ export enum ErrorCode {
   CANCELLED = "CANCELLED",
   /** Hybrid playlist snapshot is missing, evicted (cap / idle TTL) or replaced by a newer one. */
   SNAPSHOT_SUPERSEDED = "SNAPSHOT_SUPERSEDED",
+  /** Stored or requested provider is not in PROVIDER_IDS (e.g. legacy gelbooru after removal). */
+  UNSUPPORTED_PROVIDER = "UNSUPPORTED_PROVIDER",
   UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }

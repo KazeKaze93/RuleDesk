@@ -32,11 +32,23 @@ export const EXTERNAL_ARTIST_TAG_PREFIX = "external_";
 /**
  * Provider IDs
  *
- * Supported Booru provider identifiers.
+ * Supported Booru provider identifiers for IPC input / new API work.
  * Shared between Main and Renderer processes for type safety.
  */
-export const PROVIDER_IDS = ["rule34", "gelbooru"] as const;
-export type ProviderId = typeof PROVIDER_IDS[number];
+export const PROVIDER_IDS = ["rule34"] as const;
+export type ProviderId = (typeof PROVIDER_IDS)[number];
+
+/**
+ * Provider value as stored in SQLite (artists.provider, posts.provider,
+ * settings.provider, smart query_json). May be a legacy unsupported id
+ * (e.g. "gelbooru") after Gelbooru support removal — never silent-fallback;
+ * handle explicitly at the read/sync/query boundary.
+ */
+export type StoredProviderId = string;
+
+export function isProviderId(value: string): value is ProviderId {
+  return (PROVIDER_IDS as readonly string[]).includes(value);
+}
 
 /**
  * Artist Types

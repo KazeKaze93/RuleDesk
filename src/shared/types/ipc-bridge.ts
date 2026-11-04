@@ -9,7 +9,7 @@
 import type { Artist, Post, Playlist } from "./db";
 import type { DownloadAllResult } from "./download";
 import type { DownloadAllRequest } from "../schemas/download";
-import type { ProviderId } from "../constants";
+import type { ProviderId, StoredProviderId } from "../constants";
 import type { SearchResults } from "./providers";
 import type { AddArtistRequest, DeleteArtistResult } from "../schemas/artist";
 import type {
@@ -261,7 +261,7 @@ export interface IpcBridge {
   getPlaylistsContainingPost: (
     postId: number,
     externalPostId?: number,
-    provider?: "rule34" | "gelbooru"
+    provider?: StoredProviderId
   ) => Promise<number[]>;
   getManualPlaylistMembershipForPosts: (
     data: GetManualPlaylistMembershipForPostsRequest

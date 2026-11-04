@@ -16,6 +16,7 @@ import { PROVIDER_IDS, ARTIST_TYPES } from "../constants";
 export const AddArtistSchema = z.object({
   name: z.string().trim().min(1, "Name cannot be empty"),
   tag: z.string().trim().min(1, "Tag cannot be empty"),
+  /** Input only: supported providers. Stored artists may still hold a legacy id. */
   provider: z.enum(PROVIDER_IDS),
   type: z.enum(ARTIST_TYPES),
   apiEndpoint: z.string().url().trim().optional(),

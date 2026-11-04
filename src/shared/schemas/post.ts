@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { POSTS_PAGE_SIZE, PROVIDER_IDS } from "../constants";
+import { POSTS_PAGE_SIZE } from "../constants";
 import {
   IdSchema,
   OptionalArtistScopeIdSchema,
@@ -23,7 +23,8 @@ import {
 export const PostDataSchema = z.object({
   postId: IdSchema,
   artistId: z.number().int().nonnegative(),
-  provider: z.enum(PROVIDER_IDS),
+  /** Stored identity: may be a legacy unsupported provider on saved posts. */
+  provider: z.string().min(1),
   fileUrl: z.string().min(1).url(),
   previewUrl: z.string().min(1).url(),
   sampleUrl: z.string().optional(),

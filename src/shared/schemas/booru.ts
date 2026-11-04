@@ -21,24 +21,6 @@ export const R34RawPostSchema = z.object({
 }).strip();
 
 /**
- * Booru API Raw Post Schema (Gelbooru)
- *
- * Validates raw post data from Gelbooru API before mapping to BooruPost.
- */
-export const GelbooruRawPostSchema = z.object({
-  id: z.union([z.number(), z.string()]).transform((val) => Number(val)),
-  file_url: z.string().min(1),
-  sample_url: z.string().optional(),
-  preview_url: z.string().optional(),
-  tags: z.string().optional(),
-  rating: z.string().optional(),
-  score: z.union([z.number(), z.string()]).transform((val) => Number(val)).optional(),
-  width: z.union([z.number(), z.string()]).transform((val) => Number(val)).optional(),
-  height: z.union([z.number(), z.string()]).transform((val) => Number(val)).optional(),
-  created_at: z.string().optional(),
-}).strip();
-
-/**
  * Booru Post Schema
  *
  * Validates normalized BooruPost after mapping from raw API data.
@@ -62,6 +44,5 @@ export const BooruPostSchema = z.object({
  * Type exports
  */
 export type R34RawPost = z.infer<typeof R34RawPostSchema>;
-export type GelbooruRawPost = z.infer<typeof GelbooruRawPostSchema>;
 export type BooruPost = z.infer<typeof BooruPostSchema>;
 

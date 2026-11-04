@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PROVIDER_IDS } from "../constants";
 import { IdSchema } from "./ipc";
 
 /**
@@ -9,7 +10,7 @@ import { IdSchema } from "./ipc";
  */
 export const ShadowInsertRequestSchema = z.object({
   postId: IdSchema,
-  provider: z.enum(["rule34", "gelbooru"]),
+  provider: z.enum(PROVIDER_IDS),
 }).strict();
 
 /**
