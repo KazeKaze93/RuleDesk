@@ -49,7 +49,11 @@ import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { SortablePostCard } from "./PlaylistVirtuosoComponents";
 import { resolveErrorMessage } from "../../utils/error-message";
-import { POSTS_PAGE_SIZE } from "../../../shared/constants";
+import {
+  PLAYLIST_MASONRY_THRESHOLD_PX,
+  PLAYLIST_PREFETCH_ITEMS,
+  POSTS_PAGE_SIZE,
+} from "../../../shared/constants";
 import {
   formatManualPlaylistCountLabel,
   formatSmartPlaylistTotalLabel,
@@ -133,6 +137,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     error,
     refetch,
     handleEndReached,
+    handleRangeChanged,
     loadMoreNow,
     isFetching,
   } = useGalleryInfiniteScroll({
@@ -145,6 +150,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       refreshEpoch,
     ],
     initialPageParam: 1,
+    prefetchItems: PLAYLIST_PREFETCH_ITEMS,
     fetchFn: async (page) => {
       return await window.api.resolvePlaylistPosts({
         playlistId: playlist.id,
@@ -266,6 +272,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
+    thresholdPx: PLAYLIST_MASONRY_THRESHOLD_PX,
     onLoadMore: () => {
       void handleLoadMore();
     },
@@ -549,6 +556,9 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
               aria-busy={listAriaBusy}
               totalCount={displayedPosts.length}
               endReached={handleEndReached}
+              rangeChanged={(range) =>
+                handleRangeChanged(range, displayedPosts.length)
+              }
               increaseViewportBy={600}
               components={{
                 List: ListComponent,

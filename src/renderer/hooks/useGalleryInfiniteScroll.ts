@@ -30,6 +30,8 @@ type GalleryInfiniteScrollQueryOptions = {
  * Virtuoso `endReached` cannot schedule overlapping `fetchNextPage` calls.
  * `loadMoreNow` uses the same ref gate without debounce (viewer / masonry paths
  * that must `await` the new page for `appendQueueIds`).
+ * Optional `prefetchItems`: Virtuoso `rangeChanged` can call `handleRangeChanged`
+ * to schedule the same debounced path before `endReached` (slow-page galleries).
  */
 export function useGalleryInfiniteScroll<
   TPage,
@@ -42,6 +44,7 @@ export function useGalleryInfiniteScroll<
   enabled = true,
   postsPerPage = POSTS_PAGE_SIZE,
   debounceDelay = DEBOUNCE_DELAY_MS,
+  prefetchItems,
   getNextPageParam,
   flattenPage,
   initialPageParam,
@@ -58,6 +61,11 @@ export function useGalleryInfiniteScroll<
   enabled?: boolean;
   postsPerPage?: number;
   debounceDelay?: number;
+  /**
+   * When set, `handleRangeChanged` schedules load-more once
+   * `endIndex >= loadedCount - prefetchItems`. Undefined = off (other galleries).
+   */
+  prefetchItems?: number;
   getNextPageParam?: (
     lastPage: TPage,
     allPages: TPage[]
@@ -151,6 +159,27 @@ export function useGalleryInfiniteScroll<
     scheduleLoadMore();
   }, [scheduleLoadMore]);
 
+  /**
+   * Virtuoso `rangeChanged` prefetch. Same ref-gate + debounce as `handleEndReached`
+   * so rapid range updates coalesce; debounce kept because rangeChanged fires every
+   * scroll frame (unlike a single endReached edge).
+   */
+  const handleRangeChanged = useCallback(
+    (range: { endIndex: number }, loadedCount: number) => {
+      if (prefetchItems === undefined) {
+        return;
+      }
+      if (loadedCount <= 0) {
+        return;
+      }
+      if (range.endIndex < loadedCount - prefetchItems) {
+        return;
+      }
+      handleEndReached();
+    },
+    [prefetchItems, handleEndReached]
+  );
+
   const loadMoreNow = useCallback(async (): Promise<TPage | undefined> => {
     if (!hasNextPageRef.current || isFetchingNextPageRef.current) {
       return undefined;
@@ -213,6 +242,7 @@ export function useGalleryInfiniteScroll<
     error,
     refetch,
     handleEndReached,
+    handleRangeChanged,
     loadMoreNow,
   };
 }
