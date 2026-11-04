@@ -363,8 +363,8 @@ On Browse **Source: All**, Videos / Images are applied in the live API search ta
 
 **Sort posts:**
 
-1. Use the dedicated **date sort** button in the top bar (outside Filters)
-2. Click to toggle between newest-first and oldest-first where sorting is available
+1. Use the dedicated **sort** button in the top bar (outside Filters)
+2. Click to toggle between newest-first and oldest-first where sorting is available (artist gallery and remote Browse follow provider post id; Favorites / Updates / playlists follow first-seen publish time, with post id as a stable tiebreaker)
 
 **Filter by tags:**
 

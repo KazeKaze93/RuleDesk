@@ -1822,7 +1822,8 @@ Maintainer identifiers relocated from user-facing README sections (Features, Pro
 - **Schema:** Core tables `artists`, `posts`, `settings`; also `tag_metadata` (`status` found|not_found + `resolved_at` TTL for misses), `search_results_cache` (Browse `searchBooru` page TTL cache, found|not_found, versioned JSON payload), `post_lookup_cache` (single-post `id:` lookup TTL, found|not_found, 30-day not_found), `playlists`, `playlist_entries`, `tag_blacklist`, and FTS5 for post tags
 - **Migrations:** Fully functional migration system using `drizzle-kit` 0.30+ (`drizzle.config.ts`, `npm run db:generate` / `db:migrate`)
 - **Testing & local gate:** Vitest (unit, integration, property), Playwright (E2E); `.githooks/pre-push` runs `npm run validate` → `npm run docs:api` + `git diff --exit-code docs/api.md` → `npm test` → `npm run test:isolated` → `node scripts/assert-vitest-min-total.mjs`. Node.js **v20** LTS required.
-- **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`
+- **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`, plus composites `posts_artist_post_id_idx` / `posts_artist_published_at_idx` for gallery sort paths
+- **Feed sort:** Provider-scoped → `post_id`; cross-artist without provider filter → `published_at` then `post_id` (see `docs/database.md`)
 - **Provider Support:** Multi-booru support with `provider` field (rule34, gelbooru)
 - **Artist Types:** UI exposes **tag** only; schema enum still includes legacy `uploader` / `query` (not offered in Add Artist UI — see [roadmap backlog](./roadmap.md#backlog-not-implemented-yet))
 
