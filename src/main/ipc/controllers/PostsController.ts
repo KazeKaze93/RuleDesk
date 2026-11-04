@@ -327,6 +327,23 @@ export class PostsController extends BaseController {
    * @param filters - Optional post filters (tags, isViewed, isFavorited)
    * @returns Array of Drizzle SQL conditions for use with and()
    */
+  /**
+   * ORDER BY for getPosts feed queries.
+   * Artist-scoped (artistId present): post_id only — provider-local chronology.
+   * Cross-artist feeds (no artistId): published_at then post_id tiebreaker.
+   */
+  private buildPostsFeedOrderBy(
+    artistId: number | undefined,
+    sortOrder: "asc" | "desc" | undefined
+  ): SQL[] {
+    const direction = sortOrder === "asc" ? asc : desc;
+    if (artistId) {
+      return [direction(posts.postId)];
+    }
+    // cross-provider safe: post_id spaces differ per provider; published_at frozen at first-seen (see sync upsert)
+    return [direction(posts.publishedAt), direction(posts.postId)];
+  }
+
   private buildPostFilterConditions(
     artistId: number | undefined,
     filters: PostFilterRequest | undefined
@@ -599,9 +616,7 @@ export class PostsController extends BaseController {
               .offset(offset)
               .all()
           : queryBuilder
-              .orderBy(
-                sortOrder === "asc" ? posts.publishedAt : desc(posts.publishedAt)
-              )
+              .orderBy(...this.buildPostsFeedOrderBy(artistId, sortOrder))
               .limit(limit)
               .offset(offset)
               .all();
@@ -656,9 +671,7 @@ export class PostsController extends BaseController {
             .offset(offset)
             .all()
         : queryBuilder
-            .orderBy(
-              sortOrder === "asc" ? posts.publishedAt : desc(posts.publishedAt)
-            )
+            .orderBy(...this.buildPostsFeedOrderBy(artistId, sortOrder))
             .limit(limit)
             .offset(offset)
             .all();
