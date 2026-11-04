@@ -8,7 +8,8 @@
  * AI filter path:
  * - Rule34: prefer API tag injection in Browse (exclude / OR-group); worker AI
  *   is skipped when injection succeeds (aiFilter passed as "all").
- * - Gelbooru (and Rule34 conflict fallback): worker AI remains the filter path.
+ * - Rule34 conflict fallback (user chips collide with injected AI tags): worker
+ *   AI remains the filter path.
  * - Media type + sort still run here for remote Browse when enabled.
  *
  * This worker runs in a separate thread and cannot access:

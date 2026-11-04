@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import log from "electron-log/renderer";
 import { Loader2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ProviderId } from "@shared/constants";
 
 import { AppLayout as Layout } from "./components/layout/AppLayout";
 import { Settings } from "./features/settings/Settings";
@@ -48,11 +47,6 @@ const NotFoundPage = () => {
 };
 
 const AccountGate = ({
-  provider,
-  onProviderSelect,
-  pendingProvider,
-  onProviderChangeConfirm,
-  onProviderChangeCancel,
   userId,
   apiKey,
   onApiKeyChange,
@@ -63,11 +57,6 @@ const AccountGate = ({
   accountStatus,
   onResetOnboarding,
 }: {
-  provider: ProviderId;
-  onProviderSelect: (value: ProviderId) => void;
-  pendingProvider: ProviderId | null;
-  onProviderChangeConfirm: () => void;
-  onProviderChangeCancel: () => void;
   userId: string;
   apiKey: string;
   onApiKeyChange: (value: string) => void;
@@ -84,12 +73,10 @@ const AccountGate = ({
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground">Sign in to RuleDesk</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add your API key to continue to the full app experience.
+            Add your Rule34.xxx API key to continue to the full app experience.
           </p>
         </div>
         <SettingsAccountTab
-          provider={provider}
-          pendingProvider={pendingProvider}
           userId={userId}
           apiKey={apiKey}
           showApiKey={showApiKey}
@@ -100,9 +87,6 @@ const AccountGate = ({
           onUserIdChange={onUserIdChange}
           onToggleApiKeyVisibility={onToggleApiKeyVisibility}
           onSaveApiKey={onSaveApiKey}
-          onProviderSelect={onProviderSelect}
-          onProviderChangeConfirm={onProviderChangeConfirm}
-          onProviderChangeCancel={onProviderChangeCancel}
           onResetOnboarding={onResetOnboarding}
           showUserIdField
         />
@@ -118,7 +102,6 @@ function App() {
   const clearTagChips = useSearchStore((state) => state.clearTagChips);
   const resetFilters = useSearchStore((state) => state.resetFilters);
   const [forceAccountGate, setForceAccountGate] = useState(false);
-  const [pendingProvider, setPendingProvider] = useState<ProviderId | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [gateUserId, setGateUserId] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
@@ -135,10 +118,9 @@ function App() {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const { saveApiKey, changeProvider } = useCredentialsActions({
+  const { saveApiKey } = useCredentialsActions({
     setAccountStatus,
     requireUserId: true,
-    includeProviderOnSave: true,
     resolveSaveUserId: ({ normalizedUserId, rawUserId }) =>
       normalizedUserId ?? rawUserId,
     onAfterSaveSuccess: () => {
@@ -152,7 +134,6 @@ function App() {
     refetchSettingsAfterSave: true,
     invalidateSearchAfterSave: true,
     logSaveFailure: "[App] Failed to save API key in account gate:",
-    logProviderFailure: "[App] Failed to change provider in account gate:",
   });
 
   useEffect(() => {
@@ -224,28 +205,11 @@ function App() {
     );
   }
 
-  const activeProvider = pendingProvider ?? settings.provider;
   const shouldShowAccountGate = forceAccountGate || !settings.hasApiKey;
 
   if (shouldShowAccountGate) {
     return (
       <AccountGate
-        provider={settings.provider}
-        onProviderSelect={(value) => {
-          if (value !== settings.provider) {
-            setPendingProvider(value);
-          }
-        }}
-        pendingProvider={pendingProvider}
-        onProviderChangeConfirm={() => {
-          if (!pendingProvider) {
-            return;
-          }
-          const nextProvider = pendingProvider;
-          setPendingProvider(null);
-          void changeProvider(nextProvider);
-        }}
-        onProviderChangeCancel={() => setPendingProvider(null)}
         userId={gateUserId || settings.userId}
         apiKey={apiKey}
         onApiKeyChange={setApiKey}
@@ -256,7 +220,6 @@ function App() {
           void saveApiKey({
             userId: gateUserId || settings.userId,
             apiKey,
-            provider: activeProvider,
           });
         }}
         accountStatus={accountStatus}

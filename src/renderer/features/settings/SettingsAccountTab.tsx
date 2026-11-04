@@ -16,26 +16,10 @@ import {
   FormLabel,
   FormMessage,
 } from "../../components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
-import { PROVIDER_IDS, type ProviderId } from "../../../shared/constants";
 import { SaveSettingsSchema } from "../../../shared/schemas/settings";
 import { normalizeCredentialsInput } from "@shared/utils/parse-credentials";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../../components/ui/alert-dialog";
+
+const RULE34_PROVIDER_LABEL = "Rule34.xxx";
 
 const CredentialsFormSchema = z
   .object({
@@ -69,8 +53,6 @@ const CredentialsFormSchema = z
 type CredentialsFormValues = z.infer<typeof CredentialsFormSchema>;
 
 interface SettingsAccountTabProps {
-  provider: ProviderId;
-  pendingProvider: ProviderId | null;
   userId?: string;
   apiKey: string;
   showApiKey: boolean;
@@ -81,16 +63,11 @@ interface SettingsAccountTabProps {
   onUserIdChange?: (value: string) => void;
   onToggleApiKeyVisibility: () => void;
   onSaveApiKey: () => void;
-  onProviderSelect: (value: ProviderId) => void;
-  onProviderChangeConfirm: () => void;
-  onProviderChangeCancel: () => void;
   onResetOnboarding: () => void;
   showUserIdField?: boolean;
 }
 
 export const SettingsAccountTab = ({
-  provider,
-  pendingProvider,
   userId = "",
   apiKey,
   showApiKey,
@@ -101,9 +78,6 @@ export const SettingsAccountTab = ({
   onUserIdChange,
   onToggleApiKeyVisibility,
   onSaveApiKey,
-  onProviderSelect,
-  onProviderChangeConfirm,
-  onProviderChangeCancel,
   onResetOnboarding,
   showUserIdField = true,
 }: SettingsAccountTabProps) => {
@@ -152,7 +126,9 @@ export const SettingsAccountTab = ({
     <Card>
       <CardHeader>
         <CardTitle>Account</CardTitle>
-        <CardDescription>Manage credentials used for authenticated provider requests.</CardDescription>
+        <CardDescription>
+          Manage Rule34.xxx credentials used for authenticated requests.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <section className="flex flex-wrap items-center gap-2">
@@ -162,23 +138,12 @@ export const SettingsAccountTab = ({
           </Badge>
         </section>
 
-        <section className="space-y-2">
-          <Label htmlFor="provider-select">Provider</Label>
-          <Select
-            value={provider}
-            onValueChange={(value: ProviderId) => onProviderSelect(value)}
-          >
-            <SelectTrigger id="provider-select">
-              <SelectValue placeholder="Select provider" />
-            </SelectTrigger>
-            <SelectContent>
-              {PROVIDER_IDS.map((providerId) => (
-                <SelectItem key={providerId} value={providerId}>
-                  {providerId}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <section className="space-y-1">
+          <Label>Provider</Label>
+          <p className="text-sm text-foreground">{RULE34_PROVIDER_LABEL}</p>
+          <p className="text-xs text-muted-foreground">
+            RuleDesk uses Rule34.xxx only.
+          </p>
         </section>
 
         <Form {...form}>
@@ -291,20 +256,6 @@ export const SettingsAccountTab = ({
           </section>
         ) : null}
       </CardContent>
-      <AlertDialog open={pendingProvider !== null}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Switch provider?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Switching provider will clear all cached data. Continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={onProviderChangeCancel}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onProviderChangeConfirm}>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 };

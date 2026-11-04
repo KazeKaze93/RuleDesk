@@ -4,6 +4,7 @@ import log from "electron-log/renderer";
 import type { Post } from "@shared/types/db";
 import type { SearchBooruPageResult } from "../../../shared/schemas/search";
 import { parsePlaylistQuery } from "../../../shared/schemas/playlist";
+import { isProviderId, type ProviderId } from "@shared/constants";
 import { Button } from "../../components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
 import type { ViewerOrigin } from "../../store/viewerStore";
@@ -101,11 +102,12 @@ export const PostNotFoundFallback = ({
 
         // Determine provider from playlist metadata or origin
         // Priority: 1) origin.provider (from playlist queryJson), 2) fetched playlist provider, 3) default rule34
-        let provider: "rule34" | "gelbooru" = "rule34";
+        // Shadow insert accepts ProviderId only; legacy stored ids fall back to rule34.
+        let provider: ProviderId = "rule34";
 
         if (queue.origin?.kind === "playlist") {
           // First, check if provider is already in origin (from playlist queryJson)
-          if (queue.origin.provider) {
+          if (queue.origin.provider && isProviderId(queue.origin.provider)) {
             provider = queue.origin.provider;
           } else {
             // Fallback: fetch playlist to get provider from queryJson
@@ -129,7 +131,7 @@ export const PostNotFoundFallback = ({
                   playlist.queryJson,
                   playlist.querySchemaVersion
                 );
-                if (parsedQuery?.provider) {
+                if (parsedQuery?.provider && isProviderId(parsedQuery.provider)) {
                   provider = parsedQuery.provider;
                 }
               }

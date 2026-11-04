@@ -13,7 +13,6 @@ import { SettingsBlacklistTab } from "./SettingsBlacklistTab";
 import { SettingsHelpTab } from "./SettingsHelpTab";
 import { useTheme } from "../../hooks/useTheme";
 import { useCredentialsActions } from "../../hooks/useCredentialsActions";
-import type { ProviderId } from "../../../shared/constants";
 import {
   SETTINGS_TAB,
   SETTINGS_TAB_QUERY_PARAM,
@@ -77,8 +76,6 @@ export const Settings = () => {
   const [userId, setUserId] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
-  const [provider, setProvider] = useState<ProviderId>("rule34");
-  const [pendingProvider, setPendingProvider] = useState<ProviderId | null>(null);
   const [accountStatus, setAccountStatus] = useState<"idle" | "success" | "error">("idle");
   const statusTimersRef = useRef<Partial<Record<StatusTimerKey, number>>>({});
 
@@ -93,27 +90,19 @@ export const Settings = () => {
     }, STATUS_FEEDBACK_TIMEOUT_MS);
   };
 
-  const { saveApiKey, changeProvider } = useCredentialsActions({
+  const { saveApiKey } = useCredentialsActions({
     setAccountStatus,
     requireUserId: false,
-    includeProviderOnSave: false,
     resolveSaveUserId: ({ normalizedUserId, rawUserId }) =>
       normalizedUserId ?? rawUserId.trim(),
     onAfterSaveSuccess: () => {
       setHasApiKey(true);
       setApiKey("");
     },
-    extraProviderInvalidationRoots: ["updates", "stats"],
-    applyProviderOptimistic: {
-      getCurrent: () => provider,
-      setCurrent: setProvider,
-    },
-    reportProviderChangeStatus: true,
     onAccountStatusSettled: () => {
       scheduleStatusReset("account", () => setAccountStatus("idle"));
     },
     logSaveFailure: "[Settings] Failed to save API key:",
-    logProviderFailure: "[Settings] Failed to change provider:",
   });
 
   useEffect(() => {
@@ -141,7 +130,6 @@ export const Settings = () => {
         }
         setProxyUrl(s?.proxyUrl ?? null);
         setHasApiKey(s?.hasApiKey ?? false);
-        setProvider(s?.provider ?? "rule34");
         setUserId(s?.userId ?? "");
       })
       .catch((error: unknown) => {
@@ -448,13 +436,6 @@ export const Settings = () => {
     }
   };
 
-  const handleProviderSelect = (value: ProviderId): void => {
-    if (value === provider) {
-      return;
-    }
-    setPendingProvider(value);
-  };
-
   const handleResetOnboarding = async (): Promise<void> => {
     try {
       const reset = await window.api.resetOnboarding();
@@ -577,8 +558,6 @@ export const Settings = () => {
 
         <TabsContent value={SETTINGS_TAB.ACCOUNT}>
           <SettingsAccountTab
-            provider={provider}
-            pendingProvider={pendingProvider}
             userId={userId}
             apiKey={apiKey}
             showApiKey={showApiKey}
@@ -594,20 +573,7 @@ export const Settings = () => {
               void saveApiKey({
                 userId,
                 apiKey,
-                provider,
               });
-            }}
-            onProviderSelect={handleProviderSelect}
-            onProviderChangeConfirm={() => {
-              if (!pendingProvider) {
-                return;
-              }
-              const nextProvider = pendingProvider;
-              setPendingProvider(null);
-              void changeProvider(nextProvider);
-            }}
-            onProviderChangeCancel={() => {
-              setPendingProvider(null);
             }}
             onResetOnboarding={() => {
               void handleResetOnboarding();

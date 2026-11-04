@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Post } from "@shared/types/db";
+import type { StoredProviderId } from "@shared/constants";
 
 export type ViewerOrigin =
   | { kind: "browse"; filters?: string }
@@ -28,7 +29,8 @@ export type ViewerOrigin =
       mediaType?: "all" | "images" | "videos";
       aiFilter?: "all" | "hide" | "only";
       sortOrder?: "asc" | "desc";
-      provider?: "rule34" | "gelbooru";
+      /** May be a legacy unsupported id from stored smart query_json. */
+      provider?: StoredProviderId;
     };
 
 // Viewer queue

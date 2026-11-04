@@ -17,11 +17,13 @@ import { Input } from "../ui/input";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/label";
 import { cn } from "../../lib/utils";
+import { isProviderId, type StoredProviderId } from "@shared/constants";
 
 type PostRef = {
   id: number;
   postId: number;
-  provider: "rule34" | "gelbooru";
+  /** Stored post identity; may be a legacy unsupported id. */
+  provider: StoredProviderId;
 };
 
 const invalidateAfterMembershipChange = (
@@ -126,6 +128,13 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
             continue;
           }
           if (p.postId > 0) {
+            if (!isProviderId(p.provider)) {
+              log.error(
+                "[AddToPlaylistModal] Cannot shadow-insert post with unsupported provider:",
+                p.provider
+              );
+              continue;
+            }
             const inserted = await window.api.shadowInsertPost({
               postId: p.postId,
               provider: p.provider,
