@@ -312,6 +312,8 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
   });
 
   it("same page request returns the same result", async () => {
+    // Page 1 starts the snapshot that page 2 reads.
+    await resolvePage(1);
     const first = await resolvePage(2);
     const second = await resolvePage(2);
     expect(second.map(identityKey)).toEqual(first.map(identityKey));

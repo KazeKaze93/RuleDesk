@@ -18,6 +18,8 @@ import {
   GetPlaylistPostsSchema,
   ResolvePlaylistPostsSchema,
   ReorderPlaylistEntriesSchema,
+  GetPlaylistResolveTotalSchema,
+  ReleasePlaylistSnapshotSchema,
   MAX_PLAYLIST_IMPORT_ENTRIES,
   PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE,
   PLAYLIST_IMPORT_LOOKUP_CHUNK_SIZE,
@@ -28,6 +30,9 @@ import {
   type GetPlaylistPostsRequest,
   type ResolvePlaylistPostsRequest,
   type ReorderPlaylistEntriesRequest,
+  type GetPlaylistResolveTotalRequest,
+  type ReleasePlaylistSnapshotRequest,
+  type PlaylistResolveTotalValue,
   type SmartPlaylistQuery,
   type PlaylistExport,
   GetManualPlaylistMembershipForPostsSchema,
@@ -43,12 +48,8 @@ import {
   CURRENT_SMART_QUERY_SCHEMA_VERSION,
   parseSmartQuery,
 } from "../../../shared/schemas/smart-playlist-query";
-import { isVideoUrl } from "@shared/utils/media";
 import { hasAiGeneratedTag } from "../../../shared/ai-tags";
-import {
-  buildPlaylistResolveTotal,
-  type RemoteWalkCompleteness,
-} from "../../../shared/playlist-resolve-total";
+import { buildPlaylistResolveTotal } from "../../../shared/playlist-resolve-total";
 import {
   EXTERNAL_ARTIST_ID,
   PROVIDER_IDS,
@@ -79,6 +80,12 @@ import {
 import { getAllBlacklistedTags } from "../../db/queries/blacklist";
 import { buildPostsBlacklistFilterCondition } from "../../db/queries/post-tag-filter";
 import type { PlaylistResolveTotal } from "../../../shared/schemas/playlist";
+import {
+  HybridRemoteSnapshotStore,
+  createSnapshotSupersededError,
+  type HybridPost,
+  type HybridSnapshot,
+} from "./playlist/hybrid-remote-snapshot-store";
 
 type UnknownRecord = Record<string, unknown>;
 const CreatePlaylistArgsSchema = z.tuple([CreatePlaylistSchema]);
@@ -88,6 +95,8 @@ const RemovePostsFromPlaylistArgsSchema = z.tuple([RemovePostsFromPlaylistSchema
 const GetPlaylistPostsArgsSchema = z.tuple([GetPlaylistPostsSchema]);
 const ReorderPlaylistEntriesArgsSchema = z.tuple([ReorderPlaylistEntriesSchema]);
 const ResolvePlaylistPostsArgsSchema = z.tuple([ResolvePlaylistPostsSchema]);
+const GetPlaylistResolveTotalArgsSchema = z.tuple([GetPlaylistResolveTotalSchema]);
+const ReleasePlaylistSnapshotArgsSchema = z.tuple([ReleasePlaylistSnapshotSchema]);
 const GetPlaylistsContainingPostArgsSchema = z.tuple([
   z.number().int(),
   OptionalIdSchema,
@@ -193,16 +202,12 @@ type IpcPlaylistWithStats = IpcPlaylist & {
  * 
  * Uses shared IpcSafe utility type for automatic Date -> number conversion.
  */
-type IpcPost = IpcSafe<InferSelectModel<typeof posts>>;
+type IpcPost = HybridPost;
 
 /** Same Knuth constant as `seeded-ordering` — hybrid random ranks must match SQL order. */
 const HYBRID_SEED_HASH_MULTIPLIER = 2654435761;
 /** 32-bit mask for hybrid seed ranks (uint32). */
 const HYBRID_SEED_HASH_MASK = 4294967295;
-/** Max API pages scanned while filling a hybrid remote window after filters. */
-const HYBRID_REMOTE_MAX_PAGES_TO_SCAN = 20;
-/** Matches provider `fetchPosts` page-size cap (Rule34/Gelbooru). */
-const HYBRID_REMOTE_API_PAGE_CAP = 1000;
 /**
  * Cap for hybrid local (+ remote window) materialization.
  * Local may materialize wholly in DB so remote twins past a page prefix are
@@ -218,11 +223,6 @@ const HYBRID_ORDERED_ISSUED_KEY_CAP = 50_000;
 type ResolvePlaylistPostsIpcResult = {
   posts: IpcPost[];
   total: PlaylistResolveTotal;
-};
-
-type RemotePlaylistWalkResult = {
-  posts: IpcPost[];
-  completeness: RemoteWalkCompleteness;
 };
 
 function hybridPostMergeKey(post: { provider: string; postId: number }): string {
@@ -258,17 +258,8 @@ function compareHybridPlaylistPosts(
   return sortOrder === "asc" ? idDiff : -idDiff;
 }
 
-function maxRemotePostId(remotePosts: IpcPost[]): number | undefined {
-  let maxId = 0;
-  for (const post of remotePosts) {
-    if (post.postId > maxId) {
-      maxId = post.postId;
-    }
-  }
-  return maxId > 0 ? maxId : undefined;
-}
-
-function buildHybridOrderedSequenceKey(params: {
+/** Snapshot identity: one remote walk per (playlist, query, media filter, sort). */
+function buildHybridSnapshotKey(params: {
   playlistId: number;
   queryJson: string;
   querySchemaVersion: number;
@@ -449,6 +440,95 @@ function summarizeHybridMergedWindow(
 }
 
 /**
+ * Ordered desc: page N is final while the walk runs once the first `page * limit`
+ * merged items all sit at or above the lowest id fetched so far (the feed is id-desc,
+ * so every unfetched remote post has a lower id and cannot enter that prefix).
+ */
+function isHybridDescPageCovered(
+  localPosts: IpcPost[],
+  snapshot: HybridSnapshot,
+  page: number,
+  limit: number
+): boolean {
+  const lowestFetched = snapshot.lowestFetchedPostId;
+  if (lowestFetched === undefined) {
+    return false;
+  }
+  const neededCount = page * limit;
+  const { pagePosts: prefix } = mergeHybridPlaylistPage(
+    localPosts,
+    snapshot.remotePosts,
+    1,
+    neededCount,
+    "desc",
+    false,
+    0
+  );
+  let coveredCount = 0;
+  for (const post of prefix) {
+    if (post.postId >= lowestFetched) {
+      coveredCount += 1;
+    }
+  }
+  return coveredCount >= neededCount;
+}
+
+/**
+ * Safety net on ordered pages: drop keys already issued on earlier pages of this
+ * snapshot, then record this page's keys.
+ */
+function dropPriorIssuedHybridPosts(
+  snapshot: HybridSnapshot,
+  page: number,
+  pagePosts: IpcPost[]
+): IpcPost[] {
+  const priorIssued = new Set<string>();
+  let priorCount = 0;
+  for (const [priorPage, keys] of snapshot.keysByPage) {
+    if (priorPage >= page) {
+      continue;
+    }
+    for (const key of keys) {
+      if (priorCount >= HYBRID_ORDERED_ISSUED_KEY_CAP) {
+        break;
+      }
+      priorIssued.add(key);
+      priorCount += 1;
+    }
+  }
+  const freshPosts = pagePosts.filter(
+    (post) => !priorIssued.has(hybridPostMergeKey(post))
+  );
+  snapshot.keysByPage.set(
+    page,
+    freshPosts.map((post) => hybridPostMergeKey(post))
+  );
+  return freshPosts;
+}
+
+/** Header total of a finished walk; null while it is running or after it failed. */
+function buildHybridSnapshotTotal(
+  localPosts: IpcPost[],
+  snapshot: HybridSnapshot,
+  localFetchLimit: number
+): PlaylistResolveTotal {
+  if (snapshot.completeness !== "exact" && snapshot.completeness !== "lowerBound") {
+    return null;
+  }
+  const windowSummary = summarizeHybridMergedWindow(
+    localPosts,
+    snapshot.remotePosts
+  );
+  return buildPlaylistResolveTotal({
+    isSmart: true,
+    remoteCompleteness: snapshot.completeness,
+    mergedWindowCount: windowSummary.count,
+    aiCount: windowSummary.aiCount,
+    localHitMaterializeCap: localPosts.length >= localFetchLimit,
+  });
+}
+
+/**
  * Playlist Controller
  *
  * Handles IPC operations for playlist management:
@@ -461,12 +541,6 @@ function summarizeHybridMergedWindow(
  * - Remove posts from playlist
  * - Get posts in playlist with filters
  */
-type HybridOrderedSequenceState = {
-  upperBoundPostId: number;
-  /** Keys returned per page number; union of pages `< N` is the safety-net filter for page N. */
-  keysByPage: Map<number, string[]>;
-};
-
 export class PlaylistController extends BaseController {
   // Query style: Drizzle Builder API only in this controller.
   private mainWindow: BrowserWindow | null = null;
@@ -479,15 +553,18 @@ export class PlaylistController extends BaseController {
   private ftsTableExistsCache: boolean = false;
 
   /**
-   * Per-walk snapshot for ordered smart/hybrid paging: upperBoundPostId freezes
-   * the live remote feed; issuedKeys is a size-capped uniqueness safety net.
-   * Page 1 (or a new client bound like a new seed) starts a fresh snapshot.
+   * Hybrid smart-playlist remote walks. Page 1 starts a snapshot (and supersedes
+   * the playlist's previous one); later pages read it instead of re-walking the
+   * feed. Bounded by snapshot count and idle TTL, so no per-sequence Map grows here.
    */
-  private hybridOrderedSequences = new Map<string, HybridOrderedSequenceState>();
+  private readonly hybridSnapshots = new HybridRemoteSnapshotStore({
+    getProvider,
+    now: Date.now,
+  });
 
   private refreshSchemaCaches(): void {
     this.ftsTableExistsCache = postsFtsTableExists(getSqliteInstance());
-    this.hybridOrderedSequences.clear();
+    this.hybridSnapshots.clear();
     log.info(
       `[PlaylistController] Schema caches refreshed (fts=${this.ftsTableExistsCache})`
     );
@@ -580,6 +657,18 @@ export class PlaylistController extends BaseController {
       IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS,
       ResolvePlaylistPostsArgsSchema,
       (event, params) => this.resolvePlaylistPosts(event, params)
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.GET_PLAYLIST_RESOLVE_TOTAL,
+      GetPlaylistResolveTotalArgsSchema,
+      (event, params) => this.getPlaylistResolveTotal(event, params)
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.RELEASE_PLAYLIST_SNAPSHOT,
+      ReleasePlaylistSnapshotArgsSchema,
+      (event, params) => this.releasePlaylistSnapshot(event, params)
     );
 
     this.handle(
@@ -1119,6 +1208,9 @@ export class PlaylistController extends BaseController {
         throw new Error(`Playlist ${playlistId} not found`);
       }
 
+      if (data.queryJson !== undefined) {
+        this.hybridSnapshots.release(playlistId);
+      }
       log.info(`[PlaylistController] Updated playlist: ${playlistId}`);
 
       return toIpcSafe(result[0]);
@@ -1150,6 +1242,7 @@ export class PlaylistController extends BaseController {
           .run();
       });
 
+      this.hybridSnapshots.release(playlistId);
       log.info(`[PlaylistController] Deleted playlist: ${playlistId}`);
       return true;
     } catch (error) {
@@ -1962,21 +2055,7 @@ export class PlaylistController extends BaseController {
         throw new Error(`Playlist ${playlistId} not found`);
       }
 
-      // Build global filter conditions (from GlobalTopBar)
-      const globalConditions: SQL[] = [];
-      if (filters?.mediaType === "videos") {
-        globalConditions.push(eq(posts.mediaType, "video"));
-      } else if (filters?.mediaType === "images") {
-        const imageOrNull = or(eq(posts.mediaType, "image"), sql`${posts.mediaType} IS NULL`);
-        if (imageOrNull) globalConditions.push(imageOrNull);
-      }
-
-      const blacklistCondition = buildPostsBlacklistFilterCondition(
-        getAllBlacklistedTags()
-      );
-      if (blacklistCondition) {
-        globalConditions.push(blacklistCondition);
-      }
+      const globalConditions = this.buildGlobalFilterConditions(filters);
 
       // Static playlist: use JOIN with playlist_entries + global filters
       if (!playlist.isSmart) {
@@ -2051,193 +2130,98 @@ export class PlaylistController extends BaseController {
       }
       const smartSortOrder = sortOrder === "position" ? "desc" : sortOrder;
 
-      // Parse and validate queryJson via versioned smart-query resolver
-      const parsedQuery = parseSmartQuery(
-        playlist.queryJson,
-        playlist.querySchemaVersion
-      );
-      if (!parsedQuery) {
-        log.error(
-          `[PlaylistController] Failed to parse query_json for smart playlist ${playlistId}:`,
-          `version=${playlist.querySchemaVersion}`
-        );
-        throw new Error(
-          `Invalid query_json for smart playlist ${playlistId} (version ${playlist.querySchemaVersion})`
-        );
-      }
-      const query: SmartPlaylistQuery = parsedQuery;
-      log.info(
-        `[PlaylistController] Parsed query_json for smart playlist ${playlistId}:`,
-        JSON.stringify(query)
-      );
-
       // Smart playlist hybrid search:
-      // 1) Materialize local matches (DB). Remote: fixed capped window + optional
-      //    upperBoundPostId so live feed inserts between pages cannot shift the merge.
-      // 2) Collapse (provider, postId), cursor-merge with local-preferred dedupe
-      // 3) Slice the page; issued-key set is a size-capped uniqueness safety net
-
-      // Build tag conditions from smart playlist query
-      const { includeConditions, excludeConditions } = this.buildSmartPlaylistTagConditions(query);
-      
-      log.info(
-        `[PlaylistController] Built conditions for smart playlist ${playlistId}: ` +
-        `${includeConditions.length} include, ${excludeConditions.length} exclude`
-      );
-
-      if (includeConditions.length === 0 && excludeConditions.length === 0) {
-        log.warn(`[PlaylistController] Smart playlist ${playlistId} has no valid tags, returning empty result`);
+      // 1) Local matches are read from the DB on every request (never cached).
+      // 2) Remote: one feed walk per snapshot (HybridRemoteSnapshotStore). Page 1
+      //    starts it; later pages read it. Ordered desc pages are served as soon as
+      //    the walked prefix covers them; asc / random wait for the whole walk.
+      // 3) Collapse (provider, postId), cursor-merge with local-preferred dedupe
+      // 4) Slice the page; issued-key set is a size-capped uniqueness safety net
+      const scope = this.buildSmartPlaylistScope(playlist, globalConditions);
+      if (scope === null) {
         return { posts: [], total: null };
       }
-
-      // Combine conditions for local DB query
-      const allConditions: SQL[] = [];
-
-      if (includeConditions.length > 0) {
-        if (includeConditions.length === 1) {
-          allConditions.push(includeConditions[0]);
-        } else {
-          const combined = and(...includeConditions);
-          if (combined) allConditions.push(combined);
-        }
-      }
-
-      if (excludeConditions.length > 0) {
-        if (excludeConditions.length === 1) {
-          allConditions.push(not(excludeConditions[0]));
-        } else {
-          const orCondition = or(...excludeConditions);
-          if (orCondition) {
-            allConditions.push(not(orCondition));
-          }
-        }
-      }
-
-      // Add global filters
-      if (globalConditions.length > 0) {
-        allConditions.push(...globalConditions);
-      }
-
-      // Provider scope: one default for local WHERE + remote fetch.
-      const providerId: ProviderId = query.provider ?? "rule34";
-      allConditions.push(eq(posts.provider, providerId));
-
-      const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;
+      const { query, providerId, whereClause } = scope;
 
       // Local may materialize wholly in DB. Remote keeps a fixed window size (not an
-      // expanding page*limit prefix) and freezes newer inserts via upperBoundPostId.
+      // expanding page*limit prefix).
       const localFetchLimit = HYBRID_RANDOM_MATERIALIZE_CAP;
       const remoteFetchLimit = HYBRID_RANDOM_MATERIALIZE_CAP;
       const resolvedSeed = resolveRandomSeed(seed);
 
-      const orderedSequenceKey = !isRandom
-        ? buildHybridOrderedSequenceKey({
-            playlistId,
-            queryJson: playlist.queryJson,
-            querySchemaVersion: playlist.querySchemaVersion,
-            mediaType: filters?.mediaType,
-            sortOrder: smartSortOrder,
-          })
-        : null;
+      const snapshotKey = buildHybridSnapshotKey({
+        playlistId,
+        queryJson: playlist.queryJson,
+        querySchemaVersion: playlist.querySchemaVersion,
+        mediaType: filters?.mediaType,
+        sortOrder: smartSortOrder,
+      });
 
-      // Page 1 = new snapshot (like a new seed). Later pages reuse bound from
-      // request contract or the in-memory sequence started on page 1.
-      if (orderedSequenceKey !== null && page === 1) {
-        this.hybridOrderedSequences.delete(orderedSequenceKey);
-      }
-      const existingOrderedSequence =
-        orderedSequenceKey !== null
-          ? this.hybridOrderedSequences.get(orderedSequenceKey)
-          : undefined;
-      const remoteUpperBoundPostId = !isRandom
-        ? (requestUpperBoundPostId ?? existingOrderedSequence?.upperBoundPostId)
-        : undefined;
+      this.hybridSnapshots.evictIdle();
 
-      // Execute local DB query and remote API query concurrently.
-      // Provider/creds failures must throw — never map to [] (silent empty success).
-      const [localPosts, remoteWalk] = await Promise.all([
-        (async () => {
-          const queryBuilder = db
-            .select({
-              id: posts.id,
-              postId: posts.postId,
-              artistId: posts.artistId,
-              provider: posts.provider,
-              fileUrl: posts.fileUrl,
-              previewUrl: posts.previewUrl,
-              sampleUrl: posts.sampleUrl,
-              title: posts.title,
-              rating: posts.rating,
-              tags: posts.tags,
-              mediaType: posts.mediaType,
-              publishedAt: posts.publishedAt,
-              createdAt: posts.createdAt,
-              isViewed: posts.isViewed,
-              isFavorited: posts.isFavorited,
-              lastViewedAt: posts.lastViewedAt,
-              viewCount: posts.viewCount,
-            })
-            .from(posts)
-            .where(whereClause);
-
-          // Hybrid random orders by postId so the rank matches remote-only rows.
-          // Ordered: postId only — smart collection is provider-scoped by
-          // query.provider → order by postId, same as site.
-          const result = isRandom
-            ? queryBuilder
-                .orderBy(...seededOrderBy(posts.postId, resolvedSeed))
-                .limit(localFetchLimit)
-                .offset(0)
-                .all()
-            : queryBuilder
-                .orderBy(
-                  smartSortOrder === "asc" ? asc(posts.postId) : desc(posts.postId)
-                )
-                .limit(localFetchLimit)
-                .offset(0)
-                .all();
-          log.info(
-            `[PlaylistController] Local DB query returned ${result.length} posts for smart playlist ${playlistId}`
+      // Page 1 = new snapshot (like a new seed); it supersedes the playlist's
+      // previous one. Later pages must find it — missing/evicted → SNAPSHOT_SUPERSEDED.
+      let snapshot: HybridSnapshot;
+      if (page === 1) {
+        const apiSettings = await getDecryptedApiSettings(db);
+        if (!apiSettings) {
+          throw createCodedError(
+            "Cannot fetch remote playlist posts: credentials missing or unavailable",
+            ErrorCode.AUTH_ERROR
           );
-          return toIpcSafe(result);
-        })(),
-        this.resolveRemotePlaylistPosts(
-          playlistId,
-          query,
-          providerId,
-          remoteFetchLimit,
-          filters,
-          smartSortOrder,
-          isRandom,
-          resolvedSeed,
-          remoteUpperBoundPostId
-        ),
-      ]);
-
-      const remotePosts = remoteWalk.posts;
-
-      if (orderedSequenceKey !== null) {
-        const snapshotBound =
-          requestUpperBoundPostId ??
-          existingOrderedSequence?.upperBoundPostId ??
-          maxRemotePostId(remotePosts);
-        if (snapshotBound !== undefined) {
-          const sequence =
-            this.hybridOrderedSequences.get(orderedSequenceKey) ??
-            ({
-              upperBoundPostId: snapshotBound,
-              keysByPage: new Map<number, string[]>(),
-            } satisfies HybridOrderedSequenceState);
-          sequence.upperBoundPostId = snapshotBound;
-          this.hybridOrderedSequences.set(orderedSequenceKey, sequence);
         }
+        const upperBoundPostId = !isRandom ? requestUpperBoundPostId : undefined;
+        snapshot = this.hybridSnapshots.start(snapshotKey, {
+          playlistId,
+          providerId,
+          providerSettings: {
+            userId: apiSettings.userId,
+            apiKey: apiSettings.apiKey,
+          },
+          booruQuery: this.buildBooruQueryString(query, upperBoundPostId),
+          fetchLimit: remoteFetchLimit,
+          blacklistedTags: new Set(
+            getAllBlacklistedTags()
+              .map((tag) => tag.trim().toLowerCase())
+              .filter(Boolean)
+          ),
+          mediaType: filters?.mediaType,
+          upperBoundPostId,
+          isRandom,
+          seed: resolvedSeed,
+          sortOrder: smartSortOrder,
+        });
+      } else {
+        const existing = this.hybridSnapshots.require(snapshotKey);
+        if (existing.isRandom !== isRandom) {
+          throw createSnapshotSupersededError();
+        }
+        snapshot = existing;
+      }
+
+      const localPosts = this.queryHybridLocalPosts(
+        whereClause,
+        { isRandom, seed: resolvedSeed, sortOrder: smartSortOrder },
+        localFetchLimit,
+        playlistId
+      );
+
+      // Provider/creds failures surface here (never an empty-success page).
+      const readySnapshot =
+        isRandom || smartSortOrder === "asc"
+          ? await this.hybridSnapshots.awaitComplete(snapshotKey)
+          : await this.hybridSnapshots.ensureCoverage(snapshotKey, (candidate) =>
+              isHybridDescPageCovered(localPosts, candidate, page, limit)
+            );
+      if (readySnapshot !== snapshot) {
+        throw createSnapshotSupersededError();
       }
 
       // Pages are not AI-filtered (client filters after flatten). aiCount is for the header.
       const { pagePosts: mergedPagePosts, localTaken, remoteTaken, mergedCount } =
         mergeHybridPlaylistPage(
           localPosts,
-          remotePosts,
+          snapshot.remotePosts,
           page,
           limit,
           smartSortOrder,
@@ -2245,51 +2229,23 @@ export class PlaylistController extends BaseController {
           resolvedSeed
         );
 
-      let pagePosts = mergedPagePosts;
-      if (orderedSequenceKey !== null) {
-        const sequence = this.hybridOrderedSequences.get(orderedSequenceKey);
-        if (sequence !== undefined) {
-          const priorIssued = new Set<string>();
-          let priorCount = 0;
-          for (const [priorPage, keys] of sequence.keysByPage) {
-            if (priorPage >= page) {
-              continue;
-            }
-            for (const key of keys) {
-              if (priorCount >= HYBRID_ORDERED_ISSUED_KEY_CAP) {
-                break;
-              }
-              priorIssued.add(key);
-              priorCount += 1;
-            }
-          }
-          pagePosts = mergedPagePosts.filter(
-            (post) => !priorIssued.has(hybridPostMergeKey(post))
-          );
-          sequence.keysByPage.set(
-            page,
-            pagePosts.map((post) => hybridPostMergeKey(post))
-          );
-        }
-      }
+      const pagePosts = isRandom
+        ? mergedPagePosts
+        : dropPriorIssuedHybridPosts(snapshot, page, mergedPagePosts);
 
-      const windowSummary = summarizeHybridMergedWindow(localPosts, remotePosts);
-      const total = buildPlaylistResolveTotal({
-        isSmart: true,
-        remoteCompleteness: remoteWalk.completeness,
-        mergedWindowCount: windowSummary.count,
-        aiCount: windowSummary.aiCount,
-        localHitMaterializeCap: localPosts.length >= localFetchLimit,
-      });
+      // null while the walk is still running (or failed): getPlaylistResolveTotal awaits it.
+      const total = buildHybridSnapshotTotal(
+        localPosts,
+        snapshot,
+        localFetchLimit
+      );
 
       log.info(
         `[PlaylistController] Hybrid search resolved ${pagePosts.length} posts for smart playlist ${playlistId} ` +
-          `(localWindow: ${localPosts.length}, remoteWindow: ${remotePosts.length}, ` +
-          `mergedPrefix: ${mergedCount}, mergedWindow: ${windowSummary.count}, ` +
-          `aiCount: ${windowSummary.aiCount}, ` +
+          `(localWindow: ${localPosts.length}, remoteWindow: ${snapshot.remotePosts.length}, ` +
+          `walk: ${snapshot.completeness}, mergedPrefix: ${mergedCount}, ` +
           `total: ${total === null ? "null" : `${total.kind}:${total.count}`}, ` +
-          `localTaken: ${localTaken}, remoteTaken: ${remoteTaken}, ` +
-          `upperBound: ${remoteUpperBoundPostId ?? "none"}, page ${page})`
+          `localTaken: ${localTaken}, remoteTaken: ${remoteTaken}, page ${page})`
       );
 
       return { posts: pagePosts, total };
@@ -2300,160 +2256,227 @@ export class PlaylistController extends BaseController {
   }
 
   /**
-   * Resolve a sorted remote window for hybrid smart-playlist merge.
-   *
-   * Always walks the provider feed from the start (deterministic) until
-   * `fetchLimit` posts remain after blacklist/media filters, then sorts by the
-   * same criterion the local leg uses so cursor-merge is valid.
+   * Window total of a smart playlist's current snapshot. Waits for the snapshot's
+   * remote walk (never starts one), re-reads the local leg, and rejects instead of
+   * returning null: SNAPSHOT_SUPERSEDED when the snapshot is gone, the walk's own
+   * error when it failed.
    */
-  private async resolveRemotePlaylistPosts(
-    playlistId: number,
-    query: SmartPlaylistQuery,
-    providerId: ProviderId,
-    fetchLimit: number,
-    filters: ResolvePlaylistPostsRequest["filters"] | undefined,
-    sortOrder: "asc" | "desc",
-    isRandom: boolean,
-    seed: number,
-    upperBoundPostId?: number
-  ): Promise<RemotePlaylistWalkResult> {
+  private async getPlaylistResolveTotal(
+    _event: IpcMainInvokeEvent,
+    params: GetPlaylistResolveTotalRequest
+  ): Promise<PlaylistResolveTotalValue> {
+    const { playlistId, filters, sortOrder } = params;
     try {
-      // Build booru query string from tags (+ optional id:<=upperBound snapshot).
-      const booruQuery = this.buildBooruQueryString(query, upperBoundPostId);
-      log.info(`[PlaylistController] Fetching remote posts for playlist ${playlistId} with query: "${booruQuery}"`);
+      const db = getDb();
+      const playlist = db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .limit(1)
+        .all()[0];
+      if (!playlist) {
+        throw new Error(`Playlist ${playlistId} not found`);
+      }
+      // Manual / empty-query playlists never own a hybrid snapshot.
+      if (!playlist.isSmart || !playlist.queryJson || playlist.queryJson.trim() === "") {
+        throw createSnapshotSupersededError();
+      }
 
-      // providerId resolved once in resolvePlaylistPosts (query.provider ?? "rule34")
-      const provider = getProvider(providerId);
-      const apiSettings = await getDecryptedApiSettings(getDb());
-      
-      if (!apiSettings) {
+      const snapshotKey = buildHybridSnapshotKey({
+        playlistId,
+        queryJson: playlist.queryJson,
+        querySchemaVersion: playlist.querySchemaVersion,
+        mediaType: filters?.mediaType,
+        sortOrder: sortOrder === "position" ? "desc" : sortOrder,
+      });
+      this.hybridSnapshots.evictIdle();
+      const snapshot = await this.hybridSnapshots.awaitComplete(snapshotKey);
+
+      const scope = this.buildSmartPlaylistScope(
+        playlist,
+        this.buildGlobalFilterConditions(filters)
+      );
+      if (scope === null) {
+        throw createSnapshotSupersededError();
+      }
+      const localFetchLimit = HYBRID_RANDOM_MATERIALIZE_CAP;
+      const localPosts = this.queryHybridLocalPosts(
+        scope.whereClause,
+        { isRandom: snapshot.isRandom, seed: snapshot.seed, sortOrder: snapshot.sortOrder },
+        localFetchLimit,
+        playlistId
+      );
+
+      const total = buildHybridSnapshotTotal(localPosts, snapshot, localFetchLimit);
+      if (total === null) {
         throw createCodedError(
-          "Cannot fetch remote playlist posts: credentials missing or unavailable",
-          ErrorCode.AUTH_ERROR
+          `Playlist ${playlistId} total is unavailable`,
+          ErrorCode.UNKNOWN_ERROR
         );
       }
-
-      const providerSettings = {
-        userId: apiSettings.userId,
-        apiKey: apiSettings.apiKey,
-      };
-
-      const blacklistedTagSet = new Set(
-        getAllBlacklistedTags().map((tag) => tag.trim().toLowerCase()).filter(Boolean)
-      );
-
-      const filteredPosts: IpcPost[] = [];
-      const seenRemoteKeys = new Set<string>();
-      // Deterministic feed walk from pid/page 0 — hybrid pagination replays from the start.
-      let apiPage = 0;
-      let pagesScanned = 0;
-      let rawFetchedTotal = 0;
-      let feedExhausted = false;
-      const apiRequestLimit = Math.min(HYBRID_REMOTE_API_PAGE_CAP, Math.max(1, fetchLimit));
-
-      while (
-        filteredPosts.length < fetchLimit &&
-        pagesScanned < HYBRID_REMOTE_MAX_PAGES_TO_SCAN
-      ) {
-        const { posts: booruPosts, rawItemCount } = await provider.fetchPosts(
-          booruQuery,
-          apiPage,
-          providerSettings,
-          false,
-          apiRequestLimit
-        );
-        pagesScanned += 1;
-        rawFetchedTotal += booruPosts.length;
-
-        for (const post of booruPosts) {
-          // Belt-and-suspenders: drop ids above the snapshot even if the meta-tag
-          // is ignored by a provider quirk.
-          if (upperBoundPostId !== undefined && post.id > upperBoundPostId) {
-            continue;
-          }
-
-          if (blacklistedTagSet.size > 0) {
-            const hasBlacklistedTag = post.tags.some((tag) =>
-              blacklistedTagSet.has(tag.trim().toLowerCase())
-            );
-            if (hasBlacklistedTag) {
-              continue;
-            }
-          }
-
-          if (filters?.mediaType) {
-            const isVideo = isVideoUrl(post.fileUrl);
-            if (filters.mediaType === "videos" && !isVideo) {
-              continue;
-            }
-            if (filters.mediaType === "images" && isVideo) {
-              continue;
-            }
-          }
-
-          const mergeKey = hybridPostMergeKey({
-            provider: providerId,
-            postId: post.id,
-          });
-          if (seenRemoteKeys.has(mergeKey)) {
-            continue;
-          }
-          seenRemoteKeys.add(mergeKey);
-
-          const isVideo = isVideoUrl(post.fileUrl);
-          filteredPosts.push({
-            id: 0,
-            postId: post.id,
-            artistId: EXTERNAL_ARTIST_ID,
-            provider: providerId,
-            fileUrl: post.fileUrl,
-            previewUrl: post.previewUrl,
-            sampleUrl: post.sampleUrl,
-            title: "",
-            rating: post.rating,
-            tags: post.tags.join(" "),
-            mediaType: isVideo ? "video" : "image",
-            publishedAt: post.createdAt.getTime(),
-            createdAt: post.createdAt.getTime(),
-            isViewed: false,
-            isFavorited: false,
-            lastViewedAt: null,
-            viewCount: 0,
-          });
-
-          if (filteredPosts.length >= fetchLimit) {
-            break;
-          }
-        }
-
-        // End of feed: short *API* page (not fetchLimit — random materialize uses a large cap).
-        if (rawItemCount < apiRequestLimit || booruPosts.length === 0) {
-          feedExhausted = true;
-          break;
-        }
-        apiPage += 1;
-      }
-
-      filteredPosts.sort((a, b) =>
-        compareHybridPlaylistPosts(a, b, sortOrder, isRandom, seed)
-      );
-
-      const windowPosts = filteredPosts.slice(0, fetchLimit);
-      // exact = provider feed exhausted (short API page). Otherwise scan/fetch cap → lowerBound.
-      const completeness: RemoteWalkCompleteness = feedExhausted
-        ? "exact"
-        : "lowerBound";
-
-      log.info(
-        `[PlaylistController] Resolved ${windowPosts.length} posts from remote API for smart playlist ${playlistId} ` +
-          `(fetchLimit ${fetchLimit}, scanned ${pagesScanned} API page(s), raw ${rawFetchedTotal}, ` +
-          `completeness ${completeness})`
-      );
-
-      return { posts: windowPosts, completeness };
+      return total;
     } catch (error) {
-      log.error(`[PlaylistController] Failed to resolve remote playlist posts for ${playlistId}:`, error);
+      log.error(`[PlaylistController] Failed to get playlist resolve total for ${playlistId}:`, error);
       throw error;
     }
+  }
+
+  private async releasePlaylistSnapshot(
+    _event: IpcMainInvokeEvent,
+    params: ReleasePlaylistSnapshotRequest
+  ): Promise<void> {
+    this.hybridSnapshots.release(params.playlistId);
+  }
+
+  /** Media-type + blacklist conditions shared by every resolve path (from GlobalTopBar). */
+  private buildGlobalFilterConditions(
+    filters: ResolvePlaylistPostsRequest["filters"] | undefined
+  ): SQL[] {
+    const globalConditions: SQL[] = [];
+    if (filters?.mediaType === "videos") {
+      globalConditions.push(eq(posts.mediaType, "video"));
+    } else if (filters?.mediaType === "images") {
+      const imageOrNull = or(eq(posts.mediaType, "image"), sql`${posts.mediaType} IS NULL`);
+      if (imageOrNull) globalConditions.push(imageOrNull);
+    }
+
+    const blacklistCondition = buildPostsBlacklistFilterCondition(
+      getAllBlacklistedTags()
+    );
+    if (blacklistCondition) {
+      globalConditions.push(blacklistCondition);
+    }
+    return globalConditions;
+  }
+
+  /**
+   * Parse a smart playlist and build its local WHERE (tags + global filters +
+   * provider scope). Returns null when the query has no usable tags.
+   */
+  private buildSmartPlaylistScope(
+    playlist: InferSelectModel<typeof playlists>,
+    globalConditions: SQL[]
+  ): { query: SmartPlaylistQuery; providerId: ProviderId; whereClause: SQL | undefined } | null {
+    const playlistId = playlist.id;
+
+    // Parse and validate queryJson via versioned smart-query resolver
+    const parsedQuery = parseSmartQuery(
+      playlist.queryJson,
+      playlist.querySchemaVersion
+    );
+    if (!parsedQuery) {
+      log.error(
+        `[PlaylistController] Failed to parse query_json for smart playlist ${playlistId}:`,
+        `version=${playlist.querySchemaVersion}`
+      );
+      throw new Error(
+        `Invalid query_json for smart playlist ${playlistId} (version ${playlist.querySchemaVersion})`
+      );
+    }
+    const query: SmartPlaylistQuery = parsedQuery;
+    log.info(
+      `[PlaylistController] Parsed query_json for smart playlist ${playlistId}:`,
+      JSON.stringify(query)
+    );
+
+    // Build tag conditions from smart playlist query
+    const { includeConditions, excludeConditions } = this.buildSmartPlaylistTagConditions(query);
+
+    log.info(
+      `[PlaylistController] Built conditions for smart playlist ${playlistId}: ` +
+      `${includeConditions.length} include, ${excludeConditions.length} exclude`
+    );
+
+    if (includeConditions.length === 0 && excludeConditions.length === 0) {
+      log.warn(`[PlaylistController] Smart playlist ${playlistId} has no valid tags, returning empty result`);
+      return null;
+    }
+
+    // Combine conditions for local DB query
+    const allConditions: SQL[] = [];
+
+    if (includeConditions.length > 0) {
+      if (includeConditions.length === 1) {
+        allConditions.push(includeConditions[0]);
+      } else {
+        const combined = and(...includeConditions);
+        if (combined) allConditions.push(combined);
+      }
+    }
+
+    if (excludeConditions.length > 0) {
+      if (excludeConditions.length === 1) {
+        allConditions.push(not(excludeConditions[0]));
+      } else {
+        const orCondition = or(...excludeConditions);
+        if (orCondition) {
+          allConditions.push(not(orCondition));
+        }
+      }
+    }
+
+    // Add global filters
+    if (globalConditions.length > 0) {
+      allConditions.push(...globalConditions);
+    }
+
+    // Provider scope: one default for local WHERE + remote fetch.
+    const providerId: ProviderId = query.provider ?? "rule34";
+    allConditions.push(eq(posts.provider, providerId));
+
+    const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;
+    return { query, providerId, whereClause };
+  }
+
+  /** Local leg of the hybrid merge. Never cached: read on every request. */
+  private queryHybridLocalPosts(
+    whereClause: SQL | undefined,
+    order: { isRandom: boolean; seed: number; sortOrder: "asc" | "desc" },
+    localFetchLimit: number,
+    playlistId: number
+  ): IpcPost[] {
+    const queryBuilder = getDb()
+      .select({
+        id: posts.id,
+        postId: posts.postId,
+        artistId: posts.artistId,
+        provider: posts.provider,
+        fileUrl: posts.fileUrl,
+        previewUrl: posts.previewUrl,
+        sampleUrl: posts.sampleUrl,
+        title: posts.title,
+        rating: posts.rating,
+        tags: posts.tags,
+        mediaType: posts.mediaType,
+        publishedAt: posts.publishedAt,
+        createdAt: posts.createdAt,
+        isViewed: posts.isViewed,
+        isFavorited: posts.isFavorited,
+        lastViewedAt: posts.lastViewedAt,
+        viewCount: posts.viewCount,
+      })
+      .from(posts)
+      .where(whereClause);
+
+    // Hybrid random orders by postId so the rank matches remote-only rows.
+    // Ordered: postId only — smart collection is provider-scoped by
+    // query.provider → order by postId, same as site.
+    const result = order.isRandom
+      ? queryBuilder
+          .orderBy(...seededOrderBy(posts.postId, order.seed))
+          .limit(localFetchLimit)
+          .offset(0)
+          .all()
+      : queryBuilder
+          .orderBy(
+            order.sortOrder === "asc" ? asc(posts.postId) : desc(posts.postId)
+          )
+          .limit(localFetchLimit)
+          .offset(0)
+          .all();
+    log.info(
+      `[PlaylistController] Local DB query returned ${result.length} posts for smart playlist ${playlistId}`
+    );
+    return toIpcSafe(result);
   }
 }

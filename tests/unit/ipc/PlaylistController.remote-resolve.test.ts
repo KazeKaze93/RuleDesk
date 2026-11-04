@@ -90,6 +90,10 @@ type PlaylistControllerInternals = {
       isRandom?: boolean;
     }
   ) => Promise<ResolvePlaylistPostsPage>;
+  getPlaylistResolveTotal: (
+    event: IpcMainInvokeEvent,
+    params: { playlistId: number; sortOrder?: "asc" | "desc" | "position" }
+  ) => Promise<{ count: number; aiCount: number; kind: "exact" | "lowerBound" }>;
 };
 
 function makePost(id: number, tags: string[] = ["solo"]): BooruPost {
@@ -271,18 +275,20 @@ describe("PlaylistController smart remote resolve", () => {
       }
     );
 
-    const resolved = await controller.resolvePlaylistPosts(
+    // Desc page 1 is served while the walk still runs (total null until it ends),
+    // so the finished total comes from getPlaylistResolveTotal.
+    await controller.resolvePlaylistPosts({} as IpcMainInvokeEvent, {
+      playlistId,
+      page: 1,
+      limit: 3,
+    });
+    const total = await controller.getPlaylistResolveTotal(
       {} as IpcMainInvokeEvent,
-      {
-        playlistId,
-        page: 1,
-        limit: 3,
-      }
+      { playlistId, sortOrder: "desc" }
     );
 
-    expect(resolved.total).not.toBeNull();
-    expect(resolved.total?.kind).toBe("lowerBound");
-    expect(resolved.total!.count).toBeGreaterThan(0);
+    expect(total.kind).toBe("lowerBound");
+    expect(total.count).toBeGreaterThan(0);
   });
 
   it("rejects on remote error (total null is not a silent empty success)", async () => {
