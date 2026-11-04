@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PROVIDER_IDS } from "../constants";
+import { KNOWN_STORED_PROVIDER_IDS } from "../constants";
 
 /**
  * WorkerPost Schema
@@ -9,13 +9,14 @@ import { PROVIDER_IDS } from "../constants";
  *
  * This schema ensures type safety and runtime validation for data passed via postMessage.
  * Structured Clone API handles Date serialization, so we accept both Date and number (timestamp).
+ * provider mirrors DB stored ids (KNOWN_STORED_PROVIDER_IDS), not live-input PROVIDER_IDS.
  */
 export const WorkerPostSchema = z
   .object({
     id: z.number().int(),
     postId: z.number().int(),
     artistId: z.number().int(),
-    provider: z.enum(PROVIDER_IDS),
+    provider: z.enum(KNOWN_STORED_PROVIDER_IDS),
     fileUrl: z.string().min(1),
     previewUrl: z.string().min(1),
     sampleUrl: z.string().min(1),

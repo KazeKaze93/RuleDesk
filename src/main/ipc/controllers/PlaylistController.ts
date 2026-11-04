@@ -52,7 +52,10 @@ import { hasAiGeneratedTag } from "../../../shared/ai-tags";
 import { buildPlaylistResolveTotal } from "../../../shared/playlist-resolve-total";
 import {
   EXTERNAL_ARTIST_ID,
+  isKnownStoredProviderId,
   isProviderId,
+  KNOWN_STORED_PROVIDER_IDS,
+  type KnownStoredProviderId,
   type ProviderId,
   type StoredProviderId,
 } from "../../../shared/constants";
@@ -101,7 +104,7 @@ const ReleasePlaylistSnapshotArgsSchema = z.tuple([ReleasePlaylistSnapshotSchema
 const GetPlaylistsContainingPostArgsSchema = z.tuple([
   z.number().int(),
   OptionalIdSchema,
-  z.string().min(1).optional(),
+  z.enum(KNOWN_STORED_PROVIDER_IDS).optional(),
 ]);
 const ImportPlaylistArgsSchema = z.tuple([]);
 
@@ -1672,15 +1675,20 @@ export class PlaylistController extends BaseController {
     _event: IpcMainInvokeEvent,
     postId: number,
     externalPostId?: number,
-    provider?: StoredProviderId
+    provider?: KnownStoredProviderId
   ): Promise<number[]> {
     try {
       const db = getDb();
 
       let result: { playlistId: number }[];
-      if (postId <= 0 && externalPostId != null && externalPostId > 0 && provider) {
+      if (
+        postId <= 0 &&
+        externalPostId != null &&
+        externalPostId > 0 &&
+        provider !== undefined &&
+        isKnownStoredProviderId(provider)
+      ) {
         // External post from Browse: (EXTERNAL_ARTIST_ID, provider, postId)
-        // drizzle posts.provider enum is PROVIDER_IDS-only; StoredProviderId may be legacy → parameterized sql
         const rows = db
           .select({ playlistId: playlistEntries.playlistId })
           .from(playlistEntries)
@@ -1689,7 +1697,7 @@ export class PlaylistController extends BaseController {
             and(
               eq(posts.postId, externalPostId),
               eq(posts.artistId, EXTERNAL_ARTIST_ID),
-              sql`${posts.provider} = ${provider}`
+              eq(posts.provider, provider)
             )
           )
           .all();

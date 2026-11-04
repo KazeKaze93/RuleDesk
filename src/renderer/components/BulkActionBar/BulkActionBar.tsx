@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
 import type { Post } from "@shared/types/db";
+import { isProviderId } from "@shared/constants";
 import { useDownloadStore } from "../../store/downloadStore";
 import {
   presentDownloadAllResult,
@@ -167,6 +168,12 @@ export const BulkActionBar = ({
         if (post.id > 0) {
           resolvedIds.push(post.id);
           continue;
+        }
+        if (!isProviderId(post.provider)) {
+          toast.error(
+            `Cannot move legacy provider post ${post.postId} (${post.provider})`
+          );
+          return;
         }
         const inserted = await window.api.shadowInsertPost({
           postId: post.postId,

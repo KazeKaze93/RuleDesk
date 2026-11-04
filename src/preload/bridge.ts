@@ -25,7 +25,10 @@ import type {
   UpdateStatusData,
   DownloadProgressData,
 } from "../shared/types/ipc-bridge";
-import type { ProviderId, StoredProviderId } from "../shared/constants";
+import type {
+  KnownStoredProviderId,
+  ProviderId,
+} from "../shared/constants";
 
 export type {
   IpcBridge,
@@ -309,7 +312,7 @@ const ipcBridge: IpcBridge = {
   getPlaylistsContainingPost: (
     postId: number,
     externalPostId?: number,
-    provider?: StoredProviderId
+    provider?: KnownStoredProviderId
   ) =>
     invokeIpc(
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,
