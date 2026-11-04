@@ -102,7 +102,7 @@ Unify `PlaylistGallery` on `useGalleryInfiniteScroll` (debounce / endReached gat
 | # | Branch | PR | Status |
 |---|--------|----|--------|
 | G | `fix/playlist-infinite-scroll` | [#265](https://github.com/KazeKaze93/RuleDesk/pull/265) | ✅ merged |
-| H | `feat/hybrid-snapshot-store` | — | 🟡 open |
+| H | `feat/hybrid-snapshot-store` | [#266](https://github.com/KazeKaze93/RuleDesk/pull/266) | 🟡 open |
 
 ### DB review waves (P1)
 
