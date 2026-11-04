@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  useQueryClient,
-  useInfiniteQuery,
-  type InfiniteData,
-  type QueryKey,
-} from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, List, Sparkles, CheckSquare } from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
@@ -42,6 +37,7 @@ import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { GalleryLoadError } from "../gallery/GalleryLoadError";
+import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { SortablePostCard } from "./PlaylistVirtuosoComponents";
 import { resolveErrorMessage } from "../../utils/error-message";
@@ -103,6 +99,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
 
   const {
     data,
+    allPosts: rawPosts,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -111,7 +108,8 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     isError,
     error,
     refetch,
-  } = useInfiniteQuery<Post[], Error, InfiniteData<Post[]>, QueryKey, number>({
+    handleEndReached,
+  } = useGalleryInfiniteScroll({
     queryKey: [
       "playlist-posts",
       playlist.id,
@@ -120,24 +118,26 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       sortOrder,
     ],
     initialPageParam: 1,
-    queryFn: async ({ pageParam }) => {
+    fetchFn: async (page) => {
       return await window.api.resolvePlaylistPosts({
         playlistId: playlist.id,
-        page: pageParam,
+        page,
         limit: POSTS_PAGE_SIZE,
         filters: Object.keys(apiFilters).length > 0 ? apiFilters : undefined,
         sortOrder,
         isRandom: false,
       });
     },
+    // Raw page length before client AI filter (same gate as pre-migration).
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < POSTS_PAGE_SIZE) return undefined;
       return allPages.length + 1;
     },
   });
 
+  // Client AI filter after flatten — same as pre-migration (server still pages on raw size).
   const allPosts = useMemo(() => {
-    let posts = data?.pages.flat() ?? [];
+    let posts = rawPosts;
 
     if (aiFilter === "hide") {
       posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
@@ -146,7 +146,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     }
 
     return posts;
-  }, [data, aiFilter]);
+  }, [rawPosts, aiFilter]);
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -180,24 +180,33 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     [displayedPosts, selectedIds]
   );
 
-  const handleLoadMore = () => {
-    if (hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage().then((result) => {
-        const newPage = result.data?.pages[result.data.pages.length - 1];
-        if (!newPage || newPage.length === 0) return;
-        const filteredIds = newPage
-          .filter((post) =>
-            shouldIncludePostInPlaylistQueue(post, {
-              aiFilter,
-            })
-          )
-          .map((post) => (post.id === 0 && post.postId ? post.postId : post.id));
-        if (filteredIds.length > 0) {
-          appendQueueIds(filteredIds);
-        }
-      });
+  // Viewer / masonry: gated fetchNextPage + appendQueueIds (Browse pattern).
+  // Virtuoso grid uses handleEndReached (debounce + in-flight refs) to avoid double-fetch.
+  const handleLoadMore = useCallback(() => {
+    if (!hasNextPage || isFetchingNextPage) {
+      return;
     }
-  };
+    void fetchNextPage().then((result) => {
+      const newPage = result.data?.pages[result.data.pages.length - 1];
+      if (!newPage || newPage.length === 0) return;
+      const filteredIds = newPage
+        .filter((post) =>
+          shouldIncludePostInPlaylistQueue(post, {
+            aiFilter,
+          })
+        )
+        .map((post) => (post.id === 0 && post.postId ? post.postId : post.id));
+      if (filteredIds.length > 0) {
+        appendQueueIds(filteredIds);
+      }
+    });
+  }, [
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    aiFilter,
+    appendQueueIds,
+  ]);
 
   const handlePostClick = (index: number) => {
     const currentDisplayedPosts = displayedPosts;
@@ -238,7 +247,9 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: handleLoadMore,
+    onLoadMore: () => {
+      void handleLoadMore();
+    },
   });
 
   const handleRemovePost = async (postId: number) => {
@@ -490,7 +501,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
               className="h-full"
               aria-busy={listAriaBusy}
               totalCount={displayedPosts.length}
-              endReached={handleLoadMore}
+              endReached={handleEndReached}
               increaseViewportBy={600}
               components={{
                 List: ListComponent,

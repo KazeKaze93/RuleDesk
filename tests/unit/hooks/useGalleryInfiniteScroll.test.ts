@@ -499,5 +499,166 @@ describe("useGalleryInfiniteScroll", () => {
 
       unmount();
     });
+
+    it("playlist-shaped key: multiple handleEndReached during in-flight next page → one network call", async () => {
+      // Mirrors PlaylistGallery queryKey + raw Post[] pages (AI filter is client-side after flatten).
+      let resolvePage2: (() => void) | null = null;
+      const fetchFn = vi.fn(async (page: number) => {
+        if (page === 1) {
+          return makeItems(POSTS_PER_PAGE);
+        }
+        await new Promise<void>((resolve) => {
+          resolvePage2 = resolve;
+        });
+        return makeItems(POSTS_PER_PAGE, POSTS_PER_PAGE + 1);
+      });
+
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["playlist-posts", 42, "all", "hide", "id"],
+          fetchFn,
+          initialPageParam: 1,
+          debounceDelay: 20,
+          getNextPageParam: (lastPage, allPages) => {
+            if (lastPage.length < POSTS_PER_PAGE) return undefined;
+            return allPages.length + 1;
+          },
+        })
+      );
+
+      await waitForCondition(() => {
+        expect(result.current?.hasNextPage).toBe(true);
+        expect(result.current?.isFetchingNextPage).toBe(false);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        result.current?.handleEndReached();
+      });
+      await act(async () => {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 30);
+        });
+      });
+
+      await waitForCondition(() => {
+        expect(fetchFn).toHaveBeenCalledTimes(2);
+        expect(result.current?.isFetchingNextPage).toBe(true);
+      });
+
+      act(() => {
+        result.current?.handleEndReached();
+        result.current?.handleEndReached();
+        result.current?.handleEndReached();
+      });
+      await act(async () => {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 40);
+        });
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        resolvePage2?.();
+        await Promise.resolve();
+      });
+      await waitForCondition(() => {
+        expect(result.current?.isFetchingNextPage).toBe(false);
+        expect(result.current?.allPosts).toHaveLength(POSTS_PER_PAGE * 2);
+      });
+
+      unmount();
+    });
+  });
+
+  describe("placeholderData across queryKey changes", () => {
+    it("keeps previous posts visible when sortOrder (playlist-shaped key) changes until new data arrives", async () => {
+      // RED without hook placeholderData: (previousData) => previousData —
+      // removing that line makes allPosts drop to [] while the new-key fetch is in flight.
+      type Api = ReturnType<typeof useGalleryInfiniteScroll<PostItem[]>>;
+      const apiRef: { current: Api | null } = { current: null };
+      const setSortOrderRef: { current: ((next: string) => void) | null } = {
+        current: null,
+      };
+
+      let resolveScoreFetch: (() => void) | null = null;
+      const fetchFn = vi.fn(async (page: number, sortOrder: string) => {
+        if (sortOrder === "score") {
+          await new Promise<void>((resolve) => {
+            resolveScoreFetch = resolve;
+          });
+          return makeItems(POSTS_PER_PAGE, 1000);
+        }
+        return makeItems(POSTS_PER_PAGE, (page - 1) * POSTS_PER_PAGE + 1);
+      });
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      function Harness(): ReactNode {
+        const [sortOrder, setSortOrder] = useState("id");
+        const gallery = useGalleryInfiniteScroll({
+          queryKey: ["playlist-posts", 7, "all", "all", sortOrder],
+          fetchFn: (page) => fetchFn(page, sortOrder),
+          initialPageParam: 1,
+          getNextPageParam: (lastPage, allPages) => {
+            if (lastPage.length < POSTS_PER_PAGE) return undefined;
+            return allPages.length + 1;
+          },
+        });
+        useEffect(() => {
+          setSortOrderRef.current = (next: string) => {
+            setSortOrder(next);
+          };
+          apiRef.current = gallery;
+        });
+        return null;
+      }
+
+      act(() => {
+        root.render(
+          createElement(
+            QueryClientProvider,
+            { client: queryClient },
+            createElement(Harness)
+          )
+        );
+      });
+
+      await waitForCondition(() => {
+        expect(apiRef.current?.allPosts).toHaveLength(POSTS_PER_PAGE);
+        expect(apiRef.current?.allPosts[0]?.id).toBe(1);
+      });
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      const previousFirstId = apiRef.current?.allPosts[0]?.id;
+
+      act(() => {
+        setSortOrderRef.current?.("score");
+      });
+
+      // placeholderData keeps prior pages visible during the new-key fetch.
+      await waitForCondition(() => {
+        expect(fetchFn.mock.calls.some((call) => call[1] === "score")).toBe(
+          true
+        );
+      });
+      expect(apiRef.current?.allPosts).toHaveLength(POSTS_PER_PAGE);
+      expect(apiRef.current?.allPosts[0]?.id).toBe(previousFirstId);
+
+      await act(async () => {
+        resolveScoreFetch?.();
+        await Promise.resolve();
+      });
+      await waitForCondition(() => {
+        expect(apiRef.current?.allPosts[0]?.id).toBe(1000);
+        expect(apiRef.current?.allPosts).toHaveLength(POSTS_PER_PAGE);
+      });
+
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    });
   });
 });
