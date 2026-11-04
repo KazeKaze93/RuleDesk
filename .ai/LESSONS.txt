@@ -504,3 +504,7 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 ### Problem: snapshot release on gallery unmount aborted the walk started by the same mount
 **Root Cause:** React.StrictMode dev double-mount runs effect cleanup immediately
 **Invariant Rule:** renderer cleanups that trigger destructive main-side IPC (release/abort) are deferred and cancelled on remount of the same entity.
+
+### Problem: Sync All start/progress/end duplicated across Sidebar and Updates with divergent error UX
+**Root Cause:** each surface called `window.api.syncAll` and subscribed to sync events independently
+**Invariant Rule:** one hook (`useSyncAll`) owns sync invocation + isSyncing/progress; UI surfaces call `startSync` and never `window.api.syncAll` directly.

@@ -667,21 +667,17 @@ export const Browse = () => {
       </div>
       <BulkActionBar
         selectedPosts={selectedPosts}
-        onSelectAll={
-          tags.length > 0
-            ? () => {
-                const selectableIds = displayPosts.map((post) => getBulkSelectId(post));
-                const isAllSelected =
-                  selectableIds.length > 0 &&
-                  selectableIds.every((id) => selectedIds.has(id));
-                if (isAllSelected) {
-                  clearSelection();
-                  return;
-                }
-                selectAll(selectableIds);
-              }
-            : undefined
-        }
+        onSelectAll={() => {
+          const selectableIds = displayPosts.map((post) => getBulkSelectId(post));
+          const isAllSelected =
+            selectableIds.length > 0 &&
+            selectableIds.every((id) => selectedIds.has(id));
+          if (isAllSelected) {
+            clearSelection();
+            return;
+          }
+          selectAll(selectableIds);
+        }}
       />
     </div>
   );

@@ -151,15 +151,11 @@ The artist will appear in your tracked list. Until the first successful sync fin
 
 **How to sync:**
 
-1. Click the **"Sync All"** button in the sidebar (top of the sidebar, with a refresh icon)
+1. Click the **"Sync now"** button in the sidebar (bottom of the sidebar, with a refresh icon). The label shows live progress such as **Syncing artist_name...** while a run is active.
 
-2. Wait for the sync to complete. You'll see progress messages like:
+2. When the run finishes with no artist failures, a **Sync complete** toast appears. If some artists fail, one summary toast lists up to three `artist: reason` lines (then **and K more**) with an **Open Tracked** action. Credential problems use a separate credentials toast only (no duplicate success/summary toast).
 
-   - "Syncing artist_name..."
-   - "Found 15 new posts"
-   - "Sync complete!"
-
-3. The sync runs in the background, so you can continue using the app while it syncs
+3. The sync runs in the background, so you can continue using the app while it syncs. **Last sync** under the button and the Updates unread badge refresh when the run ends.
 
 **Automatic sync (optional):**
 
@@ -250,6 +246,7 @@ Each post card shows:
 - Click a chip to put it back into the input for editing; right-click still toggles include/exclude.
 - The search area in the top bar uses the available width before action buttons and can grow to a second chip row when the first row is full.
 - **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically). Repeating the same tags and page within **24 hours** uses a local SQLite cache (`SEARCH_RESULTS_CACHE_TTL_MS`) for successful pages and confirmed empty tagged pages (same TTL); untagged page-1 empties are not cached. Until that TTL expires, RuleDesk does not re-request the booru for that key.
+- **Select all (bulk):** available for the posts currently shown in the Browse gallery whether or not search tags are set (still selects only loaded/`displayPosts` items).
 - **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings**, which opens **Settings → Account** via `/settings?tab=account`, when credentials are invalid).
 - Browse source modes **Favorites** / **Since tracked** (internal value still `subscriptions`; SQL `isFavorited` / `sinceTracking`) query your **local cache** and still require a non-empty tag query in the Source switcher by design. **Since tracked** is available only on **Browse**. Artist galleries (`/artist/:id`) show Source **All** and **Favorites** only (the gallery does not pass `sinceTracking`). Source is hidden on the Tracked list, Favorites, Updates, and Playlists pages. AI and Media filters on those modes run in SQL before pagination. On **Source: All**, Rule34 AI hide/only and Rule34/Gelbooru Videos/Images are sent as booru tags in the live search (so pages stay full). Gelbooru still filters AI client-side after each page. **Since tracked** means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name. Tag-combination subscriptions are **Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)** — use smart playlists for tag-combo collections.
 
@@ -265,7 +262,7 @@ Each post card shows:
 
 **View your favorites:**
 
-1. Click **"Favorites"** in the sidebar
+1. Click **"Favorites"** in the sidebar.
 2. You'll see all your favorited posts
 
 **Empty states:**
@@ -333,7 +330,7 @@ The download will start, and you'll see a progress indicator.
 
 - Runs in a background worker (UI stays responsive). Progress shows on the button.
 - On **Browse**, download applies only to posts already loaded in the feed (see the button tooltip). To download everything from an artist, track them under **Tracked artists**, then use Download All on that artist's gallery.
-- List downloads (Browse / Favorites / Updates / playlist selection of already-loaded posts): at most **5000** files (`BATCH_DOWNLOAD_LIST_MAX_FILES`). If you select more, the app shows an error and does **not** start the batch (no silent truncate). Artist gallery **Download All** walks the local DB for that artist and is not limited by this list cap.
+- List downloads (Browse loaded posts / Favorites·Updates·playlist **selected** posts): at most **5000** files (`BATCH_DOWNLOAD_LIST_MAX_FILES`). If you select more, the app shows an error and does **not** start the batch (no silent truncate). Artist gallery **Download All** walks the local DB for that artist and is not limited by this list cap.
 - Partial failures do not discard successful files. The toast shows `Downloaded X, failed Y` with reason codes (network, 403/404/429, disk, timeout). Artist gallery can expand the failed list under the button.
 - HTTP **429** pauses the whole download queue (no new files start) for max(backoff, Retry-After), then retries; after retries are exhausted the file is listed as failed.
 - Queue progress is written atomically (unique temp file + rename, with retries on Windows file locks). If the queue file cannot be updated after retries, that item is listed as a **disk** failure even if the media file already landed — resume can still skip an existing file when duplicate handling is **skip**.
@@ -404,6 +401,8 @@ On Browse **Source: All**, Videos / Images are applied in the live API search ta
 2. In the **Feed** tab, click **Mark all read** to mark unread posts in the feed scope (posts since you started tracking each artist). If tag chips are active, only posts matching that filter are marked.
 
 Tag chips from the top bar still filter the Updates feed. When they do, a **Filtered by:** banner is shown; clear chips to restore the full feed.
+
+**Empty Updates feed:** with no tracked artists, **Track an artist** opens Tracked with the add dialog (`/tracked?add=1`, then clears the query). If artists exist but sync has never completed, **Sync now** starts the same Sync All pipeline as the sidebar.
 
 ---
 
