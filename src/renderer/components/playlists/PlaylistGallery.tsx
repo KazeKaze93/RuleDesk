@@ -99,6 +99,9 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   const aiFilter = useSearchStore((state) => state.filters.aiFilter);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const queryClient = useQueryClient();
+  // Bump to force page-1 reload: removeQueries alone leaves keepPreviousData
+  // on the same key, so "Loaded N" stays at the scrolled total.
+  const [refreshEpoch, setRefreshEpoch] = useState(0);
 
   // Build filters for API call from search store state
   const apiFilters = useMemo(() => {
@@ -133,6 +136,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       mediaType,
       aiFilter,
       sortOrder,
+      refreshEpoch,
     ],
     initialPageParam: 1,
     fetchFn: async (page) => {
@@ -216,20 +220,10 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   }, [loadMoreNow, aiFilter, appendQueueIds]);
 
   const handleRefreshCollection = useCallback(() => {
-    const queryKey = [
-      "playlist-posts",
-      playlist.id,
-      mediaType,
-      aiFilter,
-      sortOrder,
-    ] as const;
-    void (async () => {
-      await queryClient.cancelQueries({ queryKey: [...queryKey] });
-      // removeQueries (not reset): placeholderData would otherwise keep prior pages
-      // visible as "Loaded N" while page 1 refetches.
-      queryClient.removeQueries({ queryKey: [...queryKey] });
-    })();
-  }, [queryClient, playlist.id, mediaType, aiFilter, sortOrder]);
+    // New queryKey drops infinite pages; placeholderData keeps the prior grid
+    // until page 1 arrives, then Loaded resets to POSTS_PAGE_SIZE.
+    setRefreshEpoch((n) => n + 1);
+  }, []);
 
   const filtersNarrowResults =
     (mediaType !== undefined && mediaType !== "all") || aiFilter !== "all";
