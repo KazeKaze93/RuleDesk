@@ -109,7 +109,7 @@ Replace CSS multi-column masonry with JS round-robin into flex columns (`item i 
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| M | `fix/masonry-row-order` | [#269](https://github.com/KazeKaze93/RuleDesk/pull/269) | 🟡 open |
+| M | `fix/masonry-row-order` | [#269](https://github.com/KazeKaze93/RuleDesk/pull/269) | ✅ merged |
 
 ### Playlist gallery infinite scroll
 
