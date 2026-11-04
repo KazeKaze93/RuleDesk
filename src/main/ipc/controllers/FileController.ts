@@ -30,7 +30,10 @@ import {
   planArtistChunk,
   shouldAdvanceArtistCursorAfterChunk,
 } from "../../lib/mass-download-artist-state";
-import type { PostsController } from "./PostsController";
+import type {
+  MassDownloadTarget,
+  PostsController,
+} from "./PostsController";
 import {
   buildListOverLimitResult,
   isListOverLimit,
@@ -382,7 +385,11 @@ export class FileController extends BaseController {
       };
     }
     if (data.kind === "artist") {
-      return this.downloadAllArtistFromQueue(data);
+      return this.downloadAllCursorFromQueue(data, {
+        kind: "artist",
+        artistId: data.artistId,
+        filters: data.filters,
+      });
     }
     const remaining = remainingDownloadItems(data.items, data.completedIds);
     return this.downloadAllList(remaining, {
@@ -606,7 +613,17 @@ export class FileController extends BaseController {
     }
 
     if (parsed.data.kind === "artist") {
-      return this.downloadAllArtist(parsed.data.artistId, parsed.data.filters);
+      return this.downloadAllCursorTarget({
+        kind: "artist",
+        artistId: parsed.data.artistId,
+        filters: parsed.data.filters,
+      });
+    }
+    if (parsed.data.kind === "favorites") {
+      return this.downloadAllCursorTarget({
+        kind: "favorites",
+        filters: parsed.data.filters,
+      });
     }
     return this.downloadAllList(parsed.data.items, {});
   }
@@ -628,9 +645,14 @@ export class FileController extends BaseController {
     return { ok: true, folder };
   }
 
-  private async downloadAllArtist(
-    artistId: number,
-    filters: DownloadQueueFileV3Artist["filters"]
+  /**
+   * Start uncapped cursor mass-download for artist or favorites.
+   * Artist persists DownloadQueueFileV3Artist for crash resume.
+   * Favorites runs the same chunk loop; queue persistence needs kind:"favorites"
+   * in shared download-queue types (HANDOFF) — in-memory only until then.
+   */
+  private async downloadAllCursorTarget(
+    target: MassDownloadTarget
   ): Promise<DownloadAllResult> {
     const posts = this.postsController;
     if (!posts) {
@@ -652,24 +674,40 @@ export class FileController extends BaseController {
         error: folderResult.error,
       };
     }
-    const snapshot = posts.snapshotArtistMassDownload(artistId, filters);
+    const snapshot = posts.snapshotMassDownload(target);
     if (snapshot.total === 0 || snapshot.upperBoundId === 0) {
       return { success: true, downloaded: 0, failed: [], canceled: false };
     }
+
+    if (target.kind === "artist") {
+      const state = artistQueueInitial({
+        artistId: target.artistId,
+        filters: target.filters,
+        upperBoundId: snapshot.upperBoundId,
+        total: snapshot.total,
+        folder: folderResult.folder,
+      });
+      await this.writeQueueFile(state);
+      return this.downloadAllCursorFromQueue(state, target);
+    }
+
+    // Favorites: reuse artist cursor state helpers with a placeholder artistId.
+    // Do not persist — resume would mis-route as artist until queue kind exists.
     const state = artistQueueInitial({
-      artistId,
-      filters,
+      artistId: 1,
+      filters: target.filters,
       upperBoundId: snapshot.upperBoundId,
       total: snapshot.total,
       folder: folderResult.folder,
     });
-    await this.writeQueueFile(state);
-    return this.downloadAllArtistFromQueue(state);
+    return this.downloadAllCursorFromQueue(state, target);
   }
 
-  private async downloadAllArtistFromQueue(
-    initial: DownloadQueueFileV3Artist
+  private async downloadAllCursorFromQueue(
+    initial: DownloadQueueFileV3Artist,
+    target: MassDownloadTarget
   ): Promise<DownloadAllResult> {
+    const persistQueue = target.kind === "artist";
     const posts = this.postsController;
     const mainWindow = this.getMainWindow();
     if (!posts || !mainWindow) {
@@ -693,9 +731,8 @@ export class FileController extends BaseController {
 
     try {
       while (!this.massDownloadCancelRequested) {
-        const chunk = posts.fetchArtistMassDownloadChunk({
-          artistId: state.artistId,
-          filters: state.filters,
+        const chunk = posts.fetchMassDownloadChunk({
+          target,
           cursorId: state.cursorId,
           upperBoundId: state.upperBoundId,
           limit: BATCH_DOWNLOAD_CHUNK_SIZE,
@@ -712,7 +749,9 @@ export class FileController extends BaseController {
         if (plan.type === "advance") {
           // Crash window: all items recorded, cursor not yet written — resume lands here.
           state = plan.state;
-          await this.writeQueueFile(state);
+          if (persistQueue) {
+            await this.writeQueueFile(state);
+          }
           continue;
         }
 
@@ -724,7 +763,9 @@ export class FileController extends BaseController {
           persistQueue: false,
           onItemCompleted: async (filename) => {
             const next = applyArtistItemCompleted(state, filename);
-            await this.writeQueueFile(next);
+            if (persistQueue) {
+              await this.writeQueueFile(next);
+            }
             state = next;
           },
         });
@@ -743,17 +784,21 @@ export class FileController extends BaseController {
         // Advance even when the chunk had permanent failures (404) so the walk
         // continues; a later full run (new queue) retries failed filenames.
         state = advanceArtistCursor(state, lastId);
-        await this.writeQueueFile(state);
+        if (persistQueue) {
+          await this.writeQueueFile(state);
+        }
       }
 
       if (this.massDownloadCancelRequested) {
         canceled = true;
       }
 
-      if (!canceled && failed.length === 0) {
-        await this.deleteQueueFile();
-      } else {
-        await this.writeQueueFile(state);
+      if (persistQueue) {
+        if (!canceled && failed.length === 0) {
+          await this.deleteQueueFile();
+        } else {
+          await this.writeQueueFile(state);
+        }
       }
 
       return {

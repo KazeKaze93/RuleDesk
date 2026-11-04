@@ -69,6 +69,18 @@ import {
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
+/** Cursor mass-download target: artist-scoped or all favorites. */
+export type MassDownloadTarget =
+  | {
+      kind: "artist";
+      artistId: number;
+      filters?: PostFilterRequest;
+    }
+  | {
+      kind: "favorites";
+      filters?: PostFilterRequest;
+    };
+
 /**
  * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
  * Required for Electron 39+ IPC serialization compatibility.
@@ -478,14 +490,56 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Snapshot for artist mass-download: MAX(id) and COUNT under filters.
-   * upperBoundId freezes the walk so sync inserts with higher ids are deferred.
+   * Resolve artist scope + filters for mass-download targets.
+   * Favorites always force isFavorited=true (kind owns that gate).
    */
-  public snapshotArtistMassDownload(
-    artistId: number,
-    filters: PostFilterRequest | undefined
+  private resolveMassDownloadScope(target: MassDownloadTarget): {
+    artistId: number | undefined;
+    filters: PostFilterRequest | undefined;
+  } {
+    if (target.kind === "artist") {
+      return { artistId: target.artistId, filters: target.filters };
+    }
+    return {
+      artistId: undefined,
+      filters: {
+        ...target.filters,
+        isFavorited: true,
+      },
+    };
+  }
+
+  /**
+   * Snapshot for mass-download: MAX(id) and COUNT under target filters.
+   * upperBoundId freezes the walk so sync inserts with higher ids are deferred.
+   * When filters.sinceTracking is set, uses the same updates-feed join/scope as getPosts.
+   */
+  public snapshotMassDownload(
+    target: MassDownloadTarget
   ): { upperBoundId: number; total: number } {
     const db = getDb();
+    const { artistId, filters } = this.resolveMassDownloadScope(target);
+
+    if (filters?.sinceTracking === true) {
+      const { where, joinOn } = this.buildUpdatesFeedQueryScope(
+        artistId,
+        filters
+      );
+      const row = db
+        .select({
+          upperBoundId: max(posts.id),
+          total: count(),
+        })
+        .from(posts)
+        .innerJoin(artists, joinOn)
+        .where(where)
+        .get();
+      return {
+        upperBoundId: row?.upperBoundId ?? 0,
+        total: row?.total ?? 0,
+      };
+    }
+
     const conditions = this.buildPostFilterConditions(artistId, filters);
     const whereClause =
       conditions.length > 0 ? and(...conditions) : undefined;
@@ -497,14 +551,94 @@ export class PostsController extends BaseController {
       .from(posts)
       .where(whereClause)
       .get();
-    const upperBoundId = row?.upperBoundId ?? 0;
-    const total = row?.total ?? 0;
-    return { upperBoundId, total };
+    return {
+      upperBoundId: row?.upperBoundId ?? 0,
+      total: row?.total ?? 0,
+    };
   }
 
   /**
-   * Next chunk for artist mass-download: id > cursorId AND id <= upperBoundId, ORDER BY id ASC.
+   * Next mass-download chunk: id > cursorId AND id <= upperBoundId, ORDER BY id ASC.
+   * When filters.sinceTracking is set, uses the same updates-feed join/scope as getPosts.
    */
+  public fetchMassDownloadChunk(params: {
+    target: MassDownloadTarget;
+    cursorId: number;
+    upperBoundId: number;
+    limit?: number;
+  }): Array<DownloadQueueItem & { id: number }> {
+    const db = getDb();
+    const limit = params.limit ?? BATCH_DOWNLOAD_CHUNK_SIZE;
+    const { artistId, filters } = this.resolveMassDownloadScope(params.target);
+    const cursorConditions: SQL[] = [
+      gt(posts.id, params.cursorId),
+      lte(posts.id, params.upperBoundId),
+    ];
+
+    const rows =
+      filters?.sinceTracking === true
+        ? (() => {
+            const { where, joinOn } = this.buildUpdatesFeedQueryScope(
+              artistId,
+              filters
+            );
+            const scopedWhere = and(where, ...cursorConditions);
+            return db
+              .select({
+                id: posts.id,
+                postId: posts.postId,
+                artistId: posts.artistId,
+                fileUrl: posts.fileUrl,
+              })
+              .from(posts)
+              .innerJoin(artists, joinOn)
+              .where(scopedWhere)
+              .orderBy(asc(posts.id))
+              .limit(limit)
+              .all();
+          })()
+        : (() => {
+            const conditions = this.buildPostFilterConditions(
+              artistId,
+              filters
+            );
+            conditions.push(...cursorConditions);
+            const whereClause = and(...conditions);
+            return db
+              .select({
+                id: posts.id,
+                postId: posts.postId,
+                artistId: posts.artistId,
+                fileUrl: posts.fileUrl,
+              })
+              .from(posts)
+              .where(whereClause)
+              .orderBy(asc(posts.id))
+              .limit(limit)
+              .all();
+          })();
+
+    return rows
+      .filter((p) => p.fileUrl?.trim())
+      .map((p) => {
+        const item = postRowToDownloadItem(p);
+        return { id: p.id, ...item };
+      });
+  }
+
+  /** Artist wrapper — keeps existing tests/callers on the old names. */
+  public snapshotArtistMassDownload(
+    artistId: number,
+    filters: PostFilterRequest | undefined
+  ): { upperBoundId: number; total: number } {
+    return this.snapshotMassDownload({
+      kind: "artist",
+      artistId,
+      filters,
+    });
+  }
+
+  /** Artist wrapper — keeps existing tests/callers on the old names. */
   public fetchArtistMassDownloadChunk(params: {
     artistId: number;
     filters: PostFilterRequest | undefined;
@@ -512,33 +646,16 @@ export class PostsController extends BaseController {
     upperBoundId: number;
     limit?: number;
   }): Array<DownloadQueueItem & { id: number }> {
-    const db = getDb();
-    const limit = params.limit ?? BATCH_DOWNLOAD_CHUNK_SIZE;
-    const conditions = this.buildPostFilterConditions(
-      params.artistId,
-      params.filters
-    );
-    conditions.push(gt(posts.id, params.cursorId));
-    conditions.push(lte(posts.id, params.upperBoundId));
-    const whereClause = and(...conditions);
-    const rows = db
-      .select({
-        id: posts.id,
-        postId: posts.postId,
-        artistId: posts.artistId,
-        fileUrl: posts.fileUrl,
-      })
-      .from(posts)
-      .where(whereClause)
-      .orderBy(asc(posts.id))
-      .limit(limit)
-      .all();
-    return rows
-      .filter((p) => p.fileUrl?.trim())
-      .map((p) => {
-        const item = postRowToDownloadItem(p);
-        return { id: p.id, ...item };
-      });
+    return this.fetchMassDownloadChunk({
+      target: {
+        kind: "artist",
+        artistId: params.artistId,
+        filters: params.filters,
+      },
+      cursorId: params.cursorId,
+      upperBoundId: params.upperBoundId,
+      limit: params.limit,
+    });
   }
 
   /**

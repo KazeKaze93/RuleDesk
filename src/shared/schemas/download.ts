@@ -24,6 +24,11 @@ export const DownloadAllArtistRequestSchema = z.object({
   filters: PostFilterSchema.optional(),
 });
 
+export const DownloadAllFavoritesRequestSchema = z.object({
+  kind: z.literal("favorites"),
+  filters: PostFilterSchema.optional(),
+});
+
 /**
  * No .max() on items — oversize must return a typed DownloadAllResult from the
  * controller, not a Zod ValidationError across IPC.
@@ -36,6 +41,7 @@ export const DownloadAllListRequestSchema = z.object({
 /** Discriminated union for mass-download IPC entry. */
 export const DownloadAllRequestSchema = z.discriminatedUnion("kind", [
   DownloadAllArtistRequestSchema,
+  DownloadAllFavoritesRequestSchema,
   DownloadAllListRequestSchema,
 ]);
 

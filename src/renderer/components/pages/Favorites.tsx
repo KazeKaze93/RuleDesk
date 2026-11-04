@@ -41,8 +41,11 @@ import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { GalleryLoadError } from "../gallery/GalleryLoadError";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
+import { useDownloadAllFromBackend } from "../../hooks/useDownloadAll";
+import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { POSTS_PAGE_SIZE } from "../../../shared/constants";
+import type { PostFilterRequest } from "@shared/schemas/post";
 
 const FAVORITES_EMPTY_NONE_TITLE = "No favorites yet";
 const FAVORITES_EMPTY_NONE_HINT =
@@ -77,7 +80,6 @@ const {
   GridItemContainer,
   MasonryItemContainer,
   GridVirtuosoList,
-  MasonryVirtuosoList,
 } = createVirtuosoGridFactories("Favorites");
 
 // --- Main component ---
@@ -218,8 +220,38 @@ export const Favorites = () => {
   );
 
   const listAriaBusy = isLoading || isFetchingNextPage;
-  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
-  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
+
+  const downloadFilters = useMemo((): PostFilterRequest => {
+    const filters: PostFilterRequest = {};
+    if (tags.length > 0) {
+      filters.tags = tags.join(" ");
+    }
+    if (aiFilter !== "all") {
+      filters.aiFilter = aiFilter;
+    }
+    if (mediaType !== "all") {
+      filters.mediaType = mediaType;
+    }
+    return filters;
+  }, [tags, aiFilter, mediaType]);
+
+  // N = header counter already on this page (loaded + client-filtered favorites).
+  const favoritesCountLabel = allPosts.length;
+
+  const {
+    downloadAll,
+    cancel,
+    pause,
+    resume,
+    isDownloading: isDownloadingAll,
+    isPaused,
+    progress: downloadAllProgress,
+    lastFailures,
+    canDownload,
+  } = useDownloadAllFromBackend(
+    { kind: "favorites", filters: downloadFilters },
+    favoritesCountLabel
+  );
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -362,28 +394,45 @@ export const Favorites = () => {
                 : undefined
             }
             actions={
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant={isBulkMode ? "default" : "outline"}
-                      size="icon"
-                      aria-label="Toggle bulk selection mode"
-                      onClick={() => {
-                        if (isBulkMode) {
-                          deactivateBulkMode();
-                          return;
-                        }
-                        activateBulkMode();
-                      }}
-                    >
-                      <CheckSquare className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Bulk selection</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="flex items-center gap-2">
+                <DownloadAllButton
+                  onClick={() => {
+                    void downloadAll();
+                  }}
+                  onCancel={cancel}
+                  onPause={pause}
+                  onResume={resume}
+                  isDownloading={isDownloadingAll}
+                  isPaused={isPaused}
+                  progress={downloadAllProgress}
+                  canDownload={canDownload}
+                  totalLabel={favoritesCountLabel}
+                  labelMode="favorites"
+                  failures={lastFailures}
+                />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant={isBulkMode ? "default" : "outline"}
+                        size="icon"
+                        aria-label="Toggle bulk selection mode"
+                        onClick={() => {
+                          if (isBulkMode) {
+                            deactivateBulkMode();
+                            return;
+                          }
+                          activateBulkMode();
+                        }}
+                      >
+                        <CheckSquare className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Bulk selection</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             }
           />
         </div>
@@ -493,8 +542,8 @@ export const Favorites = () => {
               endReached={triggerLoadMore}
               increaseViewportBy={600}
               components={{
-                List: ListComponent,
-                Item: ItemComponent,
+                List: GridVirtuosoList,
+                Item: GridItemContainer,
                 Footer: () =>
                   isFetchingNextPage ? (
                     <div className="flex col-span-full justify-center py-4 w-full">
