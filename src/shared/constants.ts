@@ -47,7 +47,12 @@ export type ProviderId = (typeof PROVIDER_IDS)[number];
 export type StoredProviderId = string;
 
 export function isProviderId(value: string): value is ProviderId {
-  return (PROVIDER_IDS as readonly string[]).includes(value);
+  for (const id of PROVIDER_IDS) {
+    if (id === value) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
