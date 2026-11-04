@@ -63,6 +63,8 @@ import {
   formatSmartPlaylistTotalLabel,
   isSmartPlaylistTotalLoading,
   pickSmartPlaylistTotal,
+  PLAYLIST_HEADER_NEWER_POSTS_MESSAGE,
+  PLAYLIST_HEADER_NEWER_POSTS_REFRESH_LABEL,
   PLAYLIST_HEADER_REFRESH_ARIA_LABEL,
   PLAYLIST_HEADER_SMART_SUBTITLE,
   PLAYLIST_HEADER_SMART_TYPE_LABEL,
@@ -222,6 +224,41 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
       log.error("[PlaylistGallery] Failed to resolve playlist total:", totalQueryError);
     }
   }, [isTotalQueryError, totalQueryError]);
+
+  const {
+    data: newerPostsProbe,
+    isError: isNewerPostsQueryError,
+    error: newerPostsQueryError,
+  } = useQuery({
+    queryKey: [
+      "playlist-newer-posts",
+      playlist.id,
+      mediaType,
+      sortOrder,
+      refreshEpoch,
+    ],
+    queryFn: async () =>
+      await window.api.checkPlaylistNewerPosts({
+        playlistId: playlist.id,
+        filters: Object.keys(apiFilters).length > 0 ? apiFilters : undefined,
+        sortOrder,
+      }),
+    enabled:
+      playlist.isSmart && sortOrder === "desc" && firstPage !== undefined,
+    refetchInterval: HYBRID_SNAPSHOT_IDLE_TTL_MS,
+    staleTime: HYBRID_SNAPSHOT_IDLE_TTL_MS,
+    retry: false,
+  });
+  const showNewerPostsBanner = newerPostsProbe?.hasNewer === true;
+
+  useEffect(() => {
+    if (isNewerPostsQueryError) {
+      log.error(
+        "[PlaylistGallery] Failed to check newer playlist posts:",
+        newerPostsQueryError
+      );
+    }
+  }, [isNewerPostsQueryError, newerPostsQueryError]);
 
   // StrictMode double-mount must not reach main: defer release and cancel on remount.
   useEffect(() => {
@@ -518,7 +555,9 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Refresh</TooltipContent>
+                <TooltipContent>
+                  {PLAYLIST_HEADER_NEWER_POSTS_REFRESH_LABEL}
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -546,6 +585,26 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
           </TooltipProvider>
         </div>
       </div>
+
+      {showNewerPostsBanner ? (
+        <div
+          className="flex items-center justify-between gap-3 border-b px-4 py-2 bg-muted/40"
+          aria-live="polite"
+        >
+          <p className="text-sm text-foreground">
+            {PLAYLIST_HEADER_NEWER_POSTS_MESSAGE}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isRefreshBusy}
+            onClick={handleRefreshCollection}
+          >
+            {PLAYLIST_HEADER_NEWER_POSTS_REFRESH_LABEL}
+          </Button>
+        </div>
+      ) : null}
 
       {/* Grid Content */}
       <div className="flex flex-col flex-1 min-h-0">

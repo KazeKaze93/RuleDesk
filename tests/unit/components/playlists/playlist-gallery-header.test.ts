@@ -8,6 +8,8 @@ import {
   pickSmartPlaylistTotal,
   PLAYLIST_HEADER_ENTRIES_SUFFIX,
   PLAYLIST_HEADER_LOWER_BOUND_SUFFIX,
+  PLAYLIST_HEADER_NEWER_POSTS_MESSAGE,
+  PLAYLIST_HEADER_NEWER_POSTS_REFRESH_LABEL,
   PLAYLIST_HEADER_SMART_SUBTITLE,
   PLAYLIST_HEADER_TOTAL_PREFIX,
 } from "@/components/playlists/playlist-gallery-header";
@@ -107,6 +109,13 @@ describe("smart subtitle", () => {
   });
 });
 
+describe("newer posts banner copy", () => {
+  it("exposes the banner message and refresh label as constants", () => {
+    expect(PLAYLIST_HEADER_NEWER_POSTS_MESSAGE).toBe("New posts available");
+    expect(PLAYLIST_HEADER_NEWER_POSTS_REFRESH_LABEL).toBe("Refresh");
+  });
+});
+
 describe("PlaylistGallery header source contract", () => {
   it("smart uses resolve total helper; never Loaded or displayedPosts.length as Total", () => {
     const source = readFileSync(
@@ -123,6 +132,10 @@ describe("PlaylistGallery header source contract", () => {
     expect(source).toContain("formatManualPlaylistCountLabel");
     expect(source).toContain("playlist.postCount");
     expect(source).toContain("getPlaylistResolveTotal");
+    expect(source).toContain("checkPlaylistNewerPosts");
+    expect(source).toContain("PLAYLIST_HEADER_NEWER_POSTS_MESSAGE");
+    expect(source).toContain("refetchInterval: HYBRID_SNAPSHOT_IDLE_TTL_MS");
+    expect(source).toContain('aria-live="polite"');
     expect(source).toContain("releasePlaylistSnapshot");
     expect(source).toContain("scheduleRelease");
     expect(source).toContain("cancelRelease");

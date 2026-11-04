@@ -30,6 +30,8 @@ import type {
   PlaylistResolveTotal,
   PlaylistResolveTotalValue,
   GetPlaylistResolveTotalRequest,
+  CheckPlaylistNewerPostsRequest,
+  CheckPlaylistNewerPostsResult,
   ReleasePlaylistSnapshotRequest,
   ReorderPlaylistEntriesRequest,
   GetManualPlaylistMembershipForPostsRequest,
@@ -255,6 +257,13 @@ export interface IpcBridge {
   getPlaylistResolveTotal: (
     params: GetPlaylistResolveTotalRequest
   ) => Promise<PlaylistResolveTotalValue>;
+  /**
+   * Cheap feed probe: `{ hasNewer }` when a desc hybrid snapshot exists;
+   * `null` when the probe does not apply. Provider/DB errors reject.
+   */
+  checkPlaylistNewerPosts: (
+    params: CheckPlaylistNewerPostsRequest
+  ) => Promise<CheckPlaylistNewerPostsResult>;
   releasePlaylistSnapshot: (
     params: ReleasePlaylistSnapshotRequest
   ) => Promise<void>;
