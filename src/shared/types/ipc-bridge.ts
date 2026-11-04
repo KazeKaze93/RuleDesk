@@ -28,6 +28,9 @@ import type {
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
   PlaylistResolveTotal,
+  PlaylistResolveTotalValue,
+  GetPlaylistResolveTotalRequest,
+  ReleasePlaylistSnapshotRequest,
   ReorderPlaylistEntriesRequest,
   GetManualPlaylistMembershipForPostsRequest,
   SyncManualPlaylistMembershipRequest,
@@ -248,6 +251,13 @@ export interface IpcBridge {
   resolvePlaylistPosts: (
     params: ResolvePlaylistPostsRequest
   ) => Promise<{ posts: Post[]; total: PlaylistResolveTotal }>;
+  /** Awaits the hybrid remote walk of the playlist snapshot; rejects if it is missing/superseded or the walk fails. */
+  getPlaylistResolveTotal: (
+    params: GetPlaylistResolveTotalRequest
+  ) => Promise<PlaylistResolveTotalValue>;
+  releasePlaylistSnapshot: (
+    params: ReleasePlaylistSnapshotRequest
+  ) => Promise<void>;
   getPlaylistsContainingPost: (
     postId: number,
     externalPostId?: number,

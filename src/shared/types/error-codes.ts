@@ -14,5 +14,7 @@ export enum ErrorCode {
   AUTH_ERROR = "AUTH_ERROR",
   PARSE_ERROR = "PARSE_ERROR",
   CANCELLED = "CANCELLED",
+  /** Hybrid playlist snapshot is missing, evicted (cap / idle TTL) or replaced by a newer one. */
+  SNAPSHOT_SUPERSEDED = "SNAPSHOT_SUPERSEDED",
   UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
