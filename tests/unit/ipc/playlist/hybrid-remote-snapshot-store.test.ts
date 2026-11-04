@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import log from "electron-log";
 import {
   HYBRID_REMOTE_API_PAGE_CAP,
   HYBRID_REMOTE_MAX_PAGES_TO_SCAN,
@@ -174,6 +175,34 @@ describe("HybridRemoteSnapshotStore", () => {
     expect(snapshot.completeness).toBe("exact");
     expect(snapshot.remotePosts).toHaveLength(2 * HYBRID_REMOTE_API_PAGE_CAP + 10);
     expect(fetchPosts).toHaveBeenCalledTimes(3);
+  });
+
+  it("logs each API page duration and rawItemCount", async () => {
+    vi.mocked(log.info).mockClear();
+    store.start("k1", walkParams(7));
+    const complete = store.awaitComplete("k1");
+    await vi.advanceTimersByTimeAsync(API_DELAY_MS * 3);
+    await complete;
+
+    const pageLogs = vi
+      .mocked(log.info)
+      .mock.calls.map((args) => args[0])
+      .filter(
+        (message): message is string =>
+          typeof message === "string" &&
+          message.includes("[HybridSnapshotStore] API page") &&
+          message.includes("playlist 7")
+      );
+    expect(pageLogs).toHaveLength(3);
+    expect(pageLogs[0]).toMatch(
+      /\[HybridSnapshotStore\] API page 1 for playlist 7: \d+ ms, raw 1000/
+    );
+    expect(pageLogs[1]).toMatch(
+      /\[HybridSnapshotStore\] API page 2 for playlist 7: \d+ ms, raw 1000/
+    );
+    expect(pageLogs[2]).toMatch(
+      /\[HybridSnapshotStore\] API page 3 for playlist 7: \d+ ms, raw 10/
+    );
   });
 
   it("passes the walk AbortSignal and the fixed request shape to fetchPosts", async () => {

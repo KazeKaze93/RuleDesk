@@ -124,6 +124,8 @@ describe("PlaylistGallery header source contract", () => {
     expect(source).toContain("playlist.postCount");
     expect(source).toContain("getPlaylistResolveTotal");
     expect(source).toContain("releasePlaylistSnapshot");
+    expect(source).toContain("scheduleRelease");
+    expect(source).toContain("cancelRelease");
     expect(source).toContain("staleTime: HYBRID_SNAPSHOT_IDLE_TTL_MS");
     expect(source).not.toContain("console.");
     // AI toggle must not be in the infinite-query key (client filter only).

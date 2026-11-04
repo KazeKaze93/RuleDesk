@@ -32,6 +32,7 @@ import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
+import { cancelRelease, scheduleRelease } from "../../lib/deferred-release";
 import {
   Tooltip,
   TooltipContent,
@@ -220,12 +221,16 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     }
   }, [isTotalQueryError, totalQueryError]);
 
+  // StrictMode double-mount must not reach main: defer release and cancel on remount.
   useEffect(() => {
     if (!playlist.isSmart) return;
     const playlistId = playlist.id;
+    cancelRelease(playlistId);
     return () => {
-      window.api.releasePlaylistSnapshot({ playlistId }).catch((error: unknown) => {
-        log.error("[PlaylistGallery] Failed to release playlist snapshot:", error);
+      scheduleRelease(playlistId, () => {
+        window.api.releasePlaylistSnapshot({ playlistId }).catch((error: unknown) => {
+          log.error("[PlaylistGallery] Failed to release playlist snapshot:", error);
+        });
       });
     };
   }, [playlist.id, playlist.isSmart]);

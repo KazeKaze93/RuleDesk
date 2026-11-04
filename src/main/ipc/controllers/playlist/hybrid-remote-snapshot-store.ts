@@ -310,6 +310,7 @@ export class HybridRemoteSnapshotStore {
       );
 
       for (;;) {
+        const pageStartedAt = Date.now();
         const { posts: booruPosts, rawItemCount } = await provider.fetchPosts(
           params.booruQuery,
           apiPage,
@@ -318,11 +319,15 @@ export class HybridRemoteSnapshotStore {
           apiRequestLimit,
           signal
         );
+        const pageElapsedMs = Date.now() - pageStartedAt;
         if (signal.aborted) {
           return;
         }
         pagesScanned += 1;
         rawFetchedTotal += booruPosts.length;
+        log.info(
+          `[HybridSnapshotStore] API page ${pagesScanned} for playlist ${playlistId}: ${pageElapsedMs} ms, raw ${rawItemCount}`
+        );
 
         for (const post of booruPosts) {
           // Belt-and-suspenders: drop ids above the snapshot even if the meta-tag
