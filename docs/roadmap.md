@@ -125,7 +125,7 @@ Close Since tracked on artist galleries, viewer Updated date label, smart-collec
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| PA | `chore/post-audit-backlog` | (open) | 🟡 open |
+| PA | `chore/post-audit-backlog` | [#273](https://github.com/KazeKaze93/RuleDesk/pull/273) | 🟡 open |
 
 ### Playlist gallery infinite scroll
 
