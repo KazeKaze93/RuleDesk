@@ -12,7 +12,6 @@ import {
   BarChart2,
 } from "lucide-react";
 import log from "electron-log/renderer";
-import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +20,7 @@ import { releaseRadixModalLock } from "../../lib/radix-modal-lock";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { useSearchStore } from "../../store/searchStore";
+import { useSyncAll } from "../../hooks/useSyncAll";
 import { ConfirmActionDialog } from "../dialogs/ConfirmActionDialog";
 
 const NAV_ITEM_BASE_CLASS =
@@ -62,10 +62,19 @@ const isNavRouteActive = (pathname: string, to: string): boolean => {
 
 export const Sidebar = () => {
   const location = useLocation();
-  const [isSyncing, setIsSyncing] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [relativeTimeTick, setRelativeTimeTick] = useState(0);
   const queryClient = useQueryClient();
+  const { isSyncing, progress, startSync } = useSyncAll({
+    onSyncEnd: () => {
+      void queryClient.invalidateQueries({
+        queryKey: SYNC_LAST_COMPLETED_QUERY_KEY,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["updates", "unreadCount"],
+      });
+    },
+  });
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["updates", "unreadCount"],
     queryFn: () => window.api.getUpdatesUnreadCount(),
@@ -80,52 +89,12 @@ export const Sidebar = () => {
   const resetFilters = useSearchStore((state) => state.resetFilters);
 
   useEffect(() => {
-    const unsubscribeStart = window.api.onSyncStart(() => {
-      setIsSyncing(true);
-    });
-
-    const unsubscribeProgress = window.api.onSyncProgress(() => {
-      setIsSyncing(true);
-    });
-
-    const unsubscribeEnd = window.api.onSyncEnd(() => {
-      setIsSyncing(false);
-      void queryClient.invalidateQueries({
-        queryKey: SYNC_LAST_COMPLETED_QUERY_KEY,
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["updates", "unreadCount"],
-      });
-    });
-
-    return () => {
-      unsubscribeStart();
-      unsubscribeProgress();
-      unsubscribeEnd();
-    };
-  }, [queryClient]);
-
-  useEffect(() => {
     const intervalId = window.setInterval(() => {
       setRelativeTimeTick((tick) => tick + 1);
     }, LAST_SYNC_REFRESH_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
   }, []);
-
-  const handleSync = async () => {
-    if (isSyncing) return;
-
-    setIsSyncing(true);
-    try {
-      log.info("[Sidebar] Triggering Sync...");
-      await window.api.syncAll();
-    } catch (error: unknown) {
-      log.error("[Sidebar] Sync failed:", error);
-      setIsSyncing(false);
-      toast.error(resolveErrorMessage(error, "Failed to start sync"));
-    }
-  };
 
   const lastSyncText = useMemo(() => {
     void relativeTimeTick;
@@ -224,7 +193,7 @@ export const Sidebar = () => {
               type="button"
               variant="ghost"
               onClick={() => {
-                void handleSync();
+                void startSync();
               }}
               disabled={isSyncing}
               className={cn(
@@ -240,8 +209,8 @@ export const Sidebar = () => {
               >
                 <RefreshCw className="w-4 h-4" />
               </div>
-              <span className="text-sm font-medium">
-                {isSyncing ? "Syncing..." : "Sync now"}
+              <span className="min-w-0 truncate text-sm font-medium">
+                {isSyncing ? progress : "Sync now"}
               </span>
             </Button>
             <p className="pl-1 text-xs text-muted-foreground" aria-live="polite">
