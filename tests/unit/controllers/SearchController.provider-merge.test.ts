@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts, settings, SETTINGS_ID } from "../../../src/main/db/schema";
+import { artists, settings, SETTINGS_ID } from "../../../src/main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "@shared/constants";
 import type Database from "better-sqlite3";
 
