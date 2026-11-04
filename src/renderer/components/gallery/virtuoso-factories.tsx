@@ -1,5 +1,6 @@
-import React, { forwardRef } from "react";
+import React, { Children, forwardRef, useMemo } from "react";
 import { cn } from "../../lib/utils";
+import { useMasonryColumnCount } from "../../hooks/useMasonryColumnCount";
 
 type VirtuosoListProps = React.HTMLAttributes<HTMLDivElement> & {
   "aria-busy"?: boolean;
@@ -11,33 +12,78 @@ type GridContainerProps = React.HTMLAttributes<HTMLDivElement> & {
 
 const GRID_LIST_CLASS =
   "grid gap-4 p-4 pb-44 [grid-template-columns:repeat(var(--grid-cols,auto-fill),minmax(188px,1fr))]";
-const MASONRY_LIST_CLASS =
-  "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-4 pb-44";
+/** Flex row of equal columns; gap/padding match the former CSS-columns shell. */
+const MASONRY_ROW_CLASS = "flex gap-4 p-4 pb-44";
+const MASONRY_COLUMN_CLASS = "flex min-w-0 flex-1 flex-col";
 const GRID_ITEM_CLASS = "w-full aspect-[2/3]";
-const MASONRY_ITEM_CLASS = "w-full mb-4 break-inside-avoid";
+/** Vertical rhythm via mb-4 (no column gap — avoids double spacing). */
+const MASONRY_ITEM_CLASS = "w-full mb-4";
 
 /**
  * Shared VirtuosoGrid List/Item factories for all feed galleries
  * (Browse / Favorites / Updates / Artist / Playlist).
  * Display-name prefix is the only intentional per-page difference.
  *
- * Masonry parent is CSS multi-column (`columns-N`). Item width must be
- * `w-full` of the column box — percentage `w-[calc(...)]` is relative to
- * the column, not the gallery, and shrinks cards. `flex-shrink-*` has no
- * effect unless the parent is a flex container.
+ * Masonry is JS round-robin into flex columns (item i → column i mod N),
+ * not CSS multi-column: posts have no stored width/height for shortest-column
+ * packing, and round-robin keeps append order stable (no reshuffle across
+ * columns when the list grows). Item width must be `w-full` of its flex
+ * column — percentage `w-[calc(...)]` is relative to the column, not the
+ * gallery, and shrinks cards.
  */
 export function createVirtuosoGridFactories(displayNamePrefix: string) {
   const GridContainer = forwardRef<HTMLDivElement, GridContainerProps>(
-    ({ className, viewType = "grid", ...props }, ref) => (
-      <div
-        ref={ref}
-        className={cn(
-          viewType === "grid" ? GRID_LIST_CLASS : MASONRY_LIST_CLASS,
-          className
-        )}
-        {...props}
-      />
-    )
+    ({ className, viewType = "grid", children, ...props }, ref) => {
+      const columnCount = useMasonryColumnCount();
+
+      const masonryColumns = useMemo(() => {
+        if (viewType !== "masonry") {
+          return null;
+        }
+        const items = Children.toArray(children);
+        const columns: React.ReactNode[][] = Array.from(
+          { length: columnCount },
+          () => []
+        );
+        for (let index = 0; index < items.length; index += 1) {
+          const column = columns[index % columnCount];
+          if (column === undefined) {
+            continue;
+          }
+          column.push(items[index]);
+        }
+        return columns;
+      }, [children, columnCount, viewType]);
+
+      if (viewType === "masonry" && masonryColumns !== null) {
+        return (
+          <div
+            ref={ref}
+            className={cn(MASONRY_ROW_CLASS, className)}
+            {...props}
+          >
+            {masonryColumns.map((columnItems, columnIndex) => (
+              <div
+                key={`masonry-column-${columnIndex}`}
+                className={MASONRY_COLUMN_CLASS}
+              >
+                {columnItems}
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      return (
+        <div
+          ref={ref}
+          className={cn(GRID_LIST_CLASS, className)}
+          {...props}
+        >
+          {children}
+        </div>
+      );
+    }
   );
   GridContainer.displayName = "GridContainer";
 

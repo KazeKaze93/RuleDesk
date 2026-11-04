@@ -4,7 +4,7 @@
 export const MIN_MAIN_TESTS = 526;
 
 /** Isolated suite (vitest.isolated.config.ts): happy-dom + video-proxy. */
-export const MIN_ISOLATED_TESTS = 136;
+export const MIN_ISOLATED_TESTS = 142;
 
 /** Combined floor across main + isolated runs. */
 export const MIN_TESTS = MIN_MAIN_TESTS + MIN_ISOLATED_TESTS;
