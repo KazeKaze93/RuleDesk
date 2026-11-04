@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   parseDownloadQueueFile,
   artistQueueInitial,
+  favoritesQueueInitial,
   listQueueInitial,
 } from "../../../src/main/lib/download-queue-file";
 
 describe("parseDownloadQueueFile", () => {
-  it("parses V3 artist queue", () => {
+  it("parses V3 artist queue (legacy kind without favorites)", () => {
     const raw = artistQueueInitial({
       artistId: 7,
       filters: { mediaType: "images" },
@@ -22,6 +23,27 @@ describe("parseDownloadQueueFile", () => {
       cursorId: 0,
       upperBoundId: 100,
     });
+  });
+
+  it("parses V3 favorites queue with filters and cursor", () => {
+    const raw = favoritesQueueInitial({
+      filters: { aiFilter: "hide", mediaType: "videos" },
+      upperBoundId: 777,
+      total: 12,
+      folder: "/tmp/fav",
+    });
+    raw.cursorId = 42;
+    raw.doneCount = 3;
+    const parsed = parseDownloadQueueFile(raw);
+    expect(parsed?.format).toBe("v3");
+    expect(parsed?.data).toMatchObject({
+      kind: "favorites",
+      cursorId: 42,
+      upperBoundId: 777,
+      doneCount: 3,
+      filters: { aiFilter: "hide", mediaType: "videos" },
+    });
+    expect(parsed?.data).not.toHaveProperty("artistId");
   });
 
   it("migrates V2 queue to V3 list", () => {

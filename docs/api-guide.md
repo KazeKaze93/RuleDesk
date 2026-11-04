@@ -1559,7 +1559,19 @@ Mass-download entry. Discriminated on `kind` (`DownloadAllRequestSchema`):
 | `"favorites"` | Local DB cursor for `isFavorited = true` (+ optional `filters`) |
 | `"list"` | Explicit `{ url, filename }[]` (capped by `BATCH_DOWNLOAD_LIST_MAX_FILES`) |
 
-Artist and favorites share the same cursor contract: snapshot `{ upperBoundId: max(posts.id), total }` then chunks `id > cursor AND id <= upperBound`. Target is only the SQL condition. Favorites currently do not persist a resume queue file (in-session only).
+Artist and favorites share the same cursor contract: snapshot `{ upperBoundId: max(posts.id), total }` then chunks `id > cursor AND id <= upperBound`. Target is only the SQL condition. Both artist and favorites persist `userData/download-queue.json` (V3) for crash resume.
+
+**Pending queue file (`download-queue.json`):** atomic tmp+rename writes. Discriminated on `kind`:
+
+| `kind` | Fields (V3) |
+|--------|-------------|
+| `"artist"` | `artistId`, optional `filters`, `cursorId`, `upperBoundId`, `chunkCompletedIds`, `doneCount`, `folder`, `total`, `timestamp` |
+| `"favorites"` | same cursor fields as artist (no `artistId`), optional `filters` |
+| `"list"` | `items[]`, `completedIds[]`, `folder`, `total`, `timestamp` |
+
+Legacy V2 / doneCount-only files migrate to `"list"` on read. Existing `"artist"` files keep working unchanged.
+
+**`getPendingDownload()`** → `{ hasPending, total, done, folder, kind } | null`. **`resumePendingDownload()`** continues from the saved cursor/`upperBound` (or remaining list items). **`dismissPendingDownload()`** deletes the file.
 
 **Returns:** `Promise<DownloadAllResult>` (`downloaded`, `failed[]`, `canceled`, …). Progress via `onDownloadAllProgress`.
 
