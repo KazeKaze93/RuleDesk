@@ -53,7 +53,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **🔧 Artist Repair**              | Repair/resync to refresh low-quality previews or fix sync gaps by re-fetching from the start of that artist's feed.                                                                                                                                                                                                                                    |
 | **💾 Backup & Restore**           | Manual and automatic database backups under `RuleDesk-Backups` (sibling of `RuleDesk-Data`). Retention is configurable in Settings (keep last N manual and last N automatic backups separately). Restore replaces the live DB (with checks) and reloads the app.                                                                                      |
 | **🧹 DB Maintenance (VACUUM)**    | Settings shows last VACUUM run, **Run VACUUM now**, and schedule (`manual` / `weekly` / `monthly`). Lightweight automatic maintenance still runs in the background.                                                                                                                                                                                      |
-| **🔍 Search Functionality**       | Search artists locally, tags via booru autocomplete, and posts on Browse with infinite scroll. Artist / character / copyright tags are resolved for the viewer drawer. Multi-provider support (Rule34.xxx, Gelbooru).                                                                                                                                   |
+| **🔍 Search Functionality**       | Search artists locally, tags via booru autocomplete, and posts on Browse with infinite scroll. Artist / character / copyright tags are resolved for the viewer drawer. Rule34.xxx only (legacy Gelbooru posts still display).                                                                                                                            |
 | **⭐ Favorites System**           | Mark posts as favorites and browse your collection. Toggle with **F** in the viewer or via UI. Favorites are stored locally only.                                                                                                                                                                                                                      |
 | **⬇️ Download Manager**           | Download full-resolution media to a folder you choose, with progress tracking and queue management.                                                                                                                                                                                                                                                    |
 | **🖥️ Full-Screen Viewer**         | Immersive viewer with keyboard shortcuts, download, favorites, and tag management. Auto-hide controls and navigation between posts.                                                                                                                                                                                                                    |
@@ -62,7 +62,7 @@ This project is **unofficial** and **not affiliated** with any external website 
 | **📊 Statistics**                 | Statistics page with totals (artists/posts/favorites/unviewed), distribution charts, provider split, top artists/tags, and database file size.                                                                                                                                                                                                         |
 | **🔄 Auto-Updater**               | Checks for updates and notifies when a newer release is available. Choosing download opens the GitHub Releases page; you install manually (extract the Windows zip / replace the Linux AppImage). There is no automatic in-app install.                                                                                                              |
 | **🌐 Clean English UI**           | English-only user-facing copy (no i18n stack).                                                                                                                                                                                                                                                                                                         |
-| **🔌 Multi-Source Ready**         | Multi-booru support today: Rule34.xxx and Gelbooru. New sources can be added without rewriting the core library schema.                                                                                                                                                                                                                                |
+| **🔌 Provider architecture**      | `IBooruProvider` keeps a clean integration boundary. Shipped API client is Rule34.xxx only; schema still stores a `provider` column for legacy rows.                                                                                                                                                                                                   |
 
 Internal identifiers for maintainers (component names, IPC methods, constants, file paths) live in [Architecture Documentation](./docs/architecture.md#readme-feature-internals).
 
@@ -100,7 +100,7 @@ This is the sandboxed browser environment. It handles presentation.
 - **IPC Bridge:** Strictly typed TypeScript interface used by the Renderer to communicate with the Main Process (`src/preload/bridge.ts`; see [architecture](./docs/architecture.md#readme-feature-internals)).
 - **Security:** **Context Isolation** enforced globally; no direct Node.js access from the Renderer.
 - **Encryption:** API credentials encrypted using Electron's `safeStorage` API. Decryption only occurs in Main Process when needed for API calls.
-- **Provider Pattern:** Multi-booru support via `IBooruProvider` interface. Current implementations: Rule34.xxx, Gelbooru.
+- **Provider Pattern:** `IBooruProvider` interface. Shipped implementation: Rule34.xxx (Gelbooru API removed; legacy stored media still display).
 
 **📖 For detailed architecture information, see [Architecture Documentation](./docs/architecture.md).**
 
@@ -228,8 +228,8 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 
 ### Account
 
-- **Provider** - Rule34 or Gelbooru; changing provider refreshes feed caches and saves the selection
-- **User ID** - Required for providers that use it (shown when applicable)
+- **Provider** - Rule34.xxx only (no provider switch)
+- **User ID** - Required for Rule34 authenticated requests
 - **API key update** - Password-style input with show/hide toggle
 - **Paste URL** - Paste the full account page URL into either field; User ID and API Key are extracted automatically
 - **Key status badge** - Configured / Not configured
@@ -260,7 +260,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Indexes:** Optimized indexes on `artistId`, `isViewed`, `publishedAt`, `isFavorited`, `lastChecked`, `createdAt`, `mediaType`
 - ✅ **Composite Indexes:** Composite indexes on `(artist_id, rating, is_viewed)` and `(artist_id, media_type)` for optimized multi-column filter queries
 - ✅ **FTS5 Full-Text Search:** FTS5 virtual table `posts_fts` with `unicode61` tokenizer for fast tag searching
-- ✅ **Provider Support:** Multi-booru support with `provider` field in artists table (rule34, gelbooru)
+- ✅ **Provider column:** artists/posts keep a `provider` field; API work is Rule34-only; legacy Gelbooru rows remain readable
 - ✅ **Artist Types:** UI tracks artists by **tag** (schema still allows legacy `uploader` / `query` rows; see [roadmap backlog](./docs/roadmap.md#backlog-not-implemented-yet))
 
 ### Security & Reliability
@@ -279,7 +279,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Tag Normalization:** Inputs like "tag (123)" are automatically stripped to "tag" before saving/syncing
 - ✅ **Sync Service:** Handles `ON CONFLICT` correctly and populates the gallery with proper upsert logic
 - ✅ **Timestamp Handling:** All timestamps use Drizzle timestamp mode with proper milliseconds precision
-- ✅ **Provider Pattern:** Multi-booru support via `IBooruProvider` interface (Rule34, Gelbooru)
+- ✅ **Provider Pattern:** `IBooruProvider` with Rule34Provider (Gelbooru provider module removed)
 - ✅ **Rate Limiting:** Shared `ProviderThrottle` (~1200ms + 0–400ms jitter per request) across providers
 - ✅ **Anti-Bot Measures:** Shared `USER_AGENT` for API+CDN plus jittered request pacing via `ProviderThrottle`.
 - ✅ **Sync integrity:** `lastPostId` advances only after complete pagination; unfinished runs set `lastSyncIncomplete`. Per-artist `syncStatus` / `lastError` are written during sync; hard-kill recovery resets stuck `syncing` → `idle` on DB init. Video-cache writes are atomic (tmp+rename) with size-capped **LRU last-accessed** eviction — see [Roadmap](./docs/roadmap.md).
@@ -303,7 +303,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Backup Controls:** UI component for creating and restoring database backups with integrity checks
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
 - ✅ **Age Gate Component:** Fully implemented with legal confirmation (`AgeGate.tsx` component and `confirmLegal` IPC method)
-- ✅ **Content Security Policy:** Strict CSP with support for Rule34.xxx and Gelbooru.com media sources
+- ✅ **Content Security Policy:** Strict CSP for Rule34.xxx plus legacy Gelbooru media hosts for stored posts
 - ✅ **Rule34 CDN host fallback:** Viewer retries Rule34 media across alternate hosts when a host fails
 - ✅ **Safe Mode / NSFW blur:** When Safe Mode is enabled, gallery cards and the full-screen viewer apply configurable blur to sensitive ratings (`PostCard`, `ViewerMedia`, `safeModeStore`)
 
@@ -389,7 +389,7 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 
 - ✅ **Global top bar** — `GlobalTopBar.tsx` + `FiltersPanel` (AI, media, source) and separate date sort control
 - ✅ **AI / media / source** — Backed by `searchStore` and post queries
-- ✅ **Source on Browse / artist galleries** — Favorites / Since tracked (value `subscriptions`) require a tag query on Browse when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog)). **Since tracked** is Browse-only; artist galleries offer All + Favorites (ArtistGallery does not pass `sinceTracking`). Source is hidden on Tracked list, Favorites, Updates, and Playlists. Local modes apply AI/media in SQL before pagination. Since tracked is `sinceTracking` (join by artist + publish date), not tag-intersection. Distinct from tag-combination subscriptions (**Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)**). Remote Source: All AI hide/only on **Rule34** is injected into the booru tag query; Gelbooru still uses the Browse worker for AI. Remote Videos / Images inject the live-verified `video` / `-video` tag on Rule34 and Gelbooru.
+- ✅ **Source on Browse / artist galleries** — Favorites / Since tracked (value `subscriptions`) require a tag query on Browse when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog)). **Since tracked** is Browse-only; artist galleries offer All + Favorites (ArtistGallery does not pass `sinceTracking`). Source is hidden on Tracked list, Favorites, Updates, and Playlists. Local modes apply AI/media in SQL before pagination. Since tracked is `sinceTracking` (join by artist + publish date), not tag-intersection. Distinct from tag-combination subscriptions (**Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)**). Remote Source: All AI hide/only on **Rule34** is injected into the booru tag query. Remote Videos / Images inject the live-verified `video` / `-video` tag on Rule34.
 - 🟡 **View modes** — Grid (`VirtuosoGrid`) vs masonry (CSS columns); different scaling behavior on huge lists
 - ✅ **FTS5** — Tag search where integrated in browse/search flows
 

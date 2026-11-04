@@ -52,7 +52,8 @@ In-memory DB fixtures live in `tests/helpers/mock-db.ts` and are covered by `tes
 | `shared/provider-search-ipc-payload.test.ts` | Provider IPC JSON payload / explicit `providerKind` (no copy-matching) |
 | `shared/autocomplete-label-count.test.ts` | Rule34 autocomplete `(count)` label parse |
 | `providers/rule34-provider-fetch-posts.test.ts` | fetchPosts error classification + searchTags shape |
-| `providers/gelbooru-provider-fetch-posts.test.ts` | Gelbooru fetchPosts errors + empty JSON `[]` |
+| `shared/provider-input-schemas.test.ts` | Rule34-only Zod input; stored smart query parse keeps gelbooru string |
+| `ipc/PlaylistController.unsupported-provider.test.ts` | Smart query unsupported provider → UNSUPPORTED_PROVIDER gate |
 | `providers/assert-cdn-domains-subset.test.ts` | `cdnDomains ⊆ allowedDomains` throw vs live registry |
 | `providers/warn-unknown-media-host.test.ts` | Fetch-time unknown-host warn + per-hostname dedup |
 | `providers/throttle.test.ts` | Priority queue + 429 gate (`vi.useFakeTimers`) |

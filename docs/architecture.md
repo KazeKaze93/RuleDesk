@@ -101,7 +101,7 @@ RuleDesk is built on Electron, which runs two separate processes:
 3. **Main Process (Node.js)** - This is the secure backend that handles:
 
    - **Services Layer** - Business logic (sync, updates, file operations)
-   - **Backend Clients** - Communication with external APIs (Rule34.xxx, Gelbooru)
+   - **Backend Clients** - Communication with external APIs (Rule34.xxx; Gelbooru API removed)
 
 4. **Database** - SQLite database accessed directly in Main Process:
    - **Drizzle ORM** provides type-safe queries
@@ -131,7 +131,7 @@ Not planned.
 
 - `SyncService` already uses provider-based dispatch (`artist.provider`) instead of a Rule34-only path.
 - `IBooruProvider` defines shared operations (auth, posts fetch, tag search, formatting).
-- Current implementations: `Rule34Provider`, `GelbooruProvider`; the same interface allows adding new sources without rewriting core DB logic.
+- Current implementation: `Rule34Provider` only. `IBooruProvider` remains the extension point; Gelbooru API module removed. Schema `provider` columns and legacy Gelbooru CDN/CSP hosts remain for displaying stored posts.
 
 ## High-Level Architecture
 
@@ -615,7 +615,7 @@ const posts = await db.query.posts.findMany({
 
    - Provider pattern abstraction for multi-booru support
    - `IBooruProvider` interface for standardized booru operations
-   - Implementations: `Rule34Provider`, `GelbooruProvider`
+   - Implementations: `Rule34Provider` (Gelbooru removed; legacy media hosts kept in CSP/CDN allowlist)
    - `allowedDomains` is the full host list for CSP (`getAllProviderDomains`: API + CDN). `cdnDomains` is the media-CDN subset; shared `isAllowedCdnUrl` in `src/main/providers/cdn-allowlist.ts` (from `getAllProviderCdnDomains`; exact hostname match, no suffix wildcard) gates **video-proxy**, **FileController download Zod**, and **downloadWorker** (initial URL + every axios `beforeRedirect` hop via `assertCdnUrlAllowedForRedirect`; HTTPS-only). `api-cdn.rule34.xxx` does not cover `api-cdn-mp4.rule34.xxx` (Rule34 MP4 CDN). Gelbooru media CDN is `img4.gelbooru.com`; `gelbooru.com` is the API/site host and is not proxied. Registry load throws if any provider's `cdnDomains` is not a subset of `allowedDomains`. After mapping `file_url`, unknown hostnames (exact match, not CSP `*.domain`) `log.warn` once: missing from `allowedDomains`, or video URL missing from `cdnDomains`.
    - Methods: `checkAuth`, `fetchPosts`, `searchTags`, `formatTag`
    - Shared request pacing via `ProviderThrottle` (~1200ms + jitter) and shared `USER_AGENT` for API+CDN
