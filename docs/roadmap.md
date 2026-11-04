@@ -117,7 +117,7 @@ Delete Gelbooru provider/API/UI; keep schema provider columns and legacy media d
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| G34 | `chore/remove-gelbooru` | — | 🟡 open |
+| G34 | `chore/remove-gelbooru` | [#271](https://github.com/KazeKaze93/RuleDesk/pull/271) | 🟡 open |
 
 ### Playlist gallery infinite scroll
 
