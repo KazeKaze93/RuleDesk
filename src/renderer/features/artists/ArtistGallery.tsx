@@ -78,6 +78,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
           mediaType: mediaType === "all" ? undefined : mediaType,
           isFavorited: source === "favorites" ? true : undefined,
+          sinceTracking: source === "subscriptions" ? true : undefined,
         },
       });
       return count;
@@ -111,6 +112,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
           mediaType: mediaType === "all" ? undefined : mediaType,
           isFavorited: source === "favorites" ? true : undefined,
+          sinceTracking: source === "subscriptions" ? true : undefined,
         },
       });
     },
@@ -235,6 +237,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
         mediaType: mediaType === "all" ? undefined : mediaType,
         isFavorited: source === "favorites" ? true : undefined,
+        sinceTracking: source === "subscriptions" ? true : undefined,
       },
     }),
     [artist.id, aiFilter, mediaType, source]

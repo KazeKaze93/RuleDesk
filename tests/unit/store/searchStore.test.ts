@@ -28,10 +28,11 @@ describe("getSourceOptionsForPath", () => {
     ]);
   });
 
-  it("returns All and Favorites on artist gallery (no Since tracked)", () => {
+  it("returns All, Favorites, and Since tracked on artist gallery", () => {
     expect(getSourceOptionsForPath("/artist/1")).toEqual([
       "all",
       "favorites",
+      "subscriptions",
     ]);
   });
 

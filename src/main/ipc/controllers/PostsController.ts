@@ -542,6 +542,33 @@ export class PostsController extends BaseController {
   }
 
   /**
+   * Shared sinceTracking feed scope for getPosts / getPostsCount /
+   * getPostsCountWithFilters. Date gate lives in joinOn (publishedAt >=
+   * artists.createdAt); WHERE carries base filters + post-scope exclusion.
+   */
+  private buildUpdatesFeedQueryScope(
+    artistId: number | undefined,
+    filters: PostFilterRequest | undefined
+  ): { where: SQL; joinOn: SQL } {
+    const baseConditions = this.buildPostFilterConditions(artistId, filters);
+    const whereClause =
+      baseConditions.length > 0 ? and(...baseConditions) : undefined;
+    // Join already filters by date (sinceTracking); whereClause is optional refinement.
+    const where = whereClause
+      ? and(whereClause, buildUpdatesFeedPostScopeCondition())
+      : buildUpdatesFeedPostScopeCondition();
+    if (!where) {
+      throw new Error(
+        "[PostsController] Failed to build sinceTracking feed where clause"
+      );
+    }
+    return {
+      where,
+      joinOn: buildUpdatesFeedJoinOn(),
+    };
+  }
+
+  /**
    * Get posts for an artist (or globally) with pagination and filters
    *
    * @param _event - IPC event (unused)
@@ -562,26 +589,11 @@ export class PostsController extends BaseController {
 
       // If sinceTracking filter is enabled, we need to use join
       if (filters?.sinceTracking === true) {
-        // Build where conditions array (excluding the date filter, which goes in join)
-        // Note: artistId is optional - if not provided, returns posts from all tracked artists
-        // This is the expected behavior for global feeds like Updates
-        const baseConditions = this.buildPostFilterConditions(
+        // artistId optional: omit → all tracked artists (Updates feed).
+        const { where, joinOn } = this.buildUpdatesFeedQueryScope(
           artistId,
           filters
         );
-
-        // Combine all conditions using and()
-        // Note: whereClause can be undefined if no additional filters are provided.
-        // This is safe because the join condition already filters by date (sinceTracking),
-        // so the join itself acts as the primary filter. Additional filters in whereClause
-        // are optional refinements.
-        const whereClause =
-          baseConditions.length > 0 ? and(...baseConditions) : undefined;
-
-        // Feed scope join: sinceTracking + tracked artists (shared with badge / mark-all).
-        const finalWhereClause = whereClause
-          ? and(whereClause, buildUpdatesFeedPostScopeCondition())
-          : buildUpdatesFeedPostScopeCondition();
 
         const queryBuilder = db
           .select({
@@ -604,8 +616,8 @@ export class PostsController extends BaseController {
             viewCount: posts.viewCount,
           })
           .from(posts)
-          .innerJoin(artists, buildUpdatesFeedJoinOn())
-          .where(finalWhereClause);
+          .innerJoin(artists, joinOn)
+          .where(where);
 
         const result = isRandom
           ? queryBuilder
@@ -706,6 +718,27 @@ export class PostsController extends BaseController {
     try {
       const db = getDb();
       const { artistId, filters } = params;
+
+      if (filters?.sinceTracking === true) {
+        const { where, joinOn } = this.buildUpdatesFeedQueryScope(
+          artistId,
+          filters
+        );
+        const result = await db
+          .select({ value: count() })
+          .from(posts)
+          .innerJoin(artists, joinOn)
+          .where(where);
+
+        const total = result[0]?.value ?? 0;
+        log.info(
+          `[PostsController] Posts count: ${total} ${
+            artistId ? `for artist ${artistId}` : "(all artists)"
+          } (sinceTracking: true)`
+        );
+        return total;
+      }
+
       const baseConditions = this.buildPostFilterConditions(artistId, filters);
       const whereClause =
         baseConditions.length > 0 ? and(...baseConditions) : undefined;
@@ -741,18 +774,16 @@ export class PostsController extends BaseController {
       const { artistId, filters } = params;
 
       if (filters?.sinceTracking === true) {
-        const baseConditions = this.buildPostFilterConditions(artistId, filters);
-        const whereClause =
-          baseConditions.length > 0 ? and(...baseConditions) : undefined;
-        const finalWhereClause = whereClause
-          ? and(whereClause, buildUpdatesFeedPostScopeCondition())
-          : buildUpdatesFeedPostScopeCondition();
+        const { where, joinOn } = this.buildUpdatesFeedQueryScope(
+          artistId,
+          filters
+        );
 
         const result = await db
           .select({ value: count() })
           .from(posts)
-          .innerJoin(artists, buildUpdatesFeedJoinOn())
-          .where(finalWhereClause);
+          .innerJoin(artists, joinOn)
+          .where(where);
 
         const total = result[0]?.value ?? 0;
         log.debug(`[PostsController] Posts count with filters: ${total}`);
