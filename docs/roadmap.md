@@ -95,6 +95,14 @@ Favorites empty NONE vs FILTERED; Source pathname scope + **Since tracked** labe
 |---|--------|----|--------|
 | W1 | `fix/ux-audit-wave1` | [#263](https://github.com/KazeKaze93/RuleDesk/pull/263) | ✅ merged |
 
+### UX audit wave 2 (sync feedback / Updates CTA / Select all / Download All)
+
+Honest Sync All progress + success/error toasts via `useSyncAll`; Updates empty CTAs (Track / Sync now); Browse Select all without tag gate; Download All (loaded) on Favorites and Updates. Status lives only in this table.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| W2 | `fix/ux-audit-wave2` | — | 🟡 open |
+
 ### Playlist gallery infinite scroll
 
 Unify `PlaylistGallery` on `useGalleryInfiniteScroll` (debounce / endReached gate / `placeholderData`); extract PostCard portal bulk guard to `isEventFromOwnDom`. Status lives only in this table.
@@ -102,7 +110,7 @@ Unify `PlaylistGallery` on `useGalleryInfiniteScroll` (debounce / endReached gat
 | # | Branch | PR | Status |
 |---|--------|----|--------|
 | G | `fix/playlist-infinite-scroll` | [#265](https://github.com/KazeKaze93/RuleDesk/pull/265) | ✅ merged |
-| H | `feat/hybrid-snapshot-store` | [#266](https://github.com/KazeKaze93/RuleDesk/pull/266) | 🟡 open |
+| H | `feat/hybrid-snapshot-store` | [#266](https://github.com/KazeKaze93/RuleDesk/pull/266) | ✅ merged |
 
 ### DB review waves (P1)
 
