@@ -36,6 +36,10 @@ import { cn } from "../../lib/utils";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { VIEWER_OVERLAY_Z, viewerOverlayClass } from "./viewer-layers";
 import {
+  VIEWER_UPDATED_DATE_LABEL,
+  VIEWER_UPDATED_DATE_TOOLTIP,
+} from "./viewer-date-labels";
+import {
   buildPostMetadataResolveQueryKey,
   canonicalizePostTagsForResolve,
 } from "./postMetadataQueryKeys";
@@ -455,7 +459,22 @@ export const TagsDrawer = ({
         <div className="mt-6 space-y-4">
           {post.publishedAt && (
             <div>
-              <h3 className="mb-2 text-sm font-semibold">Published</h3>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h3
+                      tabIndex={0}
+                      className="mb-2 cursor-help text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      title={VIEWER_UPDATED_DATE_TOOLTIP}
+                    >
+                      {VIEWER_UPDATED_DATE_LABEL}
+                    </h3>
+                  </TooltipTrigger>
+                  <TooltipContent className={viewerOverlayClass()}>
+                    {VIEWER_UPDATED_DATE_TOOLTIP}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <p className="text-sm text-muted-foreground">
                 {(() => {
                   let date: Date;
